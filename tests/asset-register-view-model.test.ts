@@ -161,7 +161,19 @@ test("the next-step button prefers handover, then return, else nothing", () => {
 
 test("default columns fit a 1440px screen without horizontal scroll", () => {
   assert.equal(assetRegisterColumnWidths.name, 200)
-  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.operations), 1094)
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.operations), 1116)
   assert.ok(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.operations) <= 1117)
   assert.ok(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.all) > 1117, "the all preset scrolls")
+})
+
+// Plan 2B-3 Task 1 (spec 2B I26, §7.8.4, N8): the actions column holds the ช1 pair of RowActions (next step 120 + gap 4 +
+// ⋯ 32 = 156) between pl-1.5 pr-2 and its left line: 172 − 6 − 8 − 0.5 = 157.5. companyBranch gives back 4px, so the
+// accounting preset still fits the 1,117px a 1440px screen leaves (DESIGN.md, asset register: no horizontal scroll).
+test("the actions column fits the next-step button and ⋯, and the accounting preset still fits 1440px (spec 2B I26)", () => {
+  assert.equal(assetRegisterColumnWidths.actions, 172)
+  assert.equal(assetRegisterColumnWidths.companyBranch, 116)
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.accounting), 1116)
+  assert.ok(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.accounting) <= 1117)
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.audit), 1276, "audit scrolls, as before")
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.all), 1632, "all scrolls, as before")
 })
