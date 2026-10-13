@@ -1,22 +1,33 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, ListFilter, ScanLine } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
-import { formatDate } from "@/lib/utils"
+import { MasterDataSearch } from "@/components/master-data/master-data-layout"
+import { cn, formatDate } from "@/lib/utils"
 import { toDisplayYear } from "@/lib/display-year"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { RowActions, type RowActionGroup, type RowNextAction } from "@/components/ui/row-actions"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { TabNav } from "@/components/ui/tab-nav"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { auditRoundCoverageWhere, auditRoundOperationalWhere, isAuditRoundOperationalStatus } from "@/lib/audit-round-status"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; view?: string }>
+  searchParams: Promise<{ search?: string; view?: string; page?: string | string[]; pageSize?: string | string[] }>
 }
 
 type CoverageAsset = {
@@ -74,13 +85,15 @@ type ActionPanelItem = {
 
 export default async function AuditRoundsPage({ params, searchParams }: AuditRoundsPageProps) {
   const { locale } = await params
-  const { search = "", view = "all" } = await searchParams
+  const { search = "", view = "all", page, pageSize } = await searchParams
   await requirePagePermission(locale, "audit", "view")
 
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
+  const tPending = await getTranslations("auditPending")
   const searchText = search.trim()
   const activeView: AuditRoundView = auditRoundViewValues.includes(view as AuditRoundView) ? (view as AuditRoundView) : "all"
+  const listPage = parseListPage({ page, pageSize })
   const currentYear = new Date().getFullYear()
   const [rounds, activeAssets, coveredItems, currentYearRoundCount, openItemStatusCounts, openFollowUpCount] = await withPerformanceTiming(
     "audit-rounds.initial-data",
@@ -106,7 +119,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
           scopeLocation: { select: { code: true, name: true } },
           _count: { select: { items: true, findings: true } },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       }),
       prisma.asset.findMany({
         where: { isActive: true },
@@ -179,6 +192,13 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const outOfScopeByRoundId = new Map(outOfScopeWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
   const insightsByRoundId = buildAuditRoundInsights(rounds, progressByRoundId, followUpsByRoundId, outOfScopeByRoundId)
   const filteredRounds = filterRoundsByView(rounds, insightsByRoundId, activeView)
+  // Real pages (spec 2B B4, §5.9.2 row 7, I21): the view filters and the tab counts need the insight of every round,
+  // so the query stays whole and the page is a slice of filteredRounds. The total is known before the cut, so a page
+  // past the last one is clamped to the last page instead of redirecting.
+  const roundPage = { page: Math.min(listPage.page, lastListPage(filteredRounds.length, listPage.pageSize)), pageSize: listPage.pageSize }
+  const { skip, take } = listPageWindow(roundPage)
+  const pageRounds = filteredRounds.slice(skip, skip + take)
+  const { start, end, totalPages } = paginationRange(roundPage.page, roundPage.pageSize, filteredRounds.length)
   const pendingRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.pending ?? 0) > 0 && isAuditRoundOperationalStatus(round.status))
   const reviewRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.followUps ?? 0) > 0 && isAuditRoundOperationalStatus(round.status))
   const readyRounds = rounds.filter((round) => insightsByRoundId.get(round.id)?.readyToClose)
@@ -191,19 +211,22 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     readyToClose: t("viewReadyToClose"),
     cancelled: t("viewCancelled"),
   }
-  const auditRoundsReturnHref = buildAuditRoundsHref(locale, activeView, searchText)
+  // The round detail and scan pages bring the user back to this page and page size (B4 returnTo).
+  const auditRoundsReturnHref = buildAuditRoundsHref(locale, activeView, searchText, roundPage)
+  // A filter link goes back to page 1 and keeps the page size (spec 2B §5.9.1).
   const quickFilters = auditRoundViewValues.map((value) => ({
     value,
     label: viewLabels[value],
     count: filterRoundsByView(rounds, insightsByRoundId, value).length,
-    href: buildAuditRoundsHref(locale, value, searchText),
+    href: buildAuditRoundsHref(locale, value, searchText, { pageSize: listPage.pageSize }),
   }))
+  const clearSearchHref = buildAuditRoundsHref(locale, activeView, "", { pageSize: listPage.pageSize })
   const actionItems: ActionPanelItem[] = [
     {
       label: t("actionContinueScan"),
       help: t("actionContinueScanHelp"),
       count: pendingRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.pending ?? 0), 0),
-      href: pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", searchText),
+      href: pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", searchText, { pageSize: listPage.pageSize }),
       icon: <ScanLine className="h-5 w-5" />,
       tone: "primary",
     },
@@ -219,7 +242,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       label: t("actionCloseReadyRounds"),
       help: t("actionCloseReadyRoundsHelp"),
       count: readyRounds.length,
-      href: readyRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${readyRounds[0].id}`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "readyToClose", searchText),
+      href: readyRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${readyRounds[0].id}`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "readyToClose", searchText, { pageSize: listPage.pageSize }),
       icon: <ClipboardCheck className="h-5 w-5" />,
       tone: "success",
     },
@@ -250,31 +273,38 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   )
 
   return (
-    <div>
-      <MasterDataHeader
+    <div className="space-y-6">
+      <PageHeader
         title={t("title")}
-        subtitle={t("subtitle")}
-        createHref={`/${locale}/audit/rounds/new`}
-        createLabel={t("createTitle")}
+        meta={t("subtitle")}
+        actions={
+          <Link href={`/${locale}/audit/rounds/new`} className={buttonVariants({ size: "md" })}>
+            <Plus aria-hidden="true" />
+            {t("createTitle")}
+          </Link>
+        }
       />
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
+      <section className="rounded-lg border border-border bg-surface p-4">
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("coverageHelp")}</p>
           </div>
           <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            {t("coverageRoundCount")}: <span className="font-semibold text-foreground">{currentYearRoundCount}</span>
+            {t("coverageRoundCount")}: <span className="font-semibold text-foreground">{formatCount(currentYearRoundCount)}</span>
           </div>
         </div>
 
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <CoverageMetric label={t("coverageActiveAssets")} value={activeAssets.length} />
-          <CoverageMetric label={t("coverageCoveredThisYear")} value={coveredAssetCount} />
-          <CoverageMetric label={t("coverageUncoveredThisYear")} value={uncoveredAssetCount} tone="warning" />
-          <CoverageMetric label={t("coverageOpenPending")} value={openPendingItems + openFollowUpCount} tone="danger" />
-        </div>
+        <StatStrip
+          className="mb-4"
+          items={[
+            { key: "activeAssets", label: t("coverageActiveAssets"), value: formatCount(activeAssets.length) },
+            { key: "covered", label: t("coverageCoveredThisYear"), value: formatCount(coveredAssetCount) },
+            { key: "uncovered", label: t("coverageUncoveredThisYear"), value: formatCount(uncoveredAssetCount) },
+            { key: "openPending", label: t("coverageOpenPending"), value: formatCount(openPendingItems + openFollowUpCount) },
+          ]}
+        />
 
         <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
           <AuditProgressBar
@@ -329,17 +359,15 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
-        hiddenInputs={activeView === "all" ? undefined : { view: activeView }}
+        hiddenInputs={{ ...(activeView === "all" ? {} : { view: activeView }), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
       />
 
       <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
         <div className={`${getMobileCardListClasses()} p-3`}>
-          {filteredRounds.length === 0 ? (
-            <div className="rounded-md border border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-              {tCommon("noData")}
-            </div>
+          {pageRounds.length === 0 ? (
+            <EmptyNote padded>{tCommon("noData")}</EmptyNote>
           ) : (
-            filteredRounds.map((round) => {
+            pageRounds.map((round) => {
               const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
               const insight = insightsByRoundId.get(round.id) ?? {
                 pending: progress.pending,
@@ -368,7 +396,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
                       <Link href={roundDetailHref} className="break-words text-sm font-semibold text-foreground hover:text-primary">
-                        {round.auditNo}
+                        <span className="tag font-medium">{round.auditNo}</span>
                       </Link>
                       <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
                     </div>
@@ -388,7 +416,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                   <div className="mt-3 grid gap-2 text-sm">
                     <MobileAuditField label={t("scope")} value={formatScope(round)} />
                     <MobileAuditField label={t("dateRange")} value={`${formatDate(round.startDate)} - ${formatDate(round.endDate)}`} />
-                    <MobileAuditField label={t("items")} value={String(round._count.items)} />
+                    <MobileAuditField label={t("items")} value={formatCount(round._count.items)} />
                   </div>
                   <div className="mt-3">
                     <AuditProgressBar
@@ -402,11 +430,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                     />
                   </div>
                   <RoundWorkflowLinks links={workflowLinks} />
-                  <Link
-                    href={roundDetailHref}
-                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                  >
-                    <Eye className="h-4 w-4" />
+                  <Link href={roundDetailHref} className={cn(buttonVariants({ variant: "outline" }), "mt-3 w-full")}>
+                    <Eye aria-hidden="true" />
                     {tCommon("view")}
                   </Link>
                 </article>
@@ -414,109 +439,131 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             })
           )}
         </div>
-        <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <ColumnHeader>{t("auditNo")}</ColumnHeader>
-                <ColumnHeader>{t("name")}</ColumnHeader>
-                <ColumnHeader>{t("scope")}</ColumnHeader>
-                <ColumnHeader>{t("dateRange")}</ColumnHeader>
-                <ColumnHeader>{t("status")}</ColumnHeader>
-                <ColumnHeader align="right">{t("items")}</ColumnHeader>
-                <ColumnHeader>{t("progress")}</ColumnHeader>
-                <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredRounds.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
-                  </td>
-                </tr>
+        <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>{t("auditNo")}</DataTableHead>
+              <DataTableHead>{t("name")}</DataTableHead>
+              <DataTableHead>{t("scope")}</DataTableHead>
+              <DataTableHead>{t("dateRange")}</DataTableHead>
+              <DataTableHead>{t("status")}</DataTableHead>
+              <DataTableHead align="right">{t("items")}</DataTableHead>
+              <DataTableHead>{t("progress")}</DataTableHead>
+              <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {pageRounds.length === 0 ? (
+              searchText ? (
+                <TableEmptyRow
+                  colSpan={8}
+                  emptyState={{ title: tCommon("noData"), actionHref: clearSearchHref, actionLabel: tPending("clearSearch"), actionVariant: "secondary" }}
+                />
               ) : (
-                filteredRounds.map((round) => {
-                  const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
-                  const insight = insightsByRoundId.get(round.id) ?? {
-                    pending: progress.pending,
-                    processed: progress.processed,
-                    followUps: 0,
-                    outOfScope: 0,
-                    hasMismatch: round._count.findings > 0,
-                    readyToClose: false,
-                  }
-                  const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
-                  const workflowLinks = buildAuditRoundWorkflowLinks({
-                    locale,
-                    roundId: round.id,
-                    status: round.status,
-                    returnTo: auditRoundsReturnHref,
-                    insight,
-                    labels: {
-                      pending: t("roundActionPending"),
-                      review: t("roundActionReview"),
-                      outOfScope: t("roundActionOutOfScope"),
-                    },
-                  })
-
-                  return (
-                    <ClickableTableRow
-                      key={round.id}
-                      href={roundDetailHref}
-                      label={`${tCommon("view")}: ${round.auditNo}`}
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{round.auditNo}</td>
-                      <td className="min-w-56 px-4 py-3 text-foreground">{round.name}</td>
-                      <td className="min-w-64 px-4 py-3 text-muted-foreground">{formatScope(round)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {formatDate(round.startDate)} - {formatDate(round.endDate)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <div className="flex flex-col items-start gap-1">
-                          <AuditStatusBadge status={round.status} label={getAuditRoundStatusLabel(round.status, t)} />
-                          <ReadyToCloseBadge
-                            status={round.status}
-                            insight={insight}
-                            labels={{
-                              ready: t("readyToClose"),
-                              pending: t("blockedPendingItems", { count: insight.pending }),
-                              review: t("blockedPendingReview", { count: insight.followUps }),
-                            }}
-                          />
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">{round._count.items}</td>
-                      <td className="min-w-52 px-4 py-3">
-                        <AuditProgressBar
-                          compact
-                          total={round._count.items}
-                          processed={progress.processed}
-                          pending={progress.pending}
-                          label={t("progress")}
-                          processedLabel={t("scanned")}
-                          pendingLabel={t("pending")}
-                        />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <div className="flex min-w-0 justify-end gap-2">
-                          <RoundWorkflowLinks links={workflowLinks} compact />
-                          <Link
-                            href={roundDetailHref}
-                            title={tCommon("view")}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </div>
-                      </td>
-                    </ClickableTableRow>
-                  )
+                <TableEmptyRow colSpan={8}>{tCommon("noData")}</TableEmptyRow>
+              )
+            ) : (
+              pageRounds.map((round) => {
+                const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
+                const insight = insightsByRoundId.get(round.id) ?? {
+                  pending: progress.pending,
+                  processed: progress.processed,
+                  followUps: 0,
+                  outOfScope: 0,
+                  hasMismatch: round._count.findings > 0,
+                  readyToClose: false,
+                }
+                const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+                const workflowLinks = buildAuditRoundWorkflowLinks({
+                  locale,
+                  roundId: round.id,
+                  status: round.status,
+                  returnTo: auditRoundsReturnHref,
+                  insight,
+                  labels: {
+                    pending: t("roundActionPending"),
+                    review: t("roundActionReview"),
+                    outOfScope: t("roundActionOutOfScope"),
+                  },
                 })
-              )}
-            </tbody>
-          </table>
-        </div>
+                const rowActions = buildRoundRowActions({ links: workflowLinks, viewHref: roundDetailHref, viewLabel: tCommon("view") })
+
+                return (
+                  <ClickableTableRow
+                    key={round.id}
+                    href={roundDetailHref}
+                    label={`${tCommon("view")}: ${round.auditNo}`}
+                  >
+                    <DataTableCell className="whitespace-nowrap">
+                      <span className="tag font-medium text-foreground">{round.auditNo}</span>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-56 text-foreground">{round.name}</DataTableCell>
+                    <DataTableCell className="min-w-64 text-muted-foreground">{formatScope(round)}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                      {formatDate(round.startDate)} - {formatDate(round.endDate)}
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">
+                      <div className="flex flex-col items-start gap-1">
+                        <AuditStatusBadge status={round.status} label={getAuditRoundStatusLabel(round.status, t)} />
+                        <ReadyToCloseBadge
+                          status={round.status}
+                          insight={insight}
+                          labels={{
+                            ready: t("readyToClose"),
+                            pending: t("blockedPendingItems", { count: insight.pending }),
+                            review: t("blockedPendingReview", { count: insight.followUps }),
+                          }}
+                        />
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell numeric className="text-muted-foreground">{formatCount(round._count.items)}</DataTableCell>
+                    <DataTableCell className="min-w-52">
+                      <AuditProgressBar
+                        compact
+                        total={round._count.items}
+                        processed={progress.processed}
+                        pending={progress.pending}
+                        label={t("progress")}
+                        processedLabel={t("scanned")}
+                        pendingLabel={t("pending")}
+                      />
+                    </DataTableCell>
+                    <DataTableCell align="right" sticky="right">
+                      <RowActions
+                        code={round.auditNo}
+                        name={round.name}
+                        menuLabel={tCommon("moreActionsFor", { code: round.auditNo })}
+                        next={rowActions.next}
+                        groups={rowActions.groups}
+                      />
+                    </DataTableCell>
+                  </ClickableTableRow>
+                )
+              })
+            )}
+          </DataTableBody>
+        </DataTable>
+        {filteredRounds.length > 0 ? (
+          <DataTableFoot>
+            <Pagination
+              page={roundPage.page}
+              totalPages={totalPages}
+              previousHref={buildAuditRoundsHref(locale, activeView, searchText, { page: roundPage.page - 1, pageSize: roundPage.pageSize })}
+              nextHref={buildAuditRoundsHref(locale, activeView, searchText, { page: roundPage.page + 1, pageSize: roundPage.pageSize })}
+              pageSize={roundPage.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: buildAuditRoundsHref(locale, activeView, searchText, { pageSize: value }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: roundPage.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(filteredRounds.length) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          </DataTableFoot>
+        ) : null}
       </div>
     </div>
   )
@@ -524,7 +571,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
 
 function ActionPanel({ title, help, actions }: { title: string; help: string; actions: ActionPanelItem[] }) {
   return (
-    <section className="mb-4 rounded-lg border border-border bg-surface p-4">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
@@ -547,13 +594,13 @@ function ActionPanel({ title, help, actions }: { title: string; help: string; ac
               className={`flex min-h-24 items-center justify-between gap-3 rounded-md border px-4 py-3 transition-colors ${toneClass}`}
             >
               <div className="flex min-w-0 items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-background/80">{action.icon}</div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md">{action.icon}</div>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-foreground">{action.label}</div>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{action.help}</p>
                 </div>
               </div>
-              <div className="shrink-0 text-2xl font-bold tabular-nums text-foreground">{action.count}</div>
+              <div className="shrink-0 text-2xl font-bold tabular-nums text-foreground">{formatCount(action.count)}</div>
             </Link>
           )
         })}
@@ -562,6 +609,8 @@ function ActionPanel({ title, help, actions }: { title: string; help: string; ac
   )
 }
 
+// A thin wrapper of TabNav (spec 2B I20): the quick filters change the URL, so they are link tabs with counts. TabNav
+// sets aria-current on the selected tab and passes scroll={false} to Link, so the page stays where it is.
 function QuickFilterBar({
   title,
   activeView,
@@ -572,44 +621,21 @@ function QuickFilterBar({
   filters: Array<{ value: AuditRoundView; label: string; count: number; href: string }>
 }) {
   return (
-    <section className="mb-4 rounded-lg border border-border bg-surface p-4">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <ListFilter className="h-4 w-4 text-primary" />
-        {title}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {filters.map((filter) => {
-          const active = filter.value === activeView
-
-          return (
-            <Link
-              key={filter.value}
-              href={filter.href}
-              scroll={false}
-              aria-current={active ? "page" : undefined}
-              className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-foreground hover:bg-accent"
-              }`}
-            >
-              <span>{filter.label}</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
-                {filter.count}
-              </span>
-            </Link>
-          )
-        })}
-      </div>
-    </section>
+    <TabNav
+      aria-label={title}
+      items={filters.map((filter) => ({ key: filter.value, label: filter.label, count: formatCount(filter.count), href: filter.href }))}
+      current={activeView}
+      scroll={false}
+    />
   )
 }
 
-function RoundWorkflowLinks({ links, compact = false }: { links: RoundWorkflowLink[]; compact?: boolean }) {
+// The workflow links of a phone card. On desktop the same links sit in RowActions (buildRoundRowActions).
+function RoundWorkflowLinks({ links }: { links: RoundWorkflowLink[] }) {
   if (links.length === 0) return null
 
   return (
-    <div className={`mt-3 flex flex-wrap gap-2 ${compact ? "mt-0 justify-end" : ""}`}>
+    <div className="mt-3 flex flex-wrap gap-2">
       {links.map((link) => {
         const toneClass =
           link.tone === "danger"
@@ -622,10 +648,10 @@ function RoundWorkflowLinks({ links, compact = false }: { links: RoundWorkflowLi
           <Link
             key={link.key}
             href={link.href}
-            className={`inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors ${toneClass}`}
+            className={`inline-flex min-h-11 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors ${toneClass}`}
           >
             <span>{link.label}</span>
-            <span className="tabular-nums">{link.count}</span>
+            <span className="tabular-nums">{formatCount(link.count)}</span>
           </Link>
         )
       })}
@@ -656,24 +682,7 @@ function ReadyToCloseBadge({
   if (insight.followUps > 0) {
     return <span className="inline-flex rounded-full bg-danger-soft px-2 py-1 text-xs font-medium text-danger">{labels.review}</span>
   }
-
   return null
-}
-
-function CoverageMetric({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "warning" | "danger" }) {
-  const toneClass =
-    tone === "danger"
-      ? "border-danger-border bg-danger-soft text-danger"
-      : tone === "warning"
-        ? "border-warning-border bg-warning-soft text-warning"
-        : "border-border bg-background text-foreground"
-
-  return (
-    <div className={`rounded-md border px-3 py-3 ${toneClass}`}>
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-2 text-2xl font-bold">{value}</div>
-    </div>
-  )
 }
 
 function MobileAuditField({ label, value }: { label: string; value: string }) {
@@ -699,7 +708,7 @@ function CoverageGapList({
   labels: { group: string; missing: string; total: string; rate: string }
 }) {
   return (
-    <div className="rounded-lg border border-border bg-background p-3">
+    <div className="rounded-lg border border-border bg-surface p-3">
       <div className="mb-3">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         <p className="mt-1 text-xs text-muted-foreground">{help}</p>
@@ -721,43 +730,42 @@ function CoverageGapList({
                   )}
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                  <MobileAuditField label={labels.missing} value={String(row.missing)} />
-                  <MobileAuditField label={labels.total} value={String(row.total)} />
-                  <MobileAuditField label={labels.rate} value={`${row.percent}%`} />
+                  <MobileAuditField label={labels.missing} value={formatCount(row.missing)} />
+                  <MobileAuditField label={labels.total} value={formatCount(row.total)} />
+                  <MobileAuditField label={labels.rate} value={`${formatCount(row.percent)}%`} />
                 </div>
               </div>
             ))}
           </div>
-          <div className="hidden overflow-x-auto sm:block">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="px-2 py-2 text-left font-medium">{labels.group}</th>
-                  <th className="px-2 py-2 text-right font-medium">{labels.missing}</th>
-                  <th className="px-2 py-2 text-right font-medium">{labels.total}</th>
-                  <th className="px-2 py-2 text-right font-medium">{labels.rate}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-border-soft last:border-0">
-                    <td className="min-w-44 px-2 py-2 font-medium text-foreground">
-                      {row.href ? (
-                        <Link href={row.href} className="text-primary hover:underline">
-                          {row.label}
-                        </Link>
-                      ) : (
-                        row.label
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right font-semibold text-warning">{row.missing}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right text-muted-foreground">{row.total}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right text-muted-foreground">{row.percent}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* No frame of its own: the gap box is the frame (no frame in a frame). */}
+          <DataTable framed={false} className="hidden sm:block" caption={title}>
+            <DataTableHeader>
+              <tr>
+                <DataTableHead>{labels.group}</DataTableHead>
+                <DataTableHead align="right">{labels.missing}</DataTableHead>
+                <DataTableHead align="right">{labels.total}</DataTableHead>
+                <DataTableHead align="right">{labels.rate}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>
+              {rows.map((row) => (
+                <DataTableRow key={row.id}>
+                  <DataTableCell className="min-w-44 font-medium text-foreground">
+                    {row.href ? (
+                      <Link href={row.href} className="text-primary hover:underline">
+                        {row.label}
+                      </Link>
+                    ) : (
+                      row.label
+                    )}
+                  </DataTableCell>
+                  <DataTableCell numeric className="font-semibold text-warning">{formatCount(row.missing)}</DataTableCell>
+                  <DataTableCell numeric className="text-muted-foreground">{formatCount(row.total)}</DataTableCell>
+                  <DataTableCell numeric className="text-muted-foreground">{formatCount(row.percent)}%</DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          </DataTable>
         </>
       )}
     </div>
@@ -854,6 +862,42 @@ function buildAuditRoundWorkflowLinks({
 
   return links
 }
+
+const roundWorkflowIcons: Record<RoundWorkflowLink["key"], ReactNode> = {
+  pending: <ListChecks aria-hidden="true" />,
+  review: <AlertTriangle aria-hidden="true" />,
+  out_of_scope: <ScanLine aria-hidden="true" />,
+}
+
+// Row actions of a round (pattern ช1, spec 2B §5.4 row rounds): the first workflow link is the next step, and ⋯ holds
+// the other links and "ดู". A round with no open work has "ดู" as its next step and no ⋯. Each label keeps its count.
+function buildRoundRowActions({
+  links,
+  viewHref,
+  viewLabel,
+}: {
+  links: RoundWorkflowLink[]
+  viewHref: string
+  viewLabel: string
+}): { next: RowNextAction; groups: RowActionGroup[] } {
+  const view = { label: viewLabel, href: viewHref, icon: <Eye aria-hidden="true" /> }
+  const [first, ...rest] = links
+  if (!first) return { next: view, groups: [] }
+
+  return {
+    next: { label: `${first.label} ${formatCount(first.count)}`, href: first.href, icon: roundWorkflowIcons[first.key] },
+    groups: [
+      {
+        key: "round",
+        items: [
+          ...rest.map((link) => ({ kind: "link" as const, key: link.key, label: `${link.label} ${formatCount(link.count)}`, href: link.href, icon: roundWorkflowIcons[link.key] })),
+          { kind: "link" as const, key: "view", ...view },
+        ],
+      },
+    ],
+  }
+}
+
 function filterRoundsByView<T extends AuditRoundListItem>(
   rounds: T[],
   insightsByRoundId: Map<string, AuditRoundInsight>,
@@ -882,11 +926,13 @@ function getAuditRoundStatusLabel(status: string, t: Awaited<ReturnType<typeof g
   return status
 }
 
-function buildAuditRoundsHref(locale: string, view: AuditRoundView, searchText: string) {
+// The list URL. appendListPage writes page only above 1 and pageSize only when it is not 25, so every default link
+// (for example /th/audit/rounds?view=open) stays as it was (spec 2B §5.9.1).
+function buildAuditRoundsHref(locale: string, view: AuditRoundView, searchText: string, listPage: { page?: number; pageSize?: number } = {}) {
   const params = new URLSearchParams()
   if (searchText) params.set("search", searchText)
   if (view !== "all") params.set("view", view)
-  const query = params.toString()
+  const query = appendListPage(params, listPage).toString()
   return `/${locale}/audit/rounds${query ? `?${query}` : ""}`
 }
 

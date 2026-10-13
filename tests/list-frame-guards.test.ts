@@ -72,6 +72,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}audit/audit-findings-batch-actions.tsx`,
   `${C}audit/audit-finding-review-actions.tsx`,
   `${D}audit/findings/page.tsx`,
+  `${D}audit/rounds/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -193,8 +194,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LH2: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
-    // 2B-2
-    [`${D}audit/rounds/page.tsx`]: 2,
     // 2B-3
     [`${D}assets/page.tsx`]: 2,
     // 2B-5
@@ -266,7 +265,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
-    [`${D}audit/rounds/page.tsx`]: 1,
     // 2B-3
     [`${C}assets/asset-register-table.tsx`]: 1,
     // 2B-5
@@ -367,7 +365,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 2,
-    [`${D}audit/rounds/page.tsx`]: 1,
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1,
@@ -415,7 +412,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
     // 2B-2
-    [`${D}audit/rounds/page.tsx`]: 1,
     [`${C}maintenance/maintenance-pagination.tsx`]: 1,
     // 2B-3
     [`${C}assets/asset-register-status-tabs.tsx`]: 1,

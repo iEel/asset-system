@@ -224,10 +224,7 @@ const TONE_OPACITY =
   /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg|border|ring|text|divide|outline|fill|stroke|from|via|to|decoration|shadow|accent|caret|placeholder)-(?:primary|success|warning|danger|info|destructive)(?:-[a-z]+)?\/\d+/g
 
 test("R1 tone colors never fade with opacity", () => {
-  assertWithinBudget(TONE_OPACITY, {
-    // bg-primary-foreground/20 on the selected tab's count chip; moves to TabNav in phase 2B.
-    "src/app/[locale]/(dashboard)/audit/rounds/page.tsx": 1,
-  })
+  assertWithinBudget(TONE_OPACITY, {})
 })
 
 const NEUTRAL_FILL_OPACITY = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg-(?:muted|accent)|border-border)\/\d+/g
@@ -254,7 +251,6 @@ const TABLE_HEADER_FILLS: Record<string, number> = {
   // 2B-2
   [`${D}audit/rounds/[id]/page.tsx`]: 1,
   [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
-  [`${D}audit/rounds/page.tsx`]: 1,
   [`${D}maintenance/page.tsx`]: 1,
   "src/components/admin/asset-state-review-workspace.tsx": 1,
   // 2B-4

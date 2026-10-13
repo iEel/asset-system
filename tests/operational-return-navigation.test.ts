@@ -53,7 +53,7 @@ test("audit rounds preserve list context across round detail, scan, and pending 
   const pendingSource = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/pending/page.tsx", "utf8")
   const scanSource = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx", "utf8")
 
-  assert.match(roundsSource, /const auditRoundsReturnHref = buildAuditRoundsHref\(locale, activeView, searchText\)/)
+  assert.match(roundsSource, /const auditRoundsReturnHref = buildAuditRoundsHref\(locale, activeView, searchText, roundPage\)/)
   assert.match(roundsSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}`, auditRoundsReturnHref\)/)
   assert.match(roundsSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{pendingRounds\[0\]\.id\}\/scan`, auditRoundsReturnHref\)/)
   assert.match(roundsSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/findings\?status=pending`, auditRoundsReturnHref\)/)

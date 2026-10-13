@@ -36,7 +36,7 @@ test("audit rounds quick filters preserve scroll position", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8")
 
   assert.match(page, /function QuickFilterBar/)
-  assert.match(page, /href=\{filter\.href\}[\s\S]*scroll=\{false\}/)
+  assert.match(page, /<TabNav\b[\s\S]*?scroll=\{false\}/)
 })
 
 test("audit rounds UX copy is translated", () => {

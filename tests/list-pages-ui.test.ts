@@ -302,3 +302,33 @@ test("findings page on the server, count the whole list once and keep the page i
   assert.match(source, /buildAuditFindingsHref\(locale, nextStatus, searchText, filters, \{ pageSize: listPage\.pageSize \}\)/, "a filter link goes back to page 1 and keeps the page size")
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: pageHref\(\{ pageSize: value \}\) \}\)\)\}/)
 })
+
+// Plan 2B-2 Task 9 (spec 2B §5.4 row rounds, §5.9.2 row 7, I20, I21): the audit rounds list. The view filters and the
+// tab counts need the insight of every round, so the query stays whole: the list pages in memory and clamps the page.
+test("audit rounds: PageHeader, StatStrip, the quick filters on TabNav, and the list on DataTable with RowActions and Pagination (spec 2B §5.4)", () => {
+  const source = read(`${D}audit/rounds/page.tsx`)
+  for (const part of ["<PageHeader", "<StatStrip", "<TabNav", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<RowActions", "<DataTableFoot>", "<Pagination"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="space-y-6">/, "the page root spaces its blocks 24px apart (spec 2B §4.6.1)")
+  assert.match(source, /function QuickFilterBar\([\s\S]*?<TabNav\n\s+aria-label=\{title\}/, "QuickFilterBar stays, as a thin wrapper of TabNav (I20)")
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /<DataTableCell align="right" sticky="right">\s*<RowActions/)
+  assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: round\.auditNo \}\)\}/, "⋯ is named after its round (I33)")
+  assert.match(source, /<DataTable framed=\{false\} className="hidden sm:block" caption=\{title\}>/, "the coverage gap tables sit in their box with no second frame")
+})
+
+test("audit rounds page in memory: page and pageSize from the URL, a slice of the filtered rounds, a clamp past the last page (spec 2B §5.9.2 row 7, I21)", () => {
+  const source = read(`${D}audit/rounds/page.tsx`)
+  assert.match(source, /const listPage = parseListPage\(\{ page, pageSize \}\)/)
+  assert.match(source, /const roundPage = \{ page: Math\.min\(listPage\.page, lastListPage\(filteredRounds\.length, listPage\.pageSize\)\), pageSize: listPage\.pageSize \}/)
+  assert.match(source, /const \{ skip, take \} = listPageWindow\(roundPage\)\n\s+const pageRounds = filteredRounds\.slice\(skip, skip \+ take\)/)
+  assert.equal(source.match(/\bpageRounds\.map\(/g)?.length, 2, "the phone cards and the table both show the page")
+  assert.doesNotMatch(source, /\bfilteredRounds\.map\(/, "never every round at once")
+  assert.doesNotMatch(source, /\bredirect\(/, "the total is known before the cut, so the page is clamped, not redirected (I21)")
+  assert.match(source, /orderBy: \[\{ createdAt: "desc" \}, \{ id: "asc" \}\]/, "the old order plus id, so no round shows on two pages")
+  assert.match(source, /const query = appendListPage\(params, listPage\)\.toString\(\)/, "default links stay as they were")
+  assert.match(source, /href: buildAuditRoundsHref\(locale, value, searchText, \{ pageSize: listPage\.pageSize \}\)/, "a quick filter goes back to page 1 and keeps the page size")
+  assert.match(source, /hiddenInputs=\{\{ \.\.\.\(activeView === "all" \? \{\} : \{ view: activeView \}\), \.\.\.Object\.fromEntries\(appendListPage\(new URLSearchParams\(\), \{ pageSize: listPage\.pageSize \}\)\) \}\}/)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: buildAuditRoundsHref\(locale, activeView, searchText, \{ pageSize: value \}\) \}\)\)\}/)
+})
