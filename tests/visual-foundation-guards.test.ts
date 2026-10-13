@@ -248,8 +248,6 @@ test("R7 neutral fills are opaque tokens outside table headers", () => {
 // filter above and keeps one test with the rows of the 2C batch 4 files; 2C plan 4 or 2D empties those.
 const D = "src/app/[locale]/(dashboard)/"
 const TABLE_HEADER_FILLS: Record<string, number> = {
-  // 2B-2
-  "src/components/admin/asset-state-review-workspace.tsx": 1,
   // 2B-4
   [`${D}assets/[id]/page.tsx`]: 2,
   [`${D}master-data/employees/[id]/page.tsx`]: 3,

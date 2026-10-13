@@ -31,6 +31,7 @@ const MIGRATED_FILTER_FILES = [
   "src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx",
   "src/app/[locale]/(dashboard)/disposal/page.tsx",
   "src/app/[locale]/(dashboard)/maintenance/page.tsx",
+  "src/components/admin/asset-state-review-workspace.tsx",
 ]
 
 test("migrated filter forms use Field, SearchField and FilterSelect only, and every form is a search landmark (item 5)", () => {

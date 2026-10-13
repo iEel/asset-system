@@ -1,13 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, CheckCircle2, RefreshCw, ScanSearch, ShieldAlert } from "lucide-react"
+import { AlertTriangle, ScanSearch, ShieldAlert } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { AssetStateReviewDialog, type ReviewTarget } from "@/components/admin/asset-state-review-dialog"
-import { ActionButton } from "@/components/ui/action-button"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { Button } from "@/components/ui/button"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { FilterSelect } from "@/components/ui/filter-select"
 import { useApiError } from "@/components/ui/use-api-error"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { formatCount } from "@/lib/display-format"
 
 type ReviewRow = {
   id: string
@@ -120,7 +124,6 @@ export function AssetStateReviewWorkspace({
   }
 
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))
-  const numberLocale = locale === "th" ? "th-TH" : "en-US"
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-surface">
@@ -138,23 +141,34 @@ export function AssetStateReviewWorkspace({
           </div>
         </div>
         {canEdit ? (
-          <ActionButton variant="primary" onClick={() => void scan()} disabled={scanning}>
-            {scanning ? <RefreshCw className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <ScanSearch className="h-4 w-4" />}
-            {scanning ? labels.scanning : labels.scan}
-          </ActionButton>
+          <Button size="lg" busy={scanning} onClick={() => void scan()}>
+            <ScanSearch aria-hidden="true" />
+            {labels.scan}
+          </Button>
         ) : null}
       </div>
 
       <div className="grid gap-3 border-b border-border bg-background p-4 sm:grid-cols-3">
-        <Filter label={labels.reviewStatus} value={reviewStatus} onChange={(value) => { setReviewStatus(value); void load(1, { reviewStatus: value, severity, issueType }) }} options={[
-          ["pending", labels.pending], ["resolved", labels.resolved], ["dismissed", labels.dismissed],
-        ]} />
-        <Filter label={labels.severity} value={severity} onChange={(value) => { setSeverity(value); void load(1, { reviewStatus, severity: value, issueType }) }} options={[
-          ["", labels.all], ["critical", labels.critical], ["warning", labels.warning], ["info", labels.info],
-        ]} />
-        <Filter label={labels.issueType} value={issueType} onChange={(value) => { setIssueType(value); void load(1, { reviewStatus, severity, issueType: value }) }} options={[
-          ["", labels.all], ...Object.entries(issueTypes),
-        ]} />
+        <FilterSelect
+          label={labels.reviewStatus}
+          value={reviewStatus}
+          onChange={(event) => { const value = event.target.value; setReviewStatus(value); void load(1, { reviewStatus: value, severity, issueType }) }}
+          options={[{ value: "pending", label: labels.pending }, { value: "resolved", label: labels.resolved }, { value: "dismissed", label: labels.dismissed }]}
+        />
+        <FilterSelect
+          label={labels.severity}
+          value={severity}
+          onChange={(event) => { const value = event.target.value; setSeverity(value); void load(1, { reviewStatus, severity: value, issueType }) }}
+          allLabel={labels.all}
+          options={[{ value: "critical", label: labels.critical }, { value: "warning", label: labels.warning }, { value: "info", label: labels.info }]}
+        />
+        <FilterSelect
+          label={labels.issueType}
+          value={issueType}
+          onChange={(event) => { const value = event.target.value; setIssueType(value); void load(1, { reviewStatus, severity, issueType: value }) }}
+          allLabel={labels.all}
+          options={Object.entries(issueTypes).map(([value, label]) => ({ value, label }))}
+        />
       </div>
 
       {loading ? (
@@ -162,33 +176,40 @@ export function AssetStateReviewWorkspace({
           {[0, 1, 2].map((item) => <div key={item} className="h-16 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />)}
         </div>
       ) : result.data.length === 0 ? (
-        <div className="flex flex-col items-center px-4 py-10 text-center">
-          <CheckCircle2 className="h-8 w-8 text-success" />
-          <h3 className="mt-3 font-semibold text-foreground">{labels.emptyTitle}</h3>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">{labels.emptyDescription}</p>
-        </div>
+        <ActionEmptyState title={labels.emptyTitle} description={labels.emptyDescription} />
       ) : (
         <>
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[980px] text-left text-sm">
-              <thead className="bg-muted/60 text-xs font-medium text-muted-foreground">
-                <tr><th className="px-4 py-3">{labels.asset}</th><th className="px-4 py-3">{labels.currentState}</th><th className="px-4 py-3">{labels.issue}</th><th className="px-4 py-3">{labels.lastDetected}</th><th className="px-4 py-3 text-right">{labels.actions}</th></tr>
-              </thead>
-              <tbody className="divide-y divide-border">{result.data.map((row) => <ReviewTableRow key={row.id} row={row} locale={locale} labels={labels} issueTypes={issueTypes} canEdit={canEdit} onAction={(mode) => setDialog({ mode, row })} />)}</tbody>
-            </table>
-          </div>
+          <DataTable framed={false} caption={labels.title} minWidth={980} scrollHint={labels.tableScrollHint} className="hidden md:block">
+            <DataTableHeader>
+              <tr>
+                <DataTableHead>{labels.asset}</DataTableHead>
+                <DataTableHead>{labels.currentState}</DataTableHead>
+                <DataTableHead>{labels.issue}</DataTableHead>
+                <DataTableHead>{labels.lastDetected}</DataTableHead>
+                <DataTableHead align="right" sticky="right">{labels.actions}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>{result.data.map((row) => <ReviewTableRow key={row.id} row={row} locale={locale} labels={labels} issueTypes={issueTypes} canEdit={canEdit} onAction={(mode) => setDialog({ mode, row })} />)}</DataTableBody>
+          </DataTable>
           <div className="grid gap-3 p-4 md:hidden">{result.data.map((row) => <ReviewMobileCard key={row.id} row={row} locale={locale} labels={labels} issueTypes={issueTypes} canEdit={canEdit} onAction={(mode) => setDialog({ mode, row })} />)}</div>
         </>
       )}
 
-      <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-muted-foreground">{labels.total.replace("{count}", result.total.toLocaleString(numberLocale))}</span>
-        <div className="flex gap-2">
-          <ActionButton size="sm" disabled={loading || result.page <= 1} onClick={() => void load(result.page - 1)}>{labels.previous}</ActionButton>
-          <span className="inline-flex min-h-11 items-center px-2 text-muted-foreground sm:min-h-0">{result.page}/{totalPages}</span>
-          <ActionButton size="sm" disabled={loading || result.page >= totalPages} onClick={() => void load(result.page + 1)}>{labels.next}</ActionButton>
-        </div>
-      </div>
+      {result.total > 0 ? (
+        <DataTableFoot>
+          <nav aria-label={labels.pagination} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <p aria-live="polite" className="text-meta text-muted-foreground num">
+              {labels.total.replace("{count}", formatCount(result.total))}
+              <span aria-hidden="true"> · </span>
+              {labels.pageOf.replace("{page}", formatCount(result.page)).replace("{total}", formatCount(totalPages))}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" disabled={loading || result.page <= 1} onClick={() => void load(result.page - 1)}>{labels.previous}</Button>
+              <Button variant="outline" size="sm" disabled={loading || result.page >= totalPages} onClick={() => void load(result.page + 1)}>{labels.next}</Button>
+            </div>
+          </nav>
+        </DataTableFoot>
+      ) : null}
 
       {dialog ? <AssetStateReviewDialog
         key={`${dialog.row.id}:${dialog.mode}`}
@@ -208,7 +229,7 @@ export function AssetStateReviewWorkspace({
 }
 
 function ReviewTableRow({ row, locale, labels, issueTypes, canEdit, onAction }: RowProps) {
-  return <tr className="align-top hover:bg-row-hover"><td className="px-4 py-3"><AssetIdentity row={row} locale={locale} labels={labels} /></td><td className="px-4 py-3"><StateSummary row={row} locale={locale} labels={labels} /></td><td className="max-w-sm px-4 py-3"><IssueSummary row={row} labels={labels} issueTypes={issueTypes} /></td><td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(row.lastDetectedAt, locale)}</td><td className="px-4 py-3"><ReviewActions row={row} canEdit={canEdit} labels={labels} onAction={onAction} /></td></tr>
+  return <DataTableRow><DataTableCell><AssetIdentity row={row} locale={locale} labels={labels} /></DataTableCell><DataTableCell><StateSummary row={row} locale={locale} labels={labels} /></DataTableCell><DataTableCell className="max-w-sm"><IssueSummary row={row} labels={labels} issueTypes={issueTypes} /></DataTableCell><DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDate(row.lastDetectedAt, locale)}</DataTableCell><DataTableCell align="right" sticky="right"><ReviewActions row={row} canEdit={canEdit} labels={labels} onAction={onAction} /></DataTableCell></DataTableRow>
 }
 
 function ReviewMobileCard({ row, locale, labels, issueTypes, canEdit, onAction }: RowProps) {
@@ -232,15 +253,11 @@ function IssueSummary({ row, labels, issueTypes }: Pick<RowProps, "row" | "label
 function ReviewActions({ row, canEdit, labels, onAction }: Pick<RowProps, "row" | "canEdit" | "labels" | "onAction">) {
   if (!canEdit || row.reviewStatus !== "pending") return <span className="block text-right text-xs text-muted-foreground">{labels.readOnly}</span>
   const canResolve = row.allowedStatusTargets.length > 0 || row.allowedConditionTargets.length > 0
-  return <div className="flex flex-wrap justify-end gap-2">{canResolve ? <ActionButton size="sm" variant="primary" onClick={() => onAction("resolve")}>{labels.resolve}</ActionButton> : <span className="self-center text-xs text-muted-foreground">{labels.workflowRequired}</span>}<ActionButton size="sm" onClick={() => onAction("dismiss")}>{labels.dismiss}</ActionButton></div>
-}
-
-function Filter({ label, value, options, onChange }: { label: string; value: string; options: string[][]; onChange: (value: string) => void }) {
-  return <label className="text-sm font-medium text-foreground">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">{options.map(([optionValue, optionLabel]) => <option key={optionValue || "all"} value={optionValue}>{optionLabel}</option>)}</select></label>
+  return <div className="flex flex-wrap justify-end gap-2">{canResolve ? <Button size="sm" onClick={() => onAction("resolve")}>{labels.resolve}</Button> : <span className="self-center text-xs text-muted-foreground">{labels.workflowRequired}</span>}<Button variant="outline" size="sm" onClick={() => onAction("dismiss")}>{labels.dismiss}</Button></div>
 }
 
 function Summary({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${tone === "danger" ? "bg-danger" : tone === "warning" ? "bg-warning" : "bg-info"}`} /><span className="text-muted-foreground">{label}</span><strong className="text-foreground">{value.toLocaleString()}</strong></span>
+  return <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${tone === "danger" ? "bg-danger" : tone === "warning" ? "bg-warning" : "bg-info"}`} /><span className="text-muted-foreground">{label}</span><strong className="text-foreground">{formatCount(value)}</strong></span>
 }
 
 function masterLabel(target: ReviewTarget, locale: string) { return locale === "th" ? target.nameTh || target.name : target.name }

@@ -455,3 +455,21 @@ test("data quality: PageHeader with the reports link, one StatStrip for the thre
   assert.doesNotMatch(source, /toLocaleString\(/, "counts go through formatCount")
   assert.ok(source.includes("<AssetStateReviewWorkspace") && source.includes("<DataQualityRuleForm"), "the review queue and the rule form stay on the page")
 })
+
+// Plan 2B-2 Task 16 (spec 2B §5.4 row admin/data-quality, §6.5 row O3, I12): the review queue on the data-quality page.
+// It pages on the client through the review API, so its page bar holds buttons, not Pagination links.
+test("data quality review queue: FilterSelect, DataTable and a client page bar of outline sm buttons (spec 2B §5.4, §6.5 O3, I12)", () => {
+  const source = read(`${C}admin/asset-state-review-workspace.tsx`)
+  assert.match(source, /^"use client"$/m, "busy and the client page bar need client state")
+  assert.equal(source.match(/<FilterSelect\n/g)?.length, 3, "three controlled filters")
+  assert.equal(source.match(/allLabel=\{labels\.all\}/g)?.length, 2, "severity and issue type start with all; review status has no all")
+  assert.match(source, /<DataTable framed=\{false\} caption=\{labels\.title\} minWidth=\{980\} scrollHint=\{labels\.tableScrollHint\} className="hidden md:block">/)
+  for (const part of ["<DataTableHeader>", "<DataTableBody>", "<DataTableRow>", '<DataTableHead align="right" sticky="right">', '<DataTableCell align="right" sticky="right">', "<DataTableFoot>"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<nav aria-label=\{labels\.pagination\} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">\n\s+<p aria-live="polite" className="text-meta text-muted-foreground num">/)
+  assert.equal(source.match(/<Button variant="outline" size="sm" disabled=\{loading \|\| result\.page (?:<= 1|>= totalPages)\}/g)?.length, 2, "previous and next")
+  assert.match(source, /<Button size="lg" busy=\{scanning\} onClick=\{\(\) => void scan\(\)\}>\n\s+<ScanSearch aria-hidden="true" \/>\n\s+\{labels\.scan\}\n/, "the scan button keeps its label while busy (K13)")
+  assert.match(source, /<ActionEmptyState title=\{labels\.emptyTitle\} description=\{labels\.emptyDescription\} \/>/)
+  assert.doesNotMatch(source, /\bActionButton\b|<table\b|<select\b|toLocaleString\(/)
+})
