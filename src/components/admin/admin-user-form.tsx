@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
+import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
 type RoleOption = {
@@ -121,7 +122,8 @@ export function AdminUserForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
+      {/* The form is the panel (D9): the panel classes and ContentPanel's own padding, since a <form> cannot be ContentPanel. */}
+      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("username")} required>
             <Input
@@ -194,7 +196,7 @@ export function AdminUserForm({
                 />
                 <span>
                   <span className="block font-medium text-foreground">{role.displayNameTh || role.displayName}</span>
-                  <span className="mt-1 block font-mono text-xs text-muted-foreground">{role.name}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground"><span className="tag">{role.name}</span></span>
                 </span>
               </label>
             ))}
