@@ -55,9 +55,9 @@ function PageHeaderSkeleton({ crumbs = false, meta = "text", actions = true, com
 
 // StatStrip (I28): one 12px frame with 1px lines between the cells, two columns below lg and one row from lg. As in
 // StatStrip, a last cell left alone below lg fills its row, so no grey hole shows where a cell is missing.
-function MetricGridSkeleton({ count = 4 }: { count?: number }) {
+function MetricGridSkeleton({ count = 4, className }: { count?: number; className?: string }) {
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border max-lg:[&>:last-child:nth-child(odd)]:col-span-2 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none">
+    <div className={cn("grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border max-lg:[&>:last-child:nth-child(odd)]:col-span-2 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none", className)}>
       {Array.from({ length: count }, (_, index) => (
         <div key={index} className="space-y-2 bg-surface px-4 py-3 md:px-5 md:py-4">
           <SkeletonBlock className="h-4 w-24" />
@@ -224,7 +224,7 @@ export function ReportsPageSkeleton() {
       <PageHeaderSkeleton />
       <TabNavSkeleton data-report-tabs-skeleton count={4} />
       <FilterPanelSkeleton />
-      <MetricGridSkeleton count={2} />
+      <MetricGridSkeleton count={2} className="max-sm:grid-cols-1" />
       <div data-report-view-skeleton className="rounded-lg border border-border bg-surface p-5">
         <SkeletonBlock className="h-5 w-44" />
         <SkeletonBlock className="mt-4 h-64 w-full" />
