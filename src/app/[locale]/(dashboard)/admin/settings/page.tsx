@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { SystemSettingsForm } from "@/components/admin/system-settings-form"
+import { PageHeader } from "@/components/ui/page-header"
 import { maskSecretSystemSettings } from "@/lib/system-setting-secrets"
 import { systemSettingDefaults } from "@/lib/system-setting-defaults"
 import { buildLdapSyncHistoryItems } from "@/lib/system-log-history"
@@ -52,10 +53,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} meta={t("subtitle")} />
 
       <SystemSettingsForm
         settings={maskSecretSystemSettings(settings.map((setting) => ({

@@ -112,6 +112,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}admin/approvals/page.tsx`,
   `${D}admin/approvals/history/page.tsx`,
   `${D}admin/readiness/page.tsx`,
+  `${D}admin/settings/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -194,7 +195,6 @@ const TITLES: Record<string, string> = {
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-5
-    [`${D}admin/settings/page.tsx`]: 1,
     [`${D}dashboard/page.tsx`]: 1,
     [`${D}my-assets/page.tsx`]: 1,
     [`${D}notifications/page.tsx`]: 1,

@@ -687,3 +687,13 @@ test("readiness: PageHeader, one StatStrip, and each detected value as a code (s
   assert.match(source, /<span className="tag">\{check\.value\}<\/span>/)
   assert.doesNotMatch(source, /<h1\b|function (?:SummaryCard|summaryClass)\b|toLocaleString\(|font-mono/)
 })
+
+// Plan 2B-5 Task 6 (spec 2B §4.4.6, §8.9 row 5): only the settings header changes. The form, its tab row (O7, 2C plan 5)
+// and the LDAP sync history the page hands it stay as they are (tests/system-log-history.test.ts:73-74).
+test("settings: the header is PageHeader and the page still hands the form its LDAP sync history (spec 2B §4.4.6)", () => {
+  const source = read(`${D}admin/settings/page.tsx`)
+  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>\n\n\s+<SystemSettingsForm\n/)
+  assert.match(source, /const ldapSyncHistory = buildLdapSyncHistoryItems\(ldapSyncLogs\)/)
+  assert.match(source, /ldapSyncHistory=\{ldapSyncHistory\}/)
+  assert.doesNotMatch(source, /<h1\b/)
+})
