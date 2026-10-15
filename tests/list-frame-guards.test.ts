@@ -115,6 +115,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}admin/settings/page.tsx`,
   `${D}access-denied/page.tsx`,
   `${D}notifications/page.tsx`,
+  `${D}my-assets/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -198,7 +199,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-5
     [`${D}dashboard/page.tsx`]: 1,
-    [`${D}my-assets/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 1,
     [`${C}reports/report-header.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -213,7 +213,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
     // 2B-5
-    [`${D}my-assets/page.tsx`]: 1, // local PageHeader :163-170 (I14)
     [`${D}reports/page.tsx`]: 2,
     [`${C}reports/report-header.tsx`]: 1,
   },
@@ -247,7 +246,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
     // 2B-5
-    [`${D}my-assets/page.tsx`]: 1,
     [`${C}reports/responsive-report-list.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}assets/asset-import-preview-panel.tsx`]: 5, // → 5 (KEEP): 2C batch 4 (R-e, O13)
@@ -283,8 +281,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
-    // 2B-5
-    [`${D}my-assets/page.tsx`]: 2,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${D}asset-management/labels/page.tsx`]: 4, // → 4 (KEEP): label data (R-n)
     "src/app/[locale]/(print)/asset-management/checkins/[id]/page.tsx": 2, // → 2 (KEEP): print page (R-n)
@@ -313,7 +309,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
     // 2B-5
-    [`${D}my-assets/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 2,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 2, // → 2 (KEEP): OperationMetric :763, SummaryCard :782 (2C plan 4)
@@ -342,7 +337,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes ColumnHeader (R-h)
     // 2B-5
-    [`${D}my-assets/page.tsx`]: 1, // local PageHeader :163-170 (I14)
     [`${D}work-center/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :797 (2C plan 4)

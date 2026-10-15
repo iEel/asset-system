@@ -1,20 +1,36 @@
 import Image from "next/image"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import type React from "react"
 import type { Prisma } from "@prisma/client"
-import { PackageCheck, ShieldAlert } from "lucide-react"
+import { PackageCheck } from "lucide-react"
 import { getTranslations } from "next-intl/server"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
+import { Nil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getAssetStateTone, getDesktopTableOnlyClasses, getEmptyStateClasses, getMobileCardListClasses, getResponsiveTableScrollClasses, getSafeActionLinkClasses } from "@/lib/design-system"
+import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { paginationRange } from "@/lib/master-data-query"
 import { buildMyAssetsWhere, summarizeMyAssets } from "@/lib/my-assets"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 
 type MyAssetsPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ page?: string | string[]; pageSize?: string | string[] }>
 }
+
+// An asset's photo: its newest active image. The list and the summary read it the same way.
+const myAssetPhotoWhere = { module: "asset", fileType: { startsWith: "image/" }, isActive: true } satisfies Prisma.AttachmentWhereInput
 
 const myAssetSelect = {
   id: true,
@@ -30,7 +46,7 @@ const myAssetSelect = {
   status: { select: { name: true, nameTh: true, colorCode: true } },
   condition: { select: { name: true, nameTh: true, colorCode: true } },
   attachments: {
-    where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true },
+    where: myAssetPhotoWhere,
     select: { id: true, originalName: true },
     orderBy: { uploadedAt: "desc" },
     take: 1,
@@ -39,32 +55,56 @@ const myAssetSelect = {
 
 type MyAssetRow = Prisma.AssetGetPayload<{ select: typeof myAssetSelect }>
 
-export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
+export default async function MyAssetsPage({ params, searchParams }: MyAssetsPageProps) {
   const { locale } = await params
+  const { page, pageSize } = await searchParams
   const user = await getSessionUser()
   const t = await getTranslations("myAssets")
+  const tCommon = await getTranslations("common")
 
   if (!user?.employeeId) {
     return (
       <div className="space-y-6">
-        <PageHeader title={t("title")} subtitle={t("subtitle")} />
+        <PageHeader title={t("title")} meta={t("subtitle")} />
         <ContentPanel>
-          <div className={getEmptyStateClasses()}>
-            <ShieldAlert className="mx-auto mb-3 h-8 w-8 text-warning" />
-            <div className="font-medium text-foreground">{t("noLinkedEmployeeTitle")}</div>
-            <p className="mt-1">{t("noLinkedEmployeeHelp")}</p>
-          </div>
+          <ActionEmptyState tone="permission" title={t("noLinkedEmployeeTitle")} description={t("noLinkedEmployeeHelp")} />
         </ContentPanel>
       </div>
     )
   }
 
-  const assets = await prisma.asset.findMany({
-    // buildMyAssetsWhere scopes to custodianId server-side.
-    where: buildMyAssetsWhere({ employeeId: user.employeeId }),
-    select: myAssetSelect,
-    orderBy: [{ status: { sortOrder: "asc" } }, { updatedAt: "desc" }],
-  })
+  const listPage = parseListPage({ page, pageSize })
+  const basePath = `/${locale}/my-assets`
+  // The list URL with its page and page size; the defaults stay out of it, so page 1 keeps today's URL (spec 2B B4).
+  const listHref = (next: { page?: number; pageSize?: number }) => {
+    const query = appendListPage(new URLSearchParams(), next).toString()
+    return query ? `${basePath}?${query}` : basePath
+  }
+  // buildMyAssetsWhere scopes to custodianId server-side.
+  const where = buildMyAssetsWhere({ employeeId: user.employeeId })
+  const { skip, take } = listPageWindow(listPage)
+  // One round trip: the page of assets, the count of all of them, and a light read of every one (its status name and
+  // one photo id) for the summary, which stays a full total (spec 2B §5.9.2 row 9).
+  const [assets, total, summaryAssets] = await Promise.all([
+    prisma.asset.findMany({
+      where,
+      select: myAssetSelect,
+      orderBy: [{ status: { sortOrder: "asc" } }, { updatedAt: "desc" }, { id: "asc" }],
+      skip,
+      take,
+    }),
+    prisma.asset.count({ where }),
+    prisma.asset.findMany({
+      where,
+      select: { status: { select: { name: true } }, attachments: { where: myAssetPhotoWhere, select: { id: true }, take: 1 } },
+    }),
+  ])
+  // A page past the last one (an old link, or an asset handed back since) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listPage.pageSize)
+  if (assets.length === 0 && total > 0 && listPage.page > lastPage) {
+    redirect(listHref({ page: lastPage, pageSize: listPage.pageSize }))
+  }
+  const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
   const labels = {
     asset: t("asset"),
     serialNumber: t("serialNumber"),
@@ -77,7 +117,7 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
     openDetail: t("openDetail"),
   }
   const summary = summarizeMyAssets(
-    assets.map((asset) => ({
+    summaryAssets.map((asset) => ({
       statusName: asset.status.name,
       hasPhoto: asset.attachments.length > 0,
     })),
@@ -85,108 +125,100 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <PageHeader title={t("title")} subtitle={t("subtitle")} />
-        <Link href={`/${locale}/work-center?view=mine`} className={getSafeActionLinkClasses("secondary")}>
-          {t("openWorkCenter")}
-        </Link>
-      </div>
+      <PageHeader
+        title={t("title")}
+        meta={t("subtitle")}
+        actions={
+          <Link href={`/${locale}/work-center?view=mine`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            {t("openWorkCenter")}
+          </Link>
+        }
+      />
 
-      <section aria-label={t("summary")} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label={t("total")} value={summary.total} tone="neutral" />
-        <Metric label={t("ready")} value={summary.ready} tone="success" />
-        <Metric label={t("needsAttention")} value={summary.needsAttention} tone="warning" />
-        <Metric label={t("missingPhoto")} value={summary.missingPhoto} tone="muted" />
+      <section aria-label={t("summary")}>
+        <StatStrip
+          items={[
+            { key: "total", label: t("total"), value: formatCount(summary.total) },
+            { key: "ready", label: t("ready"), value: formatCount(summary.ready) },
+            { key: "needsAttention", label: t("needsAttention"), value: formatCount(summary.needsAttention) },
+            { key: "missingPhoto", label: t("missingPhoto"), value: formatCount(summary.missingPhoto) },
+          ]}
+        />
       </section>
 
-      <ContentPanel title={t("list")}>
-        {assets.length === 0 ? (
-          <div className={getEmptyStateClasses()}>
-            <PackageCheck className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-            <div className="font-medium text-foreground">{t("emptyTitle")}</div>
-            <p className="mt-1">{t("emptyHelp")}</p>
-          </div>
+      <ContentPanel divided flush className="overflow-hidden" title={t("list")}>
+        {total === 0 ? (
+          <ActionEmptyState icon={<PackageCheck />} title={t("emptyTitle")} description={t("emptyHelp")} />
         ) : (
           <>
-            <div className={getMobileCardListClasses()}>
+            <div className={`${getMobileCardListClasses()} p-3`}>
               {assets.map((asset) => (
                 <MobileAssetCard key={asset.id} labels={labels} asset={asset} href={buildMyAssetDetailHref(locale, asset.id)} />
               ))}
             </div>
-            <div className={getDesktopTableOnlyClasses()}>
-              <div className={getResponsiveTableScrollClasses()}>
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <Head>{labels.asset}</Head>
-                      <Head>{labels.serialNumber}</Head>
-                      <Head>{labels.status}</Head>
-                      <Head>{labels.condition}</Head>
-                      <Head>{labels.location}</Head>
-                      <Head>{labels.companyBranch}</Head>
-                      <Head>{labels.updatedAt}</Head>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border bg-surface">
-                    {assets.map((asset) => (
-                      <tr key={asset.id} className="hover:bg-row-hover">
-                        <td className="px-4 py-3">
-                          <AssetIdentity asset={asset} href={buildMyAssetDetailHref(locale, asset.id)} />
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.serialNumber || "-"}</td>
-                        <td className="px-4 py-3">
-                          <StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {asset.currentLocation.code} - {asset.currentLocation.name}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {asset.company.code} / {asset.branch.code}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(asset.updatedAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("list")} scrollHint={tCommon("tableScrollHint")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{labels.asset}</DataTableHead>
+                  <DataTableHead>{labels.serialNumber}</DataTableHead>
+                  <DataTableHead>{labels.status}</DataTableHead>
+                  <DataTableHead>{labels.condition}</DataTableHead>
+                  <DataTableHead>{labels.location}</DataTableHead>
+                  <DataTableHead>{labels.companyBranch}</DataTableHead>
+                  <DataTableHead>{labels.updatedAt}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {assets.map((asset) => {
+                  const href = buildMyAssetDetailHref(locale, asset.id)
+                  return (
+                    <ClickableTableRow key={asset.id} href={href} label={`${labels.openDetail}: ${asset.assetTag}`}>
+                      <DataTableCell>
+                        <AssetIdentity asset={asset} href={href} />
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{asset.serialNumber ? <span className="tag">{asset.serialNumber}</span> : <Nil />}</DataTableCell>
+                      <DataTableCell>
+                        <StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
+                      </DataTableCell>
+                      <DataTableCell>
+                        <StatusBadge label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                        <span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                        <span className="tag">{asset.company.code}</span> / <span className="tag">{asset.branch.code}</span>
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(asset.updatedAt)}</DataTableCell>
+                    </ClickableTableRow>
+                  )
+                })}
+              </DataTableBody>
+            </DataTable>
+            <DataTableFoot>
+              <Pagination
+                page={listPage.page}
+                totalPages={totalPages}
+                previousHref={listHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
+                nextHref={listHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
+                pageSize={listPage.pageSize}
+                pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value }) }))}
+                labels={{
+                  navigation: tCommon("pagination"),
+                  previous: tCommon("previous"),
+                  next: tCommon("next"),
+                  pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
+                  range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                  pageSizeGroup: tCommon("pageSizeLabel"),
+                  rowsPerPage: tCommon("rowsPerPage"),
+                }}
+              />
+            </DataTableFoot>
           </>
         )}
       </ContentPanel>
     </div>
   )
-}
-
-function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <header>
-      <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-    </header>
-  )
-}
-
-function Metric({ label, value, tone }: { label: string; value: number; tone: "neutral" | "success" | "warning" | "muted" }) {
-  const toneClass = {
-    neutral: "border-border bg-surface",
-    success: "border-success-border bg-success-soft",
-    warning: "border-warning-border bg-warning-soft",
-    muted: "border-border bg-background",
-  }[tone]
-
-  return (
-    <div className={`rounded-lg border px-4 py-3 ${toneClass}`}>
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-foreground">{value.toLocaleString("th-TH")}</div>
-    </div>
-  )
-}
-
-function Head({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
 }
 
 function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
@@ -208,10 +240,10 @@ function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
         )}
       </div>
       <div className="min-w-0">
-        <div className="font-semibold text-foreground">{asset.assetTag}</div>
+        <div className="text-foreground"><span className="tag font-medium">{asset.assetTag}</span></div>
         <div className="truncate text-sm text-foreground">{asset.name}</div>
         <div className="truncate text-xs text-muted-foreground">
-          {asset.category.code} - {asset.category.name}
+          <span className="tag">{asset.category.code}</span> - {asset.category.name}
         </div>
       </div>
     </div>
@@ -230,10 +262,10 @@ function MobileAssetCard({ labels, asset, href }: { labels: Record<string, strin
     <article className="rounded-md border border-border bg-surface p-4">
       <AssetIdentity asset={asset} href={href} />
       <div className="mt-3 grid gap-2 text-sm">
-        <MobileField label={labels.serialNumber} value={asset.serialNumber || "-"} />
-        <MobileField label={labels.category} value={`${asset.category.code} - ${asset.category.name}`} />
-        <MobileField label={labels.location} value={`${asset.currentLocation.code} - ${asset.currentLocation.name}`} />
-        <MobileField label={labels.companyBranch} value={`${asset.company.code} / ${asset.branch.code}`} />
+        <MobileField label={labels.serialNumber} value={asset.serialNumber ? <span className="tag">{asset.serialNumber}</span> : <Nil />} />
+        <MobileField label={labels.category} value={<><span className="tag">{asset.category.code}</span> - {asset.category.name}</>} />
+        <MobileField label={labels.location} value={<><span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}</>} />
+        <MobileField label={labels.companyBranch} value={<><span className="tag">{asset.company.code}</span> / <span className="tag">{asset.branch.code}</span></>} />
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">{labels.status}</span>
           <StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
@@ -244,7 +276,7 @@ function MobileAssetCard({ labels, asset, href }: { labels: Record<string, strin
         </div>
         <MobileField label={labels.updatedAt} value={formatDateTime(asset.updatedAt)} />
       </div>
-      <Link href={href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+      <Link href={href} className={cn(buttonVariants({ variant: "outline" }), "mt-4 w-full")}>
         {labels.openDetail}
       </Link>
     </article>
@@ -255,7 +287,7 @@ function buildMyAssetDetailHref(locale: string, assetId: string) {
   return `/${locale}/my-assets/${encodeURIComponent(assetId)}`
 }
 
-function MobileField({ label, value }: { label: string; value: string }) {
+function MobileField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex min-w-0 justify-between gap-3">
       <span className="shrink-0 text-muted-foreground">{label}</span>

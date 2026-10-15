@@ -729,3 +729,26 @@ test("notifications: PageHeader, one StatStrip, the shared StatusBadge, and each
     for (const type of ["info", "warning", "danger", "success"]) assert.equal(typeof messages.notifications[`type_${type}`], "string", `${locale}: notifications.type_${type}`)
   }
 })
+
+// Plan 2B-5 Task 8 (spec 2B §5.6 row my-assets, §5.9.2 row 9, I14, B4, R-d, R-p): My Assets on the shared PageHeader
+// (the local PageHeader goes in the same commit), real pages with the summary still counting every asset, the four
+// tinted Metric boxes as one StatStrip, and the table on DataTable whose rows open the asset.
+test("my assets: the shared PageHeader, real pages with a full-total summary, one StatStrip and a DataTable of rows that open the asset (spec 2B §5.6, §5.9.2 row 9)", () => {
+  const source = read(`${D}my-assets/page.tsx`)
+  for (const part of ["<StatStrip", "<ContentPanel divided flush", "<DataTable framed={false}", "<DataTableHeader>", "<DataTableBody>", "<ClickableTableRow", "<DataTableFoot>", "<Pagination", '<ActionEmptyState tone="permission"']) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /^import \{ PageHeader \} from "@\/components\/ui\/page-header"$/m)
+  assert.equal(source.match(/<PageHeader\b/g)?.length, 2, "the page and the account without an employee")
+  assert.match(source, /const listPage = parseListPage\(\{ page, pageSize \}\)/)
+  assert.match(source, /const \[assets, total, summaryAssets\] = await Promise\.all\(\[\n\s+prisma\.asset\.findMany\(\{\n\s+where,\n\s+select: myAssetSelect,\n\s+orderBy: \[\{ status: \{ sortOrder: "asc" \} \}, \{ updatedAt: "desc" \}, \{ id: "asc" \}\],\n\s+skip,\n\s+take,\n\s+\}\),\n\s+prisma\.asset\.count\(\{ where \}\),\n/, "the page, the count and the summary read in one Promise.all; the old order plus id")
+  assert.match(source, /const summary = summarizeMyAssets\(\n\s+summaryAssets\.map\(/, "the summary counts every asset, not the page")
+  assert.equal(source.match(/\btake: \d+/g)?.length, 2, "no fixed number of rows: only one photo per asset, in the list and in the summary")
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(assets\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
+  assert.match(source, /<ClickableTableRow key=\{asset\.id\} href=\{href\} label=\{`\$\{labels\.openDetail\}: \$\{asset\.assetTag\}`\}>/)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/work-center\?view=mine`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(source, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
+  assert.doesNotMatch(source, /function (?:PageHeader|Metric|Head)\b|<thead\b|<th\b|getEmptyStateClasses|getResponsiveTableScrollClasses|getSafeActionLinkClasses|toLocaleString\(|"-"|<h1\b/)
+})
