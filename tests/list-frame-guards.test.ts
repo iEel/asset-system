@@ -220,7 +220,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LB1: {
     // 2B-1
-    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1407, not a page back
+    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1413, not a page back
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :496 for ArrowLeft
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -252,7 +252,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV2: {
     // 2B-1
-    [`${C}admin/system-settings-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)
+    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the default separator of the tag preview :2136 (R-n)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // → 9 (KEEP): 2C form (2D)
     [`${C}assets/asset-batch-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)
     [`${C}assets/asset-component-manager.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
@@ -281,8 +281,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // → 1 (KEEP): print page, 2D (A/08:305)
   },
   LS1: {
-    // 2B-1
-    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2408 (2D)
     // 2B-2
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :598 in the dialog (2C plan 3)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -320,7 +318,7 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header, its own variant
   },
   LB1: {
-    [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1407, not a page back
+    [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1413, not a page back
     [`${C}disposal/disposal-batch-form.tsx`]: 1, // back to editing in the review step :93 (2C)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page
     [`${C}assets/asset-label-print.tsx`]: 1, // print page
@@ -336,7 +334,7 @@ const KEEP: Record<string, Record<string, number>> = {
   },
   LV2: {
     [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1204, :1206 and the history sentence :2454 (R-n)
-    [`${C}admin/system-settings-form.tsx`]: 8, // 2C form (2D)
+    [`${C}admin/system-settings-form.tsx`]: 1, // the default separator of the tag preview :2136 (R-n)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // 2C form (2D)
     [`${C}assets/asset-batch-form.tsx`]: 8, // 2C form (2D)
     [`${C}assets/asset-component-manager.tsx`]: 3, // 2C form (2D)
@@ -362,7 +360,6 @@ const KEEP: Record<string, Record<string, number>> = {
   LS1: {
     [`${C}admin/IntegrationClientManager.tsx`]: 2, // OperationMetric :759, SummaryCard :778 (2C plan 4)
     [`${C}assets/asset-import-preview-panel.tsx`]: 1, // SummaryPill :407 (2C plan 4)
-    [`${C}admin/system-settings-form.tsx`]: 1, // Metric :2408 (2D)
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // Metric :598 in the dialog (2C plan 3)
   },
   LK1: {

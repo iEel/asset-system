@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { ArrowLeft, ArrowRight, ExternalLink, History, Pencil, PlugZap, Plus, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, ExternalLink, Pencil, PlugZap, Plus, Save, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { DepreciationPolicyBuilder } from "@/components/admin/depreciation-policy-builder"
@@ -12,15 +12,24 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field, FieldHint } from "@/components/ui/field"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { FormSection } from "@/components/ui/form-section"
 import { Input } from "@/components/ui/input"
+import { KeyValueList, type KeyValueItem } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Nil, orNil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { SearchField } from "@/components/ui/search-field"
 import { Segmented } from "@/components/ui/segmented"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { TabNav } from "@/components/ui/tab-nav"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import {
   assetLabelLayouts,
@@ -506,10 +515,11 @@ function normalizeSettingValue(key: string, value: string | undefined) {
   return value ?? ""
 }
 
+// null when the setting is empty: the review table shows Nil for it.
 function formatReviewValue(key: string, value: string | undefined) {
   const normalized = normalizeSettingValue(key, value)
   if (key.toLowerCase().includes("password") && normalized) return "********"
-  return normalized || "-"
+  return normalized || null
 }
 
 export function SystemSettingsForm({
@@ -525,6 +535,7 @@ export function SystemSettingsForm({
   const searchParams = useSearchParams()
   // The tab row's name: the page passes no label for it, so the form reads the page title.
   const tPage = useTranslations("systemSettingsPage")
+  const tCommon = useTranslations("common")
   const params = useParams<{ locale?: string }>()
   const locale = typeof params.locale === "string" ? params.locale : "th"
   const initialValues = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
@@ -767,18 +778,15 @@ export function SystemSettingsForm({
     setSettingsSearch("")
     window.requestAnimationFrame(() => document.getElementById("settings-workspace")?.scrollIntoView({ block: "start" }))
   }
-  const overviewCards = [
+  // The overview is two label and value lists (DESIGN KeyValueList): no tone fills, an empty value is Nil, and the two
+  // LDAP switches are status badges.
+  const ldapLoginEnabled = getValue("ldap_enabled") === "true"
+  const ldapSyncEnabled = getValue("ldap_sync_enabled") === "true"
+  const overviewItems: KeyValueItem[] = [
+    { key: "assetTag", label: labels.overviewAssetTag, value: <span className="[overflow-wrap:anywhere]">{formatTemplate}</span> },
+    { key: "label", label: labels.overviewLabel, value: assetLabelPresets[labelTemplates.defaultTapeSize].label },
     {
-      label: labels.overviewAssetTag,
-      value: formatTemplate,
-      tone: "blue",
-    },
-    {
-      label: labels.overviewLabel,
-      value: assetLabelPresets[labelTemplates.defaultTapeSize].label,
-      tone: "green",
-    },
-    {
+      key: "documents",
       label: labels.overviewDocuments,
       value: `${renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)} / ${renderOperationDocumentTemplate(
         checkinDocumentTemplate,
@@ -786,44 +794,49 @@ export function SystemSettingsForm({
         1,
         operationDocumentExampleDigits
       )}`,
-      tone: "amber",
     },
+    { key: "organization", label: labels.overviewOrganization, value: getValue("company_name") || null },
     {
-      label: labels.overviewOrganization,
-      value: getValue("company_name") || "-",
-      tone: "slate",
-    },
-    {
+      key: "notifications",
       label: labels.overviewNotifications,
       value: `${getValue(notificationReturnDueSoonDaysKey) || "3"}d / ${getValue(notificationWarrantyExpiryDaysKey) || "30"}d`,
-      tone: "blue",
     },
     {
+      key: "approval",
       label: labels.overviewApproval,
       value: `${workflowApprovalPolicy.minApprovers} / SLA ${workflowApprovalPolicy.slaDays}d / ${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
-      tone: "amber",
     },
     {
+      key: "governance",
       label: labels.overviewGovernance,
-      value: `${getValue(retentionAttachmentDaysKey) || "-"}d / ${getValue(retentionAuditLogDaysKey) || "-"}d / ${getValue(retentionOrphanFileDaysKey) || "-"}d`,
-      tone: hasInvalidRetentionPolicy ? "rose" : "green",
+      value: (
+        <>
+          {[retentionAttachmentDaysKey, retentionAuditLogDaysKey, retentionOrphanFileDaysKey].map((key, index) => (
+            <Fragment key={key}>
+              {index > 0 ? " / " : null}
+              {getValue(key) ? `${getValue(key)}d` : <Nil />}
+            </Fragment>
+          ))}
+        </>
+      ),
     },
     {
+      key: "ldapLogin",
       label: labels.overviewLdapLogin,
-      value: getValue("ldap_enabled") === "true" ? labels.enabled : labels.disabled,
-      tone: getValue("ldap_enabled") === "true" ? "green" : "slate",
+      value: <StatusBadge label={ldapLoginEnabled ? labels.enabled : labels.disabled} tone={ldapLoginEnabled ? "success" : "muted"} />,
     },
     {
+      key: "ldapSync",
       label: labels.overviewLdapSync,
-      value: getValue("ldap_sync_enabled") === "true" ? `${labels.enabled} (${getValue("ldap_sync_mode") || "preview"})` : labels.disabled,
-      tone: getValue("ldap_sync_enabled") === "true" ? "green" : "slate",
+      value: (
+        <StatusBadge
+          label={ldapSyncEnabled ? `${labels.enabled} (${getValue("ldap_sync_mode") || "preview"})` : labels.disabled}
+          tone={ldapSyncEnabled ? "success" : "muted"}
+        />
+      ),
     },
-    {
-      label: labels.overviewAdvanced,
-      value: labels.advancedSettingCount.replace("{count}", String(generalSettings.length)),
-      tone: "rose",
-    },
-  ] as const
+    { key: "advanced", label: labels.overviewAdvanced, value: labels.advancedSettingCount.replace("{count}", formatCount(generalSettings.length)) },
+  ]
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -961,48 +974,49 @@ export function SystemSettingsForm({
         }}
       />
 
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <ContentPanel>
         <Field label={labels.searchSettings}>
           <SearchField value={settingsSearch} onChange={(event) => setSettingsSearch(event.target.value)} placeholder={labels.searchSettingsHelp} />
         </Field>
         {settingsSearch.trim() ? (
           settingsSearchResults.length > 0 ? (
-            <div className="mt-3 grid gap-2" role="list">
+            <ul className="mt-3 grid gap-2">
               {settingsSearchResults.map((result) => (
-                <button
-                  key={result.key}
-                  type="button"
-                  onClick={() => openSettingGroup(result.tab)}
-                  className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-mono text-xs font-medium text-foreground">{result.key}</span>
-                    {result.description ? <span className="mt-1 block line-clamp-1 text-xs text-muted-foreground">{result.description}</span> : null}
-                  </span>
-                  <span className="shrink-0 text-xs font-medium text-primary">{result.tabLabel}</span>
-                </button>
+                <li key={result.key}>
+                  <Button
+                    variant="outline"
+                    onClick={() => openSettingGroup(result.tab)}
+                    className="h-auto w-full justify-between gap-3 whitespace-normal py-2 text-left md:h-auto md:min-h-9"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-foreground"><span className="tag">{result.key}</span></span>
+                      {result.description ? <span className="mt-1 block line-clamp-1 text-xs font-normal text-muted-foreground">{result.description}</span> : null}
+                    </span>
+                    <span className="shrink-0 text-xs text-primary">{result.tabLabel}</span>
+                  </Button>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <p className="mt-3 text-sm text-muted-foreground">{labels.noSettingsSearchResults}</p>
+            <EmptyNote role="status" className="mt-3">{labels.noSettingsSearchResults}</EmptyNote>
           )
         ) : null}
-      </div>
+      </ContentPanel>
 
-      <div id="settings-workspace" className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.settingsOverview} description={labels.settingsOverviewDescription} />
-        <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
-          {overviewCards.map((card) => (
-            <StatusCard key={card.label} label={card.label} value={card.value} tone={card.tone} />
-          ))}
-        </div>
+      {/* openSettingGroup scrolls to this id; ContentPanel takes no id of its own. */}
+      <div id="settings-workspace">
+        <ContentPanel divided title={labels.settingsOverview} description={labels.settingsOverviewDescription}>
+          <div className="grid gap-x-8 gap-y-2 lg:grid-cols-2">
+            <KeyValueList items={overviewItems.slice(0, 5)} />
+            <KeyValueList items={overviewItems.slice(5)} />
+          </div>
+        </ContentPanel>
       </div>
 
       {activeTab === "asset-numbering" ? (
       <>
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.assetTagFormat} description={labels.assetTagFormatDescription} />
-        <div className="space-y-4 px-4 py-4">
+      <ContentPanel divided title={labels.assetTagFormat} description={labels.assetTagFormatDescription}>
+        <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-2">
               <Field label={labels.assetTagTemplate}>
@@ -1024,7 +1038,7 @@ export function SystemSettingsForm({
                     key={preset.value}
                     variant="outline"
                     onClick={() => setValue(assetTagFormatTemplateKey, preset.value)}
-                    className="h-auto justify-start whitespace-normal py-2 text-left md:h-auto md:min-h-10"
+                    className="h-auto justify-start whitespace-normal py-2 text-left md:h-auto md:min-h-9"
                   >
                     {labels[preset.labelKey]}
                   </Button>
@@ -1033,7 +1047,7 @@ export function SystemSettingsForm({
             </div>
           </div>
           <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.availableTokens}</div>
+            <div className={fieldLabelClasses}>{labels.availableTokens}</div>
             <div className="flex flex-wrap gap-2">
               {assetTagFormatTokens.map((token) => (
                 <Button
@@ -1047,20 +1061,20 @@ export function SystemSettingsForm({
                     }))
                   }
                 >
-                  <span className="font-mono">{`{${token}}`}</span>
+                  <span className="tag">{`{${token}}`}</span>
                 </Button>
               ))}
             </div>
           </div>
-          <div className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
-            {labels.exampleFormat}: {"{assetCompanyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}"}
-          </div>
+          {/* A template string wraps, so it keeps font-mono and is not a tag (R3). */}
+          <p className="text-meta text-muted-foreground [overflow-wrap:anywhere]">
+            {labels.exampleFormat}: <span className="font-mono">{"{assetCompanyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}"}</span>
+          </p>
         </div>
-      </div>
+      </ContentPanel>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.numberingOptions} />
-        <div className="grid gap-4 px-4 py-4 md:grid-cols-3">
+      <ContentPanel divided title={labels.numberingOptions}>
+        <div className="grid gap-4 md:grid-cols-3">
           <Field label={labels.runningDigits}>
             <Input
               id="asset-tag-running-digits"
@@ -1087,15 +1101,14 @@ export function SystemSettingsForm({
             />
           </Field>
         </div>
-      </div>
+      </ContentPanel>
       </>
       ) : null}
 
       {activeTab === "label-template" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.labelPrintTemplate} description={labels.labelPrintTemplateDescription} />
-        <div className="space-y-4 px-4 py-4">
-          <div className="grid gap-4 rounded-md border border-border bg-background p-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
+      <ContentPanel divided title={labels.labelPrintTemplate} description={labels.labelPrintTemplateDescription}>
+        <div className="space-y-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
             <div className="space-y-2">
               <Field label={labels.publicQrBaseUrl}>
                 <Input
@@ -1109,10 +1122,11 @@ export function SystemSettingsForm({
               <p className="text-sm text-muted-foreground">{labels.publicQrBaseUrlDescription}</p>
               {hasInvalidPublicQrBaseUrl ? <ValidationMessage message={labels.invalidPublicQrBaseUrl} /> : null}
             </div>
-            <div className="rounded-md border border-border bg-background p-3">
-              <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.publicQrPreview}</div>
-              <div className="mt-2 break-all font-mono text-xs text-foreground">{publicQrPreviewValue}</div>
-              <div className="mt-2 text-xs text-muted-foreground">{labels.publicQrResolverPath}: /q/a/{"{assetId}"}</div>
+            <div className="space-y-1">
+              <div className={fieldLabelClasses}>{labels.publicQrPreview}</div>
+              {/* A URL wraps anywhere, so it keeps font-mono and is not a tag (R3). */}
+              <p className="break-all font-mono text-xs text-foreground">{publicQrPreviewValue}</p>
+              <p className="text-meta text-muted-foreground">{labels.publicQrResolverPath}: <span className="tag">/q/a/{"{assetId}"}</span></p>
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-[minmax(220px,330px)_minmax(300px,420px)] md:items-start">
@@ -1162,23 +1176,22 @@ export function SystemSettingsForm({
           {hasInvalidLabelSize ? <ValidationMessage message={labels.invalidLabelSize} /> : null}
           <LabelPreviewPanel labels={labels} templates={labelTemplates} qrValue={publicQrPreviewValue} />
           <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.labelTemplateTokens}</div>
-            <div className="flex flex-wrap gap-2">
+            <div className={fieldLabelClasses}>{labels.labelTemplateTokens}</div>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-foreground">
               {assetLabelTemplateTokens.map((token) => (
-                <span key={token} className="inline-flex h-8 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground">
-                  {`{${token}}`}
-                </span>
+                <li key={token}>
+                  <span className="tag">{`{${token}}`}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "documents" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.operationDocumentNumbers} description={labels.operationDocumentNumbersDescription} />
-        <div className="space-y-4 px-4 py-4">
+      <ContentPanel divided title={labels.operationDocumentNumbers} description={labels.operationDocumentNumbersDescription}>
+        <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label={labels.checkoutDocumentTemplate}>
@@ -1208,78 +1221,77 @@ export function SystemSettingsForm({
                 />
               </Field>
             </div>
-            <div className="rounded-md border border-border bg-background p-3 text-xs text-muted-foreground">
-              <div className="font-medium text-foreground">{labels.exampleFormat}</div>
-              <div className="mt-2 space-y-1 font-mono">
-                <div>{labels.checkoutDocumentExample}: {renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)}</div>
-                <div>{labels.checkinDocumentExample}: {renderOperationDocumentTemplate(checkinDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)}</div>
-              </div>
+            <div className="space-y-2">
+              <div className={fieldLabelClasses}>{labels.exampleFormat}</div>
+              <KeyValueList
+                items={[
+                  { key: "checkout", label: labels.checkoutDocumentExample, value: <span className="tag">{renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)}</span> },
+                  { key: "checkin", label: labels.checkinDocumentExample, value: <span className="tag">{renderOperationDocumentTemplate(checkinDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)}</span> },
+                ]}
+              />
             </div>
           </div>
           <p className="text-sm text-muted-foreground">{labels.operationDocumentTemplateHelp}</p>
           {hasInvalidOperationDocumentTemplate ? <ValidationMessage message={labels.invalidOperationDocumentTemplate} /> : null}
           <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.operationDocumentTokens}</div>
-            <div className="flex flex-wrap gap-2">
+            <div className={fieldLabelClasses}>{labels.operationDocumentTokens}</div>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-foreground">
               {operationDocumentTemplateTokens.map((token) => (
-                <span key={token} className="inline-flex h-8 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground">
-                  {`{${token}}`}
-                </span>
+                <li key={token}>
+                  <span className="tag">{`{${token}}`}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "asset-numbering" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.categoryPrefixes} description={labels.categoryPrefixesDescription} />
-        <div className="space-y-4 px-4 py-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-1 text-sm text-muted-foreground">
-              <div className="font-medium text-foreground">
-                {formatTemplateText(labels.prefixGroupCount, { count: String(prefixGroups.length) })}
-              </div>
-              <div>
-                {formatTemplateText(labels.assignedCategoryCount, {
-                  assigned: String(categories.length - unassignedCategoryCount),
-                  total: String(categories.length),
-                })}
-              </div>
+      <ContentPanel
+        divided
+        title={labels.categoryPrefixes}
+        description={labels.categoryPrefixesDescription}
+        actions={
+          <Button size="md" onClick={() => openPrefixEditor()}>
+            <Plus />
+            {labels.addPrefix}
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <div className="font-medium text-foreground">
+              {formatTemplateText(labels.prefixGroupCount, { count: String(prefixGroups.length) })}
             </div>
-            <Button onClick={() => openPrefixEditor()}>
-              <Plus />
-              {labels.addPrefix}
-            </Button>
+            <div>
+              {formatTemplateText(labels.assignedCategoryCount, {
+                assigned: String(categories.length - unassignedCategoryCount),
+                total: String(categories.length),
+              })}
+            </div>
+            <div>{formatTemplateText(labels.unassignedCategoryCount, { count: String(unassignedCategoryCount) })}</div>
           </div>
 
           {prefixGroups.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-background px-4 py-6 text-sm text-muted-foreground">
-              {labels.noCategoryPrefixes}
-            </div>
+            <EmptyNote>{labels.noCategoryPrefixes}</EmptyNote>
           ) : (
-            <div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-border">
-              <table className="min-w-full divide-y divide-border text-sm">
-                <thead>
-                  <tr>
-                    <Head>{labels.prefix}</Head>
-                    <Head>{labels.category}</Head>
-                    <Head>{labels.categoryPrefixPreview}</Head>
-                    <Head>
-                      <span className="sr-only">{labels.editPrefix}</span>
-                    </Head>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border bg-surface">
+            <DataTable framed={false} caption={labels.categoryPrefixes} scrollHint={tCommon("tableScrollHint")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{labels.prefix}</DataTableHead>
+                  <DataTableHead>{labels.category}</DataTableHead>
+                  <DataTableHead>{labels.categoryPrefixPreview}</DataTableHead>
+                  <DataTableHead align="right" hideLabel>{labels.editPrefix}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
                   {prefixGroups.map((group) => (
-                    <tr key={group.prefix} className="hover:bg-row-hover">
-                      <td className="px-4 py-3">
-                        <span className="inline-flex min-h-8 items-center rounded-md border border-border bg-background px-3 font-mono text-sm font-semibold text-foreground">
-                          {group.prefix}
-                        </span>
-                      </td>
-                      <td className="min-w-72 px-4 py-3">
+                    <DataTableRow key={group.prefix}>
+                      <DataTableCell>
+                        <span className="tag font-medium text-foreground">{group.prefix}</span>
+                      </DataTableCell>
+                      <DataTableCell className="min-w-72">
                         <div className="font-medium text-foreground">
                           {formatTemplateText(labels.categoryCount, { count: String(group.categoryIds.length) })}
                         </div>
@@ -1291,11 +1303,11 @@ export function SystemSettingsForm({
                             .map((category) => `${category?.code} - ${category?.name}`)
                             .join(", ")}
                         </div>
-                      </td>
-                      <td className="min-w-56 px-4 py-3 font-mono text-xs text-muted-foreground">
-                        {renderAssetTagPreview(formatTemplate, group.prefix, getValue("asset_tag_separator"))}
-                      </td>
-                      <td className="w-32 px-4 py-3">
+                      </DataTableCell>
+                      <DataTableCell className="min-w-56 text-muted-foreground">
+                        <span className="tag">{renderAssetTagPreview(formatTemplate, group.prefix, getValue("asset_tag_separator"))}</span>
+                      </DataTableCell>
+                      <DataTableCell align="right" className="w-32">
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="outline"
@@ -1316,17 +1328,13 @@ export function SystemSettingsForm({
                             <Trash2 />
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </DataTableCell>
+                    </DataTableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+              </DataTableBody>
+            </DataTable>
           )}
 
-          <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            {formatTemplateText(labels.unassignedCategoryCount, { count: String(unassignedCategoryCount) })}
-          </div>
           {hasDuplicateCategory ? <ValidationMessage message={labels.duplicateCategory} /> : null}
           {hasInvalidPrefix ? <ValidationMessage message={labels.invalidPrefix} /> : null}
         </div>
@@ -1355,12 +1363,10 @@ export function SystemSettingsForm({
                       className="font-mono uppercase"
                     />
                   </Field>
-                  <div className="rounded-md border border-border bg-background px-3 py-2">
-                    <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                      {labels.categoryPrefixPreview}
-                    </div>
-                    <div className="mt-1 font-mono text-sm text-foreground">
-                      {renderAssetTagPreview(formatTemplate, normalizedPrefixDraft || "COM", getValue("asset_tag_separator"))}
+                  <div className="space-y-1">
+                    <div className={fieldLabelClasses}>{labels.categoryPrefixPreview}</div>
+                    <div className="flex min-h-10 items-center text-sm text-foreground [overflow-wrap:anywhere]">
+                      <span className="font-mono">{renderAssetTagPreview(formatTemplate, normalizedPrefixDraft || "COM", getValue("asset_tag_separator"))}</span>
                     </div>
                   </div>
                 </div>
@@ -1376,7 +1382,7 @@ export function SystemSettingsForm({
                     onSearchChange={setAvailableCategorySearch}
                   >
                     {filteredAvailableCategories.length === 0 ? (
-                      <EmptyTransferState label={labels.noMatchingCategories} />
+                      <EmptyNote className="min-h-64 justify-center px-4 text-center">{labels.noMatchingCategories}</EmptyNote>
                     ) : (
                       filteredAvailableCategories.map((category) => {
                         const assignedPrefix = assignedPrefixByCategoryId.get(category.id)
@@ -1417,9 +1423,9 @@ export function SystemSettingsForm({
                     onSearchChange={setSelectedCategorySearch}
                   >
                     {prefixEditor.categoryIds.length === 0 ? (
-                      <EmptyTransferState label={labels.noSelectedCategories} />
+                      <EmptyNote className="min-h-64 justify-center px-4 text-center">{labels.noSelectedCategories}</EmptyNote>
                     ) : filteredSelectedCategories.length === 0 ? (
-                      <EmptyTransferState label={labels.noMatchingCategories} />
+                      <EmptyNote className="min-h-64 justify-center px-4 text-center">{labels.noMatchingCategories}</EmptyNote>
                     ) : (
                       filteredSelectedCategories.map((category) => {
                         const isChecked = checkedSelectedCategoryIds.includes(category.id)
@@ -1446,13 +1452,12 @@ export function SystemSettingsForm({
             </>
           ) : null}
         </AccessibleDialog>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "organization" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.organizationDefaults} description={labels.organizationDefaultsDescription} />
-        <div className="grid gap-4 px-4 py-4 md:grid-cols-2">
+      <ContentPanel divided title={labels.organizationDefaults} description={labels.organizationDefaultsDescription}>
+        <div className="grid gap-4 md:grid-cols-2">
           <Field label={labels.companyName}>
             <Input
               id="company-name"
@@ -1479,13 +1484,13 @@ export function SystemSettingsForm({
             {hasInvalidDepreciationPolicy ? <ValidationMessage message={labels.invalidAccountingDepreciationPolicy} /> : null}
           </div>
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "notifications" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.notificationRules} description={labels.notificationRulesDescription} />
-        <div className="grid gap-4 px-4 py-4 md:grid-cols-2 xl:grid-cols-4">
+      <ContentPanel divided title={labels.notificationRules} description={labels.notificationRulesDescription}>
+        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field label={labels.returnDueSoonDays}>
             <Input
               id="notification-return-due-days"
@@ -1527,20 +1532,16 @@ export function SystemSettingsForm({
             />
           </Field>
         </div>
-        <div className="border-t border-border px-4 py-3">
-          <p className="text-sm text-muted-foreground">{labels.notificationDaysHelp}</p>
-          {hasInvalidNotificationRule ? <ValidationMessage message={labels.invalidNotificationRule} /> : null}
+        <p className="text-sm text-muted-foreground">{labels.notificationDaysHelp}</p>
+        {hasInvalidNotificationRule ? <ValidationMessage message={labels.invalidNotificationRule} /> : null}
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "workflow-approval" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.workflowApprovalPolicy} description={labels.workflowApprovalPolicyDescription} />
-        <div className="space-y-4 px-4 py-4">
-          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            {labels.workflowApprovalFoundationNote}
-          </p>
+      <ContentPanel divided title={labels.workflowApprovalPolicy} description={labels.workflowApprovalPolicyDescription}>
+        <div className="space-y-4">
+          <Notice tone="info">{labels.workflowApprovalFoundationNote}</Notice>
           <div className="grid gap-4 lg:grid-cols-2">
             <ToggleField
               label={labels.workflowApprovalDisposalRequired}
@@ -1582,31 +1583,27 @@ export function SystemSettingsForm({
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalSlaDaysHelp}</p>
           {hasInvalidWorkflowApproval ? <ValidationMessage message={labels.invalidWorkflowApproval} /> : null}
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "automation" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.schedulerSettings} description={labels.schedulerSettingsDescription} />
-        <div className="space-y-4 px-4 py-4">
-          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            {labels.schedulerHeartbeatNote}
-          </p>
+      <ContentPanel divided title={labels.schedulerSettings} description={labels.schedulerSettingsDescription}>
+        <div className="space-y-4">
+          <Notice tone="neutral">{labels.schedulerHeartbeatNote}</Notice>
           {hasInvalidSchedulerSchedule ? <ValidationMessage message={labels.invalidSchedulerSchedule} /> : null}
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "governance" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.governanceSettings} description={labels.governanceSettingsDescription} />
-        <div className="space-y-4 px-4 py-4">
+      <ContentPanel divided title={labels.governanceSettings} description={labels.governanceSettingsDescription}>
+        <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className="text-base font-semibold text-foreground">{labels.retentionPolicy}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{labels.retentionPolicyDescription}</p>
             </div>
-            <a href={`/${locale}/admin/storage`} className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-fit")}>
+            <a href={`/${locale}/admin/storage`} className={cn(buttonVariants({ variant: "outline", size: "md" }), "w-full sm:w-fit")}>
               {labels.openStorageGovernance}
             </a>
           </div>
@@ -1642,18 +1639,15 @@ export function SystemSettingsForm({
               />
             </Field>
           </div>
-          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            {labels.retentionDaysHelp}
-          </p>
+          <Notice tone="neutral">{labels.retentionDaysHelp}</Notice>
           {hasInvalidRetentionPolicy ? <ValidationMessage message={labels.invalidRetentionPolicy} /> : null}
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "ldap-login" ? (
-      <div className="overflow-visible rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.ldapSettings} description={labels.ldapSettingsDescription} />
-        <div className="space-y-6 px-4 py-4">
+      <ContentPanel divided title={labels.ldapSettings} description={labels.ldapSettingsDescription}>
+        <div className="space-y-6">
           <FormSection as="h3" number={1} title={labels.ldapStepConnection}>
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
               <ToggleField
@@ -1778,24 +1772,19 @@ export function SystemSettingsForm({
                 />
                 <p className="text-xs leading-relaxed text-muted-foreground">{labels.ldapDefaultRoleHelp}</p>
                 {getValue("ldap_default_role") && !defaultRoleOptions.some((option) => option.id === getValue("ldap_default_role")) ? (
-                  <p className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
-                    {labels.ldapDefaultRoleMissing.replace("{role}", getValue("ldap_default_role"))}
-                  </p>
+                  <Notice tone="warning">{labels.ldapDefaultRoleMissing.replace("{role}", getValue("ldap_default_role"))}</Notice>
                 ) : null}
               </div>
             </div>
           </FormSection>
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "ldap-sync" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <SectionHeader title={labels.ldapSyncStrategy} description={labels.ldapSyncStrategyDescription} />
-        <div className="space-y-6 px-4 py-4">
-          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            {labels.ldapSyncRecommendation}
-          </p>
+      <ContentPanel divided title={labels.ldapSyncStrategy} description={labels.ldapSyncStrategyDescription}>
+        <div className="space-y-6">
+          <Notice tone="neutral">{labels.ldapSyncRecommendation}</Notice>
           <FormSection as="h3" number={1} title={labels.ldapStepSyncStrategy}>
             <div className="grid gap-4 lg:grid-cols-2">
               <ToggleField
@@ -1940,96 +1929,96 @@ export function SystemSettingsForm({
             </Button>
           </div>
           {syncError ? (
-            <div className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger">
+            <Notice tone="danger" role="alert">
               <ApiErrorText error={syncError} />
-            </div>
+            </Notice>
           ) : null}
           <SyncPreviewPanel labels={labels} preview={syncPreview} locale={locale} />
           </FormSection>
           <LdapSyncHistoryPanel labels={labels} history={ldapSyncHistory} locale={locale} />
         </div>
-      </div>
+      </ContentPanel>
       ) : null}
 
       {activeTab === "advanced" && generalSettings.length > 0 ? (
-        <details className="overflow-hidden rounded-lg border border-warning-border bg-surface">
-          <summary className="cursor-pointer list-none border-b border-warning-border bg-warning-soft px-4 py-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">{labels.advancedWarningTitle}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{labels.advancedWarningDescription}</p>
-              </div>
-              <span className="text-sm font-medium text-warning">{labels.showAdvancedSettings}</span>
-            </div>
-          </summary>
-          <SectionHeader title={labels.advancedSettings} description={labels.advancedSettingsDescription} />
-          <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead>
+        <ContentPanel divided title={labels.advancedSettings} description={labels.advancedSettingsDescription}>
+          <Notice tone="warning" title={labels.advancedWarningTitle}>
+            {labels.advancedWarningDescription}
+          </Notice>
+          <details className="mt-4">
+            <summary className={cn(linkVariants({ size: "inherit" }), "list-item cursor-pointer text-sm")}>{labels.showAdvancedSettings}</summary>
+            <DataTable framed={false} className="mt-4" caption={labels.advancedSettings} scrollHint={tCommon("tableScrollHint")}>
+              <DataTableHeader>
                 <tr>
-                  <Head>{labels.key}</Head>
-                  <Head>{labels.value}</Head>
-                  <Head>{labels.description}</Head>
+                  <DataTableHead>{labels.key}</DataTableHead>
+                  <DataTableHead>{labels.value}</DataTableHead>
+                  <DataTableHead>{labels.description}</DataTableHead>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+              </DataTableHeader>
+              <DataTableBody>
                 {generalSettings.map((setting) => (
-                  <tr key={setting.key} className="hover:bg-row-hover">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{setting.key}</td>
-                    <td className="min-w-80 px-4 py-3">
+                  <DataTableRow key={setting.key}>
+                    <DataTableCell className="whitespace-nowrap">
+                      <span className="tag font-medium text-foreground">{setting.key}</span>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-80">
                       <Field label={setting.key} hideLabel>
                         <Input
                           value={values[setting.key] ?? ""}
                           onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
                         />
                       </Field>
-                    </td>
-                    <td className="min-w-80 px-4 py-3 text-muted-foreground">{setting.description || "-"}</td>
-                  </tr>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-80 text-muted-foreground">{orNil(setting.description)}</DataTableCell>
+                  </DataTableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
+              </DataTableBody>
+            </DataTable>
+          </details>
+        </ContentPanel>
       ) : null}
 
       {changedCount > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-border bg-surface">
-          <SectionHeader title={labels.changeReview} description={labels.changeReviewDescription} />
-          <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead>
-                <tr>
-                  <Head>{labels.key}</Head>
-                  <Head>{labels.beforeValue}</Head>
-                  <Head>{labels.afterValue}</Head>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {changedSettings.map((setting) => (
-                  <tr key={setting.key} className="hover:bg-row-hover">
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => openSettingGroup(getSystemSettingsTabForKey(setting.key))}
+        <ContentPanel divided flush className="overflow-hidden" title={labels.changeReview} description={labels.changeReviewDescription}>
+          <DataTable framed={false} caption={labels.changeReview} scrollHint={tCommon("tableScrollHint")}>
+            <DataTableHeader>
+              <tr>
+                <DataTableHead>{labels.key}</DataTableHead>
+                <DataTableHead>{labels.beforeValue}</DataTableHead>
+                <DataTableHead>{labels.afterValue}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>
+              {changedSettings.map((setting) => {
+                const tab = getSystemSettingsTabForKey(setting.key)
+                return (
+                  <DataTableRow key={setting.key}>
+                    <DataTableCell className="whitespace-nowrap">
+                      {/* A link to the tab (Ctrl+click opens it); a plain click switches in place, like TabNav. */}
+                      <Link
+                        href={buildSystemSettingsTabHref(pathname, searchParams.toString(), tab)}
+                        onNavigate={(event) => {
+                          event.preventDefault()
+                          openSettingGroup(tab)
+                        }}
                         className={linkVariants({ size: "inherit" })}
                       >
-                        {setting.key}
+                        <span className="tag">{setting.key}</span>
                         <span className="ml-2 text-xs font-normal text-muted-foreground">{labels.openSettingGroup}</span>
-                      </button>
-                    </td>
-                    <td className="max-w-md break-words px-4 py-3 text-muted-foreground">
-                      {formatReviewValue(setting.key, initialValues[setting.key])}
-                    </td>
-                    <td className="max-w-md break-words px-4 py-3 font-medium text-foreground">
-                      {formatReviewValue(setting.key, effectiveValues[setting.key])}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                      </Link>
+                    </DataTableCell>
+                    <DataTableCell className="max-w-md break-words text-muted-foreground">
+                      {orNil(formatReviewValue(setting.key, initialValues[setting.key]))}
+                    </DataTableCell>
+                    <DataTableCell className="max-w-md break-words font-medium text-foreground">
+                      {orNil(formatReviewValue(setting.key, effectiveValues[setting.key]))}
+                    </DataTableCell>
+                  </DataTableRow>
+                )
+              })}
+            </DataTableBody>
+          </DataTable>
+        </ContentPanel>
       ) : null}
 
       <StickyFormFooter
@@ -2060,30 +2049,26 @@ function LdapSyncHistoryPanel({
   history: LdapSyncHistoryItem[]
   locale: string
 }) {
+  // A quiet section under the numbered steps, not a box in the panel: a line above it, the runs as rows.
   return (
-    <div className="rounded-md border border-border bg-background p-4">
+    <section aria-labelledby="ldap-sync-history-title" className="border-t border-border pt-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">{labels.ldapSyncHistoryTitle}</h3>
-          </div>
+          <h3 id="ldap-sync-history-title" className="text-sm font-semibold text-foreground">{labels.ldapSyncHistoryTitle}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncHistoryDescription}</p>
         </div>
-        <Link href={buildSystemLogFilterHref(locale, "ldap_sync")} className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")}>
+        <Link href={buildSystemLogFilterHref(locale, "ldap_sync")} className={cn(buttonVariants({ variant: "outline", size: "md" }), "w-full sm:w-auto")}>
           <ExternalLink />
           {labels.ldapSyncHistoryViewAll}
         </Link>
       </div>
 
       {history.length === 0 ? (
-        <p className="mt-4 rounded-md border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
-          {labels.ldapSyncHistoryEmpty}
-        </p>
+        <EmptyNote className="mt-4">{labels.ldapSyncHistoryEmpty}</EmptyNote>
       ) : (
-        <div className="mt-4 divide-y divide-border">
+        <ul className="mt-4 divide-y divide-border-soft">
           {history.map((item) => (
-            <article key={item.id} className="py-3 first:pt-0 last:pb-0">
+            <li key={item.id} className="py-3 first:pt-0 last:pb-0">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-foreground">
@@ -2092,33 +2077,32 @@ function LdapSyncHistoryPanel({
                   <div className="mt-1 text-xs text-muted-foreground">
                     {labels.ldapSyncHistoryRunBy}: {item.actorLabel}
                   </div>
+                  {item.blockerCount > 0 ? (
+                    <StatusBadge tone="warning" className="mt-2" label={`${labels.ldapSyncHistoryBlockers}: ${formatCount(item.blockerCount)}`} />
+                  ) : null}
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:w-[34rem]">
-                  <MiniMetric label={labels.ldapSyncTotal} value={item.total} locale={locale} />
-                  <MiniMetric label={labels.ldapSyncAppliedCreated} value={item.created} locale={locale} />
-                  <MiniMetric label={labels.ldapSyncAppliedUpdated} value={item.updated} locale={locale} />
-                  <MiniMetric label={labels.ldapSyncAppliedDeactivated} value={item.deactivated} locale={locale} />
-                  <MiniMetric label={labels.ldapSyncAppliedUsersDeactivated} value={item.deactivatedUsers} locale={locale} />
-                </div>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5 lg:w-[34rem]">
+                  <HistoryCount label={labels.ldapSyncTotal} value={item.total} />
+                  <HistoryCount label={labels.ldapSyncAppliedCreated} value={item.created} />
+                  <HistoryCount label={labels.ldapSyncAppliedUpdated} value={item.updated} />
+                  <HistoryCount label={labels.ldapSyncAppliedDeactivated} value={item.deactivated} />
+                  <HistoryCount label={labels.ldapSyncAppliedUsersDeactivated} value={item.deactivatedUsers} />
+                </dl>
               </div>
-              {item.blockerCount > 0 ? (
-                <div className="mt-2 text-xs font-medium text-warning">
-                  {labels.ldapSyncHistoryBlockers}: {formatHistoryNumber(item.blockerCount, locale)}
-                </div>
-              ) : null}
-            </article>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </section>
   )
 }
 
-function MiniMetric({ label, value, locale }: { label: string; value: number; locale: string }) {
+// One count of a sync run: a label and a number, no frame (the run is a row of the list).
+function HistoryCount({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-border px-2 py-2">
-      <div className="truncate text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-base font-semibold text-foreground">{formatHistoryNumber(value, locale)}</div>
+    <div className="min-w-0">
+      <dt className="truncate text-meta text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-base font-semibold text-foreground num">{formatCount(value)}</dd>
     </div>
   )
 }
@@ -2128,10 +2112,6 @@ function formatHistoryDateTime(value: string, locale = "th") {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value))
-}
-
-function formatHistoryNumber(value: number, locale: string) {
-  return value.toLocaleString(getIntlLocale(locale))
 }
 
 function getIntlLocale(locale: string) {
@@ -2201,7 +2181,7 @@ function CategoryTransferPanel({
     <div className="overflow-hidden rounded-md border border-border bg-background">
       <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-3">
         <div className="text-sm font-semibold text-foreground">{title}</div>
-        <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{count}</span>
+        <span className="text-meta text-muted-foreground num">{formatCount(count)}</span>
       </div>
       <div className="border-b border-border p-3">
         <SearchField aria-label={searchPlaceholder} placeholder={searchPlaceholder} value={searchValue} onChange={(event) => onSearchChange(event.target.value)} />
@@ -2234,24 +2214,18 @@ function CategoryTransferRow({
         <span className="block truncate font-medium text-foreground">{category.name}</span>
         <span className="block truncate text-xs text-muted-foreground">{category.code}</span>
       </span>
-      {badge ? (
-        <span className="shrink-0 rounded-full border border-warning-border bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
-          {badge}
-        </span>
-      ) : null}
+      {badge ? <StatusBadge tone="warning" label={badge} /> : null}
     </label>
   )
 }
 
-function EmptyTransferState({ label }: { label: string }) {
-  return <div className="flex min-h-64 items-center justify-center px-4 text-center text-sm text-muted-foreground">{label}</div>
-}
-
+// A rule the current values break, under the fields of its group (D7: an error is a danger Notice). No live region: it
+// shows while the user types, and the save toast says the same.
 function ValidationMessage({ message }: { message: string }) {
   return (
-    <p className="my-2 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
+    <Notice tone="danger" className="my-2">
       {message}
-    </p>
+    </Notice>
   )
 }
 
@@ -2292,56 +2266,64 @@ function SyncPreviewPanel({
   locale: string
 }) {
   if (!preview) {
-    return <p className="text-sm text-muted-foreground">{labels.ldapSyncNoPreview}</p>
+    return <EmptyNote>{labels.ldapSyncNoPreview}</EmptyNote>
   }
   const deactivationImpacts = (preview.deactivationImpacts ?? []).filter(
     (impact) => impact.activeAssetCount > 0 || impact.activeUserCount > 0
   )
 
+  // The counts are StatStrips (no tone fill); what the user must deal with is a warning Notice; the impact list sits
+  // after it, never inside it, because faint text never sits on a status fill.
   return (
-    <div className="rounded-md border border-border bg-background p-4">
-      <h3 className="text-sm font-semibold text-foreground">{labels.ldapSyncPreviewTitle}</h3>
-      <div className="mt-3 grid gap-3 md:grid-cols-4">
-        <Metric label={labels.ldapSyncTotal} value={preview.total} />
-        <Metric label={labels.ldapSyncCreates} value={preview.creates.length} />
-        <Metric label={labels.ldapSyncUpdates} value={preview.updates.length} />
-        <Metric label={labels.ldapSyncDeactivates} value={preview.deactivates.length} />
-      </div>
+    <div className="space-y-4">
+      <section aria-labelledby="ldap-sync-preview-title" className="space-y-3">
+        <h4 id="ldap-sync-preview-title" className="text-sm font-semibold text-foreground">{labels.ldapSyncPreviewTitle}</h4>
+        <StatStrip
+          items={[
+            { key: "total", label: labels.ldapSyncTotal, value: formatCount(preview.total) },
+            { key: "creates", label: labels.ldapSyncCreates, value: formatCount(preview.creates.length) },
+            { key: "updates", label: labels.ldapSyncUpdates, value: formatCount(preview.updates.length) },
+            { key: "deactivates", label: labels.ldapSyncDeactivates, value: formatCount(preview.deactivates.length) },
+          ]}
+        />
+      </section>
       {preview.applied ? (
-        <div className="mt-3 rounded-md border border-primary-border bg-primary-soft px-3 py-3">
-          <div className="text-sm font-medium text-foreground">{labels.ldapSyncAppliedTitle}</div>
-          <div className="mt-2 grid gap-2 md:grid-cols-4">
-          <Metric label={labels.ldapSyncAppliedCreated} value={preview.applied.created} />
-          <Metric label={labels.ldapSyncAppliedUpdated} value={preview.applied.updated} />
-          <Metric label={labels.ldapSyncAppliedDeactivated} value={preview.applied.deactivated} />
-          <Metric label={labels.ldapSyncAppliedUsersDeactivated} value={preview.applied.deactivatedUsers ?? 0} />
+        <div className="space-y-3">
+          <Notice tone="success" role="status" title={labels.ldapSyncAppliedTitle} />
+          <StatStrip
+            items={[
+              { key: "created", label: labels.ldapSyncAppliedCreated, value: formatCount(preview.applied.created) },
+              { key: "updated", label: labels.ldapSyncAppliedUpdated, value: formatCount(preview.applied.updated) },
+              { key: "deactivated", label: labels.ldapSyncAppliedDeactivated, value: formatCount(preview.applied.deactivated) },
+              { key: "deactivatedUsers", label: labels.ldapSyncAppliedUsersDeactivated, value: formatCount(preview.applied.deactivatedUsers ?? 0) },
+            ]}
+          />
         </div>
-      </div>
       ) : null}
       {preview.blockers.length > 0 ? (
-        <div className="mt-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
-          <div className="font-medium">{labels.ldapSyncBlockers}</div>
-          <ul className="mt-1 list-disc space-y-1 pl-5">
+        <Notice tone="warning" title={labels.ldapSyncBlockers}>
+          <ul className="list-disc space-y-1 pl-5">
             {preview.blockers.map((blocker) => (
               <li key={blocker}>{blocker}</li>
             ))}
           </ul>
-        </div>
+        </Notice>
       ) : null}
       {preview.deactivates.length > 0 ? (
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3">
-          <div className="text-sm font-semibold text-amber-950">{labels.ldapSyncDeactivateImpactTitle}</div>
-          <p className="mt-1 text-sm text-amber-900">{labels.ldapSyncDeactivateImpactDescription}</p>
+        <div className="space-y-3">
+          <Notice tone="warning" title={labels.ldapSyncDeactivateImpactTitle}>
+            {labels.ldapSyncDeactivateImpactDescription}
+          </Notice>
           {deactivationImpacts.length > 0 ? (
-            <div className="mt-3 grid gap-3">
+            <ul className="divide-y divide-border-soft">
               {deactivationImpacts.map((impact) => (
-                <div key={impact.employeeId} className="rounded-md border border-amber-200 bg-white px-3 py-3">
+                <li key={impact.employeeId} className="py-3 first:pt-0 last:pb-0">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
+                    <div className="min-w-0">
                       <div className="text-sm font-semibold text-foreground">
-                        {impact.code} - {impact.name}
+                        <span className="tag">{impact.code}</span> - {impact.name}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">{impact.email ?? "-"}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{orNil(impact.email)}</div>
                     </div>
                     <a
                       href={`/${locale}/assets?custodianId=${encodeURIComponent(impact.employeeId)}&page=1`}
@@ -2350,66 +2332,31 @@ function SyncPreviewPanel({
                       {labels.ldapSyncOpenAssets}
                     </a>
                   </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <Metric label={labels.ldapSyncDeactivateImpactAssets} value={impact.activeAssetCount} />
-                    <Metric label={labels.ldapSyncDeactivateImpactUsers} value={impact.activeUserCount} />
-                  </div>
+                  <KeyValueList
+                    className="mt-3"
+                    items={[
+                      { key: "assets", label: labels.ldapSyncDeactivateImpactAssets, value: formatCount(impact.activeAssetCount) },
+                      { key: "users", label: labels.ldapSyncDeactivateImpactUsers, value: formatCount(impact.activeUserCount) },
+                    ]}
+                  />
                   {impact.assets.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-foreground">
                       {impact.assets.slice(0, 5).map((asset) => (
-                        <span key={asset.id} className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
-                          {asset.assetTag} - {asset.name}
-                        </span>
+                        <li key={asset.id}>
+                          <span className="tag">{asset.assetTag}</span> - {asset.name}
+                        </li>
                       ))}
-                      {impact.assets.length > 5 ? (
-                        <span className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
-                          +{impact.assets.length - 5}
-                        </span>
-                      ) : null}
-                    </div>
+                      {impact.assets.length > 5 ? <li className="text-muted-foreground">+{formatCount(impact.assets.length - 5)}</li> : null}
+                    </ul>
                   ) : null}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <p className="mt-3 text-sm text-amber-900">{labels.ldapSyncNoDeactivateImpact}</p>
+            <EmptyNote tone="clear">{labels.ldapSyncNoDeactivateImpact}</EmptyNote>
           )}
         </div>
       ) : null}
-    </div>
-  )
-}
-
-function StatusCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: string
-  tone: "blue" | "green" | "amber" | "slate" | "rose"
-}) {
-  const toneClass = {
-    blue: "border-blue-200 bg-blue-50 text-blue-950",
-    green: "border-emerald-200 bg-emerald-50 text-emerald-950",
-    amber: "border-amber-200 bg-amber-50 text-amber-950",
-    slate: "border-slate-200 bg-slate-50 text-slate-950",
-    rose: "border-rose-200 bg-rose-50 text-rose-950",
-  }[tone]
-
-  return (
-    <div className={`min-h-24 rounded-md border px-3 py-3 ${toneClass}`}>
-      <div className="text-xs font-medium opacity-80">{label}</div>
-      <div className="mt-2 break-words text-sm font-semibold leading-6">{value}</div>
-    </div>
-  )
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-md border border-border px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold text-foreground">{value}</div>
     </div>
   )
 }
@@ -2600,7 +2547,7 @@ function LabelPreviewPanel({
   const marginPx = config.marginMm * 4
   const gapPx = config.gapMm * 4
   const qr = (
-    <div className="shrink-0 rounded-sm border border-slate-300 bg-white p-1">
+    <div className="shrink-0 rounded-sm border border-control-border bg-surface p-1">
       <QRCodeSVG value={qrValue} size={Math.min(config.qrSize, Math.max(28, heightPx - marginPx * 2 - 6))} level="M" includeMargin={false} />
     </div>
   )
@@ -2608,7 +2555,7 @@ function LabelPreviewPanel({
     <div className="min-w-0">
       <div className="truncate text-sm font-bold leading-tight">{lines[0] || values.assetTag}</div>
       {lines.slice(1).map((line) => (
-        <div key={line} className="mt-1 truncate text-xs leading-tight text-slate-700">
+        <div key={line} className="mt-1 truncate text-xs leading-tight text-muted-foreground">
           {line}
         </div>
       ))}
@@ -2620,7 +2567,7 @@ function LabelPreviewPanel({
       <div className="text-sm font-semibold text-foreground">{labels.labelPreview}</div>
       <div className="mt-3 w-full max-w-full overflow-x-auto overscroll-x-contain">
         <div
-          className="overflow-hidden rounded border border-slate-300 bg-white text-slate-950 shadow-sm"
+          className="overflow-hidden rounded border border-control-border bg-surface text-foreground shadow-sm"
           style={{ width: widthPx, height: heightPx, padding: marginPx }}
         >
           <div
@@ -2650,18 +2597,4 @@ function LabelPreviewPanel({
       </p>
     </div>
   )
-}
-
-function SectionHeader({ title, description }: { title: string; description?: string }) {
-  return (
-    <div className="border-b border-border px-4 py-4">
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
-    </div>
-  )
-}
-
-// The white 13/500 header of the shared DataTable (spec 2B §3.4, R-e), on this file's own px-4 cells.
-function Head({ children }: { children: React.ReactNode }) {
-  return <th className="bg-surface px-4 py-2.5 text-left align-bottom text-meta font-medium text-faint-foreground">{children}</th>
 }

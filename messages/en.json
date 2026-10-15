@@ -3716,7 +3716,7 @@
     "description": "Description",
     "tabAssetNumbering": "Asset Numbering",
     "tabLabelTemplate": "Label / QR",
-    "tabDocuments": "Handover / Return Docs",
+    "tabDocuments": "Documents",
     "tabOrganization": "Organization",
     "tabNotifications": "Notifications",
     "tabWorkflowApproval": "Approvals",

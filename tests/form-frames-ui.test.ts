@@ -122,14 +122,12 @@ test("the new audit round form draws its title with PageHeader (2B-1 task 23, I1
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
 
-test("the three settings tables have the white 13/500 header in sentence case (2B-1 task 24, R-e)", () => {
+// Plan 2D-2 moved the three settings tables from the local Head onto the shared DataTable, inside their panels.
+test("the three settings tables are the shared DataTable with its white 13/500 header (2B-1 task 24, R-e; plan 2D-2)", () => {
   const source = read(`${C}admin/system-settings-form.tsx`)
-  assert.equal(source.match(/<thead>/g)?.length, 3, "the prefix, advanced and change-review tables")
-  assert.match(
-    source,
-    /function Head\(\{ children \}: \{ children: React\.ReactNode \}\) \{\n  return <th className="bg-surface px-4 py-2\.5 text-left align-bottom text-meta font-medium text-faint-foreground">\{children\}<\/th>\n\}/,
-  )
-  assert.doesNotMatch(source, /<thead className=|\bbg-muted\//)
+  assert.equal(source.match(/<DataTableHeader>/g)?.length, 3, "the prefix, advanced and change-review tables")
+  assert.equal(source.match(/<DataTable framed=\{false\}/g)?.length, 3, "each sits in its panel, so it has no frame of its own")
+  assert.doesNotMatch(source, /<thead\b|<th\b|function Head\b|\bbg-muted\//)
 })
 
 test("the asset batch form: PageHeader and the white table header on its three tables (2B-1 task 24, I13, R-e)", () => {

@@ -99,8 +99,9 @@ test("the LDAP settings steps are quiet numbered sections, not a third layer of 
   assert.deepEqual(sections, ["1 ldapStepConnection", "2 ldapStepLoginMapping", "3 ldapStepProvisioning", "1 ldapStepSyncStrategy", "2 ldapStepOrgMapping", "3 ldapStepSchedule", "4 ldapStepPreviewApply"])
   assert.equal(source.match(/<\/FormSection>/g)?.length, 7)
   assert.doesNotMatch(source, /WizardStep/)
-  // Without the step cards, 24px separates the sections on both LDAP tabs (spec 2C section 7.3).
-  assert.equal(source.match(/<div className="space-y-6 px-4 py-4">/g)?.length, 2)
+  // Without the step cards, 24px separates the sections on both LDAP tabs (spec 2C section 7.3), inside their
+  // ContentPanel, which brings the padding since plan 2D-2.
+  assert.equal(source.match(/<ContentPanel divided title=\{labels\.(?:ldapSettings|ldapSyncStrategy)\} description=\{labels\.\w+\}>\n\s+<div className="space-y-6">/g)?.length, 2)
 })
 
 test("the import panel shows its five steps on the shared rail, and the current-step label is gone (S5, batch 4)", () => {

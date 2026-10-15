@@ -3716,7 +3716,7 @@
     "description": "รายละเอียด",
     "tabAssetNumbering": "เลขที่ทรัพย์สิน",
     "tabLabelTemplate": "ป้าย / QR",
-    "tabDocuments": "เอกสารส่งมอบ-รับคืน",
+    "tabDocuments": "เลขเอกสาร",
     "tabOrganization": "องค์กร",
     "tabNotifications": "การแจ้งเตือน",
     "tabWorkflowApproval": "การอนุมัติ",

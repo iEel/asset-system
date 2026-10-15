@@ -51,7 +51,8 @@ test("label print template settings expose compact printable asset names", () =>
   assert.match(form, /<Segmented aria-label=\{label\}[\s\S]*?showCheck/)
   assert.match(form, /Check/)
   assert.match(readFileSync("src/components/ui/segmented.tsx", "utf8"), /"bg-primary-soft font-semibold text-primary-hover"/)
-  assert.match(form, /focus-visible:ring-2 focus-visible:ring-ring/)
+  // The asset name choice shows the focus ring of Segmented itself (the form has no hand-made focus classes since 2D-2).
+  assert.match(readFileSync("src/components/ui/segmented.tsx", "utf8"), /focus-visible:ring-2 focus-visible:ring-ring/)
   assert.doesNotMatch(form, /role="switch"/)
   assert.doesNotMatch(form, /<InlineToggleField[\s\S]*label=\{labels\.compactLabelAssetName\}/)
   assert.doesNotMatch(form, /<ToggleField[\s\S]*label=\{labels\.compactLabelAssetName\}/)
