@@ -70,7 +70,6 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           confirmImport: t("confirmImport"),
           fileRequired: t("fileRequired"),
           importSuccess: t("importSuccess"),
-          importing: t("importing"),
           wizardTitle: t("importWizardTitle"),
           wizardHelp: t("importWizardHelp"),
           wizardStepTemplate: t("importWizardStepTemplate"),

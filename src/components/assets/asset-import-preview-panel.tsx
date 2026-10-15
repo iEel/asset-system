@@ -51,7 +51,6 @@ type AssetImportPreviewPanelProps = {
     confirmImport: string
     fileRequired: string
     importSuccess: string
-    importing: string
     wizardTitle: string
     wizardHelp: string
     wizardStepTemplate: string

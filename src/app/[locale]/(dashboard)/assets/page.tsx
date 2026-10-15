@@ -448,7 +448,6 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           confirmImport: t("confirmImport"),
           fileRequired: t("fileRequired"),
           importSuccess: t("importSuccess"),
-          importing: t("importing"),
           wizardTitle: t("importWizardTitle"),
           wizardHelp: t("importWizardHelp"),
           wizardStepTemplate: t("importWizardStepTemplate"),

@@ -77,7 +77,6 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
         tapeCustom: t("labelTapeCustom"),
         printReason: t("labelPrintReason"),
         printReasonPlaceholder: t("labelPrintReasonPlaceholder"),
-        recordingPrint: t("recordingLabelPrint"),
         printRecorded: t("labelPrintRecorded"),
         printRecordFailed: t("labelPrintRecordFailed"),
         printerTapeGuidance: t("labelPrinterTapeGuidance", { tapeSize: "{tapeSize}" }),

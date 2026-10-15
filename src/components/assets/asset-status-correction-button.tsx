@@ -19,7 +19,6 @@ type AssetStatusCorrectionButtonProps = {
     reasonPlaceholder: string
     cancel: string
     submit: string
-    submitting: string
     errorFallback: string
   }
 }

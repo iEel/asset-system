@@ -128,7 +128,6 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
           reasonPlaceholder: t("assetStateReviews.reasonPlaceholder"),
           reasonHelp: t("assetStateReviews.reasonHelp"),
           cancel: tCommon("cancel"),
-          saving: tCommon("saving"),
           confirmResolve: t("assetStateReviews.confirmResolve"),
           confirmDismiss: t("assetStateReviews.confirmDismiss"),
         }}

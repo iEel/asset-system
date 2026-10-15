@@ -45,7 +45,6 @@ type AssetLabelPrintProps = {
     tapeCustom: string
     printReason: string
     printReasonPlaceholder: string
-    recordingPrint: string
     printRecorded: string
     printRecordFailed: string
     printerTapeGuidance: string

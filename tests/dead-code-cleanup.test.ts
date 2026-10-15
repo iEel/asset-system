@@ -45,3 +45,22 @@ test("the old panel helpers of the asset detail page are gone (spec 2D M9)", () 
   for (const name of ["getHealthPanelClass", "getSummaryToneClass"]) assert.equal(name in assetDetailFormat, false, name)
   assert.equal(typeof assetDetailFormat.getHealthBadgeClass, "function", "the badge helper the page uses stays")
 })
+
+test("the busy labels nobody reads are gone from the props and the pages (spec 2D M8)", () => {
+  const gone: Array<[string, RegExp]> = [
+    [`${C}assets/asset-component-manager.tsx`, /^\s+(?:installing|removing): string$/m],
+    [`${C}assets/asset-status-correction-button.tsx`, /^\s+submitting: string$/m],
+    [`${C}assets/asset-import-preview-panel.tsx`, /^\s+importing: string$/m],
+    [`${C}assets/asset-label-print.tsx`, /^\s+recordingPrint: string$/m],
+    [`${D}assets/[id]/components/page.tsx`, /componentInstalling|componentRemoving/],
+    [`${D}assets/[id]/page.tsx`, /statusCorrectionSubmitting/],
+    [`${D}asset-management/import-export/page.tsx`, /importing: t\("importing"\)/],
+    [`${D}assets/page.tsx`, /importing: t\("importing"\)/],
+    ["src/app/[locale]/(print)/assets/labels/page.tsx", /recordingLabelPrint/],
+    ["src/app/[locale]/(print)/assets/[id]/label/page.tsx", /recordingLabelPrint/],
+    [`${D}admin/data-quality/page.tsx`, /saving: tCommon\("saving"\)/],
+  ]
+  for (const [path, pattern] of gone) assert.doesNotMatch(read(path), pattern, path)
+  // The label print state stays: it drives busy={recordingPrint} on the print button.
+  assert.match(read(`${C}assets/asset-label-print.tsx`), /const \[recordingPrint, setRecordingPrint\] = useState\(false\)/)
+})

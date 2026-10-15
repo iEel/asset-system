@@ -89,7 +89,6 @@ type ManagerLabels = {
   reviewTitle: string
   reviewHelp: string
   confirmInstall: string
-  installing: string
   installSuccess: string
   addAnother: string
   remove: string
@@ -97,7 +96,6 @@ type ManagerLabels = {
   removeEvidence: string
   removeReason: string
   confirmRemove: string
-  removing: string
   removeSuccess: string
   cancel: string
   close: string

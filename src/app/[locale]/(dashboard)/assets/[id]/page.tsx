@@ -1060,7 +1060,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                   reasonPlaceholder: t("statusCorrectionReasonPlaceholder"),
                   cancel: tCommon("cancel"),
                   submit: t("statusCorrectionSubmit"),
-                  submitting: t("statusCorrectionSubmitting"),
                   errorFallback: t("statusCorrectionError"),
                 }}
               />

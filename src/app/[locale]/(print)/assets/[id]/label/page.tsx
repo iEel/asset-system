@@ -72,7 +72,6 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
         tapeCustom: t("labelTapeCustom"),
         printReason: t("labelPrintReason"),
         printReasonPlaceholder: t("labelPrintReasonPlaceholder"),
-        recordingPrint: t("recordingLabelPrint"),
         printRecorded: t("labelPrintRecorded"),
         printRecordFailed: t("labelPrintRecordFailed"),
         printerTapeGuidance: t("labelPrinterTapeGuidance", { tapeSize: "{tapeSize}" }),
