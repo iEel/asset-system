@@ -99,3 +99,9 @@ test("the admin user form is a panel with the shared panel classes and shows rol
   assert.match(source, /<span className="mt-1 block text-xs text-muted-foreground"><span className="tag">\{role\.name\}<\/span><\/span>/)
   assert.doesNotMatch(source, /rounded-lg border|font-mono/)
 })
+
+test("the storage archive button is an outline sm Button that stays busy while it archives (spec 2D M14)", () => {
+  const source = read(`${C}admin/storage-archive-button.tsx`)
+  assert.match(source, /<Button variant="outline" size="sm" busy=\{archiving\} onClick=\{handleClick\}>\n\s+<Archive aria-hidden="true" \/>\n\s+\{t\("archiveOrphanFile"\)\}\n\s+<\/Button>/)
+  assert.doesNotMatch(source, /<button\b|Loader2|disabled=|opacity-|bg-warning-soft|sm:h-8/)
+})

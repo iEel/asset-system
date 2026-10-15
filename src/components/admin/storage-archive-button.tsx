@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Archive, Loader2 } from "lucide-react"
+import { Archive } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { useApiError } from "@/components/ui/use-api-error"
 
@@ -42,15 +43,12 @@ export function StorageArchiveButton({ relativePath }: { relativePath: string })
     }
   }
 
+  // M14: a row button is outline sm (DESIGN: green, orange and red live only in badges); busy keeps focus and the
+  // label while the request runs, and blocks a second click.
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={archiving}
-      className="inline-flex min-h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-warning-border bg-warning-soft px-3 text-xs font-medium text-warning transition-colors hover:bg-warning-soft disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:min-h-0"
-    >
-      {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+    <Button variant="outline" size="sm" busy={archiving} onClick={handleClick}>
+      <Archive aria-hidden="true" />
       {t("archiveOrphanFile")}
-    </button>
+    </Button>
   )
 }
