@@ -619,3 +619,20 @@ test("system log: real pages counted in the same timed Promise.all, TabNav quick
     assert.doesNotMatch(String(messages.systemLogPage.subtitle), /100/, `${locale}: the subtitle no longer promises the newest 100 entries`)
   }
 })
+
+// Plan 2B-5 Task 3 (spec 2B §5.6 row admin/storage, bugs §5.10 #6 and #10, R-d): the three storage tables scroll
+// sideways inside their DataTable shell (getTableShellClasses() clipped them with overflow-hidden), the tiles are two
+// StatStrips with no tone fill, counts go through formatCount, and every module code reads as its label.
+test("storage: PageHeader, two StatStrips and three DataTables that scroll sideways, with every module code as its label (spec 2B §5.6, §5.10 #6, #10)", () => {
+  const source = read(`${D}admin/storage/page.tsx`)
+  for (const part of ["<PageHeader", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={4}>", "<TableEmptyRow colSpan={3}>", "<EmptyNote>"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the summary and the dry-run counts")
+  assert.equal(source.match(/<DataTable framed=\{false\} className="mt-4" caption=\{(?:t\("(?:filesystemDryRun|moduleBreakdown)"\)|title)\} scrollHint=\{(?:tCommon\("tableScrollHint"\)|scrollHint)\}>/g)?.length, 3, "three tables in padded panels, flush, with the scroll hint (B6)")
+  assert.match(source, /attention: reviewNeededCount > 0,/)
+  assert.match(source, /\{moduleLabel\(item\.module, t\)\} · <span className="tag">\{item\.referenceId\}<\/span>/, "bug §5.10 #10: the review list names the module, not its code")
+  assert.match(source, /\{orNil\(item\.filePath\)\}/)
+  assert.equal(source.match(/<StorageArchiveButton relativePath=\{action\.relativePath\} \/>/g)?.length, 1)
+  assert.doesNotMatch(source, /getTableShellClasses|getEmptyStateClasses|function SummaryCard\b|<thead\b|<th\b|<td colSpan|toLocaleString\(|"-"|\buppercase\b/)
+})

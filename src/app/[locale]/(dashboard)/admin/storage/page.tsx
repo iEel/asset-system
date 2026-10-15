@@ -1,11 +1,11 @@
-import type React from "react"
-import { AlertTriangle, Database, FileArchive, FolderOpen, HardDrive } from "lucide-react"
+import { FolderOpen } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatDateTime } from "@/lib/utils"
-import { getEmptyStateClasses, getPanelClasses, getTableShellClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
+import { getPanelClasses } from "@/lib/design-system"
 import {
   buildStorageGovernanceDryRun,
   formatStorageSize,
@@ -14,6 +14,11 @@ import {
 } from "@/lib/storage-governance"
 import { getUploadRoot } from "@/lib/uploads"
 import { StorageArchiveButton } from "@/components/admin/storage-archive-button"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { orNil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 
 type StoragePageProps = {
@@ -27,6 +32,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
   const user = await requirePagePermission(locale, "setting", "view")
   const canArchiveStorageFiles = hasPermission(user, "setting", "edit")
   const t = await getTranslations("storagePage")
+  const tCommon = await getTranslations("common")
   const uploadRoot = getUploadRoot()
 
   const attachments = await prisma.attachment.findMany({
@@ -58,85 +64,78 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
   const reviewItems = attachments
     .filter((attachment) => attachment.isActive && (!attachment.filePath?.trim() || pathCounts.get(normalizePath(attachment.filePath))! > 1))
     .slice(0, 20)
+  const reviewNeededCount = summary.duplicatePathCount + summary.missingPathCount + dryRun.orphanFiles.length + dryRun.missingFiles.length
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} meta={t("subtitle")} />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <SummaryCard label={t("activeFiles")} value={summary.activeFiles.toLocaleString()} detail={t("inactiveFiles", { count: summary.inactiveFiles })} tone="primary" icon={<FileArchive className="h-5 w-5" />} />
-        <SummaryCard label={t("totalSize")} value={formatStorageSize(summary.totalBytes)} detail={t("totalSizeHelp")} tone="success" icon={<HardDrive className="h-5 w-5" />} />
-        <SummaryCard label={t("largeFiles")} value={summary.largeFileCount.toLocaleString()} detail={t("largeFilesHelp")} tone="warning" icon={<AlertTriangle className="h-5 w-5" />} />
-        <SummaryCard label={t("reviewNeeded")} value={(summary.duplicatePathCount + summary.missingPathCount + dryRun.orphanFiles.length + dryRun.missingFiles.length).toLocaleString()} detail={t("reviewNeededHelp")} tone="danger" icon={<Database className="h-5 w-5" />} />
-      </section>
+      <StatStrip
+        items={[
+          { key: "activeFiles", label: t("activeFiles"), value: formatCount(summary.activeFiles), foot: t("inactiveFiles", { count: summary.inactiveFiles }) },
+          { key: "totalSize", label: t("totalSize"), value: formatStorageSize(summary.totalBytes), foot: t("totalSizeHelp") },
+          { key: "largeFiles", label: t("largeFiles"), value: formatCount(summary.largeFileCount), foot: t("largeFilesHelp") },
+          {
+            key: "reviewNeeded",
+            label: t("reviewNeeded"),
+            value: formatCount(reviewNeededCount),
+            foot: t("reviewNeededHelp"),
+            footTitle: t("reviewNeededHelp"),
+            attention: reviewNeededCount > 0,
+          },
+        ]}
+      />
 
       <section className={`${getPanelClasses()} p-5`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="font-semibold text-foreground">{t("filesystemDryRun")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("filesystemDryRunHelp")}</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-sm">
-            <div className="rounded-md border border-border bg-background px-3 py-2">
-              <div className="font-semibold text-foreground">{dryRun.matchedFiles.length.toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">{t("matchedFiles")}</div>
-            </div>
-            <div className="rounded-md border border-warning-border bg-warning-soft px-3 py-2">
-              <div className="font-semibold text-foreground">{dryRun.orphanFiles.length.toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">{t("orphanFiles")}</div>
-            </div>
-            <div className="rounded-md border border-danger-border bg-danger-soft px-3 py-2">
-              <div className="font-semibold text-foreground">{dryRun.missingFiles.length.toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">{t("missingFiles")}</div>
-            </div>
-          </div>
-        </div>
-        <div className={`mt-4 ${getTableShellClasses()}`}>
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("dryRunAction")}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("file")}</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("size")}</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("action")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {dryRun.actions.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">{t("emptyDryRunActions")}</td>
-                </tr>
-              ) : (
-                dryRun.actions.slice(0, 10).map((action, index) => (
-                  <tr key={`${action.action}-${index}`} className="hover:bg-row-hover">
-                    <td className="px-4 py-3">
-                      <StatusBadge
-                        label={action.action === "archive_orphan_file" ? t("archiveOrphanFile") : t("reviewMissingDbFile")}
-                        tone={action.action === "archive_orphan_file" ? "warning" : "danger"}
-                      />
-                    </td>
-                    <td className="break-all px-4 py-3 text-muted-foreground">
-                      {action.action === "archive_orphan_file" ? action.relativePath : action.filePath}
-                    </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
-                      {formatStorageSize(action.action === "archive_orphan_file" ? action.sizeBytes : action.expectedSizeBytes)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {action.action === "archive_orphan_file" && canArchiveStorageFiles ? (
-                        <StorageArchiveButton relativePath={action.relativePath} />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">{t("archiveUnavailable")}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <h2 className="font-semibold text-foreground">{t("filesystemDryRun")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("filesystemDryRunHelp")}</p>
+        <StatStrip
+          className="mt-4"
+          items={[
+            { key: "matchedFiles", label: t("matchedFiles"), value: formatCount(dryRun.matchedFiles.length) },
+            { key: "orphanFiles", label: t("orphanFiles"), value: formatCount(dryRun.orphanFiles.length) },
+            { key: "missingFiles", label: t("missingFiles"), value: formatCount(dryRun.missingFiles.length) },
+          ]}
+        />
+        <DataTable framed={false} className="mt-4" caption={t("filesystemDryRun")} scrollHint={tCommon("tableScrollHint")}>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>{t("dryRunAction")}</DataTableHead>
+              <DataTableHead>{t("file")}</DataTableHead>
+              <DataTableHead align="right">{t("size")}</DataTableHead>
+              <DataTableHead align="right">{t("action")}</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {dryRun.actions.length === 0 ? (
+              <TableEmptyRow colSpan={4}>{t("emptyDryRunActions")}</TableEmptyRow>
+            ) : (
+              dryRun.actions.slice(0, 10).map((action, index) => (
+                <DataTableRow key={`${action.action}-${index}`}>
+                  <DataTableCell>
+                    <StatusBadge
+                      label={action.action === "archive_orphan_file" ? t("archiveOrphanFile") : t("reviewMissingDbFile")}
+                      tone={action.action === "archive_orphan_file" ? "warning" : "danger"}
+                    />
+                  </DataTableCell>
+                  <DataTableCell className="break-all text-muted-foreground">
+                    {action.action === "archive_orphan_file" ? action.relativePath : action.filePath}
+                  </DataTableCell>
+                  <DataTableCell numeric className="text-muted-foreground">
+                    {formatStorageSize(action.action === "archive_orphan_file" ? action.sizeBytes : action.expectedSizeBytes)}
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    {action.action === "archive_orphan_file" && canArchiveStorageFiles ? (
+                      <StorageArchiveButton relativePath={action.relativePath} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{t("archiveUnavailable")}</span>
+                    )}
+                  </DataTableCell>
+                </DataTableRow>
+              ))
+            )}
+          </DataTableBody>
+        </DataTable>
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -150,26 +149,28 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
               <p className="mt-1 text-sm text-muted-foreground">{t("moduleBreakdownHelp")}</p>
             </div>
           </div>
-          <div className={`mt-4 ${getTableShellClasses()}`}>
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("module")}</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("fileCount")}</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("size")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {summary.byModule.map((item) => (
-                  <tr key={item.module} className="hover:bg-row-hover">
-                    <td className="px-4 py-3 font-medium text-foreground">{moduleLabel(item.module, t)}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{item.count.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{formatStorageSize(item.totalBytes)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable framed={false} className="mt-4" caption={t("moduleBreakdown")} scrollHint={tCommon("tableScrollHint")}>
+            <DataTableHeader>
+              <tr>
+                <DataTableHead>{t("module")}</DataTableHead>
+                <DataTableHead align="right">{t("fileCount")}</DataTableHead>
+                <DataTableHead align="right">{t("size")}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>
+              {summary.byModule.length === 0 ? (
+                <TableEmptyRow colSpan={3}>{tCommon("noData")}</TableEmptyRow>
+              ) : (
+                summary.byModule.map((item) => (
+                  <DataTableRow key={item.module}>
+                    <DataTableCell className="font-medium text-foreground">{moduleLabel(item.module, t)}</DataTableCell>
+                    <DataTableCell numeric className="text-muted-foreground">{formatCount(item.count)}</DataTableCell>
+                    <DataTableCell numeric className="text-muted-foreground">{formatStorageSize(item.totalBytes)}</DataTableCell>
+                  </DataTableRow>
+                ))
+              )}
+            </DataTableBody>
+          </DataTable>
         </div>
 
         <StorageReviewList
@@ -181,7 +182,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
         />
       </section>
 
-      <StorageFileList title={t("largestFiles")} description={t("largestFilesHelp")} items={largeFiles} t={t} />
+      <StorageFileList title={t("largestFiles")} description={t("largestFilesHelp")} items={largeFiles} scrollHint={tCommon("tableScrollHint")} t={t} />
     </div>
   )
 }
@@ -205,9 +206,7 @@ function StorageReviewList({
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       <div className="mt-4 space-y-3">
         {items.length === 0 ? (
-          <div className={getEmptyStateClasses()}>
-            {t("emptyReview")}
-          </div>
+          <EmptyNote>{t("emptyReview")}</EmptyNote>
         ) : (
           items.map((item) => {
             const duplicate = item.filePath?.trim() ? pathCounts.get(normalizePath(item.filePath))! > 1 : false
@@ -216,11 +215,11 @@ function StorageReviewList({
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-foreground">{item.originalName}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{item.module} · {item.referenceId}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{moduleLabel(item.module, t)} · <span className="tag">{item.referenceId}</span></div>
                   </div>
                   <StatusBadge label={duplicate ? t("duplicatePath") : t("missingPath")} tone={duplicate ? "warning" : "danger"} />
                 </div>
-                <div className="mt-2 break-all text-xs text-muted-foreground">{item.filePath || "-"}</div>
+                <div className="mt-2 break-all text-xs text-muted-foreground">{orNil(item.filePath)}</div>
               </div>
             )
           })
@@ -234,82 +233,44 @@ function StorageFileList({
   title,
   description,
   items,
+  scrollHint,
   t,
 }: {
   title: string
   description: string
   items: StorageAttachmentItem[]
+  scrollHint: string
   t: Awaited<ReturnType<typeof getTranslations>>
 }) {
   return (
     <section className={`${getPanelClasses()} p-5`}>
       <h2 className="font-semibold text-foreground">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className={`mt-4 ${getTableShellClasses()}`}>
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-muted/40">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("file")}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("module")}</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("size")}</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("uploadedAt")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {items.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">{t("emptyLargeFiles")}</td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="hover:bg-row-hover">
-                  <td className="max-w-sm truncate px-4 py-3 font-medium text-foreground">{item.originalName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{moduleLabel(item.module, t)}</td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">{formatStorageSize(item.fileSize)}</td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">{formatDateTime(item.uploadedAt)}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable framed={false} className="mt-4" caption={title} scrollHint={scrollHint}>
+        <DataTableHeader>
+          <tr>
+            <DataTableHead>{t("file")}</DataTableHead>
+            <DataTableHead>{t("module")}</DataTableHead>
+            <DataTableHead align="right">{t("size")}</DataTableHead>
+            <DataTableHead align="right">{t("uploadedAt")}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {items.length === 0 ? (
+            <TableEmptyRow colSpan={4}>{t("emptyLargeFiles")}</TableEmptyRow>
+          ) : (
+            items.map((item) => (
+              <DataTableRow key={item.id}>
+                <DataTableCell className="max-w-sm truncate font-medium text-foreground">{item.originalName}</DataTableCell>
+                <DataTableCell className="text-muted-foreground">{moduleLabel(item.module, t)}</DataTableCell>
+                <DataTableCell numeric className="text-muted-foreground">{formatStorageSize(item.fileSize)}</DataTableCell>
+                <DataTableCell align="right" className="whitespace-nowrap text-muted-foreground">{formatDateTime(item.uploadedAt)}</DataTableCell>
+              </DataTableRow>
+            ))
+          )}
+        </DataTableBody>
+      </DataTable>
     </section>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  detail,
-  tone,
-  icon,
-}: {
-  label: string
-  value: string
-  detail: string
-  tone: "primary" | "success" | "warning" | "danger"
-  icon: React.ReactNode
-}) {
-  const toneClass =
-    tone === "danger"
-      ? "border-danger-border bg-danger-soft text-danger"
-      : tone === "warning"
-        ? "border-warning-border bg-warning-soft text-warning"
-        : tone === "success"
-          ? "border-success-border bg-success-soft text-success"
-          : "border-primary-border bg-primary-soft text-primary"
-
-  return (
-    <div className={`rounded-lg border p-4 ${toneClass}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-foreground">{label}</div>
-          <div className="mt-4 text-3xl font-bold text-foreground">{value}</div>
-          <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
-        </div>
-        <div>{icon}</div>
-      </div>
-    </div>
   )
 }
 

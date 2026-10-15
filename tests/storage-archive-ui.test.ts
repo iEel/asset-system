@@ -13,7 +13,7 @@ test("storage page uses the archive button only for orphan file actions", () => 
   assert.match(source, /import \{ StorageArchiveButton \} from "@\/components\/admin\/storage-archive-button"/)
   assert.match(source, /const user = await requirePagePermission\(locale, "setting", "view"\)/)
   assert.match(source, /const canArchiveStorageFiles = hasPermission\(user, "setting", "edit"\)/)
-  assert.match(source, /<th[^>]*>\{t\("action"\)\}<\/th>/)
+  assert.match(source, /<DataTableHead\b[^>]*>\{t\("action"\)\}<\/DataTableHead>/)
   assert.ok(source.includes("<StorageArchiveButton relativePath={action.relativePath} />"))
 
   const buttonIndex = source.indexOf("<StorageArchiveButton relativePath={action.relativePath} />")

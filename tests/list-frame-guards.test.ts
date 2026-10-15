@@ -108,6 +108,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}reports/loading.tsx`,
   `${D}admin/roles/page.tsx`,
   `${D}admin/logs/page.tsx`,
+  `${D}admin/storage/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -194,7 +195,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}admin/approvals/page.tsx`]: 1,
     [`${D}admin/readiness/page.tsx`]: 1,
     [`${D}admin/settings/page.tsx`]: 1,
-    [`${D}admin/storage/page.tsx`]: 1,
     [`${D}dashboard/page.tsx`]: 1,
     [`${D}my-assets/page.tsx`]: 1,
     [`${D}notifications/page.tsx`]: 1,
@@ -246,7 +246,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
     // 2B-5
-    [`${D}admin/storage/page.tsx`]: 11,
     [`${D}my-assets/page.tsx`]: 1,
     [`${C}reports/responsive-report-list.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -257,8 +256,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes SortableColumnHeader (R-h)
   },
   LT3: {
-    // 2B-5
-    [`${D}admin/storage/page.tsx`]: 2,
   },
   LT4: {
     // 2B-1
@@ -269,8 +266,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes MasterDataPagination (R-h)
   },
   LV1: {
-    // 2B-5
-    [`${D}admin/storage/page.tsx`]: 7,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 3, // → 3 (KEEP): R-f, 2C plan 4
     [`${C}assets/asset-import-preview-panel.tsx`]: 4, // → 4 (KEEP): R-f, 2C plan 4
@@ -289,7 +284,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
     // 2B-5
     [`${D}admin/approvals/page.tsx`]: 1,
-    [`${D}admin/storage/page.tsx`]: 1,
     [`${D}my-assets/page.tsx`]: 2,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${D}asset-management/labels/page.tsx`]: 4, // → 4 (KEEP): label data (R-n)
@@ -322,7 +316,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}admin/approvals/history/page.tsx`]: 1,
     [`${D}admin/approvals/page.tsx`]: 1,
     [`${D}admin/readiness/page.tsx`]: 1,
-    [`${D}admin/storage/page.tsx`]: 1,
     [`${D}my-assets/page.tsx`]: 1,
     [`${D}notifications/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 2,
