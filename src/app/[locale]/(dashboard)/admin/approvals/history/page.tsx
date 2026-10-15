@@ -1,18 +1,17 @@
 import Link from "next/link"
 import type React from "react"
-import type { Prisma } from "@prisma/client"
 import { notFound, redirect } from "next/navigation"
 import { getMessages, getTranslations } from "next-intl/server"
-import { CheckCircle2, ClipboardList, FileCheck2, History, RotateCcw, XCircle } from "lucide-react"
+import { CheckCircle2, ClipboardList, History, RotateCcw, XCircle } from "lucide-react"
 import { getSessionUser, hasPermission } from "@/lib/auth-utils"
 import {
   approvalDecisionFilters,
   approvalDecisionModuleFilters,
   buildApprovalDecisionLogItems,
-  filterApprovalDecisionLogItems,
+  buildApprovalDecisionLogWhere,
   parseApprovalDecisionFilter,
   parseApprovalDecisionModuleFilter,
-  summarizeApprovalDecisionLog,
+  summarizeApprovalDecisionCounts,
   type ApprovalDecision,
   type ApprovalDecisionFilter,
   type ApprovalDecisionLogItem,
@@ -20,13 +19,23 @@ import {
 } from "@/lib/approval-decision-log"
 import { getApprovalInboxAccess } from "@/lib/approval-inbox-query"
 import { prisma } from "@/lib/db"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { paginationRange } from "@/lib/master-data-query"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTableFoot } from "@/components/ui/data-table"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { TabNav } from "@/components/ui/tab-nav"
 
 type ApprovalHistoryPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ module?: string | string[]; decision?: string | string[] }>
+  searchParams: Promise<{ module?: string | string[]; decision?: string | string[]; page?: string | string[]; pageSize?: string | string[] }>
 }
 
 export default async function ApprovalHistoryPage({ params, searchParams }: ApprovalHistoryPageProps) {
@@ -39,24 +48,44 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
   if (!access.canAnyApproval) notFound()
 
   const t = await getTranslations("approvalHistoryPage")
+  const tCommon = await getTranslations("common")
   const messages = await getMessages()
   const systemLogMessages = messages.systemLogPage && typeof messages.systemLogPage === "object"
     ? messages.systemLogPage as Record<string, string>
     : {}
   const translateLog = (key: string) => systemLogMessages[key.replaceAll(".", "_")] ?? key
 
-  const logs = await prisma.systemLog.findMany({
-    where: { OR: getAllowedDecisionWhere(access, hasPermission(user, "maintenance", "edit")) },
-    include: { user: { select: { username: true, displayName: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 150,
-  })
-  const recordLabels = await buildSystemLogRecordLabels(logs)
-  const items = buildApprovalDecisionLogItems(logs, recordLabels, locale, translateLog)
-  const summary = summarizeApprovalDecisionLog(items)
   const activeModule = parseApprovalDecisionModuleFilter(query.module)
   const activeDecision = parseApprovalDecisionFilter(query.decision)
-  const filteredItems = filterApprovalDecisionLogItems(items, activeModule, activeDecision)
+  const listPage = parseListPage({ page: query.page, pageSize: query.pageSize })
+  // The list URL keeps both tabs; the default page and page size stay out of it (spec 2B B4).
+  const listHref = (next: { page?: number; pageSize?: number }) => buildFilterHref(locale, activeModule, activeDecision, "module", activeModule, next)
+  const decisionAccess = { access, canSeeRepairCloseHistory: hasPermission(user, "maintenance", "edit") }
+  // Every decision this user may see (the strip and the tab counts), and the decisions of the chosen tabs (the list):
+  // full totals and real pages instead of the newest 150 rows (spec 2B §5.9.2 row 2, §5.9.3).
+  const allowedWhere = buildApprovalDecisionLogWhere({ ...decisionAccess, module: "all", decision: "all" })
+  const where = buildApprovalDecisionLogWhere({ ...decisionAccess, module: activeModule, decision: activeDecision })
+  const { skip, take } = listPageWindow(listPage)
+  const [logs, total, decisionCounts] = await withPerformanceTiming("approval-history.list-data", () => Promise.all([
+    prisma.systemLog.findMany({
+      where,
+      include: { user: { select: { username: true, displayName: true } } },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      skip,
+      take,
+    }),
+    prisma.systemLog.count({ where }),
+    prisma.systemLog.groupBy({ by: ["module", "action"], where: allowedWhere, _count: { _all: true } }),
+  ]))
+  // A page past the last one (an old link, or a tab with fewer decisions) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listPage.pageSize)
+  if (logs.length === 0 && total > 0 && listPage.page > lastPage) {
+    redirect(listHref({ page: lastPage, pageSize: listPage.pageSize }))
+  }
+  const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
+  const recordLabels = await buildSystemLogRecordLabels(logs)
+  const items = buildApprovalDecisionLogItems(logs, recordLabels, locale, translateLog)
+  const summary = summarizeApprovalDecisionCounts(decisionCounts)
 
   const moduleOptions = approvalDecisionModuleFilters.map((filter) => ({
     key: filter,
@@ -71,26 +100,20 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Link
-          href={`/${locale}/admin/approvals`}
-          className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          <FileCheck2 className="h-4 w-4" />
-          {t("backToInbox")}
-        </Link>
-      </div>
+      <PageHeader
+        title={t("title")}
+        meta={t("subtitle")}
+        back={<PageBackLink href={`/${locale}/admin/approvals`} label={t("backToInbox")} />}
+      />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <SummaryCard label={t("total")} value={summary.total} tone={summary.total > 0 ? "primary" : "muted"} icon={<History className="h-5 w-5" />} />
-        <SummaryCard label={t("approved")} value={summary.approve} tone="success" icon={<CheckCircle2 className="h-5 w-5" />} />
-        <SummaryCard label={t("rejected")} value={summary.reject} tone="danger" icon={<XCircle className="h-5 w-5" />} />
-        <SummaryCard label={t("closed")} value={summary.close + summary.execute} tone="warning" icon={<ClipboardList className="h-5 w-5" />} />
-      </section>
+      <StatStrip
+        items={[
+          { key: "total", label: t("total"), value: formatCount(summary.total) },
+          { key: "approved", label: t("approved"), value: formatCount(summary.approve) },
+          { key: "rejected", label: t("rejected"), value: formatCount(summary.reject) },
+          { key: "closed", label: t("closed"), value: formatCount(summary.close + summary.execute) },
+        ]}
+      />
 
       <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4">
@@ -105,6 +128,7 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
             activeDecision={activeDecision}
             locale={locale}
             param="module"
+            pageSize={listPage.pageSize}
           />
           <FilterGroup
             label={t("decisionFilter")}
@@ -113,21 +137,21 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
             activeDecision={activeDecision}
             locale={locale}
             param="decision"
+            pageSize={listPage.pageSize}
           />
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="flex flex-col gap-2 border-b border-border p-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="font-semibold text-foreground">{t("timelineTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("timelineDescription")}</p>
-          </div>
-          <div className="text-sm font-medium text-muted-foreground">{t("filteredCount", { count: filteredItems.length })}</div>
-        </div>
-
-        {filteredItems.length === 0 ? (
-          <div className="p-5">
+      <ContentPanel
+        divided
+        flush
+        className="overflow-hidden"
+        title={t("timelineTitle")}
+        description={t("timelineDescription")}
+        actions={<span className="text-sm font-medium text-muted-foreground num">{t("filteredCount", { count: formatCount(total) })}</span>}
+      >
+        {items.length === 0 ? (
+          <div className="p-4 md:p-5">
             <ActionEmptyState
               icon={<History className="h-6 w-6" />}
               title={t("emptyTitle")}
@@ -136,16 +160,38 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filteredItems.map((item) => (
+            {items.map((item) => (
               <DecisionRow key={item.id} item={item} labels={{ actor: t("actor"), decidedAt: t("decidedAt"), viewDetails: t("viewDetails"), remark: t("remark"), field: t("field"), before: t("before"), after: t("after") }} />
             ))}
           </div>
         )}
-      </section>
+        {total > 0 ? (
+          <DataTableFoot>
+            <Pagination
+              page={listPage.page}
+              totalPages={totalPages}
+              previousHref={listHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
+              nextHref={listHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
+              pageSize={listPage.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          </DataTableFoot>
+        ) : null}
+      </ContentPanel>
     </div>
   )
 }
 
+// A label over the row of tab links of one filter. A tab goes back to page 1 and keeps the page size (spec 2B B4).
 function FilterGroup({
   label,
   options,
@@ -153,6 +199,7 @@ function FilterGroup({
   activeDecision,
   locale,
   param,
+  pageSize,
 }: {
   label: string
   options: Array<{ key: ApprovalDecisionModuleFilter | ApprovalDecisionFilter; label: string; count: number }>
@@ -160,48 +207,22 @@ function FilterGroup({
   activeDecision: ApprovalDecisionFilter
   locale: string
   param: "module" | "decision"
+  pageSize: number
 }) {
   return (
     <div>
-      <div className="mb-2 text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
-          <FilterChip
-            key={option.key}
-            href={buildFilterHref(locale, activeModule, activeDecision, param, option.key)}
-            active={param === "module" ? activeModule === option.key : activeDecision === option.key}
-            label={option.label}
-            count={option.count}
-          />
-        ))}
-      </div>
+      <div className="mb-1 text-meta font-medium text-muted-foreground">{label}</div>
+      <TabNav
+        aria-label={label}
+        items={options.map((option) => ({
+          key: option.key,
+          label: option.label,
+          count: formatCount(option.count),
+          href: buildFilterHref(locale, activeModule, activeDecision, param, option.key, { pageSize }),
+        }))}
+        current={param === "module" ? activeModule : activeDecision}
+      />
     </div>
-  )
-}
-
-function FilterChip({
-  href,
-  active,
-  label,
-  count,
-}: {
-  href: string
-  active: boolean
-  label: string
-  count: number
-}) {
-  return (
-    <Link
-      href={href}
-      className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
-        active
-          ? "border-primary bg-primary-soft text-primary"
-          : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-      }`}
-    >
-      <span>{label}</span>
-      <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-foreground">{count.toLocaleString("th-TH")}</span>
-    </Link>
   )
 }
 
@@ -284,56 +305,21 @@ function DecisionRow({
   )
 }
 
-function SummaryCard({
-  label,
-  value,
-  tone,
-  icon,
-}: {
-  label: string
-  value: number
-  tone: "primary" | "success" | "danger" | "warning" | "muted"
-  icon: React.ReactNode
-}) {
-  return (
-    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
-        </div>
-        {icon}
-      </div>
-    </div>
-  )
-}
-
 function buildFilterHref(
   locale: string,
   activeModule: ApprovalDecisionModuleFilter,
   activeDecision: ApprovalDecisionFilter,
   param: "module" | "decision",
-  value: ApprovalDecisionModuleFilter | ApprovalDecisionFilter
+  value: ApprovalDecisionModuleFilter | ApprovalDecisionFilter,
+  listPage: { page?: number; pageSize?: number },
 ) {
   const moduleFilterValue = param === "module" ? value : activeModule
   const decision = param === "decision" ? value : activeDecision
   const query = new URLSearchParams()
   if (moduleFilterValue !== "all") query.set("module", moduleFilterValue)
   if (decision !== "all") query.set("decision", decision)
-  const queryString = query.toString()
+  const queryString = appendListPage(query, listPage).toString()
   return `/${locale}/admin/approvals/history${queryString ? `?${queryString}` : ""}`
-}
-
-function getAllowedDecisionWhere(
-  access: ReturnType<typeof getApprovalInboxAccess>,
-  canSeeRepairCloseHistory: boolean
-): Prisma.SystemLogWhereInput[] {
-  const conditions: Prisma.SystemLogWhereInput[] = []
-  if (access.canApproveDisposal) conditions.push({ module: "disposal", action: { in: ["approve", "reject", "execute", "execute_historical_without_evidence"] } })
-  // Repair close approvals were retired in 2026-10; their old decisions stay searchable here.
-  if (canSeeRepairCloseHistory) conditions.push({ module: "maintenance", action: "close" })
-  if (access.canApproveAudit) conditions.push({ module: "audit", action: { in: ["approve_finding", "reject_finding", "close"] } })
-  return conditions
 }
 
 function decisionIcon(decision: ApprovalDecision): React.ReactNode {
@@ -355,12 +341,4 @@ function decisionPillClass(decision: ApprovalDecision) {
   if (decision === "reject") return "bg-danger-soft text-danger"
   if (decision === "execute") return "bg-primary-soft text-primary"
   return "bg-warning-soft text-warning"
-}
-
-function summaryClass(tone: "primary" | "success" | "danger" | "warning" | "muted") {
-  if (tone === "primary") return "border-primary-border bg-primary-soft text-primary"
-  if (tone === "success") return "border-success-border bg-success-soft text-success"
-  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
-  return "border-border bg-surface text-muted-foreground"
 }

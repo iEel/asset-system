@@ -653,3 +653,27 @@ test("approval inbox: PageHeader, one StatStrip, the queue in a divided panel wi
   assert.match(source, /<span className="tag">\{item\.permissionKey\}<\/span>/)
   assert.doesNotMatch(source, /function (?:FilterChip|SummaryCard|summaryClass)\b|toLocaleString\(|font-mono|"-"|<h1\b/)
 })
+
+// Plan 2B-5 Task 5 (spec 2B §5.6 row admin/approvals/history, §5.9.2 row 2, §4.5.2 #31, B2, B4): the decision
+// history pages in the database (it stopped at the newest 150 rows and counted only those), its two filter rows are
+// TabNav with full counts, the strip counts every decision, and the back button points left.
+test("approval history: real pages and full counts from the database, two TabNav rows and a back link that points left (spec 2B §5.6, §5.9.2 row 2)", () => {
+  const source = read(`${D}admin/approvals/history/page.tsx`)
+  for (const part of ["<PageHeader", "<StatStrip", "<ContentPanel", "<DataTableFoot>", "<Pagination", "<DecisionRow"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /back=\{<PageBackLink href=\{`\/\$\{locale\}\/admin\/approvals`\} label=\{t\("backToInbox"\)\} \/>\}/, "B2: the back button is the left arrow, not FileCheck2")
+  assert.match(source, /const listPage = parseListPage\(\{ page: query\.page, pageSize: query\.pageSize \}\)/)
+  assert.match(source, /const allowedWhere = buildApprovalDecisionLogWhere\(\{ \.\.\.decisionAccess, module: "all", decision: "all" \}\)/)
+  assert.match(source, /const where = buildApprovalDecisionLogWhere\(\{ \.\.\.decisionAccess, module: activeModule, decision: activeDecision \}\)/)
+  assert.match(source, /await withPerformanceTiming\("approval-history\.list-data", \(\) => Promise\.all\(\[\n\s+prisma\.systemLog\.findMany\(\{[\s\S]*?orderBy: \[\{ createdAt: "desc" \}, \{ id: "asc" \}\],\n\s+skip,\n\s+take,\n\s+\}\),\n\s+prisma\.systemLog\.count\(\{ where \}\),\n\s+prisma\.systemLog\.groupBy\(\{ by: \["module", "action"\], where: allowedWhere, _count: \{ _all: true \} \}\),\n\s+\]\)\)/)
+  assert.match(source, /const summary = summarizeApprovalDecisionCounts\(decisionCounts\)/, "the strip and the tab counts are full totals (spec 2B §5.9.3)")
+  assert.doesNotMatch(source, /\btake: \d+|filterApprovalDecisionLogItems|getAllowedDecisionWhere/, "no fixed number of rows and no filter in JS")
+  assert.match(source, /^import \{ notFound, redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(logs\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
+  assert.match(source, /const queryString = appendListPage\(query, listPage\)\.toString\(\)/)
+  assert.match(source, /href: buildFilterHref\(locale, activeModule, activeDecision, param, option\.key, \{ pageSize \}\)/, "a tab goes back to page 1 and keeps the page size")
+  assert.equal(source.match(/pageSize=\{listPage\.pageSize\}/g)?.length, 3, "both filter rows and the Pagination get the page size")
+  assert.match(source, /<TabNav\n\s+aria-label=\{label\}/)
+  assert.doesNotMatch(source, /\bFileCheck2\b|function (?:FilterChip|SummaryCard|summaryClass)\b|toLocaleString\(|<h1\b/)
+})
