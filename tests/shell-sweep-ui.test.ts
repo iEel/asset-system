@@ -22,3 +22,10 @@ test("the topbar uses Button for its icon buttons and menu triggers, and its rig
   assert.match(search, /<div ref=\{anchorRef\} className="relative hidden w-\[min\(28rem,36vw\)\] min-w-0 max-w-full lg:block">/)
   assert.match(search, /className="h-9 w-full min-w-0 rounded-md /)
 })
+
+test("the sidebar drawer's close button is a ghost icon Button; the group row stays the sidebar's own button (spec 2D M29)", () => {
+  const source = read(`${C}layout/sidebar.tsx`)
+  assert.match(source, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
+  assert.match(source, /<Button variant="ghost" size="icon" onClick=\{onMobileClose\} className="ml-auto" aria-label=\{t\("closeMenu"\)\}>\n\s+<X aria-hidden="true" \/>\n\s+<\/Button>/)
+  assert.equal(source.match(/<button\b/g)?.length, 1, "only the group disclosure row, a nav row of its own")
+})

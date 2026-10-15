@@ -50,6 +50,7 @@ import {
 } from "lucide-react"
 import { useRef, useState } from "react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
   filterNavigationSectionsByPermission,
@@ -248,14 +249,9 @@ export function Sidebar({
             {t("brandName")}
           </span>
           {mobile ? (
-            <button
-              type="button"
-              onClick={onMobileClose}
-              className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-              aria-label={t("closeMenu")}
-            >
-              <X size={18} />
-            </button>
+            <Button variant="ghost" size="icon" onClick={onMobileClose} className="ml-auto" aria-label={t("closeMenu")}>
+              <X aria-hidden="true" />
+            </Button>
           ) : null}
         </div>
 
