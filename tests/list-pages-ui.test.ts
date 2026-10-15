@@ -582,7 +582,7 @@ test("roles: PageHeader, one StatStrip, and the role list and permission matrix 
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}/)
-  assert.match(source, /<Link href="\/api\/admin\/roles\/export" className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(source, /<a href="\/api\/admin\/roles\/export" download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   assert.equal(source.match(/<ContentPanel divided flush className="overflow-hidden"/g)?.length, 2)
   assert.equal(source.match(/<DataTable framed=\{false\} caption=\{t\("(?:roleSummary|permissionMatrix)"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/g)?.length, 2, "both tables sit flush in their panel and scroll sideways with the hint (B6)")
   assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/, "edit is the only command: no ⋯ (spec 2B §5.6)")
@@ -798,4 +798,14 @@ test("plan 2B-5: the link rows guard LN1 cannot see are TabNav (spec 2B §5.14, 
   for (const path of [`${D}admin/logs/page.tsx`, `${D}admin/approvals/page.tsx`, `${D}admin/approvals/history/page.tsx`, `${D}work-center/page.tsx`]) {
     assert.match(read(path), /<TabNav\b/, `${path}: no <TabNav`)
   }
+})
+
+// Plan 2D-1 (spec 2D M31): a header button that downloads from an API route is a plain <a href> with buttonVariants
+// (DESIGN.md Navigation), so Next.js neither prefetches nor client-routes the download.
+test("the role, category and brand downloads are plain <a> links to the API (spec 2D M31)", () => {
+  for (const path of [`${D}admin/roles/page.tsx`, `${D}master-data/categories/page.tsx`, `${D}master-data/brands/page.tsx`]) {
+    assert.doesNotMatch(read(path), /<Link href="\/api\//, path)
+  }
+  assert.equal(read(`${D}master-data/categories/page.tsx`).match(/<a href="\/api\/categories\/(?:export|import-template)" download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/g)?.length, 2)
+  assert.equal(read(`${D}master-data/brands/page.tsx`).match(/<a href="\/api\/brand-models\/(?:export|import-template)" download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/g)?.length, 2)
 })

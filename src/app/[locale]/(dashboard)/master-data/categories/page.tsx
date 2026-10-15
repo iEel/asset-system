@@ -137,14 +137,14 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
         meta={t("subtitle")}
         actions={
           <>
-            <Link href="/api/categories/export" className={buttonVariants({ variant: "outline", size: "md" })}>
+            <a href="/api/categories/export" download className={buttonVariants({ variant: "outline", size: "md" })}>
               <Download aria-hidden="true" />
               {t("downloadCategoryExport")}
-            </Link>
-            <Link href="/api/categories/import-template" className={buttonVariants({ variant: "outline", size: "md" })}>
+            </a>
+            <a href="/api/categories/import-template" download className={buttonVariants({ variant: "outline", size: "md" })}>
               <FileSpreadsheet aria-hidden="true" />
               {t("downloadCategoryTemplate")}
-            </Link>
+            </a>
             <Link href={appendMasterDataReturnTo(`/${locale}/master-data/categories/new`, categoryReturnHref)} className={buttonVariants({ size: "md" })}>
               <Plus aria-hidden="true" />
               {tCommon("create")}

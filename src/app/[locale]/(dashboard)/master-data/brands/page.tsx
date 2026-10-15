@@ -210,14 +210,14 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
         meta={t("subtitle")}
         actions={
           <>
-            <Link href="/api/brand-models/export" className={buttonVariants({ variant: "outline", size: "md" })}>
+            <a href="/api/brand-models/export" download className={buttonVariants({ variant: "outline", size: "md" })}>
               <Download aria-hidden="true" />
               {t("downloadBrandModelExport")}
-            </Link>
-            <Link href="/api/brand-models/import-template" className={buttonVariants({ variant: "outline", size: "md" })}>
+            </a>
+            <a href="/api/brand-models/import-template" download className={buttonVariants({ variant: "outline", size: "md" })}>
               <FileSpreadsheet aria-hidden="true" />
               {t("downloadBrandModelTemplate")}
-            </Link>
+            </a>
             <Link href={appendMasterDataReturnTo(`/${locale}/master-data/brands/new`, brandReturnHref)} className={buttonVariants({ variant: "outline", size: "md" })}>
               <Plus aria-hidden="true" />
               {t("createBrand")}

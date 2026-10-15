@@ -94,10 +94,10 @@ export default async function RolesPage({ params }: RolesPageProps) {
         meta={t("subtitle")}
         actions={
           canExport ? (
-            <Link href="/api/admin/roles/export" className={buttonVariants({ variant: "outline", size: "md" })}>
+            <a href="/api/admin/roles/export" download className={buttonVariants({ variant: "outline", size: "md" })}>
               <Download aria-hidden="true" />
               {t("exportAudit")}
-            </Link>
+            </a>
           ) : undefined
         }
       />
