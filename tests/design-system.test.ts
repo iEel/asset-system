@@ -87,7 +87,7 @@ test("maps seeded asset status and condition values to explicit semantic tones",
 })
 
 const buttonVariantNames = ["default", "outline", "ghost", "danger", "destructive", "warning"] as const
-const buttonSizeNames = ["sm", "md", "lg", "default", "icon-sm", "icon"] as const
+const buttonSizeNames = ["sm", "md", "lg", "default", "icon-sm", "icon", "icon-lg"] as const
 const classList = (value: string) => value.split(/\s+/).filter(Boolean)
 
 test("button variants keep 44px mobile touch targets and AA hover fills", () => {
@@ -102,6 +102,7 @@ test("button variants keep 44px mobile touch targets and AA hover fills", () => 
   assert.ok(classList(buttonVariants({ variant: "outline" })).includes("border"), "the base draws a 1px border")
   assert.match(buttonVariants({ size: "sm" }), /min-h-11 px-2\.5 text-meta md:h-8 md:min-h-0/)
   assert.match(buttonVariants({ size: "icon" }), /min-h-11 min-w-11 md:size-10 md:min-h-0 md:min-w-0/)
+  assert.match(buttonVariants({ size: "icon-lg" }), /min-h-11 min-w-11 md:size-10 md:min-h-0 md:min-w-0/)
   assert.doesNotMatch(`${primary} ${buttonVariants({ variant: "destructive" })}`, /dark:/)
 })
 
@@ -152,7 +153,7 @@ test("button sizes: sm 32, md 36, lg 40 from md up, default stays lg until phase
     assert.ok(classList(buttonVariants({ size })).includes("rounded-control"), `${size} is a small control (6px)`)
     assert.doesNotMatch(buttonVariants({ size }), /rounded-md/, size)
   }
-  for (const size of ["md", "lg", "default", "icon"] as const) {
+  for (const size of ["md", "lg", "default", "icon", "icon-lg"] as const) {
     assert.ok(classList(buttonVariants({ size })).includes("rounded-md"), `${size} matches the fields (8px)`)
     assert.doesNotMatch(buttonVariants({ size }), /rounded-control/, size)
   }

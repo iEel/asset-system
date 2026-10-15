@@ -2,12 +2,14 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 // Size strings live in constants so phase 2D can switch `default` and `icon` to 36px by editing one line each.
 // Below md every size is at least 44px tall. Radius follows the mockup (spec I15): sm and icon-sm are small
-// controls (rounded-control, 6px); md, lg, default and icon match the fields (rounded-md, 8px).
+// controls (rounded-control, 6px); md, lg, default, icon and icon-lg match the fields (rounded-md, 8px).
+// lg and icon-lg (40px from md) are only for a button in the same row as a 40px field (spec 2D D5, D6).
 const sizeSm = "min-h-11 px-2.5 text-meta md:h-8 md:min-h-0 rounded-control"
 const sizeMd = "min-h-11 px-3.5 text-sm md:h-9 md:min-h-0 rounded-md"
 const sizeLg = "min-h-11 px-4 text-sm md:h-10 md:min-h-0 rounded-md"
 const sizeIconSm = "min-h-11 min-w-11 md:size-8 md:min-h-0 md:min-w-0 rounded-control"
 const sizeIcon = "min-h-11 min-w-11 md:size-10 md:min-h-0 md:min-w-0 rounded-md"
+const sizeIconLg = "min-h-11 min-w-11 md:size-10 md:min-h-0 md:min-w-0 rounded-md"
 
 // Every variant draws a 1px border, so all variants share one box size. The disabled look wins over every
 // variant and state because Tailwind emits hover:, active:, disabled: and aria-disabled: rules in that order.
@@ -31,6 +33,7 @@ export const buttonVariants = cva(
         default: sizeLg,
         "icon-sm": sizeIconSm,
         icon: sizeIcon,
+        "icon-lg": sizeIconLg,
       },
     },
     defaultVariants: {
