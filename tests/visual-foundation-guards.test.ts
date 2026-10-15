@@ -251,8 +251,6 @@ test("R7 neutral fills are opaque tokens outside table headers", () => {
 // The commit that moves a table onto DataTable deletes its row; never raise one. Phase 2B plan 5 drops the <th line
 // filter above and keeps one test with the rows of the 2C batch 4 files; 2C plan 4 or 2D empties those.
 const TABLE_HEADER_FILLS: Record<string, number> = {
-  // 2B-5
-  "src/components/reports/responsive-report-list.tsx": 1,
   // 2C plan 4 or 2D (2C batch 4 files, R-e)
   "src/components/assets/asset-import-preview-panel.tsx": 1,
 }

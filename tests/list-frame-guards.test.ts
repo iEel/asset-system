@@ -118,6 +118,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}my-assets/page.tsx`,
   `${C}reports/report-filter-panel.tsx`,
   `${C}reports/report-view-tabs.tsx`,
+  `${C}reports/responsive-report-list.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -245,8 +246,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
-    // 2B-5
-    [`${C}reports/responsive-report-list.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}assets/asset-import-preview-panel.tsx`]: 5, // → 5 (KEEP): 2C batch 4 (R-e, O13)
   },

@@ -85,7 +85,7 @@ test("wide report datasets have mutually exclusive table and mobile list hooks",
   assert.match(responsiveList, /hidden md:block/)
   assert.match(responsiveList, /data-report-mobile-list/)
   assert.match(responsiveList, /md:hidden/)
-  assert.match(responsiveList, /<th/)
+  assert.match(responsiveList, /<DataTableHead\b/)
   assert.match(responsiveList, /<dl/)
 
   assert.equal(overviewView.match(/<ResponsiveReportList/g)?.length, 1)
@@ -152,4 +152,15 @@ test("cross-scope cards and preview share the drilldown filter overrides", () =>
   assert.match(page, /const crossScopeFilters = parseAssetListParams\(\{ \.\.\.filters, dataQuality: "", statusId: "", page: 1 \}\)/)
   assert.match(page, /buildAssetCrossScopeSummary\(buildAssetWhere\(crossScopeFilters\), 8\)/)
   assert.ok((page.match(/buildAssetQueryString\(crossScopeFilters,/g)?.length ?? 0) >= 5)
+})
+
+// Plan 2B-5 Task 11 (spec 2B §5.6 row reports, §3.4, B3): from md the wide report lists are the shared DataTable with
+// no frame of its own (the panel around it is the frame), a caption, white 13px heads in sentence case and numbers on
+// the right; an empty list is one EmptyNote line. This file reads the sources raw (CRLF): no line breaks here.
+test("wide report lists render the shared DataTable from md and one EmptyNote line when empty (spec 2B §5.6)", () => {
+  assert.match(responsiveList, /<DataTable data-report-desktop-table framed=\{false\} caption=\{caption\} className="hidden md:block">/)
+  assert.match(responsiveList, /<DataTableHead key=\{column\.key\} align=\{column\.numeric \? "right" : "left"\}>/)
+  assert.match(responsiveList, /<DataTableCell key=\{column\.key\} numeric=\{column\.numeric\} className=\{column\.className\}>/)
+  assert.match(responsiveList, /return <EmptyNote padded>\{emptyLabel\}<\/EmptyNote>/)
+  assert.doesNotMatch(responsiveList, /<table\b|<thead\b|<th\b|<td\b|uppercase|bg-muted/)
 })

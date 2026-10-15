@@ -1,4 +1,6 @@
 import type { ReactNode } from "react"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { cn } from "@/lib/utils"
 
 export type ResponsiveReportColumn<Row> = {
@@ -7,53 +9,53 @@ export type ResponsiveReportColumn<Row> = {
   render: (row: Row) => ReactNode
   className?: string
   mobileClassName?: string
+  // A count or an amount: the head and the cell sit on the right, on one line, with tabular figures (spec 2B §5.7).
+  numeric?: boolean
 }
 
+// Wide report rows (spec 2B §5.6): the shared DataTable from md, without a frame of its own because the panel around
+// it is the frame, and two-column cards below md. caption names the table for screen readers (the panel's title).
 export function ResponsiveReportList<Row>({
   rows,
   rowKey,
   columns,
   emptyLabel,
+  caption,
 }: {
   rows: Row[]
   rowKey: (row: Row) => string
   columns: ResponsiveReportColumn<Row>[]
   emptyLabel: string
+  caption?: string
 }) {
   if (rows.length === 0) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">{emptyLabel}</div>
+    return <EmptyNote padded>{emptyLabel}</EmptyNote>
   }
 
   return (
     <>
-      <div data-report-desktop-table className="hidden md:block overflow-x-auto">
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-muted/40">
-            <tr>
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  scope="col"
-                  className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground"
-                >
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((row) => (
-              <tr key={rowKey(row)}>
-                {columns.map((column) => (
-                  <td key={column.key} className={cn("px-4 py-3", column.className)}>
-                    {column.render(row)}
-                  </td>
-                ))}
-              </tr>
+      <DataTable data-report-desktop-table framed={false} caption={caption} className="hidden md:block">
+        <DataTableHeader>
+          <tr>
+            {columns.map((column) => (
+              <DataTableHead key={column.key} align={column.numeric ? "right" : "left"}>
+                {column.label}
+              </DataTableHead>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {rows.map((row) => (
+            <DataTableRow key={rowKey(row)}>
+              {columns.map((column) => (
+                <DataTableCell key={column.key} numeric={column.numeric} className={column.className}>
+                  {column.render(row)}
+                </DataTableCell>
+              ))}
+            </DataTableRow>
+          ))}
+        </DataTableBody>
+      </DataTable>
 
       <div data-report-mobile-list className="grid gap-2 p-2 md:hidden">
         {rows.map((row) => (
