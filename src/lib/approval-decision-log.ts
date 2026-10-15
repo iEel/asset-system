@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import {
   buildSystemLogPresentation,
   type SystemLogChange,
@@ -98,6 +99,64 @@ export function filterApprovalDecisionLogItems(
     const decisionMatches = decisionFilter === "all" || item.decision === decisionFilter
     return moduleMatches && decisionMatches
   })
+}
+
+export type ApprovalDecisionAccess = { canApproveDisposal: boolean; canApproveAudit: boolean }
+
+export type ApprovalDecisionCountRow = { module: string; action: string; _count: { _all: number } }
+
+// The actions of each decision by module: the table getApprovalDecision reads, written once more as data so the
+// database can page and count the decision history (spec 2B §5.9.2 row 2). The test checks the two agree.
+const approvalDecisionActions: Record<ApprovalDecisionLogItem["module"], Partial<Record<ApprovalDecision, readonly string[]>>> = {
+  disposal: { approve: ["approve"], reject: ["reject"], execute: ["execute", "execute_historical_without_evidence"] },
+  maintenance: { close: ["close"] },
+  audit: { approve: ["approve_finding"], reject: ["reject_finding"], close: ["close"] },
+}
+
+// The decisions a user may see, cut by the module and decision tabs, as one where clause: the rows it finds are the
+// rows buildApprovalDecisionLogItems keeps, so the page and its counts come from the database, not from the newest
+// 150 rows. Old repair-close decisions (their approval was retired in 2026-10) show to whoever can edit maintenance.
+// An empty OR finds nothing, as the list showed nothing before.
+export function buildApprovalDecisionLogWhere({
+  access,
+  canSeeRepairCloseHistory,
+  module: moduleFilter,
+  decision: decisionFilter,
+}: {
+  access: ApprovalDecisionAccess
+  canSeeRepairCloseHistory: boolean
+  module: ApprovalDecisionModuleFilter
+  decision: ApprovalDecisionFilter
+}): Prisma.SystemLogWhereInput {
+  const allowed: Record<ApprovalDecisionLogItem["module"], boolean> = {
+    disposal: access.canApproveDisposal,
+    maintenance: canSeeRepairCloseHistory,
+    audit: access.canApproveAudit,
+  }
+  const conditions: Prisma.SystemLogWhereInput[] = []
+  for (const decisionModule of ["disposal", "maintenance", "audit"] as const) {
+    if (!allowed[decisionModule] || (moduleFilter !== "all" && moduleFilter !== decisionModule)) continue
+    const actions = Object.entries(approvalDecisionActions[decisionModule])
+      .filter(([decision]) => decisionFilter === "all" || decision === decisionFilter)
+      .flatMap(([, moduleActions]) => moduleActions ?? [])
+    if (actions.length > 0) conditions.push({ module: decisionModule, action: { in: actions } })
+  }
+  return { OR: conditions }
+}
+
+// The summary of summarizeApprovalDecisionLog, folded from a systemLog.groupBy by module and action over every
+// decision the user may see, so the strip and the tab counts are full totals (spec 2B §5.9.3).
+export function summarizeApprovalDecisionCounts(rows: readonly ApprovalDecisionCountRow[]) {
+  const summary = { total: 0, disposal: 0, maintenance: 0, audit: 0, approve: 0, reject: 0, close: 0, execute: 0 }
+  for (const row of rows) {
+    const decision = getApprovalDecision(row)
+    const decisionModule = getApprovalDecisionModule(row)
+    if (!decision || !decisionModule) continue
+    summary.total += row._count._all
+    summary[decisionModule] += row._count._all
+    summary[decision] += row._count._all
+  }
+  return summary
 }
 
 export function isApprovalDecisionLog(log: Pick<ApprovalDecisionLogSource, "module" | "action">) {
