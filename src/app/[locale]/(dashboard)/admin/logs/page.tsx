@@ -16,7 +16,8 @@ import {
 } from "@/lib/system-log-history"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { buildSystemLogPresentation } from "@/lib/system-log-presenter"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
+import { linkVariants } from "@/components/ui/button-variants"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
@@ -168,7 +169,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
                 <DataTableCell className="whitespace-nowrap text-foreground">{log.actionLabel}</DataTableCell>
                 <DataTableCell className="whitespace-nowrap text-muted-foreground">
                   {log.href ? (
-                    <Link href={log.href} className="font-medium text-primary hover:underline">
+                    <Link href={log.href} className={linkVariants({ size: "inherit" })}>
                       {log.recordLabel}
                     </Link>
                   ) : (
@@ -180,34 +181,33 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
                     <p className="font-medium text-foreground">{log.summary}</p>
                     {(log.changes.length > 0 || log.remark) ? (
                       <details className="group">
-                        <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">
+                        {/* list-item keeps the disclosure triangle that linkVariants' inline display would hide. */}
+                        <summary className={cn(linkVariants(), "list-item cursor-pointer")}>
                           {t("viewDetails")}
                         </summary>
-                        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-3">
+                        <div className="mt-2 space-y-2">
                           {log.changes.length > 0 ? (
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full text-xs">
-                                <thead>
-                                  <tr className="text-muted-foreground">
-                                    <th className="pb-1 pr-3 text-left font-medium">{t("field")}</th>
-                                    <th className="pb-1 pr-3 text-left font-medium">{t("before")}</th>
-                                    <th className="pb-1 text-left font-medium">{t("after")}</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                  {log.changes.map((change, index) => (
-                                    <tr key={`${log.id}-${change.field}-${index}`}>
-                                      <td className="py-1.5 pr-3 text-foreground">{change.field}</td>
-                                      <td className="py-1.5 pr-3">{change.before}</td>
-                                      <td className="py-1.5 text-foreground">{change.after}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                            <DataTable caption={t("viewDetails")}>
+                              <DataTableHeader>
+                                <tr>
+                                  <DataTableHead>{t("field")}</DataTableHead>
+                                  <DataTableHead>{t("before")}</DataTableHead>
+                                  <DataTableHead>{t("after")}</DataTableHead>
+                                </tr>
+                              </DataTableHeader>
+                              <DataTableBody>
+                                {log.changes.map((change, index) => (
+                                  <DataTableRow key={`${log.id}-${change.field}-${index}`}>
+                                    <DataTableCell className="text-foreground">{change.field}</DataTableCell>
+                                    <DataTableCell>{change.before}</DataTableCell>
+                                    <DataTableCell className="text-foreground">{change.after}</DataTableCell>
+                                  </DataTableRow>
+                                ))}
+                              </DataTableBody>
+                            </DataTable>
                           ) : null}
                           {log.remark ? (
-                            <p className="text-xs">
+                            <p className="text-meta">
                               <span className="font-medium text-foreground">{t("remark")}:</span> {log.remark}
                             </p>
                           ) : null}

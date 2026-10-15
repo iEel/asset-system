@@ -169,3 +169,11 @@ test("approval history: the filter panel is a ContentPanel, a row shows a module
   assert.match(source, /<DataTable caption=\{labels\.viewDetails\}>/)
   assert.doesNotMatch(source, /<table\b|<thead\b|<th\b|rounded-full|hover:underline|rounded-lg border|function (?:decisionClass|decisionPillClass)\b|bg-(?:success|warning|danger|primary)-soft/)
 })
+
+test("system log: the record link and the details toggle are text links, and the changes inside a row are a DataTable (spec 2D M29)", () => {
+  const source = read(`${D}admin/logs/page.tsx`)
+  assert.match(source, /<Link href=\{log\.href\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
+  assert.match(source, /<summary className=\{cn\(linkVariants\(\), "list-item cursor-pointer"\)\}>/)
+  assert.match(source, /<DataTable caption=\{t\("viewDetails"\)\}>/)
+  assert.doesNotMatch(source, /<table\b|<thead\b|<th\b|hover:underline|rounded-md border border-border bg-background p-3/)
+})
