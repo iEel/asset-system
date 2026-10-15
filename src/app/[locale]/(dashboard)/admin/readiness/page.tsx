@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { AlertTriangle, ArrowRight, CheckCircle2, Database, ShieldCheck, XCircle } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
 import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
@@ -16,8 +16,11 @@ import {
   systemSettingDefaults,
 } from "@/lib/system-setting-defaults"
 import { parseWorkflowApprovalPolicy } from "@/lib/workflow-approval"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 
 type ProductionReadinessPageProps = {
   params: Promise<{ locale: string }>
@@ -87,17 +90,8 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
         ]}
       />
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex items-start gap-3">
-          <div className="rounded-md border border-primary-border bg-primary-soft p-2 text-primary">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-foreground">{t("checklistTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("checklistDescription")}</p>
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <ContentPanel title={t("checklistTitle")} description={t("checklistDescription")}>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {checks.map((check) => (
             <ReadinessCheckCard
               key={check.key}
@@ -113,19 +107,12 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
             />
           ))}
         </div>
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex items-start gap-3">
-          <div className="rounded-md border border-border bg-background p-2 text-muted-foreground">
-            <Database className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-foreground">{t("scopeTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("scopeDescription")}</p>
-          </div>
-        </div>
-      </section>
+      {/* D7: what the checks cover is information, an info Notice with no box. */}
+      <Notice tone="info" title={t("scopeTitle")}>
+        {t("scopeDescription")}
+      </Notice>
     </div>
   )
 }
@@ -146,16 +133,13 @@ function ReadinessCheckCard({
   }
 }) {
   return (
-    <article className={`min-w-0 rounded-lg border p-4 ${checkCardClass(check.status)}`}>
+    <article className="min-w-0 rounded-md border border-border bg-background p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="font-semibold text-foreground">{labels.title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
         </div>
-        <span className={`inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${statusPillClass(check.status)}`}>
-          {statusIcon(check.status)}
-          {labels.status}
-        </span>
+        <StatusBadge label={labels.status} tone={checkTone(check.status)} />
       </div>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -214,20 +198,9 @@ function getPwaAssetReadiness() {
   }
 }
 
-function statusIcon(status: ProductionReadinessCheck["status"]) {
-  if (status === "pass") return <CheckCircle2 className="h-3 w-3" />
-  if (status === "warning") return <AlertTriangle className="h-3 w-3" />
-  return <XCircle className="h-3 w-3" />
-}
-
-function checkCardClass(status: ProductionReadinessCheck["status"]) {
-  if (status === "pass") return "border-success-border bg-success-soft"
-  if (status === "warning") return "border-warning-border bg-warning-soft"
-  return "border-danger-border bg-danger-soft"
-}
-
-function statusPillClass(status: ProductionReadinessCheck["status"]) {
-  if (status === "pass") return "bg-success-soft text-success"
-  if (status === "warning") return "bg-warning-soft text-warning"
-  return "bg-danger-soft text-danger"
+// The check's state is its badge (no tinted card): pass is calm, warning and fail need action.
+function checkTone(status: ProductionReadinessCheck["status"]): StatusTone {
+  if (status === "pass") return "success"
+  if (status === "warning") return "warning"
+  return "danger"
 }

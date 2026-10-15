@@ -138,3 +138,12 @@ test("the data-quality rule form is a ContentPanel whose count goes through form
   assert.match(source, /<ContentPanel\n\s+title=\{`\$\{labels\.enabled\}: \$\{formatCount\(enabledCount\)\}`\}\n\s+actions=\{/)
   assert.doesNotMatch(source, /toLocaleString|<section className="rounded-lg/)
 })
+
+test("readiness: the checklist is a ContentPanel of neutral cards with a status badge, and the scope note is an info Notice (spec 2D D7, D9)", () => {
+  const source = read(`${D}admin/readiness/page.tsx`)
+  assert.match(source, /<ContentPanel title=\{t\("checklistTitle"\)\} description=\{t\("checklistDescription"\)\}>/)
+  assert.match(source, /<Notice tone="info" title=\{t\("scopeTitle"\)\}>/)
+  assert.match(source, /<article className="min-w-0 rounded-md border border-border bg-background p-4">/)
+  assert.match(source, /<StatusBadge label=\{labels\.status\} tone=\{checkTone\(check\.status\)\} \/>/)
+  assert.doesNotMatch(source, /rounded-full|rounded-lg border|bg-(?:success|warning|danger|primary)-soft|function (?:checkCardClass|statusPillClass|statusIcon)\b/)
+})
