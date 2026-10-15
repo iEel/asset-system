@@ -122,6 +122,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}reports/reports-overview-view.tsx`,
   `${C}reports/reports-catalog-view.tsx`,
   `${C}reports/reports-operations-view.tsx`,
+  `${C}reports/reports-accounting-view.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -300,7 +301,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LV3: {
     // 2B-5
     [`${D}reports/page.tsx`]: 1,
-    [`${C}reports/reports-accounting-view.tsx`]: 9,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // → 5 (KEEP): print page, 2D (A/08:305)
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // → 1 (KEEP): print page, 2D (A/08:305)
@@ -320,7 +320,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-5
     [`${D}reports/page.tsx`]: 2,
     [`${D}work-center/page.tsx`]: 1,
-    [`${C}reports/reports-accounting-view.tsx`]: 10,
   },
   LK1: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)

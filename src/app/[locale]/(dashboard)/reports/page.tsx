@@ -49,6 +49,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const user = await requirePagePermission(locale, "report", "view")
   const t = await getTranslations("reportsPage")
   const tAsset = await getTranslations("asset")
+  const tCommon = await getTranslations("common")
   const canReportExport = hasPermission(user, "report", "export")
   const canAssetExport = hasPermission(user, "asset", "view")
   const canMaintenanceExport = hasPermission(user, "maintenance", "export")
@@ -379,6 +380,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               usefulLife: t("accountingUsefulLife"),
               ageMonths: t("accountingAgeMonths"),
               noAssets: t("accountingNoAssets"),
+              baht: tCommon("baht"),
             }}
           />
         )

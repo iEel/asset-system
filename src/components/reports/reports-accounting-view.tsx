@@ -1,11 +1,12 @@
 import Link from "next/link"
 import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { MetricCard } from "@/components/ui/metric-card"
+import { orNil } from "@/components/ui/nil"
+import { StatStrip } from "@/components/ui/stat-strip"
 import type { DepreciationSummary, DepreciableAsset } from "@/lib/asset-depreciation"
 import type { CostExposureAsset, CostInsightSummary } from "@/lib/cost-insights"
+import { formatCount, formatMoney } from "@/lib/display-format"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
-import { formatCurrency } from "@/lib/utils"
 
 export type ReportsAccountingLabels = {
   costTitle: string
@@ -35,7 +36,13 @@ export type ReportsAccountingLabels = {
   usefulLife: string
   ageMonths: string
   noAssets: string
+  // common.baht: the unit of the money tiles and of the money column heads.
+  baht: string
 }
+
+// A money tile in the 28px metric size needs about 230px ("12,345,678.00 บาท"): one tile a row below sm and two a row
+// from sm. Four in a row would leave about 130px a tile at 1024px, so these strips never take StatStrip's one-row lg.
+const moneyStripClasses = "max-sm:grid-cols-1 lg:grid-flow-row lg:grid-cols-2 lg:grid-rows-none"
 
 export type ReportsAccountingViewProps = {
   locale: string
@@ -59,20 +66,24 @@ export function ReportsAccountingView({
   return (
     <div className="space-y-5">
       <ContentPanel title={labels.costTitle} description={labels.costHelp}>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label={labels.totalRepair} value={formatCurrency(costInsights.totalRepairCost)} compact />
-          <MetricCard label={labels.repairRatio} value={formatPercent(costInsights.repairToPurchaseRatio)} compact />
-          <MetricCard label={labels.missingPrice} value={costInsights.missingPurchasePriceCount.toLocaleString("th-TH")} compact />
-          <MetricCard label={labels.highValueAssets} value={costInsights.highValueAssetCount.toLocaleString("th-TH")} compact />
-        </div>
+        <StatStrip
+          className={moneyStripClasses}
+          items={[
+            { key: "totalRepair", label: labels.totalRepair, value: formatMoney(costInsights.totalRepairCost), unit: labels.baht },
+            // No purchase value to compare with: the ratio has no value. A tile takes text, so the dash is written out.
+            { key: "repairRatio", label: labels.repairRatio, value: formatPercent(costInsights.repairToPurchaseRatio) ?? "—" },
+            { key: "missingPrice", label: labels.missingPrice, value: formatCount(costInsights.missingPurchasePriceCount) },
+            { key: "highValueAssets", label: labels.highValueAssets, value: formatCount(costInsights.highValueAssetCount) },
+          ]}
+        />
         <CostExposureTable
           title={labels.highRepairRisk}
           rows={costInsights.highRepairExposureAssets}
           locale={locale}
           labels={{
             asset: labels.asset,
-            repairCost: labels.repairCost,
-            purchasePrice: labels.purchasePrice,
+            repairCost: moneyHead(labels.repairCost, labels.baht),
+            purchasePrice: moneyHead(labels.purchasePrice, labels.baht),
             ratio: labels.ratio,
             repairCount: labels.repairCount,
             empty: selectReportEmptyCopy({
@@ -86,22 +97,25 @@ export function ReportsAccountingView({
       </ContentPanel>
 
       <ContentPanel title={labels.accountingTitle} description={labels.accountingHelp}>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
-          <MetricCard label={labels.acquisitionCost} value={formatCurrency(depreciationSummary.totalAcquisitionCost)} compact />
-          <MetricCard label={labels.residualValue} value={formatCurrency(depreciationSummary.totalResidualValue)} compact />
-          <MetricCard label={labels.accumulatedDepreciation} value={formatCurrency(depreciationSummary.totalAccumulatedDepreciation)} compact />
-          <MetricCard label={labels.netBookValue} value={formatCurrency(depreciationSummary.totalNetBookValue)} compact />
-          <MetricCard label={labels.fullyDepreciated} value={depreciationSummary.fullyDepreciatedCount.toLocaleString("th-TH")} compact />
-          <MetricCard label={labels.missingInfo} value={depreciationSummary.missingAccountingInfoCount.toLocaleString("th-TH")} compact />
-        </div>
+        <StatStrip
+          className={moneyStripClasses}
+          items={[
+            { key: "acquisitionCost", label: labels.acquisitionCost, value: formatMoney(depreciationSummary.totalAcquisitionCost), unit: labels.baht },
+            { key: "residualValue", label: labels.residualValue, value: formatMoney(depreciationSummary.totalResidualValue), unit: labels.baht },
+            { key: "accumulatedDepreciation", label: labels.accumulatedDepreciation, value: formatMoney(depreciationSummary.totalAccumulatedDepreciation), unit: labels.baht },
+            { key: "netBookValue", label: labels.netBookValue, value: formatMoney(depreciationSummary.totalNetBookValue), unit: labels.baht },
+            { key: "fullyDepreciated", label: labels.fullyDepreciated, value: formatCount(depreciationSummary.fullyDepreciatedCount) },
+            { key: "missingInfo", label: labels.missingInfo, value: formatCount(depreciationSummary.missingAccountingInfoCount) },
+          ]}
+        />
         <DepreciationTable
           title={labels.topBookValueAssets}
           rows={depreciationSummary.topNetBookValueAssets}
           locale={locale}
           labels={{
             asset: labels.asset,
-            bookValue: labels.bookValue,
-            accumulated: labels.accumulatedDepreciation,
+            bookValue: moneyHead(labels.bookValue, labels.baht),
+            accumulated: moneyHead(labels.accumulatedDepreciation, labels.baht),
             ratio: labels.depreciationRatio,
             usefulLife: labels.usefulLife,
             ageMonths: labels.ageMonths,
@@ -158,11 +172,12 @@ function CostExposureTable({
               </Link>
             ),
           },
-          { key: "repairCost", label: labels.repairCost, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.repairCost) },
-          { key: "purchasePrice", label: labels.purchasePrice, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.purchasePrice) },
-          { key: "ratio", label: labels.ratio, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatPercent(asset.repairToPurchaseRatio) },
-          { key: "repairCount", label: labels.repairCount, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.repairCount.toLocaleString("th-TH") },
+          { key: "repairCost", label: labels.repairCost, numeric: true, className: "text-muted-foreground", render: (asset) => formatMoney(asset.repairCost) },
+          { key: "purchasePrice", label: labels.purchasePrice, numeric: true, className: "text-muted-foreground", render: (asset) => orNil(formatMoney(asset.purchasePrice)) },
+          { key: "ratio", label: labels.ratio, numeric: true, className: "text-muted-foreground", render: (asset) => orNil(formatPercent(asset.repairToPurchaseRatio)) },
+          { key: "repairCount", label: labels.repairCount, numeric: true, className: "text-muted-foreground", render: (asset) => formatCount(asset.repairCount) },
         ]}
+        caption={title}
       />
     </div>
   )
@@ -209,21 +224,28 @@ function DepreciationTable({
               </Link>
             ),
           },
-          { key: "bookValue", label: labels.bookValue, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.netBookValue) },
-          { key: "accumulated", label: labels.accumulated, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.accumulatedDepreciation) },
-          { key: "ratio", label: labels.ratio, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatPercent(asset.depreciatedRatio) },
-          { key: "usefulLife", label: labels.usefulLife, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.usefulLifeMonths.toLocaleString("th-TH") },
-          { key: "ageMonths", label: labels.ageMonths, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.ageMonths.toLocaleString("th-TH") },
+          { key: "bookValue", label: labels.bookValue, numeric: true, className: "text-muted-foreground", render: (asset) => formatMoney(asset.netBookValue) },
+          { key: "accumulated", label: labels.accumulated, numeric: true, className: "text-muted-foreground", render: (asset) => formatMoney(asset.accumulatedDepreciation) },
+          { key: "ratio", label: labels.ratio, numeric: true, className: "text-muted-foreground", render: (asset) => formatPercent(asset.depreciatedRatio) },
+          { key: "usefulLife", label: labels.usefulLife, numeric: true, className: "text-muted-foreground", render: (asset) => formatCount(asset.usefulLifeMonths) },
+          { key: "ageMonths", label: labels.ageMonths, numeric: true, className: "text-muted-foreground", render: (asset) => formatCount(asset.ageMonths) },
         ]}
+        caption={title}
       />
     </div>
   )
 }
 
-function formatPercent(value: number | null) {
-  if (value == null) return "-"
+// A share of the whole, in Thai digits like formatCount. null means there is nothing to compare with: no value.
+function formatPercent(value: number | null): string | null {
+  if (value == null) return null
   return new Intl.NumberFormat("th-TH", {
     style: "percent",
     maximumFractionDigits: 1,
   }).format(value)
+}
+
+// A money column names its unit in the head, "ค่าซ่อม (บาท)", and its cells hold the number only (spec 2B §5.7).
+function moneyHead(label: string, unit: string) {
+  return `${label} (${unit})`
 }

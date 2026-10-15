@@ -193,3 +193,19 @@ test("report operations put the data-quality and cross-scope counts on linked St
   assert.match(operationsView, /<div className="mt-2 text-metric num text-foreground">\{formatCount\(insights\.idleAssetsCount\)\}<\/div>/)
   assert.doesNotMatch(operationsView, /MetricCard|toLocaleString|text-2xl font-bold/)
 })
+
+// Plan 2B-5 Task 12 (spec 2B §5.6, §5.7, R-d): the ten accounting cards are two StatStrips, money in formatMoney with
+// "บาท" as the unit, never more than two tiles a row; the two tables put "(บาท)" in their money heads, numbers on the
+// right, and an unknown price or ratio is Nil. The page hands the view common.baht.
+test("report accounting puts its totals on StatStrip and its money through formatMoney (spec 2B §5.6, §5.7, R-d)", () => {
+  assert.equal(accountingView.match(/<StatStrip\b/g)?.length, 2)
+  assert.equal(accountingView.match(/className=\{moneyStripClasses\}/g)?.length, 2)
+  assert.match(accountingView, /const moneyStripClasses = "max-sm:grid-cols-1 lg:grid-flow-row lg:grid-cols-2 lg:grid-rows-none"/)
+  assert.equal(accountingView.match(/unit: labels\.baht \}/g)?.length, 5)
+  assert.match(accountingView, /repairCost: moneyHead\(labels\.repairCost, labels\.baht\)/)
+  assert.match(accountingView, /render: \(asset\) => orNil\(formatMoney\(asset\.purchasePrice\)\)/)
+  assert.equal(accountingView.match(/numeric: true/g)?.length, 9)
+  assert.equal(accountingView.match(/caption=\{title\}/g)?.length, 2)
+  assert.doesNotMatch(accountingView, /MetricCard|formatCurrency|toLocaleString|"-"/)
+  assert.match(page, /baht: tCommon\("baht"\)/)
+})
