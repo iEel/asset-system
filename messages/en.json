@@ -4093,7 +4093,8 @@
     "copyPowerShell": "Copy PowerShell",
     "powerShellCopied": "PowerShell example copied",
     "status": "Status",
-    "actions": "Actions"
+    "actions": "Actions",
+    "confirmScopeExpansionAction": "Add permissions"
   },
   "apiErrors": {
     "activeCheckoutNotFound": "Active checkout not found",

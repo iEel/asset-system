@@ -4093,7 +4093,8 @@
     "copyPowerShell": "Copy PowerShell",
     "powerShellCopied": "คัดลอกตัวอย่าง PowerShell แล้ว",
     "status": "สถานะ",
-    "actions": "การทำงาน"
+    "actions": "การทำงาน",
+    "confirmScopeExpansionAction": "เพิ่มสิทธิ์"
   },
   "apiErrors": {
     "assetActiveCheckoutExists": "ทรัพย์สินนี้มีรายการส่งมอบหรือยืมที่ยังไม่รับคืน",

@@ -79,6 +79,7 @@ type Labels = {
   disable: string
   confirmRotate: string
   confirmScopeExpansion: string
+  confirmScopeExpansionAction: string
   confirmEnable: string
   confirmDisable: string
   loading: string
@@ -203,7 +204,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
   async function confirmScopeExpansion(client: IntegrationClient, nextScopes: string[]): Promise<boolean> {
     const hasNewScope = nextScopes.some((scope) => !client.scopes.includes(scope))
     if (!hasNewScope) return true
-    return confirm({ title: labels.confirmScopeExpansion })
+    return confirm({ title: labels.confirmScopeExpansion, confirmLabel: labels.confirmScopeExpansionAction })
   }
 
   async function createClient(event: React.FormEvent<HTMLFormElement>) {

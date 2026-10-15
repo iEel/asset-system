@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { findJsxTags, jsxAttrValue } from "./helpers/source-files.ts"
+import { findJsxTags, jsxAttrValue, readSourceFiles } from "./helpers/source-files.ts"
 
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
@@ -70,4 +70,68 @@ test("the confirm provider puts cancel first and the caller's verb last, on the 
     [],
     "the parts carry the look (K12)",
   )
+})
+
+// Phase 2C batch 5 (K12, spec 2C §5.9-§5.11 G-H): every confirm() names its action with a verb on its button, never
+// the generic "ยืนยัน". The reader takes the argument of each confirm( call in a file that calls useConfirm() and
+// checks every { title: … } object in it (both branches of a ternary count).
+function confirmOptionObjects(source: string): string[] {
+  const balanced = (text: string, from: number, open: string, close: string) => {
+    let depth = 0
+    for (let index = from; index < text.length; index += 1) {
+      if (text[index] === open) depth += 1
+      else if (text[index] === close && --depth === 0) return text.slice(from, index + 1)
+    }
+    return ""
+  }
+  return [...source.matchAll(/(?<![\w.$])confirm\(/g)].flatMap((call) => {
+    const argument = balanced(source, call.index + call[0].length - 1, "(", ")")
+    return [...argument.matchAll(/\{\s*title:/g)].map((object) => balanced(argument, object.index, "{", "}"))
+  })
+}
+
+// Files whose confirm() still has no verb. The commit that names one removes its line (a two-way ratchet); the last one
+// makes the test strict.
+const CONFIRMS_WITHOUT_A_VERB = new Set<string>([
+  "src/components/disposal/disposal-bulk-approval.tsx", // the discard-selection confirm
+  "src/components/disposal/disposal-bulk-execution.tsx", // the discard-selection confirm
+  "src/components/master-data/supplier-form.tsx", // the unsaved-changes confirm
+])
+
+test("every confirm() names its action with a verb (K12, spec 2C §5.11 G)", () => {
+  const unnamed = new Set<string>()
+  let objects = 0
+  for (const file of readSourceFiles("src")) {
+    if (file.path === "src/components/ui/confirm-dialog.tsx" || !/\buseConfirm\(\)/.test(file.source)) continue
+    for (const object of confirmOptionObjects(file.source)) {
+      objects += 1
+      if (!/\bconfirmLabel:/.test(object)) unnamed.add(file.path)
+    }
+  }
+  assert.ok(objects >= 14, `the reader found only ${objects} confirm() options`)
+  assert.deepEqual([...unnamed].filter((path) => !CONFIRMS_WITHOUT_A_VERB.has(path)), [], "give the confirm a confirmLabel that says its verb")
+  assert.deepEqual([...CONFIRMS_WITHOUT_A_VERB].filter((path) => !unnamed.has(path)), [], "it names its action now: remove it from CONFIRMS_WITHOUT_A_VERB")
+})
+
+// The verb labels batch 5 adds (spec 2C §5.10) and the expressions that read them, counted per file.
+const BATCH_5_VERBS: Array<{ key: string; th: string; en: string; reads: Array<[path: string, expression: string, count: number]> }> = [
+  {
+    key: "integrationApiPage.confirmScopeExpansionAction",
+    th: "เพิ่มสิทธิ์",
+    en: "Add permissions",
+    reads: [
+      ["src/components/admin/IntegrationClientManager.tsx", 'confirm({ title: labels.confirmScopeExpansion, confirmLabel: labels.confirmScopeExpansionAction })', 1],
+      ["src/app/[locale]/(dashboard)/admin/integrations/page.tsx", 'confirmScopeExpansionAction: t("confirmScopeExpansionAction"),', 1],
+    ],
+  },
+]
+
+test("the batch 5 verbs say the same thing in both languages and reach their confirm() (spec 2C §5.10, §5.11 H)", () => {
+  const messages = { th: JSON.parse(readFileSync("messages/th.json", "utf8")), en: JSON.parse(readFileSync("messages/en.json", "utf8")) }
+  const at = (tree: unknown, key: string) => key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], tree)
+  for (const verb of BATCH_5_VERBS) {
+    assert.equal(at(messages.th, verb.key), verb.th, `th ${verb.key}`)
+    assert.equal(at(messages.en, verb.key), verb.en, `en ${verb.key}`)
+    for (const [path, expression, count] of verb.reads) assert.equal(read(path).split(expression).length - 1, count, `${path} reads ${expression}`)
+  }
 })

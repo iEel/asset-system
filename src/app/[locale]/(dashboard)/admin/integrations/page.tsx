@@ -48,6 +48,7 @@ export default async function IntegrationApiPage({ params }: IntegrationApiPageP
           disable: t("disable"),
           confirmRotate: t("confirmRotate"),
           confirmScopeExpansion: t("confirmScopeExpansion"),
+          confirmScopeExpansionAction: t("confirmScopeExpansionAction"),
           confirmEnable: t("confirmEnable"),
           confirmDisable: t("confirmDisable"),
           loading: t("loading"),
