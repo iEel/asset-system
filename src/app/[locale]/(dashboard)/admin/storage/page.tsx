@@ -1,11 +1,9 @@
-import { FolderOpen } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatDateTime } from "@/lib/utils"
 import { formatCount } from "@/lib/display-format"
-import { getPanelClasses } from "@/lib/design-system"
 import {
   buildStorageGovernanceDryRun,
   formatStorageSize,
@@ -14,6 +12,7 @@ import {
 } from "@/lib/storage-governance"
 import { getUploadRoot } from "@/lib/uploads"
 import { StorageArchiveButton } from "@/components/admin/storage-archive-button"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { orNil } from "@/components/ui/nil"
@@ -86,11 +85,8 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
         ]}
       />
 
-      <section className={`${getPanelClasses()} p-5`}>
-        <h2 className="font-semibold text-foreground">{t("filesystemDryRun")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("filesystemDryRunHelp")}</p>
+      <ContentPanel title={t("filesystemDryRun")} description={t("filesystemDryRunHelp")}>
         <StatStrip
-          className="mt-4"
           items={[
             { key: "matchedFiles", label: t("matchedFiles"), value: formatCount(dryRun.matchedFiles.length) },
             { key: "orphanFiles", label: t("orphanFiles"), value: formatCount(dryRun.orphanFiles.length) },
@@ -136,20 +132,11 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
             )}
           </DataTableBody>
         </DataTable>
-      </section>
+      </ContentPanel>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className={`${getPanelClasses()} p-5`}>
-          <div className="flex items-start gap-3">
-            <div className="rounded-md border border-primary-border bg-primary-soft p-2 text-primary">
-              <FolderOpen className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-foreground">{t("moduleBreakdown")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("moduleBreakdownHelp")}</p>
-            </div>
-          </div>
-          <DataTable framed={false} className="mt-4" caption={t("moduleBreakdown")} scrollHint={tCommon("tableScrollHint")}>
+        <ContentPanel title={t("moduleBreakdown")} description={t("moduleBreakdownHelp")}>
+          <DataTable framed={false} caption={t("moduleBreakdown")} scrollHint={tCommon("tableScrollHint")}>
             <DataTableHeader>
               <tr>
                 <DataTableHead>{t("module")}</DataTableHead>
@@ -171,7 +158,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
               )}
             </DataTableBody>
           </DataTable>
-        </div>
+        </ContentPanel>
 
         <StorageReviewList
           title={t("reviewList")}
@@ -201,10 +188,8 @@ function StorageReviewList({
   t: Awaited<ReturnType<typeof getTranslations>>
 }) {
   return (
-    <div className={`${getPanelClasses()} p-5`}>
-      <h2 className="font-semibold text-foreground">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className="mt-4 space-y-3">
+    <ContentPanel title={title} description={description}>
+      <div className="space-y-3">
         {items.length === 0 ? (
           <EmptyNote>{t("emptyReview")}</EmptyNote>
         ) : (
@@ -225,7 +210,7 @@ function StorageReviewList({
           })
         )}
       </div>
-    </div>
+    </ContentPanel>
   )
 }
 
@@ -243,10 +228,8 @@ function StorageFileList({
   t: Awaited<ReturnType<typeof getTranslations>>
 }) {
   return (
-    <section className={`${getPanelClasses()} p-5`}>
-      <h2 className="font-semibold text-foreground">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <DataTable framed={false} className="mt-4" caption={title} scrollHint={scrollHint}>
+    <ContentPanel title={title} description={description}>
+      <DataTable framed={false} caption={title} scrollHint={scrollHint}>
         <DataTableHeader>
           <tr>
             <DataTableHead>{t("file")}</DataTableHead>
@@ -270,7 +253,7 @@ function StorageFileList({
           )}
         </DataTableBody>
       </DataTable>
-    </section>
+    </ContentPanel>
   )
 }
 

@@ -631,7 +631,8 @@ test("storage: PageHeader, two StatStrips and three DataTables that scroll sidew
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the summary and the dry-run counts")
-  assert.equal(source.match(/<DataTable framed=\{false\} className="mt-4" caption=\{(?:t\("(?:filesystemDryRun|moduleBreakdown)"\)|title)\} scrollHint=\{(?:tCommon\("tableScrollHint"\)|scrollHint)\}>/g)?.length, 3, "three tables in padded panels, flush, with the scroll hint (B6)")
+  // The panels are ContentPanel since plan 2D-2: only the dry-run table, under its StatStrip, keeps a top margin.
+  assert.equal(source.match(/<DataTable framed=\{false\}(?: className="mt-4")? caption=\{(?:t\("(?:filesystemDryRun|moduleBreakdown)"\)|title)\} scrollHint=\{(?:tCommon\("tableScrollHint"\)|scrollHint)\}>/g)?.length, 3, "three tables in padded panels, flush, with the scroll hint (B6)")
   assert.match(source, /attention: reviewNeededCount > 0,/)
   assert.match(source, /\{moduleLabel\(item\.module, t\)\} · <span className="tag">\{item\.referenceId\}<\/span>/, "bug §5.10 #10: the review list names the module, not its code")
   assert.match(source, /\{orNil\(item\.filePath\)\}/)

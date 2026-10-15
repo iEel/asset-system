@@ -105,3 +105,9 @@ test("the storage archive button is an outline sm Button that stays busy while i
   assert.match(source, /<Button variant="outline" size="sm" busy=\{archiving\} onClick=\{handleClick\}>\n\s+<Archive aria-hidden="true" \/>\n\s+\{t\("archiveOrphanFile"\)\}\n\s+<\/Button>/)
   assert.doesNotMatch(source, /<button\b|Loader2|disabled=|opacity-|bg-warning-soft|sm:h-8/)
 })
+
+test("storage: its four panels are ContentPanel, with no icon box (spec 2D D9)", () => {
+  const source = read(`${D}admin/storage/page.tsx`)
+  assert.equal(source.match(/<ContentPanel title=\{(?:t\("(?:filesystemDryRun|moduleBreakdown)"\)|title)\} description=\{(?:t\("(?:filesystemDryRunHelp|moduleBreakdownHelp)"\)|description)\}>/g)?.length, 4)
+  assert.doesNotMatch(source, /getPanelClasses|FolderOpen|bg-primary-soft|<section className=\{`/)
+})
