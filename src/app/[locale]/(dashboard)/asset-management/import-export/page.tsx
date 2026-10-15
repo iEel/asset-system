@@ -8,7 +8,7 @@ import { buildAssetImportHistory, type AssetImportHistoryItem } from "@/lib/asse
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { PageHeader } from "@/components/ui/page-header"
-import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/design-system"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { formatDateTime } from "@/lib/utils"
 
 type AssetImportExportPageProps = {
@@ -117,8 +117,8 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
         }}
       />
 
-      <div className={getResponsiveActionRowClasses()}>
-        <Link href={`/${locale}/assets`} className={getSafeActionLinkClasses("secondary")}>
+      <div>
+        <Link href={`/${locale}/assets`} className={buttonVariants({ variant: "outline", size: "md" })}>
           {tCommon("back")}
         </Link>
       </div>

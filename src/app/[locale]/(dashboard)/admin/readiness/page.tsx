@@ -9,7 +9,7 @@ import { prisma } from "@/lib/db"
 import { formatCount } from "@/lib/display-format"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildProductionReadinessChecks, summarizeProductionReadiness, type ProductionReadinessCheck } from "@/lib/production-readiness"
-import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/design-system"
+import { buttonVariants } from "@/components/ui/button-variants"
 import {
   ldapSyncLastStatusKey,
   notificationDigestLastStatusKey,
@@ -162,16 +162,14 @@ function ReadinessCheckCard({
           <div className="text-xs font-medium text-muted-foreground">{labels.value}</div>
           <div className="mt-1 break-all text-xs text-foreground"><span className="tag">{check.value}</span></div>
         </div>
-        <div className={getResponsiveActionRowClasses()}>
-          <Link
-            href={`/${locale}${check.href}`}
-            className={getSafeActionLinkClasses("secondary")}
-            aria-label={`${labels.action}: ${labels.title}`}
-          >
-            {labels.action}
-            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-          </Link>
-        </div>
+        <Link
+          href={`/${locale}${check.href}`}
+          className={buttonVariants({ variant: "outline", size: "md" })}
+          aria-label={`${labels.action}: ${labels.title}`}
+        >
+          {labels.action}
+          <ArrowRight aria-hidden="true" />
+        </Link>
       </div>
     </article>
   )

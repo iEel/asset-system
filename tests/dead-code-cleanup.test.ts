@@ -14,3 +14,14 @@ test("the error page retries with Button, and ActionButton is gone (spec 2D M3)"
   assert.match(source, /<Button onClick=\{unstable_retry\}>\n\s+<RefreshCw aria-hidden="true" \/>\n\s+\{t\("tryAgain"\)\}\n\s+<\/Button>/)
   assert.equal(existsSync(`${C}ui/action-button.tsx`), false)
 })
+
+test("the readiness and import-export links are outline md links, not the old safe-link helpers (spec 2D M5)", () => {
+  const readiness = read(`${D}admin/readiness/page.tsx`)
+  assert.match(readiness, /<Link\n\s+href=\{`\/\$\{locale\}\$\{check\.href\}`\}\n\s+className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}\n\s+aria-label=\{`\$\{labels\.action\}: \$\{labels\.title\}`\}\n\s+>\n\s+\{labels\.action\}\n\s+<ArrowRight aria-hidden="true" \/>\n\s+<\/Link>/)
+  const importExport = read(`${D}asset-management/import-export/page.tsx`)
+  assert.match(importExport, /<div>\n\s+<Link href=\{`\/\$\{locale\}\/assets`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\n\s+\{tCommon\("back"\)\}\n\s+<\/Link>\n\s+<\/div>/)
+  for (const source of [readiness, importExport]) {
+    assert.match(source, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
+    assert.doesNotMatch(source, /getSafeActionLinkClasses|getResponsiveActionRowClasses|@\/lib\/design-system/)
+  }
+})
