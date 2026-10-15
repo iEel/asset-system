@@ -10,7 +10,7 @@ import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, main
 import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { NativeSelect } from "@/components/ui/native-select"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -37,9 +37,9 @@ export function MaintenanceAttachments({
   const apiError = useApiError()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Attachment | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [attachmentType, setAttachmentType] = useState<MaintenanceAttachmentType>("after_repair")
@@ -79,14 +79,14 @@ export function MaintenanceAttachments({
   }
 
   async function handleDelete(id: string) {
-    setPendingDeleteId(null)
+    if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
     setDeletingId(id)
 
     try {
       const response = await fetch(`/api/attachments/${id}`, { method: "DELETE" })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
-      toast.success(tCommon("savedSuccess"))
+      toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
       apiError.toast(error)
@@ -201,7 +201,7 @@ export function MaintenanceAttachments({
                 {canDelete ? (
                 <button
                   type="button"
-                  onClick={() => setPendingDeleteId(attachment.id)}
+                  onClick={() => void handleDelete(attachment.id)}
                   disabled={deletingId === attachment.id}
                   className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
                   title={tCommon("delete")}
@@ -235,25 +235,6 @@ export function MaintenanceAttachments({
         downloadLabel={t("download")}
         closeLabel={tCommon("close")}
       />
-
-      <AccessibleDialog open={Boolean(pendingDeleteId)} title={tCommon("deleteConfirm")} busy={Boolean(deletingId)} onClose={() => setPendingDeleteId(null)}>
-            <div className="flex justify-end gap-2 p-5">
-              <button
-                type="button"
-                onClick={() => setPendingDeleteId(null)}
-                className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium"
-              >
-                {tCommon("cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={() => { if (pendingDeleteId) handleDelete(pendingDeleteId) }}
-                className="inline-flex min-h-11 items-center rounded-md bg-danger px-4 text-sm font-medium text-white"
-              >
-                {tCommon("delete")}
-              </button>
-            </div>
-      </AccessibleDialog>
     </section>
   )
 }

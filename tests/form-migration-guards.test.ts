@@ -319,9 +319,8 @@ const FIXED_BOTTOM_BARS: Record<string, number> = {
 }
 
 // GD2 files whose AccessibleDialogs still wait for AccessibleDialogFooter. The commit that migrates a file's dialogs removes its line.
-const PENDING_FOOTER_PARTS = new Set([
+const PENDING_FOOTER_PARTS = new Set<string>([
   // 1a
-  `${C}maintenance/maintenance-attachments.tsx`, // the delete dialog :239 waits for batch 5 (K12)
   // 1b
   // 1c
   // 1d

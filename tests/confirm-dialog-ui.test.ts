@@ -29,6 +29,7 @@ test("deletes report a delete, not a save", () => {
     "src/components/assets/asset-purchase-documents.tsx",
     "src/components/disposal/disposal-attachments.tsx",
     "src/components/master-data/asset-model-form.tsx",
+    "src/components/maintenance/maintenance-attachments.tsx",
   ]) {
     const source = read(path)
     assert.match(source, /tCommon\("deletedSuccess"\)/, path)
