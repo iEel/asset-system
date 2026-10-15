@@ -4,10 +4,12 @@ import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { NativeSelect } from "@/components/ui/native-select"
 import { assetDataQualityRulesKey, type AssetDataQualityRule } from "@/lib/data-quality-rules"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
 type DataQualityRuleFormProps = {
@@ -54,16 +56,15 @@ export function DataQualityRuleForm({ rules, labels }: DataQualityRuleFormProps)
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="font-semibold text-foreground">{labels.enabled}: {enabledCount.toLocaleString("th-TH")}</h2>
-        </div>
+    <ContentPanel
+      title={`${labels.enabled}: ${formatCount(enabledCount)}`}
+      actions={
         <Button busy={saving} onClick={save} className="w-fit">
           <Save aria-hidden="true" />
           {labels.save}
         </Button>
-      </div>
+      }
+    >
       <div className="grid gap-3">
         {items.map((rule) => (
           <div key={rule.key} className="grid gap-3 rounded-md border border-border bg-background p-4 md:grid-cols-[1fr_auto_auto] md:items-center">
@@ -92,6 +93,6 @@ export function DataQualityRuleForm({ rules, labels }: DataQualityRuleFormProps)
           </div>
         ))}
       </div>
-    </section>
+    </ContentPanel>
   )
 }

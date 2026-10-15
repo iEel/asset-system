@@ -132,3 +132,9 @@ test("data quality: rule cards are panels with a severity badge and a named view
     assert.equal(messages(locale).dataQualityPage.assetStateReviews.scanning, undefined, `${locale}: the key no code reads is deleted`)
   }
 })
+
+test("the data-quality rule form is a ContentPanel whose count goes through formatCount (spec 2D D9; 2B R-f)", () => {
+  const source = read(`${C}admin/data-quality-rule-form.tsx`)
+  assert.match(source, /<ContentPanel\n\s+title=\{`\$\{labels\.enabled\}: \$\{formatCount\(enabledCount\)\}`\}\n\s+actions=\{/)
+  assert.doesNotMatch(source, /toLocaleString|<section className="rounded-lg/)
+})
