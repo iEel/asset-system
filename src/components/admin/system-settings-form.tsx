@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { ArrowLeft, ArrowRight, ExternalLink, History, Pencil, PlugZap, Plus, Save, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
@@ -19,6 +20,7 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { SearchField } from "@/components/ui/search-field"
 import { Segmented } from "@/components/ui/segmented"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
+import { TabNav } from "@/components/ui/tab-nav"
 import { cn } from "@/lib/utils"
 import {
   assetLabelLayouts,
@@ -521,6 +523,8 @@ export function SystemSettingsForm({
   const apiError = useApiError()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  // The tab row's name: the page passes no label for it, so the form reads the page title.
+  const tPage = useTranslations("systemSettingsPage")
   const params = useParams<{ locale?: string }>()
   const locale = typeof params.locale === "string" ? params.locale : "th"
   const initialValues = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
@@ -745,7 +749,9 @@ export function SystemSettingsForm({
     "ldap-sync": labels.tabLdapSync,
     advanced: labels.tabAdvanced,
   }
-  const tabs = getSettingsTabOrder().map((id) => ({ id, label: tabLabels[id] }))
+  // TabNav links (O7, 2B spec R-g): each tab has its own URL, so Ctrl+click opens it in a new tab. A plain click runs
+  // onSelect below, which cancels the navigation and switches with selectTab, so unsaved edits stay.
+  const tabs = getSettingsTabOrder().map((id) => ({ key: id, label: tabLabels[id], href: buildSystemSettingsTabHref(pathname, searchParams.toString(), id) }))
   const settingsSearchResults = findSystemSettingsSearchResults(
     settings.filter((setting) => !retiredSystemSettingKeys.has(setting.key)),
     settingsSearch,
@@ -945,26 +951,15 @@ export function SystemSettingsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="min-w-0 rounded-lg border border-border bg-surface p-2">
-        <div className="flex max-w-full gap-2 overflow-x-auto overscroll-x-contain">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => selectTab(tab.id)}
-                className={`min-h-11 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors sm:h-10 sm:min-h-0 ${
-                  isActive ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
-                aria-pressed={isActive}
-              >
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      <TabNav
+        aria-label={tPage("title")}
+        items={tabs}
+        current={activeTab}
+        onSelect={(key, event) => {
+          event.preventDefault()
+          selectTab(parseSystemSettingsTab(key))
+        }}
+      />
 
       <div className="rounded-lg border border-border bg-surface p-4">
         <Field label={labels.searchSettings}>
