@@ -125,6 +125,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}reports/reports-accounting-view.tsx`,
   `${D}reports/page.tsx`,
   `${D}dashboard/page.tsx`,
+  `${D}work-center/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -206,8 +207,6 @@ const TITLES: Record<string, string> = {
 // only two rows above the d38a0ee count (spec §9.4.1 note "LB1 0→1").
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
-    // 2B-5
-    [`${D}work-center/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     "src/app/[locale]/(auth)/login/page.tsx": 1, // → 1 (KEEP): no shell (phase 3, with the login frame)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page
@@ -305,15 +304,11 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2413 (2D)
     // 2B-2
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
-    // 2B-5
-    [`${D}work-center/page.tsx`]: 2,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 2, // → 2 (KEEP): OperationMetric :763, SummaryCard :782 (2C plan 4)
     [`${C}assets/asset-import-preview-panel.tsx`]: 1, // → 1 (KEEP): SummaryPill :461 (2C plan 4)
   },
   LS2: {
-    // 2B-5
-    [`${D}work-center/page.tsx`]: 1,
   },
   LK1: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -322,14 +317,10 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LN1: {
     // 2B-1
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
-    // 2B-5
-    [`${D}work-center/page.tsx`]: 1,
   },
   LN2: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes ColumnHeader (R-h)
-    // 2B-5
-    [`${D}work-center/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :797 (2C plan 4)
   },

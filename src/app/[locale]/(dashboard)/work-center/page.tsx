@@ -2,18 +2,11 @@ import Link from "next/link"
 import type React from "react"
 import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
-import {
-  AlertTriangle,
-  ArrowRight,
-  ClipboardCheck,
-  Clock,
-  FileCheck2,
-  FileWarning,
-  Package,
-  ShieldAlert,
-  Trash2,
-  Wrench,
-} from "lucide-react"
+import { ArrowRight } from "lucide-react"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
+import { TabNav } from "@/components/ui/tab-nav"
+import { formatCount } from "@/lib/display-format"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
@@ -49,7 +42,6 @@ type WorkCenterMetric = {
   detail: string
   href: string
   tone: "danger" | "warning" | "primary" | "success" | "muted"
-  icon: React.ReactNode
 }
 
 export default async function WorkCenterPage({ params, searchParams }: WorkCenterPageProps) {
@@ -239,7 +231,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("approvalInboxDetail"),
       href: `/${locale}/admin/approvals`,
       tone: approvalInboxCounts.total > 0 ? "danger" : "primary",
-      icon: <FileCheck2 className="h-5 w-5" />,
     },
     missingCustodian: {
       key: "missingCustodian",
@@ -248,7 +239,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("missingCustodianDetail"),
       href: `/${locale}/assets`,
       tone: "warning",
-      icon: <Package className="h-5 w-5" />,
     },
     missingSerial: {
       key: "missingSerial",
@@ -257,7 +247,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("missingSerialDetail"),
       href: `/${locale}/assets`,
       tone: "muted",
-      icon: <FileWarning className="h-5 w-5" />,
     },
     missingPhoto: {
       key: "missingPhoto",
@@ -266,7 +255,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("missingPhotoDetail"),
       href: `/${locale}/assets`,
       tone: "muted",
-      icon: <ShieldAlert className="h-5 w-5" />,
     },
     openRepairs: {
       key: "openRepairs",
@@ -275,7 +263,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("openRepairsDetail"),
       href: `/${locale}/maintenance?status=in_progress`,
       tone: openRepairs > 0 ? "warning" : "muted",
-      icon: <Wrench className="h-5 w-5" />,
     },
     duePm: {
       key: "duePm",
@@ -284,7 +271,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("duePmDetail"),
       href: `/${locale}/maintenance#pm-due`,
       tone: duePm > 0 ? "warning" : "muted",
-      icon: <Clock className="h-5 w-5" />,
     },
     pendingAuditFindings: {
       key: "pendingAuditFindings",
@@ -293,7 +279,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("pendingAuditFindingsDetail"),
       href: `/${locale}/audit/findings?status=pending`,
       tone: "danger",
-      icon: <ClipboardCheck className="h-5 w-5" />,
     },
     openAuditActions: {
       key: "openAuditActions",
@@ -302,7 +287,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("openAuditActionsDetail"),
       href: `/${locale}/audit/findings?status=all`,
       tone: "warning",
-      icon: <AlertTriangle className="h-5 w-5" />,
     },
     pendingAuditItems: {
       key: "pendingAuditItems",
@@ -311,7 +295,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("pendingAuditItemsDetail"),
       href: `/${locale}/audit/rounds`,
       tone: "primary",
-      icon: <ClipboardCheck className="h-5 w-5" />,
     },
     pendingDisposals: {
       key: "pendingDisposals",
@@ -320,7 +303,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("pendingDisposalsDetail"),
       href: `/${locale}/disposal?status=pending`,
       tone: "danger",
-      icon: <Trash2 className="h-5 w-5" />,
     },
     approvedDisposals: {
       key: "approvedDisposals",
@@ -329,7 +311,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       detail: t("approvedDisposalsDetail"),
       href: `/${locale}/disposal?status=approved`,
       tone: "warning",
-      icon: <Trash2 className="h-5 w-5" />,
     },
   }
   const metricKeys = buildWorkCenterMetricKeys({
@@ -355,34 +336,41 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     missingPhoto,
   })
 
+  // One cell per metric: the number, the queue it opens, its sentence as the foot line, and the warning foot when a
+  // count that needs action is above 0 (R-d: no tone fill). StatStrip is one row from lg, so the cells go in rows of
+  // at most four: eight cells in one row would leave each about 90px at 1024px.
+  const metricRows = splitStatRows(
+    metrics.map((metric): StatStripItem => ({
+      key: metric.key,
+      label: metric.label,
+      value: formatCount(metric.value),
+      href: metric.href,
+      foot: metric.detail,
+      footTitle: metric.detail,
+      attention: metric.value > 0 && (metric.tone === "danger" || metric.tone === "warning"),
+    })),
+  )
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
-          <SummaryPill label={t("urgent")} value={urgentCount} tone="danger" />
-          <SummaryPill label={t("allFollowUps")} value={followUpCount} tone="primary" />
-        </div>
-      </div>
+      <PageHeader title={t("title")} meta={t("subtitle")} />
 
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid grid-cols-2 rounded-md border border-border bg-background p-1 sm:inline-flex">
-          <WorkCenterViewLink
-            href={buildWorkCenterHref(locale, workCenterParams, { view: "all", panel: workCenterParams.panel })}
-            active={workCenterParams.view === "all"}
-          >
-            {t("allWork")}
-          </WorkCenterViewLink>
-          <WorkCenterViewLink
-            href={buildWorkCenterHref(locale, workCenterParams, { view: "mine", panel: workCenterParams.panel })}
-            active={workCenterParams.view === "mine"}
-          >
-            {t("myWork")}
-          </WorkCenterViewLink>
-        </div>
+      <StatStrip
+        items={[
+          { key: "urgent", label: t("urgent"), value: formatCount(urgentCount) },
+          { key: "allFollowUps", label: t("allFollowUps"), value: formatCount(followUpCount) },
+        ]}
+      />
+
+      <div className="space-y-2">
+        <TabNav
+          aria-label={t("viewNavigation")}
+          current={workCenterParams.view}
+          items={[
+            { key: "all", label: t("allWork"), href: buildWorkCenterHref(locale, workCenterParams, { view: "all", panel: workCenterParams.panel }) },
+            { key: "mine", label: t("myWork"), href: buildWorkCenterHref(locale, workCenterParams, { view: "mine", panel: workCenterParams.panel }) },
+          ]}
+        />
         {isMineView && !userScope.enabled ? (
           <p className="text-xs text-warning">{t("myWorkUnavailable")}</p>
         ) : (
@@ -390,52 +378,26 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         )}
       </div>
 
-      <nav aria-label={t("focusNavigation")} className="flex flex-wrap gap-2">
-        <WorkCenterFocusLink
-          href={buildWorkCenterHref(locale, workCenterParams, { panel: "overview" })}
-          active={workCenterParams.panel === "overview"}
-        >
-          {t("focusPriority")}
-        </WorkCenterFocusLink>
-        {approvalInboxVisible ? (
-          <WorkCenterFocusLink
-            href={buildWorkCenterHref(locale, workCenterParams, { panel: "approvals" })}
-            active={workCenterParams.panel === "approvals"}
-          >
-            {t("approvalInbox")}
-          </WorkCenterFocusLink>
-        ) : null}
-        <WorkCenterFocusLink
-          href={buildWorkCenterHref(locale, workCenterParams, { panel: "assets" })}
-          active={workCenterParams.panel === "assets"}
-        >
-          {t("assetDataTitle")}
-        </WorkCenterFocusLink>
-        <WorkCenterFocusLink
-          href={buildWorkCenterHref(locale, workCenterParams, { panel: "maintenance" })}
-          active={workCenterParams.panel === "maintenance"}
-        >
-          {t("maintenanceTitle")}
-        </WorkCenterFocusLink>
-        <WorkCenterFocusLink
-          href={buildWorkCenterHref(locale, workCenterParams, { panel: "audit" })}
-          active={workCenterParams.panel === "audit"}
-        >
-          {t("auditTitle")}
-        </WorkCenterFocusLink>
-        <WorkCenterFocusLink
-          href={buildWorkCenterHref(locale, workCenterParams, { panel: "disposal" })}
-          active={workCenterParams.panel === "disposal"}
-        >
-          {t("disposalTitle")}
-        </WorkCenterFocusLink>
-      </nav>
+      <TabNav
+        aria-label={t("focusNavigation")}
+        current={workCenterParams.panel}
+        items={[
+          { key: "overview", label: t("focusPriority"), href: buildWorkCenterHref(locale, workCenterParams, { panel: "overview" }) },
+          ...(approvalInboxVisible ? [{ key: "approvals", label: t("approvalInbox"), href: buildWorkCenterHref(locale, workCenterParams, { panel: "approvals" }) }] : []),
+          { key: "assets", label: t("assetDataTitle"), href: buildWorkCenterHref(locale, workCenterParams, { panel: "assets" }) },
+          { key: "maintenance", label: t("maintenanceTitle"), href: buildWorkCenterHref(locale, workCenterParams, { panel: "maintenance" }) },
+          { key: "audit", label: t("auditTitle"), href: buildWorkCenterHref(locale, workCenterParams, { panel: "audit" }) },
+          { key: "disposal", label: t("disposalTitle"), href: buildWorkCenterHref(locale, workCenterParams, { panel: "disposal" }) },
+        ]}
+      />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.key} metric={metric} />
-        ))}
-      </section>
+      {metricRows.length > 0 ? (
+        <div className="space-y-3">
+          {metricRows.map((row) => (
+            <StatStrip key={row[0].key} items={row} />
+          ))}
+        </div>
+      ) : null}
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {approvalInboxVisible && isPanelFocused("approvals") ? (
@@ -594,60 +556,11 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
   )
 }
 
-function MetricCard({ metric }: { metric: WorkCenterMetric }) {
-  return (
-    <Link
-      href={metric.href}
-      className={`rounded-lg border p-4 transition-colors hover:bg-accent ${toneClass(metric.tone)}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">{metric.label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{metric.value.toLocaleString("th-TH")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p>
-        </div>
-        <div className="shrink-0 text-current">{metric.icon}</div>
-      </div>
-    </Link>
-  )
-}
-
-function SummaryPill({ label, value, tone }: { label: string; value: number; tone: "danger" | "primary" }) {
-  return (
-    <div className={`rounded-lg border px-4 py-3 ${tone === "danger" ? "border-danger-border bg-danger-soft" : "border-primary-border bg-primary-soft"}`}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
-    </div>
-  )
-}
-
-function WorkCenterViewLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className={`inline-flex min-h-11 items-center justify-center rounded px-3 py-1.5 text-center text-sm font-medium transition-colors sm:min-h-0 ${
-        active ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      }`}
-    >
-      {children}
-    </Link>
-  )
-}
-
-function WorkCenterFocusLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-center text-xs font-medium transition-colors sm:min-h-0 sm:h-9 ${
-        active
-          ? "border-primary bg-primary text-white"
-          : "border-border bg-surface text-muted-foreground hover:border-primary-border hover:bg-accent hover:text-foreground"
-      }`}
-    >
-      {children}
-    </Link>
-  )
+// Rows of at most `most` cells, as even as they split: 8 → 4 + 4, 7 → 4 + 3, 6 → 3 + 3, 5 → 3 + 2.
+function splitStatRows<T>(items: readonly T[], most = 4): T[][] {
+  const rowCount = Math.ceil(items.length / most)
+  const perRow = Math.ceil(items.length / rowCount)
+  return Array.from({ length: rowCount }, (_, index) => items.slice(index * perRow, (index + 1) * perRow))
 }
 
 function FollowUpPanel({
@@ -729,8 +642,8 @@ function DataQualityFixGroups({
                 <p className="text-sm font-medium text-foreground">{labels.issueLabels[group.key]}</p>
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{labels.issueDetails[group.key]}</p>
               </div>
-              <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
-                {group.count.toLocaleString("th-TH")}
+              <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
+                {formatCount(group.count)}
               </span>
             </div>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -885,12 +798,4 @@ function getScopedWhere<T extends { OR?: unknown; id?: unknown }>(
 function applyWorkCenterScope<T>(where: T, active: boolean, scopeWhere: T): T {
   if (!active) return where
   return { AND: [where, scopeWhere] } as T
-}
-
-function toneClass(tone: WorkCenterMetric["tone"]) {
-  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
-  if (tone === "primary") return "border-primary-border bg-primary-soft text-primary"
-  if (tone === "success") return "border-success-border bg-success-soft text-success"
-  return "border-border bg-surface text-muted-foreground"
 }

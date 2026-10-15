@@ -426,7 +426,8 @@
     "findingReview_rejected": "Rejected",
     "findingReview_exception": "Exception",
     "disposalStatus_pending": "Pending approval",
-    "disposalStatus_approved": "Approved"
+    "disposalStatus_approved": "Approved",
+    "viewNavigation": "Work view"
   },
   "asset": {
     "title": "Asset Register",

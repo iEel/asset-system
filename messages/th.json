@@ -426,7 +426,8 @@
     "findingReview_rejected": "ปฏิเสธ",
     "findingReview_exception": "ยกเว้น",
     "disposalStatus_pending": "รออนุมัติ",
-    "disposalStatus_approved": "อนุมัติแล้ว"
+    "disposalStatus_approved": "อนุมัติแล้ว",
+    "viewNavigation": "มุมมองงาน"
   },
   "asset": {
     "title": "ทะเบียนทรัพย์สิน",

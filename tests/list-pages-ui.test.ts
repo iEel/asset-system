@@ -765,3 +765,28 @@ test("the dashboard: PageHeader, blocks 24px apart and every count through forma
   assert.match(source, /if \(user && shouldUseEmployeeHome\(user\)\) \{\n\s+redirect\(`\/\$\{locale\}\/my-assets`\)/)
   assert.match(source, /auditRound: \{ isActive: true, status: auditRoundOperationalWhere \}/)
 })
+
+// Plan 2B-5 Task 15 (spec 2B I10, §4.4.6, §5.6): the work center on the shared frame. "งานทั้งหมด / งานของฉัน" changes
+// the URL, so it is a TabNav of two links named by workCenter.viewNavigation (R-g, not Segmented), and the sentence under
+// it stays. The queue links are a second TabNav; the two summary numbers are a StatStrip under the header and the metrics
+// StatStrips of at most four cells. The cancelled-round filter stays (audit-round-cancellation).
+test("the work center: PageHeader, a summary StatStrip, the view switch and the queues on TabNav, metric rows of at most four (spec 2B I10, §5.6)", () => {
+  const source = read(`${D}work-center/page.tsx`)
+  assert.match(source, /<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>/)
+  assert.equal(source.match(/<TabNav\b/g)?.length, 2, "the view switch and the queue links")
+  assert.match(source, /<TabNav\n\s+aria-label=\{t\("viewNavigation"\)\}\n\s+current=\{workCenterParams\.view\}/)
+  assert.match(source, /\{ key: "all", label: t\("allWork"\), href: buildWorkCenterHref\(locale, workCenterParams, \{ view: "all", panel: workCenterParams\.panel \}\) \}/)
+  assert.match(source, /\{ key: "mine", label: t\("myWork"\), href: buildWorkCenterHref\(locale, workCenterParams, \{ view: "mine", panel: workCenterParams\.panel \}\) \}/)
+  assert.match(source, /<p className="text-xs text-warning">\{t\("myWorkUnavailable"\)\}<\/p>/, "the sentence under the switch stays (I10)")
+  assert.match(source, /<p className="text-xs text-muted-foreground">\{isMineView \? t\("myWorkDetail"\) : t\("allWorkDetail"\)\}<\/p>/)
+  assert.match(source, /<TabNav\n\s+aria-label=\{t\("focusNavigation"\)\}\n\s+current=\{workCenterParams\.panel\}/)
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the summary strip and the metric rows")
+  assert.match(source, /attention: metric\.value > 0 && \(metric\.tone === "danger" \|\| metric\.tone === "warning"\)/)
+  assert.match(source, /function splitStatRows<T>\(items: readonly T\[\], most = 4\): T\[\]\[\] \{/)
+  assert.match(source, /status: auditRoundOperationalWhere/)
+  assert.doesNotMatch(source, /function (?:MetricCard|SummaryPill|WorkCenterViewLink|WorkCenterFocusLink|toneClass)\b|<h1\b|aria-current=|toLocaleString\(|<Segmented\b|"use client"/)
+  for (const locale of ["th", "en"] as const) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { workCenter: Record<string, unknown> }
+    assert.equal(typeof messages.workCenter.viewNavigation, "string", `${locale}: workCenter.viewNavigation`)
+  }
+})
