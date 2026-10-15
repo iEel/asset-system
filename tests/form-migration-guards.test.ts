@@ -37,7 +37,7 @@ const BATCH_FILES: Record<string, readonly string[]> = {
   "4": ["admin/admin-user-form.tsx", "admin/role-permission-form.tsx", "admin/IntegrationClientManager.tsx", "admin/asset-state-review-dialog.tsx", "admin/data-quality-rule-form.tsx", "assets/asset-label-batch-tool.tsx", "assets/asset-label-print.tsx", "assets/asset-scan-search-tool.tsx", "assets/asset-status-correction-button.tsx", "assets/asset-register-table.tsx", "assets/asset-import-preview-panel.tsx", "assets/asset-evidence-drawer.tsx", "assets/asset-create-workspace.tsx", "asset-operations/transaction-cancel-dialog.tsx", "auth/login-form.tsx", "reports/report-preset-controls.tsx", "notifications/notification-center-actions.tsx", "ui/activity-drawer.tsx"],
   "5": ["disposal/disposal-workflow-stepper.tsx", "ui/confirm-dialog.tsx", "ui/alert-dialog.tsx"],
 }
-// Primitives 2C creates: every guard applies to them from the first day (action-bar.tsx arrives in batch 5).
+// Primitives 2C creates: every guard applies to them from the first day.
 const NEW_2C_FILES = ["ui/segmented.tsx", "ui/sticky-form-footer.tsx", "ui/form-section.tsx", "ui/choice-card.tsx", "ui/file-queue-list.tsx", "ui/steps.tsx", "ui/action-bar.tsx"].map((path) => C + path)
 // Files already migrated. The commit that migrates a file adds its line here; never remove one.
 const MIGRATED_FILES: string[] = [
