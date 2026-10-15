@@ -940,7 +940,7 @@ export function AssetBatchForm({
                     <td className="px-3 py-3 text-right">
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="icon-lg"
                         onClick={() => handleRemoveRow(row.clientId)}
                         disabled={rows.length <= 2}
                         title={t("batchRemoveRow")}

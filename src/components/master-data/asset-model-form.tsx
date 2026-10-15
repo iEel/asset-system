@@ -315,7 +315,7 @@ export function AssetModelForm({
                     </Field>
                     <Button
                       variant="danger"
-                      size="icon"
+                      size="icon-lg"
                       onClick={() => removeSpecItem(item.id)}
                       className="justify-self-start"
                       title={t("removeSpec")}

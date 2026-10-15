@@ -1551,7 +1551,7 @@ function CustomFieldRowsEditor({
               </Field>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-lg"
                 className="justify-self-start"
                 onClick={() => removeRow(row.id)}
                 aria-label={labels.remove}

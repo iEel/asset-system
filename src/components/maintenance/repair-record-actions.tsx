@@ -106,15 +106,15 @@ export function RepairRecordActions({
     <>
       {isOpen ? (
         <>
-          <Button onClick={() => setDialog("complete")}>
+          <Button size="md" onClick={() => setDialog("complete")}>
             <CheckCircle2 />{t("complete")}
           </Button>
-          <Button variant="danger" onClick={() => setDialog("cancel")}>
+          <Button variant="danger" size="md" onClick={() => setDialog("cancel")}>
             <XCircle />{t("cancel")}
           </Button>
         </>
       ) : null}
-      <Button variant="outline" onClick={() => setDialog("edit")}>
+      <Button variant="outline" size="md" onClick={() => setDialog("edit")}>
         <Pencil />{t("edit")}
       </Button>
 

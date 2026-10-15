@@ -460,7 +460,7 @@ function PhotoChecklistEditor({
           </Field>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={() => moveItem(index, -1)}
             disabled={index === 0}
             aria-label={labels.moveUp}
@@ -471,7 +471,7 @@ function PhotoChecklistEditor({
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={() => moveItem(index, 1)}
             disabled={index === items.length - 1}
             aria-label={labels.moveDown}
@@ -482,7 +482,7 @@ function PhotoChecklistEditor({
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={() => duplicateItem(index)}
             aria-label={labels.duplicate}
             title={labels.duplicate}
@@ -492,7 +492,7 @@ function PhotoChecklistEditor({
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={() => removeItem(index)}
             aria-label={labels.remove}
             title={labels.remove}

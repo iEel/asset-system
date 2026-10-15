@@ -252,7 +252,7 @@ export function AssetLabelPrint({
                 ))}
               </select>
             </label>
-            <Button onClick={handlePrint} busy={recordingPrint} className="w-full sm:w-auto">
+            <Button size="lg" onClick={handlePrint} busy={recordingPrint} className="w-full sm:w-auto">
               <Printer aria-hidden="true" />
               {translations.print}
             </Button>

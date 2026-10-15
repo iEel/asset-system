@@ -53,7 +53,7 @@ test("asset form: every button is a Button, the repeater's remove button fits an
   const source = read("src/components/assets/asset-form.tsx")
   assert.doesNotMatch(source, /<button\b/)
   assert.match(source, /sm:grid-cols-\[minmax\(0,0\.85fr\)_minmax\(0,1\.15fr\)_auto\]/)
-  assert.match(source, /<Button\n\s*variant="outline"\n\s*size="icon"\n\s*className="justify-self-start"/)
+  assert.match(source, /<Button\n\s*variant="outline"\n\s*size="icon-lg"\n\s*className="justify-self-start"/)
   assert.equal(source.match(/variant="danger"\n\s*size="icon-sm"/g)?.length, 2, "the 2 queued-file remove icons stay red (2A ย15)")
   assert.match(
     source,
