@@ -22,6 +22,7 @@ test("FilterFormActions submits at 40px and offers clear filters as an outline l
 // file; plan 2B-5 completes the list. A raw field in a file outside the list has no guard until 2D (I34).
 const MIGRATED_FILTER_FILES = [
   "src/components/master-data/master-data-layout.tsx",
+  "src/components/reports/report-filter-panel.tsx",
   "src/app/[locale]/(dashboard)/master-data/branches/page.tsx",
   "src/app/[locale]/(dashboard)/master-data/brands/page.tsx",
   "src/app/[locale]/(dashboard)/master-data/categories/page.tsx",
@@ -82,4 +83,21 @@ test("the maintenance filter keeps the page size, and its asset chip clears only
     source,
     /<FilterChipList\n\s+className="mt-3"\n\s+label=\{t\("activeFilters"\)\}\n\s+removeLabel=\{t\("clearFilters"\)\}\n\s+chips=\{\[\{ key: "assetId", label: t\("assetFilter"\), href: `\/\$\{locale\}\/maintenance\?\$\{buildMaintenanceQueryString\(filters, \{ assetId: "", page: 1 \}\)\}` \}\]\}/,
   )
+})
+
+// Plan 2B-5 Task 9 (spec 2B §6.5 row 12, §6.2 6-จ, I6): the report filter panel keeps its FilterPanel, its grid, the
+// hidden view and the URL-only scopes, and moves onto Field + SearchField, FilterSelect and FilterFormActions. The page
+// tells it whether any filter is on, so "clear filters" shows only then. ActionButton itself stays for 2D.
+test("the report filters are Field + SearchField, six FilterSelect and FilterFormActions (2B §6.5 row 12)", () => {
+  const panel = read("src/components/reports/report-filter-panel.tsx")
+  assert.match(panel, /<FilterPanel title=\{labels\.title\} description=\{labels\.help\} className="p-5">/)
+  assert.match(panel, /<form role="search" action=\{`\/\$\{locale\}\/reports`\} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">/)
+  assert.match(panel, /<Field label=\{labels\.search\}>\n\s+<SearchField name="search" defaultValue=\{filters\.search\} placeholder=\{labels\.searchPlaceholder\} \/>/)
+  for (const [name, options] of [["companyId", "companies"], ["branchId", "branches"], ["categoryId", "categories"], ["statusId", "statuses"], ["conditionId", "conditions"], ["ownershipType", "ownershipTypes"]]) {
+    assert.match(panel, new RegExp(`<FilterSelect label=\\{labels\\.\\w+\\} name="${name}" defaultValue=\\{filters\\.${name}\\} allLabel=\\{labels\\.all\\} options=\\{options\\.${options}\\} />`), name)
+  }
+  assert.match(panel, /<FilterFormActions\n\s+className="md:col-span-2 xl:col-span-3"\n\s+submitLabel=\{labels\.apply\}\n\s+clear=\{hasActiveFilters \? \{ href: buildReportHref\(locale, activeView, parseAssetListParams\(\{\}\)\), label: labels\.clear \} : undefined\}/)
+  assert.doesNotMatch(panel, /ActionButton|getActionButtonClasses|getFieldControlClasses|<label\b|<select\b/)
+  const page = read("src/app/[locale]/(dashboard)/reports/page.tsx")
+  assert.match(page, /<ReportFilterPanel\n(?:\s+\w+=\{\w+\}\n)*\s+hasActiveFilters=\{hasActiveFilters\}\n/, "the page passes whether a filter is on")
 })

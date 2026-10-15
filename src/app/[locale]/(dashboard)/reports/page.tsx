@@ -732,6 +732,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           activeView={activeView}
           filters={filters}
           options={filterOptions}
+          hasActiveFilters={hasActiveFilters}
           labels={{
             title: t("filterTitle"),
             help: t("filterHelp"),

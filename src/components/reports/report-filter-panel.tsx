@@ -1,7 +1,7 @@
-import Link from "next/link"
-import { ActionButton } from "@/components/ui/action-button"
-import { FilterPanel } from "@/components/ui/filter-panel"
-import { getActionButtonClasses, getFieldControlClasses } from "@/lib/design-system"
+import { Field } from "@/components/ui/field"
+import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { FilterSelect } from "@/components/ui/filter-select"
+import { SearchField } from "@/components/ui/search-field"
 import { parseAssetListParams } from "@/lib/asset-list-query"
 import { buildReportHref, type ReportView } from "@/lib/report-view"
 
@@ -41,12 +41,16 @@ export type ReportFilterPanelProps = {
   filters: ReturnType<typeof parseAssetListParams>
   options: ReportFilterOptions
   labels: ReportFilterLabels
+  // Any report filter is on, the URL-only scopes included (the page's chip list): "clear filters" shows only then.
+  hasActiveFilters: boolean
 }
 
-export function ReportFilterPanel({ locale, activeView, filters, options, labels }: ReportFilterPanelProps) {
+// The report filters on the shared parts (spec 2B §6.5 row 12): Field + SearchField, six FilterSelect at 40px with the
+// "all" option first, and FilterFormActions. A GET form: the view and the URL-only scopes ride along as hidden inputs.
+export function ReportFilterPanel({ locale, activeView, filters, options, labels, hasActiveFilters }: ReportFilterPanelProps) {
   return (
     <FilterPanel title={labels.title} description={labels.help} className="p-5">
-      <form action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <form role="search" action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <input type="hidden" name="view" value={activeView} />
         {filters.brandId ? <input type="hidden" name="brandId" value={filters.brandId} /> : null}
         {filters.modelId ? <input type="hidden" name="modelId" value={filters.modelId} /> : null}
@@ -55,62 +59,21 @@ export function ReportFilterPanel({ locale, activeView, filters, options, labels
         {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
         {filters.crossScope ? <input type="hidden" name="crossScope" value={filters.crossScope} /> : null}
         {filters.activity ? <input type="hidden" name="activity" value={filters.activity} /> : null}
-        <label>
-          <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
-          <input
-            type="search"
-            name="search"
-            defaultValue={filters.search}
-            placeholder={labels.searchPlaceholder}
-            className={getFieldControlClasses()}
-          />
-        </label>
-        <ReportSelect name="companyId" label={labels.company} value={filters.companyId} options={options.companies} allLabel={labels.all} />
-        <ReportSelect name="branchId" label={labels.branch} value={filters.branchId} options={options.branches} allLabel={labels.all} />
-        <ReportSelect name="categoryId" label={labels.category} value={filters.categoryId} options={options.categories} allLabel={labels.all} />
-        <ReportSelect name="statusId" label={labels.status} value={filters.statusId} options={options.statuses} allLabel={labels.all} />
-        <ReportSelect name="conditionId" label={labels.condition} value={filters.conditionId} options={options.conditions} allLabel={labels.all} />
-        <ReportSelect name="ownershipType" label={labels.ownershipType} value={filters.ownershipType} options={options.ownershipTypes} allLabel={labels.all} />
-        <div className="flex min-w-0 flex-col gap-2 self-end md:col-span-2 md:flex-row md:flex-wrap xl:col-span-3">
-          <ActionButton type="submit" variant="primary" className="min-h-11 w-full md:h-10 md:min-h-0 md:w-auto">
-            {labels.apply}
-          </ActionButton>
-          <Link
-            href={buildReportHref(locale, activeView, parseAssetListParams({}))}
-            className={`${getActionButtonClasses("secondary")} min-h-11 w-full md:h-10 md:min-h-0 md:w-auto`}
-          >
-            {labels.clear}
-          </Link>
-        </div>
+        <Field label={labels.search}>
+          <SearchField name="search" defaultValue={filters.search} placeholder={labels.searchPlaceholder} />
+        </Field>
+        <FilterSelect label={labels.company} name="companyId" defaultValue={filters.companyId} allLabel={labels.all} options={options.companies} />
+        <FilterSelect label={labels.branch} name="branchId" defaultValue={filters.branchId} allLabel={labels.all} options={options.branches} />
+        <FilterSelect label={labels.category} name="categoryId" defaultValue={filters.categoryId} allLabel={labels.all} options={options.categories} />
+        <FilterSelect label={labels.status} name="statusId" defaultValue={filters.statusId} allLabel={labels.all} options={options.statuses} />
+        <FilterSelect label={labels.condition} name="conditionId" defaultValue={filters.conditionId} allLabel={labels.all} options={options.conditions} />
+        <FilterSelect label={labels.ownershipType} name="ownershipType" defaultValue={filters.ownershipType} allLabel={labels.all} options={options.ownershipTypes} />
+        <FilterFormActions
+          className="md:col-span-2 xl:col-span-3"
+          submitLabel={labels.apply}
+          clear={hasActiveFilters ? { href: buildReportHref(locale, activeView, parseAssetListParams({})), label: labels.clear } : undefined}
+        />
       </form>
     </FilterPanel>
-  )
-}
-
-function ReportSelect({
-  name,
-  label,
-  value,
-  options,
-  allLabel,
-}: {
-  name: string
-  label: string
-  value: string
-  options: ReportFilterOption[]
-  allLabel: string
-}) {
-  return (
-    <label>
-      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>
-      <select name={name} defaultValue={value} className={getFieldControlClasses()}>
-        <option value="">{allLabel}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
   )
 }

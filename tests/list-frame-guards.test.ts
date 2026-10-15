@@ -116,6 +116,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}access-denied/page.tsx`,
   `${D}notifications/page.tsx`,
   `${D}my-assets/page.tsx`,
+  `${C}reports/report-filter-panel.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -238,8 +239,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}maintenance/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
   },
   LF1: {
-    // 2B-5
-    [`${C}reports/report-filter-panel.tsx`]: 1,
   },
   LT1: {
     // 2B-1
