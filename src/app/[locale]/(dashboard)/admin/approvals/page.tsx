@@ -2,7 +2,7 @@ import Link from "next/link"
 import type React from "react"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
+import { ChevronRight, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
@@ -14,10 +14,13 @@ import { formatCount } from "@/lib/display-format"
 import { formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
 
 type ApprovalInboxPageProps = {
@@ -48,6 +51,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
     label: t(`filter_${filter}`),
     count: filter === "all" ? summary.total : summary[filter],
   }))
+  const disposalPolicyOn = policy.disposalRequired && access.canApproveDisposal
+  const auditPolicyOn = policy.auditCloseRequired && access.canApproveAudit
 
   return (
     <div className="space-y-6">
@@ -75,41 +80,29 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         ]}
       />
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="font-semibold text-foreground">{t("policyTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("policyDescription")}</p>
-          </div>
-          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <PolicyBadge label={t("policyDisposal")} enabled={policy.disposalRequired && access.canApproveDisposal} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
-            <PolicyBadge label={t("policyAuditClose")} enabled={policy.auditCloseRequired && access.canApproveAudit} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
-            <div className="rounded-md border border-border bg-background px-3 py-2">
-              <div className="text-xs text-muted-foreground">{t("minApprovers")}</div>
-              <div className="font-semibold text-foreground">
-                {policy.minApprovers} / {policy.segregationRequired ? t("sodOn") : t("sodOff")}
-              </div>
-            </div>
-            <div className="rounded-md border border-border bg-background px-3 py-2">
-              <div className="text-xs text-muted-foreground">{t("approvalSla")}</div>
-              <div className="font-semibold text-foreground">{t("slaDays", { days: policy.slaDays })}</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* The policy in effect: facts as label and value pairs, on and off as status badges (no tinted boxes). */}
+      <ContentPanel title={t("policyTitle")} description={t("policyDescription")}>
+        <KeyValueList
+          items={[
+            { key: "disposal", label: t("policyDisposal"), value: <StatusBadge label={disposalPolicyOn ? t("enabled") : t("disabled")} tone={disposalPolicyOn ? "success" : "muted"} /> },
+            { key: "auditClose", label: t("policyAuditClose"), value: <StatusBadge label={auditPolicyOn ? t("enabled") : t("disabled")} tone={auditPolicyOn ? "success" : "muted"} /> },
+            { key: "minApprovers", label: t("minApprovers"), value: `${formatCount(policy.minApprovers)} / ${policy.segregationRequired ? t("sodOn") : t("sodOff")}` },
+            { key: "sla", label: t("approvalSla"), value: t("slaDays", { days: policy.slaDays }) },
+          ]}
+        />
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="font-semibold text-foreground">{t("approverMatrixTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("approverMatrixDescription", { min: policy.minApprovers })}</p>
-          </div>
+      <ContentPanel
+        title={t("approverMatrixTitle")}
+        description={t("approverMatrixDescription", { min: policy.minApprovers })}
+        actions={
           <Link href={`/${locale}/admin/roles`} className={buttonVariants({ variant: "outline", size: "md" })}>
             <Users aria-hidden="true" />
             {t("manageRoles")}
           </Link>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        }
+      >
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           {approverMatrix.map((item) => (
             <ApproverMatrixCard
               key={item.key}
@@ -128,7 +121,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
             />
           ))}
         </div>
-      </section>
+      </ContentPanel>
 
       <ContentPanel
         divided
@@ -163,9 +156,9 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
               <ApprovalInboxRow
                 key={item.id}
                 item={item}
-                locale={locale}
                 slaDays={policy.slaDays}
                 labels={{
+                  modules: { disposal: t("disposal"), audit: t("audit") },
                   requestedBy: t("requestedBy"),
                   requestedAt: t("requestedAt"),
                   waitingDays: (days) => t("waitingDays", { days }),
@@ -180,16 +173,16 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
   )
 }
 
+// A row is one link (2B bug §5.10 #3). The module is a name, so a Chip; only an overdue request is a danger badge.
 function ApprovalInboxRow({
   item,
-  locale,
   slaDays,
   labels,
 }: {
   item: ApprovalInboxItem
-  locale: string
   slaDays: number
   labels: {
+    modules: Record<ApprovalInboxItem["module"], string>
     requestedBy: string
     requestedAt: string
     waitingDays: (days: number) => string
@@ -198,16 +191,17 @@ function ApprovalInboxRow({
 }) {
   const ageStatus = getApprovalAgeStatus(item.requestedAt, new Date(), slaDays)
   return (
-    <Link href={item.href} className="block p-5 transition-colors hover:bg-accent">
+    <Link href={item.href} className="block p-5 transition-colors hover:bg-row-hover">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          <div className={`mt-1 rounded-md border p-2 ${toneClass(item.tone)}`}>{kindIcon(item.kind)}</div>
+          <div aria-hidden="true" className="mt-1 text-muted-foreground">{kindIcon(item.kind)}</div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${pillClass(item.tone)}`}>{moduleLabel(item.module, locale)}</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ageStatus.isOverdue ? "bg-danger-soft text-danger" : "bg-muted text-muted-foreground"}`}>
-                {ageStatus.isOverdue ? labels.overdueDays(ageStatus.daysOverdue) : labels.waitingDays(ageStatus.ageDays)}
-              </span>
+              <Chip>{labels.modules[item.module]}</Chip>
+              <StatusBadge
+                label={ageStatus.isOverdue ? labels.overdueDays(ageStatus.daysOverdue) : labels.waitingDays(ageStatus.ageDays)}
+                tone={ageStatus.isOverdue ? "danger" : "muted"}
+              />
               <h3 className="font-semibold text-foreground">{item.title}</h3>
             </div>
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
@@ -223,27 +217,6 @@ function ApprovalInboxRow({
         </span>
       </div>
     </Link>
-  )
-}
-
-function PolicyBadge({
-  label,
-  enabled,
-  enabledLabel,
-  disabledLabel,
-}: {
-  label: string
-  enabled: boolean
-  enabledLabel: string
-  disabledLabel: string
-}) {
-  return (
-    <div className={`rounded-md border px-3 py-2 ${enabled ? "border-success-border bg-success-soft" : "border-border bg-background"}`}>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`font-semibold ${enabled ? "text-success" : "text-muted-foreground"}`}>
-        {enabled ? enabledLabel : disabledLabel}
-      </div>
-    </div>
   )
 }
 
@@ -267,17 +240,15 @@ function ApproverMatrixCard({
   const visibleApprovers = item.approverLabels.slice(0, 4)
   const hiddenApproverCount = item.approverLabels.length - visibleApprovers.length
 
+  // A neutral card in the panel; the coverage is its status badge (ready, thin, missing).
   return (
-    <div className={`rounded-lg border p-4 ${matrixCardClass(item.status)}`}>
+    <div className="rounded-md border border-border bg-background p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-foreground">{labels.workflow}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.approverCount(item.approverCount)}</p>
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${matrixStatusClass(item.status)}`}>
-          {matrixStatusIcon(item.status)}
-          {labels.status}
-        </span>
+        <StatusBadge label={labels.status} tone={matrixTone(item.status)} />
       </div>
       <div className="mt-4 space-y-3 text-sm">
         <div>
@@ -291,18 +262,14 @@ function ApproverMatrixCard({
         <div>
           <div className="text-xs font-medium text-muted-foreground">{labels.approvers}</div>
           {visibleApprovers.length === 0 ? (
-            <div className="mt-1 text-danger">{labels.noApprovers}</div>
+            <div className="mt-1 text-muted-foreground">{labels.noApprovers}</div>
           ) : (
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {visibleApprovers.map((approver) => (
-                <span key={approver} className="rounded-full bg-background px-2 py-1 text-xs font-medium text-foreground">
-                  {approver}
-                </span>
+                <Chip key={approver}>{approver}</Chip>
               ))}
               {hiddenApproverCount > 0 ? (
-                <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                  {labels.moreApprovers(hiddenApproverCount)}
-                </span>
+                <span className="text-meta text-muted-foreground">{labels.moreApprovers(hiddenApproverCount)}</span>
               ) : null}
             </div>
           )}
@@ -318,39 +285,8 @@ function kindIcon(kind: ApprovalInboxItem["kind"]): React.ReactNode {
   return <ClipboardCheck className="h-4 w-4" />
 }
 
-function moduleLabel(module: ApprovalInboxItem["module"], locale: string) {
-  const labels = {
-    th: { disposal: "ตัดจำหน่าย", audit: "ตรวจนับ" },
-    en: { disposal: "Disposal", audit: "Audit" },
-  }
-  return (locale === "th" ? labels.th : labels.en)[module]
-}
-
-function toneClass(tone: ApprovalInboxItem["tone"]) {
-  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
-  return "border-primary-border bg-primary-soft text-primary"
-}
-
-function pillClass(tone: ApprovalInboxItem["tone"]) {
-  if (tone === "danger") return "bg-danger-soft text-danger"
-  if (tone === "warning") return "bg-warning-soft text-warning"
-  return "bg-primary-soft text-primary"
-}
-
-function matrixCardClass(status: ApprovalPermissionMatrixItem["status"]) {
-  if (status === "missing") return "border-danger-border bg-danger-soft"
-  if (status === "thin") return "border-warning-border bg-warning-soft"
-  return "border-success-border bg-success-soft"
-}
-
-function matrixStatusClass(status: ApprovalPermissionMatrixItem["status"]) {
-  if (status === "missing") return "bg-danger-soft text-danger"
-  if (status === "thin") return "bg-warning-soft text-warning"
-  return "bg-success-soft text-success"
-}
-
-function matrixStatusIcon(status: ApprovalPermissionMatrixItem["status"]) {
-  if (status === "ready") return <CheckCircle2 className="h-3 w-3" />
-  return <AlertTriangle className="h-3 w-3" />
+function matrixTone(status: ApprovalPermissionMatrixItem["status"]): StatusTone {
+  if (status === "missing") return "danger"
+  if (status === "thin") return "warning"
+  return "success"
 }

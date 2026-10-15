@@ -147,3 +147,15 @@ test("readiness: the checklist is a ContentPanel of neutral cards with a status 
   assert.match(source, /<StatusBadge label=\{labels\.status\} tone=\{checkTone\(check\.status\)\} \/>/)
   assert.doesNotMatch(source, /rounded-full|rounded-lg border|bg-(?:success|warning|danger|primary)-soft|function (?:checkCardClass|statusPillClass|statusIcon)\b/)
 })
+
+test("approval inbox: the policy is a KeyValueList with status badges, matrix cards are neutral, modules and approvers are Chips (spec 2D D7, D9, M30)", () => {
+  const source = read(`${D}admin/approvals/page.tsx`)
+  assert.match(source, /<ContentPanel title=\{t\("policyTitle"\)\} description=\{t\("policyDescription"\)\}>\n\s+<KeyValueList/)
+  assert.match(source, /<ContentPanel\n\s+title=\{t\("approverMatrixTitle"\)\}/)
+  assert.match(source, /modules: \{ disposal: t\("disposal"\), audit: t\("audit"\) \},/)
+  assert.match(source, /<Chip>\{labels\.modules\[item\.module\]\}<\/Chip>/)
+  assert.match(source, /tone=\{ageStatus\.isOverdue \? "danger" : "muted"\}/)
+  assert.match(source, /<StatusBadge label=\{labels\.status\} tone=\{matrixTone\(item\.status\)\} \/>/)
+  assert.match(source, /<Chip key=\{approver\}>\{approver\}<\/Chip>/)
+  assert.doesNotMatch(source, /rounded-full|rounded-lg border|bg-(?:success|warning|danger|primary)-soft|text-danger|function (?:PolicyBadge|moduleLabel|toneClass|pillClass|matrixCardClass|matrixStatusClass|matrixStatusIcon)\b|hover:bg-accent|"ตัดจำหน่าย"/)
+})
