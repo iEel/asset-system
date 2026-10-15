@@ -103,6 +103,7 @@ const MIGRATED_FILES: string[] = [
   `${C}assets/asset-create-workspace.tsx`,
   `${C}assets/asset-register-table.tsx`,
   `${C}assets/asset-import-preview-panel.tsx`,
+  `${C}disposal/disposal-workflow-stepper.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])

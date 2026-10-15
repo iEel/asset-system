@@ -3111,7 +3111,13 @@
     "actualSalvageValueBaht": "มูลค่าซากจริง (บาท)",
     "requestEvidenceDescription": "แนบได้หลายไฟล์ ไฟล์จะอัปโหลดหลังบันทึกคำขอ",
     "activeFilterCount": "ใช้ตัวกรอง {count} รายการ",
-    "executeDisposalShort": "บันทึกตัดจำหน่าย"
+    "executeDisposalShort": "บันทึกตัดจำหน่าย",
+    "workflowStepsLabel": "ขั้นตอนการตัดจำหน่าย",
+    "workflowSteps": {
+      "request": "ยื่นคำขอ",
+      "decision": "พิจารณา",
+      "execution": "ตัดจำหน่ายจริง"
+    }
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

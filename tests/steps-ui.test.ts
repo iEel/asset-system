@@ -122,3 +122,27 @@ test("the import panel shows its five steps on the shared rail, and the current-
     assert.equal(typeof asset.importWizardStepComplete, "string", locale)
   }
 })
+
+test("the disposal request shows its three steps on the shared rail: filed, decision, disposal (S1, batch 5)", () => {
+  const stepper = read("src/components/disposal/disposal-workflow-stepper.tsx")
+  assert.match(stepper, /import \{ Steps \} from "@\/components\/ui\/steps"/)
+  assert.match(stepper, /import \{ getLinearStepStates, type StepOutcome \} from "@\/lib\/step-states"/)
+  assert.match(stepper, /export function DisposalWorkflowStepper\(/)
+  // A request someone can open has been filed: pending waits at the decision, approved at the disposal (spec 2C §7.2.4).
+  assert.match(stepper, /const currentStepByStage: Record<DisposalStage, number> = \{\n  pending_approval: 1,\n  awaiting_execution: 2,\n  complete: 2,\n  rejected: 1,\n\}/)
+  assert.match(stepper, /const outcomeByStage: Record<DisposalStage, StepOutcome> = \{\n  pending_approval: "in_progress",\n  awaiting_execution: "in_progress",\n  complete: "complete",\n  rejected: "rejected",\n\}/)
+  assert.match(stepper, /const states = getLinearStepStates\(stepKeys\.length, currentStepByStage\[stage\], outcomeByStage\[stage\]\)/)
+  assert.match(stepper, /<Steps className="mt-4" label=\{stepsLabel\} steps=\{steps\} \/>/)
+  assert.doesNotMatch(stepper, /grid grid-cols-3|text-white|aria-current|<ol\b|\bCircle\b|XCircle/, "the rail, its states and its words come from Steps")
+  const page = read("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx")
+  assert.match(page, /stepsLabel=\{t\("workflowStepsLabel"\)\}\n\s+labels=\{\{\n\s+request: t\("workflowSteps\.request"\),\n\s+decision: t\("workflowSteps\.decision"\),\n\s+execution: t\("workflowSteps\.execution"\),\n\s+\}\}/)
+  const words = {
+    th: { label: "ขั้นตอนการตัดจำหน่าย", steps: { request: "ยื่นคำขอ", decision: "พิจารณา", execution: "ตัดจำหน่ายจริง" } },
+    en: { label: "Disposal steps", steps: { request: "Request", decision: "Decision", execution: "Execution" } },
+  }
+  for (const locale of ["th", "en"] as const) {
+    const disposal = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { disposalPage: Record<string, unknown> }).disposalPage
+    assert.equal(disposal.workflowStepsLabel, words[locale].label, locale)
+    assert.deepEqual(disposal.workflowSteps, words[locale].steps, locale)
+  }
+})

@@ -3111,7 +3111,13 @@
     "actualSalvageValueBaht": "Actual Salvage Value (THB)",
     "requestEvidenceDescription": "You can attach several files. They upload after the request is saved.",
     "activeFilterCount": "{count} filters on",
-    "executeDisposalShort": "Dispose"
+    "executeDisposalShort": "Dispose",
+    "workflowStepsLabel": "Disposal steps",
+    "workflowSteps": {
+      "request": "Request",
+      "decision": "Decision",
+      "execution": "Execution"
+    }
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

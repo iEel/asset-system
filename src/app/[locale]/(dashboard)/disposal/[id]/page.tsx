@@ -201,10 +201,11 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         currentStageLabel={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus}
         ownerRoleLabel={ownerContext.roleLabel === "approver" ? t("approver") : t("executedBy")}
         ownerLabel={ownerContext.ownerLabel}
+        stepsLabel={t("workflowStepsLabel")}
         labels={{
-          request: t("requestDetail"),
-          decision: t("decisionDetail"),
-          execution: t("executionDetail"),
+          request: t("workflowSteps.request"),
+          decision: t("workflowSteps.decision"),
+          execution: t("workflowSteps.execution"),
         }}
       />
       {disposalRequest.batch ? (
