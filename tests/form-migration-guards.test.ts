@@ -311,6 +311,7 @@ const CLOSE_LABEL_IS_CANCEL: Record<string, number> = {
 // GL1 class strings with both fixed and bottom-
 const FIXED_BOTTOM_BARS: Record<string, number> = {
   [`${C}assets/asset-register-table.tsx`]: 1, // :473 the phone bulk-action bar (phase 3, R-q)
+  [`${C}ui/action-bar.tsx`]: 1, // the ActionBar of the four detail pages (batch 5, K23)
   [`${C}ui/mobile-action-bar.tsx`]: 1, // batch 5 deletes both files
   [`${C}disposal/disposal-mobile-action-bar.tsx`]: 1, // and adds "ui/action-bar.tsx": 1
 }
