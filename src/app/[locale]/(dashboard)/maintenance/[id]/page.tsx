@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, ArrowLeft, FileText, History, Printer, Trash2 } from "lucide-react"
+import { AlertTriangle, FileText, History, Printer, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -14,7 +14,7 @@ import { getMaintenanceMovementLabel, getMovementDisplayLabels } from "@/lib/mov
 import { canAttachToRepairRecord, getRepairRecordStatusTone, isOpenRepairStatus, toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { KeyValueList } from "@/components/ui/key-value-list"
-import { MobileActionBar } from "@/components/ui/mobile-action-bar"
+import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Nil } from "@/components/ui/nil"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
@@ -106,7 +106,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   )
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
+    <div className={`space-y-6 ${actionBarPagePadding.single}`}>
       <PageHeader
         breadcrumbs={[{ label: t("title"), href: returnToHref }, { label: ticket.repairNo, code: true }]}
         title={ticket.asset.name}
@@ -143,12 +143,12 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           </>
         }
       />
-      <MobileActionBar
+      <ActionBar
+        label={tCommon("actions")}
         actions={[
           { href: `/${locale}/assets/${ticket.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
           { href: printHref, label: t("print"), icon: <Printer className="h-4 w-4" /> },
           { href: "#history", label: t("history"), icon: <History className="h-4 w-4" /> },
-          { href: returnToHref, label: tCommon("back"), icon: <ArrowLeft className="h-4 w-4" /> },
         ]}
       />
 

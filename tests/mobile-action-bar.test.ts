@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 import { getMobileActionGridClass } from "../src/lib/mobile-action-layout.ts"
@@ -14,7 +14,7 @@ test("mobile action grid expands one to four visible actions across the availabl
 })
 
 test("mobile action bar derives its grid from visible actions", () => {
-  const source = readFileSync("src/components/ui/mobile-action-bar.tsx", "utf8")
+  const source = readFileSync("src/components/ui/action-bar.tsx", "utf8")
 
   assert.match(source, /getMobileActionGridClass\(visibleActions\.length\)/)
   assert.doesNotMatch(source, /className="grid min-w-0 grid-cols-4 gap-2"/)
@@ -37,4 +37,32 @@ test("ActionBar is one server-safe bar of shared button links, with the page pad
   assert.match(source, /<Link key=\{action\.label\} href=\{action\.href\} className=\{className\}>/)
   assert.equal(source.match(/<span className="min-w-0 truncate">\{action\.label\}<\/span>/g)?.length, 2)
   assert.doesNotMatch(source, /<a\b[^>]*\bhref=|<span[^>]*aria-disabled|leading-tight|text-xs|bg-muted|text-white|shadow-|backdrop-blur/)
+})
+
+// Phase 2C batch 5 (spec 2C §6.10, §6.11 table B, O11, K23): the four detail pages render ActionBar, named by
+// tCommon("actions") ("การดำเนินการ"), and pad their root with actionBarPagePadding, so the bar and its room change in
+// one place. The disposal request's first link is the primary button only when no next-step button sits above it.
+// The repair page's bar drops its back item, because the header's PageBackLink shows at every width; the audit round
+// keeps it, because its header has no back link (2B spec §4.6.4). The two old bars are gone.
+test("the four detail pages use ActionBar with its page padding, and the two old bars are gone (K23, O11)", () => {
+  assert.equal(existsSync("src/components/ui/mobile-action-bar.tsx"), false)
+  assert.equal(existsSync("src/components/disposal/disposal-mobile-action-bar.tsx"), false)
+  const page = (route: string) => readFileSync(`src/app/[locale]/(dashboard)/${route}/page.tsx`, "utf8").replace(/\r\n/g, "\n")
+  const pages: Record<string, [string, RegExp]> = {
+    "assets/[id]": [page("assets/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/],
+    "maintenance/[id]": [page("maintenance/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/],
+    "disposal/[id]": [page("disposal/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/],
+    "audit/rounds/[id]": [page("audit/rounds/[id]"), /<div className=\{actionBarPagePadding\.single\}>/],
+  }
+  for (const [route, [source, root]] of Object.entries(pages)) {
+    assert.match(source, /^import \{ ActionBar, actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m, route)
+    assert.match(source, root, route)
+    assert.match(source, /<ActionBar\s+label=\{tCommon\("actions"\)\}/, route)
+    assert.doesNotMatch(source, /MobileActionBar|\bpb-(?:24|36)\b/, route)
+  }
+  const [disposal] = pages["disposal/[id]"]
+  assert.match(disposal, /<ActionBar\n\s+label=\{tCommon\("actions"\)\}\n\s+primaryAction=\{nextActionControl\}\n/)
+  assert.match(disposal, /label: t\("openAsset"\), icon: <FileText className="h-4 w-4" \/>, primary: !nextActionControl \}/)
+  assert.doesNotMatch(pages["maintenance/[id]"][0], /label: tCommon\("back"\)|ArrowLeft/, "the repair header's PageBackLink is its one back control")
+  assert.match(pages["audit/rounds/[id]"][0], /\{ href: returnToHref, label: tCommon\("back"\), icon: <ArrowLeft className="h-4 w-4" \/> \}/, "the audit round header has no back link, so its bar keeps one")
 })

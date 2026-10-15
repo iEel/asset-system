@@ -22,7 +22,8 @@ import {
 const sources = readSourceFiles("src")
 const C = "src/components/"
 
-// The 66 files of 2C by batch (spec §8.6, §8.9), relative to src/components/.
+// The files of 2C by batch (spec §8.6, §8.9), relative to src/components/: the 66 of the spec less the two mobile
+// action bars that batch 5 deleted (ActionBar replaced them).
 const BATCH_FILES: Record<string, readonly string[]> = {
   "1a": ["maintenance/maintenance-plan-form.tsx", "maintenance/repair-record-form.tsx", "maintenance/repair-record-actions.tsx", "maintenance/maintenance-attachments.tsx"],
   "1b": ["asset-operations/checkin-form.tsx", "asset-operations/checkout-form.tsx", "asset-operations/transfer-form.tsx", "asset-operations/bulk-move-form.tsx", "asset-operations/signature-pad.tsx", "ui/operation-review-dialog.tsx"],
@@ -34,7 +35,7 @@ const BATCH_FILES: Record<string, readonly string[]> = {
   "2": ["master-data/branch-form.tsx", "master-data/brand-form.tsx", "master-data/category-form.tsx", "master-data/company-form.tsx", "master-data/department-form.tsx", "master-data/employee-form.tsx", "master-data/location-form.tsx", "master-data/supplier-form.tsx"],
   "3": ["disposal/disposal-bulk-approval.tsx", "disposal/disposal-bulk-execution.tsx", "audit/audit-round-form.tsx", "audit/audit-round-cancel-button.tsx", "audit/audit-findings-batch-actions.tsx", "audit/audit-scan-room-picker.tsx", "audit/audit-scan-check-panel.tsx", "maintenance/maintenance-plan-state-actions.tsx", "ui/confirm-text-dialog.tsx"],
   "4": ["admin/admin-user-form.tsx", "admin/role-permission-form.tsx", "admin/IntegrationClientManager.tsx", "admin/asset-state-review-dialog.tsx", "admin/data-quality-rule-form.tsx", "assets/asset-label-batch-tool.tsx", "assets/asset-label-print.tsx", "assets/asset-scan-search-tool.tsx", "assets/asset-status-correction-button.tsx", "assets/asset-register-table.tsx", "assets/asset-import-preview-panel.tsx", "assets/asset-evidence-drawer.tsx", "assets/asset-create-workspace.tsx", "asset-operations/transaction-cancel-dialog.tsx", "auth/login-form.tsx", "reports/report-preset-controls.tsx", "notifications/notification-center-actions.tsx", "ui/activity-drawer.tsx"],
-  "5": ["ui/mobile-action-bar.tsx", "disposal/disposal-mobile-action-bar.tsx", "disposal/disposal-workflow-stepper.tsx", "ui/confirm-dialog.tsx", "ui/alert-dialog.tsx"],
+  "5": ["disposal/disposal-workflow-stepper.tsx", "ui/confirm-dialog.tsx", "ui/alert-dialog.tsx"],
 }
 // Primitives 2C creates: every guard applies to them from the first day (action-bar.tsx arrives in batch 5).
 const NEW_2C_FILES = ["ui/segmented.tsx", "ui/sticky-form-footer.tsx", "ui/form-section.tsx", "ui/choice-card.tsx", "ui/file-queue-list.tsx", "ui/steps.tsx", "ui/action-bar.tsx"].map((path) => C + path)
@@ -312,8 +313,6 @@ const CLOSE_LABEL_IS_CANCEL: Record<string, number> = {
 const FIXED_BOTTOM_BARS: Record<string, number> = {
   [`${C}assets/asset-register-table.tsx`]: 1, // :473 the phone bulk-action bar (phase 3, R-q)
   [`${C}ui/action-bar.tsx`]: 1, // the ActionBar of the four detail pages (batch 5, K23)
-  [`${C}ui/mobile-action-bar.tsx`]: 1, // batch 5 deletes both files
-  [`${C}disposal/disposal-mobile-action-bar.tsx`]: 1, // and adds "ui/action-bar.tsx": 1
 }
 
 // GD2 files whose AccessibleDialogs still wait for AccessibleDialogFooter. The commit that migrates a file's dialogs removes its line.

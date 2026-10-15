@@ -12,7 +12,7 @@ import { AuditRoundCancelButton } from "@/components/audit/audit-round-cancel-bu
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
 import { hasPermission } from "@/lib/auth-utils"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
-import { MobileActionBar } from "@/components/ui/mobile-action-bar"
+import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
@@ -434,7 +434,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     }))
 
   return (
-    <div className="pb-24 md:pb-0">
+    <div className={actionBarPagePadding.single}>
       <PageHeader
         className="mb-6"
         breadcrumbs={[
@@ -487,7 +487,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         }
       />
       {!isRoundReadOnly ? (
-        <MobileActionBar
+        <ActionBar
+          label={tCommon("actions")}
           actions={[
             { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
             { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },

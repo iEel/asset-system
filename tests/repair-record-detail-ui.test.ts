@@ -76,15 +76,15 @@ test("the three repair dialogs keep their buttons in a fixed footer and keep foc
 
 // Plan 2B-4 Task 3 (spec 2B §4.4.5, §4.5.3, §8.8 row 3, B2, I32): the repair page header is PageHeader with the asset's
 // name as the h1 (a repair record has no name of its own) and the repair code, the status and the asset code as meta.
-// Back is PageBackLink, and the back item of the mobile bar shows ArrowLeft instead of Wrench. The O11 bottom padding
-// stays for 2C plan 5. This file reads the page raw (CRLF): no line breaks in these regexes.
-test("the repair page header is PageHeader with the asset name, and back points left in the header and the bar (spec 2B §4.4.5, B2)", () => {
+// Back is PageBackLink, at every width; 2C plan 5 took the back item out of the phone bar (2B spec §4.6.4) and moved
+// the O11 bottom padding to actionBarPagePadding. This file reads the page raw (CRLF): no line breaks in these regexes.
+test("the repair page header is PageHeader with the asset name, and its PageBackLink is the one back control (spec 2B §4.4.5, §4.6.4)", () => {
   const source = readFileSync(detailPath, "utf8")
   assert.match(source, /breadcrumbs=\{\[\{ label: t\("title"\), href: returnToHref \}, \{ label: ticket\.repairNo, code: true \}\]\}\s*title=\{ticket\.asset\.name\}/)
   assert.match(source, /<span className="tag">\{ticket\.repairNo\}<\/span>\s*<StatusBadge label=\{t\(`status\.\$\{recordStatus\}`\)\} tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\} \/>\s*<span className="tag">\{ticket\.asset\.assetTag\}<\/span>/)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
-  assert.match(source, /\{ href: returnToHref, label: tCommon\("back"\), icon: <ArrowLeft className="h-4 w-4" \/> \}/)
-  assert.match(source, /<div className="space-y-6 pb-24 md:pb-0">/, "the O11 bottom padding stays for 2C plan 5")
+  assert.doesNotMatch(source, /label: tCommon\("back"\)|ArrowLeft/, "the bar has no back item of its own (2C plan 5)")
+  assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
   assert.equal(source.match(/<KeyValueList\b/g)?.length, 4)
   assert.doesNotMatch(source, /\bWrench\b|<h1\b|<Breadcrumbs\b|formatCurrency|function Info\b|"-"/)
 })

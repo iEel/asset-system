@@ -32,14 +32,14 @@ test("disposal detail preserves operational navigation and uses an ArrowLeft bac
 
   assert.match(source, /<PageBackLink href=\{returnToHref\}/)
   assert.match(source, /normalizeOperationalReturnTo/)
-  assert.match(source, /<DisposalMobileActionBar/)
+  assert.match(source, /<ActionBar/)
   assert.match(source, /href=\{returnToHref\}/)
   assert.doesNotMatch(source, /Trash2/)
 })
 
 test("mobile disposal detail promotes the stage action without duplicating desktop controls", () => {
   const source = detailSource()
-  const actionBar = readFileSync("src/components/disposal/disposal-mobile-action-bar.tsx", "utf8")
+  const actionBar = readFileSync("src/components/ui/action-bar.tsx", "utf8")
 
   assert.match(source, /primaryAction=\{nextActionControl\}/)
   assert.match(source, /hidden[^\"]*md:flex/)
@@ -103,7 +103,8 @@ test("child requests disclose their source batch and inherited evidence", () => 
 // Plan 2B-4 Task 4 (spec 2B §4.4.5, §4.5.4, §8.8 row 4, B2, I32): the request page header is PageHeader with the asset's
 // name as the h1; the request code, the status and the asset code are its meta and show on phones too. The back button
 // shows at every width; print and the next step stay in the md-and-up group (the mobile bar has them on phones). The
-// stepper stays under the header and the O11 bottom padding stays for 2C plan 5. Raw read (CRLF): no line breaks here.
+// stepper stays under the header; 2C plan 5 moved the O11 bottom padding to actionBarPagePadding. Raw read (CRLF): no
+// line breaks here.
 test("disposal request header is PageHeader with the asset name and a back button at every width (spec 2B §4.5.4)", () => {
   const source = detailSource()
 
@@ -111,7 +112,7 @@ test("disposal request header is PageHeader with the asset name and a back butto
   assert.match(source, /meta=\{\s*<>\s*<span className="tag">\{disposalRequest\.disposalNo\}<\/span>\s*<StatusBadge /)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}\s*actions=\{\s*<div className="hidden items-center gap-2 md:flex">/)
   assert.ok(source.indexOf("<PageHeader") < source.indexOf("<DisposalWorkflowStepper"), "the stepper stays under the header")
-  assert.match(source, /<div className="space-y-6 pb-36 md:pb-0">/, "the O11 bottom padding stays for 2C plan 5")
+  assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/, "room for the ActionBar and its next step (2C plan 5, O11)")
   assert.equal(source.match(/<KeyValueList\b/g)?.length, 5)
   assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|ArrowLeft|formatCurrency|function Info\b|"-"/)
 })

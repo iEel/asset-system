@@ -12,8 +12,8 @@ import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
-import { DisposalMobileActionBar } from "@/components/disposal/disposal-mobile-action-bar"
 import { DisposalWorkflowStepper } from "@/components/disposal/disposal-workflow-stepper"
+import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { KeyValueList } from "@/components/ui/key-value-list"
@@ -171,7 +171,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   ) : null
 
   return (
-    <div className="space-y-6 pb-36 md:pb-0">
+    <div className={`space-y-6 ${actionBarPagePadding.withPrimary}`}>
       <PageHeader
         breadcrumbs={[
           { label: t("title"), href: returnToHref },
@@ -213,10 +213,11 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           <Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className="inline-flex min-h-10 items-center justify-center rounded-md border border-primary-border bg-surface px-3 font-medium text-primary hover:bg-primary-soft">{t("openBatch")}</Link>
         </div>
       ) : null}
-      <DisposalMobileActionBar
+      <ActionBar
+        label={tCommon("actions")}
         primaryAction={nextActionControl}
         actions={[
-          { href: `/${locale}/assets/${disposalRequest.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" /> },
+          { href: `/${locale}/assets/${disposalRequest.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: !nextActionControl },
           { href: printHref, label: printLabel, icon: <Printer className="h-4 w-4" /> },
           { href: "#history", label: t("disposalHistory"), icon: <History className="h-4 w-4" /> },
         ]}

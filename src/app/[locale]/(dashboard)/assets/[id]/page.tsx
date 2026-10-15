@@ -52,7 +52,7 @@ import { parseModelSpecs } from "@/lib/model-specs"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetMovementTimeline, type AssetMovementTimelineItem } from "@/components/assets/asset-movement-timeline"
-import { MobileActionBar } from "@/components/ui/mobile-action-bar"
+import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
@@ -883,7 +883,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   ]
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
+    <div className={`space-y-6 ${actionBarPagePadding.single}`}>
       <PageHeader
         breadcrumbs={[
           { label: t("title"), href: returnToHref },
@@ -976,7 +976,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           slotLabel: t("slotNo"),
         }}
       />
-      {mobileActions.length > 0 ? <MobileActionBar actions={mobileActions} /> : null}
+      {mobileActions.length > 0 ? <ActionBar label={tCommon("actions")} actions={mobileActions} /> : null}
 
       <AssetDetailTabs
         locale={locale}

@@ -174,6 +174,6 @@ test("asset detail header is PageHeader with the asset name, and its facts, tile
   assert.equal(source.match(/<StatStrip\b/g)?.length, 2)
   assert.equal(source.match(/<KeyValueList\b/g)?.length, 7)
   assert.doesNotMatch(source, /<h1\b|<thead\b|<Breadcrumbs\b|<ArrowLeft\b|formatCurrency|function (?:Info|SummaryStrip)\b|opacity-70/)
-  assert.match(source, /<div className="space-y-6 pb-24 md:pb-0">/, "the O11 bottom padding stays for 2C plan 5")
-  assert.match(source, /\{mobileActions\.length > 0 \? <MobileActionBar actions=\{mobileActions\} \/> : null\}/)
+  assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
+  assert.match(source, /\{mobileActions\.length > 0 \? <ActionBar label=\{tCommon\("actions"\)\} actions=\{mobileActions\} \/> : null\}/)
 })
