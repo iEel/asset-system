@@ -294,7 +294,7 @@ const LOADER2: Record<string, number> = {
   [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :560, :561 in the dialog body (I27)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :967 (its spinner :970), the status line in the dialog body (I27)
   // 4
-  [`${C}admin/IntegrationClientManager.tsx`]: 2, // the status line :524 and the rotate button of the row :854 (2D, I27)
+  [`${C}admin/IntegrationClientManager.tsx`]: 1, // the loading status in the client list head :505 (I27); the rotate button is Button busy since 2D-2
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :311, :446 (I27)
   [`${C}assets/asset-scan-search-tool.tsx`]: 1, // the status line :141 (I27)
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1, // the loading line :134 in the dialog body (I27)

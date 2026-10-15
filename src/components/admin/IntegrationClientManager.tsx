@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertTriangle, CheckCircle2, Copy, KeyRound, Loader2, Pencil, Plus, RotateCw, ShieldOff } from "lucide-react"
+import { Copy, Loader2, Pencil, Plus, RotateCw } from "lucide-react"
 import {
   buildIntegrationPowerShellExamples,
   type IntegrationClientOperationSummary,
@@ -15,11 +15,17 @@ import {
   AccessibleDialogFooter,
   accessibleDialogFormClasses,
 } from "@/components/ui/accessible-dialog"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Button } from "@/components/ui/button"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { Notice } from "@/components/ui/notice"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
@@ -330,74 +336,60 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
 
   return (
     <div className="space-y-4">
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <SummaryCard icon={<CheckCircle2 className="h-5 w-5" />} label={labels.summaryActive} value={summary.active} tone="success" />
-        <SummaryCard icon={<ShieldOff className="h-5 w-5" />} label={labels.summaryDisabled} value={summary.disabled} tone="muted" />
-        <SummaryCard icon={<KeyRound className="h-5 w-5" />} label={labels.summaryLastUsed} value={summary.lastUsed} tone="primary" />
-        <SummaryCard icon={<Copy className="h-5 w-5" />} label={labels.requests7d} value={summary.requests7d} tone="primary" />
-      </section>
+      {/* The 7-day count reads "การใช้งาน" with "7 วัน" as its foot: "7 วัน" alone would not say what is counted. */}
+      <StatStrip
+        items={[
+          { key: "active", label: labels.summaryActive, value: formatCount(summary.active) },
+          { key: "disabled", label: labels.summaryDisabled, value: formatCount(summary.disabled) },
+          { key: "lastUsed", label: labels.summaryLastUsed, value: formatCount(summary.lastUsed) },
+          { key: "requests7d", label: labels.operations, value: formatCount(summary.requests7d), foot: labels.requests7d },
+        ]}
+      />
 
+      {/* The token panel (R15): a panel with a warning Notice, not a warning box around controls, so the copy result
+          (success inline, an error as its own box) never sits in a box in a box. */}
       {oneTimeToken ? (
-        <section className="rounded-lg border border-warning-border bg-warning-soft p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-warning">
-                <AlertTriangle className="h-5 w-5 shrink-0" />
-                <h2 className="font-semibold text-foreground">{labels.tokenPanelTitle}</h2>
-              </div>
-              <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{labels.tokenPanelWarning}</p>
-              <div className="mt-3 rounded-md border border-border bg-surface p-3 font-mono text-sm text-foreground">
-                <div className="text-xs font-sans text-muted-foreground">{oneTimeToken.clientId}</div>
-                <div className="mt-1 break-all">{oneTimeToken.token}</div>
-              </div>
+        <ContentPanel divided title={labels.tokenPanelTitle}>
+          <div className="space-y-4">
+            <Notice tone="warning">{labels.tokenPanelWarning}</Notice>
+            <div className="rounded-md border border-border bg-background p-3">
+              <div className="text-xs text-muted-foreground"><span className="tag">{oneTimeToken.clientId}</span></div>
+              {/* The token is long and must wrap, so it keeps font-mono and is not a tag (R3). */}
+              <div className="mt-1 break-all font-mono text-sm text-foreground">{oneTimeToken.token}</div>
             </div>
-            <div className="flex w-fit flex-col gap-2">
-              <button
-                type="button"
-                onClick={copyToken}
-                className="inline-flex h-10 min-h-11 w-fit items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <Copy className="h-4 w-4" />
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="outline" onClick={copyToken}>
+                <Copy aria-hidden="true" />
                 {labels.copyToken}
-              </button>
+              </Button>
               {copyFeedback ? (
-                <div
-                  role="status"
-                  className={`rounded-md px-3 py-2 text-sm ${
-                    copyFeedback.tone === "success" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"
-                  }`}
-                >
+                <Notice tone={copyFeedback.tone === "success" ? "success" : "danger"} role="status">
                   {copyFeedback.message}
-                </div>
+                </Notice>
               ) : null}
             </div>
+            <div className="flex flex-col gap-3 border-t border-border-soft pt-4 md:flex-row md:items-center md:justify-between">
+              <label className="flex min-h-11 items-start gap-3 py-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={tokenAcknowledgement}
+                  onChange={(event) => setTokenAcknowledgement(event.target.checked)}
+                  className={cn(checkboxVariants(), "mt-0.5")}
+                />
+                <span>{labels.tokenAcknowledgement}</span>
+              </label>
+              <Button onClick={dismissToken} disabled={!tokenAcknowledgement}>
+                {labels.dismissToken}
+              </Button>
+            </div>
           </div>
-          <div className="mt-4 flex flex-col gap-3 border-t border-warning-border pt-4 md:flex-row md:items-center md:justify-between">
-            <label className="flex min-h-11 items-start gap-3 py-2 text-sm text-foreground">
-              <input
-                type="checkbox"
-                checked={tokenAcknowledgement}
-                onChange={(event) => setTokenAcknowledgement(event.target.checked)}
-                className={cn(checkboxVariants(), "mt-0.5")}
-              />
-              <span>{labels.tokenAcknowledgement}</span>
-            </label>
-            <button
-              type="button"
-              onClick={dismissToken}
-              disabled={!tokenAcknowledgement}
-              className="inline-flex h-10 min-h-11 w-fit items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {labels.dismissToken}
-            </button>
-          </div>
-        </section>
+        </ContentPanel>
       ) : null}
 
       {error && !editingClient ? (
-        <div className="rounded-md border border-danger-border bg-danger-soft p-3 text-sm text-danger" role="alert">
+        <Notice tone="danger" role="alert">
           {labels.error}: {error}
-        </div>
+        </Notice>
       ) : null}
 
       <AccessibleDialog
@@ -455,11 +447,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         ) : null}
       </AccessibleDialog>
 
-      <section className="rounded-lg border border-border bg-surface p-4">
-        <div className="mb-4 flex items-center gap-2">
-          <Plus className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-foreground">{labels.createTitle}</h2>
-        </div>
+      <ContentPanel divided title={labels.createTitle}>
         <form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" onSubmit={createClient}>
           <Field label={labels.clientId} required>
             <Input
@@ -504,25 +492,27 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
             </Button>
           </div>
         </form>
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface">
-        <div className="flex items-center justify-between gap-3 border-b border-border p-4">
-          <div className="min-w-0">
-            <h2 className="font-semibold text-foreground">{labels.clientsTitle}</h2>
-            {exampleCopyFeedback ? (
-              <div
-                role="status"
-                className={`mt-1 text-sm ${
-                  exampleCopyFeedback.tone === "success" ? "text-success" : "text-danger"
-                }`}
-              >
-                {exampleCopyFeedback.message}
-              </div>
-            ) : null}
-          </div>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" /> : null}
-        </div>
+      <ContentPanel
+        divided
+        flush
+        className="overflow-hidden"
+        title={labels.clientsTitle}
+        actions={
+          loading ? (
+            <span role="status" className="inline-flex">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" />
+              <span className="sr-only">{labels.loading}</span>
+            </span>
+          ) : null
+        }
+      >
+        {exampleCopyFeedback ? (
+          <Notice tone={exampleCopyFeedback.tone === "success" ? "success" : "danger"} role="status" className="mx-4 mt-3 md:mx-5">
+            {exampleCopyFeedback.message}
+          </Notice>
+        ) : null}
         {loading ? (
           <div className="grid gap-2 p-4">
             {[0, 1, 2].map((item) => (
@@ -530,44 +520,37 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
             ))}
           </div>
         ) : clients.length === 0 ? (
-          <div className="p-6">
-            <div className="rounded-md border border-dashed border-border bg-background p-4">
-              <h3 className="font-medium text-foreground">{labels.emptyTitle}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{labels.emptyDescription}</p>
-            </div>
-          </div>
+          <ActionEmptyState title={labels.emptyTitle} description={labels.emptyDescription} />
         ) : (
           <>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1040px] text-left text-sm">
-                <thead className="border-b border-border bg-surface text-meta text-faint-foreground">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">{labels.clientId}</th>
-                    <th className="px-4 py-3 font-medium">{labels.status}</th>
-                    <th className="px-4 py-3 font-medium">{labels.scopes}</th>
-                    <th className="px-4 py-3 font-medium">{labels.tokenPreview}</th>
-                    <th className="px-4 py-3 font-medium">{labels.lastUsed}</th>
-                    <th className="px-4 py-3 font-medium">{labels.operations}</th>
-                    <th className="px-4 py-3 text-right font-medium">{labels.actions}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {clients.map((client) => (
-                    <ClientRow
-                      key={client.id}
-                      client={client}
-                      labels={labels}
-                      busy={mutatingId === client.id}
-                      onEdit={() => openEditClient(client)}
-                      onRotate={() => rotateClient(client)}
-                      onEnable={() => setClientEnabled(client, true)}
-                      onDisable={() => setClientEnabled(client, false)}
-                      onCopyPowerShell={copyPowerShellExample}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable framed={false} caption={labels.clientsTitle} minWidth={1040} className="hidden md:block">
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{labels.clientId}</DataTableHead>
+                  <DataTableHead>{labels.status}</DataTableHead>
+                  <DataTableHead>{labels.scopes}</DataTableHead>
+                  <DataTableHead>{labels.tokenPreview}</DataTableHead>
+                  <DataTableHead>{labels.lastUsed}</DataTableHead>
+                  <DataTableHead>{labels.operations}</DataTableHead>
+                  <DataTableHead align="right">{labels.actions}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {clients.map((client) => (
+                  <ClientRow
+                    key={client.id}
+                    client={client}
+                    labels={labels}
+                    busy={mutatingId === client.id}
+                    onEdit={() => openEditClient(client)}
+                    onRotate={() => rotateClient(client)}
+                    onEnable={() => setClientEnabled(client, true)}
+                    onDisable={() => setClientEnabled(client, false)}
+                    onCopyPowerShell={copyPowerShellExample}
+                  />
+                ))}
+              </DataTableBody>
+            </DataTable>
             <div className="grid gap-3 p-4 md:hidden">
               {clients.map((client) => (
                 <ClientCard
@@ -585,7 +568,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
             </div>
           </>
         )}
-      </section>
+      </ContentPanel>
     </div>
   )
 }
@@ -610,23 +593,23 @@ function ClientRow({
   onCopyPowerShell: (example: IntegrationPowerShellExample) => void
 }) {
   return (
-    <tr className="align-top">
-      <td className="px-4 py-3">
-        <div className="font-medium text-foreground">{client.clientId}</div>
+    <DataTableRow>
+      <DataTableCell>
+        <div className="font-medium text-foreground"><span className="tag">{client.clientId}</span></div>
         <div className="mt-0.5 text-xs text-muted-foreground">{client.displayName}</div>
-      </td>
-      <td className="px-4 py-3">
-        <StatusBadge enabled={client.enabled} labels={labels} />
-      </td>
-      <td className="px-4 py-3">
+      </DataTableCell>
+      <DataTableCell>
+        <ClientStatus enabled={client.enabled} labels={labels} />
+      </DataTableCell>
+      <DataTableCell>
         <ScopeList scopes={client.scopes} />
-      </td>
-      <td className="px-4 py-3 font-mono text-xs text-foreground">{client.tokenPreview}</td>
-      <td className="px-4 py-3 text-muted-foreground">{formatDate(client.lastUsedAt, labels.noLastUsed)}</td>
-      <td className="px-4 py-3">
+      </DataTableCell>
+      <DataTableCell className="text-xs text-foreground"><span className="tag">{client.tokenPreview}</span></DataTableCell>
+      <DataTableCell className="text-muted-foreground">{formatDate(client.lastUsedAt, labels.noLastUsed)}</DataTableCell>
+      <DataTableCell>
         <OperationsPanel client={client} labels={labels} onCopyPowerShell={onCopyPowerShell} />
-      </td>
-      <td className="px-4 py-3">
+      </DataTableCell>
+      <DataTableCell align="right">
         <ActionButtons
           client={client}
           labels={labels}
@@ -637,8 +620,8 @@ function ClientRow({
           onDisable={onDisable}
           alignEnd
         />
-      </td>
-    </tr>
+      </DataTableCell>
+    </DataTableRow>
   )
 }
 
@@ -665,10 +648,10 @@ function ClientCard({
     <div className="rounded-md border border-border bg-background p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate font-medium text-foreground">{client.clientId}</div>
+          <div className="truncate font-medium text-foreground"><span className="tag">{client.clientId}</span></div>
           <div className="mt-0.5 text-sm text-muted-foreground">{client.displayName}</div>
         </div>
-        <StatusBadge enabled={client.enabled} labels={labels} />
+        <ClientStatus enabled={client.enabled} labels={labels} />
       </div>
       <div className="mt-3 grid gap-2 text-sm">
         <div>
@@ -677,7 +660,7 @@ function ClientCard({
         </div>
         <div>
           <span className="text-muted-foreground">{labels.tokenPreview}: </span>
-          <span className="font-mono text-xs text-foreground">{client.tokenPreview}</span>
+          <span className="text-foreground"><span className="tag">{client.tokenPreview}</span></span>
         </div>
         <div>
           <span className="text-muted-foreground">{labels.lastUsed}: </span>
@@ -713,17 +696,31 @@ function OperationsPanel({
   const example = getPrimaryPowerShellExample(client)
   const hasOperationalData = operations.requestCountTotal > 0
 
+  // The three counts are a small label and number list, not tiles. Red lives only in a badge: errors above 0 are a
+  // danger StatusBadge, and so is the latest error, followed by its route (no red box in the cell).
+  const counts = [
+    { key: "24h", label: labels.requests24h, value: operations.requestCount24h, danger: false },
+    { key: "7d", label: labels.requests7d, value: operations.requestCount7d, danger: false },
+    { key: "errors7d", label: labels.errors7d, value: operations.errorCount7d, danger: operations.errorCount7d > 0 },
+  ]
+
   return (
     <div className="grid min-w-[220px] gap-2">
-      <div className="grid grid-cols-3 gap-1.5">
-        <OperationMetric label={labels.requests24h} value={operations.requestCount24h} />
-        <OperationMetric label={labels.requests7d} value={operations.requestCount7d} />
-        <OperationMetric label={labels.errors7d} value={operations.errorCount7d} tone={operations.errorCount7d > 0 ? "danger" : "muted"} />
-      </div>
+      <dl className="grid grid-cols-3 gap-x-3 gap-y-0.5">
+        {counts.map((count) => (
+          <div key={count.key} className="min-w-0">
+            <dt className="truncate text-xs text-muted-foreground">{count.label}</dt>
+            <dd className="text-sm font-semibold text-foreground num">
+              {count.danger ? <StatusBadge tone="danger" label={formatCount(count.value)} /> : formatCount(count.value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
       {hasOperationalData && operations.topEndpoint ? (
         <div className="min-w-0 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{labels.topEndpoint}: </span>
+          {/* An API route is long and must wrap, so it keeps font-mono and is not a tag (R3). */}
           <span className="break-all font-mono" title={operations.topEndpoint.route}>
             {operations.topEndpoint.route}
           </span>
@@ -734,83 +731,38 @@ function OperationsPanel({
       )}
 
       {operations.latestError ? (
-        <div className="rounded-md border border-danger-border bg-danger-soft px-2 py-1 text-xs text-danger">
-          <span className="font-medium">{labels.latestError}: </span>
-          <span className="font-mono">
-            {operations.latestError.status} {operations.latestError.route}
-          </span>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <StatusBadge tone="danger" label={`${labels.latestError}: ${operations.latestError.status}`} />
+          <span className="break-all font-mono">{operations.latestError.route}</span>
         </div>
       ) : null}
 
       {example ? (
-        <button
-          type="button"
-          onClick={() => onCopyPowerShell(example)}
-          className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <Copy className="h-3.5 w-3.5" />
+        <Button variant="outline" size="sm" onClick={() => onCopyPowerShell(example)} className="w-fit">
+          <Copy aria-hidden="true" />
           {labels.copyPowerShell}
-        </button>
+        </Button>
       ) : null}
     </div>
   )
 }
 
-function OperationMetric({
-  label,
-  value,
-  tone = "muted",
-}: {
-  label: string
-  value: number
-  tone?: "muted" | "danger"
-}) {
-  return (
-    <div className="rounded-md border border-border bg-background px-2 py-1">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-sm font-semibold ${tone === "danger" ? "text-danger" : "text-foreground"}`}>
-        {formatCount(value)}
-      </div>
-    </div>
-  )
+function ClientStatus({ enabled, labels }: { enabled: boolean; labels: Labels }) {
+  return <StatusBadge label={enabled ? labels.active : labels.disabled} tone={enabled ? "success" : "muted"} />
 }
 
-function SummaryCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: "primary" | "success" | "muted" }) {
-  const toneClass = tone === "success" ? "text-success" : tone === "primary" ? "text-primary" : "text-muted-foreground"
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{formatCount(value)}</p>
-        </div>
-        <div className={toneClass}>{icon}</div>
-      </div>
-    </div>
-  )
-}
-
-function StatusBadge({ enabled, labels }: { enabled: boolean; labels: Labels }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-        enabled ? "bg-success-soft text-success" : "bg-muted text-muted-foreground"
-      }`}
-    >
-      {enabled ? labels.active : labels.disabled}
-    </span>
-  )
-}
-
+// Scope codes are names, not states: the shared Chip with the code as a tag (R2, R3).
 function ScopeList({ scopes }: { scopes: string[] }) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <ul className="flex flex-wrap gap-1">
       {scopes.map((scope) => (
-        <span key={scope} className="rounded-full bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
-          {scope}
-        </span>
+        <li key={scope}>
+          <Chip>
+            <span className="tag">{scope}</span>
+          </Chip>
+        </li>
       ))}
-    </div>
+    </ul>
   )
 }
 
@@ -839,39 +791,26 @@ function ActionButtons({
   onDisable: () => void
   alignEnd?: boolean
 }) {
+  // One row of default Buttons (36px from md, 44px below). busy is the row's: the rotate button shows the spinner
+  // while any action of this client runs, as before, and keeps focus (FMG GB4: no disabled with the same condition).
   return (
-    <div className={`flex flex-wrap gap-2 ${alignEnd ? "justify-end" : ""}`}>
+    <div className={cn("flex flex-wrap gap-2", alignEnd && "justify-end")}>
       <Button variant="outline" onClick={onEdit} disabled={busy}>
         <Pencil aria-hidden="true" />
         {labels.editScopes}
       </Button>
-      <button
-        type="button"
-        onClick={onRotate}
-        disabled={busy}
-        className="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+      <Button variant="outline" busy={busy} onClick={onRotate}>
+        <RotateCw aria-hidden="true" />
         {labels.rotate}
-      </button>
+      </Button>
       {client.enabled ? (
-        <button
-          type="button"
-          onClick={onDisable}
-          disabled={busy}
-          className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-danger-border bg-danger-soft px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Button variant="danger" onClick={onDisable} disabled={busy}>
           {labels.disable}
-        </button>
+        </Button>
       ) : (
-        <button
-          type="button"
-          onClick={onEnable}
-          disabled={busy}
-          className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Button variant="outline" onClick={onEnable} disabled={busy}>
           {labels.enable}
-        </button>
+        </Button>
       )}
     </div>
   )

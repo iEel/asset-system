@@ -229,14 +229,15 @@ test("English and Thai messages include integration API navigation and page labe
 
 // Phase 2C batch 4 (spec 2C §8.9, §5.5 row 2, K10, §4.3, §4.12, §6.4.1; 2B spec R-e, R-f): the edit dialog on the dialog
 // parts with the X named "ปิด", its save error shown inside it, the fields on Field, and the edit trigger on Button.
-// The one-time token panel is pinned by the tests above and does not change.
+// Plan 2D-2 moved the rest onto the shared parts: the page error is a danger Notice, the client list a DataTable and the
+// copy button a Button (tests/admin-sweep-ui.test.ts pins the rest of that sweep).
 test("integration client manager: the edit dialog uses the dialog parts and shows its own error, and the fields use Field (2C batch 4)", () => {
   const source = readRequiredFile("src/components/admin/IntegrationClientManager.tsx").replace(/\r\n/g, "\n")
 
   assert.doesNotMatch(source, /closeLabel=|flex-col-reverse|<select|<textarea|mb-2 text-sm font-medium|rounded border-border|font-normal|toLocaleString\(|bg-muted\//)
   assert.match(source, /description=\{editingClient \? <span className="tag">\{editingClient\.clientId\}<\/span> : undefined\}/)
   assert.match(source, /<form onSubmit=\{updateEditingClient\} className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="grid gap-4">\n\s+\{error \? \(\n\s+<Notice tone="danger" role="alert">\n\s+\{labels\.error\}: \{error\}\n\s+<\/Notice>/)
-  assert.match(source, /\{error && !editingClient \? \(\n\s+<div className="rounded-md border border-danger-border bg-danger-soft p-3 text-sm text-danger" role="alert">/, "the page box waits until the dialog is closed")
+  assert.match(source, /\{error && !editingClient \? \(\n\s+<Notice tone="danger" role="alert">/, "the page box waits until the dialog is closed")
   assert.match(source, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" busy=\{updatingClient\} disabled=\{editScopes\.length === 0\}>\n\s+<Pencil aria-hidden="true" \/>\n\s+\{labels\.saveScopes\}\n\s+<\/Button>\n\s+<\/AccessibleDialogFooter>/)
   assert.equal(source.match(/<Field label=\{labels\.(?:clientId|displayName)\} required>\n\s+<Input\n/g)?.length, 3)
   assert.match(source, /required\n\s+minLength=\{3\}\n\s+maxLength=\{100\}\n\s+pattern="\[A-Za-z0-9\._:-\]\+"\n/, "the client id keeps every browser check")
@@ -246,7 +247,7 @@ test("integration client manager: the edit dialog uses the dialog parts and show
   assert.match(source, /<Button type="submit" busy=\{saving\} className="w-fit">\n\s+<Plus aria-hidden="true" \/>\n\s+\{labels\.createClient\}/)
   assert.match(source, /<Button variant="outline" onClick=\{onEdit\} disabled=\{busy\}>\n\s+<Pencil aria-hidden="true" \/>\n\s+\{labels\.editScopes\}/)
   assert.match(source, /<Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" \/>/)
-  assert.match(source, /<thead className="border-b border-border bg-surface text-meta text-faint-foreground">/)
-  assert.equal(source.match(/formatCount\(/g)?.length, 3)
-  assert.match(source, /<button\n\s+type="button"\n\s+onClick=\{copyToken\}\n/, "the one-time token keeps its copy button")
+  assert.match(source, /<DataTable framed=\{false\} caption=\{labels\.clientsTitle\} minWidth=\{1040\} className="hidden md:block">/)
+  assert.equal(source.match(/formatCount\(/g)?.length, 7, "the four summary cells, the row's three counts (twice for errors) and the top endpoint")
+  assert.match(source, /<Button variant="outline" onClick=\{copyToken\}>\n\s+<Copy aria-hidden="true" \/>\n\s+\{labels\.copyToken\}/, "the one-time token keeps its copy button")
 })

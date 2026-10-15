@@ -284,7 +284,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :598 in the dialog (2C plan 3)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}admin/IntegrationClientManager.tsx`]: 2, // → 2 (KEEP): OperationMetric :759, SummaryCard :778 (2C plan 4)
     [`${C}assets/asset-import-preview-panel.tsx`]: 1, // → 1 (KEEP): SummaryPill :407 (2C plan 4)
   },
   LS2: {
@@ -298,8 +297,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
   },
   LN2: {
-    // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :793 (2C plan 4)
   },
   LR1: {
   },
@@ -358,7 +355,6 @@ const KEEP: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // print page, 2D (A/08:305)
   },
   LS1: {
-    [`${C}admin/IntegrationClientManager.tsx`]: 2, // OperationMetric :759, SummaryCard :778 (2C plan 4)
     [`${C}assets/asset-import-preview-panel.tsx`]: 1, // SummaryPill :407 (2C plan 4)
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // Metric :598 in the dialog (2C plan 3)
   },
@@ -367,9 +363,6 @@ const KEEP: Record<string, Record<string, number>> = {
   },
   LN1: {
     [`${D}master-data/brands/page.tsx`]: 2, // the brand picker is a vertical list, where aria-current="page" is right (I11)
-  },
-  LN2: {
-    [`${C}admin/IntegrationClientManager.tsx`]: 1, // local StatusBadge :793 (2C plan 4)
   },
 }
 
