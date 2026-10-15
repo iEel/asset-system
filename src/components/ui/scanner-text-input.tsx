@@ -351,7 +351,7 @@ export function ScannerTextInput({
             {scanMode === "serial-code" ? <SerialScannerOverlay /> : null}
             {scannerLoading ? (
               <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-background/85 text-sm font-medium text-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                 {labels.cameraOpening ?? labels.scanning}
               </div>
             ) : null}
@@ -406,7 +406,7 @@ export function ScannerTextInput({
           </div>
           {scannerLoading ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
               {labels.cameraOpening ?? labels.scanning}
             </p>
           ) : scannerRunning ? (

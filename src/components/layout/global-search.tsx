@@ -147,7 +147,7 @@ export function GlobalSearch() {
           />
           <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center">
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" />
             ) : query ? (
               <button
                 type="button"
@@ -180,7 +180,7 @@ export function GlobalSearch() {
           <div className="px-4 py-3 text-sm text-muted-foreground">{t("minChars")}</div>
         ) : loading && results.length === 0 ? (
           <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             {t("loading")}
           </div>
         ) : results.length === 0 ? (

@@ -144,7 +144,7 @@ export function AuditScanCamera({ onDecoded, onClose }: { onDecoded: (text: stri
         {running ? <AuditQrScannerOverlay /> : null}
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <Loader2 className="size-6 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden="true" />
           </div>
         ) : null}
         {running && zoom.levels.length > 0 ? (
