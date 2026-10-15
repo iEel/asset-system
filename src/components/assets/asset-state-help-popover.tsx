@@ -9,17 +9,11 @@ type AssetStateHelpPopoverProps = {
   description: string
   items: string[]
   srLabel?: string
-  size?: "default" | "compact"
 }
 
-export function AssetStateHelpPopover({ title, description, items, srLabel, size = "default" }: AssetStateHelpPopoverProps) {
+export function AssetStateHelpPopover({ title, description, items, srLabel }: AssetStateHelpPopoverProps) {
   const [open, setOpen] = useState(false)
   const pinnedRef = useRef(false)
-  const isCompact = size === "compact"
-  const buttonClassName = isCompact
-    ? "inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    : "inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-  const iconClassName = isCompact ? "h-3.5 w-3.5" : "h-4 w-4"
 
   return (
     <Popover open={open} onOpenChange={(next) => {
@@ -41,9 +35,9 @@ export function AssetStateHelpPopover({ title, description, items, srLabel, size
             pinnedRef.current = true
             setOpen(true)
           }}
-          className={buttonClassName}
+          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <CircleHelp className={iconClassName} aria-hidden="true" />
+          <CircleHelp className="h-4 w-4" aria-hidden="true" />
         </button>
       </PopoverTrigger>
       <PopoverContent

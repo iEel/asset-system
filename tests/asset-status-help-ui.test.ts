@@ -20,8 +20,8 @@ test("asset status and condition help uses a Radix popover that opens on mouse h
   assert.match(source, /pinnedRef/)
   assert.doesNotMatch(source, /onFocus=/)
   assert.match(source, /onOpenAutoFocus=\{\(event\) => event\.preventDefault\(\)\}/)
-  assert.match(source, /size = "default"/)
-  assert.match(source, /isCompact/)
+  assert.doesNotMatch(source, /isCompact|"compact"|size\?:/, "one size only (spec 2D M10)")
+  assert.match(source, /className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/)
   assert.doesNotMatch(source, /getBoundingClientRect|addEventListener|style=\{\{ top/)
 })
 
