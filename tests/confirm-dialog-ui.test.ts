@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { findJsxTags, jsxAttrValue } from "./helpers/source-files.ts"
 
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
@@ -51,4 +52,21 @@ test("confirm dialogs look like the other dialogs (K12)", () => {
   assert.match(source, /"text-base font-semibold text-foreground"/)
   assert.match(source, /cn\("text-sm text-muted-foreground", className\)/)
   assert.doesNotMatch(source, /flex-col-reverse|data-\[size=|data-size|AlertDialogMedia|group\/alert-dialog-content|place-items-center|\bp-6\b|size\?: "default" \| "sm"/)
+})
+
+// Phase 2C batch 5 (spec 2C §5.9, K8, K12): the confirm provider itself does not change. Cancel comes before the
+// action in the DOM (phones stack cancel on top and the action last), its parts take no class or size of their own
+// (the AlertDialog look applies), and the action reads the caller's verb, "ยืนยัน" only when a caller gives none.
+test("the confirm provider puts cancel first and the caller's verb last, on the plain AlertDialog parts (K8, K12)", () => {
+  const source = read("src/components/ui/confirm-dialog.tsx")
+  assert.ok(source.indexOf("<AlertDialogCancel") < source.indexOf("<AlertDialogAction"), "cancel first, the action last (K8)")
+  assert.match(source, /\{current\.cancelLabel \?\? tCommon\("cancel"\)\}/)
+  assert.match(source, /\{current\.confirmLabel \?\? tCommon\("confirm"\)\}/)
+  const parts = findJsxTags(source, ["AlertDialog\\w*"])
+  assert.equal(parts.length, 8, "AlertDialog, Content, Header, Title, Description, Footer, Cancel, Action")
+  assert.deepEqual(
+    parts.filter((tag) => jsxAttrValue(tag.text, "className") !== null || jsxAttrValue(tag.text, "size") !== null).map((tag) => tag.name),
+    [],
+    "the parts carry the look (K12)",
+  )
 })
