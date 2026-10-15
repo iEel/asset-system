@@ -66,3 +66,10 @@ test("report overview: the preview is a divided flush ContentPanel, the breakdow
   assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/)
   assert.doesNotMatch(source, /rounded-lg border|hover:underline|<section\b/)
 })
+
+test("report accounting: an empty ratio is Nil through StatStrip, and the asset links are text links (2D-1 R5 hand-on, M29)", () => {
+  const source = read(`${C}reports/reports-accounting-view.tsx`)
+  assert.match(source, /\{ key: "repairRatio", label: labels\.repairRatio, value: formatPercent\(costInsights\.repairToPurchaseRatio\) \},/)
+  assert.equal(source.match(/className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/g)?.length, 2)
+  assert.doesNotMatch(source, /"—"|hover:underline/)
+})

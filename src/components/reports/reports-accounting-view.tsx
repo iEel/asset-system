@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
+import { linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { orNil } from "@/components/ui/nil"
 import { StatStrip } from "@/components/ui/stat-strip"
@@ -7,6 +8,7 @@ import type { DepreciationSummary, DepreciableAsset } from "@/lib/asset-deprecia
 import type { CostExposureAsset, CostInsightSummary } from "@/lib/cost-insights"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
+import { cn } from "@/lib/utils"
 
 export type ReportsAccountingLabels = {
   costTitle: string
@@ -70,8 +72,8 @@ export function ReportsAccountingView({
           className={moneyStripClasses}
           items={[
             { key: "totalRepair", label: labels.totalRepair, value: formatMoney(costInsights.totalRepairCost), unit: labels.baht },
-            // No purchase value to compare with: the ratio has no value. A tile takes text, so the dash is written out.
-            { key: "repairRatio", label: labels.repairRatio, value: formatPercent(costInsights.repairToPurchaseRatio) ?? "—" },
+            // No purchase value to compare with: the ratio has no value, and StatStrip shows Nil for null (2D-1 M32 d).
+            { key: "repairRatio", label: labels.repairRatio, value: formatPercent(costInsights.repairToPurchaseRatio) },
             { key: "missingPrice", label: labels.missingPrice, value: formatCount(costInsights.missingPurchasePriceCount) },
             { key: "highValueAssets", label: labels.highValueAssets, value: formatCount(costInsights.highValueAssetCount) },
           ]}
@@ -166,7 +168,7 @@ function CostExposureTable({
             render: (asset) => (
               <Link
                 href={`/${locale}/assets/${asset.id}`}
-                className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+                className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
               >
                 {asset.label}
               </Link>
@@ -218,7 +220,7 @@ function DepreciationTable({
             render: (asset) => (
               <Link
                 href={`/${locale}/assets/${asset.id}`}
-                className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+                className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
               >
                 {asset.label}
               </Link>
