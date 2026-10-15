@@ -35,3 +35,15 @@ test("report presets: lg save beside the 40px field, an outline icon-sm delete, 
   assert.match(source, /<EmptyNote className="mt-4">\{labels\.savedPresetsEmpty\}<\/EmptyNote>/)
   assert.doesNotMatch(source, /<button\b|text-white|sm:h-|sm:w-8|sm:min-h-0|text-danger|hover:bg-danger-soft|rounded-md border border-border bg-background p-4/)
 })
+
+test("report catalog: three ContentPanels, /api downloads as plain <a>, the cadence a Chip and permissions as status badges (spec 2D D9, M29, M31)", () => {
+  const source = read(`${C}reports/reports-catalog-view.tsx`)
+  assert.equal(source.match(/<ContentPanel title=\{labels\.\w+\} description=\{labels\.\w+\}>/g)?.length, 3)
+  assert.match(source, /<a href=\{report\.href\} download className=\{cn\(buttonVariants\(\{ variant: "outline", size: "sm" \}\), "mt-4 w-full sm:w-auto"\)\}>/)
+  assert.match(source, /<a href=\{report\.exportHref\} download className=\{buttonVariants\(\{ size: "sm" \}\)\}>/)
+  assert.match(source, /<Link href=\{report\.viewHref\} className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}>/)
+  assert.match(source, /<Chip>\{report\.cadence\}<\/Chip>/)
+  assert.match(source, /<EmptyNote>\{emptyLabel\}<\/EmptyNote>/)
+  assert.match(source, /tone=\{permission\.allowed \? "success" : "muted"\}/)
+  assert.doesNotMatch(source, /<Link href=\{report\.(?:href|exportHref)\}|border-dashed|rounded-full|function PermissionPill\b|text-white|sm:h-8|bg-(?:info|primary|success)-soft|rounded-lg border/)
+})

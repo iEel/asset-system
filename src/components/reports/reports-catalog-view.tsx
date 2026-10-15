@@ -2,8 +2,15 @@ import Link from "next/link"
 import type React from "react"
 import { Download } from "lucide-react"
 import { ReportPresetControls } from "@/components/reports/report-preset-controls"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 
 export type ReportRecurringExport = {
   key: string
@@ -93,11 +100,7 @@ export function ReportsCatalogView({
     <div className="space-y-5">
       <StatStrip className="sm:max-w-sm" items={[{ key: "catalogItems", label: labels.catalogItems, value: formatCount(reportCount) }]} />
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{labels.assetPresetScopeTitle}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.assetPresetScopeHelp}</p>
-        </div>
+      <ContentPanel title={labels.assetPresetScopeTitle} description={labels.assetPresetScopeHelp}>
         <ReportPresetControls
           locale={locale}
           currentQuery={currentQuery}
@@ -111,13 +114,9 @@ export function ReportsCatalogView({
             presetStorageFailed: labels.presetStorageFailed,
           }}
         />
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{labels.moduleExportScopeTitle}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.moduleExportScopeHelp}</p>
-        </div>
+      <ContentPanel title={labels.moduleExportScopeTitle} description={labels.moduleExportScopeHelp}>
         <div className="grid gap-3 md:grid-cols-2">
           {recurringReports.map((report) => (
             <div key={report.key} className="rounded-md border border-border bg-background p-4">
@@ -126,59 +125,52 @@ export function ReportsCatalogView({
                   <div className="text-sm font-semibold text-foreground">{report.name}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{report.owner}</div>
                 </div>
-                <span className="rounded-full bg-info-soft px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
+                <Chip>{report.cadence}</Chip>
               </div>
+              {/* An /api download is a plain <a> (M31): no prefetch and no client routing. */}
               {report.allowed ? (
-                <Link href={report.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-auto">
-                  <Download aria-hidden="true" className="h-3.5 w-3.5" />
+                <a href={report.href} download className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 w-full sm:w-auto")}>
+                  <Download aria-hidden="true" />
                   {labels.runNow}
-                </Link>
+                </a>
               ) : (
-                <span className="mt-4 inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
-                  {labels.notAllowed}
-                </span>
+                <StatusBadge label={labels.notAllowed} tone="muted" className="mt-4" />
               )}
             </div>
           ))}
         </div>
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-6">
-        <div className="mb-5">
-          <h2 className="text-lg font-semibold text-foreground">{labels.reportCatalog}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.reportCatalogHelp}</p>
-        </div>
+      <ContentPanel title={labels.reportCatalog} description={labels.reportCatalogHelp}>
         {categories.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{emptyLabel}</div>
+          <EmptyNote>{emptyLabel}</EmptyNote>
         ) : (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {categories.map((category) => (
               <div key={category.key} className="rounded-md border border-border bg-background p-4">
                 <div className="mb-4 flex items-start gap-3">
-                  <div className="rounded-md bg-primary-soft p-2 text-primary">{category.icon}</div>
+                  <div aria-hidden="true" className="text-muted-foreground">{category.icon}</div>
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">{category.title}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
-                    <p className="mt-2 text-xs font-medium text-primary">{category.audience}</p>
+                    <p className="mt-2 text-xs font-medium text-muted-foreground">{category.audience}</p>
                   </div>
                 </div>
                 <div className="grid gap-2">
                   {category.reports.map((report) => (
                     <div key={report.key} className="flex flex-col gap-2 rounded-md border border-border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-sm font-medium text-foreground">{report.label}</span>
-                      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <Link href={report.viewHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
+                      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        <Link href={report.viewHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
                           {labels.openReport}
                         </Link>
                         {report.exportHref && report.exportAllowed ? (
-                          <Link href={report.exportHref} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary-hover sm:h-8 sm:min-h-0">
-                            <Download aria-hidden="true" className="h-3.5 w-3.5" />
+                          <a href={report.exportHref} download className={buttonVariants({ size: "sm" })}>
+                            <Download aria-hidden="true" />
                             {report.exportLabel}
-                          </Link>
+                          </a>
                         ) : report.exportHref ? (
-                          <span className="inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
-                            {labels.notAllowed}
-                          </span>
+                          <StatusBadge label={labels.notAllowed} tone="muted" />
                         ) : null}
                       </div>
                     </div>
@@ -188,41 +180,21 @@ export function ReportsCatalogView({
             ))}
           </div>
         )}
-      </section>
+      </ContentPanel>
 
-      <details className="rounded-lg border border-border bg-surface p-5">
+      <details className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <summary className="cursor-pointer text-base font-semibold text-foreground">{labels.permissionTitle}</summary>
         <p className="mt-2 text-sm text-muted-foreground">{labels.permissionHelp}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
           {permissions.map((permission) => (
-            <PermissionPill
+            <StatusBadge
               key={permission.key}
-              label={permission.label}
-              allowed={permission.allowed}
-              allowedLabel={labels.allowed}
-              deniedLabel={labels.notAllowed}
+              label={`${permission.label}: ${permission.allowed ? labels.allowed : labels.notAllowed}`}
+              tone={permission.allowed ? "success" : "muted"}
             />
           ))}
         </div>
       </details>
     </div>
-  )
-}
-
-function PermissionPill({
-  label,
-  allowed,
-  allowedLabel,
-  deniedLabel,
-}: {
-  label: string
-  allowed: boolean
-  allowedLabel: string
-  deniedLabel: string
-}) {
-  return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${allowed ? "bg-success-soft text-success" : "bg-muted text-muted-foreground"}`}>
-      {label}: {allowed ? allowedLabel : deniedLabel}
-    </span>
   )
 }
