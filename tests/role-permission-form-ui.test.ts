@@ -22,8 +22,9 @@ test("the role permission form uses the shared fields, 16px checkboxes in rows t
   assert.match(source, /<label className="flex min-h-11 items-center gap-2 self-end text-sm font-medium text-foreground has-disabled/)
   assert.match(source, /<label className="mt-3 inline-flex min-h-11 items-center gap-2 text-xs text-muted-foreground has-disabled/)
   assert.match(source, /<span className="text-sm">\{t\(`actions\.\$\{permission\.action\}`\)\}<\/span>/)
-  assert.match(source, /<thead>\n\s+<tr>\n\s+<th className="bg-surface px-4 py-2\.5 text-left align-bottom text-meta font-medium text-faint-foreground">\n\s+\{t\("module"\)\}/)
-  assert.equal(source.match(/<th className="bg-surface px-4 py-2\.5 text-left align-bottom text-meta font-medium text-faint-foreground">/g)?.length, 2)
+  // Plan 2D-2: the shared DataTable (its white 13/500 header) in a flush panel, instead of the copied header classes.
+  assert.match(source, /<DataTableHeader>\n\s+<tr>\n\s+<DataTableHead>\{t\("module"\)\}<\/DataTableHead>\n\s+<DataTableHead>\{t\("permissions"\)\}<\/DataTableHead>/)
+  assert.doesNotMatch(source, /<table\b|<thead\b|<th\b/)
   assert.match(source, /<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>\n\s+\{tCommon\("cancel"\)\}\n\s+<\/Link>/)
   assert.match(source, /<Button type="submit" busy=\{saving\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{t\("savePermissions"\)\}\n\s+<\/Button>/)
 })

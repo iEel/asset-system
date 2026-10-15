@@ -4,12 +4,15 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Info, Save } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -134,20 +137,10 @@ function togglePermission(permissionId: string) {
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <section className="rounded-lg border border-border bg-surface p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">{t("roleMetadata")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("metadataSubtitle")}</p>
-            </div>
-            {isSystemRole ? (
-              <div className="inline-flex max-w-md items-start gap-2 rounded-md border border-info-border bg-info-soft px-3 py-2 text-sm text-info">
-                <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{permissionsLocked ? t("systemAdminGuard") : t("systemRoleGuard")}</span>
-              </div>
-            ) : null}
-          </div>
-          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <ContentPanel divided title={t("roleMetadata")} description={t("metadataSubtitle")}>
+          {/* D7: a condition before acting is a neutral Notice (it was a teal info box). */}
+          {isSystemRole ? <Notice tone="neutral" className="mb-5">{permissionsLocked ? t("systemAdminGuard") : t("systemRoleGuard")}</Notice> : null}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label={t("roleKey")} required>
               <Input
                 value={meta.name}
@@ -193,34 +186,28 @@ function togglePermission(permissionId: string) {
               </Field>
             </div>
           </div>
-        </section>
+        </ContentPanel>
 
-        <section className="rounded-lg border border-border bg-surface p-6">
-          <h2 className="text-base font-semibold text-foreground">{t("permissionSelection")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {permissionsLocked ? t("permissionLockedSubtitle") : t("formSubtitle")}
-          </p>
-        </section>
-
-        <section className="overflow-hidden rounded-lg border border-border bg-surface">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead>
-                <tr>
-                  <th className="bg-surface px-4 py-2.5 text-left align-bottom text-meta font-medium text-faint-foreground">
-                    {t("module")}
-                  </th>
-                  <th className="bg-surface px-4 py-2.5 text-left align-bottom text-meta font-medium text-faint-foreground">
-                    {t("permissions")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+        <ContentPanel
+          divided
+          flush
+          className="overflow-hidden"
+          title={t("permissionSelection")}
+          description={permissionsLocked ? t("permissionLockedSubtitle") : t("formSubtitle")}
+        >
+          <DataTable framed={false} caption={t("permissionSelection")}>
+            <DataTableHeader>
+              <tr>
+                <DataTableHead>{t("module")}</DataTableHead>
+                <DataTableHead>{t("permissions")}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>
                 {groupedPermissions.map(([moduleName, modulePermissions]) => (
-                  <tr key={moduleName} className="hover:bg-row-hover">
-                    <td className="whitespace-nowrap px-4 py-3 align-top">
+                  <DataTableRow key={moduleName}>
+                    <DataTableCell className="whitespace-nowrap">
                       <div className="font-medium text-foreground">{t(`modules.${moduleName}`)}</div>
-                      <div className="mt-1 font-mono text-xs text-muted-foreground">{moduleName}</div>
+                      <div className="mt-1 text-xs text-muted-foreground"><span className="tag">{moduleName}</span></div>
                       <label className="mt-3 inline-flex min-h-11 items-center gap-2 text-xs text-muted-foreground has-disabled:cursor-not-allowed has-disabled:text-faint-foreground">
                         <input
                           type="checkbox"
@@ -231,8 +218,8 @@ function togglePermission(permissionId: string) {
                         />
                         {t("selectModule")}
                       </label>
-                    </td>
-                    <td className="px-4 py-3">
+                    </DataTableCell>
+                    <DataTableCell>
                       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
                         {modulePermissions.map((permission) => (
                           <label
@@ -250,13 +237,12 @@ function togglePermission(permissionId: string) {
                           </label>
                         ))}
                       </div>
-                    </td>
-                  </tr>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+            </DataTableBody>
+          </DataTable>
+        </ContentPanel>
 
         <div className="flex justify-end gap-3">
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>

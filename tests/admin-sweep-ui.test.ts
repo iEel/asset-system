@@ -63,3 +63,13 @@ test("the integration client manager: StatStrip, ContentPanel, DataTable, shared
   assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => onCopyPowerShell\(example\)\} className="w-fit">/)
   assert.equal(source.match(/<Loader2\b/g)?.length, 1, "only the loading status of the list head (I27)")
 })
+
+test("the role permission form: two ContentPanels, the system-role guard as a neutral Notice, DataTable and the module key as a tag (spec 2D D7, M27)", () => {
+  const source = read(`${C}admin/role-permission-form.tsx`)
+  assert.match(source, /<ContentPanel divided title=\{t\("roleMetadata"\)\} description=\{t\("metadataSubtitle"\)\}>/)
+  assert.match(source, /\{isSystemRole \? <Notice tone="neutral" className="mb-5">\{permissionsLocked \? t\("systemAdminGuard"\) : t\("systemRoleGuard"\)\}<\/Notice> : null\}/)
+  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n\s+className="overflow-hidden"\n\s+title=\{t\("permissionSelection"\)\}/)
+  assert.match(source, /<DataTable framed=\{false\} caption=\{t\("permissionSelection"\)\}>/)
+  assert.match(source, /<span className="tag">\{moduleName\}<\/span>/)
+  assert.doesNotMatch(source, /rounded-lg border|font-mono|bg-info-soft|text-info\b|\bInfo\b/)
+})
