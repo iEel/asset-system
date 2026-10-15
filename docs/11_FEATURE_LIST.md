@@ -53,7 +53,7 @@ Current authenticated pages exist under `src/app/[locale]/(dashboard)`:
 |---|---|
 | Dashboard | `/dashboard` KPI and overview page, including cross-scope asset counters and drilldowns |
 | Work Center | `/work-center` actionable operations summary |
-| My Assets | `/my-assets` employee self-service asset list |
+| My Assets | `/my-assets` employee self-service asset list, 25/50/100 per page with totals over every asset the person holds |
 | Asset Register | `/assets`, `/assets/new`, `/assets/{id}`, `/assets/{id}/edit` |
 | Asset Operations | `/asset-management/checkout`, `/checkin`, `/transfer`, `/bulk-move`, `/scan`, `/labels`, `/import-export` |
 | Audit | `/audit/rounds`, `/audit/rounds/new`, `/audit/rounds/{id}`, `/pending`, `/scan`, `/audit/findings` |
@@ -277,12 +277,12 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 | System settings | Task-oriented settings UI for asset numbering, labels/QR, LDAP, notifications, approvals (no maintenance close approval or PM automation since 2026-10-07), retention, depreciation, data quality |
 | LDAP/AD settings | DB-backed LDAP config, bind test, sync preview/apply, scheduled sync controls |
 | LDAP auto-provision | Links user to active Employee by LDAP email or employeeID before creating app user |
-| Approvals | Approval inbox/history for workflow-controlled operations |
+| Approvals | Approval inbox/history for workflow-controlled operations; the history pages on the server (25/50/100; it showed the newest 150) and its module and decision counts cover every decision the user may see |
 | Data quality | Configurable asset data quality rules and admin page |
 | Storage governance | Missing/orphan file review and archive action for orphan files |
 | Integration API client management | `Admin > Integration API` creates, edits display names/scopes, rotates, disables, and enables DB-backed read-only integration clients. Plain tokens are shown once on create/rotate; only token hashes and previews are stored. Scope expansion requires confirmation and is audited with safe old/new values. |
 | Readiness | Production readiness page covering env, upload scanner, scheduler, backup-oriented checks |
-| System logs | Readable system log presentation with record labels and before/after summaries |
+| System logs | Readable system log presentation with record labels and before/after summaries; quick filters as tabs and 25/50/100 pages on the server (it showed the newest 100) |
 | Notifications | Notification center, notification states, digest scheduler endpoint |
 | Retention policy | Settings for attachment, audit log, and orphan file retention windows |
 
