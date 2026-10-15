@@ -1,12 +1,12 @@
 import Link from "next/link"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import type React from "react"
-import { AlertTriangle, ArrowRight, CheckCircle2, Database, Rocket, ShieldCheck, XCircle } from "lucide-react"
+import { AlertTriangle, ArrowRight, CheckCircle2, Database, ShieldCheck, XCircle } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
 import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
 import { prisma } from "@/lib/db"
+import { formatCount } from "@/lib/display-format"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildProductionReadinessChecks, summarizeProductionReadiness, type ProductionReadinessCheck } from "@/lib/production-readiness"
 import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/design-system"
@@ -16,6 +16,8 @@ import {
   systemSettingDefaults,
 } from "@/lib/system-setting-defaults"
 import { parseWorkflowApprovalPolicy } from "@/lib/workflow-approval"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 
 type ProductionReadinessPageProps = {
   params: Promise<{ locale: string }>
@@ -74,17 +76,16 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} meta={t("subtitle")} />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <SummaryCard label={t("summaryTotal")} value={summary.total} tone="primary" icon={<Rocket className="h-5 w-5" />} />
-        <SummaryCard label={t("summaryPass")} value={summary.pass} tone="success" icon={<CheckCircle2 className="h-5 w-5" />} />
-        <SummaryCard label={t("summaryWarning")} value={summary.warning} tone="warning" icon={<AlertTriangle className="h-5 w-5" />} />
-        <SummaryCard label={t("summaryFail")} value={summary.fail} tone="danger" icon={<XCircle className="h-5 w-5" />} />
-      </section>
+      <StatStrip
+        items={[
+          { key: "total", label: t("summaryTotal"), value: formatCount(summary.total) },
+          { key: "pass", label: t("summaryPass"), value: formatCount(summary.pass) },
+          { key: "warning", label: t("summaryWarning"), value: formatCount(summary.warning) },
+          { key: "fail", label: t("summaryFail"), value: formatCount(summary.fail) },
+        ]}
+      />
 
       <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex items-start gap-3">
@@ -129,30 +130,6 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
   )
 }
 
-function SummaryCard({
-  label,
-  value,
-  tone,
-  icon,
-}: {
-  label: string
-  value: number
-  tone: "primary" | "success" | "warning" | "danger"
-  icon: React.ReactNode
-}) {
-  return (
-    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
-        </div>
-        {icon}
-      </div>
-    </div>
-  )
-}
-
 function ReadinessCheckCard({
   check,
   locale,
@@ -183,7 +160,7 @@ function ReadinessCheckCard({
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-xs font-medium text-muted-foreground">{labels.value}</div>
-          <div className="mt-1 break-all font-mono text-xs text-foreground">{check.value}</div>
+          <div className="mt-1 break-all text-xs text-foreground"><span className="tag">{check.value}</span></div>
         </div>
         <div className={getResponsiveActionRowClasses()}>
           <Link
@@ -255,11 +232,4 @@ function statusPillClass(status: ProductionReadinessCheck["status"]) {
   if (status === "pass") return "bg-success-soft text-success"
   if (status === "warning") return "bg-warning-soft text-warning"
   return "bg-danger-soft text-danger"
-}
-
-function summaryClass(tone: "primary" | "success" | "warning" | "danger") {
-  if (tone === "success") return "border-success-border bg-success-soft text-success"
-  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
-  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
-  return "border-primary-border bg-primary-soft text-primary"
 }

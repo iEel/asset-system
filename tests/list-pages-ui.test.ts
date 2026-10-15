@@ -677,3 +677,13 @@ test("approval history: real pages and full counts from the database, two TabNav
   assert.match(source, /<TabNav\n\s+aria-label=\{label\}/)
   assert.doesNotMatch(source, /\bFileCheck2\b|function (?:FilterChip|SummaryCard|summaryClass)\b|toLocaleString\(|<h1\b/)
 })
+
+// Plan 2B-5 Task 6 (spec 2B §4.4.6, §5.6 "หน้าสรุป" row readiness, R-d, R-p): the readiness header is PageHeader, the
+// four tinted SummaryCards are one StatStrip, and the detected value of a check reads as a code. The check cards stay.
+test("readiness: PageHeader, one StatStrip, and each detected value as a code (spec 2B §4.4.6, §5.6)", () => {
+  const source = read(`${D}admin/readiness/page.tsx`)
+  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>\n\n\s+<StatStrip\n/)
+  assert.equal(source.match(/value: formatCount\(summary\.(?:total|pass|warning|fail)\)/g)?.length, 4)
+  assert.match(source, /<span className="tag">\{check\.value\}<\/span>/)
+  assert.doesNotMatch(source, /<h1\b|function (?:SummaryCard|summaryClass)\b|toLocaleString\(|font-mono/)
+})
