@@ -1,8 +1,13 @@
 import Link from "next/link"
-import type React from "react"
+import { redirect } from "next/navigation"
+import type { Prisma } from "@prisma/client"
 import { getMessages, getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { paginationRange } from "@/lib/master-data-query"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 import {
   buildSystemLogFilterHref,
   resolveSystemLogQuickFilter,
@@ -12,10 +17,17 @@ import {
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { buildSystemLogPresentation } from "@/lib/system-log-presenter"
 import { formatDateTime } from "@/lib/utils"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
+import { Field } from "@/components/ui/field"
+import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { Input } from "@/components/ui/input"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { TabNav } from "@/components/ui/tab-nav"
 
 type LogsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ module?: string | string[]; action?: string | string[] }>
+  searchParams: Promise<{ module?: string | string[]; action?: string | string[]; page?: string | string[]; pageSize?: string | string[] }>
 }
 
 export default async function LogsPage({ params, searchParams }: LogsPageProps) {
@@ -27,20 +39,52 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
   }
   await requirePagePermission(locale, "system", "view")
   const t = await getTranslations("systemLogPage")
+  const tCommon = await getTranslations("common")
   const messages = await getMessages()
   const systemLogMessages = messages.systemLogPage && typeof messages.systemLogPage === "object"
     ? messages.systemLogPage as Record<string, string>
     : {}
 
-  const logs = await prisma.systemLog.findMany({
-    where: {
-      ...(filters.module ? { module: filters.module } : {}),
-      ...(filters.action ? { action: filters.action } : {}),
-    },
-    include: { user: { select: { username: true, displayName: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  })
+  const listPage = parseListPage({ page: rawFilters.page, pageSize: rawFilters.pageSize })
+  const basePath = `/${locale}/admin/logs`
+  // The list URL keeps the module and action filters; the default page and page size stay out of it (spec 2B B4).
+  const listHref = (next: { page?: number; pageSize?: number }) => {
+    const query = new URLSearchParams()
+    if (filters.module) query.set("module", filters.module)
+    if (filters.action) query.set("action", filters.action)
+    const search = appendListPage(query, next).toString()
+    return search ? `${basePath}?${search}` : basePath
+  }
+  // A quick filter goes back to page 1 and keeps the page size; buildSystemLogFilterHref itself stays as it is.
+  const quickFilterHref = (key: SystemLogQuickFilterKey) => {
+    const [path, query = ""] = buildSystemLogFilterHref(locale, key).split("?")
+    const search = appendListPage(new URLSearchParams(query), { pageSize: listPage.pageSize }).toString()
+    return search ? `${path}?${search}` : path
+  }
+
+  const where: Prisma.SystemLogWhereInput = {
+    ...(filters.module ? { module: filters.module } : {}),
+    ...(filters.action ? { action: filters.action } : {}),
+  }
+  const { skip, take } = listPageWindow(listPage)
+  // Real pages instead of the newest 100 (spec 2B §5.9.2 row 1). The count runs on a table that grows with every
+  // action, so the pair is timed (PERFORMANCE_TIMING=1); 2B adds no index (B4, spec §10.7 item 3).
+  const [logs, total] = await withPerformanceTiming("admin-logs.list-data", () => Promise.all([
+    prisma.systemLog.findMany({
+      where,
+      include: { user: { select: { username: true, displayName: true } } },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      skip,
+      take,
+    }),
+    prisma.systemLog.count({ where }),
+  ]))
+  // A page past the last one (an old link, or a filter that now finds fewer entries) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listPage.pageSize)
+  if (logs.length === 0 && total > 0 && listPage.page > lastPage) {
+    redirect(listHref({ page: lastPage, pageSize: listPage.pageSize }))
+  }
+  const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
   const recordLabels = await buildSystemLogRecordLabels(logs)
   const translate = (key: string) => {
     const messageKey = key.replaceAll(".", "_")
@@ -52,130 +96,133 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
     { key: "all", labelKey: "quickFilterAll" },
     ...systemLogQuickFilters.map((filter) => ({ key: filter.key, labelKey: filter.labelKey })),
   ]
+  const hasFilters = Boolean(filters.module || filters.action)
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} meta={t("subtitle")} />
 
-      <section className="rounded-lg border border-border bg-surface p-4">
-        <div className="mb-4">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">{t("quickFilters")}</div>
-          <div className="flex flex-wrap gap-2">
-            {quickFilters.map((filter) => (
-              <Link
-                key={filter.key}
-                href={buildSystemLogFilterHref(locale, filter.key)}
-                className={`inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
-                  activeQuickFilter === filter.key
-                    ? "border-primary bg-primary-soft text-primary"
-                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
-              >
-                {t(filter.labelKey)}
-              </Link>
-            ))}
-          </div>
-        </div>
-        <form className="grid grid-cols-1 gap-3 md:grid-cols-4" action={`/${locale}/admin/logs`}>
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("module")}</span>
-            <input name="module" defaultValue={filters.module ?? ""} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("action")}</span>
-            <input name="action" defaultValue={filters.action ?? ""} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <button type="submit" className="h-10 self-end rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover">
-            {t("filter")}
-          </button>
+      <FilterPanel>
+        <TabNav
+          aria-label={t("quickFilters")}
+          items={quickFilters.map((filter) => ({ key: filter.key, label: t(filter.labelKey), href: quickFilterHref(filter.key) }))}
+          current={activeQuickFilter}
+          className="mb-4"
+        />
+        <form role="search" className="grid grid-cols-1 gap-3 md:grid-cols-4" action={basePath}>
+          {listPage.pageSize !== LIST_PAGE_SIZES[0] ? <input type="hidden" name="pageSize" value={listPage.pageSize} /> : null}
+          <Field label={t("module")}>
+            <Input name="module" defaultValue={filters.module ?? ""} />
+          </Field>
+          <Field label={t("action")}>
+            <Input name="action" defaultValue={filters.action ?? ""} />
+          </Field>
+          <FilterFormActions submitLabel={t("filter")} />
         </form>
-      </section>
+      </FilterPanel>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <Head>{t("date")}</Head>
-                <Head>{t("user")}</Head>
-                <Head>{t("module")}</Head>
-                <Head>{t("action")}</Head>
-                <Head>{t("record")}</Head>
-                <Head>{t("detail")}</Head>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {displayLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-row-hover">
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(log.createdAt)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-foreground">{log.userLabel}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{log.moduleLabel}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-foreground">{log.actionLabel}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                    {log.href ? (
-                      <Link href={log.href} className="font-medium text-primary hover:underline">
-                        {log.recordLabel}
-                      </Link>
-                    ) : (
-                      log.recordLabel
-                    )}
-                  </td>
-                  <td className="min-w-[28rem] px-4 py-3 text-muted-foreground">
-                    <div className="space-y-2">
-                      <p className="font-medium text-foreground">{log.summary}</p>
-                      {(log.changes.length > 0 || log.remark) ? (
-                        <details className="group">
-                          <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">
-                            {t("viewDetails")}
-                          </summary>
-                          <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-3">
-                            {log.changes.length > 0 ? (
-                              <div className="overflow-x-auto">
-                                <table className="min-w-full text-xs">
-                                  <thead>
-                                    <tr className="text-muted-foreground">
-                                      <th className="pb-1 pr-3 text-left font-medium">{t("field")}</th>
-                                      <th className="pb-1 pr-3 text-left font-medium">{t("before")}</th>
-                                      <th className="pb-1 text-left font-medium">{t("after")}</th>
+      <DataTable
+        caption={t("title")}
+        scrollHint={tCommon("tableScrollHint")}
+        footer={
+          total > 0 ? (
+            <Pagination
+              page={listPage.page}
+              totalPages={totalPages}
+              previousHref={listHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
+              nextHref={listHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
+              pageSize={listPage.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          ) : undefined
+        }
+      >
+        <DataTableHeader>
+          <tr>
+            <DataTableHead>{t("date")}</DataTableHead>
+            <DataTableHead>{t("user")}</DataTableHead>
+            <DataTableHead>{t("module")}</DataTableHead>
+            <DataTableHead>{t("action")}</DataTableHead>
+            <DataTableHead>{t("record")}</DataTableHead>
+            <DataTableHead>{t("detail")}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {displayLogs.length === 0 ? (
+            <TableEmptyRow colSpan={6}>{hasFilters ? t("emptyFiltered") : t("empty")}</TableEmptyRow>
+          ) : (
+            displayLogs.map((log) => (
+              <DataTableRow key={log.id}>
+                <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(log.createdAt)}</DataTableCell>
+                <DataTableCell className="whitespace-nowrap text-foreground">{log.userLabel}</DataTableCell>
+                <DataTableCell className="whitespace-nowrap text-muted-foreground">{log.moduleLabel}</DataTableCell>
+                <DataTableCell className="whitespace-nowrap text-foreground">{log.actionLabel}</DataTableCell>
+                <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                  {log.href ? (
+                    <Link href={log.href} className="font-medium text-primary hover:underline">
+                      {log.recordLabel}
+                    </Link>
+                  ) : (
+                    log.recordLabel
+                  )}
+                </DataTableCell>
+                <DataTableCell className="min-w-[28rem] text-muted-foreground">
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">{log.summary}</p>
+                    {(log.changes.length > 0 || log.remark) ? (
+                      <details className="group">
+                        <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">
+                          {t("viewDetails")}
+                        </summary>
+                        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-3">
+                          {log.changes.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full text-xs">
+                                <thead>
+                                  <tr className="text-muted-foreground">
+                                    <th className="pb-1 pr-3 text-left font-medium">{t("field")}</th>
+                                    <th className="pb-1 pr-3 text-left font-medium">{t("before")}</th>
+                                    <th className="pb-1 text-left font-medium">{t("after")}</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                  {log.changes.map((change, index) => (
+                                    <tr key={`${log.id}-${change.field}-${index}`}>
+                                      <td className="py-1.5 pr-3 text-foreground">{change.field}</td>
+                                      <td className="py-1.5 pr-3">{change.before}</td>
+                                      <td className="py-1.5 text-foreground">{change.after}</td>
                                     </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-border">
-                                    {log.changes.map((change, index) => (
-                                      <tr key={`${log.id}-${change.field}-${index}`}>
-                                        <td className="py-1.5 pr-3 text-foreground">{change.field}</td>
-                                        <td className="py-1.5 pr-3">{change.before}</td>
-                                        <td className="py-1.5 text-foreground">{change.after}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : null}
-                            {log.remark ? (
-                              <p className="text-xs">
-                                <span className="font-medium text-foreground">{t("remark")}:</span> {log.remark}
-                              </p>
-                            ) : null}
-                          </div>
-                        </details>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : null}
+                          {log.remark ? (
+                            <p className="text-xs">
+                              <span className="font-medium text-foreground">{t("remark")}:</span> {log.remark}
+                            </p>
+                          ) : null}
+                        </div>
+                      </details>
+                    ) : null}
+                  </div>
+                </DataTableCell>
+              </DataTableRow>
+            ))
+          )}
+        </DataTableBody>
+      </DataTable>
     </div>
   )
-}
-
-function Head({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
 }
 
 function getSearchParam(value: string | string[] | undefined) {

@@ -3305,7 +3305,7 @@
   },
   "systemLogPage": {
     "title": "System Log",
-    "subtitle": "Review latest 100 audit trail entries",
+    "subtitle": "Review the audit trail of changes in the system",
     "date": "Date",
     "user": "User",
     "module": "Module",
@@ -3509,7 +3509,9 @@
     "field_response_total": "Total Matched",
     "field_response_hasMore": "Has More",
     "field_response_highWaterMark": "High-water Mark",
-    "field_response_nextCursor": "Next Cursor"
+    "field_response_nextCursor": "Next Cursor",
+    "empty": "No system log entries yet",
+    "emptyFiltered": "No entries match the filters"
   },
   "adminUsersPage": {
     "title": "User Management",

@@ -253,7 +253,6 @@ test("R7 neutral fills are opaque tokens outside table headers", () => {
 const D = "src/app/[locale]/(dashboard)/"
 const TABLE_HEADER_FILLS: Record<string, number> = {
   // 2B-5
-  [`${D}admin/logs/page.tsx`]: 1,
   [`${D}admin/storage/page.tsx`]: 3,
   [`${D}my-assets/page.tsx`]: 1,
   "src/components/reports/responsive-report-list.tsx": 1,

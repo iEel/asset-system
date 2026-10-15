@@ -592,3 +592,30 @@ test("roles: PageHeader, one StatStrip, and the role list and permission matrix 
   assert.match(source, /className="fixed bottom-6 right-6 [^"]*shadow-lg/, "R-q: phase 2D moves the floating create button")
   assert.doesNotMatch(source, /\bColumnHeader\b|function RoleAuditCard\b|<thead\b|<th\b|toLocaleString\(|font-mono|"-"|>-</)
 })
+
+// Plan 2B-5 Task 2 (spec 2B §5.6 row admin/logs, §5.9.2 row 1, §6.5 row 9, B4): the system log pages for real (it
+// stopped at the newest 100 entries), its quick filters are TabNav, its filter form uses the shared fields, and the
+// table is a DataTable whose small table of changes inside <details> still opens.
+test("system log: real pages counted in the same timed Promise.all, TabNav quick filters, shared filter fields and a DataTable (spec 2B §5.6, §5.9.2 row 1)", () => {
+  const source = read(`${D}admin/logs/page.tsx`)
+  for (const part of ["<PageHeader", "<FilterPanel>", '<form role="search"', "<FilterFormActions", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow", "<TableEmptyRow colSpan={6}>", "<Pagination", "<details"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<TabNav\n\s+aria-label=\{t\("quickFilters"\)\}/)
+  assert.match(source, /const listPage = parseListPage\(\{ page: rawFilters\.page, pageSize: rawFilters\.pageSize \}\)/)
+  assert.match(source, /const \{ skip, take \} = listPageWindow\(listPage\)/)
+  assert.match(source, /await withPerformanceTiming\("admin-logs\.list-data", \(\) => Promise\.all\(\[\n\s+prisma\.systemLog\.findMany\(\{[\s\S]*?orderBy: \[\{ createdAt: "desc" \}, \{ id: "asc" \}\],\n\s+skip,\n\s+take,\n\s+\}\),\n\s+prisma\.systemLog\.count\(\{ where \}\),\n\s+\]\)\)/, "findMany and count in one timed Promise.all, the old order plus id")
+  assert.doesNotMatch(source, /\btake: \d+/, "no fixed number of rows")
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(logs\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
+  assert.match(source, /appendListPage\(new URLSearchParams\(query\), \{ pageSize: listPage\.pageSize \}\)/, "a quick filter goes back to page 1 and keeps the page size")
+  assert.match(source, /\{listPage\.pageSize !== LIST_PAGE_SIZES\[0\] \? <input type="hidden" name="pageSize" value=\{listPage\.pageSize\} \/> : null\}/, "the filter form keeps the page size")
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
+  assert.match(source, /\{hasFilters \? t\("emptyFiltered"\) : t\("empty"\)\}/)
+  assert.doesNotMatch(source, /function Head\b|<thead className=|\buppercase\b|<label\b/)
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { systemLogPage: Record<string, unknown> }
+    for (const key of ["empty", "emptyFiltered"]) assert.equal(typeof messages.systemLogPage[key], "string", `${locale}: systemLogPage.${key}`)
+    assert.doesNotMatch(String(messages.systemLogPage.subtitle), /100/, `${locale}: the subtitle no longer promises the newest 100 entries`)
+  }
+})

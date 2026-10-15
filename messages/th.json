@@ -3305,7 +3305,7 @@
   },
   "systemLogPage": {
     "title": "ประวัติระบบ",
-    "subtitle": "ตรวจสอบประวัติการแก้ไขล่าสุด 100 รายการ",
+    "subtitle": "ตรวจสอบประวัติการแก้ไขข้อมูลในระบบ",
     "date": "วันที่",
     "user": "ผู้ใช้",
     "module": "โมดูล",
@@ -3509,7 +3509,9 @@
     "field_response_total": "จำนวนทั้งหมดที่พบ",
     "field_response_hasMore": "มีหน้าถัดไป",
     "field_response_highWaterMark": "High-water mark",
-    "field_response_nextCursor": "Next cursor"
+    "field_response_nextCursor": "Next cursor",
+    "empty": "ยังไม่มีบันทึกระบบ",
+    "emptyFiltered": "ไม่พบบันทึกที่ตรงกับตัวกรอง"
   },
   "adminUsersPage": {
     "title": "จัดการผู้ใช้",
