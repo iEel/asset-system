@@ -73,3 +73,15 @@ test("the role permission form: two ContentPanels, the system-role guard as a ne
   assert.match(source, /<span className="tag">\{moduleName\}<\/span>/)
   assert.doesNotMatch(source, /rounded-lg border|font-mono|bg-info-soft|text-info\b|\bInfo\b/)
 })
+
+const D = "src/app/[locale]/(dashboard)/"
+
+test("roles: create is a header button, the role kinds and the matrix roles are Chips, and the status is a StatusBadge (spec 2D M13, D7, D11)", () => {
+  const source = read(`${D}admin/roles/page.tsx`)
+  assert.match(source, /actions=\{\n\s+canExport \|\| canCreate \? \(\n\s+<>\n\s+\{canExport \? \(/)
+  assert.ok(source.indexOf("/api/admin/roles/export") < source.indexOf("/admin/roles/new"), "the primary create comes last")
+  assert.match(source, /<Chip>\{role\.isSystem \? t\("systemRole"\) : t\("customRole"\)\}<\/Chip>/)
+  assert.match(source, /<Chip key=\{role\.id\} title=\{role\.displayName\}>/)
+  assert.match(source, /<StatusBadge label=\{role\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{role\.isActive \? "success" : "muted"\} \/>/)
+  assert.doesNotMatch(source, /rounded-full|ActiveBadge|bg-(?:info|warning|success)-soft|text-white|\bfixed\b/)
+})

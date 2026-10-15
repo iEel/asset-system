@@ -1,12 +1,12 @@
 import Link from "next/link"
-import { Check, Download, Pencil, Plus, ShieldCheck } from "lucide-react"
+import { Download, Pencil, Plus } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCount } from "@/lib/display-format"
-import { ActiveBadge } from "@/components/master-data/master-data-layout"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
@@ -14,6 +14,7 @@ import { Nil, orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { RowActions } from "@/components/ui/row-actions"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type RolesPageProps = {
   params: Promise<{ locale: string }>
@@ -93,11 +94,21 @@ export default async function RolesPage({ params }: RolesPageProps) {
         title={t("title")}
         meta={t("subtitle")}
         actions={
-          canExport ? (
-            <a href="/api/admin/roles/export" download className={buttonVariants({ variant: "outline", size: "md" })}>
-              <Download aria-hidden="true" />
-              {t("exportAudit")}
-            </a>
+          canExport || canCreate ? (
+            <>
+              {canExport ? (
+                <a href="/api/admin/roles/export" download className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <Download aria-hidden="true" />
+                  {t("exportAudit")}
+                </a>
+              ) : null}
+              {canCreate ? (
+                <Link href={`/${locale}/admin/roles/new`} className={buttonVariants({ size: "md" })}>
+                  <Plus aria-hidden="true" />
+                  {t("createTitle")}
+                </Link>
+              ) : null}
+            </>
           ) : undefined
         }
       />
@@ -147,24 +158,14 @@ export default async function RolesPage({ params }: RolesPageProps) {
                     <DataTableCell numeric className="font-medium text-foreground">{formatCount(role._count.userRoles)}</DataTableCell>
                     <DataTableCell numeric className="font-medium text-foreground">{formatCount(role._count.rolePermissions)}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${role.isSystem ? "bg-info-soft text-info" : "bg-muted text-muted-foreground"}`}>
-                        {role.isSystem ? t("systemRole") : t("customRole")}
-                      </span>
-                      {role.name === "system_admin" ? (
-                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
-                          <ShieldCheck className="h-3 w-3" />
-                          {t("protectedRole")}
-                        </span>
-                      ) : null}
+                      {/* The kind of role is a name, not a state (R2): the shared Chip, neutral. */}
+                      <div className="flex flex-wrap gap-1.5">
+                        <Chip>{role.isSystem ? t("systemRole") : t("customRole")}</Chip>
+                        {role.name === "system_admin" ? <Chip>{t("protectedRole")}</Chip> : null}
+                      </div>
                     </DataTableCell>
                     <DataTableCell className="whitespace-nowrap">
-                      {role.isActive ? (
-                        <ActiveBadge label={tCommon("active")} />
-                      ) : (
-                        <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                          {tCommon("inactive")}
-                        </span>
-                      )}
+                      <StatusBadge label={role.isActive ? tCommon("active") : tCommon("inactive")} tone={role.isActive ? "success" : "muted"} />
                     </DataTableCell>
                     <DataTableCell align="right" sticky="right">
                       <RowActions
@@ -211,14 +212,9 @@ export default async function RolesPage({ params }: RolesPageProps) {
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {assignedRoles.map((role) => (
-                            <span
-                              key={role.id}
-                              className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success"
-                              title={role.displayName}
-                            >
-                              <Check className="h-3 w-3" />
+                            <Chip key={role.id} title={role.displayName}>
                               {role.displayNameTh || role.displayName}
-                            </span>
+                            </Chip>
                           ))}
                         </div>
                       )}
@@ -230,16 +226,6 @@ export default async function RolesPage({ params }: RolesPageProps) {
           </DataTableBody>
         </DataTable>
       </ContentPanel>
-
-      {canCreate ? (
-        <Link
-          href={`/${locale}/admin/roles/new`}
-          className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary-hover"
-        >
-          <Plus className="h-4 w-4" />
-          {t("createTitle")}
-        </Link>
-      ) : null}
     </div>
   )
 }

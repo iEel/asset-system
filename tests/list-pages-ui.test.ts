@@ -575,7 +575,8 @@ test("my asset page: PageHeader with the back link to My Assets, the facts as a 
 })
 
 // Plan 2B-5 Task 1 (spec 2B §5.6 row admin/roles, §4.4.6, R-d, R-q): the role list and the permission matrix on the
-// list primitives. Edit is the row's only command, so RowActions draws no ⋯; the floating create button stays for 2D.
+// list primitives. Edit is the row's only command, so RowActions draws no ⋯. Plan 2D-2 (M13, D11) moved the floating
+// create button into the header, after the export (the primary action last).
 test("roles: PageHeader, one StatStrip, and the role list and permission matrix on DataTable, with edit through RowActions (spec 2B §5.6)", () => {
   const source = read(`${D}admin/roles/page.tsx`)
   for (const part of ["<PageHeader", "<StatStrip", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow colSpan={7}>", "<ClickableTableRow", "<DataTableRow", "<RowActions"]) {
@@ -589,8 +590,8 @@ test("roles: PageHeader, one StatStrip, and the role list and permission matrix 
   assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: role\.name \}\)\}/)
   assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
   assert.match(source, /attention: inactiveRolesWithUsers\.length > 0,/, "inactive roles that still have users need action (R-d)")
-  assert.match(source, /className="fixed bottom-6 right-6 [^"]*shadow-lg/, "R-q: phase 2D moves the floating create button")
-  assert.doesNotMatch(source, /\bColumnHeader\b|function RoleAuditCard\b|<thead\b|<th\b|toLocaleString\(|font-mono|"-"|>-</)
+  assert.match(source, /\{canCreate \? \(\n\s+<Link href=\{`\/\$\{locale\}\/admin\/roles\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/, "M13: create is the header's primary md button")
+  assert.doesNotMatch(source, /\bfixed bottom-|shadow-lg|\bColumnHeader\b|function RoleAuditCard\b|<thead\b|<th\b|toLocaleString\(|font-mono|"-"|>-</)
 })
 
 // Plan 2B-5 Task 2 (spec 2B §5.6 row admin/logs, §5.9.2 row 1, §6.5 row 9, B4): the system log pages for real (it
