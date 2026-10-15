@@ -2,7 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Dry run:** scratch clone `p2d2-sim` of `da8388d`. Every code task (1a–18) was carried out there in order; `npx tsc --noEmit`, `npx eslint src tests` and `npm test` were green after the last one (2051 tests, 2050 pass, 1 skipped). Every replacement below was taken from those commits by a script that checked two things: each old snippet occurs exactly once where it is applied, and applying the snippets in order gives the committed file. The "watch them fail" lists were taken by running each task's tests against the commit before it. Tasks 0, 19, 20 and 21 were not run.
+**Dry run:** scratch clone p2d2-sim, sim commits 1a `ba07487`, 1b `0c218ee`, 1c `aff8575`, 2a `fa640b6`, 2b `6880018`, 3 `b224cd3`, 4 `ae64a4e`, 5 `ed367a0`, 6 `235a92b`, 7 `5882c42`, 8a `1a04441`, 8b `6fa749f`, 9a `c07884b`, 9b `22e95cd`, 10a `4df1a5f`, 10b `fce7ec7`, 10c `f741994`, 11 `5a5cb87`, 12a `452faa9`, 12b `6a50454`, 13 `6416175`, 14 `f296e17`, 15a `ff04c90`, 15b `ddd97ec`, 16a `6ebc5aa`, 16b `3e690d9`, 16c `34192ee`, 16d `3f5a38d`, 16e `9084b8b`, 17 `472dbbe`, 18 `c89a8f9`, 20 `f8191a3` (Task 19 markers are a simulation placeholder there). Tasks 0, 19 and 21 were not run. Every replacement matched exactly once, every RED failed as listed, and every count matched (final: 2051 tests, 2050 pass, 1 skipped; `tsc`, `eslint src tests` clean). The sim commits of Tasks 3, 7, 15a and 15b predate fix D1. This plan carries the dry-run fixes D1–D4.
+
+**Source run:** an earlier scratch clone `p2d2-sim` of `da8388d`. Every code task (1a–18) was carried out there in order; `npx tsc --noEmit`, `npx eslint src tests` and `npm test` were green after the last one (2051 tests, 2050 pass, 1 skipped). Every replacement below was taken from those commits by a script that checked two things: each old snippet occurs exactly once where it is applied, and applying the snippets in order gives the committed file. The "watch them fail" lists were taken by running each task's tests against the commit before it. Tasks 0, 19, 20 and 21 were not run. Fix D1 moved the `const D` line of `tests/admin-sweep-ui.test.ts` from Task 3 to Task 7 and that of `tests/reports-dashboard-sweep-ui.test.ts` from Task 15a to Task 15b, so those two files differ from the source commits only in where that line sits.
 
 **Goal:** Sweep the admin screens, the reports, the dashboard, the work center, the notification center and the shell onto the shared parts (spec 2D §3.2):
 - Panels are `ContentPanel` (or `getPanelClasses()` where the element cannot be one), tables `DataTable`, numbers `StatStrip`, label and value pairs `KeyValueList`.
@@ -282,7 +284,7 @@ test("the first focus skips the X, links, disabled and hidden elements, and acce
 ```
 
 Run: `node --test tests/dialog-close-order.test.ts`
-Expected: the file fails to load (`Cannot find module …/src/components/ui/dialog-focus.ts`), so both tests fail.
+Expected: the file fails to load (`Cannot find module …/src/components/ui/dialog-focus.ts`); `node --test` reports it as 1 failing test.
 
 - [ ] **Step 2: The focus rule.** Create `src/components/ui/dialog-focus.ts` (LF):
 
@@ -1268,7 +1270,6 @@ import test from "node:test"
 // empty states EmptyNote or ActionEmptyState, codes tag, empty values Nil. Each test pins one file (or one tight pair)
 // and fails before that file's commit. Sources are read with LF line endings, so the regexes may contain \n.
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
-const D = "src/app/[locale]/(dashboard)/"
 const C = "src/components/"
 const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
 
@@ -3597,7 +3598,7 @@ with
   - Run `node --test tests/admin-sweep-ui.test.ts tests/accessible-dialog.test.ts tests/asset-label-print-ui.test.ts tests/attachment-preview-dialog-ui.test.ts tests/field-primitives.test.ts tests/form-frames-ui.test.ts tests/pm-generation-removed.test.ts tests/settings-depreciation-policy-ui.test.ts tests/settings-ldap-role-ui.test.ts tests/settings-tab-persistence-ui.test.ts tests/steps-ui.test.ts tests/sticky-form-footer-ui.test.ts tests/system-log-history.test.ts tests/thai-glossary.test.ts tests/visual-foundation-guards.test.ts tests/form-migration-guards.test.ts tests/list-frame-guards.test.ts`. Expected: all pass (155 tests).
   - Run `node <temp>/eol.mjs src/components/admin/system-settings-form.tsx messages/th.json messages/en.json tests/admin-sweep-ui.test.ts tests/asset-label-print-ui.test.ts tests/form-frames-ui.test.ts tests/list-frame-guards.test.ts tests/settings-ldap-role-ui.test.ts tests/steps-ui.test.ts`. Expected: equal numbers for `src/components/admin/system-settings-form.tsx`, `messages/th.json`, `messages/en.json`, `tests/asset-label-print-ui.test.ts`, `tests/form-frames-ui.test.ts`, `tests/list-frame-guards.test.ts`, `tests/steps-ui.test.ts`; `0 <n>` for `tests/admin-sweep-ui.test.ts`, `tests/settings-ldap-role-ui.test.ts` (LF).
   - Run `npm test` (2027 tests, 2026 pass, 1 skipped), `npx tsc --noEmit` and `npm run lint`.
-  - Run `git diff --stat`. `messages/*.json` show 1 line each.
+  - Run `git diff --stat`. `messages/*.json` each show `2 +-` (the one changed value).
 
 - [ ] **Step 6: Commit.**
 
@@ -5316,6 +5317,8 @@ Spec D7, D11, M13, M22. One commit. The floating create link (`shadow-lg`, VFG R
 - [ ] **Step 1: The failing tests.** Append to `tests/admin-sweep-ui.test.ts`:
 
 ```ts
+
+const D = "src/app/[locale]/(dashboard)/"
 
 test("roles: create is a header button, the role kinds and the matrix roles are Chips, and the status is a StatusBadge (spec 2D M13, D7, D11)", () => {
   const source = read(`${D}admin/roles/page.tsx`)
@@ -8538,7 +8541,6 @@ import test from "node:test"
 // buttons and button-shaped links Button or buttonVariants, text links linkVariants, empty states EmptyNote, and an
 // /api download a plain <a>. Each test pins one file and fails before its commit. Sources are read with LF endings.
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
-const D = "src/app/[locale]/(dashboard)/"
 const C = "src/components/"
 
 test("notification center actions: the open link and the two commands are outline md, with the shared disabled look (spec 2D M29)", () => {
@@ -8672,6 +8674,8 @@ The notification cards take the panel classes (a card in a page grid, R4); the c
 - [ ] **Step 5: The failing test.** Append to `tests/reports-dashboard-sweep-ui.test.ts`:
 
 ```ts
+
+const D = "src/app/[locale]/(dashboard)/"
 
 test("notifications: the cards use the panel classes and the count is a StatusBadge (spec 2D D9, M30)", () => {
   const source = read(`${D}notifications/page.tsx`)
@@ -11882,14 +11886,14 @@ Then replace the heading line `## <today>` (the newest, the only line with that 
 
 Branch `feat/ui-phase2d-plan2` (จาก `master` `da8388d`) · design `docs/superpowers/specs/2026-10-15-ui-phase2d-design.md` ข้อ 3.2 · plan `docs/superpowers/plans/2026-10-15-ui-phase2d-plan2.md` · ค่าทั้งหมดอยู่ใน `DESIGN.md` · plan ที่ 2 จาก 5 ของ 2D
 
-- **ขอบเขต:** หน้าผู้ดูแลระบบ รายงาน แดชบอร์ด ศูนย์งาน การแจ้งเตือน และแถบด้านบน/เมนูข้าง ใช้ชิ้นส่วนกลางชุดเดียวกับหน้าอื่น · ไม่มีขั้นตอนงานใหม่ ไม่แตะฐานข้อมูล ไม่แก้ API ไม่เพิ่ม token · การตรวจกรอกไม่เปลี่ยน
+- **ขอบเขต:** หน้าผู้ดูแลระบบ รายงาน แดชบอร์ด ศูนย์งานค้าง การแจ้งเตือน และแถบด้านบน/เมนูข้าง ใช้ชิ้นส่วนกลางชุดเดียวกับหน้าอื่น · ไม่มีขั้นตอนงานใหม่ ไม่แตะฐานข้อมูล ไม่แก้ API ไม่เพิ่ม token · การตรวจกรอกไม่เปลี่ยน
 - **dialog:** ปุ่มปิด (X) อยู่ลำดับแรกเมื่อกด Tab (Shift+Tab จากช่องแรกไปถึงปุ่มปิด) แต่โฟกัสยังเริ่มที่ช่องแรกเหมือนเดิม · ใช้กับ dialog และแผงด้านข้างทุกตัว
 - **กรอบหน้า:** ปุ่มไอคอนบนแถบด้านบน (เมนู ย่อเมนูข้าง กระดิ่ง) และปุ่มปิดเมนูข้างบนมือถือเป็นปุ่มกลาง 36px ตั้งแต่ 768px (เดิม 44 ทุกขนาดจอ มือถือยัง 44) · จำนวนในรายการแจ้งเตือนเป็นป้ายสถานะ · จอกว้าง 1024–1180px (ซูม 200%) ช่องค้นหาแคบลงแทนการซ้อนใต้กระดิ่ง
 - **ตั้งค่าระบบ:** ทุกส่วนเป็นกรอบเนื้อหาแบบกลาง (ไม่มีกรอบซ้อนกรอบ) · ข้อความแนะนำและคำเตือนเป็น `Notice` ตามความหมาย · ตาราง 3 ตารางเป็นตารางกลาง · รหัสและคำนำหน้ารหัสเป็นตัวอักษรรหัส · ลิงก์ในรายการที่เปลี่ยนแปลงสลับแท็บโดยค่าที่ยังไม่บันทึกอยู่ครบ · แท็บ "เอกสารส่งมอบ-รับคืน" เปลี่ยนชื่อเป็น "เลขเอกสาร" (อังกฤษ "Documents") ให้ 11 แท็บพอดีจอ 1440px
 - **Integration API:** ตัวเลขสรุปเป็นแถบตัวเลขกลาง · กล่อง Token ใช้ครั้งเดียวมีคำเตือนแบบกลาง · สถานะ client และจำนวน error เป็นป้ายสถานะ · สิทธิ์เป็นชิปชื่อ · ปุ่มในแถว 36px ตั้งแต่ 768px และปุ่มเปลี่ยน Token หมุนระหว่างทำงาน
 - **บทบาทและผู้ใช้:** ปุ่มเพิ่มย้ายจากปุ่มลอยมุมล่างไปหัวหน้า · หน้าผู้ใช้แสดงปุ่มเพิ่มเฉพาะผู้มีสิทธิ์เพิ่มผู้ใช้ (เดิมแสดงทุกคนแล้วถูกปฏิเสธที่หน้าเพิ่ม) · ชื่อบทบาทเป็นชิปชื่อสีกลาง · สถานะเป็นป้ายสถานะ
 - **หน้าอื่นของผู้ดูแลระบบ:** ไฟล์ (ปุ่มย้ายไป .archive หมุนระหว่างทำงาน) · คุณภาพข้อมูล (ปุ่มสแกน 36px ป้ายความรุนแรงเฉพาะกฎที่เปิดและพบรายการ) · ความพร้อมใช้งาน (การ์ดสีกลางพร้อมป้ายสถานะ) · การอนุมัติและประวัติ (นโยบายเป็นรายการค่า ชื่อโมดูลและผู้อนุมัติเป็นชิปชื่อ ผลพิจารณา "ปิด" เป็นสีกลาง) · บันทึกระบบ (ลิงก์ข้อความ) · ไม่มีสิทธิ์เข้าถึง (ปุ่ม 36px)
-- **รายงาน การแจ้งเตือน แดชบอร์ด ศูนย์งาน:** ปุ่มของการแจ้งเตือนเป็นปุ่มกลาง · รายงานเป็นกรอบเนื้อหาแบบกลาง ลิงก์ดาวน์โหลดเป็นลิงก์ธรรมดา อัตราส่วนที่ไม่มีค่าแสดง "—" · แดชบอร์ด: ตัวเลขทุกชุดเป็นแถบตัวเลข (KPI 4 + 3) ไม่มีการ์ดพื้นสี แนวโน้มแสดง "เดือนนี้ · เดือนก่อน: N · ±x%" · ศูนย์งาน: ลิงก์ "ดูทั้งหมด" เป็นลิงก์ข้อความ คิวว่างเป็นบรรทัดเดียว
+- **รายงาน การแจ้งเตือน แดชบอร์ด ศูนย์งานค้าง:** ปุ่มของการแจ้งเตือนเป็นปุ่มกลาง · รายงานเป็นกรอบเนื้อหาแบบกลาง ลิงก์ดาวน์โหลดเป็นลิงก์ธรรมดา อัตราส่วนที่ไม่มีค่าแสดง "—" · แดชบอร์ด: ตัวเลขทุกชุดเป็นแถบตัวเลข (KPI 4 + 3) ไม่มีการ์ดพื้นสี แนวโน้มแสดง "เดือนนี้ · เดือนก่อน: N · ±x%" · ศูนย์งานค้าง: ลิงก์ "ดูทั้งหมด" เป็นลิงก์ข้อความ คิวว่างเป็นบรรทัดเดียว
 - **ข้อความ:** แก้ `systemSettingsPage.tabDocuments` · ลบ `dataQualityPage.assetStateReviews.scanning` ที่ไม่มีใครอ่าน · ไม่เพิ่ม key
 - **guard:** `list-frame-guards` ลดแถวของหน้าตั้งค่าและ Integration API · `form-migration-guards` ไอคอนหมุนที่เขียนเอง 2 → 1 · เงาของปุ่มลอย 2 ปุ่มหายจากงบ (10 → 8) · ไม่มีตัวเลขเพิ่ม
 - **test:** ไฟล์ใหม่ 6 ไฟล์ · test 2020 → 2051
