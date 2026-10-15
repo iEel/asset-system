@@ -178,12 +178,10 @@ test("a saved result can be edited: the deep link opens it and the save is sent 
   assert.match(offlineQueue, /resultCorrection: boolean/)
 })
 
-test("the scan screen offers no not-found action; mobile safe-area padding stays on the shared bars", () => {
+test("the scan screen offers no not-found action; the shared action bar keeps the safe-area padding", () => {
   const actionBar = read("src/components/ui/action-bar.tsx")
-  const designSystem = read("src/lib/design-system.ts")
   for (const path of ["src/components/audit/audit-scan-workspace.tsx", "src/components/audit/audit-scan-check-form.tsx"]) {
     assert.doesNotMatch(read(path), /markNotFound|AuditMarkNotFoundButton/, path)
   }
   assert.match(actionBar, /pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\]/)
-  assert.match(designSystem, /pb-\[calc\(6rem\+max\(0\.75rem,env\(safe-area-inset-bottom\)\)\)\] sm:pb-0/)
 })

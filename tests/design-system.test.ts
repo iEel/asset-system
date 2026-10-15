@@ -1,50 +1,20 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync } from "node:fs"
 import test from "node:test"
 import * as designSystem from "../src/lib/design-system.ts"
 import { buttonVariants, linkVariants } from "../src/components/ui/button-variants.ts"
 import { cn } from "../src/lib/utils.ts"
 import { readSourceFiles } from "./helpers/source-files.ts"
 
-import {
-  getActionButtonClasses,
-  getResponsiveActionRowClasses,
-  getSafeActionLinkClasses,
-  getEmptyStateClasses,
-  getFieldControlClasses,
-  getMetricCardToneClasses,
-  getPanelClasses,
-  getTableShellClasses,
-  normalizeUiTone,
-} from "../src/lib/design-system.ts"
+import { getFieldControlClasses, getPanelClasses } from "../src/lib/design-system.ts"
 
 const getAssetStateTone = (designSystem as Record<string, unknown>).getAssetStateTone
 
-test("normalizes supported UI tones with neutral fallback", () => {
-  assert.equal(normalizeUiTone("success"), "success")
-  assert.equal(normalizeUiTone("unknown"), "neutral")
-})
-
-test("returns stable metric card classes for each tone", () => {
-  assert.equal(getMetricCardToneClasses("neutral").container, "border-border bg-surface")
-  assert.match(getMetricCardToneClasses("warning").container, /border-warning/)
-  assert.match(getMetricCardToneClasses("danger").value, /text-danger/)
-  assert.match(getMetricCardToneClasses("warning").container, /border-warning-border/)
-  assert.equal(getMetricCardToneClasses("muted").container, "border-border bg-background")
-})
-
-test("returns shared panel, form control, and action button classes", () => {
+test("returns shared panel and form control classes", () => {
   assert.match(getPanelClasses(), /border-border/)
   assert.match(getFieldControlClasses(), /focus:border-ring/)
   assert.doesNotMatch(getPanelClasses(), /shadow/)
   assert.match(getFieldControlClasses(), /border-input/)
-  assert.match(getActionButtonClasses("primary"), /bg-primary/)
-  assert.match(getActionButtonClasses("secondary", "sm"), /h-8/)
-  assert.match(getSafeActionLinkClasses("primary"), /min-h-11/)
-  assert.match(getSafeActionLinkClasses("secondary"), /focus-visible:ring-2/)
-  assert.match(getResponsiveActionRowClasses(), /flex-col/)
-  assert.match(getTableShellClasses(), /overflow-hidden/)
-  assert.match(getEmptyStateClasses(), /text-center/)
 })
 
 test("maps seeded asset status and condition values to explicit semantic tones", () => {
@@ -170,36 +140,26 @@ test("linkVariants draws a text link that underlines on hover and focus, with no
   assert.doesNotMatch(linkVariants({ size: "inherit" }), /text-meta/)
 })
 
-test("safe action links look like a default Button but let long labels wrap", () => {
-  const link = getSafeActionLinkClasses("secondary")
-  assert.match(link, /border-control-border/)
-  assert.match(link, /whitespace-normal/)
-  assert.match(link, /md:min-h-10/)
-  assert.ok(classList(link).includes("rounded-md"))
-  for (const gone of ["whitespace-nowrap", "leading-snug", "md:h-10", "md:min-h-0"]) {
-    assert.ok(!classList(link).includes(gone), `${gone} must be merged away`)
-  }
-  assert.match(getSafeActionLinkClasses("primary"), /bg-primary text-primary-foreground/)
-})
-
-test("the unused touch icon helper is gone (use Button size=\"icon\")", () => {
-  assert.equal("getTouchIconButtonClasses" in designSystem, false)
-})
-
-test("legacy action button classes map onto shadcn variants", () => {
-  assert.equal(getActionButtonClasses("primary", "md"), buttonVariants({ variant: "default", size: "default" }))
-  assert.equal(getActionButtonClasses("secondary", "sm"), buttonVariants({ variant: "outline", size: "sm" }))
-  assert.equal(getActionButtonClasses("danger"), buttonVariants({ variant: "destructive", size: "default" }))
-  assert.equal(getActionButtonClasses("ghost"), buttonVariants({ variant: "ghost", size: "default" }))
-})
-
-// Plan 2B-5 Task 16 (spec 2B §10.6 row 2B-5, §5.10 #6, §10.4 table D): the storage tables moved onto DataTable (Task 3)
-// and the report filter panel onto Button (Task 9), so nothing in src calls these two helpers. They stay, with their pins
-// above, until phase 2D deletes them; their comments say so, and a new caller fails here.
-test("getTableShellClasses and getActionButtonClasses have no caller left and say that phase 2D deletes them", () => {
-  const callers = readSourceFiles("src").filter((file) => file.path !== "src/lib/design-system.ts" && /\bget(?:TableShell|ActionButton)Classes\b/.test(file.source))
+// Plan 2D-1 (spec 2D §4.1, D12, M3–M5): ActionButton, the legacy button maps and the class helpers with no caller are
+// gone. The two safe-link callers moved to buttonVariants first (task 2b).
+test("the legacy button and class helpers are gone (spec 2D §4.1)", () => {
+  const gone = [
+    "uiTones",
+    "uiButtonVariants",
+    "uiButtonSizes",
+    "normalizeUiTone",
+    "getMetricCardToneClasses",
+    "getTableShellClasses",
+    "getResponsiveTableScrollClasses",
+    "getEmptyStateClasses",
+    "getMobileSafeBottomPaddingClasses",
+    "getActionButtonClasses",
+    "getSafeActionLinkClasses",
+    "getResponsiveActionRowClasses",
+    "getTouchIconButtonClasses",
+  ]
+  for (const name of gone) assert.equal(name in designSystem, false, name)
+  assert.equal(existsSync("src/components/ui/action-button.tsx"), false)
+  const callers = readSourceFiles("src").filter((file) => /\bActionButton\b|\bget(?:SafeActionLink|ResponsiveActionRow|ActionButton|TableShell)Classes\b/.test(file.source))
   assert.deepEqual(callers.map((file) => file.path), [])
-  const source = readFileSync("src/lib/design-system.ts", "utf8").replace(/\r\n/g, "\n")
-  assert.match(source, /\/\*\* @deprecated No caller since phase 2B plan 5 [^\n]*\*\/\nexport function getTableShellClasses\(\)/)
-  assert.match(source, /\/\*\* @deprecated Use `buttonVariants` [^\n]*No caller since phase 2B plan 5[^\n]*\*\/\nexport function getActionButtonClasses\(/)
 })
