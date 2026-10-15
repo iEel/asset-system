@@ -35,7 +35,6 @@ test("deletes report a delete, not a save", () => {
     assert.match(source, /tCommon\("deletedSuccess"\)/, path)
     assert.match(source, /tone: "destructive"/, path)
   }
-  assert.match(read("src/components/master-data/master-data-delete-button.tsx"), /useDeleteAction\(endpoint\)/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
   assert.equal(th.common.deletedSuccess, "ลบแล้ว")

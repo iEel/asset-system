@@ -25,3 +25,8 @@ test("the readiness and import-export links are outline md links, not the old sa
     assert.doesNotMatch(source, /getSafeActionLinkClasses|getResponsiveActionRowClasses|@\/lib\/design-system/)
   }
 })
+
+test("the delete buttons with no caller are gone; RowActions keeps useDeleteAction (spec 2D M6)", () => {
+  for (const path of [`${C}master-data/master-data-delete-button.tsx`, `${C}master-data/asset-delete-button.tsx`]) assert.equal(existsSync(path), false, path)
+  assert.match(read(`${C}ui/row-actions.tsx`), /useDeleteAction/)
+})
