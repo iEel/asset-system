@@ -86,3 +86,12 @@ test("the dashboard: StatStrips in rows of at most four, ContentPanels, StatusBa
   assert.match(source, /<div className="font-medium text-foreground"><span className="tag">\{row\.assetTag\}<\/span><\/div>/)
   assert.doesNotMatch(source, /bg-(?:primary|success|warning|danger|info)-soft|rounded-full|rounded-lg border|text-3xl|text-2xl|function TrendCard\b|actionCardToneClass|actionCardIconClass|hover:underline/)
 })
+
+test("the work center: follow-up panels are ContentPanels with text links (D19), empty queues are EmptyNote, and the dots are shape markers (spec 2D D9, D19, M21)", () => {
+  const source = read(`${D}work-center/page.tsx`)
+  assert.match(source, /<ContentPanel\n\s+title=\{title\}\n\s+description=\{subtitle\}\n\s+className=\{isExpanded \? "border-primary-border" : undefined\}/)
+  assert.ok((source.match(/className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center(?: gap-1)? md:min-h-0"\)\}/g)?.length ?? 0) >= 4, "the four D19 links")
+  assert.equal(source.match(/<EmptyNote tone="clear">\{t\("no\w+Issues"\)\}<\/EmptyNote>/g)?.length, 5)
+  assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone \}\), "mt-2"\)\} \/>/)
+  assert.doesNotMatch(source, /function (?:EmptyState|followUpDotClass|splitStatRows)\b|border-dashed|rounded-full|sm:min-h-0|sm:border-0|hover:underline|text-xs text-warning/)
+})

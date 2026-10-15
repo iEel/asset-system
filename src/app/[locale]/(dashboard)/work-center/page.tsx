@@ -3,10 +3,16 @@ import type React from "react"
 import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
 import { ArrowRight } from "lucide-react"
+import { statusMarkerVariants } from "@/components/ui/badge-variants"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
 import { TabNav } from "@/components/ui/tab-nav"
 import { formatCount } from "@/lib/display-format"
+import { splitStatRows } from "@/lib/stat-strip-rows"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
@@ -25,7 +31,7 @@ import {
   type WorkCenterParams,
   type WorkCenterUserScope,
 } from "@/lib/work-center-view"
-import { formatDate, formatDateTime } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { buildDuePmPlanWhere } from "@/lib/preventive-maintenance"
@@ -372,7 +378,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           ]}
         />
         {isMineView && !userScope.enabled ? (
-          <p className="text-xs text-warning">{t("myWorkUnavailable")}</p>
+          <Notice tone="warning">{t("myWorkUnavailable")}</Notice>
         ) : (
           <p className="text-xs text-muted-foreground">{isMineView ? t("myWorkDetail") : t("allWorkDetail")}</p>
         )}
@@ -413,7 +419,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
             collapseLabel={t("collapseList")}
           >
             {!approvalInboxSnapshot || approvalInboxSnapshot.items.length === 0 ? (
-              <EmptyState label={t("noApprovalInboxIssues")} />
+              <EmptyNote tone="clear">{t("noApprovalInboxIssues")}</EmptyNote>
             ) : (
               approvalInboxSnapshot.items.slice(0, approvalItemLimit).map((item) => (
                 <ApprovalFollowUpItem key={item.id} item={item} />
@@ -453,7 +459,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
             }}
           />
           {assetIssues.length === 0 ? (
-            <EmptyState label={t("noAssetDataIssues")} />
+            <EmptyNote tone="clear">{t("noAssetDataIssues")}</EmptyNote>
           ) : (
             assetIssues.map((asset) => {
               const issues = [
@@ -486,7 +492,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           collapseLabel={t("collapseList")}
         >
           {maintenanceItems.length === 0 ? (
-            <EmptyState label={t("noMaintenanceIssues")} />
+            <EmptyNote tone="clear">{t("noMaintenanceIssues")}</EmptyNote>
           ) : (
             maintenanceItems.map((ticket) => (
               <FollowUpItem
@@ -512,7 +518,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           collapseLabel={t("collapseList")}
         >
           {visibleAuditItems.length === 0 ? (
-            <EmptyState label={t("noAuditIssues")} />
+            <EmptyNote tone="clear">{t("noAuditIssues")}</EmptyNote>
           ) : (
             visibleAuditItems.map((finding) => (
               <FollowUpItem
@@ -538,7 +544,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           collapseLabel={t("collapseList")}
         >
           {visibleDisposalItems.length === 0 ? (
-            <EmptyState label={t("noDisposalIssues")} />
+            <EmptyNote tone="clear">{t("noDisposalIssues")}</EmptyNote>
           ) : (
             visibleDisposalItems.map((request) => (
               <FollowUpItem
@@ -554,13 +560,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       </section>
     </div>
   )
-}
-
-// Rows of at most `most` cells, as even as they split: 8 → 4 + 4, 7 → 4 + 3, 6 → 3 + 3, 5 → 3 + 2.
-function splitStatRows<T>(items: readonly T[], most = 4): T[][] {
-  const rowCount = Math.ceil(items.length / most)
-  const perRow = Math.ceil(items.length / rowCount)
-  return Array.from({ length: rowCount }, (_, index) => items.slice(index * perRow, (index + 1) * perRow))
 }
 
 function FollowUpPanel({
@@ -586,29 +585,31 @@ function FollowUpPanel({
   collapseLabel: string
   children: React.ReactNode
 }) {
+  // D9 and D19: the shared panel (its border turns primary while the list is the focused one) with two text links,
+  // 44px tall on phones and the same text link at every width (no shape change at sm).
   const isExpanded = currentParams.panel === panel
   return (
-    <section className={`min-w-0 rounded-lg border bg-surface p-4 ${isExpanded ? "border-primary-border" : "border-border"}`}>
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="font-semibold text-foreground">{title}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-        </div>
-        <div className="flex min-w-0 flex-col gap-2 sm:shrink-0 sm:flex-row sm:items-center">
+    <ContentPanel
+      title={title}
+      description={subtitle}
+      className={isExpanded ? "border-primary-border" : undefined}
+      actions={
+        <>
           <Link
             href={buildWorkCenterHref(locale, currentParams, { panel: isExpanded ? "overview" : panel })}
-            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-primary-border px-3 text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline"
+            className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}
           >
             {isExpanded ? collapseLabel : showMoreLabel}
           </Link>
-          <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:text-primary sm:min-h-0 sm:border-0 sm:px-0 sm:hover:underline">
+          <Link href={href} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
             {viewAllLabel}
-            <ArrowRight className="h-3.5 w-3.5" />
+            <ArrowRight aria-hidden="true" className="size-3.5" />
           </Link>
-        </div>
-      </div>
+        </>
+      }
+    >
       <div className="space-y-2">{children}</div>
-    </section>
+    </ContentPanel>
   )
 }
 
@@ -629,7 +630,7 @@ function DataQualityFixGroups({
   if (groups.length === 0) return null
 
   return (
-    <div className="mb-3 rounded-md border border-dashed border-border bg-background p-3">
+    <div className="mb-3 rounded-md border border-border bg-background p-3">
       <div className="mb-2">
         <div className="text-sm font-semibold text-foreground">{labels.title}</div>
         <div className="text-xs text-muted-foreground">{labels.subtitle}</div>
@@ -642,15 +643,14 @@ function DataQualityFixGroups({
                 <p className="text-sm font-medium text-foreground">{labels.issueLabels[group.key]}</p>
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{labels.issueDetails[group.key]}</p>
               </div>
-              <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
-                {formatCount(group.count)}
-              </span>
+              <span className="num shrink-0 text-sm font-semibold text-foreground">{formatCount(group.count)}</span>
             </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Link href={group.assetsHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary-border px-3 text-center text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline">
+            {/* D19: text links at every width, 44px tall on phones. */}
+            <div className="mt-3 flex flex-col gap-x-4 gap-y-1 sm:flex-row sm:flex-wrap">
+              <Link href={group.assetsHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
                 {labels.openFilteredAssets}
               </Link>
-              <Link href={group.workCenterHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 text-center text-xs font-medium text-muted-foreground hover:text-primary sm:min-h-0 sm:border-0 sm:px-0 sm:hover:underline">
+              <Link href={group.workCenterHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
                 {labels.showInWorkCenter}
               </Link>
             </div>
@@ -672,31 +672,18 @@ function ApprovalFollowUpItem({ item }: { item: ApprovalInboxItem }) {
   )
 }
 
+// The status marker carries the urgency by shape (diamond, triangle, dot), not by color alone.
 function FollowUpItem({ href, title, meta, tone }: { href: string; title: string; meta: string; tone: "danger" | "warning" | "primary" }) {
   return (
-    <Link href={href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary-border hover:bg-accent">
+    <Link href={href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:bg-row-hover">
       <div className="flex items-start gap-2">
-        <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${followUpDotClass(tone)}`} />
+        <span aria-hidden="true" className={cn(statusMarkerVariants({ tone }), "mt-2")} />
         <div className="min-w-0">
           <p className="truncate font-medium text-foreground">{title}</p>
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{meta}</p>
         </div>
       </div>
     </Link>
-  )
-}
-
-function followUpDotClass(tone: "danger" | "warning" | "primary") {
-  if (tone === "danger") return "bg-danger"
-  if (tone === "primary") return "bg-primary"
-  return "bg-warning"
-}
-
-function EmptyState({ label }: { label: string }) {
-  return (
-    <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-      {label}
-    </div>
   )
 }
 
