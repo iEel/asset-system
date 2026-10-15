@@ -113,6 +113,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}admin/approvals/history/page.tsx`,
   `${D}admin/readiness/page.tsx`,
   `${D}admin/settings/page.tsx`,
+  `${D}access-denied/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.

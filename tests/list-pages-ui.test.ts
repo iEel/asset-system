@@ -697,3 +697,14 @@ test("settings: the header is PageHeader and the page still hands the form its L
   assert.match(source, /ldapSyncHistory=\{ldapSyncHistory\}/)
   assert.doesNotMatch(source, /<h1\b/)
 })
+
+// Plan 2B-5 Task 6 (spec 2B §4.4.7, §5.1 row "page buttons", R-b, R-p): the access-denied page has no header; it is
+// the permission empty state in the middle of the screen. Its two links take the shared button look, and the required
+// permission is one translated sentence, so it is not set in the code font (Thai words in Plex Mono fall back).
+test("access denied: the permission empty state with its two links on the shared button look (spec 2B §4.4.7)", () => {
+  const source = read(`${D}access-denied/page.tsx`)
+  assert.match(source, /<ActionEmptyState\n\s+tone="permission"/)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/dashboard`\} className=\{buttonVariants\(\{ size: "lg" \}\)\}>/)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/work-center`\} className=\{buttonVariants\(\{ variant: "outline", size: "lg" \}\)\}>/)
+  assert.doesNotMatch(source, /font-mono|\bbg-primary\b|hover:bg-accent|<h1\b/)
+})

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
 
 type AccessDeniedPageProps = {
   params: Promise<{ locale: string }>
@@ -24,24 +25,18 @@ export default async function AccessDeniedPage({ params, searchParams }: AccessD
           title={t("title")}
           description={t("description")}
           details={permission ? (
-            <p className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
+            <p className="rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
               {t("requestedPermission", { permission })}
             </p>
           ) : null}
           action={(
             <div className="flex flex-col justify-center gap-2 sm:flex-row">
-          <Link
-            href={`/${locale}/dashboard`}
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            {t("backDashboard")}
-          </Link>
-          <Link
-            href={`/${locale}/work-center`}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            {t("openWorkCenter")}
-          </Link>
+              <Link href={`/${locale}/dashboard`} className={buttonVariants({ size: "lg" })}>
+                {t("backDashboard")}
+              </Link>
+              <Link href={`/${locale}/work-center`} className={buttonVariants({ variant: "outline", size: "lg" })}>
+                {t("openWorkCenter")}
+              </Link>
             </div>
           )}
         />
