@@ -118,7 +118,7 @@ test("operations cross-scope mobile asset links keep a 44px touch target", () =>
 
   assert.match(
     crossScopePreview,
-    /className="flex min-h-11 w-full[^"]*md:inline-flex[^"]*md:min-h-0[^"]*md:w-auto"/,
+    /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "flex min-h-11 w-full items-center md:inline-flex md:min-h-0 md:w-auto"\)\}/,
   )
 })
 
@@ -130,7 +130,7 @@ test("operations data-quality asset tags keep a 44px mobile touch target", () =>
 
   assert.match(
     dataQualityPreview,
-    /<Link href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\} className="inline-flex min-h-11 items-center font-semibold[^"]*md:min-h-0">/,
+    /<Link href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/,
   )
 })
 

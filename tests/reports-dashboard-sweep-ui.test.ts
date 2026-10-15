@@ -47,3 +47,14 @@ test("report catalog: three ContentPanels, /api downloads as plain <a>, the cade
   assert.match(source, /tone=\{permission\.allowed \? "success" : "muted"\}/)
   assert.doesNotMatch(source, /<Link href=\{report\.(?:href|exportHref)\}|border-dashed|rounded-full|function PermissionPill\b|text-white|sm:h-8|bg-(?:info|primary|success)-soft|rounded-lg border/)
 })
+
+test("report operations: ContentPanels, the cross-scope export as a plain <a>, text links for the fixes and warning badges for the flags (spec 2D D9, M29, M30, M31)", () => {
+  const source = read(`${C}reports/reports-operations-view.tsx`)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 4)
+  assert.match(source, /<a href=\{crossScope\.exportHref\} download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(source, /<Link key=\{issue\.key\} href=\{issue\.href\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  assert.match(source, /<StatusBadge key=\{label\} label=\{label\} tone="warning" \/>/)
+  assert.match(source, /<Link href=\{asset\.primaryFixHref\} className=\{buttonVariants\(\{ size: "sm" \}\)\}>/)
+  assert.match(source, /<h3 className="mb-3 text-sm font-semibold text-foreground">\{title\}<\/h3>/)
+  assert.doesNotMatch(source, /border-dashed|rounded-full|bg-warning-soft|text-white|sm:h-|hover:underline|<Link\s+href=\{crossScope\.exportHref\}|rounded-lg border/)
+})

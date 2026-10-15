@@ -1,8 +1,12 @@
 import Link from "next/link"
 import { Download } from "lucide-react"
 import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { cn } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import type { parseAssetListParams } from "@/lib/asset-list-query"
 import type { AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
@@ -139,71 +143,65 @@ export function ReportsOperationsView({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <h2 className="mb-4 text-base font-semibold text-foreground">{labels.dataQuality}</h2>
+      <ContentPanel title={labels.dataQuality}>
         <StatStrip items={dataQualityCards.map((card) => ({ key: card.key, label: card.label, value: formatCount(card.value), href: card.href }))} />
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{labels.crossScopeTitle}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{labels.crossScopeHelp}</p>
-          </div>
-          {crossScope.exportHref ? (
-            <Link
-              href={crossScope.exportHref}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0"
-            >
-              <Download aria-hidden="true" className="h-4 w-4" />
+      <ContentPanel
+        title={labels.crossScopeTitle}
+        description={labels.crossScopeHelp}
+        actions={
+          crossScope.exportHref ? (
+            // An /api download is a plain <a> (M31).
+            <a href={crossScope.exportHref} download className={buttonVariants({ variant: "outline", size: "md" })}>
+              <Download aria-hidden="true" />
               {labels.exportCrossScopeAssets}
-            </Link>
-          ) : null}
-        </div>
+            </a>
+          ) : undefined
+        }
+      >
         <StatStrip items={crossScope.cards.map((card) => ({ key: card.key, label: card.label, value: formatCount(card.value), href: card.href }))} />
         <CrossScopePreviewTable rows={crossScope.rows} locale={locale} emptyLabel={crossScopeEmpty} labels={labels} />
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{labels.dataQualityActionTitle}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{labels.dataQualityActionHelp}</p>
-          </div>
-          <Link href={`/${locale}/admin/data-quality`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit">
+      <ContentPanel
+        title={labels.dataQualityActionTitle}
+        description={labels.dataQualityActionHelp}
+        actions={
+          <Link href={`/${locale}/admin/data-quality`} className={buttonVariants({ variant: "outline", size: "md" })}>
             {labels.openDataQualityRules}
           </Link>
-        </div>
+        }
+      >
         <div className="grid gap-3">
           {dataQuality.rows.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {dataQualityEmpty}
-            </div>
+            <EmptyNote>{dataQualityEmpty}</EmptyNote>
           ) : (
             dataQuality.rows.map((asset) => (
               <div key={asset.id} className="rounded-md border border-border bg-background p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0">
+                      <Link href={`/${locale}/assets/${asset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
                         <span className="tag font-medium">{asset.assetTag}</span>
                       </Link>
                       <span className="text-sm text-foreground">{asset.name}</span>
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">{asset.context}</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    {/* Each issue opens its fix: a text link (no orange pill; color lives in badges). */}
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                       {asset.issues.map((issue) => (
-                        <Link key={issue.key} href={issue.href} className="inline-flex min-h-11 items-center rounded-full bg-warning-soft px-3 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0">
+                        <Link key={issue.key} href={issue.href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
                           {issue.label}
                         </Link>
                       ))}
                     </div>
                   </div>
                   <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
+                    <Link href={`/${locale}/assets/${asset.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                       {labels.openAsset}
                     </Link>
-                    <Link href={asset.primaryFixHref} className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary-hover sm:h-8 sm:min-h-0">
+                    <Link href={asset.primaryFixHref} className={buttonVariants({ size: "sm" })}>
                       {labels.fixData}
                     </Link>
                   </div>
@@ -212,26 +210,22 @@ export function ReportsOperationsView({
             ))
           )}
         </div>
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{labels.operationInsightsTitle}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.operationInsightsHelp}</p>
-        </div>
+      <ContentPanel title={labels.operationInsightsTitle} description={labels.operationInsightsHelp}>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ReportTable title={labels.byCustodian} rows={insights.custodians} emptyLabel={insightsEmpty} />
           <ReportTable title={labels.byLocation} rows={insights.locations} emptyLabel={insightsEmpty} />
           <ReportTable title={labels.frequentRepairAssets} rows={insights.repairs} emptyLabel={insightsEmpty} />
-          <section className="rounded-lg border border-border bg-surface p-5">
-            <h2 className="mb-4 text-base font-semibold text-foreground">{labels.idleAssets}</h2>
-            <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning-border bg-warning-soft p-4 transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <section className="rounded-md border border-border bg-background p-4">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">{labels.idleAssets}</h3>
+            <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-border bg-surface p-4 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="text-sm text-muted-foreground">{labels.idleAssetsHelp}</div>
               <div className="mt-2 text-metric num text-foreground">{formatCount(insights.idleAssetsCount)}</div>
             </Link>
           </section>
         </div>
-      </section>
+      </ContentPanel>
     </div>
   )
 }
@@ -265,7 +259,7 @@ function CrossScopePreviewTable({
               <>
                 <Link
                   href={`/${locale}/assets/${asset.id}`}
-                  className="flex min-h-11 w-full items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:inline-flex md:min-h-0 md:w-auto"
+                  className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 w-full items-center md:inline-flex md:min-h-0 md:w-auto")}
                 >
                   <span className="tag font-medium">{asset.assetTag}</span>
                 </Link>
@@ -303,9 +297,7 @@ function CrossScopePreviewTable({
             render: (asset) => (
               <div className="flex flex-wrap gap-1.5">
                 {getCrossScopeFlagLabels(asset, labels).map((label) => (
-                  <span key={label} className="rounded-full bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
-                    {label}
-                  </span>
+                  <StatusBadge key={label} label={label} tone="warning" />
                 ))}
               </div>
             ),
@@ -324,10 +316,11 @@ function getCrossScopeFlagLabels(asset: AssetCrossScopeSummaryRow, labels: Repor
   })
 }
 
+// One breakdown inside the insights panel: a quiet grouping with an h3, not a panel in the panel (D9).
 function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportInsightRow[]; emptyLabel: string }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-5">
-      <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
+    <section className="rounded-md border border-border bg-background p-4">
+      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
       <div className="space-y-2">
         {rows.length === 0 ? (
           <EmptyNote>{emptyLabel}</EmptyNote>
