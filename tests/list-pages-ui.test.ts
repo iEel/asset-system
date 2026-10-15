@@ -708,3 +708,24 @@ test("access denied: the permission empty state with its two links on the shared
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/work-center`\} className=\{buttonVariants\(\{ variant: "outline", size: "lg" \}\)\}>/)
   assert.doesNotMatch(source, /font-mono|\bbg-primary\b|hover:bg-accent|<h1\b/)
 })
+
+// Plan 2B-5 Task 7 (spec 2B §5.6 row notifications, bug §5.10 #1, R-d, O17): the notification center. A delivered
+// notification shows its type in Thai words (it showed warning, danger or info), the local StatusBadge and the tinted
+// SummaryCards give way to the shared parts, and a muted item greys its title instead of fading the whole card.
+// notification-center-actions.tsx (2C plan 4, O17) is placed as before and never edited here.
+test("notifications: PageHeader, one StatStrip, the shared StatusBadge, and each delivered type in words (spec 2B §5.6, §5.10 #1)", () => {
+  const source = read(`${D}notifications/page.tsx`)
+  for (const part of ["<PageHeader", "<StatStrip", "<NotificationCenterActions", "<EmptyNote padded>{t(\"empty\")}</EmptyNote>", "<EmptyNote padded>{t(\"deliveredDigestEmpty\")}</EmptyNote>"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /^import \{ StatusBadge \} from "@\/components\/ui\/status-badge"$/m)
+  assert.match(source, /<StatusBadge label=\{t\.has\(`type_\$\{notification\.type\}`\) \? t\(`type_\$\{notification\.type\}`\) : notification\.type\} tone=\{notification\.type\} \/>/, "bug §5.10 #1: the type in words, an unknown type as it is")
+  assert.match(source, /<h2 className=\{item\.isSuppressed \? "font-semibold text-muted-foreground" : "font-semibold text-foreground"\}>/)
+  assert.match(source, /\{formatCount\(item\.count\)\}/)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/work-center`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.doesNotMatch(source, /function (?:SummaryCard|StatusBadge|notificationToneClass|summaryClass)\b|opacity-70|toLocaleString\(|border-dashed|<h1\b/)
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { notifications: Record<string, unknown> }
+    for (const type of ["info", "warning", "danger", "success"]) assert.equal(typeof messages.notifications[`type_${type}`], "string", `${locale}: notifications.type_${type}`)
+  }
+})

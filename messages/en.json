@@ -115,7 +115,11 @@
     "licenseExpiringSoonDetail": "Software/licenses that need renewal or review",
     "deliveredDigestTitle": "Delivered Digests",
     "deliveredDigestSubtitle": "Daily digest notifications the system has delivered, so users can review what was already sent.",
-    "deliveredDigestEmpty": "No digest has been delivered to this user yet."
+    "deliveredDigestEmpty": "No digest has been delivered to this user yet.",
+    "type_info": "General",
+    "type_warning": "Needs attention",
+    "type_danger": "Urgent",
+    "type_success": "Done"
   },
   "nav": {
     "mainNavigation": "Main navigation",

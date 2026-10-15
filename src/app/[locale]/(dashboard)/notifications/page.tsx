@@ -1,11 +1,15 @@
 import Link from "next/link"
-import type { ReactNode } from "react"
-import { Bell, CheckCircle2, Clock3, UserRound } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { requireAuth } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
+import { formatCount } from "@/lib/display-format"
 import { getNotificationCenter } from "@/lib/notification-summary"
 import { NotificationCenterActions } from "@/components/notifications/notification-center-actions"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type NotificationsPageProps = {
   params: Promise<{ locale: string }>
@@ -46,41 +50,38 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("centerTitle")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("centerSubtitle")}</p>
-        </div>
-        <Link
-          href={`/${locale}/work-center`}
-          className="inline-flex h-10 w-fit items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          {t("openWorkCenter")}
-        </Link>
-      </div>
+      <PageHeader
+        title={t("centerTitle")}
+        meta={t("centerSubtitle")}
+        actions={
+          <Link href={`/${locale}/work-center`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            {t("openWorkCenter")}
+          </Link>
+        }
+      />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <SummaryCard icon={<Bell className="h-5 w-5" />} label={t("active")} value={activeItems.length} tone="primary" />
-        <SummaryCard icon={<CheckCircle2 className="h-5 w-5" />} label={t("read")} value={readItems.length} tone="success" />
-        <SummaryCard icon={<Clock3 className="h-5 w-5" />} label={t("snoozed")} value={snoozedItems.length} tone="warning" />
-        <SummaryCard icon={<UserRound className="h-5 w-5" />} label={t("assigned")} value={assignedItems.length} tone="muted" />
-      </section>
+      <StatStrip
+        items={[
+          { key: "active", label: t("active"), value: formatCount(activeItems.length) },
+          { key: "read", label: t("read"), value: formatCount(readItems.length) },
+          { key: "snoozed", label: t("snoozed"), value: formatCount(snoozedItems.length) },
+          { key: "assigned", label: t("assigned"), value: formatCount(assignedItems.length) },
+        ]}
+      />
 
       <section className="space-y-3">
         {center.items.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-surface p-8 text-center text-sm text-muted-foreground">
-            {t("empty")}
-          </div>
+          <EmptyNote padded>{t("empty")}</EmptyNote>
         ) : (
           center.items.map((item) => (
-            <article key={item.key} className={`rounded-lg border bg-surface p-4 ${item.isSuppressed ? "opacity-70" : ""}`}>
+            <article key={item.key} className="rounded-lg border bg-surface p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-semibold text-foreground">{t(item.key)}</h2>
-                    <span className={toneClass(item.tone)}>{item.count.toLocaleString(locale === "th" ? "th-TH" : "en-US")}</span>
-                    {item.isRead ? <StatusBadge>{t("read")}</StatusBadge> : null}
-                    {item.isSnoozed ? <StatusBadge>{t("snoozed")}</StatusBadge> : null}
+                    <h2 className={item.isSuppressed ? "font-semibold text-muted-foreground" : "font-semibold text-foreground"}>{t(item.key)}</h2>
+                    <span className={toneClass(item.tone)}>{formatCount(item.count)}</span>
+                    {item.isRead ? <StatusBadge label={t("read")} tone="muted" /> : null}
+                    {item.isSnoozed ? <StatusBadge label={t("snoozed")} tone="muted" /> : null}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{t(`${item.key}Detail`)}</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -114,9 +115,7 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
           <p className="mt-1 text-sm text-muted-foreground">{t("deliveredDigestSubtitle")}</p>
         </div>
         {deliveredNotifications.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-surface p-6 text-sm text-muted-foreground">
-            {t("deliveredDigestEmpty")}
-          </div>
+          <EmptyNote padded>{t("deliveredDigestEmpty")}</EmptyNote>
         ) : (
           deliveredNotifications.map((notification) => (
             <article key={notification.id} className="rounded-lg border border-border bg-surface p-4">
@@ -124,8 +123,8 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-foreground">{notification.title}</h3>
-                    <span className={notificationToneClass(notification.type)}>{notification.type}</span>
-                    {notification.isRead ? <StatusBadge>{t("read")}</StatusBadge> : null}
+                    <StatusBadge label={t.has(`type_${notification.type}`) ? t(`type_${notification.type}`) : notification.type} tone={notification.type} />
+                    {notification.isRead ? <StatusBadge label={t("read")} tone="muted" /> : null}
                   </div>
                   <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{notification.message}</p>
                 </div>
@@ -139,42 +138,10 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
   )
 }
 
-function SummaryCard({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: "primary" | "success" | "warning" | "muted" }) {
-  return (
-    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
-        </div>
-        {icon}
-      </div>
-    </div>
-  )
-}
-
-function StatusBadge({ children }: { children: ReactNode }) {
-  return <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{children}</span>
-}
-
 function toneClass(tone: "danger" | "warning" | "primary") {
   if (tone === "danger") return "rounded-full bg-danger-soft px-2 py-0.5 text-xs font-semibold text-danger"
   if (tone === "warning") return "rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning"
   return "rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary"
-}
-
-function notificationToneClass(tone: string) {
-  if (tone === "danger") return "rounded-full bg-danger-soft px-2 py-0.5 text-xs font-semibold text-danger"
-  if (tone === "warning") return "rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning"
-  if (tone === "success") return "rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success"
-  return "rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary"
-}
-
-function summaryClass(tone: "primary" | "success" | "warning" | "muted") {
-  if (tone === "primary") return "border-primary-border bg-primary-soft text-primary"
-  if (tone === "success") return "border-success-border bg-success-soft text-success"
-  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
-  return "border-border bg-surface text-muted-foreground"
 }
 
 function formatDate(value: string, locale: string) {

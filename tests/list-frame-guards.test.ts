@@ -114,6 +114,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}admin/readiness/page.tsx`,
   `${D}admin/settings/page.tsx`,
   `${D}access-denied/page.tsx`,
+  `${D}notifications/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -198,7 +199,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-5
     [`${D}dashboard/page.tsx`]: 1,
     [`${D}my-assets/page.tsx`]: 1,
-    [`${D}notifications/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 1,
     [`${C}reports/report-header.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -314,7 +314,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
     // 2B-5
     [`${D}my-assets/page.tsx`]: 1,
-    [`${D}notifications/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 2,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 2, // → 2 (KEEP): OperationMetric :763, SummaryCard :782 (2C plan 4)
@@ -344,7 +343,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes ColumnHeader (R-h)
     // 2B-5
     [`${D}my-assets/page.tsx`]: 1, // local PageHeader :163-170 (I14)
-    [`${D}notifications/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :797 (2C plan 4)

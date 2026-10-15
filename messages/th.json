@@ -115,7 +115,11 @@
     "licenseExpiringSoonDetail": "Software/License ที่ต้องต่ออายุหรือทบทวน",
     "deliveredDigestTitle": "Digest ที่ส่งแล้ว",
     "deliveredDigestSubtitle": "รายการแจ้งเตือนที่ระบบส่งแบบสรุปรายวัน เพื่อให้ผู้ใช้ย้อนดูสิ่งที่ถูกแจ้งไปแล้วได้",
-    "deliveredDigestEmpty": "ยังไม่มี digest ที่ถูกส่งถึงผู้ใช้นี้"
+    "deliveredDigestEmpty": "ยังไม่มี digest ที่ถูกส่งถึงผู้ใช้นี้",
+    "type_info": "ทั่วไป",
+    "type_warning": "ควรติดตาม",
+    "type_danger": "เร่งด่วน",
+    "type_success": "เรียบร้อย"
   },
   "nav": {
     "mainNavigation": "เมนูหลัก",
