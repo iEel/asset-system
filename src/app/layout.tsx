@@ -14,7 +14,7 @@ const plexSansThai = IBM_Plex_Sans_Thai({
 // Mono is for asset tags and codes; it is not preloaded, and without the Arial size-adjusted fallback the system monospace shows while it loads.
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500"],
   variable: "--font-plex-mono",
   display: "swap",
   preload: false,
