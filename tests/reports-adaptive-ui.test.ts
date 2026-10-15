@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 const page = readFileSync("src/app/[locale]/(dashboard)/reports/page.tsx", "utf8")
@@ -208,4 +208,25 @@ test("report accounting puts its totals on StatStrip and its money through forma
   assert.equal(accountingView.match(/caption=\{title\}/g)?.length, 2)
   assert.doesNotMatch(accountingView, /MetricCard|formatCurrency|toLocaleString|"-"/)
   assert.match(page, /baht: tCommon\("baht"\)/)
+})
+
+// Plan 2B-5 Task 13 (spec 2B §4.4.6, §6.5 "รายงาน: ชิป", I24, R-d): the reports page is a PageHeader with the register
+// export before the overview export (the primary one last), its active filters are a FilterChipList with no clear-all
+// link of its own (the filter panel has one), and its two shared numbers are a StatStrip. ReportHeader,
+// ReportActiveFilters and MetricCard lost their last caller and are gone. Raw CRLF read: no line breaks in these regexes.
+test("the reports page frames its views with PageHeader, FilterChipList and StatStrip (spec 2B §4.4.6, I24)", () => {
+  assert.match(page, /<div className="space-y-6" data-report-page>\s*<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} actions=\{headerActions\} \/>/)
+  const actionsAt = page.indexOf("const headerActions")
+  const registerAt = page.indexOf('{t("exportAssetRegister")}', actionsAt)
+  const overviewAt = page.indexOf('{t("exportAssetOverview")}', actionsAt)
+  assert.ok(actionsAt > -1 && registerAt > actionsAt && overviewAt > registerAt, "the outline register export comes before the primary overview export (K8)")
+  assert.match(page, /<a href=\{"\/api\/assets\/export\?" \+ exportQuery\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(page, /<a href=\{"\/api\/reports\/assets-overview\/export\?" \+ exportQuery\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
+  assert.match(page, /<div data-report-active-filters>\s*<FilterChipList chips=\{activeFilters\} label=\{t\("activeFilters"\)\} removeLabel=\{t\("clearActiveFilter"\)\} \/>/)
+  assert.match(page, /\{ key: "totalAssets", label: t\("totalAssets"\), value: formatCount\(totalAssets\) \}/)
+  assert.match(page, /\{ key: "totalValue", label: t\("totalValue"\), value: formatMoney\(totalPurchaseValue\), unit: tCommon\("baht"\) \}/)
+  assert.doesNotMatch(page, /\bReportHeader\b|\bReportActiveFilters\b|\bMetricCard\b|formatCurrency|toLocaleString|clearAllHref/)
+  for (const path of ["src/components/reports/report-header.tsx", "src/components/reports/report-active-filters.tsx", "src/components/ui/metric-card.tsx"]) {
+    assert.equal(existsSync(path), false, `${path} has no caller left`)
+  }
 })

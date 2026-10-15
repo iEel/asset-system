@@ -123,6 +123,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}reports/reports-catalog-view.tsx`,
   `${C}reports/reports-operations-view.tsx`,
   `${C}reports/reports-accounting-view.tsx`,
+  `${D}reports/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -207,7 +208,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-5
     [`${D}dashboard/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 1,
-    [`${C}reports/report-header.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     "src/app/[locale]/(auth)/login/page.tsx": 1, // → 1 (KEEP): no shell (phase 3, with the login frame)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page
@@ -219,9 +219,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LH2: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
-    // 2B-5
-    [`${D}reports/page.tsx`]: 2,
-    [`${C}reports/report-header.tsx`]: 1,
   },
   LB1: {
     // 2B-1
@@ -299,8 +296,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
   },
   LV3: {
-    // 2B-5
-    [`${D}reports/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // → 5 (KEEP): print page, 2D (A/08:305)
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // → 1 (KEEP): print page, 2D (A/08:305)
@@ -318,7 +313,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LS2: {
     // 2B-5
-    [`${D}reports/page.tsx`]: 2,
     [`${D}work-center/page.tsx`]: 1,
   },
   LK1: {

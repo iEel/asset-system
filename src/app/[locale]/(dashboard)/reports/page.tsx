@@ -1,27 +1,28 @@
 import type React from "react"
-import { ClipboardCheck, DatabaseZap, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from "lucide-react"
+import { ClipboardCheck, DatabaseZap, Download, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
-import { formatCurrency } from "@/lib/utils"
+import { formatCount, formatMoney } from "@/lib/display-format"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 import { getAssetActivityWhere } from "@/lib/asset-activity-filter"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildCostInsights } from "@/lib/cost-insights"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
-import { MetricCard } from "@/components/ui/metric-card"
-import { ReportActiveFilters } from "@/components/reports/report-active-filters"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { FilterChipList } from "@/components/ui/filter-chips"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { ReportFilterPanel, type ReportFilterOptions as ReportFilterPanelOptions } from "@/components/reports/report-filter-panel"
-import { ReportHeader, type ReportHeaderAction } from "@/components/reports/report-header"
 import { ReportViewTabs } from "@/components/reports/report-view-tabs"
 import { ReportsAccountingView } from "@/components/reports/reports-accounting-view"
 import { ReportsCatalogView, type ReportCatalogCategory } from "@/components/reports/reports-catalog-view"
 import { ReportsOperationsView, type ReportDataQualityRow } from "@/components/reports/reports-operations-view"
 import { ReportsOverviewView } from "@/components/reports/reports-overview-view"
 import { buildReportActiveFilters } from "@/lib/report-active-filters"
-import { buildReportHref, buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
+import { buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type ReportsPageProps = {
@@ -189,14 +190,25 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     },
   })
   const hasActiveFilters = activeFilters.length > 0
-  const headerActions: ReportHeaderAction[] = [
-    ...(canReportExport
-      ? [{ href: "/api/reports/assets-overview/export?" + exportQuery, label: t("exportAssetOverview"), variant: "primary" as const }]
-      : []),
-    ...(canAssetExport
-      ? [{ href: "/api/assets/export?" + exportQuery, label: t("exportAssetRegister"), variant: "secondary" as const }]
-      : []),
-  ]
+  // The header's buttons (spec 2B §4.4.6, K8): the register export (outline) first, the overview export (primary)
+  // last. Plain links to the export routes, like the other export buttons of 2B: a download, not a page to prefetch.
+  const headerActions =
+    canAssetExport || canReportExport ? (
+      <>
+        {canAssetExport ? (
+          <a href={"/api/assets/export?" + exportQuery} className={buttonVariants({ variant: "outline", size: "md" })}>
+            <Download aria-hidden="true" />
+            {t("exportAssetRegister")}
+          </a>
+        ) : null}
+        {canReportExport ? (
+          <a href={"/api/reports/assets-overview/export?" + exportQuery} className={buttonVariants({ size: "md" })}>
+            <Download aria-hidden="true" />
+            {t("exportAssetOverview")}
+          </a>
+        ) : null}
+      </>
+    ) : undefined
 
   let viewContent: React.ReactNode
   switch (activeView) {
@@ -717,8 +729,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   }
 
   return (
-    <div className="space-y-5" data-report-page>
-      <ReportHeader title={t("title")} subtitle={t("subtitle")} actions={headerActions} />
+    <div className="space-y-6" data-report-page>
+      <PageHeader title={t("title")} meta={t("subtitle")} actions={headerActions} />
       <div data-report-tabs>
         <ReportViewTabs
           locale={locale}
@@ -754,17 +766,18 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       </div>
       {activeFilters.length > 0 ? (
         <div data-report-active-filters>
-          <ReportActiveFilters
-            filters={activeFilters}
-            clearAllHref={buildReportHref(locale, activeView, parseAssetListParams({}))}
-            clearLabel={t("clearFilters")}
-            removeLabel={t("clearActiveFilter")}
-          />
+          <FilterChipList chips={activeFilters} label={t("activeFilters")} removeLabel={t("clearActiveFilter")} />
         </div>
       ) : null}
-      <div data-report-shared-metrics className="grid grid-cols-2 gap-3">
-        <MetricCard label={t("totalAssets")} value={totalAssets.toLocaleString("th-TH")} />
-        <MetricCard label={t("totalValue")} value={formatCurrency(totalPurchaseValue)} />
+      <div data-report-shared-metrics>
+        {/* A total in the 28px metric size needs about 230px: one tile a row below sm. */}
+        <StatStrip
+          className="max-sm:grid-cols-1"
+          items={[
+            { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets) },
+            { key: "totalValue", label: t("totalValue"), value: formatMoney(totalPurchaseValue), unit: tCommon("baht") },
+          ]}
+        />
       </div>
       <div data-report-view-content>{viewContent}</div>
     </div>

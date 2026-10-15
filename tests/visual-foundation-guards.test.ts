@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 import { countMatchesByFile, findMatches, readSourceFiles } from "./helpers/source-files.ts"
 
@@ -61,7 +61,7 @@ test("line heights are ratios, and Thai pages get room for stacked marks", () =>
     /@utility tag \{\s*font-family: var\(--font-mono\);\s*font-size: calc\(1em - 1px\);\s*font-weight: 400;\s*white-space: nowrap;\s*font-variant-numeric: normal;\s*-webkit-user-select: all;\s*user-select: all;\s*:where\(a, button, label, summary\) & \{\s*-webkit-user-select: auto;\s*user-select: auto;\s*\}\s*\}/,
   )
   assert.match(css, /:root \[data-sonner-toaster\] \{\s*font-family: var\(--font-sans\);\s*\}/)
-  assert.match(read("src/components/ui/metric-card.tsx"), /cn\("num mt-2 font-bold"/)
+  assert.match(read("src/components/ui/stat-strip.tsx"), /"text-metric num text-foreground"/)
 })
 
 test("overlays use the navy scrim and the overlay shadow, and respect reduced motion", () => {
@@ -87,7 +87,10 @@ test("panels and bottom action bars are flat", () => {
   const panel = read("src/lib/design-system.ts").match(/function getPanelClasses\(\) \{[\s\S]*?\n\}/)?.[0]
   assert.ok(panel, "getPanelClasses() not found")
   assert.doesNotMatch(panel, /shadow/)
-  assert.match(read("src/components/ui/metric-card.tsx"), /cn\("rounded-lg border p-5", toneClasses\.container, className\)/)
+  // MetricCard and its tone fills are gone (spec 2B R-d): number tiles are StatStrip, one flat frame with no status fill
+  // and no drop shadow. Its current cell's 2px line is an inset shadow, which the size list below does not match.
+  assert.equal(existsSync("src/components/ui/metric-card.tsx"), false)
+  assert.doesNotMatch(read("src/components/ui/stat-strip.tsx"), /\bbg-(?:success|warning|danger|info)-soft\b|\bshadow-(?:sm|md|lg|xl|2xl)\b/)
   for (const path of ["src/components/ui/mobile-action-bar.tsx", "src/components/disposal/disposal-mobile-action-bar.tsx"]) {
     assert.doesNotMatch(read(path), /backdrop-blur|bg-surface\/95|shadow-md/, path)
   }
