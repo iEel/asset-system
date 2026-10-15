@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { RefreshCw } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { ActionButton } from "@/components/ui/action-button"
+import { Button } from "@/components/ui/button"
 
 export default function DashboardError({
   error,
@@ -27,10 +27,10 @@ export default function DashboardError({
           title={t("unexpectedErrorTitle")}
           description={t("unexpectedErrorDescription")}
           action={(
-            <ActionButton variant="primary" onClick={unstable_retry}>
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            <Button onClick={unstable_retry}>
+              <RefreshCw aria-hidden="true" />
               {t("tryAgain")}
-            </ActionButton>
+            </Button>
           )}
         />
       </div>

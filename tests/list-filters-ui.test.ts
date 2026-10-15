@@ -87,7 +87,7 @@ test("the maintenance filter keeps the page size, and its asset chip clears only
 
 // Plan 2B-5 Task 9 (spec 2B §6.5 row 12, §6.2 6-จ, I6): the report filter panel keeps its FilterPanel, its grid, the
 // hidden view and the URL-only scopes, and moves onto Field + SearchField, FilterSelect and FilterFormActions. The page
-// tells it whether any filter is on, so "clear filters" shows only then. ActionButton itself stays for 2D.
+// tells it whether any filter is on, so "clear filters" shows only then. ActionButton was deleted in plan 2D-1.
 test("the report filters are Field + SearchField, six FilterSelect and FilterFormActions (2B §6.5 row 12)", () => {
   const panel = read("src/components/reports/report-filter-panel.tsx")
   assert.match(panel, /<FilterPanel title=\{labels\.title\} description=\{labels\.help\} className="p-5">/)
