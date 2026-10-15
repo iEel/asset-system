@@ -1,14 +1,15 @@
 import type React from "react"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
+import { orNil } from "@/components/ui/nil"
 import { toneIcons } from "@/components/ui/tone-icons"
 import { cn } from "@/lib/utils"
 
 export type StatStripItem = {
   key: string
   label: string
-  // Already formatted (formatCount, formatMoney). Never a raw number.
-  value: string
+  // Already formatted (formatCount, formatMoney). Never a raw number. null shows Nil.
+  value: string | null
   // "บาท", "รายการ"
   unit?: string
   // One line, cut with an ellipsis; footTitle is its title for the cut text.
@@ -49,7 +50,7 @@ export function StatStrip({ items, className }: { items: readonly StatStripItem[
             )}
           </dt>
           <dd className="flex min-w-0 items-baseline gap-1">
-            <span className="text-metric num text-foreground">{item.value}</span>
+            <span className="text-metric num text-foreground">{orNil(item.value)}</span>
             {item.unit ? <span className="text-base font-medium text-faint-foreground">{item.unit}</span> : null}
           </dd>
           {item.foot ? (
