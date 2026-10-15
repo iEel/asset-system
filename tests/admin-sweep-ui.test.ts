@@ -111,3 +111,12 @@ test("storage: its four panels are ContentPanel, with no icon box (spec 2D D9)",
   assert.equal(source.match(/<ContentPanel title=\{(?:t\("(?:filesystemDryRun|moduleBreakdown)"\)|title)\} description=\{(?:t\("(?:filesystemDryRunHelp|moduleBreakdownHelp)"\)|description)\}>/g)?.length, 4)
   assert.doesNotMatch(source, /getPanelClasses|FolderOpen|bg-primary-soft|<section className=\{`/)
 })
+
+test("the state review queue is a divided ContentPanel with an md scan button, shape markers and the asset tag as a tag link (spec 2D D9, R3 hand-on)", () => {
+  const source = read(`${C}admin/asset-state-review-workspace.tsx`)
+  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n\s+className="overflow-hidden"\n\s+title=\{labels\.title\}\n\s+description=\{labels\.description\}/)
+  assert.match(source, /<span aria-hidden="true" className=\{statusMarkerVariants\(\{ tone \}\)\} \/>/)
+  assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}><span className="tag font-medium">\{row\.asset\.assetTag\}<\/span><\/Link>/)
+  assert.match(source, /<div className="space-y-3 p-4" role="status" aria-label=\{labels\.loading\}>/)
+  assert.doesNotMatch(source, /rounded-full|hover:underline|ShieldAlert|AlertTriangle|text-lg font-semibold|size="lg"/)
+})

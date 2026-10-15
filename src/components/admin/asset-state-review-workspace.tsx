@@ -1,17 +1,21 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, ScanSearch, ShieldAlert } from "lucide-react"
+import { ScanSearch } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { AssetStateReviewDialog, type ReviewTarget } from "@/components/admin/asset-state-review-dialog"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { Button } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { useApiError } from "@/components/ui/use-api-error"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 
 type ReviewRow = {
   id: string
@@ -125,27 +129,28 @@ export function AssetStateReviewWorkspace({
 
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))
 
+  // D9: the shared divided panel; the head holds the title, the description and the scan button (md, R3 hand-on),
+  // and the per-severity counts open the body.
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="flex flex-col gap-4 border-b border-border p-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-3xl">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-warning" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-foreground">{labels.title}</h2>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-            <Summary label={labels.critical} value={result.summary.bySeverity.critical ?? 0} tone="danger" />
-            <Summary label={labels.warning} value={result.summary.bySeverity.warning ?? 0} tone="warning" />
-            <Summary label={labels.info} value={result.summary.bySeverity.info ?? 0} tone="info" />
-          </div>
-        </div>
-        {canEdit ? (
-          <Button size="lg" busy={scanning} onClick={() => void scan()}>
+    <ContentPanel
+      divided
+      flush
+      className="overflow-hidden"
+      title={labels.title}
+      description={labels.description}
+      actions={
+        canEdit ? (
+          <Button size="md" busy={scanning} onClick={() => void scan()}>
             <ScanSearch aria-hidden="true" />
             {labels.scan}
           </Button>
-        ) : null}
+        ) : undefined
+      }
+    >
+      <div className="flex flex-wrap gap-x-4 gap-y-2 border-b border-border px-4 py-3 text-sm md:px-5">
+        <Summary label={labels.critical} value={result.summary.bySeverity.critical ?? 0} tone="danger" />
+        <Summary label={labels.warning} value={result.summary.bySeverity.warning ?? 0} tone="warning" />
+        <Summary label={labels.info} value={result.summary.bySeverity.info ?? 0} tone="info" />
       </div>
 
       <div className="grid gap-3 border-b border-border bg-background p-4 sm:grid-cols-3">
@@ -172,7 +177,7 @@ export function AssetStateReviewWorkspace({
       </div>
 
       {loading ? (
-        <div className="space-y-3 p-4" aria-label={labels.loading}>
+        <div className="space-y-3 p-4" role="status" aria-label={labels.loading}>
           {[0, 1, 2].map((item) => <div key={item} className="h-16 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />)}
         </div>
       ) : result.data.length === 0 ? (
@@ -224,7 +229,7 @@ export function AssetStateReviewWorkspace({
         onClose={() => setDialog(null)}
         onSubmit={submitDialog}
       /> : null}
-    </section>
+    </ContentPanel>
   )
 }
 
@@ -239,7 +244,7 @@ function ReviewMobileCard({ row, locale, labels, issueTypes, canEdit, onAction }
 type RowProps = { row: ReviewRow; locale: string; labels: Labels; issueTypes: Record<string, string>; canEdit: boolean; onAction: (mode: "resolve" | "dismiss") => void }
 
 function AssetIdentity({ row, locale, labels }: Pick<RowProps, "row" | "locale" | "labels">) {
-  return <div><Link href={`/${locale}/assets/${row.asset.id}`} className="font-semibold text-primary hover:underline">{row.asset.assetTag}</Link><p className="mt-0.5 max-w-xs text-foreground">{row.asset.name}</p><p className="mt-1 text-xs text-muted-foreground">{labels.custodian}: {row.asset.custodian?.fullNameTh ?? labels.unassigned}</p></div>
+  return <div><Link href={`/${locale}/assets/${row.asset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}><span className="tag font-medium">{row.asset.assetTag}</span></Link><p className="mt-0.5 max-w-xs text-foreground">{row.asset.name}</p><p className="mt-1 text-xs text-muted-foreground">{labels.custodian}: {row.asset.custodian?.fullNameTh ?? labels.unassigned}</p></div>
 }
 
 function StateSummary({ row, locale, labels }: Pick<RowProps, "row" | "locale" | "labels">) {
@@ -247,7 +252,8 @@ function StateSummary({ row, locale, labels }: Pick<RowProps, "row" | "locale" |
 }
 
 function IssueSummary({ row, labels, issueTypes }: Pick<RowProps, "row" | "labels" | "issueTypes">) {
-  return <div className="flex items-start gap-2"><AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${row.severity === "critical" ? "text-danger" : row.severity === "warning" ? "text-warning" : "text-info"}`} /><div><p className="font-medium text-foreground">{issueTypes[row.issueType] ?? row.issueType}</p><StatusBadge label={severityLabel(row.severity, labels)} tone={severityTone(row.severity)} /></div></div>
+  // The severity is the badge; the colored icon beside it said the same thing in color only, so it is gone.
+  return <div><p className="font-medium text-foreground">{issueTypes[row.issueType] ?? row.issueType}</p><StatusBadge label={severityLabel(row.severity, labels)} tone={severityTone(row.severity)} /></div>
 }
 
 function ReviewActions({ row, canEdit, labels, onAction }: Pick<RowProps, "row" | "canEdit" | "labels" | "onAction">) {
@@ -256,8 +262,9 @@ function ReviewActions({ row, canEdit, labels, onAction }: Pick<RowProps, "row" 
   return <div className="flex flex-wrap justify-end gap-2">{canResolve ? <Button size="sm" onClick={() => onAction("resolve")}>{labels.resolve}</Button> : <span className="self-center text-xs text-muted-foreground">{labels.workflowRequired}</span>}<Button variant="outline" size="sm" onClick={() => onAction("dismiss")}>{labels.dismiss}</Button></div>
 }
 
-function Summary({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${tone === "danger" ? "bg-danger" : tone === "warning" ? "bg-warning" : "bg-info"}`} /><span className="text-muted-foreground">{label}</span><strong className="text-foreground">{formatCount(value)}</strong></span>
+// The status marker of StatusBadge carries the severity by shape (diamond, triangle, ring), not by color alone.
+function Summary({ label, value, tone }: { label: string; value: number; tone: "danger" | "warning" | "info" }) {
+  return <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={statusMarkerVariants({ tone })} /><span className="text-muted-foreground">{label}</span><strong className="text-foreground num">{formatCount(value)}</strong></span>
 }
 
 function masterLabel(target: ReviewTarget, locale: string) { return locale === "th" ? target.nameTh || target.name : target.name }
