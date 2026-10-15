@@ -36,3 +36,12 @@ test("settings: panels are ContentPanel, notes are Notice, tables DataTable, no 
     assert.equal(messages(locale).systemSettingsPage.tabDocuments, locale === "th" ? "เลขเอกสาร" : "Documents", `${locale}: the shorter tab label keeps the row inside 1440 (D18)`)
   }
 })
+
+test("the depreciation builder has no frame of its own in the settings panel, and its facts and preview are KeyValueLists (spec 2D D7, D9)", () => {
+  const source = read(`${C}admin/depreciation-policy-builder.tsx`)
+  assert.match(source, /<div className="space-y-5 border-t border-border pt-5">/)
+  assert.doesNotMatch(source, /function (?:ReadonlyFact|PreviewMetric)\b|space-y-5 rounded-md|bg-warning-soft|min-h-\[66px\]|<p className="px-2 py-3/)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the method facts and the preview")
+  assert.match(source, /<Notice tone="warning" title=\{labels\.depreciationLegacyRules\}>/)
+  assert.match(source, /<EmptyNote className="px-2 py-3">\{emptyLabel\}<\/EmptyNote>/)
+})

@@ -4,9 +4,12 @@ import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChoiceChip } from "@/components/ui/choice-card"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Notice } from "@/components/ui/notice"
 import { SearchField } from "@/components/ui/search-field"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -171,16 +174,22 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
     setSelectedAssignedIds([])
   }
 
+  // The builder sits in the organization panel: a line above it instead of a frame in the frame (D9).
   return (
-    <div className="space-y-5 rounded-md border border-border bg-surface p-4">
+    <div className="space-y-5 border-t border-border pt-5">
       <div>
         <h3 className="text-base font-semibold text-foreground">{labels.depreciationPolicyBuilderTitle}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{labels.depreciationPolicyBuilderDescription}</p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <ReadonlyFact label={labels.depreciationMethod} value={labels.depreciationMethodStraightLine} />
-        <ReadonlyFact label={labels.depreciationStartBasis} value={labels.depreciationStartBasisPurchaseDate} />
+        <KeyValueList
+          className="md:col-span-2"
+          items={[
+            { key: "method", label: labels.depreciationMethod, value: labels.depreciationMethodStraightLine },
+            { key: "startBasis", label: labels.depreciationStartBasis, value: labels.depreciationStartBasisPurchaseDate },
+          ]}
+        />
         <Field label={labels.depreciationDefaultUsefulLifeMonths}>
           <Input
             type="number"
@@ -213,7 +222,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
           </Button>
         </div>
         {state.groups.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{labels.depreciationNoGroups}</p>
+          <EmptyNote>{labels.depreciationNoGroups}</EmptyNote>
         ) : (
           <div role="radiogroup" aria-labelledby={groupsHeadingId} className="flex flex-wrap gap-2">
             {state.groups.map((group) => (
@@ -290,30 +299,34 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
       <div className="rounded-md border border-border bg-background p-4">
         <h3 className="text-base font-semibold text-foreground">{labels.depreciationPreviewTitle}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{labels.depreciationPreviewDescription}</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <Field label={labels.depreciationPreviewPurchasePrice}>
             <Input fieldSize="md" type="text" inputMode="decimal" value={formatPurchasePriceInput(previewPurchasePrice)} onChange={(event) => setPreviewPurchasePrice(sanitizePurchasePriceInput(event.target.value))} />
           </Field>
           <Field label={labels.depreciationPreviewPurchaseDate}>
             <Input fieldSize="md" type="date" value={previewPurchaseDate} onChange={(event) => setPreviewPurchaseDate(event.target.value)} />
           </Field>
-          <PreviewMetric label={labels.depreciationPreviewMonthly} value={formatMoney(preview.monthlyDepreciation)} />
-          <PreviewMetric label={labels.depreciationPreviewNetBook} value={formatMoney(preview.netBookValue)} />
-          <PreviewMetric label={labels.depreciationPreviewAccumulated} value={formatMoney(preview.accumulatedDepreciation)} />
-          <PreviewMetric label={labels.depreciationPreviewAgeMonths} value={formatCount(preview.ageMonths)} />
         </div>
+        <KeyValueList
+          className="mt-4"
+          items={[
+            { key: "monthly", label: labels.depreciationPreviewMonthly, value: formatMoney(preview.monthlyDepreciation) },
+            { key: "netBook", label: labels.depreciationPreviewNetBook, value: formatMoney(preview.netBookValue) },
+            { key: "accumulated", label: labels.depreciationPreviewAccumulated, value: formatMoney(preview.accumulatedDepreciation) },
+            { key: "ageMonths", label: labels.depreciationPreviewAgeMonths, value: formatCount(preview.ageMonths) },
+          ]}
+        />
       </div>
 
       {state.legacyRules.length > 0 ? (
-        <div className="rounded-md border border-warning-border bg-warning-soft p-3">
-          <h3 className="text-sm font-semibold text-foreground">{labels.depreciationLegacyRules}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.depreciationLegacyRulesHelp}</p>
-          <ul className="mt-2 list-inside list-disc text-sm text-muted-foreground">
+        <Notice tone="warning" title={labels.depreciationLegacyRules}>
+          <p>{labels.depreciationLegacyRulesHelp}</p>
+          <ul className="mt-2 list-inside list-disc">
             {state.legacyRules.map((rule) => (
               <li key={`${rule.match}-${rule.usefulLifeMonths}`}>{rule.match}: {rule.usefulLifeMonths} months</li>
             ))}
           </ul>
-        </div>
+        </Notice>
       ) : null}
 
       <details className="rounded-md border border-border bg-background p-4">
@@ -322,24 +335,6 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
           <Textarea value={policyJson} onChange={(event) => onPolicyJsonChange(event.target.value)} rows={8} className="font-mono" />
         </Field>
       </details>
-    </div>
-  )
-}
-
-function ReadonlyFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-foreground">{value}</div>
-    </div>
-  )
-}
-
-function PreviewMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-h-[66px] rounded-md border border-border bg-background px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 text-base font-semibold text-foreground">{value}</div>
     </div>
   )
 }
@@ -378,7 +373,7 @@ function CategoryPicker({
         </div>
       ) : null}
       <div className="max-h-72 space-y-1 overflow-y-auto p-2">
-        {categories.length === 0 ? <p className="px-2 py-3 text-sm text-muted-foreground">{emptyLabel}</p> : null}
+        {categories.length === 0 ? <EmptyNote className="px-2 py-3">{emptyLabel}</EmptyNote> : null}
         {categories.map((category) => {
           const isSelected = selectedIds.includes(category.id)
           const isConflict = assignedByOtherGroup.has(category.id)
