@@ -7,6 +7,7 @@ import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
+import { focusFirstContentControl } from "@/components/ui/dialog-focus"
 
 function Dialog({
   ...props
@@ -54,6 +55,7 @@ function DialogContent({
   showCloseButton = true,
   closeLabel: closeLabelProp,
   closeDisabled = false,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -73,8 +75,12 @@ function DialogContent({
           className,
         )}
         {...props}
+        // The X comes first in the Tab order (spec 2D D18), yet the dialog still opens on its first control.
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event)
+          if (!event.defaultPrevented) focusFirstContentControl(event)
+        }}
       >
-        {children}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button variant="ghost" size="icon" disabled={closeDisabled} aria-label={closeLabel} title={closeLabel} className="absolute top-3 right-3 disabled:border-transparent disabled:bg-transparent">
@@ -82,6 +88,7 @@ function DialogContent({
             </Button>
           </DialogPrimitive.Close>
         )}
+        {children}
       </DialogPrimitive.Content>
     </DialogPortal>
   )

@@ -30,7 +30,7 @@ test("dialog close button is a translated ghost icon button that can be disabled
   assert.doesNotMatch(source, /"Close"|>\s*Close\s*</, "the X reads ปิด, and no button says Close")
   assert.match(source, /aria-label=\{closeLabel\}/)
   assert.match(source, /disabled=\{closeDisabled\}/)
-  // Button size icon is 44px below md and 40px from md, so the X needs no size classes of its own.
+  // Button size icon is 44px below md and 36px from md (plan 2D-1), so the X needs no size classes of its own.
   assert.match(source, /<DialogPrimitive\.Close[^>]*asChild>\s*<Button variant="ghost" size="icon"/)
   // A ghost X has no box, so it gets none while the dialog is busy either; only its ink goes faint.
   assert.match(source, /className="absolute top-3 right-3 disabled:border-transparent disabled:bg-transparent">/)

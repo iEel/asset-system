@@ -7,6 +7,7 @@ import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
+import { focusFirstContentControl } from "@/components/ui/dialog-focus"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -52,6 +53,7 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   closeLabel: closeLabelProp,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
@@ -79,8 +81,12 @@ function SheetContent({
           className
         )}
         {...props}
+        // The X comes first in the Tab order (spec 2D D18), yet the sheet still opens on its first control.
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event)
+          if (!event.defaultPrevented) focusFirstContentControl(event)
+        }}
       >
-        {children}
         {showCloseButton && (
           <SheetPrimitive.Close data-slot="sheet-close" asChild>
             <Button variant="ghost" size="icon" aria-label={closeLabel} title={closeLabel} className="absolute top-3 right-3">
@@ -88,6 +94,7 @@ function SheetContent({
             </Button>
           </SheetPrimitive.Close>
         )}
+        {children}
       </SheetPrimitive.Content>
     </SheetPortal>
   )
