@@ -54,7 +54,7 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 
 | Need | Use | Remember |
 | --- | --- | --- |
-| A button, or a link that looks like one | `Button`, or `buttonVariants({ variant, size })` on a `Link` | `danger` for a destructive action in a page, `destructive` only to confirm it in a dialog; `busy={x}` while working, never with `x` in `disabled` and never with `asChild`; the label stays the same while busy; the primary action comes last |
+| A button, or a link that looks like one | `Button`, or `buttonVariants({ variant, size })` on a `Link` | `danger` for a destructive action in a page, `destructive` only to confirm it in a dialog; `busy={x}` while working, never with `x` in `disabled` and never with `asChild`; the label stays the same while busy; the primary action comes last; no size is 36px from `md`, `md` in a `PageHeader`, `lg` / `icon-lg` (40px) only beside a 40px field |
 | A choice of 2 to 4 options shown as buttons | `Segmented` | `aria-label` names the group; values are strings |
 | A text link | `linkVariants({ size })` | `meta` when it stands alone, `inherit` inside a sentence |
 | A text field, select or textarea | `Input`, `NativeSelect`, `Textarea` with `fieldSize` | `getFieldControlClasses()` for a control that cannot use them |

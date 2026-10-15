@@ -114,20 +114,20 @@ components:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.surface}"
     rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    padding: "0 14px"
+    height: "36px"
   button-secondary:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.primary-slate-ink}"
     rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    padding: "0 14px"
+    height: "36px"
   button-danger:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.danger}"
     rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    padding: "0 14px"
+    height: "36px"
   button-small:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.primary-slate-ink}"
@@ -272,7 +272,7 @@ Known exception: until phase 2D, info notices, role chips and a few info icons a
 **Fonts:** IBM Plex Sans (Latin and digits) before IBM Plex Sans Thai (Thai), then system-ui. IBM Plex Mono for codes. All three load with `next/font/google` in `src/app/layout.tsx` only (`--font-plex-sans`, `--font-plex-thai`, `--font-plex-mono`); `font-sans` and `font-mono` resolve to them in `@theme inline`.
 
 - Plex Sans comes first because its digits are tabular; Plex Sans Thai digits are not. Thai letters fall through to Plex Sans Thai.
-- Plex Sans Thai loads weights 400-700. Plex Mono loads 400-600, is not preloaded, and has no Arial size-adjusted fallback, so the system monospace shows while it loads.
+- Plex Sans Thai loads weights 400-700. Plex Mono loads 400 and 500 only (plan 2D-1 dropped 600), is not preloaded, and has no Arial size-adjusted fallback, so the system monospace shows while it loads.
 - Plex Sans Thai is about 4.7% wider than Noto Sans Thai, so Thai text truncates slightly earlier.
 
 **Character:** One sans-serif stack keeps Thai and English interface text consistent across dashboards, forms, tables, admin settings, and mobile field workflows. The hierarchy is compact and fixed, not fluid or editorial.
@@ -298,7 +298,7 @@ Font sizes are Tailwind's defaults plus three sizes from the mockup, `text-meta`
 ### Utilities
 
 - `num` (`font-variant-numeric: tabular-nums lining-nums`): numbers that must line up, such as `StatStrip` values. Every `table` gets `tabular-nums` from a base rule.
-- `tag` (Plex Mono, `calc(1em - 1px)`, weight 400, `nowrap`, normal numerals, `user-select: all`): asset tags, document numbers and serials. One click or tap selects the whole code; inside `a`, `button`, `label` and `summary` selection is normal. Never bold (Plex Mono loads 400, 500 and 600 only, no 700; the row's own id is `tag font-medium text-foreground`) and never resized on the same element: put `tag` on an inner `<span>` and size the wrapper (guard). First user: breadcrumb codes (`code: true`). Phase 2B put the codes of the pages it moved in `tag` (lists, detail pages, reports and the admin pages). Codes still in `font-mono` (forms and settings, the component parts of the asset pages, the integration manager and the label print page) and codes inside a translated sentence or a string a page builds (`assetTag - name`) wait for phase 2D.
+- `tag` (Plex Mono, `calc(1em - 1px)`, weight 400, `nowrap`, normal numerals, `user-select: all`): asset tags, document numbers and serials. One click or tap selects the whole code; inside `a`, `button`, `label` and `summary` selection is normal. Never bold (Plex Mono loads 400 and 500 only; a leftover `font-mono font-semibold` gets a synthesized bold until 2D moves it to `tag`; the row's own id is `tag font-medium text-foreground`) and never resized on the same element: put `tag` on an inner `<span>` and size the wrapper (guard). First user: breadcrumb codes (`code: true`). Phase 2B put the codes of the pages it moved in `tag` (lists, detail pages, reports and the admin pages). Codes still in `font-mono` (forms and settings, the component parts of the asset pages, the integration manager and the label print page) and codes inside a translated sentence or a string a page builds (`assetTag - name`) wait for phase 2D.
 - `select-chevron`: the arrow of a native `<select>` (a 16px faint chevron 10px from the right edge; the select adds its own `pr-9`). Forced-colors mode shows the system arrow. Never put it in `getFieldControlClasses()`, which also styles inputs.
 - Toasts use the app font through an unlayered `:root [data-sonner-toaster]` rule (Sonner's own CSS is unlayered). The quiet toast look is a separate set of unlayered `:root [data-sonner-…]` rules (see §5 Feedback); keep them out of the font rule, which a test reads as is.
 
@@ -343,17 +343,18 @@ Components should feel consistent, restrained, and task-first. Shared primitives
 ### Buttons
 
 - **Build them with** `Button` / `buttonVariants` (`src/components/ui/button.tsx`, `button-variants.ts`). A `<Link>` or `<a>` takes `className={cn(buttonVariants({ variant, size }), …)}` (server or client) or `<Button asChild>` (client). Keep only layout classes (`w-full sm:w-auto`, `flex-1`, `self-end`, `min-w-0`) in `className`.
-- **Shape:** Gently curved rectangles: 8px (`rounded-md`) for `md`, `lg`, `default` and `icon`, the same as fields; 6px (`rounded-control`) for the small `sm` and `icon-sm`. Every variant has a 1px border, so all variants have the same box. Icon and label sit 6px apart (`gap-1.5`); the cursor is a pointer.
+- **Shape:** Gently curved rectangles: 8px (`rounded-md`) for `md`, `lg`, `default`, `icon` and `icon-lg`, the same as fields; 6px (`rounded-control`) for the small `sm` and `icon-sm`. Every variant has a 1px border, so all variants have the same box. Icon and label sit 6px apart (`gap-1.5`); the cursor is a pointer.
 - **Sizes** (height from `md` up; below `md` every size is at least 44px tall, `min-h-11`):
 
 | Size | Height | Side padding | Text |
 |---|---|---|---|
 | `sm` | 32px | 10px | `text-meta` 13/20 |
-| `md` | 36px | 14px | `text-sm` |
-| `lg` | 40px | 16px | `text-sm`; buttons in a row of 40px fields |
-| `default` | 40px, the same as `lg`, until phase 2D makes it 36px | 16px | `text-sm` |
+| `md` | 36px | 14px | `text-sm`; every `PageHeader` button |
+| `lg` | 40px | 16px | `text-sm`; only a text button in the same row as a 40px field (the label print toolbar) |
+| `default` | 36px, the same as `md` (since plan 2D-1) | 14px | `text-sm`; dialog footers follow it |
 | `icon-sm` | 32 × 32px | — | — |
-| `icon` | 40 × 40px until phase 2D makes it 36 × 36px | — | — |
+| `icon` | 36 × 36px (since plan 2D-1) | — | — |
+| `icon-lg` | 40 × 40px | — | only an icon button in the same row as a 40px field (the remove, move and copy buttons of the repeating field rows); a cva size, not a token (spec 2D D5) |
 
 - **Variants** (every text pair passes AA; `tests/design-system.test.ts` pins the classes):
 
@@ -371,8 +372,8 @@ Components should feel consistent, restrained, and task-first. Shared primitives
 - **Busy:** pass `busy` while the action runs. The button gets `aria-busy` and `aria-disabled`, shows a spinner (`Loader2`, stopped under reduced motion) in place of its leading icon or in front of its label, and ignores clicks, Enter, Space and implicit form submission, but keeps keyboard focus. `disabled` may hold other conditions, such as a validation gate, but never the busy one: write `busy={saving} disabled={x}`, never `disabled={saving || x}`, or focus drops to `<body>` (guard GB4 in `tests/form-migration-guards.test.ts`). `busy` cannot be combined with `asChild` (type error), and it must come from client state: a server file cannot pass it. The label does not change while busy (no "กำลังบันทึก…", phase 2C ruling K13): the spinner, `aria-busy` and the disabled look say that it is working.
 - **Focus:** `focus-visible:ring-2 ring-ring ring-offset-2`, teal #10858D on every variant, danger included.
 - **Text links:** `linkVariants({ size })`: primary text whose underline appears on hover and keyboard focus. `size: "meta"` (13px, no wrap, the default) for a stand-alone command link such as "ล้างทั้งหมด"; `size: "inherit"` for a link inside a sentence. It has no 44px box; a stand-alone link on mobile adds `inline-flex min-h-11 items-center md:min-h-0`.
-- **Legacy:** `ActionButton` and `getActionButtonClasses` are deprecated; since plan 2B-5 the one call site left is the retry button of `src/app/[locale]/(dashboard)/error.tsx` (`getActionButtonClasses` has none), and phase 2D moves it to `Button` and deletes both. `ActionButton variant="danger"` is the solid `destructive`, not `Button variant="danger"`. `getSafeActionLinkClasses()` builds on `buttonVariants` and lets long labels wrap. `getTouchIconButtonClasses` was removed: use `Button size="icon"`.
-- **Hand-written buttons** keep their own classes until 2D moves them (phase 2B moved the header, filter, row and pager buttons of every page it moved; the action links of the report cards, the readiness checks and the work-center panels, the storage archive button and the two floating create buttons are 2D's); phase 2C batch 1 moved the form and dialog buttons of its 26 files (all but the repair attachment delete dialog, which batch 5 turned into `useConfirm`). Pick the size from today's desktop height: `h-8` → `sm`, `h-9` → `md`, `h-10` beside 40px fields → `lg`, any other `h-10` → no size (`default`). A button that is 44px tall on desktop (`min-h-11` only, dialog footers included) also takes no size: it becomes 40px now and 36px after 2D (phase 2C ruling K7).
+- **Legacy:** none left. Plan 2D-1 moved the retry button of `src/app/[locale]/(dashboard)/error.tsx` to `Button` and deleted `ActionButton`, `getActionButtonClasses`, `getSafeActionLinkClasses` and `getResponsiveActionRowClasses` (the readiness and import-export links are `buttonVariants({ variant: "outline", size: "md" })`), together with the other helpers of `src/lib/design-system.ts` that had no caller. `getTouchIconButtonClasses` was removed earlier: use `Button size="icon"`.
+- **Hand-written buttons** keep their own classes until 2D moves them (phase 2B moved the header, filter, row and pager buttons of every page it moved; the action links of the report cards, the readiness checks and the work-center panels, the storage archive button and the two floating create buttons are 2D's); phase 2C batch 1 moved the form and dialog buttons of its 26 files (all but the repair attachment delete dialog, which batch 5 turned into `useConfirm`). Pick the size from today's desktop height: `h-8` → `sm`, `h-9` or any `h-10` that is not beside a 40px field → no size (`default`, 36px since plan 2D-1), `h-10` beside 40px fields → `lg` (or `icon-lg` for an icon button). A button that is 44px tall on desktop (`min-h-11` only, dialog footers included) also takes no size and is 36px (phase 2C ruling K7, spec 2D D3).
 - **Order (K8):** the primary action comes last in the DOM, so the visual order and the Tab order agree. In a form's button row, a dialog footer and `StickyFormFooter`, the secondary action (Cancel) comes first. Phones stack the buttons full width with Cancel on top and the primary action at the bottom (`flex-col`, never `flex-col-reverse`); from `sm` they form a right-aligned row. Guard GD4 holds the remaining `flex-col-reverse` lines in a per-file budget.
 - **Delete icons:** an icon button that removes a row and is neutral at rest uses `outline`, with no red on hover (phase 2C ruling K22); one that is red at rest stays `danger`. Taking a file out of an upload queue is the `outline` `icon-sm` button of `FileQueueList`.
 - **`Segmented`** (`src/components/ui/segmented.tsx`, server-safe): a row of toggle buttons where exactly one is on (`aria-pressed`), named by its required `aria-label`. A white frame with a `border` line, 8px corners and 2px padding and gap; options use `rounded-control` and `text-sm`. The chosen option is `primary-soft` with `primary-hover` text at weight 600; the others are weight 500 `muted-foreground` with a `background` hover. `size` `sm` is 32px from `md` (the default) and `md` 36px; below `md` both are 44px. `fill` stretches the frame and shares it equally, and `showCheck` puts a check before the chosen label so the choice does not rely on color. Values are strings, and every option is its own Tab stop. The focus ring has no offset, because the options are only 2px apart.
