@@ -206,7 +206,8 @@ const TITLES: Record<string, string> = {
 
 // ---- Budgets, locked to KEEP since plan 2B-5 (test L9). They started at the d38a0ee counts (spec §10.4 table C, per
 // file as spec §9.4.1–9.4.2); groups name the first 2B plan that edited the file (spec §8.5–8.9, I12); "→ n (KEEP)" =
-// what stays after 2B, and why. The LB1 rows marked 0 → 1 were the only two rows above the d38a0ee count.
+// what stays after 2B, and why. The LB1 row marked 0 → 1 was one of the only two rows above the d38a0ee count (the
+// repair page's reached 0 in 2C batch 5 and plan 2D-1 deleted it).
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -219,11 +220,9 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LB1: {
     // 2B-1
-    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1412, not a page back
+    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1407, not a page back
     // 2B-2
-    [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :479 for ArrowLeft
-    // 2B-4
-    [`${D}maintenance/[id]/page.tsx`]: 1, // 0 → 1: 2B-4 swaps the Wrench icon of the bar's back item :147 for ArrowLeft
+    [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :496 for ArrowLeft
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page
     [`${C}assets/asset-label-print.tsx`]: 1, // → 1 (KEEP): print page
@@ -231,12 +230,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}disposal/disposal-batch-form.tsx`]: 1, // → 1 (KEEP): back to editing in the review step :93 (2C)
   },
   LP1: {
-    // 2B-2
-    [`${D}audit/rounds/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
-    // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
-    [`${D}disposal/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
-    [`${D}maintenance/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
   },
   LF1: {
   },
@@ -267,7 +260,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
+    [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1204, :1206 and the history sentence :2454 (R-n)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${D}asset-management/labels/page.tsx`]: 4, // → 4 (KEEP): label data (R-n)
     "src/app/[locale]/(print)/asset-management/checkins/[id]/page.tsx": 2, // → 2 (KEEP): print page (R-n)
@@ -289,12 +282,12 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LS1: {
     // 2B-1
-    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2413 (2D)
+    [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2408 (2D)
     // 2B-2
-    [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
+    [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :598 in the dialog (2C plan 3)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}admin/IntegrationClientManager.tsx`]: 2, // → 2 (KEEP): OperationMetric :763, SummaryCard :782 (2C plan 4)
-    [`${C}assets/asset-import-preview-panel.tsx`]: 1, // → 1 (KEEP): SummaryPill :461 (2C plan 4)
+    [`${C}admin/IntegrationClientManager.tsx`]: 2, // → 2 (KEEP): OperationMetric :759, SummaryCard :778 (2C plan 4)
+    [`${C}assets/asset-import-preview-panel.tsx`]: 1, // → 1 (KEEP): SummaryPill :407 (2C plan 4)
   },
   LS2: {
   },
@@ -308,7 +301,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LN2: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :797 (2C plan 4)
+    [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :793 (2C plan 4)
   },
   LR1: {
   },
@@ -316,7 +309,8 @@ const BUDGETS: Record<string, Record<string, number>> = {
 
 // What may stay after phase 2B, with the reason (spec §9.4.3, I11, I14). L0 holds every file of MIGRATED_LIST_FILES
 // to these numbers and L9 holds BUDGETS to them. 2C plan 4 emptied four rows (LH1 of the label batch and scan tools,
-// LT1 of the role permission form, LV1 of the integration manager) and plan 2B-5 deleted them; phase 2D empties the
+// LT1 of the role permission form, LV1 of the integration manager) and plan 2B-5 deleted them; plan 2D-1 deleted the
+// five rows 2C batch 5 had brought to 0 (LP1 of the four detail pages, LB1 of the repair page); phase 2D empties the
 // rest and sets every budget to {}. Change a row only with a spec ruling.
 const KEEP: Record<string, Record<string, number>> = {
   LH1: {
@@ -326,19 +320,12 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header, its own variant
   },
   LB1: {
-    [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1412, not a page back
+    [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1407, not a page back
     [`${C}disposal/disposal-batch-form.tsx`]: 1, // back to editing in the review step :93 (2C)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page
     [`${C}assets/asset-label-print.tsx`]: 1, // print page
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header
-    [`${D}audit/rounds/[id]/page.tsx`]: 1, // back item of the mobile action bar (O11 owns the bar)
-    [`${D}maintenance/[id]/page.tsx`]: 1, // back item of the mobile action bar (O11 owns the bar)
-  },
-  LP1: {
-    [`${D}assets/[id]/page.tsx`]: 1, // O11, 2C plan 5
-    [`${D}audit/rounds/[id]/page.tsx`]: 1, // O11, 2C plan 5
-    [`${D}maintenance/[id]/page.tsx`]: 1, // O11, 2C plan 5
-    [`${D}disposal/[id]/page.tsx`]: 1, // O11, 2C plan 5
+    [`${D}audit/rounds/[id]/page.tsx`]: 1, // back item of the ActionBar :496 (2C batch 5, K23)
   },
   LT1: {
     [`${C}assets/asset-import-preview-panel.tsx`]: 5, // 2C batch 4 (R-e, O13)
@@ -348,7 +335,7 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}assets/asset-label-batch-tool.tsx`]: 1, // R-f, 2C plan 4
   },
   LV2: {
-    [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
+    [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1204, :1206 and the history sentence :2454 (R-n)
     [`${C}admin/system-settings-form.tsx`]: 8, // 2C form (2D)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // 2C form (2D)
     [`${C}assets/asset-batch-form.tsx`]: 8, // 2C form (2D)
@@ -373,10 +360,10 @@ const KEEP: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // print page, 2D (A/08:305)
   },
   LS1: {
-    [`${C}admin/IntegrationClientManager.tsx`]: 2, // OperationMetric :763, SummaryCard :782 (2C plan 4)
-    [`${C}assets/asset-import-preview-panel.tsx`]: 1, // SummaryPill :461 (2C plan 4)
-    [`${C}admin/system-settings-form.tsx`]: 1, // Metric :2413 (2D)
-    [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // Metric :572 in the dialog (2C plan 3)
+    [`${C}admin/IntegrationClientManager.tsx`]: 2, // OperationMetric :759, SummaryCard :778 (2C plan 4)
+    [`${C}assets/asset-import-preview-panel.tsx`]: 1, // SummaryPill :407 (2C plan 4)
+    [`${C}admin/system-settings-form.tsx`]: 1, // Metric :2408 (2D)
+    [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // Metric :598 in the dialog (2C plan 3)
   },
   LK1: {
     [`${C}assets/asset-movement-timeline.tsx`]: 1, // Info :133, not in a 2B plan (2D)
@@ -385,7 +372,7 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${D}master-data/brands/page.tsx`]: 2, // the brand picker is a vertical list, where aria-current="page" is right (I11)
   },
   LN2: {
-    [`${C}admin/IntegrationClientManager.tsx`]: 1, // local StatusBadge :797 (2C plan 4)
+    [`${C}admin/IntegrationClientManager.tsx`]: 1, // local StatusBadge :793 (2C plan 4)
   },
 }
 
@@ -449,4 +436,17 @@ test("L0 a file 2B is done with keeps only what KEEP allows, and every row names
 test("L9 every 2B budget equals KEEP, so phase 2D only empties KEEP", () => {
   const rows = (table: Record<string, Record<string, number>>) => Object.fromEntries(Object.entries(table).filter(([, budget]) => Object.keys(budget).length > 0))
   assert.deepEqual(rows(BUDGETS), rows(KEEP))
+})
+
+// Plan 2D-1 (spec 2D D13, M16, R8): a KEEP row is the number of sites that stay, so it equals the live count. The commit
+// that moves a site lowers its row, or deletes it at 0, in BUDGETS and KEEP together (spec 2D §3, §5.6).
+test("L10 every KEEP row equals its live count", () => {
+  const problems: string[] = []
+  for (const [id, rows] of Object.entries(KEEP)) {
+    const counts = COUNTERS[id]()
+    for (const [path, keep] of Object.entries(rows)) {
+      if ((counts[path] ?? 0) !== keep) problems.push(`${id} ${path}: KEEP ${keep}, live ${counts[path] ?? 0}`)
+    }
+  }
+  assert.deepEqual(problems, [])
 })
