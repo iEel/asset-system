@@ -31,8 +31,10 @@ import { buildDashboardAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } 
 import { getAssetCrossScopeFlagLabels, type AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { buildSystemLogPresentation, type SystemLogPresentation } from "@/lib/system-log-presenter"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
+import { formatCount } from "@/lib/display-format"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { PageHeader } from "@/components/ui/page-header"
 
 type DashboardPageProps = {
   params: Promise<{ locale: string }>
@@ -189,13 +191,13 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const pendingRepair = repairStatusMetrics.pendingRepair.count
   const underMaintenance = repairStatusMetrics.underMaintenance.count
   const kpiCards = [
-    { label: t("totalAssets"), value: totalAssets.toLocaleString("th-TH"), icon: <Package size={24} />, color: "text-primary", href: `/${locale}/assets` },
-    { label: t("inUse"), value: inUse.toLocaleString("th-TH"), icon: <Monitor size={24} />, color: "text-success", href: `/${locale}/assets` },
-    { label: t("readyToDeploy"), value: ready.toLocaleString("th-TH"), icon: <Shield size={24} />, color: "text-info", href: `/${locale}/assets` },
-    { label: t("pendingRepair"), value: pendingRepair.toLocaleString("th-TH"), icon: <Wrench size={24} />, color: "text-warning", href: repairStatusMetrics.pendingRepair.href },
-    { label: t("underMaintenance"), value: underMaintenance.toLocaleString("th-TH"), icon: <Wrench size={24} />, color: "text-danger", href: repairStatusMetrics.underMaintenance.href },
-    { label: t("warrantyExpiring"), value: warrantyExpiring.toLocaleString("th-TH"), icon: <AlertTriangle size={24} />, color: "text-danger", href: `/${locale}/assets` },
-    { label: t("crossScopeAssets"), value: crossScopeTotal.toLocaleString("th-TH"), icon: <AlertTriangle size={24} />, color: "text-warning", href: crossScopeAssetsHref },
+    { label: t("totalAssets"), value: formatCount(totalAssets), icon: <Package size={24} />, color: "text-primary", href: `/${locale}/assets` },
+    { label: t("inUse"), value: formatCount(inUse), icon: <Monitor size={24} />, color: "text-success", href: `/${locale}/assets` },
+    { label: t("readyToDeploy"), value: formatCount(ready), icon: <Shield size={24} />, color: "text-info", href: `/${locale}/assets` },
+    { label: t("pendingRepair"), value: formatCount(pendingRepair), icon: <Wrench size={24} />, color: "text-warning", href: repairStatusMetrics.pendingRepair.href },
+    { label: t("underMaintenance"), value: formatCount(underMaintenance), icon: <Wrench size={24} />, color: "text-danger", href: repairStatusMetrics.underMaintenance.href },
+    { label: t("warrantyExpiring"), value: formatCount(warrantyExpiring), icon: <AlertTriangle size={24} />, color: "text-danger", href: `/${locale}/assets` },
+    { label: t("crossScopeAssets"), value: formatCount(crossScopeTotal), icon: <AlertTriangle size={24} />, color: "text-warning", href: crossScopeAssetsHref },
   ]
 
   const actionCardMap: Record<DashboardActionCardKey, DashboardActionCard> = {
@@ -322,11 +324,11 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const readableLogs = recentLogs.map((log) => formatDashboardLog(buildSystemLogPresentation(log, recentLogLabels, locale, translateSystemLog), t))
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-bold text-foreground">{t("title")}</h1>
+    <div className="space-y-6">
+      <PageHeader title={t("title")} />
 
       {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
         {kpiCards.map((card) => (
           <Link
             key={card.label}
@@ -336,7 +338,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{card.label}</p>
-                <p className="mt-1 text-3xl font-bold text-foreground">
+                <p className="num mt-1 text-3xl font-bold text-foreground">
                   {card.value}
                 </p>
               </div>
@@ -346,7 +348,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         ))}
       </div>
 
-      <section className="mb-8 rounded-lg border border-border bg-surface p-5">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{t("actionableTitle")}</h2>
@@ -367,7 +369,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">{card.label}</p>
-                  <p className="mt-2 text-3xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</p>
+                  <p className="num mt-2 text-3xl font-bold text-foreground">{formatCount(card.value)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{card.detail}</p>
                 </div>
                 <div className={actionCardIconClass[card.tone]}>{card.icon}</div>
@@ -377,7 +379,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         </div>
       </section>
 
-      <section className="mb-8 rounded-lg border border-border bg-surface p-5">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{t("crossScopePanelTitle")}</h2>
@@ -396,7 +398,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               className="rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent"
             >
               <div className="text-sm text-muted-foreground">{card.label}</div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</div>
+              <div className="num mt-2 text-2xl font-bold text-foreground">{formatCount(card.value)}</div>
             </Link>
           ))}
         </div>
@@ -413,7 +415,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         />
       </section>
 
-      <section className="mb-8 rounded-lg border border-border bg-surface p-5">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-foreground">{t("monthlyTrendTitle")}</h2>
           <p className="text-sm text-muted-foreground">{t("monthlyTrendSubtitle")}</p>
@@ -446,7 +448,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             ].map((item) => (
               <Link key={item.label} href={item.href} className={`flex items-center justify-between rounded-md border p-3 transition-colors hover:bg-accent ${item.tone}`}>
                 <span className="text-sm font-medium text-foreground">{item.label}</span>
-                <span className="text-lg font-bold text-foreground">{item.value.toLocaleString("th-TH")}</span>
+                <span className="num text-lg font-bold text-foreground">{formatCount(item.value)}</span>
               </Link>
             ))}
           </div>
@@ -523,9 +525,9 @@ function TrendCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{current.toLocaleString("th-TH")}</p>
+          <p className="num mt-2 text-3xl font-bold text-foreground">{formatCount(current)}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {currentLabel} · {previousLabel}: {previous.toLocaleString("th-TH")}
+            {currentLabel} · {previousLabel}: {formatCount(previous)}
           </p>
         </div>
         <div className={cn("inline-flex items-center gap-1 rounded-full bg-surface px-2 py-1 text-xs font-medium", trendClass)}>
@@ -620,7 +622,7 @@ function formatDashboardLog(log: SystemLogPresentation, t: DashboardTranslator):
     id: log.id,
     title: recordLabel ? t("activityTitleWithRecord", { action: log.actionLabel, module: log.moduleLabel, record: recordLabel }) : t("activityTitle", { action: log.actionLabel, module: log.moduleLabel }),
     detail: log.remark || t("activityDetail", { user: userLabel }),
-    meta: new Date(log.createdAt).toLocaleString("th-TH"),
+    meta: formatDateTime(log.createdAt),
     href: log.href,
   }
 }

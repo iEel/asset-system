@@ -124,6 +124,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}reports/reports-operations-view.tsx`,
   `${C}reports/reports-accounting-view.tsx`,
   `${D}reports/page.tsx`,
+  `${D}dashboard/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -206,7 +207,6 @@ const TITLES: Record<string, string> = {
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-5
-    [`${D}dashboard/page.tsx`]: 1,
     [`${D}work-center/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     "src/app/[locale]/(auth)/login/page.tsx": 1, // → 1 (KEEP): no shell (phase 3, with the login frame)
