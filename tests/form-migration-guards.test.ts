@@ -191,9 +191,9 @@ const RAW_FIELDS: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
+  [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :76 stays (O20)
   // 4
-  [`${C}assets/asset-label-print.tsx`]: 2, // the print toolbar's boxed fields :226, :237 (K21)
+  [`${C}assets/asset-label-print.tsx`]: 2, // the print toolbar's boxed fields :225, :236 (K21)
 }
 
 // GF3 hand-written field class strings
@@ -282,19 +282,19 @@ const LOADER2: Record<string, number> = {
   [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
   // 1b
   // 1c
-  [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :58
+  [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :64
   // 1d
-  [`${C}audit/audit-scan-check-form.tsx`]: 1, // components header toggle :242 (§6.14)
+  [`${C}audit/audit-scan-check-form.tsx`]: 1, // components header toggle :247 (§6.14)
   // 1g
   // 1e
-  [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :474
+  [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :449
   // 1f
   // 2
   // 3
-  [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :559, :560 in the dialog body (I27)
-  [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :969, the status line in the dialog body (I27)
+  [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :560, :561 in the dialog body (I27)
+  [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :967 (its spinner :970), the status line in the dialog body (I27)
   // 4
-  [`${C}admin/IntegrationClientManager.tsx`]: 2, // the status line :523 and the rotate button of the row :853 (2D, I27)
+  [`${C}admin/IntegrationClientManager.tsx`]: 2, // the status line :524 and the rotate button of the row :854 (2D, I27)
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :311, :446 (I27)
   [`${C}assets/asset-scan-search-tool.tsx`]: 1, // the status line :141 (I27)
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1, // the loading line :134 in the dialog body (I27)

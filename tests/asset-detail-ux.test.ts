@@ -157,7 +157,7 @@ test("asset detail header links share the Button look of the More menu trigger",
 // Plan 2B-4 Task 1 (spec 2B §4.4.5, §5.5, §8.8 row 1, I1, R-h): the asset name is the h1 under the trail that ends on
 // the code; the code, the badges, the location and the custodian are the meta row; ⋯ comes before the primary edit link.
 // The two history tables are DataTables, the facts KeyValueLists and the number tiles one StatStrip per tab. The O11
-// bottom padding and the mobile action bar stay for 2C plan 5. This file reads the page raw (CRLF): no line breaks here.
+// bottom padding is actionBarPagePadding and the phone bar is the shared ActionBar (2C batch 5, K23). This file reads the page raw (CRLF): no line breaks here.
 test("asset detail header is PageHeader with the asset name, and its facts, tiles and tables use the shared parts (spec 2B §4.4.5)", () => {
   const source = assetDetailSource()
 
