@@ -2,7 +2,7 @@ import Link from "next/link"
 import type React from "react"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CheckCircle2, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
@@ -10,8 +10,15 @@ import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilte
 import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { buildApprovalPermissionMatrix, type ApprovalPermissionMatrixItem } from "@/lib/approval-permission-matrix"
 import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
+import { formatCount } from "@/lib/display-format"
 import { formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { orNil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { TabNav } from "@/components/ui/tab-nav"
 
 type ApprovalInboxPageProps = {
   params: Promise<{ locale: string }>
@@ -44,33 +51,29 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/${locale}/admin/approvals/history`}
-            className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            <History className="h-4 w-4" />
-            {t("openDecisionHistory")}
-          </Link>
-          <Link
-            href={`/${locale}/admin/settings`}
-            className="inline-flex h-10 w-fit items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            {t("openPolicySettings")}
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title={t("title")}
+        meta={t("subtitle")}
+        actions={
+          <>
+            <Link href={`/${locale}/admin/approvals/history`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              <History aria-hidden="true" />
+              {t("openDecisionHistory")}
+            </Link>
+            <Link href={`/${locale}/admin/settings`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              {t("openPolicySettings")}
+            </Link>
+          </>
+        }
+      />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <SummaryCard label={t("total")} value={summary.total} tone={summary.total > 0 ? "danger" : "success"} />
-        <SummaryCard label={t("disposal")} value={summary.disposal} tone={summary.disposal > 0 ? "danger" : "muted"} />
-        <SummaryCard label={t("audit")} value={summary.audit} tone={summary.audit > 0 ? "warning" : "muted"} />
-      </section>
+      <StatStrip
+        items={[
+          { key: "total", label: t("total"), value: formatCount(summary.total) },
+          { key: "disposal", label: t("disposal"), value: formatCount(summary.disposal) },
+          { key: "audit", label: t("audit"), value: formatCount(summary.audit) },
+        ]}
+      />
 
       <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -101,11 +104,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
             <h2 className="font-semibold text-foreground">{t("approverMatrixTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("approverMatrixDescription", { min: policy.minApprovers })}</p>
           </div>
-          <Link
-            href={`/${locale}/admin/roles`}
-            className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            <Users className="h-4 w-4" />
+          <Link href={`/${locale}/admin/roles`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            <Users aria-hidden="true" />
             {t("manageRoles")}
           </Link>
         </div>
@@ -130,29 +130,27 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface">
-        <div className="border-b border-border p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="font-semibold text-foreground">{t("queueTitle")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("queueDescription")}</p>
-            </div>
-            <div className="text-sm font-medium text-muted-foreground">{t("filteredCount", { count: filteredItems.length })}</div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {filterOptions.map((filter) => (
-              <FilterChip
-                key={filter.key}
-                href={filter.key === "all" ? `/${locale}/admin/approvals` : `/${locale}/admin/approvals?module=${filter.key}`}
-                active={activeFilter === filter.key}
-                label={filter.label}
-                count={filter.count}
-              />
-            ))}
-          </div>
-        </div>
+      <ContentPanel
+        divided
+        flush
+        className="overflow-hidden"
+        title={t("queueTitle")}
+        description={t("queueDescription")}
+        actions={<span className="text-sm font-medium text-muted-foreground num">{t("filteredCount", { count: formatCount(filteredItems.length) })}</span>}
+      >
+        <TabNav
+          aria-label={t("queueTitle")}
+          items={filterOptions.map((filter) => ({
+            key: filter.key,
+            label: filter.label,
+            count: formatCount(filter.count),
+            href: filter.key === "all" ? `/${locale}/admin/approvals` : `/${locale}/admin/approvals?module=${filter.key}`,
+          }))}
+          current={activeFilter}
+          className="px-4 md:px-5"
+        />
         {filteredItems.length === 0 ? (
-          <div className="p-5">
+          <div className="p-4 md:p-5">
             <ActionEmptyState
               icon={<FileCheck2 className="h-6 w-6" />}
               title={items.length === 0 ? t("emptyTitle") : t("emptyFilterTitle")}
@@ -177,34 +175,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
             ))}
           </div>
         )}
-      </section>
+      </ContentPanel>
     </div>
-  )
-}
-
-function FilterChip({
-  href,
-  active,
-  label,
-  count,
-}: {
-  href: string
-  active: boolean
-  label: string
-  count: number
-}) {
-  return (
-    <Link
-      href={href}
-      className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
-        active
-          ? "border-primary bg-primary-soft text-primary"
-          : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-      }`}
-    >
-      <span>{label}</span>
-      <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-foreground">{count.toLocaleString("th-TH")}</span>
-    </Link>
   )
 }
 
@@ -240,38 +212,17 @@ function ApprovalInboxRow({
             </div>
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>{labels.requestedBy}: {item.requestedBy || "-"}</span>
+              <span>{labels.requestedBy}: {orNil(item.requestedBy)}</span>
               <span>{labels.requestedAt}: {formatDateTime(item.requestedAt)}</span>
             </div>
           </div>
         </div>
-        <div className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground">
+        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
           {item.actionLabel}
-        </div>
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </span>
       </div>
     </Link>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: number
-  tone: "danger" | "warning" | "success" | "muted"
-}) {
-  return (
-    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
-        </div>
-        <FileCheck2 className="h-5 w-5 text-current" />
-      </div>
-    </div>
   )
 }
 
@@ -331,7 +282,7 @@ function ApproverMatrixCard({
       <div className="mt-4 space-y-3 text-sm">
         <div>
           <div className="text-xs font-medium text-muted-foreground">{labels.permissionKey}</div>
-          <div className="mt-1 font-mono text-xs text-foreground">{item.permissionKey}</div>
+          <div className="mt-1 text-xs text-foreground"><span className="tag">{item.permissionKey}</span></div>
         </div>
         <div>
           <div className="text-xs font-medium text-muted-foreground">{labels.roles}</div>
@@ -385,13 +336,6 @@ function pillClass(tone: ApprovalInboxItem["tone"]) {
   if (tone === "danger") return "bg-danger-soft text-danger"
   if (tone === "warning") return "bg-warning-soft text-warning"
   return "bg-primary-soft text-primary"
-}
-
-function summaryClass(tone: "danger" | "warning" | "success" | "muted") {
-  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
-  if (tone === "success") return "border-success-border bg-success-soft text-success"
-  return "border-border bg-surface text-muted-foreground"
 }
 
 function matrixCardClass(status: ApprovalPermissionMatrixItem["status"]) {

@@ -636,3 +636,20 @@ test("storage: PageHeader, two StatStrips and three DataTables that scroll sidew
   assert.equal(source.match(/<StorageArchiveButton relativePath=\{action\.relativePath\} \/>/g)?.length, 1)
   assert.doesNotMatch(source, /getTableShellClasses|getEmptyStateClasses|function SummaryCard\b|<thead\b|<th\b|<td colSpan|toLocaleString\(|"-"|\buppercase\b/)
 })
+
+// Plan 2B-5 Task 4 (spec 2B §5.6 row admin/approvals, §4.4.6, bug §5.10 #3, R-d, R-g): the approval inbox. The
+// module chips are TabNav links with counts, the tinted SummaryCards are one StatStrip, and a row is one link whose
+// action reads as words with an arrow, not as a button inside the link.
+test("approval inbox: PageHeader, one StatStrip, the queue in a divided panel with TabNav, and rows that are one link (spec 2B §5.6, §5.10 #3)", () => {
+  const source = read(`${D}admin/approvals/page.tsx`)
+  for (const part of ["<PageHeader", "<StatStrip", "<ContentPanel", "<TabNav", "<ApprovalInboxRow", "<ActionEmptyState"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.equal(source.match(/className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}/g)?.length, 3, "history and policy in the header, manage roles in its panel")
+  assert.match(source, /<TabNav\n\s+aria-label=\{t\("queueTitle"\)\}\n\s+items=\{filterOptions\.map\(\(filter\) => \(\{\n\s+key: filter\.key,\n\s+label: filter\.label,\n\s+count: formatCount\(filter\.count\),/)
+  assert.match(source, /current=\{activeFilter\}/)
+  assert.match(source, /<span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">\n\s+\{item\.actionLabel\}\n\s+<ChevronRight aria-hidden="true" className="size-4" \/>/, "bug §5.10 #3: no button look inside the row link")
+  assert.match(source, /\{orNil\(item\.requestedBy\)\}/)
+  assert.match(source, /<span className="tag">\{item\.permissionKey\}<\/span>/)
+  assert.doesNotMatch(source, /function (?:FilterChip|SummaryCard|summaryClass)\b|toLocaleString\(|font-mono|"-"|<h1\b/)
+})
