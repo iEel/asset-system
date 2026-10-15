@@ -39,3 +39,16 @@ test("deletes report a delete, not a save", () => {
   assert.equal(th.common.deletedSuccess, "ลบแล้ว")
   assert.equal(en.common.deletedSuccess, "Deleted")
 })
+
+// Phase 2C batch 5 (spec 2C §5.9, §5.11 F, K12, K8): a confirm looks like the other dialogs: white, above the iPhone
+// home bar on phones and centered from sm, a 16px left-aligned title over the header line, and a grey footer band with
+// cancel first and the action last. The size variants and AlertDialogMedia (no caller) are gone.
+test("confirm dialogs look like the other dialogs (K12)", () => {
+  const source = read("src/components/ui/alert-dialog.tsx")
+  assert.match(source, /"fixed left-\[50%\] z-50 flex max-h-\[92dvh\] w-\[calc\(100%-1\.5rem\)\] translate-x-\[-50%\] flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-overlay [^"]*sm:max-w-lg motion-reduce:animate-none!",\n\s+"bottom-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\] sm:top-\[50%\] sm:bottom-auto sm:translate-y-\[-50%\]",/)
+  assert.match(source, /"flex flex-col gap-2 border-b border-border px-4 py-4 text-left sm:px-5"/)
+  assert.match(source, /"flex shrink-0 flex-col gap-2 bg-background px-4 py-3 sm:flex-row sm:justify-end sm:px-5"/)
+  assert.match(source, /"text-base font-semibold text-foreground"/)
+  assert.match(source, /cn\("text-sm text-muted-foreground", className\)/)
+  assert.doesNotMatch(source, /flex-col-reverse|data-\[size=|data-size|AlertDialogMedia|group\/alert-dialog-content|place-items-center|\bp-6\b|size\?: "default" \| "sm"/)
+})

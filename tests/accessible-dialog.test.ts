@@ -83,7 +83,7 @@ test("dialog primitives keep the primary action last on phones (K8)", () => {
   assert.match(footer, /"flex flex-col gap-2 sm:flex-row sm:justify-end"/)
   assert.doesNotMatch(footer, /showCloseButton|DialogPrimitive\.Close/, "DialogFooter adds no button of its own")
   const alert = read("src/components/ui/alert-dialog.tsx")
-  assert.match(alert, /"flex flex-col gap-2 group-data-\[size=sm\]\/alert-dialog-content:grid /)
+  assert.match(alert, /"flex shrink-0 flex-col gap-2 bg-background px-4 py-3 sm:flex-row sm:justify-end sm:px-5"/)
   for (const path of ["src/components/ui/dialog.tsx", "src/components/ui/alert-dialog.tsx", "src/components/ui/accessible-dialog.tsx"]) {
     assert.doesNotMatch(read(path), /flex-col-reverse/, path)
   }
