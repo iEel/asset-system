@@ -125,14 +125,13 @@ test("the asset register page uses the compact mobile header", () => {
 
 test("the page header hides the meta below md only when compactOnMobile is set", () => {
   const header = read("src/components/ui/page-header.tsx")
-  const layout = read("src/components/master-data/master-data-layout.tsx")
 
   assert.match(header, /compactOnMobile\?: boolean/)
   assert.match(header, /compactOnMobile \? "flex items-center justify-between gap-3 md:items-start md:gap-x-6" : "flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-x-6"/)
   assert.match(header, /compactOnMobile && "max-md:text-xl"/)
   assert.match(header, /compactOnMobile && "max-md:hidden"/)
   assert.match(header, /compactOnMobile && "shrink-0"/)
-  assert.match(layout, /compactOnMobile \? "mb-4 md:mb-6" : "mb-6"/)
+  assert.match(page(), /<PageHeader\n\s+compactOnMobile\n\s+className="mb-4 md:mb-6"/, "the register keeps 16px / 24px under its compact header (spec 2B §4.6.1 rule 3)")
 })
 
 // Plan 2B-3 Task 5 (spec 2B §7.5, B3(4), I6): from md the register toolbar has no card and its controls are 36px:

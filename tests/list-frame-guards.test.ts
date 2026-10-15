@@ -126,6 +126,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}reports/page.tsx`,
   `${D}dashboard/page.tsx`,
   `${D}work-center/page.tsx`,
+  `${C}master-data/master-data-layout.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -216,8 +217,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}audit/audit-scan-header.tsx`]: 1, // → 1 (KEEP): field scan header, its own variant
   },
   LH2: {
-    // 2B-1
-    [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
   },
   LB1: {
     // 2B-1
@@ -245,23 +244,16 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT1: {
     // 2B-1
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
-    [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}assets/asset-import-preview-panel.tsx`]: 5, // → 5 (KEEP): 2C batch 4 (R-e, O13)
   },
   LT2: {
-    // 2B-1
-    [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes SortableColumnHeader (R-h)
   },
   LT3: {
   },
   LT4: {
-    // 2B-1
-    [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataPagination (R-h)
   },
   LT5: {
-    // 2B-1
-    [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes MasterDataPagination (R-h)
   },
   LV1: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -319,8 +311,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
   },
   LN2: {
-    // 2B-1
-    [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes ColumnHeader (R-h)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :797 (2C plan 4)
   },

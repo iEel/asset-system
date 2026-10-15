@@ -61,13 +61,13 @@ test("PageBackLink: outline md with a left arrow, a 44px icon button below md wh
   assert.doesNotMatch(source, /aria-label=/)
 })
 
-test("MasterDataHeader is a thin wrapper of PageHeader until its last callers move (I2)", () => {
+// Plan 2B-5 Task 16 (spec 2B R-h, §8.9 row 10, §8.13 #6): every caller moved onto PageHeader, DataTableHead and Pagination,
+// so the old master-data helpers go. MasterDataSearch (six pages) and ActiveBadge (a pill, 2D) stay.
+test("master-data-layout keeps only MasterDataSearch and ActiveBadge: the old header, column headers and pager are gone (R-h)", () => {
   const layout = read("src/components/master-data/master-data-layout.tsx")
-  assert.match(layout, /import \{ Button, buttonVariants \} from "@\/components\/ui\/button"/)
-  assert.match(layout, /import \{ PageHeader \} from "@\/components\/ui\/page-header"/)
-  assert.match(layout, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{subtitle\}\n\s+compactOnMobile=\{compactOnMobile\}\n/)
-  assert.match(layout, /<Link href=\{createHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{createLabel\}\n\s+<\/Link>/)
-  assert.doesNotMatch(layout, /<h1\b|\bfont-bold\b/)
+  assert.deepEqual([...layout.matchAll(/^export function (\w+)/gm)].map((match) => match[1]), ["MasterDataSearch", "ActiveBadge"])
+  assert.match(layout, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
+  assert.doesNotMatch(layout, /\bMasterDataHeader\b|\bColumnHeader\b|\bSortableColumnHeader\b|\bMasterDataPagination\b|from "next\/link"|from "lucide-react"|master-data-query|<h1\b|\buppercase\b|\bopacity-50\b/)
 })
 
 // Task 4 (spec 2B §3.4–3.7, I3, I4): DataTable with TableEmptyRow, the client scroll hint, and the shared row classes.
@@ -315,7 +315,7 @@ test("MasterDataSearch is a frameless search toolbar on SearchField and Button, 
   assert.match(search, /<Button type="submit" variant="outline" size="md">\{submitLabel\}<\/Button>/)
   assert.ok(search.indexOf('type="hidden"') < search.indexOf("<SearchField"), "hidden inputs come before the visible field")
   assert.doesNotMatch(search, /<input\s+type="search"|<button\b|rounded-lg border|bg-surface p-4|onClear/)
-  assert.match(source, /import \{ Button, buttonVariants \} from "@\/components\/ui\/button"/)
+  assert.match(source, /import \{ Button \} from "@\/components\/ui\/button"/)
   assert.match(source, /import \{ SearchField \} from "@\/components\/ui\/search-field"/)
   assert.doesNotMatch(source, /import \{[^}]*\bSearch\b[^}]*\} from "lucide-react"/, "the Search icon left with the raw field")
   assert.doesNotMatch(source, /"use client"/)
