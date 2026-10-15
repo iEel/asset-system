@@ -106,6 +106,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}assets/[id]/loading.tsx`,
   `${D}dashboard/loading.tsx`,
   `${D}reports/loading.tsx`,
+  `${D}admin/roles/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -192,7 +193,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}admin/approvals/page.tsx`]: 1,
     [`${D}admin/logs/page.tsx`]: 1,
     [`${D}admin/readiness/page.tsx`]: 1,
-    [`${D}admin/roles/page.tsx`]: 1,
     [`${D}admin/settings/page.tsx`]: 1,
     [`${D}admin/storage/page.tsx`]: 1,
     [`${D}dashboard/page.tsx`]: 1,
@@ -290,7 +290,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
     // 2B-5
     [`${D}admin/approvals/page.tsx`]: 1,
-    [`${D}admin/roles/page.tsx`]: 1,
     [`${D}admin/storage/page.tsx`]: 1,
     [`${D}my-assets/page.tsx`]: 2,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -324,7 +323,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}admin/approvals/history/page.tsx`]: 1,
     [`${D}admin/approvals/page.tsx`]: 1,
     [`${D}admin/readiness/page.tsx`]: 1,
-    [`${D}admin/roles/page.tsx`]: 1,
     [`${D}admin/storage/page.tsx`]: 1,
     [`${D}my-assets/page.tsx`]: 1,
     [`${D}notifications/page.tsx`]: 1,

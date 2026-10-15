@@ -573,3 +573,22 @@ test("my asset page: PageHeader with the back link to My Assets, the facts as a 
   assert.match(source, /\{ key: "serialNumber", label: t\("serialNumber"\), value: asset\.serialNumber \? <span className="tag">\{asset\.serialNumber\}<\/span> : null \}/, "an empty serial number shows Nil through KeyValueList")
   assert.doesNotMatch(source, /function DetailItem\b|<h1\b|getSafeActionLinkClasses|"-"/)
 })
+
+// Plan 2B-5 Task 1 (spec 2B §5.6 row admin/roles, §4.4.6, R-d, R-q): the role list and the permission matrix on the
+// list primitives. Edit is the row's only command, so RowActions draws no ⋯; the floating create button stays for 2D.
+test("roles: PageHeader, one StatStrip, and the role list and permission matrix on DataTable, with edit through RowActions (spec 2B §5.6)", () => {
+  const source = read(`${D}admin/roles/page.tsx`)
+  for (const part of ["<PageHeader", "<StatStrip", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow colSpan={7}>", "<ClickableTableRow", "<DataTableRow", "<RowActions"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}/)
+  assert.match(source, /<Link href="\/api\/admin\/roles\/export" className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.equal(source.match(/<ContentPanel divided flush className="overflow-hidden"/g)?.length, 2)
+  assert.equal(source.match(/<DataTable framed=\{false\} caption=\{t\("(?:roleSummary|permissionMatrix)"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/g)?.length, 2, "both tables sit flush in their panel and scroll sideways with the hint (B6)")
+  assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/, "edit is the only command: no ⋯ (spec 2B §5.6)")
+  assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: role\.name \}\)\}/)
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /attention: inactiveRolesWithUsers\.length > 0,/, "inactive roles that still have users need action (R-d)")
+  assert.match(source, /className="fixed bottom-6 right-6 [^"]*shadow-lg/, "R-q: phase 2D moves the floating create button")
+  assert.doesNotMatch(source, /\bColumnHeader\b|function RoleAuditCard\b|<thead\b|<th\b|toLocaleString\(|font-mono|"-"|>-</)
+})
