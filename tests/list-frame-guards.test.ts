@@ -119,6 +119,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}reports/report-filter-panel.tsx`,
   `${C}reports/report-view-tabs.tsx`,
   `${C}reports/responsive-report-list.tsx`,
+  `${C}reports/reports-overview-view.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.

@@ -1,5 +1,7 @@
 import Link from "next/link"
 import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { formatCount } from "@/lib/display-format"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 
 export type ReportCountRow = {
@@ -85,6 +87,7 @@ export function ReportsOverviewView({
           rows={previewRows}
           rowKey={(asset) => asset.id}
           emptyLabel={emptyLabel}
+          caption={labels.previewTitle}
           columns={[
             {
               key: "assetTag",
@@ -96,7 +99,7 @@ export function ReportsOverviewView({
                   href={`/${locale}/assets/${asset.id}`}
                   className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
                 >
-                  {asset.assetTag}
+                  <span className="tag font-medium">{asset.assetTag}</span>
                 </Link>
               ),
             },
@@ -135,12 +138,12 @@ function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportC
       <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
       <div className="space-y-2">
         {rows.length === 0 ? (
-          <div className="text-sm text-muted-foreground">{emptyLabel}</div>
+          <EmptyNote>{emptyLabel}</EmptyNote>
         ) : (
           rows.map((row) => (
             <div key={row.key} className="flex items-center justify-between gap-3 text-sm">
               <span className="truncate text-muted-foreground">{row.label}</span>
-              <span className="font-semibold text-foreground">{row.count.toLocaleString("th-TH")}</span>
+              <span className="font-semibold text-foreground num">{formatCount(row.count)}</span>
             </div>
           ))
         )}

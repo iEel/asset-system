@@ -164,3 +164,13 @@ test("wide report lists render the shared DataTable from md and one EmptyNote li
   assert.match(responsiveList, /return <EmptyNote padded>\{emptyLabel\}<\/EmptyNote>/)
   assert.doesNotMatch(responsiveList, /<table\b|<thead\b|<th\b|<td\b|uppercase|bg-muted/)
 })
+
+// Plan 2B-5 Task 12 (spec 2B §5.6, §5.1, R-p): the overview counts go through formatCount with tabular figures, the
+// asset code is a tag, the preview table is named by its panel title, and an empty breakdown is one EmptyNote line.
+test("the report overview formats its counts and codes and names its preview table (spec 2B §5.6)", () => {
+  assert.match(overviewView, /caption=\{labels\.previewTitle\}/)
+  assert.match(overviewView, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
+  assert.match(overviewView, /<span className="font-semibold text-foreground num">\{formatCount\(row\.count\)\}<\/span>/)
+  assert.match(overviewView, /<EmptyNote>\{emptyLabel\}<\/EmptyNote>/)
+  assert.doesNotMatch(overviewView, /toLocaleString/)
+})
