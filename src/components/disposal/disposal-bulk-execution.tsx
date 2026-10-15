@@ -120,6 +120,7 @@ export type DisposalBulkExecutionCopy = {
   requestFailed: string
   commitFailed: string
   discardSelection: string
+  discardSelectionAction: string
   sharedValues: string
   sharedRecipient: string
   sharedRecipientHelp: string
@@ -491,7 +492,7 @@ export function DisposalBulkExecutionProvider({
   }
 
   async function discardSelectionThen(proceed: () => void) {
-    const confirmed = await confirm({ title: copy.discardSelection, tone: "destructive" })
+    const confirmed = await confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })
     if (!confirmed) return
     clear()
     bypassGuardRef.current = true

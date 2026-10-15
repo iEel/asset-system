@@ -93,7 +93,6 @@ function confirmOptionObjects(source: string): string[] {
 // Files whose confirm() still has no verb. The commit that names one removes its line (a two-way ratchet); the last one
 // makes the test strict.
 const CONFIRMS_WITHOUT_A_VERB = new Set<string>([
-  "src/components/disposal/disposal-bulk-execution.tsx", // the discard-selection confirm
   "src/components/master-data/supplier-form.tsx", // the unsaved-changes confirm
 ])
 
@@ -130,7 +129,8 @@ const BATCH_5_VERBS: Array<{ key: string; th: string; en: string; reads: Array<[
     en: "Discard selection",
     reads: [
       ["src/components/disposal/disposal-bulk-approval.tsx", 'confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })', 1],
-      ["src/app/[locale]/(dashboard)/disposal/page.tsx", 'discardSelectionAction: t("bulkDiscardSelectionAction"),', 1],
+      ["src/components/disposal/disposal-bulk-execution.tsx", 'confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })', 1],
+      ["src/app/[locale]/(dashboard)/disposal/page.tsx", 'discardSelectionAction: t("bulkDiscardSelectionAction"),', 2],
     ],
   },
 ]
