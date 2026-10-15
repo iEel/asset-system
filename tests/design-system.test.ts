@@ -65,13 +65,13 @@ test("button variants keep 44px mobile touch targets and AA hover fills", () => 
   assert.match(primary, /bg-primary text-primary-foreground/)
   assert.match(primary, /hover:bg-primary-hover/)
   assert.match(primary, /min-h-11/)
-  assert.match(primary, /md:h-10 md:min-h-0/)
+  assert.match(primary, /md:h-9 md:min-h-0/)
   assert.match(buttonVariants({ variant: "destructive" }), /bg-destructive text-destructive-foreground hover:bg-danger-hover/)
   assert.match(buttonVariants({ variant: "warning" }), /bg-warning text-warning-foreground hover:bg-warning-hover/)
   assert.match(buttonVariants({ variant: "outline" }), /border-control-border bg-surface/)
   assert.ok(classList(buttonVariants({ variant: "outline" })).includes("border"), "the base draws a 1px border")
   assert.match(buttonVariants({ size: "sm" }), /min-h-11 px-2\.5 text-meta md:h-8 md:min-h-0/)
-  assert.match(buttonVariants({ size: "icon" }), /min-h-11 min-w-11 md:size-10 md:min-h-0 md:min-w-0/)
+  assert.match(buttonVariants({ size: "icon" }), /min-h-11 min-w-11 md:size-9 md:min-h-0 md:min-w-0/)
   assert.match(buttonVariants({ size: "icon-lg" }), /min-h-11 min-w-11 md:size-10 md:min-h-0 md:min-w-0/)
   assert.doesNotMatch(`${primary} ${buttonVariants({ variant: "destructive" })}`, /dark:/)
 })
@@ -114,10 +114,11 @@ test("button variants follow the mockup: outlined danger in pages, solid destruc
   assert.doesNotMatch(buttonVariants({ variant: "link" as never }), /underline/, "link moved to linkVariants")
 })
 
-test("button sizes: sm 32, md 36, lg 40 from md up, default stays lg until phase 2D, radius per spec I15", () => {
+test("button sizes from md up: sm 32, md 36, lg 40, default = md (phase 2D), icon 36, icon-lg 40, radius per spec I15", () => {
   assert.match(buttonVariants({ size: "md" }), /min-h-11 px-3\.5 text-sm md:h-9 md:min-h-0/)
   assert.match(buttonVariants({ size: "lg" }), /min-h-11 px-4 text-sm md:h-10 md:min-h-0/)
-  assert.equal(buttonVariants({ size: "default" }), buttonVariants({ size: "lg" }), "phase 2D switches default to md")
+  assert.equal(buttonVariants({ size: "default" }), buttonVariants({ size: "md" }), "phase 2D: default is md (36px)")
+  assert.notEqual(buttonVariants({ size: "icon" }), buttonVariants({ size: "icon-lg" }), "icon is 36px, icon-lg 40px beside 40px fields")
   assert.match(buttonVariants({ size: "icon-sm" }), /min-h-11 min-w-11 md:size-8 md:min-h-0 md:min-w-0/)
   for (const size of ["sm", "icon-sm"] as const) {
     assert.ok(classList(buttonVariants({ size })).includes("rounded-control"), `${size} is a small control (6px)`)
