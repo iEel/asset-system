@@ -1,11 +1,13 @@
 import Link from "next/link"
 import { Download } from "lucide-react"
 import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
-import { MetricCard } from "@/components/ui/metric-card"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import type { parseAssetListParams } from "@/lib/asset-list-query"
 import type { AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels } from "@/lib/asset-cross-scope-filter"
+import { formatCount } from "@/lib/display-format"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 import type { ReportCountRow } from "@/components/reports/reports-overview-view"
 
@@ -139,17 +141,7 @@ export function ReportsOperationsView({
     <div className="space-y-5">
       <section className="rounded-lg border border-border bg-surface p-5">
         <h2 className="mb-4 text-base font-semibold text-foreground">{labels.dataQuality}</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          {dataQualityCards.map((card) => (
-            <Link
-              key={card.key}
-              href={card.href}
-              className="block min-h-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <MetricCard label={card.label} value={card.value.toLocaleString("th-TH")} className="h-full transition-colors hover:bg-accent" compact />
-            </Link>
-          ))}
-        </div>
+        <StatStrip items={dataQualityCards.map((card) => ({ key: card.key, label: card.label, value: formatCount(card.value), href: card.href }))} />
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-5">
@@ -168,14 +160,7 @@ export function ReportsOperationsView({
             </Link>
           ) : null}
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {crossScope.cards.map((card) => (
-            <Link key={card.key} href={card.href} className="min-h-11 rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              <div className="text-sm text-muted-foreground">{card.label}</div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</div>
-            </Link>
-          ))}
-        </div>
+        <StatStrip items={crossScope.cards.map((card) => ({ key: card.key, label: card.label, value: formatCount(card.value), href: card.href }))} />
         <CrossScopePreviewTable rows={crossScope.rows} locale={locale} emptyLabel={crossScopeEmpty} labels={labels} />
       </section>
 
@@ -201,7 +186,7 @@ export function ReportsOperationsView({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0">
-                        {asset.assetTag}
+                        <span className="tag font-medium">{asset.assetTag}</span>
                       </Link>
                       <span className="text-sm text-foreground">{asset.name}</span>
                     </div>
@@ -242,7 +227,7 @@ export function ReportsOperationsView({
             <h2 className="mb-4 text-base font-semibold text-foreground">{labels.idleAssets}</h2>
             <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning-border bg-warning-soft p-4 transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="text-sm text-muted-foreground">{labels.idleAssetsHelp}</div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{insights.idleAssetsCount.toLocaleString("th-TH")}</div>
+              <div className="mt-2 text-metric num text-foreground">{formatCount(insights.idleAssetsCount)}</div>
             </Link>
           </section>
         </div>
@@ -269,6 +254,7 @@ function CrossScopePreviewTable({
         rows={rows}
         rowKey={(asset) => asset.id}
         emptyLabel={emptyLabel}
+        caption={labels.crossScopePreviewTitle}
         columns={[
           {
             key: "asset",
@@ -281,7 +267,7 @@ function CrossScopePreviewTable({
                   href={`/${locale}/assets/${asset.id}`}
                   className="flex min-h-11 w-full items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:inline-flex md:min-h-0 md:w-auto"
                 >
-                  {asset.assetTag}
+                  <span className="tag font-medium">{asset.assetTag}</span>
                 </Link>
                 <div className="text-xs font-normal text-muted-foreground md:mt-1">{asset.name}</div>
               </>
@@ -344,13 +330,13 @@ function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportI
       <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
       <div className="space-y-2">
         {rows.length === 0 ? (
-          <div className="text-sm text-muted-foreground">{emptyLabel}</div>
+          <EmptyNote>{emptyLabel}</EmptyNote>
         ) : (
           rows.map((row) => {
             const content = (
               <>
                 <span className="truncate text-muted-foreground">{row.label}</span>
-                <span className="font-semibold text-foreground">{row.count.toLocaleString("th-TH")}</span>
+                <span className="font-semibold text-foreground num">{formatCount(row.count)}</span>
               </>
             )
 

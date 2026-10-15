@@ -181,3 +181,15 @@ test("the report catalog shows its item count on StatStrip (spec 2B §5.6, R-d)"
   assert.match(catalogView, /<StatStrip className="sm:max-w-sm" items=\{\[\{ key: "catalogItems", label: labels\.catalogItems, value: formatCount\(reportCount\) \}\]\} \/>/)
   assert.doesNotMatch(catalogView, /MetricCard|toLocaleString/)
 })
+
+// Plan 2B-5 Task 12 (spec 2B §5.6, §5.1, R-d, R-p): the four data-quality counts and the four cross-scope counts are
+// linked StatStrip cells (each still opens the register with its filter), the idle count is a metric number, the codes
+// are tags and the counts go through formatCount. The idle box stays a link (tests/report-idle-activity.test.ts).
+test("report operations put the data-quality and cross-scope counts on linked StatStrips (spec 2B §5.6, R-d)", () => {
+  assert.match(operationsView, /<StatStrip items=\{dataQualityCards\.map\(\(card\) => \(\{ key: card\.key, label: card\.label, value: formatCount\(card\.value\), href: card\.href \}\)\)\} \/>/)
+  assert.match(operationsView, /<StatStrip items=\{crossScope\.cards\.map\(\(card\) => \(\{ key: card\.key, label: card\.label, value: formatCount\(card\.value\), href: card\.href \}\)\)\} \/>/)
+  assert.match(operationsView, /caption=\{labels\.crossScopePreviewTitle\}/)
+  assert.equal(operationsView.match(/<span className="tag font-medium">\{asset\.assetTag\}<\/span>/g)?.length, 2)
+  assert.match(operationsView, /<div className="mt-2 text-metric num text-foreground">\{formatCount\(insights\.idleAssetsCount\)\}<\/div>/)
+  assert.doesNotMatch(operationsView, /MetricCard|toLocaleString|text-2xl font-bold/)
+})
