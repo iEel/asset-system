@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Check, Clock3, ExternalLink, RotateCcw, UserRound } from "lucide-react"
 import { toast } from "sonner"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { NativeSelect } from "@/components/ui/native-select"
 import {
   isPlainPrimaryClick,
@@ -86,32 +87,29 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
   return (
     <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-wrap gap-2">
+        {/* md, beside the md assignee select (36px from md, 44px below). One transition drives both buttons and the
+            select, so they keep the shared disabled look instead of a spinner (2C O17). */}
         <Link
           href={item.href}
           onClick={(event) => void openItem(event)}
-          className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-accent"
+          className={buttonVariants({ variant: "outline", size: "md" })}
         >
-          <ExternalLink className="h-4 w-4" />
+          <ExternalLink aria-hidden="true" />
           {labels.openItem}
         </Link>
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="md"
           onClick={() => mutate({ action: item.isRead ? "unread" : "read" })}
           disabled={isPending}
-          className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-accent disabled:opacity-60"
         >
-          {item.isRead ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+          {item.isRead ? <RotateCcw aria-hidden="true" /> : <Check aria-hidden="true" />}
           {item.isRead ? labels.markUnread : labels.markRead}
-        </button>
-        <button
-          type="button"
-          onClick={() => mutate({ action: "snooze", snoozeHours: 24 })}
-          disabled={isPending}
-          className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-accent disabled:opacity-60"
-        >
-          <Clock3 className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="md" onClick={() => mutate({ action: "snooze", snoozeHours: 24 })} disabled={isPending}>
+          <Clock3 aria-hidden="true" />
           {labels.snoozeOneDay}
-        </button>
+        </Button>
       </div>
 
       <label className="flex min-w-0 items-center gap-2 text-sm">
