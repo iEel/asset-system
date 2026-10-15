@@ -52,6 +52,7 @@ export function getPanelClasses() {
   return "min-w-0 max-w-full rounded-lg border border-border bg-surface"
 }
 
+/** @deprecated No caller since phase 2B plan 5 (the storage tables are DataTable, which scrolls sideways). Phase 2D deletes it with its pin in tests/design-system.test.ts. */
 export function getTableShellClasses() {
   return "overflow-hidden rounded-md border border-border"
 }
@@ -90,7 +91,7 @@ const legacyButtonSize = {
   sm: "sm",
 } as const
 
-/** @deprecated Use `buttonVariants` from `components/ui/button-variants.ts`. Phase 2D moves its one caller and deletes it. */
+/** @deprecated Use `buttonVariants` from `components/ui/button-variants.ts`. No caller since phase 2B plan 5 (the report filter panel uses Button); phase 2D deletes it. */
 export function getActionButtonClasses(variant: UiButtonVariant = "secondary", size: UiButtonSize = "md") {
   return buttonVariants({ variant: legacyButtonVariant[variant], size: legacyButtonSize[size] })
 }

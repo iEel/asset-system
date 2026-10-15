@@ -1,8 +1,10 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 import * as designSystem from "../src/lib/design-system.ts"
 import { buttonVariants, linkVariants } from "../src/components/ui/button-variants.ts"
 import { cn } from "../src/lib/utils.ts"
+import { readSourceFiles } from "./helpers/source-files.ts"
 
 import {
   getActionButtonClasses,
@@ -188,4 +190,15 @@ test("legacy action button classes map onto shadcn variants", () => {
   assert.equal(getActionButtonClasses("secondary", "sm"), buttonVariants({ variant: "outline", size: "sm" }))
   assert.equal(getActionButtonClasses("danger"), buttonVariants({ variant: "destructive", size: "default" }))
   assert.equal(getActionButtonClasses("ghost"), buttonVariants({ variant: "ghost", size: "default" }))
+})
+
+// Plan 2B-5 Task 16 (spec 2B §10.6 row 2B-5, §5.10 #6, §10.4 table D): the storage tables moved onto DataTable (Task 3)
+// and the report filter panel onto Button (Task 9), so nothing in src calls these two helpers. They stay, with their pins
+// above, until phase 2D deletes them; their comments say so, and a new caller fails here.
+test("getTableShellClasses and getActionButtonClasses have no caller left and say that phase 2D deletes them", () => {
+  const callers = readSourceFiles("src").filter((file) => file.path !== "src/lib/design-system.ts" && /\bget(?:TableShell|ActionButton)Classes\b/.test(file.source))
+  assert.deepEqual(callers.map((file) => file.path), [])
+  const source = readFileSync("src/lib/design-system.ts", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /\/\*\* @deprecated No caller since phase 2B plan 5 [^\n]*\*\/\nexport function getTableShellClasses\(\)/)
+  assert.match(source, /\/\*\* @deprecated Use `buttonVariants` [^\n]*No caller since phase 2B plan 5[^\n]*\*\/\nexport function getActionButtonClasses\(/)
 })
