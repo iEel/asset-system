@@ -707,9 +707,11 @@ test("settings: the header is PageHeader and the page still hands the form its L
 test("access denied: the permission empty state with its two links on the shared button look (spec 2B §4.4.7)", () => {
   const source = read(`${D}access-denied/page.tsx`)
   assert.match(source, /<ActionEmptyState\n\s+tone="permission"/)
-  assert.match(source, /<Link href=\{`\/\$\{locale\}\/dashboard`\} className=\{buttonVariants\(\{ size: "lg" \}\)\}>/)
-  assert.match(source, /<Link href=\{`\/\$\{locale\}\/work-center`\} className=\{buttonVariants\(\{ variant: "outline", size: "lg" \}\)\}>/)
-  assert.doesNotMatch(source, /font-mono|\bbg-primary\b|hover:bg-accent|<h1\b/)
+  // md since plan 2D-2 (D6: lg only beside a 40px field); the required permission is a neutral Notice (D7).
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/dashboard`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/work-center`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(source, /<Notice tone="neutral" className="justify-center">/)
+  assert.doesNotMatch(source, /font-mono|\bbg-primary\b|hover:bg-accent|<h1\b|rounded-md border|size: "lg"/)
 })
 
 // Plan 2B-5 Task 7 (spec 2B §5.6 row notifications, bug §5.10 #1, R-d, O17): the notification center. A delivered

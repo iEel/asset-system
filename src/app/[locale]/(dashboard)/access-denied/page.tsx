@@ -2,6 +2,7 @@ import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { Notice } from "@/components/ui/notice"
 
 type AccessDeniedPageProps = {
   params: Promise<{ locale: string }>
@@ -25,16 +26,17 @@ export default async function AccessDeniedPage({ params, searchParams }: AccessD
           title={t("title")}
           description={t("description")}
           details={permission ? (
-            <p className="rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+            // D7: what the user needs before acting is a neutral Notice, centred under the description.
+            <Notice tone="neutral" className="justify-center">
               {t("requestedPermission", { permission })}
-            </p>
+            </Notice>
           ) : null}
           action={(
             <div className="flex flex-col justify-center gap-2 sm:flex-row">
-              <Link href={`/${locale}/dashboard`} className={buttonVariants({ size: "lg" })}>
+              <Link href={`/${locale}/dashboard`} className={buttonVariants({ size: "md" })}>
                 {t("backDashboard")}
               </Link>
-              <Link href={`/${locale}/work-center`} className={buttonVariants({ variant: "outline", size: "lg" })}>
+              <Link href={`/${locale}/work-center`} className={buttonVariants({ variant: "outline", size: "md" })}>
                 {t("openWorkCenter")}
               </Link>
             </div>
