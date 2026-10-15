@@ -15,7 +15,12 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
+import { formatCount } from "@/lib/display-format"
 import { GlobalSearch } from "@/components/layout/global-search"
+import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,39 +130,40 @@ export function Topbar({
       {/* Left side */}
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {/* Mobile menu button */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onMobileMenuToggle}
-          className={cn(
-            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:hidden",
-            mobileNavigationMode && "hidden",
-          )}
+          className={cn("lg:hidden", mobileNavigationMode && "hidden")}
           aria-label={tNav("openMenu")}
         >
-          <Menu size={20} />
-        </button>
+          <Menu aria-hidden="true" className="size-5" />
+        </Button>
 
         {/* Desktop sidebar toggle */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onToggleSidebar}
-          className="hidden min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:inline-flex"
+          className="hidden lg:inline-flex"
           title={tNav("toggleSidebar")}
           aria-label={tNav("toggleSidebar")}
         >
-          <PanelLeftClose size={20} />
-        </button>
+          <PanelLeftClose aria-hidden="true" className="size-5" />
+        </Button>
 
         <GlobalSearch />
       </div>
 
-      {/* Right side */}
-      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+      {/* Right side: it keeps its width, so at 200% zoom the search narrows instead of running under the bell (D18). */}
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <Link
           href={`/${locale}/asset-management/scan`}
-          className="hidden min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3 lg:inline-flex"
+          className={cn(buttonVariants({ variant: "outline", size: "md" }), "hidden lg:inline-flex")}
           title={tAssetTools("globalScanShortcut")}
           aria-label={tAssetTools("globalScanShortcut")}
         >
-          <ScanLine className="h-4 w-4" />
+          <ScanLine aria-hidden="true" />
           <span className="hidden xl:inline">{tAssetTools("globalScanShortcut")}</span>
         </Link>
 
@@ -165,19 +171,20 @@ export function Topbar({
         <div className="relative shrink-0">
           <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
             <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
                 aria-label={tNotifications("title")}
                 title={tNotifications("title")}
               >
-                <Bell size={20} />
+                <Bell aria-hidden="true" className="size-5" />
                 {notificationSummary.total > 0 ? (
                   <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold leading-none text-white">
                     {notificationSummary.total > 99 ? "99+" : notificationSummary.total}
                   </span>
                 ) : null}
-              </button>
+              </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-[calc(100vw-2rem)] max-w-[20rem] p-0">
               <div className="border-b border-border px-4 py-3">
@@ -186,9 +193,7 @@ export function Topbar({
               </div>
               <div className="max-h-80 overflow-y-auto p-2">
                 {notificationSummary.items.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                    {tNotifications("empty")}
-                  </div>
+                  <EmptyNote className="px-3 py-3">{tNotifications("empty")}</EmptyNote>
                 ) : (
                   notificationSummary.items.map((item) => (
                     <Link
@@ -201,30 +206,23 @@ export function Topbar({
                         <p className="font-medium text-foreground">{tNotifications(item.key)}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{tNotifications(`${item.key}Detail`)}</p>
                       </div>
-                      <span className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-                        item.tone === "danger" && "bg-danger-soft text-danger",
-                        item.tone === "warning" && "bg-warning-soft text-warning",
-                        item.tone === "primary" && "bg-primary-soft text-primary"
-                      )}>
-                        {item.count}
-                      </span>
+                      <StatusBadge label={formatCount(item.count)} tone={item.tone} />
                     </Link>
                   ))
                 )}
               </div>
-              <div className="border-t border-border p-2">
+              <div className="grid gap-1 border-t border-border p-2">
                 <Link
                   href={`/${locale}/notifications`}
                   onClick={() => setNotificationOpen(false)}
-                  className="block rounded-md px-3 py-2 text-center text-sm font-medium text-primary hover:bg-accent"
+                  className={cn(buttonVariants({ variant: "outline", size: "md" }), "w-full")}
                 >
                   {tNotifications("openNotificationCenter")}
                 </Link>
                 <Link
                   href={`/${locale}/work-center`}
                   onClick={() => setNotificationOpen(false)}
-                  className="block rounded-md px-3 py-2 text-center text-sm font-medium text-muted-foreground hover:bg-accent"
+                  className={cn(buttonVariants({ variant: "ghost", size: "md" }), "w-full")}
                 >
                   {tNotifications("openWorkCenter")}
                 </Link>
@@ -237,13 +235,10 @@ export function Topbar({
         <div className="relative shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                aria-label={tNav("languageMenu", { code: localeCode })}
-              >
-                <Globe size={18} />
+              <Button variant="ghost" size="md" aria-label={tNav("languageMenu", { code: localeCode })}>
+                <Globe aria-hidden="true" />
                 <span className="hidden sm:inline">{localeCode}</span>
-              </button>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuRadioGroup value={locale} onValueChange={(next) => {
@@ -264,16 +259,13 @@ export function Topbar({
         <div className="relative shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
-                aria-label={tNav("userMenu", { name: userDisplayLabel })}
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
+              <Button variant="ghost" size="md" className="gap-2 text-foreground" aria-label={tNav("userMenu", { name: userDisplayLabel })}>
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                   {getUserInitial(user)}
-                </div>
-                <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">{userDisplayLabel}</span>
-                <ChevronDown size={16} className="hidden sm:block" />
-              </button>
+                </span>
+                <span className="hidden max-w-36 truncate sm:inline">{userDisplayLabel}</span>
+                <ChevronDown aria-hidden="true" className="hidden sm:block" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-[16rem]">
               <DropdownMenuLabel className="py-1.5 text-sm font-normal text-foreground">

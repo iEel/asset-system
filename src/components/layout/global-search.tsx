@@ -128,7 +128,7 @@ export function GlobalSearch() {
       }}
     >
       <PopoverAnchor asChild>
-        <div ref={anchorRef} className="relative hidden min-w-0 max-w-full lg:block">
+        <div ref={anchorRef} className="relative hidden w-[min(28rem,36vw)] min-w-0 max-w-full lg:block">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="search"
@@ -137,7 +137,7 @@ export function GlobalSearch() {
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={t("placeholder")}
-            className="h-9 w-[min(28rem,36vw)] min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+            className="h-9 w-full min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             role="combobox"
             aria-label={t("label")}
             aria-expanded={showPanel}
