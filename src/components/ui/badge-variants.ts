@@ -1,20 +1,5 @@
 import { cva } from "class-variance-authority"
 
-export const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3",
-  {
-    variants: {
-      variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        destructive: "border-transparent bg-destructive text-destructive-foreground",
-        outline: "border-border text-foreground",
-      },
-    },
-    defaultVariants: { variant: "default" },
-  },
-)
-
 // Two tiers: calm states read as plain text with a marker; states that need action keep a soft fill and border.
 // The border stays (transparent) on calm badges so both tiers have the same height side by side.
 // One size everywhere: a fixed 22px box (1px border + one 20px line of 13px text) that matches a table line

@@ -30,3 +30,12 @@ test("the delete buttons with no caller are gone; RowActions keeps useDeleteActi
   for (const path of [`${C}master-data/master-data-delete-button.tsx`, `${C}master-data/asset-delete-button.tsx`]) assert.equal(existsSync(path), false, path)
   assert.match(read(`${C}ui/row-actions.tsx`), /useDeleteAction/)
 })
+
+test("Badge and badgeVariants are gone; the status badge keeps its variants (spec 2D §4.1)", () => {
+  assert.equal(existsSync(`${C}ui/badge.tsx`), false)
+  const variants = read(`${C}ui/badge-variants.ts`)
+  assert.doesNotMatch(variants, /\bbadgeVariants\b/)
+  assert.match(variants, /^import \{ cva \} from "class-variance-authority"\n\n\/\/ Two tiers:/)
+  assert.match(variants, /export const statusBadgeVariants = cva\(/)
+  assert.match(variants, /export const statusMarkerVariants = cva\(/)
+})
