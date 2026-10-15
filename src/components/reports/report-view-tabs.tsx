@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import Link from "next/link"
-import { Check } from "lucide-react"
+import { TabNav } from "@/components/ui/tab-nav"
 import { parseAssetListParams } from "@/lib/asset-list-query"
 import { buildReportHref, reportViews, type ReportView } from "@/lib/report-view"
 
@@ -14,12 +13,16 @@ type ReportViewTabsProps = {
   navigationLabel: string
 }
 
+// The client wrapper that owns the scrolling of the shared TabNav (spec 2B I9): the row snaps link by link, and below
+// md a direct link to a later view brings its tab into the row. TabNav draws the underline and sets aria-current.
 export function ReportViewTabs({ locale, activeView, filters, labels, navigationLabel }: ReportViewTabsProps) {
   const tabsRef = useRef<HTMLElement>(null)
-  const activeTabRef = useRef<HTMLAnchorElement>(null)
+  // TabNav renders the links, so the current one is looked up in the row after each view change.
+  const activeTabRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     const tabs = tabsRef.current
+    activeTabRef.current = tabs?.querySelector<HTMLElement>('[aria-current="page"]') ?? null
     const activeTab = activeTabRef.current
     if (!tabs || !activeTab || window.matchMedia("(min-width: 768px)").matches) return
 
@@ -35,22 +38,14 @@ export function ReportViewTabs({ locale, activeView, filters, labels, navigation
   }, [activeView])
 
   return (
-    <nav ref={tabsRef} data-report-tabs aria-label={navigationLabel} className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
-      {reportViews.map((view) => {
-        const isActive = view === activeView
-        return (
-          <Link
-            key={view}
-            ref={isActive ? activeTabRef : undefined}
-            href={buildReportHref(locale, view, filters)}
-            aria-current={isActive ? "page" : undefined}
-            className={`inline-flex min-h-11 shrink-0 snap-start items-center justify-center rounded-md border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${isActive ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent hover:text-foreground"}`}
-          >
-            {isActive ? <Check aria-hidden="true" className="mr-1.5 h-4 w-4" /> : null}
-            {labels[view]}
-          </Link>
-        )
-      })}
-    </nav>
+    <TabNav
+      ref={tabsRef}
+      data-report-tabs
+      aria-label={navigationLabel}
+      current={activeView}
+      className="snap-x snap-mandatory"
+      linkClassName="snap-start"
+      items={reportViews.map((view) => ({ key: view, label: labels[view], href: buildReportHref(locale, view, filters) }))}
+    />
   )
 }

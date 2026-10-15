@@ -117,6 +117,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}notifications/page.tsx`,
   `${D}my-assets/page.tsx`,
   `${C}reports/report-filter-panel.tsx`,
+  `${C}reports/report-view-tabs.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -330,7 +331,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
     // 2B-5
     [`${D}work-center/page.tsx`]: 1,
-    [`${C}reports/report-view-tabs.tsx`]: 1,
   },
   LN2: {
     // 2B-1
