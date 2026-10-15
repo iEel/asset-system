@@ -24,13 +24,16 @@ import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseLis
 import { paginationRange } from "@/lib/master-data-query"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { linkVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { DataTableFoot } from "@/components/ui/data-table"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
 
 type ApprovalHistoryPageProps = {
@@ -115,12 +118,8 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
         ]}
       />
 
-      <section className="rounded-lg border border-border bg-surface p-5">
+      <ContentPanel title={t("filterTitle")} description={t("filterDescription")}>
         <div className="flex flex-col gap-4">
-          <div>
-            <h2 className="font-semibold text-foreground">{t("filterTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("filterDescription")}</p>
-          </div>
           <FilterGroup
             label={t("moduleFilter")}
             options={moduleOptions}
@@ -140,7 +139,7 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
             pageSize={listPage.pageSize}
           />
         </div>
-      </section>
+      </ContentPanel>
 
       <ContentPanel
         divided
@@ -245,13 +244,13 @@ function DecisionRow({
     <article className="p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          <div className={`mt-1 rounded-md border p-2 ${decisionClass(item.decision)}`}>{decisionIcon(item.decision)}</div>
+          <div aria-hidden="true" className="mt-1 text-muted-foreground">{decisionIcon(item.decision)}</div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{item.moduleLabel}</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${decisionPillClass(item.decision)}`}>{item.actionLabel}</span>
+              <Chip>{item.moduleLabel}</Chip>
+              <StatusBadge label={item.actionLabel} tone={decisionTone(item.decision)} />
               {item.href ? (
-                <Link href={item.href} className="font-semibold text-primary hover:underline">
+                <Link href={item.href} className={cn(linkVariants({ size: "inherit" }), "font-semibold")}>
                   {item.recordLabel}
                 </Link>
               ) : (
@@ -268,32 +267,31 @@ function DecisionRow({
 
         {(item.changes.length > 0 || item.remark) ? (
           <details className="shrink-0 lg:w-[28rem]">
-            <summary className="cursor-pointer text-sm font-medium text-primary hover:underline">{labels.viewDetails}</summary>
-            <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-3">
+            {/* list-item keeps the disclosure triangle that linkVariants' inline display would hide. */}
+            <summary className={cn(linkVariants({ size: "inherit" }), "list-item cursor-pointer text-sm")}>{labels.viewDetails}</summary>
+            <div className="mt-2 space-y-2">
               {item.changes.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-xs">
-                    <thead>
-                      <tr className="text-muted-foreground">
-                        <th className="pb-1 pr-3 text-left font-medium">{labels.field}</th>
-                        <th className="pb-1 pr-3 text-left font-medium">{labels.before}</th>
-                        <th className="pb-1 text-left font-medium">{labels.after}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {item.changes.map((change, index) => (
-                        <tr key={`${item.id}-${change.field}-${index}`}>
-                          <td className="py-1.5 pr-3 text-foreground">{change.field}</td>
-                          <td className="py-1.5 pr-3 text-muted-foreground">{change.before}</td>
-                          <td className="py-1.5 text-foreground">{change.after}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable caption={labels.viewDetails}>
+                  <DataTableHeader>
+                    <tr>
+                      <DataTableHead>{labels.field}</DataTableHead>
+                      <DataTableHead>{labels.before}</DataTableHead>
+                      <DataTableHead>{labels.after}</DataTableHead>
+                    </tr>
+                  </DataTableHeader>
+                  <DataTableBody>
+                    {item.changes.map((change, index) => (
+                      <DataTableRow key={`${item.id}-${change.field}-${index}`}>
+                        <DataTableCell className="text-foreground">{change.field}</DataTableCell>
+                        <DataTableCell className="text-muted-foreground">{change.before}</DataTableCell>
+                        <DataTableCell className="text-foreground">{change.after}</DataTableCell>
+                      </DataTableRow>
+                    ))}
+                  </DataTableBody>
+                </DataTable>
               ) : null}
               {item.remark ? (
-                <p className="text-xs">
+                <p className="text-meta">
                   <span className="font-medium text-foreground">{labels.remark}:</span> {item.remark}
                 </p>
               ) : null}
@@ -329,16 +327,10 @@ function decisionIcon(decision: ApprovalDecision): React.ReactNode {
   return <ClipboardList className="h-4 w-4" />
 }
 
-function decisionClass(decision: ApprovalDecision) {
-  if (decision === "approve") return "border-success-border bg-success-soft text-success"
-  if (decision === "reject") return "border-danger-border bg-danger-soft text-danger"
-  if (decision === "execute") return "border-primary-border bg-primary-soft text-primary"
-  return "border-warning-border bg-warning-soft text-warning"
-}
-
-function decisionPillClass(decision: ApprovalDecision) {
-  if (decision === "approve") return "bg-success-soft text-success"
-  if (decision === "reject") return "bg-danger-soft text-danger"
-  if (decision === "execute") return "bg-primary-soft text-primary"
-  return "bg-warning-soft text-warning"
+// A decision is a past state: calm badges, red only for a rejection; closing a round is neutral (not a warning).
+function decisionTone(decision: ApprovalDecision): StatusTone {
+  if (decision === "approve") return "success"
+  if (decision === "reject") return "danger"
+  if (decision === "execute") return "primary"
+  return "neutral"
 }
