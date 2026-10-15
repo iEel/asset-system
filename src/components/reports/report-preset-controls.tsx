@@ -3,8 +3,13 @@
 import { useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { BookmarkPlus, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Notice } from "@/components/ui/notice"
+import { cn } from "@/lib/utils"
 import {
   buildReportPreset,
   buildReportPresetHref,
@@ -66,8 +71,10 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
     if (persist(presets.filter((preset) => preset.id !== id))) setMessage("")
   }
 
+  // It sits in the catalog's ContentPanel, so it has no frame of its own (D9). The save button shares a row with the
+  // 40px name field, so it is lg (D3, D5); a preset row's delete icon is neutral at rest (K22).
   return (
-    <div className="rounded-md border border-border bg-background p-4">
+    <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Field label={labels.presetName} className="min-w-0 flex-1">
           <Input
@@ -79,38 +86,29 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
             maxLength={60}
           />
         </Field>
-        <button
-          type="button"
-          onClick={savePreset}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0"
-        >
-          <BookmarkPlus className="h-4 w-4" />
+        <Button size="lg" onClick={savePreset}>
+          <BookmarkPlus aria-hidden="true" />
           {labels.saveCurrentPreset}
-        </button>
+        </Button>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{labels.savedPresetsDeviceOnly}</p>
-      {message ? <p className="mt-2 text-sm text-danger" role="status">{message}</p> : null}
+      {message ? <Notice tone="danger" role="alert" className="mt-2">{message}</Notice> : null}
 
       {presets.length > 0 ? (
         <div className="mt-4 grid gap-2">
           {presets.map((preset) => (
             <div key={preset.id} className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-surface p-2">
-              <Link href={buildReportPresetHref(locale, preset.query)} className="min-w-0 flex-1 truncate px-2 py-1 text-sm font-medium text-foreground hover:text-primary">
-                {preset.name}
+              <Link href={buildReportPresetHref(locale, preset.query)} className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 min-w-0 flex-1 items-center px-2 text-sm md:min-h-0 md:py-1")}>
+                <span className="truncate">{preset.name}</span>
               </Link>
-              <button
-                type="button"
-                onClick={() => deletePreset(preset.id)}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:w-8"
-                aria-label={`${labels.deletePreset}: ${preset.name}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <Button variant="outline" size="icon-sm" onClick={() => deletePreset(preset.id)} aria-label={`${labels.deletePreset}: ${preset.name}`}>
+                <Trash2 aria-hidden="true" />
+              </Button>
             </div>
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-sm text-muted-foreground">{labels.savedPresetsEmpty}</p>
+        <EmptyNote className="mt-4">{labels.savedPresetsEmpty}</EmptyNote>
       )}
     </div>
   )
