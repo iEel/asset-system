@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Dry run:** scratch clone p2d1-sim, sim commits 1a `fe7ab86`, 1b `27f2365`, 2a `9bdc0e6` (amended for D1), 2b `bd06ac5`, 2c `13f9f87`, 3 `665c17d`, 4a `0e0711a`, 4b `5330117`, 4c `1f5e3af`, 4d `2127e52`, 5a `a526742`, 5b `a9fc15c`, 6 `3b2bd3b`, 7a `d3147e0`, 7b `6e537ea`, 8 `b433382`, 9a `803bfd2`, 9b `e672e09`, 10a `fdf1128`, 10b `496d8f4`, 12 `8258805` (Task 11 markers are a simulation placeholder there). Tasks 0, 11 and 13 were not run. This plan carries the dry-run fixes D1–D8.
+
 **Goal:** Lay the ground for the 2D sweeps:
 - The default and icon buttons become 36px from `md`. Buttons in a row of 40px fields keep 40px through `size="lg"` and the new `size="icon-lg"`, and every `PageHeader` button is `md`.
 - The dead code of spec 2D §4.1 is deleted, except `formatCurrency`, which goes in 2D-4.
@@ -18,9 +20,10 @@ Workflows, data, validation and the database stay the same.
     - type props go before their message keys (Task 5);
     - the guard comments are rewritten last, when no later task moves a line (Task 10).
 - **Branch:** `feat/ui-phase2d` in the main checkout `D:/Antigravity/asset-system`. No worktree, because no other plan runs beside this one (spec 2D D15: one plan at a time).
-- **Tests:** three new test files.
+- **Tests:** four new test files.
   - `tests/button-size-switch.test.ts` (Task 1)
   - `tests/dead-code-cleanup.test.ts` (Tasks 2, 4, 5)
+  - `tests/spinner-motion-ui.test.ts` (Task 7a)
   - `tests/status-name-api.test.ts` (Task 8)
   - Everything else edits the pins that lock what changes. Each new or edited assertion fails before its change, for the reason the task states.
 - **Controller tasks:**
@@ -51,7 +54,7 @@ Workflows, data, validation and the database stay the same.
   - Before you edit a file, run `git ls-files --eol <file>` and keep what it shows. In Git Bash, `grep -c $'\r'` reports 0 even for CRLF files, so do not use it as a check.
   - Edit with exact-string replacement, never a formatter, and never normalize a file.
   - New files are LF.
-  - A task that writes a whole existing file (Task 2c) writes it and then runs `node <temp>/crlf.mjs <file>`:
+  - A task that writes a whole existing file (Task 2c), or appends a block to a CRLF file (Tasks 7b, 10a), writes it and then runs `node <temp>/crlf.mjs <file>`. An appended block comes out LF otherwise, and the file ends up mixed.
 
 ```js
 // crlf.mjs: node <temp>/crlf.mjs <file>…   rewrites each file with CRLF line endings and changes nothing else.
@@ -184,6 +187,7 @@ for (const file of process.argv.slice(2)) {
 | `src/app/api/search/route.ts`, `D/asset-management/labels/page.tsx`, `c/assets/asset-label-batch-tool.tsx` (type only) | `status.name` | 8 |
 | `c/ui/stat-strip.tsx`, `c/ui/page-skeleton.tsx` | empty value, reports skeleton | 9 |
 | `tests/list-frame-guards.test.ts`, `tests/form-migration-guards.test.ts`, `tests/asset-detail-ux.test.ts` | zero rows, L10, comments | 10 |
+| `tests/button-size-switch.test.ts`, `tests/dead-code-cleanup.test.ts`, `tests/spinner-motion-ui.test.ts`, `tests/status-name-api.test.ts` | new test files (LF) | 1b; 2a–5b; 7a; 8 |
 | `DESIGN.md`, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DEVELOPER_HANDOFF.md`, `docs/99_CHANGELOG.md` | plan 2D-1 docs | 12 |
 
 `D/` = `src/app/[locale]/(dashboard)/` · `c/` = `src/components/`.
@@ -637,10 +641,11 @@ Expected: 1 failure. The page still imports `ActionButton`, so the first match f
   - Run `npx tsc --noEmit`. Expected: clean. `design-system.ts` still exports the types; nothing imports the deleted file.
   - Run `npm test` (2014 tests, 2013 pass, 1 skipped) and `npm run lint`.
 
-- [ ] **Step 6: Commit.**
+- [ ] **Step 6: Commit.** `git rm` in Step 3 already staged the deletion, so `git add` names only the files that still exist (a deleted path makes `git add` stop with `fatal: pathspec … did not match` and stage nothing). Before the commit, `git status --short` shows `D  src/components/ui/action-button.tsx` and the three other files staged (`M ` or `A `).
 
 ```bash
-git add "src/app/[locale]/(dashboard)/error.tsx" src/components/ui/action-button.tsx tests/list-filters-ui.test.ts tests/dead-code-cleanup.test.ts
+git add "src/app/[locale]/(dashboard)/error.tsx" tests/list-filters-ui.test.ts tests/dead-code-cleanup.test.ts
+git status --short
 git commit -m "refactor(ui): the error page retries with Button; delete ActionButton (2D-1 task 2a)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -1117,10 +1122,11 @@ Expected: 1 failure (the files exist).
   - Run `node --test tests/dead-code-cleanup.test.ts tests/confirm-dialog-ui.test.ts tests/list-frame-guards.test.ts`. Expected: all pass. No LFG or FMG row names either file.
   - Run `npm test` (2011 tests, 2010 pass, 1 skipped), `npx tsc --noEmit` and `npm run lint`.
 
-- [ ] **Step 5: Commit.**
+- [ ] **Step 5: Commit.** `git rm` in Step 3 already staged both deletions, so `git add` names only the two test files. Before the commit, `git status --short` shows `D ` for both deleted files.
 
 ```bash
-git add src/components/master-data/master-data-delete-button.tsx src/components/master-data/asset-delete-button.tsx tests/confirm-dialog-ui.test.ts tests/dead-code-cleanup.test.ts
+git add tests/confirm-dialog-ui.test.ts tests/dead-code-cleanup.test.ts
+git status --short
 git commit -m "refactor(ui): delete MasterDataDeleteButton and AssetDeleteButton, which nothing renders (2D-1 task 4a)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -1160,10 +1166,11 @@ Expected: 1 failure (`badge.tsx` exists).
   - Run `node <temp>/eol.mjs src/components/ui/badge-variants.ts`. Expected: equal numbers.
   - Run `npm test` (2012 tests, 2011 pass, 1 skipped), `npx tsc --noEmit` and `npm run lint`.
 
-- [ ] **Step 10: Commit.**
+- [ ] **Step 10: Commit.** `git rm` in Step 8 already staged the deletion, so `git add` leaves `badge.tsx` out. Before the commit, `git status --short` shows `D  src/components/ui/badge.tsx`.
 
 ```bash
-git add src/components/ui/badge.tsx src/components/ui/badge-variants.ts tests/dead-code-cleanup.test.ts
+git add src/components/ui/badge-variants.ts tests/dead-code-cleanup.test.ts
+git status --short
 git commit -m "refactor(ui): delete Badge and badgeVariants, which nothing imports (2D-1 task 4b)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -1233,7 +1240,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] **Step 16: No caller.**
 
 Run: `git grep -n "AssetStateHelpPopover" -- src`
-Expected: the 8 render sites below. Read each: none passes `size`, and none of the spread help objects has a `size` key.
+Expected: the 7 render sites below, their 4 import lines, the definition, and 2 comments (`c/ui/field.tsx:22`, `c/ui/filter-select.tsx:18`). Read each render site: none passes `size`, and none of the spread help objects has a `size` key.
   - `D/assets/[id]/page.tsx` twice
   - `c/assets/asset-form.tsx` twice
   - `c/assets/asset-register-filter-sheet.tsx` twice
@@ -1497,8 +1504,19 @@ Spec M11, R9. Since phase 2B, codes use `tag` (weight 400) and ids use `tag font
 - Modify: `src/app/layout.tsx`, `tests/visual-foundation-guards.test.ts` (CRLF)
 
 - [ ] **Step 1: The failing pin.** In `tests/visual-foundation-guards.test.ts`:
-  - Replace `weight: \["400", "500", "600"\]\[^)\]*preload: false` with `weight: \["400", "500"\]\[^)\]*preload: false`. This edits the regex text of the `IBM_Plex_Mono` line only.
-  - The resulting line is `` assert.match(layout, /IBM_Plex_Mono\(\{[^)]*weight: \["400", "500"\][^)]*preload: false[^)]*adjustFontFallback: false/) ``.
+  - Replace the line (`:37`)
+
+    ```ts
+      assert.match(layout, /IBM_Plex_Mono\(\{[^)]*weight: \["400", "500", "600"\][^)]*preload: false[^)]*adjustFontFallback: false/)
+    ```
+
+  - with
+
+    ```ts
+      assert.match(layout, /IBM_Plex_Mono\(\{[^)]*weight: \["400", "500"\][^)]*preload: false[^)]*adjustFontFallback: false/)
+    ```
+
+  - This edits the regex text of the `IBM_Plex_Mono` line only.
 
 Run: `node --test tests/visual-foundation-guards.test.ts`
 Expected: 1 failure, the font test (the layout still loads 600).
@@ -1612,11 +1630,24 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 A download from an API route is a plain `<a href>` with `buttonVariants` (`DESIGN.md` Navigation `:513`). With `next/link`, Next.js may prefetch it and routes the click on the client. Prior art: `D/audit/findings/page.tsx:293`, `D/maintenance/page.tsx:236`, `D/reports/page.tsx:199`. All three files keep `import Link from "next/link"` for their other links.
 
+Each new `<a>` also carries `download`. `@next/next/no-html-link-for-pages` reports any `<a>` whose `href` is a string literal that matches an app route, and `src/app/api/**` counts (without `download`, `npm run lint` reports 63 errors). The rule skips an `<a>` with `download`, which is also the right markup for a file download. The three prior-art pages pass only because their `href` is an expression.
+
 **Files:** Modify `src/app/[locale]/(dashboard)/admin/roles/page.tsx`, `src/app/[locale]/(dashboard)/master-data/categories/page.tsx`, `src/app/[locale]/(dashboard)/master-data/brands/page.tsx`, `tests/list-pages-ui.test.ts` (all CRLF)
 
 - [ ] **Step 5: The failing tests.** In `tests/list-pages-ui.test.ts`:
-  - Replace `` assert.match(source, /<Link href="\/api\/admin\/roles\/export" className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/) `` with `` assert.match(source, /<a href="\/api\/admin\/roles\/export" className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/) ``.
-  - Append at the end of the file:
+  - Replace the line (`:585`)
+
+    ```ts
+      assert.match(source, /<Link href="\/api\/admin\/roles\/export" className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+    ```
+
+  - with
+
+    ```ts
+      assert.match(source, /<a href="\/api\/admin\/roles\/export" download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+    ```
+
+  - Append at the end of the file the block below, then run `node <temp>/crlf.mjs tests/list-pages-ui.test.ts` (the file is CRLF):
 
 ```ts
 
@@ -1626,8 +1657,8 @@ test("the role, category and brand downloads are plain <a> links to the API (spe
   for (const path of [`${D}admin/roles/page.tsx`, `${D}master-data/categories/page.tsx`, `${D}master-data/brands/page.tsx`]) {
     assert.doesNotMatch(read(path), /<Link href="\/api\//, path)
   }
-  assert.equal(read(`${D}master-data/categories/page.tsx`).match(/<a href="\/api\/categories\/(?:export|import-template)" className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/g)?.length, 2)
-  assert.equal(read(`${D}master-data/brands/page.tsx`).match(/<a href="\/api\/brand-models\/(?:export|import-template)" className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/g)?.length, 2)
+  assert.equal(read(`${D}master-data/categories/page.tsx`).match(/<a href="\/api\/categories\/(?:export|import-template)" download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/g)?.length, 2)
+  assert.equal(read(`${D}master-data/brands/page.tsx`).match(/<a href="\/api\/brand-models\/(?:export|import-template)" download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/g)?.length, 2)
 })
 ```
 
@@ -1648,7 +1679,7 @@ Expected: 2 failures, the roles list test (`:585`) and the new test.
     - with
 
       ```tsx
-                  <a href="/api/admin/roles/export" className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <a href="/api/admin/roles/export" download className={buttonVariants({ variant: "outline", size: "md" })}>
                     <Download aria-hidden="true" />
                     {t("exportAudit")}
                   </a>
@@ -1658,35 +1689,37 @@ Expected: 2 failures, the roles list test (`:585`) and the new test.
     - Replace
 
       ```tsx
-                <Link href="/api/categories/export" className={buttonVariants({ variant: "outline", size: "md" })}>
-                  <Download aria-hidden="true" />
-                  {t("downloadCategoryExport")}
-                </Link>
-                <Link href="/api/categories/import-template" className={buttonVariants({ variant: "outline", size: "md" })}>
-                  <FileSpreadsheet aria-hidden="true" />
-                  {t("downloadCategoryTemplate")}
-                </Link>
+                  <Link href="/api/categories/export" className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <Download aria-hidden="true" />
+                    {t("downloadCategoryExport")}
+                  </Link>
+                  <Link href="/api/categories/import-template" className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <FileSpreadsheet aria-hidden="true" />
+                    {t("downloadCategoryTemplate")}
+                  </Link>
       ```
 
     - with
 
       ```tsx
-                <a href="/api/categories/export" className={buttonVariants({ variant: "outline", size: "md" })}>
-                  <Download aria-hidden="true" />
-                  {t("downloadCategoryExport")}
-                </a>
-                <a href="/api/categories/import-template" className={buttonVariants({ variant: "outline", size: "md" })}>
-                  <FileSpreadsheet aria-hidden="true" />
-                  {t("downloadCategoryTemplate")}
-                </a>
+                  <a href="/api/categories/export" download className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <Download aria-hidden="true" />
+                    {t("downloadCategoryExport")}
+                  </a>
+                  <a href="/api/categories/import-template" download className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <FileSpreadsheet aria-hidden="true" />
+                    {t("downloadCategoryTemplate")}
+                  </a>
       ```
 
-  - `src/app/[locale]/(dashboard)/master-data/brands/page.tsx`: the same swap for the `/api/brand-models/export` block (`{t("downloadBrandModelExport")}`) and the `/api/brand-models/import-template` block (`{t("downloadBrandModelTemplate")}`).
+    - In the file, `<Link`/`<a` is indented 12 spaces and the children 14 (the blocks above are inside a 6-space list fence).
+  - `src/app/[locale]/(dashboard)/master-data/brands/page.tsx`: the same swap, `download` included, for the `/api/brand-models/export` block (`{t("downloadBrandModelExport")}`) and the `/api/brand-models/import-template` block (`{t("downloadBrandModelTemplate")}`). As in categories, `<Link` is indented 12 spaces and its children 14.
 
 - [ ] **Step 7: Check.**
   - Run `node --test tests/list-pages-ui.test.ts tests/list-frame-guards.test.ts`. Expected: all pass.
   - Run `git grep -n 'Link href="/api/' -- src`. Expected: nothing.
-  - Run `npm run lint`. Expected: 0 errors. `@next/next/no-html-link-for-pages` does not apply to `/api` paths, as the three prior-art pages show.
+  - Run `node <temp>/eol.mjs tests/list-pages-ui.test.ts "src/app/[locale]/(dashboard)/admin/roles/page.tsx" "src/app/[locale]/(dashboard)/master-data/categories/page.tsx" "src/app/[locale]/(dashboard)/master-data/brands/page.tsx"`. Expected: equal numbers on each line.
+  - Run `npm run lint`. Expected: 0 errors. `@next/next/no-html-link-for-pages` does report a literal `/api` href; the `download` attribute is what keeps the five links clean (without it the run reports 63 errors).
   - Run `npm test` (2017 tests, 2016 pass, 1 skipped) and `npx tsc --noEmit`.
 
 - [ ] **Step 8: Commit.**
@@ -2020,7 +2053,7 @@ If a line differs, an earlier task changed more than it should have. Stop and re
 
 #### 10a: LFG
 
-- [ ] **Step 2: The failing test.** In `tests/list-frame-guards.test.ts`, append after the L9 test (the end of the file):
+- [ ] **Step 2: The failing test.** In `tests/list-frame-guards.test.ts`, append after the L9 test (the end of the file) the block below, then run `node <temp>/crlf.mjs tests/list-frame-guards.test.ts` (the file is CRLF):
 
 ```ts
 
@@ -2233,7 +2266,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
     - **`/th/asset-management/import-export`:** the back link is an outline 36px button.
     - **The error page:** it cannot be triggered without breaking a page. Read `D/error.tsx` and note the gap.
     - **Fonts (R9):** the eight `font-mono … font-semibold` places, among them `/th/assets/<id>` (`:2116`) and `/th/assets/<id>/components`. Record whether the synthesized bold reads acceptably; it is an accepted mix until M33.
-    - **Downloads:** on `/th/admin/roles`, `/th/master-data/categories` and `/th/master-data/brands`, the export and template buttons are `<a href="/api/…">`. Check the DOM only and do not click them.
+    - **Downloads:** on `/th/admin/roles`, `/th/master-data/categories` and `/th/master-data/brands`, the export and template buttons are `<a href="/api/…" download>`. Check the DOM only and do not click them.
     - **`/th/reports` while loading** (throttle the network): the numbers skeleton is one column at 375.
     - **Search:** type 3+ characters into the topbar search, into `/th/asset-management/scan` and into the label tool's search. Results show as before. Read one `/api/search` response in the network panel: asset results have `status.name`, `status.label`, `status.colorCode` and the old `badge`.
 
@@ -2321,7 +2354,17 @@ The three pairs are the only `padding: "0 16px"` lines in the file (`grep -c` pr
 
 - [ ] **Step 3: `DESIGN.md` typography (2 replacements).**
   - `:275`: replace `Plex Mono loads 400-600, is not preloaded` with `Plex Mono loads 400 and 500 only (plan 2D-1 dropped 600), is not preloaded`.
-  - `:301`: replace `Never bold (Plex Mono loads 400, 500 and 600 only, no 700;` with `Never bold (Plex Mono loads 400 and 500 only; a leftover \`font-mono font-semibold\` gets a synthesized bold until 2D moves it to \`tag\`;`.
+  - `:301`: replace
+
+    ```
+    Never bold (Plex Mono loads 400, 500 and 600 only, no 700;
+    ```
+
+    with
+
+    ```
+    Never bold (Plex Mono loads 400 and 500 only; a leftover `font-mono font-semibold` gets a synthesized bold until 2D moves it to `tag`;
+    ```
 
 - [ ] **Step 4: `DESIGN.md` buttons (3 replacements).**
 
@@ -2346,17 +2389,55 @@ with
 | `icon-lg` | 40 × 40px | — | only an icon button in the same row as a 40px field (the remove, move and copy buttons of the repeating field rows); a cva size, not a token (spec 2D D5) |
 ```
 
-Also replace `8px (\`rounded-md\`) for \`md\`, \`lg\`, \`default\` and \`icon\`, the same as fields` with `8px (\`rounded-md\`) for \`md\`, \`lg\`, \`default\`, \`icon\` and \`icon-lg\`, the same as fields`. This counts as part of (1) and is in the **Shape** bullet above the table.
+Also replace
 
-(2) **Legacy** (`:374`): replace the whole line that starts `- **Legacy:** \`ActionButton\` and \`getActionButtonClasses\` are deprecated;` with
+```
+8px (`rounded-md`) for `md`, `lg`, `default` and `icon`, the same as fields
+```
+
+with
+
+```
+8px (`rounded-md`) for `md`, `lg`, `default`, `icon` and `icon-lg`, the same as fields
+```
+
+This counts as part of (1) and is in the **Shape** bullet above the table (`:346`).
+
+(2) **Legacy** (`:374`): replace the whole line that starts
+
+```
+- **Legacy:** `ActionButton` and `getActionButtonClasses` are deprecated;
+```
+
+with
 
 ```
 - **Legacy:** none left. Plan 2D-1 moved the retry button of `src/app/[locale]/(dashboard)/error.tsx` to `Button` and deleted `ActionButton`, `getActionButtonClasses`, `getSafeActionLinkClasses` and `getResponsiveActionRowClasses` (the readiness and import-export links are `buttonVariants({ variant: "outline", size: "md" })`), together with the other helpers of `src/lib/design-system.ts` that had no caller. `getTouchIconButtonClasses` was removed earlier: use `Button size="icon"`.
 ```
 
-(3) **Hand-written buttons** (`:375`): replace `Pick the size from today's desktop height: \`h-8\` → \`sm\`, \`h-9\` → \`md\`, \`h-10\` beside 40px fields → \`lg\`, any other \`h-10\` → no size (\`default\`). A button that is 44px tall on desktop (\`min-h-11\` only, dialog footers included) also takes no size: it becomes 40px now and 36px after 2D (phase 2C ruling K7).` with `Pick the size from today's desktop height: \`h-8\` → \`sm\`, \`h-9\` or any \`h-10\` that is not beside a 40px field → no size (\`default\`, 36px since plan 2D-1), \`h-10\` beside 40px fields → \`lg\` (or \`icon-lg\` for an icon button). A button that is 44px tall on desktop (\`min-h-11\` only, dialog footers included) also takes no size and is 36px (phase 2C ruling K7, spec 2D D3).`
+(3) **Hand-written buttons** (`:375`): replace
 
-- [ ] **Step 5: `docs/14_UI_UX_DESIGN_SYSTEM.md` (1 replacement).** In the row that starts `| A button, or a link that looks like one |`, replace `the label stays the same while busy; the primary action comes last |` with `the label stays the same while busy; the primary action comes last; no size is 36px from \`md\`, \`md\` in a \`PageHeader\`, \`lg\` / \`icon-lg\` (40px) only beside a 40px field |`.
+```
+Pick the size from today's desktop height: `h-8` → `sm`, `h-9` → `md`, `h-10` beside 40px fields → `lg`, any other `h-10` → no size (`default`). A button that is 44px tall on desktop (`min-h-11` only, dialog footers included) also takes no size: it becomes 40px now and 36px after 2D (phase 2C ruling K7).
+```
+
+with
+
+```
+Pick the size from today's desktop height: `h-8` → `sm`, `h-9` or any `h-10` that is not beside a 40px field → no size (`default`, 36px since plan 2D-1), `h-10` beside 40px fields → `lg` (or `icon-lg` for an icon button). A button that is 44px tall on desktop (`min-h-11` only, dialog footers included) also takes no size and is 36px (phase 2C ruling K7, spec 2D D3).
+```
+
+- [ ] **Step 5: `docs/14_UI_UX_DESIGN_SYSTEM.md` (1 replacement).** In the row that starts `| A button, or a link that looks like one |`, replace
+
+```
+the label stays the same while busy; the primary action comes last |
+```
+
+with
+
+```
+the label stays the same while busy; the primary action comes last; no size is 36px from `md`, `md` in a `PageHeader`, `lg` / `icon-lg` (40px) only beside a 40px field |
+```
 
 - [ ] **Step 6: `DEVELOPER_HANDOFF.md` (1 replacement).** Replace the line `## Open Go-Live Decisions` (the only one) with the block below, which ends with that same line.
   - Replace `<today>` with today's date.
@@ -2371,7 +2452,7 @@ Also replace `8px (\`rounded-md\`) for \`md\`, \`lg\`, \`default\` and \`icon\`,
 - **Buttons (M1, M2, D3–D6):** `default` is `md` (36px from `md`, 14px side padding) and `icon` is 36 × 36px; below `md` every size is still 44px. New cva size `icon-lg` (40 × 40px, `rounded-md`), not a token. The seven icon buttons that share a row with a 40px field are `icon-lg`: the remove button of the batch form's desktop rows `c/assets/asset-batch-form.tsx`, the custom-field remove `c/assets/asset-form.tsx`, the spec remove `c/master-data/asset-model-form.tsx` and the move up, move down, copy and remove buttons of the photo items `c/master-data/category-form.tsx`. The print button of the label toolbar `c/assets/asset-label-print.tsx` is `lg` beside its two boxed 40px fields (2C missed it in §6.2.3). The three header buttons of `c/maintenance/repair-record-actions.tsx` are `md`, like every other `PageHeader` button. Dialog footers take no size (FMG GD3) and are 36px.
 - **Dead code deleted (spec §4.1, D12):** `c/ui/action-button.tsx` (the retry button of `D/error.tsx` is `Button`); in `src/lib/design-system.ts` `uiTones`, `uiButtonVariants`, `uiButtonSizes`, `normalizeUiTone`, `getMetricCardToneClasses`, `getTableShellClasses`, `getResponsiveTableScrollClasses`, `getEmptyStateClasses`, `getMobileSafeBottomPaddingClasses`, `getActionButtonClasses`, `getSafeActionLinkClasses` and `getResponsiveActionRowClasses` (`UiTone` is a plain union; the readiness check links and the import-export back link moved to `buttonVariants({ variant: "outline", size: "md" })` first, R1); `c/master-data/master-data-delete-button.tsx` and `c/master-data/asset-delete-button.tsx`; `c/ui/badge.tsx` and `badgeVariants` (R7); `getHealthPanelClass` and `getSummaryToneClass` of `src/lib/asset-detail-format.ts`; `size="compact"` of `AssetStateHelpPopover`; the 10 busy label props and pass lines of 2C §6.5.2 (#8 `labels.chooseFile` is still read). `formatCurrency` waits for 2D-4 (D10).
 - **Messages:** deleted `common.saving`, `checkin.legacyReturnCreating`, `asset.batchCheckDuplicatesRunning`, `asset.componentInstalling`, `asset.componentRemoving`, `asset.statusCorrectionSubmitting`, `auth.loggingIn`, `asset.importing`, `asset.recordingLabelPrint` and `asset.latestMaintenance`, through `scripts/messages-edit.mjs`; none added. `dataQualityPage.assetStateReviews.scanning` is passed but never read and stays (open issue for the user).
-- **Small fixes:** Plex Mono loads 400 and 500 (M11); six spinners outside buttons stop under reduced motion (`c/audit/audit-scan-camera.tsx`, `c/audit/audit-scan-lookup-card.tsx`, `c/layout/global-search.tsx` ×2, `c/ui/scanner-text-input.tsx` ×2), so FMG GB2 can widen to all of `src`; the five `/api` download buttons of the roles, categories and brands pages are `<a href>` (M31); `StatStrip` takes `value: string | null` and shows `Nil` (M32 d); the reports skeleton's numbers are one column below 640px (M32 e).
+- **Small fixes:** Plex Mono loads 400 and 500 (M11); six spinners outside buttons stop under reduced motion (`c/audit/audit-scan-camera.tsx`, `c/audit/audit-scan-lookup-card.tsx`, `c/layout/global-search.tsx` ×2, `c/ui/scanner-text-input.tsx` ×2), so FMG GB2 can widen to all of `src`; the five `/api` download buttons of the roles, categories and brands pages are `<a href download>` (M31); `StatStrip` takes `value: string | null` and shows `Nil` (M32 d); the reports skeleton's numbers are one column below 640px (M32 e).
 - **API (D8, M23 API part):** `src/app/api/search/route.ts` returns `status: { name, label, colorCode }` for assets (the select already read `name`); `D/asset-management/labels/page.tsx` passes `status.name`; `c/assets/asset-label-batch-tool.tsx` takes `name?: string | null` in its row type (its queue mapper sets it in 2D-3).
 - **Guards:** LFG lost the five rows that counted 0 (LP1 of the four detail pages, LB1 of `D/maintenance/[id]/page.tsx`; `BUDGETS.LP1` is `{}`) and gained L10, which holds every `KEEP` row equal to its live count (R8): from now on the commit that moves an LFG site lowers its row in the same commit. The LFG and FMG comments name today's lines (M34). No budget went up; VFG changed one pin (Plex Mono); FMG changed comments only.
 - **Tests:** new files `tests/button-size-switch.test.ts` (2), `tests/dead-code-cleanup.test.ts` (7), `tests/spinner-motion-ui.test.ts` (1), `tests/status-name-api.test.ts` (2); `tests/design-system.test.ts` lost 6 tests for deleted names and gained 1; `tests/list-pages-ui.test.ts` gained 1 (M31), LFG 1 (L10). 2011 → 2020 tests.
@@ -2409,7 +2490,7 @@ Then replace the heading line `## <today>` (the newest, the only line with that 
 
 Branch `feat/ui-phase2d` (จาก `master` `71597e5`) · design `docs/superpowers/specs/2026-10-15-ui-phase2d-design.md` ข้อ 3.1 · plan `docs/superpowers/plans/2026-10-15-ui-phase2d-plan1.md` · ค่าทั้งหมดอยู่ใน `DESIGN.md` · plan แรกจาก 5 ของ 2D
 
-- **ขอบเขต:** ปุ่มเตี้ยลงเป็น 36px บนจอตั้งแต่ 768px · ลบโค้ดที่ไม่มีใครใช้ · แก้เล็ก 6 เรื่อง · API ค้นหาส่งชื่อสถานะภาษาอังกฤษเพิ่ม (อ่านอย่างเดียว ผู้ใช้อนุมัติ) · ไม่มีขั้นตอนงานใหม่ ไม่แตะฐานข้อมูล ไม่เพิ่ม token · การตรวจกรอกไม่เปลี่ยน
+- **ขอบเขต:** ปุ่มเตี้ยลงเป็น 36px บนจอตั้งแต่ 768px · ลบโค้ดที่ไม่มีใครใช้ · แก้เล็ก 5 เรื่อง · API ค้นหาส่งชื่อสถานะภาษาอังกฤษเพิ่ม (อ่านอย่างเดียว ผู้ใช้อนุมัติ) · ไม่มีขั้นตอนงานใหม่ ไม่แตะฐานข้อมูล ไม่เพิ่ม token · การตรวจกรอกไม่เปลี่ยน
 - **ปุ่ม:** ปุ่มที่ไม่ระบุขนาดและปุ่มไอคอนสูง 36px ตั้งแต่ 768px (เดิม 40) ระยะข้างตัวอักษร 14px · มือถือยัง 44 เท่าเดิม · ปุ่มที่อยู่แถวเดียวกับช่องกรอก 40px คง 40: ปุ่มไอคอนลบ เลื่อน และทำสำเนาของแถวกรอกซ้ำ 7 แถว (ฟอร์มทรัพย์สิน ฟอร์มหลายรายการ รุ่น หมวดหมู่) ใช้ขนาดใหม่ `icon-lg` และปุ่มพิมพ์บนแถบพิมพ์ป้ายใช้ `lg` · ปุ่มบนหัวหน้าเป็น `md` ทุกหน้า (ปุ่มปิดงาน ยกเลิก แก้ไข ของบันทึกการซ่อมด้วย) · ปุ่มท้าย dialog 36px
 - **ลบโค้ดตาย:** `ActionButton` (ปุ่ม "ลองอีกครั้ง" ของหน้าผิดพลาดใช้ `Button`) · helper ปุ่มและ class เก่าใน `src/lib/design-system.ts` 12 ตัว (ลิงก์ของหน้าความพร้อมใช้งานและลิงก์กลับของหน้านำเข้าเป็นปุ่มขอบขนาด `md`) · ปุ่มลบข้อมูลหลัก 2 ไฟล์ · `Badge` · helper เก่าของหน้ารายละเอียดทรัพย์สิน 2 ตัว · ขนาด compact ของปุ่มช่วยเหลือสถานะ · props ป้ายระหว่างทำงาน 10 จุด
 - **ข้อความ:** ลบ key ที่ไม่มีใครอ่าน 10 ตัว (`common.saving` `checkin.legacyReturnCreating` `asset.batchCheckDuplicatesRunning` `asset.componentInstalling` `asset.componentRemoving` `asset.statusCorrectionSubmitting` `auth.loggingIn` `asset.importing` `asset.recordingLabelPrint` `asset.latestMaintenance`) · ไม่เพิ่ม key
