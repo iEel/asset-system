@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { CheckCircle2, FileWarning } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
@@ -8,12 +7,15 @@ import { listAssetStateReviews } from "@/lib/asset-state-review-service"
 import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
 import { assetDataQualityRulesKey, parseAssetDataQualityRules, type AssetDataQualityRule } from "@/lib/data-quality-rules"
 import { buildDataQualityRuleHref } from "@/lib/data-quality-drilldown"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 import { DataQualityRuleForm } from "@/components/admin/data-quality-rule-form"
 import { AssetStateReviewWorkspace, type AssetStateReviewResponse } from "@/components/admin/asset-state-review-workspace"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type DataQualityPageProps = {
   params: Promise<{ locale: string }>
@@ -64,6 +66,7 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
             count={counts[rule.key] ?? 0}
             label={t(`rules.${rule.key}.label`)}
             description={t(`rules.${rule.key}.description`)}
+            stateLabel={rule.enabled ? (rule.severity === "danger" ? t("danger") : t("warning")) : tCommon("inactive")}
             viewLabel={tCommon("view")}
             href={buildDataQualityRuleHref(locale, rule.key)}
           />
@@ -78,7 +81,6 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
           title: t("assetStateReviews.title"),
           description: t("assetStateReviews.description"),
           scan: t("assetStateReviews.scan"),
-          scanning: t("assetStateReviews.scanning"),
           scanSuccess: t.raw("assetStateReviews.scanSuccess"),
           scanError: t("assetStateReviews.scanError"),
           loadError: t("assetStateReviews.loadError"),
@@ -195,11 +197,14 @@ async function getRuleCounts(warrantyThreshold: Date) {
   return { missingCustodian, missingSerial, missingPhoto, missingDepartment, missingPurchaseInfo, warrantyExpiring }
 }
 
+// A rule card is a panel (D9) with no tone fill: the severity is a status badge, filled only while the rule is on and
+// finds something; an off rule reads "ไม่ใช้งาน". "ดู" is the same on every card, so its name says which rule it opens.
 function RuleStatusCard({
   rule,
   count,
   label,
   description,
+  stateLabel,
   viewLabel,
   href,
 }: {
@@ -207,30 +212,25 @@ function RuleStatusCard({
   count: number
   label: string
   description: string
+  stateLabel: string
   viewLabel: string
   href: string
 }) {
   return (
-    <div className={`rounded-lg border p-4 ${rule.enabled ? severityClass(rule.severity) : "border-border bg-surface text-muted-foreground"}`}>
+    <div className={cn(getPanelClasses(), "p-4 sm:p-5")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {rule.enabled ? <FileWarning className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
-            <h2 className="font-semibold text-foreground">{label}</h2>
-          </div>
+          <h2 className="font-semibold text-foreground">{label}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <StatusBadge className="mt-2" label={stateLabel} tone={rule.enabled && count > 0 ? rule.severity : "muted"} />
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-foreground">{formatCount(count)}</div>
-          <Link href={href} className="mt-1 inline-flex text-xs font-medium text-primary hover:underline">
+          <div className="text-count num text-foreground">{formatCount(count)}</div>
+          <Link href={href} aria-label={`${viewLabel}: ${label}`} className={cn(linkVariants(), "mt-1 inline-flex min-h-11 items-center md:min-h-0")}>
             {viewLabel}
           </Link>
         </div>
       </div>
     </div>
   )
-}
-
-function severityClass(severity: AssetDataQualityRule["severity"]) {
-  return severity === "danger" ? "border-danger-border bg-danger-soft text-danger" : "border-warning-border bg-warning-soft text-warning"
 }

@@ -120,3 +120,15 @@ test("the state review queue is a divided ContentPanel with an md scan button, s
   assert.match(source, /<div className="space-y-3 p-4" role="status" aria-label=\{labels\.loading\}>/)
   assert.doesNotMatch(source, /rounded-full|hover:underline|ShieldAlert|AlertTriangle|text-lg font-semibold|size="lg"/)
 })
+
+test("data quality: rule cards are panels with a severity badge and a named view link, and the unread scanning label is gone (spec 2D D9, 2D-1 R6)", () => {
+  const source = read(`${D}admin/data-quality/page.tsx`)
+  assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<StatusBadge className="mt-2" label=\{stateLabel\} tone=\{rule\.enabled && count > 0 \? rule\.severity : "muted"\} \/>/)
+  assert.match(source, /<div className="text-count num text-foreground">\{formatCount\(count\)\}<\/div>/)
+  assert.match(source, /<Link href=\{href\} aria-label=\{`\$\{viewLabel\}: \$\{label\}`\} className=\{cn\(linkVariants\(\), "mt-1 inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  assert.doesNotMatch(source, /function severityClass\b|bg-(?:danger|warning)-soft|text-2xl font-bold|hover:underline|scanning: t\(/)
+  for (const locale of ["th", "en"] as const) {
+    assert.equal(messages(locale).dataQualityPage.assetStateReviews.scanning, undefined, `${locale}: the key no code reads is deleted`)
+  }
+})

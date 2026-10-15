@@ -3619,7 +3619,6 @@
       "title": "Asset state review queue",
       "description": "Review inconsistencies before acting. The system never changes an asset's status or condition automatically.",
       "scan": "Scan now",
-      "scanning": "Scanning",
       "scanSuccess": "Scanned {scanned} assets and found {created} new reviews",
       "scanError": "Could not scan asset states",
       "loadError": "Could not load the review queue",
