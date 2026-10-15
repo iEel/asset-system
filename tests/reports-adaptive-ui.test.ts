@@ -174,3 +174,10 @@ test("the report overview formats its counts and codes and names its preview tab
   assert.match(overviewView, /<EmptyNote>\{emptyLabel\}<\/EmptyNote>/)
   assert.doesNotMatch(overviewView, /toLocaleString/)
 })
+
+// Plan 2B-5 Task 12 (spec 2B §5.6, R-d): the catalog's one number is a StatStrip cell, at most 384px wide from sm (the
+// old card took half the row), and its count goes through formatCount.
+test("the report catalog shows its item count on StatStrip (spec 2B §5.6, R-d)", () => {
+  assert.match(catalogView, /<StatStrip className="sm:max-w-sm" items=\{\[\{ key: "catalogItems", label: labels\.catalogItems, value: formatCount\(reportCount\) \}\]\} \/>/)
+  assert.doesNotMatch(catalogView, /MetricCard|toLocaleString/)
+})

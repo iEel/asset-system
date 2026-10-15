@@ -2,7 +2,8 @@ import Link from "next/link"
 import type React from "react"
 import { Download } from "lucide-react"
 import { ReportPresetControls } from "@/components/reports/report-preset-controls"
-import { MetricCard } from "@/components/ui/metric-card"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { formatCount } from "@/lib/display-format"
 
 export type ReportRecurringExport = {
   key: string
@@ -90,9 +91,7 @@ export function ReportsCatalogView({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <MetricCard label={labels.catalogItems} value={reportCount.toLocaleString("th-TH")} />
-      </div>
+      <StatStrip className="sm:max-w-sm" items={[{ key: "catalogItems", label: labels.catalogItems, value: formatCount(reportCount) }]} />
 
       <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4">
