@@ -235,31 +235,21 @@ test("R1 tone colors never fade with opacity", () => {
 })
 
 const NEUTRAL_FILL_OPACITY = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg-(?:muted|accent)|border-border)\/\d+/g
-const TABLE_HEADER_LINE = /<th(?:ead)?\b/
 
-test("R7 neutral fills are opaque tokens outside table headers", () => {
+// R7, locked by phase 2B plan 5 (spec 2B §9.2.2): every neutral fill is an opaque token, table headers included; the
+// <th line filter of plans 2B-1 to 2B-4 is gone. The budget keeps its name, which the guard scripts of the 2B plans
+// read, and one row: the header of the import preview table, a 2C batch 4 file that 2D moves (DEVELOPER_HANDOFF.md,
+// 2C plan 4); then the budget is {}. Lower a number in the task that removes a site; never raise one.
+const TABLE_HEADER_FILLS: Record<string, number> = {
+  "src/components/assets/asset-import-preview-panel.tsx": 1, // the import preview table header (2D)
+}
+
+test("R7 neutral fills are opaque tokens, table headers included", () => {
   const css = globals()
   assert.match(css, /--row-hover: #[0-9A-F]{6};/)
   assert.match(css, /--border-soft: #[0-9A-F]{6};/)
   assert.match(css, /--color-row-hover: var\(--row-hover\);/, "without this line Tailwind drops bg-row-hover without an error")
   assert.match(css, /--color-border-soft: var\(--border-soft\);/, "without this line Tailwind drops border-border-soft without an error")
-  const outsideTableHeaders = sources.map((file) => ({
-    path: file.path,
-    source: file.source.split("\n").filter((line) => !TABLE_HEADER_LINE.test(line)).join("\n"),
-  }))
-  assert.deepEqual(findMatches(outsideTableHeaders, NEUTRAL_FILL_OPACITY), [])
-})
-
-// R7 per file: the table-header fills (bg-muted/NN, bg-accent/NN, border-border/NN) at d38a0ee, all on <thead lines.
-// The commit that moves a table onto DataTable deletes its row; never raise one. Phase 2B plan 5 drops the <th line
-// filter above and keeps one test with the rows of the 2C batch 4 files; 2C plan 4 or 2D empties those.
-const TABLE_HEADER_FILLS: Record<string, number> = {
-  // 2C plan 4 or 2D (2C batch 4 files, R-e)
-  "src/components/assets/asset-import-preview-panel.tsx": 1,
-}
-
-test("R7 interim: table-header fills wait for DataTable (2B), file by file", () => {
-  // A file missing from TABLE_HEADER_FILLS may have none. The commit that moves a table onto DataTable deletes its row.
   assertWithinBudget(NEUTRAL_FILL_OPACITY, TABLE_HEADER_FILLS)
 })
 

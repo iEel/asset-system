@@ -12,11 +12,11 @@ import {
   type SourceFile,
 } from "./helpers/source-files.ts"
 
-// Phase 2B list-frame guards (spec 2B §9.3, rulings I11, I14 and I15). BUDGETS start at the d38a0ee counts
-// (spec §10.4 table C) and only go down: the commit that moves a site lowers that file's rows, deleting rows that
-// reach 0, and adds the file to MIGRATED_LIST_FILES once 2B is done with it. A file missing from a budget may have
-// none; a listed file may have at most its number. Never raise a number. Phase 2B plan 5 sets BUDGETS to KEEP;
-// phase 2D widens the guards to all of src and sets every budget to {}. 2C never needs to edit this file.
+// Phase 2B list-frame guards (spec 2B §9.3, rulings I11, I14 and I15). BUDGETS started at the d38a0ee counts
+// (spec §10.4 table C) and only went down: the commit that moved a site lowered that file's rows, deleting rows that
+// reached 0, and added the file to MIGRATED_LIST_FILES once 2B was done with it. A file missing from a budget may have
+// none; a listed file may have at most its number. Never raise a number. Since phase 2B plan 5, BUDGETS equals KEEP
+// (test L9); phase 2D widens the guards to all of src and sets every budget to {}. 2C never needs to edit this file.
 const sources = readSourceFiles("src")
 const D = "src/app/[locale]/(dashboard)/"
 const C = "src/components/"
@@ -127,6 +127,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}dashboard/page.tsx`,
   `${D}work-center/page.tsx`,
   `${C}master-data/master-data-layout.tsx`,
+  `${C}admin/role-permission-form.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -203,17 +204,15 @@ const TITLES: Record<string, string> = {
   LR1: "delete buttons in table rows move into the ⋯ menu of RowActions",
 }
 
-// ---- Budgets at d38a0ee (spec §10.4 table C, per file as spec §9.4.1–9.4.2). Groups name the first 2B plan that
-// edits the file (spec §8.5–8.9, I12); "→ n (KEEP)" = what stays after 2B, and why. The LB1 rows marked 0 → 1 are the
-// only two rows above the d38a0ee count (spec §9.4.1 note "LB1 0→1").
+// ---- Budgets, locked to KEEP since plan 2B-5 (test L9). They started at the d38a0ee counts (spec §10.4 table C, per
+// file as spec §9.4.1–9.4.2); groups name the first 2B plan that edited the file (spec §8.5–8.9, I12); "→ n (KEEP)" =
+// what stays after 2B, and why. The LB1 rows marked 0 → 1 were the only two rows above the d38a0ee count.
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     "src/app/[locale]/(auth)/login/page.tsx": 1, // → 1 (KEEP): no shell (phase 3, with the login frame)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page
-    [`${C}assets/asset-label-batch-tool.tsx`]: 1, // → 1 (KEEP): 2C plan 4 moves it onto PageHeader (I13)
     [`${C}assets/asset-label-print.tsx`]: 1, // → 1 (KEEP): print page
-    [`${C}assets/asset-scan-search-tool.tsx`]: 1, // → 1 (KEEP): 2C plan 4 moves it onto PageHeader (I13)
     [`${C}audit/audit-scan-header.tsx`]: 1, // → 1 (KEEP): field scan header, its own variant
   },
   LH2: {
@@ -242,8 +241,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LF1: {
   },
   LT1: {
-    // 2B-1
-    [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}assets/asset-import-preview-panel.tsx`]: 5, // → 5 (KEEP): 2C batch 4 (R-e, O13)
   },
@@ -257,7 +254,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV1: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}admin/IntegrationClientManager.tsx`]: 3, // → 3 (KEEP): R-f, 2C plan 4
     [`${C}assets/asset-import-preview-panel.tsx`]: 4, // → 4 (KEEP): R-f, 2C plan 4
     [`${C}assets/asset-label-batch-tool.tsx`]: 1, // → 1 (KEEP): R-f, 2C plan 4
   },
@@ -319,15 +315,15 @@ const BUDGETS: Record<string, Record<string, number>> = {
 }
 
 // What may stay after phase 2B, with the reason (spec §9.4.3, I11, I14). L0 holds every file of MIGRATED_LIST_FILES
-// to these numbers. 2C plan 4 or 2D empties the rest; phase 2D sets every budget to {}. Change a row only with a spec ruling.
+// to these numbers and L9 holds BUDGETS to them. 2C plan 4 emptied four rows (LH1 of the label batch and scan tools,
+// LT1 of the role permission form, LV1 of the integration manager) and plan 2B-5 deleted them; phase 2D empties the
+// rest and sets every budget to {}. Change a row only with a spec ruling.
 const KEEP: Record<string, Record<string, number>> = {
   LH1: {
     "src/app/[locale]/(auth)/login/page.tsx": 1, // no shell (phase 3, with the login frame)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page
     [`${C}assets/asset-label-print.tsx`]: 1, // print page
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header, its own variant
-    [`${C}assets/asset-scan-search-tool.tsx`]: 1, // 2C plan 4 moves it onto PageHeader (I13)
-    [`${C}assets/asset-label-batch-tool.tsx`]: 1, // 2C plan 4 moves it onto PageHeader (I13)
   },
   LB1: {
     [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1412, not a page back
@@ -345,11 +341,9 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${D}disposal/[id]/page.tsx`]: 1, // O11, 2C plan 5
   },
   LT1: {
-    [`${C}admin/role-permission-form.tsx`]: 2, // 2C batch 4 (R-e)
     [`${C}assets/asset-import-preview-panel.tsx`]: 5, // 2C batch 4 (R-e, O13)
   },
   LV1: {
-    [`${C}admin/IntegrationClientManager.tsx`]: 3, // R-f, 2C plan 4
     [`${C}assets/asset-import-preview-panel.tsx`]: 4, // R-f, 2C plan 4
     [`${C}assets/asset-label-batch-tool.tsx`]: 1, // R-f, 2C plan 4
   },
@@ -447,4 +441,12 @@ test("L0 a file 2B is done with keeps only what KEEP allows, and every row names
     }
   }
   assert.deepEqual(problems, [])
+})
+
+// The lock of phase 2B (spec 2B §9.8, I15; plan 2B-5 Task 17): every budget row is a KEEP row with the same number, so
+// phase 2D only has to empty KEEP and widen the guards to all of src. A row whose count reaches 0 is deleted from both
+// tables, never kept at 0 and never raised. An empty guard object ({}) counts as no rows.
+test("L9 every 2B budget equals KEEP, so phase 2D only empties KEEP", () => {
+  const rows = (table: Record<string, Record<string, number>>) => Object.fromEntries(Object.entries(table).filter(([, budget]) => Object.keys(budget).length > 0))
+  assert.deepEqual(rows(BUDGETS), rows(KEEP))
 })

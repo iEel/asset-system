@@ -790,3 +790,12 @@ test("the work center: PageHeader, a summary StatStrip, the view switch and the 
     assert.equal(typeof messages.workCenter.viewNavigation, "string", `${locale}: workCenter.viewNavigation`)
   }
 })
+
+// Plan 2B-5 Task 17 (spec 2B §5.14, §9.10 #3, I10, I16): guard LN1 counts only aria-current="page" set by hand, so it
+// never saw the link rows that had no aria-current at all. The four of plan 2B-5 are named here: the log quick
+// filters, the approval inbox chips, the history filter groups and the work-center switch are TabNav.
+test("plan 2B-5: the link rows guard LN1 cannot see are TabNav (spec 2B §5.14, §9.10 #3)", () => {
+  for (const path of [`${D}admin/logs/page.tsx`, `${D}admin/approvals/page.tsx`, `${D}admin/approvals/history/page.tsx`, `${D}work-center/page.tsx`]) {
+    assert.match(read(path), /<TabNav\b/, `${path}: no <TabNav`)
+  }
+})
