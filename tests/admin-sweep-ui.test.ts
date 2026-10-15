@@ -85,3 +85,10 @@ test("roles: create is a header button, the role kinds and the matrix roles are 
   assert.match(source, /<StatusBadge label=\{role\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{role\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /rounded-full|ActiveBadge|bg-(?:info|warning|success)-soft|text-white|\bfixed\b/)
 })
+
+test("users: role chips are the shared Chip and the status is a StatusBadge (spec 2D D7, M22)", () => {
+  const source = read(`${D}admin/users/page.tsx`)
+  assert.match(source, /<Chip key=\{userRole\.role\.name\}>\{userRole\.role\.displayNameTh \|\| userRole\.role\.displayName\}<\/Chip>/)
+  assert.match(source, /<StatusBadge label=\{user\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{user\.isActive \? "success" : "muted"\} \/>/)
+  assert.doesNotMatch(source, /ActiveBadge|bg-info-soft|text-white/)
+})

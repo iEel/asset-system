@@ -4,16 +4,17 @@ import { Pencil, Plus } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import {
-  ActiveBadge,
-  MasterDataSearch,
-} from "@/components/master-data/master-data-layout"
+import { MasterDataSearch } from "@/components/master-data/master-data-layout"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { Nil, orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { formatDateTime } from "@/lib/utils"
@@ -31,7 +32,9 @@ type UserSort = (typeof userSorts)[number]
 export default async function UsersPage({ params, searchParams }: UsersPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "user", "view")
+  // Named currentUser: the rows below call each listed account `user`.
+  const currentUser = await requirePagePermission(locale, "user", "view")
+  const canCreate = hasPermission(currentUser, "user", "create")
 
   const t = await getTranslations("adminUsersPage")
   const tCommon = await getTranslations("common")
@@ -89,7 +92,18 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("title")} meta={t("subtitle")} />
+      <PageHeader
+        title={t("title")}
+        meta={t("subtitle")}
+        actions={
+          canCreate ? (
+            <Link href={`${basePath}/new`} className={buttonVariants({ size: "md" })}>
+              <Plus aria-hidden="true" />
+              {t("createTitle")}
+            </Link>
+          ) : undefined
+        }
+      />
 
       <MasterDataSearch
         action={basePath}
@@ -168,21 +182,13 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                         <Nil />
                       ) : (
                         user.userRoles.map((userRole) => (
-                          <span key={userRole.role.name} className="inline-flex rounded-full bg-info-soft px-2 py-1 text-xs font-medium text-info">
-                            {userRole.role.displayNameTh || userRole.role.displayName}
-                          </span>
+                          <Chip key={userRole.role.name}>{userRole.role.displayNameTh || userRole.role.displayName}</Chip>
                         ))
                       )}
                     </div>
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
-                    {user.isActive ? (
-                      <ActiveBadge label={tCommon("active")} />
-                    ) : (
-                      <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                        {tCommon("inactive")}
-                      </span>
-                    )}
+                    <StatusBadge label={user.isActive ? tCommon("active") : tCommon("inactive")} tone={user.isActive ? "success" : "muted"} />
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap text-muted-foreground">
                     {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : <Nil />}
@@ -202,14 +208,6 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
           )}
         </DataTableBody>
       </DataTable>
-
-      <Link
-        href={`${basePath}/new`}
-        className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary-hover"
-      >
-        <Plus className="h-4 w-4" />
-        {t("createTitle")}
-      </Link>
     </div>
   )
 }

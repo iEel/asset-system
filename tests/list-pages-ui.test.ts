@@ -122,12 +122,13 @@ test("suppliers: the page and its list view build on PageHeader, StatStrip, Data
   assert.equal(existsSync(`${C}master-data/supplier-delete-button.tsx`), false, "the wrapper has no caller left (I5)")
 })
 
-test("users: edit is the row's only command, so RowActions draws no ⋯, and the floating create button stays (spec 2B §5.3, R-q)", () => {
+test("users: edit is the row's only command, so RowActions draws no ⋯, and create is a header button for who may create (spec 2B §5.3; 2D M13, D11)", () => {
   const source = read(`${D}admin/users/page.tsx`)
   assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/)
   assert.doesNotMatch(source, /deleteAction=/)
-  assert.match(source, /<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>/)
-  assert.match(source, /className="fixed bottom-6 right-6 [^"]*shadow-lg/, "R-q: phase 2D moves the floating button")
+  assert.match(source, /const canCreate = hasPermission\(currentUser, "user", "create"\)/)
+  assert.match(source, /<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{\n\s+canCreate \? \(\n\s+<Link href=\{`\$\{basePath\}\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
+  assert.doesNotMatch(source, /\bfixed bottom-|shadow-lg|rounded-full/)
   assert.match(source, /hiddenInputs=\{\{ pageSize: listState\.pageSize, sort: listState\.sort, direction: listState\.direction \}\}/)
 })
 
