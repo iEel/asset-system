@@ -59,12 +59,6 @@ export function getWarrantyPanelClass(tone: "success" | "warning" | "danger" | "
   return "border-border bg-background"
 }
 
-export function getHealthPanelClass(tone: "success" | "warning" | "danger") {
-  if (tone === "success") return "border-success-border bg-success-soft"
-  if (tone === "warning") return "border-warning-border bg-warning-soft"
-  return "border-danger-border bg-danger-soft"
-}
-
 export function getHealthBadgeClass(tone: "success" | "warning" | "danger") {
   if (tone === "success") return "bg-success-soft text-success"
   if (tone === "warning") return "bg-warning-soft text-warning"
@@ -74,13 +68,6 @@ export function getHealthBadgeClass(tone: "success" | "warning" | "danger") {
 export function getActivityToneClass(tone: AssetDetailTone) {
   if (tone === "success") return "border-success-border bg-success-soft"
   if (tone === "info") return "border-info-border bg-info-soft"
-  if (tone === "warning") return "border-warning-border bg-warning-soft"
-  if (tone === "danger") return "border-danger-border bg-danger-soft"
-  return "border-border bg-background"
-}
-
-export function getSummaryToneClass(tone: "success" | "warning" | "danger" | "neutral") {
-  if (tone === "success") return "border-success-border bg-success-soft"
   if (tone === "warning") return "border-warning-border bg-warning-soft"
   if (tone === "danger") return "border-danger-border bg-danger-soft"
   return "border-border bg-background"

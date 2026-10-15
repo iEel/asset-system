@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
+import * as assetDetailFormat from "../src/lib/asset-detail-format.ts"
 
 // Plan 2D-1 (spec 2D §4.1, D12): code with no caller is deleted, after its last callers move to the shared parts.
 // Each test pins one deletion. Grep src and tests before you delete anything (spec 2D §4.1). Sources are read with LF.
@@ -38,4 +39,9 @@ test("Badge and badgeVariants are gone; the status badge keeps its variants (spe
   assert.match(variants, /^import \{ cva \} from "class-variance-authority"\n\n\/\/ Two tiers:/)
   assert.match(variants, /export const statusBadgeVariants = cva\(/)
   assert.match(variants, /export const statusMarkerVariants = cva\(/)
+})
+
+test("the old panel helpers of the asset detail page are gone (spec 2D M9)", () => {
+  for (const name of ["getHealthPanelClass", "getSummaryToneClass"]) assert.equal(name in assetDetailFormat, false, name)
+  assert.equal(typeof assetDetailFormat.getHealthBadgeClass, "function", "the badge helper the page uses stays")
 })
