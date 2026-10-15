@@ -90,12 +90,6 @@ function confirmOptionObjects(source: string): string[] {
   })
 }
 
-// Files whose confirm() still has no verb. The commit that names one removes its line (a two-way ratchet); the last one
-// makes the test strict.
-const CONFIRMS_WITHOUT_A_VERB = new Set<string>([
-  "src/components/master-data/supplier-form.tsx", // the unsaved-changes confirm
-])
-
 test("every confirm() names its action with a verb (K12, spec 2C §5.11 G)", () => {
   const unnamed = new Set<string>()
   let objects = 0
@@ -107,8 +101,7 @@ test("every confirm() names its action with a verb (K12, spec 2C §5.11 G)", () 
     }
   }
   assert.ok(objects >= 14, `the reader found only ${objects} confirm() options`)
-  assert.deepEqual([...unnamed].filter((path) => !CONFIRMS_WITHOUT_A_VERB.has(path)), [], "give the confirm a confirmLabel that says its verb")
-  assert.deepEqual([...CONFIRMS_WITHOUT_A_VERB].filter((path) => !unnamed.has(path)), [], "it names its action now: remove it from CONFIRMS_WITHOUT_A_VERB")
+  assert.deepEqual([...unnamed], [], "give the confirm a confirmLabel that says its verb")
 })
 
 // The verb labels batch 5 adds (spec 2C §5.10) and the expressions that read them, counted per file.
@@ -132,6 +125,12 @@ const BATCH_5_VERBS: Array<{ key: string; th: string; en: string; reads: Array<[
       ["src/components/disposal/disposal-bulk-execution.tsx", 'confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })', 1],
       ["src/app/[locale]/(dashboard)/disposal/page.tsx", 'discardSelectionAction: t("bulkDiscardSelectionAction"),', 2],
     ],
+  },
+  {
+    key: "supplier.unsavedChangesLeave",
+    th: "ออกโดยไม่บันทึก",
+    en: "Leave without saving",
+    reads: [["src/components/master-data/supplier-form.tsx", 'confirm({ title: t("unsavedChangesConfirm"), confirmLabel: t("unsavedChangesLeave"), tone: "destructive" })', 1]],
   },
 ]
 

@@ -94,7 +94,7 @@ export function SupplierForm({
     event.preventDefault()
     const href = event.currentTarget.getAttribute("href")
     if (!href) return
-    void confirm({ title: t("unsavedChangesConfirm"), tone: "destructive" }).then((confirmed) => {
+    void confirm({ title: t("unsavedChangesConfirm"), confirmLabel: t("unsavedChangesLeave"), tone: "destructive" }).then((confirmed) => {
       if (confirmed) router.push(href)
     })
   }
