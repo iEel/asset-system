@@ -16,3 +16,12 @@ test("notification center actions: the open link and the two commands are outlin
   assert.equal(source.match(/disabled=\{isPending\}/g)?.length, 3, "the two buttons and the assignee select")
   assert.doesNotMatch(source, /<button\b|disabled:opacity|\bh-9\b|hover:bg-accent/)
 })
+
+const D = "src/app/[locale]/(dashboard)/"
+
+test("notifications: the cards use the panel classes and the count is a StatusBadge (spec 2D D9, M30)", () => {
+  const source = read(`${D}notifications/page.tsx`)
+  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}/g)?.length, 2)
+  assert.match(source, /<StatusBadge label=\{formatCount\(item\.count\)\} tone=\{item\.tone\} \/>/)
+  assert.doesNotMatch(source, /function toneClass\b|rounded-full|rounded-lg border/)
+})

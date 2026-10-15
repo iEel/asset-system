@@ -2,8 +2,10 @@ import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { requireAuth } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { getNotificationCenter } from "@/lib/notification-summary"
+import { cn } from "@/lib/utils"
 import { NotificationCenterActions } from "@/components/notifications/notification-center-actions"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { EmptyNote } from "@/components/ui/empty-note"
@@ -74,12 +76,12 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
           <EmptyNote padded>{t("empty")}</EmptyNote>
         ) : (
           center.items.map((item) => (
-            <article key={item.key} className="rounded-lg border bg-surface p-4">
+            <article key={item.key} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className={item.isSuppressed ? "font-semibold text-muted-foreground" : "font-semibold text-foreground"}>{t(item.key)}</h2>
-                    <span className={toneClass(item.tone)}>{formatCount(item.count)}</span>
+                    <StatusBadge label={formatCount(item.count)} tone={item.tone} />
                     {item.isRead ? <StatusBadge label={t("read")} tone="muted" /> : null}
                     {item.isSnoozed ? <StatusBadge label={t("snoozed")} tone="muted" /> : null}
                   </div>
@@ -118,7 +120,7 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
           <EmptyNote padded>{t("deliveredDigestEmpty")}</EmptyNote>
         ) : (
           deliveredNotifications.map((notification) => (
-            <article key={notification.id} className="rounded-lg border border-border bg-surface p-4">
+            <article key={notification.id} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
               <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -136,12 +138,6 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
       </section>
     </div>
   )
-}
-
-function toneClass(tone: "danger" | "warning" | "primary") {
-  if (tone === "danger") return "rounded-full bg-danger-soft px-2 py-0.5 text-xs font-semibold text-danger"
-  if (tone === "warning") return "rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning"
-  return "rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary"
 }
 
 function formatDate(value: string, locale: string) {
