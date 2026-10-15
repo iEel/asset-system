@@ -3117,7 +3117,8 @@
       "request": "ยื่นคำขอ",
       "decision": "พิจารณา",
       "execution": "ตัดจำหน่ายจริง"
-    }
+    },
+    "bulkDiscardSelectionAction": "ละทิ้งรายการที่เลือก"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

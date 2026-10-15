@@ -76,6 +76,7 @@ export type DisposalBulkApprovalCopy = {
   cancel: string
   zeroEligible: string
   discardSelection: string
+  discardSelectionAction: string
   errors: Record<DisposalBulkApprovalCode, string>
 }
 
@@ -324,7 +325,7 @@ export function DisposalBulkApprovalProvider({
   }
 
   async function discardSelectionThen(proceed: () => void) {
-    const confirmed = await confirm({ title: copy.discardSelection, tone: "destructive" })
+    const confirmed = await confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })
     if (!confirmed) return
     clear()
     bypassGuardRef.current = true

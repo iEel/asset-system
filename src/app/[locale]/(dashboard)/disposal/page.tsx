@@ -235,6 +235,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     cancel: t("bulkCancel"),
     zeroEligible: t("bulkZeroEligible"),
     discardSelection: t("bulkDiscardSelection"),
+    discardSelectionAction: t("bulkDiscardSelectionAction"),
     errors: {
       DISPOSAL_REQUEST_NOT_FOUND: t("bulkErrors.DISPOSAL_REQUEST_NOT_FOUND"),
       DISPOSAL_INVALID_STAGE: t("bulkErrors.DISPOSAL_INVALID_STAGE"),

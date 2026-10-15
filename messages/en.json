@@ -3117,7 +3117,8 @@
       "request": "Request",
       "decision": "Decision",
       "execution": "Execution"
-    }
+    },
+    "bulkDiscardSelectionAction": "Discard selection"
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

@@ -93,7 +93,6 @@ function confirmOptionObjects(source: string): string[] {
 // Files whose confirm() still has no verb. The commit that names one removes its line (a two-way ratchet); the last one
 // makes the test strict.
 const CONFIRMS_WITHOUT_A_VERB = new Set<string>([
-  "src/components/disposal/disposal-bulk-approval.tsx", // the discard-selection confirm
   "src/components/disposal/disposal-bulk-execution.tsx", // the discard-selection confirm
   "src/components/master-data/supplier-form.tsx", // the unsaved-changes confirm
 ])
@@ -122,6 +121,16 @@ const BATCH_5_VERBS: Array<{ key: string; th: string; en: string; reads: Array<[
     reads: [
       ["src/components/admin/IntegrationClientManager.tsx", 'confirm({ title: labels.confirmScopeExpansion, confirmLabel: labels.confirmScopeExpansionAction })', 1],
       ["src/app/[locale]/(dashboard)/admin/integrations/page.tsx", 'confirmScopeExpansionAction: t("confirmScopeExpansionAction"),', 1],
+    ],
+  },
+  {
+    // One key for both bulk confirms: they mean the same thing (spec 2C §5, ruling ด17).
+    key: "disposalPage.bulkDiscardSelectionAction",
+    th: "ละทิ้งรายการที่เลือก",
+    en: "Discard selection",
+    reads: [
+      ["src/components/disposal/disposal-bulk-approval.tsx", 'confirm({ title: copy.discardSelection, confirmLabel: copy.discardSelectionAction, tone: "destructive" })', 1],
+      ["src/app/[locale]/(dashboard)/disposal/page.tsx", 'discardSelectionAction: t("bulkDiscardSelectionAction"),', 1],
     ],
   },
 ]
