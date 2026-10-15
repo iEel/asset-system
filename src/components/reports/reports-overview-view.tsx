@@ -1,8 +1,11 @@
 import Link from "next/link"
 import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { formatCount } from "@/lib/display-format"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
+import { cn } from "@/lib/utils"
 
 export type ReportCountRow = {
   key: string
@@ -75,14 +78,14 @@ export function ReportsOverviewView({
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="flex flex-col gap-2 border-b border-border px-5 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{labels.previewTitle}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{labels.previewHelp}</p>
-          </div>
-          <span className="text-xs font-medium text-muted-foreground">{labels.previewCount}</span>
-        </div>
+      <ContentPanel
+        divided
+        flush
+        className="overflow-hidden"
+        title={labels.previewTitle}
+        description={labels.previewHelp}
+        actions={<span className="text-meta text-muted-foreground">{labels.previewCount}</span>}
+      >
         <ResponsiveReportList
           rows={previewRows}
           rowKey={(asset) => asset.id}
@@ -97,7 +100,7 @@ export function ReportsOverviewView({
               render: (asset) => (
                 <Link
                   href={`/${locale}/assets/${asset.id}`}
-                  className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+                  className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
                 >
                   <span className="tag font-medium">{asset.assetTag}</span>
                 </Link>
@@ -118,7 +121,7 @@ export function ReportsOverviewView({
             { key: "status", label: labels.status, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.status },
           ]}
         />
-      </section>
+      </ContentPanel>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <ReportTable title={labels.byStatus} rows={breakdowns.status} emptyLabel={emptyLabel} />
@@ -134,8 +137,7 @@ export function ReportsOverviewView({
 
 function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportCountRow[]; emptyLabel: string }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-5">
-      <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
+    <ContentPanel title={title}>
       <div className="space-y-2">
         {rows.length === 0 ? (
           <EmptyNote>{emptyLabel}</EmptyNote>
@@ -148,6 +150,6 @@ function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportC
           ))
         )}
       </div>
-    </section>
+    </ContentPanel>
   )
 }
