@@ -120,6 +120,7 @@ export default async function AssetLabelsToolPage({ params, searchParams }: Asse
               }
             : { count: 0, batchId: null, tapeSize: null, printedAt: null, printedBy: null },
           status: {
+            name: asset.status?.name ?? null,
             label: locale === "th" ? asset.status?.nameTh ?? asset.status?.name ?? "-" : asset.status?.name ?? asset.status?.nameTh ?? "-",
             colorCode: asset.status?.colorCode ?? null,
           },

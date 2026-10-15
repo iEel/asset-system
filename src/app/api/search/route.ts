@@ -26,6 +26,7 @@ type SearchResult = {
   assetTag?: string
   serialNumber?: string | null
   status?: {
+    name: string
     label: string
     colorCode: string | null
   }
@@ -129,6 +130,7 @@ async function searchAssets(query: string, locale: string): Promise<SearchResult
       assetTag: asset.assetTag,
       serialNumber: asset.serialNumber,
       status: {
+        name: asset.status.name,
         label: statusLabel,
         colorCode: asset.status.colorCode,
       },

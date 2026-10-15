@@ -36,7 +36,7 @@ type SearchResult = {
   serialNumber: string | null
   createdAt?: string | null
   labelPrint?: LabelPrintInfo
-  status: { label: string; colorCode: string | null }
+  status: { name?: string | null; label: string; colorCode: string | null }
   meta: {
     custodian: string | null
     company?: string
