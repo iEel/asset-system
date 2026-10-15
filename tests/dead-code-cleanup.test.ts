@@ -64,3 +64,25 @@ test("the busy labels nobody reads are gone from the props and the pages (spec 2
   // The label print state stays: it drives busy={recordingPrint} on the print button.
   assert.match(read(`${C}assets/asset-label-print.tsx`), /const \[recordingPrint, setRecordingPrint\] = useState\(false\)/)
 })
+
+test("the busy keys nobody reads are gone from both languages (spec 2D M8, M9)", () => {
+  const keys = [
+    "common.saving",
+    "checkin.legacyReturnCreating",
+    "asset.batchCheckDuplicatesRunning",
+    "asset.componentInstalling",
+    "asset.componentRemoving",
+    "asset.statusCorrectionSubmitting",
+    "auth.loggingIn",
+    "asset.importing",
+    "asset.recordingLabelPrint",
+    "asset.latestMaintenance",
+  ]
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as Record<string, Record<string, unknown>>
+    for (const key of keys) {
+      const [namespace, name] = key.split(".")
+      assert.equal(name in (messages[namespace] ?? {}), false, `${locale} ${key}`)
+    }
+  }
+})

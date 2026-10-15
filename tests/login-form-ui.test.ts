@@ -42,16 +42,14 @@ test("failed login clears and refocuses only the password while exposing a live 
   assert.match(content, /router\.replace\(callbackUrl\)/)
 })
 
-test("login translations include visibility and loading copy", () => {
+test("login translations include the password visibility copy", () => {
   const thai = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const english = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   assert.equal(thai.auth.showPassword, "แสดงรหัสผ่าน")
   assert.equal(thai.auth.hidePassword, "ซ่อนรหัสผ่าน")
-  assert.equal(thai.auth.loggingIn, "กำลังเข้าสู่ระบบ...")
   assert.equal(english.auth.showPassword, "Show password")
   assert.equal(english.auth.hidePassword, "Hide password")
-  assert.equal(english.auth.loggingIn, "Signing in...")
 })
 
 // Phase 2C batch 4 (spec 2C §8.9, §4.18 item 10, §6.3 #93, I35): FieldLabel + Input (the first test pins the literal

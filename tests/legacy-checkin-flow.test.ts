@@ -60,7 +60,6 @@ test("legacy check-in messages exist in Thai and English", () => {
     "legacyReturnTitle",
     "legacyReturnDescription",
     "legacyReturnAction",
-    "legacyReturnCreating",
     "legacyReturnCreated",
     "legacyReturnFailed",
     "legacyReturnCurrentHolder",

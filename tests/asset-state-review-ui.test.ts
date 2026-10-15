@@ -34,18 +34,14 @@ test("snapshot loading groups active checkouts by handover mode", () => {
   assert.match(service, /openUnknownHandovers/)
 })
 
-test("placeholder labels reach the workspace raw and common.saving exists", () => {
+test("placeholder labels reach the workspace raw", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/admin/data-quality/page.tsx", "utf8")
   assert.match(page, /total: t\.raw\("assetStateReviews\.total"\)/)
   assert.match(page, /scanSuccess: t\.raw\("assetStateReviews\.scanSuccess"\)/)
-  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
-  assert.equal(th.common.saving, "กำลังบันทึก...")
-  assert.equal(en.common.saving, "Saving...")
 })
 
 // Phase 2C batch 4 (spec 2C §5.5 row 1, §4.3 F5–F6, K13): the review dialog on the dialog parts. The confirm is busy while
-// it saves and keeps its label (common.saving stays for other screens); the reason shows the star its required enforces.
+// it saves and keeps its label (plan 2D-1 deleted the unread common.saving); the reason shows the star its required enforces.
 test("the asset state review dialog uses the dialog parts, shared fields and a busy confirm that keeps its label (2C batch 4)", () => {
   const dialog = readFileSync("src/components/admin/asset-state-review-dialog.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(dialog, /<form\n\s+className=\{accessibleDialogFormClasses\}\n\s+onSubmit=\{\(event\) => \{/)
