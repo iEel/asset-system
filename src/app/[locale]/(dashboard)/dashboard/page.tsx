@@ -1,21 +1,7 @@
 import Link from "next/link"
-import type { ReactNode } from "react"
 import { redirect } from "next/navigation"
 import { getMessages, getTranslations } from "next-intl/server"
-import {
-  Package,
-  Monitor,
-  Wrench,
-  AlertTriangle,
-  Shield,
-  ArrowRight,
-  ClipboardCheck,
-  FileCheck2,
-  Trash2,
-  ArrowDownRight,
-  ArrowUpRight,
-  Minus,
-} from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import {
@@ -34,7 +20,13 @@ import { buildSystemLogPresentation, type SystemLogPresentation } from "@/lib/sy
 import { cn, formatDateTime } from "@/lib/utils"
 import { formatCount } from "@/lib/display-format"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { splitStatRows } from "@/lib/stat-strip-rows"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type DashboardPageProps = {
   params: Promise<{ locale: string }>
@@ -42,25 +34,13 @@ type DashboardPageProps = {
 
 type DashboardActionTone = "primary" | "warning" | "danger"
 
+// tone says whether a count above 0 needs action (warning, danger); it is never a fill (R-d).
 type DashboardActionCard = {
   label: string
   value: number
   detail: string
   href: string
-  icon: ReactNode
   tone: DashboardActionTone
-}
-
-const actionCardToneClass: Record<DashboardActionTone, string> = {
-  primary: "border-primary-border bg-primary-soft",
-  warning: "border-warning-border bg-warning-soft",
-  danger: "border-danger-border bg-danger-soft",
-}
-
-const actionCardIconClass: Record<DashboardActionTone, string> = {
-  primary: "text-primary",
-  warning: "text-warning",
-  danger: "text-danger",
 }
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
@@ -190,14 +170,15 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   )
   const pendingRepair = repairStatusMetrics.pendingRepair.count
   const underMaintenance = repairStatusMetrics.underMaintenance.count
-  const kpiCards = [
-    { label: t("totalAssets"), value: formatCount(totalAssets), icon: <Package size={24} />, color: "text-primary", href: `/${locale}/assets` },
-    { label: t("inUse"), value: formatCount(inUse), icon: <Monitor size={24} />, color: "text-success", href: `/${locale}/assets` },
-    { label: t("readyToDeploy"), value: formatCount(ready), icon: <Shield size={24} />, color: "text-info", href: `/${locale}/assets` },
-    { label: t("pendingRepair"), value: formatCount(pendingRepair), icon: <Wrench size={24} />, color: "text-warning", href: repairStatusMetrics.pendingRepair.href },
-    { label: t("underMaintenance"), value: formatCount(underMaintenance), icon: <Wrench size={24} />, color: "text-danger", href: repairStatusMetrics.underMaintenance.href },
-    { label: t("warrantyExpiring"), value: formatCount(warrantyExpiring), icon: <AlertTriangle size={24} />, color: "text-danger", href: `/${locale}/assets` },
-    { label: t("crossScopeAssets"), value: formatCount(crossScopeTotal), icon: <AlertTriangle size={24} />, color: "text-warning", href: crossScopeAssetsHref },
+  // The seven totals are StatStrip cells, each opening its list (no icons and no tone colors).
+  const kpiItems: StatStripItem[] = [
+    { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets), href: `/${locale}/assets` },
+    { key: "inUse", label: t("inUse"), value: formatCount(inUse), href: `/${locale}/assets` },
+    { key: "readyToDeploy", label: t("readyToDeploy"), value: formatCount(ready), href: `/${locale}/assets` },
+    { key: "pendingRepair", label: t("pendingRepair"), value: formatCount(pendingRepair), href: repairStatusMetrics.pendingRepair.href },
+    { key: "underMaintenance", label: t("underMaintenance"), value: formatCount(underMaintenance), href: repairStatusMetrics.underMaintenance.href },
+    { key: "warrantyExpiring", label: t("warrantyExpiring"), value: formatCount(warrantyExpiring), href: `/${locale}/assets` },
+    { key: "crossScopeAssets", label: t("crossScopeAssets"), value: formatCount(crossScopeTotal), href: crossScopeAssetsHref },
   ]
 
   const actionCardMap: Record<DashboardActionCardKey, DashboardActionCard> = {
@@ -206,7 +187,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       value: approvalInboxCounts.total,
       detail: t("approvalInboxDetail"),
       href: `/${locale}/admin/approvals`,
-      icon: <FileCheck2 className="h-5 w-5" />,
       tone: approvalInboxCounts.total > 0 ? "danger" : "primary",
     },
     openRepairs: {
@@ -214,7 +194,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       value: openRepairs,
       detail: t("openRepairsDetail"),
       href: `/${locale}/maintenance?status=in_progress`,
-      icon: <Wrench className="h-5 w-5" />,
       tone: openRepairs > 0 ? "warning" : "primary",
     },
     pendingAuditFindings: {
@@ -222,7 +201,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       value: pendingAuditFindings,
       detail: t("pendingAuditFindingsDetail"),
       href: `/${locale}/audit/findings?status=pending`,
-      icon: <ClipboardCheck className="h-5 w-5" />,
       tone: "warning",
     },
     pendingDisposals: {
@@ -230,7 +208,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       value: pendingDisposals,
       detail: t("pendingDisposalsDetail"),
       href: `/${locale}/disposal?status=pending`,
-      icon: <Trash2 className="h-5 w-5" />,
       tone: "danger",
     },
     approvedDisposals: {
@@ -238,7 +215,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       value: approvedDisposals,
       detail: t("approvedDisposalsDetail"),
       href: `/${locale}/disposal?status=approved`,
-      icon: <Trash2 className="h-5 w-5" />,
       tone: "warning",
     },
   }
@@ -247,7 +223,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     value: crossScopeSummary.custodianCompany,
     detail: t("crossScopeActionDetail"),
     href: buildDashboardCrossScopeHref(locale, "custodian_company"),
-    icon: <AlertTriangle className="h-5 w-5" />,
     tone: "warning",
   }
   const actionCards = [
@@ -296,29 +271,49 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       href: `/${locale}/assets`,
       current: currentMonthAssets,
       previous: previousMonthAssets,
-      tone: "primary" as const,
     },
     {
       label: t("trendMaintenanceOpened"),
       href: `/${locale}/maintenance`,
       current: currentMonthMaintenance,
       previous: previousMonthMaintenance,
-      tone: "warning" as const,
     },
     {
       label: t("trendAuditFindings"),
       href: `/${locale}/audit/findings?status=all`,
       current: currentMonthAuditFindings,
       previous: previousMonthAuditFindings,
-      tone: "info" as const,
     },
     {
       label: t("trendDisposalsRequested"),
       href: `/${locale}/disposal`,
       current: currentMonthDisposals,
       previous: previousMonthDisposals,
-      tone: "danger" as const,
     },
+  ]
+  // Like the work center (2B R-d): no tone fill; a count that needs action and is above 0 gets the warning foot line.
+  const actionItems = actionCards.map((card): StatStripItem => ({
+    key: card.label,
+    label: card.label,
+    value: formatCount(card.value),
+    href: card.href,
+    foot: card.detail,
+    footTitle: card.detail,
+    attention: card.value > 0 && (card.tone === "warning" || card.tone === "danger"),
+  }))
+  // This month's count, with last month and the change in the foot line (it was a colored arrow pill).
+  const trendItems = trendCards.map((card): StatStripItem => ({
+    key: card.label,
+    label: card.label,
+    value: formatCount(card.current),
+    href: card.href,
+    foot: `${t("thisMonth")} · ${t("previousMonth")}: ${formatCount(card.previous)} · ${formatTrendDelta(card.current, card.previous)}`,
+  }))
+  const statusItems = [
+    { key: "inUse", label: t("inUse"), value: inUse, href: `/${locale}/assets`, tone: "success" as const },
+    { key: "readyToDeploy", label: t("readyToDeploy"), value: ready, href: `/${locale}/assets`, tone: "info" as const },
+    { key: "pendingRepair", label: t("pendingRepair"), value: pendingRepair, href: repairStatusMetrics.pendingRepair.href, tone: "warning" as const },
+    { key: "underMaintenance", label: t("underMaintenance"), value: underMaintenance, href: repairStatusMetrics.underMaintenance.href, tone: "danger" as const },
   ]
   const recentLogLabels = await buildSystemLogRecordLabels(recentLogs)
   const readableLogs = recentLogs.map((log) => formatDashboardLog(buildSystemLogPresentation(log, recentLogLabels, locale, translateSystemLog), t))
@@ -327,81 +322,42 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     <div className="space-y-6">
       <PageHeader title={t("title")} />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
-        {kpiCards.map((card) => (
-          <Link
-            key={card.label}
-            className="rounded-lg border border-border bg-surface p-5 transition-colors hover:bg-background"
-            href={card.href}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{card.label}</p>
-                <p className="num mt-1 text-3xl font-bold text-foreground">
-                  {card.value}
-                </p>
-              </div>
-              <div className={card.color}>{card.icon}</div>
-            </div>
-          </Link>
+      <div className="space-y-3">
+        {splitStatRows(kpiItems).map((row) => (
+          <StatStrip key={row[0].key} items={row} />
         ))}
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("actionableTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("actionableSubtitle")}</p>
-          </div>
-          <Link href={`/${locale}/work-center?panel=overview`} className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
+      <ContentPanel
+        title={t("actionableTitle")}
+        description={t("actionableSubtitle")}
+        actions={
+          <Link href={`/${locale}/work-center?panel=overview`} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
             {t("openWorkCenter")}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight aria-hidden="true" className="size-4" />
           </Link>
-        </div>
-        <div className={cn("grid grid-cols-1 gap-3 md:grid-cols-2", actionCards.length >= 6 ? "xl:grid-cols-3 2xl:grid-cols-6" : actionCards.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
-          {actionCards.map((card) => (
-            <Link
-              key={card.label}
-              href={card.href}
-              className={cn("rounded-md border p-4 transition-colors hover:bg-accent", actionCardToneClass[card.tone])}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{card.label}</p>
-                  <p className="num mt-2 text-3xl font-bold text-foreground">{formatCount(card.value)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{card.detail}</p>
-                </div>
-                <div className={actionCardIconClass[card.tone]}>{card.icon}</div>
-              </div>
-            </Link>
+        }
+      >
+        <div className="space-y-3">
+          {splitStatRows(actionItems).map((row) => (
+            <StatStrip key={row[0].key} items={row} />
           ))}
         </div>
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("crossScopePanelTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("crossScopePanelSubtitle")}</p>
-          </div>
-          <Link href={crossScopeAssetsHref} className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
+      <ContentPanel
+        title={t("crossScopePanelTitle")}
+        description={t("crossScopePanelSubtitle")}
+        actions={
+          <Link href={crossScopeAssetsHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
             {t("crossScopeViewAll")}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight aria-hidden="true" className="size-4" />
           </Link>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {crossScopeCards.map((card) => (
-            <Link
-              key={card.key}
-              href={buildDashboardCrossScopeHref(locale, card.crossScope)}
-              className="rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent"
-            >
-              <div className="text-sm text-muted-foreground">{card.label}</div>
-              <div className="num mt-2 text-2xl font-bold text-foreground">{formatCount(card.value)}</div>
-            </Link>
-          ))}
-        </div>
+        }
+      >
+        <StatStrip
+          items={crossScopeCards.map((card) => ({ key: card.key, label: card.label, value: formatCount(card.value), href: buildDashboardCrossScopeHref(locale, card.crossScope) }))}
+        />
         <DashboardCrossScopePreview
           rows={crossScopePreviewRows}
           locale={locale}
@@ -413,55 +369,35 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             locationBranch: t("crossScopeLocationBranch"),
           }}
         />
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-foreground">{t("monthlyTrendTitle")}</h2>
-          <p className="text-sm text-muted-foreground">{t("monthlyTrendSubtitle")}</p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {trendCards.map((card) => (
-            <TrendCard
-              key={card.label}
-              href={card.href}
-              label={card.label}
-              current={card.current}
-              previous={card.previous}
-              currentLabel={t("thisMonth")}
-              previousLabel={t("previousMonth")}
-              tone={card.tone}
-            />
-          ))}
-        </div>
-      </section>
+      <ContentPanel title={t("monthlyTrendTitle")} description={t("monthlyTrendSubtitle")}>
+        <StatStrip items={trendItems} />
+      </ContentPanel>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-6">
-          <h2 className="mb-4 text-lg font-semibold">{t("statusOverview")}</h2>
-          <div className="grid gap-3">
-            {[
-              { label: t("inUse"), value: inUse, href: `/${locale}/assets`, tone: "border-success-border bg-success-soft" },
-              { label: t("readyToDeploy"), value: ready, href: `/${locale}/assets`, tone: "border-info-border bg-info-soft" },
-              { label: t("pendingRepair"), value: pendingRepair, href: repairStatusMetrics.pendingRepair.href, tone: "border-warning-border bg-warning-soft" },
-              { label: t("underMaintenance"), value: underMaintenance, href: repairStatusMetrics.underMaintenance.href, tone: "border-danger-border bg-danger-soft" },
-            ].map((item) => (
-              <Link key={item.label} href={item.href} className={`flex items-center justify-between rounded-md border p-3 transition-colors hover:bg-accent ${item.tone}`}>
-                <span className="text-sm font-medium text-foreground">{item.label}</span>
-                <span className="num text-lg font-bold text-foreground">{formatCount(item.value)}</span>
+        <ContentPanel title={t("statusOverview")}>
+          <div className="grid gap-1">
+            {statusItems.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="flex min-h-11 items-center justify-between gap-3 rounded-md px-2 text-sm transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0 md:py-1.5"
+              >
+                <StatusBadge label={item.label} tone={item.tone} />
+                <span className="num font-semibold text-foreground">{formatCount(item.value)}</span>
               </Link>
             ))}
           </div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-6">
-          <h2 className="mb-4 text-lg font-semibold">{t("recentActivity")}</h2>
+        </ContentPanel>
+        <ContentPanel title={t("recentActivity")}>
           {recentLogs.length === 0 ? (
-            <div className="flex h-48 items-center justify-center text-muted-foreground">{t("noRecentActivity")}</div>
+            <EmptyNote>{t("noRecentActivity")}</EmptyNote>
           ) : (
             <div className="space-y-3">
               {readableLogs.map((log) =>
                 log.href ? (
-                  <Link key={log.id} href={log.href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary-border hover:bg-primary-soft">
+                  <Link key={log.id} href={log.href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:bg-row-hover">
                     <ActivityLogContent log={log} />
                   </Link>
                 ) : (
@@ -472,7 +408,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               )}
             </div>
           )}
-        </div>
+        </ContentPanel>
       </div>
     </div>
   )
@@ -491,52 +427,13 @@ type DashboardTranslator = {
   (key: string, values: Record<string, string | number | Date>): string
 }
 
-function TrendCard({
-  href,
-  label,
-  current,
-  previous,
-  currentLabel,
-  previousLabel,
-  tone,
-}: {
-  href: string
-  label: string
-  current: number
-  previous: number
-  currentLabel: string
-  previousLabel: string
-  tone: "primary" | "warning" | "info" | "danger"
-}) {
+// The change against last month in whole percent, as the old trend pill showed it: "+20%", "-5%" or "0%"; with no
+// previous month, any count is "+100%".
+function formatTrendDelta(current: number, previous: number) {
   const delta = current - previous
-  const percent = previous > 0 ? Math.round((delta / previous) * 100) : current > 0 ? 100 : 0
-  const trendClass = delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-foreground"
-  const toneClass =
-    tone === "danger"
-      ? "border-danger-border bg-danger-soft"
-      : tone === "warning"
-        ? "border-warning-border bg-warning-soft"
-        : tone === "info"
-          ? "border-info-border bg-info-soft"
-          : "border-primary-border bg-primary-soft"
-
-  return (
-    <Link href={href} className={cn("rounded-md border p-4 transition-colors hover:bg-accent", toneClass)}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">{label}</p>
-          <p className="num mt-2 text-3xl font-bold text-foreground">{formatCount(current)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {currentLabel} · {previousLabel}: {formatCount(previous)}
-          </p>
-        </div>
-        <div className={cn("inline-flex items-center gap-1 rounded-full bg-surface px-2 py-1 text-xs font-medium", trendClass)}>
-          {delta > 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : delta < 0 ? <ArrowDownRight className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
-          {delta === 0 ? "0%" : `${delta > 0 ? "+" : ""}${percent}%`}
-        </div>
-      </div>
-    </Link>
-  )
+  if (delta === 0) return "0%"
+  const percent = previous > 0 ? Math.round((delta / previous) * 100) : 100
+  return `${delta > 0 ? "+" : ""}${percent}%`
 }
 
 function ActivityLogContent({ log }: { log: ReadableDashboardLog }) {
@@ -568,7 +465,7 @@ function DashboardCrossScopePreview({
     <div className="mt-4 rounded-md border border-border bg-background">
       <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{labels.title}</div>
       {rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
+        <EmptyNote padded>{labels.empty}</EmptyNote>
       ) : (
         <div className="divide-y divide-border">
           {rows.map((row) => {
@@ -582,15 +479,13 @@ function DashboardCrossScopePreview({
               <Link key={row.id} href={`/${locale}/assets/${row.id}`} className="block px-4 py-3 transition-colors hover:bg-accent">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
-                    <div className="font-semibold text-foreground">{row.assetTag}</div>
+                    <div className="font-medium text-foreground"><span className="tag">{row.assetTag}</span></div>
                     <div className="mt-1 text-sm text-muted-foreground">{row.name}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{row.ownerBranch}</div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 md:max-w-md md:justify-end">
                     {flagLabels.map((label) => (
-                      <span key={label} className="rounded-full bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
-                        {label}
-                      </span>
+                      <StatusBadge key={label} label={label} tone="warning" />
                     ))}
                   </div>
                 </div>

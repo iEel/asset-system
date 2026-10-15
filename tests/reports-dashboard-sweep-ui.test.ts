@@ -73,3 +73,16 @@ test("report accounting: an empty ratio is Nil through StatStrip, and the asset 
   assert.equal(source.match(/className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/g)?.length, 2)
   assert.doesNotMatch(source, /"—"|hover:underline/)
 })
+
+test("the dashboard: StatStrips in rows of at most four, ContentPanels, StatusBadge rows and no tone fills (spec 2D D9, M30; 2B R-d)", () => {
+  const source = read(`${D}dashboard/page.tsx`)
+  assert.match(source, /^import \{ splitStatRows \} from "@\/lib\/stat-strip-rows"$/m)
+  assert.equal(source.match(/splitStatRows\((?:kpiItems|actionItems)\)\.map\(\(row\) => \(\n\s+<StatStrip key=\{row\[0\]\.key\} items=\{row\} \/>/g)?.length, 2)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 5)
+  assert.match(source, /attention: card\.value > 0 && \(card\.tone === "warning" \|\| card\.tone === "danger"\),/)
+  assert.match(source, /<StatusBadge label=\{item\.label\} tone=\{item\.tone\} \/>/)
+  assert.match(source, /function formatTrendDelta\(current: number, previous: number\) \{/)
+  assert.match(source, /<EmptyNote>\{t\("noRecentActivity"\)\}<\/EmptyNote>/)
+  assert.match(source, /<div className="font-medium text-foreground"><span className="tag">\{row\.assetTag\}<\/span><\/div>/)
+  assert.doesNotMatch(source, /bg-(?:primary|success|warning|danger|info)-soft|rounded-full|rounded-lg border|text-3xl|text-2xl|function TrendCard\b|actionCardToneClass|actionCardIconClass|hover:underline/)
+})
