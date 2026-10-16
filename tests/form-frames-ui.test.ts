@@ -96,7 +96,7 @@ test("the check-out form's OperationShell draws its title with PageHeader and st
   assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "checkout-form.tsx imports PageHeader")
   assert.match(
     source,
-    /function OperationShell\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{title\} className="mb-6" \/>\n\s+<section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">\{children\}<\/section>/,
+    /function OperationShell\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{title\} className="mb-6" \/>\n\s+<ContentPanel>\{children\}<\/ContentPanel>/,
   )
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })

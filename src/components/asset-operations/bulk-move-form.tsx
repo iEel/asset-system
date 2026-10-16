@@ -7,6 +7,8 @@ import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { preventEnterSubmit } from "@/components/ui/choice-card"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
@@ -83,7 +85,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t("title")} meta={t("selectedCount", { count: assetIds.length })} className="mb-6" />
-      <section className="rounded-lg border border-border bg-surface p-6">
+      <ContentPanel>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
             <FieldLabel id={assetsLabelId} htmlFor={assetSearchId} required className="mb-1.5 block">
@@ -98,7 +100,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
             />
             <div role="group" aria-labelledby={assetsLabelId} className="max-h-72 overflow-y-auto rounded-md border border-border bg-surface">
               {availableAssets.length === 0 ? (
-                <div className="px-3 py-6 text-center text-sm text-muted-foreground">{tCommon("noData")}</div>
+                <EmptyNote padded role="status">{tCommon("noData")}</EmptyNote>
               ) : (
                 availableAssets.map((asset) => {
                   const checked = assetIds.includes(asset.id)
@@ -137,7 +139,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
             </Button>
           </div>
         </form>
-      </section>
+      </ContentPanel>
     </div>
   )
 }

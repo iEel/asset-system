@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Field } from "@/components/ui/field"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { Input } from "@/components/ui/input"
@@ -123,7 +124,7 @@ export function TransferForm({
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t("title")} className="mb-6" />
-      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">
+      <ContentPanel>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {initialAsset ? (
             <div className="md:col-span-2">
@@ -162,7 +163,7 @@ export function TransferForm({
           onClose={() => setReviewOpen(false)}
           onConfirm={() => void submitTransfer()}
         />
-      </section>
+      </ContentPanel>
     </div>
   )
 }

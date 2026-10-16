@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { Button } from "@/components/ui/button"
 import { ChoiceCard } from "@/components/ui/choice-card"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Field, FieldRequiredMark } from "@/components/ui/field"
 import { fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -392,7 +393,7 @@ function OperationShell({ title, children }: { title: string; children: React.Re
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={title} className="mb-6" />
-      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">{children}</section>
+      <ContentPanel>{children}</ContentPanel>
     </div>
   )
 }

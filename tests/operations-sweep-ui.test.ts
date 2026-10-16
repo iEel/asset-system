@@ -78,3 +78,17 @@ test("review focus 5: the shared back and print buttons sit in the toolbar that 
   assert.match(toolbar, /<Button size="md" onClick=\{\(\) => window\.print\(\)\}>/)
   assert.match(toolbar, /\{toolbarActions\}/, "the cancel dialog's trigger does not print either")
 })
+
+test("check-out, transfer and bulk move forms: the form panel is a ContentPanel, and the empty asset list is an EmptyNote (spec 2D D9, M21, M25)", () => {
+  const checkout = read(`${C}asset-operations/checkout-form.tsx`)
+  assert.match(checkout, /<PageHeader title=\{title\} className="mb-6" \/>\n\s+<ContentPanel>\{children\}<\/ContentPanel>/)
+  const transfer = read(`${C}asset-operations/transfer-form.tsx`)
+  assert.match(transfer, /<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n\s+<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\}/)
+  assert.match(transfer, /<\/form>\n\s+<OperationReviewDialog[\s\S]*?\/>\n\s+<\/ContentPanel>/, "the review dialog stays inside the panel")
+  const bulkMove = read(`${C}asset-operations/bulk-move-form.tsx`)
+  assert.match(bulkMove, /className="mb-6" \/>\n\s+<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\}/)
+  assert.match(bulkMove, /<EmptyNote padded role="status">\{tCommon\("noData"\)\}<\/EmptyNote>/)
+  for (const [name, source] of [["checkout", checkout], ["transfer", transfer], ["bulk move", bulkMove]]) {
+    assert.doesNotMatch(source, /<section\b|rounded-lg border|text-center text-sm text-muted-foreground/, name)
+  }
+})
