@@ -163,7 +163,8 @@ const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // MovementInfo (the movement timeline, plan 2D-3), ReviewItem (the component manager), MobileField (my assets),
 // DocumentFact (a supplier's purchase documents).
 // Plan 2D-4 Task 6 (OP-6): ReadOnly (the check-in form's current custody).
-const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly)\b/g
+// Plan 2D-4 Task 24 (AP-5): ReviewPreviewField (the finding review dialog).
+const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField)\b/g
 const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 const pageCurrent = (text: string) => /"page"/.test(jsxAttrValue(text, "aria-current") ?? "")
@@ -254,8 +255,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LV2: {
     // 2B-1
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the default separator of the tag preview :2136 (R-n)
-    // 2B-2
-    [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1202, :1204 and the history sentence :2390 (R-n)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -314,7 +313,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1202, :1204 and the history sentence :2390 (R-n)
     [`${C}admin/system-settings-form.tsx`]: 1, // the default separator of the tag preview :2136 (R-n)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // label data (R-n)
-    [`${C}audit/audit-finding-review-actions.tsx`]: 3, // review dialog (2D)
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // 2C form (2D)
     [`${C}audit/audit-scan-check-form.tsx`]: 3, // translated sentences (R-n)
     [`${C}audit/audit-scan-offline-bar.tsx`]: 1, // translated sentence (R-n)

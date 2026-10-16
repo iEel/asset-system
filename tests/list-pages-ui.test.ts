@@ -266,7 +266,7 @@ test("the finding row triggers are Button sm: approve outline, reject danger, bu
   assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setCloseOpen\(true\)\}>\n\s+<FileUp aria-hidden="true" \/>/)
   assert.doesNotMatch(source, /<button\b|<Loader2\b|\btext-success\b|disabled:opacity-50/, "no hand-written trigger, spinner or green text is left")
   // Audit mobile fix D8, fix round 1: in the findings table the self-review note is small warning text with its icon, no box.
-  assert.match(source, /<p className="flex items-start gap-1\.5 text-left text-xs text-warning">\n\s+<AlertTriangle aria-hidden="true" className="mt-0\.5 size-3\.5 shrink-0" \/>\n\s+<span>\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/span>/)
+  assert.match(source, /<p className="flex items-start gap-1\.5 text-left text-meta text-warning">\n\s+<AlertTriangle aria-hidden="true" className="mt-0\.5 size-3\.5 shrink-0" \/>\n\s+<span>\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/span>/)
   // Fix round 3 (coordinator ruling, pattern ช1 of 2B): in the table only the review decision stays visible (approve
   // and reject stacked, or the note); plan, close and the page's links (the disposal request) go into the shared ⋯.
   // The menu holds no dialog (R-m): its items set the state that mounts the dialog, which gives focus back to ⋯.
@@ -280,7 +280,7 @@ test("the finding row triggers are Button sm: approve outline, reject danger, bu
   assert.doesNotMatch(compactBranch, /setPlanOpen\(true\)\}>|setCloseOpen\(true\)\}>/, "no plan or close button in the table cell")
   assert.equal(source.match(/returnFocusRef=\{openerRef\}/g)?.length, 2, "the plan and close dialogs give focus back to ⋯")
   assert.equal(source.match(/<AccessibleDialog open title=\{t\("(?:actionPlanTitle|closeFindingTitle)"\)\} busy=\{saving\} size="md" returnFocusRef=\{returnFocusRef\} onClose=\{onClose\}>/g)?.length, 2)
-  assert.match(source, /<div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">/, "the phone cards keep the box")
+  assert.match(source, /<Notice tone="warning">\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/Notice>/, "the phone cards keep the box: a warning Notice since plan 2D-4")
   assert.equal(source.match(/<AccessibleDialog\b/g)?.length, 3, "the review, action-plan and close dialogs stay as they are (O21)")
 })
 

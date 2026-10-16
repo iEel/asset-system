@@ -16,11 +16,14 @@ import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { RowActions, type RowActionItem } from "@/components/ui/row-actions"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { formatDateTime } from "@/lib/utils"
 
 type EmployeeOption = { id: string; label: string }
 type ReviewAction = "approve" | "reject"
@@ -140,16 +143,14 @@ export function AuditFindingReviewActions({
       </Button>
     </>
   )
-  // The findings table shows the note as small text with its icon; the phone cards keep the box.
+  // The findings table shows the note as small text with its icon; the phone cards keep the box, a warning Notice.
   const blockedNote = compact ? (
-    <p className="flex items-start gap-1.5 text-left text-xs text-warning">
+    <p className="flex items-start gap-1.5 text-left text-meta text-warning">
       <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
       <span>{reviewBlockedReason ?? t("segregationReviewBlocked")}</span>
     </p>
   ) : (
-    <div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
-      {reviewBlockedReason ?? t("segregationReviewBlocked")}
-    </div>
+    <Notice tone="warning">{reviewBlockedReason ?? t("segregationReviewBlocked")}</Notice>
   )
   const dialogs = (
     <>
@@ -266,32 +267,32 @@ function ReviewDecisionModal({
   return (
     <AccessibleDialog open title={t(`reviewDecisionTitle_${action}`)} busy={reviewing} size="md" onClose={onClose}>
       <AccessibleDialogBody className="space-y-4">
-        <div className="rounded-lg border border-border bg-background p-4">
+        <div className="rounded-md border border-border bg-background p-4">
           <div className="text-sm font-semibold text-foreground">{assetLabel}</div>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <ReviewPreviewField label={t("findingType")} value={findingTypeLabel} />
-            <ReviewPreviewField label={t("systemValue")} value={expectedValue || "-"} />
-            <ReviewPreviewField label={t("foundValue")} value={actualValue || "-"} strong />
-          </div>
+          <KeyValueList
+            className="mt-3"
+            items={[
+              { key: "findingType", label: t("findingType"), value: findingTypeLabel },
+              { key: "systemValue", label: t("systemValue"), value: expectedValue },
+              { key: "foundValue", label: t("foundValue"), value: actualValue ? <span className="font-semibold">{actualValue}</span> : null },
+            ]}
+          />
         </div>
 
-        <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning-border bg-warning-soft text-warning" : "border-danger-border bg-danger-soft text-danger"}`}>
-          <div className="font-semibold">{t(`reviewDecisionImpactTitle_${action}`)}</div>
-          <p className="mt-1 leading-relaxed">{t(`reviewDecisionHelp_${action}`)}</p>
-        </div>
+        <Notice tone={action === "approve" ? "warning" : "neutral"} title={t(`reviewDecisionImpactTitle_${action}`)}>
+          {t(`reviewDecisionHelp_${action}`)}
+        </Notice>
 
         {conflict ? (
-          <div className="rounded-lg border border-warning-border bg-warning-soft p-4 text-sm text-warning">
-            <div className="flex items-start gap-2 font-semibold">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
-              <span>{t("reviewConflictTitle")}</span>
-            </div>
-            <p className="mt-2 leading-relaxed text-foreground">{t("reviewConflictHelp")}</p>
-            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-              <ReviewPreviewField label={t("reviewConflictFindingAt")} value={formatClientDateTime(conflict.findingReportedAt)} />
-              <ReviewPreviewField label={t("reviewConflictAssetUpdatedAt")} value={formatClientDateTime(conflict.assetUpdatedAt)} />
-            </div>
-          </div>
+          <>
+            <Notice tone="warning" role="alert" title={t("reviewConflictTitle")}>{t("reviewConflictHelp")}</Notice>
+            <KeyValueList
+              items={[
+                { key: "findingReportedAt", label: t("reviewConflictFindingAt"), value: conflict.findingReportedAt ? formatDateTime(conflict.findingReportedAt) : null },
+                { key: "assetUpdatedAt", label: t("reviewConflictAssetUpdatedAt"), value: conflict.assetUpdatedAt ? formatDateTime(conflict.assetUpdatedAt) : null },
+              ]}
+            />
+          </>
         ) : null}
 
         <Field label={t(`reviewRemarkLabel_${action}`)}>
@@ -307,28 +308,6 @@ function ReviewDecisionModal({
       </AccessibleDialogFooter>
     </AccessibleDialog>
   )
-}
-
-function ReviewPreviewField({ label, value, strong = false }: { label: string; value?: string | null; strong?: boolean }) {
-  return (
-    <div className="min-w-0 rounded-md border border-border bg-surface px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className={`mt-1 break-words text-sm ${strong ? "font-semibold text-foreground" : "text-foreground"}`}>{value || "-"}</div>
-    </div>
-  )
-}
-
-function formatClientDateTime(value?: string) {
-  if (!value) return "-"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "-"
-  return date.toLocaleString("th-TH", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
 }
 
 function ActionPlanModal({
@@ -521,9 +500,7 @@ function CloseFindingModal({
           hint={uploading ? t("uploadingEvidence") : t("dropClosureEvidenceSelected")}
           browseLabel={t("dropClosureEvidenceHint")}
         />
-        <div className="rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
-          {t("closureEvidenceCount", { count: uploadedCount })}
-        </div>
+        <p className="text-sm text-muted-foreground">{t("closureEvidenceCount", { count: uploadedCount })}</p>
         <Field label={t("closureRemark")}>
           <Textarea value={closureRemark} rows={3} maxLength={4000} onChange={(event) => setClosureRemark(event.target.value)} />
         </Field>

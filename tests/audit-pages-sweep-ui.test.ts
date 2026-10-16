@@ -58,3 +58,17 @@ test("audit round form: the form is the panel, the sampling box a quiet grouping
   assert.match(source, /<ChoiceCard\s+type="checkbox"\s+className="md:col-span-2"\s+label=\{t\("includeClosedAssets"\)\}\s+description=\{t\("includeClosedAssetsHelp"\)\}/)
   assert.doesNotMatch(source, /<section\b|function PreviewMetric\b|uppercase|tracking-|primary-soft|primary-border|info-soft|info-border|text-info|warning-soft|warning-border|rounded-lg|\btext-xs\b|<input\b|checkboxVariants/)
 })
+
+test("finding review actions: a warning Notice on the phone card, KeyValueLists with Nil in the dialog, the impact and the conflict as Notices by meaning, no typed dash (spec 2D D7, D19, LV2)", () => {
+  const source = read(`${C}audit/audit-finding-review-actions.tsx`)
+  assert.match(source, /<Notice tone="warning">\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/Notice>/)
+  assert.match(source, /<p className="flex items-start gap-1\.5 text-left text-meta text-warning">/, "the table keeps the small note of the audit mobile fix")
+  assert.match(source, /<div className="rounded-md border border-border bg-background p-4">/)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the finding summary and the conflict dates")
+  assert.match(source, /\{ key: "systemValue", label: t\("systemValue"\), value: expectedValue \}/)
+  assert.match(source, /<Notice tone=\{action === "approve" \? "warning" : "neutral"\} title=\{t\(`reviewDecisionImpactTitle_\$\{action\}`\)\}>/)
+  assert.match(source, /<Notice tone="warning" role="alert" title=\{t\("reviewConflictTitle"\)\}>\{t\("reviewConflictHelp"\)\}<\/Notice>/)
+  assert.match(source, /value: conflict\.findingReportedAt \? formatDateTime\(conflict\.findingReportedAt\) : null/)
+  assert.match(source, /<p className="text-sm text-muted-foreground">\{t\("closureEvidenceCount", \{ count: uploadedCount \}\)\}<\/p>/)
+  assert.doesNotMatch(source, /"-"|function (?:ReviewPreviewField|formatClientDateTime)\b|rounded-lg|border-warning-border|border-danger-border|bg-danger-soft|\btext-xs\b/)
+})
