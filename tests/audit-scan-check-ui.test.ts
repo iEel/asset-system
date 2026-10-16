@@ -44,6 +44,39 @@ test("the immediate-correction box only appears for approvers with a location or
   assert.ok(source.indexOf("{saveLabel}") < source.indexOf('t("applyAuditCorrections")'), "checkbox sits under the save button (spec 3.5)")
 })
 
+test("the save and not-this-item buttons sit in a pinned action bar below the scrolling fields (D1)", () => {
+  const source = form()
+  assert.match(source, /<div data-audit-check-form className="flex min-h-0 flex-1 flex-col">/)
+  assert.match(source, /<div data-audit-check-body className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">/)
+  assert.match(source, /<div data-audit-check-actions className="shrink-0 space-y-2 border-t border-border px-4 py-3">/)
+  const body = source.indexOf("data-audit-check-body")
+  const actions = source.indexOf("data-audit-check-actions")
+  for (const marker of ["<AuditScanCheckField", "<AuditComponentPanel", 't("addNotePhoto")']) {
+    const at = source.indexOf(marker)
+    assert.ok(body < at && at < actions, `${marker} scrolls with the fields`)
+  }
+  for (const marker of ["{missingPhoto ? (", "{saveLabel}", 't("notThisOne")', 't("applyAuditCorrections")']) {
+    assert.ok(source.indexOf(marker) > actions, `${marker} is pinned with the buttons`)
+  }
+  assert.ok(source.indexOf("{saveLabel}") < source.indexOf('t("notThisOne")'), "save stays first in the Tab order")
+  assert.match(source, /<div className="flex items-stretch gap-2">/)
+  assert.match(source, /className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10"/)
+})
+
+test("the panel hands its height to the form: the sheet body and the wide aside no longer scroll as one block (D1)", () => {
+  const source = read("src/components/audit/audit-scan-check-panel.tsx")
+  assert.doesNotMatch(source, /overflow-y-auto p-4">\{children\}/)
+  assert.match(source, /<\/SheetHeader>\n\s+\{children\}\n\s+<\/SheetContent>/)
+  assert.match(source, /className="sticky top-4 flex max-h-\[calc\(100dvh-7rem\)\] flex-col self-start rounded-lg border border-border bg-surface"/)
+  assert.match(source, /<div className="shrink-0 border-b border-border px-4 py-3">/)
+})
+
+test("a matching field has no box; only a mismatch keeps the warning box and the system value (D1)", () => {
+  const source = read("src/components/audit/audit-scan-check-field.tsx")
+  assert.match(source, /className=\{mismatch \? "rounded-md border border-warning-border bg-warning-soft p-2\.5" : undefined\}/)
+  assert.doesNotMatch(source, /border-border bg-surface/)
+})
+
 test("a field shows the system value when it differs and the latest register value when it moved", () => {
   const source = read("src/components/audit/audit-scan-check-field.tsx")
   assert.match(source, /<SearchableSelect/)

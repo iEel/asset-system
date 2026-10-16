@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl"
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
-import { cn } from "@/lib/utils"
 
 export function AuditScanCheckField({
   label,
@@ -34,7 +33,8 @@ export function AuditScanCheckField({
     <div
       data-audit-check-field
       data-mismatch={mismatch ? "true" : undefined}
-      className={cn("rounded-md border p-2.5", mismatch ? "border-warning-border bg-warning-soft" : "border-border bg-surface")}
+      // A matching field is a plain label and control, so four of them fit a phone sheet; only a mismatch gets a box.
+      className={mismatch ? "rounded-md border border-warning-border bg-warning-soft p-2.5" : undefined}
     >
       <SearchableSelect
         label={label}

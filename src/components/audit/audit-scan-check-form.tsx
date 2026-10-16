@@ -206,149 +206,157 @@ export function AuditScanCheckForm({
   ]
 
   return (
-    <div data-audit-check-form className="space-y-3">
-      <p className="text-sm text-muted-foreground">{statusLine}</p>
+    // A flex column inside the sheet or the wide panel: the fields scroll, the action bar under them never does (D1).
+    <div data-audit-check-form className="flex min-h-0 flex-1 flex-col">
+      <div data-audit-check-body className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+        <p className="text-sm text-muted-foreground">{statusLine}</p>
 
-      <div className="space-y-2">
-        {fieldConfig.map((config) => (
-          <AuditScanCheckField
-            key={config.field}
-            label={t(fieldLabelKey[config.field])}
-            value={values[config.field]}
-            options={config.options}
-            required={config.required}
-            expectedValue={expected[config.field]}
-            latestValue={config.field === "condition" ? undefined : notes[config.field]}
-            mismatch={diff.includes(config.field)}
-            disabled={saving || disabled}
-            labelFor={labelFor(config.field)}
-            onChange={config.onChange}
-          />
-        ))}
-      </div>
-
-      {target.kind === "item" && components.installedIn.length > 0 ? (
-        <div className="rounded-md border border-info-border bg-info-soft p-2.5 text-xs text-info">
-          {components.installedIn.map((parent) => (
-            <p key={parent.parentAssetId}>{t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}</p>
+        <div className="space-y-3">
+          {fieldConfig.map((config) => (
+            <AuditScanCheckField
+              key={config.field}
+              label={t(fieldLabelKey[config.field])}
+              value={values[config.field]}
+              options={config.options}
+              required={config.required}
+              expectedValue={expected[config.field]}
+              latestValue={config.field === "condition" ? undefined : notes[config.field]}
+              mismatch={diff.includes(config.field)}
+              disabled={saving || disabled}
+              labelFor={labelFor(config.field)}
+              onChange={config.onChange}
+            />
           ))}
         </div>
-      ) : null}
 
-      {target.kind === "item" && (components.components.length > 0 || components.status === "loading") ? (
-        <div className="rounded-md border border-border">
-          <button
-            type="button"
-            aria-expanded={componentsOpen}
-            onClick={() => setComponentsOpen((current) => !current)}
-            className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-sm font-medium"
-          >
-            {t("componentsSection", { count: components.components.length })}
-            {components.status === "loading" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
-          </button>
-          {componentsOpen && components.components.length > 0 ? (
-            <div className="border-t border-border px-2 pb-2">
-              <AuditComponentPanel
-                components={components.components}
-                saving={saving}
-                componentActionsDisabled={disabled}
-                onScanComponent={onScanComponent}
-                onConfirmWithParent={(component) => onConfirmComponent(component, { values, remark })}
-                onMarkMissing={onMarkComponentMissing}
-                t={t}
-              />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+        {target.kind === "item" && components.installedIn.length > 0 ? (
+          <div className="rounded-md border border-info-border bg-info-soft p-2.5 text-xs text-info">
+            {components.installedIn.map((parent) => (
+              <p key={parent.parentAssetId}>{t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}</p>
+            ))}
+          </div>
+        ) : null}
 
-      <div className="rounded-md border border-border">
-        <button
-          type="button"
-          aria-expanded={extrasOpen}
-          onClick={() => setExtrasOpen((current) => !current)}
-          className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-sm font-medium text-primary"
-        >
-          {t("addNotePhoto")}
-          <ChevronDown className="size-4" aria-hidden="true" />
-        </button>
-        {extrasOpen ? (
-          <div className="space-y-3 border-t border-border p-3">
-            <Field label={t("remark")}>
-              <Textarea
-                value={remark}
-                onChange={(event) => setRemark(event.target.value)}
-                rows={2}
-                disabled={saving || disabled}
-                className="min-h-16"
-              />
-            </Field>
-            {photoChecklist.length > 0 ? (
-              <Field label={t("photoType")}>
-                <NativeSelect value={photoLabel} onChange={(event) => setPhotoLabel(event.target.value)}>
-                  <option value="">{t("generalAuditPhotoLabel")}</option>
-                  {photoChecklist.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </NativeSelect>
-              </Field>
-            ) : null}
-            <FileDropzone
-              file={null}
-              onFileChange={(file) => addPhotos(file ? [file] : [])}
-              onFilesChange={addPhotos}
-              disabled={saving || disabled}
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
-              capture="environment"
-              multiple
-              title={t("dropAuditPhotoTitle")}
-              description={t("dropAuditPhotoDescription")}
-              browseLabel={t("dropAuditPhotoHint")}
-            />
-            {photos.length > 0 ? (
-              <ul className="grid grid-cols-3 gap-2" aria-label={t("queuedPhotos", { count: photos.length })}>
-                {photos.map((photo) => (
-                  <li key={photo.id} className="relative overflow-hidden rounded-md border border-border">
-                    {photo.previewUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
-                      <img src={photo.previewUrl} alt={t("queuedPhotoPreviewAlt", { name: photo.file.name })} className="aspect-square w-full object-cover" />
-                    ) : (
-                      <span className="flex aspect-square items-center justify-center"><ImagePlus className="size-5" aria-hidden="true" /></span>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removePhoto(photo.id)}
-                      aria-label={t("removeQueuedPhoto")}
-                      className="absolute right-1 top-1 shadow-sm"
-                    >
-                      <X aria-hidden="true" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+        {target.kind === "item" && (components.components.length > 0 || components.status === "loading") ? (
+          <div className="rounded-md border border-border">
+            <button
+              type="button"
+              aria-expanded={componentsOpen}
+              onClick={() => setComponentsOpen((current) => !current)}
+              className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-sm font-medium"
+            >
+              {t("componentsSection", { count: components.components.length })}
+              {components.status === "loading" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
+            </button>
+            {componentsOpen && components.components.length > 0 ? (
+              <div className="border-t border-border px-2 pb-2">
+                <AuditComponentPanel
+                  components={components.components}
+                  saving={saving}
+                  componentActionsDisabled={disabled}
+                  onScanComponent={onScanComponent}
+                  onConfirmWithParent={(component) => onConfirmComponent(component, { values, remark })}
+                  onMarkMissing={onMarkComponentMissing}
+                  t={t}
+                />
+              </div>
             ) : null}
           </div>
         ) : null}
+
+        <div className="rounded-md border border-border">
+          <button
+            type="button"
+            aria-expanded={extrasOpen}
+            onClick={() => setExtrasOpen((current) => !current)}
+            className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-sm font-medium text-primary"
+          >
+            {t("addNotePhoto")}
+            <ChevronDown className="size-4" aria-hidden="true" />
+          </button>
+          {extrasOpen ? (
+            <div className="space-y-3 border-t border-border p-3">
+              <Field label={t("remark")}>
+                <Textarea
+                  value={remark}
+                  onChange={(event) => setRemark(event.target.value)}
+                  rows={2}
+                  disabled={saving || disabled}
+                  className="min-h-16"
+                />
+              </Field>
+              {photoChecklist.length > 0 ? (
+                <Field label={t("photoType")}>
+                  <NativeSelect value={photoLabel} onChange={(event) => setPhotoLabel(event.target.value)}>
+                    <option value="">{t("generalAuditPhotoLabel")}</option>
+                    {photoChecklist.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </NativeSelect>
+                </Field>
+              ) : null}
+              <FileDropzone
+                file={null}
+                onFileChange={(file) => addPhotos(file ? [file] : [])}
+                onFilesChange={addPhotos}
+                disabled={saving || disabled}
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
+                capture="environment"
+                multiple
+                title={t("dropAuditPhotoTitle")}
+                description={t("dropAuditPhotoDescription")}
+                browseLabel={t("dropAuditPhotoHint")}
+              />
+              {photos.length > 0 ? (
+                <ul className="grid grid-cols-3 gap-2" aria-label={t("queuedPhotos", { count: photos.length })}>
+                  {photos.map((photo) => (
+                    <li key={photo.id} className="relative overflow-hidden rounded-md border border-border">
+                      {photo.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
+                        <img src={photo.previewUrl} alt={t("queuedPhotoPreviewAlt", { name: photo.file.name })} className="aspect-square w-full object-cover" />
+                      ) : (
+                        <span className="flex aspect-square items-center justify-center"><ImagePlus className="size-5" aria-hidden="true" /></span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removePhoto(photo.id)}
+                        aria-label={t("removeQueuedPhoto")}
+                        className="absolute right-1 top-1 shadow-sm"
+                      >
+                        <X aria-hidden="true" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {missingPhoto ? (
-        <p className="text-sm font-medium text-warning">
-          {mode === "out_of_scope" ? t("auditPhotoRequiredForMismatch") : t("photoRequiredCondition")}
-        </p>
-      ) : null}
-
-      <div className="grid gap-2 pt-1">
-        <Button
-          type="button"
-          variant={diff.length === 0 ? "default" : "warning"}
-          className="min-h-12 w-full text-base"
-          busy={saving}
-          disabled={disabled || missingPhoto}
-          onClick={() => onSubmit({ values, remark, photos, applyCorrections, diff, mode })}
-        >
-          {saveLabel}
-        </Button>
+      <div data-audit-check-actions className="shrink-0 space-y-2 border-t border-border px-4 py-3">
+        {missingPhoto ? (
+          <p className="text-sm font-medium text-warning">
+            {mode === "out_of_scope" ? t("auditPhotoRequiredForMismatch") : t("photoRequiredCondition")}
+          </p>
+        ) : null}
+        {/* One row keeps the bar short on a phone; save comes first in the Tab order and wraps a long label. */}
+        <div className="flex items-stretch gap-2">
+          <Button
+            type="button"
+            variant={diff.length === 0 ? "default" : "warning"}
+            className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10"
+            busy={saving}
+            disabled={disabled || missingPhoto}
+            onClick={() => onSubmit({ values, remark, photos, applyCorrections, diff, mode })}
+          >
+            {saveLabel}
+          </Button>
+          <Button type="button" variant="ghost" className="min-h-12 md:h-auto md:min-h-10" onClick={onDismiss} disabled={saving}>
+            {t("notThisOne")}
+          </Button>
+        </div>
         {canApplyCorrections && mode !== "out_of_scope" && diff.some((field) => field === "location" || field === "custodian") ? (
           <label className="flex min-h-11 items-start gap-2 rounded-md border border-border p-2.5 text-sm">
             <input type="checkbox" checked={applyCorrections} onChange={(event) => setApplyCorrections(event.target.checked)} className={cn(checkboxVariants({ size: "lg" }), "mt-0.5")} />
@@ -358,9 +366,6 @@ export function AuditScanCheckForm({
             </span>
           </label>
         ) : null}
-        <Button type="button" variant="ghost" className="w-full" onClick={onDismiss} disabled={saving}>
-          {t("notThisOne")}
-        </Button>
       </div>
     </div>
   )
