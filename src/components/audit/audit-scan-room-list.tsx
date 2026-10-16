@@ -59,13 +59,13 @@ export function AuditScanRoomList({
   const locale = useLocale()
   const timeFormat = new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit" })
 
-  function secondLine(item: AuditScanItemRow) {
+  /** Who checked it, or (in a chosen room, where the room line is left out) the custodian. */
+  function metaLine(item: AuditScanItemRow) {
     if (item.scannedByName && item.lastScanAt) {
       return t("checkedBy", { name: item.scannedByName, time: timeFormat.format(new Date(item.lastScanAt)) })
     }
-    const place = showLocation ? locationLabels.get(item.expectedLocationId) : null
-    const custodian = item.expectedCustodianId ? custodianLabels.get(item.expectedCustodianId) : null
-    return [item.name, place ?? custodian].filter(Boolean).join(" · ")
+    if (showLocation || !item.expectedCustodianId) return null
+    return custodianLabels.get(item.expectedCustodianId) ?? null
   }
 
   return (
@@ -94,6 +94,8 @@ export function AuditScanRoomList({
           {rows.map((item) => {
             const badge = queuedAssetIds.has(item.assetId) ? "queued" : getAuditItemBadge(item)
             const active = item.itemId === activeItemId
+            const place = showLocation ? locationLabels.get(item.expectedLocationId) ?? item.expectedLocationId : null
+            const meta = metaLine(item)
             return (
               <li key={item.itemId}>
                 <button
@@ -108,7 +110,9 @@ export function AuditScanRoomList({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-foreground">{item.assetTag}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{secondLine(item)}</span>
+                    <span className="block truncate text-xs text-foreground">{item.name}</span>
+                    {place ? <span data-audit-scan-row-room className="block break-words text-xs text-muted-foreground">{place}</span> : null}
+                    {meta ? <span className="block truncate text-xs text-muted-foreground">{meta}</span> : null}
                   </span>
                   {badge ? (
                     <StatusBadge label={t(badgeLabelKey[badge])} tone={badgeTone[badge]} className="shrink-0" />

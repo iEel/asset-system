@@ -72,6 +72,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
     <AuditScanWorkspace
       roundId={round.id}
       roundName={`${round.auditNo} - ${round.name}`}
+      roundCode={round.auditNo}
       backHref={returnToHref}
       pendingHref={pendingHref}
       initialItems={rows}

@@ -150,6 +150,7 @@ export function AuditScanSearchResults({
               const line = detail(match)
               const badge = queuedAssetIds.has(match.item.assetId) ? "queued" : getAuditItemBadge(match.item)
               const elsewhere = room.locationId && match.item.expectedLocationId !== room.locationId
+              const place = locationLabels.get(match.item.expectedLocationId) ?? match.item.expectedLocationId
               return (
                 <li key={match.item.itemId}>
                   <button
@@ -165,13 +166,12 @@ export function AuditScanSearchResults({
                         {line.prefix}
                         {match.field === "assetTag" ? line.value : highlight(line.value)}
                       </span>
+                      {place ? <span data-audit-scan-result-room className={cn("block break-words text-xs", elsewhere ? "font-medium text-warning" : "text-muted-foreground")}>{elsewhere ? t("inLocation", { location: place }) : place}</span> : null}
                     </span>
                     {badge === "queued" ? (
                       <StatusBadge label={t("badgeQueued")} tone="muted" className="shrink-0" />
                     ) : badge ? (
                       <StatusBadge label={t(badge === "found" ? "badgeFound" : badge === "mismatch" ? "badgeMismatch" : badge === "not_found" ? "badgeNotFound" : "badgeOutOfScope")} tone={badge === "found" ? "success" : badge === "mismatch" ? "warning" : badge === "not_found" ? "danger" : "info"} className="shrink-0" />
-                    ) : elsewhere ? (
-                      <StatusBadge label={t("inLocation", { location: locationLabels.get(match.item.expectedLocationId) ?? match.item.expectedLocationId })} tone="warning" className="max-w-40 shrink-0" />
                     ) : (
                       <StatusBadge label={t("badgePending")} tone="muted" className="shrink-0" />
                     )}

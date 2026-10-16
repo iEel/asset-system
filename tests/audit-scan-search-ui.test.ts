@@ -34,6 +34,18 @@ test("results highlight the match, warn about another room, and fall back to the
   assert.match(source, /matches\.length === 0 \? lookup/)
 })
 
+test("each result shows its room in full on its own line, in warning ink when it is in another room (D6)", () => {
+  const source = read("src/components/audit/audit-scan-search.tsx")
+  assert.match(source, /const place = locationLabels\.get\(match\.item\.expectedLocationId\) \?\? match\.item\.expectedLocationId/)
+  const line = source.split("\n").find((row) => row.includes("data-audit-scan-result-room")) ?? ""
+  assert.match(line, /break-words/)
+  assert.doesNotMatch(line, /truncate/)
+  assert.match(line, /elsewhere \? "font-medium text-warning" : "text-muted-foreground"/)
+  assert.match(line, /\{elsewhere \? t\("inLocation", \{ location: place \}\) : place\}/)
+  // The room no longer hides in a width-capped badge.
+  assert.doesNotMatch(source, /max-w-40/)
+})
+
 test("results announce only the count through one quiet live region", () => {
   const source = read("src/components/audit/audit-scan-search.tsx")
   assert.doesNotMatch(source, /<section[^>]*aria-live/)

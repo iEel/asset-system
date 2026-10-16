@@ -15,15 +15,19 @@ import { cn } from "@/lib/utils"
 export function AuditScanRoomPicker({
   room,
   rooms,
+  open,
+  onOpenChange,
   onRoomChange,
 }: {
   room: AuditScanRoom
   rooms: AuditRoomOption[]
+  /** Owned by the workspace, which opens the sheet once on the first visit (D7). */
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onRoomChange: (room: AuditScanRoom) => void
 }) {
   const t = useTranslations("auditScan")
   const isDesktop = useMediaQuery("(min-width: 48rem)")
-  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const listRef = useRef<HTMLUListElement | null>(null)
   const selected = rooms.find((option) => option.locationId === room.locationId)
@@ -35,12 +39,12 @@ export function AuditScanRoomPicker({
 
   function choose(next: AuditScanRoom) {
     onRoomChange(next)
-    setOpen(false)
+    onOpenChange(false)
     setQuery("")
   }
 
   return (
-    <Sheet open={open} onOpenChange={(next) => { setOpen(next); if (!next) setQuery("") }}>
+    <Sheet open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) setQuery("") }}>
       <SheetTrigger asChild>
         <button
           type="button"
@@ -51,10 +55,17 @@ export function AuditScanRoomPicker({
           )}
         >
           <MapPin className="size-4 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate">
-            {selected ? [selected.label, selectedDepartment?.label].filter(Boolean).join(" · ") : t("roomPick")}
-          </span>
-          {selected ? <span className="shrink-0 text-xs">{t("roomChange")}</span> : null}
+          {selected ? (
+            <span className="min-w-0 flex-1 py-1">
+              <span className="block break-words">{[selected.label, selectedDepartment?.label].filter(Boolean).join(" · ")}</span>
+              <span className="block text-xs font-normal tabular-nums">
+                {t("roomPendingOfTotal", { pending: selected.pending, total: selected.total })}
+              </span>
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1 truncate">{t("roomPick")}</span>
+          )}
+          {selected ? <span className="shrink-0 text-xs font-semibold underline underline-offset-4">{t("roomChange")}</span> : null}
           <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
         </button>
       </SheetTrigger>

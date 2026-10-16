@@ -38,20 +38,20 @@ function readRoom(storageKey: string): AuditScanContext {
   return value
 }
 
+/** Returns the room, its setter and whether this round has a stored choice ("no room" is one too). */
 export function useAuditScanRoom(roundId: string) {
   const storageKey = buildAuditScanContextStorageKey(roundId)
-  const room = useSyncExternalStore(
-    (onChange) => {
-      window.addEventListener(storageKey, onChange)
-      window.addEventListener("storage", onChange)
-      return () => {
-        window.removeEventListener(storageKey, onChange)
-        window.removeEventListener("storage", onChange)
-      }
-    },
-    () => readRoom(storageKey),
-    () => emptyAuditScanContext,
-  )
+  const subscribe = useCallback((onChange: () => void) => {
+    window.addEventListener(storageKey, onChange)
+    window.addEventListener("storage", onChange)
+    return () => {
+      window.removeEventListener(storageKey, onChange)
+      window.removeEventListener("storage", onChange)
+    }
+  }, [storageKey])
+  const room = useSyncExternalStore(subscribe, () => readRoom(storageKey), () => emptyAuditScanContext)
+  // The server cannot see storage: it assumes a choice exists so nothing opens before hydration reads it.
+  const hasStoredRoom = useSyncExternalStore(subscribe, () => readRaw(storageKey) !== null, () => true)
 
   const setRoom = useCallback((next: AuditScanContext) => {
     const raw = JSON.stringify(normalizeAuditScanContext(next))
@@ -64,5 +64,5 @@ export function useAuditScanRoom(roundId: string) {
     window.dispatchEvent(new Event(storageKey))
   }, [storageKey])
 
-  return [room, setRoom] as const
+  return [room, setRoom, hasStoredRoom] as const
 }

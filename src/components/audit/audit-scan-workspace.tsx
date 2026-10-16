@@ -61,6 +61,7 @@ function isRoundClosedError(message: unknown) {
 export function AuditScanWorkspace({
   roundId,
   roundName,
+  roundCode,
   backHref,
   pendingHref,
   initialItems,
@@ -72,6 +73,7 @@ export function AuditScanWorkspace({
 }: {
   roundId: string
   roundName: string
+  roundCode: string
   backHref: string
   pendingHref: string
   initialItems: AuditScanItemRow[]
@@ -85,7 +87,7 @@ export function AuditScanWorkspace({
   const apiError = useApiError()
   const tCommon = useTranslations("common")
   const isWide = useMediaQuery("(min-width: 64rem)")
-  const [room, setRoom] = useAuditScanRoom(roundId)
+  const [room, setRoom, hasStoredRoom] = useAuditScanRoom(roundId)
   const [items, setItems] = useState(initialItems)
   const [draft, setDraft] = useState("")
   const [term, setTerm] = useState("")
@@ -96,6 +98,9 @@ export function AuditScanWorkspace({
     return item ? { kind: "item", item, openedMode: getCheckMode(item) } : null
   }, [initialAssetId, initialItems])
   const [target, setTarget] = useState<AuditCheckTarget | null>(initialTarget)
+  const [roomPickerRequested, setRoomPickerRequested] = useState(false)
+  // Closing the picker, or a visit that starts on an asset's check sheet, ends the first-visit auto-open (D7).
+  const [roomPickerDismissed, setRoomPickerDismissed] = useState(initialTarget !== null)
   const [targetKey, setTargetKey] = useState(0)
   const [openedFromSearch, setOpenedFromSearch] = useState(false)
   const [components, setComponents] = useState<AuditCheckComponentsState>(emptyComponents)
@@ -129,6 +134,8 @@ export function AuditScanWorkspace({
   const custodianLabels = useMemo(() => new Map(options.employees.map((option) => [option.id, option.label])), [options.employees])
   const roomOptions = useMemo(() => buildRoomOptions(items, options.locations, options.departments), [items, options.locations, options.departments])
   const progress = useMemo(() => summarizeProgress(items), [items])
+  /** Opens by itself once per visit while the round has several rooms and none was ever chosen for it. */
+  const roomPickerOpen = roomPickerRequested || (!roomPickerDismissed && !hasStoredRoom && roomOptions.length > 1)
   const list = useMemo(() => buildRoomList({ items, room, tab, limit, locationLabels }), [items, room, tab, limit, locationLabels])
   const matches = useMemo(() => searchAuditItems(items, term, custodianLabels), [items, term, custodianLabels])
   const queuedAssetIds = useMemo(() => new Set(queue.map((entry) => entry.assetId)), [queue])
@@ -357,6 +364,11 @@ export function AuditScanWorkspace({
     setSaved(null)
     componentsAssetRef.current = asset.id
     setComponents({ status: "ready", components: normalizeAuditLookupComponents(asset.components), installedIn: normalizeAuditLookupInstalledIn(asset.installedIn) })
+  }
+
+  function changeRoomPickerOpen(next: boolean) {
+    setRoomPickerRequested(next)
+    if (!next) setRoomPickerDismissed(true)
   }
 
   function changeRoom(next: AuditScanRoom) {
@@ -642,7 +654,7 @@ export function AuditScanWorkspace({
   return (
     <div data-audit-scan-workspace className="mx-auto max-w-6xl lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-6">
       <div className="min-w-0 space-y-2">
-        <AuditScanHeader roundName={roundName} backHref={backHref} progress={progress} />
+        <AuditScanHeader roundName={roundName} roundCode={roundCode} backHref={backHref} progress={progress} />
         {roundClosed ? (
           <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
             <span className="min-w-0 flex-1">{t("roundClosedError")}</span>
@@ -651,7 +663,7 @@ export function AuditScanWorkspace({
             </Link>
           </div>
         ) : null}
-        <AuditScanRoomPicker room={room} rooms={roomOptions} onRoomChange={changeRoom} />
+        <AuditScanRoomPicker room={room} rooms={roomOptions} open={roomPickerOpen} onOpenChange={changeRoomPickerOpen} onRoomChange={changeRoom} />
         <AuditScanSearchField
           value={draft}
           cameraOpen={cameraOpen}
