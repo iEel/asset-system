@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
@@ -112,7 +113,7 @@ export function DisposalRequestForm({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
+    <ContentPanel>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <FormSection number={1} title={t("formSteps.asset")} className="md:col-span-2" />
         <DisposalAssetPicker
@@ -216,7 +217,7 @@ export function DisposalRequestForm({
           </Button>
         </div>
       </form>
-    </section>
+    </ContentPanel>
   )
 }
 

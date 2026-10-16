@@ -41,3 +41,10 @@ test("disposal asset picker: shared remove buttons, one quiet list of the chosen
   assert.match(source, /role="option" aria-selected=\{active\} disabled=\{!option\.eligible\} onClick=\{\(\) => toggle\(option\)\} className="[^"]*\bborder-b border-border-soft\b[^"]*\bhover:bg-row-hover\b/)
   assert.doesNotMatch(source, /hover:bg-accent|hover:bg-danger-soft|\btext-xs\b|h-10 w-10|space-y-2 overflow-y-auto|px-3 py-6 text-center/)
 })
+
+test("disposal request form: the form sits in a ContentPanel at the one panel spacing (spec 2D D9)", () => {
+  const source = read(`${C}disposal/disposal-request-form.tsx`)
+  assert.match(source, /<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\} className="grid grid-cols-1 gap-5 md:grid-cols-2">/)
+  assert.match(source, /<\/form>\n\s+<\/ContentPanel>/)
+  assert.doesNotMatch(source, /<section\b|rounded-lg border|sm:p-6/)
+})
