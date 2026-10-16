@@ -251,3 +251,15 @@ test("register filter sheet and toolbar: ChoiceChip toggles, the dialog-footer l
   assert.match(toolbar, /return <span className=\{cn\("num", className\)\}>\{formatCount\(count\)\}<\/span>/)
   assert.doesNotMatch(toolbar, /rounded-full|bg-primary\b|text-primary-foreground/)
 })
+
+test("register table and phone list: the ownership type is a name Chip, the frame takes the panel classes, and the scroll hint is the shared hint line (spec 2D D9, M22)", () => {
+  const table = read(`${C}assets/asset-register-table.tsx`)
+  assert.match(table, /<Chip title=\{asset\.ownershipType\.label\}>\{asset\.ownershipType\.label\}<\/Chip>/)
+  assert.match(table, /<div aria-busy=\{isPending\} className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
+  assert.match(table, /<MoveHorizontal aria-hidden="true" \/>\n\s+\{labels\.tableScrollHint\}/)
+  assert.match(table, /description=\{`\$\{labels\.bulkUpdateDescription\} \(\$\{formatCount\(selectedAssets\.length\)\} \$\{labels\.selectedCount\}\)`\}/)
+  assert.doesNotMatch(table, /function ownershipTypeTone\b|bg-muted px-4|StatusTone/)
+  const mobile = read(`${C}assets/asset-register-mobile-list.tsx`)
+  assert.match(mobile, /<Chip className="shrink-0">\{asset\.ownershipType\.label\}<\/Chip>/)
+  assert.doesNotMatch(mobile, /tone="success"/)
+})

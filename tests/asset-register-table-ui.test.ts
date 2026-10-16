@@ -200,7 +200,9 @@ test("mobile rows keep line 3 on one line and the summary bar adds no vertical p
   assert.match(row, /className="mt-0\.5 flex min-w-0 flex-nowrap items-center gap-2 text-xs leading-5"/)
   assert.doesNotMatch(row, /flex-wrap/)
   assert.match(row, /className="relative flex min-h-20 items-center gap-3 px-3 py-2 /)
-  assert.equal(row.match(/<StatusBadge [^>]*className="shrink-0"/g)?.length, 3)
+  assert.equal(row.match(/<StatusBadge [^>]*className="shrink-0"/g)?.length, 2)
+  // Plan 2D-3: "shared" is the ownership type's name, so it is the shared Chip (2D-2 R2).
+  assert.match(row, /<Chip className="shrink-0">\{asset\.ownershipType\.label\}<\/Chip>/)
   assert.match(source, /data-asset-register-summary className="[^"]*py-0 md:py-2/)
 })
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Download, Edit, Printer, X } from "lucide-react"
+import { Download, Edit, MoveHorizontal, Printer, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
@@ -14,11 +14,12 @@ import type { AssetActivityFilter } from "@/lib/asset-activity-filter"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { Button } from "@/components/ui/button"
+import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { DataTableBody, DataTableFoot, DataTableHead, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Nil, orNil } from "@/components/ui/nil"
-import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
@@ -41,7 +42,7 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
-import { getAssetStateTone, getDesktopTableOnlyClasses } from "@/lib/design-system"
+import { getAssetStateTone, getDesktopTableOnlyClasses, getPanelClasses } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
   assetRegisterColumnPresets,
@@ -453,7 +454,8 @@ export function AssetRegisterTable({
   }
 
   return (
-    <div aria-busy={isPending} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface">
+    // The frame carries aria-busy, so it cannot be ContentPanel: it takes the panel classes (spec 2D D9, 2D-2 R4).
+    <div aria-busy={isPending} className={cn(getPanelClasses(), "overflow-hidden")}>
       <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 md:px-4 py-0 md:py-2">
         <p className="text-meta text-muted-foreground num">{rangeLabel}</p>
         <div className="flex items-center gap-2">
@@ -519,13 +521,15 @@ export function AssetRegisterTable({
         />
       )}
 
+      {/* The hint line of DataTableScrollArea (data-table-scroll.tsx): no fill, faint 13px text after the scroll icon. */}
       {isOverflowing ? (
-        <div
+        <p
           data-asset-table-scroll-hint
-          className={`${getDesktopTableOnlyClasses()} border-b border-border bg-muted px-4 py-1.5 text-xs text-muted-foreground`}
+          className="hidden items-center gap-1.5 border-b border-border-soft px-4 py-1.5 text-meta text-faint-foreground md:flex [&>svg]:size-4 [&>svg]:shrink-0"
         >
+          <MoveHorizontal aria-hidden="true" />
           {labels.tableScrollHint}
-        </div>
+        </p>
       ) : null}
 
       <div
@@ -638,7 +642,8 @@ export function AssetRegisterTable({
                   {visibleColumns.has("custodian") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.custodian ?? undefined}>{orNil(asset.custodian, t("noCustodian"))}</td>}
                   {visibleColumns.has("ownershipType") && (
                     <td className={cellClasses}>
-                      <StatusBadge label={asset.ownershipType.label} tone={ownershipTypeTone(asset.ownershipType.value)} />
+                      {/* The ownership type is a name, not a state (2D-2 R2): the shared Chip, cut with its title in the 120px column. */}
+                      <Chip title={asset.ownershipType.label}>{asset.ownershipType.label}</Chip>
                     </td>
                   )}
                   {visibleColumns.has("status") && (
@@ -691,7 +696,7 @@ export function AssetRegisterTable({
       <AccessibleDialog
         open={bulkUpdateOpen}
         title={labels.bulkUpdateTitle}
-        description={`${labels.bulkUpdateDescription} (${selectedAssets.length} ${labels.selectedCount})`}
+        description={`${labels.bulkUpdateDescription} (${formatCount(selectedAssets.length)} ${labels.selectedCount})`}
         busy={bulkSaving}
         size="md"
         onClose={() => setBulkUpdateOpen(false)}
@@ -766,14 +771,6 @@ function HeaderWithHelp({
       <AssetStateHelpPopover {...help} />
     </span>
   )
-}
-
-function ownershipTypeTone(value: string): StatusTone {
-  if (value === "software_license") return "info"
-  if (value === "stock") return "warning"
-  if (value === "shared") return "success"
-  if (value === "component") return "primary"
-  return "muted"
 }
 
 function csvCell(value: string) {

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
 import type { AssetRegisterRow } from "@/components/assets/asset-register-table"
+import { Chip } from "@/components/ui/chip"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getAssetStateTone, normalizeAssetStateValue } from "@/lib/design-system"
@@ -65,7 +66,7 @@ function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, o
             <>
               <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} className="shrink-0" />
               {asset.ownershipType.value === "shared" ? (
-                <StatusBadge label={asset.ownershipType.label} tone="success" className="shrink-0" />
+                <Chip className="shrink-0">{asset.ownershipType.label}</Chip>
               ) : null}
             </>
           ) : null}
