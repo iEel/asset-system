@@ -111,3 +111,12 @@ test("asset model form: the form on the panel classes, the photo panel a Content
   assert.equal(source.match(/<EmptyNote\b/g)?.length, 2, "no spec rows, no model photo")
   assert.doesNotMatch(source, /rounded-lg border|border-dashed|\btext-xs\b|\btext-lg\b|rounded-md border border-border bg-background p-3/)
 })
+
+test("category form: three ContentPanels with the add buttons as panel actions, and EmptyNote for empty templates (spec 2D D9, M21)", () => {
+  const source = read("src/components/master-data/category-form.tsx")
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 3, "the fields, the custom field template, the photo checklist")
+  assert.match(source, /<ContentPanel\n\s+title=\{t\("customFieldTemplate"\)\}\n\s+description=\{t\("customFieldTemplateHelp"\)\}\n\s+actions=\{/)
+  assert.match(source, /<ContentPanel\n\s+title=\{t\("photoChecklistTemplate"\)\}\n\s+description=\{t\("photoChecklistTemplateHelp"\)\}\n\s+actions=\{/)
+  assert.equal(source.match(/<EmptyNote>\{labels\.empty\}<\/EmptyNote>/g)?.length, 2)
+  assert.doesNotMatch(source, /rounded-lg border|border-dashed|\btext-lg\b|<section\b/)
+})

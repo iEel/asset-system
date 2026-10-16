@@ -12,6 +12,8 @@ import {
   type CategoryCustomFieldDraft,
 } from "@/lib/category-form-arrays"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
@@ -114,7 +116,7 @@ export function CategoryForm({
       />
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <section className="rounded-lg border border-border bg-surface p-6">
+        <ContentPanel>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required>
             <Input
@@ -154,14 +156,12 @@ export function CategoryForm({
             {tCommon("active")}
           </label>
           </div>
-        </section>
+        </ContentPanel>
 
-        <section className="rounded-lg border border-border bg-surface p-6">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">{t("customFieldTemplate")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("customFieldTemplateHelp")}</p>
-            </div>
+        <ContentPanel
+          title={t("customFieldTemplate")}
+          description={t("customFieldTemplateHelp")}
+          actions={
             <Button
               variant="outline"
               size="md"
@@ -170,8 +170,8 @@ export function CategoryForm({
               <Plus aria-hidden="true" />
               {t("addCustomField")}
             </Button>
-          </div>
-
+          }
+        >
           <CustomFieldTemplateEditor
             fields={values.customFieldDefs}
             labels={{
@@ -194,20 +194,18 @@ export function CategoryForm({
             }}
             onChange={setCustomFields}
           />
-        </section>
+        </ContentPanel>
 
-        <section className="rounded-lg border border-border bg-surface p-6">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">{t("photoChecklistTemplate")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("photoChecklistTemplateHelp")}</p>
-            </div>
+        <ContentPanel
+          title={t("photoChecklistTemplate")}
+          description={t("photoChecklistTemplateHelp")}
+          actions={
             <Button variant="outline" size="md" onClick={() => setPhotoChecklist([...values.photoChecklist, ""])}>
               <Plus aria-hidden="true" />
               {t("addPhotoChecklist")}
             </Button>
-          </div>
-
+          }
+        >
           <PhotoChecklistEditor
             items={values.photoChecklist}
             labels={{
@@ -220,7 +218,7 @@ export function CategoryForm({
             }}
             onChange={setPhotoChecklist}
           />
-        </section>
+        </ContentPanel>
 
         <div className="flex justify-end gap-3 border-t border-border pt-5">
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
@@ -281,11 +279,7 @@ function CustomFieldTemplateEditor({
   }
 
   if (fields.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-        {labels.empty}
-      </div>
-    )
+    return <EmptyNote>{labels.empty}</EmptyNote>
   }
 
   return (
@@ -439,11 +433,7 @@ function PhotoChecklistEditor({
   }
 
   if (items.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-        {labels.empty}
-      </div>
-    )
+    return <EmptyNote>{labels.empty}</EmptyNote>
   }
 
   return (
