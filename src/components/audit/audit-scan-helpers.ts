@@ -53,3 +53,11 @@ export function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto 
     blob: photo.file,
   }
 }
+
+/** The phone keyboard opens after a field takes focus and shrinks the screen, but a nested scroller keeps its scroll
+ * position, so the focused field can end up under the check sheet's pinned bar. Scroll it back into the scrolling
+ * body only as far as it must; a control outside the body (the bar's own buttons) is left alone. */
+export function revealFocusInScrollArea(area: Element | null, focused: Element | null) {
+  if (!area || !focused || focused === area || !area.contains(focused)) return
+  focused.scrollIntoView({ block: "nearest" })
+}

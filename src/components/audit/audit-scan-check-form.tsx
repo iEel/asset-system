@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { AuditComponentPanel } from "@/components/audit/audit-scan-panels"
 import { AuditScanCheckField } from "@/components/audit/audit-scan-check-field"
-import { isAuditComponentChecked, isAuditComponentPending } from "@/components/audit/audit-scan-helpers"
+import { isAuditComponentChecked, isAuditComponentPending, revealFocusInScrollArea } from "@/components/audit/audit-scan-helpers"
 import type { AuditInstalledInParent, AuditLookupAsset, AuditScanComponent, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import {
   buildCheckDefaults,
@@ -120,6 +120,7 @@ export function AuditScanCheckForm({
   const [confirmingAll, setConfirmingAll] = useState(false)
   const photosRef = useRef(photos)
   const mountedRef = useRef(true)
+  const bodyRef = useRef<HTMLDivElement | null>(null)
   const diff = diffCheckValues(values, expected, ownershipType)
   const photoRequired = requiresCheckPhoto(mode, diff)
   const missingPhoto = photoRequired && photos.length === 0
@@ -144,6 +145,15 @@ export function AuditScanCheckForm({
         if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl)
       })
     }
+  }, [])
+
+  // The phone keyboard opens after a field takes focus and shrinks the screen;
+  // bring the focused field back above the pinned bar.
+  useEffect(() => {
+    const viewport: EventTarget = window.visualViewport ?? window
+    const reveal = () => revealFocusInScrollArea(bodyRef.current, document.activeElement)
+    viewport.addEventListener("resize", reveal)
+    return () => viewport.removeEventListener("resize", reveal)
   }, [])
 
   const labels = useMemo(() => ({
@@ -252,7 +262,7 @@ export function AuditScanCheckForm({
   return (
     // A flex column inside the sheet or the wide panel: the fields scroll, the action bar under them never does (D1).
     <div data-audit-check-form className="flex min-h-0 flex-1 flex-col">
-      <div data-audit-check-body className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <div ref={bodyRef} data-audit-check-body className="min-h-0 flex-1 scroll-py-3 space-y-3 overflow-y-auto px-4 py-3">
         <p className="text-sm text-muted-foreground">{statusLine}</p>
 
         <div className="space-y-3">

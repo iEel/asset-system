@@ -47,7 +47,7 @@ test("the immediate-correction box only appears for approvers with a location or
 test("the save and not-this-item buttons sit in a pinned action bar below the scrolling fields (D1)", () => {
   const source = form()
   assert.match(source, /<div data-audit-check-form className="flex min-h-0 flex-1 flex-col">/)
-  assert.match(source, /<div data-audit-check-body className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">/)
+  assert.match(source, /<div ref=\{bodyRef\} data-audit-check-body className="min-h-0 flex-1 scroll-py-3 space-y-3 overflow-y-auto px-4 py-3">/)
   assert.match(source, /<div data-audit-check-actions className="shrink-0 space-y-2 border-t border-border px-4 py-3">/)
   const body = source.indexOf("data-audit-check-body")
   const actions = source.indexOf("data-audit-check-actions")
