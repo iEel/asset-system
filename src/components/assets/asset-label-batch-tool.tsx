@@ -2,14 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
-import { ArrowDownAZ, Clock3, Filter, Loader2, MapPin, Plus, Printer, RotateCcw, X } from "lucide-react"
+import { ArrowDownAZ, Check, Filter, Loader2, MapPin, Plus, Printer, RotateCcw, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { PageHeader } from "@/components/ui/page-header"
 import { SearchField } from "@/components/ui/search-field"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { buildAssetLabelSubtitle } from "@/lib/asset-label-display"
+import { getAssetStateTone } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 
 type SelectOption = {
   id: string
@@ -299,7 +305,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0 space-y-5">
-          <section className="rounded-lg border border-border bg-surface p-4 sm:p-5">
+          <ContentPanel>
             <Field label={labels.searchLabel} hint={trimmedQuery.length < 2 ? labels.minChars : undefined}>
               <SearchField value={query} onChange={(event) => setQuery(event.target.value)} placeholder={labels.searchPlaceholder} />
             </Field>
@@ -312,19 +318,21 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                     {labels.loading}
                   </div>
                 ) : visibleResults.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">{labels.noResults}</div>
+                  <EmptyNote padded>{labels.noResults}</EmptyNote>
                 ) : (
-                  <div className="divide-y divide-border">
+                  // The result and queue rows stay list buttons (plan 2D-3 R5): two lines of text that add to the print list.
+                  // An added row keeps the shared disabled look (no opacity) and shows a check instead of the plus.
+                  <div className="divide-y divide-border-soft">
                     {visibleResults.map((asset) => (
                       <button
                         key={asset.id}
                         type="button"
                         disabled={selectedIds.has(asset.id)}
                         onClick={() => addAsset(asset)}
-                        className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:bg-background"
                       >
-                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
-                          <Plus className="h-4 w-4" />
+                        <span aria-hidden="true" className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground">
+                          {selectedIds.has(asset.id) ? <Check className="size-4" /> : <Plus className="size-4" />}
                         </span>
                         <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} printLabels={labels} />
                       </button>
@@ -333,31 +341,19 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 )}
               </div>
             ) : null}
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <h2 className="inline-flex items-center gap-2 text-base font-semibold text-foreground">
-                  <Clock3 className="h-4 w-4 text-primary" />
-                  {labels.recentQueueTitle}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">{labels.recentQueueHelp}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-md border border-primary-border bg-primary-soft p-3">
+          <ContentPanel title={labels.recentQueueTitle} description={labels.recentQueueHelp}>
+            <div className="rounded-md border border-border bg-background p-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-primary">{labels.queueScopeTitle}</div>
+                  <div className="text-sm font-medium text-foreground">{labels.queueScopeTitle}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                    <span className="rounded-full bg-surface px-2 py-0.5 font-medium text-primary ring-1 ring-primary-border">
-                      {queueScopeSummary.label}
-                    </span>
+                    <Chip>{queueScopeSummary.label}</Chip>
                     <span className="min-w-0 break-words text-foreground">{queueScopeSummary.detail}</span>
                   </div>
                   {queueScopeSummary.detail !== labels.queueScopeHelp ? (
-                    <p className="mt-1 text-xs text-muted-foreground">{labels.queueScopeHelp}</p>
+                    <p className="mt-1 text-meta text-muted-foreground">{labels.queueScopeHelp}</p>
                   ) : null}
                 </div>
                 <Button disabled={recentAssets.length === 0} onClick={addRecentAssets} className="w-full shrink-0 sm:w-auto">
@@ -370,7 +366,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
             <div className="mt-3 rounded-md border border-border bg-background p-3">
               <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Filter className="h-4 w-4 text-primary" />
+                  <Filter aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
                   {labels.labelQueueFiltersTitle}
                 </div>
                 <Button variant="outline" onClick={resetQueueFilters}>
@@ -447,18 +443,22 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   {labels.loading}
                 </div>
               ) : recentAssets.length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">{labels.recentQueueEmpty}</div>
+                <EmptyNote padded>{labels.recentQueueEmpty}</EmptyNote>
               ) : (
-                <div className="max-h-[32rem] divide-y divide-border overflow-y-auto">
+                <div className="max-h-[32rem] divide-y divide-border-soft overflow-y-auto">
                   {recentAssets.map((asset) => (
                     <button
                       key={asset.id}
                       type="button"
                       disabled={selectedIds.has(asset.id)}
                       onClick={() => addAsset(asset)}
-                      className="flex min-h-11 w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex min-h-11 w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:bg-background"
                     >
-                      <Plus className="mt-1 h-3.5 w-3.5 shrink-0 text-primary" />
+                      {selectedIds.has(asset.id) ? (
+                        <Check aria-hidden="true" className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <Plus aria-hidden="true" className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      )}
                       <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} printLabels={labels} compact />
                     </button>
                   ))}
@@ -471,15 +471,15 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 {labels.loadMoreQueue}
               </Button>
             ) : null}
-          </section>
+          </ContentPanel>
         </div>
 
-        <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-5 xl:sticky xl:top-20 xl:self-start">
+        <ContentPanel
+          title={labels.selectedTitle}
+          description={`${formatCount(selected.length)} ${labels.selectedCount}`}
+          className="xl:sticky xl:top-20 xl:self-start"
+        >
           <div className="mb-4 flex flex-col gap-3">
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold text-foreground">{labels.selectedTitle}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{selected.length} {labels.selectedCount}</p>
-            </div>
             <QueueSelect
               label={labels.selectedSortLabel}
               value={selectedSort}
@@ -505,9 +505,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
           </div>
 
           {selectedForPrint.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {labels.noSelected}
-            </div>
+            <EmptyNote>{labels.noSelected}</EmptyNote>
           ) : (
             <div className="max-h-[44rem] space-y-2 overflow-y-auto pr-1">
               {selectedForPrint.map((asset) => (
@@ -527,7 +525,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
               ))}
             </div>
           )}
-        </section>
+        </ContentPanel>
       </div>
     </div>
   )
@@ -562,6 +560,7 @@ function toSearchResult(asset: AssetApiRow, locale: string): SearchResult {
     createdAt: asset.createdAt ?? null,
     labelPrint: asset.labelPrint,
     status: {
+      name: asset.status?.name ?? null,
       label: locale === "th" ? asset.status?.nameTh ?? asset.status?.name ?? "-" : asset.status?.name ?? asset.status?.nameTh ?? "-",
       colorCode: asset.status?.colorCode ?? null,
     },
@@ -728,36 +727,22 @@ function AssetLabelSearchResult({
 }) {
   const printCount = asset.labelPrint ? asset.labelPrint.count : 0
   const printBadge = printCount > 0
-    ? printLabels.labelPrintedBadge.replace("COUNT", printCount.toLocaleString())
+    ? printLabels.labelPrintedBadge.replace("COUNT", formatCount(printCount))
     : printLabels.labelUnprintedBadge
 
+  // Spec 2D M23: the state is the shared StatusBadge toned from status.name; database colors are not shown.
   return (
     <span className="min-w-0 flex-1">
       <span className="flex flex-wrap items-center gap-2">
-        <span className="break-all font-semibold text-foreground">{asset.title}</span>
-        {!compact ? (
-          <span
-            className="rounded-full px-2 py-0.5 text-xs font-medium"
-            style={asset.status.colorCode ? { backgroundColor: `${asset.status.colorCode}1A`, color: asset.status.colorCode } : undefined}
-          >
-            {asset.status.label}
-          </span>
-        ) : null}
-        <span
-          className={
-            printCount > 0
-              ? "rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success"
-              : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-          }
-        >
-          {printBadge}
-        </span>
+        <span className="tag font-medium text-foreground">{asset.title}</span>
+        {!compact ? <StatusBadge label={asset.status.label} tone={getAssetStateTone(asset.status.name)} /> : null}
+        <StatusBadge label={printBadge} tone={printCount > 0 ? "success" : "muted"} />
       </span>
       <span className="mt-1 block break-words text-sm text-foreground">{asset.subtitle}</span>
-      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-muted-foreground">
         {asset.serialNumber ? <span className="break-all">{serialLabel}: {asset.serialNumber}</span> : null}
         <span className="inline-flex min-w-0 items-center gap-1">
-          <MapPin className="h-3 w-3" />
+          <MapPin aria-hidden="true" className="h-3 w-3" />
           <span className="break-words">{asset.meta.location}</span>
         </span>
       </span>

@@ -248,8 +248,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT5: {
   },
   LV1: {
-    // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}assets/asset-label-batch-tool.tsx`]: 1, // → 1 (KEEP): R-f, 2C plan 4
   },
   LV2: {
     // 2B-1
@@ -312,9 +310,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}assets/asset-label-print.tsx`]: 1, // print page
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // back item of the ActionBar :496 (2C batch 5, K23)
-  },
-  LV1: {
-    [`${C}assets/asset-label-batch-tool.tsx`]: 1, // R-f, 2C plan 4
   },
   LV2: {
     [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1197, :1199 and the history sentence :2384 (R-n)
