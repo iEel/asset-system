@@ -102,3 +102,12 @@ test("employee page: sections are ContentPanels, follow-ups warning Notices, emp
   assert.match(source, /<span className="tag">\{subordinate\.code\}<\/span>/)
   assert.doesNotMatch(source, /function SectionHeading\b|rounded-lg border|border-dashed|bg-warning-soft|hover:bg-primary-soft|hover:border-primary-border|hover:underline|\btext-xs\b|\btext-lg\b/)
 })
+
+test("asset model form: the form on the panel classes, the photo panel a ContentPanel, empties EmptyNote, the save-first note a neutral Notice, and no box around the dropzone (spec 2D D7, D9, M21)", () => {
+  const source = read("src/components/master-data/asset-model-form.tsx")
+  assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<ContentPanel title=\{t\("modelPhoto"\)\} description=\{t\("modelPhotoHelp"\)\}>/)
+  assert.match(source, /<Notice tone="neutral" className="mb-4">\{t\("saveModelBeforePhoto"\)\}<\/Notice>/)
+  assert.equal(source.match(/<EmptyNote\b/g)?.length, 2, "no spec rows, no model photo")
+  assert.doesNotMatch(source, /rounded-lg border|border-dashed|\btext-xs\b|\btext-lg\b|rounded-md border border-border bg-background p-3/)
+})

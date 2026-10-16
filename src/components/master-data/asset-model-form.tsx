@@ -8,13 +8,18 @@ import { ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import Link from "next/link"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatFileSize } from "@/lib/uploads"
+import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -227,7 +232,8 @@ export function AssetModelForm({
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
-        <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
+        {/* A <form> cannot be ContentPanel: the panel classes and its spacing (2D-2 R4, spec 2D D9). */}
+        <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("modelName")} required>
             <Input
@@ -293,9 +299,7 @@ export function AssetModelForm({
 
               <div className="space-y-2">
                 {structuredSpecs.items.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border px-3 py-5 text-center text-sm text-muted-foreground">
-                    {t("specsEmpty")}
-                  </div>
+                  <EmptyNote>{t("specsEmpty")}</EmptyNote>
                 ) : null}
                 {structuredSpecs.items.map((item) => (
                   <div key={item.id} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)_auto]">
@@ -354,15 +358,10 @@ export function AssetModelForm({
           </div>
         </form>
 
-        <section className="rounded-lg border border-border bg-surface p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <ImageIcon className="h-5 w-5 text-primary" />
-            {t("modelPhoto")}
-          </h2>
-          <p className="mb-4 text-sm text-muted-foreground">{t("modelPhotoHelp")}</p>
-
+        <ContentPanel title={t("modelPhoto")} description={t("modelPhotoHelp")}>
+          {/* The dropzone draws its own box: no frame around it (2D-2 R4). Saving first is a condition, a neutral Notice (D7). */}
           {model?.id ? (
-            <div className="mb-4 rounded-md border border-border bg-background p-3">
+            <div className="mb-4">
               <FileDropzone
                 file={selectedPhoto}
                 onFileChange={handlePhotoUpload}
@@ -374,15 +373,11 @@ export function AssetModelForm({
               />
             </div>
           ) : (
-            <div className="mb-4 rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-              {t("saveModelBeforePhoto")}
-            </div>
+            <Notice tone="neutral" className="mb-4">{t("saveModelBeforePhoto")}</Notice>
           )}
 
           {modelPhotos.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {t("noModelPhoto")}
-            </div>
+            <EmptyNote>{t("noModelPhoto")}</EmptyNote>
           ) : (
             <div className="space-y-3">
               {modelPhotos.map((photo, index) => {
@@ -401,8 +396,8 @@ export function AssetModelForm({
                         />
                       ) : (
                         <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                          <ImageIcon className="h-8 w-8" />
-                          <span className="max-w-full truncate px-4 text-xs">{photo.originalName}</span>
+                          <ImageIcon aria-hidden="true" className="size-8" />
+                          <span className="max-w-full truncate px-4 text-meta">{photo.originalName}</span>
                         </div>
                       )}
                     </div>
@@ -412,7 +407,7 @@ export function AssetModelForm({
                           <div className="text-sm font-medium text-foreground">
                             {index === 0 ? t("primaryModelPhoto") : photo.originalName}
                           </div>
-                          <div className="mt-1 text-xs text-muted-foreground">{formatFileSize(photo.fileSize)}</div>
+                          <div className="mt-1 text-meta text-muted-foreground">{formatFileSize(photo.fileSize)}</div>
                         </div>
                         <Button
                           variant="danger"
@@ -430,7 +425,7 @@ export function AssetModelForm({
               })}
             </div>
           )}
-        </section>
+        </ContentPanel>
       </div>
     </div>
   )
