@@ -21,3 +21,15 @@ test("audit progress bar: no frame of its own, counts through formatCount, the b
   assert.match(source, /<dd className="text-count num text-foreground">\{formatCount\(item\.value\)\}<\/dd>/)
   assert.doesNotMatch(source, /rounded-lg|border-border|bg-surface|getBreakdownClass|-soft\b|\btext-xs\b|text-lg/)
 })
+
+test("audit round close: a ContentPanel with the shared busy Button, the checklist counts as a StatStrip with attention, and a blocking rule as a neutral Notice (spec 2D D7, D9, M22, M29)", () => {
+  const source = read(`${C}audit/audit-round-close-button.tsx`)
+  assert.match(source, /<ContentPanel\s+title=\{t\("closeChecklist"\)\}\s+description=\{t\("closeChecklistHelp"\)\}\s+actions=\{/)
+  assert.match(source, /<Button onClick=\{closeRound\} busy=\{saving\} disabled=\{disabled\}>\s*<Lock aria-hidden="true" \/>\s*\{t\("closeRound"\)\}/)
+  assert.match(source, /<StatStrip\b/)
+  assert.match(source, /value: formatCount\(item\.value\)/)
+  assert.match(source, /href: item\.href && item\.value > 0 \? item\.href : undefined/)
+  assert.match(source, /attention: !item\.ok/)
+  assert.match(source, /<Notice key=\{item\.label\} tone="neutral" className="mt-3">\{item\.label\}<\/Notice>/)
+  assert.doesNotMatch(source, /<button\b|Loader2|CheckCircle2|disabled:opacity|text-white|-soft\b|rounded-lg|rounded-md|text-2xl|\btext-xs\b/)
+})

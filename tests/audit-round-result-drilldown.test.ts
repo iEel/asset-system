@@ -241,7 +241,7 @@ test("audit round close checklist items link to focused drilldown pages", () => 
 
   assert.match(closeButton, /href\?: string/)
   assert.match(closeButton, /actionLabel\?: string/)
-  assert.match(closeButton, /Link/)
+  assert.match(closeButton, /<StatStrip\b/)
   assert.match(closeButton, /item\.href && item\.value > 0/)
 
   for (const messages of [th, en]) {

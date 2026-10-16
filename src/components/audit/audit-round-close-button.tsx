@@ -1,18 +1,23 @@
 "use client"
 
-import Link from "next/link"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, Loader2, Lock } from "lucide-react"
+import { Lock } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { Notice } from "@/components/ui/notice"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { useApiError } from "@/components/ui/use-api-error"
+import { formatCount } from "@/lib/display-format"
 
 type ChecklistItem = {
   label: string
   value: number
   ok: boolean
+  // The drill-down of a count; an item without one is a rule.
   href?: string
   actionLabel?: string
 }
@@ -53,50 +58,38 @@ export function AuditRoundCloseButton({
     }
   }
 
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{t("closeChecklist")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("closeChecklistHelp")}</p>
-        </div>
-        <button
-          type="button"
-          onClick={closeRound}
-          disabled={disabled || saving}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-          {t("closeRound")}
-        </button>
-      </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {checklist.map((item) => {
-          const cardClassName = `rounded-md border px-3 py-3 ${
-            item.ok ? "border-success-border bg-success-soft text-success" : "border-warning-border bg-warning-soft text-warning"
-          }`
-          const content = (
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className={`mt-0.5 h-4 w-4 ${item.ok ? "text-success" : "text-warning"}`} />
-              <div className="min-w-0">
-                <div className="text-sm font-medium">{item.label}</div>
-                <div className="mt-1 text-2xl font-bold">{item.value}</div>
-                {item.href && item.value > 0 ? <div className="mt-1 text-xs font-semibold underline underline-offset-2">{item.actionLabel}</div> : null}
-              </div>
-            </div>
-          )
+  // Items with a drill-down are counts in the strip; the others are rules (the closer is not the creator),
+  // shown under the strip only while they block closing.
+  const counts = checklist.filter((item) => item.href)
+  const rules = checklist.filter((item) => !item.href)
 
-          return item.href && item.value > 0 ? (
-            <Link key={item.label} href={item.href} className={`${cardClassName} transition-colors hover:bg-warning-soft`}>
-              {content}
-            </Link>
-          ) : (
-            <div key={item.label} className={cardClassName}>
-              {content}
-            </div>
-          )
-        })}
-      </div>
-    </div>
+  return (
+    <ContentPanel
+      title={t("closeChecklist")}
+      description={t("closeChecklistHelp")}
+      actions={
+        <Button onClick={closeRound} busy={saving} disabled={disabled}>
+          <Lock aria-hidden="true" />
+          {t("closeRound")}
+        </Button>
+      }
+    >
+      <StatStrip
+        items={counts.map((item) => ({
+          key: item.label,
+          label: item.label,
+          value: formatCount(item.value),
+          href: item.href && item.value > 0 ? item.href : undefined,
+          foot: item.href && item.value > 0 ? item.actionLabel : undefined,
+          footTitle: item.href && item.value > 0 ? item.actionLabel : undefined,
+          attention: !item.ok,
+        }))}
+      />
+      {rules.map((item) =>
+        !item.ok ? (
+          <Notice key={item.label} tone="neutral" className="mt-3">{item.label}</Notice>
+        ) : null,
+      )}
+    </ContentPanel>
   )
 }
