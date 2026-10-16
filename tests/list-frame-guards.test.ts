@@ -237,7 +237,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :499 for ArrowLeft
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}audit/audit-scan-header.tsx`]: 1, // → 1 (KEEP): field scan header
-    [`${C}disposal/disposal-batch-form.tsx`]: 1, // → 1 (KEEP): back to editing in the review step :93 (2C)
+    [`${C}disposal/disposal-batch-form.tsx`]: 1, // → 1 (KEEP): back to editing in the review step :97 (2C)
   },
   LP1: {
   },
@@ -269,7 +269,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // → 6 (KEEP): label data (R-n)
     [`${C}audit/audit-scan-check-form.tsx`]: 3, // → 3 (KEEP): translated sentences (R-n)
     [`${C}audit/audit-scan-offline-bar.tsx`]: 1, // → 1 (KEEP): translated sentence (R-n)
-    [`${C}disposal/disposal-batch-form.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
   },
   LV3: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -308,7 +307,7 @@ const KEEP: Record<string, Record<string, number>> = {
   },
   LB1: {
     [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1413, not a page back
-    [`${C}disposal/disposal-batch-form.tsx`]: 1, // back to editing in the review step :93 (2C)
+    [`${C}disposal/disposal-batch-form.tsx`]: 1, // back to editing in the review step :97 (2C)
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // back item of the ActionBar :499 (2C batch 5, K23)
   },
@@ -316,7 +315,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1202, :1204 and the history sentence :2390 (R-n)
     [`${C}admin/system-settings-form.tsx`]: 1, // the default separator of the tag preview :2136 (R-n)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // label data (R-n)
-    [`${C}disposal/disposal-batch-form.tsx`]: 3, // 2C form (2D)
     [`${C}audit/audit-scan-check-form.tsx`]: 3, // translated sentences (R-n)
     [`${C}audit/audit-scan-offline-bar.tsx`]: 1, // translated sentence (R-n)
     [`${D}asset-management/labels/page.tsx`]: 4, // label data (R-n)

@@ -6,17 +6,20 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, PackageCheck, Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormSection } from "@/components/ui/form-section"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disposal/disposal-asset-picker"
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
+import { formatCount, formatMoney } from "@/lib/display-format"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
@@ -67,26 +70,27 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
 
   if (reviewing) {
     return (
-      <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("batchReviewHelp", { count: selectedIds.length })}</p>
-          </div>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-primary-soft px-2.5 py-1 text-sm font-semibold text-primary">
-            <PackageCheck className="h-4 w-4" /> {selectedIds.length}
-          </span>
-        </div>
-        <dl className="mt-5 grid gap-3 rounded-md border border-border bg-background p-4 text-sm sm:grid-cols-2">
-          <Summary label={t("disposalType")} value={t(`types.${values.disposalType}`)} />
-          <Summary label={t("requestedBy")} value={employees.find((item) => item.id === values.requestedById)?.label ?? "-"} />
-          <Summary label={t("approver")} value={employees.find((item) => item.id === values.approverId)?.label ?? t("noApprover")} />
-          {showsEstimatedSaleValue(values.disposalType as DisposalType) ? <Summary label={t("saleValue")} value={values.saleValue || "-"} /> : null}
-          {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? <Summary label={t("salvageValue")} value={values.salvageValue || "-"} /> : null}
-          <Summary label={t("reason")} value={values.reason} />
-        </dl>
-        <div className="mt-4 max-h-72 overflow-y-auto rounded-md border border-border">
-          {selectedAssets.map((asset) => <div key={asset.id} className="border-b border-border px-3 py-2 text-sm last:border-b-0">{asset.label}</div>)}
+      <ContentPanel
+        title={t("batchReviewTitle")}
+        description={t("batchReviewHelp", { count: selectedIds.length })}
+        actions={<span className="text-count num text-foreground" aria-hidden="true">{formatCount(selectedIds.length)}</span>}
+      >
+        <KeyValueList
+          items={[
+            { key: "disposalType", label: t("disposalType"), value: t(`types.${values.disposalType}`) },
+            { key: "requestedBy", label: t("requestedBy"), value: employees.find((item) => item.id === values.requestedById)?.label },
+            { key: "approver", label: t("approver"), value: employees.find((item) => item.id === values.approverId)?.label ?? t("noApprover") },
+            ...(showsEstimatedSaleValue(values.disposalType as DisposalType)
+              ? [{ key: "saleValue", label: t("saleValue"), value: values.saleValue ? <span className="num">{formatMoney(Number(values.saleValue), { unit: tCommon("baht") })}</span> : null }]
+              : []),
+            ...(showsEstimatedSalvageValue(values.disposalType as DisposalType)
+              ? [{ key: "salvageValue", label: t("salvageValue"), value: values.salvageValue ? <span className="num">{formatMoney(Number(values.salvageValue), { unit: tCommon("baht") })}</span> : null }]
+              : []),
+            { key: "reason", label: t("reason"), value: <span className="whitespace-pre-wrap">{values.reason}</span> },
+          ]}
+        />
+        <div className="mt-4 max-h-72 divide-y divide-border-soft overflow-y-auto rounded-md border border-border">
+          {selectedAssets.map((asset) => <div key={asset.id} className="px-3 py-2 text-sm">{asset.label}</div>)}
         </div>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => setReviewing(false)}>
@@ -98,12 +102,12 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
             {t("batchConfirm")}
           </Button>
         </div>
-      </section>
+      </ContentPanel>
     )
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
+    <ContentPanel>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <div className="min-w-0 space-y-4">
           <FormSection number={1} title={t("formSteps.asset")} />
@@ -156,8 +160,6 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
           </Button>
         </div>
       </div>
-    </section>
+    </ContentPanel>
   )
 }
-
-function Summary({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs font-medium text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-foreground">{value}</dd></div> }

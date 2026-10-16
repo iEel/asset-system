@@ -48,3 +48,16 @@ test("disposal request form: the form sits in a ContentPanel at the one panel sp
   assert.match(source, /<\/form>\n\s+<\/ContentPanel>/)
   assert.doesNotMatch(source, /<section\b|rounded-lg border|sm:p-6/)
 })
+
+test("disposal batch form: two ContentPanels, the review facts a KeyValueList with Nil and formatMoney, a plain count and one quiet asset list (spec 2D D9, D19, M17, M22)", () => {
+  const source = read(`${C}disposal/disposal-batch-form.tsx`)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 2, "the review step and the form step")
+  assert.match(source, /<ContentPanel\n\s+title=\{t\("batchReviewTitle"\)\}\n\s+description=\{t\("batchReviewHelp", \{ count: selectedIds\.length \}\)\}\n\s+actions=\{<span className="text-count num text-foreground" aria-hidden="true">\{formatCount\(selectedIds\.length\)\}<\/span>\}\n\s+>/)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 1)
+  assert.match(source, /\{ key: "requestedBy", label: t\("requestedBy"\), value: employees\.find\(\(item\) => item\.id === values\.requestedById\)\?\.label \}/)
+  assert.match(source, /value: values\.saleValue \? <span className="num">\{formatMoney\(Number\(values\.saleValue\), \{ unit: tCommon\("baht"\) \}\)\}<\/span> : null/)
+  assert.match(source, /value: values\.salvageValue \? <span className="num">\{formatMoney\(Number\(values\.salvageValue\), \{ unit: tCommon\("baht"\) \}\)\}<\/span> : null/)
+  assert.match(source, /<div className="mt-4 max-h-72 divide-y divide-border-soft overflow-y-auto rounded-md border border-border">/)
+  assert.match(source, /<ArrowLeft aria-hidden="true" \/>/, "back to editing keeps its arrow (LFG KEEP.LB1)")
+  assert.doesNotMatch(source, /function Summary\b|"-"|<section\b|rounded-lg border|bg-primary-soft|text-lg|\btext-xs\b|border-b border-border(?!-)/)
+})
