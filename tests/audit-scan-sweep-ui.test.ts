@@ -113,3 +113,15 @@ test("room list: counts through formatCount, EmptyNote for an empty tab, the lis
   assert.match(source, /\{\/\* A raw button on purpose: [^\n]*\*\/\}\s*<button\s+type="button"\s+data-audit-scan-row/)
   assert.doesNotMatch(source, /\btext-xs\b|font-semibold|tabular-nums|hover:underline|text-primary|rounded-md border border-border bg-surface/)
 })
+
+test("room picker: no dashed trigger, meta counts, the clear button in the dialog footer's layout, and the two raw buttons that stay say why (spec 2D D19, §5.4 rule 2)", () => {
+  const source = read(`${A}audit-scan-room-picker.tsx`)
+  assert.match(source, /selected \? "border-primary-border bg-primary-soft text-primary" : "border-control-border bg-surface text-muted-foreground hover:bg-accent"/)
+  assert.match(source, /<span className="block text-meta font-normal num">\s*\{t\("roomPendingOfTotal", \{ pending: selected\.pending, total: selected\.total \}\)\}/)
+  assert.match(source, /<span className="shrink-0 text-meta font-semibold underline underline-offset-4">\{t\("roomChange"\)\}<\/span>/)
+  assert.match(source, /<span className="shrink-0 text-meta num text-muted-foreground">\s*\{t\("roomPendingOfTotal", \{ pending: option\.pending, total: option\.total \}\)\}/)
+  assert.match(source, /<SheetFooter className="border-t border-border-soft bg-background px-4 py-3 sm:flex-row sm:flex-wrap sm:justify-end sm:px-5">\s*<Button variant="outline" onClick=\{\(\) => choose\(\{ locationId: "", departmentId: "" \}\)\}>/)
+  assert.equal(source.match(/\{\/\* A raw button on purpose: [^\n]*\(2D-5 lists it\)\. \*\/\}/g)?.length, 2)
+  assert.equal(source.match(/<button\b/g)?.length, 2)
+  assert.doesNotMatch(source, /border-dashed|\btext-xs\b|tabular-nums|className="w-full"/)
+})

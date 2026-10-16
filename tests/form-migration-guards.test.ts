@@ -191,7 +191,7 @@ const RAW_FIELDS: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :76 stays (O20)
+  [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :88 stays (O20)
   // 4
   [`${C}assets/asset-label-print.tsx`]: 2, // the print toolbar's boxed fields :221, :233 (K21)
 }

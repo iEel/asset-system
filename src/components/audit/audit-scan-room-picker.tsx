@@ -45,27 +45,28 @@ export function AuditScanRoomPicker({
 
   return (
     <Sheet open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) setQuery("") }}>
+      {/* A raw button on purpose: a two-line context control that shows the chosen room, like a select trigger (2D-5 lists it). */}
       <SheetTrigger asChild>
         <button
           type="button"
           data-audit-scan-room
           className={cn(
             "flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            selected ? "border-primary-border bg-primary-soft text-primary" : "border-dashed border-border bg-surface text-muted-foreground hover:bg-accent",
+            selected ? "border-primary-border bg-primary-soft text-primary" : "border-control-border bg-surface text-muted-foreground hover:bg-accent",
           )}
         >
           <MapPin className="size-4 shrink-0" aria-hidden="true" />
           {selected ? (
             <span className="min-w-0 flex-1 py-1">
               <span className="block break-words">{[selected.label, selectedDepartment?.label].filter(Boolean).join(" · ")}</span>
-              <span className="block text-xs font-normal tabular-nums">
+              <span className="block text-meta font-normal num">
                 {t("roomPendingOfTotal", { pending: selected.pending, total: selected.total })}
               </span>
             </span>
           ) : (
             <span className="min-w-0 flex-1 truncate">{t("roomPick")}</span>
           )}
-          {selected ? <span className="shrink-0 text-xs font-semibold underline underline-offset-4">{t("roomChange")}</span> : null}
+          {selected ? <span className="shrink-0 text-meta font-semibold underline underline-offset-4">{t("roomChange")}</span> : null}
           <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
         </button>
       </SheetTrigger>
@@ -113,6 +114,7 @@ export function AuditScanRoomPicker({
             const active = option.locationId === room.locationId
             return (
               <li key={option.locationId}>
+                {/* A raw button on purpose: a pressed room option that chooses and closes the sheet (2D-5 lists it). */}
                 <button
                   type="button"
                   aria-pressed={active}
@@ -123,7 +125,7 @@ export function AuditScanRoomPicker({
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-meta num text-muted-foreground">
                     {t("roomPendingOfTotal", { pending: option.pending, total: option.total })}
                   </span>
                   {active ? <Check className="size-4 shrink-0" aria-hidden="true" /> : null}
@@ -132,8 +134,9 @@ export function AuditScanRoomPicker({
             )
           })}
         </ul>
-        <SheetFooter className="border-t border-border-soft bg-background px-4 py-3">
-          <Button variant="outline" onClick={() => choose({ locationId: "", departmentId: "" })} className="w-full">
+        {/* The dialog footer's layout: full width on phones, a right-aligned row from sm (spec 2D D19). */}
+        <SheetFooter className="border-t border-border-soft bg-background px-4 py-3 sm:flex-row sm:flex-wrap sm:justify-end sm:px-5">
+          <Button variant="outline" onClick={() => choose({ locationId: "", departmentId: "" })}>
             {t("roomClear")}
           </Button>
         </SheetFooter>
