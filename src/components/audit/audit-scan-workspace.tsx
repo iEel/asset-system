@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { AuditScanCamera } from "@/components/audit/audit-scan-camera"
@@ -18,6 +18,8 @@ import { AuditScanSavedBanner, type AuditSavedNotice } from "@/components/audit/
 import { AuditScanSearchField, AuditScanSearchResults } from "@/components/audit/audit-scan-search"
 import type { AuditLookupAsset, AuditScanComponent, AuditScanLookupResponse, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import { useAuditScanRoom } from "@/components/audit/use-audit-scan-room"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { Notice } from "@/components/ui/notice"
 import { useMediaQuery } from "@/components/ui/use-media-query"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import {
@@ -647,8 +649,9 @@ export function AuditScanWorkspace({
 
   const searching = isAuditSearchReady(term)
   const targetTitle = target?.kind === "item" ? target.item.assetTag : target?.asset.assetTag ?? ""
-  const targetDescription = target?.kind === "item"
-    ? [target.item.name, target.item.serialNumber ? `Serial ${target.item.serialNumber}` : null].filter(Boolean).join(" · ")
+  // The serial is a code, so it shows as a tag; an out-of-scope subtitle is the asset's name.
+  const targetDescription: ReactNode = target?.kind === "item"
+    ? <>{target.item.name}{target.item.serialNumber ? <> · Serial <span className="tag">{target.item.serialNumber}</span></> : null}</>
     : target?.asset.subtitle ?? ""
 
   return (
@@ -656,12 +659,17 @@ export function AuditScanWorkspace({
       <div className="min-w-0 space-y-2">
         <AuditScanHeader roundName={roundName} roundCode={roundCode} backHref={backHref} progress={progress} />
         {roundClosed ? (
-          <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
-            <span className="min-w-0 flex-1">{t("roundClosedError")}</span>
-            <Link href={backHref} className="inline-flex min-h-11 items-center px-2 font-semibold text-primary underline-offset-4 hover:underline">
-              {t("backToRound")}
-            </Link>
-          </div>
+          <Notice
+            tone="danger"
+            role="alert"
+            action={
+              <Link href={backHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                {t("backToRound")}
+              </Link>
+            }
+          >
+            {t("roundClosedError")}
+          </Notice>
         ) : null}
         <AuditScanRoomPicker room={room} rooms={roomOptions} open={roomPickerOpen} onOpenChange={changeRoomPickerOpen} onRoomChange={changeRoom} />
         <AuditScanSearchField

@@ -75,3 +75,16 @@ test("component panel: the checked count and each row's name · role · slot are
   assert.match(source, /\/\/ The camera's scan frame keeps its own dim and white corners[^\n]*\bpermanent\b[^\n]*\n(?:\/\/[^\n]*\n)*export function AuditQrScannerOverlay\(\)/)
   assert.doesNotMatch(source, /\btext-xs\b/)
 })
+
+test("check panel and workspace: the side panel on the panel classes, its empty state an EmptyNote, the serial a tag and the closed round a danger Notice (spec 2D D7, D9, M21, M25, M33)", () => {
+  const panel = read(`${A}audit-scan-check-panel.tsx`)
+  assert.match(panel, /<aside\s+data-audit-check-panel\s+aria-label=\{title\}\s+className=\{cn\(getPanelClasses\(\), "sticky top-4 flex max-h-\[calc\(100dvh-7rem\)\] flex-col self-start"\)\}\s*>/)
+  assert.match(panel, /<aside className=\{cn\(getPanelClasses\(\), "sticky top-4 self-start"\)\}>\s*<EmptyNote padded className="justify-center">\{t\("checkPanelEmpty"\)\}<\/EmptyNote>/)
+  assert.match(panel, /description: ReactNode/)
+  assert.doesNotMatch(panel, /border-dashed|rounded-lg border border-border bg-surface/)
+  const workspace = read(`${A}audit-scan-workspace.tsx`)
+  assert.match(workspace, /const targetDescription: ReactNode = target\?\.kind === "item"/)
+  assert.match(workspace, /\{target\.item\.serialNumber \? <> · Serial <span className="tag">\{target\.item\.serialNumber\}<\/span><\/> : null\}/)
+  assert.match(workspace, /<Notice\s+tone="danger"\s+role="alert"\s+action=\{\s*<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\s*\{t\("backToRound"\)\}\s*<\/Link>\s*\}\s*>\s*\{t\("roundClosedError"\)\}\s*<\/Notice>/)
+  assert.doesNotMatch(workspace, /bg-danger-soft|hover:underline|`Serial \$\{/)
+})

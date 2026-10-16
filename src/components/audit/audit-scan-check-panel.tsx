@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, type ReactNode, type RefObject } from "react"
 import { useTranslations } from "next-intl"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { getPanelClasses } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 
 export function AuditScanCheckPanel({
   isWide,
@@ -17,7 +20,8 @@ export function AuditScanCheckPanel({
   isWide: boolean
   open: boolean
   title: string
-  description: string
+  /** The asset's name and serial; the serial is a tag. */
+  description: ReactNode
   onOpenChange: (open: boolean) => void
   returnFocusRef: RefObject<HTMLElement | null>
   /** Called when the sheet closes and its return target left the page (row saved off the tab, deep link). */
@@ -36,7 +40,7 @@ export function AuditScanCheckPanel({
     return open ? (
       // Capped under the visible height of the dashboard main area (top bar 4rem + sticky gap 1rem + bottom padding
       // 1.5rem = 6.5rem, rounded up), so the form's own action bar stays at the bottom of the panel while its fields scroll (D1).
-      <aside data-audit-check-panel aria-label={title} className="sticky top-4 flex max-h-[calc(100dvh-7rem)] flex-col self-start rounded-lg border border-border bg-surface">
+      <aside data-audit-check-panel aria-label={title} className={cn(getPanelClasses(), "sticky top-4 flex max-h-[calc(100dvh-7rem)] flex-col self-start")}>
         <div className="shrink-0 border-b border-border px-4 py-3">
           <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold text-foreground outline-none">{title}</h2>
           <p className="truncate text-sm text-muted-foreground">{description}</p>
@@ -44,8 +48,9 @@ export function AuditScanCheckPanel({
         {children}
       </aside>
     ) : (
-      <aside className="sticky top-4 self-start rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-        {t("checkPanelEmpty")}
+      // The frame stays; one quiet line inside it instead of a dashed box (spec 2D M21).
+      <aside className={cn(getPanelClasses(), "sticky top-4 self-start")}>
+        <EmptyNote padded className="justify-center">{t("checkPanelEmpty")}</EmptyNote>
       </aside>
     )
   }

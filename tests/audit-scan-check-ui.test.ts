@@ -67,7 +67,7 @@ test("the panel hands its height to the form: the sheet body and the wide aside 
   const source = read("src/components/audit/audit-scan-check-panel.tsx")
   assert.doesNotMatch(source, /overflow-y-auto p-4">\{children\}/)
   assert.match(source, /<\/SheetHeader>\n\s+\{children\}\n\s+<\/SheetContent>/)
-  assert.match(source, /className="sticky top-4 flex max-h-\[calc\(100dvh-7rem\)\] flex-col self-start rounded-lg border border-border bg-surface"/)
+  assert.match(source, /className=\{cn\(getPanelClasses\(\), "sticky top-4 flex max-h-\[calc\(100dvh-7rem\)\] flex-col self-start"\)\}/)
   assert.match(source, /<div className="shrink-0 border-b border-border px-4 py-3">/)
 })
 
