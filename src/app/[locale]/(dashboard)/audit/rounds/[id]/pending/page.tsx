@@ -8,15 +8,17 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditMarkNotFoundButton } from "@/components/audit/audit-mark-not-found-button"
 import { AuditPendingRowActions } from "@/components/audit/audit-pending-row-actions"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
-import { Nil, orNil } from "@/components/ui/nil"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil } from "@/components/ui/nil"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
-import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -162,17 +164,19 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
         back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
       />
 
-      <div className="rounded-lg border border-border bg-surface p-3 text-sm text-muted-foreground sm:p-4">
-        {t("pendingCount", { count: formatCount(total) })}
-        {locationFilter ? (
-          <div className="mt-1 flex flex-wrap items-center gap-x-3">
-            <span>{t("roomFilter", { location: locationFilterLabel })}</span>
-            <Link href={clearRoomFilterHref} className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">
-              {t("roomFilterClear")}
-            </Link>
-          </div>
-        ) : null}
-      </div>
+      <ContentPanel>
+        <div className="text-sm text-muted-foreground">
+          {t("pendingCount", { count: formatCount(total) })}
+          {locationFilter ? (
+            <div className="mt-1 flex flex-wrap items-center gap-x-3">
+              <span>{t("roomFilter", { location: locationFilterLabel })}</span>
+              <Link href={clearRoomFilterHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                {t("roomFilterClear")}
+              </Link>
+            </div>
+          ) : null}
+        </div>
+      </ContentPanel>
 
       <MasterDataSearch
         action={`/${locale}/audit/rounds/${round.id}/pending`}
@@ -182,7 +186,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
         hiddenInputs={{ returnTo: returnToHref, ...(locationFilter ? { locationId: locationFilter } : {}), ...pageSizeInput }}
       />
 
-      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
+      <div className={cn(getPanelClasses(), "overflow-hidden")}>
         <div className={`${getMobileCardListClasses()} p-3`}>
           {items.length === 0 ? (
             <ActionEmptyState
@@ -325,11 +329,14 @@ function AuditPendingMobileCard({
         </div>
         <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
       </div>
-      <div className="mt-3 grid gap-2 text-sm">
-        <PendingInfo label={labels.expectedLocation} value={formatAuditPendingLocation(item.asset.currentLocation)} />
-        <PendingInfo label={labels.expectedCustodian} value={formatAuditPendingCustodian(item.asset.custodian)} />
-        <PendingInfo label={labels.lastAuditDate} value={formatAuditPendingLastAudit(item.asset.movements)} />
-      </div>
+      <KeyValueList
+        className="mt-3"
+        items={[
+          { key: "location", label: labels.expectedLocation, value: formatAuditPendingLocation(item.asset.currentLocation) },
+          { key: "custodian", label: labels.expectedCustodian, value: formatAuditPendingCustodian(item.asset.custodian) },
+          { key: "lastAudit", label: labels.lastAuditDate, value: formatAuditPendingLastAudit(item.asset.movements) },
+        ]}
+      />
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <Link href={scanHref} className={buttonVariants()}>
           <ScanLine aria-hidden="true" />
@@ -345,22 +352,21 @@ function AuditPendingMobileCard({
   )
 }
 
-function PendingInfo({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="rounded-md border border-border bg-surface px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words text-sm text-foreground">{orNil(value)}</div>
-    </div>
-  )
-}
-
 function formatAuditPendingLocation(location: { code: string; name: string }) {
-  return `${location.code} - ${location.name}`
+  return (
+    <>
+      <span className="tag">{location.code}</span> - {location.name}
+    </>
+  )
 }
 
 // null when nobody holds the asset: the page shows Nil, not a typed dash.
 function formatAuditPendingCustodian(custodian: { code: string; fullNameTh: string } | null) {
-  return custodian ? `${custodian.code} - ${custodian.fullNameTh}` : null
+  return custodian ? (
+    <>
+      <span className="tag">{custodian.code}</span> - {custodian.fullNameTh}
+    </>
+  ) : null
 }
 
 // null before the first audit of the asset (formatDateTime would print a dash).
