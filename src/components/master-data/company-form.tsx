@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { getPanelClasses } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 
 type CompanyFormValues = {
   id?: string
@@ -96,7 +98,7 @@ export function CompanyForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
+      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required hint={t("codeHelp")}>
             <Input

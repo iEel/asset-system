@@ -120,3 +120,11 @@ test("category form: three ContentPanels with the add buttons as panel actions, 
   assert.equal(source.match(/<EmptyNote>\{labels\.empty\}<\/EmptyNote>/g)?.length, 2)
   assert.doesNotMatch(source, /rounded-lg border|border-dashed|\btext-lg\b|<section\b/)
 })
+
+test("the seven simple master-data forms: a <form> cannot be ContentPanel, so it takes the panel classes and the one panel spacing (spec 2D D9, 2D-2 R4)", () => {
+  for (const name of ["branch", "brand", "company", "department", "employee", "location", "supplier"]) {
+    const source = read(`src/components/master-data/${name}-form.tsx`)
+    assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/, name)
+    assert.doesNotMatch(source, /rounded-lg border/, name)
+  }
+})
