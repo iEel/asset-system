@@ -7,6 +7,7 @@ import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, Accessi
 import { ApiErrorText } from "@/components/ui/api-error-text"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
+import { orNil } from "@/components/ui/nil"
 import { Textarea } from "@/components/ui/textarea"
 
 type TransactionType = "checkout" | "checkin" | "transfer"
@@ -37,8 +38,9 @@ export type TransactionCancelDialogProps = {
   transactionId: string
   expectedUpdatedAt: string
   originalOperator: string
-  currentState: string
-  restoreState: string
+  // null when the transaction has no snapshot: the facts list shows Nil (spec 2D M32 b, plan 2D-3 R2).
+  currentState: string | null
+  restoreState: string | null
   componentCount: number
   labels: TransactionCancellationLabels
 }
@@ -136,7 +138,7 @@ export function TransactionCancelDialog({
             <>
               <dl className="divide-y divide-border rounded-md border border-border bg-background px-3">
                 {[[labels.operator, originalOperator], [labels.currentState, currentState], [labels.restoreState, restoreState], [labels.components, String(componentCount)]].map(([label, value]) => (
-                  <div key={label} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 py-3 text-sm"><dt className="text-muted-foreground">{label}</dt><dd className="break-words text-right font-medium text-foreground">{value}</dd></div>
+                  <div key={label} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 py-3 text-sm"><dt className="text-muted-foreground">{label}</dt><dd className="break-words text-right font-medium text-foreground">{orNil(value)}</dd></div>
                 ))}
               </dl>
               {blockers.length > 0 ? (
