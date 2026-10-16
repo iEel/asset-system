@@ -3,7 +3,7 @@
 import { useId, useImperativeHandle, useRef, useState, type FormEvent, type Ref, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, CheckCircle2, Truck } from "lucide-react"
+import { CheckCircle2, Truck } from "lucide-react"
 import { toast } from "sonner"
 import {
   AccessibleDialog,
@@ -17,6 +17,7 @@ import { Field, FieldHint } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { SearchableSelect } from "@/components/ui/searchable-select"
@@ -246,7 +247,7 @@ function ExecutionDialog({
     >
       <form onSubmit={onSubmit} className={accessibleDialogFormClasses}>
         <AccessibleDialogBody className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {effectiveEvidenceCount === 0 ? <div role="alert" className="flex gap-3 rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-foreground md:col-span-2"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" /><p>{t("errors.DISPOSAL_EVIDENCE_REQUIRED")}</p></div> : null}
+          {effectiveEvidenceCount === 0 ? <Notice tone="warning" role="alert" className="md:col-span-2">{t("errors.DISPOSAL_EVIDENCE_REQUIRED")}</Notice> : null}
           <Field label={t("executionDate")} required>
             <Input ref={executionDateRef} type="date" value={values.executionDate} required disabled={saving} onChange={(event) => onFieldChange("executionDate", event.target.value)} />
           </Field>
@@ -279,7 +280,7 @@ function ExecutionDialog({
               <Textarea value={values.executionRemark} rows={4} maxLength={4000} required={remarkRequired} disabled={saving} onChange={(event) => onFieldChange("executionRemark", event.target.value)} className="min-h-28" />
             </Field>
           </div>
-          {effectiveEvidenceCount === 0 && canUseHistoricalEvidenceException ? <div className="md:col-span-2"><label className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground has-disabled:cursor-not-allowed has-disabled:text-faint-foreground"><input type="checkbox" checked={values.useHistoricalEvidenceException} disabled={saving} aria-describedby={historicalEvidenceWarningId} onChange={(event) => onFieldChange("useHistoricalEvidenceException", event.target.checked)} className={checkboxVariants()} />{t("historicalEvidenceException")}</label><div id={historicalEvidenceWarningId} hidden={!values.useHistoricalEvidenceException} role="alert" className="mt-2 flex gap-3 rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-foreground"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" /><p>{t("historicalEvidenceWarning")}</p></div></div> : null}
+          {effectiveEvidenceCount === 0 && canUseHistoricalEvidenceException ? <div className="md:col-span-2"><label className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground has-disabled:cursor-not-allowed has-disabled:text-faint-foreground"><input type="checkbox" checked={values.useHistoricalEvidenceException} disabled={saving} aria-describedby={historicalEvidenceWarningId} onChange={(event) => onFieldChange("useHistoricalEvidenceException", event.target.checked)} className={checkboxVariants()} />{t("historicalEvidenceException")}</label><Notice tone="warning" id={historicalEvidenceWarningId} hidden={!values.useHistoricalEvidenceException} role="alert" className="mt-2">{t("historicalEvidenceWarning")}</Notice></div> : null}
           {values.useHistoricalEvidenceException ? (
             <>
               <div className="md:col-span-2">
