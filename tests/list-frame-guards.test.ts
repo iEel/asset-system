@@ -274,8 +274,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}audit/audit-scan-offline-bar.tsx`]: 1, // → 1 (KEEP): translated sentence (R-n)
   },
   LV3: {
-    // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // → 1 (KEEP): print page, 2D (A/08:305)
   },
   LS1: {
   },
@@ -322,9 +320,6 @@ const KEEP: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/asset-management/checkouts/[id]/page.tsx": 4, // print page (R-n)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page (R-n)
     [`${C}asset-operations/void-document-banner.tsx`]: 3, // print page, the void banner prints on the A4 document (R-n, plan 2D-4)
-  },
-  LV3: {
-    "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // print page, 2D (A/08:305)
   },
   LN1: {
     [`${D}master-data/brands/page.tsx`]: 2, // the brand picker is a vertical list, where aria-current="page" is right (I11)

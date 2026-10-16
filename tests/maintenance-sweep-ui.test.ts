@@ -97,3 +97,13 @@ test("PM plans page: the frequency is a Chip (a cadence, not a state), and the r
   assert.match(source, /<div className="mt-1 truncate text-meta text-muted-foreground">\n\s+<span className="tag">\{plan\.planNo\}<\/span>/)
   assert.doesNotMatch(source, /pmFrequencies[^\n]*tone=|\btext-xs\b/)
 })
+
+const P = "src/app/[locale]/(print)/"
+
+test("repair print page: the cost goes through formatMoney, as on the screen, without a unit (its label ends in บาท) (spec 2D D10, M24)", () => {
+  const source = read(`${P}maintenance/[id]/print/page.tsx`)
+  assert.match(source, /^import \{ formatDate \} from "@\/lib\/utils"$/m)
+  assert.match(source, /^import \{ formatMoney \} from "@\/lib\/display-format"$/m)
+  assert.match(source, /\{ label: tRecord\("cost"\), value: ticket\.repairCost == null \? null : formatMoney\(Number\(ticket\.repairCost\)\) \}/)
+  assert.doesNotMatch(source, /formatCurrency/)
+})

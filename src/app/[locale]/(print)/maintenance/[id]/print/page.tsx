@@ -2,7 +2,8 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
+import { formatMoney } from "@/lib/display-format"
 import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 
@@ -60,7 +61,7 @@ export default async function RepairRecordPrintPage({ params }: RepairRecordPrin
             { label: tRecord("date"), value: formatDate(ticket.reportedDate) },
             { label: tRecord("returnDate"), value: ticket.returnDate ? formatDate(ticket.returnDate) : null },
             { label: tRecord("vendor"), value: ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : tRecord("internal") },
-            { label: tRecord("cost"), value: ticket.repairCost == null ? null : formatCurrency(Number(ticket.repairCost)) },
+            { label: tRecord("cost"), value: ticket.repairCost == null ? null : formatMoney(Number(ticket.repairCost)) },
             { label: tRecord("invoiceNo"), value: ticket.invoiceNo },
             { label: tRecord("reporter"), value: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}` },
             { label: tRecord("planLabel"), value: ticket.maintenancePlan ? `${ticket.maintenancePlan.planNo} - ${ticket.maintenancePlan.title}` : null },
