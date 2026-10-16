@@ -81,3 +81,52 @@ test("components summary and context banner: a ContentPanel and an info Notice, 
   assert.match(banner, /<span className="tag font-medium">\{link\.parentAsset\.assetTag\}<\/span>/)
   assert.doesNotMatch(banner, /font-mono|primary-soft|primary-border|bg-primary|text-white|translate-x|text-xs/)
 })
+
+test("movement timeline: ChoiceChip filters, EmptyNote, StatusBadge and shape markers, KeyValueLists with text links, and the shared date format (spec 2D M21, M22, D19)", () => {
+  const source = read(`${C}assets/asset-movement-timeline.tsx`)
+  assert.match(source, /<fieldset className="min-w-0">\n\s+<legend className="sr-only">\{labels\.filterLabel\}<\/legend>/)
+  assert.match(source, /<ChoiceChip\n\s+key=\{filter\}\n\s+type="radio"\n\s+name=\{filterName\}/)
+  assert.match(source, /<EmptyNote>\{labels\.noData\}<\/EmptyNote>/)
+  assert.match(source, /<StatusBadge label=\{movement\.title\} tone=\{movement\.tone\} \/>/)
+  assert.match(source, /statusMarkerVariants\(\{ tone: movement\.tone \}\)/)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2)
+  assert.match(source, /<a href=\{detail\.href\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
+  assert.match(source, /import \{ cn, formatDateTime \} from "@\/lib\/utils"/)
+  assert.doesNotMatch(source, /<button\b|function (?:Info|MovementInfo|formatDateTime|getMovementDotClass|getMovementBadgeClass)\b|"-"|uppercase|border-dashed|rounded-full|text-white|bg-surface\/\d|hover:underline|\btext-xs\b/)
+})
+
+test("evidence drawer: a StatStrip for the counts, ChoiceChip filters, the group as a Chip and focus-visible cards (spec 2D M22, M27, D19)", () => {
+  const source = read(`${C}assets/asset-evidence-drawer.tsx`)
+  assert.match(source, /<StatStrip\n\s+items=\{\[/)
+  assert.match(source, /<fieldset className="mt-4 min-w-0">\n\s+<legend className="sr-only">\{labels\.filterLabel\}<\/legend>/)
+  assert.equal(source.match(/<ChoiceChip\b/g)?.length, 2)
+  assert.match(source, /<Chip>\{item\.group\}<\/Chip>/)
+  assert.match(source, /focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/)
+  assert.doesNotMatch(source, /<button\b|function (?:EvidenceStat|FilterButton)\b|text-white|rounded-full|scale-\[|focus:outline-none|text-xl font-bold|\btext-xs\b/)
+})
+
+const D = "src/app/[locale]/(dashboard)/"
+
+test("asset page: panels, notices, chips, text links, the disabled QuickAction (M12) and no typed dash (M32 b) on the shared parts (spec 2D §3.3, D7, D9, M33)", () => {
+  const source = read(`${D}assets/[id]/page.tsx`)
+  // The nine sections with an id keep it, so they take the panel classes (2D-2 R4); the other panels are ContentPanel.
+  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 9)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 5, "quick actions, follow-up, relationship map, QR, sidebar photo")
+  assert.match(source, /<Notice tone="info" title=\{lifecycle\.title\} className="mb-3">\n\s+\{lifecycle\.description\}\n\s+<\/Notice>/)
+  assert.match(source, /<Notice tone="warning" className="mb-4">\n\s+\{t\("maintenanceReplacementWarning"\)\}\n\s+<\/Notice>/)
+  assert.match(source, /<Notice tone="neutral" className="mt-4">\{noteLabel\}<\/Notice>/)
+  assert.match(source, /<StatusBadge label=\{t\("dataHealthProgress", \{ done: dataHealthDone, total: dataHealthItems\.length \}\)\} tone=\{dataHealthTone\} \/>/)
+  assert.match(source, /\{ key: "warrantyStatus", label: t\("warrantyStatus"\), value: <StatusBadge label=\{getWarrantyStatusLabel\(warrantyState, t\)\} tone=\{warrantyState\.tone\} \/> \}/)
+  assert.match(source, /<Chip>\{t\("latestTransaction"\)\}<\/Chip>/)
+  assert.match(source, /<Chip>\{t\("maintenancePmBadge"\)\}<\/Chip>/)
+  assert.match(source, /<Chip>\{roleLabel\}<\/Chip>/)
+  assert.equal(source.match(/className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/g)?.length, 4)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
+  assert.match(source, /<Button variant="outline" disabled className=\{quickActionClasses\}>/)
+  assert.match(source, /return labels\.parentAssets\.get\(checkout\.parentAssetId\) \?\? checkout\.parentAssetId\n\s+return null\n\}/)
+  assert.match(source, /if \(!snapshot\) return null\n/)
+  assert.equal(source.match(/filterLabel: tCommon\("filter"\),/g)?.length, 2)
+  assert.match(source, /<div className="font-mono text-sm font-medium leading-5 text-foreground \[overflow-wrap:anywhere\]">\{relationshipAsset\.assetTag\}<\/div>/, "a tag that must wrap keeps font-mono at 500 (2D-2 R3)")
+  assert.doesNotMatch(source, /toLocaleString/)
+  assert.doesNotMatch(source, /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|getHealthBadgeClass|getWarrantyPanelClass|getWarrantyIconClass|getActivityToneClass|getRelationship(?:Summary|Badge|Icon)Class|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b/)
+})

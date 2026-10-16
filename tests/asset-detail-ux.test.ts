@@ -147,7 +147,7 @@ test("asset detail avoids eager component inventory and bounds preview relations
 test("asset detail header links share the Button look of the More menu trigger", () => {
   const source = assetDetailSource()
 
-  assert.match(source, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
+  assert.match(source, /import \{ buttonVariants, linkVariants \} from "@\/components\/ui\/button-variants"/)
   assert.match(source, /<PageBackLink href=\{returnToHref\}/)
   assert.match(source, /cn\(buttonVariants\(\{ size: "md" \}\), "hidden md:inline-flex"\)/)
   assert.doesNotMatch(source, /rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground/)

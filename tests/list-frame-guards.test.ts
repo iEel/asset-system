@@ -153,9 +153,12 @@ const LOCAL_SORT_HEADER = /\bfunction (?:[A-Z]\w*)?Sort\w*Header\b/g
 const BARE_LOCALE_STRING = /\.toLocaleString\(\)/g
 const RAW_DASH = /(?:\|\||\?\?|:)\s*"-"/g
 const FORMAT_CURRENCY = /(?<!function )\bformatCurrency\(/g
-const LOCAL_STAT_TILE = /\bfunction (?:SummaryTile|SummaryCard|SummaryPill|SummaryStrip|RoleAuditCard|ResolutionMetric|CoverageMetric|Metric|DashboardCard|BatchMetric|MetricCard|OperationMetric)\b/g
+// Plan 2D-3 (D19) added each name below its own tile's last commit: EvidenceStat (the evidence drawer).
+const LOCAL_STAT_TILE = /\bfunction (?:SummaryTile|SummaryCard|SummaryPill|SummaryStrip|RoleAuditCard|ResolutionMetric|CoverageMetric|Metric|DashboardCard|BatchMetric|MetricCard|OperationMetric|EvidenceStat)\b/g
 const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
-const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField)\b/g
+// Spec 2D D19: label and value look-alikes join this list in the commit that removes them, so the count stays 0:
+// MovementInfo (the movement timeline, plan 2D-3).
+const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo)\b/g
 const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 const pageCurrent = (text: string) => /"page"/.test(jsxAttrValue(text, "aria-current") ?? "")
@@ -260,7 +263,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1204, :1206 and the history sentence :2454 (R-n)
+    [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1197, :1199 and the history sentence :2384 (R-n)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${D}asset-management/labels/page.tsx`]: 4, // → 4 (KEEP): label data (R-n)
     "src/app/[locale]/(print)/asset-management/checkins/[id]/page.tsx": 2, // → 2 (KEEP): print page (R-n)
@@ -269,7 +272,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}asset-operations/void-document-banner.tsx`]: 3, // → 3 (KEEP): 2D
     [`${C}assets/asset-import-preview-panel.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (2D)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // → 6 (KEEP): label data (R-n)
-    [`${C}assets/asset-movement-timeline.tsx`]: 2, // → 2 (KEEP): 2D
     [`${C}audit/audit-scan-check-form.tsx`]: 3, // → 3 (KEEP): translated sentences (R-n)
     [`${C}audit/audit-scan-offline-bar.tsx`]: 1, // → 1 (KEEP): translated sentence (R-n)
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
@@ -288,8 +290,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LS2: {
   },
   LK1: {
-    // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}assets/asset-movement-timeline.tsx`]: 1, // → 1 (KEEP): Info :133, not in a 2B plan (2D)
   },
   LN1: {
     // 2B-1
@@ -329,7 +329,7 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}assets/asset-label-batch-tool.tsx`]: 1, // R-f, 2C plan 4
   },
   LV2: {
-    [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1204, :1206 and the history sentence :2454 (R-n)
+    [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1197, :1199 and the history sentence :2384 (R-n)
     [`${C}admin/system-settings-form.tsx`]: 1, // the default separator of the tag preview :2136 (R-n)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // 2C form (2D)
     [`${C}assets/asset-batch-form.tsx`]: 8, // 2C form (2D)
@@ -346,7 +346,6 @@ const KEEP: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/asset-management/checkouts/[id]/page.tsx": 4, // print page (R-n)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page (R-n)
     [`${C}asset-operations/void-document-banner.tsx`]: 3, // 2D
-    [`${C}assets/asset-movement-timeline.tsx`]: 2, // 2D
   },
   LV3: {
     "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // print page, 2D (A/08:305)
@@ -355,9 +354,6 @@ const KEEP: Record<string, Record<string, number>> = {
   LS1: {
     [`${C}assets/asset-import-preview-panel.tsx`]: 1, // SummaryPill :407 (2C plan 4)
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // Metric :598 in the dialog (2C plan 3)
-  },
-  LK1: {
-    [`${C}assets/asset-movement-timeline.tsx`]: 1, // Info :133, not in a 2B plan (2D)
   },
   LN1: {
     [`${D}master-data/brands/page.tsx`]: 2, // the brand picker is a vertical list, where aria-current="page" is right (I11)

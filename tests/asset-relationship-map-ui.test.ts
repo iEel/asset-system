@@ -38,7 +38,8 @@ test("relationship asset cards keep asset tags readable before badges and names"
 
   assert.match(cardSource, /font-mono[\s\S]+\{relationshipAsset\.assetTag\}/)
   assert.match(cardSource, /\[overflow-wrap:anywhere\][\s\S]+\{relationshipAsset\.assetTag\}/)
-  assert.match(cardSource, /flex flex-wrap items-center gap-2[\s\S]+getRelationshipBadgeClass/)
+  // Plan 2D-3: the role is the shared Chip (a name, 2D-2 R2), not a palette-colored badge.
+  assert.match(cardSource, /flex flex-wrap items-center gap-2[\s\S]+<Chip>\{roleLabel\}<\/Chip>/)
   assert.doesNotMatch(cardSource, /truncate text-sm font-semibold text-foreground">\{relationshipAsset\.assetTag\}/)
   assert.match(cardSource, /focus-visible:ring-2/)
 })

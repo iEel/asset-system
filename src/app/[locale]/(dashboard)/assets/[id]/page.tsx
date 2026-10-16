@@ -8,17 +8,15 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
+  ChevronDown,
   Cpu,
   Edit,
   FileText,
   GitBranch,
-  History,
-  ImageIcon,
   Info as InfoIcon,
   MapPin,
   PackageCheck,
   Puzzle,
-  QrCode,
   RotateCcw,
   ScanLine,
   ShieldCheck,
@@ -30,10 +28,16 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { statusMarkerVariants } from "@/components/ui/badge-variants"
+import { Button } from "@/components/ui/button"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil, orNil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
@@ -41,7 +45,7 @@ import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getAssetStateTone } from "@/lib/design-system"
+import { getAssetStateTone, getPanelClasses } from "@/lib/design-system"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentContextBanner } from "@/components/assets/asset-component-context-banner"
 import { AssetComponentsSummary } from "@/components/assets/asset-components-summary"
@@ -71,11 +75,7 @@ import {
   compactMovementDetails,
   createHealthItem,
   formatMovementType,
-  getActivityToneClass,
-  getHealthBadgeClass,
   getMissingPhotoChecklistLabels,
-  getWarrantyIconClass,
-  getWarrantyPanelClass,
   getWarrantyState,
   maskLicenseKey,
 } from "@/lib/asset-detail-format"
@@ -689,9 +689,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const licenseSeatSummary = licenseTotalSeats == null
     ? null
     : t("licenseSeatSummary", {
-        used: licenseUsedSeats.toLocaleString("th-TH"),
-        total: licenseTotalSeats.toLocaleString("th-TH"),
-        remaining: licenseRemainingSeats?.toLocaleString("th-TH") ?? "0",
+        used: formatCount(licenseUsedSeats),
+        total: formatCount(licenseTotalSeats),
+        remaining: formatCount(licenseRemainingSeats ?? 0),
       })
   const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => !["closed", "cancelled"].includes(ticket.repairStatus)).length
   const latestMaintenanceTicket = asset.maintenanceTickets[0]
@@ -904,11 +904,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               </span>
             </span>
             <span className="inline-flex min-w-0 items-center gap-1.5">
-              <MapPin className="h-4 w-4 shrink-0 text-info" aria-hidden="true" />
+              <MapPin className="h-4 w-4 shrink-0 text-faint-foreground" aria-hidden="true" />
               <span className="truncate">{orNil(currentLocationLabel)}</span>
             </span>
             <span className="inline-flex min-w-0 items-center gap-1.5">
-              <PackageCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <PackageCheck className="h-4 w-4 shrink-0 text-faint-foreground" aria-hidden="true" />
               <span className="truncate">{orNil(lifecycle.responsibilityValue ?? currentCustodianLabel)}</span>
             </span>
           </>
@@ -948,6 +948,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                   images: t("evidenceImages"),
                   documents: t("evidenceDocuments"),
                   all: t("movementFilters.all"),
+                  filterLabel: tCommon("filter"),
                   openFile: t("openEvidenceFile"),
                 },
               }}
@@ -1004,16 +1005,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             <details data-testid="asset-data-health-details" className="rounded-md border border-border bg-background">
               <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                 <span>{t("dataHealthTitle")}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs ${getHealthBadgeClass(dataHealthTone)}`}>
-                  {t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length })}
-                </span>
+                <StatusBadge label={t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length })} tone={dataHealthTone} />
               </summary>
               <div className="grid gap-2 border-t border-border p-2 sm:grid-cols-2">
                 {dataHealthItems.map((item) => (
                   <a
                     key={item.label}
                     href={item.done ? item.href : item.fixHref}
-                    className="flex min-h-11 items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                    className="flex min-h-11 items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-sm transition-colors hover:bg-row-hover"
                   >
                     {item.done ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
@@ -1021,7 +1020,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                       <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
                     )}
                     <span className={item.done ? "text-muted-foreground" : "font-medium text-foreground"}>{item.label}</span>
-                    {!item.done ? <span className="ml-auto text-xs font-medium text-primary">{item.actionLabel}</span> : null}
+                    {!item.done ? <span className="ml-auto text-meta font-medium text-primary">{item.actionLabel}</span> : null}
                   </a>
                 ))}
               </div>
@@ -1031,17 +1030,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       ) : null}
 
       {assetDetailView === "overview" && canEditAsset ? (
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">{t("quickActions")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{lifecycle.help}</p>
-            </div>
-          </div>
-          <div className="mb-3 rounded-md border border-info-border bg-info-soft px-3 py-2">
-            <div className="text-sm font-semibold text-foreground">{lifecycle.title}</div>
-            <p className="mt-1 text-xs text-muted-foreground">{lifecycle.description}</p>
-          </div>
+        // Spec 2D D9, D7: a ContentPanel; how this ownership type works is information, an inline info Notice.
+        <ContentPanel title={t("quickActions")} description={lifecycle.help}>
+          <Notice tone="info" title={lifecycle.title} className="mb-3">
+            {lifecycle.description}
+          </Notice>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
             {lifecycle.actions.map((action) => (
               <QuickAction key={action.label} {...action} />
@@ -1065,13 +1058,13 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               />
             </div>
           ) : null}
-        </section>
+        </ContentPanel>
       ) : null}
 
       <div className={`grid grid-cols-1 gap-6 ${assetDetailView === "overview" ? "xl:grid-cols-[1fr_280px]" : ""}`}>
         <div className="space-y-6">
           {isAssetDetailSectionVisible(assetDetailView, "overview") ? (
-            <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
+            <section id="overview" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
             <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
             <KeyValueList
               items={[
@@ -1105,7 +1098,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "specs") && asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes) ? (
-            <section id="specs" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
+            <section id="specs" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
               <SectionHeading title={tBrandModel("structuredSpecs")} subtitle={t("detailSections.specsSubtitle")} />
               {modelSpecs.items.length > 0 ? (
                 <KeyValueList items={modelSpecs.items.map((item) => ({ key: item.id, label: item.label, value: item.value }))} />
@@ -1119,7 +1112,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "ownership") ? (
-            <section id="ownership" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
+            <section id="ownership" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
             <SectionHeading title={t("ownership")} subtitle={t("detailSections.ownershipSubtitle")} />
             <KeyValueList
               items={[
@@ -1222,19 +1215,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "purchase") ? (
-            <section id="purchase" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
+            <section id="purchase" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
             <SectionHeading title={t("purchaseWarranty")} subtitle={t("detailSections.purchaseSubtitle")} />
-            <div className={`mb-4 rounded-md border px-4 py-3 ${getWarrantyPanelClass(warrantyState.tone)}`}>
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-foreground">{t("warrantyStatus")}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{getWarrantyStatusLabel(warrantyState, t)}</div>
-                </div>
-                <ShieldCheck className={`h-5 w-5 ${getWarrantyIconClass(warrantyState.tone)}`} />
-              </div>
-            </div>
+            {/* The warranty state is a state, so it is the first fact as a StatusBadge, not a tinted box (spec 2D M22). */}
             <KeyValueList
               items={[
+                { key: "warrantyStatus", label: t("warrantyStatus"), value: <StatusBadge label={getWarrantyStatusLabel(warrantyState, t)} tone={warrantyState.tone} /> },
                 { key: "supplier", label: t("supplier"), value: asset.supplier ? <><span className="tag">{asset.supplier.code}</span> - {asset.supplier.name}</> : null },
                 { key: "purchaseDate", label: t("purchaseDate"), value: asset.purchaseDate ? formatDate(asset.purchaseDate) : null },
                 { key: "warrantyStart", label: t("warrantyStart"), value: asset.warrantyStartDate ? formatDate(asset.warrantyStartDate) : null },
@@ -1259,12 +1245,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "handover") ? (
-            <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
-            <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} icon={<FileText className="h-5 w-5 text-primary" />} />
+            <section id="handover" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+            <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} />
             {asset.checkouts.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {tCommon("noData")}
-              </div>
+              <EmptyNote>{tCommon("noData")}</EmptyNote>
             ) : (
               <div className="space-y-3">
                 {asset.checkouts.map((checkout, index) => {
@@ -1301,7 +1285,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-primary-soft px-2 py-1 text-xs font-medium text-primary">{t("latestTransaction")}</span>
+                            <Chip>{t("latestTransaction")}</Chip>
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
                             <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
@@ -1320,11 +1304,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           />
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                             {t("openHandoverDocument")}
                           </Link>
                           {checkout.checkin ? (
-                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                               {t("openReturnDocument")}
                             </Link>
                           ) : null}
@@ -1351,17 +1335,19 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                             ]}
                           />
                         </div>
-                        <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium text-foreground transition-colors group-open:bg-accent">
+                        {/* The summary is the control: its cue reads as a text link with a turning chevron, not as a second button. */}
+                        <span className={cn(linkVariants(), "inline-flex shrink-0 items-center gap-1")}>
                           {t("viewEvidence")}
+                          <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
                         </span>
                       </summary>
                       <div className="border-t border-border px-4 pb-4 pt-3">
                         <div className="mb-3 flex flex-wrap gap-2">
-                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                             {t("openHandoverDocument")}
                           </Link>
                           {checkout.checkin ? (
-                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                               {t("openReturnDocument")}
                             </Link>
                           ) : null}
@@ -1377,8 +1363,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "movement") ? (
-            <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
-            <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
+            <section id="movement" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+            <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} />
             <div className="mb-5 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
               <KeyValueList
@@ -1390,16 +1376,17 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 ]}
               />
               {latestMovement ? (
-                <div className="mt-3 rounded-md bg-surface/80 px-3 py-2 text-sm text-muted-foreground">
+                <p className="mt-3 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{t("movementSummary")}: </span>
                   {latestMovement.summary}
-                </div>
+                </p>
               ) : null}
             </div>
             <AssetMovementTimeline
               items={movementTimelineItemsForClient}
               labels={{
                 all: t("movementFilters.all"),
+                filterLabel: tCommon("filter"),
                 fromValue: t("fromValue"),
                 toValue: t("toValue"),
                 noData: tCommon("noData"),
@@ -1419,15 +1406,15 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "notes") ? (
-            <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
+            <section id="notes" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
               <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">{orNil(asset.remark)}</p>
             </section>
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
-            <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
-            <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
+            <section id="maintenance" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+            <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} />
             <StatStrip
               className="mb-4"
               items={[
@@ -1447,9 +1434,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               ]}
             />
             {maintenanceReplacementWarning ? (
-              <div className="mb-4 rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-sm text-warning">
+              <Notice tone="warning" className="mb-4">
                 {t("maintenanceReplacementWarning")}
-              </div>
+              </Notice>
             ) : null}
             {asset.maintenanceTickets.length === 0 ? (
               <ActionEmptyState
@@ -1478,17 +1465,13 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                       label={`${tCommon("view")}: ${ticket.repairNo}`}
                     >
                       <DataTableCell className="whitespace-nowrap">
-                        <Link href={`/${locale}/maintenance/${ticket.id}`} className="font-medium text-primary hover:underline">
+                        <Link href={`/${locale}/maintenance/${ticket.id}`} className={linkVariants({ size: "inherit" })}>
                           <span className="tag">{ticket.repairNo}</span>
                         </Link>
                       </DataTableCell>
                       <DataTableCell className="min-w-72 text-muted-foreground">
                         <div className="flex flex-wrap items-center gap-2">
-                          {Boolean(ticket.maintenancePlanId) ? (
-                            <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
-                              {t("maintenancePmBadge")}
-                            </span>
-                          ) : null}
+                          {Boolean(ticket.maintenancePlanId) ? <Chip>{t("maintenancePmBadge")}</Chip> : null}
                           <span>{ticket.problem}</span>
                         </div>
                       </DataTableCell>
@@ -1508,8 +1491,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "audit") ? (
-            <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
-            <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
+            <section id="audit" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+            <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} />
             <StatStrip
               className="mb-4"
               items={[
@@ -1550,7 +1533,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                     >
                       <DataTableCell className="min-w-64">
                         <div className="font-medium text-foreground"><span className="tag font-medium">{item.auditRound.auditNo}</span></div>
-                        <div className="mt-1 text-xs text-muted-foreground">{item.auditRound.name}</div>
+                        <div className="mt-1 text-meta text-muted-foreground">{item.auditRound.name}</div>
                       </DataTableCell>
                       <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditState(item.auditStatus)}</DataTableCell>
                       <DataTableCell className="whitespace-nowrap text-muted-foreground">{item.auditResult ? formatAuditState(item.auditStatus, item.auditResult) : <Nil />}</DataTableCell>
@@ -1568,13 +1551,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
         {assetDetailView === "overview" ? (
           <aside className="space-y-6">
-          <section id="qr" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 text-center">
-            <h2 className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold text-foreground">
-              <QrCode className="h-5 w-5 text-primary" />
-              {t("qrCode")}
-            </h2>
-            <AssetQrCode value={qrValue} label={asset.assetTag} />
-          </section>
+          <ContentPanel title={t("qrCode")}>
+            <div className="flex justify-center">
+              <AssetQrCode value={qrValue} label={asset.assetTag} />
+            </div>
+          </ContentPanel>
           <SidebarPhotoCard
             title={t("modelPhoto")}
             caption={asset.model?.name ?? t("modelPhoto")}
@@ -1761,26 +1742,19 @@ function ActivitySummaryPanel({
   details?: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
-      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-        </div>
+    <ContentPanel title={title} description={subtitle}>
+      <h3 className="mb-2 text-meta font-medium text-muted-foreground">{followUpTitle}</h3>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {followUpItems.map((item) => (
+          <ActivitySummaryLink key={item.label} item={item} showAction />
+        ))}
       </div>
-      <div>
-        <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{followUpTitle}</div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {followUpItems.map((item) => (
-            <ActivitySummaryLink key={item.label} item={item} showAction />
-          ))}
-        </div>
-        {details ? <div className="mt-3">{details}</div> : null}
-      </div>
-    </section>
+      {details ? <div className="mt-3">{details}</div> : null}
+    </ContentPanel>
   )
 }
 
+// The work center's follow-up row (plan 2D-2): no tone fill; the tone is a status shape and the label says the rest.
 function ActivitySummaryLink({
   item,
   showAction,
@@ -1789,24 +1763,24 @@ function ActivitySummaryLink({
   showAction?: boolean
 }) {
   return (
-    <Link
-      href={item.href}
-      className={`block rounded-md border px-3 py-2 transition-colors hover:border-primary-border hover:bg-primary-soft ${getActivityToneClass(item.tone)}`}
-    >
+    <Link href={item.href} className="block rounded-md border border-border bg-background px-3 py-2 transition-colors hover:bg-row-hover">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{item.label}</div>
-          <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{orNil(item.value)}</div>
+        <div className="flex min-w-0 items-start gap-2">
+          <span aria-hidden="true" className={cn(statusMarkerVariants({ tone: item.tone }), "mt-1.5")} />
+          <div className="min-w-0">
+            <div className="text-meta text-muted-foreground">{item.label}</div>
+            <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{orNil(item.value)}</div>
+          </div>
         </div>
-        {showAction && item.actionLabel ? (
-          <span className="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-xs font-medium text-primary">
-            {item.actionLabel}
-          </span>
-        ) : null}
+        {showAction && item.actionLabel ? <span className="shrink-0 text-meta font-medium text-primary">{item.actionLabel}</span> : null}
       </div>
     </Link>
   )
 }
+
+// Spec 2D M12: a step that cannot run now is a real disabled button, so a screen reader says it is unavailable. A long
+// Thai label may wrap in the 2/3/6-column grid, so the button grows instead of clipping (the settings presets' rule).
+const quickActionClasses = "h-auto w-full whitespace-normal py-2 text-center md:h-auto md:min-h-9"
 
 function QuickAction({
   href,
@@ -1821,15 +1795,15 @@ function QuickAction({
 }) {
   if (disabled) {
     return (
-      <span className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-faint-foreground md:h-10 md:min-h-0">
+      <Button variant="outline" disabled className={quickActionClasses}>
         {icon}
         {label}
-      </span>
+      </Button>
     )
   }
 
   return (
-    <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-foreground transition-colors hover:border-primary-border hover:bg-primary-soft hover:text-primary md:h-10 md:min-h-0">
+    <Link href={href} className={cn(buttonVariants({ variant: "outline" }), quickActionClasses)}>
       {icon}
       {label}
     </Link>
@@ -1917,12 +1891,10 @@ function AssetRelationshipMap({
   const childPreview = splitRelationshipPreview(childLinks)
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
-      <SectionHeading title={title} subtitle={subtitle} icon={<GitBranch className="h-5 w-5 text-primary" />} />
-
+    <ContentPanel title={title} description={subtitle}>
       <div className="mb-5 flex flex-col gap-3 rounded-md border border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{currentTitle}</div>
+          <div className="text-meta text-muted-foreground">{currentTitle}</div>
           <div className="mt-1 text-sm font-semibold text-foreground">{currentRoleLabel}</div>
         </div>
         <RelationshipSummaryBadge label={summaryLabel} state={relationshipState} />
@@ -1931,7 +1903,7 @@ function AssetRelationshipMap({
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.1fr)_auto_minmax(0,1fr)] md:items-center">
         <RelationshipLane title={parentLaneTitle} icon={<Building2 className="h-4 w-4" />}>
           {parentLinks.length === 0 ? (
-            <RelationshipEmptyState title={parentEmptyTitle} help={parentEmptyHelp} icon={<Building2 className="h-8 w-8" />} />
+            <RelationshipEmptyState title={parentEmptyTitle} help={parentEmptyHelp} icon={<Building2 />} />
           ) : (
             <div className="space-y-2">
               {parentLinks.map((link) => (
@@ -1944,7 +1916,7 @@ function AssetRelationshipMap({
         <RelationshipConnector direction="left" />
 
         <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">{currentTitle}</div>
+          <div className="mb-2 text-meta font-medium text-muted-foreground">{currentTitle}</div>
           <RelationshipAssetCard
             assetTag={assetTag}
             assetName={assetName}
@@ -1960,7 +1932,7 @@ function AssetRelationshipMap({
 
         <RelationshipLane title={componentsTitle} icon={<Puzzle className="h-4 w-4" />} countLabel={componentsCountLabel}>
           {childLinks.length === 0 ? (
-            <RelationshipEmptyState title={componentsEmptyTitle} help={componentsEmptyHelp} icon={<Puzzle className="h-8 w-8" />} />
+            <RelationshipEmptyState title={componentsEmptyTitle} help={componentsEmptyHelp} icon={<Puzzle />} />
           ) : (
             <div className="space-y-2">
               {childPreview.visible.map((link) => (
@@ -1990,11 +1962,8 @@ function AssetRelationshipMap({
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-start gap-2 rounded-md border border-primary-border bg-primary-soft px-3 py-2 text-xs text-muted-foreground">
-        <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <span>{noteLabel}</span>
-      </div>
-    </section>
+      <Notice tone="neutral" className="mt-4">{noteLabel}</Notice>
+    </ContentPanel>
   )
 }
 
@@ -2012,40 +1981,44 @@ function RelationshipLane({
   return (
     <div className="min-h-full rounded-md border border-border bg-background p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-          <span className="text-primary">{icon}</span>
+        <div className="flex min-w-0 items-center gap-2 text-meta font-medium text-muted-foreground">
+          {icon}
           <span className="truncate">{title}</span>
         </div>
-        {countLabel ? <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{countLabel}</span> : null}
+        {/* A count is plain text (2D-2 R2). */}
+        {countLabel ? <span className="shrink-0 text-meta text-muted-foreground">{countLabel}</span> : null}
       </div>
       {children}
     </div>
   )
 }
 
+// The lines between the lanes are solid border lines: a dashed border is kept for drop zones and the signature pad
+// (spec 2D §5.4 guard 2), and the arrows are decoration, so they take no color.
 function RelationshipConnector({ direction }: { direction: "left" | "right" }) {
   const Icon = direction === "left" ? ArrowLeft : ArrowRight
 
   return (
     <div className="flex items-center justify-center md:block">
-      <div className="flex flex-col items-center text-primary md:hidden">
-        <span className="h-3 border-l border-dashed border-border" />
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary-border bg-surface">
+      <div aria-hidden="true" className="flex flex-col items-center text-muted-foreground md:hidden">
+        <span className="h-3 border-l border-border" />
+        <span className="flex size-8 items-center justify-center rounded-full border border-border bg-surface">
           <ArrowDown className="h-4 w-4" />
         </span>
-        <span className="h-3 border-l border-dashed border-border" />
+        <span className="h-3 border-l border-border" />
       </div>
-      <div className="hidden items-center gap-1 text-primary md:flex">
-        <span className="h-px w-5 border-t border-dashed border-border" />
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary-border bg-surface">
+      <div aria-hidden="true" className="hidden items-center gap-1 text-muted-foreground md:flex">
+        <span className="h-px w-5 border-t border-border" />
+        <span className="flex size-8 items-center justify-center rounded-full border border-border bg-surface">
           <Icon className="h-4 w-4" />
         </span>
-        <span className="h-px w-5 border-t border-dashed border-border" />
+        <span className="h-px w-5 border-t border-border" />
       </div>
     </div>
   )
 }
 
+// The summary is a sentence that may be long, so it is plain text with its icon, not a badge (StatusBadge is nowrap).
 function RelationshipSummaryBadge({
   label,
   state,
@@ -2056,13 +2029,14 @@ function RelationshipSummaryBadge({
   const Icon = state === "standalone" ? InfoIcon : CheckCircle2
 
   return (
-    <div className={`inline-flex w-fit items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${getRelationshipSummaryClass(state)}`}>
-      <Icon className="h-4 w-4" />
+    <p className="flex items-start gap-2 text-sm text-muted-foreground">
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
       <span>{label}</span>
-    </div>
+    </p>
   )
 }
 
+// Kept as a wrapper so the lanes read the same; the empty state itself is the shared one (spec 2D M21).
 function RelationshipEmptyState({
   title,
   help,
@@ -2072,13 +2046,7 @@ function RelationshipEmptyState({
   help: string
   icon: React.ReactNode
 }) {
-  return (
-    <div className="flex min-h-32 flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface/60 p-4 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">{icon}</div>
-      <div className="mt-3 text-sm font-semibold text-foreground">{title}</div>
-      <p className="mt-1 max-w-56 text-xs text-muted-foreground">{help}</p>
-    </div>
-  )
+  return <ActionEmptyState icon={icon} title={title} description={help} />
 }
 
 function RelationshipAssetCard({
@@ -2105,27 +2073,25 @@ function RelationshipAssetCard({
   const roleLabel = role ?? link?.role
   const iconBoxClassName = current ? "h-10 w-10" : "h-9 w-9"
   const iconClassName = current ? "h-5 w-5" : "h-4 w-4"
+  // Spec 2D: no raw palette colors. The role is a name (the shared Chip, 2D-2 R2); the card in view has the primary
+  // border, the others the row hover. The tag keeps font-mono because it must wrap in a narrow lane (2D-2 R3), at 500.
   const content = (
     <div className="space-y-3">
       <div className="flex items-start gap-3">
-        <div className={`flex shrink-0 items-center justify-center rounded-md ${iconBoxClassName} ${getRelationshipIconClass(variant)}`}>
+        <div aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground ${iconBoxClassName}`}>
           {variant === "child" || variant === "component" ? <Cpu className={iconClassName} /> : <PackageCheck className={iconClassName} />}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-mono text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]">{relationshipAsset.assetTag}</div>
+          <div className="font-mono text-sm font-medium leading-5 text-foreground [overflow-wrap:anywhere]">{relationshipAsset.assetTag}</div>
           <div className="mt-1 line-clamp-3 text-sm leading-5 text-foreground [overflow-wrap:anywhere]">{relationshipAsset.name}</div>
         </div>
       </div>
 
       {roleLabel || (metaLabel && metaValue) ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
-          {roleLabel ? (
-            <span className={`rounded-md px-2 py-1 text-xs font-medium ${getRelationshipBadgeClass(variant)}`}>
-              {roleLabel}
-            </span>
-          ) : null}
+          {roleLabel ? <Chip>{roleLabel}</Chip> : null}
           {metaLabel && metaValue ? (
-            <span className="text-xs leading-5 text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               <span className="font-medium text-foreground">{metaLabel}</span>
               <span className="mx-1">:</span>
               <span>{metaValue}</span>
@@ -2135,7 +2101,7 @@ function RelationshipAssetCard({
       ) : null}
     </div>
   )
-  const className = `block rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${current ? "min-h-36" : ""} ${getRelationshipCardClass(variant, Boolean(current))}`
+  const className = `block rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${current ? "min-h-36" : ""} ${getRelationshipCardClass(Boolean(current))}`
 
   if (link) {
     return (
@@ -2159,15 +2125,15 @@ function RelationshipLinkList({
 }) {
   return (
     <div className="rounded-md border border-border bg-background p-3">
-      <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</div>
+      <h3 className="mb-2 text-meta font-medium text-muted-foreground">{title}</h3>
       {links.length === 0 ? (
-        <div className="text-sm text-muted-foreground">{emptyLabel}</div>
+        <EmptyNote>{emptyLabel}</EmptyNote>
       ) : (
         <div className="space-y-2">
           {links.map((link) => (
-            <Link key={link.id} href={link.href} className="block rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:border-primary-border hover:bg-primary-soft">
+            <Link key={link.id} href={link.href} className="block rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:bg-row-hover">
               <div className="text-sm font-medium text-primary">{link.label}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{link.role}</div>
+              <div className="mt-1 text-meta text-muted-foreground">{link.role}</div>
             </Link>
           ))}
         </div>
@@ -2217,33 +2183,8 @@ function splitRelationshipLabel(label: string) {
   }
 }
 
-function getRelationshipSummaryClass(state: RelationshipState) {
-  if (state === "component" || state === "parentAndComponent") return "border-amber-200 bg-amber-50 text-amber-800"
-  if (state === "parent") return "border-emerald-200 bg-emerald-50 text-emerald-800"
-  return "border-border bg-muted text-muted-foreground"
-}
-
-function getRelationshipCardClass(variant: RelationshipCardVariant, current: boolean) {
-  if (current && (variant === "component" || variant === "parentAndComponent")) return "border-amber-300 bg-amber-50/70"
-  if (current && variant === "parent") return "border-primary-border bg-primary-soft"
-  if (current) return "border-border bg-surface"
-  if (variant === "child") return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
-  if (variant === "parent") return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
-  return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
-}
-
-function getRelationshipBadgeClass(variant: RelationshipCardVariant) {
-  if (variant === "component" || variant === "parentAndComponent") return "bg-amber-100 text-amber-800"
-  if (variant === "parent") return "bg-primary-soft text-primary"
-  if (variant === "child") return "bg-emerald-50 text-emerald-700"
-  return "bg-muted text-muted-foreground"
-}
-
-function getRelationshipIconClass(variant: RelationshipCardVariant) {
-  if (variant === "component" || variant === "parentAndComponent") return "bg-amber-100 text-amber-700"
-  if (variant === "child") return "bg-emerald-50 text-emerald-700"
-  if (variant === "parent") return "bg-primary-soft text-primary"
-  return "bg-muted text-muted-foreground"
+function getRelationshipCardClass(current: boolean) {
+  return current ? "border-primary-border bg-surface" : "border-border bg-surface hover:bg-row-hover"
 }
 
 function SidebarPhotoCard({
@@ -2260,15 +2201,11 @@ function SidebarPhotoCard({
   viewLabel: string
 }) {
   return (
-    <section className="scroll-mt-24 rounded-lg border border-border bg-surface p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <ImageIcon className="h-5 w-5 text-primary" />
-        {title}
-      </h2>
+    <ContentPanel title={title}>
       {attachment ? (
         <a
           href="#photos"
-          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
+          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <div className="flex h-32 w-full items-center justify-center bg-background p-2">
             {/* Authenticated attachment URLs render more reliably as browser-native images. */}
@@ -2280,24 +2217,25 @@ function SidebarPhotoCard({
               height={240}
               loading="eager"
               fetchPriority="high"
-              className="max-h-full w-full object-contain transition-transform group-hover:scale-[1.01]"
+              className="max-h-full w-full object-contain"
             />
           </div>
           <div className="border-t border-border p-3 text-left">
             <div className="line-clamp-2 text-sm font-medium text-foreground">{caption}</div>
-            <div className="mt-1 truncate text-xs text-muted-foreground">{attachment.originalName}</div>
-            <div className="mt-2 text-xs font-medium text-primary">{viewLabel}</div>
+            <div className="mt-1 truncate text-meta text-muted-foreground">{attachment.originalName}</div>
+            <div className="mt-2 text-meta font-medium text-primary">{viewLabel}</div>
           </div>
         </a>
       ) : (
-        <a
-          href="#photos"
-          className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-background text-sm text-muted-foreground transition-colors hover:border-input hover:text-primary"
-        >
-          {emptyLabel}
-        </a>
+        // No dashed box (spec 2D M21): one empty line, and the gallery link as a text link.
+        <div className="flex h-32 flex-col items-center justify-center gap-1">
+          <EmptyNote>{emptyLabel}</EmptyNote>
+          <a href="#photos" className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+            {viewLabel}
+          </a>
+        </div>
       )}
-    </section>
+    </ContentPanel>
   )
 }
 
@@ -2310,11 +2248,12 @@ function EvidenceLinks({
   attachments: { id: string; originalName: string; fileType: string }[]
   emptyLabel: string
 }) {
+  // A column of the handover card, not a box of its own (no box in a box, 2D-2 R4); the files keep their link cards.
   return (
-    <div className="rounded-md border border-border bg-surface p-3">
-      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</div>
+    <div className="min-w-0">
+      <h3 className="text-meta font-medium text-muted-foreground">{title}</h3>
       {attachments.length === 0 ? (
-        <div className="mt-2 text-sm text-muted-foreground">{emptyLabel}</div>
+        <EmptyNote className="mt-2">{emptyLabel}</EmptyNote>
       ) : (
         <div className="mt-2 grid gap-2">
           {attachments.map((attachment) => (
@@ -2323,25 +2262,20 @@ function EvidenceLinks({
               href={`/api/attachments/${attachment.id}?inline=1`}
               target="_blank"
               rel="noreferrer"
-              className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
+              className="block overflow-hidden rounded-md border border-border bg-surface transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               title={attachment.originalName}
             >
               {attachment.fileType.startsWith("image/") ? (
-                <div className="flex aspect-video w-full items-center justify-center bg-background p-2">
+                <div className="flex aspect-video w-full items-center justify-center p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/attachments/${attachment.id}?inline=1`}
-                    alt={attachment.originalName}
-                    loading="lazy"
-                    className="max-h-full w-full object-contain transition-transform group-hover:scale-[1.01]"
-                  />
+                  <img src={`/api/attachments/${attachment.id}?inline=1`} alt={attachment.originalName} loading="lazy" className="max-h-full w-full object-contain" />
                 </div>
               ) : (
-                <div className="flex aspect-video w-full items-center justify-center bg-background p-3 text-sm font-medium text-muted-foreground">
+                <div className="flex aspect-video w-full items-center justify-center p-3 text-sm font-medium text-muted-foreground">
                   {attachment.fileType}
                 </div>
               )}
-              <div className="truncate border-t border-border px-2 py-1.5 text-xs font-medium text-foreground">
+              <div className="truncate border-t border-border px-2 py-1.5 text-meta font-medium text-foreground">
                 {attachment.originalName}
               </div>
             </a>
@@ -2421,24 +2355,20 @@ function getCheckoutDestination(
   if (checkout.checkoutType === "department" && checkout.departmentId) return labels.departments.get(checkout.departmentId) ?? checkout.departmentId
   if (checkout.checkoutType === "location" && checkout.locationId) return labels.locations.get(checkout.locationId) ?? checkout.locationId
   if (checkout.checkoutType === "asset" && checkout.parentAssetId) return labels.parentAssets.get(checkout.parentAssetId) ?? checkout.parentAssetId
-  return "-"
+  return null
 }
 
+// The head of a section that needs an id (it cannot be ContentPanel): the same 16px title and line as ContentPanel's.
 function SectionHeading({
   title,
   subtitle,
-  icon,
 }: {
   title: string
   subtitle?: string
-  icon?: React.ReactNode
 }) {
   return (
-    <div className="mb-5">
-      <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-        {icon}
-        {title}
-      </h2>
+    <div className="mb-4">
+      <h2 className="break-words text-base font-semibold text-foreground">{title}</h2>
       {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
     </div>
   )
@@ -2476,7 +2406,7 @@ function formatCancellationSnapshot(
   snapshot: ReturnType<typeof parseAssetTransactionSnapshot>,
   labels: Map<string, string>,
 ) {
-  if (!snapshot) return "-"
+  if (!snapshot) return null
   return `${labelOrDash(labels, snapshot.statusId)} · ${labelOrDash(labels, snapshot.currentLocationId)}`
 }
 

@@ -1,10 +1,14 @@
 "use client"
 
-import { useMemo, useState, type RefObject } from "react"
-import { FileText, ImageIcon, Paperclip } from "lucide-react"
+import { useId, useMemo, useState, type RefObject } from "react"
+import { FileText, Paperclip } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Chip } from "@/components/ui/chip"
+import { ChoiceChip } from "@/components/ui/choice-card"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { formatCount } from "@/lib/display-format"
 
 export type AssetEvidenceDrawerItem = {
   id: string
@@ -25,6 +29,7 @@ export type AssetEvidenceDrawerLabels = {
   images: string
   documents: string
   all: string
+  filterLabel: string
   openFile: string
 }
 
@@ -45,6 +50,7 @@ export function AssetEvidenceDrawer({
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
+  const filterName = useId()
   const [activeGroup, setActiveGroup] = useState("__all")
   const groups = useMemo(() => Array.from(new Set(items.map((item) => item.group))), [items])
   const filteredItems = activeGroup === "__all" ? items : items.filter((item) => item.group === activeGroup)
@@ -82,18 +88,24 @@ export function AssetEvidenceDrawer({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-3 gap-2">
-            <EvidenceStat label={labels.total} value={String(items.length)} />
-            <EvidenceStat label={labels.images} value={String(imageCount)} />
-            <EvidenceStat label={labels.documents} value={String(documentCount)} />
-          </div>
+          {/* Spec 2D: the counts are the shared number strip, the filters radio ChoiceChips in a named group (D19). */}
+          <StatStrip
+            items={[
+              { key: "total", label: labels.total, value: formatCount(items.length) },
+              { key: "images", label: labels.images, value: formatCount(imageCount) },
+              { key: "documents", label: labels.documents, value: formatCount(documentCount) },
+            ]}
+          />
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            <FilterButton active={activeGroup === "__all"} label={labels.all} onClick={() => setActiveGroup("__all")} />
-            {groups.map((group) => (
-              <FilterButton key={group} active={activeGroup === group} label={group} onClick={() => setActiveGroup(group)} />
-            ))}
-          </div>
+          <fieldset className="mt-4 min-w-0">
+            <legend className="sr-only">{labels.filterLabel}</legend>
+            <div className="flex flex-wrap gap-2">
+              <ChoiceChip type="radio" name={filterName} checked={activeGroup === "__all"} onChange={() => setActiveGroup("__all")} label={labels.all} />
+              {groups.map((group) => (
+                <ChoiceChip key={group} type="radio" name={filterName} checked={activeGroup === group} onChange={() => setActiveGroup(group)} label={group} />
+              ))}
+            </div>
+          </fieldset>
 
           {filteredItems.length === 0 ? (
             <EmptyNote className="mt-4">{labels.emptyLabel}</EmptyNote>
@@ -105,35 +117,28 @@ export function AssetEvidenceDrawer({
                   href={item.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {item.fileType.startsWith("image/") ? (
                     <div className="flex h-28 w-full items-center justify-center bg-background p-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`${item.href}?inline=1`}
-                        alt={item.title}
-                        loading="lazy"
-                        className="max-h-full w-full object-contain transition-transform group-hover:scale-[1.01]"
-                      />
+                      <img src={`${item.href}?inline=1`} alt={item.title} loading="lazy" className="max-h-full w-full object-contain" />
                     </div>
                   ) : (
-                    <div className="flex h-28 w-full items-center justify-center bg-background p-3 text-center text-xs font-medium text-muted-foreground">
-                      <FileText className="mr-2 h-4 w-4" />
+                    <div className="flex h-28 w-full items-center justify-center gap-2 bg-background p-3 text-center text-meta font-medium text-muted-foreground">
+                      <FileText aria-hidden="true" className="size-4" />
                       {item.fileType}
                     </div>
                   )}
                   <div className="border-t border-border p-3">
+                    {/* The evidence group is a name, so it is the shared Chip (2D-2 R2). */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-1 text-xs font-medium text-primary">
-                        {item.fileType.startsWith("image/") ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                        {item.group}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{item.displayDate}</span>
+                      <Chip>{item.group}</Chip>
+                      <span className="text-meta text-muted-foreground">{item.displayDate}</span>
                     </div>
                     <div className="mt-2 truncate text-sm font-medium text-foreground">{item.title}</div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</div>
-                    <div className="mt-3 text-xs font-medium text-primary">{labels.openFile}</div>
+                    <div className="mt-1 truncate text-meta text-muted-foreground">{item.detail}</div>
+                    <div className="mt-3 text-meta font-medium text-primary">{labels.openFile}</div>
                   </div>
                 </a>
               ))}
@@ -142,38 +147,5 @@ export function AssetEvidenceDrawer({
         </div>
       </SheetContent>
     </Sheet>
-  )
-}
-
-function EvidenceStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-bold text-foreground">{value}</div>
-    </div>
-  )
-}
-
-function FilterButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        active
-          ? "inline-flex h-8 shrink-0 items-center rounded-md bg-primary px-3 text-xs font-medium text-white"
-          : "inline-flex h-8 shrink-0 items-center rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-input hover:text-primary"
-      }
-    >
-      {label}
-    </button>
   )
 }
