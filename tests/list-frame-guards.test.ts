@@ -155,7 +155,8 @@ const RAW_DASH = /(?:\|\||\?\?|:)\s*"-"/g
 const FORMAT_CURRENCY = /(?<!function )\bformatCurrency\(/g
 // Plan 2D-3 (D19) added each name below its own tile's last commit: EvidenceStat (the evidence drawer), SummaryItem
 // (the batch form and the import panel).
-const LOCAL_STAT_TILE = /\bfunction (?:SummaryTile|SummaryCard|SummaryPill|SummaryStrip|RoleAuditCard|ResolutionMetric|CoverageMetric|Metric|DashboardCard|BatchMetric|MetricCard|OperationMetric|EvidenceStat|SummaryItem)\b/g
+// Plan 2D-4 Task 22 (AP-3): ImpactItem (the round cancel dialog).
+const LOCAL_STAT_TILE = /\bfunction (?:SummaryTile|SummaryCard|SummaryPill|SummaryStrip|RoleAuditCard|ResolutionMetric|CoverageMetric|Metric|DashboardCard|BatchMetric|MetricCard|OperationMetric|EvidenceStat|SummaryItem|ImpactItem)\b/g
 const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Spec 2D D19: label and value look-alikes join this list in the commit that removes them, so the count stays 0:
 // MovementInfo (the movement timeline, plan 2D-3), ReviewItem (the component manager), MobileField (my assets),

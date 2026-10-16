@@ -33,3 +33,13 @@ test("audit round close: a ContentPanel with the shared busy Button, the checkli
   assert.match(source, /<Notice key=\{item\.label\} tone="neutral" className="mt-3">\{item\.label\}<\/Notice>/)
   assert.doesNotMatch(source, /<button\b|Loader2|CheckCircle2|disabled:opacity|text-white|-soft\b|rounded-lg|rounded-md|text-2xl|\btext-xs\b/)
 })
+
+test("audit round cancel dialog: the impact counts are a KeyValueList through formatCount and the no-rollback line is a warning Notice (spec 2D M26, D7, D19)", () => {
+  const source = read(`${C}audit/audit-round-cancel-button.tsx`)
+  assert.match(source, /<Notice tone="warning">\{t\("cancelNoRollbackWarning"\)\}<\/Notice>/)
+  assert.match(source, /<KeyValueList\b/)
+  for (const field of ["processedItems", "pendingItems", "pendingFindings", "approvedFindings", "openActions", "scanHistoryRows"]) {
+    assert.match(source, new RegExp(`value: formatCount\\(impact\\.${field}\\)`), field)
+  }
+  assert.doesNotMatch(source, /function ImpactItem\b|<ImpactItem\b|border-warning-border|bg-warning-soft|text-xl font-bold|\btext-xs\b/)
+})

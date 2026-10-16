@@ -14,8 +14,11 @@ import {
 } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { formatCount } from "@/lib/display-format"
 
 type AuditRoundCancellationImpact = {
   pendingItems: number
@@ -87,17 +90,17 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
       >
         <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
           <AccessibleDialogBody className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-              <ImpactItem label={t("cancelImpactProcessed")} value={impact.processedItems} />
-              <ImpactItem label={t("cancelImpactPending")} value={impact.pendingItems} />
-              <ImpactItem label={t("cancelImpactPendingFindings")} value={impact.pendingFindings} />
-              <ImpactItem label={t("cancelImpactApprovedFindings")} value={impact.approvedFindings} />
-              <ImpactItem label={t("cancelImpactOpenActions")} value={impact.openActions} />
-              <ImpactItem label={t("cancelImpactScanHistory")} value={impact.scanHistoryRows} />
-            </div>
-            <div className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
-              {t("cancelNoRollbackWarning")}
-            </div>
+            <KeyValueList
+              items={[
+                { key: "processed", label: t("cancelImpactProcessed"), value: formatCount(impact.processedItems) },
+                { key: "pending", label: t("cancelImpactPending"), value: formatCount(impact.pendingItems) },
+                { key: "pendingFindings", label: t("cancelImpactPendingFindings"), value: formatCount(impact.pendingFindings) },
+                { key: "approvedFindings", label: t("cancelImpactApprovedFindings"), value: formatCount(impact.approvedFindings) },
+                { key: "openActions", label: t("cancelImpactOpenActions"), value: formatCount(impact.openActions) },
+                { key: "scanHistory", label: t("cancelImpactScanHistory"), value: formatCount(impact.scanHistoryRows) },
+              ]}
+            />
+            <Notice tone="warning">{t("cancelNoRollbackWarning")}</Notice>
             <Field label={t("cancelReason")} required>
               <Textarea
                 id={reasonId}
@@ -122,14 +125,5 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
         </form>
       </AccessibleDialog>
     </>
-  )
-}
-
-function ImpactItem({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-md border border-border bg-background px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-bold text-foreground">{value}</div>
-    </div>
   )
 }
