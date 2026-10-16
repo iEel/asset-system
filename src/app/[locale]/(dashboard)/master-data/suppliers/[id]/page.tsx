@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, Edit } from "lucide-react"
+import { Edit } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import {
@@ -11,11 +11,14 @@ import {
   type SupplierFollowUpKey,
 } from "@/lib/supplier-detail"
 import { formatCount, formatMoney } from "@/lib/display-format"
-import { formatDate } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -195,10 +198,8 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-5">
-            <SectionTitle title={t("profileTitle")} />
+          <ContentPanel title={t("profileTitle")}>
             <KeyValueList
-              className="mt-4"
               items={[
                 { key: "contactPerson", label: t("contactPerson"), value: supplier.contactPerson },
                 { key: "phone", label: t("phone"), value: supplier.phone },
@@ -206,39 +207,42 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 { key: "address", label: t("address"), value: supplier.address },
               ]}
             />
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-5">
-            <SectionTitle title={t("followUpTitle")} />
+          {/* Nothing to follow up is a clear note; what is left is one warning Notice (spec 2D D7), with no tinted rows. */}
+          <ContentPanel title={t("followUpTitle")}>
             {followUpItems.length === 0 ? (
-              <div className="mt-4 rounded-md border border-success-border bg-success-soft p-3 text-sm text-success">
-                {t("noFollowUp")}
-              </div>
+              <EmptyNote tone="clear">{t("noFollowUp")}</EmptyNote>
             ) : (
-              <div className="mt-4 space-y-2">
-                {followUpItems.map((item) => (
-                  <div key={item} className="flex gap-2 rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning">
-                    <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{followUpText(item, t)}</span>
-                  </div>
-                ))}
-              </div>
+              <Notice tone="warning">
+                <ul className="list-disc space-y-1 pl-5">
+                  {followUpItems.map((item) => (
+                    <li key={item}>{followUpText(item, t)}</li>
+                  ))}
+                </ul>
+              </Notice>
             )}
-          </section>
+          </ContentPanel>
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-5">
-            <SectionTitle title={t("linkedAssetsTitle")} actionHref={hrefs.assets} actionLabel={t("viewAllAssets")} />
+          <ContentPanel
+            title={t("linkedAssetsTitle")}
+            actions={
+              <Link href={hrefs.assets} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                {t("viewAllAssets")}
+              </Link>
+            }
+          >
             {assets.length === 0 ? (
               <ActionEmptyState title={t("noAssets")} description={t("noAssetsHelp")} />
             ) : (
-              <div className="mt-4 divide-y divide-border">
+              <div className="divide-y divide-border">
                 {assets.map((asset) => (
                   <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
                     <span className="min-w-0">
                       <span className="block font-medium text-primary"><span className="tag">{asset.assetTag}</span> - {asset.name}</span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
+                      <span className="mt-1 block text-meta text-muted-foreground">
                         <span className="tag">{asset.category.code}</span> - {asset.category.name} / <span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}
                       </span>
                     </span>
@@ -250,10 +254,9 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 ))}
               </div>
             )}
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-5">
-            <SectionTitle title={t("purchaseDocumentsTitle")} />
+          <ContentPanel title={t("purchaseDocumentsTitle")}>
             <SupplierPurchaseDocuments
               documents={purchaseDocuments.map((document) => ({
                 id: document.id,
@@ -262,7 +265,8 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 poNumber: document.poNumber,
                 invoiceNumber: document.invoiceNumber,
                 documentDate: document.documentDate,
-                totalAmount: Number(document.totalAmount ?? 0),
+                // An empty total stays null and shows Nil, not 0.00 (spec 2D M32 a).
+                totalAmount: document.totalAmount == null ? null : Number(document.totalAmount),
                 currency: document.currency,
                 linkedAssets: document._count.assetLinks,
               }))}
@@ -275,50 +279,37 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 noPurchaseDocumentsHelp: t("noPurchaseDocumentsHelp"),
               }}
             />
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-5">
-            <SectionTitle title={t("maintenanceHistoryTitle")} />
+          <ContentPanel title={t("maintenanceHistoryTitle")}>
             {maintenanceTickets.length === 0 ? (
               <ActionEmptyState title={t("noMaintenance")} description={t("noMaintenanceHelp")} />
             ) : (
-              <div className="mt-4 space-y-3">
+              <div className="space-y-3">
+                {/* Each ticket is a quiet grouping link (2D-2 R4) with the shared row hover. */}
                 {maintenanceTickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="font-medium text-primary"><span className="tag">{ticket.repairNo}</span> - <span className="tag">{ticket.asset.assetTag}</span></div>
                         <div className="mt-1 text-sm text-foreground">{ticket.asset.name}</div>
-                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{ticket.problem}</div>
+                        <div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{ticket.problem}</div>
                       </div>
                       <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
                         <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
-                        <span className="text-xs text-muted-foreground num">{ticket.repairCost == null ? <Nil /> : formatMoney(Number(ticket.repairCost), { unit: tCommon("baht") })}</span>
+                        <span className="text-meta text-muted-foreground num">{ticket.repairCost == null ? <Nil /> : formatMoney(Number(ticket.repairCost), { unit: tCommon("baht") })}</span>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
                       <span>{t("reportedDate")}: {formatDate(ticket.reportedDate)}</span>
                     </div>
                   </Link>
                 ))}
               </div>
             )}
-          </section>
+          </ContentPanel>
         </div>
       </div>
-    </div>
-  )
-}
-
-function SectionTitle({ title, actionHref, actionLabel }: { title: string; actionHref?: string; actionLabel?: string }) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      {actionHref && actionLabel ? (
-        <Link href={actionHref} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary hover:bg-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          {actionLabel}
-        </Link>
-      ) : null}
     </div>
   )
 }

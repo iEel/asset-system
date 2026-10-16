@@ -76,3 +76,18 @@ test("suppliers list: the asset count is a text link with a 44px phone target, f
   assert.equal(list.match(/<KeyValueList\b/g)?.length, 1, "the phone card's contact and phone")
   assert.doesNotMatch(page + list, /rounded-lg border|hover:bg-primary-soft|\btext-xs\b|className="px-2"|<dl\b/)
 })
+
+test("supplier page: sections are ContentPanels, follow-ups a warning Notice or a clear EmptyNote, rows quiet, and an empty purchase document total is Nil (spec 2D D7, D9, D19, M32 a)", () => {
+  const page = read(`${D}master-data/suppliers/[id]/page.tsx`)
+  const documents = read("src/components/master-data/supplier-purchase-documents.tsx")
+  assert.equal(page.match(/<ContentPanel\b/g)?.length, 5, "profile, follow-up, assets, purchase documents, maintenance")
+  assert.match(page, /<EmptyNote tone="clear">\{t\("noFollowUp"\)\}<\/EmptyNote>/)
+  assert.match(page, /<Notice tone="warning">\n\s+<ul className="list-disc space-y-1 pl-5">/)
+  assert.match(page, /<Link href=\{hrefs\.assets\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  assert.match(page, /totalAmount: document\.totalAmount == null \? null : Number\(document\.totalAmount\),/)
+  assert.match(documents, /totalAmount: number \| null/)
+  assert.match(documents, /<DataTable data-supplier-documents-desktop framed=\{false\} className="hidden md:block">/)
+  assert.match(documents, /<article key=\{document\.id\} className="min-w-0 rounded-md border border-border bg-background p-3">/)
+  assert.equal(documents.match(/<KeyValueList\b/g)?.length, 1)
+  assert.doesNotMatch(page + documents, /function (?:SectionTitle|DocumentFact)\b|rounded-lg border|bg-(?:success|warning)-soft|hover:bg-accent|\btext-xs\b|document\.totalAmount \?\? 0/)
+})

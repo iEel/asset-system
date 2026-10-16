@@ -14,7 +14,7 @@ test("purchase documents use adaptive desktop and mobile presentations", () => {
   assert.match(documents, /md:hidden/)
   assert.match(documents, /<DataTable\b/)
   assert.match(documents, /<article/)
-  assert.match(documents, /<dl/)
+  assert.match(documents, /<KeyValueList\b/)
 })
 
 test("supplier detail uses a compact mobile metric strip", () => {

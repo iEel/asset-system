@@ -622,10 +622,11 @@ test("the supplier page builds on PageHeader, StatStrip and KeyValueList, shows 
 // the number only.
 test("supplier purchase documents: DataTable with right-aligned count and money columns, formatCount, formatMoney and Nil (spec 2B §5.5, §5.7)", () => {
   const source = read(`${C}master-data/supplier-purchase-documents.tsx`)
-  assert.match(source, /<DataTable data-supplier-documents-desktop className="mt-4 hidden md:block">/)
+  // Plan 2D-3: the table sits in the page's ContentPanel with no frame of its own, and an empty total is Nil (M32 a).
+  assert.match(source, /<DataTable data-supplier-documents-desktop framed=\{false\} className="hidden md:block">/)
   assert.match(source, /<DataTableHead align="right">\{labels\.linkedAssets\}<\/DataTableHead>/)
   assert.match(source, /<DataTableHead align="right">\{labels\.totalAmount\}<\/DataTableHead>/)
-  assert.match(source, /<DataTableCell numeric className="text-muted-foreground">\{formatMoney\(document\.totalAmount\)\}<\/DataTableCell>/)
+  assert.match(source, /<DataTableCell numeric className="text-muted-foreground">\{orNil\(formatMoney\(document\.totalAmount\)\)\}<\/DataTableCell>/)
   assert.equal(source.match(/formatCount\(document\.linkedAssets\)/g)?.length, 2, "the table and the phone card")
   assert.equal(source.match(/orNil\(documentReferences\(document\)\)/g)?.length, 2, "the table and the phone card")
   assert.equal(source.match(/<span className="tag">\{document\.documentNo\}<\/span>/g)?.length, 2)
