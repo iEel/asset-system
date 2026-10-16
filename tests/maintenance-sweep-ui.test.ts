@@ -107,3 +107,12 @@ test("repair print page: the cost goes through formatMoney, as on the screen, wi
   assert.match(source, /\{ label: tRecord\("cost"\), value: ticket\.repairCost == null \? null : formatMoney\(Number\(ticket\.repairCost\)\) \}/)
   assert.doesNotMatch(source, /formatCurrency/)
 })
+
+test("formatCurrency is gone from src/lib/utils.ts once both print pages show money through formatMoney (spec 2D D10, §4.1)", () => {
+  assert.doesNotMatch(read("src/lib/utils.ts"), /formatCurrency/)
+  for (const path of [`${P}disposal/[id]/print/page.tsx`, `${P}maintenance/[id]/print/page.tsx`]) {
+    const source = read(path)
+    assert.match(source, /\bformatMoney\(/, path)
+    assert.doesNotMatch(source, /formatCurrency/, path)
+  }
+})

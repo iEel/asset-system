@@ -39,11 +39,3 @@ export function formatDateTime(date: Date | string | null | undefined): string {
     minute: "2-digit",
   })
 }
-
-export function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return "-"
-  return new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency: "THB",
-  }).format(value)
-}
