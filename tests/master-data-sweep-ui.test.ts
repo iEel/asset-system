@@ -17,3 +17,10 @@ test("branches list: drill-down counts are text links with a 44px phone target, 
   assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
+
+test("categories list: the model and asset counts are text links with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
+  const source = read(`${D}master-data/categories/page.tsx`)
+  assert.equal(source.match(drilldownLink)?.length, 2)
+  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
+})
