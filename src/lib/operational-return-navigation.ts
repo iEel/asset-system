@@ -7,6 +7,8 @@ const operationalReturnPaths = {
   "audit-findings": (locale: string) => `/${locale}/audit/findings`,
   // The PM plan list, whose page and page size the edit page carries back (spec 2B B4, §5.9.2 row 6).
   "maintenance-pm": (locale: string) => `/${locale}/maintenance/pm`,
+  // My Assets, whose page and page size the detail page carries back (spec 2B §5.9.2 row 9, 2D M32 c).
+  "my-assets": (locale: string) => `/${locale}/my-assets`,
 } as const
 
 export type OperationalReturnSection = keyof typeof operationalReturnPaths

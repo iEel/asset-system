@@ -263,3 +263,11 @@ test("register table and phone list: the ownership type is a name Chip, the fram
   assert.match(mobile, /<Chip className="shrink-0">\{asset\.ownershipType\.label\}<\/Chip>/)
   assert.doesNotMatch(mobile, /tone="success"/)
 })
+
+test("my assets: the phone card facts are a KeyValueList (D19), the card is a quiet grouping, and the sub-line is text-meta (spec 2D D9, D19)", () => {
+  const source = read(`${D}my-assets/page.tsx`)
+  assert.match(source, /<article className="min-w-0 rounded-md border border-border bg-background p-3">\n\s+<AssetIdentity asset=\{asset\} href=\{href\} \/>\n\s+<KeyValueList\n\s+className="mt-3"/)
+  assert.match(source, /\{ key: "serialNumber", label: labels\.serialNumber, value: asset\.serialNumber \? <span className="tag">\{asset\.serialNumber\}<\/span> : null \}/)
+  assert.match(source, /\{ key: "status", label: labels\.status, value: <StatusBadge label=\{asset\.status\.nameTh\} tone=\{getAssetStateTone\(asset\.status\.name\)\} \/> \}/)
+  assert.doesNotMatch(source, /function MobileField\b|import type React|\btext-xs\b/)
+})

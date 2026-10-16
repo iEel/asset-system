@@ -11,10 +11,12 @@ import { getAssetStateTone } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { buildMyAssetDetailWhere } from "@/lib/my-assets"
+import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { formatDateTime } from "@/lib/utils"
 
 type MyAssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
 const myAssetDetailSelect = {
@@ -37,8 +39,11 @@ const myAssetDetailSelect = {
   },
 } satisfies Prisma.AssetSelect
 
-export default async function MyAssetDetailPage({ params }: MyAssetDetailPageProps) {
+export default async function MyAssetDetailPage({ params, searchParams }: MyAssetDetailPageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
+  // Back to the page of My Assets the person came from (spec 2B §5.9.2 row 9, 2D M32 c).
+  const returnToHref = normalizeOperationalReturnTo(locale, "my-assets", rawSearchParams.returnTo)
   const user = await getSessionUser()
   if (!user?.employeeId) notFound()
 
@@ -58,7 +63,7 @@ export default async function MyAssetDetailPage({ params }: MyAssetDetailPagePro
       <PageHeader
         title={t("detailTitle")}
         meta={t("detailHelp")}
-        back={<PageBackLink href={`/${locale}/my-assets`} label={t("backToList")} />}
+        back={<PageBackLink href={returnToHref} label={t("backToList")} />}
       />
 
       <ContentPanel>

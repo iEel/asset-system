@@ -143,3 +143,20 @@ test("the PM edit page reads returnTo and the plan form goes there after a save 
   assert.match(form, /returnHref = `\/\$\{locale\}\/maintenance\/pm`,/, "the create page passes nothing and keeps going to the PM list")
   assert.match(form, /router\.push\(returnHref\)/)
 })
+
+// Plan 2D-3 (spec 2D M32 c, spec 2B §5.9.2 row 9): the My Assets detail page goes back to the list page and page size
+// it was opened from. The pages are read as text with \r, so no regex below holds \n.
+test("my-assets returnTo keeps the list page and page size and falls back to My Assets", async () => {
+  const { normalizeOperationalReturnTo } = await import("../src/lib/operational-return-navigation.ts")
+  assert.equal(normalizeOperationalReturnTo("th", "my-assets", "/th/my-assets?page=2&pageSize=50"), "/th/my-assets?page=2&pageSize=50")
+  assert.equal(normalizeOperationalReturnTo("th", "my-assets", undefined), "/th/my-assets")
+  assert.equal(normalizeOperationalReturnTo("th", "my-assets", "/th/assets?page=2"), "/th/my-assets", "the register is another page")
+  assert.equal(normalizeOperationalReturnTo("th", "my-assets", "https://example.com/th/my-assets"), "/th/my-assets", "never another site")
+  assert.equal(normalizeOperationalReturnTo("en", "my-assets", "/th/my-assets?page=2"), "/en/my-assets", "the locale is part of the path")
+  const list = readFileSync("src/app/[locale]/(dashboard)/my-assets/page.tsx", "utf8")
+  const detail = readFileSync("src/app/[locale]/(dashboard)/my-assets/[id]/page.tsx", "utf8")
+  assert.match(list, /return appendOperationalReturnTo\(`\/\$\{locale\}\/my-assets\/\$\{encodeURIComponent\(assetId\)\}`, returnHref\)/)
+  assert.equal(list.match(/buildMyAssetDetailHref\(locale, asset\.id, returnHref\)/g)?.length, 2, "the phone card and the table row")
+  assert.match(detail, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  assert.match(detail, /const returnToHref = normalizeOperationalReturnTo\(locale, "my-assets", rawSearchParams\.returnTo\)/)
+})

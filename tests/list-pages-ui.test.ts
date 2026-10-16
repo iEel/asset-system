@@ -637,7 +637,8 @@ test("supplier purchase documents: DataTable with right-aligned count and money 
 // for the bottom bar (tests/mobile-field-navigation.test.ts pins the mode).
 test("my asset page: PageHeader with the back link to My Assets, the facts as a KeyValueList, no pb-24 of its own (spec 2B §4.4.5, §4.6.3)", () => {
   const source = read(`${D}my-assets/[id]/page.tsx`)
-  assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader\n\s+title=\{t\("detailTitle"\)\}\n\s+meta=\{t\("detailHelp"\)\}\n\s+back=\{<PageBackLink href=\{`\/\$\{locale\}\/my-assets`\} label=\{t\("backToList"\)\} \/>\}\n\s+\/>/)
+  // Plan 2D-3 (M32 c): the back link returns to the page of the list it came from (returnTo), not page 1.
+  assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader\n\s+title=\{t\("detailTitle"\)\}\n\s+meta=\{t\("detailHelp"\)\}\n\s+back=\{<PageBackLink href=\{returnToHref\} label=\{t\("backToList"\)\} \/>\}\n\s+\/>/)
   assert.doesNotMatch(source, /\bpb-24\b/)
   assert.match(source, /<KeyValueList\n\s+items=\{\[/)
   assert.match(source, /\{ key: "serialNumber", label: t\("serialNumber"\), value: asset\.serialNumber \? <span className="tag">\{asset\.serialNumber\}<\/span> : null \}/, "an empty serial number shows Nil through KeyValueList")

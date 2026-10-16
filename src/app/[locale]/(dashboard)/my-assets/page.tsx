@@ -1,7 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import type React from "react"
 import type { Prisma } from "@prisma/client"
 import { PackageCheck } from "lucide-react"
 import { getTranslations } from "next-intl/server"
@@ -10,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
@@ -22,6 +22,7 @@ import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { buildMyAssetsWhere, summarizeMyAssets } from "@/lib/my-assets"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { cn, formatDateTime } from "@/lib/utils"
 
 type MyAssetsPageProps = {
@@ -105,6 +106,8 @@ export default async function MyAssetsPage({ params, searchParams }: MyAssetsPag
     redirect(listHref({ page: lastPage, pageSize: listPage.pageSize }))
   }
   const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
+  // The detail page's back link returns to this page of the list, with its page size (spec 2B §5.9.2 row 9, 2D M32 c).
+  const returnHref = listHref({ page: listPage.page, pageSize: listPage.pageSize })
   const labels = {
     asset: t("asset"),
     serialNumber: t("serialNumber"),
@@ -153,7 +156,7 @@ export default async function MyAssetsPage({ params, searchParams }: MyAssetsPag
           <>
             <div className={`${getMobileCardListClasses()} p-3`}>
               {assets.map((asset) => (
-                <MobileAssetCard key={asset.id} labels={labels} asset={asset} href={buildMyAssetDetailHref(locale, asset.id)} />
+                <MobileAssetCard key={asset.id} labels={labels} asset={asset} href={buildMyAssetDetailHref(locale, asset.id, returnHref)} />
               ))}
             </div>
             <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("list")} scrollHint={tCommon("tableScrollHint")}>
@@ -170,7 +173,7 @@ export default async function MyAssetsPage({ params, searchParams }: MyAssetsPag
               </DataTableHeader>
               <DataTableBody>
                 {assets.map((asset) => {
-                  const href = buildMyAssetDetailHref(locale, asset.id)
+                  const href = buildMyAssetDetailHref(locale, asset.id, returnHref)
                   return (
                     <ClickableTableRow key={asset.id} href={href} label={`${labels.openDetail}: ${asset.assetTag}`}>
                       <DataTableCell>
@@ -242,7 +245,7 @@ function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
       <div className="min-w-0">
         <div className="text-foreground"><span className="tag font-medium">{asset.assetTag}</span></div>
         <div className="truncate text-sm text-foreground">{asset.name}</div>
-        <div className="truncate text-xs text-muted-foreground">
+        <div className="truncate text-meta text-muted-foreground">
           <span className="tag">{asset.category.code}</span> - {asset.category.name}
         </div>
       </div>
@@ -257,25 +260,23 @@ function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
   )
 }
 
+// A card in a panel is a quiet grouping (2D-2 R4); its facts are the shared label and value list (spec 2D D19).
 function MobileAssetCard({ labels, asset, href }: { labels: Record<string, string>; asset: MyAssetRow; href: string }) {
   return (
-    <article className="rounded-md border border-border bg-surface p-4">
+    <article className="min-w-0 rounded-md border border-border bg-background p-3">
       <AssetIdentity asset={asset} href={href} />
-      <div className="mt-3 grid gap-2 text-sm">
-        <MobileField label={labels.serialNumber} value={asset.serialNumber ? <span className="tag">{asset.serialNumber}</span> : <Nil />} />
-        <MobileField label={labels.category} value={<><span className="tag">{asset.category.code}</span> - {asset.category.name}</>} />
-        <MobileField label={labels.location} value={<><span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}</>} />
-        <MobileField label={labels.companyBranch} value={<><span className="tag">{asset.company.code}</span> / <span className="tag">{asset.branch.code}</span></>} />
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">{labels.status}</span>
-          <StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">{labels.condition}</span>
-          <StatusBadge label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
-        </div>
-        <MobileField label={labels.updatedAt} value={formatDateTime(asset.updatedAt)} />
-      </div>
+      <KeyValueList
+        className="mt-3"
+        items={[
+          { key: "serialNumber", label: labels.serialNumber, value: asset.serialNumber ? <span className="tag">{asset.serialNumber}</span> : null },
+          { key: "category", label: labels.category, value: <><span className="tag">{asset.category.code}</span> - {asset.category.name}</> },
+          { key: "location", label: labels.location, value: <><span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}</> },
+          { key: "companyBranch", label: labels.companyBranch, value: <><span className="tag">{asset.company.code}</span> / <span className="tag">{asset.branch.code}</span></> },
+          { key: "status", label: labels.status, value: <StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} /> },
+          { key: "condition", label: labels.condition, value: <StatusBadge label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} /> },
+          { key: "updatedAt", label: labels.updatedAt, value: formatDateTime(asset.updatedAt) },
+        ]}
+      />
       <Link href={href} className={cn(buttonVariants({ variant: "outline" }), "mt-4 w-full")}>
         {labels.openDetail}
       </Link>
@@ -283,15 +284,6 @@ function MobileAssetCard({ labels, asset, href }: { labels: Record<string, strin
   )
 }
 
-function buildMyAssetDetailHref(locale: string, assetId: string) {
-  return `/${locale}/my-assets/${encodeURIComponent(assetId)}`
-}
-
-function MobileField({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 justify-between gap-3">
-      <span className="shrink-0 text-muted-foreground">{label}</span>
-      <span className="min-w-0 truncate text-right font-medium text-foreground">{value}</span>
-    </div>
-  )
+function buildMyAssetDetailHref(locale: string, assetId: string, returnHref: string) {
+  return appendOperationalReturnTo(`/${locale}/my-assets/${encodeURIComponent(assetId)}`, returnHref)
 }

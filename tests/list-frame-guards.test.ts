@@ -158,8 +158,8 @@ const FORMAT_CURRENCY = /(?<!function )\bformatCurrency\(/g
 const LOCAL_STAT_TILE = /\bfunction (?:SummaryTile|SummaryCard|SummaryPill|SummaryStrip|RoleAuditCard|ResolutionMetric|CoverageMetric|Metric|DashboardCard|BatchMetric|MetricCard|OperationMetric|EvidenceStat|SummaryItem)\b/g
 const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Spec 2D D19: label and value look-alikes join this list in the commit that removes them, so the count stays 0:
-// MovementInfo (the movement timeline, plan 2D-3), ReviewItem (the component manager).
-const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem)\b/g
+// MovementInfo (the movement timeline, plan 2D-3), ReviewItem (the component manager), MobileField (my assets).
+const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField)\b/g
 const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 const pageCurrent = (text: string) => /"page"/.test(jsxAttrValue(text, "aria-current") ?? "")
