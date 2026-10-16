@@ -3,11 +3,16 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Download, FileText, Image as ImageIcon, Loader2, Trash2 } from "lucide-react"
+import { Download, FileText, Image as ImageIcon, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { formatFileSize } from "@/lib/uploads"
+import { cn } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Attachment = {
@@ -76,11 +81,7 @@ export function DisposalAttachments({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-        <FileText className="h-5 w-5 text-primary" />
-        {title ?? t("requestEvidence")}
-      </h2>
+    <ContentPanel title={title ?? t("requestEvidence")}>
       {canManage ? (
         <div className="mb-4">
           <FileDropzone
@@ -96,7 +97,7 @@ export function DisposalAttachments({
         </div>
       ) : null}
       {attachments.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{tCommon("noData")}</div>
+        <EmptyNote>{tCommon("noData")}</EmptyNote>
       ) : (
         <div className="space-y-3">
           {attachments.map((attachment) => (
@@ -106,27 +107,34 @@ export function DisposalAttachments({
                 <img src={`/api/attachments/${attachment.id}?inline=1`} alt={attachment.originalName} className="mb-3 aspect-[4/3] w-full rounded-md border border-border object-cover" />
               ) : null}
               <div className="flex items-start gap-2">
-                {attachment.fileType.startsWith("image/") ? <ImageIcon className="mt-0.5 h-4 w-4 text-info" /> : <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" />}
+                {attachment.fileType.startsWith("image/") ? <ImageIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> : <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
                 <div className="min-w-0 flex-1">
                   <div className="break-words text-sm font-medium text-foreground">{attachment.originalName}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{attachment.fileType} · {formatFileSize(attachment.fileSize)}</div>
+                  <div className="mt-1 text-meta text-muted-foreground">{attachment.fileType} · {formatFileSize(attachment.fileSize)}</div>
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
-                <a href={`/api/attachments/${attachment.id}`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
-                  <Download className="h-3.5 w-3.5" />
+                <a href={`/api/attachments/${attachment.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
+                  <Download aria-hidden="true" />
                   {t("download")}
                 </a>
                 {canManage ? (
-                  <button type="button" onClick={() => handleDelete(attachment.id)} disabled={deletingId === attachment.id} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0" aria-label={tCommon("delete")} title={tCommon("delete")}>
-                    {deletingId === attachment.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </button>
+                  <Button
+                    variant="danger"
+                    size="icon-sm"
+                    onClick={() => handleDelete(attachment.id)}
+                    busy={deletingId === attachment.id}
+                    aria-label={tCommon("delete")}
+                    title={tCommon("delete")}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
                 ) : null}
               </div>
             </div>
           ))}
         </div>
       )}
-    </section>
+    </ContentPanel>
   )
 }
