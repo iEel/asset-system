@@ -1,3 +1,4 @@
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Steps } from "@/components/ui/steps"
 import type { DisposalStage } from "@/lib/disposal-stage"
 import { getLinearStepStates, type StepOutcome } from "@/lib/step-states"
@@ -34,8 +35,8 @@ const outcomeByStage: Record<DisposalStage, StepOutcome> = {
 
 const stepKeys = ["request", "decision", "execution"] as const
 
-// The stage and its owner stay the panel's first row (the panel itself waits for 2D, K28); the steps are the shared
-// rail, which names its list, reads each step's state and shows "ขั้นที่ x จาก 3" on phones.
+// The shared panel (spec 2D D9, K28): the stage and its owner are its first row, then the shared rail, which names its
+// list, reads each step's state and shows "ขั้นที่ x จาก 3" on phones.
 export function DisposalWorkflowStepper({
   stage,
   currentStageLabel,
@@ -48,12 +49,12 @@ export function DisposalWorkflowStepper({
   const steps = stepKeys.map((key, index) => ({ id: key, label: labels[key], state: states[index] }))
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 sm:p-5">
+    <ContentPanel>
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
         <p className="text-sm font-semibold text-foreground">{currentStageLabel}</p>
         <p className="text-sm text-muted-foreground">{ownerRoleLabel}: {ownerLabel}</p>
       </div>
       <Steps className="mt-4" label={stepsLabel} steps={steps} />
-    </section>
+    </ContentPanel>
   )
 }
