@@ -279,7 +279,6 @@ const OLD_MARKUP: Record<string, number> = {
 // GB1 <Loader2 tags (every tag, also icons kept in a variable)
 const LOADER2: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
   // 1b
   // 1c
   [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :67

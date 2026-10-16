@@ -23,7 +23,7 @@ test("the attachment type select uses Field and NativeSelect (2C batch 1a), and 
   assert.doesNotMatch(source, /<select|mb-1\.5 block text-sm font-medium/)
   assert.match(source, /<FileDropzone\n\s+file=\{selectedFile\}/)
   // Batch 5 (spec 2C §5.9, K12): the shared confirm with the verb "ลบ" replaces the file's own dialog; the delete
-  // button stays as it is (2D) and only starts handleDelete, which asks first.
+  // button (Button danger icon-sm busy since plan 2D-4) only starts handleDelete, which asks first.
   assert.match(source, /async function handleDelete\(id: string\) \{\n\s+if \(!\(await confirm\(\{ title: tCommon\("deleteConfirm"\), confirmLabel: tCommon\("delete"\), tone: "destructive" \}\)\)\) return\n\s+setDeletingId\(id\)/)
   assert.match(source, /onClick=\{\(\) => void handleDelete\(attachment\.id\)\}/)
   assert.doesNotMatch(source, /AccessibleDialog|pendingDeleteId|savedSuccess/)

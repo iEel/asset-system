@@ -3,13 +3,20 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2 } from "lucide-react"
+import { Download, Eye, FileText, Image as ImageIcon, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
+import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, maintenanceAttachmentTypes, type MaintenanceAttachmentType } from "@/lib/maintenance-attachments"
+import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
@@ -96,15 +103,10 @@ export function MaintenanceAttachments({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-        <FileText className="h-5 w-5 text-primary" />
-        {t("attachments")}
-      </h2>
-
+    <ContentPanel title={t("attachments")}>
       {canEdit ? (
-      <div className="mb-4 rounded-md border border-border bg-background p-3">
-        {!canDelete ? <p className="mb-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">{t("closedEvidenceAppendOnlyHelp")}</p> : null}
+      <div className="mb-4">
+        {!canDelete ? <Notice tone="warning" className="mb-3">{t("closedEvidenceAppendOnlyHelp")}</Notice> : null}
         <Field label={t("attachmentType")} className="mb-3">
           <NativeSelect
             value={attachmentType}
@@ -129,24 +131,23 @@ export function MaintenanceAttachments({
       ) : null}
 
       {attachments.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          {tCommon("noData")}
-        </div>
+        <EmptyNote>{tCommon("noData")}</EmptyNote>
       ) : (
         <div className="space-y-4">
           {groupedAttachments.map((group) => (
             <div key={group.type} className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold text-foreground">{t(`attachmentTypes.${group.type}`)}</h3>
-                <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{group.attachments.length}</span>
+                <span className="text-meta num text-muted-foreground">{formatCount(group.attachments.length)}</span>
               </div>
               {group.attachments.map((attachment) => (
                 <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
+              {/* The thumbnail stays a raw button: the image or the PDF preview is the control (plan 2D-4, for the EXEMPT list of 2D-5). */}
               {isPreviewable(attachment) ? (
                 <button
                   type="button"
                   onClick={() => setPreview(attachment)}
-                  className="mb-3 flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md border border-border bg-surface text-muted-foreground transition-colors hover:bg-accent"
+                  className="mb-3 flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md bg-surface text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {isImage(attachment) ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -157,61 +158,54 @@ export function MaintenanceAttachments({
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-sm">
-                      <FileText className="h-10 w-10 text-danger" />
+                      <FileText className="h-10 w-10" />
                       {t("pdfPreview")}
                     </div>
                   )}
                 </button>
               ) : (
-                <div className="mb-3 flex aspect-[4/3] w-full items-center justify-center rounded-md border border-dashed border-border bg-surface text-muted-foreground">
+                <div className="mb-3 flex aspect-[4/3] w-full items-center justify-center rounded-md bg-surface text-muted-foreground">
                   <FileText className="h-10 w-10" />
                 </div>
               )}
               <div className="flex items-start gap-2">
                 {isImage(attachment) ? (
-                  <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                  <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 ) : (
                   <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0">
                   <div className="break-words text-sm font-medium text-foreground">{getMaintenanceAttachmentDisplayName(attachment.originalName)}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
+                  <div className="mt-1 text-meta text-muted-foreground">
                     {attachment.fileType} · {formatFileSize(attachment.fileSize)}
                   </div>
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
                 {isPreviewable(attachment) ? (
-                  <button
-                    type="button"
-                    onClick={() => setPreview(attachment)}
-                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setPreview(attachment)}>
+                    <Eye aria-hidden="true" />
                     {t("preview")}
-                  </button>
+                  </Button>
                 ) : null}
                 <a
                   href={`/api/attachments/${attachment.id}`}
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download aria-hidden="true" />
                   {t("download")}
                 </a>
                 {canDelete ? (
-                <button
-                  type="button"
+                <Button
+                  variant="danger"
+                  size="icon-sm"
                   onClick={() => void handleDelete(attachment.id)}
-                  disabled={deletingId === attachment.id}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
+                  busy={deletingId === attachment.id}
+                  aria-label={tCommon("delete")}
                   title={tCommon("delete")}
                 >
-                  {deletingId === attachment.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
-                  )}
-                </button>
+                  <Trash2 aria-hidden="true" />
+                </Button>
                 ) : null}
               </div>
             </div>
@@ -233,9 +227,8 @@ export function MaintenanceAttachments({
         alt={preview?.originalName}
         downloadHref={preview ? `/api/attachments/${preview.id}` : undefined}
         downloadLabel={t("download")}
-        closeLabel={tCommon("close")}
       />
-    </section>
+    </ContentPanel>
   )
 }
 
