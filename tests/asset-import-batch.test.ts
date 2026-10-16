@@ -6,6 +6,7 @@ import {
   buildAssetImportBatchId,
   buildAssetImportRollbackPlan,
   createAssetImportBatchSummary,
+  getAssetImportBatchStatusTone,
 } from "../src/lib/asset-import-batch.ts"
 
 const createdAt = new Date("2026-05-20T08:30:15.000Z")
@@ -75,5 +76,12 @@ test("builds rollback plan for imported assets in a batch", () => {
         { action: "deactivate_imported_asset", assetId: "asset-2", assetTag: "SNI-EQU-26-0002", name: "Monitor" },
       ],
     }
+  )
+})
+
+test("a batch status badge takes the tone of what is left to do, and an unknown status is muted (plan 2D-3)", () => {
+  assert.deepEqual(
+    ["ready", "partial", "blocked", "empty", "unknown"].map(getAssetImportBatchStatusTone),
+    ["success", "warning", "danger", "muted", "muted"],
   )
 })

@@ -239,11 +239,8 @@ const NEUTRAL_FILL_OPACITY = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg-(?:muted|acce
 
 // R7, locked by phase 2B plan 5 (spec 2B §9.2.2): every neutral fill is an opaque token, table headers included; the
 // <th line filter of plans 2B-1 to 2B-4 is gone. The budget keeps its name, which the guard scripts of the 2B plans
-// read, and one row: the header of the import preview table, a 2C batch 4 file that 2D moves (DEVELOPER_HANDOFF.md,
-// 2C plan 4); then the budget is {}. Lower a number in the task that removes a site; never raise one.
-const TABLE_HEADER_FILLS: Record<string, number> = {
-  "src/components/assets/asset-import-preview-panel.tsx": 1, // the import preview table header (2D)
-}
+// read (spec 2D §5.5). Plan 2D-3 moved its last row, the import preview table header, onto DataTable: it is {}.
+const TABLE_HEADER_FILLS: Record<string, number> = {}
 
 test("R7 neutral fills are opaque tokens, table headers included", () => {
   const css = globals()

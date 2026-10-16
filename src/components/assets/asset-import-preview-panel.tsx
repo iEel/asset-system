@@ -2,19 +2,27 @@
 
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, FileSpreadsheet, ListChecks, Upload } from "lucide-react"
+import { ChevronDown, ChevronUp, FileSpreadsheet, Upload } from "lucide-react"
 import {
   assetImportWizardSteps,
   getAssetImportWizardStep,
   summarizeAssetImportPreviewIssues,
   type AssetImportWizardStep,
 } from "@/lib/asset-import-wizard"
+import { formatCount } from "@/lib/display-format"
 import { getLinearStepStates } from "@/lib/step-states"
 import { ApiErrorText } from "@/components/ui/api-error-text"
 import { Button } from "@/components/ui/button"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil, orNil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Steps } from "@/components/ui/steps"
-import type { AssetImportBatchStatus, AssetImportBatchSummary } from "@/lib/asset-import-batch"
+import { getAssetImportBatchStatusTone, type AssetImportBatchStatus, type AssetImportBatchSummary } from "@/lib/asset-import-batch"
 import type { AssetImportColumnMapping } from "@/lib/asset-import-mapping"
 
 type PreviewRow = {
@@ -113,8 +121,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
         <p className="mt-1 text-sm text-muted-foreground">{labels.wizardHelp}</p>
         {preview && (
           <p className="mt-1 text-sm text-muted-foreground">
-            {preview.summary.totalRows} {labels.previewRows} · {preview.summary.readyRows} {labels.previewReady} ·{" "}
-            {preview.summary.errorRows} {labels.previewErrors}
+            {formatCount(preview.summary.totalRows)} {labels.previewRows} · {formatCount(preview.summary.readyRows)} {labels.previewReady} ·{" "}
+            {formatCount(preview.summary.errorRows)} {labels.previewErrors}
           </p>
         )}
       </div>
@@ -190,16 +198,13 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
     }
   }
 
+  // Spec 2D D9: the wizard is a ContentPanel; its own head row holds the third line and the open/close button.
   if (!isOpen) {
-    return (
-      <section className="mb-4 rounded-lg border border-border bg-surface p-4">
-        {header}
-      </section>
-    )
+    return <ContentPanel className="mb-4">{header}</ContentPanel>
   }
 
   return (
-    <section className="mb-4 rounded-lg border border-border bg-surface p-4">
+    <ContentPanel className="mb-4">
       {header}
 
       <div className="mt-4 flex justify-end">
@@ -220,7 +225,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
 
       {selectedFile ? (
         <div className="mt-4 flex items-start gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-          <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <FileSpreadsheet aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-faint-foreground" />
           <div className="min-w-0">
             <div className="font-medium text-foreground">{labels.selectedFile}</div>
             <div className="truncate text-muted-foreground">
@@ -230,55 +235,52 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
         </div>
       ) : null}
 
+      {/* The mapping and the batch are quiet groupings of the panel (no tint); mapped columns are name Chips. */}
       {preview?.mapping ? (
-        <div className="mt-4 rounded-md border border-primary-border bg-primary-soft px-3 py-3 text-sm">
+        <div className="mt-4 rounded-md border border-border bg-background px-3 py-3 text-sm">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="font-semibold text-foreground">{labels.mappingTitle}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{labels.mappingHelp}</div>
+              <div className="mt-0.5 text-meta text-muted-foreground">{labels.mappingHelp}</div>
             </div>
-            <div className="shrink-0 text-xs font-medium text-primary">
-              {mappedColumns.length} {labels.mappingMatched} · {missingColumns.length} {labels.mappingMissing}
+            <div className="shrink-0 text-meta text-muted-foreground">
+              {formatCount(mappedColumns.length)} {labels.mappingMatched} · {formatCount(missingColumns.length)} {labels.mappingMissing}
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {mappedColumns.slice(0, 12).map((column) => (
-              <span
+              <Chip
                 key={column.key}
-                className="rounded-full border border-primary-border bg-surface px-2.5 py-1 text-xs text-foreground"
                 title={`${labels.fields[column.key] ?? column.label}: ${column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}`}
               >
                 {labels.fields[column.key] ?? column.label}
                 {" -> "}
                 {column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}
-              </span>
+              </Chip>
             ))}
           </div>
         </div>
       ) : null}
 
       {preview?.batch ? (
-        <div className="mt-4 rounded-md border border-info-border bg-info-soft px-3 py-3 text-sm">
+        <div className="mt-4 rounded-md border border-border bg-background px-3 py-3 text-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="font-semibold text-foreground">{labels.importBatchTitle}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{labels.importBatchHelp}</div>
+              <div className="mt-0.5 text-meta text-muted-foreground">{labels.importBatchHelp}</div>
             </div>
-            <span
-              className={[
-                "inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-                getBatchStatusClass(preview.batch.status),
-              ].join(" ")}
-            >
-              {formatBatchStatus(preview.batch.status, labels)}
-            </span>
+            <StatusBadge label={formatBatchStatus(preview.batch.status, labels)} tone={getAssetImportBatchStatusTone(preview.batch.status)} />
           </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-4">
-            <SummaryPill label={labels.importBatchId} value={preview.batch.batchId} />
-            <SummaryPill label={labels.previewReady} value={preview.batch.readyRows.toLocaleString()} />
-            <SummaryPill label={labels.previewErrors} value={preview.batch.errorRows.toLocaleString()} />
-            <SummaryPill label={labels.mappingMatched} value={preview.batch.mappedColumns.toLocaleString()} />
-          </div>
+          {/* The batch id is long and must wrap, so it keeps font-mono with break-all (2D-2 R3). */}
+          <KeyValueList
+            className="mt-3"
+            items={[
+              { key: "batchId", label: labels.importBatchId, value: <span className="break-all font-mono">{preview.batch.batchId}</span> },
+              { key: "ready", label: labels.previewReady, value: formatCount(preview.batch.readyRows) },
+              { key: "errors", label: labels.previewErrors, value: formatCount(preview.batch.errorRows) },
+              { key: "mapped", label: labels.mappingMatched, value: formatCount(preview.batch.mappedColumns) },
+            ]}
+          />
         </div>
       ) : null}
 
@@ -289,95 +291,73 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       )}
 
       {success && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-success-border bg-success-soft px-3 py-2 text-sm text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" />
-          <span>{success}</span>
-        </div>
+        <Notice tone="success" role="status" className="mt-4">
+          {success}
+        </Notice>
       )}
 
       {preview && (
-        <div className="mt-4 overflow-hidden rounded-md border border-border">
-          <div className="grid grid-cols-3 divide-x divide-border bg-background text-sm md:grid-cols-6">
-            <SummaryItem label={labels.previewRows} value={preview.summary.totalRows} />
-            <SummaryItem label={labels.previewReady} value={preview.summary.readyRows} tone="ready" />
-            <SummaryItem label={labels.previewErrors} value={preview.summary.errorRows} tone="error" />
-          </div>
+        <>
+          <StatStrip
+            className="mt-4"
+            items={[
+              { key: "rows", label: labels.previewRows, value: formatCount(preview.summary.totalRows) },
+              { key: "ready", label: labels.previewReady, value: formatCount(preview.summary.readyRows) },
+              { key: "errors", label: labels.previewErrors, value: formatCount(preview.summary.errorRows) },
+            ]}
+          />
           {issueSummary.length > 0 ? (
-            <div className="border-t border-border bg-warning-soft px-4 py-3">
-              <div className="flex items-start gap-2">
-                <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                <div>
-                  <div className="text-sm font-semibold text-foreground">{labels.issueSummaryTitle}</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{labels.issueSummaryHelp}</div>
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+            <Notice tone="warning" title={labels.issueSummaryTitle} className="mt-4">
+              <p>{labels.issueSummaryHelp}</p>
+              <ul className="mt-1 list-disc pl-5">
                 {issueSummary.map((issue) => (
-                  <span key={issue.message} className="rounded-full bg-warning-soft px-2.5 py-1 text-xs font-medium text-warning">
-                    {issue.message} · {issue.count} {labels.affectedRows}
-                  </span>
+                  <li key={issue.message}>
+                    {issue.message} · {formatCount(issue.count)} {labels.affectedRows}
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </Notice>
           ) : null}
-          <div className="max-h-80 overflow-auto">
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    {labels.row}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    {labels.status}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    {labels.assetTag}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    {labels.assetName}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                    {labels.errors}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {preview.rows.slice(0, 100).map((row) => (
-                  <tr key={row.rowNumber} className="hover:bg-row-hover">
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{row.rowNumber}</td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <span
-                        className={
-                          row.status === "ready"
-                            ? "inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success"
-                            : "inline-flex items-center gap-1 rounded-full bg-danger-soft px-2 py-1 text-xs font-medium text-danger"
-                        }
-                      >
-                        {row.status === "ready" ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                        {row.status === "ready" ? labels.previewReady : labels.previewErrors}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-foreground">{row.values.assetTag || "-"}</td>
-                    <td className="min-w-56 px-4 py-3 text-foreground">{row.values.name || "-"}</td>
-                    <td className="min-w-80 px-4 py-3 text-muted-foreground">
-                      {row.errors.length === 0 ? "-" : row.errors.join(", ")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex flex-col gap-3 border-t border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+          {/* The shared table without a frame of its own; it keeps its 320px height and scrolls down inside. */}
+          <DataTable framed={false} caption={labels.importPreview} className="mt-4 max-h-80 overflow-y-auto">
+            <DataTableHeader>
+              <tr>
+                <DataTableHead>{labels.row}</DataTableHead>
+                <DataTableHead>{labels.status}</DataTableHead>
+                <DataTableHead>{labels.assetTag}</DataTableHead>
+                <DataTableHead>{labels.assetName}</DataTableHead>
+                <DataTableHead>{labels.errors}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>
+              {preview.rows.slice(0, 100).map((row) => (
+                <DataTableRow key={row.rowNumber}>
+                  <DataTableCell className="whitespace-nowrap num text-muted-foreground">{row.rowNumber}</DataTableCell>
+                  <DataTableCell className="whitespace-nowrap">
+                    <StatusBadge label={row.status === "ready" ? labels.previewReady : labels.previewErrors} tone={row.status === "ready" ? "success" : "danger"} />
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-foreground">
+                    {row.values.assetTag ? <span className="tag">{row.values.assetTag}</span> : <Nil />}
+                  </DataTableCell>
+                  <DataTableCell className="min-w-56 text-foreground">{orNil(row.values.name)}</DataTableCell>
+                  <DataTableCell className="min-w-80 text-muted-foreground">
+                    {row.errors.length === 0 ? <Nil /> : row.errors.join(", ")}
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          </DataTable>
+          <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
             <p className="text-sm text-muted-foreground">
-              {preview.summary.readyRows} {labels.previewReady} · {preview.summary.errorRows} {labels.previewErrors}
+              {formatCount(preview.summary.readyRows)} {labels.previewReady} · {formatCount(preview.summary.errorRows)} {labels.previewErrors}
             </p>
             <Button busy={isImporting} disabled={preview.summary.readyRows === 0} onClick={() => void confirmImport()}>
               {labels.confirmImport}
             </Button>
           </div>
-        </div>
+        </>
       )}
-    </section>
+    </ContentPanel>
   )
 }
 
@@ -390,36 +370,8 @@ function wizardStepLabel(step: AssetImportWizardStep, labels: AssetImportPreview
 }
 
 function formatFileSize(size: number) {
-  if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024)).toLocaleString()} KB`
+  if (size < 1024 * 1024) return `${formatCount(Math.max(1, Math.round(size / 1024)))} KB`
   return `${(size / 1024 / 1024).toFixed(1)} MB`
-}
-
-function SummaryItem({ label, value, tone }: { label: string; value: number; tone?: "ready" | "error" }) {
-  const toneClass = tone === "ready" ? "text-success" : tone === "error" ? "text-danger" : "text-foreground"
-  return (
-    <div className="px-4 py-3">
-      <div className={`text-lg font-bold ${toneClass}`}>{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-    </div>
-  )
-}
-
-function SummaryPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-surface px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 truncate text-sm font-semibold text-foreground" title={value}>
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function getBatchStatusClass(status: AssetImportBatchStatus) {
-  if (status === "ready") return "bg-success-soft text-success"
-  if (status === "partial") return "bg-warning-soft text-warning"
-  if (status === "blocked") return "bg-danger-soft text-danger"
-  return "bg-muted text-muted-foreground"
 }
 
 function formatBatchStatus(status: AssetImportBatchStatus, labels: AssetImportPreviewPanelProps["labels"]) {

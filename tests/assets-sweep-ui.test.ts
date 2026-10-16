@@ -173,3 +173,18 @@ test("component manager: ContentPanels, a success Notice, EmptyNote, a KeyValueL
   assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center text-sm md:min-h-0"\)\}/)
   assert.doesNotMatch(source, /function ReviewItem\b|"-"|font-mono|uppercase|border-dashed|bg-(?:success|primary)-soft p|border-(?:success|primary)-border|hover:bg-accent|hover:underline|\btext-xs\b|rounded-lg border/)
 })
+
+test("import panel (M15): ContentPanels, Chip mappings, a StatusBadge batch state, KeyValueList facts, a StatStrip, Notice by meaning, a DataTable and Nil (spec 2D D7, D9, M15)", () => {
+  const source = read(`${C}assets/asset-import-preview-panel.tsx`)
+  assert.equal(source.match(/<ContentPanel className="mb-4">/g)?.length, 2, "closed and open")
+  assert.match(source, /<Chip\n\s+key=\{column\.key\}/)
+  assert.match(source, /<StatusBadge label=\{formatBatchStatus\(preview\.batch\.status, labels\)\} tone=\{getAssetImportBatchStatusTone\(preview\.batch\.status\)\} \/>/)
+  assert.match(source, /\{ key: "batchId", label: labels\.importBatchId, value: <span className="break-all font-mono">\{preview\.batch\.batchId\}<\/span> \}/)
+  assert.match(source, /<StatStrip\n\s+className="mt-4"/)
+  assert.match(source, /<Notice tone="warning" title=\{labels\.issueSummaryTitle\} className="mt-4">/)
+  assert.match(source, /<Notice tone="success" role="status" className="mt-4">\n\s+\{success\}\n\s+<\/Notice>/)
+  assert.match(source, /<DataTable framed=\{false\} caption=\{labels\.importPreview\} className="mt-4 max-h-80 overflow-y-auto">/)
+  assert.match(source, /\{orNil\(row\.values\.name\)\}/)
+  assert.match(source, /return `\$\{formatCount\(Math\.max\(1, Math\.round\(size \/ 1024\)\)\)\} KB`/)
+  assert.doesNotMatch(source, /function (?:SummaryItem|SummaryPill|getBatchStatusClass)\b|"-"|toLocaleString|<table\b|<th\b|uppercase|bg-muted\/|rounded-full|primary-soft|info-soft|success-soft|warning-soft|\btext-xs\b|text-lg font-bold/)
+})

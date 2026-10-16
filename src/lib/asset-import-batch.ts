@@ -63,6 +63,15 @@ export function createAssetImportBatchSummary({
   }
 }
 
+// The tone of a batch status badge (plan 2D-3): the import panel and the import history share it. History rows can
+// carry a status this version does not know ("unknown" from an old audit value), which stays muted.
+export function getAssetImportBatchStatusTone(status: string): "success" | "warning" | "danger" | "muted" {
+  if (status === "ready") return "success"
+  if (status === "partial") return "warning"
+  if (status === "blocked") return "danger"
+  return "muted"
+}
+
 export function buildAssetImportBatchId({ fileName, createdAt }: { fileName: string; createdAt: Date }) {
   const timestamp = createdAt.toISOString().replace(/\D/g, "").slice(0, 14)
   const slug = sanitizeFileSlug(fileName)
