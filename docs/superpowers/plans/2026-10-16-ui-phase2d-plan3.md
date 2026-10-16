@@ -4,6 +4,8 @@
 
 **Dry run:** scratch clone `p2d3-sim` of `2fcfad2`, sim commits 1a `8b34b5b`, 1b `d6fcfc4`, 1c `73450e6`, 1d `fbb112b`, 2 `34af2d3`, 3 `8bc0650`, 4 `a38343d`, 5a `c680665`, 5b `631fc39`, 6 `f0c874d`, 7 `619c4d0`, 8 `acc14ba`, 9 `cc37c9b`, 10 `b6b0c7a`, 11 `0f99fb8`, 12 `cbf46f2`, 13 `7a9e392`, 14a `a6b723d`, 14b `f71810b`, 15 `cdf897b`, 16a `fd751f9`, 16b `8540980`, 16c `ca553df`, 16d `3dc9736`, 16e `8b8d366`, 16f `f690e45`, 16g `3603bc1`, 16h `0deb179`, 17a `90d6a32`, 17b `046e253`, 18 `3d5a292`, 19a `f26c4fd`, 19b `256a1a3`, 19c `1a98cb1`. Tasks 0, 20, 21 and 22 were not run. Every code task (1a–19c) was carried out there in order, one commit each, and after every commit `npx tsc --noEmit`, `eslint` on the changed files and `npm test` were green (final: 2087 tests, 2086 pass, 1 skipped). Every replacement below was taken from those commits by a script that checked two things: each old snippet occurs exactly once where it is applied, and applying the snippets in order gives the committed file. The "watch it fail" lists were taken by running each task's new and edited tests (not the guards) against the commit before it, and the check lists and their counts at each commit.
 
+**Dry run (verification of this plan at `a2d8088`):** scratch clone `p2d3-sim`, sim commits 1a `4372b2d`, 1b `b9c637e`, 1c `1a344cc`, 1d `6dca591`, 2 `c3251ed`, 3 `47cc397`, 4 `60c5019`, 5a `84db1e6`, 5b `49c8b20`, 6 `af8a6a1`, 7 `4dc99c4`, 8 `cdcdaaa`, 9 `42b00cd`, 10 `4486bd2`, 11 `ceaaa41`, 12 `0919557`, 13 `ec96ddc`, 14a `320c6ef`, 14b `45a94d8`, 15 `35d6408`, 16a `e7671de`, 16b `e30d6ea`, 16c `8014612`, 16d `0c71b2e`, 16e `aaf6ac1`, 16f `5ef6494`, 16g `e9d8a21`, 16h `1f88727`, 17a `1c59df3`, 17b `03ba777`, 18 `9989140`, 19a `7c6e8be`, 19b `47acec9`, 19c `9400c35`, 21 (docs) `0b9bc1c`. Tasks 0, 20 and 22 were not run (Task 21's two Task 20 markers read "(dry run: Task 20 not run)"). Every replacement matched exactly once in order, every failing test failed with the listed names, every count matched, and `tsc` and `eslint src tests` were clean after every commit (final: 2087 tests, 2086 pass, 1 skipped). Two fixes came from it: D1, `DESIGN.md` is LF (Global Constraints, Task 21 intro and Steps 1 and 8), and G1, Task 5a replacement (47) for the license seat counts with its `toLocaleString` assertion. Every sim commit of both dry runs predates both fixes. G1 changes two blobs: `D/assets/[id]/page.tsx` and `tests/assets-sweep-ui.test.ts` differ in 5a (`84db1e6`, first run `c680665`) and in every later sim commit's tree. D1 changes only the expected check output, so no blob differs for it.
+
 **Base:** `master` is `bed4f16` (the Thai font fix, one commit after `2fcfad2`). That commit touches none of this plan's source files. Of its test files only `tests/visual-foundation-guards.test.ts` is also in this plan, and its one block here (Task 9, `TABLE_HEADER_FILLS`) is far from the font test it changed. Its `DESIGN.md`, `DEVELOPER_HANDOFF.md` and `docs/99_CHANGELOG.md` changes are the text Task 21 edits. The replacements of Tasks 1a–19c were replayed on a clone of `bed4f16` with the same result. Baseline at `bed4f16`: 2051 tests, 2050 pass, 1 skipped, `tsc` clean.
 
 **Goal:** Sweep the asset screens and the master data onto the shared parts (spec 2D §3.3):
@@ -42,7 +44,7 @@ Workflows, data, validation, permissions, messages, the API and the database sta
   - Never create a git worktree whose `node_modules` is a junction to the main checkout's, and never let git remove one: `git worktree remove` follows the junction on Windows and deletes the main `node_modules`.
 - **Next.js 16.4** is not the Next.js in your training data. Read `node_modules/next/dist/docs/` before you use an API you have not seen in this repo. This plan adds no Next.js API; it only uses `Link`, `Image` and `searchParams` the way the files already do.
 - **Line endings:**
-  - `git config core.autocrlf` is `true` (system level). Most files this plan edits are CRLF in the working tree (`i/lf w/crlf`). These are LF: `src/components/assets/asset-qr-code.tsx`, `src/lib/asset-import-batch.ts`, `tests/asset-batch-form-layout.test.ts`, `tests/asset-import-batch.test.ts` and `tests/dead-code-cleanup.test.ts`, and so are the two new test files. `DESIGN.md`, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DEVELOPER_HANDOFF.md` and `docs/99_CHANGELOG.md` are CRLF.
+  - `git config core.autocrlf` is `true` (system level). Most files this plan edits are CRLF in the working tree (`i/lf w/crlf`). These are LF: `src/components/assets/asset-qr-code.tsx`, `src/lib/asset-import-batch.ts`, `tests/asset-batch-form-layout.test.ts`, `tests/asset-import-batch.test.ts` and `tests/dead-code-cleanup.test.ts`, and so are the two new test files. `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DEVELOPER_HANDOFF.md` and `docs/99_CHANGELOG.md` are CRLF; `DESIGN.md` is LF in the working tree (`i/lf w/lf`).
   - Before you edit a file, run `git ls-files --eol <file>` and keep what it shows. In Git Bash, `grep -c $'\r'` reports 0 even for CRLF files, so do not use it as a check.
   - Edit with exact-string replacement (the Edit tool keeps the file's line endings), never a formatter, and never normalize a file.
   - Appending a block to one of the new LF test files needs nothing more.
@@ -1871,7 +1873,7 @@ Spec §3.3, D7, D9, D19, M12, M21, M22, M29, M32 b, M33; R1, R3, R4, R8, R9, R12
 One commit, because the page passes a new `filterLabel` (`tCommon("filter")`) to both parts.
 - **Timeline:** the filters are `ChoiceChip` radios (`name` from `useId`) in a `fieldset` with an sr-only legend; `EmptyNote`; each movement a `StatusBadge` and a marker shape (R3); its facts and details two `KeyValueList`s, detail links `linkVariants({ size: "inherit" })`; the shared `formatDateTime` from `@/lib/utils`. `MovementInfo`, `Info` and the local date formatter go (R12).
 - **Evidence drawer:** a `StatStrip` for the three counts (`EvidenceStat` goes), `ChoiceChip` filters in a fieldset, the group as a `Chip`, `focus-visible` cards.
-- **Page:** the nine sections with an `id` keep it on `cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")` (R1); quick actions, follow-up, relationship map, QR and the sidebar photo are `ContentPanel`s; `SectionHeading` is 16px without an icon. `Notice` by meaning (R4); data health and warranty are `StatusBadge`s with their tone (the warranty is the first item of the purchase `KeyValueList`); `Chip`s for the latest transaction, PM and the relationship roles; four outline `sm` links; text links; the disabled quick action is a disabled `Button` (M12, R9); `getCheckoutDestination` and `formatCancellationSnapshot` return `null` (M32 b, R8); the 16 raw amber and emerald colors, the eyebrows and the tone-helper calls go. The relationship card's tag must wrap in a narrow lane, so it keeps `font-mono` at 500 with `[overflow-wrap:anywhere]` (R1).
+- **Page:** the nine sections with an `id` keep it on `cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")` (R1); quick actions, follow-up, relationship map, QR and the sidebar photo are `ContentPanel`s; `SectionHeading` is 16px without an icon. `Notice` by meaning (R4); data health and warranty are `StatusBadge`s with their tone (the warranty is the first item of the purchase `KeyValueList`); `Chip`s for the latest transaction, PM and the relationship roles; four outline `sm` links; text links; the disabled quick action is a disabled `Button` (M12, R9); `getCheckoutDestination` and `formatCancellationSnapshot` return `null` (M32 b, R8); the license seat counts go through `formatCount`; the 16 raw amber and emerald colors, the eyebrows and the tone-helper calls go. The relationship card's tag must wrap in a narrow lane, so it keeps `font-mono` at 500 with `[overflow-wrap:anywhere]` (R1).
 
 **Files:**
 - Modify: `src/components/assets/asset-movement-timeline.tsx`, `src/components/assets/asset-evidence-drawer.tsx`, `src/app/[locale]/(dashboard)/assets/[id]/page.tsx`
@@ -1932,6 +1934,7 @@ test("asset page: panels, notices, chips, text links, the disabled QuickAction (
   assert.match(source, /if \(!snapshot\) return null\n/)
   assert.equal(source.match(/filterLabel: tCommon\("filter"\),/g)?.length, 2)
   assert.match(source, /<div className="font-mono text-sm font-medium leading-5 text-foreground \[overflow-wrap:anywhere\]">\{relationshipAsset\.assetTag\}<\/div>/, "a tag that must wrap keeps font-mono at 500 (2D-2 R3)")
+  assert.doesNotMatch(source, /toLocaleString/)
   assert.doesNotMatch(source, /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|getHealthBadgeClass|getWarrantyPanelClass|getWarrantyIconClass|getActivityToneClass|getRelationship(?:Summary|Badge|Icon)Class|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b/)
 })
 ```
@@ -4236,6 +4239,22 @@ with
   return `${labelOrDash(labels, snapshot.statusId)} · ${labelOrDash(labels, snapshot.currentLocationId)}`
 }
 
+```
+
+(47) Replace
+
+```tsx
+        used: licenseUsedSeats.toLocaleString("th-TH"),
+        total: licenseTotalSeats.toLocaleString("th-TH"),
+        remaining: licenseRemainingSeats?.toLocaleString("th-TH") ?? "0",
+```
+
+with
+
+```tsx
+        used: formatCount(licenseUsedSeats),
+        total: formatCount(licenseTotalSeats),
+        remaining: formatCount(licenseRemainingSeats ?? 0),
 ```
 
 - [ ] **Step 5: The guard rows (R16).** LFG: the timeline's LV2 row (2) and LK1 row (1) go from `BUDGETS` and `KEEP` (with the `KEEP.LK1` key; `BUDGETS.LK1` stays `{}`); the asset page's LV2 row stays 4 with its comment on the new lines; `MovementInfo` joins `LOCAL_KEY_VALUE` and `EvidenceStat` joins `LOCAL_STAT_TILE` (R12).
@@ -14552,7 +14571,7 @@ Spec §6 ("every plan: DH section, changelog, wiki") and §3.3. What 2D-3 change
 
 `.impeccable/design.json` waits for 2D-5. `docs/11_FEATURE_LIST.md` and `docs/07_UAT_CHECKLIST.md` do not change: no feature changes what it does (the My Assets back link now keeps the page, which the 2B spec already asked for).
 
-All four files are CRLF. Edit with exact-string replacement, keep the endings, and never run a formatter. Each old text below occurs exactly once at `bed4f16`.
+Three files are CRLF; `DESIGN.md` is LF (`i/lf w/lf`). Edit with exact-string replacement, keep the endings, and never run a formatter. Each old text below occurs exactly once at `bed4f16`.
 
 **Files:**
 - Modify `DESIGN.md` (8 replacements)
@@ -14571,7 +14590,7 @@ All four files are CRLF. Edit with exact-string replacement, keep the endings, a
 
 - [ ] **Step 1: Check the base.**
   - Run `git diff --quiet bed4f16 HEAD -- DESIGN.md docs/14_UI_UX_DESIGN_SYSTEM.md DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md && echo DOCS-UNCHANGED`. Expected: `DOCS-UNCHANGED`.
-  - Run `git ls-files --eol DESIGN.md docs/14_UI_UX_DESIGN_SYSTEM.md DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md`. Expected: `i/lf w/crlf` for all four.
+  - Run `git ls-files --eol DESIGN.md docs/14_UI_UX_DESIGN_SYSTEM.md DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md`. Expected: `i/lf w/lf` for `DESIGN.md` and `i/lf w/crlf` for the other three.
   - Read `task-20-findings.md`.
 
 - [ ] **Step 2: `DESIGN.md` color and typography (2 replacements).**
@@ -14785,7 +14804,7 @@ Replace every `<today>` and the marker; none may stay. Check the Thai wording ag
   - Run `grep -n "<from task-20\|<จาก task-20\|<today>" DESIGN.md DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md docs/14_UI_UX_DESIGN_SYSTEM.md`. Expected: nothing.
   - Run `grep -n "plans 2D-3 to 2D-5\|wait for plans 2D-3 and 2D-4\|which keeps 1 fill in 1 file" DESIGN.md`. Expected: nothing.
   - Run `git diff --numstat`. Expected: exactly the four files. A file that shows every line changed was normalized; restore its line endings.
-  - Run `node <temp>/eol.mjs DESIGN.md docs/14_UI_UX_DESIGN_SYSTEM.md DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md`. Expected: equal numbers on every line.
+  - Run `node <temp>/eol.mjs DESIGN.md docs/14_UI_UX_DESIGN_SYSTEM.md DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md`. Expected: `DESIGN.md 0 637` (LF) and equal numbers for the other three.
   - Run `npm test` (2087 tests, 2086 pass, 1 skipped; `tests/audit-round-cancellation.test.ts` reads the handoff and the changelog), `npx tsc --noEmit` and `npm run lint`.
 
 - [ ] **Step 9: Commit.**
@@ -14833,7 +14852,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ## Open issues (for the user before or during execution)
 
-1. **Plan size.** 23 tasks (0–22) and 34 code commits over 50 source files, with every replacement written out; Task 5a alone has 46 replacements in the 2,4xx-line asset page. It stays one plan because spec §3.3 is one plan and every commit is one file or a tight pair. If a session runs short, stop after any commit (the tree is green after each) and resume at the next task; Tasks 16–19 do not depend on Tasks 1–15.
+1. **Plan size.** 23 tasks (0–22) and 34 code commits over 50 source files, with every replacement written out; Task 5a alone has 47 replacements in the 2,4xx-line asset page. It stays one plan because spec §3.3 is one plan and every commit is one file or a tight pair. If a session runs short, stop after any commit (the tree is green after each) and resume at the next task; Tasks 16–19 do not depend on Tasks 1–15.
 2. **A 2D-4 file in this plan (R2).** Task 1d widens two props of `c/asset-operations/transaction-cancel-dialog.tsx` and shows `Nil` there, because the asset page's M32 b fix needs the type; 2D-1 had handed "M32 b's cancel dialog type" to 2D-4. 2D-4 keeps the rest of the dialog. Confirm, or move M32 b of the asset page to 2D-4 with it.
 3. **Raw buttons that stay (R5).** The three photo buttons, the component candidates and the label tool rows keep `<button>` with a comment; the 24px state help trigger and the thumbnail preview button are untouched. 2D-5 lists them as `OWNERS`/`EXEMPT`. The help trigger is under 44px on phones: give it a 44px hit area in 2D-5, or accept it as an inline label control?
 4. **Not taken (R15):** `text-xs` that is not in a sweep category (the register phone row, the state help popover, the employee list's position and email line); the asset relationship link lists that keep bordered rows inside a quiet grouping; the My Assets photo box's `rounded-lg` (the list's is `rounded-md`). For 2D-5's cleanup or not at all?
