@@ -3,10 +3,15 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Download, FileText, Loader2, Trash2 } from "lucide-react"
+import { Download, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { orNil } from "@/components/ui/nil"
 import { formatFileSize } from "@/lib/uploads"
+import { cn } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type PurchaseDocument = {
@@ -66,28 +71,25 @@ export function AssetPurchaseDocuments({
 
   return (
     <div className="mt-5 border-t border-border pt-5">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <FileText className="h-4 w-4 text-primary" />
-        {t("purchaseDocuments")}
-      </h3>
+      <h3 className="mb-3 text-sm font-semibold text-foreground">{t("purchaseDocuments")}</h3>
       {!hasDocuments ? (
-        <div className="rounded-md border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
-          {tCommon("noData")}
-        </div>
+        <EmptyNote>{tCommon("noData")}</EmptyNote>
       ) : (
         <div className="space-y-3">
           {documents.map((document) => (
             <div key={document.id} className="rounded-md border border-border bg-background p-3">
               <div className="text-sm font-medium text-foreground">
-                {document.documentType ? t(`purchaseDocumentTypes.${document.documentType}`) : t("purchaseDocuments")} · {document.documentNo}
+                {document.documentType ? t(`purchaseDocumentTypes.${document.documentType}`) : t("purchaseDocuments")} · <span className="tag">{document.documentNo}</span>
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {[document.supplierName, document.poNumber ? `${t("poNumber")}: ${document.poNumber}` : null, document.invoiceNumber ? `${t("invoiceNumber")}: ${document.invoiceNumber}` : null]
-                  .filter(Boolean)
-                  .join(" · ") || "-"}
+              <div className="mt-1 text-meta text-muted-foreground">
+                {orNil(
+                  [document.supplierName, document.poNumber ? `${t("poNumber")}: ${document.poNumber}` : null, document.invoiceNumber ? `${t("invoiceNumber")}: ${document.invoiceNumber}` : null]
+                    .filter(Boolean)
+                    .join(" · "),
+                )}
               </div>
               {(document.attachments ?? []).length > 0 && (
-                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                   {(document.attachments ?? []).map((attachment) => (
                     <AttachmentCard key={attachment.id} attachment={attachment} deletingId={deletingId} onDelete={handleDelete} />
                   ))}
@@ -95,8 +97,11 @@ export function AssetPurchaseDocuments({
               )}
             </div>
           ))}
+          {/* A file without a document gets the document card's quiet grouping; inside a card a file has no box of its own. */}
           {legacyAttachments.map((attachment) => (
-            <AttachmentCard key={attachment.id} attachment={attachment} deletingId={deletingId} onDelete={handleDelete} />
+            <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
+              <AttachmentCard attachment={attachment} deletingId={deletingId} onDelete={handleDelete} />
+            </div>
           ))}
         </div>
       )}
@@ -117,35 +122,27 @@ function AttachmentCard({
   const tCommon = useTranslations("common")
 
   return (
-    <div className="rounded-md border border-border bg-surface p-3">
-      <div className="min-w-0">
-        <div className="truncate text-sm font-medium text-foreground">{attachment.originalName}</div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          {attachment.fileType} · {formatFileSize(attachment.fileSize)}
-        </div>
+    <div className="min-w-0">
+      <div className="truncate text-sm font-medium text-foreground">{attachment.originalName}</div>
+      <div className="mt-1 text-meta text-muted-foreground">
+        {attachment.fileType} · {formatFileSize(attachment.fileSize)}
       </div>
+      {/* The same pair as the asset photos (asset-attachments.tsx): an outline sm download link and a danger icon-sm delete. */}
       <div className="mt-3 flex gap-2">
-        <a
-          href={`/api/attachments/${attachment.id}`}
-          className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-background px-2 text-xs font-medium transition-colors hover:bg-accent"
-        >
-          <Download className="h-3.5 w-3.5" />
+        <a href={`/api/attachments/${attachment.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
+          <Download aria-hidden="true" />
           {t("download")}
         </a>
-        <button
-          type="button"
+        <Button
+          variant="danger"
+          size="icon-sm"
           onClick={() => onDelete(attachment.id)}
-          disabled={deletingId === attachment.id}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
+          busy={deletingId === attachment.id}
           aria-label={tCommon("delete")}
           title={tCommon("delete")}
         >
-          {deletingId === attachment.id ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Trash2 className="h-3.5 w-3.5" />
-          )}
-        </button>
+          <Trash2 aria-hidden="true" />
+        </Button>
       </div>
     </div>
   )

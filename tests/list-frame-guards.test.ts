@@ -270,7 +270,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-import-preview-panel.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (2D)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // → 6 (KEEP): label data (R-n)
     [`${C}assets/asset-movement-timeline.tsx`]: 2, // → 2 (KEEP): 2D
-    [`${C}assets/asset-purchase-documents.tsx`]: 1, // → 1 (KEEP): 2D
     [`${C}audit/audit-scan-check-form.tsx`]: 3, // → 3 (KEEP): translated sentences (R-n)
     [`${C}audit/audit-scan-offline-bar.tsx`]: 1, // → 1 (KEEP): translated sentence (R-n)
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
@@ -348,7 +347,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page (R-n)
     [`${C}asset-operations/void-document-banner.tsx`]: 3, // 2D
     [`${C}assets/asset-movement-timeline.tsx`]: 2, // 2D
-    [`${C}assets/asset-purchase-documents.tsx`]: 1, // 2D
   },
   LV3: {
     "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // print page, 2D (A/08:305)
