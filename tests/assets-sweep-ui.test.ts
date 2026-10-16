@@ -49,3 +49,19 @@ test("asset purchase documents: EmptyNote, the number as a tag, Nil for an empty
   assert.match(source, /<Button\n\s+variant="danger"\n\s+size="icon-sm"\n\s+onClick=\{\(\) => onDelete\(attachment\.id\)\}\n\s+busy=\{deletingId === attachment\.id\}/)
   assert.doesNotMatch(source, /<button\b|Loader2|disabled:opacity|border-dashed|"-"|text-primary|bg-surface|hover:bg-accent|\bh-8\b/)
 })
+
+test("asset photos: a ContentPanel with a plain count, StatusBadge states, the shared buttons and EmptyNote, and no box in a box (spec 2D D9, M21, M22, M29)", () => {
+  const source = read(`${C}assets/asset-attachments.tsx`)
+  assert.match(source, /<ContentPanel\n\s+title=\{t\("assetPhotos"\)\}\n\s+description=\{t\("photoGalleryPreviewHelp"\)\}\n\s+actions=\{/)
+  assert.match(source, /<span className="text-meta text-muted-foreground">\{t\("photoFileCount", \{ count: attachments\.length \}\)\}<\/span>/)
+  assert.match(source, /<h3 className="text-sm font-semibold text-foreground">\{t\("photoChecklist"\)\}<\/h3>/)
+  assert.match(source, /<StatusBadge label=\{t\("photoChecklistDone"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{t\("photoChecklistPending"\)\} tone="muted" \/>/)
+  assert.equal(source.match(/className=\{cn\(buttonVariants\(\{ variant: "outline", size: "sm" \}\), "flex-1"\)\}/g)?.length, 2)
+  assert.match(source, /<Button variant="outline" aria-expanded=\{expanded\} className="mt-3 w-full sm:w-auto" onClick=\{onClick\}>/)
+  assert.match(source, /<EmptyNote>\{tCommon\("noData"\)\}<\/EmptyNote>/)
+  // The three photos that open the preview stay raw buttons: an image is the control (plan 2D-3 R5, for 2D-5's EXEMPT list).
+  assert.equal(source.match(/<button\b/g)?.length, 3)
+  assert.equal(source.match(/focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/g)?.length, 3)
+  assert.doesNotMatch(source, /rounded-full|border-dashed|hover:bg-accent|focus:outline-none|focus:ring|text-primary|text-success|CheckCircle2|\bh-8\b|\bh-9\b|text-xs|rounded-lg|bg-surface/)
+})

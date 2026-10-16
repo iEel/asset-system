@@ -4,14 +4,19 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { CheckCircle2, Download, FileText, ImageIcon, Trash2 } from "lucide-react"
+import { Download, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { NativeSelect } from "@/components/ui/native-select"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
 import { formatFileSize } from "@/lib/uploads"
+import { cn } from "@/lib/utils"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -141,48 +146,43 @@ export function AssetAttachments({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <ImageIcon className="h-5 w-5 text-primary" />
-            {t("assetPhotos")}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("photoGalleryPreviewHelp")}</p>
-        </div>
-        {attachments.length > 0 ? (
-          <div className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-            {t("photoFileCount", { count: attachments.length })}
-          </div>
-        ) : null}
-      </div>
-
+    // The page wraps this panel in <div id="photos">, so it can be a ContentPanel (spec 2D D9). A count is plain text.
+    <ContentPanel
+      title={t("assetPhotos")}
+      description={t("photoGalleryPreviewHelp")}
+      actions={
+        attachments.length > 0 ? (
+          <span className="text-meta text-muted-foreground">{t("photoFileCount", { count: attachments.length })}</span>
+        ) : undefined
+      }
+    >
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {primaryModelPhoto && (
           <PhotoPreview title={t("modelPhoto")} attachment={primaryModelPhoto} onPreview={setPreviewPhoto} />
         )}
       </div>
 
+      {/* The checklist is a block of the panel, not a box: its cards are the quiet groupings (no box in a box). */}
       {photoChecklist.length > 0 && (
-        <div className="mb-4 rounded-md border border-border bg-background p-3">
+        <div className="mb-4">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-foreground">{t("photoChecklist")}</div>
-            <div className="text-xs text-muted-foreground">
+            <h3 className="text-sm font-semibold text-foreground">{t("photoChecklist")}</h3>
+            <span className="text-meta num text-muted-foreground">
               {checklistItems.filter((item) => item.attachment).length}/{checklistItems.length}
-            </div>
+            </span>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {checklistGallery.visibleItems.map((item) => {
               const attachment = item.attachment
 
               return (
-              <div key={item.label} className="overflow-hidden rounded-md border border-border bg-surface">
+              <div key={item.label} className="overflow-hidden rounded-md border border-border bg-background">
                 {attachment ? (
                   <>
                     <button
                       type="button"
                       onClick={() => setPreviewPhoto({ title: item.label, attachment })}
-                      className="relative block aspect-video w-full bg-background text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="relative block aspect-video w-full bg-background text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Image
                         src={`/api/attachments/${attachment.id}?inline=1`}
@@ -196,19 +196,13 @@ export function AssetAttachments({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-foreground">{item.label}</div>
-                          <div className="mt-1 truncate text-xs text-muted-foreground">{attachment.originalName}</div>
+                          <div className="mt-1 truncate text-meta text-muted-foreground">{attachment.originalName}</div>
                         </div>
-                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-success">
-                          <CheckCircle2 className="h-4 w-4" />
-                          {t("photoChecklistDone")}
-                        </span>
+                        <StatusBadge label={t("photoChecklistDone")} tone="success" />
                       </div>
                       <div className="mt-3 flex gap-2">
-                        <a
-                          href={`/api/attachments/${attachment.id}`}
-                          className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-background px-2 text-xs font-medium transition-colors hover:bg-accent"
-                        >
-                          <Download className="h-3.5 w-3.5" />
+                        <a href={`/api/attachments/${attachment.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
+                          <Download aria-hidden="true" />
                           {t("download")}
                         </a>
                         <Button
@@ -228,7 +222,7 @@ export function AssetAttachments({
                   <div className="p-3">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <div className="text-sm font-medium text-foreground">{item.label}</div>
-                      <span className="text-xs text-muted-foreground">{t("photoChecklistPending")}</span>
+                      <StatusBadge label={t("photoChecklistPending")} tone="muted" />
                     </div>
                     <Field label={item.label} hideLabel>
                       <FileDropzone
@@ -260,7 +254,8 @@ export function AssetAttachments({
         </div>
       )}
 
-      <div className="mb-4 rounded-md border border-border bg-background p-3">
+      {/* The drop zone draws its own dashed frame, so no box goes around it. */}
+      <div className="mb-4">
         {photoChecklist.length > 0 && (
           <Field label={t("photoType")} className="mb-3">
             <NativeSelect value={photoLabel} onChange={(event) => setPhotoLabel(event.target.value)}>
@@ -281,15 +276,10 @@ export function AssetAttachments({
         />
       </div>
 
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <FileText className="h-4 w-4 text-primary" />
-        {t("otherAttachments")}
-      </h3>
+      <h3 className="mb-3 text-sm font-semibold text-foreground">{t("otherAttachments")}</h3>
 
       {otherAttachments.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          {tCommon("noData")}
-        </div>
+        <EmptyNote>{tCommon("noData")}</EmptyNote>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -330,7 +320,7 @@ export function AssetAttachments({
         downloadHref={previewPhoto ? `/api/attachments/${previewPhoto.attachment.id}` : undefined}
         downloadLabel={t("download")}
       />
-    </section>
+    </ContentPanel>
   )
 }
 
@@ -348,7 +338,7 @@ function PhotoPreview({
       <button
         type="button"
         onClick={() => onPreview({ title, attachment })}
-        className="relative block h-32 w-full bg-background text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+        className="relative block h-32 w-full bg-background text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Image
           src={`/api/attachments/${attachment.id}?inline=1`}
@@ -360,7 +350,7 @@ function PhotoPreview({
       </button>
       <div className="p-3">
         <div className="text-sm font-medium text-foreground">{title}</div>
-        <div className="mt-1 text-xs text-muted-foreground">{attachment.originalName}</div>
+        <div className="mt-1 text-meta text-muted-foreground">{attachment.originalName}</div>
       </div>
     </div>
   )
@@ -387,7 +377,7 @@ function AttachmentCard({
         <button
           type="button"
           onClick={onPreview}
-          className="relative block h-28 w-full bg-background text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+          className="relative block h-28 w-full bg-background text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Image
             src={`/api/attachments/${attachment.id}?inline=1`}
@@ -398,19 +388,16 @@ function AttachmentCard({
           />
         </button>
       ) : (
-        <div className="flex h-28 items-center justify-center bg-background p-3 text-center text-xs font-medium text-muted-foreground">
+        <div className="flex h-28 items-center justify-center bg-background p-3 text-center text-meta font-medium text-muted-foreground">
           {attachment.fileType}
         </div>
       )}
       <div className="p-3">
         <div className="truncate text-sm font-medium text-foreground">{attachment.originalName}</div>
-        <div className="mt-1 text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</div>
+        <div className="mt-1 text-meta text-muted-foreground">{formatFileSize(attachment.fileSize)}</div>
         <div className="mt-3 flex gap-2">
-          <a
-            href={`/api/attachments/${attachment.id}`}
-            className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
-          >
-            <Download className="h-3.5 w-3.5" />
+          <a href={`/api/attachments/${attachment.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
+            <Download aria-hidden="true" />
             {downloadLabel}
           </a>
           <Button variant="danger" size="icon-sm" onClick={onDelete} busy={deleting} aria-label={deleteLabel} title={deleteLabel}>
@@ -436,13 +423,9 @@ function GalleryToggle({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto"
-    >
+    <Button variant="outline" aria-expanded={expanded} className="mt-3 w-full sm:w-auto" onClick={onClick}>
       {expanded ? hideLabel : showMoreLabel(hiddenCount)}
-    </button>
+    </Button>
   )
 }
 
