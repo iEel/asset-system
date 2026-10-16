@@ -266,7 +266,20 @@ test("the finding row triggers are Button sm: approve outline, reject danger, bu
   assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setCloseOpen\(true\)\}>\n\s+<FileUp aria-hidden="true" \/>/)
   assert.doesNotMatch(source, /<button\b|<Loader2\b|\btext-success\b|disabled:opacity-50/, "no hand-written trigger, spinner or green text is left")
   // Audit mobile fix D8, fix round 1: in the findings table the self-review note is small warning text with its icon, no box.
-  assert.match(source, /compact \? \(\n\s+<p className="flex items-start gap-1\.5 text-left text-xs text-warning">\n\s+<AlertTriangle aria-hidden="true" className="mt-0\.5 size-3\.5 shrink-0" \/>\n\s+<span>\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/span>/)
+  assert.match(source, /<p className="flex items-start gap-1\.5 text-left text-xs text-warning">\n\s+<AlertTriangle aria-hidden="true" className="mt-0\.5 size-3\.5 shrink-0" \/>\n\s+<span>\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/span>/)
+  // Fix round 3 (coordinator ruling, pattern ช1 of 2B): in the table only the review decision stays visible (approve
+  // and reject stacked, or the note); plan, close and the page's links (the disposal request) go into the shared ⋯.
+  // The menu holds no dialog (R-m): its items set the state that mounts the dialog, which gives focus back to ⋯.
+  const compactBranch = source.slice(source.indexOf("  if (compact) {"), source.indexOf("  return (\n    <div className=\"flex min-w-0 flex-col gap-2"))
+  assert.match(compactBranch, /<div className="flex min-w-0 items-start justify-end gap-1\.5" onClick=\{stopPortalClick\}>/)
+  assert.match(compactBranch, /reviewBlocked \? blockedNote : <div className="flex flex-col items-end gap-2">\{reviewButtons\}<\/div>/)
+  assert.match(compactBranch, /<RowActions\n\s+code=\{menuCode\}\n\s+name=\{assetLabel\}\n\s+menuLabel=\{tCommon\("moreActionsFor", \{ code: menuCode \}\)\}\n\s+groups=\{\[\{ key: "finding", items: menuItems \}\]\}\n\s+openerRef=\{openerRef\}/)
+  assert.match(compactBranch, /\{ kind: "action", key: "plan", label: t\("actionPlan"\), icon: <CalendarClock aria-hidden="true" \/>, onSelect: \(\) => setPlanOpen\(true\) \}/)
+  assert.match(compactBranch, /\{ kind: "action" as const, key: "close", label: t\("closeFinding"\), icon: <FileUp aria-hidden="true" \/>, onSelect: \(\) => setCloseOpen\(true\) \}/)
+  assert.match(compactBranch, /\.\.\.menuLinks,/)
+  assert.doesNotMatch(compactBranch, /setPlanOpen\(true\)\}>|setCloseOpen\(true\)\}>/, "no plan or close button in the table cell")
+  assert.equal(source.match(/returnFocusRef=\{openerRef\}/g)?.length, 2, "the plan and close dialogs give focus back to ⋯")
+  assert.equal(source.match(/<AccessibleDialog open title=\{t\("(?:actionPlanTitle|closeFindingTitle)"\)\} busy=\{saving\} size="md" returnFocusRef=\{returnFocusRef\} onClose=\{onClose\}>/g)?.length, 2)
   assert.match(source, /<div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">/, "the phone cards keep the box")
   assert.equal(source.match(/<AccessibleDialog\b/g)?.length, 3, "the review, action-plan and close dialogs stay as they are (O21)")
 })
@@ -288,8 +301,8 @@ test("findings: PageHeader with a back link, StatStrip, TabNav, chips for the hi
   assert.match(source, /<AuditFindingsBatchActions key=\{selectionKey\} findings=\{batchReviewFindings\} \/>/, "another page or filter starts the batch selection empty")
   assert.match(source, /<TableEmptyRow\n\s+colSpan=\{8\}\n\s+emptyState=\{\{[\s\S]*?actionVariant: "secondary",/)
   assert.match(source, /<DataTableHead align="right" sticky="right">\{tCommon\("actions"\)\}<\/DataTableHead>/)
-  assert.match(source, /<AuditFindingReviewActions\n/, "the row triggers stay in the cell: their dialogs have no open() handle (I21)")
-  assert.doesNotMatch(source, /<RowActions\b|<MasterDataHeader\b|<ColumnHeader\b|toLocaleString\(/)
+  assert.match(source, /<AuditFindingReviewActions\n/, "the review decision stays visible in the row (fix round 3: the rest is in ⋯)")
+  assert.doesNotMatch(source, /<MasterDataHeader\b|<ColumnHeader\b|toLocaleString\(/)
 })
 
 test("findings page on the server, count the whole list once and keep the page in returnTo (spec 2B §5.9.2 row 3)", () => {
@@ -515,26 +528,35 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
     `{tCommon("actions")}`,
   ])
   assert.match(table, /scrollHint=\{tCommon\("tableScrollHint"\)\}/, "the shared hint still shows while the table overflows")
-  assert.match(table, /<DataTableCell align="right" sticky="right">\n\s+\{\/\* The triggers stay in the cell, not in ⋯/)
-  assert.match(table, /\n\s+<div className="flex flex-col items-end gap-2">\n\s+\{canEdit \|\| canApprove \? \(\n\s+<AuditFindingReviewActions\n/, "the review actions and the disposal link are stacked")
+  assert.match(table, /<DataTableCell align="right" sticky="right">\n\s+\{\/\* Pattern ช1/)
+  assert.match(table, /\{canEdit \|\| canApprove \? \(\n\s+<AuditFindingReviewActions\n\s+compact\n\s+menuCode=\{rowCode\}\n\s+menuLinks=\{disposalMenuLinks\}\n/, "fix round 3: plan, close and the disposal request in one ⋯")
+  assert.match(table, /\) : disposalMenuLinks\.length > 0 \? \(\n\s+<RowActions code=\{rowCode\} name=\{assetLabel\} menuLabel=\{tCommon\("moreActionsFor", \{ code: rowCode \}\)\} groups=\{\[\{ key: "finding", items: disposalMenuLinks \}\]\} \/>/, "without review rights the disposal request still has its ⋯")
+  assert.match(table, /const disposalMenuLinks: RowActionItem\[\] = canCreateDisposal && finding\.asset\n\s+\? \[\{ kind: "link", key: "disposal", label: t\("openDisposalRequest"\), href: appendOperationalReturnTo\(/)
+  assert.doesNotMatch(table, /buttonVariants\(/, "no button-styled link left in the table cell")
   assert.match(table, /<FindingValueChange\n/, "system → found as compact text")
   assert.doesNotMatch(table, /<FindingComparison\b/, "no inner bordered box in the table (the phone cards keep it)")
   assert.match(table, /<FindingStatusBadges items=\{findingStatusBadges\(finding, resolutionState\)\} \/>/, "the five statuses in one cell")
   assert.match(table, /<AuditFindingEvidenceList\n\s+compact\n/)
   assert.match(table, /: <Nil label=\{t\("noActionOwner"\)\} \/>/)
   assert.match(table, /\{finding\.actionDueDate \? t\("dueOn", \{ date: formatDateTime\(finding\.actionDueDate\) \}\) : <Nil \/>\}/, "fix round 1: the second line says what the date is")
-  assert.match(table, /<AuditFindingReviewActions\n\s+compact\n/, "fix round 1: the self-review note is one or two lines of text in the table")
   assert.doesNotMatch(table, /\bhideLabel\b/, "fix round 1: the actions header is visible, as in the mockup")
   // Fix round 2: in the real browser the auto layout squeezed the owner column to 40px (its cells were "—"), so the
   // table is fixed: a <colgroup> sets every width (px = 4 × the spacing step) and minWidth is their sum, at most the
   // 963px inside the 1280×800 box. Below that the table scrolls and the actions stay pinned.
   assert.match(table, /^<DataTable framed=\{false\} layout="fixed" minWidth=\{960\} /)
   const cols = [...table.matchAll(/<col className="w-(\d+)" \/>/g)].map((match) => Number(match[1]) * 4)
-  assert.deepEqual(cols, [104, 128, 144, 80, 84, 132, 88, 200], "date, round, asset, type, system → found, status, owner, actions")
+  // Fix round 3: the comparison gets 152px (an asset name as the found value wrapped into 10 lines at 84px), taken from
+  // the round, asset, type, status and action columns; the action column holds approve/reject stacked plus ⋯ (118px).
+  assert.deepEqual(cols, [104, 116, 136, 76, 152, 124, 88, 164], "date, round, asset, type, system → found, status, owner, actions")
   assert.equal(cols.reduce((sum, width) => sum + width, 0), 960)
   assert.match(table, /<DataTableHead>\{t\("actionOwner"\)\}<\/DataTableHead>/, "the owner header stays on one line")
   assert.doesNotMatch(table, /<DataTableCell[^>]*\b(?:min-)?w-\d+/, "the widths live in the colgroup only")
   assert.doesNotMatch(table, /\bmin-w-(?:56|64|80)\b/)
+
+  // Fix round 3: in the table the evidence is one line, the count and then the file links, each truncated.
+  const evidence = source.slice(source.indexOf("function AuditFindingEvidenceList"), source.indexOf("function resolveFindingState"))
+  assert.match(evidence, /if \(compact\) \{\n\s+return \(\n\s+<div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">\n\s+<span className="shrink-0">\{labels\.count\}<\/span>/)
+  assert.match(evidence, /className="flex min-w-0 items-center gap-1 text-primary hover:underline"/)
 
   const change = source.slice(source.indexOf("function FindingValueChange"), source.indexOf("function AuditFindingEvidenceList"))
   assert.doesNotMatch(change, /\bborder\b|\brounded/, "the comparison has no box of its own")
@@ -547,7 +569,7 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
   assert.match(badges, /tone: RESOLUTION_STATE_TONES\[resolutionState\]/, "the resolution badge keeps its tones")
   assert.match(badges, /status: finding\.reviewStatus/)
   assert.match(badges, /status: finding\.actionStatus/)
-  assert.match(source, /<ul className="flex w-27 flex-col items-start gap-1">/, "a fixed-width status list: a long label truncates instead of widening the table")
+  assert.match(source, /<ul className="flex w-25 flex-col items-start gap-1">/, "a fixed-width status list: a long label truncates instead of widening the table")
 })
 
 // Plan 2B-4 Task 5 (spec 2B §4.4.5, §5.5, §4.6.3, bug §5.10 #7): the employee page on the page primitives. The shell

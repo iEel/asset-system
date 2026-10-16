@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type MouseEvent as ReactMouseEvent } from "react"
+import { useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, CalendarClock, Check, FileUp, X } from "lucide-react"
@@ -17,6 +17,7 @@ import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { RowActions, type RowActionItem } from "@/components/ui/row-actions"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -52,6 +53,8 @@ export function AuditFindingReviewActions({
   reviewBlocked = false,
   reviewBlockedReason,
   compact = false,
+  menuCode = assetLabel,
+  menuLinks = [],
 }: {
   findingId: string
   assetLabel: string
@@ -67,10 +70,18 @@ export function AuditFindingReviewActions({
   employees: EmployeeOption[]
   reviewBlocked?: boolean
   reviewBlockedReason?: string
-  /** The findings table: the self-review note as small text with its icon instead of a box (audit mobile fix D8). */
+  /** The findings table (audit mobile fix D8, pattern ช1): only the review decision stays visible, the note is small
+   * text instead of a box, and plan, close and menuLinks go into ⋯. */
   compact?: boolean
+  /** The row's code for ⋯ (compact only). */
+  menuCode?: string
+  /** Links of the page in the same ⋯ after plan and close, e.g. the disposal request (compact only). */
+  menuLinks?: RowActionItem[]
 }) {
   const t = useTranslations("auditFinding")
+  const tCommon = useTranslations("common")
+  // ⋯ when a dialog was opened from the menu: the dialog gives focus back to it (R-m).
+  const openerRef = useRef<HTMLElement | null>(null)
   const apiError = useApiError()
   const router = useRouter()
   const [reviewing, setReviewing] = useState<ReviewAction | null>(null)
@@ -103,58 +114,45 @@ export function AuditFindingReviewActions({
     }
   }
 
-  return (
-    <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:justify-end" onClick={stopPortalClick}>
-      {reviewStatus === "pending" ? (
-        reviewBlocked ? (
-          // The findings table (compact) shows the note as one or two lines of text; the phone cards keep the box.
-          compact ? (
-            <p className="flex items-start gap-1.5 text-left text-xs text-warning">
-              <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-              <span>{reviewBlockedReason ?? t("segregationReviewBlocked")}</span>
-            </p>
-          ) : (
-          <div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
-            {reviewBlockedReason ?? t("segregationReviewBlocked")}
-          </div>
-          )
-        ) : (
-        <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setReviewModalAction("approve")}
-            busy={reviewing === "approve"}
-            disabled={reviewing === "reject"}
-            title={t("approve")}
-          >
-            <Check aria-hidden="true" />
-            {t("approve")}
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => setReviewModalAction("reject")}
-            busy={reviewing === "reject"}
-            disabled={reviewing === "approve"}
-            title={t("reject")}
-          >
-            <X aria-hidden="true" />
-            {t("reject")}
-          </Button>
-        </>
-        )
-      ) : null}
-      <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
-        <CalendarClock aria-hidden="true" />
-        {t("actionPlan")}
+  const reviewButtons = (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setReviewModalAction("approve")}
+        busy={reviewing === "approve"}
+        disabled={reviewing === "reject"}
+        title={t("approve")}
+      >
+        <Check aria-hidden="true" />
+        {t("approve")}
       </Button>
-      {actionStatus !== "closed" ? (
-        <Button variant="outline" size="sm" onClick={() => setCloseOpen(true)}>
-          <FileUp aria-hidden="true" />
-          {t("closeFinding")}
-        </Button>
-      ) : null}
+      <Button
+        variant="danger"
+        size="sm"
+        onClick={() => setReviewModalAction("reject")}
+        busy={reviewing === "reject"}
+        disabled={reviewing === "approve"}
+        title={t("reject")}
+      >
+        <X aria-hidden="true" />
+        {t("reject")}
+      </Button>
+    </>
+  )
+  // The findings table shows the note as small text with its icon; the phone cards keep the box.
+  const blockedNote = compact ? (
+    <p className="flex items-start gap-1.5 text-left text-xs text-warning">
+      <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+      <span>{reviewBlockedReason ?? t("segregationReviewBlocked")}</span>
+    </p>
+  ) : (
+    <div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
+      {reviewBlockedReason ?? t("segregationReviewBlocked")}
+    </div>
+  )
+  const dialogs = (
+    <>
       {planOpen ? (
         <ActionPlanModal
           findingId={findingId}
@@ -163,6 +161,7 @@ export function AuditFindingReviewActions({
           actionOwnerId={actionOwnerId}
           actionDueDate={actionDueDate}
           actionStatus={actionStatus}
+          returnFocusRef={openerRef}
           onClose={() => setPlanOpen(false)}
         />
       ) : null}
@@ -170,6 +169,7 @@ export function AuditFindingReviewActions({
         <CloseFindingModal
           findingId={findingId}
           evidenceCount={evidenceCount}
+          returnFocusRef={openerRef}
           onClose={() => setCloseOpen(false)}
         />
       ) : null}
@@ -185,6 +185,50 @@ export function AuditFindingReviewActions({
           onReview={review}
         />
       ) : null}
+    </>
+  )
+
+  // Pattern ช1 in the findings table (audit mobile fix D8, fix round 3): the review decision (approve and reject
+  // stacked, or the self-review note) stays visible; plan, close and the page's links are in ⋯. A menu item only sets
+  // the state that mounts its dialog, and the dialog gives focus back to ⋯ through openerRef (R-m).
+  if (compact) {
+    const menuItems: RowActionItem[] = [
+      { kind: "action", key: "plan", label: t("actionPlan"), icon: <CalendarClock aria-hidden="true" />, onSelect: () => setPlanOpen(true) },
+      ...(actionStatus !== "closed" ? [{ kind: "action" as const, key: "close", label: t("closeFinding"), icon: <FileUp aria-hidden="true" />, onSelect: () => setCloseOpen(true) }] : []),
+      ...menuLinks,
+    ]
+    return (
+      <div className="flex min-w-0 items-start justify-end gap-1.5" onClick={stopPortalClick}>
+        {reviewStatus === "pending" ? (
+          reviewBlocked ? blockedNote : <div className="flex flex-col items-end gap-2">{reviewButtons}</div>
+        ) : null}
+        <RowActions
+          code={menuCode}
+          name={assetLabel}
+          menuLabel={tCommon("moreActionsFor", { code: menuCode })}
+          groups={[{ key: "finding", items: menuItems }]}
+          openerRef={openerRef}
+          className="shrink-0"
+        />
+        {dialogs}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:justify-end" onClick={stopPortalClick}>
+      {reviewStatus === "pending" ? (reviewBlocked ? blockedNote : reviewButtons) : null}
+      <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
+        <CalendarClock aria-hidden="true" />
+        {t("actionPlan")}
+      </Button>
+      {actionStatus !== "closed" ? (
+        <Button variant="outline" size="sm" onClick={() => setCloseOpen(true)}>
+          <FileUp aria-hidden="true" />
+          {t("closeFinding")}
+        </Button>
+      ) : null}
+      {dialogs}
     </div>
   )
 }
@@ -294,6 +338,7 @@ function ActionPlanModal({
   actionOwnerId,
   actionDueDate,
   actionStatus,
+  returnFocusRef,
   onClose,
 }: {
   findingId: string
@@ -302,6 +347,7 @@ function ActionPlanModal({
   actionOwnerId?: string | null
   actionDueDate?: Date | string | null
   actionStatus: string
+  returnFocusRef?: RefObject<HTMLElement | null>
   onClose: () => void
 }) {
   const router = useRouter()
@@ -344,7 +390,7 @@ function ActionPlanModal({
   }
 
   return (
-    <AccessibleDialog open title={t("actionPlanTitle")} busy={saving} size="md" onClose={onClose}>
+    <AccessibleDialog open title={t("actionPlanTitle")} busy={saving} size="md" returnFocusRef={returnFocusRef} onClose={onClose}>
       <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
         <AccessibleDialogBody className="grid gap-4">
           <Field label={t("actionPlan")} required>
@@ -400,7 +446,17 @@ function ActionPlanModal({
   )
 }
 
-function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: string; evidenceCount: number; onClose: () => void }) {
+function CloseFindingModal({
+  findingId,
+  evidenceCount,
+  returnFocusRef,
+  onClose,
+}: {
+  findingId: string
+  evidenceCount: number
+  returnFocusRef?: RefObject<HTMLElement | null>
+  onClose: () => void
+}) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("auditFinding")
@@ -453,7 +509,7 @@ function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: s
   }
 
   return (
-    <AccessibleDialog open title={t("closeFindingTitle")} busy={saving} size="md" onClose={onClose}>
+    <AccessibleDialog open title={t("closeFindingTitle")} busy={saving} size="md" returnFocusRef={returnFocusRef} onClose={onClose}>
       <AccessibleDialogBody className="space-y-4">
         <FileDropzone
           file={file}

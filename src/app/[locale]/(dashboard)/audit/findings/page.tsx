@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowRight, Download, FileText } from "lucide-react"
+import { Archive, ArrowRight, Download, FileText } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -21,6 +21,7 @@ import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil, orNil } from "@/components/ui/nil"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
+import { RowActions, type RowActionItem } from "@/components/ui/row-actions"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
@@ -422,18 +423,18 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         </div>
         <DataTable framed={false} layout="fixed" minWidth={960} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
           {/* 8 fixed columns, 960px in all, inside the 963px of the 1280×800 box (audit mobile fix D8). The auto layout
-              squeezed a column whose cells were all "—", so every width is set here. The asset and round columns fit a
-              15-character tag; the action column fits approve and reject on one line. Below 1280 the table scrolls and
-              the action column stays pinned. */}
+              squeezed a column whose cells were all "—", so every width is set here. The comparison gets 152px, since
+              a found value can be an asset name; the action column holds approve and reject stacked plus ⋯ (118px).
+              Below 1280 the table scrolls and the action column stays pinned. */}
           <colgroup>
             <col className="w-26" />
-            <col className="w-32" />
-            <col className="w-36" />
-            <col className="w-20" />
-            <col className="w-21" />
-            <col className="w-33" />
+            <col className="w-29" />
+            <col className="w-34" />
+            <col className="w-19" />
+            <col className="w-38" />
+            <col className="w-31" />
             <col className="w-22" />
-            <col className="w-50" />
+            <col className="w-41" />
           </colgroup>
           <DataTableHeader>
             <tr>
@@ -467,6 +468,10 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                 const findingTypeLabel = t(`type_${finding.findingType}`)
                 const expectedValue = formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)
                 const actualValue = formatFindingValue(finding.findingType, finding.actualValue, valueLabels)
+                const rowCode = finding.asset?.assetTag ?? finding.auditRound.auditNo
+                const disposalMenuLinks: RowActionItem[] = canCreateDisposal && finding.asset
+                  ? [{ kind: "link", key: "disposal", label: t("openDisposalRequest"), href: appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref), icon: <Archive aria-hidden="true" /> }]
+                  : []
 
                 return (
                   <ClickableTableRow
@@ -515,38 +520,33 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       <div className="mt-0.5 text-xs">{finding.actionDueDate ? t("dueOn", { date: formatDateTime(finding.actionDueDate) }) : <Nil />}</div>
                     </DataTableCell>
                     <DataTableCell align="right" sticky="right">
-                      {/* The triggers stay in the cell, not in ⋯: their dialogs have no open() handle (spec 2B I21, O21). */}
-                      <div className="flex flex-col items-end gap-2">
-                        {canEdit || canApprove ? (
-                          <AuditFindingReviewActions
-                            compact
-                            findingId={finding.id}
-                            assetLabel={assetLabel}
-                            findingTypeLabel={findingTypeLabel}
-                            expectedValue={expectedValue}
-                            actualValue={actualValue}
-                            reviewStatus={finding.reviewStatus}
-                            actionStatus={finding.actionStatus}
-                            actionPlan={finding.actionPlan}
-                            actionOwnerId={finding.actionOwnerId}
-                            actionDueDate={finding.actionDueDate}
-                            evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
-                            employees={employeeOptions}
-                            reviewBlocked={isSameAuditActor(user.id, finding.reportedBy)}
-                            reviewBlockedReason={t("segregationReviewBlocked")}
-                          />
-                        ) : (
-                          <Nil />
-                        )}
-                        {canCreateDisposal && finding.asset ? (
-                          <Link
-                            href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                            className={buttonVariants({ variant: "outline", size: "sm" })}
-                          >
-                            {t("openDisposalRequest")}
-                          </Link>
-                        ) : null}
-                      </div>
+                      {/* Pattern ช1 (2B, fix round 3): the review decision stays visible; plan, close and the disposal request
+                          are in one ⋯, whose items mount the dialogs (AuditFindingReviewActions compact). */}
+                      {canEdit || canApprove ? (
+                        <AuditFindingReviewActions
+                          compact
+                          menuCode={rowCode}
+                          menuLinks={disposalMenuLinks}
+                          findingId={finding.id}
+                          assetLabel={assetLabel}
+                          findingTypeLabel={findingTypeLabel}
+                          expectedValue={expectedValue}
+                          actualValue={actualValue}
+                          reviewStatus={finding.reviewStatus}
+                          actionStatus={finding.actionStatus}
+                          actionPlan={finding.actionPlan}
+                          actionOwnerId={finding.actionOwnerId}
+                          actionDueDate={finding.actionDueDate}
+                          evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
+                          employees={employeeOptions}
+                          reviewBlocked={isSameAuditActor(user.id, finding.reportedBy)}
+                          reviewBlockedReason={t("segregationReviewBlocked")}
+                        />
+                      ) : disposalMenuLinks.length > 0 ? (
+                        <RowActions code={rowCode} name={assetLabel} menuLabel={tCommon("moreActionsFor", { code: rowCode })} groups={[{ key: "finding", items: disposalMenuLinks }]} />
+                      ) : (
+                        <Nil />
+                      )}
                     </DataTableCell>
                   </ClickableTableRow>
                 )
@@ -657,32 +657,30 @@ function AuditFindingEvidenceList({
 }: {
   attachments: AuditFindingEvidenceAttachment[]
   labels: { title: string; count: string; open: string }
-  /** The desktop table: plain file links under the comparison, no box. */
+  /** The desktop table: the count and the file links on one line, truncated, no box. */
   compact?: boolean
 }) {
   if (attachments.length === 0) return null
 
   if (compact) {
     return (
-      <div className="mt-2">
-        <div className="text-xs text-muted-foreground">{labels.count}</div>
-        <ul className="mt-1 grid gap-1">
-          {attachments.map((attachment) => (
-            <li key={attachment.id} className="min-w-0">
-              <a
-                href={`/api/attachments/${attachment.id}?inline=1`}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`${labels.open}: ${attachment.originalName}`}
-                title={attachment.originalName}
-                className="flex min-w-0 items-center gap-1 text-xs text-primary hover:underline"
-              >
-                <FileText aria-hidden="true" className="size-3.5 shrink-0" />
-                <span className="truncate">{attachment.originalName}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+      <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+        <span className="shrink-0">{labels.count}</span>
+        {attachments.map((attachment) => (
+          <a
+            key={attachment.id}
+            href={`/api/attachments/${attachment.id}?inline=1`}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`${labels.open}: ${attachment.originalName}`}
+            title={attachment.originalName}
+            className="flex min-w-0 items-center gap-1 text-primary hover:underline"
+          >
+            <span aria-hidden="true" className="shrink-0 text-faint-foreground">·</span>
+            <FileText aria-hidden="true" className="size-3.5 shrink-0" />
+            <span className="truncate">{attachment.originalName}</span>
+          </a>
+        ))}
       </div>
     )
   }
@@ -755,11 +753,11 @@ type FindingStatusBadgeItem = {
   tone?: StatusTone
 }
 
-// The status badges of one finding, stacked (audit mobile fix D8). The list is as wide as its 132px column's content
-// (108px): a longer label truncates and its tooltip has the whole text.
+// The status badges of one finding, stacked (audit mobile fix D8). The list is as wide as its 124px column's content
+// (100px): a longer label truncates and its tooltip has the whole text.
 function FindingStatusBadges({ items }: { items: FindingStatusBadgeItem[] }) {
   return (
-    <ul className="flex w-27 flex-col items-start gap-1">
+    <ul className="flex w-25 flex-col items-start gap-1">
       {items.map((item) => (
         <li key={item.key} title={`${item.title}: ${item.label}`} className="max-w-full">
           <span className="sr-only">{item.title}: </span>
