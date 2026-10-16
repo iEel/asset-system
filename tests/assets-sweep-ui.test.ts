@@ -16,3 +16,10 @@ test("activity drawer: each item's marker is a status shape and its label has no
   assert.match(source, /<div className="text-meta font-medium text-muted-foreground">\{item\.label\}<\/div>/)
   assert.doesNotMatch(source, /uppercase|tracking-normal|rounded-full|getToneDotClass|\bbg-info\b|\btext-xs\b/)
 })
+
+test("QR code: no frame of its own inside the QR panel, and the asset tag under it is a tag (spec 2D D9, M33)", () => {
+  const source = read(`${C}assets/asset-qr-code.tsx`)
+  assert.match(source, /<div className="inline-flex flex-col items-center gap-3">/)
+  assert.match(source, /<div className="max-w-44 text-center text-sm text-foreground">\n\s+<span className="tag font-medium">\{label\}<\/span>\n\s+<\/div>/)
+  assert.doesNotMatch(source, /bg-white|rounded-lg|border|text-xs/)
+})
