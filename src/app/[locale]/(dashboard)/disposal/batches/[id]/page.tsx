@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { FileText, PackageCheck } from "lucide-react"
+import { FileText } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -12,6 +12,7 @@ import { appendOperationalReturnTo, normalizeDisposalBatchReturnTo } from "@/lib
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
@@ -91,10 +92,8 @@ export default async function DisposalBatchDetailPage({ params, searchParams }: 
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground"><PackageCheck className="h-5 w-5 text-primary" />{t("batchSharedDetail")}</h2>
+          <ContentPanel title={t("batchSharedDetail")}>
             <KeyValueList
-              className="mt-5"
               items={[
                 { key: "disposalType", label: t("disposalType"), value: t(`types.${batch.disposalType}`) },
                 { key: "requestedBy", label: t("requestedBy"), value: <><span className="tag">{batch.requestedBy.code}</span> - {batch.requestedBy.fullNameTh}</> },
@@ -105,13 +104,16 @@ export default async function DisposalBatchDetailPage({ params, searchParams }: 
                 { key: "reason", label: t("reason"), value: <span className="whitespace-pre-wrap">{batch.reason}</span> },
               ]}
             />
-          </section>
+          </ContentPanel>
 
-          <section className="overflow-hidden rounded-lg border border-border bg-surface">
-            <div className="border-b border-border px-4 py-3"><h2 className="text-base font-semibold text-foreground">{t("batchChildren")}</h2></div>
-            <div className="divide-y divide-border md:hidden">
-              {batch.disposalRequests.length === 0 ? <EmptyNote padded>{tCommon("noData")}</EmptyNote> : batch.disposalRequests.map((request) => <BatchRequestCard key={request.id} href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, batchHref)} request={request} statusLabel={t(`statuses.${request.requestStatus}`)} openLabel={t("openRequest")} />)}
-            </div>
+          <ContentPanel divided flush title={t("batchChildren")}>
+            {batch.disposalRequests.length === 0 ? (
+              <EmptyNote padded className="md:hidden">{tCommon("noData")}</EmptyNote>
+            ) : (
+              <ContentPanelRows className="md:hidden">
+                {batch.disposalRequests.map((request) => <li key={request.id}><BatchRequestCard href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, batchHref)} request={request} statusLabel={t(`statuses.${request.requestStatus}`)} openLabel={t("openRequest")} /></li>)}
+              </ContentPanelRows>
+            )}
             <DataTable framed={false} className="hidden md:block" caption={t("batchChildren")} scrollHint={tCommon("tableScrollHint")}>
               <DataTableHeader>
                 <tr>
@@ -132,7 +134,7 @@ export default async function DisposalBatchDetailPage({ params, searchParams }: 
                       <DataTableCell className="whitespace-nowrap"><span className="tag font-medium text-foreground">{request.disposalNo}</span></DataTableCell>
                       <DataTableCell>
                         <div className="text-foreground"><span className="tag">{request.asset.assetTag}</span></div>
-                        <div className="text-xs text-muted-foreground">{request.asset.name}</div>
+                        <div className="text-meta text-muted-foreground">{request.asset.name}</div>
                       </DataTableCell>
                       <DataTableCell className="text-muted-foreground">{request.asset.currentLocation.name}</DataTableCell>
                       <DataTableCell><StatusBadge label={t(`statuses.${request.requestStatus}`)} status={request.requestStatus} /></DataTableCell>
@@ -149,7 +151,7 @@ export default async function DisposalBatchDetailPage({ params, searchParams }: 
                 })}
               </DataTableBody>
             </DataTable>
-          </section>
+          </ContentPanel>
         </div>
 
         <aside><DisposalAttachments requestId={batch.id} attachments={attachments} canManage={canManage} uploadEndpoint={`/api/disposal-batches/${batch.id}/attachments`} title={t("batchSharedEvidence")} /></aside>
@@ -160,7 +162,7 @@ export default async function DisposalBatchDetailPage({ params, searchParams }: 
 
 function BatchRequestCard({ href, request, statusLabel, openLabel }: { href: string; request: { id: string; disposalNo: string; requestStatus: string; asset: { assetTag: string; name: string; currentLocation: { name: string }; custodian: { fullNameTh: string } | null } }; statusLabel: string; openLabel: string }) {
   return (
-    <article className="p-4">
+    <article>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm text-foreground"><span className="tag font-medium">{request.disposalNo}</span></div>
@@ -168,7 +170,7 @@ function BatchRequestCard({ href, request, statusLabel, openLabel }: { href: str
         </div>
         <StatusBadge label={statusLabel} status={request.requestStatus} />
       </div>
-      <div className="mt-2 text-xs text-muted-foreground">{request.asset.currentLocation.name}{request.asset.custodian ? ` · ${request.asset.custodian.fullNameTh}` : ""}</div>
+      <div className="mt-2 text-meta text-muted-foreground">{request.asset.currentLocation.name}{request.asset.custodian ? ` · ${request.asset.custodian.fullNameTh}` : ""}</div>
       <div className="mt-3">
         <Link href={href} className={buttonVariants({ variant: "outline", size: "sm" })}>
           <FileText aria-hidden="true" />
