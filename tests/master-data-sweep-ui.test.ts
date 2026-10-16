@@ -64,3 +64,15 @@ test("brands page: drill-down text links, the panel frame on the picker and the 
   assert.equal(source.match(/aria-current=\{/g)?.length, 2, "LN1 stays 2 (I11)")
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|hover:bg-accent|\bh-[78]\b|className="px-2"|size: "lg"|bg-warning-soft|\btext-xs\b|text-lg|rounded-lg border/)
 })
+
+test("suppliers list: the asset count is a text link with a 44px phone target, frames are the panel classes and the phone cards quiet groupings with a KeyValueList (spec 2D D9, D19, §3.3)", () => {
+  const page = read(`${D}master-data/suppliers/page.tsx`)
+  const list = read("src/components/master-data/supplier-list-view.tsx")
+  assert.match(page, /<details className=\{cn\(getPanelClasses\(\), "md:hidden"\)\} open=\{hasActiveFilters\}>/)
+  assert.equal(list.match(drilldownLink)?.length, 1, "the desktop asset count")
+  assert.match(list, /<ContentPanel>\n\s+<ActionEmptyState/)
+  assert.match(list, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
+  assert.match(list, /<article key=\{supplier\.id\} className="min-w-0 rounded-md border border-border bg-background p-3">/)
+  assert.equal(list.match(/<KeyValueList\b/g)?.length, 1, "the phone card's contact and phone")
+  assert.doesNotMatch(page + list, /rounded-lg border|hover:bg-primary-soft|\btext-xs\b|className="px-2"|<dl\b/)
+})

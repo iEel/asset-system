@@ -12,6 +12,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { prisma } from "@/lib/db"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -25,6 +26,7 @@ import {
   type SupplierListState,
 } from "@/lib/organization-master-query"
 import { requirePagePermission } from "@/lib/page-auth"
+import { cn } from "@/lib/utils"
 
 type SuppliersPageProps = {
   params: Promise<{ locale: string }>
@@ -147,7 +149,8 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
         />
       </section>
 
-      <details className="rounded-lg border border-border bg-surface md:hidden" open={hasActiveFilters}>
+      {/* A <details> cannot be ContentPanel: the panel classes (2D-2 R4). */}
+      <details className={cn(getPanelClasses(), "md:hidden")} open={hasActiveFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           {t("filtersTitle")}

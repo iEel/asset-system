@@ -1,10 +1,14 @@
 import Link from "next/link"
 import { Pencil } from "lucide-react"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, type DataTableSort } from "@/components/ui/data-table"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { orNil } from "@/components/ui/nil"
 import { RowActions } from "@/components/ui/row-actions"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
@@ -13,6 +17,7 @@ import {
   type SupplierListState,
   type SupplierSort,
 } from "@/lib/organization-master-query"
+import { cn } from "@/lib/utils"
 
 export type SupplierListItem = {
   id: string
@@ -77,7 +82,7 @@ export function SupplierListView({
 }) {
   if (suppliers.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <ContentPanel>
         <ActionEmptyState
           title={hasActiveFilters ? labels.filteredEmptyTitle : labels.emptyTitle}
           description={hasActiveFilters ? labels.filteredEmptyDescription : labels.emptyDescription}
@@ -85,7 +90,7 @@ export function SupplierListView({
           actionLabel={hasActiveFilters ? labels.clearFilters : labels.create}
           actionVariant={hasActiveFilters ? "secondary" : "primary"}
         />
-      </div>
+      </ContentPanel>
     )
   }
 
@@ -95,7 +100,7 @@ export function SupplierListView({
   })
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+    <div className={cn(getPanelClasses(), "overflow-hidden")}>
       <DataTable data-supplier-desktop-table framed={false} className="hidden md:block" caption={labels.title} scrollHint={labels.tableScrollHint}>
         <DataTableHeader>
           <tr>
@@ -120,17 +125,17 @@ export function SupplierListView({
                 </DataTableCell>
                 <DataTableCell className="min-w-56 text-foreground">
                   <div className="font-medium">{supplier.name}</div>
-                  {supplier.address ? <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{supplier.address}</div> : null}
+                  {supplier.address ? <div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{supplier.address}</div> : null}
                 </DataTableCell>
                 <DataTableCell className="min-w-44 text-muted-foreground">{orNil(supplier.contactPerson)}</DataTableCell>
                 <DataTableCell className="whitespace-nowrap text-muted-foreground">{orNil(supplier.phone)}</DataTableCell>
                 <DataTableCell className="min-w-56 text-muted-foreground">{orNil(supplier.email)}</DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">
                   {supplier._count.assets > 0 ? (
-                    <Link href={hrefs.assets} aria-label={`${labels.assets}: ${formatCount(supplier._count.assets)}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Link href={hrefs.assets} aria-label={`${labels.assets}: ${formatCount(supplier._count.assets)}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
                       {formatCount(supplier._count.assets)}
                     </Link>
-                  ) : <span className="px-2">{formatCount(0)}</span>}
+                  ) : formatCount(0)}
                 </DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">{formatCount(supplier._count.purchaseDocuments)}</DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">{formatCount(supplier._count.maintenanceTickets)}</DataTableCell>
@@ -150,29 +155,27 @@ export function SupplierListView({
         </DataTableBody>
       </DataTable>
 
-      <div data-supplier-mobile-list className="grid gap-3 bg-background p-3 md:hidden">
+      {/* A card in a panel is a quiet grouping (2D-2 R4); its facts are the shared label and value list (spec 2D D19). */}
+      <div data-supplier-mobile-list className="grid gap-3 p-3 md:hidden">
         {suppliers.map((supplier) => {
           const hrefs = buildSupplierRowHrefs({ supplier, locale, supplierReturnHref })
           return (
-            <article key={supplier.id} className="rounded-lg border border-border bg-surface p-4">
+            <article key={supplier.id} className="min-w-0 rounded-md border border-border bg-background p-3">
               <Link href={hrefs.detail} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <div className="text-xs text-muted-foreground">
+                <div className="text-meta text-muted-foreground">
                   <span className="tag font-medium">{supplier.code}</span>
                 </div>
                 <h2 className="mt-1 break-words text-base font-semibold text-primary">{supplier.name}</h2>
-                {supplier.address ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{supplier.address}</p> : null}
+                {supplier.address ? <p className="mt-1 line-clamp-2 text-meta text-muted-foreground">{supplier.address}</p> : null}
               </Link>
 
-              <dl className="mt-4 grid gap-3 text-sm">
-                <div className="grid grid-cols-[90px_minmax(0,1fr)] gap-2">
-                  <dt className="text-muted-foreground">{labels.contactPerson}</dt>
-                  <dd className="break-words text-foreground">{orNil(supplier.contactPerson)}</dd>
-                </div>
-                <div className="grid grid-cols-[90px_minmax(0,1fr)] gap-2">
-                  <dt className="text-muted-foreground">{labels.phone}</dt>
-                  <dd className="break-words text-foreground">{orNil(supplier.phone)}</dd>
-                </div>
-              </dl>
+              <KeyValueList
+                className="mt-3"
+                items={[
+                  { key: "contactPerson", label: labels.contactPerson, value: supplier.contactPerson },
+                  { key: "phone", label: labels.phone, value: supplier.phone },
+                ]}
+              />
 
               <div className="mt-4 grid grid-cols-3 gap-2 border-y border-border py-3 text-center">
                 <RelationshipCount label={labels.assets} value={supplier._count.assets} href={supplier._count.assets > 0 ? hrefs.assets : undefined} />
@@ -209,6 +212,7 @@ function buildSupplierRowHrefs({ supplier, locale, supplierReturnHref }: { suppl
 }
 
 function RelationshipCount({ label, value, href }: { label: string; value: number; href?: string }) {
-  const content = <><span className="block text-base font-semibold text-foreground">{formatCount(value)}</span><span className="mt-0.5 block line-clamp-2 text-xs text-muted-foreground">{label}</span></>
+  // A linked count reads as a link (primary), like the table's drill-down link.
+  const content = <><span className={cn("num block text-base font-semibold", href ? "text-primary" : "text-foreground")}>{formatCount(value)}</span><span className="mt-0.5 block line-clamp-2 text-meta text-muted-foreground">{label}</span></>
   return href ? <Link href={href} aria-label={`${label}: ${formatCount(value)}`} className="min-h-11 rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{content}</Link> : <div className="min-h-11 px-1 py-1">{content}</div>
 }
