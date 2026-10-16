@@ -62,7 +62,7 @@ import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
-import { buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetailView } from "@/lib/asset-detail-view"
+import { buildAssetDetailSectionHref, buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetailView, type AssetDetailSectionId } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
 import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "@/lib/audit-round-result-filters"
@@ -709,10 +709,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     `/${locale}/assets/${asset.id}/components`,
     `/${locale}/assets/${asset.id}?view=custody`,
   )
+  // A link to a section of another view opens that view (wiki open question 43).
+  const sectionHref = (sectionId: AssetDetailSectionId) => buildAssetDetailSectionHref(locale, asset.id, assetDetailView, sectionId, returnToHref)
   const dataHealthItems = ownershipType === "software_license"
     ? [
         createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), editHref),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership", t("dataHealthFixResponsibility"), editHref),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), editHref),
         createHealthItem(asset.licenseTotalSeats != null, t("dataHealthLicenseSeats"), "#overview", t("dataHealthFixLicenseSeats"), editHref),
         createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
         createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase", t("dataHealthFixExpiry"), editHref),
@@ -730,7 +732,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           "#photos"
         ),
         createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership", t("dataHealthFixResponsibility"), editHref),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), editHref),
         createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase", t("dataHealthFixExpiry"), editHref),
       ]
   const dataHealthDone = dataHealthItems.filter((item) => item.done).length
@@ -750,11 +752,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const checkoutHref = `/${locale}/asset-management/checkout?assetId=${encodedAssetId}`
   const checkinHref = activeCheckout
     ? `/${locale}/asset-management/checkin?checkoutId=${encodeURIComponent(activeCheckout.id)}`
-    : "#handover"
+    : sectionHref("handover")
   const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
   const maintenanceHref = `/${locale}/maintenance/new?assetId=${encodedAssetId}`
   const assignedAssetHref = licenseAssignedAsset ? `/${locale}/assets/${licenseAssignedAsset.id}` : "#overview"
-  const latestDocumentHref = latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : "#handover"
+  const latestDocumentHref = latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : sectionHref("handover")
   const lifecycle = getOwnershipLifecycle({
     ownershipType,
     activeCheckout: Boolean(activeCheckout),
@@ -766,6 +768,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     editHref,
     assignedAssetHref,
     latestDocumentHref,
+    purchaseHref: sectionHref("purchase"),
+    auditHref: sectionHref("audit"),
+    componentsHref: sectionHref("components"),
     hasAssignedAsset: Boolean(licenseAssignedAsset),
     licenseSeatSummary,
     t,
@@ -793,7 +798,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         ? latestMovement.summary
         : `${latestMovement.title} · ${latestMovement.summary}`
       : tCommon("noData"),
-    href: "#movement",
+    href: sectionHref("movement"),
     tone: latestMovement ? latestMovement.tone : "neutral" as const,
   }
   const activityFollowUpCandidates: (ActivitySummaryItem | null)[] = [
@@ -810,7 +815,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       ? {
           label: t("activityOpenMaintenance"),
           value: maintenanceSummary,
-          href: "#maintenance",
+          href: sectionHref("maintenance"),
           actionLabel: t("quickMaintenance"),
           tone: "warning" as const,
         }
@@ -837,7 +842,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       ? {
           label: t("activityAuditFinding"),
           value: auditSummary,
-          href: "#audit",
+          href: sectionHref("audit"),
           actionLabel: t("detailSections.audit"),
           tone: "warning" as const,
         }
@@ -1595,6 +1600,9 @@ function getOwnershipLifecycle({
   editHref,
   assignedAssetHref,
   latestDocumentHref,
+  purchaseHref,
+  auditHref,
+  componentsHref,
   hasAssignedAsset,
   licenseSeatSummary,
   t,
@@ -1609,6 +1617,9 @@ function getOwnershipLifecycle({
   editHref: string
   assignedAssetHref: string
   latestDocumentHref: string
+  purchaseHref: string
+  auditHref: string
+  componentsHref: string
   hasAssignedAsset: boolean
   licenseSeatSummary: string | null
   t: (key: string) => string
@@ -1628,8 +1639,8 @@ function getOwnershipLifecycle({
       label: t("quickAssignedDevice"),
       disabled: !hasAssignedAsset,
     }
-    const renewAction = { href: "#purchase", icon: <ShieldCheck className="h-4 w-4" />, label: t("quickRenewLicense") }
-    const auditAction = { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAuditLicense") }
+    const renewAction = { href: purchaseHref, icon: <ShieldCheck className="h-4 w-4" />, label: t("quickRenewLicense") }
+    const auditAction = { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAuditLicense") }
 
     return {
       title: t("lifecycleSoftwareTitle"),
@@ -1639,7 +1650,6 @@ function getOwnershipLifecycle({
       responsibilityValue: null,
       statusLabel: t("licenseSeatUsage"),
       statusValue: licenseSeatSummary ?? t("licensePool"),
-      statusHref: "#overview",
       mobilePrimary: assignAction,
       mobileSecondary: renewAction,
       actions: [assignAction, deviceAction, renewAction, auditAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickLicenseIssue") }],
@@ -1658,10 +1668,9 @@ function getOwnershipLifecycle({
       responsibilityValue: null,
       statusLabel: t("stockStatus"),
       statusValue: activeCheckout ? t("handoverActive") : t("stockAvailable"),
-      statusHref: "#handover",
       mobilePrimary: issueAction,
       mobileSecondary: relocateAction,
-      actions: [issueAction, relocateAction, { href: `#audit`, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, latestDocumentAction],
+      actions: [issueAction, relocateAction, { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, latestDocumentAction],
     }
   }
 
@@ -1677,15 +1686,14 @@ function getOwnershipLifecycle({
       responsibilityValue: null,
       statusLabel: t("sharedStatus"),
       statusValue: activeCheckout ? t("handoverActive") : t("sharedInstalled"),
-      statusHref: "#ownership",
       mobilePrimary: relocateAction,
       mobileSecondary: checkoutAction,
-      actions: [relocateAction, checkoutAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, latestDocumentAction],
+      actions: [relocateAction, checkoutAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, latestDocumentAction],
     }
   }
 
   if (ownershipType === "component") {
-    const componentAction = { href: "#components", icon: <GitBranch className="h-4 w-4" />, label: t("quickManageComponent") }
+    const componentAction = { href: componentsHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickManageComponent") }
     const transferAction = { href: transferHref, icon: <Truck className="h-4 w-4" />, label: t("quickMoveComponent"), disabled: activeCheckout }
 
     return {
@@ -1696,10 +1704,9 @@ function getOwnershipLifecycle({
       responsibilityValue: null,
       statusLabel: t("componentStatus"),
       statusValue: t("componentInstalled"),
-      statusHref: "#components",
       mobilePrimary: componentAction,
       mobileSecondary: transferAction,
-      actions: [componentAction, transferAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }],
+      actions: [componentAction, transferAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }],
     }
   }
 
@@ -1714,7 +1721,6 @@ function getOwnershipLifecycle({
     responsibilityValue: null,
     statusLabel: t("handoverStatus"),
     statusValue: activeCheckout ? t("handoverActive") : t("assetAvailable"),
-    statusHref: "#handover",
     mobilePrimary: checkoutAction,
     mobileSecondary: checkinAction,
     actions: [
@@ -1722,7 +1728,7 @@ function getOwnershipLifecycle({
       checkinAction,
       { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickTransfer"), disabled: activeCheckout },
       { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") },
-      { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") },
+      { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") },
       latestDocumentAction,
     ],
   }

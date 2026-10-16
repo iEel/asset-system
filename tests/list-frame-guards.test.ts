@@ -256,7 +256,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1197, :1199 and the history sentence :2384 (R-n)
+    [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1202, :1204 and the history sentence :2390 (R-n)
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${D}asset-management/labels/page.tsx`]: 4, // → 4 (KEEP): label data (R-n)
     "src/app/[locale]/(print)/asset-management/checkins/[id]/page.tsx": 2, // → 2 (KEEP): print page (R-n)
@@ -311,7 +311,7 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // back item of the ActionBar :496 (2C batch 5, K23)
   },
   LV2: {
-    [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1197, :1199 and the history sentence :2384 (R-n)
+    [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1202, :1204 and the history sentence :2390 (R-n)
     [`${C}admin/system-settings-form.tsx`]: 1, // the default separator of the tag preview :2136 (R-n)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // 2C form (2D)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // label data (R-n)
