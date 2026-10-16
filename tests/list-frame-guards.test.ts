@@ -276,8 +276,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // → 1 (KEEP): print page, 2D (A/08:305)
   },
   LS1: {
-    // 2B-2
-    [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :598 in the dialog (2C plan 3)
   },
   LS2: {
   },
@@ -326,9 +324,6 @@ const KEEP: Record<string, Record<string, number>> = {
   LV3: {
     "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // print page, 2D (A/08:305)
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // print page, 2D (A/08:305)
-  },
-  LS1: {
-    [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // Metric :598 in the dialog (2C plan 3)
   },
   LN1: {
     [`${D}master-data/brands/page.tsx`]: 2, // the brand picker is a vertical list, where aria-current="page" is right (I11)

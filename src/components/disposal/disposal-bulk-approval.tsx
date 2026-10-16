@@ -26,11 +26,13 @@ import {
   accessibleDialogFormClasses,
 } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
-import { linkVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
+import { Notice } from "@/components/ui/notice"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { Textarea } from "@/components/ui/textarea"
+import { formatCount } from "@/lib/display-format"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
 
@@ -426,20 +428,22 @@ export function DisposalBulkApprovalToolbar() {
   if (selected.size === 0) return null
 
   return (
-    <div className="mt-3 flex flex-col gap-3 border border-border bg-background p-3 sm:rounded-md md:flex-row md:items-center md:justify-between" aria-label={copy.toolbarLabel}>
-      <span className="sr-only" aria-live="polite">{formatCopy(copy.selectedCount, { count: selected.size })}</span>
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground"><CheckSquare2 className="h-4 w-4 text-primary" />{formatCopy(copy.selectedCount, { count: selected.size })}</div>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button variant="outline" onClick={selectPage} disabled={busy}>{copy.selectPage}</Button>
-        <Button variant="outline" onClick={clear} disabled={busy}>{copy.clearSelection}</Button>
-        <Button ref={triggerRef} onClick={() => void preview()} busy={busy}>
-          <ListChecks aria-hidden="true" />
-          {copy.reviewAndApprove}
-        </Button>
+    <>
+      <div className="mx-4 mt-3 flex flex-col gap-3 rounded-md border border-border bg-background p-3 md:mx-5 md:flex-row md:items-center md:justify-between" aria-label={copy.toolbarLabel}>
+        <span className="sr-only" aria-live="polite">{formatCopy(copy.selectedCount, { count: selected.size })}</span>
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground"><CheckSquare2 aria-hidden="true" className="size-4 text-muted-foreground" />{formatCopy(copy.selectedCount, { count: selected.size })}</div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={selectPage} disabled={busy}>{copy.selectPage}</Button>
+          <Button variant="outline" onClick={clear} disabled={busy}>{copy.clearSelection}</Button>
+          <Button ref={triggerRef} onClick={() => void preview()} busy={busy}>
+            <ListChecks aria-hidden="true" />
+            {copy.reviewAndApprove}
+          </Button>
+        </div>
+        {limitMessage ? <p className="text-meta text-muted-foreground">{limitMessage}</p> : null}
       </div>
-      {limitMessage ? <p className="text-xs text-muted-foreground md:col-span-full">{limitMessage}</p> : null}
-      {error ? <div className="flex items-center gap-3 text-sm text-danger" role="alert"><span>{error}</span><button type="button" onClick={() => void preview()} disabled={busy} className={linkVariants({ size: "inherit" })}>{copy.retry}</button></div> : null}
-    </div>
+      {error ? <Notice tone="danger" role="alert" className="mx-4 mt-3 md:mx-5" action={<Button variant="outline" size="md" onClick={() => void preview()} disabled={busy}>{copy.retry}</Button>}>{error}</Notice> : null}
+    </>
   )
 }
 
@@ -495,7 +499,7 @@ export function DisposalBulkApprovalCheckbox({
         tabIndex={0}
         aria-label={blockedReason}
         title={blockedReason}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${variant === "mobile" ? "px-2 text-xs" : ""}`}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${variant === "mobile" ? "px-2 text-meta" : ""}`}
       >
         <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden="true" />
         {variant === "mobile" ? <span>{blockedReason}</span> : <span className="sr-only">{blockedReason}</span>}
@@ -557,12 +561,21 @@ function DisposalBulkApprovalDialog() {
     >
       <form data-disposal-bulk-dialog="true" onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
         <AccessibleDialogBody className="space-y-5">
+          {error ? <Notice tone="danger" role="alert">{error}</Notice> : null}
           {dialogState === "previewing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" />{copy.previewLoading}</div> : null}
           {dialogState === "committing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" />{copy.committing}</div> : null}
           {response ? <>
-            <BulkSummary selected={response.summary.selected} eligible={response.summary.eligible} blocked={response.summary.blocked} approved={response.summary.approved} failed={response.summary.failed} />
-            {groups.length ? <div className="space-y-2">{groups.map(([code, group]) => <details key={code} className="rounded-md border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium text-foreground"><span className="inline-flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-warning" />{getErrorLabel(code)} ({group.length})</span></summary><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{group.map((item) => <li key={item.requestId}>{item.disposalNo} - {item.assetTag}</li>)}</ul></details>)}</div> : null}
-            {dialogState === "preview" && eligible.length === 0 ? <p role="alert" className="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-foreground">{copy.zeroEligible}</p> : null}
+            <StatStrip
+              items={[
+                { key: "selected", label: copy.selected, value: formatCount(response.summary.selected) },
+                { key: "eligible", label: copy.eligible, value: formatCount(response.summary.eligible) },
+                { key: "blocked", label: copy.blocked, value: formatCount(response.summary.blocked) },
+                { key: "approved", label: copy.approved, value: formatCount(response.summary.approved) },
+                { key: "failed", label: copy.failed, value: formatCount(response.summary.failed) },
+              ]}
+            />
+            {groups.length ? <div className="space-y-2">{groups.map(([code, group]) => <details key={code} className="rounded-md border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium text-foreground"><span className="inline-flex items-center gap-2"><ShieldAlert aria-hidden="true" className="size-4 text-warning" />{getErrorLabel(code)} ({group.length})</span></summary><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{group.map((item) => <li key={item.requestId}><span className="tag">{item.disposalNo}</span> - <span className="tag">{item.assetTag}</span></li>)}</ul></details>)}</div> : null}
+            {dialogState === "preview" && eligible.length === 0 ? <Notice tone="warning" role="alert">{copy.zeroEligible}</Notice> : null}
             {dialogState === "preview" ? (
               <Field
                 label={copy.sharedRemark}
@@ -573,7 +586,6 @@ function DisposalBulkApprovalDialog() {
             ) : null}
             {dialogState === "result" && (approved.length || failed.length || blocked.length) ? <ResultDetails approved={approved} blocked={blocked} failed={failed} getErrorLabel={getErrorLabel} /> : null}
           </> : null}
-          {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         </AccessibleDialogBody>
         <AccessibleDialogFooter>
           <AccessibleDialogCancel>{dialogState === "result" ? copy.close : copy.cancel}</AccessibleDialogCancel>
@@ -590,15 +602,6 @@ function DisposalBulkApprovalDialog() {
   )
 }
 
-function BulkSummary({ selected, eligible, blocked, approved, failed }: DisposalBulkApprovalSummary) {
-  const { copy } = useDisposalBulkApproval()
-  return <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5"><Metric label={copy.selected} value={selected} /><Metric label={copy.eligible} value={eligible} /><Metric label={copy.blocked} value={blocked} /><Metric label={copy.approved} value={approved} /><Metric label={copy.failed} value={failed} /></dl>
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return <div className="border border-border bg-background p-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-semibold text-foreground">{value}</dd></div>
-}
-
 function ResultDetails({ approved, blocked, failed, getErrorLabel }: { approved: DisposalBulkApprovalItem[]; blocked: DisposalBulkApprovalItem[]; failed: DisposalBulkApprovalItem[]; getErrorLabel: (code: DisposalBulkApprovalCode | null) => string }) {
   const { copy } = useDisposalBulkApproval()
   const sections = [
@@ -606,7 +609,7 @@ function ResultDetails({ approved, blocked, failed, getErrorLabel }: { approved:
     [copy.blocked, blocked],
     [copy.failed, failed],
   ] as const
-  return <div className="space-y-3">{sections.filter(([, items]) => items.length).map(([label, items]) => <section key={label}><h3 className="text-sm font-semibold text-foreground">{label} ({items.length})</h3><ul className="mt-1 space-y-1 text-sm text-muted-foreground">{items.map((item) => <li key={item.requestId}>{item.disposalNo} - {item.assetTag}{item.code ? `: ${getErrorLabel(item.code)}` : ""}</li>)}</ul></section>)}</div>
+  return <div className="space-y-3">{sections.filter(([, items]) => items.length).map(([label, items]) => <section key={label}><h3 className="text-sm font-semibold text-foreground">{label} ({items.length})</h3><ul className="mt-1 space-y-1 text-sm text-muted-foreground">{items.map((item) => <li key={item.requestId}><span className="tag">{item.disposalNo}</span> - <span className="tag">{item.assetTag}</span>{item.code ? `: ${getErrorLabel(item.code)}` : ""}</li>)}</ul></section>)}</div>
 }
 
 function groupByCode(items: DisposalBulkApprovalItem[]) {

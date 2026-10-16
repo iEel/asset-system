@@ -169,7 +169,7 @@ test("bulk approval list controls use Button, busy and checkboxVariants, and lea
   assert.match(list, /<Button variant="outline" onClick=\{selectPage\} disabled=\{busy\}>\{copy\.selectPage\}<\/Button>/)
   assert.match(list, /<Button variant="outline" onClick=\{clear\} disabled=\{busy\}>\{copy\.clearSelection\}<\/Button>/)
   assert.match(list, /<Button ref=\{triggerRef\} onClick=\{\(\) => void preview\(\)\} busy=\{busy\}>/, "the shared spinner while the preview runs; busy, never disabled beside it (FMG GB4)")
-  assert.match(list, /className=\{linkVariants\(\{ size: "inherit" \}\)\}>\{copy\.retry\}<\/button>/)
+  assert.match(list, /action=\{<Button variant="outline" size="md" onClick=\{\(\) => void preview\(\)\} disabled=\{busy\}>\{copy\.retry\}<\/Button>\}/, "retry is the danger Notice's button (plan 2D-4)")
   assert.match(list, /<label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">\n\s+<input\n\s+ref=\{inputRef\}/, "the select-page box gets a 44px target")
   assert.equal(list.match(/className=\{checkboxVariants\(/g)?.length, 2, "the select-page box and the row box")
   assert.doesNotMatch(list, /<Loader2\b|disabled:opacity-50|rounded border-border|focus-within:ring/)
@@ -182,7 +182,7 @@ test("bulk approval list controls use Button, busy and checkboxVariants, and lea
 // stays in place with busy while the commit runs, so focus stays on it; cancel and the X are off while busy.
 test("bulk approval dialog uses the dialog parts, a shared remark field and a busy approve button (2C batch 3)", () => {
   const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8").replace(/\r\n/g, "\n")
-  const dialog = source.slice(source.indexOf("function DisposalBulkApprovalDialog"), source.indexOf("function BulkSummary"))
+  const dialog = source.slice(source.indexOf("function DisposalBulkApprovalDialog"), source.indexOf("function ResultDetails"))
 
   assert.doesNotMatch(dialog, /closeLabel=/, "the X takes its name from the dialog itself (spec §5.3)")
   assert.match(dialog, /<form data-disposal-bulk-dialog="true" onSubmit=\{handleSubmit\} className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="space-y-5">/)
