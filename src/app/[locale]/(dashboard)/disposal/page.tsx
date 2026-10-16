@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react"
+import type { ComponentProps } from "react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
@@ -10,7 +10,7 @@ import { buildDisposalQueryString, buildDisposalWhere, disposalStatusFilters, di
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
 import { DisposalRowActions, type DisposalRowNext } from "@/components/disposal/disposal-row-actions"
@@ -31,7 +31,8 @@ import {
 } from "@/components/disposal/disposal-bulk-execution"
 import type { DisposalBulkExecutionCopy } from "@/components/disposal/disposal-bulk-execution"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
@@ -39,13 +40,14 @@ import { Field } from "@/components/ui/field"
 import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { SearchField } from "@/components/ui/search-field"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
-import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { getDisposalNextAction, getDisposalStage, type DisposalStage } from "@/lib/disposal-stage"
 import {
@@ -305,9 +307,10 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         }
       />
 
-      <details className="group rounded-lg border border-border bg-surface md:hidden" open={hasActiveFilters}>
+      {/* A <details> cannot be ContentPanel: the panel classes (2D-2 R4). */}
+      <details className={cn(getPanelClasses(), "group md:hidden")} open={hasActiveFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground">
-          <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-primary" />{t("filter")}</span>
+          <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />{t("filter")}</span>
           {hasActiveFilters ? <span className="text-meta font-normal text-muted-foreground num">{t("activeFilterCount", { count: activeFilterCount })}</span> : null}
         </summary>
         <div className="border-t border-border p-4">
@@ -350,7 +353,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           current={filters.status || "all"}
           className="px-4 md:px-5"
         />
-        <div className="flex items-center justify-end gap-1 px-4 pt-2 text-xs text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
+        <div className="flex items-center justify-end gap-1 px-4 pt-2 text-meta text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
         <div className={`${getMobileCardListClasses()} p-3`}>
           {requestsWithEvidence.length === 0 ? <ActionEmptyState {...emptyState} /> : requestsWithEvidence.map((request) => {
             const stage = getDisposalStage(request.requestStatus)
@@ -358,12 +361,12 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
             return (
               <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                 <div className="flex min-w-0 flex-col gap-2">
-                  <div className="flex flex-wrap items-center gap-2"><Link href={detailHref} className="text-sm text-foreground hover:text-primary"><span className="tag font-medium">{request.disposalNo}</span></Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="text-xs text-primary hover:underline"><span className="tag">{request.batch.batchNo}</span></Link> : null}</div>
-                  <div><div className="text-sm text-foreground"><span className="tag font-medium">{request.asset.assetTag}</span></div><div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{request.asset.name}</div></div>
+                  <div className="flex flex-wrap items-center gap-2"><Link href={detailHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm text-foreground md:min-h-0")}><span className="tag font-medium">{request.disposalNo}</span></Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}><span className="tag">{request.batch.batchNo}</span></Link> : null}</div>
+                  <div><div className="text-sm text-foreground"><span className="tag font-medium">{request.asset.assetTag}</span></div><div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{request.asset.name}</div></div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><StatusBadge label={t(`types.${request.disposalType}`)} tone="muted" /></div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm"><MobileDisposalField label={t("requestedBy")} value={request.requestedBy.fullNameTh} /><MobileDisposalField label={t("requestDate")} value={formatDateTime(request.requestDate)} /></div>
-                <details className="mt-3 rounded-md border border-border bg-surface px-3 py-2"><summary className="min-h-9 cursor-pointer text-sm font-medium text-primary">{t("moreDetails")}</summary><dl className="grid gap-3 border-t border-border pt-3 text-sm"><MobileDisposalField label={t("reason")} value={request.reason} /><MobileDisposalField label={t("approver")} value={request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : null} /><MobileDisposalField label={t("value")} value={getRequestValue(request, tCommon("baht"))} /></dl></details>
+                <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><Chip>{t(`types.${request.disposalType}`)}</Chip></div>
+                <KeyValueList className="mt-3" items={[{ key: "requestedBy", label: t("requestedBy"), value: request.requestedBy.fullNameTh }, { key: "requestDate", label: t("requestDate"), value: formatDateTime(request.requestDate) }]} />
+                <details className="mt-3 border-t border-border-soft"><summary className="cursor-pointer py-3 text-sm font-medium text-primary">{t("moreDetails")}</summary><KeyValueList items={[{ key: "reason", label: t("reason"), value: request.reason }, { key: "approver", label: t("approver"), value: request.approver ? <><span className="tag">{request.approver.code}</span> - {request.approver.fullNameTh}</> : null }, { key: "value", label: t("value"), value: getRequestValue(request, tCommon("baht")) }]} /></details>
                 {bulkApprovalEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="mobile" /></div> : bulkExecutionEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="mobile" /></div> : null}
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} labels={nextActionLabels} /></div>
               </article>
@@ -401,16 +404,16 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                     <DataTableCell className="w-12 py-0" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="desktop" /></DataTableCell>
                   ) : null}
                   <DataTableCell className="whitespace-nowrap">
-                    <Link href={detailHref} className="text-foreground hover:text-primary"><span className="tag font-medium">{request.disposalNo}</span></Link>
-                    {request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="mt-1 block text-xs text-primary hover:underline"><span className="tag">{request.batch.batchNo}</span></Link> : null}
+                    <Link href={detailHref} className={cn(linkVariants({ size: "inherit" }), "text-foreground")}><span className="tag font-medium">{request.disposalNo}</span></Link>
+                    {request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className={cn(linkVariants(), "mt-1 block")}><span className="tag">{request.batch.batchNo}</span></Link> : null}
                   </DataTableCell>
                   <DataTableCell className="min-w-56">
                     <div className="text-foreground"><span className="tag font-medium">{request.asset.assetTag}</span></div>
-                    <div className="mt-1 text-xs text-muted-foreground">{request.asset.name}</div>
+                    <div className="mt-1 text-meta text-muted-foreground">{request.asset.name}</div>
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap text-muted-foreground">
                     <div>{t(`types.${request.disposalType}`)}</div>
-                    <div className="mt-1 text-xs num">{orNil(getRequestValue(request, tCommon("baht")))}</div>
+                    <div className="mt-1 text-meta num">{orNil(getRequestValue(request, tCommon("baht")))}</div>
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap text-muted-foreground"><span className="tag">{request.requestedBy.code}</span> - {request.requestedBy.fullNameTh}</DataTableCell>
                   <DataTableCell className="whitespace-nowrap"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /></DataTableCell>
@@ -531,8 +534,4 @@ function getRequestValue(request: DisposalActionRequest, unit: string) {
   if (request.saleValue != null) return formatMoney(Number(request.saleValue), { unit })
   if (request.salvageValue != null) return formatMoney(Number(request.salvageValue), { unit })
   return null
-}
-
-function MobileDisposalField({ label, value }: { label: string; value: ReactNode }) {
-  return <div className="min-w-0 rounded-md bg-background px-3 py-2"><div className="text-xs font-medium text-muted-foreground">{label}</div><div className="mt-1 break-words text-sm text-foreground">{orNil(value)}</div></div>
 }

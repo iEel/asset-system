@@ -169,7 +169,8 @@ const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Plan 2D-4 Task 27 (AP-8): MobileAuditField (the audit rounds phone card).
 // Plan 2D-4 Task 29 (AP-10): PendingInfo (the audit pending phone card).
 // Plan 2D-4 Task 38 (DS-9): ReviewValue (the bulk disposal execution review).
-const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField|FindingComparison|MobileAuditField|PendingInfo|ReviewValue)\b/g
+// Plan 2D-4 Task 39 (DS-10): MobileDisposalField (the disposal queue's phone card).
+const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField|FindingComparison|MobileAuditField|PendingInfo|ReviewValue|MobileDisposalField)\b/g
 const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 const pageCurrent = (text: string) => /"page"/.test(jsxAttrValue(text, "aria-current") ?? "")

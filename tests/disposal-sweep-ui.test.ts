@@ -103,3 +103,17 @@ test("bulk execution: a quiet toolbar, danger and warning Notices, KeyValueList 
   assert.equal(source.match(/divide-y divide-border-soft rounded-md border border-border/g)?.length, 2, "the request list and the result list")
   assert.doesNotMatch(source, /function (?:ReviewValue|SummaryValue)\b|bg-warning-soft|border-warning-border|text-success|text-danger|border-y border-border|\btext-xs\b|text-lg|h-4 w-4 text-primary|copy\.notProvided\}/)
 })
+
+test("disposal queue: the phone filter on the panel classes, text links with a 44px phone target, the type a Chip and the phone facts KeyValueLists (spec 2D D9, D19, M22, M29)", () => {
+  const source = read("src/app/[locale]/(dashboard)/disposal/page.tsx")
+  assert.match(source, /<details className=\{cn\(getPanelClasses\(\), "group md:hidden"\)\} open=\{hasActiveFilters\}>/)
+  assert.match(source, /<SlidersHorizontal className="h-4 w-4" aria-hidden="true" \/>/)
+  assert.match(source, /<Link href=\{detailHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center text-sm text-foreground md:min-h-0"\)\}><span className="tag font-medium">\{request\.disposalNo\}<\/span><\/Link>/)
+  assert.match(source, /className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}><span className="tag">\{request\.batch\.batchNo\}<\/span><\/Link>/)
+  assert.match(source, /<Link href=\{detailHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "text-foreground"\)\}><span className="tag font-medium">\{request\.disposalNo\}<\/span><\/Link>/, "the row's own code stays ink")
+  assert.match(source, /className=\{cn\(linkVariants\(\), "mt-1 block"\)\}><span className="tag">\{request\.batch\.batchNo\}<\/span><\/Link>/)
+  assert.match(source, /<Chip>\{t\(`types\.\$\{request\.disposalType\}`\)\}<\/Chip>/)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the phone card's facts and its more-details list")
+  assert.match(source, /<details className="mt-3 border-t border-border-soft"><summary className="cursor-pointer py-3 text-sm font-medium text-primary">\{t\("moreDetails"\)\}<\/summary><KeyValueList /)
+  assert.doesNotMatch(source, /function MobileDisposalField\b|hover:text-primary|hover:underline|\btext-xs\b|rounded-lg border|bg-surface px-3 py-2|tone="muted" \/>/)
+})
