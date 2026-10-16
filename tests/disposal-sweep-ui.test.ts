@@ -150,3 +150,18 @@ test("disposal batch page: the shared facts a ContentPanel, the requests a flush
   assert.match(source, /<article>\n\s+<div className="flex items-start justify-between gap-3">/)
   assert.doesNotMatch(source, /<section\b|rounded-lg border|PackageCheck|text-lg|\btext-xs\b|text-primary/)
 })
+
+test("disposal print page: money through formatMoney with the baht unit, as on the screen (spec 2D D10, M24)", () => {
+  const source = read("src/app/[locale]/(print)/disposal/[id]/print/page.tsx")
+  assert.match(source, /^import \{ formatMoney \} from "@\/lib\/display-format"$/m)
+  assert.equal(source.match(/formatMoney\(Number\(disposalRequest\.(?:actualSaleValue|actualSalvageValue|saleValue|salvageValue|asset\.purchasePrice)\), \{ unit: tCommon\("baht"\) \}\)/g)?.length, 5)
+  assert.doesNotMatch(source, /formatCurrency/)
+})
+
+test("review focus 2: a missing amount on the disposal printout stays null and prints the print page's dash, never 0.00 บาท (plan 2D-4)", () => {
+  const source = read("src/app/[locale]/(print)/disposal/[id]/print/page.tsx")
+  for (const field of ["actualSaleValue", "actualSalvageValue", "saleValue", "salvageValue", "asset.purchasePrice"]) {
+    const name = field.replace(".", "\\.")
+    assert.match(source, new RegExp(`disposalRequest\\.${name} == null \\? null : formatMoney\\(Number\\(disposalRequest\\.${name}\\), \\{ unit: tCommon\\("baht"\\) \\}\\)`), field)
+  }
+})

@@ -275,7 +275,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV3: {
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // → 5 (KEEP): print page, 2D (A/08:305)
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // → 1 (KEEP): print page, 2D (A/08:305)
   },
   LS1: {
@@ -325,7 +324,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}asset-operations/void-document-banner.tsx`]: 3, // print page, the void banner prints on the A4 document (R-n, plan 2D-4)
   },
   LV3: {
-    "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // print page, 2D (A/08:305)
     "src/app/[locale]/(print)/maintenance/[id]/print/page.tsx": 1, // print page, 2D (A/08:305)
   },
   LN1: {

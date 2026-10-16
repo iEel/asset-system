@@ -2,7 +2,8 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { formatMoney } from "@/lib/display-format"
+import { formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 
@@ -71,8 +72,8 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
     { label: t("executedBy"), value: disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null },
     { label: t("recipientName"), value: disposalRequest.recipientName },
     { label: t("documentNo"), value: disposalRequest.documentNo },
-    { label: t("actualSaleValue"), value: disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue)) },
-    { label: t("actualSalvageValue"), value: disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue)) },
+    { label: t("actualSaleValue"), value: disposalRequest.actualSaleValue == null ? null : formatMoney(Number(disposalRequest.actualSaleValue), { unit: tCommon("baht") }) },
+    { label: t("actualSalvageValue"), value: disposalRequest.actualSalvageValue == null ? null : formatMoney(Number(disposalRequest.actualSalvageValue), { unit: tCommon("baht") }) },
     { label: t("completedAt"), value: formatDateTime(disposalRequest.completedAt) },
     { label: t("executionRemark"), value: disposalRequest.executionRemark },
     disposalRequest.evidenceExceptionReason ? { label: t("historicalEvidenceSummary"), value: t("historicalEvidenceBadge") } : null,
@@ -112,8 +113,8 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
             { label: t("requestDate"), value: formatDateTime(disposalRequest.requestDate) },
             { label: t("approver"), value: disposalRequest.approver ? `${disposalRequest.approver.code} - ${disposalRequest.approver.fullNameTh}` : null },
             { label: t("approvedAt"), value: formatDateTime(disposalRequest.approvedAt) },
-            { label: t("saleValue"), value: disposalRequest.saleValue == null ? null : formatCurrency(Number(disposalRequest.saleValue)) },
-            { label: t("salvageValue"), value: disposalRequest.salvageValue == null ? null : formatCurrency(Number(disposalRequest.salvageValue)) },
+            { label: t("saleValue"), value: disposalRequest.saleValue == null ? null : formatMoney(Number(disposalRequest.saleValue), { unit: tCommon("baht") }) },
+            { label: t("salvageValue"), value: disposalRequest.salvageValue == null ? null : formatMoney(Number(disposalRequest.salvageValue), { unit: tCommon("baht") }) },
             { label: t("requestEvidence"), value: `${evidenceCount + batchEvidenceCount}` },
           ],
         },
@@ -132,7 +133,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
             { label: t("custodian"), value: disposalRequest.asset.custodian ? `${disposalRequest.asset.custodian.code} - ${disposalRequest.asset.custodian.fullNameTh}` : null },
             { label: t("currentStatus"), value: disposalRequest.asset.status.nameTh },
             { label: t("currentCondition"), value: disposalRequest.asset.condition.nameTh },
-            { label: tAsset("purchasePrice"), value: disposalRequest.asset.purchasePrice == null ? null : formatCurrency(Number(disposalRequest.asset.purchasePrice)) },
+            { label: tAsset("purchasePrice"), value: disposalRequest.asset.purchasePrice == null ? null : formatMoney(Number(disposalRequest.asset.purchasePrice), { unit: tCommon("baht") }) },
           ],
         },
         {
