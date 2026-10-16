@@ -131,3 +131,12 @@ test("disposal request page: ContentPanels, the batch an info Notice, the histor
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/assets\/\$\{disposalRequest\.asset\.id\}`\} className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full"\)\}>/)
   assert.doesNotMatch(source, /function TextBlock\b|rounded-lg border|bg-(?:primary|warning)-soft|border-(?:primary|warning)-border|rounded-full|text-lg|\btext-xs\b|hover:bg-accent|sm:h-9|AlertTriangle|text-primary/)
 })
+
+test("disposal batch history: a flush ContentPanel with shared phone rows, a text link with a 44px phone target and 13px meta lines (spec 2D D9, D19, M29)", () => {
+  const source = read("src/app/[locale]/(dashboard)/disposal/batches/page.tsx")
+  assert.match(source, /<ContentPanel divided flush>\n\s+<ContentPanelRows className="md:hidden">/)
+  assert.match(source, /return <li key=\{batch\.id\}><article><div className="flex items-start justify-between gap-3">/)
+  assert.match(source, /<Link href=\{href\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center text-sm text-foreground md:min-h-0"\)\}><span className="tag font-medium">\{batch\.batchNo\}<\/span><\/Link>/)
+  assert.match(source, /<\/DataTableFoot>\n\s+<\/ContentPanel>/)
+  assert.doesNotMatch(source, /<section\b|rounded-lg border|hover:text-primary|\btext-xs\b|divide-border md:hidden/)
+})

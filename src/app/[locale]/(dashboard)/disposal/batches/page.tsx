@@ -13,8 +13,9 @@ import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { cn, formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
@@ -84,14 +85,14 @@ export default async function DisposalBatchHistoryPage({ params, searchParams }:
       {batches.length === 0 ? (
         <ActionEmptyState icon={<FileStack className="h-6 w-6" />} title={t("batchHistoryEmpty")} description={t("batchHistoryEmptyHelp")} actionHref={canCreate ? `/${locale}/disposal/batch/new` : undefined} actionLabel={canCreate ? t("batchCreateTitle") : undefined} />
       ) : (
-        <section className="overflow-hidden rounded-lg border border-border bg-surface">
-          <div className="divide-y divide-border md:hidden">
+        <ContentPanel divided flush>
+          <ContentPanelRows className="md:hidden">
             {batches.map((batch) => {
               const status = deriveDisposalBatchStatus(batch.disposalRequests.map((request) => request.requestStatus))
               const href = batchHref(batch.id)
-              return <article key={batch.id} className="p-4"><div className="flex items-start justify-between gap-3"><div><Link href={href} className="text-sm text-foreground hover:text-primary"><span className="tag font-medium">{batch.batchNo}</span></Link><p className="mt-1 text-xs text-muted-foreground">{t(`types.${batch.disposalType}`)} · {formatDateTime(batch.requestDate)}</p></div><BatchStatus status={status} label={status === "partial" ? t("batchStatuses.partial") : t(`statuses.${status}`)} /></div><div className="mt-3 flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground">{batch.requestedBy.fullNameTh}</span><span className="font-medium text-foreground">{t("batchItemCount", { count: batch.disposalRequests.length })}</span></div><Link href={href} className={cn(buttonVariants({ variant: "outline" }), "mt-3 w-full")}>{t("openBatch")}</Link></article>
+              return <li key={batch.id}><article><div className="flex items-start justify-between gap-3"><div><Link href={href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm text-foreground md:min-h-0")}><span className="tag font-medium">{batch.batchNo}</span></Link><p className="mt-1 text-meta text-muted-foreground">{t(`types.${batch.disposalType}`)} · {formatDateTime(batch.requestDate)}</p></div><BatchStatus status={status} label={status === "partial" ? t("batchStatuses.partial") : t(`statuses.${status}`)} /></div><div className="mt-3 flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground">{batch.requestedBy.fullNameTh}</span><span className="font-medium text-foreground">{t("batchItemCount", { count: batch.disposalRequests.length })}</span></div><Link href={href} className={cn(buttonVariants({ variant: "outline" }), "mt-3 w-full")}>{t("openBatch")}</Link></article></li>
             })}
-          </div>
+          </ContentPanelRows>
           <DataTable framed={false} className="hidden md:block" caption={t("batchHistory")} scrollHint={tCommon("tableScrollHint")}>
             <DataTableHeader>
               <tr>
@@ -111,7 +112,7 @@ export default async function DisposalBatchHistoryPage({ params, searchParams }:
                   <ClickableTableRow key={batch.id} href={href} label={`${t("openBatch")}: ${batch.batchNo}`}>
                     <DataTableCell className="whitespace-nowrap">
                       <span className="tag font-medium text-foreground">{batch.batchNo}</span>
-                      <div className="mt-1 text-xs text-muted-foreground">{t("batchItemCount", { count: batch.disposalRequests.length })}</div>
+                      <div className="mt-1 text-meta text-muted-foreground">{t("batchItemCount", { count: batch.disposalRequests.length })}</div>
                     </DataTableCell>
                     <DataTableCell className="text-muted-foreground">{t(`types.${batch.disposalType}`)}</DataTableCell>
                     <DataTableCell className="text-muted-foreground"><span className="tag">{batch.requestedBy.code}</span> - {batch.requestedBy.fullNameTh}</DataTableCell>
@@ -149,7 +150,7 @@ export default async function DisposalBatchHistoryPage({ params, searchParams }:
               }}
             />
           </DataTableFoot>
-        </section>
+        </ContentPanel>
       )}
     </div>
   )
