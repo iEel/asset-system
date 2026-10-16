@@ -36,3 +36,21 @@ test("asset page: a link to a section that the current view hides opens the view
   // Only sections of the overview view stay plain "#id" links: they render in the overview view only.
   assert.doesNotMatch(source, /["`]#(?:ownership|components|handover|movement|maintenance|audit)["`]|\bstatusHref\b/)
 })
+
+test("transaction cancel dialog: the error is the first thing in the body, the blockers a warning Notice, the count formatCount (spec 2D D7, plan 2D-3 R2)", () => {
+  const source = read(`${C}asset-operations/transaction-cancel-dialog.tsx`)
+  const body = source.slice(source.indexOf("<AccessibleDialogBody>"), source.indexOf("</AccessibleDialogBody>"))
+  assert.match(body, /\{error \? \(\n\s+<Notice tone="danger" role="alert"[^>]*>\n\s+<ApiErrorText error=\{error\} \/>\n\s+<\/Notice>\n\s+\) : null\}/)
+  assert.ok(body.indexOf('<Notice tone="danger"') < body.indexOf("<dl "), "an error from the dialog's action comes before the facts (DESIGN.md Dialogs)")
+  assert.match(body, /<Notice tone="warning" role="status" title=\{labels\.blockedTitle\}[^>]*>\n\s+<p>\{labels\.blockedDescription\}<\/p>\n\s+<ul className="mt-2 list-disc space-y-1 pl-5 text-foreground">/)
+  assert.match(source, /\[labels\.components, formatCount\(componentCount\)\]/)
+  assert.doesNotMatch(source, /AlertTriangle|warning-soft|warning-border|text-danger|String\(componentCount\)|min-h-5/)
+})
+
+test("review focus 3: a blocked cancellation keeps its confirm and reason disabled, and the warning Notice says why (plan 2D-4)", () => {
+  const source = read(`${C}asset-operations/transaction-cancel-dialog.tsx`)
+  assert.match(source, /<Button variant="destructive" busy=\{saving\} disabled=\{loading \|\| blockers\.length > 0\} onClick=\{\(\) => void submitCancellation\(\)\}>/)
+  assert.match(source, /<Textarea ref=\{reasonRef\}[^\n]*disabled=\{saving \|\| blockers\.length > 0\}/)
+  assert.match(source, /\{blockers\.length > 0 \? \(\n\s+<Notice tone="warning" role="status"/)
+  assert.match(source, /\{blockers\.map\(\(blocker\) => <li key=\{blocker\}>\{labels\.blockers\[blocker\] \?\? blocker\}<\/li>\)\}/, "every blocker is named in words")
+})
