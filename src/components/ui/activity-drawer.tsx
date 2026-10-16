@@ -3,6 +3,7 @@
 import { useState, type RefObject } from "react"
 import { Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { Button } from "@/components/ui/button"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -73,11 +74,12 @@ export function ActivityDrawer({
               {items.map((item, index) => (
                 <li key={`${item.label}-${index}`} className="rounded-md border border-border bg-background p-3">
                   <div className="flex items-start gap-3">
-                    <span className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", getToneDotClass(item.tone))} />
+                    {/* Spec 2D M22: the tone is a status shape (ring, dot, triangle, diamond, bar), so it does not rely on color. */}
+                    <span aria-hidden="true" className={cn(statusMarkerVariants({ tone: item.tone ?? "neutral" }), "mt-2")} />
                     <div className="min-w-0">
-                      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{item.label}</div>
+                      <div className="text-meta font-medium text-muted-foreground">{item.label}</div>
                       <div className="mt-1 break-words text-sm font-semibold text-foreground">{item.value}</div>
-                      {item.meta ? <div className="mt-1 text-xs text-muted-foreground">{item.meta}</div> : null}
+                      {item.meta ? <div className="mt-1 text-meta text-muted-foreground">{item.meta}</div> : null}
                     </div>
                   </div>
                 </li>
@@ -88,13 +90,4 @@ export function ActivityDrawer({
       </SheetContent>
     </Sheet>
   )
-}
-
-function getToneDotClass(tone: ActivityDrawerItem["tone"]) {
-  if (tone === "danger") return "bg-danger"
-  if (tone === "warning") return "bg-warning"
-  if (tone === "success") return "bg-success"
-  if (tone === "info") return "bg-info"
-  if (tone === "primary") return "bg-primary"
-  return "bg-muted-foreground"
 }
