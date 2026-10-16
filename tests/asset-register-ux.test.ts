@@ -157,7 +157,7 @@ test("asset import history formats hidden asset count when rendering", () => {
 
   assert.doesNotMatch(source, /moreAssets:\s*t\("importHistoryMoreAssets"\)/)
   assert.match(source, /moreAssets:\s*\(count: string\) => t\("importHistoryMoreAssets", \{ count \}\)/)
-  assert.match(source, /labels\.moreAssets\(batch\.rollbackSummary\.hiddenAssetCount\.toLocaleString\("th-TH"\)\)/)
+  assert.match(source, /labels\.moreAssets\(formatCount\(batch\.rollbackSummary\.hiddenAssetCount\)\)/)
 })
 
 test("asset register reuses the authoritative activity filter type", () => {

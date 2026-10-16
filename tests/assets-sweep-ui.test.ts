@@ -188,3 +188,17 @@ test("import panel (M15): ContentPanels, Chip mappings, a StatusBadge batch stat
   assert.match(source, /return `\$\{formatCount\(Math\.max\(1, Math\.round\(size \/ 1024\)\)\)\} KB`/)
   assert.doesNotMatch(source, /function (?:SummaryItem|SummaryPill|getBatchStatusClass)\b|"-"|toLocaleString|<table\b|<th\b|uppercase|bg-muted\/|rounded-full|primary-soft|info-soft|success-soft|warning-soft|\btext-xs\b|text-lg font-bold/)
 })
+
+test("import-export page: link cards on the panel frame with download for /api, the history a ContentPanel with StatusBadges, EmptyNote and no raw colors (spec 2D D9, M22, M29, M31)", () => {
+  const source = read(`${D}asset-management/import-export/page.tsx`)
+  assert.equal(source.match(/<ActionLink\n\s+download\n/g)?.length, 2, "the template and the export are files")
+  assert.match(source, /<a href=\{href\} download className=\{actionCardClasses\}>/)
+  assert.match(source, /<Link href=\{href\} className=\{actionCardClasses\}>/)
+  assert.match(source, /const actionCardClasses = cn\(getPanelClasses\(\), "block p-4 transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-5"\)/)
+  assert.match(source, /<ContentPanel title=\{labels\.title\} description=\{labels\.help\}>/)
+  assert.match(source, /<EmptyNote>\{labels\.empty\}<\/EmptyNote>/)
+  assert.match(source, /<StatusBadge label=\{formatImportBatchStatus\(batch\.status, labels\)\} tone=\{getAssetImportBatchStatusTone\(batch\.status\)\} \/>/)
+  assert.match(source, /<StatusBadge\n\s+label=\{batch\.rollbackSummary\.reversible \? labels\.rollbackReady : labels\.rollbackBlocked\}\n\s+tone=\{batch\.rollbackSummary\.reversible \? "success" : "muted"\}/)
+  assert.match(source, /<span className="break-all font-mono">\{batch\.batchId\}<\/span>/)
+  assert.doesNotMatch(source, /\b(?:bg|text|border)-amber-\d|primary-soft|border-dashed|rounded-full|toLocaleString|text-lg|\btext-xs\b|\{labels\.status\}: \{batch\.status\}/)
+})

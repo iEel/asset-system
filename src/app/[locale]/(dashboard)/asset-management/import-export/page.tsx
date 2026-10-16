@@ -1,15 +1,21 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { getTranslations } from "next-intl/server"
-import { Download, FileDown, FileSpreadsheet, History, RotateCcw } from "lucide-react"
+import { Download, FileDown, FileSpreadsheet } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { getAssetImportBatchStatusTone } from "@/lib/asset-import-batch"
 import { buildAssetImportHistory, type AssetImportHistoryItem } from "@/lib/asset-import-history"
+import { getPanelClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { PageHeader } from "@/components/ui/page-header"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { buttonVariants } from "@/components/ui/button-variants"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 
 type AssetImportExportPageProps = {
   params: Promise<{ locale: string }>
@@ -35,12 +41,14 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
 
       <section className="grid gap-3 md:grid-cols-3">
         <ActionLink
+          download
           href="/api/assets/import-template"
           icon={<FileSpreadsheet className="h-5 w-5" />}
           title={t("downloadTemplate")}
           description={tTools("downloadTemplateDescription")}
         />
         <ActionLink
+          download
           href="/api/assets/export"
           icon={<FileDown className="h-5 w-5" />}
           title={t("exportFiltered")}
@@ -112,7 +120,10 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           rollbackBlocked: t("importHistoryRollbackBlocked"),
           rollbackAssets: t("importHistoryRollbackAssets"),
           moreAssets: (count: string) => t("importHistoryMoreAssets", { count }),
-          status: t("status"),
+          statusReady: t("importBatchStatusReady"),
+          statusPartial: t("importBatchStatusPartial"),
+          statusBlocked: t("importBatchStatusBlocked"),
+          statusEmpty: t("importBatchStatusEmpty"),
         }}
       />
 
@@ -142,60 +153,55 @@ function ImportHistoryPanel({
     rollbackBlocked: string
     rollbackAssets: string
     moreAssets: (count: string) => string
-    status: string
+    statusReady: string
+    statusPartial: string
+    statusBlocked: string
+    statusEmpty: string
   }
 }) {
+  // Spec 2D D9: the history is a ContentPanel; each batch is a quiet grouping, and its state and rollback are StatusBadges.
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-foreground">{labels.title}</h2>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.help}</p>
-        </div>
-      </div>
-
+    <ContentPanel title={labels.title} description={labels.help}>
       {history.length === 0 ? (
-        <div className="mt-4 rounded-md border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">{labels.empty}</div>
+        <EmptyNote>{labels.empty}</EmptyNote>
       ) : (
-        <div className="mt-4 grid gap-3">
+        <div className="grid gap-3">
           {history.map((batch) => (
-            <article key={batch.id} className="rounded-lg border border-border bg-background p-4">
+            <article key={batch.id} className="rounded-md border border-border bg-background p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-foreground">{batch.batchId}</h3>
-                    <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                      {labels.status}: {batch.status}
-                    </span>
+                    {/* The batch id is long and must wrap, so it keeps font-mono with break-all (2D-2 R3). */}
+                    <h3 className="min-w-0 text-sm font-medium text-foreground">
+                      <span className="break-all font-mono">{batch.batchId}</span>
+                    </h3>
+                    <StatusBadge label={formatImportBatchStatus(batch.status, labels)} tone={getAssetImportBatchStatusTone(batch.status)} />
                   </div>
                   <KeyValueList
                     className="mt-3"
                     items={[
                       { key: "sourceFile", label: labels.sourceFile, value: `${batch.fileName} (${formatFileSize(batch.fileSize)})` },
-                      { key: "imported", label: labels.imported, value: `${batch.imported}/${batch.totalRows}` },
-                      { key: "skipped", label: labels.skipped, value: `${batch.skipped}` },
+                      { key: "imported", label: labels.imported, value: `${formatCount(batch.imported)}/${formatCount(batch.totalRows)}` },
+                      { key: "skipped", label: labels.skipped, value: formatCount(batch.skipped) },
                       { key: "approvedBy", label: labels.approvedBy, value: `${batch.approvedByLabel} · ${formatDateTime(batch.createdAt)}` },
                     ]}
                   />
                 </div>
 
-                <div className={batch.rollbackSummary.reversible ? "rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900" : "rounded-lg border border-border bg-surface p-3 text-muted-foreground"}>
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <RotateCcw className="h-4 w-4" aria-hidden="true" />
-                    {batch.rollbackSummary.reversible ? labels.rollbackReady : labels.rollbackBlocked}
-                  </div>
-                  <p className="mt-1 text-xs">
-                    {labels.rollbackAssets}: {batch.rollbackSummary.assetCount.toLocaleString("th-TH")}
-                  </p>
+                <div className="flex shrink-0 flex-col items-start gap-1">
+                  <StatusBadge
+                    label={batch.rollbackSummary.reversible ? labels.rollbackReady : labels.rollbackBlocked}
+                    tone={batch.rollbackSummary.reversible ? "success" : "muted"}
+                  />
+                  <span className="text-meta text-muted-foreground">
+                    {labels.rollbackAssets}: {formatCount(batch.rollbackSummary.assetCount)}
+                  </span>
                 </div>
               </div>
 
               {batch.rollbackSummary.previewAssets.length > 0 ? (
-                <div className="mt-3 rounded-md border border-border bg-surface p-3">
-                  <div className="text-xs font-medium text-muted-foreground">{labels.rollbackAssets}</div>
+                <div className="mt-3 border-t border-border-soft pt-3">
+                  <div className="text-meta font-medium text-muted-foreground">{labels.rollbackAssets}</div>
                   <ul className="mt-2 grid gap-1 text-sm text-foreground md:grid-cols-2">
                     {batch.rollbackSummary.previewAssets.map((asset) => (
                       <li key={`${batch.id}-${asset}`} className="truncate">
@@ -204,7 +210,7 @@ function ImportHistoryPanel({
                     ))}
                   </ul>
                   {batch.rollbackSummary.hiddenAssetCount > 0 ? (
-                    <p className="mt-2 text-xs text-muted-foreground">{labels.moreAssets(batch.rollbackSummary.hiddenAssetCount.toLocaleString("th-TH"))}</p>
+                    <p className="mt-2 text-meta text-muted-foreground">{labels.moreAssets(formatCount(batch.rollbackSummary.hiddenAssetCount))}</p>
                   ) : null}
                 </div>
               ) : null}
@@ -212,8 +218,17 @@ function ImportHistoryPanel({
           ))}
         </div>
       )}
-    </section>
+    </ContentPanel>
   )
+}
+
+// A status code from the audit log always goes through a label; an unknown code shows as it is (docs/19 glossary).
+function formatImportBatchStatus(status: string, labels: { statusReady: string; statusPartial: string; statusBlocked: string; statusEmpty: string }) {
+  if (status === "ready") return labels.statusReady
+  if (status === "partial") return labels.statusPartial
+  if (status === "blocked") return labels.statusBlocked
+  if (status === "empty") return labels.statusEmpty
+  return status
 }
 
 function formatFileSize(bytes: number) {
@@ -223,24 +238,40 @@ function formatFileSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+// A link card in a page grid is not a ContentPanel, so it takes the panel frame (2D-2 R4) with the link-card hover.
+const actionCardClasses = cn(getPanelClasses(), "block p-4 transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-5")
+
 function ActionLink({
   href,
   icon,
   title,
   description,
+  download = false,
 }: {
   href: string
   icon: ReactNode
   title: string
   description: string
+  /** A file from an /api route: a plain <a download> (spec 2D M31); a page in the app is a Link. */
+  download?: boolean
 }) {
-  return (
-    <a href={href} className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-primary-border hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary-soft text-primary">
+  const content = (
+    <>
+      <span aria-hidden="true" className="mb-3 flex text-muted-foreground">
         {icon}
       </span>
       <div className="font-semibold text-foreground">{title}</div>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    </>
+  )
+
+  return download ? (
+    <a href={href} download className={actionCardClasses}>
+      {content}
     </a>
+  ) : (
+    <Link href={href} className={actionCardClasses}>
+      {content}
+    </Link>
   )
 }

@@ -23,7 +23,8 @@ test("the readiness and import-export links are outline md links, not the old sa
   assert.match(importExport, /<div>\n\s+<Link href=\{`\/\$\{locale\}\/assets`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\n\s+\{tCommon\("back"\)\}\n\s+<\/Link>\n\s+<\/div>/)
   for (const source of [readiness, importExport]) {
     assert.match(source, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
-    assert.doesNotMatch(source, /getSafeActionLinkClasses|getResponsiveActionRowClasses|@\/lib\/design-system/)
+    // Plan 2D-3: import-export takes getPanelClasses for its link cards, so only the deleted helpers are banned.
+    assert.doesNotMatch(source, /getSafeActionLinkClasses|getResponsiveActionRowClasses/)
   }
 })
 
