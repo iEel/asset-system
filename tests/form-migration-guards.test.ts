@@ -287,7 +287,7 @@ const LOADER2: Record<string, number> = {
   [`${C}audit/audit-scan-check-form.tsx`]: 1, // the components loading line :286 (T2 audit mobile fix; was the header toggle)
   // 1g
   // 1e
-  [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :449
+  [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :451
   // 1f
   // 2
   // 3

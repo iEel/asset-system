@@ -3,19 +3,24 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, Loader2, PackageCheck, PackagePlus, Trash2 } from "lucide-react"
+import { CheckCircle2, Loader2, PackageCheck, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { Steps } from "@/components/ui/steps"
 import { Textarea } from "@/components/ui/textarea"
 import { getLinearStepStates } from "@/lib/step-states"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type AssetOption = {
@@ -269,29 +274,23 @@ export function AssetComponentManager({
       />
 
       {canEdit ? (
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <div className="mb-4">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <PackagePlus className="h-5 w-5 text-primary" />
-              {labels.scanOrSearch}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{labels.candidateHelp}</p>
-          </div>
-
+        <ContentPanel title={labels.scanOrSearch} description={labels.candidateHelp}>
           <Steps className="mb-4" label={labels.steps.label} steps={installSteps} />
 
           {installStep === "identify" ? (
             <div className="space-y-3">
+              {/* Spec 2D D7: a finished install is an inline success Notice; the toast already announced it, so no live role. */}
               {lastInstalledAssetTag ? (
-                <div className="flex flex-col gap-3 rounded-md border border-success-border bg-success-soft p-3 text-sm text-success sm:flex-row sm:items-center sm:justify-between">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span className="break-words">{labels.installSuccess}: {lastInstalledAssetTag}</span>
-                  </span>
-                  <Button variant="outline" size="md" className="shrink-0" onClick={() => setLastInstalledAssetTag(null)}>
-                    {labels.addAnother}
-                  </Button>
-                </div>
+                <Notice
+                  tone="success"
+                  action={
+                    <Button variant="outline" size="md" onClick={() => setLastInstalledAssetTag(null)}>
+                      {labels.addAnother}
+                    </Button>
+                  }
+                >
+                  {labels.installSuccess}: <span className="tag">{lastInstalledAssetTag}</span>
+                </Notice>
               ) : null}
               <ScannerTextInput
                 value={componentSearch}
@@ -315,7 +314,7 @@ export function AssetComponentManager({
                   onSelect={selectComponent}
                 />
               ) : (
-                <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">{labels.candidateHelp}</p>
+                <EmptyNote>{labels.candidateHelp}</EmptyNote>
               )}
             </div>
           ) : null}
@@ -363,17 +362,21 @@ export function AssetComponentManager({
 
           {installStep === "review" && selectedComponent ? (
             <div className="space-y-4">
-              <div className="rounded-md border border-primary-border bg-primary-soft p-4">
+              {/* A quiet grouping with the shared label and value list (spec 2D D19): no tint, empty values are Nil. */}
+              <div className="rounded-md border border-border bg-background p-4">
                 <h3 className="text-sm font-semibold text-foreground">{labels.reviewTitle}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.reviewHelp}</p>
-                <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-                  <ReviewItem label={labels.title} value={`${parentAsset.assetTag} - ${parentAsset.name}`} />
-                  <ReviewItem label={labels.selected} value={`${selectedComponent.assetTag} - ${selectedComponent.name}`} />
-                  <ReviewItem label={labels.componentRole} value={componentRole} />
-                  <ReviewItem label={labels.slot} value={slotNo || "-"} />
-                  <ReviewItem label={labels.installedAt} value={installedAt || "-"} />
-                  <ReviewItem label={labels.reason} value={reason || "-"} />
-                </div>
+                <KeyValueList
+                  className="mt-4"
+                  items={[
+                    { key: "parent", label: labels.title, value: <><span className="tag">{parentAsset.assetTag}</span> - {parentAsset.name}</> },
+                    { key: "component", label: labels.selected, value: <><span className="tag">{selectedComponent.assetTag}</span> - {selectedComponent.name}</> },
+                    { key: "role", label: labels.componentRole, value: componentRole },
+                    { key: "slot", label: labels.slot, value: slotNo },
+                    { key: "installedAt", label: labels.installedAt, value: installedAt ? formatDateTime(installedAt) : null },
+                    { key: "reason", label: labels.reason, value: reason },
+                  ]}
+                />
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" disabled={saving} onClick={() => setInstallStep("details")}>
@@ -386,28 +389,26 @@ export function AssetComponentManager({
               </div>
             </div>
           ) : null}
-        </section>
+        </ContentPanel>
       ) : null}
 
-      <section className="rounded-lg border border-border bg-surface p-4">
-        <h2 className="text-base font-semibold text-foreground">{labels.current}</h2>
+      <ContentPanel title={labels.current}>
         {currentComponents.length === 0 ? (
-          <p className="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">{labels.noCurrent}</p>
+          <EmptyNote>{labels.noCurrent}</EmptyNote>
         ) : (
-          <div className="mt-3 divide-y divide-border rounded-md border border-border">
+          <div className="divide-y divide-border-soft rounded-md border border-border">
             {currentComponents.map((component) => (
               <ComponentRow key={component.id} locale={locale} component={component} labels={labels} onRemove={canEdit ? () => setRemoveTarget(component) : undefined} />
             ))}
           </div>
         )}
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-4">
-        <h2 className="text-base font-semibold text-foreground">{labels.history}</h2>
+      <ContentPanel title={labels.history}>
         {componentHistory.length === 0 ? (
-          <p className="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">{labels.noHistory}</p>
+          <EmptyNote>{labels.noHistory}</EmptyNote>
         ) : (
-          <div className="mt-3 divide-y divide-border rounded-md border border-border">
+          <div className="divide-y divide-border-soft rounded-md border border-border">
             {visibleHistory.map((component) => <ComponentRow key={component.id} locale={locale} component={component} labels={labels} />)}
           </div>
         )}
@@ -416,7 +417,7 @@ export function AssetComponentManager({
             {labels.loadMore}
           </Button>
         ) : null}
-      </section>
+      </ContentPanel>
 
       <ComponentRemovalDialog
         key={removeTarget?.id ?? "closed"}
@@ -445,29 +446,33 @@ function CandidateList({
   labels: ManagerLabels
   onSelect: (candidate: AssetOption) => void
 }) {
+  // The searching line keeps its spinner (an I27 status line, FMG LOADER2); it is a line of the panel, not a box.
   if (searching) {
-    return <p className="flex items-center gap-2 rounded-md border border-border px-3 py-4 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" />{labels.searching}</p>
+    return <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" />{labels.searching}</p>
   }
 
   if (candidates.length === 0) {
-    return <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">{labels.noCandidates}</p>
+    return <EmptyNote>{labels.noCandidates}</EmptyNote>
   }
 
+  // The candidate rows stay raw buttons: a pressed list option with two lines, which Button cannot hold (plan 2D-3 R5).
   return (
-    <div className="divide-y divide-border rounded-md border border-border">
+    <div className="divide-y divide-border-soft rounded-md border border-border">
       {candidates.map((candidate) => (
         <button
           key={candidate.id}
           type="button"
           onClick={() => onSelect(candidate)}
           aria-pressed={selectedId === candidate.id}
-          className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-accent ${selectedId === candidate.id ? "bg-primary-soft" : ""}`}
+          className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-row-hover ${selectedId === candidate.id ? "bg-primary-soft" : ""}`}
         >
           <span className="min-w-0">
-            <span className="block break-words font-mono text-sm font-semibold text-foreground">{candidate.assetTag}</span>
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{candidate.name}</span>
+            <span className="block text-sm text-foreground">
+              <span className="tag font-medium">{candidate.assetTag}</span>
+            </span>
+            <span className="mt-0.5 block truncate text-meta text-muted-foreground">{candidate.name}</span>
           </span>
-          {candidate.serialNumber ? <span className="shrink-0 text-xs text-muted-foreground">SN: {candidate.serialNumber}</span> : null}
+          {candidate.serialNumber ? <span className="shrink-0 text-meta text-muted-foreground">SN: {candidate.serialNumber}</span> : null}
         </button>
       ))}
     </div>
@@ -476,11 +481,13 @@ function CandidateList({
 
 function SelectedComponent({ component, label, serialLabel }: { component: AssetOption; label: string; serialLabel: string }) {
   return (
-    <div className="rounded-md border border-success-border bg-success-soft p-3">
-      <div className="text-xs font-semibold uppercase tracking-normal text-success">{label}</div>
-      <div className="mt-1 font-mono text-sm font-semibold text-foreground">{component.assetTag}</div>
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="text-meta font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1 text-sm text-foreground">
+        <span className="tag font-medium">{component.assetTag}</span>
+      </div>
       <div className="mt-1 text-sm text-muted-foreground">{component.name}</div>
-      {component.serialNumber ? <div className="mt-1 text-xs text-muted-foreground">{serialLabel}: {component.serialNumber}</div> : null}
+      {component.serialNumber ? <div className="mt-1 text-meta text-muted-foreground">{serialLabel}: {component.serialNumber}</div> : null}
     </div>
   )
 }
@@ -489,11 +496,11 @@ function ComponentRow({ locale, component, labels, onRemove }: { locale: string;
   return (
     <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <Link href={`/${locale}/assets/${component.componentAsset.id}`} className="break-words font-mono text-sm font-semibold text-primary hover:underline">
-          {component.componentAsset.assetTag}
+        <Link href={`/${locale}/assets/${component.componentAsset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm md:min-h-0")}>
+          <span className="tag font-medium">{component.componentAsset.assetTag}</span>
         </Link>
         <div className="mt-1 text-sm text-foreground">{component.componentAsset.name}</div>
-        <div className="mt-1 text-xs text-muted-foreground">
+        <div className="mt-1 text-meta text-muted-foreground">
           {component.componentRole}{component.slotNo ? ` · ${component.slotNo}` : ""} · {formatDateTime(component.installedAt)}
           {component.evidenceCount > 0 ? ` · ${labels.evidence}: ${component.evidenceCount}` : ""}
         </div>
@@ -506,10 +513,6 @@ function ComponentRow({ locale, component, labels, onRemove }: { locale: string;
       ) : null}
     </div>
   )
-}
-
-function ReviewItem({ label, value }: { label: string; value: string }) {
-  return <div><div className="text-xs font-medium text-muted-foreground">{label}</div><div className="mt-1 break-words font-medium text-foreground">{value}</div></div>
 }
 
 function ComponentRemovalDialog({

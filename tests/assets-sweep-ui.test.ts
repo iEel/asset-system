@@ -161,3 +161,15 @@ test("asset batch form: ContentPanel sections, three DataTables, Notice by meani
   assert.match(source, /<span className="tag font-medium text-foreground">\{asset\.assetTag\}<\/span>/)
   assert.doesNotMatch(source, /function SummaryItem\b|"-"|<table\b|<thead\b|<th\b|<td\b|border-dashed|bg-accent|bg-(?:primary|success|warning|danger)-soft|text-lg|text-warning|\btext-xs\b|rounded-lg border/)
 })
+
+test("component manager: ContentPanels, a success Notice, EmptyNote, a KeyValueList review, codes as tag and text links (spec 2D D7, D9, M21, M33, D19)", () => {
+  const source = read(`${C}assets/asset-component-manager.tsx`)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 3)
+  assert.match(source, /<ContentPanel title=\{labels\.scanOrSearch\} description=\{labels\.candidateHelp\}>/)
+  assert.match(source, /<Notice\n\s+tone="success"\n\s+action=\{/)
+  assert.equal(source.match(/<EmptyNote\b/g)?.length, 4)
+  assert.match(source, /\{ key: "installedAt", label: labels\.installedAt, value: installedAt \? formatDateTime\(installedAt\) : null \}/)
+  assert.equal(source.match(/<span className="tag font-medium">/g)?.length, 3, "the candidate, the selected component and the component row")
+  assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center text-sm md:min-h-0"\)\}/)
+  assert.doesNotMatch(source, /function ReviewItem\b|"-"|font-mono|uppercase|border-dashed|bg-(?:success|primary)-soft p|border-(?:success|primary)-border|hover:bg-accent|hover:underline|\btext-xs\b|rounded-lg border/)
+})
