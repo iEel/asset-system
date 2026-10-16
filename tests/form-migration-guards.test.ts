@@ -284,7 +284,7 @@ const LOADER2: Record<string, number> = {
   // 1c
   [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :64
   // 1d
-  [`${C}audit/audit-scan-check-form.tsx`]: 1, // the components loading line :296 (T2 audit mobile fix; was the header toggle)
+  [`${C}audit/audit-scan-check-form.tsx`]: 1, // the components loading line :297 (T2 audit mobile fix; was the header toggle)
   // 1g
   // 1e
   [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :451

@@ -1,16 +1,16 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { ChevronDown, ImagePlus, Loader2, X } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
+import { ChoiceCard } from "@/components/ui/choice-card"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { Field } from "@/components/ui/field"
-import { checkboxVariants } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
 import { AuditComponentPanel } from "@/components/audit/audit-scan-panels"
 import { AuditScanCheckField } from "@/components/audit/audit-scan-check-field"
 import { isAuditComponentChecked, isAuditComponentPending, revealFocusInScrollArea } from "@/components/audit/audit-scan-helpers"
@@ -121,6 +121,7 @@ export function AuditScanCheckForm({
   const photosRef = useRef(photos)
   const mountedRef = useRef(true)
   const bodyRef = useRef<HTMLDivElement | null>(null)
+  const extrasId = useId()
   const diff = diffCheckValues(values, expected, ownershipType)
   const photoRequired = requiresCheckPhoto(mode, diff)
   const missingPhoto = photoRequired && photos.length === 0
@@ -284,11 +285,11 @@ export function AuditScanCheckForm({
         </div>
 
         {target.kind === "item" && components.installedIn.length > 0 ? (
-          <div className="rounded-md border border-info-border bg-info-soft p-2.5 text-xs text-info">
+          <Notice tone="info">
             {components.installedIn.map((parent) => (
               <p key={parent.parentAssetId}>{t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}</p>
             ))}
-          </div>
+          </Notice>
         ) : null}
 
         {target.kind === "item" && components.status === "loading" && components.components.length === 0 ? (
@@ -313,18 +314,20 @@ export function AuditScanCheckForm({
           />
         ) : null}
 
-        <div className="rounded-md border border-border">
-          <button
-            type="button"
+        <div className="space-y-2">
+          <Button
+            variant="outline"
             aria-expanded={extrasOpen}
+            aria-controls={extrasOpen ? extrasId : undefined}
             onClick={() => setExtrasOpen((current) => !current)}
-            className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-sm font-medium text-primary"
+            className="w-full justify-between"
           >
             {t("addNotePhoto")}
-            <ChevronDown className="size-4" aria-hidden="true" />
-          </button>
+            <ChevronDown aria-hidden="true" />
+          </Button>
           {extrasOpen ? (
-            <div className="space-y-3 border-t border-border p-3">
+            // A quiet grouping inside the sheet, never a frame in a frame (spec 2D D9).
+            <div id={extrasId} className="space-y-3 rounded-md border border-border bg-background p-3">
               <Field label={t("remark")}>
                 <Textarea
                   value={remark}
@@ -385,10 +388,11 @@ export function AuditScanCheckForm({
       </div>
 
       <div data-audit-check-actions className="shrink-0 space-y-2 border-t border-border px-4 py-3">
+        {/* Why save is disabled: a condition before acting, one inline line that does not grow the bar (spec 2D D7). */}
         {missingPhoto ? (
-          <p className="text-sm font-medium text-warning">
+          <Notice tone="neutral">
             {mode === "out_of_scope" ? t("auditPhotoRequiredForMismatch") : t("photoRequiredCondition")}
-          </p>
+          </Notice>
         ) : null}
         {pendingComponents.length > 0 ? (
           <p className="text-sm text-muted-foreground">{t("componentsSaveHint", { checked: checkedComponents, total: components.components.length })}</p>
@@ -410,13 +414,13 @@ export function AuditScanCheckForm({
           </Button>
         </div>
         {canApplyCorrections && mode !== "out_of_scope" && diff.some((field) => field === "location" || field === "custodian") ? (
-          <label className="flex min-h-11 items-start gap-2 rounded-md border border-border p-2.5 text-sm">
-            <input type="checkbox" checked={applyCorrections} onChange={(event) => setApplyCorrections(event.target.checked)} className={cn(checkboxVariants({ size: "lg" }), "mt-0.5")} />
-            <span>
-              <span className="block font-medium">{t("applyAuditCorrections")}</span>
-              <span className="block text-xs text-muted-foreground">{t("applyAuditCorrectionsHelp")}</span>
-            </span>
-          </label>
+          <ChoiceCard
+            type="checkbox"
+            checked={applyCorrections}
+            onChange={(event) => setApplyCorrections(event.target.checked)}
+            label={t("applyAuditCorrections")}
+            description={t("applyAuditCorrectionsHelp")}
+          />
         ) : null}
       </div>
     </div>
