@@ -2290,8 +2290,8 @@
     "reconcileStatus_reconciled": "ปรับปรุงข้อมูลแล้ว",
     "reconcileStatus_reviewed": "พิจารณาแล้ว",
     "activeFilters": "ตัวกรองที่ใช้อยู่",
-    "comparisonColumn": "ในระบบ → พบจริง",
-    "ownerDueColumn": "ผู้รับผิดชอบ · กำหนดเสร็จ"
+    "comparisonColumn": "ในระบบ → พบ",
+    "dueOn": "กำหนด {date}"
   },
   "auditPending": {
     "title": "รายการรอตรวจ",

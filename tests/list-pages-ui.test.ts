@@ -265,6 +265,9 @@ test("the finding row triggers are Button sm: approve outline, reject danger, bu
   assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setPlanOpen\(true\)\}>\n\s+<CalendarClock aria-hidden="true" \/>/)
   assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setCloseOpen\(true\)\}>\n\s+<FileUp aria-hidden="true" \/>/)
   assert.doesNotMatch(source, /<button\b|<Loader2\b|\btext-success\b|disabled:opacity-50/, "no hand-written trigger, spinner or green text is left")
+  // Audit mobile fix D8, fix round 1: in the findings table the self-review note is small warning text with its icon, no box.
+  assert.match(source, /compact \? \(\n\s+<p className="flex items-start gap-1\.5 text-left text-xs text-warning">\n\s+<AlertTriangle aria-hidden="true" className="mt-0\.5 size-3\.5 shrink-0" \/>\n\s+<span>\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/span>/)
+  assert.match(source, /<div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">/, "the phone cards keep the box")
   assert.equal(source.match(/<AccessibleDialog\b/g)?.length, 3, "the review, action-plan and close dialogs stay as they are (O21)")
 })
 
@@ -284,7 +287,7 @@ test("findings: PageHeader with a back link, StatStrip, TabNav, chips for the hi
   assert.match(source, /<FilterChipList chips=\{filterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
   assert.match(source, /<AuditFindingsBatchActions key=\{selectionKey\} findings=\{batchReviewFindings\} \/>/, "another page or filter starts the batch selection empty")
   assert.match(source, /<TableEmptyRow\n\s+colSpan=\{8\}\n\s+emptyState=\{\{[\s\S]*?actionVariant: "secondary",/)
-  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel className="w-44">\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /<DataTableHead align="right" sticky="right" className="w-50">\{tCommon\("actions"\)\}<\/DataTableHead>/)
   assert.match(source, /<AuditFindingReviewActions\n/, "the row triggers stay in the cell: their dialogs have no open() handle (I21)")
   assert.doesNotMatch(source, /<RowActions\b|<MasterDataHeader\b|<ColumnHeader\b|toLocaleString\(/)
 })
@@ -496,7 +499,7 @@ test("the rounds page coverage-gap tables wrap their number headers and carry th
 
 // Audit mobile fix D8 (2026-10-16, replaces 2B-2 Task 18 fix 2): the desktop findings table had 13 columns (2,272px in a
 // ~965px box) with approve/reject last, so reviewers scrolled right on every row. Now 8 columns that fit 1280×800; the
-// actions are pinned right (sticky) and stacked in a fixed 176px column, so below 1280 they stay in view while it scrolls.
+// actions are pinned right (sticky) in a fixed 200px column (approve and reject on one line, fix round 1), so below 1280 they stay in view while it scrolls.
 test("the findings desktop table has 8 columns with the actions pinned right (audit mobile fix D8)", () => {
   const source = read(`${D}audit/findings/page.tsx`)
   const table = source.slice(source.indexOf("<DataTable framed={false}"), source.indexOf("</DataTable>"))
@@ -508,18 +511,20 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
     `{t("findingType")}`,
     `{t("comparisonColumn")}`,
     `{tCommon("status")}`,
-    `{t("ownerDueColumn")}`,
+    `{t("actionOwner")}`,
     `{tCommon("actions")}`,
   ])
   assert.match(table, /scrollHint=\{tCommon\("tableScrollHint"\)\}/, "the shared hint still shows while the table overflows")
-  assert.match(table, /<DataTableCell align="right" sticky="right" className="w-44">\n\s+\{\/\* The triggers stay in the cell, not in ⋯/)
+  assert.match(table, /<DataTableCell align="right" sticky="right" className="w-50">\n\s+\{\/\* The triggers stay in the cell, not in ⋯/)
   assert.match(table, /\n\s+<div className="flex flex-col items-end gap-2">\n\s+\{canEdit \|\| canApprove \? \(\n\s+<AuditFindingReviewActions\n/, "the review actions and the disposal link are stacked")
   assert.match(table, /<FindingValueChange\n/, "system → found as compact text")
   assert.doesNotMatch(table, /<FindingComparison\b/, "no inner bordered box in the table (the phone cards keep it)")
   assert.match(table, /<FindingStatusBadges items=\{findingStatusBadges\(finding, resolutionState\)\} \/>/, "the five statuses in one cell")
   assert.match(table, /<AuditFindingEvidenceList\n\s+compact\n/)
   assert.match(table, /: <Nil label=\{t\("noActionOwner"\)\} \/>/)
-  assert.match(table, /\{finding\.actionDueDate \? formatDateTime\(finding\.actionDueDate\) : <Nil \/>\}/)
+  assert.match(table, /\{finding\.actionDueDate \? t\("dueOn", \{ date: formatDateTime\(finding\.actionDueDate\) \}\) : <Nil \/>\}/, "fix round 1: the second line says what the date is")
+  assert.match(table, /<AuditFindingReviewActions\n\s+compact\n/, "fix round 1: the self-review note is one or two lines of text in the table")
+  assert.doesNotMatch(table, /\bhideLabel\b/, "fix round 1: the actions header is visible, as in the mockup")
   assert.doesNotMatch(table, /\bmin-w-(?:56|64|80)\b/)
 
   const change = source.slice(source.indexOf("function FindingValueChange"), source.indexOf("function AuditFindingEvidenceList"))
@@ -533,7 +538,7 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
   assert.match(badges, /tone: RESOLUTION_STATE_TONES\[resolutionState\]/, "the resolution badge keeps its tones")
   assert.match(badges, /status: finding\.reviewStatus/)
   assert.match(badges, /status: finding\.actionStatus/)
-  assert.match(source, /<ul className="flex w-32 flex-col items-start gap-1">/, "a fixed-width status list: a long label truncates instead of widening the table")
+  assert.match(source, /<ul className="flex w-28 flex-col items-start gap-1">/, "a fixed-width status list: a long label truncates instead of widening the table")
 })
 
 // Plan 2B-4 Task 5 (spec 2B §4.4.5, §5.5, §4.6.3, bug §5.10 #7): the employee page on the page primitives. The shell

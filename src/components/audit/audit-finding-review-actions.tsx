@@ -51,6 +51,7 @@ export function AuditFindingReviewActions({
   employees,
   reviewBlocked = false,
   reviewBlockedReason,
+  compact = false,
 }: {
   findingId: string
   assetLabel: string
@@ -66,6 +67,8 @@ export function AuditFindingReviewActions({
   employees: EmployeeOption[]
   reviewBlocked?: boolean
   reviewBlockedReason?: string
+  /** The findings table: the self-review note as small text with its icon instead of a box (audit mobile fix D8). */
+  compact?: boolean
 }) {
   const t = useTranslations("auditFinding")
   const apiError = useApiError()
@@ -104,9 +107,17 @@ export function AuditFindingReviewActions({
     <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:justify-end" onClick={stopPortalClick}>
       {reviewStatus === "pending" ? (
         reviewBlocked ? (
+          // The findings table (compact) shows the note as one or two lines of text; the phone cards keep the box.
+          compact ? (
+            <p className="flex items-start gap-1.5 text-left text-xs text-warning">
+              <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+              <span>{reviewBlockedReason ?? t("segregationReviewBlocked")}</span>
+            </p>
+          ) : (
           <div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
             {reviewBlockedReason ?? t("segregationReviewBlocked")}
           </div>
+          )
         ) : (
         <>
           <Button

@@ -423,15 +423,15 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         <DataTable framed={false} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
           <DataTableHeader>
             <tr>
-              {/* 8 columns that fit the 1280×800 content box (~965px); the long headers wrap (audit mobile fix D8). */}
+              {/* 8 columns that fit the 1280×800 content box (~965px); the comparison and owner headers may wrap to two lines (audit mobile fix D8). */}
               <DataTableHead>{t("reportedAt")}</DataTableHead>
               <DataTableHead>{t("auditRound")}</DataTableHead>
               <DataTableHead>{t("asset")}</DataTableHead>
               <DataTableHead>{t("findingType")}</DataTableHead>
               <DataTableHead className="whitespace-normal">{t("comparisonColumn")}</DataTableHead>
               <DataTableHead>{tCommon("status")}</DataTableHead>
-              <DataTableHead className="whitespace-normal">{t("ownerDueColumn")}</DataTableHead>
-              <DataTableHead align="right" sticky="right" hideLabel className="w-44">{tCommon("actions")}</DataTableHead>
+              <DataTableHead className="whitespace-normal">{t("actionOwner")}</DataTableHead>
+              <DataTableHead align="right" sticky="right" className="w-50">{tCommon("actions")}</DataTableHead>
             </tr>
           </DataTableHeader>
           <DataTableBody>
@@ -499,13 +499,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     </DataTableCell>
                     <DataTableCell className="text-muted-foreground">
                       <div>{finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : <Nil label={t("noActionOwner")} />}</div>
-                      <div className="mt-0.5 text-xs">{finding.actionDueDate ? formatDateTime(finding.actionDueDate) : <Nil />}</div>
+                      <div className="mt-0.5 text-xs">{finding.actionDueDate ? t("dueOn", { date: formatDateTime(finding.actionDueDate) }) : <Nil />}</div>
                     </DataTableCell>
-                    <DataTableCell align="right" sticky="right" className="w-44">
+                    <DataTableCell align="right" sticky="right" className="w-50">
                       {/* The triggers stay in the cell, not in ⋯: their dialogs have no open() handle (spec 2B I21, O21). */}
                       <div className="flex flex-col items-end gap-2">
                         {canEdit || canApprove ? (
                           <AuditFindingReviewActions
+                            compact
                             findingId={finding.id}
                             assetLabel={assetLabel}
                             findingTypeLabel={findingTypeLabel}
@@ -741,11 +742,11 @@ type FindingStatusBadgeItem = {
   tone?: StatusTone
 }
 
-// The status badges of one finding, stacked (audit mobile fix D8). A fixed 128px list keeps the column from growing
+// The status badges of one finding, stacked (audit mobile fix D8). A fixed 112px list keeps the column from growing
 // with a long label (the table fits 1280×800): such a badge truncates and its tooltip has the whole text.
 function FindingStatusBadges({ items }: { items: FindingStatusBadgeItem[] }) {
   return (
-    <ul className="flex w-32 flex-col items-start gap-1">
+    <ul className="flex w-28 flex-col items-start gap-1">
       {items.map((item) => (
         <li key={item.key} title={`${item.title}: ${item.label}`} className="max-w-full">
           <span className="sr-only">{item.title}: </span>

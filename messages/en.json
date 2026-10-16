@@ -2291,7 +2291,7 @@
     "reconcileStatus_reviewed": "Decided",
     "activeFilters": "Active filters",
     "comparisonColumn": "System → found",
-    "ownerDueColumn": "Owner · due date"
+    "dueOn": "Due {date}"
   },
   "auditPending": {
     "title": "Pending Assets",
