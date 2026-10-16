@@ -125,3 +125,15 @@ test("room picker: no dashed trigger, meta counts, the clear button in the dialo
   assert.equal(source.match(/<button\b/g)?.length, 2)
   assert.doesNotMatch(source, /border-dashed|\btext-xs\b|tabular-nums|className="w-full"/)
 })
+
+test("scan search: the shared SearchField with its clear button and a camera Button, and results on the panel classes with the tag as tag and meta lines (spec 2D D2, D9, M25, M29, M33)", () => {
+  const source = read(`${A}audit-scan-search.tsx`)
+  assert.match(source, /<SearchField\s+ref=\{inputRef\}\s+type="text"\s+fieldSize="xl"[\s\S]*?onClear=\{onClear\}\s+clearLabel=\{t\("searchClear"\)\}\s+trailing=\{/)
+  assert.match(source, /<Button\s+variant=\{cameraOpen \? "default" : "ghost"\}\s+size="icon"\s+aria-label=\{cameraOpen \? t\("stopCamera"\) : t\("openCamera"\)\}\s+aria-pressed=\{cameraOpen\}\s+onClick=\{onToggleCamera\}\s*>/)
+  assert.match(source, /<ul className=\{cn\(getPanelClasses\(\), "divide-y divide-border overflow-hidden"\)\}>/)
+  assert.match(source, /<span className="tag font-medium">\{match\.field === "assetTag" \? highlight\(match\.item\.assetTag\) : match\.item\.assetTag\}<\/span>/)
+  // The sticky bar over main's padding stays (VFG pins its classes); only the result row stays a raw button.
+  assert.equal(source.match(/<button\b/g)?.length, 1)
+  assert.equal(source.match(/<input\b/g), null)
+  assert.doesNotMatch(source, /getFieldControlClasses|size-11|\btext-xs\b|font-semibold|rounded-md border border-border bg-surface/)
+})

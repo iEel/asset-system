@@ -12,11 +12,11 @@ test("the search field sticks to the top on phones, avoids iOS zoom and holds th
   assert.match(source, /sticky -top-4 sm:-top-6/)
   assert.doesNotMatch(source, /sticky top-0/)
   assert.doesNotMatch(source, /md:static/)
-  assert.match(source, /getFieldControlClasses\(\{ fieldSize: "xl" \}\)/)
+  assert.match(source, /<SearchField\n\s+ref=\{inputRef\}\n\s+type="text"\n\s+fieldSize="xl"/)
   assert.match(source, /inputMode="search"/)
   assert.match(source, /enterKeyHint="search"/)
   assert.match(source, /aria-label=\{cameraOpen \? t\("stopCamera"\) : t\("openCamera"\)\}/)
-  assert.match(source, /size-11/)
+  assert.match(source, /trailing=\{\n\s+<Button\n\s+variant=\{cameraOpen \? "default" : "ghost"\}\n\s+size="icon"/)
 })
 
 test("typing never searches mid-composition and Enter submits", () => {
