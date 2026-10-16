@@ -117,3 +117,17 @@ test("disposal queue: the phone filter on the panel classes, text links with a 4
   assert.match(source, /<details className="mt-3 border-t border-border-soft"><summary className="cursor-pointer py-3 text-sm font-medium text-primary">\{t\("moreDetails"\)\}<\/summary><KeyValueList /)
   assert.doesNotMatch(source, /function MobileDisposalField\b|hover:text-primary|hover:underline|\btext-xs\b|rounded-lg border|bg-surface px-3 py-2|tone="muted" \/>/)
 })
+
+test("disposal request page: ContentPanels, the batch an info Notice, the historical exception a warning Notice with its facts outside, remarks in the KeyValueLists and shape markers (spec 2D D7, D9, M21, M22, M29)", () => {
+  const source = read("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx")
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 5)
+  assert.equal(source.match(/<ContentPanel title=\{t\("(?:requestDetail|reason|decisionDetail|executionDetail|asset)"\)\}>/g)?.length, 5, "request, reason, decision, execution, asset")
+  assert.match(source, /<Notice\n\s+tone="info"\n\s+title=\{t\("sourceBatch"\)\}\n\s+action=\{<Link href=\{`\/\$\{locale\}\/disposal\/batches\/\$\{disposalRequest\.batch\.id\}`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\{t\("openBatch"\)\}<\/Link>\}\n\s+>\n\s+<span className="tag">\{disposalRequest\.batch\.batchNo\}<\/span>/)
+  assert.match(source, /<section aria-label=\{t\("historicalEvidenceSummary"\)\} className="mt-5 space-y-4">\n\s+<Notice tone="warning" title=\{t\("historicalEvidenceBadge"\)\}>/)
+  assert.match(source, /key: "approvalRemark",\n\s+label: t\("approvalRemark"\),/)
+  assert.match(source, /key: "executionRemark",\n\s+label: t\("executionRemark"\),/)
+  assert.match(source, /<section id="history" className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone: "primary" \}\), "absolute top-2 -left-1"\)\} \/>/)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/assets\/\$\{disposalRequest\.asset\.id\}`\} className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full"\)\}>/)
+  assert.doesNotMatch(source, /function TextBlock\b|rounded-lg border|bg-(?:primary|warning)-soft|border-(?:primary|warning)-border|rounded-full|text-lg|\btext-xs\b|hover:bg-accent|sm:h-9|AlertTriangle|text-primary/)
+})

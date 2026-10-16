@@ -113,6 +113,6 @@ test("disposal request header is PageHeader with the asset name and a back butto
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}\s*actions=\{\s*<div className="hidden items-center gap-2 md:flex">/)
   assert.ok(source.indexOf("<PageHeader") < source.indexOf("<DisposalWorkflowStepper"), "the stepper stays under the header")
   assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/, "room for the ActionBar and its next step (2C plan 5, O11)")
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 5)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 6, "plan 2D-4 adds the decision remark")
   assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|ArrowLeft|formatCurrency|function Info\b|"-"/)
 })

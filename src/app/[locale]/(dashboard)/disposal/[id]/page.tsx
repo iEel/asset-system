@@ -1,13 +1,13 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, ClipboardCheck, FileText, History, Package, Printer } from "lucide-react"
+import { FileText, History, Printer } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getDisposalOptions } from "@/lib/disposal-options"
 import { formatMoney } from "@/lib/display-format"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
@@ -15,15 +15,18 @@ import { DisposalExecutionButton } from "@/components/disposal/disposal-executio
 import { DisposalWorkflowStepper } from "@/components/disposal/disposal-workflow-stepper"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { KeyValueList } from "@/components/ui/key-value-list"
-import { Nil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { filterDisposalExecutorOptions, getDisposalDecisionStatusOptions, getDisposalExecutionStatusOptions, getDisposalSegregationError } from "@/lib/disposal-policy"
 import { getDisposalNextAction, getDisposalStage } from "@/lib/disposal-stage"
 import { formatMovementType } from "@/lib/asset-detail-format"
+import { getPanelClasses } from "@/lib/design-system"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 
 type DisposalDetailPageProps = {
@@ -209,10 +212,13 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         }}
       />
       {disposalRequest.batch ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-primary-border bg-primary-soft px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <div><span className="font-medium text-foreground">{t("sourceBatch")}</span><span className="ml-2 text-muted-foreground">{disposalRequest.batch.batchNo}</span></div>
-          <Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className="inline-flex min-h-10 items-center justify-center rounded-md border border-primary-border bg-surface px-3 font-medium text-primary hover:bg-primary-soft">{t("openBatch")}</Link>
-        </div>
+        <Notice
+          tone="info"
+          title={t("sourceBatch")}
+          action={<Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className={buttonVariants({ variant: "outline", size: "md" })}>{t("openBatch")}</Link>}
+        >
+          <span className="tag">{disposalRequest.batch.batchNo}</span>
+        </Notice>
       ) : null}
       <ActionBar
         label={tCommon("actions")}
@@ -226,11 +232,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <FileText className="h-5 w-5 text-primary" />
-              {t("requestDetail")}
-            </h2>
+          <ContentPanel title={t("requestDetail")}>
             <KeyValueList
               items={[
                 { key: "disposalNo", label: t("disposalNo"), value: <span className="tag">{disposalRequest.disposalNo}</span> },
@@ -257,29 +259,28 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                 { key: "source", label: t("source"), value: formatSource(disposalRequest.sourceType, disposalRequest.sourceId) },
               ]}
             />
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">{t("reason")}</h2>
+          <ContentPanel title={t("reason")}>
             <p className="whitespace-pre-wrap text-sm text-muted-foreground">{disposalRequest.reason}</p>
-          </section>
+          </ContentPanel>
 
           {disposalRequest.requestStatus !== "pending" ? (
-            <section className="rounded-lg border border-border bg-surface p-6">
-              <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-                <ClipboardCheck className="h-5 w-5 text-primary" />
-                {t("decisionDetail")}
-              </h2>
-              <TextBlock label={t("approvalRemark")} value={disposalRequest.approvalRemark} />
-            </section>
+            <ContentPanel title={t("decisionDetail")}>
+              <KeyValueList
+                items={[
+                  {
+                    key: "approvalRemark",
+                    label: t("approvalRemark"),
+                    value: disposalRequest.approvalRemark ? <span className="whitespace-pre-wrap">{disposalRequest.approvalRemark}</span> : null,
+                  },
+                ]}
+              />
+            </ContentPanel>
           ) : null}
 
           {disposalRequest.requestStatus === "disposed" ? (
-            <section className="rounded-lg border border-border bg-surface p-6">
-              <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-                <ClipboardCheck className="h-5 w-5 text-primary" />
-                {t("executionDetail")}
-              </h2>
+            <ContentPanel title={t("executionDetail")}>
               <KeyValueList
                 items={[
                   { key: "executionDate", label: t("executionDate"), value: disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null },
@@ -301,22 +302,17 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                     value: disposalRequest.actualSalvageValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.actualSalvageValue), { unit: tCommon("baht") })}</span>,
                   },
                   { key: "completedAt", label: t("completedAt"), value: disposalRequest.completedAt ? formatDateTime(disposalRequest.completedAt) : null },
+                  {
+                    key: "executionRemark",
+                    label: t("executionRemark"),
+                    value: disposalRequest.executionRemark ? <span className="whitespace-pre-wrap">{disposalRequest.executionRemark}</span> : null,
+                  },
                 ]}
               />
-              <div className="mt-5">
-                <TextBlock label={t("executionRemark")} value={disposalRequest.executionRemark} />
-              </div>
               {disposalRequest.evidenceExceptionReason ? (
-                <section aria-label={t("historicalEvidenceSummary")} className="mt-5 rounded-lg border border-warning-border bg-warning-soft p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-                    <div>
-                      <p className="font-medium text-foreground">{t("historicalEvidenceBadge")}</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{disposalRequest.evidenceExceptionReason}</p>
-                    </div>
-                  </div>
+                <section aria-label={t("historicalEvidenceSummary")} className="mt-5 space-y-4">
+                  <Notice tone="warning" title={t("historicalEvidenceBadge")}><p className="whitespace-pre-wrap">{disposalRequest.evidenceExceptionReason}</p></Notice>
                   <KeyValueList
-                    className="mt-4 border-t border-warning-border pt-4"
                     items={[
                       { key: "grantedBy", label: t("historicalEvidenceGrantedBy"), value: evidenceExceptionGrantorLabel },
                       {
@@ -328,14 +324,12 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                   />
                 </section>
               ) : null}
-            </section>
+            </ContentPanel>
           ) : null}
 
-          <section id="history" className="rounded-lg border border-border bg-surface p-6">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <History className="h-5 w-5 text-primary" />
-              {t("disposalHistory")}
-            </h2>
+          {/* The ActionBar's #history link scrolls here, and ContentPanel takes no id: the panel classes (2D-2 R4). */}
+          <section id="history" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+            <h2 className="mb-4 break-words text-base font-semibold text-foreground">{t("disposalHistory")}</h2>
             {movements.length === 0 ? (
               <ActionEmptyState
                 icon={<History className="h-6 w-6" />}
@@ -346,7 +340,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
               <ol className="space-y-4">
                 {movements.map((movement) => (
                   <li key={movement.id} className="relative border-l border-border pl-4">
-                    <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-primary" />
+                    <span aria-hidden="true" className={cn(statusMarkerVariants({ tone: "primary" }), "absolute top-2 -left-1")} />
                     <div className="rounded-md bg-background p-4">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div className="font-medium text-foreground">
@@ -355,7 +349,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                               ? tAsset(`movementTypes.${movement.movementType}`)
                               : formatMovementType(movement.movementType))}
                         </div>
-                        <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
+                        <div className="text-meta text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
                       </div>
                       <KeyValueList
                         className="mt-2"
@@ -374,11 +368,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         </div>
 
         <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <Package className="h-5 w-5 text-primary" />
-              {t("asset")}
-            </h2>
+          <ContentPanel title={t("asset")}>
             <div className="space-y-4">
               <KeyValueList
                 items={[
@@ -410,14 +400,11 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                   },
                 ]}
               />
-              <Link
-                href={`/${locale}/assets/${disposalRequest.asset.id}`}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0"
-              >
+              <Link href={`/${locale}/assets/${disposalRequest.asset.id}`} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
                 {t("openAsset")}
               </Link>
             </div>
-          </section>
+          </ContentPanel>
 
           <DisposalAttachments requestId={disposalRequest.id} attachments={attachments} canManage={canCreate || canApprove || canEdit} />
           {disposalRequest.batch ? <DisposalAttachments requestId={disposalRequest.batch.id} attachments={batchAttachments} canManage={false} title={t("batchSharedEvidence")} /> : null}
@@ -474,14 +461,3 @@ const knownMovementTypeKeys = new Set([
   "maintenance_pm_create",
   "audit_correction",
 ])
-
-function TextBlock({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <div className="mb-2 text-sm font-medium text-foreground">{label}</div>
-      <div className="min-h-24 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
-        {value ? <p className="whitespace-pre-wrap">{value}</p> : <Nil />}
-      </div>
-    </div>
-  )
-}
