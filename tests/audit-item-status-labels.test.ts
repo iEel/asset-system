@@ -50,8 +50,8 @@ test("findings page labels item and reconcile statuses instead of printing codes
   assert.doesNotMatch(page, /\{finding\.auditItem\.reconcileStatus \?\? "-"\}/)
   assert.match(page, /getAuditItemStatusLabelKey\(status\)/)
   assert.match(page, /getAuditItemReconcileStatusLabelKey\(status\)/)
-  assert.match(page, /\{formatAuditItemStatus\(finding\.auditItem\.auditStatus\)\}/)
-  assert.match(page, /\{formatReconcileStatus\(finding\.auditItem\.reconcileStatus\)\}/)
+  assert.match(page, /label: formatAuditItemStatus\(finding\.auditItem\.auditStatus\)/)
+  assert.match(page, /label: formatReconcileStatus\(finding\.auditItem\.reconcileStatus\)/)
 })
 
 test("employee page labels audit item status and result instead of printing codes", () => {

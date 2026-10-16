@@ -2289,7 +2289,9 @@
     "reconcileStatus_exception": "Exception",
     "reconcileStatus_reconciled": "Register updated",
     "reconcileStatus_reviewed": "Decided",
-    "activeFilters": "Active filters"
+    "activeFilters": "Active filters",
+    "comparisonColumn": "System → found",
+    "ownerDueColumn": "Owner · due date"
   },
   "auditPending": {
     "title": "Pending Assets",
