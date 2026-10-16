@@ -420,18 +420,31 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             })
           )}
         </div>
-        <DataTable framed={false} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+        <DataTable framed={false} layout="fixed" minWidth={960} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+          {/* 8 fixed columns, 960px in all, inside the 963px of the 1280×800 box (audit mobile fix D8). The auto layout
+              squeezed a column whose cells were all "—", so every width is set here. The asset and round columns fit a
+              15-character tag; the action column fits approve and reject on one line. Below 1280 the table scrolls and
+              the action column stays pinned. */}
+          <colgroup>
+            <col className="w-26" />
+            <col className="w-32" />
+            <col className="w-36" />
+            <col className="w-20" />
+            <col className="w-21" />
+            <col className="w-33" />
+            <col className="w-22" />
+            <col className="w-50" />
+          </colgroup>
           <DataTableHeader>
             <tr>
-              {/* 8 columns that fit the 1280×800 content box (~965px); the comparison and owner headers may wrap to two lines (audit mobile fix D8). */}
               <DataTableHead>{t("reportedAt")}</DataTableHead>
               <DataTableHead>{t("auditRound")}</DataTableHead>
               <DataTableHead>{t("asset")}</DataTableHead>
               <DataTableHead>{t("findingType")}</DataTableHead>
               <DataTableHead className="whitespace-normal">{t("comparisonColumn")}</DataTableHead>
               <DataTableHead>{tCommon("status")}</DataTableHead>
-              <DataTableHead className="whitespace-normal">{t("actionOwner")}</DataTableHead>
-              <DataTableHead align="right" sticky="right" className="w-50">{tCommon("actions")}</DataTableHead>
+              <DataTableHead>{t("actionOwner")}</DataTableHead>
+              <DataTableHead align="right" sticky="right">{tCommon("actions")}</DataTableHead>
             </tr>
           </DataTableHeader>
           <DataTableBody>
@@ -461,14 +474,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
                     label={`${tCommon("view")}: ${finding.asset?.assetTag ?? finding.auditRound.auditNo}`}
                   >
-                    <DataTableCell className="text-muted-foreground">{formatDateTime(finding.reportedAt)}</DataTableCell>
+                    <DataTableCell className="text-meta text-muted-foreground">{formatDateTime(finding.reportedAt)}</DataTableCell>
                     <DataTableCell className="text-muted-foreground">
                       <Link href={`/${locale}/audit/rounds/${finding.auditRound.id}`} className="text-primary hover:underline">
                         <span className="tag">{finding.auditRound.auditNo}</span>
                       </Link>
                       <div className="text-xs text-muted-foreground">{finding.auditRound.name}</div>
                     </DataTableCell>
-                    <DataTableCell className="min-w-32">
+                    <DataTableCell>
                       {finding.asset ? (
                         <>
                           <div className="font-medium text-foreground"><span className="tag">{finding.asset.assetTag}</span></div>
@@ -477,7 +490,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       ) : <Nil />}
                     </DataTableCell>
                     <DataTableCell className="text-muted-foreground">{findingTypeLabel}</DataTableCell>
-                    <DataTableCell className="min-w-20">
+                    <DataTableCell>
                       <FindingValueChange
                         expectedLabel={t("systemValue")}
                         actualLabel={t("foundValue")}
@@ -501,7 +514,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       <div>{finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : <Nil label={t("noActionOwner")} />}</div>
                       <div className="mt-0.5 text-xs">{finding.actionDueDate ? t("dueOn", { date: formatDateTime(finding.actionDueDate) }) : <Nil />}</div>
                     </DataTableCell>
-                    <DataTableCell align="right" sticky="right" className="w-50">
+                    <DataTableCell align="right" sticky="right">
                       {/* The triggers stay in the cell, not in ⋯: their dialogs have no open() handle (spec 2B I21, O21). */}
                       <div className="flex flex-col items-end gap-2">
                         {canEdit || canApprove ? (
@@ -742,11 +755,11 @@ type FindingStatusBadgeItem = {
   tone?: StatusTone
 }
 
-// The status badges of one finding, stacked (audit mobile fix D8). A fixed 112px list keeps the column from growing
-// with a long label (the table fits 1280×800): such a badge truncates and its tooltip has the whole text.
+// The status badges of one finding, stacked (audit mobile fix D8). The list is as wide as its 132px column's content
+// (108px): a longer label truncates and its tooltip has the whole text.
 function FindingStatusBadges({ items }: { items: FindingStatusBadgeItem[] }) {
   return (
-    <ul className="flex w-28 flex-col items-start gap-1">
+    <ul className="flex w-27 flex-col items-start gap-1">
       {items.map((item) => (
         <li key={item.key} title={`${item.title}: ${item.label}`} className="max-w-full">
           <span className="sr-only">{item.title}: </span>
