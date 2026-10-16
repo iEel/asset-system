@@ -56,7 +56,7 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | --- | --- | --- |
 | A button, or a link that looks like one | `Button`, or `buttonVariants({ variant, size })` on a `Link` | `danger` for a destructive action in a page, `destructive` only to confirm it in a dialog; `busy={x}` while working, never with `x` in `disabled` and never with `asChild`; the label stays the same while busy; the primary action comes last; no size is 36px from `md`, `md` in a `PageHeader`, `lg` / `icon-lg` (40px) only beside a 40px field |
 | A choice of 2 to 4 options shown as buttons | `Segmented` | `aria-label` names the group; values are strings |
-| A text link | `linkVariants({ size })` | `meta` when it stands alone, `inherit` inside a sentence |
+| A text link | `linkVariants({ size })` | `meta` when it stands alone, `inherit` inside a sentence; a stand-alone link or a drill-down count adds `inline-flex min-h-11 items-center md:min-h-0`, and a zero count is plain text |
 | A text field, select or textarea | `Input`, `NativeSelect`, `Textarea` with `fieldSize` | `getFieldControlClasses()` for a control that cannot use them |
 | A label with hint and error | `Field` | sets `id`, `aria-describedby`, `aria-invalid` and `aria-required`; keep `required`, `maxLength` and `minLength` on the control; `labelAction` for one icon button beside the label; never around `SearchableSelect`, never inside a `<label>`; a hint on a status soft fill is `FieldHint` with `className="text-muted-foreground"`; a field repeated in every card of a list adds `aria-describedby` with its card's name (K20) |
 | A label for a group of checkboxes or radios | `<fieldset className="min-w-0">` with `<legend className={cn(fieldLabelClasses, "mb-1.5")}>` | `<FieldRequiredMark />` for a required group |
@@ -66,7 +66,7 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | A searchable picker | `SearchableSelect` | has its own label, hint and error |
 | An action menu | `DropdownMenu` | an item that cannot run now uses `unavailable` with `DropdownMenuItemDescription` for the reason |
 | A keyboard hint | `Kbd` | Latin keys and symbols only |
-| A status | `StatusBadge` | one size; there is no `size` prop |
+| A status | `StatusBadge` | one size; there is no `size` prop; an asset state takes its tone from `status.name` (`getAssetStateTone`), never a database color; an active record is `tone="success"` |
 | A name: a role, a scope, an approver, a module | `Chip` | neutral, no tone and no marker; a state is a `StatusBadge`; a code inside is a `tag` |
 | A breadcrumb trail | `Breadcrumbs` | `code: true` for an asset tag or document number |
 | A page title, its facts and its buttons | `PageHeader` | the only `h1`; a status badge only in `meta`; `md` buttons, back first and primary last; no outer margin (a `space-y-6` root, or `className="mb-6"` in a form) |
@@ -80,7 +80,7 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | The active filters | `FilterChipList` | chips only for filters that are not visible on screen; `removeLabel` starts each chip's name |
 | A next step and more actions in a table row | `RowActions` | data-only props; delete through `deleteAction`, never a delete button in the row; `menuLabel={tCommon("moreActionsFor", { code })}`; to open a 2C dialog, a small client wrapper renders the dialog's button outside the menu with `hideTrigger`, calls its `open()` handle and passes `returnFocusRef={openerRef}`; a dialog without a handle keeps its button in the cell |
 | Counts above a list, a report or a work queue | `StatStrip` (the only number tile; `MetricCard` is gone) | values already formatted and counted over the whole filtered list; no tone fill; a cell that filters takes `href`, the cell of the filter in use `current`, and a count that needs action `attention`; money one tile a row below `sm`, and more than four numbers in strips of at most four (`splitStatRows`) |
-| Label and value pairs | `KeyValueList` | one list per group of facts on a detail page; empty values become `Nil` by themselves (`nilLabel` when the empty value needs its own name); `null` for a missing date; a code with its name as `tag` |
+| Label and value pairs | `KeyValueList` | one list per group of facts on a detail page; empty values become `Nil` by themselves (`nilLabel` when the empty value needs its own name); `null` for a missing date; a code with its name as `tag`; the facts of a phone card too (no local `MobileField` or `DocumentFact`) |
 | A panel with a head row | `ContentPanel divided`, with `flush` for a table or a `ContentPanelRows` list | without `divided` it is the plain panel; a `<form>`, `<details>` or grid card that cannot be one takes `cn(getPanelClasses(), "p-4 sm:p-5")`; no frame inside a frame |
 | An empty value | `Nil`, `orNil` | `0` is a value, not blank |
 | A count or an amount of money | `formatCount`, `formatMoney` (`src/lib/display-format.ts`) | always th-TH and 2 decimals for money; the unit (`common.baht`) goes after the number, or in the column header of a table |
