@@ -7,8 +7,7 @@ import { AlertTriangle, Download, FileSpreadsheet, ImageIcon, Pencil, Plus } fro
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { summarizeModelSpecs } from "@/lib/model-specs"
-import { ActiveBadge } from "@/components/master-data/master-data-layout"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
@@ -20,7 +19,10 @@ import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
@@ -258,17 +260,18 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)]">
-        <aside className="overflow-hidden rounded-lg border border-border bg-surface lg:sticky lg:top-4 lg:self-start">
+        {/* An aside (the picker) cannot be ContentPanel, so it takes the panel classes (2D-2 R4). */}
+        <aside className={cn(getPanelClasses(), "overflow-hidden lg:sticky lg:top-4 lg:self-start")}>
           <div className="border-b border-border px-3 py-3">
             <h2 className="text-sm font-semibold text-foreground">{t("brandNavigatorTitle")}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">{t("brandNavigatorSubtitle")}</p>
+            <p className="mt-1 text-meta text-muted-foreground">{t("brandNavigatorSubtitle")}</p>
           </div>
           <div className="space-y-1 p-2">
             <Link
               href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: "", modelPage: 1 })}`}
               aria-current={!selectedBrand ? "page" : undefined}
               className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-sm transition-colors ${
-                !selectedBrand ? "border-primary bg-primary-soft text-primary" : "border-transparent text-foreground hover:bg-accent"
+                !selectedBrand ? "border-primary bg-primary-soft text-primary" : "border-transparent text-foreground hover:bg-row-hover"
               }`}
             >
               <span className="min-w-0 truncate font-medium">{t("allBrandNavigator")}</span>
@@ -283,7 +286,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                   <div
                     key={brand.id}
                     className={`rounded-md border px-2.5 py-2 transition-colors ${
-                      isSelected ? "border-primary bg-primary-soft" : "border-transparent hover:bg-accent"
+                      isSelected ? "border-primary bg-primary-soft" : "border-transparent hover:bg-row-hover"
                     }`}
                   >
                     <Link
@@ -294,12 +297,12 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                     >
                       {brand.name}
                     </Link>
-                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-meta text-muted-foreground">
                       {brand._count.models > 0 ? (
                         <Link
                           prefetch={false}
                           href={brandModelsHref}
-                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
+                          className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}
                         >
                           {t("modelCountInline", { count: brand._count.models })}
                         </Link>
@@ -311,7 +314,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                         <Link
                           prefetch={false}
                           href={brandDrilldown.assets}
-                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
+                          className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}
                         >
                           {t("assetCountInline", { count: brand._count.assets })}
                         </Link>
@@ -326,7 +329,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
           </div>
           {selectedBrand ? (
             <div className="border-t border-border p-2.5">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">
+              <div className="mb-2 text-meta font-medium text-muted-foreground">
                 {t("selectedBrandActions")}
               </div>
               <RowActions
@@ -342,23 +345,18 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
         </aside>
 
         <section className="min-w-0 space-y-4">
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">{t("modelWorkspaceTitle")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {selectedBrand || selectedCategory
-                    ? t("modelsFilteredBy", {
-                        brand: selectedBrand?.name ?? t("allBrands"),
-                        category: selectedCategory ? `${selectedCategory.code} - ${selectedCategory.name}` : t("allCategories"),
-                      })
-                    : t("modelWorkspaceSubtitle")}
-                </p>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {t("modelResultSummary", { count: modelTotal })}
-              </div>
-            </div>
+          <ContentPanel
+            title={t("modelWorkspaceTitle")}
+            description={
+              selectedBrand || selectedCategory
+                ? t("modelsFilteredBy", {
+                    brand: selectedBrand?.name ?? t("allBrands"),
+                    category: selectedCategory ? `${selectedCategory.code} - ${selectedCategory.name}` : t("allCategories"),
+                  })
+                : t("modelWorkspaceSubtitle")
+            }
+            actions={<span className="text-sm text-muted-foreground">{t("modelResultSummary", { count: modelTotal })}</span>}
+          >
             <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(150px,1fr))_auto]">
               <input type="hidden" name="brandPage" value="1" />
               <input type="hidden" name="brandPageSize" value={listState.brandPageSize} />
@@ -400,12 +398,13 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               />
               <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
             </form>
-          </div>
+          </ContentPanel>
 
+          {/* A <details> cannot be ContentPanel: the panel classes (2D-2 R4). The warning lives in its icon, not a tint. */}
           {totalDuplicateGroups > 0 ? (
-            <details className="rounded-lg border border-warning-border bg-warning-soft p-4">
-              <summary className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-foreground">
-                <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+            <details className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+              <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-foreground md:min-h-0">
+                <AlertTriangle aria-hidden="true" className="size-4 shrink-0 text-warning" />
                 {t("duplicateReviewCompact", { count: totalDuplicateGroups })}
               </summary>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -422,7 +421,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             title={t("modelsTitle")}
             description={t("modelsSubtitle")}
             actions={
-              <Link href={createModelHref} className={buttonVariants({ variant: "outline", size: "lg" })}>
+              <Link href={createModelHref} className={buttonVariants({ variant: "outline", size: "md" })}>
                 <Plus aria-hidden="true" />
                 {t("createModel")}
               </Link>
@@ -518,16 +517,16 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                             <Link
                               prefetch={false}
                               href={modelDrilldown.assets}
-                              className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
+                              className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
                             >
                               {formatCount(model._count.assets)}
                             </Link>
                           ) : (
-                            <span className="px-2">{formatCount(0)}</span>
+                            formatCount(0)
                           )}
                         </DataTableCell>
                         <DataTableCell className="whitespace-nowrap">
-                          <ActiveBadge label={tCommon("active")} />
+                          <StatusBadge label={tCommon("active")} tone="success" />
                         </DataTableCell>
                         <DataTableCell align="right" sticky="right">
                           <RowActions
@@ -559,7 +558,7 @@ function DuplicateGroupList({
   groups: Array<{ displayName: string; items: Array<{ id: string; name: string }> }>
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-3">
+    <div className="rounded-md border border-border bg-background p-3">
       <div className="text-sm font-semibold text-foreground">{title}</div>
       {groups.length === 0 ? (
         <div className="mt-2 text-sm">

@@ -51,3 +51,16 @@ test("locations list: the asset count is a text link with a 44px phone target, a
   assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
+
+test("brands page: drill-down text links, the panel frame on the picker and the duplicates, the workspace a ContentPanel, an md create button (2D-1 R3) and a StatusBadge (spec 2D M7, D9)", () => {
+  const source = read(`${D}master-data/brands/page.tsx`)
+  assert.equal(source.match(drilldownLink)?.length, 1, "the model table's asset count")
+  assert.equal(source.match(/className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/g)?.length, 2, "the picker's model and asset counts (13px)")
+  assert.match(source, /<aside className=\{cn\(getPanelClasses\(\), "overflow-hidden lg:sticky lg:top-4 lg:self-start"\)\}>/)
+  assert.match(source, /<ContentPanel\n\s+title=\{t\("modelWorkspaceTitle"\)\}/)
+  assert.match(source, /<details className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<Link href=\{createModelHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.equal(source.match(/aria-current=\{/g)?.length, 2, "LN1 stays 2 (I11)")
+  assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|hover:bg-accent|\bh-[78]\b|className="px-2"|size: "lg"|bg-warning-soft|\btext-xs\b|text-lg|rounded-lg border/)
+})
