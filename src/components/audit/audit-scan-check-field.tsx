@@ -48,9 +48,9 @@ export function AuditScanCheckField({
         clearLabel={t("clearValue")}
         onChange={onChange}
       />
-      {mismatch ? <p className="mt-1 text-xs font-medium text-warning">{t("inSystem", { value: labelFor(expectedValue) })}</p> : null}
+      {mismatch ? <p className="mt-1 text-meta font-medium text-warning">{t("inSystem", { value: labelFor(expectedValue) })}</p> : null}
       {latestValue !== undefined ? (
-        <p className="mt-0.5 text-xs text-muted-foreground">{t("latestValue", { value: labelFor(latestValue) })}</p>
+        <p className="mt-0.5 text-meta text-muted-foreground">{t("latestValue", { value: labelFor(latestValue) })}</p>
       ) : null}
     </div>
   )
