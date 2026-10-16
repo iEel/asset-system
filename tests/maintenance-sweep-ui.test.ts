@@ -39,3 +39,9 @@ test("repair form: a ContentPanel, the open-record error and the status effect a
   assert.match(select, /\n\s+hint\?: React\.ReactNode\n/)
   assert.match(select, /\n\s+hint=\{hint\}\n/)
 })
+
+test("PM plan form: a plain ContentPanel with no tinted frame and no heading of its own; the page header names the form (spec 2D D9)", () => {
+  const source = read(`${C}maintenance/maintenance-plan-form.tsx`)
+  assert.match(source, /<ContentPanel>\s*<form onSubmit=\{handleSubmit\} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">/)
+  assert.doesNotMatch(source, /<section\b|primary-soft|primary-border|CalendarClock|t\("pmCreateTitle"\)|\bmt-4\b/)
+})

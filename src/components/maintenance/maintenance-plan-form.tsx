@@ -3,10 +3,11 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CalendarClock, Save } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { Button } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
@@ -86,12 +87,8 @@ export function MaintenancePlanForm({
   }
 
   return (
-    <section className="rounded-lg border border-primary-border bg-primary-soft p-4">
-      <div className="flex items-center gap-2 text-base font-semibold text-foreground">
-        <CalendarClock className="h-5 w-5 text-primary" />
-        {t("pmCreateTitle")}
-      </div>
-      <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <ContentPanel>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MaintenanceOptionSelect type="asset" label={t("asset")} value={values.assetId} required disabled={Boolean(planId)} initialOption={initialAsset} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setField("assetId", value)} />
         <Field label={t("pmPlanTitle")} required>
           <Input
@@ -152,6 +149,6 @@ export function MaintenancePlanForm({
           </Button>
         </div>
       </form>
-    </section>
+    </ContentPanel>
   )
 }
