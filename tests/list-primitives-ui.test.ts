@@ -62,10 +62,10 @@ test("PageBackLink: outline md with a left arrow, a 44px icon button below md wh
 })
 
 // Plan 2B-5 Task 16 (spec 2B R-h, §8.9 row 10, §8.13 #6): every caller moved onto PageHeader, DataTableHead and Pagination,
-// so the old master-data helpers go. MasterDataSearch (six pages) and ActiveBadge (a pill, 2D) stay.
-test("master-data-layout keeps only MasterDataSearch and ActiveBadge: the old header, column headers and pager are gone (R-h)", () => {
+// so the old master-data helpers go. MasterDataSearch (six pages) stays; ActiveBadge (a pill) went in plan 2D-3 (M7: StatusBadge).
+test("master-data-layout keeps only MasterDataSearch: the old header, column headers, pager and active pill are gone (R-h, 2D M7)", () => {
   const layout = read("src/components/master-data/master-data-layout.tsx")
-  assert.deepEqual([...layout.matchAll(/^export function (\w+)/gm)].map((match) => match[1]), ["MasterDataSearch", "ActiveBadge"])
+  assert.deepEqual([...layout.matchAll(/^export function (\w+)/gm)].map((match) => match[1]), ["MasterDataSearch"])
   assert.match(layout, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
   assert.doesNotMatch(layout, /\bMasterDataHeader\b|\bColumnHeader\b|\bSortableColumnHeader\b|\bMasterDataPagination\b|from "next\/link"|from "lucide-react"|master-data-query|<h1\b|\buppercase\b|\bopacity-50\b/)
 })

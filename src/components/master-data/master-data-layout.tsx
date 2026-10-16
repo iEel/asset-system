@@ -27,11 +27,3 @@ export function MasterDataSearch({
     </form>
   )
 }
-
-export function ActiveBadge({ label }: { label: string }) {
-  return (
-    <span className="inline-flex rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success">
-      {label}
-    </span>
-  )
-}
