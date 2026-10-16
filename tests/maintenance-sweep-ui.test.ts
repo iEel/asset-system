@@ -90,3 +90,10 @@ test("repair record page: ContentPanels, the history section on the panel classe
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/assets\/\$\{ticket\.asset\.id\}`\} className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full"\)\}>/)
   assert.doesNotMatch(source, /ActionEmptyState|AlertTriangle|rounded-lg|rounded-full|bg-warning-soft|border-warning-border|text-(?:warning|success|primary)\b|hover:bg-accent|\btext-lg\b|\btext-xs\b|<section className=/)
 })
+
+test("PM plans page: the frequency is a Chip (a cadence, not a state), and the row's sub-line is text-meta (spec 2D M22, 2D-2 R2)", () => {
+  const source = read(`${D}maintenance/pm/page.tsx`)
+  assert.match(source, /<Chip>\{t\(`pmFrequencies\.\$\{plan\.frequency\}`\)\}<\/Chip>/)
+  assert.match(source, /<div className="mt-1 truncate text-meta text-muted-foreground">\n\s+<span className="tag">\{plan\.planNo\}<\/span>/)
+  assert.doesNotMatch(source, /pmFrequencies[^\n]*tone=|\btext-xs\b/)
+})

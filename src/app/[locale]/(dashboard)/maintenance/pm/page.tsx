@@ -14,6 +14,7 @@ import { getMaintenancePlanDueState, planStatePageSlices } from "@/lib/preventiv
 import type { MaintenancePlanState } from "@/lib/maintenance-plan-service"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
 import { DataTableFoot } from "@/components/ui/data-table"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
@@ -108,7 +109,7 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
                 <li key={plan.id} className="grid min-w-0 gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(200px,260px)_auto] md:items-center">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-foreground">{plan.title}</div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                    <div className="mt-1 truncate text-meta text-muted-foreground">
                       <span className="tag">{plan.planNo}</span> · <span className="tag">{plan.asset.assetTag}</span> - {plan.asset.name}
                     </div>
                   </div>
@@ -118,7 +119,7 @@ export default async function MaintenancePlansPage({ params, searchParams }: Pro
                   </div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2 md:justify-end">
                     {isActivePlan ? <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} /> : null}
-                    <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" />
+                    <Chip>{t(`pmFrequencies.${plan.frequency}`)}</Chip>
                     <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={isActivePlan ? "success" : plan.planState === "paused" ? "warning" : "muted"} />
                     {canCreate && isActivePlan ? (
                       <Link href={`/${locale}/maintenance/new?planId=${plan.id}`} className={buttonVariants({ size: "sm" })}>
