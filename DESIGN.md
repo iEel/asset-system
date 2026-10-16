@@ -49,49 +49,49 @@ colors:
   sidebar-border: "#D7DEE8"
 typography:
   display:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 600
     lineHeight: 1.5
     letterSpacing: "0"
   headline:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 700
     lineHeight: 1.5
     letterSpacing: "0"
   title:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1.5
     letterSpacing: "0"
   body:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5714
     letterSpacing: "0"
   label:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 500
     lineHeight: 1.5714
     letterSpacing: "0"
   meta:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "0.8125rem"
     fontWeight: 400
     lineHeight: 1.5385
     letterSpacing: "0"
   metric:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "1.75rem"
     fontWeight: 500
     lineHeight: 1.1429
     letterSpacing: "-0.02em"
   count:
-    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 600
     lineHeight: 1.2
@@ -269,11 +269,12 @@ Known exception: until phase 2D ends, info notices, chips and a few info icons i
 
 ## 3. Typography
 
-**Fonts:** IBM Plex Sans (Latin and digits) before IBM Plex Sans Thai (Thai), then system-ui. IBM Plex Mono for codes. All three load with `next/font/google` in `src/app/layout.tsx` only (`--font-plex-sans`, `--font-plex-thai`, `--font-plex-mono`); `font-sans` and `font-mono` resolve to them in `@theme inline`.
+**Fonts:** IBM Plex Sans (Latin and digits) before Noto Sans Thai Looped (Thai), then system-ui. IBM Plex Mono for codes. All three load with `next/font/google` in `src/app/layout.tsx` only (`--font-plex-sans`, `--font-thai`, `--font-plex-mono`); `font-sans` and `font-mono` resolve to them in `@theme inline`.
 
-- Plex Sans comes first because its digits are tabular; Plex Sans Thai digits are not. Thai letters fall through to Plex Sans Thai.
-- Plex Sans Thai loads weights 400-700. Plex Mono loads 400 and 500 only (plan 2D-1 dropped 600), is not preloaded, and has no Arial size-adjusted fallback, so the system monospace shows while it loads.
-- Plex Sans Thai is about 4.7% wider than Noto Sans Thai, so Thai text truncates slightly earlier.
+- Plex Sans comes first because its digits are tabular. Thai letters fall through to Noto Sans Thai Looped, and Plex Sans sets the baseline.
+- Thai is looped (with heads) since 2026-10-16. The loopless IBM Plex Sans Thai was hard to read at 12-14px: ด/ต, บ/ป and ภ/ถ looked alike. The user picked Noto Sans Thai Looped from a side-by-side of four faces (Plex Sans Thai, Plex Sans Thai Looped, Sarabun, Noto Sans Thai Looped).
+- Noto Sans Thai Looped loads weights 400-700 (Google serves one 29.8 KB variable file for all four). Plex Mono loads 400 and 500 only (plan 2D-1 dropped 600), is not preloaded, and has no Arial size-adjusted fallback, so the system monospace shows while it loads.
+- Noto Sans Thai Looped is about 2% narrower than Plex Sans Thai, so Thai text truncates no earlier than before. On the Plex Sans baseline its stacked marks fit the Thai line heights to within 0.3px (Plex Sans Thai overhung by up to 0.5px at 12/18).
 
 **Character:** One sans-serif stack keeps Thai and English interface text consistent across dashboards, forms, tables, admin settings, and mobile field workflows. The hierarchy is compact and fixed, not fluid or editorial.
 
@@ -312,7 +313,7 @@ Font sizes are Tailwind's defaults plus three sizes from the mockup, `text-meta`
 
 **The Thai Readability Rule.** Thai and English labels must remain readable at operational density. Do not shrink helper text or placeholders below accessible contrast or touch usability.
 
-**The Print Fonts Rule.** PDFs (`src/lib/pdf-font.ts`, `audit-pdf.tsx`) keep the embedded Noto Sans Thai. Thermal asset labels use the app font; Plex Sans Thai stops at 700, so labels render at 700 instead of 900. Test-print on the thermal printer before deploying; if labels are hard to read, load Noto Sans Thai 900 on the label print page only.
+**The Print Fonts Rule.** PDFs (`src/lib/pdf-font.ts`, `audit-pdf.tsx`) keep the embedded Noto Sans Thai. Thermal asset labels use the app font; the app loads Thai up to 700, so labels render at 700 instead of 900. Test-print on the thermal printer before deploying; if labels are hard to read, load Noto Sans Thai Looped 900 on the label print page only.
 
 **The Thai Copy Rule.** Thai is the primary language. Thai pages use the shared glossary in `docs/19_THAI_GLOSSARY.md` (ที่ตั้ง · รายการไม่ตรง · พิจารณา · ยืมใช้ชั่วคราว / ถูกยืม · รหัสทรัพย์สิน …) and Buddhist-era years (`src/lib/display-year.ts`). English stays only for kept terms (Serial, License, QR, LDAP, API …) and admin-only technical names. Status codes from the database always go through a label; an unknown code shows as-is rather than disappearing. Server errors show Thai first with the original text as a small muted second line (`useApiError` / `ApiErrorText`); unexpected errors show only "Unexpected error · ref xxxxxxxx", which matches the server log. A request that fails server validation (a `ZodError`) gets one fixed answer, status 400 with `{ error: "Invalid request data", code: "VALIDATION_FAILED" }`, shown as "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง ตรวจสอบแล้วลองอีกครั้ง" (`apiErrors.validationFailed`), never the JSON of the zod issues (phase 2C, `validationFailedBody` in `src/lib/api-error-exposure.ts`).
 

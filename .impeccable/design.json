@@ -263,32 +263,32 @@
     "typographyMeta": {
       "display": {
         "displayName": "Compact Display",
-        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "fontFamily": "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif",
         "purpose": "Page titles and high-level report titles only."
       },
       "body": {
         "displayName": "Operational Body",
-        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "fontFamily": "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif",
         "purpose": "Dense Thai and English UI text, table cells, and workflow copy."
       },
       "label": {
         "displayName": "Interface Label",
-        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "fontFamily": "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif",
         "purpose": "Controls, navigation, field labels, and filter labels."
       },
       "meta": {
         "displayName": "Meta",
-        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "fontFamily": "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif",
         "purpose": "text-meta 13/20: breadcrumbs, meta lines, table headers, hints and errors, status badge text, sm buttons, chips and menu trails."
       },
       "metric": {
         "displayName": "Metric",
-        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "fontFamily": "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif",
         "purpose": "text-metric 28/32, weight 500, -0.02em: stat values. Numbers only, always with num."
       },
       "count": {
         "displayName": "Count",
-        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "fontFamily": "IBM Plex Sans, Noto Sans Thai Looped, system-ui, sans-serif",
         "purpose": "text-count 20/24, weight 600, -0.01em: counts in rows and compact stats. Numbers only, always with num."
       }
     },

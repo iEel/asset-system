@@ -68,7 +68,7 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-plex-sans), var(--font-plex-thai), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), var(--font-thai), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --color-brand-navy: var(--brand-navy);
   --color-brand-accent: var(--brand-accent);

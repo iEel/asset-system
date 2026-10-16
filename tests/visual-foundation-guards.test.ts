@@ -28,14 +28,15 @@ test("script-focused containers do not draw an outline around whole forms", () =
   assert.match(read("src/components/disposal/disposal-bulk-execution.tsx"), /tabIndex=\{-1\}\s*className=\{cn\("outline-none", className\)\}/)
 })
 
-test("fonts load once, in the root layout, with Plex Sans before Plex Sans Thai", () => {
+test("fonts load once, in the root layout, with Plex Sans before Noto Sans Thai Looped", () => {
   const fontImports = findMatches(sources, /from "next\/font\/(google|local)"/g)
   assert.deepEqual(fontImports.map((match) => match.split(": ")[0]), ["src/app/layout.tsx"])
   const layout = read("src/app/layout.tsx")
   assert.match(layout, /IBM_Plex_Sans\(\{ subsets: \["latin"\], variable: "--font-plex-sans", display: "swap" \}\)/)
-  assert.match(layout, /IBM_Plex_Sans_Thai\(\{[^)]*weight: \["400", "500", "600", "700"\][^)]*variable: "--font-plex-thai"/)
+  assert.match(layout, /Noto_Sans_Thai_Looped\(\{[^)]*subsets: \["thai"\][^)]*weight: \["400", "500", "600", "700"\][^)]*variable: "--font-thai"/)
+  assert.doesNotMatch(layout, /IBM_Plex_Sans_Thai/, "the loopless Plex Sans Thai was hard to read at 12-14px")
   assert.match(layout, /IBM_Plex_Mono\(\{[^)]*weight: \["400", "500"\][^)]*preload: false[^)]*adjustFontFallback: false/)
-  assert.match(layout, /<html lang=\{locale\} suppressHydrationWarning className=\{`\$\{plexSans\.variable\} \$\{plexSansThai\.variable\} \$\{plexMono\.variable\}`\}>/)
+  assert.match(layout, /<html lang=\{locale\} suppressHydrationWarning className=\{`\$\{plexSans\.variable\} \$\{thaiSans\.variable\} \$\{plexMono\.variable\}`\}>/)
 })
 
 test("line heights are ratios, and Thai pages get room for stacked marks", () => {

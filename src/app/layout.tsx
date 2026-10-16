@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from "next"
-import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Sans_Thai } from "next/font/google"
+import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_Thai_Looped } from "next/font/google"
 import { getLocale } from "next-intl/server"
 import { PwaServiceWorkerRegister } from "@/components/pwa/pwa-service-worker-register"
 import "./globals.css"
 
 const plexSans = IBM_Plex_Sans({ subsets: ["latin"], variable: "--font-plex-sans", display: "swap" })
-const plexSansThai = IBM_Plex_Sans_Thai({
+// Thai letters fall through from Plex Sans to this looped face; the loopless Plex Sans Thai was hard to read at 12-14px.
+const thaiSans = Noto_Sans_Thai_Looped({
   subsets: ["thai"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-plex-thai",
+  variable: "--font-thai",
   display: "swap",
 })
 // Mono is for asset tags and codes; it is not preloaded, and without the Arial size-adjusted fallback the system monospace shows while it loads.
@@ -54,7 +55,7 @@ export default async function RootLayout({
 }) {
   const locale = await getLocale()
   return (
-    <html lang={locale} suppressHydrationWarning className={`${plexSans.variable} ${plexSansThai.variable} ${plexMono.variable}`}>
+    <html lang={locale} suppressHydrationWarning className={`${plexSans.variable} ${thaiSans.variable} ${plexMono.variable}`}>
       <body className="bg-background font-sans text-foreground antialiased">
         <PwaServiceWorkerRegister />
         {children}

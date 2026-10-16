@@ -6,6 +6,15 @@
 
 ## 2026-10-16
 
+### ฟอนต์ไทยเปลี่ยนเป็น Noto Sans Thai Looped
+
+Branch `feat/ui-phase2d-plan3` · ผู้ใช้แจ้งว่าฟอนต์ไทยอ่านยาก (ตัวอย่างคือคำอธิบายใต้ checkbox "แสดงที่ตั้งต่างบริษัท/ต่างสาขา" ขนาด 12px) แล้วเลือกจากหน้าเทียบ 4 ฟอนต์ (IBM Plex Sans Thai, IBM Plex Sans Thai Looped, Sarabun, Noto Sans Thai Looped)
+
+- **ฟอนต์:** ตัวไทยเปลี่ยนจาก IBM Plex Sans Thai (ไม่มีหัว) เป็น Noto Sans Thai Looped (มีหัว) น้ำหนัก 400–700 · ตัวแปร CSS `--font-plex-thai` → `--font-thai` · ตัวอังกฤษและตัวเลขยังเป็น IBM Plex Sans (ตัวเลขกว้างเท่ากัน) · รหัสยังเป็น IBM Plex Mono · PDF ยังใช้ฟอนต์ที่ฝังไว้ · ป้ายพิมพ์ความร้อนยังหนาสุด 700
+- **ขนาด:** Google ส่งไฟล์เดียว 29.8 KB ใช้ทุกน้ำหนัก · ประโยคไทยเดียวกันที่ 14px แคบลงประมาณ 2% (826 กับ 846px) ข้อความจึงไม่ถูกตัดเร็วขึ้น · บนเส้นฐานของ Plex Sans สระและวรรณยุกต์ที่ซ้อนกันล้นบรรทัดไม่เกิน 0.3px (ของเดิม 0.5px ที่ 12/18)
+- **test:** `visual-foundation-guards` และ `design-tokens-contrast` ตรวจฟอนต์ใหม่และห้าม `IBM_Plex_Sans_Thai` กลับมา · test 2,051 ผ่าน 2,050 ข้าม 1 · tsc ผ่าน
+- **ตรวจบนแอป:** dev server ที่เปิดไว้ตั้งแต่ 09:00 ไม่คอมไพล์ `globals.css` ใหม่ (Turbopack บน Windows ตามที่บันทึกไว้ใน UI รอบ 4) จึงคอมไพล์ด้วย Tailwind แยกเพื่อยืนยันว่า `.font-sans` ชี้ `--font-thai` แล้วใส่กฎนั้นในหน้าเพื่อดูฟอร์มเพิ่มทรัพย์สิน ทะเบียนทรัพย์สิน แดชบอร์ด และศูนย์งานค้าง: ไม่มีข้อความทับหรือถูกตัดเพิ่ม · **ต้องรีสตาร์ต `npm run dev` ก่อนดูฟอนต์ใหม่บนเครื่อง**
+
 ### หน้าผู้ดูแลระบบ รายงาน แดชบอร์ด และกรอบหน้า (UI รอบ 4 เฟส 2D plan 2)
 
 Branch `feat/ui-phase2d-plan2` (จาก `master` `da8388d`) · design `docs/superpowers/specs/2026-10-15-ui-phase2d-design.md` ข้อ 3.2 · plan `docs/superpowers/plans/2026-10-15-ui-phase2d-plan2.md` · ค่าทั้งหมดอยู่ใน `DESIGN.md` · plan ที่ 2 จาก 5 ของ 2D
