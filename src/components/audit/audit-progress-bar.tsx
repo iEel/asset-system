@@ -1,3 +1,6 @@
+import { statusMarkerVariants } from "@/components/ui/badge-variants"
+import { formatCount } from "@/lib/display-format"
+
 type AuditProgressTone = "success" | "warning" | "danger" | "info" | "muted"
 
 type AuditProgressBarProps = {
@@ -29,40 +32,35 @@ export function AuditProgressBar({
   const toneClass = percent >= 100 ? "bg-success" : percent >= 50 ? "bg-primary" : "bg-warning"
 
   return (
-    <div className={compact ? "min-w-44" : "rounded-lg border border-border bg-surface p-4"}>
+    <div className={compact ? "min-w-44" : undefined}>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className={compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium text-foreground"}>
+        <div className={compact ? "text-meta font-medium text-muted-foreground" : "text-sm font-medium text-foreground"}>
           {label}
         </div>
-        <div className={compact ? "text-xs font-semibold text-foreground" : "text-sm font-semibold text-foreground"}>
-          {percent}%
+        <div className={compact ? "text-meta font-semibold num text-foreground" : "text-sm font-semibold num text-foreground"}>
+          {formatCount(percent)}%
         </div>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-muted">
         <div className={`h-full rounded-full transition-all ${toneClass}`} style={{ width: `${percent}%` }} />
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>{processedLabel}: {processed}/{total}</span>
-        <span>{pendingLabel}: {pending}</span>
+      <div className="mt-2 flex items-center justify-between gap-3 text-meta num text-muted-foreground">
+        <span>{processedLabel}: {formatCount(processed)}/{formatCount(total)}</span>
+        <span>{pendingLabel}: {formatCount(pending)}</span>
       </div>
       {!compact && breakdown.length > 0 ? (
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           {breakdown.map((item) => (
-            <div key={item.label} className={`rounded-md border px-3 py-2 text-xs ${getBreakdownClass(item.tone)}`}>
-              <div className="font-medium">{item.label}</div>
-              <div className="mt-1 text-lg font-semibold">{item.value}</div>
+            <div key={item.label} className="min-w-0">
+              <dt className="flex items-center gap-1.5 text-meta text-muted-foreground">
+                <span aria-hidden="true" className={statusMarkerVariants({ tone: item.tone ?? "muted" })} />
+                {item.label}
+              </dt>
+              <dd className="text-count num text-foreground">{formatCount(item.value)}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       ) : null}
     </div>
   )
-}
-
-function getBreakdownClass(tone: AuditProgressTone = "muted") {
-  if (tone === "success") return "border-success-border bg-success-soft text-success"
-  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
-  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
-  if (tone === "info") return "border-info-border bg-info-soft text-info"
-  return "border-border bg-background text-muted-foreground"
 }
