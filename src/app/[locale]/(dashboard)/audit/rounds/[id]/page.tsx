@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowLeft, Download, FileText, Pencil, ScanLine } from "
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
-import { formatDate, formatDateTime } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { AuditRoundCancelButton } from "@/components/audit/audit-round-cancel-button"
@@ -14,17 +14,20 @@ import { hasPermission } from "@/lib/auth-utils"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { isSameAuditActor } from "@/lib/audit-segregation"
-import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { lastListPage } from "@/lib/list-pagination"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
@@ -499,29 +502,17 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       ) : null}
 
       {round.status === "cancelled" ? (
-        <section className="mb-6 rounded-lg border border-danger-border bg-danger-soft p-4 text-sm text-danger">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div className="min-w-0">
-              <h2 className="font-semibold text-foreground">{t("statusCancelled")}</h2>
-              <p className="mt-1 text-danger">{t("cancelledReadOnlyNotice")}</p>
-              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="font-medium text-foreground">{t("cancelledAt")}</dt>
-                  <dd className="mt-1 break-words text-danger">{formatDateTime(round.cancelledAt)}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-foreground">{t("cancelledBy")}</dt>
-                  <dd className="mt-1 break-words text-danger">{cancelledByDisplayName || <Nil className="text-danger" />}</dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="font-medium text-foreground">{t("cancelReason")}</dt>
-                  <dd className="mt-1 break-words text-danger">{round.cancelReason || <Nil className="text-danger" />}</dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-        </section>
+        <ContentPanel title={t("statusCancelled")} className="mb-6">
+          <Notice tone="info">{t("cancelledReadOnlyNotice")}</Notice>
+          <KeyValueList
+            className="mt-4"
+            items={[
+              { key: "cancelledAt", label: t("cancelledAt"), value: round.cancelledAt ? formatDateTime(round.cancelledAt) : null },
+              { key: "cancelledBy", label: t("cancelledBy"), value: cancelledByDisplayName },
+              { key: "cancelReason", label: t("cancelReason"), value: round.cancelReason },
+            ]}
+          />
+        </ContentPanel>
       ) : null}
 
       <StatStrip
@@ -534,7 +525,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         ]}
       />
 
-      <div className="mb-6">
+      <ContentPanel className="mb-6">
         <AuditProgressBar
           total={round._count.items}
           processed={processedCount}
@@ -549,13 +540,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             { label: t("pending"), value: pendingCount, tone: "muted" },
           ]}
         />
-      </div>
+      </ContentPanel>
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("resultDashboard")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("resultDashboardHelp")}</p>
-        </div>
+      <ContentPanel title={t("resultDashboard")} description={t("resultDashboardHelp")} className="mb-6">
         <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.65fr)_1fr]">
           <div>
             <h3 className="text-sm font-semibold text-foreground">{t("resultNormalGroup")}</h3>
@@ -566,13 +553,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <StatStrip className="mt-2" items={resultStatItems(resultNeedsReviewGroup)} />
           </div>
         </div>
-      </section>
+      </ContentPanel>
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("evidenceSummary")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("evidenceSummaryHelp")}</p>
-        </div>
+      <ContentPanel title={t("evidenceSummary")} description={t("evidenceSummaryHelp")} className="mb-6">
         <StatStrip
           items={[
             { key: "evidenceAttached", label: t("evidenceAttached"), value: formatCount(evidenceSummary.withEvidence) },
@@ -581,7 +564,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             { key: "checklistIncomplete", label: t("checklistIncomplete"), value: formatCount(evidenceSummary.checklistIncomplete) },
           ]}
         />
-      </section>
+      </ContentPanel>
 
       {canApprove && !isRoundReadOnly ? (
         <div className="mb-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
@@ -590,26 +573,22 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             disabled={!canCloseRound}
             checklist={closeChecklist}
           />
-          <section className="rounded-lg border border-border bg-surface p-4 lg:min-w-72 lg:self-start">
-            <h2 className="text-base font-semibold text-foreground">{t("cancelRound")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("cancelDialogHelp")}</p>
-            <div className="mt-4">
-              <AuditRoundCancelButton roundId={round.id} impact={cancelImpact} />
-            </div>
-          </section>
+          <ContentPanel title={t("cancelRound")} description={t("cancelDialogHelp")} className="lg:min-w-72 lg:self-start">
+            <AuditRoundCancelButton roundId={round.id} impact={cancelImpact} />
+          </ContentPanel>
         </div>
       ) : null}
 
       <section id="audit-result-list" className="scroll-mt-24">
-        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{resultListTitle}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{resultListDescription}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge label={resultFilterLabels[resultListState.result]} status={resultListState.result} />
-            <span className="rounded-md border border-border bg-background px-3 py-1 text-sm text-muted-foreground">
-              {formatCount(resultListTotal)} {t("items")}
+            <span className="text-sm text-muted-foreground">
+              <span className="num font-medium text-foreground">{formatCount(resultListTotal)}</span> {t("items")}
             </span>
             {resultFindingReviewHref && !isRoundReadOnly ? (
               <Link href={resultFindingReviewHref} className={buttonVariants({ variant: "outline", size: "md" })}>
@@ -632,7 +611,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           submitLabel={tCommon("search")}
           hiddenInputs={{ result: resultListState.result, page: 1, pageSize: resultListState.pageSize, returnTo: returnToHref }}
         />
-        <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
+        <div className={cn(getPanelClasses(), "overflow-hidden")}>
           <div className={`${getMobileCardListClasses()} p-3`}>
             {resultRows.length === 0 ? (
               <ActionEmptyState
@@ -646,26 +625,24 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             ) : (
               resultRows.map((item) => (
                 <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-                  <Link href={`/${locale}/assets/${item.asset.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                  <Link href={`/${locale}/assets/${item.asset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
                     <span className="tag font-medium">{item.asset.assetTag}</span>
                   </Link>
                   <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
                   {item.componentRelationshipLines.length > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {item.componentRelationshipLines.map((line) => (
-                        <span key={line} className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
-                          {line}
-                        </span>
+                        <Chip key={line} title={line}>{line}</Chip>
                       ))}
                     </div>
                   ) : null}
                   {item.latestCorrection ? (
-                    <div className="mt-2 rounded-md border border-info-border bg-info-soft px-2 py-1 text-xs text-info">
+                    <Notice tone="info" className="mt-2">
                       <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
                       {item.latestCorrection.changedFields.length > 0 ? (
                         <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
                       ) : null}
-                    </div>
+                    </Notice>
                   ) : null}
                   <KeyValueList
                     className="mt-3"
@@ -745,19 +722,17 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                       {item.componentRelationshipLines.length > 0 ? (
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {item.componentRelationshipLines.map((line) => (
-                            <span key={line} className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
-                              {line}
-                            </span>
+                            <Chip key={line} title={line}>{line}</Chip>
                           ))}
                         </div>
                       ) : null}
                       {item.latestCorrection ? (
-                        <div className="mt-2 rounded-md border border-info-border bg-info-soft px-2 py-1 text-xs text-info">
+                        <Notice tone="info" className="mt-2">
                           <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
                           {item.latestCorrection.changedFields.length > 0 ? (
                             <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
                           ) : null}
-                        </div>
+                        </Notice>
                       ) : null}
                     </DataTableCell>
                     <DataTableCell className="min-w-56 text-muted-foreground">

@@ -117,3 +117,19 @@ test("audit rounds list: the coverage a ContentPanel with frameless gap lists, t
   assert.match(source, /<span className="tag">\{/)
   assert.doesNotMatch(source, /function (?:AuditStatusBadge|MobileAuditField)\b|"All assets"|rounded-full|rounded-lg|\b(?:bg|border)-(?:success|warning|danger|info)-(?:soft|border)\b|\btext-info\b|hover:underline|hover:text-primary|text-2xl font-bold|\btext-xs\b|CheckCircle2|ClipboardCheck/)
 })
+
+test("audit round page: ContentPanels, the cancelled state as an info Notice with its facts in a KeyValueList, the result list head without a frame, the list frame on the panel classes, Chips and info Notices instead of the info tint (spec 2D §3.4, D7, D9, M22, M29)", () => {
+  const source = read(`${D}audit/rounds/[id]/page.tsx`)
+  assert.match(source, /<ContentPanel title=\{t\("statusCancelled"\)\} className="mb-6">\s*<Notice tone="info">\{t\("cancelledReadOnlyNotice"\)\}<\/Notice>/)
+  assert.match(source, /value: round\.cancelledAt \? formatDateTime\(round\.cancelledAt\) : null/)
+  assert.match(source, /<ContentPanel className="mb-6">\s*<AuditProgressBar/)
+  for (const key of ["resultDashboard", "evidenceSummary", "cancelRound"]) {
+    assert.match(source, new RegExp(`<ContentPanel title=\\{t\\("${key}"\\)\\}`), key)
+  }
+  assert.match(source, /<span className="num font-medium text-foreground">\{formatCount\(resultListTotal\)\}<\/span> \{t\("items"\)\}/)
+  assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
+  assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/)
+  assert.equal(source.match(/<Chip key=\{line\} title=\{line\}>\{line\}<\/Chip>/g)?.length, 2)
+  assert.equal(source.match(/<Notice tone="info" className="mt-2">/g)?.length, 2)
+  assert.doesNotMatch(source, /\b(?:bg|text|border)-info(?:-soft|-border)?\b|bg-danger-soft|border-danger-border|text-danger|rounded-full|rounded-lg border|hover:text-primary|\btext-xs\b/)
+})
