@@ -241,3 +241,13 @@ test("scan search tool: ContentPanels, links for the result rows, StatusBadge fr
   assert.match(source, /<span className="tag font-medium text-foreground">\{result\.title\}<\/span>/)
   assert.doesNotMatch(source, /<button\b|status\.colorCode \?|rounded-full|primary-soft|border-dashed|hover:bg-accent|\btext-xs\b|rounded-lg border/)
 })
+
+test("register filter sheet and toolbar: ChoiceChip toggles, the dialog-footer look on the sheet footer (D19), and a plain filter count (spec 2D D19, M22)", () => {
+  const sheet = read(`${C}assets/asset-register-filter-sheet.tsx`)
+  assert.match(sheet, /<ChoiceChip\n\s+key=\{option\.value\}\n\s+type="checkbox"\n\s+checked=\{active\}\n\s+onChange=\{\(\) => onChange\(active \? "" : option\.value\)\}\n\s+label=\{option\.label\}\n\s+\/>/)
+  assert.match(sheet, /<SheetFooter className="grid grid-cols-2 gap-2 border-t border-border-soft bg-background px-4 py-3">/)
+  assert.doesNotMatch(sheet, /<button\b|aria-pressed|rounded-full|hover:bg-accent/)
+  const toolbar = read(`${C}assets/asset-register-toolbar.tsx`)
+  assert.match(toolbar, /return <span className=\{cn\("num", className\)\}>\{formatCount\(count\)\}<\/span>/)
+  assert.doesNotMatch(toolbar, /rounded-full|bg-primary\b|text-primary-foreground/)
+})

@@ -57,8 +57,8 @@ test("the filter sheet applies changes at once, keeps its trigger and shows the 
   assert.match(source, /onClick=\{\(\) => setOpen\(false\)\}/)
   assert.match(source, /labelAction=\{<AssetStateHelpPopover \{\.\.\.statusHelp\} \/>\}/)
   assert.match(source, /labelAction=\{<AssetStateHelpPopover \{\.\.\.conditionHelp\} \/>\}/)
-  assert.match(source, /aria-pressed=\{active\}/)
-  assert.match(source, /min-h-11/)
+  // Plan 2D-3: the toggle chips are ChoiceChip checkboxes (44px below md, the input shows the state).
+  assert.match(source, /<ChoiceChip\n\s+key=\{option\.value\}\n\s+type="checkbox"\n\s+checked=\{active\}/)
   assert.doesNotMatch(source, /type="submit"/)
 })
 

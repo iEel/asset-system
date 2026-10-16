@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
 import { Button } from "@/components/ui/button"
+import { ChoiceChip } from "@/components/ui/choice-card"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useMediaQuery } from "@/components/ui/use-media-query"
@@ -13,7 +14,6 @@ import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { assetOwnershipTypes } from "@/lib/asset-ownership"
 import { buildSheetClearOverrides, getActiveSheetFilterKeys, getCompanyChangeOverrides } from "@/lib/asset-register-filters"
 import { formatCount } from "@/lib/display-format"
-import { cn } from "@/lib/utils"
 
 export type AssetRegisterFilterOptions = {
   companies: { id: string; code: string; nameTh: string }[]
@@ -201,7 +201,8 @@ export function AssetRegisterFilterSheet({
             </FilterSelect>
           </FilterSection>
         </div>
-        <SheetFooter className="grid grid-cols-2 gap-2 border-t border-border">
+        {/* Spec 2D D19: the sheet footer takes the dialog-footer look of the room picker (audit-scan-room-picker.tsx). */}
+        <SheetFooter className="grid grid-cols-2 gap-2 border-t border-border-soft bg-background px-4 py-3">
           <Button variant="outline" disabled={activeCount === 0} onClick={() => navigate(buildSheetClearOverrides(filters, scope))}>
             {t("filterSheetClear")}
           </Button>
@@ -235,24 +236,19 @@ function ChipGroup<T extends string>({
   onChange: (value: T | "") => void
 }) {
   return (
+    // At most one option is on and a second click clears it, as before; the shared ChoiceChip shows the state with its
+    // own checkbox, so it does not rely on color (spec 2D M22; the batch form's optional columns use the same chip).
     <div role="group" aria-label={label} className="flex flex-wrap gap-2">
       {options.map((option) => {
         const active = option.value === value
         return (
-          <button
+          <ChoiceChip
             key={option.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(active ? "" : option.value)}
-            className={cn(
-              "inline-flex min-h-11 items-center rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-9",
-              active
-                ? "border-primary-border bg-primary-soft text-primary"
-                : "border-border bg-surface text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
-          >
-            {option.label}
-          </button>
+            type="checkbox"
+            checked={active}
+            onChange={() => onChange(active ? "" : option.value)}
+            label={option.label}
+          />
         )
       })}
     </div>

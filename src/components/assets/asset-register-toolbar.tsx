@@ -8,6 +8,7 @@ import { AssetRegisterSearchField } from "@/components/assets/asset-register-sea
 import { Button } from "@/components/ui/button"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { getActiveSheetFilterKeys, getCompanyChangeOverrides } from "@/lib/asset-register-filters"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
 export function AssetRegisterToolbar({
@@ -101,11 +102,8 @@ export function AssetRegisterToolbar({
   )
 }
 
+// A count is plain num text in the button's own ink (DESIGN.md §5 Status Badges: "a count plain num text").
 function FilterCount({ count, className }: { count: number; className?: string }) {
   if (count === 0) return null
-  return (
-    <span className={cn("inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground", className)}>
-      {count}
-    </span>
-  )
+  return <span className={cn("num", className)}>{formatCount(count)}</span>
 }
