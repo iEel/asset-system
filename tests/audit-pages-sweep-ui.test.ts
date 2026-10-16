@@ -72,3 +72,11 @@ test("finding review actions: a warning Notice on the phone card, KeyValueLists 
   assert.match(source, /<p className="text-sm text-muted-foreground">\{t\("closureEvidenceCount", \{ count: uploadedCount \}\)\}<\/p>/)
   assert.doesNotMatch(source, /"-"|function (?:ReviewPreviewField|formatClientDateTime)\b|rounded-lg|border-warning-border|border-danger-border|bg-danger-soft|\btext-xs\b/)
 })
+
+test("findings batch panel: a ContentPanel, the pending findings as checkbox ChoiceCards in a quiet grouping (spec 2D D9, M25)", () => {
+  const source = read(`${C}audit/audit-findings-batch-actions.tsx`)
+  assert.match(source, /<ContentPanel\s+title=\{t\("batchReview"\)\}\s+description=\{t\("batchReviewHelp"\)\}\s+actions=\{/)
+  assert.match(source, /<div className="rounded-md border border-border bg-background p-3">/)
+  assert.match(source, /<ChoiceCard\s+key=\{finding\.id\}\s+type="checkbox"\s+label=\{finding\.label\}\s+description=\{finding\.detail\}/)
+  assert.doesNotMatch(source, /<section\b|<label\b|<input\b|checkboxVariants|hover:bg-accent|rounded-lg|\bmb-4\b|\btext-xs\b/)
+})
