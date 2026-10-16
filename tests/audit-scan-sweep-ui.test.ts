@@ -160,3 +160,12 @@ test("offline bar: a warning Notice with role status, a busy send Button and out
   assert.match(source, /error: entry\.lastSyncError \?\? "-"/)
   assert.doesNotMatch(source, /<button\b|disabled:opacity|hover:underline|text-primary|\btext-xs\b|bg-warning-soft|disabled=\{sending\}/)
 })
+
+test("saved banner: a Notice by result (queued info, mismatch warning, saved success) with role status, outline Buttons for edit and photo retry, and the retry a danger Notice (spec 2D D7, M20, M29)", () => {
+  const source = read(`${A}audit-scan-saved-banner.tsx`)
+  assert.match(source, /<div data-audit-scan-saved className="mb-2 space-y-2">\s*<Notice\s+tone=\{notice\.queued \? "info" : notice\.diff\.length > 0 \? "warning" : "success"\}\s+role="status"/)
+  assert.match(source, /notice\.mode !== "out_of_scope" \? \(\s*<Button variant="outline" size="md" onClick=\{onEdit\}>\s*\{t\("editAgain"\)\}/)
+  assert.match(source, /\{photoRetryCount > 0 \? \(\s*<Notice\s+tone="danger"\s+action=\{\s*<Button variant="outline" size="md" onClick=\{onRetryPhotos\}>\s*\{t\("retryPhotos"\)\}/)
+  assert.equal(source.match(/role="status"/g)?.length, 1, "one live region: the saved result")
+  assert.doesNotMatch(source, /<button\b|hover:underline|text-primary|-soft\b|text-(?:success|warning|danger)\b|\bcn\(/)
+})
