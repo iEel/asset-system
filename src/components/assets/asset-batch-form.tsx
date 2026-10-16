@@ -7,14 +7,21 @@ import { Copy, Download, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { AssetForm } from "@/components/assets/asset-form"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { ChoiceChip } from "@/components/ui/choice-card"
+import { ChoiceCard, ChoiceChip } from "@/components/ui/choice-card"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
+import { orNil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
@@ -625,7 +632,7 @@ export function AssetBatchForm({
             </Field>
             {suggestedAssetName && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-accent px-2.5 py-1 text-xs text-muted-foreground">
+                <span className="text-meta text-muted-foreground">
                   {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
                 </span>
                 {common.name !== suggestedAssetName && (
@@ -680,7 +687,7 @@ export function AssetBatchForm({
               emptyLabel={tCommon("searchSelectNoResults")}
               onChange={(value) => setCommonField("custodianId", value)}
             />
-            <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
+            <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allowCrossCompanyCustodian}
@@ -693,11 +700,11 @@ export function AssetBatchForm({
               </span>
             </label>
             {hasCrossCompanyCustodian ? (
-              <p className="mt-2 text-xs font-medium text-warning">{t("crossCompanyCustodianWarning")}</p>
+              <Notice tone="warning" className="mt-2">{t("crossCompanyCustodianWarning")}</Notice>
             ) : null}
           </div>
           <div className="md:col-span-2">
-            <label className="flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
+            <label className="flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allowCrossBranchLocation}
@@ -710,7 +717,7 @@ export function AssetBatchForm({
               </span>
             </label>
             {hasCrossBranchLocation ? (
-              <p className="mt-2 text-xs font-medium text-warning">{t("crossBranchLocationWarning")}</p>
+              <Notice tone="warning" className="mt-2">{t("crossBranchLocationWarning")}</Notice>
             ) : null}
           </div>
           <SelectField label={t("currentLocation")} value={common.currentLocationId} required onChange={(value) => setCommonField("currentLocationId", value)}>
@@ -758,23 +765,25 @@ export function AssetBatchForm({
             <Input value={common.remark} onChange={(event) => setCommonField("remark", event.target.value)} />
           </Field>
           <div className="md:col-span-2">
-            <div className="text-sm font-medium text-foreground">{t("existingPurchaseDocuments")}</div>
-            <p className="mt-1 text-xs text-muted-foreground">{t("purchaseDocumentsHelp")}</p>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {purchaseDocuments.length === 0 ? (
-                <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">{t("noPurchaseDocuments")}</div>
-              ) : (
-                purchaseDocuments.map((document) => (
-                  <label key={document.id} className="flex items-start gap-2 rounded-md border border-border bg-background p-3 text-sm">
-                    <input type="checkbox" checked={selectedPurchaseDocumentIds.includes(document.id)} onChange={() => togglePurchaseDocument(document.id)} className={cn(checkboxVariants(), "mt-0.5")} />
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-foreground">{document.documentNo}</span>
-                      <span className="mt-1 block text-xs text-muted-foreground">{document.supplierName ?? document.documentType} · {t("linkedAssets", { count: document.assetCount })}</span>
-                    </span>
-                  </label>
-                ))
-              )}
-            </div>
+            <h3 className="text-sm font-medium text-foreground">{t("existingPurchaseDocuments")}</h3>
+            <p className="mt-1 text-meta text-muted-foreground">{t("purchaseDocumentsHelp")}</p>
+            {purchaseDocuments.length === 0 ? (
+              <EmptyNote className="mt-3">{t("noPurchaseDocuments")}</EmptyNote>
+            ) : (
+              // Each document is a shared ChoiceCard (spec 2D D9), as in the single asset form.
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {purchaseDocuments.map((document) => (
+                  <ChoiceCard
+                    key={document.id}
+                    type="checkbox"
+                    checked={selectedPurchaseDocumentIds.includes(document.id)}
+                    onChange={() => togglePurchaseDocument(document.id)}
+                    label={<span className="tag">{document.documentNo}</span>}
+                    description={<>{document.supplierName ?? document.documentType} · {t("linkedAssets", { count: document.assetCount })}</>}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </Section>
 
@@ -782,7 +791,7 @@ export function AssetBatchForm({
           <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })}</div>
-              <p className="mt-1 text-xs text-muted-foreground">{t("batchRowHelp")}</p>
+              <p className="mt-1 text-meta text-muted-foreground">{t("batchRowHelp")}</p>
             </div>
             <Button variant="outline" className="w-full sm:w-auto" onClick={handleAddRow} disabled={rows.length >= 100}>
               <Plus aria-hidden="true" />
@@ -812,25 +821,21 @@ export function AssetBatchForm({
           </div>
 
           {hasClientDuplicates ? (
-            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning">
+            <Notice tone="warning" className="md:col-span-2">
               {t("duplicateWarning")}
               {duplicateValues.serialNumbers.length > 0 ? ` Serial: ${duplicateValues.serialNumbers.join(", ")}` : ""}
               {duplicateValues.assetTags.length > 0 ? ` Asset Tag: ${duplicateValues.assetTags.join(", ")}` : ""}
-            </div>
+            </Notice>
           ) : null}
 
+          {/* Spec 2D D7: the check result by meaning. A toast already announces it, so the Notice takes no live role. */}
           {duplicateCheckMessage ? (
-            <div
-              className={`md:col-span-2 rounded-md border p-3 text-sm ${
-                duplicateCheckStatus === "clean"
-                  ? "border-success-border bg-success-soft text-success"
-                  : duplicateCheckStatus === "duplicate"
-                    ? "border-warning-border bg-warning-soft text-warning"
-                    : "border-danger-border bg-danger-soft text-danger"
-              }`}
+            <Notice
+              tone={duplicateCheckStatus === "clean" ? "success" : duplicateCheckStatus === "duplicate" ? "warning" : "danger"}
+              className="md:col-span-2"
             >
               {duplicateCheckStatus === "error" ? <ApiErrorText error={duplicateCheckMessage} /> : duplicateCheckMessage}
-            </div>
+            </Notice>
           ) : null}
 
           <div className="grid gap-3 md:hidden">
@@ -879,140 +884,140 @@ export function AssetBatchForm({
             ))}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-md border border-border md:col-span-2 md:block">
-            <table className="min-w-[760px] w-full text-sm">
-              <thead className="bg-surface text-left text-meta font-medium text-faint-foreground">
-                <tr>
-                  <th className="w-16 px-3 py-2">{t("batchRowNo")}</th>
-                  <th className="w-56 px-3 py-2">{t("batchAssetTag")}</th>
-                  <th className="w-56 px-3 py-2">{t("batchSerialNumber")}</th>
-                  {showRowCustodian ? <th className="w-64 px-3 py-2">{t("batchCustodian")}</th> : null}
-                  {showRowDepartment ? <th className="w-64 px-3 py-2">{t("batchDepartment")}</th> : null}
-                  {showRowCurrentLocation ? <th className="w-72 px-3 py-2">{t("batchCurrentLocation")}</th> : null}
-                  {showRowHomeLocation ? <th className="w-72 px-3 py-2">{t("batchHomeLocation")}</th> : null}
-                  {showRowRemark ? <th className="w-64 px-3 py-2">{t("batchRemark")}</th> : null}
-                  <th className="w-16 px-3 py-2 text-right">
-                    <span className="sr-only">{t("batchRowActions")}</span>
-                  </th>
+          {/* Spec 2D D9: the shared table without a frame of its own inside the section panel; rows are plain (no hover fill on fields). */}
+          <DataTable framed={false} minWidth={760} caption={t("batchRows")} className="hidden md:col-span-2 md:block">
+            <DataTableHeader>
+              <tr>
+                <DataTableHead className="w-16">{t("batchRowNo")}</DataTableHead>
+                <DataTableHead className="w-56">{t("batchAssetTag")}</DataTableHead>
+                <DataTableHead className="w-56">{t("batchSerialNumber")}</DataTableHead>
+                {showRowCustodian ? <DataTableHead className="w-64">{t("batchCustodian")}</DataTableHead> : null}
+                {showRowDepartment ? <DataTableHead className="w-64">{t("batchDepartment")}</DataTableHead> : null}
+                {showRowCurrentLocation ? <DataTableHead className="w-72">{t("batchCurrentLocation")}</DataTableHead> : null}
+                {showRowHomeLocation ? <DataTableHead className="w-72">{t("batchHomeLocation")}</DataTableHead> : null}
+                {showRowRemark ? <DataTableHead className="w-64">{t("batchRemark")}</DataTableHead> : null}
+                <DataTableHead align="right" hideLabel className="w-16">{t("batchRowActions")}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>
+              {rows.map((row, index) => (
+                <tr key={row.clientId}>
+                  <DataTableCell className="num font-medium text-foreground">{index + 1}</DataTableCell>
+                  <DataTableCell>
+                    <Field label={t("batchAssetTag")} hideLabel hint={t("batchAssetTagHelp")}>
+                      <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
+                    </Field>
+                  </DataTableCell>
+                  <DataTableCell>
+                    <Field label={t("batchSerialNumber")} hideLabel hint={t("batchPasteSerialHint")}>
+                      <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
+                    </Field>
+                  </DataTableCell>
+                  {showRowCustodian ? (
+                    <DataTableCell>
+                      <SearchableSelect label="" value={row.custodianId} options={getRowEmployeeOptions(row)} placeholder={t("batchUseSharedCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
+                    </DataTableCell>
+                  ) : null}
+                  {showRowDepartment ? (
+                    <DataTableCell>
+                      <SearchableSelect label="" value={row.departmentId} options={filteredDepartments} placeholder={t("batchUseSharedDepartment")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "departmentId", value)} />
+                    </DataTableCell>
+                  ) : null}
+                  {showRowCurrentLocation ? (
+                    <DataTableCell>
+                      <SearchableSelect label="" value={row.currentLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedCurrentLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "currentLocationId", value)} />
+                    </DataTableCell>
+                  ) : null}
+                  {showRowHomeLocation ? (
+                    <DataTableCell>
+                      <SearchableSelect label="" value={row.homeLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedHomeLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "homeLocationId", value)} />
+                    </DataTableCell>
+                  ) : null}
+                  {showRowRemark ? (
+                    <DataTableCell>
+                      <Field label={t("batchRemark")} hideLabel>
+                        <Input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} />
+                      </Field>
+                    </DataTableCell>
+                  ) : null}
+                  <DataTableCell align="right">
+                    <Button
+                      variant="outline"
+                      size="icon-lg"
+                      onClick={() => handleRemoveRow(row.clientId)}
+                      disabled={rows.length <= 2}
+                      title={t("batchRemoveRow")}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      <span className="sr-only">{t("batchRemoveRow")}</span>
+                    </Button>
+                  </DataTableCell>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={row.clientId} className="border-t border-border align-top">
-                    <td className="px-3 py-3 font-medium text-foreground">{index + 1}</td>
-                    <td className="px-3 py-3">
-                      <Field label={t("batchAssetTag")} hideLabel hint={t("batchAssetTagHelp")}>
-                        <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
-                      </Field>
-                    </td>
-                    <td className="px-3 py-3">
-                      <Field label={t("batchSerialNumber")} hideLabel hint={t("batchPasteSerialHint")}>
-                        <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
-                      </Field>
-                    </td>
-                    {showRowCustodian ? (
-                      <td className="px-3 py-3">
-                        <SearchableSelect label="" value={row.custodianId} options={getRowEmployeeOptions(row)} placeholder={t("batchUseSharedCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
-                      </td>
-                    ) : null}
-                    {showRowDepartment ? (
-                      <td className="px-3 py-3">
-                        <SearchableSelect label="" value={row.departmentId} options={filteredDepartments} placeholder={t("batchUseSharedDepartment")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "departmentId", value)} />
-                      </td>
-                    ) : null}
-                    {showRowCurrentLocation ? (
-                      <td className="px-3 py-3">
-                        <SearchableSelect label="" value={row.currentLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedCurrentLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "currentLocationId", value)} />
-                      </td>
-                    ) : null}
-                    {showRowHomeLocation ? (
-                      <td className="px-3 py-3">
-                        <SearchableSelect label="" value={row.homeLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedHomeLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "homeLocationId", value)} />
-                      </td>
-                    ) : null}
-                    {showRowRemark ? (
-                      <td className="px-3 py-3">
-                        <Field label={t("batchRemark")} hideLabel>
-                          <Input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} />
-                        </Field>
-                      </td>
-                    ) : null}
-                    <td className="px-3 py-3 text-right">
-                      <Button
-                        variant="outline"
-                        size="icon-lg"
-                        onClick={() => handleRemoveRow(row.clientId)}
-                        disabled={rows.length <= 2}
-                        title={t("batchRemoveRow")}
-                      >
-                        <Trash2 aria-hidden="true" />
-                        <span className="sr-only">{t("batchRemoveRow")}</span>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </DataTableBody>
+          </DataTable>
         </Section>
 
+        {/* Spec 2D D9: the review and the result are ContentPanels; no primary or success tint (color only where it means something). */}
         {reviewing ? (
-          <section className="rounded-lg border border-primary-border bg-primary-soft p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{t("batchReviewDescription")}</p>
-              </div>
-              <Button variant="outline" className="w-full sm:w-auto" onClick={() => setReviewing(false)}>
+          <ContentPanel
+            title={t("batchReviewTitle")}
+            description={t("batchReviewDescription")}
+            actions={
+              <Button variant="outline" size="md" className="w-full sm:w-auto" onClick={() => setReviewing(false)}>
                 {t("batchReviewBack")}
               </Button>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <SummaryItem label={t("batchReviewSharedLocation")} value={locations.find((location) => location.id === common.currentLocationId)?.label ?? "-"} />
-              <SummaryItem label={t("batchReviewSharedFixedAssetCode")} value={common.fixedAssetCode || "-"} />
-              <SummaryItem label={t("batchCurrentCount", { count: rows.length })} value={String(rows.length)} />
-            </div>
-            <div className="mt-4 max-h-80 max-w-full overflow-auto rounded-md border border-border bg-background">
-              <table className="w-full min-w-[1100px] text-sm">
-                <thead className="bg-surface text-left text-meta font-medium text-faint-foreground">
-                  <tr>
-                    <th className="px-3 py-2">{t("batchRowNo")}</th>
-                    <th className="px-3 py-2">{t("batchAssetTag")}</th>
-                    <th className="px-3 py-2">{t("batchSerialNumber")}</th>
-                    <th className="px-3 py-2">{t("batchCustodian")}</th>
-                    <th className="px-3 py-2">{t("batchDepartment")}</th>
-                    <th className="px-3 py-2">{t("batchCurrentLocation")}</th>
-                    <th className="px-3 py-2">{t("batchHomeLocation")}</th>
-                    <th className="px-3 py-2">{t("batchRemark")}</th>
+            }
+          >
+            <KeyValueList
+              items={[
+                { key: "location", label: t("batchReviewSharedLocation"), value: locations.find((location) => location.id === common.currentLocationId)?.label },
+                { key: "fixedAssetCode", label: t("batchReviewSharedFixedAssetCode"), value: common.fixedAssetCode },
+                { key: "count", label: t("batchRows"), value: formatCount(rows.length) },
+              ]}
+            />
+            {/* The review keeps its 320px height cap: the outer frame scrolls down, the table scrolls sideways. */}
+            <DataTable framed={false} minWidth={1100} caption={t("batchReviewTitle")} className="mt-4 max-h-80 overflow-y-auto">
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{t("batchRowNo")}</DataTableHead>
+                  <DataTableHead>{t("batchAssetTag")}</DataTableHead>
+                  <DataTableHead>{t("batchSerialNumber")}</DataTableHead>
+                  <DataTableHead>{t("batchCustodian")}</DataTableHead>
+                  <DataTableHead>{t("batchDepartment")}</DataTableHead>
+                  <DataTableHead>{t("batchCurrentLocation")}</DataTableHead>
+                  <DataTableHead>{t("batchHomeLocation")}</DataTableHead>
+                  <DataTableHead>{t("batchRemark")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {previewRows.map((row) => (
+                  <tr key={row.rowNo}>
+                    <DataTableCell className="num font-medium">{row.rowNo}</DataTableCell>
+                    <DataTableCell>
+                      {row.assetTag ? (
+                        <span className="tag font-medium text-foreground">{row.assetTag}</span>
+                      ) : (
+                        <span className="font-medium text-foreground">{t("batchReviewAutoAssetTag")}</span>
+                      )}
+                      {row.assetTagSource === "manual" ? <span className="ml-2 text-meta text-muted-foreground">{t("batchReviewManualAssetTag")}</span> : null}
+                    </DataTableCell>
+                    <DataTableCell>{orNil(row.serialNumber)}</DataTableCell>
+                    <DataTableCell>{orNil(employees.find((employee) => employee.id === (row.custodianId || common.custodianId))?.label)}</DataTableCell>
+                    <DataTableCell>{orNil(departments.find((department) => department.id === (row.departmentId || common.departmentId))?.label)}</DataTableCell>
+                    <DataTableCell>{orNil(locations.find((location) => location.id === (row.currentLocationId || common.currentLocationId))?.label)}</DataTableCell>
+                    <DataTableCell>{orNil(locations.find((location) => location.id === (row.homeLocationId || common.homeLocationId))?.label)}</DataTableCell>
+                    <DataTableCell>{orNil(row.remark)}</DataTableCell>
                   </tr>
-                </thead>
-                <tbody>
-                  {previewRows.map((row) => (
-                    <tr key={row.rowNo} className="border-t border-border">
-                      <td className="px-3 py-2 font-medium">{row.rowNo}</td>
-                      <td className="px-3 py-2">
-                        <span className="font-medium text-foreground">{row.assetTag || t("batchReviewAutoAssetTag")}</span>
-                        {row.assetTagSource === "manual" ? <span className="ml-2 text-xs text-muted-foreground">{t("batchReviewManualAssetTag")}</span> : null}
-                      </td>
-                      <td className="px-3 py-2">{row.serialNumber || "-"}</td>
-                      <td className="px-3 py-2">{employees.find((employee) => employee.id === (row.custodianId || common.custodianId))?.label ?? "-"}</td>
-                      <td className="px-3 py-2">{departments.find((department) => department.id === (row.departmentId || common.departmentId))?.label ?? "-"}</td>
-                      <td className="px-3 py-2">{locations.find((location) => location.id === (row.currentLocationId || common.currentLocationId))?.label ?? "-"}</td>
-                      <td className="px-3 py-2">{locations.find((location) => location.id === (row.homeLocationId || common.homeLocationId))?.label ?? "-"}</td>
-                      <td className="px-3 py-2">{row.remark || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          </ContentPanel>
         ) : null}
 
         {createdBatch ? (
-          <div className="rounded-md border border-success-border bg-success-soft p-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("batchCreatedTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("batchCreatedDescription", { count: createdBatch.created })}</p>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <ContentPanel title={t("batchCreatedTitle")} description={t("batchCreatedDescription", { count: createdBatch.created })}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Link href={`/${locale}/assets`} className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")}>
                 {t("batchGoToRegister")}
               </Link>
@@ -1030,26 +1035,26 @@ export function AssetBatchForm({
             </div>
             <div className="mt-4">
               <h3 className="text-sm font-semibold text-foreground">{t("batchReceiptAssets")}</h3>
-              <div className="mt-2 overflow-auto rounded-md border border-border bg-background">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead className="bg-surface text-left text-meta font-medium text-faint-foreground">
-                    <tr>
-                      <th className="px-3 py-2">{t("assetTag")}</th>
-                      <th className="px-3 py-2">{t("assetName")}</th>
+              <DataTable framed={false} minWidth={640} caption={t("batchReceiptAssets")} className="mt-2">
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{t("assetTag")}</DataTableHead>
+                    <DataTableHead>{t("assetName")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {createdBatch.assets.map((asset) => (
+                    <tr key={asset.id}>
+                      <DataTableCell>
+                        <span className="tag font-medium text-foreground">{asset.assetTag}</span>
+                      </DataTableCell>
+                      <DataTableCell className="text-muted-foreground">{asset.name}</DataTableCell>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {createdBatch.assets.map((asset) => (
-                      <tr key={asset.id} className="border-t border-border">
-                        <td className="px-3 py-2 font-medium text-foreground">{asset.assetTag}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{asset.name}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             </div>
-          </div>
+          </ContentPanel>
         ) : null}
 
         <div className="flex justify-end">
@@ -1076,21 +1081,12 @@ function isDuplicateCheckResult(result: DuplicateCheckResult | { error?: string 
   return Boolean(result && "ok" in result && typeof result.ok === "boolean")
 }
 
+// Spec 2D D9: each form section is a ContentPanel, as in the single asset form.
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-5">
-      <h2 className="mb-4 break-words text-lg font-semibold text-foreground">{title}</h2>
+    <ContentPanel title={title}>
       <div className="grid gap-4 md:grid-cols-2">{children}</div>
-    </section>
-  )
-}
-
-function SummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-foreground">{value}</div>
-    </div>
+    </ContentPanel>
   )
 }
 

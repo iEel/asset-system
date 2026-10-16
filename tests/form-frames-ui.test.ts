@@ -130,12 +130,14 @@ test("the three settings tables are the shared DataTable with its white 13/500 h
   assert.doesNotMatch(source, /<thead\b|<th\b|function Head\b|\bbg-muted\//)
 })
 
-test("the asset batch form: PageHeader and the white table header on its three tables (2B-1 task 24, I13, R-e)", () => {
+// Plan 2D-3 moved the three hand tables onto the shared DataTable, without a frame of their own inside their panels.
+test("the asset batch form: PageHeader and the shared DataTable for its three tables (2B-1 task 24, I13, R-e; plan 2D-3)", () => {
   const source = read(`${C}assets/asset-batch-form.tsx`)
   assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "asset-batch-form.tsx imports PageHeader")
   assert.match(source, /<div className="mx-auto max-w-6xl">\n\s+<PageHeader title=\{t\("batchCreateTitle"\)\} meta=\{t\("batchCreateSubtitle"\)\} className="mb-6" \/>\n/)
-  assert.equal(source.match(/<thead className="bg-surface text-left text-meta font-medium text-faint-foreground">/g)?.length, 3)
-  assert.doesNotMatch(source, /<h1\b|\bbg-muted\/|text-xs font-semibold text-muted-foreground/)
+  assert.equal(source.match(/<DataTableHeader>/g)?.length, 3)
+  assert.equal(source.match(/<DataTable framed=\{false\}/g)?.length, 3)
+  assert.doesNotMatch(source, /<h1\b|<thead\b|<th\b|\bbg-muted\/|text-xs font-semibold text-muted-foreground/)
 })
 
 test("the depreciation builder formats its preview with the shared th-TH helpers (2B-1 task 24, R-f)", () => {

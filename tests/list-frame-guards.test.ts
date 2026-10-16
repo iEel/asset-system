@@ -257,7 +257,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the default separator of the tag preview :2136 (R-n)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // → 9 (KEEP): 2C form (2D)
-    [`${C}assets/asset-batch-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)
     [`${C}assets/asset-component-manager.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
@@ -331,7 +330,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1197, :1199 and the history sentence :2384 (R-n)
     [`${C}admin/system-settings-form.tsx`]: 1, // the default separator of the tag preview :2136 (R-n)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // 2C form (2D)
-    [`${C}assets/asset-batch-form.tsx`]: 8, // 2C form (2D)
     [`${C}assets/asset-component-manager.tsx`]: 3, // 2C form (2D)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // label data (R-n)
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // review dialog (2D)

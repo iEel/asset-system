@@ -33,13 +33,14 @@ test("batch asset rows show legacy asset tag before serial number in edit and re
   assertOrdered(
     source,
     [
-      '<table className="min-w-[760px] w-full text-sm">',
-      '<th className="w-56 px-3 py-2">{t("batchAssetTag")}</th>',
-      '<th className="w-56 px-3 py-2">{t("batchSerialNumber")}</th>',
-      'showRowCustodian ? <th className="w-64 px-3 py-2">{t("batchCustodian")}</th> : null',
-      'showRowDepartment ? <th className="w-64 px-3 py-2">{t("batchDepartment")}</th> : null',
-      'showRowCurrentLocation ? <th className="w-72 px-3 py-2">{t("batchCurrentLocation")}</th> : null',
-      'showRowHomeLocation ? <th className="w-72 px-3 py-2">{t("batchHomeLocation")}</th> : null',
+      // Plan 2D-3: both tables are the shared DataTable.
+      '<DataTable framed={false} minWidth={760} caption={t("batchRows")} className="hidden md:col-span-2 md:block">',
+      '<DataTableHead className="w-56">{t("batchAssetTag")}</DataTableHead>',
+      '<DataTableHead className="w-56">{t("batchSerialNumber")}</DataTableHead>',
+      'showRowCustodian ? <DataTableHead className="w-64">{t("batchCustodian")}</DataTableHead> : null',
+      'showRowDepartment ? <DataTableHead className="w-64">{t("batchDepartment")}</DataTableHead> : null',
+      'showRowCurrentLocation ? <DataTableHead className="w-72">{t("batchCurrentLocation")}</DataTableHead> : null',
+      'showRowHomeLocation ? <DataTableHead className="w-72">{t("batchHomeLocation")}</DataTableHead> : null',
     ],
     "desktop batch row table"
   )
@@ -47,13 +48,13 @@ test("batch asset rows show legacy asset tag before serial number in edit and re
   assertOrdered(
     source,
     [
-      '<table className="w-full min-w-[1100px] text-sm">',
-      '<th className="px-3 py-2">{t("batchAssetTag")}</th>',
-      '<th className="px-3 py-2">{t("batchSerialNumber")}</th>',
-      '<th className="px-3 py-2">{t("batchCustodian")}</th>',
-      '<th className="px-3 py-2">{t("batchDepartment")}</th>',
-      '<th className="px-3 py-2">{t("batchCurrentLocation")}</th>',
-      '<th className="px-3 py-2">{t("batchHomeLocation")}</th>',
+      '<DataTable framed={false} minWidth={1100} caption={t("batchReviewTitle")} className="mt-4 max-h-80 overflow-y-auto">',
+      '<DataTableHead>{t("batchAssetTag")}</DataTableHead>',
+      '<DataTableHead>{t("batchSerialNumber")}</DataTableHead>',
+      '<DataTableHead>{t("batchCustodian")}</DataTableHead>',
+      '<DataTableHead>{t("batchDepartment")}</DataTableHead>',
+      '<DataTableHead>{t("batchCurrentLocation")}</DataTableHead>',
+      '<DataTableHead>{t("batchHomeLocation")}</DataTableHead>',
     ],
     "batch review table"
   )
