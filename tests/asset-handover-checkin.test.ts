@@ -54,5 +54,5 @@ test("the check-in form uses the shared fields and a busy save button (2C batch 
   assert.match(source, /<Field label=\{t\("returnDate"\)\} required>\n\s+<Input type="date" value=\{values\.returnDate\}/)
   assert.match(source, /<NativeSelect value=\{value\} required=\{required\} disabled=\{disabled\} onChange=/)
   assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
-  assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full shrink-0 sm:w-auto"\)\}/)
+  assert.match(source, /actionHref=\{`\/\$\{locale\}\/asset-management\/checkout`\}\n\s+actionLabel=\{t\("goToCheckout"\)\}\n\s+actionVariant="secondary"/)
 })

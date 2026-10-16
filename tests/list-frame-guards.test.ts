@@ -160,7 +160,8 @@ const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Spec 2D D19: label and value look-alikes join this list in the commit that removes them, so the count stays 0:
 // MovementInfo (the movement timeline, plan 2D-3), ReviewItem (the component manager), MobileField (my assets),
 // DocumentFact (a supplier's purchase documents).
-const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact)\b/g
+// Plan 2D-4 Task 6 (OP-6): ReadOnly (the check-in form's current custody).
+const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly)\b/g
 const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 const pageCurrent = (text: string) => /"page"/.test(jsxAttrValue(text, "aria-current") ?? "")
@@ -251,7 +252,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LV2: {
     // 2B-1
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the default separator of the tag preview :2136 (R-n)
-    [`${C}asset-operations/checkin-form.tsx`]: 9, // → 9 (KEEP): 2C form (2D)
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
@@ -311,7 +311,6 @@ const KEEP: Record<string, Record<string, number>> = {
   LV2: {
     [`${D}assets/[id]/page.tsx`]: 4, // translated-sentence arguments :1202, :1204 and the history sentence :2390 (R-n)
     [`${C}admin/system-settings-form.tsx`]: 1, // the default separator of the tag preview :2136 (R-n)
-    [`${C}asset-operations/checkin-form.tsx`]: 9, // 2C form (2D)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // label data (R-n)
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // review dialog (2D)
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // 2C form (2D)

@@ -115,7 +115,7 @@ test("the check-in photo picker explains itself before a pick and lists the queu
   assert.doesNotMatch(dropzone, /\bhint=/)
   assert.match(dropzone, /description=\{t\("photoAfterDescription"\)\}/)
   assert.match(source, /<FileQueueList\n\s+items=\{photosAfter\.map\(\(photo\) => \(\{ id: photo\.id, name: photo\.label, detail: photo\.file\.name \}\)\)\}\n\s+emptyLabel=\{t\("noQueuedPhotos"\)\}\n\s+disabled=\{saving\}/)
-  assert.equal(source.match(/rounded-md bg-primary-soft text-primary/g)?.length, 1, "only the no-checkouts icon tile stays")
+  assert.doesNotMatch(source, /rounded-md bg-primary-soft text-primary/, "the no-checkouts state is an ActionEmptyState, without an icon tile (plan 2D-4)")
   assert.doesNotMatch(source, /Trash2|FileImage|t\("photoQueued"\)|t\("removePhoto"\)/)
   for (const locale of ["th", "en"]) {
     const checkin = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).checkin as Record<string, string>

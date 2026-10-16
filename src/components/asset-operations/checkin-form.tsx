@@ -2,17 +2,22 @@
 
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { PackageCheck, Save, Wrench } from "lucide-react"
+import { PackageCheck, Save } from "lucide-react"
 import { toast } from "sonner"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { Button } from "@/components/ui/button"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { PageHeader } from "@/components/ui/page-header"
 import { SearchField } from "@/components/ui/search-field"
@@ -21,8 +26,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { formatCount } from "@/lib/display-format"
 import { toLocalDateInputValue } from "@/lib/local-date"
-import { cn } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean }
@@ -294,7 +299,7 @@ export function CheckinForm({
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t("title")} className="mb-6" />
-      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">
+      <ContentPanel>
         <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {initialCheckout ? (
             <div className="md:col-span-2">
@@ -314,46 +319,36 @@ export function CheckinForm({
           />
 
           {!hasActiveCheckoutRecords && (
-            <div className="md:col-span-2 rounded-md border border-dashed border-border bg-background p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary-soft text-primary">
-                    <PackageCheck className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">{t("noActiveCheckoutsTitle")}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{t("noActiveCheckoutsDescription")}</div>
-                  </div>
-                </div>
-                <Link href={`/${locale}/asset-management/checkout`} className={cn(buttonVariants({ variant: "outline" }), "w-full shrink-0 sm:w-auto")}>
-                  {t("goToCheckout")}
-                </Link>
-              </div>
+            <div className="md:col-span-2">
+              <ActionEmptyState
+                icon={<PackageCheck />}
+                title={t("noActiveCheckoutsTitle")}
+                description={t("noActiveCheckoutsDescription")}
+                actionHref={`/${locale}/asset-management/checkout`}
+                actionLabel={t("goToCheckout")}
+                actionVariant="secondary"
+              />
             </div>
           )}
 
           {hasActiveCheckoutRecords && !hasActiveCheckouts ? (
-            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-4 text-sm text-warning">
-              <div className="font-medium">{t("handoverReviewRequired")}</div>
-              <div className="mt-1">{t("handoverModeMissing")}</div>
-            </div>
+            <Notice tone="warning" title={t("handoverReviewRequired")} className="md:col-span-2">
+              {t("handoverModeMissing")}
+            </Notice>
           ) : null}
 
           {hasLegacyReturnCandidates && (
-            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-sm font-semibold text-foreground">{t("legacyReturnTitle")}</div>
-                    <span className="rounded-full border border-warning-border bg-surface px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      {t("legacyReturnFilteredCount", {
-                        shown: filteredLegacyReturnCandidates.length,
-                        total: legacyReturnCandidates.length,
-                      })}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">{t("legacyReturnDescription")}</div>
-                </div>
+            <div className="md:col-span-2 grid gap-3">
+              <Notice tone="warning" title={t("legacyReturnTitle")}>
+                {t("legacyReturnDescription")}
+              </Notice>
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                <span className="text-meta text-muted-foreground">
+                  {t("legacyReturnFilteredCount", {
+                    shown: formatCount(filteredLegacyReturnCandidates.length),
+                    total: formatCount(legacyReturnCandidates.length),
+                  })}
+                </span>
                 <SearchField
                   aria-label={t("legacyReturnSearch")}
                   placeholder={t("legacyReturnSearch")}
@@ -362,39 +357,37 @@ export function CheckinForm({
                   onChange={(event) => setLegacyReturnSearch(event.target.value)}
                 />
               </div>
-              <div className="mt-3 grid max-h-96 gap-2 overflow-y-auto pr-1">
+              <div className="max-h-96 overflow-y-auto rounded-md border border-border bg-background">
                 {filteredLegacyReturnCandidates.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-warning-border bg-surface/80 p-5 text-center text-sm text-muted-foreground">
-                    {t("legacyReturnNoResults")}
-                  </div>
+                  <EmptyNote padded role="status">{t("legacyReturnNoResults")}</EmptyNote>
                 ) : (
-                  filteredLegacyReturnCandidates.map((asset) => (
-                    <div key={asset.id} className="grid gap-3 rounded-md border border-border bg-surface p-3 lg:grid-cols-[1fr_auto] lg:items-center">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="font-semibold text-foreground">{asset.assetTag}</div>
-                          <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">
-                            {t("legacyReturnBadge")}
-                          </span>
+                  <ul className="divide-y divide-border-soft">
+                    {filteredLegacyReturnCandidates.map((asset) => (
+                      <li key={asset.id} className="grid gap-3 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="tag font-medium text-foreground">{asset.assetTag}</span>
+                            <Chip>{t("legacyReturnBadge")}</Chip>
+                          </div>
+                          <div className="mt-1 truncate text-sm text-muted-foreground" title={asset.assetName}>{asset.assetName}</div>
+                          <div className="mt-2 grid gap-1 text-meta text-muted-foreground md:grid-cols-2">
+                            <span className="truncate" title={asset.custodianLabel}>{t("legacyReturnCurrentHolder")}: {asset.custodianLabel}</span>
+                            <span className="truncate" title={asset.currentLocationLabel}>{t("legacyReturnCurrentLocation")}: {asset.currentLocationLabel}</span>
+                          </div>
                         </div>
-                        <div className="mt-1 truncate text-sm text-muted-foreground" title={asset.assetName}>{asset.assetName}</div>
-                        <div className="mt-2 grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
-                          <span className="truncate" title={asset.custodianLabel}>{t("legacyReturnCurrentHolder")}: {asset.custodianLabel}</span>
-                          <span className="truncate" title={asset.currentLocationLabel}>{t("legacyReturnCurrentLocation")}: {asset.currentLocationLabel}</span>
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        busy={legacyBackfillSavingId === asset.id}
-                        disabled={saving}
-                        onClick={() => handleCreateLegacyCheckout(asset.id)}
-                        className="w-full shrink-0 lg:w-auto"
-                      >
-                        <PackageCheck className="text-warning" />
-                        {t("legacyReturnAction")}
-                      </Button>
-                    </div>
-                  ))
+                        <Button
+                          variant="outline"
+                          busy={legacyBackfillSavingId === asset.id}
+                          disabled={saving}
+                          onClick={() => handleCreateLegacyCheckout(asset.id)}
+                          className="w-full shrink-0 lg:w-auto"
+                        >
+                          <PackageCheck />
+                          {t("legacyReturnAction")}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
@@ -409,26 +402,40 @@ export function CheckinForm({
           {selectedCheckout && (
             <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("currentCustody")}</div>
-              <div className="grid gap-3 text-sm md:grid-cols-3">
-                <ReadOnly label={t("handoverDocumentNo")} value={selectedCheckout.documentNo ?? "-"} />
-                <ReadOnly
-                  label={t("custodyType")}
-                  value={selectedCheckout.handoverMode === "permanent_assignment"
-                    ? t("permanentAssignmentShort")
-                    : t("temporaryLoanShort")}
+              {/* D19: the handover and the asset as two shared KeyValueLists; an empty value shows Nil. */}
+              <div className="grid gap-x-6 gap-y-2 md:grid-cols-2">
+                <KeyValueList
+                  items={[
+                    { key: "documentNo", label: t("handoverDocumentNo"), value: selectedCheckout.documentNo ? <span className="tag">{selectedCheckout.documentNo}</span> : null },
+                    {
+                      key: "custodyType",
+                      label: t("custodyType"),
+                      value: selectedCheckout.handoverMode === "permanent_assignment"
+                        ? t("permanentAssignmentShort")
+                        : t("temporaryLoanShort"),
+                    },
+                    { key: "checkoutType", label: t("checkoutType"), value: selectedCheckout.checkoutType ? t(`type_${selectedCheckout.checkoutType}`) : null },
+                    { key: "checkoutTo", label: t("checkoutTo"), value: selectedCheckout.destinationLabel },
+                    { key: "checkoutDate", label: t("checkoutDate"), value: formatDate(selectedCheckout.checkoutDate) },
+                    ...(selectedCheckout.handoverMode === "temporary_loan"
+                      ? [{ key: "expectedReturnDate", label: t("expectedReturnDate"), value: formatDate(selectedCheckout.expectedReturnDate) }]
+                      : []),
+                    { key: "checkoutRemark", label: t("checkoutRemark"), value: selectedCheckout.remark },
+                  ]}
                 />
-                <ReadOnly label={t("currentAssetStatus")} value={selectedCheckout.statusLabel ?? selectedCheckout.statusName ?? "-"} />
-                <ReadOnly label={t("assetTag")} value={selectedCheckout.assetTag ?? "-"} />
-                <ReadOnly label={t("assetName")} value={selectedCheckout.assetName ?? "-"} />
-                <ReadOnly label={t("serialNumber")} value={selectedCheckout.serialNumber ?? "-"} />
-                <ReadOnly label={t("checkoutType")} value={selectedCheckout.checkoutType ? t(`type_${selectedCheckout.checkoutType}`) : "-"} />
-                <ReadOnly label={t("checkoutTo")} value={selectedCheckout.destinationLabel ?? "-"} />
-                <ReadOnly label={t("conditionBefore")} value={selectedCheckout.conditionBefore ? conditionLabelById.get(selectedCheckout.conditionBefore) ?? selectedCheckout.conditionBefore : "-"} />
-                <ReadOnly label={t("checkoutDate")} value={formatDate(selectedCheckout.checkoutDate)} />
-                {selectedCheckout.handoverMode === "temporary_loan" ? (
-                  <ReadOnly label={t("expectedReturnDate")} value={formatDate(selectedCheckout.expectedReturnDate)} />
-                ) : null}
-                <ReadOnly label={t("checkoutRemark")} value={selectedCheckout.remark ?? "-"} />
+                <KeyValueList
+                  items={[
+                    { key: "assetTag", label: t("assetTag"), value: selectedCheckout.assetTag ? <span className="tag">{selectedCheckout.assetTag}</span> : null },
+                    { key: "serialNumber", label: t("serialNumber"), value: selectedCheckout.serialNumber ? <span className="tag">{selectedCheckout.serialNumber}</span> : null },
+                    { key: "assetName", label: t("assetName"), value: selectedCheckout.assetName },
+                    { key: "currentAssetStatus", label: t("currentAssetStatus"), value: selectedCheckout.statusLabel ?? selectedCheckout.statusName },
+                    {
+                      key: "conditionBefore",
+                      label: t("conditionBefore"),
+                      value: selectedCheckout.conditionBefore ? conditionLabelById.get(selectedCheckout.conditionBefore) ?? selectedCheckout.conditionBefore : null,
+                    },
+                  ]}
+                />
               </div>
             </div>
           )}
@@ -485,10 +492,10 @@ export function CheckinForm({
             </Field>
           </div>
 
-          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+          <div className="md:col-span-2">
             <div className="mb-3">
               <div className="text-sm font-semibold text-foreground">{t("returnPhotoChecklist")}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{t("returnPhotoChecklistHelp")}</div>
+              <div className="mt-1 text-meta text-muted-foreground">{t("returnPhotoChecklistHelp")}</div>
             </div>
             <div className="mb-3 grid gap-3 md:grid-cols-[220px_1fr]">
               <Select label={t("photoType")} value={photoType} onChange={setPhotoType}>
@@ -533,17 +540,13 @@ export function CheckinForm({
           </div>
 
           {sendsToRepair ? (
-            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Wrench className="h-4 w-4" />
-                {t("sendToRepairTitle")}
-              </p>
-              <p className="mt-1 text-xs text-warning">{t("sendToRepairHelp")}</p>
-              <div className="mt-3">
-                <Field label={t("maintenanceProblem")}>
-                  <Textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} placeholder={t("maintenanceProblemPlaceholder")} />
-                </Field>
-              </div>
+            <div className="md:col-span-2 grid gap-3">
+              <Notice tone="info" title={t("sendToRepairTitle")}>
+                {t("sendToRepairHelp")}
+              </Notice>
+              <Field label={t("maintenanceProblem")}>
+                <Textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} placeholder={t("maintenanceProblemPlaceholder")} />
+              </Field>
             </div>
           ) : null}
 
@@ -567,7 +570,7 @@ export function CheckinForm({
           onClose={() => setReviewOpen(false)}
           onConfirm={() => void submitCheckin()}
         />
-      </section>
+      </ContentPanel>
     </div>
   )
 }
@@ -582,17 +585,8 @@ function Select({ label, value, required, disabled, onChange, children }: { labe
   )
 }
 
-function ReadOnly({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-xs uppercase text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words font-medium text-foreground" title={value}>{value}</div>
-    </div>
-  )
-}
-
 function formatDate(value?: string | null) {
-  if (!value) return "-"
+  if (!value) return null
   return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(value))
 }
 

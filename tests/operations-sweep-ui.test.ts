@@ -92,3 +92,19 @@ test("check-out, transfer and bulk move forms: the form panel is a ContentPanel,
     assert.doesNotMatch(source, /<section\b|rounded-lg border|text-center text-sm text-muted-foreground/, name)
   }
 })
+
+test("check-in form: a ContentPanel, Notice by meaning, ActionEmptyState, KeyValueList with Nil, a Chip and EmptyNote in the legacy list, and no box around the dropzone (spec 2D D7, D9, D19, M21, M22, M33)", () => {
+  const source = read(`${C}asset-operations/checkin-form.tsx`)
+  assert.match(source, /<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n\s+<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\} noValidate /)
+  assert.match(source, /<ActionEmptyState\n\s+icon=\{<PackageCheck \/>\}\n\s+title=\{t\("noActiveCheckoutsTitle"\)\}\n\s+description=\{t\("noActiveCheckoutsDescription"\)\}\n\s+actionHref=\{`\/\$\{locale\}\/asset-management\/checkout`\}\n\s+actionLabel=\{t\("goToCheckout"\)\}\n\s+actionVariant="secondary"/)
+  assert.match(source, /<Notice tone="warning" title=\{t\("handoverReviewRequired"\)\}[^>]*>\n\s+\{t\("handoverModeMissing"\)\}\n\s+<\/Notice>/)
+  assert.match(source, /<Notice tone="warning" title=\{t\("legacyReturnTitle"\)\}[^>]*>\n\s+\{t\("legacyReturnDescription"\)\}\n\s+<\/Notice>/)
+  assert.match(source, /shown: formatCount\(filteredLegacyReturnCandidates\.length\),\n\s+total: formatCount\(legacyReturnCandidates\.length\),/)
+  assert.match(source, /<EmptyNote padded role="status">\{t\("legacyReturnNoResults"\)\}<\/EmptyNote>/)
+  assert.match(source, /<span className="tag font-medium text-foreground">\{asset\.assetTag\}<\/span>\n\s+<Chip>\{t\("legacyReturnBadge"\)\}<\/Chip>/)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the handover and the asset")
+  assert.match(source, /value: selectedCheckout\.documentNo \? <span className="tag">\{selectedCheckout\.documentNo\}<\/span> : null/)
+  assert.match(source, /function formatDate\(value\?: string \| null\) \{\n\s+if \(!value\) return null\n/)
+  assert.match(source, /<Notice tone="info" title=\{t\("sendToRepairTitle"\)\}[^>]*>\n\s+\{t\("sendToRepairHelp"\)\}\n\s+<\/Notice>/)
+  assert.doesNotMatch(source, /function ReadOnly\b|"-"|<section\b|rounded-lg border|border-dashed|rounded-full|warning-soft|primary-soft|text-warning|\btext-xs\b|\buppercase\b|<Wrench\b|from "next\/link"/)
+})
