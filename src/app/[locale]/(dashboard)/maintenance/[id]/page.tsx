@@ -1,25 +1,29 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, FileText, History, Printer, Trash2 } from "lucide-react"
+import { FileText, History, Printer, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatMoney } from "@/lib/display-format"
-import { formatDate, formatDateTime } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
 import { RepairRecordActions } from "@/components/maintenance/repair-record-actions"
 import { getMaintenanceMovementLabel, getMovementDisplayLabels } from "@/lib/movement-labels"
 import { canAttachToRepairRecord, getRepairRecordStatusTone, isOpenRepairStatus, toRepairRecordStatus } from "@/lib/repair-record-policy"
+import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
-import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Nil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { getPanelClasses } from "@/lib/design-system"
 
 type RepairRecordPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -154,8 +158,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <h2 className="mb-5 text-lg font-semibold text-foreground">{t("detailTitle")}</h2>
+          <ContentPanel title={t("detailTitle")}>
             <KeyValueList
               items={[
                 { key: "date", label: t("date"), value: formatDate(ticket.reportedDate) },
@@ -163,7 +166,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                   key: "outcome",
                   label: t("outcomeQuestion"),
                   value: outcomeLabel == null ? null : (
-                    <span className={ticket.outcome === "usable" ? "text-success" : ticket.outcome === "beyond_repair" ? "text-warning" : undefined}>{outcomeLabel}</span>
+                    <StatusBadge label={outcomeLabel} tone={ticket.outcome === "usable" ? "success" : ticket.outcome === "beyond_repair" ? "warning" : "muted"} />
                   ),
                 },
                 { key: "returnDate", label: t("returnDate"), value: ticket.returnDate ? formatDate(ticket.returnDate) : null },
@@ -180,26 +183,24 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
               <TextBlock label={t("problem")} value={ticket.problem} />
               <TextBlock label={t("remarkTitle")} value={ticket.resolution} />
             </div>
-          </section>
+          </ContentPanel>
 
           {hasLegacyDetails ? (
-            <section className="rounded-lg border border-border bg-surface p-6">
-              <h2 className="mb-4 text-base font-semibold text-foreground">{t("legacyTitle")}</h2>
+            <ContentPanel title={t("legacyTitle")}>
               <KeyValueList items={legacyFields} />
-            </section>
+            </ContentPanel>
           ) : null}
 
-          <section id="history" className="scroll-mt-6 rounded-lg border border-border bg-surface p-6">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <History className="h-5 w-5 text-primary" />{t("history")}
-            </h2>
+          {/* The ActionBar's #history link scrolls here, and ContentPanel takes no id: the panel classes (2D-2 R4). */}
+          <section id="history" className={cn(getPanelClasses(), "scroll-mt-6 p-4 sm:p-5")}>
+            <h2 className="mb-4 text-base font-semibold text-foreground">{t("history")}</h2>
             {movements.length === 0 ? (
-              <ActionEmptyState icon={<History className="h-6 w-6" />} title={t("historyEmpty")} />
+              <EmptyNote>{t("historyEmpty")}</EmptyNote>
             ) : (
               <ol className="space-y-4">
                 {movements.map((movement) => (
                   <li key={movement.id} className="relative border-l border-border pl-4">
-                    <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-primary" />
+                    <span aria-hidden="true" className={cn(statusMarkerVariants({ tone: "primary" }), "absolute top-2 -left-1")} />
                     <div className="rounded-md bg-background p-4">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div className="font-medium text-foreground">{getMaintenanceMovementLabel(movement.movementType, {
@@ -210,7 +211,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                           pmCreate: t("movement.pmCreate"),
                           fallback: t("movement.fallback"),
                         })}</div>
-                        <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
+                        <div className="text-meta text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
                       </div>
                       <KeyValueList
                         className="mt-2"
@@ -229,8 +230,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
         </div>
 
         <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <h2 className="mb-5 text-lg font-semibold text-foreground">{t("assetSection")}</h2>
+          <ContentPanel title={t("assetSection")}>
             <div className="space-y-4">
               <KeyValueList
                 items={[
@@ -244,26 +244,28 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                   },
                 ]}
               />
-              <Link href={`/${locale}/assets/${ticket.asset.id}`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent">
+              <Link href={`/${locale}/assets/${ticket.asset.id}`} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
                 {t("openAsset")}
               </Link>
             </div>
-          </section>
+          </ContentPanel>
 
           {shouldReviewDisposal && canCreateDisposal ? (
-            <section className="rounded-lg border border-warning-border bg-warning-soft p-6">
-              <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-                <AlertTriangle className="h-5 w-5 text-warning" />{t("disposalReviewTitle")}
-              </h2>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div>{t("disposalReviewCount", { count: totalRepairCount })}</div>
-                <div>{t("disposalReviewCost", { cost: formatMoney(totalRepairCost, { unit: tCommon("baht") }) })}</div>
-                {purchasePrice > 0 ? <div>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</div> : null}
-              </div>
-              <Link href={disposalRequestHref} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning-border bg-surface px-3 text-sm font-medium text-warning hover:bg-warning-soft">
-                <Trash2 className="h-4 w-4" />{t("openDisposalRequest")}
-              </Link>
-            </section>
+            <ContentPanel title={t("disposalReviewTitle")}>
+              <Notice
+                tone="warning"
+                action={
+                  <Link href={disposalRequestHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <Trash2 aria-hidden="true" />
+                    {t("openDisposalRequest")}
+                  </Link>
+                }
+              >
+                <p>{t("disposalReviewCount", { count: totalRepairCount })}</p>
+                <p>{t("disposalReviewCost", { cost: formatMoney(totalRepairCost, { unit: tCommon("baht") }) })}</p>
+                {purchasePrice > 0 ? <p>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</p> : null}
+              </Notice>
+            </ContentPanel>
           ) : null}
 
           <div id="attachments" className="scroll-mt-6">
