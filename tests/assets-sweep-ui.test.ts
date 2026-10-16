@@ -271,3 +271,10 @@ test("my assets: the phone card facts are a KeyValueList (D19), the card is a qu
   assert.match(source, /\{ key: "status", label: labels\.status, value: <StatusBadge label=\{asset\.status\.nameTh\} tone=\{getAssetStateTone\(asset\.status\.name\)\} \/> \}/)
   assert.doesNotMatch(source, /function MobileField\b|import type React|\btext-xs\b/)
 })
+
+test("components summary: on a phone the serial goes under the component instead of squeezing its name (plan 2D-3 Task 20 fix)", () => {
+  const source = read(`${C}assets/asset-components-summary.tsx`)
+  assert.match(source, /className="flex min-w-0 flex-col gap-1 px-3 py-3 transition-colors hover:bg-row-hover sm:flex-row sm:items-center sm:justify-between sm:gap-3"/)
+  assert.match(source, /<span className="text-meta text-muted-foreground \[overflow-wrap:anywhere\] sm:shrink-0">SN: \{component\.componentAsset\.serialNumber\}<\/span>/)
+  assert.doesNotMatch(source, /"shrink-0 text-meta text-muted-foreground">SN:/)
+})

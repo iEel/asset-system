@@ -103,10 +103,11 @@ export function AssetComponentsSummary({
       ) : (
         <div className="divide-y divide-border-soft rounded-md border border-border">
           {visibleComponents.map((component) => (
+            // On a phone the serial goes under the component, so a long serial cannot squeeze the name (Task 20 fix).
             <Link
               key={component.id}
               href={`/${locale}/assets/${component.componentAsset.id}`}
-              className="flex min-w-0 items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-row-hover"
+              className="flex min-w-0 flex-col gap-1 px-3 py-3 transition-colors hover:bg-row-hover sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
               <span className="min-w-0">
                 <span className="block text-sm text-foreground">
@@ -119,7 +120,7 @@ export function AssetComponentsSummary({
                 </span>
               </span>
               {component.componentAsset.serialNumber ? (
-                <span className="shrink-0 text-meta text-muted-foreground">SN: {component.componentAsset.serialNumber}</span>
+                <span className="text-meta text-muted-foreground [overflow-wrap:anywhere] sm:shrink-0">SN: {component.componentAsset.serialNumber}</span>
               ) : null}
             </Link>
           ))}
