@@ -215,7 +215,7 @@ test("bulk execution dialog uses the dialog parts, busy buttons that stay in pla
   assert.match(dialog, /<Button onClick=\{retry\}>\{copy\.retry\}<\/Button>/)
   assert.match(dialog, /<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" \/>/)
   assert.match(dialog, /<Field label=\{copy\.historicalReason\} required>\n\s+<Textarea\n/)
-  assert.equal(dialog.match(/<FieldHint id=\{historicalHelpId\} className="text-muted-foreground">/g)?.length, 2, "muted, not faint, ink on the warning fill (DESIGN.md §2)")
+  assert.equal(dialog.match(/<FieldHint id=\{historicalHelpId\}>/g)?.length, 2, "the hint sits under the warning Notice, not on its fill, so it is the faint hint again (plan 2D-4)")
   assert.equal(dialog.match(/className=\{checkboxVariants\(\{ size: "lg" \}\)\}/g)?.length, 2)
   assert.match(dialog, /className=\{cn\(checkboxVariants\(\{ size: "lg" \}\), "mt-0\.5"\)\}/)
   assert.equal(dialog.match(/<input\b/g)?.length, 3, "only the three checkboxes stay native inputs")

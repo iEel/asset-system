@@ -49,9 +49,13 @@ import { useConfirm } from "@/components/ui/confirm-dialog"
 import { Field, FieldHint } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Notice } from "@/components/ui/notice"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { Textarea } from "@/components/ui/textarea"
+import { formatCount } from "@/lib/display-format"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
 
@@ -634,29 +638,31 @@ export function DisposalBulkExecutionToolbar() {
   if (selection.selectedIds.length === 0) return null
 
   return (
-    <div
-      className="mt-3 flex flex-col gap-3 border-y border-border bg-background p-3 md:flex-row md:items-center md:justify-between"
-      aria-label={copy.toolbarLabel}
-    >
-      <span className="sr-only" aria-live="polite">
-        {format(copy.selectedCount, { count: selection.selectedIds.length })}
-      </span>
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <CheckSquare2 className="h-4 w-4 text-primary" aria-hidden="true" />
-        {format(copy.selectedCount, { count: selection.selectedIds.length })}
+    <>
+      <div
+        className="mx-4 mt-3 flex flex-col gap-3 rounded-md border border-border bg-background p-3 md:mx-5 md:flex-row md:items-center md:justify-between"
+        aria-label={copy.toolbarLabel}
+      >
+        <span className="sr-only" aria-live="polite">
+          {format(copy.selectedCount, { count: selection.selectedIds.length })}
+        </span>
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <CheckSquare2 className="size-4 text-muted-foreground" aria-hidden="true" />
+          {format(copy.selectedCount, { count: selection.selectedIds.length })}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={clear} disabled={busy}>
+            {copy.clearSelection}
+          </Button>
+          <Button ref={triggerRef} onClick={openReview} disabled={busy}>
+            <ListChecks aria-hidden="true" />
+            {copy.review}
+          </Button>
+        </div>
+        {selectionMessage ? <p className="text-meta text-muted-foreground">{selectionMessage}</p> : null}
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button variant="outline" onClick={clear} disabled={busy}>
-          {copy.clearSelection}
-        </Button>
-        <Button ref={triggerRef} onClick={openReview} disabled={busy}>
-          <ListChecks aria-hidden="true" />
-          {copy.review}
-        </Button>
-      </div>
-      {selectionMessage ? <p className="text-xs text-muted-foreground">{selectionMessage}</p> : null}
-      {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-    </div>
+      {error ? <Notice tone="danger" role="alert" className="mx-4 mt-3 md:mx-5">{error}</Notice> : null}
+    </>
   )
 }
 
@@ -721,7 +727,7 @@ export function DisposalBulkExecutionCheckbox({
         tabIndex={0}
         title={copy.incompatibleType}
         aria-label={copy.incompatibleType}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${variant === "mobile" ? "px-2 text-xs" : ""}`}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${variant === "mobile" ? "px-2 text-meta" : ""}`}
       >
         <ShieldAlert className="h-5 w-5" aria-hidden="true" />
         {variant === "mobile" ? <span>{copy.incompatibleType}</span> : null}
@@ -829,10 +835,10 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
         className={accessibleDialogFormClasses}
       >
         <AccessibleDialogBody className="space-y-5">
+          {error ? <Notice tone="danger" role="alert">{error}</Notice> : null}
           <div aria-live="polite" className="min-h-5 text-sm">
             {previewing ? <BusyLabel label={copy.previewLoading} /> : null}
             {committing ? <BusyLabel label={copy.committing} /> : null}
-            {error ? <p role="alert" className="font-medium text-danger">{error}</p> : null}
           </div>
 
           {dialogState === "review" || previewing ? (
@@ -861,10 +867,10 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
           ) : null}
 
           {dialogState === "review" && historicalAvailable ? (
-            <section className="space-y-3 rounded-md border border-warning-border bg-warning-soft p-3">
-              <p id={historicalWarningId} className="text-sm font-medium text-foreground">
+            <section className="space-y-3">
+              <Notice tone="warning" id={historicalWarningId}>
                 {copy.historicalWarning}
-              </p>
+              </Notice>
               <label className="flex min-h-11 items-center gap-3 text-sm font-medium text-foreground">
                 <input
                   type="checkbox"
@@ -888,7 +894,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                       className="min-h-28"
                     />
                   </Field>
-                  <FieldHint id={historicalHelpId} className="text-muted-foreground">
+                  <FieldHint id={historicalHelpId}>
                     {format(copy.historicalReasonHelp, {
                       count: evidenceExceptionReason.length,
                       max: 2000,
@@ -907,7 +913,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                   </label>
                 </>
               ) : (
-                <FieldHint id={historicalHelpId} className="text-muted-foreground">
+                <FieldHint id={historicalHelpId}>
                   {format(copy.historicalReasonHelp, { count: 0, max: 2000 })}
                 </FieldHint>
               )}
@@ -1067,12 +1073,15 @@ function ReviewedSharedValues({
       <h3 id="bulk-shared-values" className="text-sm font-semibold text-foreground">
         {copy.sharedValues}
       </h3>
-      <dl className="mt-2 grid gap-3 border border-border bg-background p-3 text-sm sm:grid-cols-3">
-        <ReviewValue label={copy.executionDate} value={payload.executionDate} />
-        <ReviewValue label={copy.executor} value={employee ?? copy.notProvided} />
-        <ReviewValue label={copy.finalStatus} value={status ?? copy.notProvided} />
-        {payload.sharedRecipientName ? <ReviewValue label={copy.sharedRecipient} value={payload.sharedRecipientName} /> : null}
-      </dl>
+      <KeyValueList
+        className="mt-2"
+        items={[
+          { key: "executionDate", label: copy.executionDate, value: payload.executionDate },
+          { key: "executor", label: copy.executor, value: employee, nilLabel: copy.notProvided },
+          { key: "finalStatus", label: copy.finalStatus, value: status, nilLabel: copy.notProvided },
+          ...(payload.sharedRecipientName ? [{ key: "sharedRecipient", label: copy.sharedRecipient, value: payload.sharedRecipientName }] : []),
+        ]}
+      />
     </section>
   )
 }
@@ -1092,7 +1101,7 @@ function AuthoritativeItems({
       <h3 id="bulk-authoritative-values" className="text-sm font-semibold text-foreground">
         {copy.reviewedValues}
       </h3>
-      <div className="mt-2 divide-y divide-border border border-border">
+      <div className="mt-2 divide-y divide-border-soft rounded-md border border-border">
         {items.map((item) => {
           const responseItem = responseItemsById.get(item.requestId)
           const recipient = resolveBulkExecutionRecipientReview(item.recipientName, responseItem)
@@ -1104,20 +1113,18 @@ function AuthoritativeItems({
           return (
           <article key={item.requestId} className="space-y-3 p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h4 className="text-sm font-semibold text-foreground">{item.disposalNo}</h4>
-              <span className="text-xs text-muted-foreground">{item.assetLabel}</span>
+              <h4 className="text-sm text-foreground"><span className="tag font-medium">{item.disposalNo}</span></h4>
+              <span className="text-meta text-muted-foreground">{item.assetLabel}</span>
             </div>
-            <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
-              <ReviewValue
-                label={copy.recipient}
-                value={recipient.recipientName ?? copy.notProvided}
-                detail={recipientSource}
-              />
-              <ReviewValue label={copy.documentNo} value={item.documentNo ?? copy.notProvided} />
-              <ReviewValue label={copy.saleValue} value={item.saleValue ?? copy.notProvided} />
-              <ReviewValue label={copy.salvageValue} value={item.salvageValue ?? copy.notProvided} />
-              <ReviewValue label={copy.remark} value={item.executionRemark ?? copy.notProvided} />
-            </dl>
+            <KeyValueList
+              items={[
+                { key: "recipient", label: copy.recipient, value: recipient.recipientName ? <>{recipient.recipientName}{recipientSource ? <span className="mt-1 block text-meta text-muted-foreground">{recipientSource}</span> : null}</> : null, nilLabel: copy.notProvided },
+                { key: "documentNo", label: copy.documentNo, value: item.documentNo ? <span className="tag">{item.documentNo}</span> : null, nilLabel: copy.notProvided },
+                { key: "saleValue", label: copy.saleValue, value: item.saleValue, nilLabel: copy.notProvided },
+                { key: "salvageValue", label: copy.salvageValue, value: item.salvageValue, nilLabel: copy.notProvided },
+                { key: "remark", label: copy.remark, value: item.executionRemark, nilLabel: copy.notProvided },
+              ]}
+            />
           </article>
           )
         })}
@@ -1126,16 +1133,13 @@ function AuthoritativeItems({
   )
 }
 
-function ReviewValue({ label, value, detail }: { label: string; value: string; detail?: string | null }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-foreground">
-        {value}
-        {detail ? <span className="mt-1 block text-xs text-muted-foreground">{detail}</span> : null}
-      </dd>
-    </div>
-  )
+// Each outcome is a state badge (plan 2D-4 R2): eligible and executed are the good results, blocked waits on the user,
+// failed is an error; the reason follows the badge in words.
+const outcomeTones: Record<DisposalBulkExecutionResponse["items"][number]["outcome"], StatusTone> = {
+  eligible: "success",
+  executed: "primary",
+  blocked: "warning",
+  failed: "danger",
 }
 
 function ResponseSummary({
@@ -1150,41 +1154,23 @@ function ResponseSummary({
   return (
     <section aria-labelledby="bulk-response-summary">
       <h3 id="bulk-response-summary" className="sr-only">{copy.resultTitle}</h3>
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <SummaryValue label={copy.selected} value={response.selectedCount} />
-        <SummaryValue label={copy.eligible} value={response.eligibleCount} />
-        <SummaryValue label={copy.executed} value={response.executedCount} />
-        <SummaryValue label={copy.blocked} value={response.blockedCount} />
-        <SummaryValue label={copy.failed} value={response.failedCount} />
-      </dl>
-      <ul className="mt-3 divide-y divide-border border border-border">
+      <StatStrip
+        items={[
+          { key: "selected", label: copy.selected, value: formatCount(response.selectedCount) },
+          { key: "eligible", label: copy.eligible, value: formatCount(response.eligibleCount) },
+          { key: "executed", label: copy.executed, value: formatCount(response.executedCount) },
+          { key: "blocked", label: copy.blocked, value: formatCount(response.blockedCount) },
+          { key: "failed", label: copy.failed, value: formatCount(response.failedCount) },
+        ]}
+      />
+      <ul className="mt-3 divide-y divide-border-soft rounded-md border border-border">
         {response.items.map((item) => (
-          <li key={item.requestId} className="flex flex-col gap-1 p-3 text-sm sm:flex-row sm:justify-between">
-            <span className="font-medium text-foreground">
-              {item.disposalNo ?? item.requestId}
-              {item.assetLabel ? ` · ${item.assetLabel}` : ""}
-            </span>
-            <span className={item.outcome === "executed" || item.outcome === "eligible"
-              ? "text-success"
-              : "text-danger"}
-            >
-              {item.outcome === "eligible" ? copy.eligible
-                : item.outcome === "executed" ? copy.executed
-                  : item.outcome === "blocked" ? `${copy.blocked}: ${getErrorLabel(item.code)}`
-                    : `${copy.failed}: ${getErrorLabel(item.code)}`}
-            </span>
+          <li key={item.requestId} className="flex flex-col gap-1 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <span className="min-w-0 text-foreground"><span className="tag font-medium">{item.disposalNo ?? item.requestId}</span>{item.assetLabel ? ` · ${item.assetLabel}` : ""}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><StatusBadge label={copy[item.outcome]} tone={outcomeTones[item.outcome]} />{item.outcome === "blocked" || item.outcome === "failed" ? <span className="text-meta text-muted-foreground">{getErrorLabel(item.code)}</span> : null}</span>
           </li>
         ))}
       </ul>
     </section>
-  )
-}
-
-function SummaryValue({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border border-border bg-background p-3 text-center">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-lg font-semibold text-foreground">{value}</dd>
-    </div>
   )
 }

@@ -157,7 +157,8 @@ const FORMAT_CURRENCY = /(?<!function )\bformatCurrency\(/g
 // (the batch form and the import panel).
 // Plan 2D-4 Task 22 (AP-3): ImpactItem (the round cancel dialog).
 // Plan 2D-4 Task 23 (AP-4): PreviewMetric (the round form preview).
-const LOCAL_STAT_TILE = /\bfunction (?:SummaryTile|SummaryCard|SummaryPill|SummaryStrip|RoleAuditCard|ResolutionMetric|CoverageMetric|Metric|DashboardCard|BatchMetric|MetricCard|OperationMetric|EvidenceStat|SummaryItem|ImpactItem|PreviewMetric)\b/g
+// Plan 2D-4 Task 38 (DS-9): SummaryValue (the bulk disposal execution result).
+const LOCAL_STAT_TILE = /\bfunction (?:SummaryTile|SummaryCard|SummaryPill|SummaryStrip|RoleAuditCard|ResolutionMetric|CoverageMetric|Metric|DashboardCard|BatchMetric|MetricCard|OperationMetric|EvidenceStat|SummaryItem|ImpactItem|PreviewMetric|SummaryValue)\b/g
 const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Spec 2D D19: label and value look-alikes join this list in the commit that removes them, so the count stays 0:
 // MovementInfo (the movement timeline, plan 2D-3), ReviewItem (the component manager), MobileField (my assets),
@@ -167,7 +168,8 @@ const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Plan 2D-4 Task 26 (AP-7): FindingComparison (the findings phone card).
 // Plan 2D-4 Task 27 (AP-8): MobileAuditField (the audit rounds phone card).
 // Plan 2D-4 Task 29 (AP-10): PendingInfo (the audit pending phone card).
-const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField|FindingComparison|MobileAuditField|PendingInfo)\b/g
+// Plan 2D-4 Task 38 (DS-9): ReviewValue (the bulk disposal execution review).
+const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField|FindingComparison|MobileAuditField|PendingInfo|ReviewValue)\b/g
 const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 const pageCurrent = (text: string) => /"page"/.test(jsxAttrValue(text, "aria-current") ?? "")

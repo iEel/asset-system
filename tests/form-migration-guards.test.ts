@@ -292,7 +292,7 @@ const LOADER2: Record<string, number> = {
   // 2
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :565, :566 in the dialog body (I27)
-  [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :967 (its spinner :970), the status line in the dialog body (I27)
+  [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :973 (its spinner :976), the status line in the dialog body (I27)
   // 4
   [`${C}admin/IntegrationClientManager.tsx`]: 1, // the loading status in the client list head :505 (I27); the rotate button is Button busy since 2D-2
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :317, :442 (I27)
