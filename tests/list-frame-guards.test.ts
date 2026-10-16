@@ -259,7 +259,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}asset-operations/checkin-form.tsx`]: 9, // → 9 (KEEP): 2C form (2D)
     [`${C}assets/asset-batch-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)
     [`${C}assets/asset-component-manager.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
-    [`${C}assets/asset-form.tsx`]: 1, // → 1 (KEEP): 2C form (2D)
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
@@ -334,7 +333,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}asset-operations/checkin-form.tsx`]: 9, // 2C form (2D)
     [`${C}assets/asset-batch-form.tsx`]: 8, // 2C form (2D)
     [`${C}assets/asset-component-manager.tsx`]: 3, // 2C form (2D)
-    [`${C}assets/asset-form.tsx`]: 1, // 2C form (2D)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // label data (R-n)
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // review dialog (2D)
     [`${C}assets/asset-import-preview-panel.tsx`]: 2, // 2C batch 4 (2D)

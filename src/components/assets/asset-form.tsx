@@ -3,17 +3,21 @@
 import { useEffect, useId, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, Code2, Copy, Plus, Save, Trash2 } from "lucide-react"
+import { Code2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
-import { ChoiceChip } from "@/components/ui/choice-card"
+import { ChoiceCard, ChoiceChip } from "@/components/ui/choice-card"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { orNil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
@@ -24,6 +28,7 @@ import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popo
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { formatCount } from "@/lib/display-format"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { formatFileSize } from "@/lib/uploads"
 import { cn } from "@/lib/utils"
@@ -267,11 +272,12 @@ export function AssetForm({
   const isProtectedStatusChange = isStatusChanged && (currentStatusIsProtected || selectedStatusIsProtected)
   const isSelectedRepairStatus = selectedStatusName === "pending repair" || selectedStatusName === "under maintenance"
   const repairWorkflowHref = asset?.id ? `/${locale}/maintenance/new?assetId=${encodeURIComponent(asset.id)}` : ""
+  // The warning's title already says "protectedStatusEditBlocked", so the plain case adds no second line.
   const protectedStatusHelp = currentStatusIsProtected
     ? t("protectedStatusCorrectionHelp")
     : isSelectedRepairStatus
       ? t("protectedStatusEditHelp")
-      : t("protectedStatusEditBlocked")
+      : null
   const assetStatusHelp = {
     title: t("statusHelpTitle"),
     description: t("statusHelpDescription"),
@@ -821,25 +827,16 @@ export function AssetForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
+      {/* Spec 2D D7: where this new asset comes from is information, an inline info Notice (no warning box, no icon tile). */}
       {cloneSource ? (
-        <div className="mb-5 rounded-md border border-warning-border bg-warning-soft px-4 py-3">
-          <div className="flex gap-3">
-            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning-soft text-warning">
-              <Copy className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <div className="break-words text-sm font-semibold text-foreground">
-                {t("cloneBannerTitle", { assetTag: cloneSource.assetTag })}
-              </div>
-              <p className="mt-1 break-words text-sm text-muted-foreground">
-                {t("cloneBannerDescription", { assetName: cloneSource.name })}
-              </p>
-              <p className="mt-2 break-words text-xs font-medium text-warning">
-                {t("cloneBannerReview")}
-              </p>
-            </div>
-          </div>
-        </div>
+        <Notice
+          tone="info"
+          className="mb-5"
+          title={t("cloneBannerTitle", { assetTag: cloneSource.assetTag })}
+        >
+          <p className="break-words">{t("cloneBannerDescription", { assetName: cloneSource.name })}</p>
+          <p className="mt-1 break-words">{t("cloneBannerReview")}</p>
+        </Notice>
       ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -866,7 +863,7 @@ export function AssetForm({
             </Field>
             {suggestedAssetName && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-accent px-2.5 py-1 text-xs text-muted-foreground">
+                <span className="text-meta text-muted-foreground">
                   {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
                 </span>
                 {values.name !== suggestedAssetName && (
@@ -951,7 +948,7 @@ export function AssetForm({
                 emptyLabel={tCommon("searchSelectNoResults")}
                 onChange={(value) => setField("custodianId", value)}
               />
-              <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
+              <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={allowCrossCompanyCustodian}
@@ -964,14 +961,13 @@ export function AssetForm({
                 </span>
               </label>
               {hasCrossCompanyCustodian ? (
-                <p className="mt-2 text-xs font-medium text-warning">{t("crossCompanyCustodianWarning")}</p>
+                <Notice tone="warning" className="mt-2">{t("crossCompanyCustodianWarning")}</Notice>
               ) : null}
             </div>
           ) : (
-            <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-              <div className="font-medium text-foreground">{t("custodianNotRequired")}</div>
-              <p className="mt-1 text-xs">{t("custodianNotRequiredHelp")}</p>
-            </div>
+            <Notice tone="neutral" title={t("custodianNotRequired")}>
+              {t("custodianNotRequiredHelp")}
+            </Notice>
           )}
         </Section>
 
@@ -1005,16 +1001,18 @@ export function AssetForm({
                 <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
               ))}
             </SelectField>
-            <div className="rounded-md border border-info-border bg-info-soft px-3 py-2 text-sm text-muted-foreground">
-              <div className="font-medium text-foreground">{t("licenseRemainingSeats")}: {getRemainingLicenseSeats(values.licenseTotalSeats, values.licenseUsedSeats)}</div>
-              <p className="mt-1 text-xs">{t("licenseManagementHelp")}</p>
-            </div>
+            <Notice
+              tone="info"
+              title={<>{t("licenseRemainingSeats")}: {orNil(getRemainingLicenseSeats(values.licenseTotalSeats, values.licenseUsedSeats))}</>}
+            >
+              {t("licenseManagementHelp")}
+            </Notice>
           </Section>
         )}
 
         <Section title={t("locationCustodian")}>
           <div className="md:col-span-2">
-            <label className="flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
+            <label className="flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allowCrossBranchLocation}
@@ -1027,7 +1025,7 @@ export function AssetForm({
               </span>
             </label>
             {hasCrossBranchLocation ? (
-              <p className="mt-2 text-xs font-medium text-warning">{t("crossBranchLocationWarning")}</p>
+              <Notice tone="warning" className="mt-2">{t("crossBranchLocationWarning")}</Notice>
             ) : null}
           </div>
           <SelectField label={t("homeLocation")} value={values.homeLocationId ?? ""} onChange={(value) => setField("homeLocationId", value)}>
@@ -1046,20 +1044,18 @@ export function AssetForm({
               </NativeSelect>
             </Field>
             {isProtectedStatusChange && (
-              <div className="mt-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-xs text-warning">
-                <div className="flex gap-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-medium">{t("protectedStatusEditBlocked")}</p>
-                    <p className="mt-1 leading-relaxed">{protectedStatusHelp}</p>
+              <Notice tone="warning" className="mt-2" title={t("protectedStatusEditBlocked")}>
+                {protectedStatusHelp ? (
+                  <>
+                    <p>{protectedStatusHelp}</p>
                     {isSelectedRepairStatus && repairWorkflowHref && (
                       <Link href={repairWorkflowHref} className={cn(linkVariants({ size: "inherit" }), "mt-2 inline-flex decoration-current")}>
                         {t("openRepairWorkflow")}
                       </Link>
                     )}
-                  </div>
-                </div>
-              </div>
+                  </>
+                ) : null}
+              </Notice>
             )}
           </div>
           <Field
@@ -1155,37 +1151,28 @@ export function AssetForm({
               </div>
 
               <div className="mb-4 space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("existingPurchaseDocuments")}</div>
+                <h4 className="text-meta font-medium text-muted-foreground">{t("existingPurchaseDocuments")}</h4>
                 {purchaseDocumentOptions.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
-                    {t("noPurchaseDocuments")}
-                  </div>
+                  <EmptyNote>{t("noPurchaseDocuments")}</EmptyNote>
                 ) : (
+                  // Each document is a shared ChoiceCard (spec 2D D9): Enter in it no longer submits the form.
                   <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                     {purchaseDocumentOptions.map((document) => (
-                      <label key={document.id} className="flex cursor-pointer gap-3 rounded-md border border-border bg-surface p-3 text-sm transition-colors hover:bg-accent">
-                        <input
-                          type="checkbox"
-                          checked={selectedPurchaseDocumentIds.includes(document.id)}
-                          onChange={() => togglePurchaseDocument(document.id)}
-                          className={cn(checkboxVariants(), "mt-0.5")}
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium text-foreground">
-                            {t(`purchaseDocumentTypes.${document.documentType}`)} · {document.documentNo}
-                          </span>
-                          <span className="mt-1 block text-xs text-muted-foreground">
-                            {document.supplierName || "-"} · {t("linkedAssets", { count: document.assetCount })}
-                          </span>
-                        </span>
-                      </label>
+                      <ChoiceCard
+                        key={document.id}
+                        type="checkbox"
+                        checked={selectedPurchaseDocumentIds.includes(document.id)}
+                        onChange={() => togglePurchaseDocument(document.id)}
+                        label={<>{t(`purchaseDocumentTypes.${document.documentType}`)} · <span className="tag">{document.documentNo}</span></>}
+                        description={<>{orNil(document.supplierName)} · {t("linkedAssets", { count: document.assetCount })}</>}
+                      />
                     ))}
                   </div>
                 )}
               </div>
 
               <div className="border-t border-border pt-4">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("createPurchaseDocument")}</div>
+                <h4 className="mb-3 text-meta font-medium text-muted-foreground">{t("createPurchaseDocument")}</h4>
                 <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
                   <Field label={t("documentType")}>
                     <NativeSelect
@@ -1238,7 +1225,7 @@ export function AssetForm({
                         <div className="truncate text-sm font-medium text-foreground">
                           {t(`purchaseDocumentTypes.${document.documentType}`)} · {document.documentNo} · {document.file.name}
                         </div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(document.file.size)}</div>
+                        <div className="mt-0.5 text-meta text-muted-foreground">{formatFileSize(document.file.size)}</div>
                       </div>
                       <Button
                         variant="danger"
@@ -1263,7 +1250,7 @@ export function AssetForm({
             <p className="mb-3 text-sm text-muted-foreground">{t("initialAssetPhotosHelp")}</p>
 
             {selectedPhotoChecklist.length > 0 ? (
-              <div className="mb-3 rounded-md border border-border bg-surface p-3">
+              <div className="mb-3">
                 <fieldset className="min-w-0" aria-describedby={photoLabelHintId}>
                   <legend className={fieldLabelClasses}>{t("selectPhotoType")}</legend>
                   <p id={photoLabelHintId} className="mt-1 text-meta text-faint-foreground">
@@ -1295,9 +1282,9 @@ export function AssetForm({
                 </fieldset>
               </div>
             ) : (
-              <p className="mb-3 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+              <EmptyNote className="mb-3">
                 {values.categoryId ? t("photoChecklistEmptyForCategory") : t("photoChecklistSelectCategory")}
-              </p>
+              </EmptyNote>
             )}
 
             <FileDropzone
@@ -1312,8 +1299,8 @@ export function AssetForm({
             />
 
             {existingAssetPhotos.length > 0 && (
-              <div className="mt-4 rounded-md border border-border bg-surface p-3">
-                <div className="mb-3 text-sm font-semibold text-foreground">{t("existingAssetPhotos")}</div>
+              <div className="mt-4">
+                <h3 className="mb-3 text-sm font-semibold text-foreground">{t("existingAssetPhotos")}</h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {existingAssetPhotos.map((photo) => (
                     <a
@@ -1321,7 +1308,7 @@ export function AssetForm({
                       href={`/api/attachments/${photo.id}?inline=1`}
                       target="_blank"
                       rel="noreferrer"
-                      className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="overflow-hidden rounded-md border border-border bg-surface transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <div className="flex aspect-video items-center justify-center bg-background p-2">
                         {/* Authenticated attachment URLs render more reliably as browser-native images. */}
@@ -1336,8 +1323,8 @@ export function AssetForm({
                         />
                       </div>
                       <div className="border-t border-border p-2">
-                        <div className="truncate text-xs font-medium text-foreground">{photo.originalName}</div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(photo.fileSize)}</div>
+                        <div className="truncate text-meta font-medium text-foreground">{photo.originalName}</div>
+                        <div className="mt-0.5 text-meta text-muted-foreground">{formatFileSize(photo.fileSize)}</div>
                       </div>
                     </a>
                   ))}
@@ -1357,7 +1344,7 @@ export function AssetForm({
                       <div className="truncate text-sm font-medium text-foreground">
                         {photo.label ? `${photo.label} · ` : ""}{photo.file.name}
                       </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(photo.file.size)}</div>
+                      <div className="mt-0.5 text-meta text-muted-foreground">{formatFileSize(photo.file.size)}</div>
                     </div>
                     <Button
                       variant="danger"
@@ -1403,9 +1390,7 @@ export function AssetForm({
                   onChange={handleTemplateCustomFieldChange}
                 />
               ) : (
-                <div className="rounded-md border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
-                  {values.categoryId ? t("customFieldsNoTemplate") : t("customFieldsSelectCategory")}
-                </div>
+                <EmptyNote>{values.categoryId ? t("customFieldsNoTemplate") : t("customFieldsSelectCategory")}</EmptyNote>
               )}
 
               <div className="space-y-3 border-t border-border pt-4">
@@ -1459,12 +1444,12 @@ export function AssetForm({
   )
 }
 
+// Spec 2D D9: each form section is a ContentPanel (16px title, 16/20px padding), the frame of every other panel.
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">
-      <h2 className="mb-4 break-words text-lg font-semibold text-foreground sm:mb-5">{title}</h2>
+    <ContentPanel title={title}>
       <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">{children}</div>
-    </section>
+    </ContentPanel>
   )
 }
 
@@ -1497,9 +1482,9 @@ function SelectField({
 function getRemainingLicenseSeats(total?: string | number | null, used?: string | number | null) {
   const totalSeats = Number(total ?? 0)
   const usedSeats = Number(used ?? 0)
-  if (!Number.isFinite(totalSeats) || totalSeats <= 0) return "-"
+  if (!Number.isFinite(totalSeats) || totalSeats <= 0) return null
   const remainingSeats = Math.max(totalSeats - (Number.isFinite(usedSeats) ? usedSeats : 0), 0)
-  return remainingSeats.toLocaleString("th-TH")
+  return formatCount(remainingSeats)
 }
 
 function isProtectedAssetWorkflowStatus(status: Option | null | undefined) {
@@ -1536,9 +1521,7 @@ function CustomFieldRowsEditor({
   return (
     <div className="space-y-3">
       {rows.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
-          {labels.empty}
-        </div>
+        <EmptyNote>{labels.empty}</EmptyNote>
       ) : (
         <div className="space-y-2">
           {rows.map((row) => (
