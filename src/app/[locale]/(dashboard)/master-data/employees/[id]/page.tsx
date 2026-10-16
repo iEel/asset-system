@@ -1,23 +1,11 @@
-import type React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import {
-  AlertTriangle,
-  Boxes,
-  ClipboardCheck,
-  Edit,
-  History,
-  ShieldCheck,
-  Trash2,
-  UserRound,
-  Users,
-  Wrench,
-} from "lucide-react"
+import { Boxes, Edit, History, ShieldCheck, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildEmployeeDetailHrefs, buildEmployeeDetailSummary, buildEmployeeFollowUpItems, dedupeEmployeeMaintenanceLinks } from "@/lib/employee-detail"
-import { formatDate, formatDateTime } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { getAssetStateTone } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "@/lib/maintenance-status"
@@ -25,10 +13,13 @@ import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 import { getAuditRoundItemResultLabelKey } from "@/lib/audit-round-result-filters"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil, orNil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -293,8 +284,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<UserRound className="h-5 w-5 text-primary" />} title={t("detailProfileTitle")} subtitle={t("detailProfileHelp")} />
+          <ContentPanel title={t("detailProfileTitle")} description={t("detailProfileHelp")}>
             <KeyValueList
               items={[
                 { key: "company", label: t("company"), value: <><span className="tag">{employee.company.code}</span> - {employee.company.nameTh}</> },
@@ -306,10 +296,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 { key: "employmentStatus", label: t("employmentStatus"), value: <StatusBadge label={t(`status_${employee.employmentStatus}`)} tone={employee.employmentStatus === "active" ? "success" : "warning"} /> },
               ]}
             />
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<Boxes className="h-5 w-5 text-primary" />} title={t("detailCurrentAssets")} subtitle={t("detailCurrentAssetsSectionHelp", { shown: currentAssets.length, total: currentAssetCount })} />
+          <ContentPanel title={t("detailCurrentAssets")} description={t("detailCurrentAssetsSectionHelp", { shown: currentAssets.length, total: currentAssetCount })}>
             {currentAssets.length === 0 ? (
               <ActionEmptyState icon={<Boxes className="h-6 w-6" />} title={t("emptyCurrentAssetsTitle")} description={t("emptyCurrentAssetsHelp")} />
             ) : (
@@ -328,7 +317,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                   {currentAssets.map((asset) => (
                     <DataTableRow key={asset.id}>
                       <DataTableCell className="whitespace-nowrap font-medium">
-                        <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
+                        <Link href={`/${locale}/assets/${asset.id}`} className={linkVariants({ size: "inherit" })}>
                           <span className="tag">{asset.assetTag}</span>
                         </Link>
                       </DataTableCell>
@@ -349,10 +338,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 </Link>
               </div>
             ) : null}
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<History className="h-5 w-5 text-primary" />} title={t("handoverHistoryTitle")} subtitle={t("handoverHistoryHelp")} />
+          <ContentPanel title={t("handoverHistoryTitle")} description={t("handoverHistoryHelp")}>
             {checkoutHistory.length === 0 ? (
               <ActionEmptyState icon={<History className="h-6 w-6" />} title={t("emptyHandoverTitle")} description={t("emptyHandoverHelp")} />
             ) : (
@@ -374,7 +362,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                     <DataTableRow key={checkout.id}>
                       <DataTableCell className="whitespace-nowrap font-medium text-foreground">{checkout.documentNo ? <span className="tag">{checkout.documentNo}</span> : <Nil />}</DataTableCell>
                       <DataTableCell className="min-w-56">
-                        <Link href={`/${locale}/assets/${checkout.asset.id}`} className="text-primary hover:underline">
+                        <Link href={`/${locale}/assets/${checkout.asset.id}`} className={linkVariants({ size: "inherit" })}>
                           <span className="tag">{checkout.asset.assetTag}</span> - {checkout.asset.name}
                         </Link>
                       </DataTableCell>
@@ -391,10 +379,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 </DataTableBody>
               </DataTable>
             )}
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<Wrench className="h-5 w-5 text-primary" />} title={t("maintenanceRelatedTitle")} subtitle={t("maintenanceRelatedHelp")} />
+          <ContentPanel title={t("maintenanceRelatedTitle")} description={t("maintenanceRelatedHelp")}>
             {maintenanceTickets.length === 0 ? (
               <ActionEmptyState icon={<Wrench className="h-6 w-6" />} title={t("emptyMaintenanceTitle")} description={t("emptyMaintenanceHelp")} />
             ) : (
@@ -413,12 +400,12 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                   {maintenanceTickets.map((ticket) => (
                     <DataTableRow key={ticket.id}>
                       <DataTableCell className="whitespace-nowrap font-medium">
-                        <Link href={`/${locale}/maintenance/${ticket.id}`} className="text-primary hover:underline">
+                        <Link href={`/${locale}/maintenance/${ticket.id}`} className={linkVariants({ size: "inherit" })}>
                           <span className="tag">{ticket.repairNo}</span>
                         </Link>
                       </DataTableCell>
                       <DataTableCell className="min-w-56">
-                        <Link href={`/${locale}/assets/${ticket.asset.id}`} className="text-primary hover:underline">
+                        <Link href={`/${locale}/assets/${ticket.asset.id}`} className={linkVariants({ size: "inherit" })}>
                           <span className="tag">{ticket.asset.assetTag}</span> - {ticket.asset.name}
                         </Link>
                       </DataTableCell>
@@ -433,44 +420,41 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 </DataTableBody>
               </DataTable>
             )}
-          </section>
+          </ContentPanel>
         </div>
 
         <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<AlertTriangle className="h-5 w-5 text-primary" />} title={t("followUpTitle")} subtitle={t("followUpHelp")} />
+          <ContentPanel title={t("followUpTitle")} description={t("followUpHelp")}>
             {followUpItems.length === 0 ? (
               <ActionEmptyState icon={<ShieldCheck className="h-6 w-6" />} title={t("followUpEmptyTitle")} description={t("followUpEmptyHelp")} />
             ) : (
               <div className="space-y-3">
+                {/* Each item is something to deal with now: a warning Notice, its help as the second line (spec 2D D7). */}
                 {followUpItems.map((item) => (
-                  <div key={item} className="rounded-md border border-warning-border bg-warning-soft p-3">
-                    <div className="text-sm font-semibold text-foreground">{t(`followUp.${item}.title`)}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{t(`followUp.${item}.help`)}</div>
-                  </div>
+                  <Notice key={item} tone="warning" title={t(`followUp.${item}.title`)}>
+                    {t(`followUp.${item}.help`)}
+                  </Notice>
                 ))}
               </div>
             )}
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<Users className="h-5 w-5 text-primary" />} title={t("subordinatesTitle")} />
+          <ContentPanel title={t("subordinatesTitle")}>
             {employee.subordinates.length === 0 ? (
-              <div className="text-sm text-muted-foreground">{t("noSubordinates")}</div>
+              <EmptyNote>{t("noSubordinates")}</EmptyNote>
             ) : (
               <div className="space-y-3">
                 {employee.subordinates.map((subordinate) => (
-                  <Link key={subordinate.id} href={`/${locale}/master-data/employees/${subordinate.id}`} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-primary-soft">
-                    <div className="text-sm font-semibold text-foreground">{subordinate.code} - {subordinate.fullNameTh}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{orNil(subordinate.position)}</div>
+                  <Link key={subordinate.id} href={`/${locale}/master-data/employees/${subordinate.id}`} className={quietRowLinkClasses}>
+                    <div className="text-sm font-semibold text-foreground"><span className="tag">{subordinate.code}</span> - {subordinate.fullNameTh}</div>
+                    <div className="mt-1 text-meta text-muted-foreground">{orNil(subordinate.position)}</div>
                   </Link>
                 ))}
               </div>
             )}
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<ClipboardCheck className="h-5 w-5 text-primary" />} title={t("auditRelatedTitle")} subtitle={t("auditRelatedHelp")} />
+          <ContentPanel title={t("auditRelatedTitle")} description={t("auditRelatedHelp")}>
             <div className="space-y-4">
               <MiniList
                 title={t("auditFindingsTitle")}
@@ -509,10 +493,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 }))}
               />
             </div>
-          </section>
+          </ContentPanel>
 
-          <section className="rounded-lg border border-border bg-surface p-6">
-            <SectionHeading icon={<Trash2 className="h-5 w-5 text-primary" />} title={t("disposalRelatedTitle")} subtitle={t("disposalRelatedHelp")} />
+          <ContentPanel title={t("disposalRelatedTitle")} description={t("disposalRelatedHelp")}>
             <MiniList
               emptyLabel={t("emptyDisposals")}
               items={disposalRequests.map((request) => ({
@@ -524,32 +507,18 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 tone: request.requestStatus === "rejected" ? "danger" : request.requestStatus === "disposed" ? "success" : "warning",
               }))}
             />
-          </section>
+          </ContentPanel>
         </aside>
       </div>
     </div>
   )
 }
 
-function SectionHeading({
-  title,
-  subtitle,
-  icon,
-}: {
-  title: string
-  subtitle?: string
-  icon?: React.ReactNode
-}) {
-  return (
-    <div className="mb-5">
-      <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-        {icon}
-        {title}
-      </h2>
-      {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
-    </div>
-  )
-}
+// A row link in a panel is a quiet grouping (2D-2 R4) with the shared row hover.
+const quietRowLinkClasses = cn(
+  "block rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+)
 
 function MiniList({
   title,
@@ -569,17 +538,17 @@ function MiniList({
 }) {
   return (
     <div>
-      {title ? <div className="mb-2 text-sm font-semibold text-foreground">{title}</div> : null}
+      {title ? <h3 className="mb-2 text-sm font-semibold text-foreground">{title}</h3> : null}
       {items.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border bg-background p-3 text-sm text-muted-foreground">{emptyLabel}</div>
+        <EmptyNote>{emptyLabel}</EmptyNote>
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
-            <Link key={item.id} href={item.href} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-primary-soft">
+            <Link key={item.id} href={item.href} className={quietRowLinkClasses}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-foreground">{item.title}</div>
-                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.meta}</div>
+                  <div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{item.meta}</div>
                 </div>
                 {item.badge ? <StatusBadge label={item.badge} tone={item.tone} /> : null}
               </div>
