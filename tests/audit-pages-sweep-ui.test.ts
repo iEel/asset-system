@@ -43,3 +43,18 @@ test("audit round cancel dialog: the impact counts are a KeyValueList through fo
   }
   assert.doesNotMatch(source, /function ImpactItem\b|<ImpactItem\b|border-warning-border|bg-warning-soft|text-xl font-bold|\btext-xs\b/)
 })
+
+test("audit round form: the form is the panel, the sampling box a quiet grouping, the preview a StatStrip with an info Notice, codes as tag, an EmptyNote and the include-closed choice a ChoiceCard (spec 2D D7, D9, D19, M22, M33)", () => {
+  const source = read(`${C}audit/audit-round-form.tsx`)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{cn\(getPanelClasses\(\), "grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2"\)\}>/)
+  assert.match(source, /<div className="md:col-span-2 rounded-md border border-border bg-background p-4">/)
+  assert.match(source, /<StatStrip\b/)
+  for (const value of ["formatCount\\(preview\\.matchedAssets\\)", "formatCount\\(preview\\.sampledAssets\\)", "formatCount\\(componentItems\\)", "`\\$\\{formatCount\\(preview\\.sampleRate\\)\\}%`"]) {
+    assert.match(source, new RegExp(`value: ${value}`), value)
+  }
+  assert.match(source, /<Notice tone="info">\{t\("previewComponentHelp", \{ count: componentItems \}\)\}<\/Notice>/)
+  assert.match(source, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
+  assert.match(source, /<EmptyNote className="mt-2">\{t\("previewEmpty"\)\}<\/EmptyNote>/)
+  assert.match(source, /<ChoiceCard\s+type="checkbox"\s+className="md:col-span-2"\s+label=\{t\("includeClosedAssets"\)\}\s+description=\{t\("includeClosedAssetsHelp"\)\}/)
+  assert.doesNotMatch(source, /<section\b|function PreviewMetric\b|uppercase|tracking-|primary-soft|primary-border|info-soft|info-border|text-info|warning-soft|warning-border|rounded-lg|\btext-xs\b|<input\b|checkboxVariants/)
+})

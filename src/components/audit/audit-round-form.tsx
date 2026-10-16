@@ -7,12 +7,18 @@ import { ClipboardList, Save } from "lucide-react"
 import { toast } from "sonner"
 import { filterAuditStatusOptions } from "@/lib/audit-round-scope"
 import { Button } from "@/components/ui/button"
+import { ChoiceCard } from "@/components/ui/choice-card"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
-import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { useApiError } from "@/components/ui/use-api-error"
+import { getPanelClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { displayYearRange, fromDisplayYear, toDisplayYear } from "@/lib/display-year"
 import { cn } from "@/lib/utils"
 
@@ -138,8 +144,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t("createTitle")} className="mb-6" />
-      <section className="rounded-lg border border-border bg-surface p-6">
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2")}>
           <Field label={t("name")} required>
             <Input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} />
           </Field>
@@ -157,7 +162,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             <option value="open">{t("statusOpen")}</option>
           </Select>
           <div />
-          <div className="md:col-span-2 rounded-lg border border-border bg-background p-4">
+          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
             <div className="mb-4">
               <h2 className="text-sm font-semibold text-foreground">{t("riskSampling")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("riskSamplingHelp")}</p>
@@ -181,10 +186,10 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                 />
               </Field>
             </div>
-            <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-sm font-semibold text-foreground">{t("previewTitle")}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{t("previewHelp")}</div>
+                <div className="mt-1 text-meta text-muted-foreground">{t("previewHelp")}</div>
               </div>
               <Button variant="outline" busy={previewing} onClick={handlePreview}>
                 <ClipboardList aria-hidden="true" />
@@ -192,37 +197,37 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
               </Button>
             </div>
             {preview ? (
-              <div className="mt-4 rounded-md border border-primary-border bg-primary-soft p-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  <PreviewMetric label={t("previewMatched")} value={String(preview.matchedAssets)} />
-                  <PreviewMetric label={t("previewSampled")} value={String(preview.sampledAssets)} />
-                  <PreviewMetric label={t("previewComponentItems")} value={String(componentItems)} />
-                  <PreviewMetric label={t("previewSampleRate")} value={`${preview.sampleRate}%`} />
-                  <PreviewMetric label={t("previewRisk")} value={t(`riskPreset_${preview.riskPreset}`)} />
-                </div>
+              <div className="mt-4 space-y-4">
+                <StatStrip
+                  items={[
+                    { key: "matched", label: t("previewMatched"), value: formatCount(preview.matchedAssets) },
+                    { key: "sampled", label: t("previewSampled"), value: formatCount(preview.sampledAssets) },
+                    { key: "componentItems", label: t("previewComponentItems"), value: formatCount(componentItems) },
+                    { key: "sampleRate", label: t("previewSampleRate"), value: `${formatCount(preview.sampleRate)}%` },
+                  ]}
+                />
+                <KeyValueList items={[{ key: "risk", label: t("previewRisk"), value: t(`riskPreset_${preview.riskPreset}`) }]} />
                 {componentItems > 0 ? (
-                  <p className="mt-3 rounded-md border border-info-border bg-info-soft px-3 py-2 text-xs text-info">
-                    {t("previewComponentHelp", { count: componentItems })}
-                  </p>
+                  <Notice tone="info">{t("previewComponentHelp", { count: componentItems })}</Notice>
                 ) : null}
-                <div className="mt-4">
-                  <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("previewAssets")}</div>
+                <div>
+                  <div className="text-meta font-medium text-muted-foreground">{t("previewAssets")}</div>
                   {preview.previewAssets.length > 0 ? (
-                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <ul className="mt-2 grid gap-x-4 gap-y-3 md:grid-cols-2">
                       {preview.previewAssets.map((asset) => (
-                        <div key={asset.id} className="rounded-md border border-border bg-surface px-3 py-2">
-                          <div className="text-sm font-semibold text-foreground">{asset.assetTag}</div>
-                          <div className="mt-0.5 truncate text-xs text-muted-foreground">{asset.name}</div>
+                        <li key={asset.id} className="min-w-0">
+                          <div className="text-sm text-foreground"><span className="tag font-medium">{asset.assetTag}</span></div>
+                          <div className="mt-0.5 truncate text-meta text-muted-foreground">{asset.name}</div>
                           {asset.includedVia === "component" && asset.parentAssetTag ? (
-                            <div className="mt-1 text-xs font-medium text-info">
+                            <div className="mt-1 text-meta text-muted-foreground">
                               {t("previewComponentFromParent", { assetTag: asset.parentAssetTag })}
                             </div>
                           ) : null}
-                        </div>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   ) : (
-                    <p className="mt-2 text-sm text-muted-foreground">{t("previewEmpty")}</p>
+                    <EmptyNote className="mt-2">{t("previewEmpty")}</EmptyNote>
                   )}
                 </div>
               </div>
@@ -252,18 +257,14 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
           <Select label={t("scopeCondition")} value={values.scopeConditionId} onChange={(value) => setField("scopeConditionId", value)}>
             <OptionList emptyLabel={t("all")} options={options.conditions} />
           </Select>
-          <label className="md:col-span-2 flex items-start gap-3 rounded-md border border-warning-border bg-warning-soft p-3">
-            <input
-              type="checkbox"
-              checked={values.includeClosedAssets}
-              onChange={(event) => setIncludeClosedAssets(event.target.checked)}
-              className={cn(checkboxVariants(), "mt-0.5")}
-            />
-            <span>
-              <span className="block text-sm font-medium text-foreground">{t("includeClosedAssets")}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">{t("includeClosedAssetsHelp")}</span>
-            </span>
-          </label>
+          <ChoiceCard
+            type="checkbox"
+            className="md:col-span-2"
+            label={t("includeClosedAssets")}
+            description={t("includeClosedAssetsHelp")}
+            checked={values.includeClosedAssets}
+            onChange={(event) => setIncludeClosedAssets(event.target.checked)}
+          />
           <div className="md:col-span-2 flex justify-end">
             <Button type="submit" busy={saving} disabled={previewing}>
               <Save aria-hidden="true" />
@@ -271,22 +272,12 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             </Button>
           </div>
         </form>
-      </section>
     </div>
   )
 }
 
 function isClosedStatusId(statuses: Option[], statusId: string) {
   return Boolean(statusId) && statuses.some((status) => status.id === statusId && status.isClosed)
-}
-
-function PreviewMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-surface px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-lg font-bold text-foreground">{value}</div>
-    </div>
-  )
 }
 
 function emptyToNull(values: Record<string, string | boolean>) {

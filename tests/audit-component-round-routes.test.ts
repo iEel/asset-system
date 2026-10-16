@@ -94,7 +94,7 @@ test("audit round form displays component expansion counts from preview", () => 
   assert.match(form, /componentItems\?:\s*number/)
   assert.match(form, /const componentItems = preview\??\.componentItems \?\? 0/)
   assert.match(form, /previewComponentItems/)
-  assert.match(form, /String\(componentItems\)/)
+  assert.match(form, /formatCount\(componentItems\)/)
   assert.match(form, /componentItems > 0/)
   assert.match(form, /previewComponentHelp/)
   assert.match(form, /count:\s*componentItems/)
