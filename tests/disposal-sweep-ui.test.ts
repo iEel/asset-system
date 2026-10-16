@@ -61,3 +61,9 @@ test("disposal batch form: two ContentPanels, the review facts a KeyValueList wi
   assert.match(source, /<ArrowLeft aria-hidden="true" \/>/, "back to editing keeps its arrow (LFG KEEP.LB1)")
   assert.doesNotMatch(source, /function Summary\b|"-"|<section\b|rounded-lg border|bg-primary-soft|text-lg|\btext-xs\b|border-b border-border(?!-)/)
 })
+
+test("disposal decision dialog: what a rejection does is a neutral Notice, not a box (spec 2D D7)", () => {
+  const source = read(`${C}disposal/disposal-decision-button.tsx`)
+  assert.match(source, /<Notice tone="neutral">\{t\("rejectRestoresPreviousStatus"\)\}<\/Notice>/)
+  assert.doesNotMatch(source, /rounded-md border border-border bg-background/)
+})

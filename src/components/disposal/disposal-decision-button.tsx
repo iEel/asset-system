@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
@@ -197,9 +198,7 @@ function DecisionDialog({
               </NativeSelect>
             </Field>
           ) : (
-            <div className="rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
-              {t("rejectRestoresPreviousStatus")}
-            </div>
+            <Notice tone="neutral">{t("rejectRestoresPreviousStatus")}</Notice>
           )}
           {showSaleValue ? (
             <Field label={t("saleValueBaht")}>
