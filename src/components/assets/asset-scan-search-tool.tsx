@@ -1,14 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Loader2, MapPin, PackageSearch, Search } from "lucide-react"
+import { Loader2, MapPin, PackageSearch } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { buildDirectAssetHrefFromScanValue } from "@/lib/asset-scan-routing"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { getAssetStateTone } from "@/lib/design-system"
 
 type SearchResult = {
   id: string
@@ -16,7 +21,8 @@ type SearchResult = {
   subtitle: string
   href: string
   serialNumber: string | null
-  status: { label: string; colorCode: string | null }
+  // name comes from /api/search since plan 2D-1 (D8); it sets the badge tone (M23).
+  status: { name?: string | null; label: string; colorCode: string | null }
   meta: { custodian: string | null; location: string; category: string }
 }
 
@@ -111,7 +117,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
     <div className="mx-auto max-w-5xl space-y-5">
       <PageHeader title={labels.title} meta={labels.subtitle} />
 
-      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-5">
+      <ContentPanel>
         <Field label={labels.queryLabel}>
           <ScannerTextInput
             id="asset-scan-query"
@@ -123,65 +129,55 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
             onScanSuccess={handleScannedValue}
           />
         </Field>
-      </section>
+        {!directAssetHref && trimmedQuery.length < 2 ? <EmptyNote className="mt-2">{labels.minChars}</EmptyNote> : null}
+      </ContentPanel>
 
+      {/* Spec 2D D9: a found code is one Button, no tinted box; results are rows of one panel, each a link to the asset. */}
       {directAssetHref ? (
-        <section className="rounded-lg border border-primary-border bg-primary-soft p-4">
+        <div>
           <Button onClick={() => openAsset(directAssetHref)} className="w-full sm:w-auto">
             <PackageSearch aria-hidden="true" />
             {labels.openAsset}
           </Button>
-        </section>
-      ) : trimmedQuery.length < 2 ? (
-        <section className="rounded-lg border border-dashed border-border bg-surface p-6 text-center text-sm text-muted-foreground">
-          {labels.minChars}
-        </section>
-      ) : loading ? (
-        <section className="flex items-center gap-2 rounded-lg border border-border bg-surface p-5 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-          {labels.loading}
-        </section>
-      ) : visibleResults.length === 0 ? (
-        <section className="rounded-lg border border-dashed border-border bg-surface p-6 text-center text-sm text-muted-foreground">
-          {labels.noResults}
-        </section>
-      ) : (
-        <section className="overflow-hidden rounded-lg border border-border bg-surface">
-          <div className="divide-y divide-border">
-            {visibleResults.map((result) => (
-              <button
-                key={result.id}
-                type="button"
-                onClick={() => openAsset(result.href)}
-                className="flex w-full min-w-0 gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
-              >
-                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
-                  <Search className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="min-w-0 break-words font-semibold text-foreground">{result.title}</span>
-                    <span
-                      className="rounded-full px-2 py-0.5 text-xs font-medium"
-                      style={result.status.colorCode ? { backgroundColor: `${result.status.colorCode}1A`, color: result.status.colorCode } : undefined}
-                    >
-                      {result.status.label}
+        </div>
+      ) : trimmedQuery.length < 2 ? null : (
+        <ContentPanel divided flush className="overflow-hidden">
+          {loading ? (
+            <p className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground md:px-5">
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+              {labels.loading}
+            </p>
+          ) : visibleResults.length === 0 ? (
+            <EmptyNote padded>{labels.noResults}</EmptyNote>
+          ) : (
+            <ul className="divide-y divide-border-soft">
+              {visibleResults.map((result) => (
+                <li key={result.id}>
+                  <Link
+                    href={appendReturnTo(result.href, scanReturnHref)}
+                    className="flex min-h-11 w-full min-w-0 gap-3 px-4 py-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:px-5"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="tag font-medium text-foreground">{result.title}</span>
+                        <StatusBadge label={result.status.label} tone={getAssetStateTone(result.status.name)} />
+                      </span>
+                      <span className="mt-1 block break-words text-sm text-foreground">{result.subtitle}</span>
+                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-muted-foreground">
+                        {result.serialNumber ? <span>{labels.serial}: {result.serialNumber}</span> : null}
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin aria-hidden="true" className="h-3 w-3" />
+                          {result.meta.location}
+                        </span>
+                        {result.meta.custodian ? <span>{labels.custodian}: {result.meta.custodian}</span> : null}
+                      </span>
                     </span>
-                  </span>
-                  <span className="mt-1 block break-words text-sm text-foreground">{result.subtitle}</span>
-                  <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    {result.serialNumber ? <span>{labels.serial}: {result.serialNumber}</span> : null}
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {result.meta.location}
-                    </span>
-                    {result.meta.custodian ? <span>{labels.custodian}: {result.meta.custodian}</span> : null}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ContentPanel>
       )}
     </div>
   )

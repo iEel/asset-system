@@ -58,6 +58,6 @@ test("the asset scan tool uses PageHeader, Field and Button (2C batch 4)", () =>
   assert.match(tool, /<Field label=\{labels\.queryLabel\}>\n\s+<ScannerTextInput\n\s+id="asset-scan-query"[\s\S]*?onScanSuccess=\{handleScannedValue\}\n\s+\/>\n\s+<\/Field>/)
   assert.match(tool, /<Button onClick=\{\(\) => openAsset\(directAssetHref\)\} className="w-full sm:w-auto">\n\s+<PackageSearch aria-hidden="true" \/>\n\s+\{labels\.openAsset\}\n\s+<\/Button>/)
   assert.match(tool, /<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" \/>/)
-  assert.equal(tool.match(/<button\b/g)?.length, 1, "only the result rows stay list buttons (2D)")
+  assert.doesNotMatch(tool, /<button\b/, "the result rows open the asset, so they are links (plan 2D-3)")
   assert.doesNotMatch(tool, /<h1\b|<label\b|mb-1\.5 block text-sm font-medium/)
 })

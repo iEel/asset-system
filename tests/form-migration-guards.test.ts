@@ -296,7 +296,7 @@ const LOADER2: Record<string, number> = {
   // 4
   [`${C}admin/IntegrationClientManager.tsx`]: 1, // the loading status in the client list head :505 (I27); the rotate button is Button busy since 2D-2
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :317, :442 (I27)
-  [`${C}assets/asset-scan-search-tool.tsx`]: 1, // the status line :141 (I27)
+  [`${C}assets/asset-scan-search-tool.tsx`]: 1, // the status line :147 (I27)
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1, // the loading line :134 in the dialog body (I27)
 }
 

@@ -230,3 +230,14 @@ test("label print toolbar: PageBackLink, a tape box that keeps its width at 1440
   assert.match(source, /<Notice tone="success" role="status">\{translations\.printRecorded\}<\/Notice>/)
   assert.doesNotMatch(source, /<ArrowLeft\b|sm:min-h-10|primary-soft|warning-soft|danger-soft|success-soft|text-warning|text-primary/)
 })
+
+test("scan search tool: ContentPanels, links for the result rows, StatusBadge from status.name (M23), a tag and EmptyNote (spec 2D D9, M21, M23)", () => {
+  const source = read(`${C}assets/asset-scan-search-tool.tsx`)
+  assert.match(source, /status: \{ name\?: string \| null; label: string; colorCode: string \| null \}/)
+  assert.match(source, /<StatusBadge label=\{result\.status\.label\} tone=\{getAssetStateTone\(result\.status\.name\)\} \/>/)
+  assert.match(source, /<Link\n\s+href=\{appendReturnTo\(result\.href, scanReturnHref\)\}/)
+  assert.match(source, /<EmptyNote className="mt-2">\{labels\.minChars\}<\/EmptyNote>/)
+  assert.match(source, /<EmptyNote padded>\{labels\.noResults\}<\/EmptyNote>/)
+  assert.match(source, /<span className="tag font-medium text-foreground">\{result\.title\}<\/span>/)
+  assert.doesNotMatch(source, /<button\b|status\.colorCode \?|rounded-full|primary-soft|border-dashed|hover:bg-accent|\btext-xs\b|rounded-lg border/)
+})
