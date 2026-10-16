@@ -4,6 +4,9 @@ import { Loader2, SearchCheck } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { ApiErrorText } from "@/components/ui/api-error-text"
 import { Button } from "@/components/ui/button"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { Notice } from "@/components/ui/notice"
 import { StatusBadge } from "@/components/ui/status-badge"
 import type { AuditLookupAsset, AuditLookupMatch } from "@/components/audit/audit-scan-types"
 
@@ -32,7 +35,7 @@ export function AuditScanLookupCard({
   const t = useTranslations("auditScan")
 
   return (
-    <div data-audit-scan-lookup className="rounded-md border border-border bg-surface p-3">
+    <ContentPanel>
       <p className="text-sm font-medium text-foreground">{t("searchNoResult")}</p>
       {state.status === "idle" ? (
         <Button type="button" variant="outline" className="mt-2 w-full" onClick={onSearchRegister}>
@@ -47,28 +50,35 @@ export function AuditScanLookupCard({
         </p>
       ) : null}
       {state.status === "out_of_scope" ? (
-        <div className="mt-2 rounded-md border border-warning-border bg-warning-soft p-3">
-          <p className="text-sm font-semibold text-warning">{t("lookupOutOfScope", { assetTag: state.asset.assetTag })}</p>
-          <p className="mt-0.5 text-xs text-foreground">{state.asset.subtitle}</p>
-          <Button type="button" variant="outline" className="mt-2" onClick={() => onRecordOutOfScope(state.asset)}>
-            {t("recordOutOfScope")}
-          </Button>
-        </div>
+        <Notice
+          tone="warning"
+          className="mt-2"
+          title={t("lookupOutOfScope", { assetTag: state.asset.assetTag })}
+          action={
+            <Button type="button" variant="outline" size="md" onClick={() => onRecordOutOfScope(state.asset)}>
+              {t("recordOutOfScope")}
+            </Button>
+          }
+        >
+          {state.asset.subtitle}
+        </Notice>
       ) : null}
       {state.status === "candidates" ? (
         <div className="mt-2">
-          <p className="text-xs text-muted-foreground">{t("lookupCandidates", { count: state.matches.length })}</p>
-          <ul className="mt-1 divide-y divide-border rounded-md border border-border">
+          <p className="text-meta text-muted-foreground">{t("lookupCandidates", { count: state.matches.length })}</p>
+          {/* The register matches sit in the quiet grouping inside the panel (no frame in a frame). */}
+          <ul className="mt-1 divide-y divide-border rounded-md border border-border bg-background">
             {state.matches.map((match) => (
               <li key={match.assetId}>
+                {/* A raw button on purpose: a two-line register match that opens it (2D-5 lists it). */}
                 <button
                   type="button"
                   onClick={() => onPickMatch(match)}
                   className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{match.assetTag}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{match.title}</span>
+                    <span className="block truncate text-sm text-foreground"><span className="tag font-medium">{match.assetTag}</span></span>
+                    <span className="block truncate text-meta text-muted-foreground">{match.title}</span>
                   </span>
                   <StatusBadge label={match.inRound ? t("lookupInRound") : t("lookupNotInRound")} tone={match.inRound ? "info" : "muted"} className="shrink-0" />
                 </button>
@@ -77,9 +87,10 @@ export function AuditScanLookupCard({
           </ul>
         </div>
       ) : null}
-      {state.status === "unknown" ? <p className="mt-2 text-sm text-muted-foreground">{t("lookupUnknown")}</p> : null}
-      {state.status === "offline" ? <p className="mt-2 text-sm text-warning">{t("lookupOffline")}</p> : null}
-      {state.status === "error" ? <p className="mt-2 text-sm text-danger" role="alert"><ApiErrorText error={state.message} /></p> : null}
-    </div>
+      {state.status === "unknown" ? <EmptyNote className="mt-2">{t("lookupUnknown")}</EmptyNote> : null}
+      {/* Offline is a condition of the search, not a fault: the offline bar above already warns. */}
+      {state.status === "offline" ? <Notice tone="neutral" className="mt-2">{t("lookupOffline")}</Notice> : null}
+      {state.status === "error" ? <Notice tone="danger" role="alert" className="mt-2"><ApiErrorText error={state.message} /></Notice> : null}
+    </ContentPanel>
   )
 }

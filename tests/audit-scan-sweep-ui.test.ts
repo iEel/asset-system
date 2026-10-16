@@ -137,3 +137,16 @@ test("scan search: the shared SearchField with its clear button and a camera But
   assert.equal(source.match(/<input\b/g), null)
   assert.doesNotMatch(source, /getFieldControlClasses|size-11|\btext-xs\b|font-semibold|rounded-md border border-border bg-surface/)
 })
+
+test("lookup card: a ContentPanel with Notices by meaning (out of scope warning, offline neutral, error danger alert), EmptyNote for an unknown code, a quiet list and the tag as tag (spec 2D D7, D9, M20, M21, M25, M33)", () => {
+  const source = read(`${A}audit-scan-lookup-card.tsx`)
+  assert.match(source, /return \(\s*<ContentPanel>/)
+  assert.match(source, /<Notice\s+tone="warning"\s+className="mt-2"\s+title=\{t\("lookupOutOfScope", \{ assetTag: state\.asset\.assetTag \}\)\}\s+action=\{\s*<Button type="button" variant="outline" size="md" onClick=\{\(\) => onRecordOutOfScope\(state\.asset\)\}>/)
+  assert.match(source, /<ul className="mt-1 divide-y divide-border rounded-md border border-border bg-background">/)
+  assert.match(source, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{match\.assetTag\}<\/span><\/span>/)
+  assert.match(source, /<EmptyNote className="mt-2">\{t\("lookupUnknown"\)\}<\/EmptyNote>/)
+  assert.match(source, /<Notice tone="neutral" className="mt-2">\{t\("lookupOffline"\)\}<\/Notice>/)
+  assert.match(source, /<Notice tone="danger" role="alert" className="mt-2"><ApiErrorText error=\{state\.message\} \/><\/Notice>/)
+  assert.equal(source.match(/<button\b/g)?.length, 1)
+  assert.doesNotMatch(source, /\b(?:bg|border|text)-warning\b|-warning-|text-danger|\btext-xs\b|font-semibold|rounded-md border border-border bg-surface/)
+})
