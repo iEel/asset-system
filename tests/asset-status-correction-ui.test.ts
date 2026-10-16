@@ -9,7 +9,8 @@ const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 // shows busy instead of turning disabled, so focus stays on it while the correction saves. Its label stays (K13).
 test("the status correction uses Button, a shared reason field and a busy submit that keeps its label (2C batch 4)", () => {
   const source = read("src/components/assets/asset-status-correction-button.tsx")
-  assert.match(source, /<Button variant="outline" onClick=\{\(\) => setOpen\(\(value\) => !value\)\}>\n\s+<RotateCcw className="text-warning" aria-hidden="true" \/>/)
+  // Plan 2D-3 (M27) added aria-expanded and aria-controls to the trigger.
+  assert.match(source, /<Button\n\s+variant="outline"\n\s+aria-expanded=\{open\}\n\s+aria-controls=\{open \? panelId : undefined\}\n\s+onClick=\{\(\) => setOpen\(\(value\) => !value\)\}\n\s+>\n\s+<RotateCcw className="text-warning" aria-hidden="true" \/>/)
   assert.match(source, /<Field label=\{labels\.reason\} className="mt-3">\n\s+<Textarea\n\s+id="asset-status-correction-reason"/)
   assert.match(source, /<Button\n\s+variant="outline"\n\s+onClick=\{\(\) => \{\n\s+setOpen\(false\)\n\s+setError\(null\)/)
   assert.match(source, /<Button busy=\{isSubmitting\} disabled=\{reason\.trim\(\)\.length < 5\} onClick=\{submitCorrection\}>\n\s+\{labels\.submit\}\n\s+<\/Button>/)

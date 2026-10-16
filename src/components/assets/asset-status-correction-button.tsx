@@ -2,10 +2,11 @@
 
 import { RotateCcw } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useId, useState } from "react"
 import { ApiErrorText } from "@/components/ui/api-error-text"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
+import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 
 type AssetStatusCorrectionButtonProps = {
@@ -25,6 +26,7 @@ type AssetStatusCorrectionButtonProps = {
 
 export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: AssetStatusCorrectionButtonProps) {
   const router = useRouter()
+  const panelId = useId()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -55,14 +57,21 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
 
   return (
     <div className="space-y-2">
-      <Button variant="outline" onClick={() => setOpen((value) => !value)}>
+      {/* Spec 2D M27: the trigger says whether the panel is open; aria-controls only points at a panel that exists. */}
+      <Button
+        variant="outline"
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
         <RotateCcw className="text-warning" aria-hidden="true" />
         {labels.button}
       </Button>
       {open ? (
-        <div className="rounded-md border border-warning-border bg-background p-4">
+        // A quiet grouping inside the lifecycle panel: controls never sit in a warning box (spec 2D D7).
+        <div id={panelId} className="rounded-md border border-border bg-background p-4">
           <h3 className="text-sm font-semibold text-foreground">{labels.title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
+          <Notice tone="neutral" className="mt-1">{labels.description}</Notice>
           <Field label={labels.reason} className="mt-3">
             <Textarea
               id="asset-status-correction-reason"

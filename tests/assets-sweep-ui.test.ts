@@ -23,3 +23,12 @@ test("QR code: no frame of its own inside the QR panel, and the asset tag under 
   assert.match(source, /<div className="max-w-44 text-center text-sm text-foreground">\n\s+<span className="tag font-medium">\{label\}<\/span>\n\s+<\/div>/)
   assert.doesNotMatch(source, /bg-white|rounded-lg|border|text-xs/)
 })
+
+test("status correction: the trigger says whether its panel is open, and the panel is a quiet grouping with a neutral Notice (spec 2D M27, D7)", () => {
+  const source = read(`${C}assets/asset-status-correction-button.tsx`)
+  assert.match(source, /const panelId = useId\(\)/)
+  assert.match(source, /aria-expanded=\{open\}\n\s+aria-controls=\{open \? panelId : undefined\}/, "aria-controls only while the panel exists (axe aria-valid-attr-value)")
+  assert.match(source, /<div id=\{panelId\} className="rounded-md border border-border bg-background p-4">/)
+  assert.match(source, /<Notice tone="neutral" className="mt-1">\{labels\.description\}<\/Notice>/)
+  assert.doesNotMatch(source, /border-warning-border|<p className="mt-1 text-sm text-muted-foreground">/)
+})
