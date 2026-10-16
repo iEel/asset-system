@@ -38,6 +38,11 @@ export function isAuditComponentChecked(component: AuditScanComponent) {
   )
 }
 
+/** Still to check in this round and checkable from the parent: what "พบครบทุกชิ้น" and the save check count (D3, D4). */
+export function isAuditComponentPending(component: AuditScanComponent) {
+  return Boolean(component.auditItemId && component.auditStatus === "pending")
+}
+
 export function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto {
   return {
     id: photo.id,

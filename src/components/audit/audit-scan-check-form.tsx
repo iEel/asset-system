@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, ImagePlus, Loader2, X } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -12,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { AuditComponentPanel } from "@/components/audit/audit-scan-panels"
 import { AuditScanCheckField } from "@/components/audit/audit-scan-check-field"
+import { isAuditComponentChecked, isAuditComponentPending } from "@/components/audit/audit-scan-helpers"
 import type { AuditInstalledInParent, AuditLookupAsset, AuditScanComponent, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import {
   buildCheckDefaults,
@@ -93,12 +95,14 @@ export function AuditScanCheckForm({
   components: AuditCheckComponentsState
   onSubmit: (submission: AuditCheckSubmission) => void
   onDismiss: () => void
-  onConfirmComponent: (component: AuditScanComponent, context: { values: AuditCheckValues; remark: string }) => void
+  /** Resolves false when the confirmation failed (its toast is already shown), so "พบครบทุกชิ้น" stops there (D3). */
+  onConfirmComponent: (component: AuditScanComponent, context: { values: AuditCheckValues; remark: string }) => Promise<boolean>
   onMarkComponentMissing: (component: AuditScanComponent) => void
   onScanComponent: (component: AuditScanComponent) => void
 }) {
   const t = useTranslations("auditScan")
   const locale = useLocale()
+  const confirm = useConfirm()
   const mode: AuditCheckMode = target.kind === "out_of_scope" ? "out_of_scope" : target.openedMode
   const expected = target.kind === "item" ? expectedCheckValues(target.item) : masterCheckValues(lookupMasterValues(target.asset))
   const ownershipType = target.kind === "item" ? target.item.ownershipType : target.asset.ownershipType ?? null
@@ -113,16 +117,26 @@ export function AuditScanCheckForm({
   const [photoLabel, setPhotoLabel] = useState("")
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [extrasOpen, setExtrasOpen] = useState(target.kind === "out_of_scope")
-  const [componentsOpen, setComponentsOpen] = useState(false)
+  const [confirmingAll, setConfirmingAll] = useState(false)
   const photosRef = useRef(photos)
+  const mountedRef = useRef(true)
   const diff = diffCheckValues(values, expected, ownershipType)
   const photoRequired = requiresCheckPhoto(mode, diff)
   const missingPhoto = photoRequired && photos.length === 0
   const notes = target.kind === "item" ? getLatestValueNotes(target.item) : {}
+  const pendingComponents = target.kind === "item" ? components.components.filter(isAuditComponentPending) : []
+  const checkedComponents = components.components.filter(isAuditComponentChecked).length
 
   useEffect(() => {
     photosRef.current = photos
   }, [photos])
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -175,6 +189,36 @@ export function AuditScanCheckForm({
       if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl)
       return current.filter((photo) => photo.id !== id)
     })
+  }
+
+  // "พบครบทุกชิ้น": the per-row confirmation for each pending component, one after another, with the values and remark
+  // of the moment it was pressed. The first failure stops it and leaves the rest pending (D3).
+  async function confirmAllComponents() {
+    const pending = components.components.filter(isAuditComponentPending)
+    if (pending.length === 0) return
+    const context = { values, remark }
+    setConfirmingAll(true)
+    try {
+      for (const component of pending) {
+        if (!mountedRef.current) break
+        if (!(await onConfirmComponent(component, context))) break
+      }
+    } finally {
+      setConfirmingAll(false)
+    }
+  }
+
+  // Saving the parent while components are still pending asks first; cancelling sends nothing (D4).
+  async function save() {
+    if (pendingComponents.length > 0) {
+      const proceed = await confirm({
+        title: t("componentsPendingSaveTitle", { count: pendingComponents.length }),
+        description: t("componentsPendingSaveDescription"),
+        confirmLabel: t("componentsPendingSaveAction"),
+      })
+      if (!proceed) return
+    }
+    onSubmit({ values, remark, photos, applyCorrections, diff, mode })
   }
 
   const statusLine = (() => {
@@ -237,31 +281,26 @@ export function AuditScanCheckForm({
           </div>
         ) : null}
 
-        {target.kind === "item" && (components.components.length > 0 || components.status === "loading") ? (
-          <div className="rounded-md border border-border">
-            <button
-              type="button"
-              aria-expanded={componentsOpen}
-              onClick={() => setComponentsOpen((current) => !current)}
-              className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-sm font-medium"
-            >
-              {t("componentsSection", { count: components.components.length })}
-              {components.status === "loading" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
-            </button>
-            {componentsOpen && components.components.length > 0 ? (
-              <div className="border-t border-border px-2 pb-2">
-                <AuditComponentPanel
-                  components={components.components}
-                  saving={saving}
-                  componentActionsDisabled={disabled}
-                  onScanComponent={onScanComponent}
-                  onConfirmWithParent={(component) => onConfirmComponent(component, { values, remark })}
-                  onMarkMissing={onMarkComponentMissing}
-                  t={t}
-                />
-              </div>
-            ) : null}
-          </div>
+        {target.kind === "item" && components.status === "loading" && components.components.length === 0 ? (
+          <p role="status" className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            {t("componentsLoading")}
+          </p>
+        ) : null}
+
+        {/* Shown open: every component is one compact row (D2). */}
+        {target.kind === "item" && components.components.length > 0 ? (
+          <AuditComponentPanel
+            components={components.components}
+            saving={saving}
+            componentActionsDisabled={disabled}
+            confirmingAll={confirmingAll}
+            onScanComponent={onScanComponent}
+            onConfirmWithParent={(component) => onConfirmComponent(component, { values, remark })}
+            onConfirmAll={() => void confirmAllComponents()}
+            onMarkMissing={onMarkComponentMissing}
+            t={t}
+          />
         ) : null}
 
         <div className="rounded-md border border-border">
@@ -341,6 +380,9 @@ export function AuditScanCheckForm({
             {mode === "out_of_scope" ? t("auditPhotoRequiredForMismatch") : t("photoRequiredCondition")}
           </p>
         ) : null}
+        {pendingComponents.length > 0 ? (
+          <p className="text-sm text-muted-foreground">{t("componentsSaveHint", { checked: checkedComponents, total: components.components.length })}</p>
+        ) : null}
         {/* One row keeps the bar short on a phone; save comes first in the Tab order and wraps a long label. */}
         <div className="flex items-stretch gap-2">
           <Button
@@ -349,7 +391,7 @@ export function AuditScanCheckForm({
             className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10"
             busy={saving}
             disabled={disabled || missingPhoto}
-            onClick={() => onSubmit({ values, remark, photos, applyCorrections, diff, mode })}
+            onClick={() => void save()}
           >
             {saveLabel}
           </Button>

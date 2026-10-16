@@ -122,6 +122,8 @@ export function AuditScanWorkspace({
   const syncingRef = useRef(false)
   const sendingRef = useRef(false)
   const componentsRequestRef = useRef(0)
+  /** The asset whose components are in state, so a reload of the same asset keeps its rows on screen. */
+  const componentsAssetRef = useRef<string | null>(null)
 
   const locationLabels = useMemo(() => new Map(options.locations.map((option) => [option.id, option.label])), [options.locations])
   const custodianLabels = useMemo(() => new Map(options.employees.map((option) => [option.id, option.label])), [options.employees])
@@ -149,11 +151,14 @@ export function AuditScanWorkspace({
 
   const loadComponents = useCallback(async (assetId: string) => {
     const requestId = ++componentsRequestRef.current
+    // A reload after a confirmation keeps the rows, so focus and "พบครบทุกชิ้น" stay put (D3); another asset starts empty.
+    const reload = componentsAssetRef.current === assetId
+    componentsAssetRef.current = assetId
     if (!navigator.onLine) {
       setComponents(emptyComponents)
       return
     }
-    setComponents({ status: "loading", components: [], installedIn: [] })
+    setComponents((current) => (reload ? { ...current, status: "loading" } : { status: "loading", components: [], installedIn: [] }))
     try {
       const response = await fetch(`/api/audit-rounds/${roundId}/scan-lookup`, {
         method: "POST",
@@ -350,6 +355,7 @@ export function AuditScanWorkspace({
     setTargetKey((key) => key + 1)
     setOpenedFromSearch(true)
     setSaved(null)
+    componentsAssetRef.current = asset.id
     setComponents({ status: "ready", components: normalizeAuditLookupComponents(asset.components), installedIn: normalizeAuditLookupInstalledIn(asset.installedIn) })
   }
 
@@ -558,11 +564,12 @@ export function AuditScanWorkspace({
     }
   }
 
-  async function confirmComponent(component: AuditScanComponent, context: { values: AuditCheckValues; remark: string }) {
-    if (target?.kind !== "item") return
+  /** One component confirmed with the parent; true when it saved, so "พบครบทุกชิ้น" knows whether to go on (D3). */
+  async function confirmComponent(component: AuditScanComponent, context: { values: AuditCheckValues; remark: string }): Promise<boolean> {
+    if (target?.kind !== "item") return false
     if (!component.auditItemId) {
       toast.error(t("componentOutOfRound"))
-      return
+      return false
     }
     const parent = target.item
     setSaving(true)
@@ -584,8 +591,10 @@ export function AuditScanWorkspace({
       setItems((current) => applyScanResult(current, { item: result.item }))
       toast.success(t("componentConfirmedWithParentSuccess"))
       void loadComponents(parent.assetId)
+      return true
     } catch (error) {
       apiError.toast(error)
+      return false
     } finally {
       setSaving(false)
     }
@@ -741,7 +750,7 @@ export function AuditScanWorkspace({
             components={components}
             onSubmit={(submission) => void submitCheck(submission)}
             onDismiss={closeTarget}
-            onConfirmComponent={(component, context) => void confirmComponent(component, context)}
+            onConfirmComponent={confirmComponent}
             onMarkComponentMissing={(component) => {
               if (!component.auditItemId) toast.error(t("componentOutOfRound"))
               else setMissingComponent(component)
