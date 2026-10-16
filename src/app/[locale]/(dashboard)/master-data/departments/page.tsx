@@ -6,16 +6,14 @@ import { Pencil, Plus } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
-import {
-  ActiveBadge,
-  MasterDataSearch,
-} from "@/components/master-data/master-data-layout"
+import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -161,7 +159,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                     )}
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
-                    <ActiveBadge label={tCommon("active")} />
+                    <StatusBadge label={tCommon("active")} tone="success" />
                   </DataTableCell>
                   <DataTableCell align="right" sticky="right">
                     <RowActions

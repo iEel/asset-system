@@ -31,3 +31,9 @@ test("companies list: the branch and asset counts are text links with a 44px pho
   assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
+
+test("departments list: the active state is a StatusBadge (spec 2D M7)", () => {
+  const source = read(`${D}master-data/departments/page.tsx`)
+  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
+})
