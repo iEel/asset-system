@@ -1,5 +1,3 @@
-export type AssetDetailTone = "neutral" | "success" | "info" | "warning" | "danger"
-
 export type MovementDetailLike = {
   label: string
   value?: string | null
@@ -43,34 +41,6 @@ export function getMissingPhotoChecklistLabels(
   return photoChecklist.filter(
     (item) => !imageAttachments.some((attachment) => attachmentMatchesPhotoLabel(attachment, item, legacyLabelCounts))
   )
-}
-
-export function getWarrantyIconClass(tone: "success" | "warning" | "danger" | "neutral") {
-  if (tone === "success") return "text-success"
-  if (tone === "warning") return "text-warning"
-  if (tone === "danger") return "text-danger"
-  return "text-muted-foreground"
-}
-
-export function getWarrantyPanelClass(tone: "success" | "warning" | "danger" | "neutral") {
-  if (tone === "success") return "border-success-border bg-success-soft"
-  if (tone === "warning") return "border-warning-border bg-warning-soft"
-  if (tone === "danger") return "border-danger-border bg-danger-soft"
-  return "border-border bg-background"
-}
-
-export function getHealthBadgeClass(tone: "success" | "warning" | "danger") {
-  if (tone === "success") return "bg-success-soft text-success"
-  if (tone === "warning") return "bg-warning-soft text-warning"
-  return "bg-danger-soft text-danger"
-}
-
-export function getActivityToneClass(tone: AssetDetailTone) {
-  if (tone === "success") return "border-success-border bg-success-soft"
-  if (tone === "info") return "border-info-border bg-info-soft"
-  if (tone === "warning") return "border-warning-border bg-warning-soft"
-  if (tone === "danger") return "border-danger-border bg-danger-soft"
-  return "border-border bg-background"
 }
 
 export function formatMovementType(movementType: string) {

@@ -41,9 +41,11 @@ test("Badge and badgeVariants are gone; the status badge keeps its variants (spe
   assert.match(variants, /export const statusMarkerVariants = cva\(/)
 })
 
-test("the old panel helpers of the asset detail page are gone (spec 2D M9)", () => {
-  for (const name of ["getHealthPanelClass", "getSummaryToneClass"]) assert.equal(name in assetDetailFormat, false, name)
-  assert.equal(typeof assetDetailFormat.getHealthBadgeClass, "function", "the badge helper the page uses stays")
+test("the old panel helpers of the asset detail page are gone (spec 2D M9, D12)", () => {
+  // Plan 2D-3 moved their last callers (the data-health badge, the warranty box, the follow-up cards) to StatusBadge and markers.
+  for (const name of ["getHealthPanelClass", "getSummaryToneClass", "getHealthBadgeClass", "getActivityToneClass", "getWarrantyPanelClass", "getWarrantyIconClass"]) {
+    assert.equal(name in assetDetailFormat, false, name)
+  }
 })
 
 test("the busy labels nobody reads are gone from the props and the pages (spec 2D M8)", () => {
