@@ -54,3 +54,27 @@ test("review focus 3: a blocked cancellation keeps its confirm and reason disabl
   assert.match(source, /\{blockers\.length > 0 \? \(\n\s+<Notice tone="warning" role="status"/)
   assert.match(source, /\{blockers\.map\(\(blocker\) => <li key=\{blocker\}>\{labels\.blockers\[blocker\] \?\? blocker\}<\/li>\)\}/, "every blocker is named in words")
 })
+
+const P = "src/app/[locale]/(print)/"
+
+test("print documents: the toolbar has the shared back and print buttons, and a missing snapshot reaches the cancel dialog as null (spec 2D M29, M32 b)", () => {
+  const source = read(`${C}asset-operations/operation-document-print.tsx`)
+  assert.match(source, /<PageBackLink href=\{backHref\} label=\{backLabel\}[^>]*\/>/)
+  assert.match(source, /\{toolbarActions\}\n\s+<Button size="md" onClick=\{\(\) => window\.print\(\)\}>\n\s+<Printer aria-hidden="true" \/>\n\s+\{printLabel\}\n\s+<\/Button>/)
+  assert.doesNotMatch(source, /<button\b|<ArrowLeft\b|hover:text-primary|from "next\/link"/)
+  // The A4 page is print (spec 2D §5.3, permanent): its raw colors, the paper shadow, its h1 and the "-" of an empty field stay.
+  assert.match(source, /\{field\.value \|\| "-"\}/)
+  for (const page of ["checkouts", "checkins", "transfers"]) {
+    const print = read(`${P}asset-management/${page}/[id]/page.tsx`)
+    assert.match(print, /function formatSnapshotState\([^)]*\) \{\n\s+if \(!snapshot\) return null\n/, page)
+  }
+})
+
+test("review focus 5: the shared back and print buttons sit in the toolbar that print hides, so the A4 paper prints without them (plan 2D-4)", () => {
+  const source = read(`${C}asset-operations/operation-document-print.tsx`)
+  assert.match(source, /@media print \{[\s\S]*?\.operation-print-toolbar \{\s*display: none !important;\s*\}/)
+  const toolbar = source.slice(source.indexOf('<div className="operation-print-toolbar'), source.indexOf("<section"))
+  assert.match(toolbar, /<PageBackLink\b/)
+  assert.match(toolbar, /<Button size="md" onClick=\{\(\) => window\.print\(\)\}>/)
+  assert.match(toolbar, /\{toolbarActions\}/, "the cancel dialog's trigger does not print either")
+})

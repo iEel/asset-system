@@ -1,8 +1,9 @@
 "use client"
 
-import Link from "next/link"
-import { ArrowLeft, Printer } from "lucide-react"
+import { Printer } from "lucide-react"
 import { VoidDocumentBanner, type VoidDocumentInfo } from "@/components/asset-operations/void-document-banner"
+import { Button } from "@/components/ui/button"
+import { PageBackLink } from "@/components/ui/page-header"
 
 type DocumentField = {
   label: string
@@ -74,20 +75,14 @@ export function OperationDocumentPrint({
 
       <div className="operation-print-toolbar border-b border-border bg-surface">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href={backHref} className="inline-flex h-10 items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </Link>
+          {/* An icon button below md; self-start keeps it from stretching across the column below sm. */}
+          <PageBackLink href={backHref} label={backLabel} className="max-sm:self-start" />
           <div className="flex flex-wrap items-center gap-2">
             {toolbarActions}
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-            >
-              <Printer className="h-4 w-4" />
+            <Button size="md" onClick={() => window.print()}>
+              <Printer aria-hidden="true" />
               {printLabel}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

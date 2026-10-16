@@ -180,7 +180,7 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
 }
 
 function formatSnapshotState(snapshot: ReturnType<typeof parseAssetTransactionSnapshot>, labels: Map<string, string>) {
-  if (!snapshot) return "-"
+  if (!snapshot) return null
   return `${labelOrDash(labels, snapshot.statusId)} · ${labelOrDash(labels, snapshot.currentLocationId)}`
 }
 

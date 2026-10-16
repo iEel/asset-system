@@ -229,7 +229,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :496 for ArrowLeft
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
-    [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page
     [`${C}audit/audit-scan-header.tsx`]: 1, // → 1 (KEEP): field scan header
     [`${C}disposal/disposal-batch-form.tsx`]: 1, // → 1 (KEEP): back to editing in the review step :93 (2C)
   },
@@ -262,7 +261,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/asset-management/checkins/[id]/page.tsx": 2, // → 2 (KEEP): print page (R-n)
     "src/app/[locale]/(print)/asset-management/checkouts/[id]/page.tsx": 4, // → 4 (KEEP): print page (R-n)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page (R-n)
-    [`${C}asset-operations/void-document-banner.tsx`]: 3, // → 3 (KEEP): 2D
+    [`${C}asset-operations/void-document-banner.tsx`]: 3, // → 3 (KEEP): print page, the void banner prints on the A4 document (R-n, plan 2D-4)
     [`${C}assets/asset-label-batch-tool.tsx`]: 6, // → 6 (KEEP): label data (R-n)
     [`${C}audit/audit-scan-check-form.tsx`]: 3, // → 3 (KEEP): translated sentences (R-n)
     [`${C}audit/audit-scan-offline-bar.tsx`]: 1, // → 1 (KEEP): translated sentence (R-n)
@@ -306,7 +305,6 @@ const KEEP: Record<string, Record<string, number>> = {
   LB1: {
     [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1413, not a page back
     [`${C}disposal/disposal-batch-form.tsx`]: 1, // back to editing in the review step :93 (2C)
-    [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // back item of the ActionBar :496 (2C batch 5, K23)
   },
@@ -323,7 +321,7 @@ const KEEP: Record<string, Record<string, number>> = {
     "src/app/[locale]/(print)/asset-management/checkins/[id]/page.tsx": 2, // print page (R-n)
     "src/app/[locale]/(print)/asset-management/checkouts/[id]/page.tsx": 4, // print page (R-n)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page (R-n)
-    [`${C}asset-operations/void-document-banner.tsx`]: 3, // 2D
+    [`${C}asset-operations/void-document-banner.tsx`]: 3, // print page, the void banner prints on the A4 document (R-n, plan 2D-4)
   },
   LV3: {
     "src/app/[locale]/(print)/disposal/[id]/print/page.tsx": 5, // print page, 2D (A/08:305)
