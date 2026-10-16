@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { AuditQrScannerOverlay } from "@/components/audit/audit-scan-panels"
 import type { CameraDevice } from "@/components/audit/audit-scan-types"
+import { Notice } from "@/components/ui/notice"
 import { startNativeAssetQrScanner, type NativeAssetQrScannerRuntime } from "@/lib/asset-qr-scanner"
 import {
   getFallbackCameraAfterEnvironmentFailure,
@@ -147,6 +148,8 @@ export function AuditScanCamera({ onDecoded, onClose }: { onDecoded: (text: stri
             <Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden="true" />
           </div>
         ) : null}
+        {/* The zoom, torch and stop controls sit on the camera image: raw buttons with their own dark fill and white ink
+            (spec 2D §5.3, permanent; 2D-5 lists them). */}
         {running && zoom.levels.length > 0 ? (
           <div className="absolute left-2 top-2 z-20 inline-flex items-center gap-1 rounded-md border border-white/50 bg-slate-950/70 p-1">
             {zoom.levels.map((level) => (
@@ -191,9 +194,10 @@ export function AuditScanCamera({ onDecoded, onClose }: { onDecoded: (text: stri
         </div>
       </div>
       {errorText ? (
-        <p role="alert" className="border-t border-border bg-warning-soft p-3 text-sm text-warning">
-          {errorText}
-        </p>
+        // A camera that cannot start is the person's to deal with (allow the camera or type the code): a warning box.
+        <div className="border-t border-border p-3">
+          <Notice tone="warning" role="alert">{errorText}</Notice>
+        </div>
       ) : null}
     </div>
   )

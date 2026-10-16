@@ -169,3 +169,11 @@ test("saved banner: a Notice by result (queued info, mismatch warning, saved suc
   assert.equal(source.match(/role="status"/g)?.length, 1, "one live region: the saved result")
   assert.doesNotMatch(source, /<button\b|hover:underline|text-primary|-soft\b|text-(?:success|warning|danger)\b|\bcn\(/)
 })
+
+test("camera: a camera that cannot start shows a warning Notice with role alert; the controls on the image keep their raw look and say why (spec 2D D7, §5.3)", () => {
+  const source = read(`${A}audit-scan-camera.tsx`)
+  assert.match(source, /<div className="border-t border-border p-3">\s*<Notice tone="warning" role="alert">\{errorText\}<\/Notice>\s*<\/div>/)
+  assert.match(source, /\{\/\* The zoom, torch and stop controls sit on the camera image: raw buttons[\s\S]*?permanent; 2D-5 lists them\)\. \*\/\}/)
+  assert.equal(source.match(/<button\b/g)?.length, 3)
+  assert.doesNotMatch(source, /bg-warning-soft|text-warning/)
+})
