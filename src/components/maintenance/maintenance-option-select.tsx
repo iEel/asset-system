@@ -18,6 +18,7 @@ export function MaintenanceOptionSelect({
   loadingLabel,
   initialOption,
   formatReason,
+  hint,
   onChange,
 }: {
   type: MaintenanceOptionType
@@ -31,6 +32,7 @@ export function MaintenanceOptionSelect({
   loadingLabel?: string
   initialOption?: MaintenanceOption
   formatReason?: (reason: string) => string
+  hint?: React.ReactNode
   onChange: (value: string) => void
 }) {
   const [query, setQuery] = useState("")
@@ -85,6 +87,7 @@ export function MaintenanceOptionSelect({
         placeholder={placeholder}
         searchPlaceholder={searchPlaceholder}
         emptyLabel={loading ? loadingLabel ?? emptyLabel : emptyLabel}
+        hint={hint}
         onSearchChange={setQuery}
         onChange={onChange}
       />

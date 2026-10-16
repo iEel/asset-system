@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useId, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { ChevronDown, Save } from "lucide-react"
@@ -9,12 +9,14 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { ChoiceCard } from "@/components/ui/choice-card"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Field, FieldRequiredMark } from "@/components/ui/field"
 import { fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { Input } from "@/components/ui/input"
+import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
@@ -48,6 +50,7 @@ export function RepairRecordForm({
   const [saving, setSaving] = useState(false)
   const [openRecordAssetId, setOpenRecordAssetId] = useState<string | null>(null)
   const [showDetails, setShowDetails] = useState(Boolean(plan?.vendor))
+  const detailsId = useId()
   const [files, setFiles] = useState<File[]>([])
   const [values, setValues] = useState({
     assetId: initialAsset?.id ?? "",
@@ -115,7 +118,7 @@ export function RepairRecordForm({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
+    <ContentPanel>
       <form onSubmit={handleSubmit} className="space-y-5">
         {plan ? <FormContextBanner label={t("planLabel")} value={plan.label} /> : null}
         <MaintenanceOptionSelect
@@ -133,7 +136,7 @@ export function RepairRecordForm({
           onChange={(value) => setField("assetId", value)}
         />
         {openRecordAssetId ? (
-          <p role="alert" className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
+          <Notice tone="danger" role="alert">
             {tMaintenance("errors.MAINTENANCE_OPEN_RECORD_EXISTS")}{" "}
             <Link
               href={`/${locale}/maintenance?assetId=${encodeURIComponent(openRecordAssetId)}&status=in_progress`}
@@ -141,7 +144,7 @@ export function RepairRecordForm({
             >
               {t("openExistingRecord")}
             </Link>
-          </p>
+          </Notice>
         ) : null}
         <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr]">
           <Field label={t("date")} required>
@@ -179,38 +182,37 @@ export function RepairRecordForm({
           </fieldset>
         ) : null}
         {effectKey ? (
-          <p className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
+          <Notice tone="warning">
             {t(`assetStatusEffect.${effectKey}`)}
-          </p>
+          </Notice>
         ) : null}
         {needsReporter ? (
-          <div>
-            <MaintenanceOptionSelect
-              type="employee"
-              label={t("reporter")}
-              value={values.reportedById}
-              required
-              placeholder={t("selectReporter")}
-              searchPlaceholder={tCommon("searchSelectPlaceholder")}
-              emptyLabel={tCommon("searchSelectNoResults")}
-              loadingLabel={tCommon("loading")}
-              onChange={(value) => setField("reportedById", value)}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">{t("reporterHelp")}</p>
-          </div>
+          <MaintenanceOptionSelect
+            type="employee"
+            label={t("reporter")}
+            value={values.reportedById}
+            required
+            placeholder={t("selectReporter")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            loadingLabel={tCommon("loading")}
+            hint={t("reporterHelp")}
+            onChange={(value) => setField("reportedById", value)}
+          />
         ) : null}
-        <div className="rounded-md border border-border">
-          <button
-            type="button"
+        <div>
+          <Button
+            variant="outline"
             aria-expanded={showDetails}
+            aria-controls={showDetails ? detailsId : undefined}
             onClick={() => setShowDetails((open) => !open)}
-            className="flex min-h-11 w-full items-center justify-between px-4 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full justify-between"
           >
             {t("moreDetails")}
-            <ChevronDown className={`h-4 w-4 transition-transform ${showDetails ? "rotate-180" : ""}`} />
-          </button>
+            <ChevronDown aria-hidden="true" className={showDetails ? "rotate-180" : undefined} />
+          </Button>
           {showDetails ? (
-            <div className="grid gap-4 border-t border-border p-4 md:grid-cols-2">
+            <div id={detailsId} className="mt-3 grid gap-4 rounded-md border border-border bg-background p-4 md:grid-cols-2">
               <MaintenanceOptionSelect
                 type="supplier"
                 label={t("vendor")}
@@ -264,6 +266,6 @@ export function RepairRecordForm({
           </Button>
         </div>
       </form>
-    </section>
+    </ContentPanel>
   )
 }

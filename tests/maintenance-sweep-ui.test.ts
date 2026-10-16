@@ -24,3 +24,18 @@ test("repair attachments: a ContentPanel, a warning Notice, a plain count, Empty
   assert.match(source, /className="mb-3 flex aspect-\[4\/3\] w-full items-center justify-center overflow-hidden rounded-md bg-surface text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"/)
   assert.doesNotMatch(source, /Loader2|disabled:opacity|border-dashed|rounded-full|rounded-lg|hover:bg-accent|sm:h-8|sm:min-h-0|\btext-xs\b|\btext-lg\b|text-(?:info|danger|warning|primary)\b|bg-warning-soft|closeLabel=/)
 })
+
+test("repair form: a ContentPanel, the open-record error and the status effect as Notices, the reporter hint on its select, and an outline disclosure over a quiet grouping (spec 2D D7, D9, M29)", () => {
+  const source = read(`${C}maintenance/repair-record-form.tsx`)
+  assert.match(source, /<ContentPanel>\s*<form onSubmit=\{handleSubmit\} className="space-y-5">/)
+  assert.match(source, /<Notice tone="danger" role="alert">\s*\{tMaintenance\("errors\.MAINTENANCE_OPEN_RECORD_EXISTS"\)\}/)
+  assert.match(source, /<Notice tone="warning">\s*\{t\(`assetStatusEffect\.\$\{effectKey\}`\)\}\s*<\/Notice>/)
+  assert.match(source, /hint=\{t\("reporterHelp"\)\}/)
+  assert.match(source, /const detailsId = useId\(\)/)
+  assert.match(source, /<Button\s+variant="outline"\s+aria-expanded=\{showDetails\}\s+aria-controls=\{showDetails \? detailsId : undefined\}\s+onClick=\{\(\) => setShowDetails\(\(open\) => !open\)\}\s+className="w-full justify-between"\s*>/)
+  assert.match(source, /<div id=\{detailsId\} className="mt-3 grid gap-4 rounded-md border border-border bg-background p-4 md:grid-cols-2">/)
+  assert.doesNotMatch(source, /<button\b|<section\b|rounded-lg|bg-warning-soft|border-warning-border|text-warning|hover:bg-accent|\btext-xs\b|transition-transform|\bh-4 w-4\b/)
+  const select = read(`${C}maintenance/maintenance-option-select.tsx`)
+  assert.match(select, /\n\s+hint\?: React\.ReactNode\n/)
+  assert.match(select, /\n\s+hint=\{hint\}\n/)
+})
