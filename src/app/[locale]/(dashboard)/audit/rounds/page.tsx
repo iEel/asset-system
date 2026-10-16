@@ -1,7 +1,7 @@
 import Link from "next/link"
-import type { ReactNode } from "react"
+import { Fragment, type ReactNode } from "react"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
+import { AlertTriangle, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
@@ -9,15 +9,18 @@ import { cn, formatDate } from "@/lib/utils"
 import { toDisplayYear } from "@/lib/display-year"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
+import { KeyValueList } from "@/components/ui/key-value-list"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { RowActions, type RowActionGroup, type RowNextAction } from "@/components/ui/row-actions"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
-import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -72,14 +75,12 @@ type RoundWorkflowLink = {
   label: string
   count: number
   href: string
-  tone: "warning" | "danger" | "info"
 }
 type ActionPanelItem = {
   label: string
   help: string
   count: number
   href: string
-  icon: ReactNode
   tone: "primary" | "warning" | "success"
 }
 
@@ -227,7 +228,6 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       help: t("actionContinueScanHelp"),
       count: pendingRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.pending ?? 0), 0),
       href: pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", searchText, { pageSize: listPage.pageSize }),
-      icon: <ScanLine className="h-5 w-5" />,
       tone: "primary",
     },
     {
@@ -235,7 +235,6 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       help: t("actionReviewFindingsHelp"),
       count: reviewRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.followUps ?? 0), 0),
       href: appendOperationalReturnTo(`/${locale}/audit/findings?status=pending`, auditRoundsReturnHref),
-      icon: <AlertTriangle className="h-5 w-5" />,
       tone: "warning",
     },
     {
@@ -243,7 +242,6 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       help: t("actionCloseReadyRoundsHelp"),
       count: readyRounds.length,
       href: readyRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${readyRounds[0].id}`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "readyToClose", searchText, { pageSize: listPage.pageSize }),
-      icon: <ClipboardCheck className="h-5 w-5" />,
       tone: "success",
     },
   ]
@@ -285,17 +283,15 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         }
       />
 
-      <section className="rounded-lg border border-border bg-surface p-4">
-        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("coverageHelp")}</p>
-          </div>
-          <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            {t("coverageRoundCount")}: <span className="font-semibold text-foreground">{formatCount(currentYearRoundCount)}</span>
-          </div>
-        </div>
-
+      <ContentPanel
+        title={t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}
+        description={t("coverageHelp")}
+        actions={
+          <p className="text-sm text-muted-foreground">
+            {t("coverageRoundCount")}: <span className="num font-semibold text-foreground">{formatCount(currentYearRoundCount)}</span>
+          </p>
+        }
+      >
         <StatStrip
           className="mb-4"
           items={[
@@ -306,7 +302,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
           ]}
         />
 
-        <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
+        <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
           <AuditProgressBar
             total={activeAssets.length}
             processed={coveredAssetCount}
@@ -321,7 +317,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
               { label: t("pendingReview"), value: openFollowUpCount, tone: "danger" },
             ]}
           />
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2">
             <CoverageGapList
               title={t("coverageByCategory")}
               help={t("coverageGapHelp")}
@@ -350,7 +346,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             />
           </div>
         </div>
-      </section>
+      </ContentPanel>
 
       <ActionPanel title={t("nextActionsTitle")} help={t("nextActionsHelp")} actions={actionItems} />
 
@@ -364,7 +360,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         hiddenInputs={{ ...(activeView === "all" ? {} : { view: activeView }), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
       />
 
-      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
+      <div className={cn(getPanelClasses(), "overflow-hidden")}>
         <div className={`${getMobileCardListClasses()} p-3`}>
           {pageRounds.length === 0 ? (
             <EmptyNote padded>{tCommon("noData")}</EmptyNote>
@@ -397,13 +393,13 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 <article key={round.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <Link href={roundDetailHref} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                      <Link href={roundDetailHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
                         <span className="tag font-medium">{round.auditNo}</span>
                       </Link>
                       <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <AuditStatusBadge status={round.status} label={getAuditRoundStatusLabel(round.status, t)} />
+                      <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
                       <ReadyToCloseBadge
                         status={round.status}
                         insight={insight}
@@ -415,11 +411,14 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       />
                     </div>
                   </div>
-                  <div className="mt-3 grid gap-2 text-sm">
-                    <MobileAuditField label={t("scope")} value={formatScope(round)} />
-                    <MobileAuditField label={t("dateRange")} value={`${formatDate(round.startDate)} - ${formatDate(round.endDate)}`} />
-                    <MobileAuditField label={t("items")} value={formatCount(round._count.items)} />
-                  </div>
+                  <KeyValueList
+                    className="mt-3"
+                    items={[
+                      { key: "scope", label: t("scope"), value: formatScope(round, t("all")) },
+                      { key: "dateRange", label: t("dateRange"), value: `${formatDate(round.startDate)} - ${formatDate(round.endDate)}` },
+                      { key: "items", label: t("items"), value: formatCount(round._count.items) },
+                    ]}
+                  />
                   <div className="mt-3">
                     <AuditProgressBar
                       compact
@@ -500,13 +499,13 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       <span className="tag font-medium text-foreground">{round.auditNo}</span>
                     </DataTableCell>
                     <DataTableCell className="min-w-56 text-foreground">{round.name}</DataTableCell>
-                    <DataTableCell className="min-w-64 text-muted-foreground">{formatScope(round)}</DataTableCell>
+                    <DataTableCell className="min-w-64 text-muted-foreground">{formatScope(round, t("all"))}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">
                       {formatDate(round.startDate)} - {formatDate(round.endDate)}
                     </DataTableCell>
                     <DataTableCell className="whitespace-nowrap">
                       <div className="flex flex-col items-start gap-1">
-                        <AuditStatusBadge status={round.status} label={getAuditRoundStatusLabel(round.status, t)} />
+                        <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
                         <ReadyToCloseBadge
                           status={round.status}
                           insight={insight}
@@ -573,40 +572,22 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
 
 function ActionPanel({ title, help, actions }: { title: string; help: string; actions: ActionPanelItem[] }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
-      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{help}</p>
-        </div>
+    <section aria-labelledby="audit-round-next-actions-title" className="space-y-3">
+      <div>
+        <h2 id="audit-round-next-actions-title" className="text-base font-semibold text-foreground">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{help}</p>
       </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        {actions.map((action) => {
-          const toneClass =
-            action.tone === "success"
-              ? "border-success-border bg-success-soft text-success hover:bg-success-soft"
-              : action.tone === "warning"
-                ? "border-warning-border bg-warning-soft text-warning hover:bg-warning-soft"
-                : "border-primary-border bg-primary-soft text-primary hover:bg-primary-soft"
-
-          return (
-            <Link
-              key={action.label}
-              href={action.href}
-              className={`flex min-h-24 items-center justify-between gap-3 rounded-md border px-4 py-3 transition-colors ${toneClass}`}
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md">{action.icon}</div>
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-foreground">{action.label}</div>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{action.help}</p>
-                </div>
-              </div>
-              <div className="shrink-0 text-2xl font-bold tabular-nums text-foreground">{formatCount(action.count)}</div>
-            </Link>
-          )
-        })}
-      </div>
+      <StatStrip
+        items={actions.map((action) => ({
+          key: action.label,
+          label: action.label,
+          value: formatCount(action.count),
+          href: action.href,
+          foot: action.help,
+          footTitle: action.help,
+          attention: action.tone === "warning" && action.count > 0,
+        }))}
+      />
     </section>
   )
 }
@@ -638,25 +619,13 @@ function RoundWorkflowLinks({ links }: { links: RoundWorkflowLink[] }) {
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {links.map((link) => {
-        const toneClass =
-          link.tone === "danger"
-            ? "border-danger-border bg-danger-soft text-danger hover:bg-danger-soft"
-            : link.tone === "info"
-              ? "border-info-border bg-info-soft text-info hover:bg-info-soft"
-              : "border-warning-border bg-warning-soft text-warning hover:bg-warning-soft"
-
-        return (
-          <Link
-            key={link.key}
-            href={link.href}
-            className={`inline-flex min-h-11 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors ${toneClass}`}
-          >
-            <span>{link.label}</span>
-            <span className="tabular-nums">{formatCount(link.count)}</span>
-          </Link>
-        )
-      })}
+      {links.map((link) => (
+        <Link key={link.key} href={link.href} className={buttonVariants({ variant: "outline", size: "sm" })}>
+          {roundWorkflowIcons[link.key]}
+          <span>{link.label}</span>
+          <span className="num">{formatCount(link.count)}</span>
+        </Link>
+      ))}
     </div>
   )
 }
@@ -671,29 +640,15 @@ function ReadyToCloseBadge({
 }) {
   if (!isAuditRoundOperationalStatus(status)) return null
   if (insight.readyToClose) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        {labels.ready}
-      </span>
-    )
+    return <StatusBadge label={labels.ready} tone="success" />
   }
   if (insight.pending > 0) {
-    return <span className="inline-flex rounded-full bg-warning-soft px-2 py-1 text-xs font-medium text-warning">{labels.pending}</span>
+    return <StatusBadge label={labels.pending} tone="warning" />
   }
   if (insight.followUps > 0) {
-    return <span className="inline-flex rounded-full bg-danger-soft px-2 py-1 text-xs font-medium text-danger">{labels.review}</span>
+    return <StatusBadge label={labels.review} tone="danger" />
   }
   return null
-}
-
-function MobileAuditField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-md bg-background px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words text-sm text-foreground">{value}</div>
-    </div>
-  )
 }
 
 function CoverageGapList({
@@ -710,36 +665,45 @@ function CoverageGapList({
   labels: { group: string; missing: string; total: string; rate: string; scrollHint: string }
 }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-3">
+    <div className="min-w-0">
       <div className="mb-3">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <p className="mt-1 text-xs text-muted-foreground">{help}</p>
+        <p className="mt-1 text-meta text-muted-foreground">{help}</p>
       </div>
       {rows.length === 0 ? (
-        <div className="rounded-md border border-border bg-surface px-3 py-4 text-sm text-muted-foreground">{emptyLabel}</div>
+        <EmptyNote tone="clear">{emptyLabel}</EmptyNote>
       ) : (
         <>
           <div className="grid gap-2 sm:hidden">
             {rows.map((row) => (
-              <div key={row.id} className="rounded-md border border-border bg-surface p-3">
+              <div key={row.id} className="rounded-md border border-border bg-background p-3">
                 <div className="break-words text-sm font-medium text-foreground">
                   {row.href ? (
-                    <Link href={row.href} className="text-primary hover:underline">
+                    <Link href={row.href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
                       {row.label}
                     </Link>
                   ) : (
                     row.label
                   )}
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                  <MobileAuditField label={labels.missing} value={formatCount(row.missing)} />
-                  <MobileAuditField label={labels.total} value={formatCount(row.total)} />
-                  <MobileAuditField label={labels.rate} value={`${formatCount(row.percent)}%`} />
-                </div>
+                <dl className="mt-2 grid grid-cols-3 gap-x-3">
+                  <div className="min-w-0">
+                    <dt className="text-meta text-faint-foreground">{labels.missing}</dt>
+                    <dd className="text-sm num text-foreground">{formatCount(row.missing)}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-meta text-faint-foreground">{labels.total}</dt>
+                    <dd className="text-sm num text-foreground">{formatCount(row.total)}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-meta text-faint-foreground">{labels.rate}</dt>
+                    <dd className="text-sm num text-foreground">{`${formatCount(row.percent)}%`}</dd>
+                  </div>
+                </dl>
               </div>
             ))}
           </div>
-          {/* No frame of its own: the gap box is the frame (no frame in a frame). */}
+          {/* No frame of its own: the coverage panel is the frame (no frame in a frame). */}
           <DataTable framed={false} className="hidden sm:block" caption={title} scrollHint={labels.scrollHint}>
             <DataTableHeader>
               <tr>
@@ -754,7 +718,7 @@ function CoverageGapList({
                 <DataTableRow key={row.id}>
                   <DataTableCell className="min-w-44 font-medium text-foreground">
                     {row.href ? (
-                      <Link href={row.href} className="text-primary hover:underline">
+                      <Link href={row.href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
                         {row.label}
                       </Link>
                     ) : (
@@ -772,19 +736,6 @@ function CoverageGapList({
       )}
     </div>
   )
-}
-
-function AuditStatusBadge({ status, label = status }: { status: string; label?: string }) {
-  const className =
-    status === "open"
-      ? "bg-info-soft text-info"
-      : status === "closed"
-        ? "bg-muted text-muted-foreground"
-        : status === "cancelled"
-          ? "bg-danger-soft text-danger"
-          : "bg-warning-soft text-warning"
-
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{label}</span>
 }
 
 function buildAuditRoundInsights(
@@ -838,7 +789,6 @@ function buildAuditRoundWorkflowLinks({
       label: labels.pending,
       count: insight.pending,
       href: appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, returnTo),
-      tone: "warning",
     })
   }
 
@@ -848,7 +798,6 @@ function buildAuditRoundWorkflowLinks({
       label: labels.review,
       count: insight.followUps,
       href: appendOperationalReturnTo(`/${locale}/audit/findings?status=pending&roundId=${roundId}`, returnTo),
-      tone: "danger",
     })
   }
 
@@ -858,7 +807,6 @@ function buildAuditRoundWorkflowLinks({
       label: labels.outOfScope,
       count: insight.outOfScope,
       href: `/${locale}/audit/rounds/${roundId}?result=out_of_scope&returnTo=${encodeURIComponent(returnTo)}#audit-result-list`,
-      tone: "info",
     })
   }
 
@@ -942,14 +890,19 @@ function formatScope(round: {
   scopeCompany: { code: string; nameTh: string } | null
   scopeBranch: { code: string; name: string } | null
   scopeLocation: { code: string; name: string } | null
-}) {
-  const parts = [
-    round.scopeCompany ? `${round.scopeCompany.code} - ${round.scopeCompany.nameTh}` : null,
-    round.scopeBranch ? `${round.scopeBranch.code} - ${round.scopeBranch.name}` : null,
-    round.scopeLocation ? `${round.scopeLocation.code} - ${round.scopeLocation.name}` : null,
-  ].filter(Boolean)
+}, allLabel: string): ReactNode {
+  const parts: Array<{ kind: string; code: string; name: string }> = []
+  if (round.scopeCompany) parts.push({ kind: "company", code: round.scopeCompany.code, name: round.scopeCompany.nameTh })
+  if (round.scopeBranch) parts.push({ kind: "branch", code: round.scopeBranch.code, name: round.scopeBranch.name })
+  if (round.scopeLocation) parts.push({ kind: "location", code: round.scopeLocation.code, name: round.scopeLocation.name })
+  if (parts.length === 0) return allLabel
 
-  return parts.length > 0 ? parts.join(" / ") : "All assets"
+  return parts.map((part, index) => (
+    <Fragment key={part.kind}>
+      {index > 0 ? " / " : null}
+      <span className="tag">{part.code}</span> - {part.name}
+    </Fragment>
+  ))
 }
 
 function buildCoverageGaps(

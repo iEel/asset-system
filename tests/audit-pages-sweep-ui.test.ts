@@ -96,3 +96,24 @@ test("findings page: the list frame on the panel classes, StatusBadge without lo
   assert.match(source, /<DataTable framed=\{false\} layout="fixed" minWidth=\{960\} /, "the audit mobile fix stays")
   assert.doesNotMatch(source, /function (?:FindingComparison|ResolutionStateBadge|ReviewStatusBadge|ActionStatusBadge)\b|info-soft|info-border|text-info|hover:underline|hover:bg-accent|text-primary|\btext-xs\b|rounded-lg border/)
 })
+
+test("audit rounds list: the coverage a ContentPanel with frameless gap lists, the next actions a StatStrip, the list frame on the panel classes, StatusBadge states, KeyValueList facts, outline sm workflow links, text links and tag scopes (spec 2D §3.4, D7, D9, D19, M21, M22, M29, M33)", () => {
+  const source = read(`${D}audit/rounds/page.tsx`)
+  assert.match(source, /<ContentPanel\s+title=\{t\("coverageTitle", \{ year: toDisplayYear\(currentYear, locale\) \}\)\}\s+description=\{t\("coverageHelp"\)\}/)
+  assert.match(source, /\{t\("coverageRoundCount"\)\}: <span className="num font-semibold text-foreground">\{formatCount\(currentYearRoundCount\)\}<\/span>/)
+  assert.match(source, /<section aria-labelledby="audit-round-next-actions-title" className="space-y-3">/)
+  assert.match(source, /attention: action\.tone === "warning" && action\.count > 0/)
+  assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
+  assert.equal(source.match(/<StatusBadge label=\{getAuditRoundStatusLabel\(round\.status, t\)\} status=\{round\.status\} \/>/g)?.length, 2, "the phone card and the table")
+  for (const [label, tone] of [["ready", "success"], ["pending", "warning"], ["review", "danger"]]) {
+    assert.match(source, new RegExp(`<StatusBadge label=\\{labels\\.${label}\\} tone="${tone}" \\/>`), label)
+  }
+  assert.match(source, /<KeyValueList\s+className="mt-3"/)
+  assert.match(source, /className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/)
+  assert.equal(source.match(/className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/g)?.length, 3, "the round code of the phone card and the two gap-list links")
+  assert.match(source, /<EmptyNote tone="clear">\{emptyLabel\}<\/EmptyNote>/)
+  assert.match(source, /<dl className="mt-2 grid grid-cols-3 gap-x-3">/)
+  assert.match(source, /formatScope\(round, t\("all"\)\)/)
+  assert.match(source, /<span className="tag">\{/)
+  assert.doesNotMatch(source, /function (?:AuditStatusBadge|MobileAuditField)\b|"All assets"|rounded-full|rounded-lg|\b(?:bg|border)-(?:success|warning|danger|info)-(?:soft|border)\b|\btext-info\b|hover:underline|hover:text-primary|text-2xl font-bold|\btext-xs\b|CheckCircle2|ClipboardCheck/)
+})

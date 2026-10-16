@@ -165,7 +165,8 @@ const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Plan 2D-4 Task 6 (OP-6): ReadOnly (the check-in form's current custody).
 // Plan 2D-4 Task 24 (AP-5): ReviewPreviewField (the finding review dialog).
 // Plan 2D-4 Task 26 (AP-7): FindingComparison (the findings phone card).
-const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField|FindingComparison)\b/g
+// Plan 2D-4 Task 27 (AP-8): MobileAuditField (the audit rounds phone card).
+const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField|FindingComparison|MobileAuditField)\b/g
 const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 const pageCurrent = (text: string) => /"page"/.test(jsxAttrValue(text, "aria-current") ?? "")

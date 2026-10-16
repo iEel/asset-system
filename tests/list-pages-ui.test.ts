@@ -332,7 +332,7 @@ test("audit rounds: PageHeader, StatStrip, the quick filters on TabNav, and the 
   assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
   assert.match(source, /<DataTableCell align="right" sticky="right">\s*<RowActions/)
   assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: round\.auditNo \}\)\}/, "⋯ is named after its round (I33)")
-  assert.match(source, /<DataTable framed=\{false\} className="hidden sm:block" caption=\{title\} scrollHint=\{labels\.scrollHint\}>/, "the coverage gap tables sit in their box with no second frame")
+  assert.match(source, /<DataTable framed=\{false\} className="hidden sm:block" caption=\{title\} scrollHint=\{labels\.scrollHint\}>/, "the coverage gap tables sit in the coverage panel with no frame of their own (plan 2D-4)")
 })
 
 test("audit rounds page in memory: page and pageSize from the URL, a slice of the filtered rounds, a clamp past the last page (spec 2B §5.9.2 row 7, I21)", () => {
