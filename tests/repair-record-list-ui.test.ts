@@ -24,7 +24,7 @@ test("the maintenance page lists records with PM due and stuck assets", () => {
 
 test("the stuck-asset link has a 44px touch target", () => {
   const source = readFileSync(pagePath, "utf8")
-  assert.match(source, /href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\}\s+className="[^"]*min-h-11/)
+  assert.match(source, /href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\}\s+className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 min-w-0 items-center md:min-h-0"\)\}/)
 })
 
 test("the board view, SLA and evidence filters are gone", () => {

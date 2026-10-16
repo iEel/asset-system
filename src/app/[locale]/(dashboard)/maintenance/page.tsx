@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CalendarClock, Download, Plus, Wrench } from "lucide-react"
+import { Download, Plus, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -16,12 +16,13 @@ import { buildMaintenancePagination } from "@/lib/maintenance-list"
 import { buildMaintenancePageHref } from "@/lib/maintenance-view"
 import { buildDuePmPlanWhere, getBangkokDateKey } from "@/lib/preventive-maintenance"
 import { getRepairRecordStatusTone, openRepairRecordWhere, toRepairRecordStatus } from "@/lib/repair-record-policy"
-import { formatDate } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
 import { FilterChipList } from "@/components/ui/filter-chips"
@@ -29,11 +30,12 @@ import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
 import { FilterSelect } from "@/components/ui/filter-select"
 import { Input } from "@/components/ui/input"
 import { Nil, orNil } from "@/components/ui/nil"
+import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
 import { SearchField } from "@/components/ui/search-field"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type MaintenancePageProps = {
@@ -106,6 +108,12 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
     outcome === "usable" || outcome === "beyond_repair"
       ? t(`outcome.${outcome}`)
       : toRepairRecordStatus(status) === "closed" ? t("outcome.unknown") : null
+  // The outcome is a state badge (plan 2D-4 R2): usable success, beyond repair warning, unknown muted, none Nil.
+  const outcomeBadge = (outcome: string | null, status: string) => {
+    const label = outcomeLabel(outcome, status)
+    if (label == null) return null
+    return <StatusBadge label={label} tone={outcome === "usable" ? "success" : outcome === "beyond_repair" ? "warning" : "muted"} />
+  }
   const clearHref = filters.assetId ? `/${locale}/maintenance?assetId=${encodeURIComponent(filters.assetId)}` : `/${locale}/maintenance`
   // The filters the form shows. The asset filter has its own chip; page and page size are not filters (spec 2B §6.4).
   const hasActiveFilters = Boolean(filters.search || filters.status || filters.dateFrom || filters.dateTo)
@@ -127,37 +135,33 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       />
 
       {stuckTotal > 0 ? (
-        <section id="stuck" className="rounded-lg border border-warning-border bg-warning-soft p-4">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <AlertTriangle className="h-5 w-5 text-warning" />{t("stuckTitle")} ({stuckTotal})
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("stuckHelp")}</p>
+        <section id="stuck" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+          <h2 className="text-base font-semibold text-foreground">{t("stuckTitle")} ({formatCount(stuckTotal)})</h2>
+          <Notice tone="warning" className="mt-3">{t("stuckHelp")}</Notice>
           <ul className="mt-3 grid gap-2 md:grid-cols-2">
             {stuckAssets.map((asset) => (
-              <li key={asset.id} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
-                <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 min-w-0 items-center truncate text-sm font-medium text-foreground hover:text-primary">
+              <li key={asset.id} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
+                <Link href={`/${locale}/assets/${asset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 min-w-0 items-center md:min-h-0")}>
                   <span className="truncate">
-                    {asset.assetTag} - {asset.name} <span className="text-xs text-muted-foreground">({asset.status.nameTh})</span>
+                    <span className="tag">{asset.assetTag}</span> - {asset.name} <span className="text-meta text-muted-foreground">({asset.status.nameTh})</span>
                   </span>
                 </Link>
                 {canCreate ? (
-                  <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?assetId=${asset.id}`, returnHref)} className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
+                  <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?assetId=${asset.id}`, returnHref)} className={cn(buttonVariants({ variant: "outline" }), "shrink-0")}>
                     {t("createTitle")}
                   </Link>
                 ) : null}
               </li>
             ))}
           </ul>
-          {stuckTotal > stuckAssets.length ? <p className="mt-2 text-xs text-muted-foreground">{t("stuckMore", { count: stuckTotal - stuckAssets.length })}</p> : null}
+          {stuckTotal > stuckAssets.length ? <p className="mt-2 text-meta text-muted-foreground">{t("stuckMore", { count: stuckTotal - stuckAssets.length })}</p> : null}
         </section>
       ) : null}
 
-      <section id="pm-due" className="rounded-lg border border-border bg-surface p-4">
+      <section id="pm-due" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <CalendarClock className="h-5 w-5 text-primary" />{t("pmDueTitle")} ({duePlans.length})
-            </h2>
+            <h2 className="text-base font-semibold text-foreground">{t("pmDueTitle")} ({formatCount(duePlans.length)})</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("pmDueHelp")}</p>
           </div>
           <Link href={`/${locale}/maintenance/pm`} className={buttonVariants({ variant: "outline" })}>
@@ -165,21 +169,21 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           </Link>
         </div>
         {duePlans.length > 0 ? (
-          <ul className="mt-3 divide-y divide-border rounded-md border border-border">
+          <ul className="mt-3 divide-y divide-border-soft rounded-md border border-border bg-background">
             {duePlans.map((plan) => {
               const overdue = getBangkokDateKey(plan.nextDueDate) < todayKey
               return (
                 <li key={plan.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-foreground">{plan.title}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {plan.planNo} · {plan.asset.assetTag} - {plan.asset.name}{plan.vendor ? ` · ${plan.vendor.name}` : ""}
+                    <div className="truncate text-meta text-muted-foreground">
+                      <span className="tag">{plan.planNo}</span> · <span className="tag">{plan.asset.assetTag}</span> - {plan.asset.name}{plan.vendor ? ` · ${plan.vendor.name}` : ""}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge label={overdue ? t("pmOverdue") : t("pmDueOn", { date: formatDate(plan.nextDueDate) })} tone={overdue ? "danger" : "warning"} />
                     {canCreate ? (
-                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnHref)} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary-hover">
+                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnHref)} className={buttonVariants()}>
                         {t("pmRecordDone")}
                       </Link>
                     ) : null}
@@ -222,23 +226,25 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           />
         ) : null}
         {getMaintenanceDateRangeError(filters) ? (
-          <p role="alert" className="mt-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">{t("invalidDateRange")}</p>
+          <Notice tone="danger" role="alert" className="mt-3">{t("invalidDateRange")}</Notice>
         ) : null}
       </FilterPanel>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("listTitle")}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">{t("resultCount", { count: total })}</p>
-          </div>
-          {canExport ? (
+      <ContentPanel
+        divided
+        flush
+        className="overflow-hidden"
+        title={t("listTitle")}
+        description={t("resultCount", { count: total })}
+        actions={
+          canExport ? (
             <a href={`/api/maintenance-tickets/export?${listQuery}`} className={buttonVariants({ variant: "outline", size: "md" })}>
               <Download aria-hidden="true" />
               {t("export")}
             </a>
-          ) : null}
-        </div>
+          ) : undefined
+        }
+      >
         {records.length === 0 ? (
           <div className="p-4">
             {hasActiveFilters ? (
@@ -251,18 +257,18 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           <>
             <div className={`${getMobileCardListClasses()} p-3`}>
               {records.map((record) => (
-                <Link key={record.id} href={recordHref(record.id)} className="block min-w-0 rounded-md border border-border bg-background p-3 hover:bg-accent">
+                <Link key={record.id} href={recordHref(record.id)} className="block min-w-0 rounded-md border border-border bg-background p-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-foreground">
                         <span className="tag font-medium">{record.asset.assetTag}</span>
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">{record.asset.name}</div>
+                      <div className="truncate text-meta text-muted-foreground">{record.asset.name}</div>
                     </div>
                     <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} />
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm text-foreground">{record.problem}</p>
-                  <div className="mt-2 text-xs text-muted-foreground">
+                  <div className="mt-2 text-meta text-muted-foreground">
                     {formatDate(record.reportedDate)} · {record.vendor?.name ?? t("internal")}
                     {record.repairCost == null ? "" : ` · ${formatMoney(Number(record.repairCost), { unit: tCommon("baht") })}`}
                   </div>
@@ -291,15 +297,13 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       <div className="font-medium text-foreground">
                         <span className="tag font-medium">{record.asset.assetTag}</span>
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">{record.asset.name}</div>
+                      <div className="mt-1 text-meta text-muted-foreground">{record.asset.name}</div>
                     </DataTableCell>
                     <DataTableCell className="min-w-72 text-foreground">{record.problem}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap">
                       <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} />
                     </DataTableCell>
-                    <DataTableCell className={`whitespace-nowrap ${record.outcome === "beyond_repair" ? "text-warning" : record.outcome === "usable" ? "text-success" : "text-muted-foreground"}`}>
-                      {orNil(outcomeLabel(record.outcome, record.repairStatus))}
-                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">{orNil(outcomeBadge(record.outcome, record.repairStatus))}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">{record.vendor?.name ?? t("internal")}</DataTableCell>
                     <DataTableCell numeric className="text-muted-foreground">{record.repairCost == null ? <Nil /> : formatMoney(Number(record.repairCost))}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">{record.reportedBy.fullNameTh}</DataTableCell>
@@ -333,7 +337,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             />
           </DataTableFoot>
         ) : null}
-      </section>
+      </ContentPanel>
     </div>
   )
 }
