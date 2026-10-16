@@ -15,12 +15,12 @@ test("audit scan tracks the connection and queues offline saves per asset", () =
   assert.match(workspace, /<AuditScanOfflineBar[\s\S]*?sending=\{sendingQueue\}/)
 })
 
-test("the offline bar shows failed entries with their last error and disables send while sending", () => {
+test("the offline bar shows failed entries with their last error and keeps send busy while sending", () => {
   const bar = read("src/components/audit/audit-scan-offline-bar.tsx")
 
   assert.match(bar, /entry\.syncStatus === "failed"/)
   assert.match(bar, /entry\.lastSyncError/)
-  assert.match(bar, /onClick=\{onSendNow\} disabled=\{sending\}/)
+  assert.match(bar, /busy=\{sending\} onClick=\{onSendNow\}/)
   assert.match(bar, /online && queue\.length > 0/)
 })
 
