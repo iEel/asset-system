@@ -282,7 +282,7 @@ const LOADER2: Record<string, number> = {
   [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
   // 1b
   // 1c
-  [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :64
+  [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :67
   // 1d
   [`${C}audit/audit-scan-check-form.tsx`]: 1, // the components loading line :297 (T2 audit mobile fix; was the header toggle)
   // 1g

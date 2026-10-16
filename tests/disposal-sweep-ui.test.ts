@@ -26,3 +26,18 @@ test("disposal evidence: a ContentPanel, EmptyNote, the shared download link and
   assert.match(source, /<Button\s+variant="danger"\s+size="icon-sm"\s+onClick=\{\(\) => handleDelete\(attachment\.id\)\}\s+busy=\{deletingId === attachment\.id\}\s+aria-label=\{tCommon\("delete"\)\}/)
   assert.doesNotMatch(source, /<button\b|<section\b|Loader2|disabled:opacity|border-dashed|rounded-lg border|text-lg|text-info|text-primary|hover:bg-accent|\btext-xs\b|sm:h-8/)
 })
+
+test("disposal asset picker: shared remove buttons, one quiet list of the chosen assets, options on the row hover, EmptyNote and 13px meta lines (spec 2D M21, M29)", () => {
+  const source = read(`${C}disposal/disposal-asset-picker.tsx`)
+  assert.equal(source.match(/<Button variant="outline" size="icon-sm" onClick=\{\(\) => (?:onChange\(\[\]\)|toggle\(asset\))\}[^>]*><X aria-hidden="true" \/><\/Button>/g)?.length, 2, "clearing the one choice and taking an asset off the list")
+  // Open issue 10 b (approved 2026-10-16): each remove button names its action and its asset, not the no-results text.
+  assert.match(source, /const tAssetTools = useTranslations\("assetTools"\)/)
+  assert.equal(source.match(/aria-label=\{`\$\{tAssetTools\("removeSelectedAsset"\)\}: \$\{(?:selected\[0\]|asset)\.label\}`\}/g)?.length, 2)
+  assert.doesNotMatch(source, /aria-label=\{emptyLabel\}/)
+  assert.match(source, /<div className="mt-3 max-h-56 divide-y divide-border-soft overflow-y-auto rounded-md border border-border">/)
+  assert.match(source, /<EmptyNote className="px-3 py-4">\{emptyLabel\}<\/EmptyNote>/)
+  // The options stay raw buttons: a listbox option with its own check box and two lines (plan 2D-4 R5, for 2D-5's EXEMPT list).
+  assert.equal(source.match(/<button\b/g)?.length, 1)
+  assert.match(source, /role="option" aria-selected=\{active\} disabled=\{!option\.eligible\} onClick=\{\(\) => toggle\(option\)\} className="[^"]*\bborder-b border-border-soft\b[^"]*\bhover:bg-row-hover\b/)
+  assert.doesNotMatch(source, /hover:bg-accent|hover:bg-danger-soft|\btext-xs\b|h-10 w-10|space-y-2 overflow-y-auto|px-3 py-6 text-center/)
+})
