@@ -2,7 +2,9 @@
 
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
 export function AuditScanHeader({
@@ -20,7 +22,6 @@ export function AuditScanHeader({
 }) {
   const t = useTranslations("auditScan")
   const tCommon = useTranslations("common")
-  const numberLocale = useLocale() === "th" ? "th-TH" : "en-US"
   const percent = progress.total === 0 ? 0 : Math.round((progress.checked / progress.total) * 100)
 
   return (
@@ -29,7 +30,7 @@ export function AuditScanHeader({
         <Link
           href={backHref}
           aria-label={tCommon("back")}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={buttonVariants({ variant: "ghost", size: "icon" })}
         >
           <ArrowLeft className="size-5" aria-hidden="true" />
         </Link>
@@ -37,11 +38,11 @@ export function AuditScanHeader({
           <span aria-hidden="true" className="md:hidden">{roundCode}</span>
           <span className="sr-only md:not-sr-only">{roundName}</span>
         </h1>
-        <p className="shrink-0 pr-1 text-xs tabular-nums text-muted-foreground">
-          {t("progressChecked", { checked: progress.checked.toLocaleString(numberLocale), total: progress.total.toLocaleString(numberLocale) })}
+        <p className="shrink-0 pr-1 text-meta num text-muted-foreground">
+          {t("progressChecked", { checked: formatCount(progress.checked), total: formatCount(progress.total) })}
           {" · "}
           <span className={cn(progress.mismatched > 0 && "font-medium text-warning")}>
-            {t("progressMismatch", { count: progress.mismatched.toLocaleString(numberLocale) })}
+            {t("progressMismatch", { count: formatCount(progress.mismatched) })}
           </span>
         </p>
       </div>

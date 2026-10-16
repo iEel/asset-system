@@ -88,3 +88,14 @@ test("check panel and workspace: the side panel on the panel classes, its empty 
   assert.match(workspace, /<Notice\s+tone="danger"\s+role="alert"\s+action=\{\s*<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\s*\{t\("backToRound"\)\}\s*<\/Link>\s*\}\s*>\s*\{t\("roundClosedError"\)\}\s*<\/Notice>/)
   assert.doesNotMatch(workspace, /bg-danger-soft|hover:underline|`Serial \$\{/)
 })
+
+test("scan header: the back link is a ghost icon link from buttonVariants and the counts go through formatCount (spec 2D D2, M29; DESIGN.md Numbers)", () => {
+  const source = read(`${A}audit-scan-header.tsx`)
+  assert.match(source, /<Link\s+href=\{backHref\}\s+aria-label=\{tCommon\("back"\)\}\s+className=\{buttonVariants\(\{ variant: "ghost", size: "icon" \}\)\}\s*>\s*<ArrowLeft className="size-5" aria-hidden="true" \/>/)
+  assert.match(source, /<p className="shrink-0 pr-1 text-meta num text-muted-foreground">/)
+  assert.match(source, /t\("progressChecked", \{ checked: formatCount\(progress\.checked\), total: formatCount\(progress\.total\) \}\)/)
+  assert.match(source, /t\("progressMismatch", \{ count: formatCount\(progress\.mismatched\) \}\)/)
+  // The one-line header of the audit mobile fix (D5) stays: the code on phones, the thin bar.
+  assert.match(source, /<span aria-hidden="true" className="md:hidden">\{roundCode\}<\/span>/)
+  assert.doesNotMatch(source, /toLocaleString|useLocale|\btext-xs\b|size-11|hover:bg-accent/)
+})
