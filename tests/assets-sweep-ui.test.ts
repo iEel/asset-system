@@ -218,3 +218,15 @@ test("label batch tool: ContentPanels, StatusBadges from status.name (M23), form
   assert.match(source, /<span className="tag font-medium text-foreground">\{asset\.title\}<\/span>/)
   assert.doesNotMatch(source, /disabled:opacity|toLocaleString|status\.colorCode \?|rounded-full|primary-soft|border-dashed|hover:bg-accent|\btext-xs\b|rounded-lg border/)
 })
+
+test("label print toolbar: PageBackLink, a tape box that keeps its width at 1440 (M27), and the guidance and results as Notice (spec 2D D7, M27)", () => {
+  const source = read(`${C}assets/asset-label-print.tsx`)
+  assert.match(source, /<PageBackLink href=\{backHref\} label=\{translations\.back\} className="max-md:self-start" \/>/)
+  assert.match(source, /px-3 text-base sm:w-auto sm:shrink-0 md:h-10/, "the tape-size box no longer shrinks under its value (M27)")
+  assert.match(source, /<Notice tone="neutral">\{printerTapeGuidance\}<\/Notice>/)
+  assert.match(source, /<Notice tone=\{hasLocalQrTarget \? "warning" : "neutral"\} title=\{translations\.qrPrintTarget\}>/)
+  assert.match(source, /<span className="break-all font-mono">\{qrPrintTarget\}<\/span>/, "the public QR URL must wrap, so it keeps font-mono (2D-2 R3)")
+  assert.match(source, /<Notice tone="danger" role="alert">\{recordError\}<\/Notice>/)
+  assert.match(source, /<Notice tone="success" role="status">\{translations\.printRecorded\}<\/Notice>/)
+  assert.doesNotMatch(source, /<ArrowLeft\b|sm:min-h-10|primary-soft|warning-soft|danger-soft|success-soft|text-warning|text-primary/)
+})

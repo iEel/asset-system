@@ -1,10 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
-import { AlertTriangle, ArrowLeft, Info, Printer } from "lucide-react"
+import { Printer } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
+import { Notice } from "@/components/ui/notice"
+import { PageBackLink } from "@/components/ui/page-header"
 import { isLikelyLocalAssetQrValue } from "@/lib/asset-qr"
 import {
   assetLabelTapeSizes,
@@ -212,13 +213,8 @@ export function AssetLabelPrint({
 
       <div className="asset-label-toolbar border-b border-border bg-surface">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-3 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <Link
-            href={backHref}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:min-h-10"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {translations.back}
-          </Link>
+          {/* The shared back button (outline md, an icon button below md); self-start keeps it from stretching in the phone column. */}
+          <PageBackLink href={backHref} label={translations.back} className="max-md:self-start" />
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
             <label className="flex min-h-11 w-full min-w-0 flex-wrap items-center gap-2 rounded-md border border-input bg-surface px-3 py-2 text-base sm:min-w-[240px] sm:flex-nowrap sm:py-0 md:h-10 md:min-h-0 md:text-sm focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:shadow-field-focus">
               <span className="shrink-0 font-medium text-muted-foreground">{translations.printReason}</span>
@@ -231,7 +227,8 @@ export function AssetLabelPrint({
                 className="min-w-0 flex-1 bg-transparent outline-none"
               />
             </label>
-            <label className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border border-input bg-surface px-3 text-base sm:w-auto md:h-10 md:min-h-0 md:text-sm focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:shadow-field-focus">
+            {/* Spec 2D M27: shrink-0 keeps the tape box at its value's width; the reason box beside it takes the shrink. */}
+            <label className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border border-input bg-surface px-3 text-base sm:w-auto sm:shrink-0 md:h-10 md:min-h-0 md:text-sm focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:shadow-field-focus">
               <span className="shrink-0 font-medium text-muted-foreground">{translations.tapeSize}</span>
               <select
                 value={tapeSize}
@@ -257,36 +254,20 @@ export function AssetLabelPrint({
             </Button>
           </div>
         </div>
+        {/* Spec 2D D7: the tape advice is guidance (neutral); a local QR address is a warning box, the public one neutral. */}
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-3 pb-4 sm:px-6">
-          <p className="flex items-start gap-2 rounded-md border border-primary-border bg-primary-soft px-3 py-2 text-sm text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <span>{printerTapeGuidance}</span>
-          </p>
-          <div
-            className={
-              hasLocalQrTarget
-                ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm"
-                : "flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
-            }
-          >
-            {hasLocalQrTarget ? (
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-            ) : (
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            )}
-            <div className="min-w-0">
-              <div className="font-medium text-foreground">{translations.qrPrintTarget}</div>
-              <div className="mt-1 break-all font-mono text-xs text-muted-foreground">{qrPrintTarget}</div>
-              {hasLocalQrTarget ? <div className="mt-1 text-xs font-medium text-warning">{translations.qrLocalWarning}</div> : null}
-            </div>
-          </div>
+          <Notice tone="neutral">{printerTapeGuidance}</Notice>
+          <Notice tone={hasLocalQrTarget ? "warning" : "neutral"} title={translations.qrPrintTarget}>
+            <span className="break-all font-mono">{qrPrintTarget}</span>
+            {hasLocalQrTarget ? <span className="mt-1 block">{translations.qrLocalWarning}</span> : null}
+          </Notice>
         </div>
         {recordError || recordedBatchId ? (
-          <div className="mx-auto max-w-5xl px-3 pb-4 text-sm sm:px-6">
+          <div className="mx-auto max-w-5xl px-3 pb-4 sm:px-6">
             {recordError ? (
-              <p className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-danger">{recordError}</p>
+              <Notice tone="danger" role="alert">{recordError}</Notice>
             ) : (
-              <p className="rounded-md border border-success-border bg-success-soft px-3 py-2 text-success">{translations.printRecorded}</p>
+              <Notice tone="success" role="status">{translations.printRecorded}</Notice>
             )}
           </div>
         ) : null}

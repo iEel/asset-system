@@ -229,7 +229,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :496 for ArrowLeft
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page
-    [`${C}assets/asset-label-print.tsx`]: 1, // → 1 (KEEP): print page
     [`${C}audit/audit-scan-header.tsx`]: 1, // → 1 (KEEP): field scan header
     [`${C}disposal/disposal-batch-form.tsx`]: 1, // → 1 (KEEP): back to editing in the review step :93 (2C)
   },
@@ -307,7 +306,6 @@ const KEEP: Record<string, Record<string, number>> = {
     [`${C}admin/system-settings-form.tsx`]: 1, // the move-out button :1413, not a page back
     [`${C}disposal/disposal-batch-form.tsx`]: 1, // back to editing in the review step :93 (2C)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // print page
-    [`${C}assets/asset-label-print.tsx`]: 1, // print page
     [`${C}audit/audit-scan-header.tsx`]: 1, // field scan header
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // back item of the ActionBar :496 (2C batch 5, K23)
   },
