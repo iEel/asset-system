@@ -85,7 +85,7 @@ test("each component is one compact row: tag, StatusBadge, name · role · slot,
   assert.match(panel, /<span className="min-w-0 truncate text-sm text-foreground">\s*<span className="tag font-medium">\{component\.assetTag\}<\/span>/)
   assert.match(panel, /<StatusBadge label=\{statusMeta\.label\} tone=\{statusMeta\.tone\} \/>/)
   assert.match(panel, /\[component\.name, component\.componentRole, component\.slotNo\]\.filter\(Boolean\)\.join\(" · "\)/)
-  assert.match(panel, /<p className="truncate text-xs text-muted-foreground">/)
+  assert.match(panel, /<p className="truncate text-meta text-muted-foreground">/)
   // A confirmed row shows a check mark where the พบ button was; an out-of-round row keeps a disabled พบ.
   assert.match(panel, /\{isConfirmedWithParent \? \([\s\S]*?<CheckCircle2[\s\S]*?\) : \([\s\S]*?<Button[\s\S]*?variant="outline"[\s\S]*?size="sm"[\s\S]*?disabled=\{rowDisabled\}[\s\S]*?t\("componentFound"\)/)
   assert.match(panel, /const rowDisabled = saving \|\| confirmingAll \|\| componentActionsDisabled \|\| !component\.auditItemId/)

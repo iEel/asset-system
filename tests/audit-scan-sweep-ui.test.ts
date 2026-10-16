@@ -65,3 +65,13 @@ test("check field: the system value and the latest register value are meta lines
   assert.match(source, /className=\{mismatch \? "rounded-md border border-warning-border bg-warning-soft p-2\.5" : undefined\}/)
   assert.doesNotMatch(source, /\btext-xs\b/)
 })
+
+test("component panel: the checked count and each row's name · role · slot are meta lines, and the 64px rows stay (DESIGN.md Typography; audit mobile fix D2)", () => {
+  const source = read(`${A}audit-scan-panels.tsx`)
+  assert.match(source, /<p className="text-meta text-muted-foreground">\{t\("componentsCheckedCount", \{ checked: checkedCount, total: components\.length \}\)\}<\/p>/)
+  assert.match(source, /<p className="truncate text-meta text-muted-foreground">\s*\{\[component\.name, component\.componentRole, component\.slotNo\]\.filter\(Boolean\)\.join\(" · "\)\}/)
+  assert.match(source, /data-audit-component-row className="flex min-h-16 items-center gap-2 px-3 py-2"/)
+  // The scan frame on the camera image keeps its raw dim and white corners, and says why (2D-5 lists it as permanent).
+  assert.match(source, /\/\/ The camera's scan frame keeps its own dim and white corners[^\n]*\bpermanent\b[^\n]*\n(?:\/\/[^\n]*\n)*export function AuditQrScannerOverlay\(\)/)
+  assert.doesNotMatch(source, /\btext-xs\b/)
+})

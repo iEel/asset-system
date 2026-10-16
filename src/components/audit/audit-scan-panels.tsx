@@ -56,7 +56,7 @@ export function AuditComponentPanel({
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h3 id={headingId} className="text-sm font-semibold text-foreground">{t("componentsSection", { count: components.length })}</h3>
-          <p className="text-xs text-muted-foreground">{t("componentsCheckedCount", { checked: checkedCount, total: components.length })}</p>
+          <p className="text-meta text-muted-foreground">{t("componentsCheckedCount", { checked: checkedCount, total: components.length })}</p>
         </div>
         {pendingCount > 0 || confirmingAll ? (
           <Button variant="outline" size="sm" busy={confirmingAll} disabled={confirmAllDisabled} onClick={onConfirmAll}>
@@ -80,7 +80,7 @@ export function AuditComponentPanel({
                   </span>
                   <StatusBadge label={statusMeta.label} tone={statusMeta.tone} />
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="truncate text-meta text-muted-foreground">
                   {[component.name, component.componentRole, component.slotNo].filter(Boolean).join(" · ")}
                 </p>
               </div>
@@ -152,6 +152,7 @@ function getAuditComponentStatusMeta(component: AuditScanComponent, t: AuditScan
   return { label: t("componentStatusScanned"), tone: "success" }
 }
 
+// The camera's scan frame keeps its own dim and white corners: they sit on the camera image (spec 2D §5.3, permanent).
 export function AuditQrScannerOverlay() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
