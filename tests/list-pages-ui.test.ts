@@ -534,7 +534,7 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
   assert.match(table, /const disposalMenuLinks: RowActionItem\[\] = canCreateDisposal && finding\.asset\n\s+\? \[\{ kind: "link", key: "disposal", label: t\("openDisposalRequest"\), href: appendOperationalReturnTo\(/)
   assert.doesNotMatch(table, /buttonVariants\(/, "no button-styled link left in the table cell")
   assert.match(table, /<FindingValueChange\n/, "system → found as compact text")
-  assert.doesNotMatch(table, /<FindingComparison\b/, "no inner bordered box in the table (the phone cards keep it)")
+  assert.doesNotMatch(table, /<FindingComparison\b/, "no inner bordered box in the table (plan 2D-4 moved the phone card's values into its KeyValueList)")
   assert.match(table, /<FindingStatusBadges items=\{findingStatusBadges\(finding, resolutionState\)\} \/>/, "the five statuses in one cell")
   assert.match(table, /<AuditFindingEvidenceList\n\s+compact\n/)
   assert.match(table, /: <Nil label=\{t\("noActionOwner"\)\} \/>/)
@@ -555,8 +555,8 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
 
   // Fix round 3: in the table the evidence is one line, the count and then the file links, each truncated.
   const evidence = source.slice(source.indexOf("function AuditFindingEvidenceList"), source.indexOf("function resolveFindingState"))
-  assert.match(evidence, /if \(compact\) \{\n\s+return \(\n\s+<div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">\n\s+<span className="shrink-0">\{labels\.count\}<\/span>/)
-  assert.match(evidence, /className="flex min-w-0 items-center gap-1 text-primary hover:underline"/)
+  assert.match(evidence, /if \(compact\) \{\n\s+return \(\n\s+<div className="mt-1 flex min-w-0 items-center gap-1 text-meta text-muted-foreground">\n\s+<span className="shrink-0">\{labels\.count\}<\/span>/)
+  assert.match(evidence, /className=\{cn\(linkVariants\(\), "flex min-w-0 items-center gap-1"\)\}/)
 
   const change = source.slice(source.indexOf("function FindingValueChange"), source.indexOf("function AuditFindingEvidenceList"))
   assert.doesNotMatch(change, /\bborder\b|\brounded/, "the comparison has no box of its own")

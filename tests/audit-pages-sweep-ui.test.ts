@@ -80,3 +80,19 @@ test("findings batch panel: a ContentPanel, the pending findings as checkbox Cho
   assert.match(source, /<ChoiceCard\s+key=\{finding\.id\}\s+type="checkbox"\s+label=\{finding\.label\}\s+description=\{finding\.detail\}/)
   assert.doesNotMatch(source, /<section\b|<label\b|<input\b|checkboxVariants|hover:bg-accent|rounded-lg|\bmb-4\b|\btext-xs\b/)
 })
+
+const D = "src/app/[locale]/(dashboard)/"
+
+test("findings page: the list frame on the panel classes, StatusBadge without local wrappers, the phone card's values in its KeyValueList, the evidence as text links without the info box, text-meta sub-lines and the audit mobile fix kept (spec 2D D9, D19, M22, M29, M33)", () => {
+  const source = read(`${D}audit/findings/page.tsx`)
+  assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
+  assert.match(source, /<StatusBadge label=\{resolutionStateLabels\[resolutionState\]\} tone=\{RESOLUTION_STATE_TONES\[resolutionState\]\} \/>/)
+  assert.match(source, /<StatusBadge label=\{t\(`status_\$\{finding\.reviewStatus\}`\)\} status=\{finding\.reviewStatus\} \/>/)
+  assert.match(source, /<StatusBadge label=\{t\(`actionStatus_\$\{finding\.actionStatus\}`\)\} status=\{finding\.actionStatus\} \/>/)
+  assert.match(source, /\{ key: "systemValue", label: t\("systemValue"\), value: expectedValue \}/)
+  assert.match(source, /<span className="tag font-medium">\{finding\.asset\.assetTag\}<\/span> - \{finding\.asset\.name\}/)
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/audit\/rounds\/\$\{finding\.auditRound\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
+  assert.equal(source.match(/className=\{cn\(linkVariants\(/g)?.length, 2, "the evidence links of the table and of the phone card")
+  assert.match(source, /<DataTable framed=\{false\} layout="fixed" minWidth=\{960\} /, "the audit mobile fix stays")
+  assert.doesNotMatch(source, /function (?:FindingComparison|ResolutionStateBadge|ReviewStatusBadge|ActionStatusBadge)\b|info-soft|info-border|text-info|hover:underline|hover:bg-accent|text-primary|\btext-xs\b|rounded-lg border/)
+})

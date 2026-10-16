@@ -9,11 +9,11 @@ import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
 import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { formatFileSize } from "@/lib/uploads"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { DataFreshnessBanner } from "@/components/ui/data-freshness-banner"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
@@ -34,6 +34,7 @@ import {
   resolveAuditFindingStatus,
   type AuditFindingResolutionStatus,
 } from "@/lib/audit-finding-filters"
+import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
@@ -320,7 +321,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
 
       {canApprove ? <AuditFindingsBatchActions key={selectionKey} findings={batchReviewFindings} /> : null}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className={cn(getPanelClasses(), "overflow-hidden")}>
         <div className="grid gap-3 p-3 md:hidden">
           {findings.length === 0 ? (
             <ActionEmptyState
@@ -343,20 +344,24 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                 <div key={finding.id} className="rounded-md border border-border bg-background p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-semibold text-foreground">{assetLabel}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{formatDateTime(finding.reportedAt)}</div>
+                      <div className="font-semibold text-foreground">
+                        {finding.asset ? <><span className="tag font-medium">{finding.asset.assetTag}</span> - {finding.asset.name}</> : <span className="tag font-medium">{finding.auditRound.auditNo}</span>}
+                      </div>
+                      <div className="mt-1 text-meta text-muted-foreground">{formatDateTime(finding.reportedAt)}</div>
                     </div>
-                    <ResolutionStateBadge state={resolutionState} labels={resolutionStateLabels} />
+                    <StatusBadge label={resolutionStateLabels[resolutionState]} tone={RESOLUTION_STATE_TONES[resolutionState]} />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <ReviewStatusBadge status={finding.reviewStatus} label={t(`status_${finding.reviewStatus}`)} />
-                    <ActionStatusBadge status={finding.actionStatus} label={t(`actionStatus_${finding.actionStatus}`)} />
+                    <StatusBadge label={t(`status_${finding.reviewStatus}`)} status={finding.reviewStatus} />
+                    <StatusBadge label={t(`actionStatus_${finding.actionStatus}`)} status={finding.actionStatus} />
                   </div>
                   <KeyValueList
                     className="mt-3"
                     items={[
                       { key: "auditRound", label: t("auditRound"), value: <><span className="tag">{finding.auditRound.auditNo}</span> · {finding.auditRound.name}</> },
                       { key: "findingType", label: t("findingType"), value: findingTypeLabel },
+                      { key: "systemValue", label: t("systemValue"), value: expectedValue },
+                      { key: "foundValue", label: t("foundValue"), value: actualValue ? <span className="font-medium">{actualValue}</span> : null },
                       {
                         key: "actionOwner",
                         label: t("actionOwner"),
@@ -366,22 +371,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       { key: "actionDueDate", label: t("actionDueDate"), value: finding.actionDueDate ? formatDateTime(finding.actionDueDate) : null },
                     ]}
                   />
-                  <div className="mt-3 grid gap-2 text-sm">
-                    <FindingComparison
-                      expectedLabel={t("systemValue")}
-                      actualLabel={t("foundValue")}
-                      expectedValue={expectedValue}
-                      actualValue={actualValue}
-                    />
-                    <AuditFindingEvidenceList
-                      attachments={attachmentsByFindingId.get(finding.id) ?? []}
-                      labels={{
-                        title: t("evidenceAttachments"),
-                        count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
-                        open: t("openEvidenceAttachment"),
-                      }}
-                    />
-                  </div>
+                  <AuditFindingEvidenceList
+                    attachments={attachmentsByFindingId.get(finding.id) ?? []}
+                    labels={{
+                      title: t("evidenceAttachments"),
+                      count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
+                      open: t("openEvidenceAttachment"),
+                    }}
+                  />
                   <div className="mt-3 flex flex-col gap-2">
                     <Link
                       href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
@@ -481,16 +478,16 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                   >
                     <DataTableCell className="text-meta text-muted-foreground">{formatDateTime(finding.reportedAt)}</DataTableCell>
                     <DataTableCell className="text-muted-foreground">
-                      <Link href={`/${locale}/audit/rounds/${finding.auditRound.id}`} className="text-primary hover:underline">
+                      <Link href={`/${locale}/audit/rounds/${finding.auditRound.id}`} className={linkVariants({ size: "inherit" })}>
                         <span className="tag">{finding.auditRound.auditNo}</span>
                       </Link>
-                      <div className="text-xs text-muted-foreground">{finding.auditRound.name}</div>
+                      <div className="text-meta text-muted-foreground">{finding.auditRound.name}</div>
                     </DataTableCell>
                     <DataTableCell>
                       {finding.asset ? (
                         <>
                           <div className="font-medium text-foreground"><span className="tag">{finding.asset.assetTag}</span></div>
-                          <div className="text-xs text-muted-foreground">{finding.asset.name}</div>
+                          <div className="text-meta text-muted-foreground">{finding.asset.name}</div>
                         </>
                       ) : <Nil />}
                     </DataTableCell>
@@ -517,7 +514,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     </DataTableCell>
                     <DataTableCell className="text-muted-foreground">
                       <div>{finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : <Nil label={t("noActionOwner")} />}</div>
-                      <div className="mt-0.5 text-xs">{finding.actionDueDate ? t("dueOn", { date: formatDateTime(finding.actionDueDate) }) : <Nil />}</div>
+                      <div className="mt-0.5 text-meta">{finding.actionDueDate ? t("dueOn", { date: formatDateTime(finding.actionDueDate) }) : <Nil />}</div>
                     </DataTableCell>
                     <DataTableCell align="right" sticky="right">
                       {/* Pattern ช1 (2B, fix round 3): the review decision stays visible; plan, close and the disposal request
@@ -601,31 +598,6 @@ type ResolutionMetric = {
 // The statuses the strip counts. A list filtered by one of them takes its total from the strip (spec 2B §5.9.2 row 3).
 const SUMMARY_STATUSES: ReadonlySet<AuditFindingResolutionStatus> = new Set(["pending", "action_open", "overdue", "closed"])
 
-function FindingComparison({
-  expectedLabel,
-  actualLabel,
-  expectedValue,
-  actualValue,
-}: {
-  expectedLabel: string
-  actualLabel: string
-  expectedValue?: string | null
-  actualValue?: string | null
-}) {
-  return (
-    <div className="grid gap-2 rounded-md border border-border bg-background p-3 sm:grid-cols-2">
-      <div className="min-w-0">
-        <div className="text-xs font-medium text-muted-foreground">{expectedLabel}</div>
-        <div className="mt-1 break-words text-sm text-foreground">{orNil(expectedValue)}</div>
-      </div>
-      <div className="min-w-0 border-t border-border pt-2 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
-        <div className="text-xs font-medium text-muted-foreground">{actualLabel}</div>
-        <div className="mt-1 break-words text-sm font-medium text-foreground">{orNil(actualValue)}</div>
-      </div>
-    </div>
-  )
-}
-
 // The desktop table's comparison (audit mobile fix D8): system value → found value as text that wraps, no box of its
 // own. The labels are for screen readers; the column header says it to everyone else.
 function FindingValueChange({
@@ -664,7 +636,7 @@ function AuditFindingEvidenceList({
 
   if (compact) {
     return (
-      <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+      <div className="mt-1 flex min-w-0 items-center gap-1 text-meta text-muted-foreground">
         <span className="shrink-0">{labels.count}</span>
         {attachments.map((attachment) => (
           <a
@@ -674,7 +646,7 @@ function AuditFindingEvidenceList({
             rel="noreferrer"
             aria-label={`${labels.open}: ${attachment.originalName}`}
             title={attachment.originalName}
-            className="flex min-w-0 items-center gap-1 text-primary hover:underline"
+            className={cn(linkVariants(), "flex min-w-0 items-center gap-1")}
           >
             <span aria-hidden="true" className="shrink-0 text-faint-foreground">·</span>
             <FileText aria-hidden="true" className="size-3.5 shrink-0" />
@@ -686,31 +658,32 @@ function AuditFindingEvidenceList({
   }
 
   return (
-    <div className="mt-2 rounded-md border border-info-border bg-info-soft p-3">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-xs font-semibold text-foreground">{labels.title}</div>
-        <div className="text-xs text-muted-foreground">{labels.count}</div>
+    <div className="mt-3 min-w-0">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div className="text-meta font-medium text-foreground">{labels.title}</div>
+        <div className="text-meta text-muted-foreground">{labels.count}</div>
       </div>
-      <div className="mt-2 grid gap-2">
+      <ul className="mt-1 grid">
         {attachments.map((attachment) => (
-          <a
-            key={attachment.id}
-            href={`/api/attachments/${attachment.id}?inline=1`}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`${labels.open}: ${attachment.originalName}`}
-            className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground transition-colors hover:border-primary-border hover:bg-accent"
-          >
-            <FileText className="h-4 w-4 shrink-0 text-info" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{attachment.originalName}</span>
-              <span className="mt-0.5 block truncate text-muted-foreground">
-                {formatFileSize(attachment.fileSize)} · {formatDateTime(attachment.uploadedAt)}
+          <li key={attachment.id} className="min-w-0">
+            <a
+              href={`/api/attachments/${attachment.id}?inline=1`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${labels.open}: ${attachment.originalName}`}
+              className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 min-w-0 items-center gap-2")}
+            >
+              <FileText aria-hidden="true" className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{attachment.originalName}</span>
+                <span className="mt-0.5 block truncate text-meta font-normal text-muted-foreground">
+                  {formatFileSize(attachment.fileSize)} · {formatDateTime(attachment.uploadedAt)}
+                </span>
               </span>
-            </span>
-          </a>
+            </a>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   )
 }
@@ -738,10 +711,6 @@ const RESOLUTION_STATE_TONES: Record<ResolutionState, StatusTone> = {
   overdue: "danger",
   closed: "success",
   resolved: "primary",
-}
-
-function ResolutionStateBadge({ state, labels }: { state: ResolutionState; labels: Record<ResolutionState, string> }) {
-  return <StatusBadge label={labels[state]} tone={RESOLUTION_STATE_TONES[state]} />
 }
 
 type FindingStatusBadgeItem = {
@@ -783,12 +752,4 @@ function buildAuditFindingsHref(
   // page only above 1 and pageSize only when it is not 25, so every default link stays as it was (spec 2B B4).
   appendListPage(params, listPage)
   return `/${locale}/audit/findings?${params.toString()}`
-}
-
-function ReviewStatusBadge({ status, label }: { status: string; label: string }) {
-  return <StatusBadge label={label} status={status} />
-}
-
-function ActionStatusBadge({ status, label }: { status: string; label: string }) {
-  return <StatusBadge label={label} status={status} />
 }

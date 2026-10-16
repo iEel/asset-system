@@ -11,7 +11,7 @@ test("audit findings page exposes the findings workflow", () => {
   assert.match(page, /resolutionSummaryItems/)
   assert.match(page, /resolutionFilters/)
   assert.match(page, /ResolutionMetric/)
-  assert.match(page, /FindingComparison/)
+  assert.match(page, /FindingValueChange/)
   assert.match(page, /resolveFindingState/)
 })
 
