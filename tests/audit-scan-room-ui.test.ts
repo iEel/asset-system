@@ -75,10 +75,10 @@ test("the room picker opens once on the first visit of a round with several room
 test("room list rows show tag, name and the full room on its own line (D6)", () => {
   const source = read("src/components/audit/audit-scan-room-list.tsx")
   assert.doesNotMatch(source, /function secondLine/)
-  assert.match(source, /<span className="block truncate text-sm font-semibold text-foreground">\{item\.assetTag\}<\/span>/)
-  assert.match(source, /<span className="block truncate text-xs text-foreground">\{item\.name\}<\/span>/)
+  assert.match(source, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{item\.assetTag\}<\/span><\/span>/)
+  assert.match(source, /<span className="block truncate text-meta text-foreground">\{item\.name\}<\/span>/)
   assert.match(source, /const place = showLocation \? locationLabels\.get\(item\.expectedLocationId\) \?\? item\.expectedLocationId : null/)
-  assert.match(source, /\{place \? <span data-audit-scan-row-room className="block break-words text-xs text-muted-foreground">\{place\}<\/span> : null\}/)
+  assert.match(source, /\{place \? <span data-audit-scan-row-room className="block break-words text-meta text-muted-foreground">\{place\}<\/span> : null\}/)
   assert.doesNotMatch(source.slice(source.indexOf("data-audit-scan-row-room")).split("\n")[0], /truncate/)
 })
 

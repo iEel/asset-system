@@ -99,3 +99,17 @@ test("scan header: the back link is a ghost icon link from buttonVariants and th
   assert.match(source, /<span aria-hidden="true" className="md:hidden">\{roundCode\}<\/span>/)
   assert.doesNotMatch(source, /toLocaleString|useLocale|\btext-xs\b|size-11|hover:bg-accent/)
 })
+
+test("room list: counts through formatCount, EmptyNote for an empty tab, the list on the panel classes, the tag as tag, meta lines, an outline show-more and a text link to the pending page (spec 2D D9, M21, M25, M29, M33)", () => {
+  const source = read(`${A}audit-scan-room-list.tsx`)
+  assert.match(source, /<span className="num">\{formatCount\(counts\[key\]\)\}<\/span>/)
+  assert.match(source, /<EmptyNote tone=\{tab === "pending" \? "clear" : "empty"\} className="justify-center px-2 py-6">\{t\(emptyLabelKey\[tab\]\)\}<\/EmptyNote>/)
+  assert.match(source, /<ul className=\{cn\(getPanelClasses\(\), "mt-2 divide-y divide-border overflow-hidden"\)\}>/)
+  assert.match(source, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{item\.assetTag\}<\/span><\/span>/)
+  assert.match(source, /<Button variant="outline" onClick=\{onShowMore\} className="mt-2 w-full">\s*\{t\("showMore"\)\}\s*<\/Button>/)
+  assert.match(source, /href=\{pendingHref\}\s+className=\{cn\(linkVariants\(\), "mt-3 inline-flex min-h-11 items-center md:min-h-0"\)\}/)
+  // The row stays a raw button (the whole row opens the sheet) and says so for 2D-5.
+  assert.equal(source.match(/<button\b/g)?.length, 1)
+  assert.match(source, /\{\/\* A raw button on purpose: [^\n]*\*\/\}\s*<button\s+type="button"\s+data-audit-scan-row/)
+  assert.doesNotMatch(source, /\btext-xs\b|font-semibold|tabular-nums|hover:underline|text-primary|rounded-md border border-border bg-surface/)
+})

@@ -3,9 +3,14 @@
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { Button } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Segmented } from "@/components/ui/segmented"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { getAuditItemBadge, type AuditItemBadge, type AuditScanItemRow, type AuditScanListTab } from "@/lib/audit-scan-session"
+import { getPanelClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
 const badgeTone: Record<AuditItemBadge | "queued", StatusTone> = {
@@ -81,16 +86,16 @@ export function AuditScanRoomList({
           label: (
             <>
               {t(tabLabelKey[key])}
-              <span className="tabular-nums">{counts[key]}</span>
+              <span className="num">{formatCount(counts[key])}</span>
             </>
           ),
         }))}
       />
 
       {rows.length === 0 ? (
-        <p className="px-2 py-6 text-center text-sm text-muted-foreground">{t(emptyLabelKey[tab])}</p>
+        <EmptyNote tone={tab === "pending" ? "clear" : "empty"} className="justify-center px-2 py-6">{t(emptyLabelKey[tab])}</EmptyNote>
       ) : (
-        <ul className="mt-2 divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
+        <ul className={cn(getPanelClasses(), "mt-2 divide-y divide-border overflow-hidden")}>
           {rows.map((item) => {
             const badge = queuedAssetIds.has(item.assetId) ? "queued" : getAuditItemBadge(item)
             const active = item.itemId === activeItemId
@@ -98,6 +103,7 @@ export function AuditScanRoomList({
             const meta = metaLine(item)
             return (
               <li key={item.itemId}>
+                {/* A raw button on purpose: the whole row of two to four lines opens the check sheet (2D-5 lists it). */}
                 <button
                   type="button"
                   data-audit-scan-row
@@ -109,10 +115,10 @@ export function AuditScanRoomList({
                   )}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-foreground">{item.assetTag}</span>
-                    <span className="block truncate text-xs text-foreground">{item.name}</span>
-                    {place ? <span data-audit-scan-row-room className="block break-words text-xs text-muted-foreground">{place}</span> : null}
-                    {meta ? <span className="block truncate text-xs text-muted-foreground">{meta}</span> : null}
+                    <span className="block truncate text-sm text-foreground"><span className="tag font-medium">{item.assetTag}</span></span>
+                    <span className="block truncate text-meta text-foreground">{item.name}</span>
+                    {place ? <span data-audit-scan-row-room className="block break-words text-meta text-muted-foreground">{place}</span> : null}
+                    {meta ? <span className="block truncate text-meta text-muted-foreground">{meta}</span> : null}
                   </span>
                   {badge ? (
                     <StatusBadge label={t(badgeLabelKey[badge])} tone={badgeTone[badge]} className="shrink-0" />
@@ -127,19 +133,15 @@ export function AuditScanRoomList({
       )}
 
       {total > rows.length ? (
-        <button
-          type="button"
-          onClick={onShowMore}
-          className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
+        <Button variant="outline" onClick={onShowMore} className="mt-2 w-full">
           {t("showMore")}
-        </button>
+        </Button>
       ) : null}
 
       {tab === "pending" && pendingHref ? (
         <Link
           href={pendingHref}
-          className="mt-3 inline-flex min-h-11 items-center px-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+          className={cn(linkVariants(), "mt-3 inline-flex min-h-11 items-center md:min-h-0")}
         >
           {t("pendingLink")}
         </Link>
