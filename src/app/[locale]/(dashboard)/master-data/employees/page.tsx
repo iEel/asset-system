@@ -4,8 +4,7 @@ import { getTranslations } from "next-intl/server"
 import { Pencil, Plus } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { ActiveBadge } from "@/components/master-data/master-data-layout"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
@@ -17,7 +16,9 @@ import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
 import { SearchField } from "@/components/ui/search-field"
 import { StatStrip } from "@/components/ui/stat-strip"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
@@ -309,16 +310,16 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                     {employee._count.custodianAssets > 0 ? (
                       <Link
                         href={drilldown.assets}
-                        className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
+                        className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}
                       >
                         {formatCount(employee._count.custodianAssets)}
                       </Link>
                     ) : (
-                      <span className="px-2">{formatCount(0)}</span>
+                      formatCount(0)
                     )}
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
-                    <ActiveBadge label={tCommon("active")} />
+                    <StatusBadge label={tCommon("active")} tone="success" />
                   </DataTableCell>
                   <DataTableCell align="right" sticky="right">
                     <RowActions
