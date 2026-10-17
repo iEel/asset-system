@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { fieldErrorResponse } from "@/lib/field-error-response"
+import { fieldErrorResponse, uniqueConflictResponse } from "@/lib/field-error-response"
 import { adminRoleSchema } from "@/lib/validations/admin-role"
 import { getRolePermissionChangeError } from "@/lib/admin-access-policy"
 import { invalidateAllAccess } from "@/lib/session-access-cache"
@@ -28,6 +28,11 @@ export async function PUT(request: NextRequest, context: AdminRoleRouteContext) 
     })
     if (!existing) return NextResponse.json({ error: "Role not found" }, { status: 404 })
     const isProtectedSystemAdmin = existing.name === "system_admin"
+    // A system role keeps its name; any other role renamed to a name another role holds is a duplicate (V track spec §6.2).
+    if (!existing.isSystem) {
+      const sameName = await prisma.role.findUnique({ where: { name: input.name }, select: { id: true } })
+      if (sameName && sameName.id !== id) return uniqueConflictResponse("name", "Role name already exists")
+    }
 
     const existingPermissions = await prisma.permission.findMany({
       where: { id: { in: permissionIds } },

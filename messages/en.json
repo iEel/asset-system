@@ -4267,6 +4267,8 @@
     "departmentCodeExists": "Department code already exists",
     "employeeCodeExists": "Employee code already exists",
     "locationCodeExists": "Location code already exists",
-    "modelNameExists": "Model name already exists for this brand"
+    "modelNameExists": "Model name already exists for this brand",
+    "customFieldNameDuplicate": "Custom field names must be unique in a category",
+    "integrationClientIdExists": "Integration client ID already exists"
   }
 }

@@ -55,11 +55,11 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
       return NextResponse.json({ error: "Branch not found" }, { status: 404 })
     }
 
+    // Every other branch of the company counts, inactive ones too: the unique index on (companyId, code) covers them all (V track spec §6.2).
     const existingCode = await prisma.branch.findFirst({
       where: {
         code: input.code,
         companyId: input.companyId,
-        isActive: true,
         id: { not: id },
       },
       include: { company: { select: { code: true, nameTh: true } } },

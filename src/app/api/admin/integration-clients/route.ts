@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { errorResponse } from "@/lib/api-response"
+import { prisma } from "@/lib/db"
+import { uniqueConflictResponse } from "@/lib/field-error-response"
 import { logAudit } from "@/lib/audit-log"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import {
@@ -38,6 +40,9 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "setting", "edit")
 
     const input = integrationClientCreateSchema.parse(await request.json())
+    // The client id is unique: one that exists is refused under its field before the client and its token are made (V track spec §6.2).
+    const existing = await prisma.integrationApiClient.findUnique({ where: { clientId: input.clientId }, select: { id: true } })
+    if (existing) return uniqueConflictResponse("clientId", "Integration client ID already exists")
     const { client, token } = await createIntegrationClient(input, user.id)
 
     await logAudit({

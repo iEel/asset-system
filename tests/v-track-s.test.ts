@@ -476,3 +476,89 @@ test("asset, operation, maintenance and import refusals about a field name it; t
     await expectBody(await upload(new File(["a,b"], "assets.csv")), 400, { error: "รองรับเฉพาะไฟล์ .xlsx", fieldErrors: { _form: "invalidFormat" } })
   }
 })
+
+test("the last duplicates and the employee's user account land under their field: role rename, inactive branch code, custom field names, client id (V spec §6.2)", async (t) => {
+  t.mock.method(console, "error", () => {})
+  type Create = { POST(request: Request): Promise<Response> }
+  type Update = { PUT(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> }
+  const params = (id: string) => ({ params: Promise.resolve({ id }) })
+  const expectBody = async (response: Response, status: number, body: unknown) => {
+    assert.equal(response.status, status)
+    assert.deepEqual(await response.json(), body)
+  }
+
+  // A role renamed to another role's name: 409 under the name, as the create answers, before anything is written.
+  // A system role keeps its own name, so its update never looks.
+  const role = await load<Update>("src/app/api/admin/roles/[id]/route.ts")
+  const roleBody = { name: "store_keeper", displayName: "Store keeper", displayNameTh: "", description: "", isActive: true, permissionIds: ["perm-1"] }
+  const storedRole = (isSystem: boolean) => ({ id: "role-1", name: "warehouse", isSystem, isActive: true, displayName: "Warehouse", displayNameTh: null, description: null, rolePermissions: [] })
+  const invalidPermissions = { error: "Invalid permission selection", fieldErrors: { permissionIds: "invalidPermissionSelection" } }
+  stubDb({ role: { findFirst: () => storedRole(false), findUnique: () => ({ id: "role-2" }) } })
+  await expectBody(await role.PUT(jsonRequest("PUT", roleBody), params("role-1")), 409, { error: "Role name already exists", code: "DUPLICATE", fieldErrors: { name: "duplicate" } })
+  stubDb({ role: { findFirst: () => storedRole(false), findUnique: () => ({ id: "role-1" }) }, permission: { findMany: () => [] } })
+  await expectBody(await role.PUT(jsonRequest("PUT", roleBody), params("role-1")), 400, invalidPermissions)
+  stubDb({ role: { findFirst: () => storedRole(true) }, permission: { findMany: () => [] } })
+  await expectBody(await role.PUT(jsonRequest("PUT", roleBody), params("role-1")), 400, invalidPermissions)
+
+  // A branch code an inactive branch of the same company holds: the check reads every branch, as the unique index does.
+  const branches = await load<Create>("src/app/api/branches/route.ts")
+  const branch = await load<Update>("src/app/api/branches/[id]/route.ts")
+  const branchLookups: unknown[] = []
+  stubDb({ branch: { findFirst: (args: { where: Record<string, unknown> }) => {
+    branchLookups.push(args.where)
+    return args.where.code ? { id: "branch-old", isActive: false, company: { code: "GL", nameTh: "จีลิงค์" } } : { id: "branch-1", isActive: true }
+  } } })
+  const branchBody = { code: "BKK", name: "Bangkok", companyId: "c1", address: "", contactPerson: "", isActive: true }
+  const branchRefusal = { error: "รหัสสาขา BKK มีอยู่แล้วในบริษัท GL - จีลิงค์", fieldErrors: { code: "duplicate" } }
+  await expectBody(await branches.POST(jsonRequest("POST", branchBody)), 400, branchRefusal)
+  await expectBody(await branch.PUT(jsonRequest("PUT", branchBody), params("branch-1")), 400, branchRefusal)
+  assert.deepEqual(branchLookups, [{ code: "BKK", companyId: "c1" }, { id: "branch-1", isActive: true }, { code: "BKK", companyId: "c1", id: { not: "branch-1" } }])
+
+  // Two custom fields with one name in a category (the unique index on the custom-field rows): 409 under every row that
+  // holds the name, compared trimmed and case-folded, on create and on update, before anything is written.
+  const { duplicateCustomFieldNameErrors } = await load<typeof import("../src/lib/category-custom-field-names.ts")>("src/lib/category-custom-field-names.ts")
+  assert.equal(duplicateCustomFieldNameErrors([{ fieldName: "cpu" }, { fieldName: "ram" }]), null)
+  assert.deepEqual(duplicateCustomFieldNameErrors([{ fieldName: "a" }, { fieldName: "b" }, { fieldName: " A " }, { fieldName: "b" }]), {
+    "customFieldDefs.0.fieldName": "duplicate", "customFieldDefs.1.fieldName": "duplicate", "customFieldDefs.2.fieldName": "duplicate", "customFieldDefs.3.fieldName": "duplicate",
+  })
+  const categories = await load<Create>("src/app/api/categories/route.ts")
+  const category = await load<Update>("src/app/api/categories/[id]/route.ts")
+  const customField = (fieldName: string) => ({ fieldName, fieldLabel: fieldName, fieldLabelTh: "", fieldType: "text", options: "", isRequired: false, sortOrder: 0, isActive: true })
+  const categoryBody = { code: "IT", name: "IT", description: "", isActive: true, customFieldDefs: [customField("cpu"), customField("ram"), customField("CPU")], photoChecklist: [] }
+  const fieldNameRefusal = { error: "Custom field names must be unique in a category", code: "DUPLICATE", fieldErrors: { "customFieldDefs.0.fieldName": "duplicate", "customFieldDefs.2.fieldName": "duplicate" } }
+  stubDb({ assetCategory: { findFirst: (args: { where: Record<string, unknown> }) => (typeof args.where.id === "string" ? { id: "cat-1", isActive: true, _count: { assets: 0, models: 0 } } : null) } })
+  await expectBody(await categories.POST(jsonRequest("POST", categoryBody)), 409, fieldNameRefusal)
+  await expectBody(await category.PUT(jsonRequest("PUT", categoryBody), params("cat-1")), 409, fieldNameRefusal)
+  // An inactive category with assets or models is brought back with its own rows, so the names it is sent are not written.
+  assert.match(read("src/app/api/categories/route.ts"), /const fieldNameErrors = writesCustomFields \? duplicateCustomFieldNameErrors\(input\.customFieldDefs\) : null\n/)
+
+  // An integration client id that exists: 409 under the client id, checked before the client and its token are made.
+  const clients = await load<Create>("src/app/api/admin/integration-clients/route.ts")
+  stubDb({ integrationApiClient: { findUnique: () => ({ id: "client-1" }) } })
+  await expectBody(await clients.POST(jsonRequest("POST", { clientId: "finance-export", displayName: "Finance", scopes: ["asset:read"] })), 409, {
+    error: "Integration client ID already exists", code: "DUPLICATE", fieldErrors: { clientId: "duplicate" },
+  })
+
+  // "Employee already has a user account" names the employee field on create and on update; the status stays 400.
+  const users = await load<Create>("src/app/api/admin/users/route.ts")
+  stubDb({ role: { findMany: () => [{ id: "role-employee", name: "employee", isActive: true, rolePermissions: [] }] }, user: { findUnique: () => null, findFirst: () => ({ id: "u-9" }) } })
+  await expectBody(await users.POST(jsonRequest("POST", { username: "somchai", password: "a-strong-password", displayName: "Somchai", email: "", employeeId: "emp-1", roleIds: ["role-employee"], isActive: true })), 400, {
+    error: "Employee already has a user account", fieldErrors: { employeeId: "employeeHasUser" },
+  })
+  const userUpdate = read("src/app/api/admin/users/[id]/route.ts")
+  assert.match(userUpdate, /if \(existing\) throw new FieldRefusalError\("Employee already has a user account", \{ employeeId: "employeeHasUser" \}\)/)
+  assert.doesNotMatch(userUpdate, /throw new Error\("Employee already has a user account"\)/)
+
+  // The two new refusals have their catalog keys, in Thai and English.
+  const { getApiErrorKey } = await load<typeof import("../src/lib/api-error-catalog.ts")>("src/lib/api-error-catalog.ts")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).apiErrors
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8")).apiErrors
+  for (const [error, key, thai] of [
+    ["Custom field names must be unique in a category", "customFieldNameDuplicate", "ชื่อ field ต้องไม่ซ้ำกันในหมวดหมู่เดียวกัน"],
+    ["Integration client ID already exists", "integrationClientIdExists", "Client ID นี้มีอยู่แล้ว"],
+  ]) {
+    assert.equal(getApiErrorKey(error), key)
+    assert.equal(th[key], thai)
+    assert.equal(en[key], error)
+  }
+})

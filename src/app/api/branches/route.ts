@@ -51,11 +51,11 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "branch", "create")
 
     const input = branchSchema.parse(await request.json())
+    // Every branch of the company counts, inactive ones too: the unique index on (companyId, code) covers them all (V track spec §6.2).
     const existingCode = await prisma.branch.findFirst({
       where: {
         code: input.code,
         companyId: input.companyId,
-        isActive: true,
       },
       include: { company: { select: { code: true, nameTh: true } } },
     })

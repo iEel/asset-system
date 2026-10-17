@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { uniqueConflictResponse } from "@/lib/field-error-response"
+import { fieldErrorResponse, uniqueConflictResponse } from "@/lib/field-error-response"
+import { duplicateCustomFieldNameErrors } from "@/lib/category-custom-field-names"
 import { categorySchema, type CategoryInput } from "@/lib/validations/category"
 import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 
@@ -64,6 +65,13 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+    // Two custom fields with one name break the unique index on the custom-field rows (V track spec §6.2). The rows are
+    // written unless an inactive category with assets or models is brought back, which keeps its own.
+    const writesCustomFields = !existingInactiveCategory || (existingInactiveCategory._count.assets === 0 && existingInactiveCategory._count.models === 0)
+    const fieldNameErrors = writesCustomFields ? duplicateCustomFieldNameErrors(input.customFieldDefs) : null
+    if (fieldNameErrors) {
+      return fieldErrorResponse({ status: 409, error: "Custom field names must be unique in a category", code: "DUPLICATE", fieldErrors: fieldNameErrors })
+    }
     const category = existingInactiveCategory
       ? await prisma.assetCategory.update({
           where: { id: existingInactiveCategory.id },
@@ -73,9 +81,7 @@ export async function POST(request: NextRequest) {
             description: input.description,
             isActive: input.isActive,
             updatedBy: user.id,
-            ...(existingInactiveCategory._count.assets === 0 && existingInactiveCategory._count.models === 0
-              ? { customFieldDefs: buildCustomFieldDefsReplace(input.customFieldDefs) }
-              : {}),
+            ...(writesCustomFields ? { customFieldDefs: buildCustomFieldDefsReplace(input.customFieldDefs) } : {}),
           },
         })
       : await prisma.assetCategory.create({

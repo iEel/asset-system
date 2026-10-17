@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { uniqueConflictResponse } from "@/lib/field-error-response"
+import { fieldErrorResponse, uniqueConflictResponse } from "@/lib/field-error-response"
+import { duplicateCustomFieldNameErrors } from "@/lib/category-custom-field-names"
 import { categorySchema } from "@/lib/validations/category"
 import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { getCategoryDeleteBlockReason } from "@/lib/category-delete-guard"
@@ -66,6 +67,11 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
     // The code is unique across active and inactive categories (V track spec §6.2).
     const duplicate = await prisma.assetCategory.findFirst({ where: { code: input.code, id: { not: id } }, select: { id: true } })
     if (duplicate) return uniqueConflictResponse("code", "Category code already exists")
+    // Two custom fields with one name break the unique index on the custom-field rows, which a save writes again (V track spec §6.2).
+    const fieldNameErrors = duplicateCustomFieldNameErrors(input.customFieldDefs)
+    if (fieldNameErrors) {
+      return fieldErrorResponse({ status: 409, error: "Custom field names must be unique in a category", code: "DUPLICATE", fieldErrors: fieldNameErrors })
+    }
     if (!input.isActive) {
       const blockReason = getCategoryDeleteBlockReason({
         assets: existing._count.assets,

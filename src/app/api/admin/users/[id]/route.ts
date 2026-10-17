@@ -110,5 +110,5 @@ async function assertEmployeeAvailable(employeeId: string | null | undefined, ex
     where: { employeeId, id: { not: excludeId } },
     select: { id: true },
   })
-  if (existing) throw new Error("Employee already has a user account")
+  if (existing) throw new FieldRefusalError("Employee already has a user account", { employeeId: "employeeHasUser" })
 }
