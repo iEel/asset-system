@@ -320,7 +320,7 @@ export function ScannerTextInput({
           className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full sm:w-auto")}
           title={scannerRunning || scannerLoading ? labels.stop : labels.start}
         >
-          {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+          {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Camera className="h-4 w-4" />}
           <span>{scannerRunning || scannerLoading ? labels.stop : labels.start}</span>
         </button>
       </div>
@@ -394,7 +394,7 @@ export function ScannerTextInput({
                 }`}
               >
                 {torchUpdating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                 ) : torchEnabled ? (
                   <FlashlightOff className="h-4 w-4" />
                 ) : (

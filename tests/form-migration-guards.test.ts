@@ -451,16 +451,16 @@ test("GB1 hand-written spinners do not grow", () => {
   assertWithinBudget(countMatchesByFile(sources, /<Loader2\b/g, notOwned), LOADER2, "GB1 <Loader2")
 })
 
-test("GB2 a spinner outside a button stops for users who reduce motion", () => {
+// Plan 2D-5: over all of src, and in a button too (a hand-placed spinner inside a raw button spins on as well). Busy
+// Buttons bring their own spinner, which stops. Every line that spins (animate-spin) also stops under reduced motion.
+test("GB2 every spinner stops for users who reduce motion, in a button or not", () => {
   const problems: string[] = []
-  for (const file of migratedSources()) {
-    const buttons = [...findJsxElements(file.source, "Button"), ...findJsxElements(file.source, "button")].filter((button) => button.children !== null)
-    for (const loader of findJsxTags(file.source, ["Loader2"])) {
-      const inButton = buttons.some((button) => loader.start >= button.end && loader.start < button.closeEnd)
-      if (!inButton && !/\bmotion-reduce:animate-none\b/.test(loader.text)) problems.push(`${file.path}:${loader.line}`)
-    }
+  for (const file of sources) {
+    file.source.split("\n").forEach((line, index) => {
+      if (/\banimate-spin\b/.test(line) && !/\bmotion-reduce:animate-none\b/.test(line)) problems.push(`${file.path}:${index + 1}`)
+    })
   }
-  assert.deepEqual(problems, [], "add motion-reduce:animate-none")
+  assert.deepEqual(problems, [], "add motion-reduce:animate-none to the class that spins, on the same line")
 })
 
 // Plan 2D-5 (spec 2D §5.5): one rule over all of src instead of the 2C list of label swaps (BUSY_LABEL_SWAPS, all gone
