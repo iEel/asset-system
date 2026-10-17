@@ -2576,7 +2576,9 @@ function LabelPreviewPanel({
     <div className="rounded-md border border-border bg-background p-3">
       <div className="text-sm font-semibold text-foreground">{labels.labelPreview}</div>
       <div className="mt-3 w-full max-w-full overflow-x-auto overscroll-x-contain">
+        {/* The sample is the forced-light scope: its tokens stay light, so it looks like the printed label on a dark page (dark mode P-R3). */}
         <div
+          data-theme="light"
           className="overflow-hidden rounded border border-control-border bg-surface text-foreground shadow-sm"
           style={{ width: widthPx, height: heightPx, padding: marginPx }}
         >

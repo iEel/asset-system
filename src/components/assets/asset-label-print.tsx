@@ -281,7 +281,8 @@ export function AssetLabelPrint({
       </section>
 
       <section className="asset-label-preview flex min-h-[calc(100vh-160px)] max-w-full items-start justify-center overflow-hidden px-3 pb-10 sm:px-6">
-        <div className="asset-label-sheet w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md bg-white p-3 text-slate-950 shadow-sm sm:w-fit sm:p-4">
+        {/* The sheet is the forced-light scope: the labels stay as they print on a dark page (dark mode P-R3). */}
+        <div data-theme="light" className="asset-label-sheet w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md bg-white p-3 text-slate-950 shadow-sm sm:w-fit sm:p-4">
           <div className="asset-label-preview-list flex w-max min-w-full flex-col items-center gap-3">
             {assets.map((asset) => (
               <div key={asset.assetTag} className="asset-label-preview-frame">
