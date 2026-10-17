@@ -3998,7 +3998,12 @@
     "ldapTestFailed": "เชื่อมต่อ LDAP ไม่สำเร็จ",
     "advancedSettings": "ค่าขั้นสูง",
     "advancedSettingsDescription": "ค่าเพิ่มเติมที่ยังไม่มีหน้าจอเฉพาะ แก้เมื่อจำเป็นเท่านั้น",
-    "savedSuccess": "บันทึกตั้งค่าระบบสำเร็จ"
+    "savedSuccess": "บันทึกตั้งค่าระบบสำเร็จ",
+    "overviewDays": "{count} วัน",
+    "depreciationLegacyRuleMonths": "{months} เดือน",
+    "ldapSyncModePreview": "ดูตัวอย่างเท่านั้น",
+    "ldapSyncModeManual": "กดซิงก์เอง",
+    "ldapSyncModeScheduled": "ซิงก์ตามรอบเวลา"
   },
   "transactionCancellation": {
     "action": "ยกเลิกรายการ",

@@ -54,6 +54,7 @@ type DepreciationPolicyBuilderLabels = {
   depreciationAssignedCategoryConflict: string
   depreciationLegacyRules: string
   depreciationLegacyRulesHelp: string
+  depreciationLegacyRuleMonths: string
   depreciationPreviewTitle: string
   depreciationPreviewDescription: string
   depreciationPreviewPurchasePrice: string
@@ -323,7 +324,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
           <p>{labels.depreciationLegacyRulesHelp}</p>
           <ul className="mt-2 list-inside list-disc">
             {state.legacyRules.map((rule) => (
-              <li key={`${rule.match}-${rule.usefulLifeMonths}`}>{rule.match}: {rule.usefulLifeMonths} months</li>
+              <li key={`${rule.match}-${rule.usefulLifeMonths}`}>{rule.match}: {labels.depreciationLegacyRuleMonths.replace("{months}", formatCount(rule.usefulLifeMonths))}</li>
             ))}
           </ul>
         </Notice>

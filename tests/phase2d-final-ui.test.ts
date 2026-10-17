@@ -76,3 +76,29 @@ test("the settings page passes only labels its form reads: the four it never rea
   assert.match(page, /ldapSyncSchedule: t\("ldapSyncSchedule"\)/)
   assert.match(form, /const generalSettings = settings\.filter\(/)
 })
+
+test("the settings screens name the LDAP sync modes, the legacy rules' months and the overview's day counts in words (plan 2D-2 R14)", () => {
+  const form = read(`${C}admin/system-settings-form.tsx`)
+  const builder = read(`${C}admin/depreciation-policy-builder.tsx`)
+  const page = read(`${D}admin/settings/page.tsx`)
+  assert.match(form, /<option value="preview">\{labels\.ldapSyncModePreview\}<\/option>\s*<option value="manual">\{labels\.ldapSyncModeManual\}<\/option>\s*<option value="scheduled">\{labels\.ldapSyncModeScheduled\}<\/option>/)
+  // The overview names the saved mode; a code with no words yet shows as it is (docs/19_THAI_GLOSSARY.md).
+  assert.match(form, /const ldapSyncMode = getValue\("ldap_sync_mode"\) \|\| "preview"/)
+  assert.match(form, /`\$\{labels\.enabled\} \(\$\{ldapSyncModeLabels\[ldapSyncMode\] \?\? ldapSyncMode\}\)`/)
+  assert.match(form, /const formatDays = \(days: string \| number\) => labels\.overviewDays\.replace\("\{count\}", String\(days\)\)/)
+  assert.equal(form.match(/formatDays\(/g)?.length, 4, "return due soon, warranty, the approval SLA and the retention days")
+  assert.doesNotMatch(form, />(?:Preview|Manual|Scheduled)</)
+  assert.doesNotMatch(form, /\}d\b/, "no English day suffix")
+  assert.match(builder, /\{rule\.match\}: \{labels\.depreciationLegacyRuleMonths\.replace\("\{months\}", formatCount\(rule\.usefulLifeMonths\)\)\}/)
+  assert.doesNotMatch(builder, / months</)
+  assert.match(page, /overviewDays: t\("overviewDays", \{ count: "\{count\}" \}\)/)
+  assert.match(page, /depreciationLegacyRuleMonths: t\("depreciationLegacyRuleMonths", \{ months: "\{months\}" \}\)/)
+  const keys = ["overviewDays", "depreciationLegacyRuleMonths", "ldapSyncModePreview", "ldapSyncModeManual", "ldapSyncModeScheduled"]
+  for (const key of keys.slice(2)) assert.match(page, new RegExp(`\\b${key}: t\\("${key}"\\)`))
+  for (const key of keys) {
+    const text = String(messages("th").systemSettingsPage[key]).replace(/\{\w+\}/g, "")
+    assert.match(text, /[฀-๿]/, `th ${key} is Thai`)
+    assert.doesNotMatch(text, /[A-Za-z]/, `th ${key} has no English`)
+    assert.equal(typeof messages("en").systemSettingsPage[key], "string", `en ${key}`)
+  }
+})

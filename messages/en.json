@@ -3998,7 +3998,12 @@
     "ldapTestFailed": "LDAP connection failed",
     "advancedSettings": "Advanced settings",
     "advancedSettingsDescription": "Additional settings without a dedicated editor. Change only when needed.",
-    "savedSuccess": "System settings saved"
+    "savedSuccess": "System settings saved",
+    "overviewDays": "{count} days",
+    "depreciationLegacyRuleMonths": "{months} months",
+    "ldapSyncModePreview": "Preview",
+    "ldapSyncModeManual": "Manual",
+    "ldapSyncModeScheduled": "Scheduled"
   },
   "transactionCancellation": {
     "action": "Cancel transaction",

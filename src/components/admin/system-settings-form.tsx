@@ -145,6 +145,7 @@ type SystemSettingsFormProps = {
     overviewLdapLogin: string
     overviewLdapSync: string
     overviewAdvanced: string
+    overviewDays: string
     enabled: string
     disabled: string
     advancedSettingCount: string
@@ -277,6 +278,7 @@ type SystemSettingsFormProps = {
     depreciationAssignedCategoryConflict: string
     depreciationLegacyRules: string
     depreciationLegacyRulesHelp: string
+    depreciationLegacyRuleMonths: string
     depreciationPreviewTitle: string
     depreciationPreviewDescription: string
     depreciationPreviewPurchasePrice: string
@@ -350,6 +352,9 @@ type SystemSettingsFormProps = {
     ldapSyncBaseDn: string
     ldapSyncFilter: string
     ldapSyncMode: string
+    ldapSyncModePreview: string
+    ldapSyncModeManual: string
+    ldapSyncModeScheduled: string
     ldapSyncSchedule: string
     ldapSyncCustomSchedule: string
     ldapSyncDaily2am: string
@@ -778,6 +783,15 @@ export function SystemSettingsForm({
   // LDAP switches are status badges.
   const ldapLoginEnabled = getValue("ldap_enabled") === "true"
   const ldapSyncEnabled = getValue("ldap_sync_enabled") === "true"
+  // Day counts and the saved sync mode in words, never an English "d" or a mode code (plan 2D-2 R14). A mode the
+  // labels do not know shows as it is (docs/19_THAI_GLOSSARY.md).
+  const formatDays = (days: string | number) => labels.overviewDays.replace("{count}", String(days))
+  const ldapSyncModeLabels: Record<string, string> = {
+    preview: labels.ldapSyncModePreview,
+    manual: labels.ldapSyncModeManual,
+    scheduled: labels.ldapSyncModeScheduled,
+  }
+  const ldapSyncMode = getValue("ldap_sync_mode") || "preview"
   const overviewItems: KeyValueItem[] = [
     { key: "assetTag", label: labels.overviewAssetTag, value: <span className="[overflow-wrap:anywhere]">{formatTemplate}</span> },
     { key: "label", label: labels.overviewLabel, value: assetLabelPresets[labelTemplates.defaultTapeSize].label },
@@ -795,12 +809,12 @@ export function SystemSettingsForm({
     {
       key: "notifications",
       label: labels.overviewNotifications,
-      value: `${getValue(notificationReturnDueSoonDaysKey) || "3"}d / ${getValue(notificationWarrantyExpiryDaysKey) || "30"}d`,
+      value: `${formatDays(getValue(notificationReturnDueSoonDaysKey) || "3")} / ${formatDays(getValue(notificationWarrantyExpiryDaysKey) || "30")}`,
     },
     {
       key: "approval",
       label: labels.overviewApproval,
-      value: `${workflowApprovalPolicy.minApprovers} / SLA ${workflowApprovalPolicy.slaDays}d / ${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
+      value: `${workflowApprovalPolicy.minApprovers} / SLA ${formatDays(workflowApprovalPolicy.slaDays)} /${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
     },
     {
       key: "governance",
@@ -810,7 +824,7 @@ export function SystemSettingsForm({
           {[retentionAttachmentDaysKey, retentionAuditLogDaysKey, retentionOrphanFileDaysKey].map((key, index) => (
             <Fragment key={key}>
               {index > 0 ? " / " : null}
-              {getValue(key) ? `${getValue(key)}d` : <Nil />}
+              {getValue(key) ? formatDays(getValue(key)) : <Nil />}
             </Fragment>
           ))}
         </>
@@ -826,7 +840,7 @@ export function SystemSettingsForm({
       label: labels.overviewLdapSync,
       value: (
         <StatusBadge
-          label={ldapSyncEnabled ? `${labels.enabled} (${getValue("ldap_sync_mode") || "preview"})` : labels.disabled}
+          label={ldapSyncEnabled ? `${labels.enabled} (${ldapSyncModeLabels[ldapSyncMode] ?? ldapSyncMode})` : labels.disabled}
           tone={ldapSyncEnabled ? "success" : "muted"}
         />
       ),
@@ -1799,9 +1813,9 @@ export function SystemSettingsForm({
                   value={getValue("ldap_sync_mode")}
                   onChange={(event) => setValue("ldap_sync_mode", event.target.value)}
                 >
-                  <option value="preview">Preview</option>
-                  <option value="manual">Manual</option>
-                  <option value="scheduled">Scheduled</option>
+                  <option value="preview">{labels.ldapSyncModePreview}</option>
+                  <option value="manual">{labels.ldapSyncModeManual}</option>
+                  <option value="scheduled">{labels.ldapSyncModeScheduled}</option>
                 </NativeSelect>
               </Field>
               <Field label={labels.ldapSyncMaxScheduledDeactivations}>
