@@ -256,3 +256,33 @@ test("the asset batch names the row or the common field that failed, duplicates 
   assert.equal(license.status, 400)
   assert.deepEqual(await license.json(), { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { "common.licenseUsedSeats": "licenseSeatsExceeded" } })
 })
+
+test("checkout's HANDOVER_* refusal and disposal execution's evidence refusal keep their code and add fieldErrors (V spec §6.1)", async () => {
+  type CheckoutRoute = { POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> }
+  const { POST } = await load<CheckoutRoute>("src/app/api/assets/[id]/checkout/route.ts")
+  stubDb({})
+  const response = await POST(jsonRequest("POST", {
+    handoverMode: "temporary_loan", checkoutType: "user", custodianId: "employee-1", departmentId: "", locationId: "", parentAssetId: "",
+    checkoutDate: "2026-10-17", expectedReturnDate: "", conditionBefore: "condition-good", remark: "", receiverSignature: "",
+  }), { params: Promise.resolve({ id: "asset-1" }) })
+  assert.equal(response.status, 400)
+  assert.deepEqual(await response.json(), {
+    code: "HANDOVER_TEMPORARY_DUE_DATE_REQUIRED",
+    error: "HANDOVER_TEMPORARY_DUE_DATE_REQUIRED",
+    fieldErrors: { expectedReturnDate: "handoverTemporaryDueDateRequired" },
+  })
+
+  // The disposal route loads services node --test cannot strip, so its branch is read as source; the helper is run.
+  const { disposalApiError } = await load<typeof import("../src/lib/disposal-api-errors.ts")>("src/lib/disposal-api-errors.ts")
+  assert.deepEqual(await disposalApiError("DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED", "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED").json(), {
+    code: "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED", error: "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
+  })
+  const withFields = disposalApiError("DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED", "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED", 400, { evidenceExceptionReason: "tooLong" })
+  assert.equal(withFields.status, 400)
+  assert.deepEqual(await withFields.json(), {
+    code: "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED", error: "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED", fieldErrors: { evidenceExceptionReason: "tooLong" },
+  })
+  const route = read("src/app/api/disposal-requests/[id]/route.ts")
+  assert.match(route, /if \(error\.issues\.some\(\(issue\) => issue\.path\[0\] === "evidenceExceptionReason"\)\) \{\n        return disposalApiError\(\n          "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",\n          "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",\n          400,\n          issuesToFieldErrors\(error\.issues\),\n        \)/)
+  assert.match(route, /^import \{ issuesToFieldErrors \} from "@\/lib\/field-errors"$/m)
+})

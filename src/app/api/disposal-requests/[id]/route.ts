@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { issuesToFieldErrors } from "@/lib/field-errors"
 import {
   getDisposalRestoreStatusError,
   getDisposalSegregationError,
@@ -211,6 +212,8 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
         return disposalApiError(
           "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
           "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
+          400,
+          issuesToFieldErrors(error.issues),
         )
       }
       return errorResponse(error, 400)

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { issuesToFieldErrors } from "@/lib/field-errors"
 import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError, getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
 import { getHandoverTargetStatusName } from "@/lib/asset-handover-mode"
@@ -224,7 +225,9 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     }
     if (error instanceof ZodError) {
       const issue = error.issues.find(({ message }) => message.startsWith("HANDOVER_"))
-      if (issue) return NextResponse.json({ code: issue.message, error: issue.message }, { status: 400 })
+      if (issue) {
+        return NextResponse.json({ code: issue.message, error: issue.message, fieldErrors: issuesToFieldErrors(error.issues) }, { status: 400 })
+      }
     }
     return errorResponse(error, 400)
   }
