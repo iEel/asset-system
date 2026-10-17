@@ -141,3 +141,44 @@ test("every export link is an <a download>, as the report cards' (spec 2D M31)",
   assert.match(menu, /<a href=\{exportHref\} download>/)
   assert.match(menu, /<a href=\{templateHref\} download>/)
 })
+
+// The 76 keys of messages/th.json that no code in src reads at 388d4d5 (plan 2D-5 Task CF-9: a namespace-aware search
+// that follows each translator into the files it reaches; every leaf that collides with a data code was checked by hand).
+test("message keys that no code reads are gone from both languages; keys built at run time stay (plan 2D-5)", () => {
+  const unread = [
+    "common.of",
+    "nav.auditScan", "nav.auditResult", "nav.pendingAssets", "nav.notification",
+    "asset.attachments", "asset.purchaseDocumentAmount", "asset.latestAudit", "asset.detailSections.nav",
+    "asset.detailSections.ownership", "asset.detailSections.specs", "asset.detailSections.photos",
+    "asset.detailSections.movement", "asset.detailSections.notes", "asset.removedAt",
+    "brandModel.fileRequired", "brandModel.viewModels",
+    "supplier.totalAmount",
+    "auditScan.asset", "auditScan.selectAsset", "auditScan.cameraDevice", "auditScan.cameraDeviceFallback",
+    "auditScan.cameraRear", "auditScan.actualLocation", "auditScan.actualCustodian", "auditScan.actualDepartment",
+    "auditScan.actualCondition", "auditScan.wrongLocation", "auditScan.wrongCustodian", "auditScan.wrongCondition",
+    "auditFinding.expectedValue", "auditFinding.actualValue", "auditFinding.comparison",
+    "maintenancePage.subtitle", "maintenancePage.createTitle", "maintenancePage.createSubtitle",
+    "maintenancePage.createSuccess", "maintenancePage.searchPlaceholder", "maintenancePage.clearFilters",
+    "maintenancePage.dateFrom", "maintenancePage.dateTo", "maintenancePage.evidence", "maintenancePage.resultCount",
+    "maintenancePage.invalidDateRange", "maintenancePage.activeFilters", "maintenancePage.filterStatus",
+    "maintenancePage.queue.open", "maintenancePage.queue.completed", "maintenancePage.emptyTitle",
+    "maintenancePage.emptyHelp", "maintenancePage.summaryOverdue", "maintenancePage.assignedTo",
+    "maintenancePage.selectEmployee", "maintenancePage.unassigned", "maintenancePage.fileRequired",
+    "maintenancePage.movementLabels.create", "maintenancePage.movementLabels.close",
+    "maintenancePage.movementLabels.cancel", "maintenancePage.emptyHistoryTitle", "maintenancePage.emptyHistoryHelp",
+    "maintenancePage.currentStatus", "maintenancePage.currentCondition", "maintenancePage.openAsset",
+    "maintenancePage.disposalReviewTitle", "maintenancePage.disposalReviewCount", "maintenancePage.disposalReviewCost",
+    "maintenancePage.disposalReviewRatio", "maintenancePage.openDisposalRequest", "maintenancePage.signatureDate",
+    "maintenancePage.approver", "maintenancePage.closeSuccess", "maintenancePage.cancelSuccess",
+    "maintenancePage.statusConsequences.completed", "maintenancePage.nextStatus",
+    "disposalPage.resultCount", "disposalPage.selectAsset",
+  ]
+  const has = (tree: unknown, key: string) =>
+    typeof key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], tree) === "string"
+  assert.equal(unread.length, 76)
+  for (const locale of ["th", "en"] as const) assert.deepEqual(unread.filter((key) => has(messages(locale), key)), [], locale)
+  // Built at run time, so a literal search misses them: the system log presenter and the notification details.
+  for (const key of ["systemLogPage.action_preview_notification_digest", "notifications.returnsDueSoonDetail", "notifications.licenseExpiringSoonDetail"]) {
+    assert.ok(has(messages("th"), key) && has(messages("en"), key), key)
+  }
+})

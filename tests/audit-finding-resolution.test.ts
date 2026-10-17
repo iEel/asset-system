@@ -68,7 +68,7 @@ test("audit finding resolution copy is translated", () => {
     assert.equal(typeof messages.auditFinding.filterActionOpen, "string")
     assert.equal(typeof messages.auditFinding.filterOverdue, "string")
     assert.equal(typeof messages.auditFinding.filterClosed, "string")
-    assert.equal(typeof messages.auditFinding.comparison, "string")
+    assert.equal(messages.auditFinding.comparison, undefined)
     assert.equal(typeof messages.auditFinding.systemValue, "string")
     assert.equal(typeof messages.auditFinding.foundValue, "string")
     assert.equal(typeof messages.auditFinding.comparisonColumn, "string")
