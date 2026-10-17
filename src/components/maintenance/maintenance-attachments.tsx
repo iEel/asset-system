@@ -154,7 +154,7 @@ export function MaintenanceAttachments({
                     <img
                       src={`/api/attachments/${attachment.id}?inline=1`}
                       alt={attachment.originalName}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover bg-image-stage"
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-sm">

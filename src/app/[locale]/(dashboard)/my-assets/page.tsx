@@ -235,7 +235,7 @@ function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
             alt={photo.originalName}
             width={48}
             height={48}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-contain bg-image-stage"
             unoptimized
           />
         ) : (

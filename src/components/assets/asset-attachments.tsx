@@ -189,7 +189,7 @@ export function AssetAttachments({
                         alt={attachment.originalName}
                         fill
                         unoptimized
-                        className="object-contain p-2"
+                        className="object-contain p-2 bg-image-stage"
                       />
                     </button>
                     <div className="p-3">
@@ -345,7 +345,7 @@ function PhotoPreview({
           alt={attachment.originalName}
           fill
           unoptimized
-          className="object-contain p-2"
+          className="object-contain p-2 bg-image-stage"
         />
       </button>
       <div className="p-3">
@@ -384,7 +384,7 @@ function AttachmentCard({
             alt={attachment.originalName}
             fill
             unoptimized
-            className="object-contain p-2"
+            className="object-contain p-2 bg-image-stage"
           />
         </button>
       ) : (

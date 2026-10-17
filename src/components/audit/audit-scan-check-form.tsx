@@ -365,7 +365,7 @@ export function AuditScanCheckForm({
                     <li key={photo.id} className="relative overflow-hidden rounded-md border border-border">
                       {photo.previewUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
-                        <img src={photo.previewUrl} alt={t("queuedPhotoPreviewAlt", { name: photo.file.name })} className="aspect-square w-full object-cover" />
+                        <img src={photo.previewUrl} alt={t("queuedPhotoPreviewAlt", { name: photo.file.name })} className="aspect-square w-full object-cover bg-image-stage" />
                       ) : (
                         <span className="flex aspect-square items-center justify-center"><ImagePlus className="size-5" aria-hidden="true" /></span>
                       )}

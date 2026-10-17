@@ -392,7 +392,7 @@ export function AssetModelForm({
                           alt={photo.originalName}
                           fill
                           unoptimized
-                          className="object-contain"
+                          className="object-contain bg-image-stage"
                         />
                       ) : (
                         <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">

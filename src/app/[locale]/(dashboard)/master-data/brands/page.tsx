@@ -493,7 +493,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                                   alt=""
                                   fill
                                   unoptimized
-                                  className="object-contain p-1"
+                                  className="object-contain p-1 bg-image-stage"
                                   sizes="48px"
                                 />
                               ) : (

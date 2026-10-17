@@ -1319,7 +1319,7 @@ export function AssetForm({
                           width={240}
                           height={160}
                           loading="lazy"
-                          className="max-h-full w-full object-contain"
+                          className="max-h-full w-full object-contain bg-image-stage"
                         />
                       </div>
                       <div className="border-t border-border p-2">

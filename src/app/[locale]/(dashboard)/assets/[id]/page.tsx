@@ -2223,7 +2223,7 @@ function SidebarPhotoCard({
               height={240}
               loading="eager"
               fetchPriority="high"
-              className="max-h-full w-full object-contain"
+              className="max-h-full w-full object-contain bg-image-stage"
             />
           </div>
           <div className="border-t border-border p-3 text-left">
@@ -2274,7 +2274,7 @@ function EvidenceLinks({
               {attachment.fileType.startsWith("image/") ? (
                 <div className="flex aspect-video w-full items-center justify-center p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/attachments/${attachment.id}?inline=1`} alt={attachment.originalName} loading="lazy" className="max-h-full w-full object-contain" />
+                  <img src={`/api/attachments/${attachment.id}?inline=1`} alt={attachment.originalName} loading="lazy" className="max-h-full w-full object-contain bg-image-stage" />
                 </div>
               ) : (
                 <div className="flex aspect-video w-full items-center justify-center p-3 text-sm font-medium text-muted-foreground">

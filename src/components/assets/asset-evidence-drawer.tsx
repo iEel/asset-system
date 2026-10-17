@@ -122,7 +122,7 @@ export function AssetEvidenceDrawer({
                   {item.fileType.startsWith("image/") ? (
                     <div className="flex h-28 w-full items-center justify-center bg-background p-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={`${item.href}?inline=1`} alt={item.title} loading="lazy" className="max-h-full w-full object-contain" />
+                      <img src={`${item.href}?inline=1`} alt={item.title} loading="lazy" className="max-h-full w-full object-contain bg-image-stage" />
                     </div>
                   ) : (
                     <div className="flex h-28 w-full items-center justify-center gap-2 bg-background p-3 text-center text-meta font-medium text-muted-foreground">

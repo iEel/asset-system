@@ -75,7 +75,7 @@ export default async function MyAssetDetailPage({ params, searchParams }: MyAsse
                 alt={photo.originalName}
                 width={96}
                 height={96}
-                className="h-full w-full object-contain"
+                className="h-full w-full object-contain bg-image-stage"
                 unoptimized
               />
             ) : (

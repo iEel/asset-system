@@ -104,7 +104,7 @@ export function DisposalAttachments({
             <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
               {attachment.fileType.startsWith("image/") ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/attachments/${attachment.id}?inline=1`} alt={attachment.originalName} className="mb-3 aspect-[4/3] w-full rounded-md border border-border object-cover" />
+                <img src={`/api/attachments/${attachment.id}?inline=1`} alt={attachment.originalName} className="mb-3 aspect-[4/3] w-full rounded-md border border-border object-cover bg-image-stage" />
               ) : null}
               <div className="flex items-start gap-2">
                 {attachment.fileType.startsWith("image/") ? <ImageIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> : <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}

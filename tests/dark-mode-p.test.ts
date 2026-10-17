@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { contrastRatio, parseHexColor, readRootTokens } from "../src/lib/color-contrast.ts"
-import { readSourceFiles } from "./helpers/source-files.ts"
+import { findJsxTags, jsxAttrValue, readSourceFiles } from "./helpers/source-files.ts"
 
 // Dark mode, area P (spec 2026-10-17 §4.4): paper keeps the light tokens through the data-theme="light" scope, photos and
 // logos sit on a fixed light image stage, the bell's count dot takes the danger ink and the app icon gets a hairline
@@ -132,4 +132,29 @@ test("the signature canvas is a forced-light scope, and the scope sits on paper 
   ])
   // No part forces dark: the only literal is the dark block's selector in the CSS reader (Task 1, T1).
   assert.deepEqual(sources.filter((file) => /\bdata-theme="dark"/.test(file.source)).map((file) => file.path), ["src/lib/color-contrast.ts"])
+})
+
+// Every image of an uploaded file carries the image stage on its own element (spec §4.4, P-R1): a see-through PNG keeps
+// its dark ink on a dark page, and a placeholder icon in the same frame keeps the frame's token fill. The images that
+// are not uploads keep their own backing.
+const NOT_UPLOADS: Record<string, number> = {
+  "src/app/[locale]/(auth)/login/page.tsx": 1, // the app icon, framed in P7
+  [`${C}asset-operations/operation-document-print.tsx`]: 1, // a signature on the white A4 paper
+  [`${C}layout/sidebar.tsx`]: 1, // the app icon, framed in P7
+  [`${C}ui/attachment-preview-dialog.tsx`]: 1, // the preview's black stage (spec §4.4)
+}
+
+test("every uploaded photo, logo and attachment image sits on the fixed light image stage (dark mode P-R1)", () => {
+  const images = sources.flatMap((file) =>
+    findJsxTags(file.source, ["img", "Image"]).map((tag) => ({ path: file.path, className: jsxAttrValue(tag.text, "className") ?? "" })),
+  )
+  assert.equal(images.length, 19, "every <img> and next/image in src")
+  const unstaged: Record<string, number> = {}
+  for (const image of images) {
+    if (!/(?:^|\s)bg-image-stage(?:\s|$)/.test(image.className)) unstaged[image.path] = (unstaged[image.path] ?? 0) + 1
+  }
+  assert.deepEqual(unstaged, NOT_UPLOADS)
+  // The stage is on the 15 images only, never on a frame that also shows a placeholder icon or a file type.
+  assert.equal(sources.reduce((sum, file) => sum + (file.source.match(/\bbg-image-stage\b/g)?.length ?? 0), 0), 15)
+  assert.match(read(`${C}assets/asset-thumbnail.tsx`), /"relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground"/)
 })

@@ -52,7 +52,7 @@ export function AssetThumbnail({
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
-      className="size-full object-contain p-0.5"
+      className="size-full object-contain p-0.5 bg-image-stage"
     />
   )
 
