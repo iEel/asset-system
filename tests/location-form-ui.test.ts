@@ -10,10 +10,11 @@ test("the location form uses the shared fields and a busy save button that still
   assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
   assert.doesNotMatch(source, /function Field\(|<select|<textarea|<button|Loader2|ml-1 text-danger|resize-none/)
   assert.equal(source.match(/<input\b/g)?.length, 1, "only the active checkbox stays a native input")
-  assert.equal(source.match(/<Field label=\{t\("(?:code|name|branch|locationType)"\)\} required>/g)?.length, 4)
+  assert.equal(source.match(/<Field label=\{t\("(?:code|name|branch|locationType)"\)\} id="location-[\w-]+" required error=\{fieldErrors\.message\("\w+"\)\}>/g)?.length, 4)
   assert.equal(source.match(/^\s+required$/gm)?.length, 4, "code, name, branch and location type keep the browser's own required check")
   assert.match(source, /<Textarea\n\s+value=\{values\.description \?\? ""\}\n[^\n]*\n\s+rows=\{4\}\n\s+maxLength=\{500\}\n\s+\/>/)
   assert.match(source, /className=\{checkboxVariants\(\)\}/)
   assert.match(source, /<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>\n\s+\{tCommon\("cancel"\)\}/)
-  assert.match(source, /<Button type="submit" busy=\{saving\} disabled=\{branches\.length === 0\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{tCommon\("save"\)\}/)
+  // The gate stays without a branch, focusable with its reason (v-track plan 1 M2).
+  assert.match(source, /<Button type="submit" busy=\{saving\} aria-disabled=\{needsBranch \|\| undefined\} aria-describedby=\{needsBranch \? "location-save-reason" : undefined\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{tCommon\("save"\)\}/)
 })

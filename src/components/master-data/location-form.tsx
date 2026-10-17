@@ -15,8 +15,10 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type LocationFormValues = {
   id?: string
@@ -55,6 +57,32 @@ const emptyLocation: LocationFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  code: "location-code",
+  name: "location-name",
+  branchId: "location-branch",
+  locationType: "location-type",
+  parentId: "location-parent",
+  description: "location-description",
+} as const
+type LocationField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as LocationField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required and maxLength (v-track M-R2).
+function validate(values: LocationFormValues): Partial<Record<LocationField, string>> {
+  const errors: Partial<Record<LocationField, string>> = {}
+  const check = (key: LocationField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("code", required(values.code) ?? maxLength(values.code, 50))
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  check("branchId", required(values.branchId))
+  check("locationType", required(values.locationType))
+  check("description", maxLength(values.description, 500))
+  return errors
+}
+
 export function LocationForm({
   location,
   branches,
@@ -73,17 +101,25 @@ export function LocationForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<LocationFormValues>(location ?? emptyLocation)
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<LocationField>()
 
   const isEdit = Boolean(location?.id)
   const backHref = providedBackHref ?? `/${locale}/master-data/locations`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
+  const needsBranch = branches.length === 0
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
   function setField<K extends keyof LocationFormValues>(field: K, value: LocationFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as LocationField)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (needsBranch) return
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
 
     const url = isEdit ? `/api/locations/${location?.id}` : "/api/locations"
@@ -98,6 +134,8 @@ export function LocationForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
 
@@ -120,9 +158,9 @@ export function LocationForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+      <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} required>
+          <Field label={t("code")} id="location-code" required error={fieldErrors.message("code")}>
             <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
@@ -131,7 +169,7 @@ export function LocationForm({
             />
           </Field>
 
-          <Field label={t("name")} required>
+          <Field label={t("name")} id="location-name" required error={fieldErrors.message("name")}>
             <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
@@ -140,7 +178,7 @@ export function LocationForm({
             />
           </Field>
 
-          <Field label={t("branch")} required>
+          <Field label={t("branch")} id="location-branch" required error={fieldErrors.message("branchId")}>
             <NativeSelect
               value={values.branchId}
               onChange={(event) => setField("branchId", event.target.value)}
@@ -155,7 +193,7 @@ export function LocationForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("locationType")} required>
+          <Field label={t("locationType")} id="location-type" required error={fieldErrors.message("locationType")}>
             <NativeSelect
               value={values.locationType}
               onChange={(event) =>
@@ -171,7 +209,7 @@ export function LocationForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("parentLocation")}>
+          <Field label={t("parentLocation")} id="location-parent" error={fieldErrors.message("parentId")}>
             <NativeSelect
               value={values.parentId ?? ""}
               onChange={(event) => setField("parentId", event.target.value)}
@@ -196,7 +234,7 @@ export function LocationForm({
           </label>
 
           <div className="md:col-span-2">
-            <Field label={t("description")}>
+            <Field label={t("description")} id="location-description" error={fieldErrors.message("description")}>
               <Textarea
                 value={values.description ?? ""}
                 onChange={(event) => setField("description", event.target.value)}
@@ -207,11 +245,12 @@ export function LocationForm({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
+        <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-border pt-5">
+          {needsBranch ? <p id="location-save-reason" className="basis-full text-meta text-muted-foreground sm:mr-auto sm:basis-auto sm:self-center">{t("saveNeedsBranch")}</p> : null}
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <Button type="submit" busy={saving} disabled={branches.length === 0}>
+          <Button type="submit" busy={saving} aria-disabled={needsBranch || undefined} aria-describedby={needsBranch ? "location-save-reason" : undefined}>
             <Save aria-hidden="true" />
             {tCommon("save")}
           </Button>

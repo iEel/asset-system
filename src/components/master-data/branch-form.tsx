@@ -14,8 +14,10 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type BranchFormValues = {
   id?: string
@@ -42,6 +44,31 @@ const emptyBranch: BranchFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  code: "branch-code",
+  name: "branch-name",
+  companyId: "branch-company",
+  contactPerson: "branch-contact-person",
+  address: "branch-address",
+} as const
+type BranchField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as BranchField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required and maxLength (v-track M-R2).
+function validate(values: BranchFormValues): Partial<Record<BranchField, string>> {
+  const errors: Partial<Record<BranchField, string>> = {}
+  const check = (key: BranchField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("code", required(values.code) ?? maxLength(values.code, 20))
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  check("companyId", required(values.companyId))
+  check("contactPerson", maxLength(values.contactPerson, 200))
+  check("address", maxLength(values.address, 500))
+  return errors
+}
+
 export function BranchForm({
   branch,
   companies,
@@ -58,17 +85,25 @@ export function BranchForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<BranchFormValues>(branch ?? emptyBranch)
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<BranchField>()
 
   const isEdit = Boolean(branch?.id)
   const backHref = providedBackHref ?? `/${locale}/master-data/branches`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
+  const needsCompany = companies.length === 0
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
   function setField<K extends keyof BranchFormValues>(field: K, value: BranchFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as BranchField)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (needsCompany) return
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
 
     const url = isEdit ? `/api/branches/${branch?.id}` : "/api/branches"
@@ -83,6 +118,8 @@ export function BranchForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
 
@@ -105,9 +142,9 @@ export function BranchForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+      <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} required>
+          <Field label={t("code")} id="branch-code" required error={fieldErrors.message("code")}>
             <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
@@ -116,7 +153,7 @@ export function BranchForm({
             />
           </Field>
 
-          <Field label={t("name")} required>
+          <Field label={t("name")} id="branch-name" required error={fieldErrors.message("name")}>
             <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
@@ -125,7 +162,7 @@ export function BranchForm({
             />
           </Field>
 
-          <Field label={t("company")} required>
+          <Field label={t("company")} id="branch-company" required error={fieldErrors.message("companyId")}>
             <NativeSelect
               value={values.companyId}
               onChange={(event) => setField("companyId", event.target.value)}
@@ -140,7 +177,7 @@ export function BranchForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("contactPerson")}>
+          <Field label={t("contactPerson")} id="branch-contact-person" error={fieldErrors.message("contactPerson")}>
             <Input
               value={values.contactPerson ?? ""}
               onChange={(event) => setField("contactPerson", event.target.value)}
@@ -149,7 +186,7 @@ export function BranchForm({
           </Field>
 
           <div className="md:col-span-2">
-            <Field label={t("address")}>
+            <Field label={t("address")} id="branch-address" error={fieldErrors.message("address")}>
               <Textarea
                 value={values.address ?? ""}
                 onChange={(event) => setField("address", event.target.value)}
@@ -170,11 +207,12 @@ export function BranchForm({
           </label>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
+        <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-border pt-5">
+          {needsCompany ? <p id="branch-save-reason" className="basis-full text-meta text-muted-foreground sm:mr-auto sm:basis-auto sm:self-center">{t("saveNeedsCompany")}</p> : null}
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <Button type="submit" busy={saving} disabled={companies.length === 0}>
+          <Button type="submit" busy={saving} aria-disabled={needsCompany || undefined} aria-describedby={needsCompany ? "branch-save-reason" : undefined}>
             <Save aria-hidden="true" />
             {tCommon("save")}
           </Button>

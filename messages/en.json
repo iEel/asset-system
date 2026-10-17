@@ -1250,7 +1250,8 @@
     "summaryWithoutAssets": "No Assets",
     "summaryWithoutAssetsHelp": "Review whether these are new branches or old data.",
     "summaryWithoutLocations": "No Locations",
-    "summaryWithoutLocationsHelp": "Add locations before putting assets into service."
+    "summaryWithoutLocationsHelp": "Add locations before putting assets into service.",
+    "saveNeedsCompany": "No company yet. Add a company before you save a branch."
   },
   "department": {
     "title": "Departments",
@@ -1426,7 +1427,8 @@
     "summaryLeaf": "Leaf Locations",
     "summaryLeafHelp": "Best candidates for actual install or storage points.",
     "summaryRootCard": "Root Locations",
-    "summaryRootHelp": "Top-level entries in the location hierarchy."
+    "summaryRootHelp": "Top-level entries in the location hierarchy.",
+    "saveNeedsBranch": "No branch yet. Add a branch before you save a location."
   },
   "category": {
     "title": "Asset Categories",

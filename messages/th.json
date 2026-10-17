@@ -1250,7 +1250,8 @@
     "summaryWithoutAssets": "ยังไม่มีทรัพย์สิน",
     "summaryWithoutAssetsHelp": "ควรตรวจว่าเป็นสาขาใหม่หรือข้อมูลเก่า",
     "summaryWithoutLocations": "ยังไม่มีที่ตั้ง",
-    "summaryWithoutLocationsHelp": "ควรเพิ่มที่ตั้งก่อนนำทรัพย์สินเข้าใช้งาน"
+    "summaryWithoutLocationsHelp": "ควรเพิ่มที่ตั้งก่อนนำทรัพย์สินเข้าใช้งาน",
+    "saveNeedsCompany": "ยังไม่มีบริษัท ต้องเพิ่มบริษัทก่อนจึงจะบันทึกสาขาได้"
   },
   "department": {
     "title": "แผนก",
@@ -1426,7 +1427,8 @@
     "summaryLeaf": "ที่ตั้งปลายทาง",
     "summaryLeafHelp": "เหมาะกับจุดติดตั้ง/จุดเก็บจริง",
     "summaryRootCard": "ที่ตั้งหลัก",
-    "summaryRootHelp": "ระดับบนสุดของโครงสร้างที่ตั้ง"
+    "summaryRootHelp": "ระดับบนสุดของโครงสร้างที่ตั้ง",
+    "saveNeedsBranch": "ยังไม่มีสาขา ต้องเพิ่มสาขาก่อนจึงจะบันทึกที่ตั้งได้"
   },
   "category": {
     "title": "หมวดหมู่ทรัพย์สิน",

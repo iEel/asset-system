@@ -90,3 +90,56 @@ test("brand, company and department: the browser's check is off, validate() rest
     assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+if \(field in FIELD_IDS\) fieldErrors\.clear\(field as \w+Field\)/, name)
   }
 })
+
+test("branch and location: errors under the field, and the no-company or no-branch gate keeps focus and says why beside the button (v-track M2)", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  const forms = [
+    {
+      path: `${C}master-data/branch-form.tsx`,
+      ids: { code: "branch-code", name: "branch-name", companyId: "branch-company", contactPerson: "branch-contact-person", address: "branch-address" },
+      rules: [
+        'check("code", required(values.code) ?? maxLength(values.code, 20))',
+        'check("name", required(values.name) ?? maxLength(values.name, 200))',
+        'check("companyId", required(values.companyId))',
+        'check("contactPerson", maxLength(values.contactPerson, 200))',
+        'check("address", maxLength(values.address, 500))',
+      ],
+      gate: "needsCompany",
+      options: "companies",
+      reason: "branch-save-reason",
+      message: ["branch", "saveNeedsCompany"],
+    },
+    {
+      path: `${C}master-data/location-form.tsx`,
+      ids: { code: "location-code", name: "location-name", branchId: "location-branch", locationType: "location-type", parentId: "location-parent", description: "location-description" },
+      rules: [
+        'check("code", required(values.code) ?? maxLength(values.code, 50))',
+        'check("name", required(values.name) ?? maxLength(values.name, 200))',
+        'check("branchId", required(values.branchId))',
+        'check("locationType", required(values.locationType))',
+        'check("description", maxLength(values.description, 500))',
+      ],
+      gate: "needsBranch",
+      options: "branches",
+      reason: "location-save-reason",
+      message: ["location", "saveNeedsBranch"],
+    },
+  ] as const
+  for (const form of forms) {
+    const source = read(form.path)
+    assertMigratedForm(source, { ids: form.ids })
+    const rules = validateBody(source)
+    for (const rule of form.rules) assert.ok(rules.includes(rule), `${form.path}: ${rule}`)
+    // A prerequisite, not a field (spec §4.4): the gate stays, the reason shows next to the button, and the button stays
+    // focusable (aria-disabled, tied to the reason) instead of disabled.
+    assert.match(source, new RegExp(`const ${form.gate} = ${form.options}\\.length === 0\\n`))
+    assert.match(source, new RegExp(`event\\.preventDefault\\(\\)\\n\\s+if \\(${form.gate}\\) return\\n`))
+    assert.ok(source.includes(`{${form.gate} ? <p id="${form.reason}" className="basis-full text-meta text-muted-foreground sm:mr-auto sm:basis-auto sm:self-center">{t("${form.message[1]}")}</p> : null}`), form.reason)
+    assert.ok(source.includes(`<Button type="submit" busy={saving} aria-disabled={${form.gate} || undefined} aria-describedby={${form.gate} ? "${form.reason}" : undefined}>`), `${form.path}: the gated button`)
+    assert.match(source, /<div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-border pt-5">/)
+    assert.doesNotMatch(source, /(?<![\w-])disabled=\{/, "no disabled attribute")
+    assert.equal(typeof th[form.message[0]][form.message[1]], "string", `th ${form.message.join(".")}`)
+    assert.equal(typeof en[form.message[0]][form.message[1]], "string", `en ${form.message.join(".")}`)
+  }
+})
