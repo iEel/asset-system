@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
-import { readdirSync, statSync } from "node:fs"
+import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 import test from "node:test"
 import { getMobileShellMode } from "../src/lib/mobile-field-navigation.ts"
+import { exemptProblems, phase3Rows, type ExemptList } from "./helpers/guard-exempt.ts"
 import {
-  budgetOverruns,
   countByFile,
   countMatchesByFile,
   findJsxElements,
@@ -15,113 +15,15 @@ import {
   readSourceFiles,
 } from "./helpers/source-files.ts"
 
-// Phase 2C guards (spec 2C §9, rulings I26 and §10.4 table C). Budgets start at their 5ffee76 values and only go down:
-// the commit that migrates a file lowers that file's numbers (deleting rows that reach 0) and adds the file to
-// MIGRATED_FILES (spec §9.9). The GF4, GF6, GF8, GB2 and GB3 checks run on migrated files only.
-// Phase 2D widens every guard to all of src and sets the budgets to {}.
+// The phase 2C form guards (spec 2C §9), locked by plan 2D-5 (spec 2D §5.1, §5.2, §5.5, D1, D13). Every rule reads all
+// of src. A rule that lets a file keep a site counts its sites per file: that file is an owner (a shared part that must
+// write the markup itself, OWNERS) or a row of the rule's EXEMPT list with its exact count, why it stays, the ruling that
+// keeps it and its kind, "permanent" or "phase 3" (the last test lists those); every other file counts 0. A count that
+// drops fails too: lower or delete the row in the commit that moves the site. A new site uses the shared part, never a
+// new row. Two lists are not budgets: CONSTRAINT_FLOORS only protect, and STAR_ONLY's three stars wait for the V track.
 const sources = readSourceFiles("src")
 const C = "src/components/"
-
-// The files of 2C by batch (spec §8.6, §8.9), relative to src/components/: the 66 of the spec less the two mobile
-// action bars that batch 5 deleted (ActionBar replaced them).
-const BATCH_FILES: Record<string, readonly string[]> = {
-  "1a": ["maintenance/maintenance-plan-form.tsx", "maintenance/repair-record-form.tsx", "maintenance/repair-record-actions.tsx", "maintenance/maintenance-attachments.tsx"],
-  "1b": ["asset-operations/checkin-form.tsx", "asset-operations/checkout-form.tsx", "asset-operations/transfer-form.tsx", "asset-operations/bulk-move-form.tsx", "asset-operations/signature-pad.tsx", "ui/operation-review-dialog.tsx"],
-  "1c": ["disposal/disposal-request-form.tsx", "disposal/disposal-batch-form.tsx", "disposal/disposal-execution-button.tsx", "disposal/disposal-asset-picker.tsx", "disposal/disposal-decision-button.tsx"],
-  "1d": ["audit/audit-scan-check-form.tsx", "audit/audit-finding-review-actions.tsx", "audit/audit-mark-not-found-button.tsx", "audit/audit-scan-component-missing-dialog.tsx"],
-  "1g": ["master-data/asset-model-form.tsx"],
-  "1e": ["assets/asset-form.tsx", "assets/asset-batch-form.tsx", "assets/asset-component-manager.tsx", "assets/asset-attachments.tsx"],
-  "1f": ["admin/system-settings-form.tsx", "admin/depreciation-policy-builder.tsx"],
-  "2": ["master-data/branch-form.tsx", "master-data/brand-form.tsx", "master-data/category-form.tsx", "master-data/company-form.tsx", "master-data/department-form.tsx", "master-data/employee-form.tsx", "master-data/location-form.tsx", "master-data/supplier-form.tsx"],
-  "3": ["disposal/disposal-bulk-approval.tsx", "disposal/disposal-bulk-execution.tsx", "audit/audit-round-form.tsx", "audit/audit-round-cancel-button.tsx", "audit/audit-findings-batch-actions.tsx", "audit/audit-scan-room-picker.tsx", "audit/audit-scan-check-panel.tsx", "maintenance/maintenance-plan-state-actions.tsx", "ui/confirm-text-dialog.tsx"],
-  "4": ["admin/admin-user-form.tsx", "admin/role-permission-form.tsx", "admin/IntegrationClientManager.tsx", "admin/asset-state-review-dialog.tsx", "admin/data-quality-rule-form.tsx", "assets/asset-label-batch-tool.tsx", "assets/asset-label-print.tsx", "assets/asset-scan-search-tool.tsx", "assets/asset-status-correction-button.tsx", "assets/asset-register-table.tsx", "assets/asset-import-preview-panel.tsx", "assets/asset-evidence-drawer.tsx", "assets/asset-create-workspace.tsx", "asset-operations/transaction-cancel-dialog.tsx", "auth/login-form.tsx", "reports/report-preset-controls.tsx", "notifications/notification-center-actions.tsx", "ui/activity-drawer.tsx"],
-  "5": ["disposal/disposal-workflow-stepper.tsx", "ui/confirm-dialog.tsx", "ui/alert-dialog.tsx"],
-}
-// Primitives 2C creates: every guard applies to them from the first day.
-const NEW_2C_FILES = ["ui/segmented.tsx", "ui/sticky-form-footer.tsx", "ui/form-section.tsx", "ui/choice-card.tsx", "ui/file-queue-list.tsx", "ui/steps.tsx", "ui/action-bar.tsx"].map((path) => C + path)
-// Files already migrated. The commit that migrates a file adds its line here; never remove one.
-const MIGRATED_FILES: string[] = [
-  // one line per migrated file, in commit order
-  `${C}maintenance/maintenance-plan-form.tsx`,
-  `${C}maintenance/repair-record-form.tsx`,
-  `${C}maintenance/repair-record-actions.tsx`,
-  `${C}maintenance/maintenance-attachments.tsx`,
-  `${C}asset-operations/checkin-form.tsx`,
-  `${C}asset-operations/checkout-form.tsx`,
-  `${C}asset-operations/transfer-form.tsx`,
-  `${C}asset-operations/bulk-move-form.tsx`,
-  `${C}asset-operations/signature-pad.tsx`,
-  `${C}ui/operation-review-dialog.tsx`,
-  `${C}disposal/disposal-request-form.tsx`,
-  `${C}disposal/disposal-batch-form.tsx`,
-  `${C}disposal/disposal-execution-button.tsx`,
-  `${C}disposal/disposal-asset-picker.tsx`,
-  `${C}disposal/disposal-decision-button.tsx`,
-  `${C}audit/audit-scan-check-form.tsx`,
-  `${C}audit/audit-finding-review-actions.tsx`,
-  `${C}audit/audit-mark-not-found-button.tsx`,
-  `${C}audit/audit-scan-component-missing-dialog.tsx`,
-  `${C}master-data/asset-model-form.tsx`,
-  `${C}assets/asset-form.tsx`,
-  `${C}assets/asset-batch-form.tsx`,
-  `${C}assets/asset-component-manager.tsx`,
-  `${C}assets/asset-attachments.tsx`,
-  `${C}admin/system-settings-form.tsx`,
-  `${C}admin/depreciation-policy-builder.tsx`,
-  `${C}master-data/branch-form.tsx`,
-  `${C}master-data/brand-form.tsx`,
-  `${C}master-data/category-form.tsx`,
-  `${C}master-data/company-form.tsx`,
-  `${C}master-data/department-form.tsx`,
-  `${C}master-data/employee-form.tsx`,
-  `${C}master-data/location-form.tsx`,
-  `${C}master-data/supplier-form.tsx`,
-  `${C}ui/confirm-text-dialog.tsx`,
-  `${C}disposal/disposal-bulk-approval.tsx`,
-  `${C}disposal/disposal-bulk-execution.tsx`,
-  `${C}audit/audit-round-form.tsx`,
-  `${C}audit/audit-round-cancel-button.tsx`,
-  `${C}audit/audit-findings-batch-actions.tsx`,
-  `${C}audit/audit-scan-room-picker.tsx`,
-  `${C}audit/audit-scan-check-panel.tsx`,
-  `${C}maintenance/maintenance-plan-state-actions.tsx`,
-  `${C}admin/admin-user-form.tsx`,
-  `${C}admin/role-permission-form.tsx`,
-  `${C}admin/IntegrationClientManager.tsx`,
-  `${C}admin/asset-state-review-dialog.tsx`,
-  `${C}admin/data-quality-rule-form.tsx`,
-  `${C}notifications/notification-center-actions.tsx`,
-  `${C}reports/report-preset-controls.tsx`,
-  `${C}auth/login-form.tsx`,
-  `${C}assets/asset-label-batch-tool.tsx`,
-  `${C}assets/asset-label-print.tsx`,
-  `${C}assets/asset-scan-search-tool.tsx`,
-  `${C}assets/asset-status-correction-button.tsx`,
-  `${C}assets/asset-evidence-drawer.tsx`,
-  `${C}ui/activity-drawer.tsx`,
-  `${C}asset-operations/transaction-cancel-dialog.tsx`,
-  `${C}assets/asset-create-workspace.tsx`,
-  `${C}assets/asset-register-table.tsx`,
-  `${C}assets/asset-import-preview-panel.tsx`,
-  `${C}disposal/disposal-workflow-stepper.tsx`,
-  `${C}ui/alert-dialog.tsx`,
-  `${C}ui/confirm-dialog.tsx`,
-]
-const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
-const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
-const notOwned = (path: string) => !owned.has(path)
-const migratedSources = () => sources.filter((file) => migrated.has(file.path))
 const read = (path: string) => sources.find((file) => file.path === path)?.source ?? ""
-
-// Same message as assertWithinBudget in visual-foundation-guards.test.ts, but over counts taken already (so a JSX count works too).
-function assertWithinBudget(counts: Record<string, number>, budget: Record<string, number>, what: string) {
-  const total = Object.values(counts).reduce((sum, count) => sum + count, 0)
-  assert.deepEqual(
-    budgetOverruns(counts, budget),
-    [],
-    `${what}: ${total} in ${Object.keys(counts).length} files. Lower a number in the task that removes a site; never raise one. Phase 2D widens every guard to all of src and sets the budgets to {}.`,
-  )
-}
 
 const NON_FIELD_INPUT = /^(?:checkbox|radio|hidden|file)$/
 const CONTROL_TAGS = ["Input", "NativeSelect", "Textarea", "SearchField", "ScannerTextInput", "FileDropzone", "input", "select", "textarea", "Select", "SelectField", "QueueSelect"]
@@ -146,7 +48,8 @@ const LITERAL_CLOSE_LABEL = /closeLabel(?:Prop)?\s*=\s*"|closeLabel=\{["`]|(?:ar
 const CLOSE_IS_CANCEL = /closeLabel=\{[^}]*\bcancel\b[^}]*\}/g
 const OLD_FIELD_MARKUP = /ml-1 text-danger">\*|mb-1\.5 block text-sm font-medium text-foreground|<legend className="mb-2 text-sm font-medium text-foreground"|\b(?:h-4 w-4|h-5 w-5|h-3\.5 w-3\.5) rounded border-border\b|\baccent-primary\b/g
 const OLD_HELPER_MARKUP = /\bfunction (?:FormStep|WizardStep|Choice|AssetStateFieldLabel)\b|aria-label=\{t\("batchAssetTagHelp"\)\}/g
-// The star that the server enforces while the control has no required (spec §4.3 F5), keyed by the label expression, not a line number.
+// The stars that the server enforces while the control has no required (spec 2C §4.3 F5), keyed by the label expression,
+// not a line number. The V track adds required and then removes the entry (the meta-test fails while one is stale).
 const STAR_ONLY = new Set([`${C}asset-operations/checkin-form.tsx|t("returnDate")`, `${C}assets/asset-form.tsx|t("licenseTotalSeats")`, `${C}assets/asset-form.tsx|t("componentRole")`])
 // Files that render StickyFormFooter and the routes that show them. Every route must be a focus route (no bottom navigation).
 const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
@@ -154,78 +57,44 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}admin/system-settings-form.tsx`]: ["/th/admin/settings"],
 }
 
-// ---- Budgets at 5ffee76 (spec §9.4). "→ n" = what stays after the file's own task, and why.
+// ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling
+// never holds a line number (lines move).
 
 // GF1 `function Field(` per file
-const LOCAL_FIELD: Record<string, number> = {
-  // 1a
-  // 1b
-  // 1c
-  // 1g
-  // 1e
-  // 1f
-  // 2
-  // 3
-  // 4
-}
+const LOCAL_FIELD: ExemptList = {}
 
 // GF2 hand-written <input> (not checkbox/radio/hidden/file), <select> and <textarea>
-const RAW_FIELDS: Record<string, number> = {
-  // 1a
-  // 1b
-  // 1c
-  // 1d
-  // 1g
-  // 1e
-  // 1f
-  // 2
-  // 3
-  [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :88 stays (O20)
-  // 4
-  [`${C}assets/asset-label-print.tsx`]: 2, // the print toolbar's boxed fields :221, :233 (K21)
+const RAW_FIELDS: ExemptList = {
+  [`${C}assets/asset-label-print.tsx`]: { count: 2, kind: "permanent", why: "the print toolbar's two boxed fields, the print reason and the tape size: the label box carries the field look", ruling: "2C K21" },
+  [`${C}audit/audit-scan-room-picker.tsx`]: { count: 1, kind: "permanent", why: "the room search at the top of the room sheet", ruling: "2C O20" },
+  [`${C}layout/global-search.tsx`]: { count: 1, kind: "phase 3", why: "the topbar search combobox", ruling: "2D D2" },
 }
 
 // GF3 hand-written field class strings
-const FIELD_CLASS_STRINGS: Record<string, number> = {
-  // 1a
-  // 1b
-  // 1c
-  // 1d
-  // 1g
-  // 1e
-  // 1f
-  // 2
-  // 3
-  // 4
+const FIELD_CLASS_STRINGS: ExemptList = {
+  [`${C}layout/global-search.tsx`]: { count: 1, kind: "phase 3", why: "the topbar search combobox's own field classes", ruling: "2D D2" },
 }
 
-// GF5 floors per file: [required, maxLength, minLength] on CONSTRAINT_TAGS. A floor never drops.
+// GF5 floors per file: [required, maxLength, minLength] on CONSTRAINT_TAGS. Every file of src that has one of them holds
+// a row (a new form adds its row), and a floor never drops.
 const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
-  // 1a
   [`${C}maintenance/maintenance-plan-form.tsx`]: [4, 2, 0],
   [`${C}maintenance/repair-record-form.tsx`]: [2, 3, 0],
   [`${C}maintenance/repair-record-actions.tsx`]: [3, 6, 0],
-  // 1b
   [`${C}asset-operations/checkin-form.tsx`]: [4, 0, 0],
   [`${C}asset-operations/checkout-form.tsx`]: [6, 0, 0],
   [`${C}asset-operations/transfer-form.tsx`]: [1, 1, 0],
   [`${C}asset-operations/bulk-move-form.tsx`]: [1, 1, 0],
-  // 1c
   [`${C}disposal/disposal-request-form.tsx`]: [3, 1, 1],
   [`${C}disposal/disposal-batch-form.tsx`]: [1, 1, 1],
   [`${C}disposal/disposal-execution-button.tsx`]: [8, 4, 1],
   [`${C}disposal/disposal-decision-button.tsx`]: [3, 1, 0],
-  // 1d
   [`${C}audit/audit-finding-review-actions.tsx`]: [1, 3, 0],
-  // 1g
   [`${C}master-data/asset-model-form.tsx`]: [3, 1, 0],
-  // 1e
   [`${C}assets/asset-form.tsx`]: [12, 10, 0],
   [`${C}assets/asset-batch-form.tsx`]: [10, 5, 0],
   [`${C}assets/asset-component-manager.tsx`]: [0, 4, 0],
-  // 1f
   [`${C}admin/system-settings-form.tsx`]: [0, 1, 0],
-  // 2
   [`${C}master-data/branch-form.tsx`]: [3, 4, 0],
   [`${C}master-data/brand-form.tsx`]: [1, 1, 0],
   [`${C}master-data/category-form.tsx`]: [4, 7, 0],
@@ -234,12 +103,10 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}master-data/employee-form.tsx`]: [6, 5, 0],
   [`${C}master-data/location-form.tsx`]: [4, 3, 0],
   [`${C}master-data/supplier-form.tsx`]: [2, 6, 0],
-  // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: [0, 1, 0],
   [`${C}disposal/disposal-bulk-execution.tsx`]: [5, 2, 1],
   [`${C}audit/audit-round-form.tsx`]: [7, 1, 0],
   [`${C}audit/audit-round-cancel-button.tsx`]: [1, 0, 0],
-  // 4
   [`${C}admin/admin-user-form.tsx`]: [3, 4, 1],
   [`${C}admin/role-permission-form.tsx`]: [2, 3, 0],
   [`${C}admin/IntegrationClientManager.tsx`]: [3, 3, 1],
@@ -249,74 +116,66 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: [0, 1, 0],
   [`${C}auth/login-form.tsx`]: [2, 0, 0],
   [`${C}reports/report-preset-controls.tsx`]: [0, 1, 0],
+  // Plan 2D-5 (spec 2D §5.5): the shared scanner input passes maxLength to its Input.
+  [`${C}ui/scanner-text-input.tsx`]: [0, 1, 0],
 }
 
 // GF7 old label span, red star, legend and checkbox markup
-const OLD_MARKUP: Record<string, number> = {
-  // 1a
-  // 1b
-  // 1c
-  // 1d
-  // 1g
-  // 1e
-  // 1f
-  // 2
-  // 3
-  // 4
-}
+const OLD_MARKUP: ExemptList = {}
 
-// GB1 <Loader2 tags (every tag, also icons kept in a variable)
-const LOADER2: Record<string, number> = {
-  // 1a
-  // 1b
-  // 1c
-  [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :67
-  // 1d
-  [`${C}audit/audit-scan-check-form.tsx`]: 1, // the components loading line :297 (T2 audit mobile fix; was the header toggle)
-  // 1g
-  // 1e
-  [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :451
-  // 1f
-  // 2
-  // 3
-  [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :565, :566 in the dialog body (I27)
-  [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :973 (its spinner :976), the status line in the dialog body (I27)
-  // 4
-  [`${C}admin/IntegrationClientManager.tsx`]: 1, // the loading status in the client list head :505 (I27); the rotate button is Button busy since 2D-2
-  [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :317, :442 (I27)
-  [`${C}assets/asset-scan-search-tool.tsx`]: 1, // the status line :147 (I27)
-  [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1, // the loading line :138 in the dialog body (I27)
+// GB1 <Loader2 tags (every tag, also icons kept in a variable). A busy Button brings its own spinner (an owner).
+const LOADER2: ExemptList = {
+  [`${C}admin/IntegrationClientManager.tsx`]: { count: 1, kind: "permanent", why: "the loading status in the client list head", ruling: "2C I27" },
+  [`${C}asset-operations/transaction-cancel-dialog.tsx`]: { count: 1, kind: "permanent", why: "the loading line in the dialog body", ruling: "2C I27" },
+  [`${C}assets/asset-component-manager.tsx`]: { count: 1, kind: "permanent", why: "the searching status line", ruling: "2C I27" },
+  [`${C}assets/asset-label-batch-tool.tsx`]: { count: 2, kind: "permanent", why: "the loading lines of the search results and of the recent queue", ruling: "2C I27" },
+  [`${C}assets/asset-scan-search-tool.tsx`]: { count: 1, kind: "permanent", why: "the loading line of the results", ruling: "2C I27" },
+  [`${C}audit/audit-scan-camera.tsx`]: { count: 1, kind: "permanent", why: "the spinner on the camera box while the camera starts", ruling: "2C I27" },
+  [`${C}audit/audit-scan-check-form.tsx`]: { count: 1, kind: "permanent", why: "the components loading line of the check sheet", ruling: "2C I27" },
+  [`${C}audit/audit-scan-lookup-card.tsx`]: { count: 1, kind: "permanent", why: "the register search status line", ruling: "2C I27" },
+  [`${C}disposal/disposal-asset-picker.tsx`]: { count: 1, kind: "permanent", why: "the spinner inside the picker's search field", ruling: "2C I27" },
+  [`${C}disposal/disposal-bulk-approval.tsx`]: { count: 2, kind: "permanent", why: "the preview and commit status lines in the dialog body", ruling: "2C I27" },
+  [`${C}disposal/disposal-bulk-execution.tsx`]: { count: 1, kind: "permanent", why: "BusyLabel, the status line in the dialog body", ruling: "2C I27" },
+  [`${C}layout/global-search.tsx`]: { count: 2, kind: "phase 3", why: "the topbar search: the spinner in its field and its results loading line", ruling: "2D D2" },
+  [`${C}ui/scanner-text-input.tsx`]: { count: 4, kind: "permanent", why: "the shared scanner while the camera starts or the torch switches: the start and torch buttons, the line on the camera image and the line under it", ruling: "2C I27" },
 }
 
 // GL3 old helpers: FormStep, WizardStep, Choice, AssetStateFieldLabel and the batch asset tag help label
-const OLD_HELPERS: Record<string, number> = {
-}
+const OLD_HELPERS: ExemptList = {}
 
-// GD4 flex-col-reverse in the 2C files and in ui/ (Task 4 already fixed ui/dialog.tsx DialogFooter and ui/alert-dialog.tsx:94)
-const REVERSE: Record<string, number> = {
-}
+// GD4 flex-col-reverse (K8: the DOM order is the visual order)
+const REVERSE: ExemptList = {}
 
 // GD1 closeLabel={…cancel…}: the X read "Cancel"
-const CLOSE_LABEL_IS_CANCEL: Record<string, number> = {
+const CLOSE_LABEL_IS_CANCEL: ExemptList = {}
+
+// GL1 class strings with both fixed and bottom-. No owner: each of the two shared bars is an exact row (spec 2D §5.3).
+const FIXED_BOTTOM_BARS: ExemptList = {
+  [`${C}assets/asset-register-table.tsx`]: { count: 1, kind: "phase 3", why: "the register's phone bulk-action bar", ruling: "2D D2, 2B R-q" },
+  [`${C}layout/mobile-field-navigation.tsx`]: { count: 1, kind: "permanent", why: "the phone bottom navigation", ruling: "2D §5.3" },
+  [`${C}ui/action-bar.tsx`]: { count: 1, kind: "permanent", why: "the phone ActionBar of the four detail pages", ruling: "2C K23" },
 }
 
-// GL1 class strings with both fixed and bottom-
-const FIXED_BOTTOM_BARS: Record<string, number> = {
-  [`${C}assets/asset-register-table.tsx`]: 1, // :473 the phone bulk-action bar (phase 3, R-q)
-  [`${C}ui/action-bar.tsx`]: 1, // the ActionBar of the four detail pages (batch 5, K23)
+// Every EXEMPT list of this file by rule id (the meta-test and the phase 3 test read them), and the shared parts that own
+// a rule's markup. A rule added later declares `const <NAME>: ExemptList = {` and joins EXEMPT_LISTS in the same commit.
+const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
+  GF1: LOCAL_FIELD,
+  GF2: RAW_FIELDS,
+  GF3: FIELD_CLASS_STRINGS,
+  GF7: OLD_MARKUP,
+  GB1: LOADER2,
+  GD1: CLOSE_LABEL_IS_CANCEL,
+  GD4: REVERSE,
+  GL1: FIXED_BOTTOM_BARS,
+  GL3: OLD_HELPERS,
 }
-
-// GD2 files whose AccessibleDialogs still wait for AccessibleDialogFooter. The commit that migrates a file's dialogs removes its line.
-const PENDING_FOOTER_PARTS = new Set<string>([
-  // 1a
-  // 1b
-  // 1c
-  // 1d
-  // 1e
-  // 1f
-  // 3
-  // 4
-])
+const OWNERS: Readonly<Record<string, readonly string[]>> = {
+  GF1: [`${C}ui/field.tsx`],
+  GF2: [`${C}ui/input.tsx`, `${C}ui/native-select.tsx`, `${C}ui/textarea.tsx`],
+  GF3: [`${C}ui/field-variants.ts`],
+  GB1: [`${C}ui/button.tsx`, `${C}ui/search-field.tsx`],
+}
+const listProblems = (rule: string, counts: Readonly<Record<string, number>>) => exemptProblems(rule, counts, EXEMPT_LISTS[rule], OWNERS[rule])
 
 test("the JSX reader skips arrows, selectors, braces, quoted text and comments", () => {
   const source = [
@@ -350,49 +209,53 @@ test("the JSX reader skips arrows, selectors, braces, quoted text and comments",
   assert.equal(hasJsxAttr("<Input aria-required />", "required"), false)
   assert.equal(findJsxTags("<SelectField required />", ["Select"]).length, 0)
   assert.deepEqual(countByFile([{ path: "src/a.tsx", source: "<input /><input />" }, { path: "src/b.tsx", source: "" }], (file) => findJsxTags(file.source, ["input"]).length), { "src/a.tsx": 2 })
-  assert.deepEqual(budgetOverruns({ "src/a.tsx": 2, "src/b.tsx": 1 }, { "src/a.tsx": 2 }), ["src/b.tsx: 1 > 0"])
 })
 
-test("the guard's own lists name real 2C files", () => {
+test("the guard's own lists name real files, and every EXEMPT row has a count, a kind, a why and a ruling (spec 2D §5.1)", () => {
   const exists = (path: string) => sources.some((file) => file.path === path)
   const problems: string[] = []
-  for (const path of Object.values(BATCH_FILES).flat()) if (!exists(C + path)) problems.push(`BATCH_FILES: ${path} not found`)
-  for (const path of MIGRATED_FILES) if (!owned.has(path)) problems.push(`MIGRATED_FILES: ${path} is not a 2C file`)
-  const ownedKeys = {
-    LOCAL_FIELD,
-    RAW_FIELDS,
-    FIELD_CLASS_STRINGS,
-    CONSTRAINT_FLOORS,
-    OLD_MARKUP,
-    LOADER2,
-    OLD_HELPERS,
-    CLOSE_LABEL_IS_CANCEL,
-    FIXED_BOTTOM_BARS,
-    STICKY_FOOTER_ROUTES,
+  for (const [rule, list] of Object.entries(EXEMPT_LISTS)) {
+    // Held against its own counts, a list shows only its format problems: count, kind, why, ruling, an owner as a row.
+    problems.push(...exemptProblems(rule, Object.fromEntries(Object.entries(list).map(([path, entry]) => [path, entry.count])), list, OWNERS[rule]))
+    for (const path of Object.keys(list)) if (!exists(path)) problems.push(`${rule}: EXEMPT ${path} not found`)
   }
-  for (const [name, budget] of Object.entries(ownedKeys)) {
-    for (const path of Object.keys(budget)) if (!owned.has(path)) problems.push(`${name}: ${path} is not a 2C file`)
+  for (const [rule, owners] of Object.entries(OWNERS)) {
+    if (!Object.hasOwn(EXEMPT_LISTS, rule)) problems.push(`OWNERS: ${rule} has no EXEMPT list`)
+    for (const path of owners) if (!exists(path)) problems.push(`${rule}: owner ${path} not found`)
   }
-  for (const path of Object.keys(REVERSE)) if (!owned.has(path) && !path.startsWith(`${C}ui/`)) problems.push(`REVERSE: ${path} is outside the 2C files and ui/`)
-  for (const path of PENDING_FOOTER_PARTS) if (!owned.has(path)) problems.push(`PENDING_FOOTER_PARTS: ${path} is not a 2C file`)
+  // Every list belongs to a test of this file, and every `const …: ExemptList =` of the file is in EXEMPT_LISTS.
+  const self = readFileSync("tests/form-migration-guards.test.ts", "utf8").replace(/\r\n/g, "\n")
+  const ruleIds = new Set([...self.matchAll(/^test\("(\S+) /gm)].map((match) => match[1]))
+  for (const rule of Object.keys(EXEMPT_LISTS)) if (!ruleIds.has(rule)) problems.push(`EXEMPT_LISTS: no test is named ${rule}`)
+  const declared = [...self.matchAll(/^const (\w+): ExemptList = /gm)].map((match) => match[1])
+  if (declared.length !== Object.keys(EXEMPT_LISTS).length) problems.push(`EXEMPT_LISTS holds ${Object.keys(EXEMPT_LISTS).length} lists; the file declares ${declared.join(", ")}`)
+  for (const path of Object.keys(CONSTRAINT_FLOORS)) if (!exists(path)) problems.push(`CONSTRAINT_FLOORS: ${path} not found`)
+  for (const path of Object.keys(STICKY_FOOTER_ROUTES)) if (!exists(path)) problems.push(`STICKY_FOOTER_ROUTES: ${path} not found`)
+  // A STAR_ONLY entry is still a Field with the star whose control has no native required; the V track removes it.
+  for (const key of STAR_ONLY) {
+    const [path, label] = [key.slice(0, key.indexOf("|")), key.slice(key.indexOf("|") + 1)]
+    const field = findJsxElements(read(path), "Field").find((element) => jsxAttrValue(element.text, "label") === label && hasJsxAttr(element.text, "required"))
+    const control = findJsxTags(field?.children ?? "", CONTROL_TAGS).find((tag) => !/^(?:checkbox|radio|hidden)$/.test(jsxAttrValue(tag.text, "type") ?? ""))
+    if (!control || hasJsxAttr(control.text, "required")) problems.push(`STAR_ONLY: ${key} is not a star without native required any more; remove it`)
+  }
   assert.deepEqual(problems, [])
 })
 
-test("GF1 no 2C file keeps its own Field component", () => {
-  assertWithinBudget(countMatchesByFile(sources, /\bfunction Field\s*\(/g, notOwned), LOCAL_FIELD, "GF1 local function Field(")
+test("GF1 no file keeps its own Field component", () => {
+  assert.deepEqual(listProblems("GF1", countMatchesByFile(sources, /\bfunction Field\s*\(/g)), [])
 })
 
-test("GF2 hand-written inputs, selects and textareas do not grow", () => {
-  assertWithinBudget(countByFile(sources, (file) => rawFieldTags(file.source).length, notOwned), RAW_FIELDS, "GF2 hand-written fields")
+test("GF2 hand-written inputs, selects and textareas stay in the shared fields and their EXEMPT rows", () => {
+  assert.deepEqual(listProblems("GF2", countByFile(sources, (file) => rawFieldTags(file.source).length)), [])
 })
 
-test("GF3 hand-written field class strings do not grow", () => {
-  assertWithinBudget(countByFile(sources, (file) => classStringsWhere(file.source, isFieldClassString), notOwned), FIELD_CLASS_STRINGS, "GF3 field class strings")
+test("GF3 hand-written field class strings stay in the shared field classes and their EXEMPT rows", () => {
+  assert.deepEqual(listProblems("GF3", countByFile(sources, (file) => classStringsWhere(file.source, isFieldClassString))), [])
 })
 
 test("GF4 a Field that shows the required star keeps native required on its control (critic risk 5)", () => {
   const problems: string[] = []
-  for (const file of migratedSources()) {
+  for (const file of sources) {
     const vTrack = /\bnoValidate\b/.test(file.source) && /\bvalidate\(/.test(file.source)
     for (const field of findJsxElements(file.source, "Field")) {
       const where = `${file.path}:${field.line}`
@@ -412,11 +275,16 @@ test("GF4 a Field that shows the required star keeps native required on its cont
 
 test("GF5 required, maxLength and minLength never disappear quietly (K4)", () => {
   const lost: string[] = []
-  for (const [path, floor] of Object.entries(CONSTRAINT_FLOORS)) {
-    const tags = findJsxTags(read(path), CONSTRAINT_TAGS)
+  for (const file of sources) {
+    const tags = findJsxTags(file.source, CONSTRAINT_TAGS)
+    const live = CONSTRAINT_ATTRS.map((attr) => tags.filter((tag) => hasJsxAttr(tag.text, attr)).length)
+    const floor = CONSTRAINT_FLOORS[file.path]
+    if (!floor) {
+      if (live.some((count) => count > 0)) lost.push(`${file.path}: [${live.join(", ")}] and no row; add it to CONSTRAINT_FLOORS`)
+      continue
+    }
     CONSTRAINT_ATTRS.forEach((attr, index) => {
-      const count = tags.filter((tag) => hasJsxAttr(tag.text, attr)).length
-      if (count < floor[index]) lost.push(`${path}: ${attr} ${count} < ${floor[index]}`)
+      if (live[index] < floor[index]) lost.push(`${file.path}: ${attr} ${live[index]} < ${floor[index]}`)
     })
   }
   assert.deepEqual(lost, [], "Field only adds aria-required: keep required, maxLength and minLength on the control itself")
@@ -424,7 +292,7 @@ test("GF5 required, maxLength and minLength never disappear quietly (K4)", () =>
 
 test("GF6 money fields open the decimal keypad (K26)", () => {
   const problems: string[] = []
-  for (const file of migratedSources()) {
+  for (const file of sources) {
     for (const tag of findJsxTags(file.source, ["Input", "input"])) {
       if (/\sstep="0\.01"/.test(tag.text) && jsxAttrValue(tag.text, "inputMode") !== "decimal") problems.push(`${file.path}:${tag.line}`)
     }
@@ -432,13 +300,13 @@ test("GF6 money fields open the decimal keypad (K26)", () => {
   assert.deepEqual(problems, [], 'a step="0.01" field needs inputMode="decimal"')
 })
 
-test("GF7 the old label, star, legend and checkbox markup does not grow", () => {
-  assertWithinBudget(countMatchesByFile(sources, OLD_FIELD_MARKUP, notOwned), OLD_MARKUP, "GF7 old field markup")
+test("GF7 the old label, star, legend and checkbox markup does not come back", () => {
+  assert.deepEqual(listProblems("GF7", countMatchesByFile(sources, OLD_FIELD_MARKUP)), [])
 })
 
 test("GF8 a label never wraps something that brings its own label", () => {
   const problems: string[] = []
-  for (const file of migratedSources()) {
+  for (const file of sources) {
     for (const label of findJsxElements(file.source, "label")) {
       const nested = (label.children ?? "").match(/<(Field|FileDropzone|ScannerTextInput|SearchableSelect|label)(?=[\s/>])/)
       if (nested) problems.push(`${file.path}:${label.line}: <label> wraps <${nested[1]}>`)
@@ -447,8 +315,8 @@ test("GF8 a label never wraps something that brings its own label", () => {
   assert.deepEqual(problems, [])
 })
 
-test("GB1 hand-written spinners do not grow", () => {
-  assertWithinBudget(countMatchesByFile(sources, /<Loader2\b/g, notOwned), LOADER2, "GB1 <Loader2")
+test("GB1 hand-written spinners stay in the shared parts and their EXEMPT rows", () => {
+  assert.deepEqual(listProblems("GB1", countMatchesByFile(sources, /<Loader2\b/g)), [])
 })
 
 // Plan 2D-5: over all of src, and in a button too (a hand-placed spinner inside a raw button spins on as well). Busy
@@ -505,21 +373,17 @@ test("GD1 close buttons are named in the reader's language, never Close or Cance
     .filter((path) => !read(path) || /"Close"|>\s*Close\s*</.test(read(path)))
   assert.deepEqual(english, [], 'these dialog primitives are missing or still say "Close"')
   assert.deepEqual(findMatches(sources, LITERAL_CLOSE_LABEL), [], 'take the X label from tCommon("close") or a key')
-  assertWithinBudget(countMatchesByFile(sources, CLOSE_IS_CANCEL), CLOSE_LABEL_IS_CANCEL, "GD1 closeLabel set to a cancel label")
+  assert.deepEqual(listProblems("GD1", countMatchesByFile(sources, CLOSE_IS_CANCEL)), [])
 })
 
-test("GD2 migrated dialogs use the footer part, and the pending list holds only files still waiting", () => {
+test("GD2 every dialog uses the footer part", () => {
   const problems: string[] = []
   for (const file of sources) {
     if (file.path === `${C}ui/accessible-dialog.tsx`) continue
     const dialogs = findJsxTags(file.source, ["AccessibleDialog"]).length
     const footers = findJsxTags(file.source, ["AccessibleDialogFooter"]).length
-    if (PENDING_FOOTER_PARTS.has(file.path)) {
-      if (dialogs === 0) problems.push(`${file.path}: no AccessibleDialog left; remove it from PENDING_FOOTER_PARTS`)
-      if (footers > 0) problems.push(`${file.path}: uses AccessibleDialogFooter now; remove it from PENDING_FOOTER_PARTS`)
-    } else if (footers < dialogs) problems.push(`${file.path}: ${dialogs} AccessibleDialog, ${footers} AccessibleDialogFooter`)
+    if (footers < dialogs) problems.push(`${file.path}: ${dialogs} AccessibleDialog, ${footers} AccessibleDialogFooter`)
   }
-  for (const path of PENDING_FOOTER_PARTS) if (!read(path)) problems.push(`${path}: listed in PENDING_FOOTER_PARTS but not found`)
   assert.deepEqual(problems, [])
 })
 
@@ -551,7 +415,7 @@ test("GD4 the secondary action comes before the primary one, and nothing reverse
     }
   }
   assert.deepEqual(problems, [])
-  assertWithinBudget(countMatchesByFile(sources, /\bflex-col-reverse\b/g, (path) => notOwned(path) && !path.startsWith(`${C}ui/`)), REVERSE, "GD4 flex-col-reverse")
+  assert.deepEqual(listProblems("GD4", countMatchesByFile(sources, /\bflex-col-reverse\b/g)), [])
 })
 
 test("GD5 a dialog that renders inside a form has no form and no submit button of its own (P13)", () => {
@@ -595,7 +459,7 @@ test("GL1 the long-form save bar is a flat sticky bar, used only on focus routes
   }
   assert.deepEqual(problems, [])
   const fixedBottom = (text: string) => /\bfixed\b/.test(text) && /\bbottom-/.test(text)
-  assertWithinBudget(countByFile(sources, (file) => classStringsWhere(file.source, fixedBottom), notOwned), FIXED_BOTTOM_BARS, "GL1 fixed bottom bars")
+  assert.deepEqual(listProblems("GL1", countByFile(sources, (file) => classStringsWhere(file.source, fixedBottom))), [])
 })
 
 // Every route under the dashboard, read from its page.tsx files, with [segments] kept as written (spec 2C section 9.3).
@@ -624,5 +488,16 @@ test("GL2 form routes hide the bottom navigation and list routes keep it (K15)",
 })
 
 test("GL3 the old step, choice and label helpers do not come back", () => {
-  assertWithinBudget(countMatchesByFile(sources, OLD_HELPER_MARKUP, notOwned), OLD_HELPERS, "GL3 old helpers")
+  assert.deepEqual(listProblems("GL3", countMatchesByFile(sources, OLD_HELPER_MARKUP)), [])
+})
+
+test("phase 3: every row the form guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
+  const rows = phase3Rows(EXEMPT_LISTS)
+  assert.deepEqual(rows.map(({ rule, file, count }) => `${rule} ${file}: ${count}`), [
+    "GF2 src/components/layout/global-search.tsx: 1",
+    "GF3 src/components/layout/global-search.tsx: 1",
+    "GB1 src/components/layout/global-search.tsx: 2",
+    "GL1 src/components/assets/asset-register-table.tsx: 1",
+  ])
+  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 5)
 })
