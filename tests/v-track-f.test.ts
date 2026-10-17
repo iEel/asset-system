@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { resolveValidationMessage, validationMessageKey, type MessageLookup } from "../src/lib/field-error-client.ts"
+import { FIELD_FOCUS_MARGIN, fieldScrollTop } from "../src/lib/field-focus.ts"
 import { atLeastOne, email, maxLength, minLength, notBefore, pattern, range, required } from "../src/lib/validation-rules.ts"
 
 // V track plan 1, area F (spec docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md §4, §7): the rule helpers,
@@ -115,4 +116,34 @@ test("every code has a Thai and an English message, with its limits when the for
   assert.equal(resolveValidationMessage("outOfRange", { min: 1, max: 100 }, thLookups), "ต้องอยู่ระหว่าง 1 ถึง 100")
   assert.equal(resolveValidationMessage("outOfRange", { min: 0 }, thLookups), "ต้องไม่น้อยกว่า 0")
   assert.doesNotMatch(read("src/lib/field-error-client.ts"), /from "@\/|"use client"|from "react"|from "next-intl"/)
+})
+
+test("the first wrong field is focused and scrolled clear of the top edge and the sticky save bar (V spec §4.1, §4.2)", () => {
+  // The dashboard scroll area runs from 64 to 864 in the viewport; the save bar covers its last 72px.
+  const view = { scrollTop: 500, viewTop: 64, viewBottom: 864, coverBottom: 72 }
+  assert.equal(FIELD_FOCUS_MARGIN, 24)
+  // In view and clear of both edges: no scroll.
+  assert.equal(fieldScrollTop({ ...view, fieldTop: 300, fieldBottom: 380 }), null)
+  // Above the view: its label lands 24px under the top edge.
+  assert.equal(fieldScrollTop({ ...view, fieldTop: 20, fieldBottom: 100 }), 500 + 20 - (64 + 24))
+  // Behind the save bar: the least scroll that puts its error line 24px above the bar.
+  assert.equal(fieldScrollTop({ ...view, fieldTop: 740, fieldBottom: 820 }), 500 + 820 - (864 - 72 - 24))
+  // Below the view: the same.
+  assert.equal(fieldScrollTop({ ...view, fieldTop: 1400, fieldBottom: 1480 }), 500 + 1480 - (864 - 72 - 24))
+  // Taller than the room left: its top wins, so the label and the start of the control show.
+  assert.equal(fieldScrollTop({ ...view, fieldTop: 900, fieldBottom: 1900 }), 500 + 900 - (64 + 24))
+  // Never above the start of the page.
+  assert.equal(fieldScrollTop({ ...view, scrollTop: 10, fieldTop: 30, fieldBottom: 90 }), 0)
+  const focus = read("src/lib/field-focus.ts")
+  // The DOM half: the dashboard scroll area, the save bar, the label and the error line count; a closed <details> opens;
+  // a group (fieldset) focuses its first control; a dialog or a sheet keeps the browser's own scroll.
+  assert.match(focus, /closest<HTMLElement>\("\[data-dashboard-main\]"\)/)
+  assert.match(focus, /querySelector<HTMLElement>\('\[data-slot="sticky-form-footer"\]'\)/)
+  assert.match(focus, /label\[for="\$\{CSS\.escape\(control\.id\)\}"\]/)
+  assert.match(focus, /getElementById\(`\$\{control\.id\}-error`\)/)
+  assert.match(focus, /node\.tagName === "DETAILS"/)
+  assert.match(focus, /behavior: "auto"/)
+  assert.match(focus, /export function focusField\(target: HTMLElement\): HTMLElement \| null/)
+  assert.match(focus, /export function waitForElement\(id: string, frames = 30\): Promise<HTMLElement \| null>/)
+  assert.doesNotMatch(focus, /from "@\/|"use client"|from "react"|behavior: "smooth"/)
 })
