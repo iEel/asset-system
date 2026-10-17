@@ -310,6 +310,43 @@ test("no emoji in source or messages: icons come from lucide and languages are n
   assert.deepEqual(findMatches([...sources, ...messages], /\p{Emoji_Presentation}|\uFE0F/gu), [])
 })
 
+// The five new guards of spec 2D §5.4 (D14), N1–N5 for its items 1–5. Each reads all of src with no budget: an EXEMPT
+// list in the format above and, where a shared part must draw the thing itself, an OWNERS list of files (§5.2) that may
+// count anything and never hold a row.
+// N1: colors come from the tokens of src/app/globals.css. Raw is a Tailwind palette color (with or without /NN), white or
+// black, or a color value written into a class (bg-[#…], shadow-[…rgba(…)…]) or into a style object. White ink on a
+// solid fill is its -foreground token (the status ones only inside src/components/ui, tests/ui-overlay-guards.test.ts).
+// Page metadata, the web manifest, print CSS, canvas strokes and the PDF styles are not class names and stay outside.
+const RAW_COLOR = new RegExp(
+  [
+    String.raw`(?<![\w-])(?:[\w\-\[\]=&\/.]+:)*(?:bg|text|border(?:-[xytrblse])?|ring(?:-offset)?|outline|divide|fill|stroke|from|via|to|decoration|shadow|accent|caret|placeholder)-(?:(?:slate|gray|zinc|neutral|stone|mauve|olive|mist|taupe|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}|white|black)(?:\/\d+)?(?![\w-])`,
+    String.raw`(?<![\w-])(?:[\w\-\[\]=&\/.]+:)*[a-z][\w-]*-\[[^\]\s"'\x60]*(?:#[\da-fA-F]{3,8}|(?:rgba?|hsla?|oklch|oklab)\()[^\]\s"'\x60]*\]`,
+    String.raw`style=\{\{[^}]*?(?:#[\da-fA-F]{3,8}\b|(?:rgba?|hsla?|oklch|oklab)\()`,
+  ].join("|"),
+  "g",
+)
+// Paper and imagery keep their own colors (spec 2D §5.3, plan 2D-4 R17): the A4 document, the label sheet and the
+// signature canvas are white paper; the camera controls and scan frames sit on the camera image; a photo or a PDF page
+// shows on its own stage. The bell's count dot is the one white ink outside them (plan 2D-5 NG-R2).
+const RAW_COLOR_EXEMPT: ExemptList = {
+  "src/components/asset-operations/operation-document-print.tsx": { count: 19, kind: "permanent", why: "the A4 paper: slate ink and lines on white, and the red void watermark", ruling: "2D §5.3, 2D-4 R17" },
+  "src/components/asset-operations/signature-pad.tsx": { count: 1, kind: "permanent", why: "the signature canvas is white paper, and the signature prints", ruling: "2D-4 R17" },
+  "src/components/assets/asset-label-print.tsx": { count: 12, kind: "permanent", why: "the label sheet prints black on white at its physical size", ruling: "2D §5.3, 2A §9.5" },
+  "src/components/audit/audit-scan-camera.tsx": { count: 12, kind: "permanent", why: "the zoom, torch and stop controls on the camera image: a dark fill with white ink", ruling: "2D §5.3, 2D-4 R17" },
+  "src/components/audit/audit-scan-panels.tsx": { count: 5, kind: "permanent", why: "the scan frame on the camera image: its dim surround and white corners", ruling: "2D §5.3, 2D-4 R17" },
+  "src/components/layout/topbar.tsx": { count: 1, kind: "permanent", why: "the bell's unread count is white on the solid danger dot; a status -foreground token stays inside src/components/ui", ruling: "2A §9.8 #11, 2D-5 NG-R2" },
+  "src/components/ui/attachment-preview-dialog.tsx": { count: 2, kind: "permanent", why: "the preview stage: black around a photo, white paper under a PDF page", ruling: "2D §5.3, 2D-5 NG-R2" },
+  "src/components/ui/scanner-text-input.tsx": { count: 22, kind: "permanent", why: "the zoom and torch controls and the QR and serial scan frames on the camera image", ruling: "2D §5.3, 2D-4 R17" },
+}
+
+test("N1 colors come from the tokens, outside the paper and the camera imagery (spec 2D §5.4 item 1)", () => {
+  const count = (source: string) => countMatchesByFile([{ path: "src/x.tsx", source }], RAW_COLOR)["src/x.tsx"] ?? 0
+  assert.equal(count('"text-slate-950 hover:bg-white/15 print:bg-white text-red-600/10 border-t-black bg-[#fff] shadow-[0_0_8px_rgba(0,0,0,0.5)] fill-taupe-200"'), 8)
+  assert.equal(count('<div style={{ boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.42)" }} /><div style={{ width }} />'), 1)
+  assert.equal(count('"bg-surface text-primary-foreground text-danger bg-transparent whitespace-nowrap slate-950 bg-[var(--canvas)] shadow-[inset_0_-2px_0_var(--primary)] context-white"'), 0)
+  assert.deepEqual(exemptProblems("N1", countMatchesByFile(sources, RAW_COLOR), RAW_COLOR_EXEMPT), [])
+})
+
 // Every EXEMPT list of this file, by rule (spec 2D §5.1), last in the file. Each guard file sums its own phase 3 rows:
 // a test file that imports another one runs that file's tests a second time.
 const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
@@ -319,6 +356,7 @@ const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   R3: SMALL_TEXT_EXEMPT,
   "Thai leading": LEADING_4_EXEMPT,
   "mockup sizes": MOCKUP_TYPE_PX_EXEMPT,
+  N1: RAW_COLOR_EXEMPT,
 }
 
 test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
