@@ -114,8 +114,10 @@ export function SignaturePad({
         <div id={labelId} className="text-sm font-medium text-foreground">{label}</div>
         <p id={helperId} className="mt-1 text-meta text-faint-foreground">{helper}</p>
       </div>
+      {/* The canvas is the forced-light scope, white paper on a dark page; the group around it follows the theme (dark mode P-R4). */}
       <canvas
         ref={canvasRef}
+        data-theme="light"
         onPointerDown={startDrawing}
         onPointerMove={draw}
         onPointerUp={stopDrawing}

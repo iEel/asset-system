@@ -96,3 +96,40 @@ test("the label sheet and the settings label sample are forced-light scopes, so 
   const scope = css.slice(css.indexOf('[data-theme="light"] {'))
   assert.match(scope.slice(0, scope.indexOf("}")), /--surface: var\(--card\);/)
 })
+
+// The forced-light scope sits on paper only (spec §4.4): the A4 sheet, the label sheet, the settings label sample and
+// the signature canvas. No part forces dark; the attribute on <html> is the root layout's expression, not a literal.
+const LIGHT_SCOPES: Record<string, number> = {
+  [`${C}admin/system-settings-form.tsx`]: 1,
+  [`${C}asset-operations/operation-document-print.tsx`]: 1,
+  [`${C}asset-operations/signature-pad.tsx`]: 1,
+  [`${C}assets/asset-label-print.tsx`]: 1,
+}
+
+test("the signature canvas is a forced-light scope, and the scope sits on paper only (dark mode P-R4, P-R5)", () => {
+  const source = read(`${C}asset-operations/signature-pad.tsx`)
+  assert.match(source, /<canvas\n\s+ref=\{canvasRef\}\n\s+data-theme="light"\n/)
+  // The PNG it exports does not change: a white fill, the same stroke, cleared to white.
+  assert.match(source, /context\.strokeStyle = "#0f172a"/)
+  assert.equal(source.match(/context\.fillStyle = "#ffffff"/g)?.length, 2)
+  assert.match(source, /onChange\(canvas\.toDataURL\("image\/png"\)\)/)
+  // The group around it (its label, helper line and clear button) follows the theme.
+  assert.match(source, /<div role="group" aria-labelledby=\{labelId\} aria-describedby=\{helperId\} className="rounded-md border border-border bg-background p-3">/)
+  const counts = Object.fromEntries(
+    sources.map((file) => [file.path, file.source.match(/\bdata-theme="light"/g)?.length ?? 0] as const).filter(([, count]) => count > 0),
+  )
+  assert.deepEqual(counts, LIGHT_SCOPES)
+  // White paper always carries the scope, so tokens drawn on it stay light (the void banner's case, Review Focus 4). The
+  // other solid whites keep their own colors: the camera controls and the preview's white page under a PDF (P-R8).
+  const solidWhite = sources.filter((file) => /(?<![\w:-])bg-white(?![\w/-])/.test(file.source)).map((file) => file.path)
+  assert.deepEqual(solidWhite.sort(), [
+    `${C}asset-operations/operation-document-print.tsx`,
+    `${C}asset-operations/signature-pad.tsx`,
+    `${C}assets/asset-label-print.tsx`,
+    `${C}audit/audit-scan-camera.tsx`,
+    `${C}ui/attachment-preview-dialog.tsx`,
+    `${C}ui/scanner-text-input.tsx`,
+  ])
+  // No part forces dark: the only literal is the dark block's selector in the CSS reader (Task 1, T1).
+  assert.deepEqual(sources.filter((file) => /\bdata-theme="dark"/.test(file.source)).map((file) => file.path), ["src/lib/color-contrast.ts"])
+})
