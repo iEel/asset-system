@@ -211,3 +211,32 @@ test("supplier: on the shared hook, codes and messages like the other forms, wit
     assert.match(read(`${C}master-data/${name}-form.tsx`), /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/, name)
   }
 })
+
+test("category: errors under the field, also on each custom field and photo checklist row, keyed like the server's dotted paths (v-track M5)", () => {
+  const source = read(`${C}master-data/category-form.tsx`)
+  assertMigratedForm(source, { ids: { code: "category-code", name: "category-name", description: "category-description" } })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("code", required(values.code) ?? maxLength(values.code, 20))',
+    'check("name", required(values.name) ?? maxLength(values.name, 200))',
+    'check("description", maxLength(values.description, 500))',
+    "check(`customFieldDefs.${index}.fieldName`, required(field.fieldName) ?? maxLength(field.fieldName, 100))",
+    "check(`customFieldDefs.${index}.fieldLabel`, required(field.fieldLabel) ?? maxLength(field.fieldLabel, 200))",
+    "check(`customFieldDefs.${index}.fieldLabelTh`, maxLength(field.fieldLabelTh, 200))",
+    "check(`photoChecklist.${index}`, required(item) ?? maxLength(item, 100))",
+  ]) assert.ok(rules.includes(rule), rule)
+  // The rows' ids and focus order follow the server's keys (spec §6.1: customFieldDefs.0.fieldName).
+  assert.ok(source.includes("const CUSTOM_FIELD_ID_SUFFIX = { fieldName: \"name\", fieldLabel: \"label\", fieldLabelTh: \"label-th\" } as const"))
+  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(fieldOrder(values), { idFor: fieldId })"))
+  for (const field of [
+    '<Field label={labels.fieldName} id={`category-field-${index}-name`} required error={errorFor(index, "fieldName")}>',
+    '<Field label={labels.fieldLabel} id={`category-field-${index}-label`} required error={errorFor(index, "fieldLabel")}>',
+    '<Field label={labels.fieldLabelTh} id={`category-field-${index}-label-th`} error={errorFor(index, "fieldLabelTh")}>',
+    "<Field label={labels.item} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>",
+  ]) assert.ok(source.includes(field), field)
+  // A row's error clears when that row's field changes; removing, copying or moving a row clears that template's errors.
+  assert.match(source, /if \(field in CUSTOM_FIELD_ID_SUFFIX\) onFieldEdit\(index, field as CustomFieldErrorField\)/)
+  assert.equal(source.match(/\n    onRowsShift\(\)\n/g)?.length, 6, "remove, duplicate and move in each editor")
+  assert.ok(source.includes('onRowsShift={() => clearRowErrors("customFieldDefs.")}'))
+  assert.ok(source.includes('onRowsShift={() => clearRowErrors("photoChecklist.")}'))
+})

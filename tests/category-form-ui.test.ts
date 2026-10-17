@@ -24,7 +24,7 @@ test("the template editors keep their move limits and use the shared button look
   assert.match(source, /onClick=\{\(\) => moveField\(index, -1\)\} disabled=\{index === 0\}>/)
   assert.match(source, /onClick=\{\(\) => moveField\(index, 1\)\} disabled=\{index === fields\.length - 1\}>/)
   assert.match(source, /sm:grid-cols-\[minmax\(0,1fr\)_repeat\(4,auto\)\]/, "the icon columns size to the 44px phone button")
-  assert.match(source, /<Field label=\{labels\.item\} hideLabel>\n\s+<Input\n\s+value=\{item\}[\s\S]*?maxLength=\{100\}/)
+  assert.match(source, /<Field label=\{labels\.item\} hideLabel id=\{`category-photo-\$\{index\}`\} error=\{errorFor\(index\)\}>\n\s+<Input\n\s+value=\{item\}[\s\S]*?maxLength=\{100\}/)
   assert.equal(source.match(/variant="outline"\n\s+size="icon-lg"/g)?.length, 4, "the photo item icons are 40px beside the 40px field (2D D5); remove is neutral (K22)")
   assert.equal(source.match(/className="justify-self-start"/g)?.length, 4)
   assert.match(source, /onClick=\{\(\) => moveItem\(index, -1\)\}\n\s+disabled=\{index === 0\}/)

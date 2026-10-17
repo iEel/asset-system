@@ -21,6 +21,8 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type CustomFieldDefinitionValue = CategoryCustomFieldDraft
 
@@ -43,6 +45,53 @@ const emptyCategory: CategoryFormValues = {
   photoChecklist: [],
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  code: "category-code",
+  name: "category-name",
+  description: "category-description",
+} as const
+const CUSTOM_FIELD_ID_SUFFIX = { fieldName: "name", fieldLabel: "label", fieldLabelTh: "label-th" } as const
+type CustomFieldErrorField = keyof typeof CUSTOM_FIELD_ID_SUFFIX
+
+function fieldOrder(values: CategoryFormValues): string[] {
+  return [
+    ...Object.keys(FIELD_IDS),
+    ...values.customFieldDefs.flatMap((_, index) =>
+      Object.keys(CUSTOM_FIELD_ID_SUFFIX).map((field) => `customFieldDefs.${index}.${field}`)
+    ),
+    ...values.photoChecklist.map((_, index) => `photoChecklist.${index}`),
+  ]
+}
+
+function fieldId(key: string): string {
+  const row = key.match(/^customFieldDefs\.(\d+)\.(\w+)$/)
+  if (row) return `category-field-${row[1]}-${CUSTOM_FIELD_ID_SUFFIX[row[2] as CustomFieldErrorField]}`
+  const photo = key.match(/^photoChecklist\.(\d+)$/)
+  if (photo) return `category-photo-${photo[1]}`
+  return FIELD_IDS[key as keyof typeof FIELD_IDS] ?? key
+}
+
+// noValidate turns the browser's check off, so this restates required and maxLength, and the server's non-empty photo item (v-track M-R2).
+function validate(values: CategoryFormValues): Partial<Record<string, string>> {
+  const errors: Partial<Record<string, string>> = {}
+  const check = (key: string, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("code", required(values.code) ?? maxLength(values.code, 20))
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  check("description", maxLength(values.description, 500))
+  values.customFieldDefs.forEach((field, index) => {
+    check(`customFieldDefs.${index}.fieldName`, required(field.fieldName) ?? maxLength(field.fieldName, 100))
+    check(`customFieldDefs.${index}.fieldLabel`, required(field.fieldLabel) ?? maxLength(field.fieldLabel, 200))
+    check(`customFieldDefs.${index}.fieldLabelTh`, maxLength(field.fieldLabelTh, 200))
+  })
+  values.photoChecklist.forEach((item, index) => {
+    check(`photoChecklist.${index}`, required(item) ?? maxLength(item, 100))
+  })
+  return errors
+}
+
 export function CategoryForm({
   category,
   backHref: providedBackHref,
@@ -57,13 +106,22 @@ export function CategoryForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<CategoryFormValues>(category ?? emptyCategory)
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<string>()
 
   const isEdit = Boolean(category?.id)
   const backHref = providedBackHref ?? `/${locale}/master-data/categories`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
+  const focusFirstError = () => fieldErrors.focusFirst(fieldOrder(values), { idFor: fieldId })
+
   function setField<K extends keyof CategoryFormValues>(field: K, value: CategoryFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field)
+  }
+
+  // Row keys are the server's dotted paths (customFieldDefs.0.fieldName): a removed, copied or moved row shifts them (M-R7).
+  function clearRowErrors(prefix: "customFieldDefs." | "photoChecklist.") {
+    fieldErrors.clear(...Object.keys(fieldErrors.errors).filter((key) => key.startsWith(prefix)))
   }
 
   function setCustomFields(customFieldDefs: CustomFieldDefinitionValue[]) {
@@ -79,6 +137,8 @@ export function CategoryForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
 
     const url = isEdit ? `/api/categories/${category?.id}` : "/api/categories"
@@ -93,6 +153,8 @@ export function CategoryForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
 
@@ -115,10 +177,10 @@ export function CategoryForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <ContentPanel>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} required>
+          <Field label={t("code")} id="category-code" required error={fieldErrors.message("code")}>
             <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
@@ -127,7 +189,7 @@ export function CategoryForm({
             />
           </Field>
 
-          <Field label={t("name")} required>
+          <Field label={t("name")} id="category-name" required error={fieldErrors.message("name")}>
             <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
@@ -136,7 +198,7 @@ export function CategoryForm({
             />
           </Field>
 
-          <Field label={t("description")}>
+          <Field label={t("description")} id="category-description" error={fieldErrors.message("description")}>
             <Textarea
               value={values.description ?? ""}
               onChange={(event) => setField("description", event.target.value)}
@@ -193,6 +255,9 @@ export function CategoryForm({
               moveDown: t("moveDown"),
             }}
             onChange={setCustomFields}
+            errorFor={(index, field) => fieldErrors.message(`customFieldDefs.${index}.${field}`)}
+            onFieldEdit={(index, field) => fieldErrors.clear(`customFieldDefs.${index}.${field}`)}
+            onRowsShift={() => clearRowErrors("customFieldDefs.")}
           />
         </ContentPanel>
 
@@ -217,6 +282,9 @@ export function CategoryForm({
               moveDown: t("moveDown"),
             }}
             onChange={setPhotoChecklist}
+            errorFor={(index) => fieldErrors.message(`photoChecklist.${index}`)}
+            onItemEdit={(index) => fieldErrors.clear(`photoChecklist.${index}`)}
+            onRowsShift={() => clearRowErrors("photoChecklist.")}
           />
         </ContentPanel>
 
@@ -238,6 +306,9 @@ function CustomFieldTemplateEditor({
   fields,
   labels,
   onChange,
+  errorFor,
+  onFieldEdit,
+  onRowsShift,
 }: {
   fields: CustomFieldDefinitionValue[]
   labels: {
@@ -259,23 +330,30 @@ function CustomFieldTemplateEditor({
     moveDown: string
   }
   onChange: (fields: CustomFieldDefinitionValue[]) => void
+  errorFor: (index: number, field: CustomFieldErrorField) => string | undefined
+  onFieldEdit: (index: number, field: CustomFieldErrorField) => void
+  onRowsShift: () => void
 }) {
   function updateField(index: number, field: keyof CustomFieldDefinitionValue, value: string | boolean) {
     onChange(fields.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item)))
+    if (field in CUSTOM_FIELD_ID_SUFFIX) onFieldEdit(index, field as CustomFieldErrorField)
   }
 
   function removeField(index: number) {
     onChange(fields.filter((_, itemIndex) => itemIndex !== index))
+    onRowsShift()
   }
 
   function duplicateField(index: number) {
     const field = fields[index]
     if (!field) return
     onChange([...fields.slice(0, index + 1), duplicateCategoryCustomField(field), ...fields.slice(index + 1)])
+    onRowsShift()
   }
 
   function moveField(index: number, direction: -1 | 1) {
     onChange(moveArrayItem(fields, index, index + direction))
+    onRowsShift()
   }
 
   if (fields.length === 0) {
@@ -287,7 +365,7 @@ function CustomFieldTemplateEditor({
       {fields.map((field, index) => (
         <div key={`${field.id ?? "new"}-${index}`} className="rounded-md border border-border bg-background p-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label={labels.fieldName} required>
+            <Field label={labels.fieldName} id={`category-field-${index}-name`} required error={errorFor(index, "fieldName")}>
               <Input
                 value={field.fieldName}
                 onChange={(event) => updateField(index, "fieldName", toFieldName(event.target.value))}
@@ -297,7 +375,7 @@ function CustomFieldTemplateEditor({
               />
             </Field>
 
-            <Field label={labels.fieldLabel} required>
+            <Field label={labels.fieldLabel} id={`category-field-${index}-label`} required error={errorFor(index, "fieldLabel")}>
               <Input
                 value={field.fieldLabel}
                 onChange={(event) => updateField(index, "fieldLabel", event.target.value)}
@@ -307,7 +385,7 @@ function CustomFieldTemplateEditor({
               />
             </Field>
 
-            <Field label={labels.fieldLabelTh}>
+            <Field label={labels.fieldLabelTh} id={`category-field-${index}-label-th`} error={errorFor(index, "fieldLabelTh")}>
               <Input
                 value={field.fieldLabelTh ?? ""}
                 onChange={(event) => updateField(index, "fieldLabelTh", event.target.value)}
@@ -402,6 +480,9 @@ function PhotoChecklistEditor({
   items,
   labels,
   onChange,
+  errorFor,
+  onItemEdit,
+  onRowsShift,
 }: {
   items: string[]
   labels: {
@@ -413,23 +494,30 @@ function PhotoChecklistEditor({
     moveDown: string
   }
   onChange: (items: string[]) => void
+  errorFor: (index: number) => string | undefined
+  onItemEdit: (index: number) => void
+  onRowsShift: () => void
 }) {
   function updateItem(index: number, value: string) {
     onChange(items.map((item, itemIndex) => (itemIndex === index ? value : item)))
+    onItemEdit(index)
   }
 
   function removeItem(index: number) {
     onChange(items.filter((_, itemIndex) => itemIndex !== index))
+    onRowsShift()
   }
 
   function duplicateItem(index: number) {
     const item = items[index]
     if (item == null) return
     onChange([...items.slice(0, index + 1), item, ...items.slice(index + 1)])
+    onRowsShift()
   }
 
   function moveItem(index: number, direction: -1 | 1) {
     onChange(moveArrayItem(items, index, index + direction))
+    onRowsShift()
   }
 
   if (items.length === 0) {
@@ -440,7 +528,7 @@ function PhotoChecklistEditor({
     <div className="space-y-2">
       {items.map((item, index) => (
         <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_repeat(4,auto)]">
-          <Field label={labels.item} hideLabel>
+          <Field label={labels.item} hideLabel id={`category-photo-${index}`} error={errorFor(index)}>
             <Input
               value={item}
               onChange={(event) => updateItem(index, event.target.value)}
