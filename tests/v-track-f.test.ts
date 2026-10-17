@@ -227,3 +227,20 @@ test("SearchableSelect shows the field error look, turns teal while focused or o
     assert.match(source, /\n\s+error=\{error\}\n/, path)
   }
 })
+
+test("a group of choices shows its error under the group, tied to the group, and focus goes to its first control (V spec §7.3)", () => {
+  const group = read("src/components/ui/field-group.tsx")
+  // Server-safe like Field: useId is its only hook.
+  assert.doesNotMatch(group, /"use client"|\buse(?:State|Effect|LayoutEffect|Context)\b|\bcreateContext\b/)
+  assert.match(group, /function FieldGroup\(\{ legend, required, hint, error, id, className, children \}: FieldGroupProps\)/)
+  // The group is the fieldset the old markup used (legend with the shared label class and star), with an id for
+  // focusFirst and data-slot="field-group" for the focus helper, which measures it and focuses its first control.
+  assert.match(group, /<fieldset id=\{groupId\} data-slot="field-group" aria-describedby=\{describedBy\} className=\{cn\("min-w-0", className\)\}>/)
+  assert.match(group, /<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\s*\{legend\}\s*\{required \? <FieldRequiredMark \/> : null\}\s*<\/legend>/)
+  // Error before hint, as Field reads them; the error id is <group id>-error.
+  assert.match(group, /const describedBy = \[errorId, hintId\]\.filter\(Boolean\)\.join\(" "\) \|\| undefined/)
+  assert.match(group, /const errorId = error \? `\$\{groupId\}-error` : undefined/)
+  assert.match(group, /\{error \? <FieldError id=\{errorId\} className="mt-1\.5">\{error\}<\/FieldError> : null\}/)
+  assert.match(group, /export \{ FieldGroup \}/)
+  assert.match(read("src/lib/field-focus.ts"), /\[data-slot="field-group"\]/)
+})
