@@ -2148,7 +2148,6 @@
     "freshnessStaleTitle": "หน้านี้เปิดค้างไว้นานแล้ว",
     "freshnessStaleHelp": "ควรรีเฟรชก่อนอนุมัติหรือปิดงาน เพื่อป้องกันการตัดสินใจจากข้อมูลเก่า",
     "freshnessRefresh": "รีเฟรชข้อมูล",
-    "freshnessRefreshing": "กำลังรีเฟรช",
     "summaryPendingReview": "รอพิจารณา",
     "summaryPendingReviewHelp": "ต้องตัดสินใจอนุมัติหรือปฏิเสธ",
     "summaryOpenActions": "ต้องแก้ไข",

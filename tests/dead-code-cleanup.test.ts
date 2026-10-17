@@ -80,6 +80,8 @@ test("the busy keys nobody reads are gone from both languages (spec 2D M8, M9)",
     "asset.importing",
     "asset.recordingLabelPrint",
     "asset.latestMaintenance",
+    // Plan 2D-5 (spec 2D §5.5 GB3): both refresh buttons of the findings page keep their label, so nothing reads this key.
+    "auditFinding.freshnessRefreshing",
   ]
   for (const locale of ["th", "en"]) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as Record<string, Record<string, unknown>>

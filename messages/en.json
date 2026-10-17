@@ -2148,7 +2148,6 @@
     "freshnessStaleTitle": "This page has been open for a while",
     "freshnessStaleHelp": "Refresh before approving or closing work to avoid acting on stale data.",
     "freshnessRefresh": "Refresh data",
-    "freshnessRefreshing": "Refreshing",
     "summaryPendingReview": "Pending Decision",
     "summaryPendingReviewHelp": "Needs an approve or reject decision",
     "summaryOpenActions": "Open Actions",
