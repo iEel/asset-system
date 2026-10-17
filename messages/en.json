@@ -61,7 +61,26 @@
     "switchToLight": "Switch to light mode",
     "pageNotFoundTitle": "Page not found",
     "pageNotFoundDescription": "The link may be wrong, or what this page showed was removed or moved.",
-    "backToHome": "Back to home"
+    "backToHome": "Back to home",
+    "validation": {
+      "required": "This field is required",
+      "tooShort": "Enter at least {min} characters",
+      "tooShortPlain": "This value is too short",
+      "tooLong": "Enter no more than {max} characters",
+      "tooLongPlain": "This value is too long",
+      "outOfRange": "Enter a value from {min} to {max}",
+      "outOfRangeMin": "Enter {min} or more",
+      "outOfRangeMax": "Enter {max} or less",
+      "outOfRangePlain": "This value is out of range",
+      "invalidDate": "Enter a valid date",
+      "invalidNumber": "Enter a number",
+      "invalidEmail": "Enter a valid email address",
+      "invalidFormat": "This value is not in the expected format",
+      "invalidChoice": "Choose an option from the list",
+      "duplicate": "This value already exists",
+      "endBeforeStart": "The end date cannot be before the start date",
+      "invalid": "This value is not valid"
+    }
   },
   "globalSearch": {
     "label": "Search globally",

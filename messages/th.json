@@ -61,7 +61,26 @@
     "switchToLight": "เปลี่ยนเป็นโหมดสว่าง",
     "pageNotFoundTitle": "ไม่พบหน้าที่ต้องการ",
     "pageNotFoundDescription": "ลิงก์อาจไม่ถูกต้อง หรือข้อมูลในหน้านี้ถูกลบหรือย้ายไปแล้ว",
-    "backToHome": "กลับหน้าหลัก"
+    "backToHome": "กลับหน้าหลัก",
+    "validation": {
+      "required": "กรุณาระบุข้อมูลนี้",
+      "tooShort": "ต้องมีอย่างน้อย {min} ตัวอักษร",
+      "tooShortPlain": "ข้อมูลสั้นเกินไป",
+      "tooLong": "ต้องไม่เกิน {max} ตัวอักษร",
+      "tooLongPlain": "ข้อมูลยาวเกินกำหนด",
+      "outOfRange": "ต้องอยู่ระหว่าง {min} ถึง {max}",
+      "outOfRangeMin": "ต้องไม่น้อยกว่า {min}",
+      "outOfRangeMax": "ต้องไม่เกิน {max}",
+      "outOfRangePlain": "ค่าอยู่นอกช่วงที่กำหนด",
+      "invalidDate": "วันที่ไม่ถูกต้อง",
+      "invalidNumber": "กรุณากรอกเป็นตัวเลข",
+      "invalidEmail": "รูปแบบอีเมลไม่ถูกต้อง",
+      "invalidFormat": "รูปแบบไม่ถูกต้อง",
+      "invalidChoice": "กรุณาเลือกจากรายการ",
+      "duplicate": "ข้อมูลนี้มีอยู่แล้วในระบบ",
+      "endBeforeStart": "วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น",
+      "invalid": "ข้อมูลไม่ถูกต้อง"
+    }
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",
