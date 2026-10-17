@@ -13,7 +13,6 @@ import {
 
 const css = readFileSync("src/app/globals.css", "utf8")
 const tokens = readRootTokens(css)
-const color = (name: string) => parseHexColor(resolveToken(tokens, name))
 const white = parseHexColor("#FFFFFF")
 const AA = 4.5
 // WCAG 1.4.11: focus rings, field borders and meaningful icons need 3:1 against what they sit on.
@@ -153,13 +152,23 @@ contrastRules("", tokens)
 contrastRules("dark: ", readDarkTokens(css))
 
 test("colors written out by hand in globals.css match their tokens", () => {
-  const css = readFileSync("src/app/globals.css", "utf8").replace(/\r\n/g, "\n")
-  const chevron = css.match(/@utility select-chevron \{[^}]*stroke='%23([0-9A-Fa-f]{6})'/)
-  assert.ok(chevron, "the select-chevron stroke color was not found")
-  assert.equal(`#${chevron[1]}`.toUpperCase(), resolveToken(tokens, "faint-foreground").toUpperCase(), "the select chevron is the faint ink")
-  const halo = (name: string) => css.match(new RegExp(`--shadow-${name}: 0 0 0 4px rgb\\((\\d+ \\d+ \\d+) / 0\\.\\d+\\);`))?.[1]
-  assert.equal(halo("field-focus"), color("ring").join(" "), "the focus halo is the ring color")
-  assert.equal(halo("field-error"), color("danger").join(" "), "the error halo is the danger color")
+  const source = css.replace(/\r\n/g, "\n")
+  const theme = source.slice(source.indexOf("@theme {"), source.indexOf("\n}", source.indexOf("@theme {")))
+  const dark = readDarkTokens(css)
+  // A data URI and an rgb() halo cannot read var(): the light values live in @theme, the dark ones in the dark blocks.
+  const sets = [
+    ["light", tokens, (name: string) => theme.match(new RegExp(`--${name}: ([^;]+);`))?.[1]],
+    ["dark", dark, (name: string) => dark[name]],
+  ] as const
+  for (const [set, values, effect] of sets) {
+    const stroke = effect("select-chevron-image")?.match(/stroke='%23([0-9A-Fa-f]{6})'/)?.[1]
+    assert.ok(stroke, `${set}: the select-chevron stroke color was not found`)
+    assert.equal(`#${stroke}`.toUpperCase(), resolveToken(values, "faint-foreground").toUpperCase(), `${set}: the select chevron is the faint ink`)
+    const halo = (name: string) => effect(`halo-${name}`)?.match(/^0 0 0 4px rgb\((\d+ \d+ \d+) \/ 0\.\d+\)$/)?.[1]
+    const ink = (name: string) => parseHexColor(resolveToken(values, name)).join(" ")
+    assert.equal(halo("field-focus"), ink("ring"), `${set}: the focus halo is the ring color`)
+    assert.equal(halo("field-error"), ink("danger"), `${set}: the error halo is the danger color`)
+  }
 })
 
 test("every token is exposed to Tailwind through @theme inline", () => {

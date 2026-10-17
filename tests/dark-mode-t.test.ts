@@ -71,3 +71,24 @@ test("the dark set has every light token as #RRGGBB, in two identical copies, wi
     assert.ok(relativeLuminance(parseHexColor(resolveToken(tokens, "image-stage"))) > 0.5, `${set}: photos and logos sit on a light stage`)
   }
 })
+
+test("the scrim, the overlay shadow, the field halos and the select chevron change with the theme (dark mode task T2)", () => {
+  const css = globals()
+  const theme = css.slice(css.indexOf("@theme {"), css.indexOf("\n}", css.indexOf("@theme {")))
+  // A shadow utility inlines its theme value, so each one reads a variable that the dark blocks re-declare.
+  assert.match(theme, /--shadow-overlay: var\(--elevation-overlay\);/)
+  assert.match(theme, /--shadow-field-focus: var\(--halo-field-focus\);/)
+  assert.match(theme, /--shadow-field-error: var\(--halo-field-error\);/)
+  assert.match(css, /@utility select-chevron \{\s*appearance: none;\s*background-image: var\(--select-chevron-image\);/)
+  const dark = readDarkTokens(css)
+  const lightValue = (name: string) => theme.match(new RegExp(`--${name}: ([^;]+);`))?.[1]
+  for (const name of EFFECTS) {
+    assert.ok(lightValue(name), `--${name} has its light value in @theme`)
+    assert.ok(dark[name] && dark[name] !== lightValue(name), `--${name} has its own dark value`)
+  }
+  // A darker, more opaque scrim and a black shadow separate a dialog from a navy page (spec §5.2); the panels keep their border.
+  const alpha = (value: string | undefined) => Number(value?.match(/\/ (0\.\d+)\)$/)?.[1])
+  assert.ok(alpha(dark["color-scrim"]) > alpha(lightValue("color-scrim")), "the dark scrim is more opaque")
+  const shadowColors = dark["elevation-overlay"].match(/rgb\([^)]*\)/g)?.map((value) => value.replace(/ \/ 0\.\d+/, ""))
+  assert.deepEqual([...new Set(shadowColors)], ["rgb(0 0 0)"], "the dark overlay shadow is black")
+})

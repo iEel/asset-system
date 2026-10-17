@@ -138,11 +138,18 @@
 
 /* Values that are not plain colors live here, not in :root (the token test expects a --color-* mapping for every :root entry). */
 @theme {
+  /* These are the light values; the dark blocks re-declare --color-scrim, the three --elevation/--halo values and the
+     chevron. A shadow utility writes its theme value into the class, so a shadow that changes with the theme is a var(). */
   --color-scrim: rgb(8 49 97 / 0.45);
-  --shadow-overlay: 0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1);
+  --shadow-overlay: var(--elevation-overlay);
+  --elevation-overlay: 0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1);
   /* Field halos: --ring (#10858D) at 16% and --danger (#B3261E) at 14%. rgb(), not color-mix(), so Tailwind adds no solid fallback ring. tests/design-tokens-contrast.test.ts checks the rgb values against the tokens. */
-  --shadow-field-focus: 0 0 0 4px rgb(16 133 141 / 0.16);
-  --shadow-field-error: 0 0 0 4px rgb(179 38 30 / 0.14);
+  --shadow-field-focus: var(--halo-field-focus);
+  --shadow-field-error: var(--halo-field-error);
+  --halo-field-focus: 0 0 0 4px rgb(16 133 141 / 0.16);
+  --halo-field-error: 0 0 0 4px rgb(179 38 30 / 0.14);
+  /* The select chevron's stroke is --faint-foreground written out, because a data URI cannot read var(). */
+  --select-chevron-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356677F' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* 6px for small controls only: sm buttons, segmented buttons, chips and status badges. md/lg/icon buttons and every field keep rounded-md (8px); menus, popovers and toasts use rounded-lg (12px). */
   --radius-control: 6px;
   /* text-sm keeps Tailwind's size with a 22px line (20px → 22px) for every language. meta, metric and count are the mockup's extra sizes; metric and count carry their own weight and tracking. Line heights are ratios, so children with an arbitrary font size inherit a ratio, not a fixed px value. meta (20 / 13 = 1.54) is Thai-safe as is; metric and count are for numbers only (always with num), so Thai pages need no override. */
@@ -224,6 +231,11 @@
   --sidebar-active-icon: #3CC6CE;
   --sidebar-border: #22344F;
   --image-stage: #E9EEF5;
+  --color-scrim: rgb(3 8 18 / 0.72);
+  --elevation-overlay: 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 2px 8px -2px rgb(0 0 0 / 0.45);
+  --halo-field-focus: 0 0 0 4px rgb(47 169 177 / 0.28);
+  --halo-field-error: 0 0 0 4px rgb(240 138 128 / 0.24);
+  --select-chevron-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A9AB2' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -288,6 +300,11 @@
     --sidebar-active-icon: #3CC6CE;
     --sidebar-border: #22344F;
     --image-stage: #E9EEF5;
+    --color-scrim: rgb(3 8 18 / 0.72);
+    --elevation-overlay: 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 2px 8px -2px rgb(0 0 0 / 0.45);
+    --halo-field-focus: 0 0 0 4px rgb(47 169 177 / 0.28);
+    --halo-field-error: 0 0 0 4px rgb(240 138 128 / 0.24);
+    --select-chevron-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A9AB2' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   }
 }
 
@@ -377,10 +394,10 @@ body {
   }
 }
 
-/* Chevron for native <select> only (never inside getFieldControlClasses, which also styles inputs). 16px, stroke 2.25, 10px from the right edge; the select sets its own pr-9. The stroke is --faint-foreground written out, because a data URI cannot read var(); tests/design-tokens-contrast.test.ts checks it. Forced-colors mode gets the system arrow back. */
+/* Chevron for native <select> only (never inside getFieldControlClasses, which also styles inputs). 16px, stroke 2.25, 10px from the right edge; the select sets its own pr-9. The image is --select-chevron-image (@theme, and one per dark block): its stroke is --faint-foreground written out, and tests/design-tokens-contrast.test.ts checks both. Forced-colors mode gets the system arrow back. */
 @utility select-chevron {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356677F' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: var(--select-chevron-image);
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px 16px;
