@@ -83,3 +83,23 @@ test(".impeccable/design.json: valid LF JSON whose examples match the code after
   assert.ok(design.narrative.donts.some((entry) => /^Don't fade a disabled control with opacity/.test(entry)))
   assert.ok(design.narrative.donts.some((entry) => /allow only their shared parts \(OWNERS\) and the sites of their EXEMPT lists\.$/.test(entry)))
 })
+
+test("the handoff and the changelog record plan 2D-5 in place, with every marker filled (plan 2D-5)", () => {
+  const handoff = read("DEVELOPER_HANDOFF.md")
+  const section = handoff.indexOf("\n## UI Round 4 Phase 2D Plan 5 Guard Lock and Final Docs (")
+  assert.ok(section > handoff.indexOf("\n## UI Round 4 Phase 2D Plan 4 "), "the plan 2D-5 section follows the 2D-4 one")
+  assert.ok(section < handoff.indexOf("\n## Open Go-Live Decisions"), "and comes before Open Go-Live Decisions")
+  assert.doesNotMatch(handoff, /the last 3 `ActionButton` call sites\) is unchanged/, "spec 2D §8 ruling 2: one call site was left after plan 2B-5")
+  assert.doesNotMatch(handoff, /^> Last updated: 2026-10-07$/m, "the header date follows the newest section")
+  const changelog = read("docs/99_CHANGELOG.md")
+  const newest = changelog.indexOf("\n## ")
+  const entry = changelog.indexOf("\n### ล็อก guard และเอกสารรอบสุดท้าย (UI รอบ 4 เฟส 2D plan 5)")
+  assert.ok(newest !== -1 && entry !== -1, "the newest date and the plan 2D-5 entry")
+  assert.equal(changelog.indexOf("\n### ", newest), entry, "the entry is the first one under the newest date")
+  assert.ok(entry < changelog.indexOf("\n### ตรวจนับ ตัดจำหน่าย ซ่อมบำรุง และธุรกรรมทรัพย์สิน (UI รอบ 4 เฟส 2D plan 4)"), "above the 2D-4 entry")
+  // Every marker of the DC-4 template is filled; a failure lists the path and the markers left.
+  const markers = /<today>|<N>|<P3F?>|<from (?:task-findings|plan)\b[^>]*>|<จาก task-findings>/g
+  for (const [path, text] of [["DEVELOPER_HANDOFF.md", handoff], ["docs/99_CHANGELOG.md", changelog]]) {
+    assert.deepEqual([path, text.match(markers) ?? []], [path, []])
+  }
+})
