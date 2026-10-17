@@ -43,7 +43,7 @@ test("fonts load once, in the root layout, with Plex Sans before Noto Sans Thai 
   assert.match(layout, /Noto_Sans_Thai_Looped\(\{[^)]*subsets: \["thai"\][^)]*weight: \["400", "500", "600", "700"\][^)]*variable: "--font-thai"/)
   assert.doesNotMatch(layout, /IBM_Plex_Sans_Thai/, "the loopless Plex Sans Thai was hard to read at 12-14px")
   assert.match(layout, /IBM_Plex_Mono\(\{[^)]*weight: \["400", "500"\][^)]*preload: false[^)]*adjustFontFallback: false/)
-  assert.match(layout, /<html lang=\{locale\} suppressHydrationWarning className=\{`\$\{plexSans\.variable\} \$\{thaiSans\.variable\} \$\{plexMono\.variable\}`\}>/)
+  assert.match(layout, /<html lang=\{locale\} data-theme=\{themeChoice \?\? undefined\} suppressHydrationWarning className=\{`\$\{plexSans\.variable\} \$\{thaiSans\.variable\} \$\{plexMono\.variable\}`\}>/)
 })
 
 test("line heights are ratios, and Thai pages get room for stacked marks", () => {

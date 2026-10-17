@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next"
 import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_Thai_Looped } from "next/font/google"
+import { cookies } from "next/headers"
 import { getLocale } from "next-intl/server"
 import { PwaServiceWorkerRegister } from "@/components/pwa/pwa-service-worker-register"
+import { THEME_COOKIE, parseThemeChoice } from "@/lib/theme"
 import "./globals.css"
 
 const plexSans = IBM_Plex_Sans({ subsets: ["latin"], variable: "--font-plex-sans", display: "swap" })
@@ -41,6 +43,11 @@ export const metadata: Metadata = {
   },
 }
 
+// The browser's theme choice (src/lib/theme.ts). No cookie, or an unknown value, gives null: the page follows the OS.
+async function readThemeChoice() {
+  return parseThemeChoice((await cookies()).get(THEME_COOKIE)?.value)
+}
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -53,9 +60,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const locale = await getLocale()
+  const [locale, themeChoice] = await Promise.all([getLocale(), readThemeChoice()])
   return (
-    <html lang={locale} suppressHydrationWarning className={`${plexSans.variable} ${thaiSans.variable} ${plexMono.variable}`}>
+    <html lang={locale} data-theme={themeChoice ?? undefined} suppressHydrationWarning className={`${plexSans.variable} ${thaiSans.variable} ${plexMono.variable}`}>
       <body className="bg-background font-sans text-foreground antialiased">
         <PwaServiceWorkerRegister />
         {children}

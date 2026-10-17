@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
 test("the html lang follows the open locale", () => {
   const layout = read("src/app/layout.tsx")
-  assert.match(layout, /const locale = await getLocale\(\)/)
+  assert.match(layout, /const \[locale, themeChoice\] = await Promise\.all\(\[getLocale\(\), readThemeChoice\(\)\]\)/)
   assert.match(layout, /<html lang=\{locale\}/)
   assert.doesNotMatch(layout, /<html lang="th"/)
 })
