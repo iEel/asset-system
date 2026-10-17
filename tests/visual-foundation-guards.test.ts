@@ -104,13 +104,14 @@ test("panels and bottom action bars are flat", () => {
   }
 })
 
-test("globals keep a light-only, token-driven base", () => {
+test("globals keep a token-driven base in two themes, the light block first", () => {
   const css = globals()
   assert.ok(css.indexOf(":root {") < css.indexOf("@layer base"), "the token :root block must stay first")
   assert.match(css, /--canvas: #[0-9A-F]{6};/)
   assert.match(css, /--color-scrim: rgb\(/)
   assert.match(css, /--shadow-overlay: /)
-  assert.match(css, /:root \{\s*color-scheme: only light;\s*accent-color: var\(--primary\);\s*\}/)
+  assert.match(css, /:root \{\s*color-scheme: light dark;\s*accent-color: var\(--primary\);\s*\}/)
+  assert.match(css, /\[data-theme="light"\] \{\s*color-scheme: only light;/, "a light choice and every paper scope stay only light")
   assert.match(css, /::backdrop \{\s*border-color: var\(--border\);\s*\}/)
   assert.match(css, /::selection \{\s*background-color: var\(--primary-border\);/)
   assert.doesNotMatch(css, /@custom-variant dark|scrollbar-color/)

@@ -92,3 +92,23 @@ test("the scrim, the overlay shadow, the field halos and the select chevron chan
   const shadowColors = dark["elevation-overlay"].match(/rgb\([^)]*\)/g)?.map((value) => value.replace(/ \/ 0\.\d+/, ""))
   assert.deepEqual([...new Set(shadowColors)], ["rgb(0 0 0)"], "the dark overlay shadow is black")
 })
+
+test("paper and print stay light: one forced-light scope, a print reset after the dark copies, color-scheme per theme (dark mode task T3)", () => {
+  const css = globals()
+  const theme = css.slice(css.indexOf("@theme {"), css.indexOf("\n}", css.indexOf("@theme {")))
+  const light = Object.entries(readRootTokens(css)).filter(([name]) => name !== "radius").map(([name, value]) => `--${name}: ${value};`)
+  const effects = EFFECTS.map((name) => `--${name}: ${theme.match(new RegExp(`--${name}: ([^;]+);`))?.[1]};`)
+  const forced = readBlockDeclarations(css, '[data-theme="light"]')
+  assert.deepEqual(forced, ["color-scheme: only light;", ...light, ...effects], "the forced-light scope is the light set and its effects, only light")
+  const printAt = css.indexOf('@media print {\n  :root:not([data-theme]), :root[data-theme] {')
+  assert.ok(css.indexOf(':root[data-theme="dark"] {') < css.indexOf(MEDIA_DARK) && css.indexOf(MEDIA_DARK) < printAt, "print comes after both dark copies, so it wins at the same weight")
+  assert.deepEqual(readBlockDeclarations(css, ":root:not([data-theme]), :root[data-theme]"), forced, "print restores the light set")
+  // Until the person chooses, native controls and scrollbars follow the OS; a dark choice says dark.
+  const base = css.slice(css.lastIndexOf("@layer base {"))
+  assert.match(base, /:root \{\s*color-scheme: light dark;\s*accent-color: var\(--primary\);\s*\}/)
+  assert.match(base, /:root\[data-theme="dark"\] \{\s*color-scheme: dark;\s*\}/)
+  assert.match(base, /\[data-theme="light"\] \{\s*color: var\(--foreground\);\s*\}/, "text in a forced-light scope inherits the light ink")
+  assert.equal(css.match(/(?<![\w-])color-scheme:/g)?.length, 4, "root, dark choice, forced light, print")
+  // Windows contrast themes keep their system colors in both themes: nothing opts out of forced colors here.
+  assert.doesNotMatch(css, /forced-color-adjust/)
+})
