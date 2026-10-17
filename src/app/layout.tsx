@@ -3,7 +3,7 @@ import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_Thai_Looped } from "next/font/g
 import { cookies } from "next/headers"
 import { getLocale } from "next-intl/server"
 import { PwaServiceWorkerRegister } from "@/components/pwa/pwa-service-worker-register"
-import { THEME_COOKIE, parseThemeChoice } from "@/lib/theme"
+import { THEME_COOKIE, parseThemeChoice, themeColorFor } from "@/lib/theme"
 import "./globals.css"
 
 const plexSans = IBM_Plex_Sans({ subsets: ["latin"], variable: "--font-plex-sans", display: "swap" })
@@ -48,11 +48,14 @@ async function readThemeChoice() {
   return parseThemeChoice((await cookies()).get(THEME_COOKIE)?.value)
 }
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-  themeColor: "#FFFFFF",
+// theme-color is the chrome color of the chosen theme, or the light/dark pair while the page follows the OS.
+export async function generateViewport(): Promise<Viewport> {
+  return {
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+    themeColor: themeColorFor(await readThemeChoice()),
+  }
 }
 
 export default async function RootLayout({

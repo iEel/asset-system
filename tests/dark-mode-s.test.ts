@@ -57,3 +57,14 @@ test("the root layout renders the cookie's choice on <html>, and no attribute wh
   assert.deepEqual(findMatches(pages, /export const dynamic = "force-static"|\bgenerateStaticParams\b|export const revalidate\b|"use cache"/g), [])
   assert.doesNotMatch(read("next.config.ts"), /cacheComponents|dynamicIO/)
 })
+
+test("theme-color is one chrome color for a choice and the light/dark pair while following the OS; the manifest stays light (dark mode spec §3, §4.3)", async () => {
+  const layout = read("src/app/layout.tsx")
+  assert.match(layout, /^import \{ THEME_COOKIE, parseThemeChoice, themeColorFor \} from "@\/lib\/theme"$/m)
+  assert.doesNotMatch(layout, /export const viewport\b|themeColor: "#/)
+  assert.match(layout, /\nexport async function generateViewport\(\): Promise<Viewport> \{\n  return \{\n    width: "device-width",\n    initialScale: 1,\n    viewportFit: "cover",\n    themeColor: themeColorFor\(await readThemeChoice\(\)\),\n  \}\n\}\n/)
+  // The web manifest and the iOS status bar are static, so they keep the light chrome (a non-goal of the spec).
+  const { default: manifest } = await import("../src/app/manifest.ts")
+  assert.equal(manifest().theme_color, THEME_COLORS.light)
+  assert.match(layout, /statusBarStyle: "default"/)
+})
