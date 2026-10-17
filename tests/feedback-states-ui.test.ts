@@ -191,3 +191,16 @@ test("busy comes from client state, and a busy Button's disabled never repeats t
   assert.ok(busyButtons >= 1, "the guard must see at least one busy Button (DataFreshnessBanner)")
   assert.deepEqual(offenders, [])
 })
+
+// Plan 2D-5 (spec 2D §5.5 GB3, 2C K13): the fresh state's refresh is a busy Button like the stale state's, and neither
+// changes its label while the page refreshes, so the label prop for "refreshing" is gone from the banner and the page.
+test("DataFreshnessBanner: both refresh buttons are busy Buttons that keep their label (2C K13, spec 2D §5.5)", () => {
+  const source = read("src/components/ui/data-freshness-banner.tsx")
+  const fresh = source.slice(source.indexOf("  if (!stale) {"), source.lastIndexOf("  return ("))
+  const stale = source.slice(source.lastIndexOf("  return ("))
+  assert.match(fresh, /<section className="mb-3 flex flex-col gap-2 text-meta text-muted-foreground sm:flex-row sm:items-center sm:justify-end">/)
+  assert.match(fresh, /<Button variant="outline" size="sm" busy=\{refreshing\} onClick=\{refreshData\}>\s*<RefreshCw \/>\s*\{labels\.refresh\}\s*<\/Button>/)
+  assert.match(stale, /<Button variant="outline" size="md" busy=\{refreshing\} onClick=\{refreshData\}>\s*<RefreshCw \/>\s*\{labels\.refresh\}\s*<\/Button>/)
+  assert.doesNotMatch(source, /<button|disabled|animate-spin|text-xs|labels\.refreshing|^\s+refreshing: string$/m)
+  assert.doesNotMatch(read("src/app/[locale]/(dashboard)/audit/findings/page.tsx"), /freshnessRefreshing|^\s+refreshing:/m)
+})

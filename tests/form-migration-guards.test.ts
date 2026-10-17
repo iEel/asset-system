@@ -148,17 +148,6 @@ const OLD_FIELD_MARKUP = /ml-1 text-danger">\*|mb-1\.5 block text-sm font-medium
 const OLD_HELPER_MARKUP = /\bfunction (?:FormStep|WizardStep|Choice|AssetStateFieldLabel)\b|aria-label=\{t\("batchAssetTagHelp"\)\}/g
 // The star that the server enforces while the control has no required (spec §4.3 F5), keyed by the label expression, not a line number.
 const STAR_ONLY = new Set([`${C}asset-operations/checkin-form.tsx|t("returnDate")`, `${C}assets/asset-form.tsx|t("licenseTotalSeats")`, `${C}assets/asset-form.tsx|t("componentRole")`])
-// K13: the label a button swapped to while busy. Each expression occurs once in its file at 5ffee76.
-const BUSY_LABEL_SWAPS: Record<string, RegExp> = {
-  [`${C}admin/asset-state-review-dialog.tsx`]: /labels\.saving\b/,
-  [`${C}asset-operations/checkin-form.tsx`]: /t\("legacyReturnCreating"\)/,
-  [`${C}assets/asset-batch-form.tsx`]: /t\("batchCheckDuplicatesRunning"\)/,
-  [`${C}assets/asset-component-manager.tsx`]: /labels\.(?:installing|removing)\b/,
-  [`${C}assets/asset-status-correction-button.tsx`]: /labels\.submitting\b/,
-  [`${C}auth/login-form.tsx`]: /t\("loggingIn"\)/,
-  [`${C}assets/asset-import-preview-panel.tsx`]: /\$\{labels\.chooseFile\}\.\.\.|labels\.importing\b/,
-  [`${C}assets/asset-label-print.tsx`]: /translations\.recordingPrint\b/,
-}
 // Files that render StickyFormFooter and the routes that show them. Every route must be a focus route (no bottom navigation).
 const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}assets/asset-form.tsx`]: ["/th/assets/new", "/th/assets/sample-1/edit"],
@@ -379,7 +368,6 @@ test("the guard's own lists name real 2C files", () => {
     OLD_HELPERS,
     CLOSE_LABEL_IS_CANCEL,
     FIXED_BOTTOM_BARS,
-    BUSY_LABEL_SWAPS,
     STICKY_FOOTER_ROUTES,
   }
   for (const [name, budget] of Object.entries(ownedKeys)) {
@@ -475,12 +463,22 @@ test("GB2 a spinner outside a button stops for users who reduce motion", () => {
   assert.deepEqual(problems, [], "add motion-reduce:animate-none")
 })
 
+// Plan 2D-5 (spec 2D §5.5): one rule over all of src instead of the 2C list of label swaps (BUSY_LABEL_SWAPS, all gone
+// by plan 2D-1). A Button or button with busy={x} never reads x in its children: no "…ing" label, no second icon.
 test("GB3 a busy button keeps its label (K13)", () => {
   const problems: string[] = []
-  for (const [path, swap] of Object.entries(BUSY_LABEL_SWAPS)) {
-    if (migrated.has(path) && swap.test(read(path))) problems.push(`${path}: ${swap}`)
+  let busyButtons = 0
+  for (const file of sources) {
+    for (const button of [...findJsxElements(file.source, "Button"), ...findJsxElements(file.source, "button")]) {
+      const busy = jsxAttrValue(button.text, "busy")?.trim()
+      if (!busy) continue
+      busyButtons++
+      const expression = busy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s*")
+      if (new RegExp(`(?<![\\w.$])${expression}(?![\\w$])`).test(button.children ?? "")) problems.push(`${file.path}:${button.line}: the label reads busy={${busy}}`)
+    }
   }
-  assert.deepEqual(problems, [])
+  assert.ok(busyButtons >= 50, `the reader found ${busyButtons} busy buttons, expected 50 or more`)
+  assert.deepEqual(problems, [], "keep the label and the leading icon: busy shows the spinner (2C K13)")
 })
 
 test("GB4 disabled never repeats the busy condition, so focus stays on the busy button", () => {

@@ -12,7 +12,6 @@ type DataFreshnessLabels = {
   staleTitle: string
   staleHelp: string
   refresh: string
-  refreshing: string
 }
 
 export function DataFreshnessBanner({
@@ -59,20 +58,16 @@ export function DataFreshnessBanner({
 
   if (!stale) {
     return (
-      <section className="mb-3 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-end">
+      <section className="mb-3 flex flex-col gap-2 text-meta text-muted-foreground sm:flex-row sm:items-center sm:justify-end">
         <span className="inline-flex min-w-0 items-center gap-1.5">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
           <span className="truncate">{freshHelpText}</span>
         </span>
-        <button
-          type="button"
-          onClick={refreshData}
-          disabled={refreshing}
-          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          {refreshing ? labels.refreshing : labels.refresh}
-        </button>
+        {/* The same busy Button as the stale state below: it keeps focus and its label while the page refreshes (2C K13). */}
+        <Button variant="outline" size="sm" busy={refreshing} onClick={refreshData}>
+          <RefreshCw />
+          {labels.refresh}
+        </Button>
       </section>
     )
   }
@@ -86,7 +81,7 @@ export function DataFreshnessBanner({
       action={(
         <Button variant="outline" size="md" busy={refreshing} onClick={refreshData}>
           <RefreshCw />
-          {refreshing ? labels.refreshing : labels.refresh}
+          {labels.refresh}
         </Button>
       )}
       className="mb-3"

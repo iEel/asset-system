@@ -266,7 +266,6 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           staleTitle: t("freshnessStaleTitle"),
           staleHelp: t("freshnessStaleHelp"),
           refresh: t("freshnessRefresh"),
-          refreshing: t("freshnessRefreshing"),
         }}
       />
 
