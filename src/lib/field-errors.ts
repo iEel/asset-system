@@ -102,3 +102,17 @@ export class FieldRefusalError extends Error {
     this.status = status
   }
 }
+
+// The settings form sends every setting in one list, so an issue at settings.<index>.… is keyed by the submitted
+// setting's own key (settings.asset_label_12_width_mm), the field the form shows it under. With no usable key (the key
+// itself failed) the callback returns null and the dotted path stays (settings.3.key).
+export function settingFieldKeyFor(submitted: unknown): (path: readonly PropertyKey[]) => string | null {
+  const list = submitted && typeof submitted === "object" ? (submitted as { settings?: unknown }).settings : undefined
+  const settings: unknown[] = Array.isArray(list) ? list : []
+  return (path) => {
+    if (path[0] !== "settings" || typeof path[1] !== "number") return null
+    const setting = settings[path[1]]
+    const key = setting && typeof setting === "object" ? (setting as { key?: unknown }).key : undefined
+    return typeof key === "string" && key.trim().length > 0 ? `settings.${key.trim()}` : null
+  }
+}

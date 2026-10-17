@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { validationFailedBody } from "@/lib/api-error-exposure"
+import { settingFieldKeyFor } from "@/lib/field-errors"
 import { logAudit } from "@/lib/audit-log"
 import { knownSystemSettingKeys, systemSettingDefaults } from "@/lib/system-setting-defaults"
 import { systemSettingsUpdateSchema } from "@/lib/validations/system-settings"
@@ -44,11 +46,13 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  let submitted: unknown = null
   try {
     const user = await requireAuth()
     requirePermission(user, "setting", "edit")
 
-    const input = systemSettingsUpdateSchema.parse(await request.json())
+    submitted = await request.json()
+    const input = systemSettingsUpdateSchema.parse(submitted)
     const keys = input.settings.map((setting) => setting.key)
     const existingSettings = await prisma.systemSetting.findMany({
       where: { key: { in: keys } },
@@ -115,6 +119,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ updated: changedSettings.length })
   } catch (error) {
+    // Each setting's error goes under settings.<key>, the field the form shows it under (V track spec §6.1).
+    const validation = validationFailedBody(error, settingFieldKeyFor(submitted))
+    if (validation) return NextResponse.json(validation, { status: 400 })
     return errorResponse(error, 400)
   }
 }

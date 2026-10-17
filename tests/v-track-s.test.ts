@@ -188,3 +188,27 @@ test("the disposal recipient rule has its catalog key, and the catalog test read
   assert.deepEqual(issuesToFieldErrors(issues), { recipientName: "recipientRequired", documentNo: "referenceDocumentRequired", actualSaleValue: "saleValueRequired" })
   assert.ok(read("tests/api-error-catalog.test.ts").includes(String.raw`/(?:\berror:\s*|\bmessage:\s*|new\s+\w*Error\(`), "the catalog test reads message: literals")
 })
+
+const jsonRequest = (method: string, body: unknown) =>
+  new Request("http://localhost/api/test", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+const stubDb = (prisma: Record<string, Record<string, (...args: never[]) => unknown>>) => Object.assign(globalThis, { __vTrackS: { prisma } })
+
+test("the settings route keys each setting's error by the setting, not by its place in the list (V spec §6.1)", async () => {
+  type SettingsRoute = { PUT(request: Request): Promise<Response> }
+  const { PUT } = await load<SettingsRoute>("src/app/api/admin/settings/route.ts")
+  stubDb({})
+  const response = await PUT(jsonRequest("PUT", { settings: [
+    { key: "asset_label_12_width_mm", value: "500" },
+    { key: "company_name", value: "Glink" },
+    { key: "ldap_sync_mode", value: "sometimes" },
+    { key: "", value: "x" },
+  ] }))
+  assert.equal(response.status, 400)
+  assert.deepEqual(await response.json(), {
+    error: "Invalid request data",
+    code: "VALIDATION_FAILED",
+    fieldErrors: { "settings.3.key": "required", "settings.asset_label_12_width_mm": "labelWidthRange", "settings.ldap_sync_mode": "schedulerModeInvalid" },
+  })
+  const empty = await PUT(jsonRequest("PUT", { settings: [] }))
+  assert.deepEqual((await empty.json() as { fieldErrors: unknown }).fieldErrors, { settings: "required" })
+})
