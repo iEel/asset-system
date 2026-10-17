@@ -287,3 +287,34 @@ test("admin user: errors under the field, the password rule of create and edit, 
   assert.ok(source.includes('<FieldError id="admin-user-roles-error" className="mt-2">{fieldErrors.message("roleIds")}</FieldError>'))
   assert.match(source, /: \[\.\.\.current\.roleIds, roleId\],\n\s+\}\)\)\n\s+fieldErrors\.clear\("roleIds"\)/)
 })
+
+test("role: errors under the field, the role key's length and pattern restated, and one error above the permission table (v-track M8)", () => {
+  const source = read(`${C}admin/role-permission-form.tsx`)
+  assertMigratedForm(source, {
+    ids: {
+      name: "role-key",
+      displayName: "role-display-name",
+      displayNameTh: "role-display-name-th",
+      description: "role-description",
+      permissionIds: "role-permissions",
+    },
+    messages: ["displayName", "displayNameTh", "description"],
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("name", required(values.name) ?? minLength(values.name, 2) ?? maxLength(values.name, 50) ?? pattern(values.name, /^[a-z][a-z0-9_]*$/))',
+    'check("displayName", required(values.displayName) ?? maxLength(values.displayName, 200))',
+    'check("displayNameTh", maxLength(values.displayNameTh, 200))',
+    'check("description", maxLength(values.description, 500))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.match(source, /fieldErrors\.setErrors\(validate\(meta\)\)/)
+  assert.ok(source.includes("error={fieldErrors.errors.name ? validationMessage(fieldErrors.errors.name, { min: 2, max: 50 }) : undefined}"))
+  // Every meta field goes through setMetaField, which clears its error.
+  assert.equal(source.match(/setMeta\(\(current\) =>/g)?.length, 1, "only inside setMetaField")
+  assert.equal(source.match(/onChange=\{\(event\) => setMetaField\("\w+", event\.target\.(?:value|checked)\)\}/g)?.length, 5)
+  // "Invalid permission selection" lands above the table, tied to the group; a toggle clears it.
+  assert.ok(source.includes('<FieldError id="role-permissions-error" className="px-4 pt-3 md:px-5">{fieldErrors.message("permissionIds")}</FieldError>'))
+  assert.match(source, /<div\n\s+role="group"\n\s+aria-label=\{t\("permissionSelection"\)\}\n\s+aria-describedby=\{fieldErrors\.errors\.permissionIds \? "role-permissions-error" : undefined\}\n\s+>/)
+  assert.ok(source.includes('id={permission.id === firstPermissionId ? "role-permissions" : undefined}'))
+  assert.equal(source.match(/\n    fieldErrors\.clear\("permissionIds"\)\n/g)?.length, 2, "togglePermission and setModulePermissions")
+})

@@ -9,14 +9,14 @@ import { findJsxTags, hasJsxAttr } from "./helpers/source-files.ts"
 const source = readFileSync("src/components/admin/role-permission-form.tsx", "utf8").replace(/\r\n/g, "\n")
 
 test("the role permission form uses the shared fields, 16px checkboxes in rows that read as locked, and a busy save button (2C batch 4)", () => {
-  assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
+  assert.match(source, /import \{ Field, FieldError \} from "@\/components\/ui\/field"/)
   assert.doesNotMatch(source, /function Field\(|<select|<textarea|<button|Loader2|ml-1 text-danger|rounded border-border|disabled:opacity|uppercase|\bbg-muted\//)
   assert.equal(source.match(/<input\b/g)?.length, 3, "only the active, module and permission checkboxes stay native inputs")
   const controls = findJsxTags(source, ["Input", "Textarea"])
   assert.equal(controls.length, 4)
   assert.deepEqual(["required", "maxLength"].map((attr) => controls.filter((tag) => hasJsxAttr(tag.text, attr)).length), [2, 3], "the key and display names keep the browser's own checks")
-  assert.match(source, /<Field label=\{t\("roleKey"\)\} required>\n\s+<Input\n\s+value=\{meta\.name\}\n\s+required\n\s+pattern="\[a-z\]\[a-z0-9_\]\*"\n\s+disabled=\{isSystemRole\}\n/)
-  assert.match(source, /<Field label=\{t\("description"\)\}>\n\s+<Textarea\n\s+value=\{meta\.description\}\n\s+rows=\{3\}\n\s+maxLength=\{500\}\n/)
+  assert.match(source, /<Field\n\s+label=\{t\("roleKey"\)\}\n\s+id="role-key"\n\s+required\n[^\n]*\n\s+>\n\s+<Input\n\s+value=\{meta\.name\}\n\s+required\n\s+pattern="\[a-z\]\[a-z0-9_\]\*"\n\s+disabled=\{isSystemRole\}\n/)
+  assert.match(source, /<Field label=\{t\("description"\)\} id="role-description" error=\{fieldErrors\.message\("description"\)\}>\n\s+<Textarea\n\s+value=\{meta\.description\}\n\s+rows=\{3\}\n\s+maxLength=\{500\}\n/)
   assert.equal(source.match(/className=\{checkboxVariants\(\)\}/g)?.length, 3)
   assert.equal(source.match(/ has-disabled:cursor-not-allowed has-disabled:text-faint-foreground"/g)?.length, 3, "a locked row reads as unavailable instead of fading its box")
   assert.match(source, /<label className="flex min-h-11 items-center gap-2 self-end text-sm font-medium text-foreground has-disabled/)
