@@ -200,6 +200,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Protected lifecycle statuses must be changed through the proper workflow or status correction": "protectedStatusChange",
   "Public QR base URL must be a valid http or https URL": "publicQrUrlInvalid",
   "Purchase document already exists": "purchaseDocumentExists",
+  "Recipient, buyer, or destination is required": "recipientRequired",
   "Reference document number is required": "referenceDocumentRequired",
   "Rejection reason is required": "rejectionReasonRequired",
   "Repair record not found": "repairRecordNotFound",

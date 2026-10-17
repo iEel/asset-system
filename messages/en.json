@@ -4242,6 +4242,7 @@
     "unknown": "Something went wrong",
     "ldapSyncFailed": "LDAP sync failed",
     "notificationDigestFailed": "Notification digest failed",
-    "validationFailed": "Invalid request data"
+    "validationFailed": "Invalid request data",
+    "recipientRequired": "Recipient, buyer, or destination is required"
   }
 }

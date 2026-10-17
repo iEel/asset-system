@@ -57,12 +57,21 @@ function walk(dir: string, out: string[] = []) {
   return out
 }
 
+// Files whose `message:` literals are not error text a route sends to a form (V track spec §6.3 widened the scan to
+// `message:`, where the zod issue messages of src/lib/validations and src/lib/disposal-type-policy.ts live). Each entry needs a reason.
+const nonErrorMessageFiles: Record<string, string> = {
+  "src/app/api/audit-rounds/[id]/scan/route.ts": "the 202 out-of-scope scan result; the scan screen shows its own text",
+  "src/lib/disposal-bulk-execution-ui.ts": "selection codes (mixed, limit) that the bulk execution screen turns into its own text",
+  "src/lib/ldap-auth.ts": "the LDAP connection test result, which the settings screen shows as sent",
+}
+
 test("every literal error message the server can send has a Thai translation", () => {
-  const pattern = /(?:\berror:\s*|new\s+\w*Error\(\s*(?:\d+\s*,\s*)?)"([A-Za-z][^"]{2,160})"/g
+  const pattern = /(?:\berror:\s*|\bmessage:\s*|new\s+\w*Error\(\s*(?:\d+\s*,\s*)?)"([A-Za-z][^"]{2,160})"/g
   const files = [...walk("src/app/api"), ...walk("src/lib")].filter((file) => !(file in internalErrorFiles))
   const missing = new Set<string>()
   for (const file of files) {
     for (const match of readFileSync(file, "utf8").matchAll(pattern)) {
+      if (match[0].startsWith("message") && file in nonErrorMessageFiles) continue
       if (!(match[1] in apiErrorKeyByMessage)) missing.add(`${match[1]}  (${file})`)
     }
   }
@@ -79,5 +88,5 @@ test("every catalog key has Thai and English text", () => {
 })
 
 test("internal-file exceptions still exist", () => {
-  for (const file of Object.keys(internalErrorFiles)) assert.ok(readFileSync(file, "utf8").length > 0, file)
+  for (const file of [...Object.keys(internalErrorFiles), ...Object.keys(nonErrorMessageFiles)]) assert.ok(readFileSync(file, "utf8").length > 0, file)
 })
