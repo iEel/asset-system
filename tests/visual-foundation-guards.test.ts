@@ -310,7 +310,7 @@ test("no emoji in source or messages: icons come from lucide and languages are n
   assert.deepEqual(findMatches([...sources, ...messages], /\p{Emoji_Presentation}|\uFE0F/gu), [])
 })
 
-// Every EXEMPT list of this file, by rule (spec 2D \u00A75.1), last in the file. Each guard file sums its own phase 3 rows:
+// Every EXEMPT list of this file, by rule (spec 2D §5.1), last in the file. Each guard file sums its own phase 3 rows:
 // a test file that imports another one runs that file's tests a second time.
 const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   R1: TONE_OPACITY_EXEMPT,
@@ -321,7 +321,7 @@ const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   "mockup sizes": MOCKUP_TYPE_PX_EXEMPT,
 }
 
-test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D \u00A75.1, D2)", () => {
+test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
   const rows = phase3Rows(EXEMPT_LISTS)
   assert.deepEqual(
     rows.map(({ rule, file, count }) => `${rule} ${file}: ${count}`),
