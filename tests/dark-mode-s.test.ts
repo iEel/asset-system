@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { readDarkTokens, readRootTokens } from "../src/lib/color-contrast.ts"
+import { contrastRatio, parseHexColor, readDarkTokens, readRootTokens, resolveToken } from "../src/lib/color-contrast.ts"
 import { THEME_COLORS, THEME_COOKIE, nextThemeChoice, parseThemeChoice, themeColorFor, themeCookieString } from "../src/lib/theme.ts"
 import { findMatches, readSourceFiles } from "./helpers/source-files.ts"
 
@@ -112,5 +112,23 @@ test("the theme toggle sits beside the language button and shows the moon while 
     const common = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).common
     assert.equal(common.switchToDark, toDark, locale)
     assert.equal(common.switchToLight, toLight, locale)
+  }
+})
+
+test("the topbar and the phone bottom bar take the sidebar's chrome color, the same white as today in light (dark mode spec §5.2 Top bars)", () => {
+  const topbar = read(`${C}layout/topbar.tsx`)
+  assert.match(topbar, /<header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-border bg-sidebar px-3 sm:gap-2 sm:px-4">/)
+  const nav = read(`${C}layout/mobile-field-navigation.tsx`)
+  assert.match(nav, /className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-sidebar px-2 pb-\[max\(0\.5rem,env\(safe-area-inset-bottom\)\)\] pt-1 lg:hidden"/)
+  for (const source of [topbar, nav]) assert.doesNotMatch(source, /\bbg-surface\b/)
+  // The inks and the focus ring of both bars now sit on --sidebar, in both token sets.
+  const css = read("src/app/globals.css")
+  for (const [theme, tokens] of [["light", readRootTokens(css)], ["dark", readDarkTokens(css)]] as const) {
+    const chrome = resolveToken(tokens, "sidebar")
+    assert.equal(chrome, THEME_COLORS[theme], theme)
+    for (const [ink, floor] of [["foreground", 4.5], ["muted-foreground", 4.5], ["primary", 4.5], ["ring", 3]] as const) {
+      const ratio = contrastRatio(parseHexColor(resolveToken(tokens, ink)), parseHexColor(chrome))
+      assert.ok(ratio >= floor, `${theme}: ${ink} on sidebar is ${ratio.toFixed(2)}:1`)
+    }
   }
 })

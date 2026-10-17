@@ -137,7 +137,7 @@ test("the topbar is flat and the bottom bar is solid with Thai-safe labels", () 
   assert.doesNotMatch(read("src/components/layout/topbar.tsx"), /shadow-sm/)
   const nav = read("src/components/layout/mobile-field-navigation.tsx")
   assert.doesNotMatch(nav, /backdrop-blur|bg-surface\/95|leading-tight|text-\[11px\]/)
-  assert.match(nav, /"fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface px-2 /)
+  assert.match(nav, /"fixed inset-x-0 bottom-0 z-20 border-t border-border bg-sidebar px-2 /)
   assert.equal(nav.match(/text-xs font-medium text-muted-foreground/g)?.length, 2)
 })
 

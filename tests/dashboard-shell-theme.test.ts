@@ -30,8 +30,8 @@ test("sidebar uses the light navigation tokens and marks the current page", () =
   assert.doesNotMatch(source, /border-r-2 border-primary/)
 })
 
-test("topbar stays a light operational surface", () => {
+test("topbar takes the sidebar's chrome color", () => {
   const source = topbar()
-  assert.match(source, /bg-surface/)
+  assert.match(source, /bg-sidebar\b/)
   assert.match(source, /border-border/)
 })
