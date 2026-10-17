@@ -73,8 +73,8 @@ type MenuSection = {
   items: MenuItem[]
 }
 
-// Rows sit inside the nav's px-2 gutter. The focus ring is drawn outside the row on a white offset,
-// because a teal ring inside the navy active row is under 3:1.
+// Rows sit inside the nav's px-2 gutter. The focus ring is drawn outside the row on an offset of the sidebar's own
+// color, because a teal ring inside the navy active row is under 3:1.
 const rowClasses =
   "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar lg:min-h-9"
 

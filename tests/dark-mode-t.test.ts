@@ -112,3 +112,22 @@ test("paper and print stay light: one forced-light scope, a print reset after th
   // Windows contrast themes keep their system colors in both themes: nothing opts out of forced colors here.
   assert.doesNotMatch(css, /forced-color-adjust/)
 })
+
+test("a focus ring's gap takes the panel color, not white, and floating parts keep an edge on a navy page (dark mode task T4)", () => {
+  const css = globals()
+  // Tailwind's ring offset defaults to #fff; the light panel is that white, so light looks as before.
+  assert.match(css.slice(css.lastIndexOf("@layer base {")), /::backdrop \{\s*border-color: var\(--border\);\s*--tw-ring-offset-color: var\(--card\);\s*\}/)
+  assert.equal(readRootTokens(css).card, "#FFFFFF")
+  const sidebar = read("src/components/layout/sidebar.tsx")
+  assert.match(sidebar, /focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar/)
+  assert.doesNotMatch(sidebar, /white offset/)
+  // Tailwind's default shadows are black at 10% and fade on a navy page: the three floating parts outside paper keep a
+  // border or a solid fill, and the round scan button's fill stands out from the bottom bar's chrome in both themes.
+  assert.match(read("src/components/assets/asset-register-table.tsx"), /rounded-lg border border-border bg-surface p-3 shadow-lg/)
+  assert.match(read("src/components/layout/mobile-field-navigation.tsx"), /rounded-full bg-primary text-primary-foreground shadow-md/)
+  assert.match(read("src/components/audit/audit-scan-check-form.tsx"), /variant="outline"\s+size="icon"\s+onClick=\{\(\) => removePhoto\(photo\.id\)\}\s+aria-label=\{t\("removeQueuedPhoto"\)\}\s+className="absolute right-1 top-1 shadow-sm"/)
+  for (const [set, tokens] of [["light", readRootTokens(css)], ["dark", readDarkTokens(css)]] as const) {
+    const ratio = contrastRatio(parseHexColor(resolveToken(tokens, "primary")), parseHexColor(resolveToken(tokens, "sidebar")))
+    assert.ok(ratio >= 3, `${set}: the scan button's fill on the bottom bar is ${ratio.toFixed(2)}:1`)
+  }
+})

@@ -686,11 +686,13 @@ body {
     color: var(--foreground);
   }
 
+  /* Tailwind's ring offset is white: the panel color keeps it white in light and leaves no white gap in dark. */
   *,
   ::before,
   ::after,
   ::backdrop {
     border-color: var(--border);
+    --tw-ring-offset-color: var(--card);
   }
 
   ::selection {
