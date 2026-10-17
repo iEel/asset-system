@@ -69,7 +69,7 @@ export function MobileFieldNavigation({
               <span
                 className={cn(
                   "inline-flex h-8 w-8 items-center justify-center rounded-md",
-                  destination.emphasized && "h-12 w-12 rounded-full bg-primary text-white shadow-md",
+                  destination.emphasized && "h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-md",
                   isActive && !destination.emphasized && "bg-primary-soft",
                 )}
               >

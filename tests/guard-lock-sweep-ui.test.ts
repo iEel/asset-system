@@ -19,3 +19,9 @@ test("scanner input: the camera toggle is an outline lg Button, and the controls
   assert.equal(source.match(/<button\b/g)?.length, 2)
   assert.match(source, /\{\/\* The zoom and torch controls sit on the camera image: raw buttons[\s\S]*?\*\/\}\n\s+\{scanMode === "asset-qr" && scannerRunning && zoomAvailable \? \(/)
 })
+
+test("bottom bar: the round scan button's icon takes the primary foreground token, not raw white (spec 2D §5.4 item 1)", () => {
+  const source = read("src/components/layout/mobile-field-navigation.tsx")
+  assert.match(source, /destination\.emphasized && "h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-md"/)
+  assert.doesNotMatch(source, /\btext-white\b/)
+})
