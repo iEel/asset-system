@@ -6,7 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { supplierSchema } from "@/lib/validations/supplier"
 import { getSupplierDeleteBlockReason } from "@/lib/organization-master-query"
 import { shouldBlockSupplierLifecycleChange } from "@/lib/supplier-lifecycle-policy"
-import { getSupplierApiError } from "@/lib/supplier-api-error"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 
 type SupplierRouteContext = {
   params: Promise<{ id: string }>
@@ -100,8 +100,7 @@ export async function PUT(request: NextRequest, context: SupplierRouteContext) {
 
     return NextResponse.json(supplier)
   } catch (error) {
-    const supplierError = getSupplierApiError(error)
-    if (supplierError) return NextResponse.json(supplierError.payload, { status: supplierError.status })
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Supplier code already exists")
     return errorResponse(error, 400)
   }
 }

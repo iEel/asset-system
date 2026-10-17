@@ -10,11 +10,12 @@ export const supplierFormFields = [
 
 export type SupplierFormField = (typeof supplierFormFields)[number]
 
+// The shared field codes (src/lib/field-errors.ts) the supplier form shows; the server sends them for every route.
 export const supplierFormErrorCodes = [
   "required",
-  "invalid_email",
-  "too_long",
-  "duplicate_code",
+  "invalidEmail",
+  "tooLong",
+  "duplicate",
 ] as const
 
 export type SupplierFormErrorCode = (typeof supplierFormErrorCodes)[number]

@@ -4119,7 +4119,6 @@
     "invalidPermissionSelection": "สิทธิ์ที่เลือกไม่ถูกต้อง",
     "invalidReturnCondition": "สภาพตอนรับคืนไม่ถูกต้อง",
     "invalidReturnStatus": "สถานะตอนรับคืนไม่ถูกต้อง",
-    "invalidSupplierData": "ข้อมูลผู้ขายไม่ถูกต้อง",
     "ldapSettingsRequired": "ต้องกรอก LDAP URL, Bind DN และ Bind Password",
     "ldapDisabled": "ยังไม่ได้เปิดใช้ LDAP",
     "ldapSyncBaseDnRequired": "ต้องกรอก Base DN สำหรับซิงก์ LDAP",

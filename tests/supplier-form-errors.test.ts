@@ -6,19 +6,19 @@ import { parseSupplierFormError } from "../src/lib/supplier-form-errors.ts"
 test("parses only supported supplier field error codes", () => {
   assert.deepEqual(
     parseSupplierFormError({
-      error: "Invalid supplier data",
+      error: "Invalid request data",
       fieldErrors: {
-        code: "duplicate_code",
-        email: "invalid_email",
-        unknown: "too_long",
+        code: "duplicate",
+        email: "invalidEmail",
+        unknown: "tooLong",
         phone: 123,
       },
     }),
     {
-      message: "Invalid supplier data",
+      message: "Invalid request data",
       fieldErrors: {
-        code: "duplicate_code",
-        email: "invalid_email",
+        code: "duplicate",
+        email: "invalidEmail",
       },
     }
   )

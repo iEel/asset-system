@@ -102,9 +102,9 @@ export function SupplierForm({
   }
 
   function getErrorMessage(code: SupplierFormErrorCode) {
-    if (code === "duplicate_code") return t("duplicateCode")
-    if (code === "invalid_email") return t("invalidEmail")
-    if (code === "too_long") return t("fieldTooLong")
+    if (code === "duplicate") return t("duplicateCode")
+    if (code === "invalidEmail") return t("invalidEmail")
+    if (code === "tooLong") return t("fieldTooLong")
     return tCommon("required")
   }
 

@@ -286,3 +286,35 @@ test("checkout's HANDOVER_* refusal and disposal execution's evidence refusal ke
   assert.match(route, /if \(error\.issues\.some\(\(issue\) => issue\.path\[0\] === "evidenceExceptionReason"\)\) \{\n        return disposalApiError\(\n          "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",\n          "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",\n          400,\n          issuesToFieldErrors\(error\.issues\),\n        \)/)
   assert.match(route, /^import \{ issuesToFieldErrors \} from "@\/lib\/field-errors"$/m)
 })
+
+const uniqueViolation = () => Object.assign(new Error("Unique constraint failed"), { name: "PrismaClientKnownRequestError", code: "P2002" })
+
+test("supplier answers with the shared body and codes: 400 VALIDATION_FAILED with fieldErrors, 409 DUPLICATE on code (V spec §6.1)", async () => {
+  type Create = { POST(request: Request): Promise<Response> }
+  type Update = { PUT(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> }
+  const { POST } = await load<Create>("src/app/api/suppliers/route.ts")
+  const { PUT } = await load<Update>("src/app/api/suppliers/[id]/route.ts")
+  const supplier = { code: "SUP-1", name: "Vendor", contactPerson: "", phone: "", email: "", address: "", isActive: true }
+
+  stubDb({})
+  const invalid = await POST(jsonRequest("POST", { ...supplier, code: "", email: "not-an-email", phone: "x".repeat(51) }))
+  assert.equal(invalid.status, 400)
+  assert.deepEqual(await invalid.json(), { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { code: "required", phone: "tooLong", email: "invalidEmail" } })
+
+  stubDb({ supplier: { create: () => { throw uniqueViolation() } } })
+  const created = await POST(jsonRequest("POST", supplier))
+  assert.equal(created.status, 409)
+  assert.deepEqual(await created.json(), { error: "Supplier code already exists", code: "DUPLICATE", fieldErrors: { code: "duplicate" } })
+
+  stubDb({ supplier: { findFirst: () => ({ id: "s1", isActive: true, _count: { assets: 0, maintenanceTickets: 0, maintenancePlans: 0, purchaseDocuments: 0 } }), update: () => { throw uniqueViolation() } } })
+  const updated = await PUT(jsonRequest("PUT", supplier), { params: Promise.resolve({ id: "s1" }) })
+  assert.equal(updated.status, 409)
+  assert.deepEqual(await updated.json(), { error: "Supplier code already exists", code: "DUPLICATE", fieldErrors: { code: "duplicate" } })
+
+  // The supplier-only body and its snake codes are gone; the supplier form reads the shared codes until it moves to the hook.
+  assert.equal(existsSync("src/lib/supplier-api-error.ts"), false)
+  const { parseSupplierFormError } = await load<typeof import("../src/lib/supplier-form-errors.ts")>("src/lib/supplier-form-errors.ts")
+  assert.deepEqual(parseSupplierFormError({ error: "Invalid request data", fieldErrors: { code: "duplicate", email: "invalidEmail", phone: "tooLong", name: "required" } }).fieldErrors, { code: "duplicate", name: "required", phone: "tooLong", email: "invalidEmail" })
+  const form = read("src/components/master-data/supplier-form.tsx")
+  assert.match(form, /if \(code === "duplicate"\) return t\("duplicateCode"\)\n    if \(code === "invalidEmail"\) return t\("invalidEmail"\)\n    if \(code === "tooLong"\) return t\("fieldTooLong"\)/)
+})

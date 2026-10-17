@@ -4,7 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { supplierSchema } from "@/lib/validations/supplier"
-import { getSupplierApiError } from "@/lib/supplier-api-error"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,8 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(supplier, { status: 201 })
   } catch (error) {
-    const supplierError = getSupplierApiError(error)
-    if (supplierError) return NextResponse.json(supplierError.payload, { status: supplierError.status })
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Supplier code already exists")
     return errorResponse(error, 400)
   }
 }

@@ -4093,7 +4093,6 @@
     "invalidPermissionSelection": "Invalid permission selection",
     "invalidReturnCondition": "Invalid return condition for check-in",
     "invalidReturnStatus": "Invalid return status for check-in",
-    "invalidSupplierData": "Invalid supplier data",
     "ldapSettingsRequired": "LDAP URL, Bind DN, and Bind Password are required",
     "ldapDisabled": "LDAP is disabled",
     "ldapSyncBaseDnRequired": "LDAP sync base DN is required",
