@@ -95,7 +95,7 @@ test("users: role chips are the shared Chip and the status is a StatusBadge (spe
 
 test("the admin user form is a panel with the shared panel classes and shows role keys as tags (spec 2D D9, M33)", () => {
   const source = read(`${C}admin/admin-user-form.tsx`)
-  assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
   assert.match(source, /<span className="mt-1 block text-xs text-muted-foreground"><span className="tag">\{role\.name\}<\/span><\/span>/)
   assert.doesNotMatch(source, /rounded-lg border|font-mono/)
 })

@@ -254,3 +254,36 @@ test("asset model: errors under the field; a duplicate name for the brand lands 
   assert.equal(source.match(/fieldErrors\.applyServer\(/g)?.length, 1)
   assert.equal(source.match(/apiError\.toast\(error\)/g)?.length, 3)
 })
+
+test("admin user: errors under the field, the password rule of create and edit, and one error under the role group (v-track M7)", () => {
+  const source = read(`${C}admin/admin-user-form.tsx`)
+  assertMigratedForm(source, {
+    ids: {
+      username: "admin-user-username",
+      password: "admin-user-password",
+      displayName: "admin-user-display-name",
+      email: "admin-user-email",
+      employeeId: "admin-user-employee",
+      roleIds: "admin-user-roles",
+    },
+    messages: ["username", "displayName", "email", "employeeId"],
+  })
+  const rules = validateBody(source)
+  assert.match(source, /^function validate\(values: AdminUserFormValues, isEdit: boolean\) \{$/m)
+  for (const rule of [
+    'check("username", required(values.username) ?? maxLength(values.username, 100))',
+    'check("password", (isEdit ? null : required(values.password)) ?? minLength(values.password, 8) ?? maxLength(values.password, 100))',
+    'check("displayName", required(values.displayName) ?? maxLength(values.displayName, 200))',
+    'check("email", email(values.email) ?? maxLength(values.email, 200))',
+    'check("roleIds", atLeastOne(values.roleIds))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.match(source, /fieldErrors\.setErrors\(validate\(values, isEdit\)\)/)
+  // A minimum length is said with its number (M-R4).
+  assert.ok(source.includes("error={fieldErrors.errors.password ? validationMessage(fieldErrors.errors.password, { min: 8, max: 100 }) : undefined}"))
+  // The roles: a labelled group tied to its one error; focus goes to the first checkbox; a toggle clears the error.
+  assert.match(source, /<section\n\s+className="mt-6 border-t border-border pt-5"\n\s+role="group"\n\s+aria-labelledby="admin-user-roles-label"\n\s+aria-describedby=\{fieldErrors\.errors\.roleIds \? "admin-user-roles-error" : undefined\}\n\s+>/)
+  assert.match(source, /<div id="admin-user-roles-label" className="mb-3 text-sm font-medium text-foreground">\{t\("roles"\)\}<\/div>/)
+  assert.match(source, /<input\n\s+id=\{index === 0 \? "admin-user-roles" : undefined\}\n\s+type="checkbox"/)
+  assert.ok(source.includes('<FieldError id="admin-user-roles-error" className="mt-2">{fieldErrors.message("roleIds")}</FieldError>'))
+  assert.match(source, /: \[\.\.\.current\.roleIds, roleId\],\n\s+\}\)\)\n\s+fieldErrors\.clear\("roleIds"\)/)
+})

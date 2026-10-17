@@ -7,14 +7,16 @@ import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Field } from "@/components/ui/field"
+import { Field, FieldError } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { atLeastOne, email, maxLength, minLength, required } from "@/lib/validation-rules"
 
 type RoleOption = {
   id: string
@@ -50,6 +52,34 @@ const emptyUser: AdminUserFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  username: "admin-user-username",
+  password: "admin-user-password",
+  displayName: "admin-user-display-name",
+  email: "admin-user-email",
+  employeeId: "admin-user-employee",
+  roleIds: "admin-user-roles",
+} as const
+type AdminUserField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as AdminUserField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required, minLength, maxLength and
+// type="email", and the server's rule of at least one role (v-track M-R2).
+function validate(values: AdminUserFormValues, isEdit: boolean) {
+  const errors: Partial<Record<AdminUserField, string>> = {}
+  const check = (key: AdminUserField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("username", required(values.username) ?? maxLength(values.username, 100))
+  // A new user needs a password; an edit keeps the old one when the field stays empty.
+  check("password", (isEdit ? null : required(values.password)) ?? minLength(values.password, 8) ?? maxLength(values.password, 100))
+  check("displayName", required(values.displayName) ?? maxLength(values.displayName, 200))
+  check("email", email(values.email) ?? maxLength(values.email, 200))
+  check("roleIds", atLeastOne(values.roleIds))
+  return errors
+}
+
 export function AdminUserForm({
   user,
   employees,
@@ -66,12 +96,17 @@ export function AdminUserForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<AdminUserFormValues>(user ?? emptyUser)
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<AdminUserField>()
+  const validationMessage = useValidationMessage()
   const isEdit = Boolean(user?.id)
   const backHref = `/${locale}/admin/users`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
   function setField<K extends keyof AdminUserFormValues>(field: K, value: AdminUserFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as AdminUserField)
   }
 
   function toggleRole(roleId: string) {
@@ -81,10 +116,13 @@ export function AdminUserForm({
         ? current.roleIds.filter((id) => id !== roleId)
         : [...current.roleIds, roleId],
     }))
+    fieldErrors.clear("roleIds")
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values, isEdit))
+    if (focusFirstError()) return
     setSaving(true)
 
     try {
@@ -102,7 +140,11 @@ export function AdminUserForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? tCommon("error"))
+      }
       toast.success(tCommon("savedSuccess"))
       router.push(backHref)
       router.refresh()
@@ -123,9 +165,9 @@ export function AdminUserForm({
       />
 
       {/* The form is the panel (D9): the panel classes and ContentPanel's own padding, since a <form> cannot be ContentPanel. */}
-      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+      <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("username")} required>
+          <Field label={t("username")} id="admin-user-username" required error={fieldErrors.message("username")}>
             <Input
               value={values.username}
               onChange={(event) => setField("username", event.target.value)}
@@ -133,7 +175,12 @@ export function AdminUserForm({
               maxLength={100}
             />
           </Field>
-          <Field label={isEdit ? t("newPassword") : t("password")} required={!isEdit}>
+          <Field
+            label={isEdit ? t("newPassword") : t("password")}
+            id="admin-user-password"
+            required={!isEdit}
+            error={fieldErrors.errors.password ? validationMessage(fieldErrors.errors.password, { min: 8, max: 100 }) : undefined}
+          >
             <Input
               type="password"
               value={values.password}
@@ -143,7 +190,7 @@ export function AdminUserForm({
               maxLength={100}
             />
           </Field>
-          <Field label={t("displayName")} required>
+          <Field label={t("displayName")} id="admin-user-display-name" required error={fieldErrors.message("displayName")}>
             <Input
               value={values.displayName}
               onChange={(event) => setField("displayName", event.target.value)}
@@ -151,7 +198,7 @@ export function AdminUserForm({
               maxLength={200}
             />
           </Field>
-          <Field label={t("email")}>
+          <Field label={t("email")} id="admin-user-email" error={fieldErrors.message("email")}>
             <Input
               type="email"
               value={values.email ?? ""}
@@ -159,7 +206,7 @@ export function AdminUserForm({
               maxLength={200}
             />
           </Field>
-          <Field label={t("employee")}>
+          <Field label={t("employee")} id="admin-user-employee" error={fieldErrors.message("employeeId")}>
             <NativeSelect
               value={values.employeeId ?? ""}
               onChange={(event) => setField("employeeId", event.target.value)}
@@ -183,12 +230,19 @@ export function AdminUserForm({
           </label>
         </div>
 
-        <section className="mt-6 border-t border-border pt-5">
-          <div className="mb-3 text-sm font-medium text-foreground">{t("roles")}</div>
+        {/* The roles are one group with one error under it; focus goes to its first checkbox (v-track M-R8). */}
+        <section
+          className="mt-6 border-t border-border pt-5"
+          role="group"
+          aria-labelledby="admin-user-roles-label"
+          aria-describedby={fieldErrors.errors.roleIds ? "admin-user-roles-error" : undefined}
+        >
+          <div id="admin-user-roles-label" className="mb-3 text-sm font-medium text-foreground">{t("roles")}</div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {roles.map((role) => (
+            {roles.map((role, index) => (
               <label key={role.id} className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-sm">
                 <input
+                  id={index === 0 ? "admin-user-roles" : undefined}
                   type="checkbox"
                   checked={values.roleIds.includes(role.id)}
                   onChange={() => toggleRole(role.id)}
@@ -201,6 +255,9 @@ export function AdminUserForm({
               </label>
             ))}
           </div>
+          {fieldErrors.errors.roleIds ? (
+            <FieldError id="admin-user-roles-error" className="mt-2">{fieldErrors.message("roleIds")}</FieldError>
+          ) : null}
         </section>
 
         <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
