@@ -58,7 +58,10 @@
     "moreActionsFor": "Actions for {code}",
     "searchSelectResultCount": "{count, plural, one {# result} other {# results}}",
     "switchToDark": "Switch to dark mode",
-    "switchToLight": "Switch to light mode"
+    "switchToLight": "Switch to light mode",
+    "pageNotFoundTitle": "Page not found",
+    "pageNotFoundDescription": "The link may be wrong, or what this page showed was removed or moved.",
+    "backToHome": "Back to home"
   },
   "globalSearch": {
     "label": "Search globally",

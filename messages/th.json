@@ -58,7 +58,10 @@
     "moreActionsFor": "การดำเนินการของ {code}",
     "searchSelectResultCount": "พบ {count} รายการ",
     "switchToDark": "เปลี่ยนเป็นโหมดมืด",
-    "switchToLight": "เปลี่ยนเป็นโหมดสว่าง"
+    "switchToLight": "เปลี่ยนเป็นโหมดสว่าง",
+    "pageNotFoundTitle": "ไม่พบหน้าที่ต้องการ",
+    "pageNotFoundDescription": "ลิงก์อาจไม่ถูกต้อง หรือข้อมูลในหน้านี้ถูกลบหรือย้ายไปแล้ว",
+    "backToHome": "กลับหน้าหลัก"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

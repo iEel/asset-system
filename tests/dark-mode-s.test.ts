@@ -140,3 +140,36 @@ test("the login headings take the foreground ink, and brand navy is a fill only,
   assert.match(login, /<h2 id="login-heading" className="mb-6 text-center text-xl font-semibold text-foreground">/)
   assert.deepEqual(findMatches(readSourceFiles("src"), /\btext-brand-navy\b/g), [])
 })
+
+test("the app's own 404 page follows the theme: tokens and the shared empty state inside the root layout (dark mode spec §4.5)", () => {
+  const page = read("src/app/not-found.tsx")
+  assert.doesNotMatch(page, /"use client"/)
+  assert.match(page, /^export default async function NotFound\(\) \{$/m)
+  assert.match(page, /const \[locale, t\] = await Promise\.all\(\[getLocale\(\), getTranslations\("common"\)\]\)/)
+  assert.match(page, /<main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">/)
+  assert.match(page, /<ActionEmptyState\n\s+icon=\{<SearchX \/>\}\n\s+title=\{t\("pageNotFoundTitle"\)\}\n\s+description=\{t\("pageNotFoundDescription"\)\}\n\s+actionHref=\{`\/\$\{locale\}`\}\n\s+actionLabel=\{t\("backToHome"\)\}\n\s+\/>/)
+  assert.doesNotMatch(page, /<html|<body|style=|#[0-9A-Fa-f]{3,6}\b|\b(?:bg|text|border)-(?:white|black)\b/)
+  // One 404 for the whole app, at the root: it catches unmatched URLs and every notFound(). No global-not-found (it
+  // skips the root layout and its data-theme) and no global-error (it replaces the root layout, so it cannot read the choice).
+  const special = readSourceFiles("src").map((file) => file.path).filter((path) => /\/(?:not-found|global-not-found|global-error)\.(?:tsx|ts|jsx|js)$/.test(path))
+  assert.deepEqual(special, ["src/app/not-found.tsx"])
+  assert.doesNotMatch(read("next.config.ts"), /globalNotFound/)
+  // The root 404 renders outside src/app/[locale]/layout.tsx, so without next-intl's client provider: nothing it renders
+  // may call a next-intl client hook (no test renders the page; Review Focus 5).
+  assert.deepEqual(page.match(/^import .+$/gm), [
+    'import { SearchX } from "lucide-react"',
+    'import { getLocale, getTranslations } from "next-intl/server"',
+    'import { ActionEmptyState } from "@/components/ui/action-empty-state"',
+  ])
+  for (const path of ["src/components/ui/action-empty-state.tsx", "src/components/ui/tone-icons.ts", "src/components/ui/button-variants.ts"]) {
+    assert.doesNotMatch(read(path), /\buse(?:Translations|Locale|Messages|Formatter|Now|TimeZone)\(/, path)
+  }
+  const words = {
+    th: ["ไม่พบหน้าที่ต้องการ", "ลิงก์อาจไม่ถูกต้อง หรือข้อมูลในหน้านี้ถูกลบหรือย้ายไปแล้ว", "กลับหน้าหลัก"],
+    en: ["Page not found", "The link may be wrong, or what this page showed was removed or moved.", "Back to home"],
+  }
+  for (const [locale, [title, description, action]] of Object.entries(words)) {
+    const common = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).common
+    assert.deepEqual([common.pageNotFoundTitle, common.pageNotFoundDescription, common.backToHome], [title, description, action], locale)
+  }
+})
