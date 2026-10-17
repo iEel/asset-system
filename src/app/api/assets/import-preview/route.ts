@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { getAssetImportReferences, parseAssetImportWorkbook } from "@/lib/asset-import-preview"
 import { createAssetImportBatchSummary } from "@/lib/asset-import-batch"
 import { validateUploadFileContent } from "@/lib/uploads"
@@ -14,14 +15,15 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get("file")
+    // The file rules belong to the upload as a whole, so they go under _form (V track spec §6.2).
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "กรุณาเลือกไฟล์ Excel" }, { status: 400 })
+      return fieldErrorResponse({ status: 400, error: "กรุณาเลือกไฟล์ Excel", fieldErrors: { _form: "required" } })
     }
     if (file.size > maxImportSize) {
-      return NextResponse.json({ error: "ไฟล์ต้องมีขนาดไม่เกิน 10 MB" }, { status: 400 })
+      return fieldErrorResponse({ status: 400, error: "ไฟล์ต้องมีขนาดไม่เกิน 10 MB", fieldErrors: { _form: "outOfRange" } })
     }
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      return NextResponse.json({ error: "รองรับเฉพาะไฟล์ .xlsx" }, { status: 400 })
+      return fieldErrorResponse({ status: 400, error: "รองรับเฉพาะไฟล์ .xlsx", fieldErrors: { _form: "invalidFormat" } })
     }
     await validateUploadFileContent(file)
 

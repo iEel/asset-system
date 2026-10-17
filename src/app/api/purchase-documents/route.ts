@@ -61,7 +61,10 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     })
     if (existing) {
-      return NextResponse.json({ error: "Purchase document already exists", id: existing.id }, { status: 409 })
+      return NextResponse.json(
+        { error: "Purchase document already exists", id: existing.id, code: "DUPLICATE", fieldErrors: { documentNo: "duplicate" } },
+        { status: 409 },
+      )
     }
 
     const savedFile = parsed.file ? await savePurchaseDocumentFile(parsed.file) : null

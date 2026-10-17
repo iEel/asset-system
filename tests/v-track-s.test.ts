@@ -411,3 +411,71 @@ test("admin and master-data refusals about one field name it: username, password
   stubDb({ location: { findFirst: () => ({ id: "loc-1", isActive: true }), findMany: () => [{ id: "loc-1", parentId: null }, { id: "loc-2", parentId: "loc-1" }] } })
   await expectBody(await location.PUT(jsonRequest("PUT", { ...place, parentId: "loc-2" }), params("loc-1")), 400, { error: "Location hierarchy cannot contain a cycle", fieldErrors: { parentId: "locationCycle" } })
 })
+
+test("asset, operation, maintenance and import refusals about a field name it; the import file rules belong to the form (V spec §6.2)", async () => {
+  type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>
+  const params = { params: Promise.resolve({ id: "asset-1" }) }
+  const expectBody = async (response: Response, status: number, body: unknown) => {
+    assert.equal(response.status, status)
+    assert.deepEqual(await response.json(), body)
+  }
+
+  // Serial numbers are checked in a helper that throws; both asset routes throw the field refusal.
+  for (const path of ["src/app/api/assets/route.ts", "src/app/api/assets/[id]/route.ts"]) {
+    const source = read(path)
+    assert.ok(source.includes(`throw new FieldRefusalError("Serial Number already exists", { serialNumber: "duplicate" })`), path)
+    assert.ok(!source.includes(`throw new Error("Serial Number already exists")`), path)
+  }
+
+  const purchaseDocuments = await load<{ POST: Handler }>("src/app/api/purchase-documents/route.ts")
+  stubDb({ purchaseDocument: { findFirst: () => ({ id: "pd-1" }) } })
+  await expectBody(await purchaseDocuments.POST(jsonRequest("POST", { documentType: "invoice", documentNo: "INV-1", documentDate: "", totalAmount: "" }), params), 409, {
+    error: "Purchase document already exists", id: "pd-1", code: "DUPLICATE", fieldErrors: { documentNo: "duplicate" },
+  })
+
+  const checkout = await load<{ POST: Handler }>("src/app/api/assets/[id]/checkout/route.ts")
+  stubDb({
+    asset: { findFirst: () => ({ id: "asset-1", status: { name: "Ready", nameTh: "พร้อมใช้" } }) },
+    assetCheckout: { findFirst: () => null },
+    assetCondition: { findUnique: () => null },
+  })
+  await expectBody(await checkout.POST(jsonRequest("POST", {
+    handoverMode: "permanent_assignment", checkoutType: "user", custodianId: "employee-1", departmentId: "", locationId: "", parentAssetId: "",
+    checkoutDate: "2026-10-17", expectedReturnDate: "", conditionBefore: "condition-gone", remark: "", receiverSignature: "",
+  }), params), 400, { error: "Invalid asset condition for checkout", code: "ASSET_STATE_MASTER_NOT_FOUND", fieldErrors: { conditionBefore: "invalidCheckoutCondition" } })
+
+  const correction = await load<{ POST: Handler }>("src/app/api/assets/[id]/status-correction/route.ts")
+  stubDb({
+    asset: { findFirst: () => ({ id: "asset-1", status: { id: "s-ready", name: "Ready", nameTh: "พร้อมใช้" } }) },
+    assetStatus: { findFirst: () => ({ id: "s-ready", name: "Ready", nameTh: "พร้อมใช้" }) },
+  })
+  await expectBody(await correction.POST(jsonRequest("POST", { nextStatusId: "s-ready", reason: "counted twice" }), params), 400, {
+    error: "This asset status does not require controlled correction", fieldErrors: { nextStatusId: "statusCorrectionNotNeeded" },
+  })
+
+  const plans = await load<{ POST: Handler }>("src/app/api/maintenance-plans/route.ts")
+  stubDb({ asset: { findFirst: () => ({ id: "asset-1" }) }, supplier: { findFirst: () => null } })
+  await expectBody(await plans.POST(jsonRequest("POST", { assetId: "asset-1", title: "PM", frequency: "monthly", intervalDays: "", nextDueDate: "2026-11-01", vendorId: "vendor-x", notes: "" }), params), 400, {
+    error: "PM vendor not found or inactive", fieldErrors: { vendorId: "pmVendorNotFound" },
+  })
+
+  const notifications = await load<{ PATCH: Handler }>("src/app/api/notifications/route.ts")
+  stubDb({ user: { findFirst: () => null } })
+  await expectBody(await notifications.PATCH(jsonRequest("PATCH", { key: "overdue:asset-1", action: "assign", count: 1, assignedToUserId: "user-x" }), params), 400, {
+    error: "Invalid assignee", fieldErrors: { assignedToUserId: "invalidAssignee" },
+  })
+
+  // The import file rules are about the upload, not a field: they go under _form, and the form keeps its own message.
+  for (const path of ["src/app/api/assets/import-preview/route.ts", "src/app/api/assets/import-confirm/route.ts"]) {
+    const { POST } = await load<{ POST: Handler }>(path)
+    stubDb({})
+    const upload = (file?: File) => {
+      const form = new FormData()
+      if (file) form.append("file", file)
+      return POST(new Request("http://localhost/api/test", { method: "POST", body: form }), params)
+    }
+    await expectBody(await upload(), 400, { error: "กรุณาเลือกไฟล์ Excel", fieldErrors: { _form: "required" } })
+    await expectBody(await upload(new File([new Uint8Array(10 * 1024 * 1024 + 1)], "assets.xlsx")), 400, { error: "ไฟล์ต้องมีขนาดไม่เกิน 10 MB", fieldErrors: { _form: "outOfRange" } })
+    await expectBody(await upload(new File(["a,b"], "assets.csv")), 400, { error: "รองรับเฉพาะไฟล์ .xlsx", fieldErrors: { _form: "invalidFormat" } })
+  }
+})

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { FieldRefusalError } from "@/lib/field-errors"
 import { syncInstalledComponentsWithParent, type ComponentSyncChanges } from "@/lib/asset-component-sync"
 import { getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
 import { getRegisterCustodyChangeError } from "@/lib/asset-custody-policy"
@@ -164,7 +165,7 @@ async function assertUniqueSerial(serialNumber?: string | null, excludeId?: stri
   })
 
   if (existing) {
-    throw new Error("Serial Number already exists")
+    throw new FieldRefusalError("Serial Number already exists", { serialNumber: "duplicate" })
   }
 }
 

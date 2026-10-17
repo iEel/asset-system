@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { errorResponse } from "@/lib/api-response"
+import { getApiErrorKey } from "@/lib/api-error-catalog"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { getAssetStatusCorrectionError } from "@/lib/asset-lifecycle-exception-policy"
 import { logAudit } from "@/lib/audit-log"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
@@ -30,7 +32,9 @@ export async function POST(request: NextRequest, context: AssetStatusCorrectionC
     if (!nextStatus) return NextResponse.json({ error: "Asset status not found" }, { status: 404 })
 
     const statusError = getAssetStatusCorrectionError(asset.status, nextStatus)
-    if (statusError) return NextResponse.json({ error: statusError }, { status: 400 })
+    if (statusError) {
+      return fieldErrorResponse({ status: 400, error: statusError, fieldErrors: { nextStatusId: getApiErrorKey(statusError) ?? "invalid" } })
+    }
 
     const updatedAsset = await prisma.$transaction(async (tx) => {
       const updated = await tx.asset.update({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { getNotificationSummary } from "@/lib/notification-summary"
 import { prisma } from "@/lib/db"
 import { buildNotificationStateUpdate, type NotificationStateAction } from "@/lib/notification-center"
@@ -41,7 +42,7 @@ export async function PATCH(request: NextRequest) {
         where: { id: assignedToUserId, isActive: true },
         select: { id: true },
       })
-      if (!assignee) return NextResponse.json({ error: "Invalid assignee" }, { status: 400 })
+      if (!assignee) return fieldErrorResponse({ status: 400, error: "Invalid assignee", fieldErrors: { assignedToUserId: "invalidAssignee" } })
     }
 
     const update = buildNotificationStateUpdate({

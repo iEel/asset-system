@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { logAudit } from "@/lib/audit-log"
 import { getMaintenancePlanIntervalDays } from "@/lib/preventive-maintenance"
 import { maintenancePlanSchema } from "@/lib/validations/maintenance"
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
         where: { id: input.vendorId, isActive: true },
         select: { id: true },
       })
-      if (!vendor) return NextResponse.json({ error: "PM vendor not found or inactive" }, { status: 400 })
+      if (!vendor) return fieldErrorResponse({ status: 400, error: "PM vendor not found or inactive", fieldErrors: { vendorId: "pmVendorNotFound" } })
     }
 
     const planNo = await generateMaintenancePlanNo()

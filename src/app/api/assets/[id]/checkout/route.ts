@@ -58,7 +58,10 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     })
     const conditionError = getAssetOperationConditionError(checkoutCondition)
     if (conditionError) {
-      return NextResponse.json({ code: conditionError, error: "Invalid asset condition for checkout" }, { status: 400 })
+      return NextResponse.json(
+        { code: conditionError, error: "Invalid asset condition for checkout", fieldErrors: { conditionBefore: "invalidCheckoutCondition" } },
+        { status: 400 },
+      )
     }
 
     const targetStatusName = getHandoverTargetStatusName(input.handoverMode)
