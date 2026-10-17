@@ -364,3 +364,50 @@ test("a duplicate code or name in master data answers 409 under its field, on cr
   assert.equal(th[categoryCase.key], categoryCase.th)
   assert.equal(en[categoryCase.key], categoryCase.error)
 })
+
+test("admin and master-data refusals about one field name it: username, password, role name, permissions, branch code, manager, parent (V spec §6.2)", async () => {
+  type Create = { POST(request: Request): Promise<Response> }
+  type Update = { PUT(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> }
+  const params = (id: string) => ({ params: Promise.resolve({ id }) })
+  const expectBody = async (response: Response, status: number, body: unknown) => {
+    assert.equal(response.status, status)
+    assert.deepEqual(await response.json(), body)
+  }
+
+  const users = await load<Create>("src/app/api/admin/users/route.ts")
+  const user = { username: "somchai", password: "", displayName: "Somchai", email: "", employeeId: "", roleIds: ["role-employee"], isActive: true }
+  stubDb({ role: { findMany: () => [{ id: "role-employee", name: "employee", isActive: true, rolePermissions: [] }] }, user: { findUnique: () => ({ id: "u-9" }) } })
+  await expectBody(await users.POST(jsonRequest("POST", user)), 400, { error: "Password is required", fieldErrors: { password: "required" } })
+  await expectBody(await users.POST(jsonRequest("POST", { ...user, password: "a-strong-password" })), 400, { error: "Username already exists", fieldErrors: { username: "duplicate" } })
+  const userUpdate = read("src/app/api/admin/users/[id]/route.ts")
+  assert.match(userUpdate, /if \(existing\) throw new FieldRefusalError\("Username already exists", \{ username: "duplicate" \}\)/)
+  assert.doesNotMatch(userUpdate, /throw new Error\("Username already exists"\)/)
+
+  const roles = await load<Create>("src/app/api/admin/roles/route.ts")
+  const role = { name: "store_keeper", displayName: "Store keeper", displayNameTh: "", description: "", isActive: true, permissionIds: ["perm-1"] }
+  stubDb({ role: { findUnique: () => ({ id: "role-1" }) } })
+  await expectBody(await roles.POST(jsonRequest("POST", role)), 409, { error: "Role name already exists", code: "DUPLICATE", fieldErrors: { name: "duplicate" } })
+  stubDb({ role: { findUnique: () => null }, permission: { findMany: () => [] } })
+  await expectBody(await roles.POST(jsonRequest("POST", role)), 400, { error: "Invalid permission selection", fieldErrors: { permissionIds: "invalidPermissionSelection" } })
+  assert.match(read("src/app/api/admin/roles/[id]/route.ts"), /return fieldErrorResponse\(\{ status: 400, error: "Invalid permission selection", fieldErrors: \{ permissionIds: "invalidPermissionSelection" \} \}\)/)
+
+  const branches = await load<Create>("src/app/api/branches/route.ts")
+  stubDb({ branch: { findFirst: () => ({ id: "branch-2", company: { code: "GL", nameTh: "จีลิงค์" } }) } })
+  await expectBody(await branches.POST(jsonRequest("POST", { code: "BKK", name: "Bangkok", companyId: "c1", address: "", contactPerson: "", isActive: true })), 400, {
+    error: "รหัสสาขา BKK มีอยู่แล้วในบริษัท GL - จีลิงค์", fieldErrors: { code: "duplicate" },
+  })
+  assert.equal(read("src/app/api/branches/[id]/route.ts").match(/fieldErrors: \{ code: "duplicate" \}/g)?.length, 1)
+
+  const employee = await load<Update>("src/app/api/employees/[id]/route.ts")
+  stubDb({ employee: { findFirst: () => ({ id: "emp-1", isActive: true }) } })
+  await expectBody(await employee.PUT(jsonRequest("PUT", {
+    code: "E1", fullNameTh: "สมชาย", fullNameEn: "", email: "", companyId: "c1", branchId: "b1", departmentId: "d1", position: "", employmentStatus: "active", managerId: "emp-1", isActive: true,
+  }), params("emp-1")), 400, { error: "Employee cannot be their own manager", fieldErrors: { managerId: "employeeOwnManager" } })
+
+  const location = await load<Update>("src/app/api/locations/[id]/route.ts")
+  const place = { code: "L1", name: "Store", branchId: "b1", parentId: "loc-1", locationType: "Room", description: "", isActive: true }
+  stubDb({})
+  await expectBody(await location.PUT(jsonRequest("PUT", place), params("loc-1")), 400, { error: "Location cannot be its own parent", fieldErrors: { parentId: "locationOwnParent" } })
+  stubDb({ location: { findFirst: () => ({ id: "loc-1", isActive: true }), findMany: () => [{ id: "loc-1", parentId: null }, { id: "loc-2", parentId: "loc-1" }] } })
+  await expectBody(await location.PUT(jsonRequest("PUT", { ...place, parentId: "loc-2" }), params("loc-1")), 400, { error: "Location hierarchy cannot contain a cycle", fieldErrors: { parentId: "locationCycle" } })
+})

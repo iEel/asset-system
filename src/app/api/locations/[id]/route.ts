@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
+import { fieldErrorResponse, isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { locationSchema } from "@/lib/validations/location"
 import { getLocationDeleteBlockReason, wouldCreateLocationCycle } from "@/lib/location-list-query"
 
@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest, context: LocationRouteContext) {
     const input = locationSchema.parse(await request.json())
 
     if (input.parentId === id) {
-      return NextResponse.json({ error: "Location cannot be its own parent" }, { status: 400 })
+      return fieldErrorResponse({ status: 400, error: "Location cannot be its own parent", fieldErrors: { parentId: "locationOwnParent" } })
     }
 
     const existing = await prisma.location.findFirst({
@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest, context: LocationRouteContext) {
       })
 
       if (wouldCreateLocationCycle({ locationId: id, nextParentId: input.parentId, locations })) {
-        return NextResponse.json({ error: "Location hierarchy cannot contain a cycle" }, { status: 400 })
+        return fieldErrorResponse({ status: 400, error: "Location hierarchy cannot contain a cycle", fieldErrors: { parentId: "locationCycle" } })
       }
     }
 

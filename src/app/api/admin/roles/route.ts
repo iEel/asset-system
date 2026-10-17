@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse, uniqueConflictResponse } from "@/lib/field-error-response"
 import { adminRoleSchema } from "@/lib/validations/admin-role"
 import { getRolePermissionChangeError } from "@/lib/admin-access-policy"
 
@@ -14,14 +15,14 @@ export async function POST(request: NextRequest) {
     const input = adminRoleSchema.parse(await request.json())
     const permissionIds = Array.from(new Set(input.permissionIds))
     const existing = await prisma.role.findUnique({ where: { name: input.name }, select: { id: true } })
-    if (existing) return NextResponse.json({ error: "Role name already exists" }, { status: 409 })
+    if (existing) return uniqueConflictResponse("name", "Role name already exists")
 
     const existingPermissions = await prisma.permission.findMany({
       where: { id: { in: permissionIds } },
       select: { id: true, module: true, action: true },
     })
     if (existingPermissions.length !== permissionIds.length) {
-      return NextResponse.json({ error: "Invalid permission selection" }, { status: 400 })
+      return fieldErrorResponse({ status: 400, error: "Invalid permission selection", fieldErrors: { permissionIds: "invalidPermissionSelection" } })
     }
     const escalationError = getRolePermissionChangeError({
       actor: user,

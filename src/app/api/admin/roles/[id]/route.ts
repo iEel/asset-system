@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { adminRoleSchema } from "@/lib/validations/admin-role"
 import { getRolePermissionChangeError } from "@/lib/admin-access-policy"
 import { invalidateAllAccess } from "@/lib/session-access-cache"
@@ -33,7 +34,7 @@ export async function PUT(request: NextRequest, context: AdminRoleRouteContext) 
       select: { id: true, module: true, action: true },
     })
     if (existingPermissions.length !== permissionIds.length) {
-      return NextResponse.json({ error: "Invalid permission selection" }, { status: 400 })
+      return fieldErrorResponse({ status: 400, error: "Invalid permission selection", fieldErrors: { permissionIds: "invalidPermissionSelection" } })
     }
     const escalationError = getRolePermissionChangeError({
       actor: user,

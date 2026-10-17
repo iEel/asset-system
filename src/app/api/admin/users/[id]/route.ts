@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { FieldRefusalError } from "@/lib/field-errors"
 import { adminUserSchema } from "@/lib/validations/admin-user"
 import { invalidateUserAccess } from "@/lib/session-access-cache"
 import { adminUserSecretOmit, toAdminUserResponse } from "@/lib/admin-user-response"
@@ -100,7 +101,7 @@ async function assertUniqueUsername(username: string, excludeId: string) {
     where: { username, id: { not: excludeId } },
     select: { id: true },
   })
-  if (existing) throw new Error("Username already exists")
+  if (existing) throw new FieldRefusalError("Username already exists", { username: "duplicate" })
 }
 
 async function assertEmployeeAvailable(employeeId: string | null | undefined, excludeId: string) {

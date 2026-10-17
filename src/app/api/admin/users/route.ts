@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse } from "@/lib/field-error-response"
+import { FieldRefusalError } from "@/lib/field-errors"
 import { adminUserSchema } from "@/lib/validations/admin-user"
 import { adminUserSecretOmit, toAdminUserResponse } from "@/lib/admin-user-response"
 import { getUserAccessChangeError } from "@/lib/admin-access-policy"
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const input = adminUserSchema.parse(await request.json())
     if (!input.password) {
-      return NextResponse.json({ error: "Password is required" }, { status: 400 })
+      return fieldErrorResponse({ status: 400, error: "Password is required", fieldErrors: { password: "required" } })
     }
     const accessError = getUserAccessChangeError({
       actor: user,
@@ -95,7 +97,7 @@ async function assertUniqueUsername(username: string) {
     where: { username },
     select: { id: true },
   })
-  if (existing) throw new Error("Username already exists")
+  if (existing) throw new FieldRefusalError("Username already exists", { username: "duplicate" })
 }
 
 async function assertEmployeeAvailable(employeeId?: string | null) {

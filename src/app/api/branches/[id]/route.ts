@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { branchSchema } from "@/lib/validations/branch"
 import { getBranchDeleteBlockReason } from "@/lib/organization-master-query"
 
@@ -65,12 +66,11 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
     })
 
     if (existingCode) {
-      return NextResponse.json(
-        {
-          error: `รหัสสาขา ${input.code} มีอยู่แล้วในบริษัท ${existingCode.company.code} - ${existingCode.company.nameTh}`,
-        },
-        { status: 400 }
-      )
+      return fieldErrorResponse({
+        status: 400,
+        error: `รหัสสาขา ${input.code} มีอยู่แล้วในบริษัท ${existingCode.company.code} - ${existingCode.company.nameTh}`,
+        fieldErrors: { code: "duplicate" },
+      })
     }
 
     const branch = await prisma.branch.update({
