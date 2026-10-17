@@ -1,11 +1,18 @@
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
+import { exemptProblems, phase3Rows, type ExemptList } from "./helpers/guard-exempt.ts"
 import { countMatchesByFile, findMatches, readSourceFiles } from "./helpers/source-files.ts"
 
 const sources = readSourceFiles("src")
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const globals = () => read("src/app/globals.css")
+
+// Locked guards (spec 2D §5.1, D1, D13; tests/helpers/guard-exempt.ts). Every rule here reads all of src. A rule that
+// lets a file keep a match counts its matches per file: such a file is a row of the rule's EXEMPT list with its exact
+// count, why it stays, the ruling that keeps it and its kind, "permanent" or "phase 3" (the last test lists those), and
+// every other file counts 0. A count that drops fails too: lower or delete the row in the commit that moves the site.
+// A new site uses the shared part; a new row needs a ruling of its own.
 
 test("focus styles use the single ring token", () => {
   assert.deepEqual(findMatches(sources, /(focus|focus-visible|focus-within):(ring|border)-(primary|brand-accent|danger|success|warning|info|destructive)(?![\w-])/g), [])
@@ -66,8 +73,8 @@ test("line heights are ratios, and Thai pages get room for stacked marks", () =>
 })
 
 test("overlays use the navy scrim and the overlay shadow, and respect reduced motion", () => {
-  const ui = sources.filter((file) => file.path.startsWith("src/components/ui/"))
-  assert.deepEqual(findMatches(ui, /\bbg-black\/\d+/g), [])
+  // Over all of src (spec 2D §1): a see-through black fill is a scrim of its own; overlays use bg-scrim.
+  assert.deepEqual(findMatches(sources, /\bbg-black\/\d+/g), [])
   for (const name of ["dialog", "alert-dialog", "sheet"]) {
     const source = read(`src/components/ui/${name}.tsx`)
     assert.match(source, /"fixed inset-0 z-50 bg-scrim [^"]*motion-reduce:animate-none!"/, `${name} scrim`)
@@ -173,12 +180,14 @@ test("placeholders take their color from the base rule only", () => {
   assert.deepEqual(findMatches(sources, /placeholder:text-(?!faint-foreground\b)[\w-]+/g), [])
 })
 
+// Use text-meta (13px) or text-metric (28px). The thermal label keeps its own px sizes.
+const MOCKUP_TYPE_PX = /text-\[(?:13|28)px\]/g
+const MOCKUP_TYPE_PX_EXEMPT: ExemptList = {
+  "src/components/assets/asset-label-print.tsx": { count: 1, kind: "permanent", why: "the thermal label's name line on the large tape prints at its physical size", ruling: "2A §9.5" },
+}
+
 test("the mockup type sizes and the 6px radius are used through their tokens", () => {
-  assert.deepEqual(
-    findMatches(sources, /text-\[(?:13|28)px\]/g, (path) => path === "src/components/assets/asset-label-print.tsx"),
-    [],
-    "use text-meta (13px) or text-metric (28px); the thermal label keeps its own px sizes",
-  )
+  assert.deepEqual(exemptProblems("mockup sizes", countMatchesByFile(sources, MOCKUP_TYPE_PX), MOCKUP_TYPE_PX_EXEMPT), [])
   assert.deepEqual(findMatches(sources, /rounded-\[6px\]/g), [], "use rounded-control")
 })
 
@@ -206,17 +215,6 @@ test("big numbers, codes and faint text follow their token rules", () => {
   )
 })
 
-// Ratchet guards (UI phase 2A). A file missing from the budget may have no match; a listed file may have at most its number.
-// Lower a number in the task that removes a site; never raise one. Phase 2D sets every budget to {}.
-function assertWithinBudget(pattern: RegExp, budget: Record<string, number>, allow?: (path: string) => boolean) {
-  const counts = countMatchesByFile(sources, pattern, allow)
-  const over = Object.entries(counts)
-    .filter(([path, count]) => count > (budget[path] ?? 0))
-    .map(([path, count]) => `${path}: ${count} > ${budget[path] ?? 0}`)
-  const total = Object.values(counts).reduce((sum, count) => sum + count, 0)
-  assert.equal(over.length, 0, `${total} matches in ${Object.keys(counts).length} files; over budget:\n${over.join("\n")}`)
-}
-
 test("countMatchesByFile counts matches per file and skips allowed paths", () => {
   const files = [
     { path: "src/a.tsx", source: "border-warning/30 bg-warning-soft border-danger/20" },
@@ -230,17 +228,18 @@ test("countMatchesByFile counts matches per file and skips allowed paths", () =>
 // R1: a tone color with an opacity suffix (border-warning/30, ring-primary/20, bg-destructive/10). Use the -border / -soft tokens.
 const TONE_OPACITY =
   /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg|border|ring|text|divide|outline|fill|stroke|from|via|to|decoration|shadow|accent|caret|placeholder)-(?:primary|success|warning|danger|info|destructive)(?:-[a-z]+)?\/\d+/g
+const TONE_OPACITY_EXEMPT: ExemptList = {}
 
 test("R1 tone colors never fade with opacity", () => {
-  assertWithinBudget(TONE_OPACITY, {})
+  assert.deepEqual(exemptProblems("R1", countMatchesByFile(sources, TONE_OPACITY), TONE_OPACITY_EXEMPT), [])
 })
 
 const NEUTRAL_FILL_OPACITY = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg-(?:muted|accent)|border-border)\/\d+/g
 
 // R7, locked by phase 2B plan 5 (spec 2B §9.2.2): every neutral fill is an opaque token, table headers included; the
-// <th line filter of plans 2B-1 to 2B-4 is gone. The budget keeps its name, which the guard scripts of the 2B plans
-// read (spec 2D §5.5). Plan 2D-3 moved its last row, the import preview table header, onto DataTable: it is {}.
-const TABLE_HEADER_FILLS: Record<string, number> = {}
+// <th line filter of plans 2B-1 to 2B-4 is gone. The EXEMPT list keeps its old name, which the guard scripts of the 2B
+// plans read (spec 2D §5.5), and stays empty on one line: plan 2D-3 moved its last row, the import preview table header.
+const TABLE_HEADER_FILLS: ExemptList = {}
 
 test("R7 neutral fills are opaque tokens, table headers included", () => {
   const css = globals()
@@ -248,23 +247,25 @@ test("R7 neutral fills are opaque tokens, table headers included", () => {
   assert.match(css, /--border-soft: #[0-9A-F]{6};/)
   assert.match(css, /--color-row-hover: var\(--row-hover\);/, "without this line Tailwind drops bg-row-hover without an error")
   assert.match(css, /--color-border-soft: var\(--border-soft\);/, "without this line Tailwind drops border-border-soft without an error")
-  assertWithinBudget(NEUTRAL_FILL_OPACITY, TABLE_HEADER_FILLS)
+  assert.deepEqual(exemptProblems("R7", countMatchesByFile(sources, NEUTRAL_FILL_OPACITY), TABLE_HEADER_FILLS), [])
 })
 
 // R2: panels and cards are flat. A shadow belongs only to floating layers (shadow-overlay, not matched here),
-// controls drawn over the camera image or a photo, paper previews, and the few bars that later phases own.
+// controls drawn over the camera image or a photo, paper previews, the round scan button, and the register's phone
+// bulk-action bar until phase 3.
 const SURFACE_SHADOW = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*shadow-(?:sm|md|lg|xl|2xl)(?![\w-])/g
+const SURFACE_SHADOW_EXEMPT: ExemptList = {
+  "src/components/ui/scanner-text-input.tsx": { count: 2, kind: "permanent", why: "the zoom group and the torch button float over the live camera image", ruling: "2A §9.8 #6, 2D §5.3" },
+  "src/components/audit/audit-scan-check-form.tsx": { count: 1, kind: "permanent", why: "the remove button floats over a photo thumbnail", ruling: "2A §9.8 #6, 2D §5.3" },
+  "src/components/assets/asset-label-print.tsx": { count: 1, kind: "permanent", why: "the label sheet preview stands for the paper", ruling: "2A §9.8 #6, 2D §5.3" },
+  "src/components/asset-operations/operation-document-print.tsx": { count: 1, kind: "permanent", why: "the A4 page preview stands for the paper", ruling: "2A §9.8 #6, 2D-4 R17" },
+  "src/components/admin/system-settings-form.tsx": { count: 1, kind: "permanent", why: "the label sample of the label settings stands for the paper", ruling: "2A §9.8 #6, 2D §5.3" },
+  "src/components/layout/mobile-field-navigation.tsx": { count: 1, kind: "permanent", why: "the round scan button lifts out of the bottom bar", ruling: "phase 1 §15 #6, 2A §9.8 #9" },
+  "src/components/assets/asset-register-table.tsx": { count: 1, kind: "phase 3", why: "the phone bulk-action bar floats over the list, with its frame and place", ruling: "2D D2, 2B R-q" },
+}
 
 test("R2 only floating layers, camera controls and paper previews cast a shadow", () => {
-  assertWithinBudget(SURFACE_SHADOW, {
-    "src/components/ui/scanner-text-input.tsx": 2, // two controls over the camera image
-    "src/components/audit/audit-scan-check-form.tsx": 1, // delete button over a photo thumbnail
-    "src/components/assets/asset-label-print.tsx": 1, // label sheet preview
-    "src/components/asset-operations/operation-document-print.tsx": 1, // A4 page preview
-    "src/components/admin/system-settings-form.tsx": 1, // label preview
-    "src/components/layout/mobile-field-navigation.tsx": 1, // round scan button shadow-md, kept since phase 1
-    "src/components/assets/asset-register-table.tsx": 1, // mobile bulk-action bar shadow-lg (phase 3, R-q)
-  })
+  assert.deepEqual(exemptProblems("R2", countMatchesByFile(sources, SURFACE_SHADOW), SURFACE_SHADOW_EXEMPT), [])
 })
 
 test("the shared segmented control marks the chosen option with primary-soft and 6px corners, not a shadow", () => {
@@ -284,10 +285,14 @@ test("the shared segmented control marks the chosen option with primary-soft and
   assert.doesNotMatch(read("src/components/audit/audit-scan-room-list.tsx"), /aria-pressed/, "the room list tabs get aria-pressed from Segmented")
 })
 
+// R3: the thermal label prints at its physical size, so it keeps its own type scale. On screen the floor is text-xs (12px).
+const SMALL_TEXT = /text-\[(?:\d|1[01])(?:\.\d+)?px\]/g
+const SMALL_TEXT_EXEMPT: ExemptList = {
+  "src/components/assets/asset-label-print.tsx": { count: 3, kind: "permanent", why: "the thermal label's name and detail lines print at their physical size", ruling: "2A §9.5" },
+}
+
 test("R3 no text smaller than 12px outside the thermal label", () => {
-  // The thermal label prints at its physical size, so it keeps its own type scale. On screen the floor is text-xs (12px).
-  const labelPrint = "src/components/assets/asset-label-print.tsx"
-  assert.deepEqual(findMatches(sources, /text-\[(?:\d|1[01])(?:\.\d+)?px\]/g, (path) => path === labelPrint), [])
+  assert.deepEqual(exemptProblems("R3", countMatchesByFile(sources, SMALL_TEXT), SMALL_TEXT_EXEMPT), [])
   // leading-4 (16px) is below the Thai minimum of 1.44 × 12px; without it text-xs gets calc(18 / 12) on Thai pages.
   for (const path of ["src/components/admin/IntegrationClientManager.tsx", "src/components/ui/file-dropzone.tsx"]) {
     assert.doesNotMatch(read(path), /\bleading-4\b/, path)
@@ -300,4 +305,29 @@ test("no emoji in source or messages: icons come from lucide and languages are n
   // Emoji_Presentation covers flags and pictographs; U+FE0F turns a text symbol into an emoji. © ® ✓ ↑ ↓ · › ⋯ stay allowed.
   const messages = ["messages/th.json", "messages/en.json"].map((path) => ({ path, source: read(path) }))
   assert.deepEqual(findMatches([...sources, ...messages], /\p{Emoji_Presentation}|\uFE0F/gu), [])
+})
+
+// Every EXEMPT list of this file, by rule (spec 2D \u00A75.1), last in the file. Each guard file sums its own phase 3 rows:
+// a test file that imports another one runs that file's tests a second time.
+const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
+  R1: TONE_OPACITY_EXEMPT,
+  R7: TABLE_HEADER_FILLS,
+  R2: SURFACE_SHADOW_EXEMPT,
+  R3: SMALL_TEXT_EXEMPT,
+  "mockup sizes": MOCKUP_TYPE_PX_EXEMPT,
+}
+
+test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D \u00A75.1, D2)", () => {
+  const rows = phase3Rows(EXEMPT_LISTS)
+  assert.deepEqual(
+    rows.map(({ rule, file, count }) => `${rule} ${file}: ${count}`),
+    ["R2 src/components/assets/asset-register-table.tsx: 1"],
+  )
+  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 1)
+  // Every EXEMPT list this file declares is in EXEMPT_LISTS once, so the phase 3 rows of a later rule are summed here too.
+  const source = read("tests/visual-foundation-guards.test.ts")
+  const declared = [...source.matchAll(/^const (\w+): ExemptList = /gm)].map((match) => match[1])
+  const registry = source.match(/^const EXEMPT_LISTS\b[^\n]*\n([\s\S]*?)^\}/m)?.[1] ?? ""
+  assert.deepEqual(declared.filter((name) => !registry.includes(`: ${name},`)), [], "add each EXEMPT list to EXEMPT_LISTS")
+  assert.equal(Object.keys(EXEMPT_LISTS).length, declared.length, "EXEMPT_LISTS holds each list once")
 })
