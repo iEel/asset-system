@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { findJsxElements, findJsxTags, findMatches, hasJsxAttr, jsxAttrValue, readSourceFiles, type SourceFile } from "./helpers/source-files.ts"
 
 // Phase 2B (spec 2B §6.13 table B): how list pages use the shared filters. The strings of the filter primitives live
 // in tests/list-primitives-ui.test.ts (I16); the "none left" guards live in tests/list-frame-guards.test.ts (I15, I34).
@@ -18,42 +19,70 @@ test("FilterFormActions submits at 40px and offers clear filters as an outline l
   assert.match(panel, /export function FilterPanel\(\{ title, description, children, className \}: FilterPanelProps\)/, "FilterPanel keeps its API")
 })
 
-// Items 5 and 6 (spec 2B §6.13 table B, I34): the filter forms of the migrated list files. Each page commit adds its
-// file; plan 2B-5 completes the list. A raw field in a file outside the list has no guard until 2D (I34).
-const MIGRATED_FILTER_FILES = [
-  "src/components/master-data/master-data-layout.tsx",
-  "src/components/reports/report-filter-panel.tsx",
-  "src/app/[locale]/(dashboard)/master-data/branches/page.tsx",
-  "src/app/[locale]/(dashboard)/master-data/brands/page.tsx",
-  "src/app/[locale]/(dashboard)/master-data/categories/page.tsx",
-  "src/app/[locale]/(dashboard)/master-data/companies/page.tsx",
-  "src/app/[locale]/(dashboard)/master-data/employees/page.tsx",
-  "src/app/[locale]/(dashboard)/master-data/locations/page.tsx",
-  "src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx",
-  "src/app/[locale]/(dashboard)/disposal/page.tsx",
-  "src/app/[locale]/(dashboard)/maintenance/page.tsx",
-  "src/components/admin/asset-state-review-workspace.tsx",
-  "src/app/[locale]/(dashboard)/admin/logs/page.tsx",
-]
+// Items 5 and 6 (spec 2B §6.13 table B, I34) over all of src since plan 2D-5 (spec 2D §3.5, M19). A filter form sends
+// its fields to a URL (an action and no onSubmit; this app has no server-action form, which would need its own
+// exception here) or holds FilterSelect or FilterFormActions, and it is a search landmark. A search form holds the
+// shared fields only (Field + SearchField, FilterSelect) and hidden inputs. A raw field outside a search form is FMG
+// GF2's; a local filter helper is LFG LF1's.
+const sources = readSourceFiles("src")
+const OLD_FILTER_LABEL = /space-y-1 text-sm font-medium text-foreground|mb-1\.5 block text-xs font-medium text-muted-foreground/g
 
-test("migrated filter forms use Field, SearchField and FilterSelect only, and every form is a search landmark (item 5)", () => {
-  for (const path of MIGRATED_FILTER_FILES) {
-    const source = read(path)
-    assert.doesNotMatch(source, /<select\b|<textarea\b/, `${path}: a raw select or textarea`)
-    const rawInputs = (source.match(/<input\b[^>]*>/g) ?? []).filter((tag) => !/\btype="hidden"/.test(tag))
-    assert.deepEqual(rawInputs, [], `${path}: only hidden inputs may stay raw`)
-    assert.doesNotMatch(source, /space-y-1 text-sm font-medium text-foreground|mb-1\.5 block text-xs font-medium text-muted-foreground/, `${path}: an old filter label`)
-    assert.doesNotMatch(source, /\bfunction (?:FilterSelect|ReportSelect)\b|\bfunction Filter\(/, `${path}: a local filter helper`)
-    for (const form of source.match(/<form\b[^>]*>/g) ?? []) assert.match(form, /\brole="search"/, `${path}: ${form}`)
-  }
-})
-
-test("clear filters shows only while a filter is on (item 6)", () => {
-  for (const path of MIGRATED_FILTER_FILES) {
-    for (const actions of read(path).match(/<FilterFormActions\b[\s\S]*?\/>/g) ?? []) {
-      if (/\bclear=/.test(actions)) assert.match(actions, /\bclear=\{hasActiveFilters \?/, `${path}: ${actions}`)
+function filterFormProblems(files: readonly SourceFile[]) {
+  const problems: string[] = []
+  let searchForms = 0
+  for (const file of files) {
+    for (const form of findJsxElements(file.source, "form")) {
+      const where = `${file.path}:${form.line}`
+      const search = jsxAttrValue(form.text, "role") === "search"
+      if (!search) {
+        const toUrl = hasJsxAttr(form.text, "action") && !hasJsxAttr(form.text, "onSubmit")
+        const filterParts = findJsxTags(form.children ?? "", ["FilterSelect", "FilterFormActions"]).length > 0
+        if (toUrl || filterParts) problems.push(`${where}: a filter form needs role="search"`)
+        continue
+      }
+      searchForms++
+      if (form.children === null) problems.push(`${where}: no closing </form>`)
+      for (const tag of findJsxTags(form.children ?? "", ["input", "select", "textarea"])) {
+        if (tag.name !== "input" || jsxAttrValue(tag.text, "type") !== "hidden") problems.push(`${where}: a raw <${tag.name}> (use Field + SearchField or FilterSelect; only hidden inputs stay raw)`)
+      }
     }
   }
+  return { problems, searchForms }
+}
+
+// Item 6: every FilterFormActions that offers clear filters offers it only while a filter is on.
+function clearFilterProblems(files: readonly SourceFile[]) {
+  const problems: string[] = []
+  let clears = 0
+  for (const file of files) {
+    for (const tag of findJsxTags(file.source, ["FilterFormActions"])) {
+      const clear = jsxAttrValue(tag.text, "clear")
+      if (clear === null) continue
+      clears++
+      if (!/^hasActiveFilters \?/.test(clear.trim())) problems.push(`${file.path}:${tag.line}: clear={${clear}}`)
+    }
+  }
+  return { problems, clears }
+}
+
+test("filter forms across src are search landmarks and hold Field, SearchField and FilterSelect only (item 5, I34)", () => {
+  const fixture = (source: string): SourceFile => ({ path: "src/x.tsx", source })
+  assert.equal(filterFormProblems([fixture('<form action={basePath}><SearchField name="q" /></form>')]).problems.length, 1, "a GET form without role=\"search\"")
+  assert.equal(filterFormProblems([fixture('<form onSubmit={apply}><FilterSelect name="s" /></form>')]).problems.length, 1, "a client filter form without role=\"search\"")
+  assert.equal(filterFormProblems([fixture('<form role="search" action={basePath}><input type="hidden" name="p" value="1" /><select name="s" /><input name="q" /></form>')]).problems.length, 2, "a raw select and a raw input in a search form")
+  assert.deepEqual(filterFormProblems([fixture('<form onSubmit={save}><input name="q" /><SearchField /></form><form role="search" onSubmit={go}><SearchField /></form>')]).problems, [], "a data form with a search box is not a filter form, and SearchField is shared")
+  const { problems, searchForms } = filterFormProblems(sources)
+  assert.deepEqual(problems, [])
+  assert.ok(searchForms > 10, `expected the list pages' search forms, found ${searchForms}`)
+  assert.deepEqual(findMatches(sources, OLD_FILTER_LABEL), [], "an old filter label")
+})
+
+test("clear filters shows only while a filter is on, on every FilterFormActions in src (item 6)", () => {
+  const fixture = (source: string): SourceFile => ({ path: "src/x.tsx", source })
+  assert.equal(clearFilterProblems([fixture('<FilterFormActions submitLabel="a" clear={{ href: "/x", label: "b" }} /><FilterFormActions submitLabel="a" />')]).problems.length, 1)
+  const { problems, clears } = clearFilterProblems(sources)
+  assert.deepEqual(problems, [])
+  assert.ok(clears > 5, `expected the list pages' clear links, found ${clears}`)
 })
 
 // Item 8 (spec 2B §6.13 table B, §5.10 #5): the disposal queue had two filter forms, one per screen size. One

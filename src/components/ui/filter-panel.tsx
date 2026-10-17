@@ -35,7 +35,7 @@ type FilterFormActionsProps = {
 }
 
 // The submit button and the "clear filters" link of a GET filter form. size="lg" is written out: the buttons sit in
-// one row with 40px fields, and phase 2D moves the default size to 36px. items-end lines them up with the bottom of
+// one row with 40px fields, and the default size is 36px from md. items-end lines them up with the bottom of
 // the fields in a grid cell that has labels on top. Phones: one button fills the row, two share it. Server-safe.
 export function FilterFormActions({ submitLabel, clear, className }: FilterFormActionsProps) {
   return (
