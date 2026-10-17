@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 import { exemptProblems, phase3Rows, type ExemptList } from "./helpers/guard-exempt.ts"
-import { countMatchesByFile, findMatches, readSourceFiles } from "./helpers/source-files.ts"
+import { countByFile, countMatchesByFile, findMatches, readSourceFiles } from "./helpers/source-files.ts"
 
 const sources = readSourceFiles("src")
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -194,6 +194,7 @@ test("the mockup type sizes and the 6px radius are used through their tokens", (
 // "Class string" = one double-quoted string on one line, as findMatches reports it.
 const classStrings = findMatches(sources, /"[^"\n]*"/g).map((match) => ({ where: match, text: match.slice(match.indexOf(': "') + 2) }))
 const stringsWhere = (keep: (text: string) => boolean) => classStrings.filter(({ text }) => keep(text)).map(({ where }) => where)
+const classStringsByFile = (keep: (text: string) => boolean) => countByFile(sources, (file) => [...file.source.matchAll(/"[^"\n]*"/g)].filter((match) => keep(match[0])).length)
 
 test("big numbers, codes and faint text follow their token rules", () => {
   assert.deepEqual(
@@ -290,13 +291,15 @@ const SMALL_TEXT = /text-\[(?:\d|1[01])(?:\.\d+)?px\]/g
 const SMALL_TEXT_EXEMPT: ExemptList = {
   "src/components/assets/asset-label-print.tsx": { count: 3, kind: "permanent", why: "the thermal label's name and detail lines print at their physical size", ruling: "2A §9.5" },
 }
+// leading-4 (16px) is below the Thai minimum of 1.44 × 12px; without it text-xs gets calc(18 / 12) on Thai pages.
+// Counted in class strings, so a comment that names it does not count.
+const LEADING_4_EXEMPT: ExemptList = {
+  "src/components/ui/kbd.tsx": { count: 1, kind: "permanent", why: "a Kbd holds only Latin key names and arrows, never Thai text", ruling: "2A I23" },
+}
 
 test("R3 no text smaller than 12px outside the thermal label", () => {
   assert.deepEqual(exemptProblems("R3", countMatchesByFile(sources, SMALL_TEXT), SMALL_TEXT_EXEMPT), [])
-  // leading-4 (16px) is below the Thai minimum of 1.44 × 12px; without it text-xs gets calc(18 / 12) on Thai pages.
-  for (const path of ["src/components/admin/IntegrationClientManager.tsx", "src/components/ui/file-dropzone.tsx"]) {
-    assert.doesNotMatch(read(path), /\bleading-4\b/, path)
-  }
+  assert.deepEqual(exemptProblems("Thai leading", classStringsByFile((text) => /\bleading-4\b/.test(text)), LEADING_4_EXEMPT), [])
   // The white count on the solid red dot is 600, not 700 (spec 2A section 9.8, ruling 11).
   assert.match(read("src/components/layout/topbar.tsx"), /rounded-full bg-danger px-1 text-xs font-semibold leading-none text-white/)
 })
@@ -314,6 +317,7 @@ const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   R7: TABLE_HEADER_FILLS,
   R2: SURFACE_SHADOW_EXEMPT,
   R3: SMALL_TEXT_EXEMPT,
+  "Thai leading": LEADING_4_EXEMPT,
   "mockup sizes": MOCKUP_TYPE_PX_EXEMPT,
 }
 

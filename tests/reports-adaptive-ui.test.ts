@@ -97,6 +97,8 @@ test("mobile report cards use two labelled columns with optional full-width fiel
   assert.match(responsiveList, /mobileClassName\?: string/)
   assert.match(responsiveList, /<dl className="[^"]*grid-cols-2[^"]*">/)
   assert.match(responsiveList, /cn\("min-w-0", column\.mobileClassName\)/)
+  // A phone card's label is the table head's 13px label, with a Thai-safe line (no leading-4; plan 2D-5 task VG-3).
+  assert.match(responsiveList, /<dt className="text-meta font-medium text-muted-foreground">\{column\.label\}<\/dt>/)
 })
 
 test("wide report identity fields span both mobile columns", () => {

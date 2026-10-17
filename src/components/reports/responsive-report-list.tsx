@@ -63,7 +63,7 @@ export function ResponsiveReportList<Row>({
             <dl className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2">
               {columns.map((column) => (
                 <div key={column.key} className={cn("min-w-0", column.mobileClassName)}>
-                  <dt className="text-xs font-medium leading-4 text-muted-foreground">{column.label}</dt>
+                  <dt className="text-meta font-medium text-muted-foreground">{column.label}</dt>
                   <dd className="mt-0.5 min-w-0 break-words text-sm leading-5 text-foreground">{column.render(row)}</dd>
                 </div>
               ))}
