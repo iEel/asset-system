@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 import { exemptProblems, phase3Rows, type ExemptList } from "./helpers/guard-exempt.ts"
-import { countByFile, countMatchesByFile, findJsxTags, findMatches, readSourceFiles } from "./helpers/source-files.ts"
+import { countByFile, countMatchesByFile, findJsxElements, findJsxTags, findMatches, hasJsxAttr, readSourceFiles } from "./helpers/source-files.ts"
 
 const sources = readSourceFiles("src")
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -405,6 +405,38 @@ test("N4 nothing fades through opacity when it is disabled (spec 2D §5.4 item 4
   assert.deepEqual(exemptProblems("N4", countMatchesByFile(sources, DISABLED_FADE), DISABLED_FADE_EXEMPT), [])
 })
 
+// N5: a button changes height at md, where its size does (spec 2D D3: below md every size is at least 44px). No height,
+// min-height, max-height or size at sm: on a Button or a raw <button>, on the element a <Button asChild> styles, on an
+// element whose class comes from buttonVariants (a button-like link), or on a line that calls buttonVariants.
+const SM_HEIGHT = /(?<![\w-])sm:(?:h|min-h|max-h|size)-/g
+const ANY_TAG = ["[A-Za-z][\\w.]*"]
+function buttonClassTexts(source: string): string[] {
+  const tags = findJsxTags(source, ANY_TAG)
+  const texts = tags.filter((tag) => tag.name === "Button" || tag.name === "button" || tag.text.includes("buttonVariants(")).map((tag) => tag.text)
+  for (const button of findJsxElements(source, "Button")) {
+    const child = hasJsxAttr(button.text, "asChild") ? findJsxTags(button.children ?? "", ANY_TAG)[0] : undefined
+    if (child) texts.push(child.text)
+  }
+  // A class built with buttonVariants outside a tag, such as const linkClasses = cn(buttonVariants(…), "…").
+  for (const line of source.split("\n")) if (line.includes("buttonVariants(") && !tags.some((tag) => tag.text.includes(line.trim()))) texts.push(line)
+  return texts
+}
+const smButtonHeights = (source: string) => buttonClassTexts(source).reduce((sum, text) => sum + (text.match(SM_HEIGHT)?.length ?? 0), 0)
+const SM_BUTTON_HEIGHT_EXEMPT: ExemptList = {}
+
+test("N5 buttons and button-like links set no height at sm:, so they switch at md with their size (spec 2D §5.4 item 5)", () => {
+  const source = [
+    '<Button size="sm" className="w-full sm:h-10">a</Button>',
+    '<Link className={cn(buttonVariants({ size: "sm" }), "sm:min-h-0 sm:size-8")} href="/" />',
+    '<Button asChild><a className="sm:max-h-9" href="/">b</a></Button>',
+    '<div className="sm:h-10" /><Image className="sm:h-[72px]" alt="" />',
+    'const linkClasses = cn(buttonVariants({ variant: "outline" }), "sm:h-9")',
+    '<button className="max-sm:h-12 md:h-9 sm:w-auto" />',
+  ].join("\n")
+  assert.equal(smButtonHeights(source), 5)
+  assert.deepEqual(exemptProblems("N5", countByFile(sources, (file) => smButtonHeights(file.source)), SM_BUTTON_HEIGHT_EXEMPT), [])
+})
+
 // Every EXEMPT list of this file, by rule (spec 2D §5.1), last in the file. Each guard file sums its own phase 3 rows:
 // a test file that imports another one runs that file's tests a second time.
 const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
@@ -418,6 +450,7 @@ const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   N2: DASHED_LINE_EXEMPT,
   N3: RAW_BUTTON_EXEMPT,
   N4: DISABLED_FADE_EXEMPT,
+  N5: SM_BUTTON_HEIGHT_EXEMPT,
 }
 
 test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
