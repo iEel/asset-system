@@ -17,10 +17,17 @@ test("solid fills darken on hover instead of fading", () => {
   assert.deepEqual(findMatches(/\bbg-(?:primary|success|warning|danger|info)\/90\b/g), [])
 })
 
-test("status foreground tokens only appear inside shared ui components", () => {
+test("status foreground tokens only appear inside shared ui components and on the bell's count dot", () => {
+  const statusInk = /\btext-(?:success|warning|danger|info)-foreground\b/g
   assert.deepEqual(
-    findMatches(/\btext-(?:success|warning|danger|info)-foreground\b/g, (path) => path.startsWith("src/components/ui/")),
+    findMatches(statusInk, (path) => path.startsWith("src/components/ui/") || path === "src/components/layout/topbar.tsx"),
     [],
+  )
+  // The bell's unread count is the one solid status fill outside src/components/ui (dark mode P-R7). Its ink is the
+  // danger foreground, not white: the dark danger fill is light, and the contrast suite checks the pair in both sets.
+  assert.deepEqual(
+    findMatches(statusInk).filter((match) => match.startsWith("src/components/layout/topbar.tsx: ")),
+    ["src/components/layout/topbar.tsx: text-danger-foreground"],
   )
 })
 

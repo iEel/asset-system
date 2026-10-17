@@ -180,7 +180,7 @@ export function Topbar({
               >
                 <Bell aria-hidden="true" className="size-5" />
                 {notificationSummary.total > 0 ? (
-                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold leading-none text-white">
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold leading-none text-danger-foreground">
                     {notificationSummary.total > 99 ? "99+" : notificationSummary.total}
                   </span>
                 ) : null}

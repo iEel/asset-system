@@ -301,8 +301,8 @@ const LEADING_4_EXEMPT: ExemptList = {
 test("R3 no text smaller than 12px outside the thermal label", () => {
   assert.deepEqual(exemptProblems("R3", countMatchesByFile(sources, SMALL_TEXT), SMALL_TEXT_EXEMPT), [])
   assert.deepEqual(exemptProblems("Thai leading", classStringsByFile((text) => /\bleading-4\b/.test(text)), LEADING_4_EXEMPT), [])
-  // The white count on the solid red dot is 600, not 700 (spec 2A section 9.8, ruling 11).
-  assert.match(read("src/components/layout/topbar.tsx"), /rounded-full bg-danger px-1 text-xs font-semibold leading-none text-white/)
+  // The count on the solid danger dot is 600, not 700 (spec 2A section 9.8, ruling 11), in the danger ink (dark mode P-R7).
+  assert.match(read("src/components/layout/topbar.tsx"), /rounded-full bg-danger px-1 text-xs font-semibold leading-none text-danger-foreground/)
 })
 
 test("no emoji in source or messages: icons come from lucide and languages are named in words", () => {
@@ -316,7 +316,8 @@ test("no emoji in source or messages: icons come from lucide and languages are n
 // count anything and never hold a row.
 // N1: colors come from the tokens of src/app/globals.css. Raw is a Tailwind palette color (with or without /NN), white or
 // black, or a color value written into a class (bg-[#…], shadow-[…rgba(…)…]) or into a style object. White ink on a
-// solid fill is its -foreground token (the status ones only inside src/components/ui, tests/ui-overlay-guards.test.ts).
+// solid fill is its -foreground token (the status ones only inside src/components/ui and on the bell's count dot,
+// tests/ui-overlay-guards.test.ts).
 // Page metadata, the web manifest, print CSS, canvas strokes and the PDF styles are not class names and stay outside.
 const RAW_COLOR = new RegExp(
   [
@@ -328,14 +329,13 @@ const RAW_COLOR = new RegExp(
 )
 // Paper and imagery keep their own colors (spec 2D §5.3, plan 2D-4 R17): the A4 document, the label sheet and the
 // signature canvas are white paper; the camera controls and scan frames sit on the camera image; a photo or a PDF page
-// shows on its own stage. The bell's count dot is the one white ink outside them (plan 2D-5 NG-R2).
+// shows on its own stage.
 const RAW_COLOR_EXEMPT: ExemptList = {
   "src/components/asset-operations/operation-document-print.tsx": { count: 19, kind: "permanent", why: "the A4 paper: slate ink and lines on white, and the red void watermark", ruling: "2D §5.3, 2D-4 R17" },
   "src/components/asset-operations/signature-pad.tsx": { count: 1, kind: "permanent", why: "the signature canvas is white paper, and the signature prints", ruling: "2D-4 R17" },
   "src/components/assets/asset-label-print.tsx": { count: 12, kind: "permanent", why: "the label sheet prints black on white at its physical size", ruling: "2D §5.3, 2A §9.5" },
   "src/components/audit/audit-scan-camera.tsx": { count: 12, kind: "permanent", why: "the zoom, torch and stop controls on the camera image: a dark fill with white ink", ruling: "2D §5.3, 2D-4 R17" },
   "src/components/audit/audit-scan-panels.tsx": { count: 5, kind: "permanent", why: "the scan frame on the camera image: its dim surround and white corners", ruling: "2D §5.3, 2D-4 R17" },
-  "src/components/layout/topbar.tsx": { count: 1, kind: "permanent", why: "the bell's unread count is white on the solid danger dot; a status -foreground token stays inside src/components/ui", ruling: "2A §9.8 #11, 2D-5 NG-R2" },
   "src/components/ui/attachment-preview-dialog.tsx": { count: 2, kind: "permanent", why: "the preview stage: black around a photo, white paper under a PDF page", ruling: "2D §5.3, 2D-5 NG-R2" },
   "src/components/ui/scanner-text-input.tsx": { count: 22, kind: "permanent", why: "the zoom and torch controls and the QR and serial scan frames on the camera image", ruling: "2D §5.3, 2D-4 R17" },
 }

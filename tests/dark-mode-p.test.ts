@@ -158,3 +158,11 @@ test("every uploaded photo, logo and attachment image sits on the fixed light im
   assert.equal(sources.reduce((sum, file) => sum + (file.source.match(/\bbg-image-stage\b/g)?.length ?? 0), 0), 15)
   assert.match(read(`${C}assets/asset-thumbnail.tsx`), /"relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground"/)
 })
+
+test("the bell's unread count is the danger ink on the danger dot, a pair the contrast suite checks in both themes (dark mode P-R7)", () => {
+  const topbar = read(`${C}layout/topbar.tsx`)
+  // White on the dark theme's light danger fill falls below 4.5:1; the danger foreground is AA on it in both sets.
+  assert.match(topbar, /className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold leading-none text-danger-foreground"/)
+  assert.doesNotMatch(topbar, /\btext-white\b/)
+  assert.equal(topbar.match(/\btext-(?:success|warning|danger|info)-foreground\b/g)?.length, 1, "the one status ink outside src/components/ui")
+})
