@@ -89,7 +89,8 @@ export function OperationDocumentPrint({
 
       <section className="px-6 py-8 print:px-0 print:py-0">
         {/* A4 documents keep the 20px text-sm line height so the signature row stays on page 1 (the app's 22px pushes the check-in to a second page). */}
-        <div className="operation-print-page [--text-sm--line-height:calc(20/14)] relative mx-auto max-w-5xl overflow-hidden rounded-md border border-slate-300 bg-white p-8 text-slate-950 shadow-sm">
+        {/* The paper is the forced-light scope: it and the void banner inside it keep the light tokens on a dark page (dark mode P-R2). */}
+        <div data-theme="light" className="operation-print-page [--text-sm--line-height:calc(20/14)] relative mx-auto max-w-5xl overflow-hidden rounded-md border border-slate-300 bg-white p-8 text-slate-950 shadow-sm">
           {voidInfo ? <div data-void-watermark className="pointer-events-none absolute inset-0 z-0 hidden items-center justify-center print:flex" aria-hidden="true"><span className="-rotate-12 text-8xl font-black tracking-[-0.03em] text-red-600/10">VOID</span></div> : null}
           <div className="relative z-10">
             {voidInfo ? <VoidDocumentBanner info={voidInfo} /> : null}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { contrastRatio, parseHexColor, readRootTokens } from "../src/lib/color-contrast.ts"
+import { readSourceFiles } from "./helpers/source-files.ts"
 
 // Dark mode, area P (spec 2026-10-17 §4.4): paper keeps the light tokens through the data-theme="light" scope, photos and
 // logos sit on a fixed light image stage, the bell's count dot takes the danger ink and the app icon gets a hairline
@@ -51,4 +52,22 @@ test("photos and logos get a fixed light image stage and the app icon a frame th
     assert.ok(ratio(FRAME.dark, dark[surface]) >= 1.5, `the frame on the dark ${surface}: ${ratio(FRAME.dark, dark[surface]).toFixed(2)}:1`)
   }
   assert.ok(ratio(FRAME.dark, "#FDFDFE") >= 3, "the frame against the icon tile")
+})
+
+const C = "src/components/"
+const sources = readSourceFiles("src")
+
+test("the A4 paper is a forced-light scope, so its void banner keeps the light danger tokens on a dark page (dark mode P-R2)", () => {
+  const source = read(`${C}asset-operations/operation-document-print.tsx`)
+  const paper = source.match(/<div data-theme="light" className="operation-print-page \[--text-sm--line-height:calc\(20\/14\)\] relative mx-auto max-w-5xl overflow-hidden rounded-md border border-slate-300 bg-white p-8 text-slate-950 shadow-sm">/)
+  assert.ok(paper, "the paper div carries the scope; its classes stay")
+  const paperAt = source.indexOf(paper[0])
+  assert.ok(source.indexOf('<div className="operation-print-toolbar') < paperAt, "the toolbar above the paper follows the theme")
+  assert.ok(source.indexOf("<VoidDocumentBanner info={voidInfo} />") > paperAt, "the void banner renders inside the paper")
+  assert.equal(source.match(/data-theme=/g)?.length, 1)
+  // The banner keeps its tokens; the scope is what keeps them light. Nothing else renders it.
+  const banner = read(`${C}asset-operations/void-document-banner.tsx`)
+  assert.match(banner, /className="mb-6 break-inside-avoid rounded-md border border-danger-border bg-danger-soft p-4 text-danger"/)
+  assert.doesNotMatch(banner, /data-theme|\b(?:bg|text|border)-(?:white|black|slate-\d+|red-\d+)\b/)
+  assert.deepEqual(sources.filter((file) => file.source.includes("<VoidDocumentBanner")).map((file) => file.path), [`${C}asset-operations/operation-document-print.tsx`])
 })
