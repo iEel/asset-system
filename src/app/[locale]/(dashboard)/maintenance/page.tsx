@@ -238,7 +238,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         description={t("resultCount", { count: total })}
         actions={
           canExport ? (
-            <a href={`/api/maintenance-tickets/export?${listQuery}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            <a href={`/api/maintenance-tickets/export?${listQuery}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
               <Download aria-hidden="true" />
               {t("export")}
             </a>

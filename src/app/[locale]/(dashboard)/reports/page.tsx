@@ -191,18 +191,19 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   })
   const hasActiveFilters = activeFilters.length > 0
   // The header's buttons (spec 2B §4.4.6, K8): the register export (outline) first, the overview export (primary)
-  // last. Plain links to the export routes, like the other export buttons of 2B: a download, not a page to prefetch.
+  // last. Plain <a href download> links to the export routes, like the report cards' (spec 2D M31): a download, not a
+  // page to prefetch.
   const headerActions =
     canAssetExport || canReportExport ? (
       <>
         {canAssetExport ? (
-          <a href={"/api/assets/export?" + exportQuery} className={buttonVariants({ variant: "outline", size: "md" })}>
+          <a href={"/api/assets/export?" + exportQuery} download className={buttonVariants({ variant: "outline", size: "md" })}>
             <Download aria-hidden="true" />
             {t("exportAssetRegister")}
           </a>
         ) : null}
         {canReportExport ? (
-          <a href={"/api/reports/assets-overview/export?" + exportQuery} className={buttonVariants({ size: "md" })}>
+          <a href={"/api/reports/assets-overview/export?" + exportQuery} download className={buttonVariants({ size: "md" })}>
             <Download aria-hidden="true" />
             {t("exportAssetOverview")}
           </a>

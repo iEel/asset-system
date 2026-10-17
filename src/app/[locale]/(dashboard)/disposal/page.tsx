@@ -332,7 +332,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
             <>
               {bulkApprovalEnabled ? <DisposalBulkSelectionToggle /> : bulkExecutionEnabled ? <DisposalBulkExecutionSelectionToggle /> : null}
               {canExport ? (
-                <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+                <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
                   <Download aria-hidden="true" />
                   {t("exportRequests")}
                 </a>

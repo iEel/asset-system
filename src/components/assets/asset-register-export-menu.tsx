@@ -18,13 +18,13 @@ export function AssetRegisterExportMenu({ exportHref, templateHref }: { exportHr
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
-          <a href={exportHref}>
+          <a href={exportHref} download>
             <FileDown aria-hidden="true" />
             {t("exportFiltered")}
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href={templateHref}>
+          <a href={templateHref} download>
             <FileSpreadsheet aria-hidden="true" />
             {t("downloadTemplate")}
           </a>

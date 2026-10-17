@@ -459,15 +459,15 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <>
               {canExportRound ? (
                 <>
-                  <a href={auditRoundExportHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <a href={auditRoundExportHref} download className={buttonVariants({ variant: "outline", size: "md" })}>
                     <Download aria-hidden="true" />
                     {t("exportResult")}
                   </a>
-                  <a href={auditRoundExportPdfHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <a href={auditRoundExportPdfHref} download className={buttonVariants({ variant: "outline", size: "md" })}>
                     <FileText aria-hidden="true" />
                     {t("exportResultPdf")}
                   </a>
-                  <a href={`/api/audit-rounds/${round.id}/variance-export`} className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <a href={`/api/audit-rounds/${round.id}/variance-export`} download className={buttonVariants({ variant: "outline", size: "md" })}>
                     <Download aria-hidden="true" />
                     {t("exportVariance")}
                   </a>

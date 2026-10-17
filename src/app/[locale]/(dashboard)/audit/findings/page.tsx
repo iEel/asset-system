@@ -305,11 +305,11 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             <p className="mt-1 text-sm text-muted-foreground">{t("quickFiltersHelp")}</p>
           </div>
           <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">
-            <a href={`/api/audit-findings/export?${exportParams.toString()}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            <a href={`/api/audit-findings/export?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
               <Download aria-hidden="true" />
               {t("exportFindings")}
             </a>
-            <a href={`/api/audit-findings/export-pdf?${exportParams.toString()}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            <a href={`/api/audit-findings/export-pdf?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
               <FileText aria-hidden="true" />
               {t("exportFindingsPdf")}
             </a>
