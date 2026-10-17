@@ -173,3 +173,41 @@ test("the app's own 404 page follows the theme: tokens and the shared empty stat
     assert.deepEqual([common.pageNotFoundTitle, common.pageNotFoundDescription, common.backToHome], [title, description, action], locale)
   }
 })
+
+test("the offline page follows the OS with the app's light and dark colors, and the service worker caches the new copy (dark mode spec §4.5)", () => {
+  const offline = read("public/offline.html")
+  // It cannot read the theme cookie without a script, so it follows the OS: color-scheme and theme-color for both.
+  assert.match(offline, /<meta name="theme-color" media="\(prefers-color-scheme: light\)" content="#FFFFFF" \/>\n\s+<meta name="theme-color" media="\(prefers-color-scheme: dark\)" content="(#[0-9A-F]{6})" \/>/)
+  assert.equal(offline.match(/<meta name="theme-color" media="\(prefers-color-scheme: dark\)" content="(#[0-9A-F]{6})"/)?.[1], THEME_COLORS.dark)
+  assert.match(offline, /:root \{\n\s+color-scheme: light dark;/)
+  assert.doesNotMatch(offline, /only light|<script/)
+  const darkAt = offline.indexOf("@media (prefers-color-scheme: dark) {")
+  assert.ok(darkAt > offline.indexOf("<style>") && darkAt < offline.indexOf("</style>"), "one dark block inside the page's style")
+  const css = read("src/app/globals.css")
+  const color = (block: string, selector: string, property: string) =>
+    block.match(new RegExp(`(?:^|\\n)\\s*${selector} \\{[^}]*?(?:^|[\\s;{])${property}:[^;]*?(#[0-9a-f]{6});`))?.[1]?.toUpperCase()
+  const schemes = [
+    { theme: "light", block: offline.slice(0, darkAt), tokens: readRootTokens(css), border: "border", hint: "brand-navy" },
+    { theme: "dark", block: offline.slice(darkAt), tokens: readDarkTokens(css), border: "border-color", hint: "foreground" },
+  ] as const
+  for (const { theme, block, tokens, border, hint } of schemes) {
+    const expected: Array<[string, string, string]> = [
+      [":root", "background", "canvas"],
+      [":root", "color", "foreground"],
+      ["main", border, "border"],
+      ["main", "background", "card"],
+      ["p", "color", "muted-foreground"],
+      ["\\.hint", "background", "primary-soft"],
+      ["\\.hint", "color", hint],
+    ]
+    for (const [selector, property, token] of expected) {
+      assert.equal(color(block, selector, property), resolveToken(tokens, token), `${theme}: ${selector} ${property} is --${token}`)
+    }
+    const ratio = (ink: string, surface: string) => contrastRatio(parseHexColor(resolveToken(tokens, ink)), parseHexColor(resolveToken(tokens, surface)))
+    for (const [ink, surface] of [["foreground", "canvas"], ["muted-foreground", "card"], [hint, "primary-soft"]]) {
+      assert.ok(ratio(ink, surface) >= 4.5, `${theme}: ${ink} on ${surface}`)
+    }
+  }
+  // A new cache name, so installed apps drop the light-only copy they precached.
+  assert.match(read("public/sw.js"), /^const ASSET_SYSTEM_PWA_CACHE = "asset-system-pwa-v3"$/m)
+})

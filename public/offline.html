@@ -3,11 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0D182A" />
     <title>Asset System Offline</title>
     <style>
       :root {
-        color-scheme: only light;
+        color-scheme: light dark;
         font-family: "IBM Plex Sans", "IBM Plex Sans Thai", system-ui, sans-serif;
         background: #eef1f6;
         color: #0b1d35;
@@ -54,6 +55,28 @@
         padding: 12px;
         color: #083161;
         font-size: 14px;
+      }
+
+      /* The app's dark tokens (src/app/globals.css). This page cannot read the theme cookie without a script, so it follows the OS. */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          background: #0a1424;
+          color: #e4ebf5;
+        }
+
+        main {
+          border-color: #22344f;
+          background: #101d31;
+        }
+
+        p {
+          color: #a9b7cc;
+        }
+
+        .hint {
+          background: #16294a;
+          color: #e4ebf5;
+        }
       }
     </style>
   </head>

@@ -143,9 +143,9 @@ test("the topbar is flat and the bottom bar is solid with Thai-safe labels", () 
 
 test("the offline page and service worker follow the new palette", () => {
   const offline = read("public/offline.html")
-  assert.match(offline, /<meta name="theme-color" content="#FFFFFF" \/>/)
+  assert.match(offline, /<meta name="theme-color" media="\(prefers-color-scheme: light\)" content="#FFFFFF" \/>/)
   assert.doesNotMatch(offline, /#1E3A5F|#1e3a5f|Inter,/)
-  assert.match(read("public/sw.js"), /const ASSET_SYSTEM_PWA_CACHE = "asset-system-pwa-v2"/)
+  assert.match(read("public/sw.js"), /const ASSET_SYSTEM_PWA_CACHE = "asset-system-pwa-v3"/)
 })
 
 test("A4 documents keep the 20px text-sm line height so signatures stay on page 1", () => {
