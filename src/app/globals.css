@@ -711,3 +711,23 @@ body {
     color: var(--faint-foreground);
   }
 }
+
+/* ThemeToggle renders both faces; the theme on screen (the choice on <html>, else the OS) hides the other one, so the
+   first paint is right with no script and nothing flips after hydration. Unlayered, so these rules beat the display
+   utilities on the faces. */
+:root[data-theme="dark"] [data-when-theme="light"],
+:root[data-theme="light"] [data-when-theme="dark"] {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) [data-when-theme="light"] {
+    display: none;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) [data-when-theme="dark"] {
+    display: none;
+  }
+}

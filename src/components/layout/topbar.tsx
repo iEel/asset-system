@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } 
 import { cn } from "@/lib/utils"
 import { formatCount } from "@/lib/display-format"
 import { GlobalSearch } from "@/components/layout/global-search"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { EmptyNote } from "@/components/ui/empty-note"
@@ -254,6 +255,8 @@ export function Topbar({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        <ThemeToggle />
 
         {/* User Menu */}
         <div className="relative shrink-0">

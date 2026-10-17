@@ -56,7 +56,9 @@
     "showingRange": "{from}–{to} จาก {total} รายการ",
     "pageSizeLabel": "จำนวนต่อหน้า",
     "moreActionsFor": "การดำเนินการของ {code}",
-    "searchSelectResultCount": "พบ {count} รายการ"
+    "searchSelectResultCount": "พบ {count} รายการ",
+    "switchToDark": "เปลี่ยนเป็นโหมดมืด",
+    "switchToLight": "เปลี่ยนเป็นโหมดสว่าง"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

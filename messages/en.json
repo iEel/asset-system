@@ -56,7 +56,9 @@
     "showingRange": "{from}–{to} of {total}",
     "pageSizeLabel": "Rows per page",
     "moreActionsFor": "Actions for {code}",
-    "searchSelectResultCount": "{count, plural, one {# result} other {# results}}"
+    "searchSelectResultCount": "{count, plural, one {# result} other {# results}}",
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
   },
   "globalSearch": {
     "label": "Search globally",
