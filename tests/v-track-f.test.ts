@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { resolveValidationMessage, validationMessageKey, type MessageLookup } from "../src/lib/field-error-client.ts"
+import { firstErrorKey, readFieldErrors, resolveValidationMessage, validationMessageKey, withoutKeys, type MessageLookup } from "../src/lib/field-error-client.ts"
 import { FIELD_FOCUS_MARGIN, fieldScrollTop } from "../src/lib/field-focus.ts"
 import { atLeastOne, email, maxLength, minLength, notBefore, pattern, range, required } from "../src/lib/validation-rules.ts"
 
@@ -146,4 +146,40 @@ test("the first wrong field is focused and scrolled clear of the top edge and th
   assert.match(focus, /export function focusField\(target: HTMLElement\): HTMLElement \| null/)
   assert.match(focus, /export function waitForElement\(id: string, frames = 30\): Promise<HTMLElement \| null>/)
   assert.doesNotMatch(focus, /from "@\/|"use client"|from "react"|behavior: "smooth"/)
+})
+
+test("one hook holds a form's errors from validate() and from the server, clears them per field and focuses the first (V spec §4.1, §4.3, §7.2)", () => {
+  // The server's fieldErrors (FIXED 2): string codes under dotted keys and _form; anything else is ignored.
+  assert.deepEqual(readFieldErrors({ error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { code: "duplicate", "rows.3.serialNumber": "duplicate", _form: "invalid", count: 3, empty: "" } }), {
+    code: "duplicate",
+    "rows.3.serialNumber": "duplicate",
+    _form: "invalid",
+  })
+  for (const payload of [null, undefined, "Invalid request data", { error: "Unexpected error" }, { fieldErrors: {} }, { fieldErrors: ["required"] }, { fieldErrors: { name: 1 } }]) {
+    assert.equal(readFieldErrors(payload), null, JSON.stringify(payload))
+  }
+  // The first key in the form's visual order that has an error; _form and keys the form does not show never focus.
+  assert.equal(firstErrorKey({ name: "tooLong", code: "required" }, ["code", "name"]), "code")
+  assert.equal(firstErrorKey({ _form: "invalid", "rows.3.serialNumber": "duplicate" }, ["code", "name"]), null)
+  assert.equal(firstErrorKey({ code: "" }, ["code"]), null)
+  // Clearing returns the same map when nothing changes, so a keystroke in a clean field does not render again.
+  const errors = { code: "required", name: "tooLong" }
+  assert.equal(withoutKeys(errors, ["email"]), errors)
+  assert.deepEqual(withoutKeys(errors, ["code", "email"]), { name: "tooLong" })
+  const hook = read("src/components/ui/use-field-errors.ts")
+  assert.match(hook, /^"use client"\n/)
+  assert.match(hook, /export function useFieldErrors<K extends string = string>\(options\?: \{ params\?: Partial<Record<K, ValidationParams>> \}\)/)
+  assert.match(hook, /export function useValidationMessage\(\): \(code: string, params\?: ValidationParams\) => string/)
+  // Messages: common.validation, then the api-error catalog (spec §7.1).
+  assert.match(hook, /useTranslations\("common"\)/)
+  assert.match(hook, /useTranslations\("apiErrors"\)/)
+  assert.match(hook, /tCommon\.has\(`validation\.\$\{key\}`\)/)
+  // The ref keeps focusFirst right after setErrors in the same handler; focus waits for the render that shows the errors.
+  assert.match(hook, /errorsRef\.current = next/)
+  assert.match(hook, /\}, \[focusRequest\]\)/)
+  assert.match(hook, /await request\.options\?\.reveal\?\.\(key\)/)
+  assert.match(hook, /waitForElement\(request\.options\?\.idFor\?\.\(key\) \?\? key\)/)
+  assert.match(hook, /return useMemo\(\(\) => \(\{ errors, setErrors, applyServer, clear, message, focusFirst \}\)/)
+  // Validation never goes through a toast (spec U2): the hook has none, and a form's catch keeps its own.
+  assert.doesNotMatch(hook, /from "sonner"|\btoast\.|useApiError/)
 })

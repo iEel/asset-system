@@ -39,3 +39,28 @@ export function resolveValidationMessage(
   if (lookups.apiErrors.has(code)) return lookups.apiErrors.get(code)
   return lookups.validation.get("invalid")
 }
+
+// The string codes of a refusal body's fieldErrors (FIXED 2), or null when it names none.
+export function readFieldErrors(payload: unknown): Record<string, string> | null {
+  if (typeof payload !== "object" || payload === null) return null
+  const fieldErrors = (payload as { fieldErrors?: unknown }).fieldErrors
+  if (typeof fieldErrors !== "object" || fieldErrors === null || Array.isArray(fieldErrors)) return null
+  const result: Record<string, string> = {}
+  for (const [key, value] of Object.entries(fieldErrors)) {
+    if (typeof value === "string" && value !== "") result[key] = value
+  }
+  return Object.keys(result).length > 0 ? result : null
+}
+
+// The first key of the form's visual order that has an error.
+export function firstErrorKey<K extends string>(errors: Partial<Record<string, string>>, order: readonly K[]): K | null {
+  return order.find((key) => Boolean(errors[key])) ?? null
+}
+
+// The map without those keys; the same object when none of them is set.
+export function withoutKeys<T extends Partial<Record<string, string>>>(errors: T, keys: readonly string[]): T {
+  if (!keys.some((key) => errors[key] !== undefined)) return errors
+  const next = { ...errors }
+  for (const key of keys) delete next[key]
+  return next
+}
