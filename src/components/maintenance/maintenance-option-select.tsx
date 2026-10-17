@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useTranslations } from "next-intl"
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
 import type { MaintenanceOptionType } from "@/lib/maintenance-options"
 
@@ -35,6 +36,8 @@ export function MaintenanceOptionSelect({
   hint?: React.ReactNode
   onChange: (value: string) => void
 }) {
+  // The live line under the select reads in the page's language (plan 2D-4 open issue 10 c).
+  const tCommon = useTranslations("common")
   const [query, setQuery] = useState("")
   const [options, setOptions] = useState<MaintenanceOption[]>(initialOption ? [initialOption] : [])
   const [loading, setLoading] = useState(false)
@@ -92,7 +95,7 @@ export function MaintenanceOptionSelect({
         onChange={onChange}
       />
       <span className="sr-only" aria-live="polite">
-        {loading ? loadingLabel ?? "Loading" : `${displayOptions.length} results`}
+        {loading ? loadingLabel ?? tCommon("loading") : tCommon("searchSelectResultCount", { count: displayOptions.length })}
       </span>
     </div>
   )

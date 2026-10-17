@@ -56,7 +56,8 @@
     "tableScrollHint": "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม",
     "showingRange": "{from}–{to} จาก {total} รายการ",
     "pageSizeLabel": "จำนวนต่อหน้า",
-    "moreActionsFor": "การดำเนินการของ {code}"
+    "moreActionsFor": "การดำเนินการของ {code}",
+    "searchSelectResultCount": "พบ {count} รายการ"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

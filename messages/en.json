@@ -56,7 +56,8 @@
     "tableScrollHint": "Scroll left/right to see more columns.",
     "showingRange": "{from}–{to} of {total}",
     "pageSizeLabel": "Rows per page",
-    "moreActionsFor": "Actions for {code}"
+    "moreActionsFor": "Actions for {code}",
+    "searchSelectResultCount": "{count, plural, one {# result} other {# results}}"
   },
   "globalSearch": {
     "label": "Search globally",

@@ -110,3 +110,13 @@ test("the integration client list's screen-reader loading line is Thai on the Th
   assert.match(read(`${C}admin/IntegrationClientManager.tsx`), /<span role="status" className="inline-flex">\s*<Loader2 [^>]*\/>\s*<span className="sr-only">\{labels\.loading\}<\/span>/)
   assert.equal(messages("th").integrationApiPage.loadFailed, "โหลดรายการไม่สำเร็จ")
 })
+
+test("the maintenance option select announces loading and its result count from messages, never in English (plan 2D-4 open issue 10 c)", () => {
+  const source = read(`${C}maintenance/maintenance-option-select.tsx`)
+  assert.match(source, /import \{ useTranslations \} from "next-intl"/)
+  assert.match(source, /const tCommon = useTranslations\("common"\)/)
+  assert.match(source, /<span className="sr-only" aria-live="polite">\s*\{loading \? loadingLabel \?\? tCommon\("loading"\) : tCommon\("searchSelectResultCount", \{ count: displayOptions\.length \}\)\}\s*<\/span>/)
+  assert.doesNotMatch(source, /"Loading"|results`/)
+  assert.equal(messages("th").common.searchSelectResultCount, "พบ {count} รายการ")
+  assert.equal(messages("en").common.searchSelectResultCount, "{count, plural, one {# result} other {# results}}")
+})
