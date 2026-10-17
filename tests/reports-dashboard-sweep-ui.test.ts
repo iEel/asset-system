@@ -28,7 +28,7 @@ test("notifications: the cards use the panel classes and the count is a StatusBa
 
 test("report presets: lg save beside the 40px field, an outline icon-sm delete, a text-link row, an error Notice and EmptyNote (spec 2D M29, D5, D7)", () => {
   const source = read(`${C}reports/report-preset-controls.tsx`)
-  assert.match(source, /<Button size="lg" onClick=\{savePreset\}>\n\s+<BookmarkPlus aria-hidden="true" \/>/)
+  assert.match(source, /<Button type="submit" size="lg" className="sm:mt-6\.5">\n\s+<BookmarkPlus aria-hidden="true" \/>/)
   assert.match(source, /<Button variant="outline" size="icon-sm" onClick=\{\(\) => deletePreset\(preset\.id\)\} aria-label=\{`\$\{labels\.deletePreset\}: \$\{preset\.name\}`\}>/)
   assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "flex min-h-11 min-w-0 flex-1 items-center px-2 text-sm md:min-h-0 md:py-1"\)\}>\n\s+<span className="truncate">\{preset\.name\}<\/span>/)
   assert.match(source, /\{message \? <Notice tone="danger" role="alert" className="mt-2">\{message\}<\/Notice> : null\}/)

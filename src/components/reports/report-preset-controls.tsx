@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useSyncExternalStore } from "react"
+import type { FormEvent } from "react"
 import Link from "next/link"
 import { BookmarkPlus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,9 @@ import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Notice } from "@/components/ui/notice"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { cn } from "@/lib/utils"
+import { maxLength, required } from "@/lib/validation-rules"
 import {
   buildReportPreset,
   buildReportPresetHref,
@@ -21,6 +24,23 @@ import {
 const emptyReportPresets: ReportPreset[] = []
 let cachedReportPresetRaw: string | null | undefined
 let cachedReportPresets = emptyReportPresets
+
+// The name, with the id focus moves to (v-track M-R1). It saves on this device only, so no server error comes back.
+const FIELD_IDS = {
+  name: "report-preset-name",
+} as const
+type PresetField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as PresetField[]
+
+// The empty name was a Notice under the row; it is an error under the field now. maxLength is restated (v-track M-R2).
+function validate(values: { name: string }) {
+  const errors: Partial<Record<PresetField, string>> = {}
+  const check = (key: PresetField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("name", required(values.name) ?? maxLength(values.name, 60))
+  return errors
+}
 
 type ReportPresetControlsProps = {
   locale: string
@@ -40,6 +60,7 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
   const presets = useSyncExternalStore(subscribeToReportPresets, readReportPresets, getServerReportPresets)
   const [name, setName] = useState("")
   const [message, setMessage] = useState("")
+  const fieldErrors = useFieldErrors<PresetField>()
 
   function persist(next: ReportPreset[]) {
     if (!persistReportPresets(() => window.localStorage, next)) {
@@ -50,17 +71,16 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
     return true
   }
 
-  function savePreset() {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    fieldErrors.setErrors(validate({ name }))
+    if (fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })) return
     const preset = buildReportPreset({
       id: globalThis.crypto?.randomUUID?.() ?? `preset-${Date.now()}`,
       name,
       query: currentQuery,
     })
-
-    if (!preset) {
-      setMessage(labels.presetNameRequired)
-      return
-    }
+    if (!preset) return
 
     if (!persist([preset, ...presets])) return
     setName("")
@@ -75,22 +95,29 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
   // 40px name field, so it is lg (D3, D5); a preset row's delete icon is neutral at rest (K22).
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <Field label={labels.presetName} className="min-w-0 flex-1">
+      {/* items-start: an error under the name must not push the button down; mt-6.5 is the label row (20px) and its gap (6px). */}
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <Field
+          label={labels.presetName}
+          id="report-preset-name"
+          className="min-w-0 flex-1"
+          error={fieldErrors.errors.name === "required" ? labels.presetNameRequired : fieldErrors.message("name")}
+        >
           <Input
             value={name}
             onChange={(event) => {
               setName(event.target.value)
               setMessage("")
+              fieldErrors.clear("name")
             }}
             maxLength={60}
           />
         </Field>
-        <Button size="lg" onClick={savePreset}>
+        <Button type="submit" size="lg" className="sm:mt-6.5">
           <BookmarkPlus aria-hidden="true" />
           {labels.saveCurrentPreset}
         </Button>
-      </div>
+      </form>
       <p className="mt-2 text-xs text-muted-foreground">{labels.savedPresetsDeviceOnly}</p>
       {message ? <Notice tone="danger" role="alert" className="mt-2">{message}</Notice> : null}
 

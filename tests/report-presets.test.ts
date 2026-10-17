@@ -80,8 +80,8 @@ test("preset writes serialize the normalized list and report success", () => {
 // limit; the device-only line stays under the row of the field and the save button. The file is CRLF in the working tree.
 test("the preset name uses the shared Field and Input and keeps its 60-character limit (2C batch 4)", () => {
   const source = readFileSync("src/components/reports/report-preset-controls.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.match(source, /<Field label=\{labels\.presetName\} className="min-w-0 flex-1">\n\s+<Input\n\s+value=\{name\}/)
+  assert.match(source, /<Field\n\s+label=\{labels\.presetName\}\n\s+id="report-preset-name"\n\s+className="min-w-0 flex-1"\n[^\n]*\n\s+>\n\s+<Input\n\s+value=\{name\}/)
   assert.match(source, /maxLength=\{60\}\n\s+\/>\n\s+<\/Field>/)
   assert.doesNotMatch(source, /<label\b|<input\b|mb-1\.5 block text-sm font-medium|focus:border-ring/)
-  assert.match(source, /<\/div>\n\s+<p className="mt-2 text-xs text-muted-foreground">\{labels\.savedPresetsDeviceOnly\}<\/p>/)
+  assert.match(source, /<\/form>\n\s+<p className="mt-2 text-xs text-muted-foreground">\{labels\.savedPresetsDeviceOnly\}<\/p>/)
 })

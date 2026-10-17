@@ -374,3 +374,26 @@ test("asset state review: the 10-character reason is an error on submit, and a r
   assert.ok(workspace.includes('else if (body.code === "VALIDATION_FAILED" && body.fieldErrors) return body'))
   assert.ok(workspace.includes('if (body.code === "ASSET_STATE_REVIEW_STALE") toast.error(labels.staleError)'), "the stale conflict keeps its toast")
 })
+
+test("data-quality rules and the report preset name become forms that validate themselves; the rules keep the server's reason (v-track M11)", () => {
+  // The data-quality rules: one severity per rule, keyed <rule>.severity; the bare catch now shows the server's reason.
+  const rules = read(`${C}admin/data-quality-rule-form.tsx`)
+  assert.match(rules, /<form onSubmit=\{handleSubmit\} noValidate>/)
+  assert.match(rules, /<Button type="submit" busy=\{saving\} className="w-fit">/)
+  assert.ok(validateBody(rules).includes('for (const rule of items) check(`${rule.key}.severity`, rule.severity === "warning" || rule.severity === "danger" ? null : "invalidChoice")'))
+  assert.match(rules, /fieldErrors\.setErrors\(validate\(items\)\)/)
+  assert.match(rules, /if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return/)
+  assert.ok(rules.includes("<Field label={labels.severity} id={severityId(rule.key)} error={fieldErrors.message(`${rule.key}.severity`)}>"))
+  assert.match(rules, /\} catch \(error\) \{\n[^\n]*\n\s+apiError\.toast\(error\)\n/)
+  assert.doesNotMatch(rules, /toast\.error\(|await response\.text\(\)|\} catch \{/)
+
+  // The report preset name: saved on this device only (no server); its required text is the preset's own message.
+  const preset = read(`${C}reports/report-preset-controls.tsx`)
+  assertMigratedForm(preset, { ids: { name: "report-preset-name" }, messages: [], server: false })
+  assert.ok(validateBody(preset).includes('check("name", required(values.name) ?? maxLength(values.name, 60))'))
+  assert.ok(preset.includes('error={fieldErrors.errors.name === "required" ? labels.presetNameRequired : fieldErrors.message("name")}'))
+  assert.match(preset, /<form onSubmit=\{handleSubmit\} noValidate className="flex flex-col gap-3 sm:flex-row sm:items-start">/)
+  assert.doesNotMatch(preset, /setMessage\(labels\.presetNameRequired\)|function savePreset\b/)
+  // The Notice under the row stays for the storage failure, which is not a field error.
+  assert.match(preset, /setMessage\(labels\.presetStorageFailed\)/)
+})

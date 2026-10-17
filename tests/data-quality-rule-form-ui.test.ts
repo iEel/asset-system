@@ -11,9 +11,9 @@ test("the data-quality rule form names each severity select after its rule and u
   const source = read("src/components/admin/data-quality-rule-form.tsx")
   assert.match(source, /\n    danger: string\n    severity: string\n/)
   assert.match(source, /<span id=\{`data-quality-rule-\$\{rule\.key\}`\} className="block font-medium text-foreground">\{labels\.ruleLabels\[rule\.key\]\}<\/span>/)
-  assert.match(source, /<Field label=\{labels\.severity\}>\n\s+<NativeSelect\n\s+value=\{rule\.severity\}\n[^\n]*\n\s+aria-describedby=\{`data-quality-rule-\$\{rule\.key\}`\}\n\s+>/)
+  assert.match(source, /<Field label=\{labels\.severity\} id=\{severityId\(rule\.key\)\} error=\{fieldErrors\.message\(`\$\{rule\.key\}\.severity`\)\}>\n\s+<NativeSelect\n\s+value=\{rule\.severity\}\n[^\n]*\n\s+aria-describedby=\{`data-quality-rule-\$\{rule\.key\}`\}\n\s+>/)
   assert.match(source, /<label className="flex min-h-11 items-start gap-3 py-2">\n\s+<input\n\s+type="checkbox"\n(?:[^\n]*\n){2}\s+className=\{cn\(checkboxVariants\(\), "mt-0\.5"\)\}/)
-  assert.match(source, /<Button busy=\{saving\} onClick=\{save\} className="w-fit">\n\s+<Save aria-hidden="true" \/>\n\s+\{labels\.save\}\n\s+<\/Button>/)
+  assert.match(source, /<Button type="submit" busy=\{saving\} className="w-fit">\n\s+<Save aria-hidden="true" \/>\n\s+\{labels\.save\}\n\s+<\/Button>/)
   assert.doesNotMatch(source, /<select|<button|disabled=|rounded border-border|focus:border-ring/)
 
   const page = read("src/app/[locale]/(dashboard)/admin/data-quality/page.tsx")

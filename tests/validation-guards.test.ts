@@ -83,6 +83,8 @@ const V_FORMS: readonly string[] = [
   `${C}admin/role-permission-form.tsx`,
   `${C}admin/IntegrationClientManager.tsx`,
   `${C}admin/asset-state-review-dialog.tsx`,
+  `${C}admin/data-quality-rule-form.tsx`,
+  `${C}reports/report-preset-controls.tsx`,
 ]
 
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).
