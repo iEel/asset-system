@@ -156,7 +156,7 @@ test("offline bar: a warning Notice with role status, a busy send Button and out
   assert.match(source, /<Notice\s+tone="warning"\s+role="status"\s+data-audit-scan-offline\s+className="mb-2"\s+title=\{online \? t\("offlineBarPending", \{ count: queue\.length \}\) : t\("offlineBarOffline", \{ count: queue\.length \}\)\}/)
   assert.match(source, /<Button variant="outline" size="md" busy=\{sending\} onClick=\{onSendNow\}>\s*\{t\("sendNow"\)\}/)
   assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => onRemove\(entry\.id\)\}>\s*\{t\("removeFromQueue"\)\}/)
-  // The failed line keeps its "-" inside a translated sentence (LFG LV2 KEEP 1, R-n).
+  // The failed line keeps its "-" inside a translated sentence (LFG EXEMPT.LV2 1, R-n).
   assert.match(source, /error: entry\.lastSyncError \?\? "-"/)
   assert.doesNotMatch(source, /<button\b|disabled:opacity|hover:underline|text-primary|\btext-xs\b|bg-warning-soft|disabled=\{sending\}/)
 })

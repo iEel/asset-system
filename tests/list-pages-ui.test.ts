@@ -66,7 +66,7 @@ test("the selected brand keeps the vertical brand picker and gets RowActions: ed
   assert.match(panel, /<RowActions\n\s+code=\{selectedBrand\.name\}/)
   assert.match(panel, /next=\{\{ label: t\("editSelectedBrand"\), href: selectedBrandEditHref, icon: <Pencil aria-hidden="true" \/> \}\}/)
   assert.match(panel, /deleteAction=\{\{ endpoint: `\/api\/brands\/\$\{selectedBrand\.id\}` \}\}/)
-  assert.equal(source.match(/aria-current=\{/g)?.length, 2, "the picker keeps aria-current=\"page\" on its two links (I11, LFG KEEP.LN1)")
+  assert.equal(source.match(/aria-current=\{/g)?.length, 2, "the picker keeps aria-current=\"page\" on its two links (I11, LFG EXEMPT.LN1)")
   assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n/, "the model table sits flush in a divided panel: no frame in a frame")
   assert.match(source, /<DataTable\n\s+framed=\{false\}/)
 })

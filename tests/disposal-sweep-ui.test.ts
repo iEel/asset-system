@@ -58,7 +58,7 @@ test("disposal batch form: two ContentPanels, the review facts a KeyValueList wi
   assert.match(source, /value: values\.saleValue \? <span className="num">\{formatMoney\(Number\(values\.saleValue\), \{ unit: tCommon\("baht"\) \}\)\}<\/span> : null/)
   assert.match(source, /value: values\.salvageValue \? <span className="num">\{formatMoney\(Number\(values\.salvageValue\), \{ unit: tCommon\("baht"\) \}\)\}<\/span> : null/)
   assert.match(source, /<div className="mt-4 max-h-72 divide-y divide-border-soft overflow-y-auto rounded-md border border-border">/)
-  assert.match(source, /<ArrowLeft aria-hidden="true" \/>/, "back to editing keeps its arrow (LFG KEEP.LB1)")
+  assert.match(source, /<ArrowLeft aria-hidden="true" \/>/, "back to editing keeps its arrow (LFG EXEMPT.LB1)")
   assert.doesNotMatch(source, /function Summary\b|"-"|<section\b|rounded-lg border|bg-primary-soft|text-lg|\btext-xs\b|border-b border-border(?!-)/)
 })
 
