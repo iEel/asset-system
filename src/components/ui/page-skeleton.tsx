@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react"
+import type { ComponentProps, ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 // Loading skeletons in the shape of the pages they stand for (spec 2B §4.7, I28): the PageHeader rows, one StatStrip
@@ -55,13 +55,15 @@ function PageHeaderSkeleton({ crumbs = false, meta = "text", actions = true, com
 
 // StatStrip (I28): one 12px frame with 1px lines between the cells, two columns below lg and one row from lg. As in
 // StatStrip, a last cell left alone below lg fills its row, so no grey hole shows where a cell is missing.
-function MetricGridSkeleton({ count = 4, className }: { count?: number; className?: string }) {
+// foot: the faint foot line under the value (the dashboard's action and trend counts).
+function MetricGridSkeleton({ count = 4, foot = false, className }: { count?: number; foot?: boolean; className?: string }) {
   return (
     <div className={cn("grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border max-lg:[&>:last-child:nth-child(odd)]:col-span-2 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none", className)}>
       {Array.from({ length: count }, (_, index) => (
         <div key={index} className="space-y-2 bg-surface px-4 py-3 md:px-5 md:py-4">
           <SkeletonBlock className="h-4 w-24" />
           <SkeletonBlock className="h-8 w-16" />
+          {foot ? <SkeletonBlock className="h-4 w-32 max-w-full" /> : null}
         </div>
       ))}
     </div>
@@ -122,6 +124,18 @@ function FilterPanelSkeleton() {
   )
 }
 
+// ContentPanel: the 12px white frame with its p-4 sm:p-5 padding, the 16px title and, when the panel has one, the
+// description line, 16px above the body.
+function PanelSkeleton({ description = false, children }: { description?: boolean; children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4 sm:p-5">
+      <SkeletonBlock className="h-6 w-48 max-w-full" />
+      {description ? <SkeletonBlock className="mt-1 h-5 w-80 max-w-full" /> : null}
+      <div className="mt-4">{children}</div>
+    </div>
+  )
+}
+
 // Every route without a loading file of its own: a header over a list, the shape most menu rows open.
 export function PageSkeleton() {
   return (
@@ -132,36 +146,45 @@ export function PageSkeleton() {
   )
 }
 
+// The dashboard (plan 2D-2 R7): the title, the seven totals in strips of 4 + 3, the actions panel (up to six counts
+// with their foot lines, 3 + 3), the cross-scope panel (four counts over the preview list), the monthly trends (four
+// counts with their foot lines), then the status overview beside the recent activity from lg.
 export function DashboardPageSkeleton() {
   return (
     <div aria-busy="true" className="flex w-full flex-col gap-6">
       <PageHeaderSkeleton meta="none" actions={false} />
-      <MetricGridSkeleton count={5} />
-      <div className="rounded-lg border border-border bg-surface p-5">
-        <SkeletonBlock className="h-5 w-48" />
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          {Array.from({ length: 4 }, (_, index) => (
-            <SkeletonBlock key={index} className="h-24" />
-          ))}
-        </div>
+      <div className="space-y-3">
+        <MetricGridSkeleton count={4} />
+        <MetricGridSkeleton count={3} />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <SkeletonBlock className="h-5 w-52" />
-          <div className="mt-4 space-y-3">
-            <SkeletonBlock className="h-12" />
-            <SkeletonBlock className="h-12" />
-            <SkeletonBlock className="h-12" />
-          </div>
+      <PanelSkeleton description>
+        <div className="space-y-3">
+          <MetricGridSkeleton count={3} foot />
+          <MetricGridSkeleton count={3} foot />
         </div>
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <SkeletonBlock className="h-5 w-32" />
-          <div className="mt-4 space-y-3">
+      </PanelSkeleton>
+      <PanelSkeleton description>
+        <MetricGridSkeleton count={4} />
+        <SkeletonBlock className="mt-4 h-24" />
+      </PanelSkeleton>
+      <PanelSkeleton description>
+        <MetricGridSkeleton count={4} foot />
+      </PanelSkeleton>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <PanelSkeleton>
+          <div className="grid gap-1">
+            {Array.from({ length: 4 }, (_, index) => (
+              <SkeletonBlock key={index} className="h-11 md:h-8" />
+            ))}
+          </div>
+        </PanelSkeleton>
+        <PanelSkeleton>
+          <div className="space-y-3">
             {Array.from({ length: 5 }, (_, index) => (
               <SkeletonBlock key={index} className="h-16" />
             ))}
           </div>
-        </div>
+        </PanelSkeleton>
       </div>
     </div>
   )

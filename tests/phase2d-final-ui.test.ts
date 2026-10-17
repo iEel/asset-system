@@ -42,3 +42,19 @@ test("a StatStrip foot wraps to two lines before its ellipsis, and the label, va
   assert.match(source, /const statClasses = "group relative row-span-3 grid grid-rows-subgrid /)
   assert.match(source, /lg:grid-rows-\[repeat\(3,auto\)\]/)
 })
+
+test("the dashboard skeleton has the page's shape: totals as 4 + 3, three panels of numbers, then status beside activity (plan 2D-2 R14)", () => {
+  const source = read(`${C}ui/page-skeleton.tsx`)
+  const dashboard = source.slice(source.indexOf("export function DashboardPageSkeleton()"), source.indexOf("export function AssetRegisterPageSkeleton()"))
+  // In page order: the seven totals (4 + 3), the action counts with their foot lines (3 + 3), the four cross-scope
+  // counts over their preview, the four monthly trends with their foot lines.
+  const strips = [...dashboard.matchAll(/<MetricGridSkeleton count=\{(\d+)\}( foot)? \/>/g)].map((match) => `${match[1]}${match[2] ?? ""}`)
+  assert.deepEqual(strips, ["4", "3", "3 foot", "3 foot", "4", "4 foot"])
+  assert.equal(dashboard.match(/<PanelSkeleton description>/g)?.length, 3, "the action, cross-scope and trend panels have a description")
+  assert.equal(dashboard.match(/<PanelSkeleton>/g)?.length, 2, "the status overview and the recent activity")
+  assert.match(dashboard, /<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">/, "status beside activity from lg, as on the page")
+  assert.match(source, /function PanelSkeleton\(\{ description = false, children \}: \{ description\?: boolean; children: ReactNode \}\)/)
+  assert.match(source, /<div className="rounded-lg border border-border bg-surface p-4 sm:p-5">\s*<SkeletonBlock className="h-6 w-48 max-w-full" \/>/, "a ContentPanel frame and its title")
+  assert.match(source, /\{foot \? <SkeletonBlock className="h-4 w-32 max-w-full" \/> : null\}/, "a StatStrip foot line")
+  assert.doesNotMatch(dashboard, /count=\{5\}|md:grid-cols-4|p-5"/, "the old five-tile grid and its box of four cards are gone")
+})
