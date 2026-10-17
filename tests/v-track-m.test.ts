@@ -143,3 +143,37 @@ test("branch and location: errors under the field, and the no-company or no-bran
     assert.equal(typeof en[form.message[0]][form.message[1]], "string", `en ${form.message.join(".")}`)
   }
 })
+
+test("employee: errors under the field, the email rule, and a company change clears the branch and department errors with it (v-track M3)", () => {
+  const source = read(`${C}master-data/employee-form.tsx`)
+  assertMigratedForm(source, {
+    ids: {
+      code: "employee-code",
+      fullNameTh: "employee-full-name-th",
+      fullNameEn: "employee-full-name-en",
+      email: "employee-email",
+      companyId: "employee-company",
+      branchId: "employee-branch",
+      departmentId: "employee-department",
+      position: "employee-position",
+      employmentStatus: "employee-employment-status",
+      managerId: "employee-manager",
+    },
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("code", required(values.code) ?? maxLength(values.code, 20))',
+    'check("fullNameTh", required(values.fullNameTh) ?? maxLength(values.fullNameTh, 200))',
+    'check("fullNameEn", maxLength(values.fullNameEn, 200))',
+    'check("email", email(values.email) ?? maxLength(values.email, 200))',
+    'check("companyId", required(values.companyId))',
+    'check("branchId", required(values.branchId))',
+    'check("departmentId", required(values.departmentId))',
+    'check("position", maxLength(values.position, 200))',
+    'check("employmentStatus", required(values.employmentStatus))',
+  ]) assert.ok(rules.includes(rule), rule)
+  // The company narrows the branch and department lists, so changing it clears the three together (spec §4.3).
+  assert.match(source, /function handleCompanyChange\(companyId: string\) \{\n[\s\S]*?\n    \}\)\)\n    fieldErrors\.clear\("companyId", "branchId", "departmentId"\)\n  \}/)
+  // "Employee cannot be their own manager" answers with fieldErrors.managerId (area S), shown under the manager field.
+  assert.match(source, /<Field label=\{t\("manager"\)\} id="employee-manager" error=\{fieldErrors\.message\("managerId"\)\}>/)
+})

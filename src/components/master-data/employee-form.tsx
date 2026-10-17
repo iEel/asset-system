@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { email, maxLength, required } from "@/lib/validation-rules"
 
 type EmployeeFormValues = {
   id?: string
@@ -71,6 +73,40 @@ const emptyEmployee: EmployeeFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  code: "employee-code",
+  fullNameTh: "employee-full-name-th",
+  fullNameEn: "employee-full-name-en",
+  email: "employee-email",
+  companyId: "employee-company",
+  branchId: "employee-branch",
+  departmentId: "employee-department",
+  position: "employee-position",
+  employmentStatus: "employee-employment-status",
+  managerId: "employee-manager",
+} as const
+type EmployeeField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as EmployeeField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required, maxLength and type="email" (v-track M-R2).
+function validate(values: EmployeeFormValues): Partial<Record<EmployeeField, string>> {
+  const errors: Partial<Record<EmployeeField, string>> = {}
+  const check = (key: EmployeeField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("code", required(values.code) ?? maxLength(values.code, 20))
+  check("fullNameTh", required(values.fullNameTh) ?? maxLength(values.fullNameTh, 200))
+  check("fullNameEn", maxLength(values.fullNameEn, 200))
+  check("email", email(values.email) ?? maxLength(values.email, 200))
+  check("companyId", required(values.companyId))
+  check("branchId", required(values.branchId))
+  check("departmentId", required(values.departmentId))
+  check("position", maxLength(values.position, 200))
+  check("employmentStatus", required(values.employmentStatus))
+  return errors
+}
+
 export function EmployeeForm({
   employee,
   companies,
@@ -93,6 +129,7 @@ export function EmployeeForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<EmployeeFormValues>(employee ?? emptyEmployee)
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<EmployeeField>()
 
   const isEdit = Boolean(employee?.id)
   const backHref = providedBackHref ?? `/${locale}/master-data/employees`
@@ -102,8 +139,11 @@ export function EmployeeForm({
     (department) => !department.companyId || department.companyId === values.companyId
   )
 
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
   function setField<K extends keyof EmployeeFormValues>(field: K, value: EmployeeFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as EmployeeField)
   }
 
   function handleCompanyChange(companyId: string) {
@@ -121,10 +161,13 @@ export function EmployeeForm({
         ? current.departmentId
         : "",
     }))
+    fieldErrors.clear("companyId", "branchId", "departmentId")
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
 
     const url = isEdit ? `/api/employees/${employee?.id}` : "/api/employees"
@@ -139,6 +182,8 @@ export function EmployeeForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
 
@@ -161,9 +206,9 @@ export function EmployeeForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+      <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} required>
+          <Field label={t("code")} id="employee-code" required error={fieldErrors.message("code")}>
             <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
@@ -172,7 +217,7 @@ export function EmployeeForm({
             />
           </Field>
 
-          <Field label={t("fullNameTh")} required>
+          <Field label={t("fullNameTh")} id="employee-full-name-th" required error={fieldErrors.message("fullNameTh")}>
             <Input
               value={values.fullNameTh}
               onChange={(event) => setField("fullNameTh", event.target.value)}
@@ -181,7 +226,7 @@ export function EmployeeForm({
             />
           </Field>
 
-          <Field label={t("fullNameEn")}>
+          <Field label={t("fullNameEn")} id="employee-full-name-en" error={fieldErrors.message("fullNameEn")}>
             <Input
               value={values.fullNameEn ?? ""}
               onChange={(event) => setField("fullNameEn", event.target.value)}
@@ -189,7 +234,7 @@ export function EmployeeForm({
             />
           </Field>
 
-          <Field label={t("email")}>
+          <Field label={t("email")} id="employee-email" error={fieldErrors.message("email")}>
             <Input
               type="email"
               value={values.email ?? ""}
@@ -198,7 +243,7 @@ export function EmployeeForm({
             />
           </Field>
 
-          <Field label={t("company")} required>
+          <Field label={t("company")} id="employee-company" required error={fieldErrors.message("companyId")}>
             <NativeSelect
               value={values.companyId}
               onChange={(event) => handleCompanyChange(event.target.value)}
@@ -213,7 +258,7 @@ export function EmployeeForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("branch")} required>
+          <Field label={t("branch")} id="employee-branch" required error={fieldErrors.message("branchId")}>
             <NativeSelect
               value={values.branchId}
               onChange={(event) => setField("branchId", event.target.value)}
@@ -228,7 +273,7 @@ export function EmployeeForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("department")} required>
+          <Field label={t("department")} id="employee-department" required error={fieldErrors.message("departmentId")}>
             <NativeSelect
               value={values.departmentId}
               onChange={(event) => setField("departmentId", event.target.value)}
@@ -243,7 +288,7 @@ export function EmployeeForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("position")}>
+          <Field label={t("position")} id="employee-position" error={fieldErrors.message("position")}>
             <Input
               value={values.position ?? ""}
               onChange={(event) => setField("position", event.target.value)}
@@ -251,7 +296,7 @@ export function EmployeeForm({
             />
           </Field>
 
-          <Field label={t("employmentStatus")} required>
+          <Field label={t("employmentStatus")} id="employee-employment-status" required error={fieldErrors.message("employmentStatus")}>
             <NativeSelect
               value={values.employmentStatus}
               onChange={(event) =>
@@ -265,7 +310,7 @@ export function EmployeeForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("manager")}>
+          <Field label={t("manager")} id="employee-manager" error={fieldErrors.message("managerId")}>
             <NativeSelect
               value={values.managerId ?? ""}
               onChange={(event) => setField("managerId", event.target.value)}
