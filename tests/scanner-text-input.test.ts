@@ -194,7 +194,7 @@ test("scanner input keeps mobile controls labelled, touch-safe, and unambiguous"
   assert.match(source, /<Input[\s\S]*?className="sm:flex-1"/)
   assert.match(source, /<NativeSelect fieldSize="md"/)
   assert.match(source, /<Field label=\{labels\.cameraDevice\} className="mb-3">/)
-  assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline", size: "lg" \}\), "w-full sm:w-auto"\)\}/)
+  assert.match(source, /<Button\s+variant="outline"\s+size="lg"[\s\S]*?className="w-full sm:w-auto"/)
   assert.doesNotMatch(source, /inputClassName/)
   assert.match(source, /<span>\{scannerRunning \|\| scannerLoading \? labels\.stop : labels\.start\}<\/span>/)
   assert.doesNotMatch(source, /aria-label=\{labels\.stop\}/)

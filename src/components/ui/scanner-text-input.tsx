@@ -3,11 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { Camera, Flashlight, FlashlightOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { buttonVariants } from "@/components/ui/button-variants"
+import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
-import { cn } from "@/lib/utils"
 import {
   environmentCameraId,
   getFallbackCameraAfterEnvironmentFailure,
@@ -313,16 +312,17 @@ export function ScannerTextInput({
           aria-required={ariaRequired}
           className="sm:flex-1"
         />
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="lg"
           disabled={disabled}
           onClick={handleToggleScanner}
-          className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full sm:w-auto")}
+          className="w-full sm:w-auto"
           title={scannerRunning || scannerLoading ? labels.stop : labels.start}
         >
           {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Camera className="h-4 w-4" />}
           <span>{scannerRunning || scannerLoading ? labels.stop : labels.start}</span>
-        </button>
+        </Button>
       </div>
 
       {showScannerPanel && (
@@ -355,6 +355,8 @@ export function ScannerTextInput({
                 {labels.cameraOpening ?? labels.scanning}
               </div>
             ) : null}
+            {/* The zoom and torch controls sit on the camera image: raw buttons with their own dark fill and white ink, as
+                the audit camera's (spec 2D §5.3, permanent; plan 2D-5 lists them). */}
             {scanMode === "asset-qr" && scannerRunning && zoomAvailable ? (
               <div className="absolute left-3 top-3 z-20 inline-flex min-h-11 items-center gap-1 rounded-md border border-white/50 bg-slate-950/70 p-1 shadow-sm">
                 {zoomLevels.map((level) => {
@@ -369,7 +371,7 @@ export function ScannerTextInput({
                       aria-pressed={active}
                       aria-label={label}
                       title={label}
-                      className={`inline-flex min-h-9 min-w-11 items-center justify-center rounded px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60 ${
+                      className={`inline-flex min-h-9 min-w-11 items-center justify-center rounded px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         active ? "bg-white text-slate-950" : "text-white hover:bg-white/15"
                       }`}
                     >
@@ -387,9 +389,9 @@ export function ScannerTextInput({
                 aria-pressed={torchEnabled}
                 aria-label={getScannerTorchLabel(labels, torchEnabled)}
                 title={getScannerTorchLabel(labels, torchEnabled)}
-                className={`absolute right-3 top-3 z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60 ${
+                className={`absolute right-3 top-3 z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   torchEnabled
-                    ? "border-warning bg-warning text-white hover:bg-warning-hover"
+                    ? "border-warning bg-warning text-warning-foreground hover:bg-warning-hover"
                     : "border-white/50 bg-slate-950/70 text-white hover:bg-slate-950/85"
                 }`}
               >
@@ -419,6 +421,7 @@ export function ScannerTextInput({
   )
 }
 
+// The two scan frames keep their own dim surround and white corners: they sit on the camera image (spec 2D §5.3, permanent).
 function QrScannerOverlay() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
