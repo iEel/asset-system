@@ -38,7 +38,7 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
             width={72}
             height={72}
             priority
-            className="mx-auto mb-4 h-16 w-16 rounded-xl sm:h-[72px] sm:w-[72px]"
+            className="mx-auto mb-4 h-16 w-16 rounded-xl sm:h-[72px] sm:w-[72px] ring-1 ring-app-icon-frame"
           />
           <h1 className="text-balance text-2xl font-bold text-brand-navy">{tCommon("appName")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Asset Management System</p>

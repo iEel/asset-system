@@ -243,7 +243,7 @@ export function Sidebar({
             width={32}
             height={32}
             loading="eager"
-            className="h-8 w-8 shrink-0 rounded-md"
+            className="h-8 w-8 shrink-0 rounded-md ring-1 ring-app-icon-frame"
           />
           <span className={cn("min-w-0 truncate text-sm font-semibold text-foreground", bodyCollapsed && "lg:sr-only")}>
             {t("brandName")}
