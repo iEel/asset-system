@@ -8,6 +8,7 @@
         "role": "primary",
         "displayName": "Brand Navy",
         "canonical": "#083161",
+        "dark": "#5D93DE",
         "tonalRamp": [
           "oklch(21% 0.057 256)",
           "oklch(28% 0.077 256)",
@@ -23,6 +24,7 @@
         "role": "primary",
         "displayName": "Primary",
         "canonical": "#1E4F94",
+        "dark": "#6FA3EA",
         "tonalRamp": [
           "oklch(21% 0.075 258)",
           "oklch(28% 0.1 258)",
@@ -38,6 +40,7 @@
         "role": "accent",
         "displayName": "Icon Teal",
         "canonical": "#18A0A8",
+        "dark": "#3CC6CE",
         "tonalRamp": [
           "oklch(21% 0.063 201)",
           "oklch(28% 0.084 201)",
@@ -53,6 +56,7 @@
         "role": "accent",
         "displayName": "Focus Ring",
         "canonical": "#10858D",
+        "dark": "#2FA9B1",
         "tonalRamp": [
           "oklch(21% 0.056 203)",
           "oklch(28% 0.074 203)",
@@ -68,6 +72,7 @@
         "role": "neutral",
         "displayName": "Canvas",
         "canonical": "#EEF1F6",
+        "dark": "#0A1424",
         "tonalRamp": [
           "oklch(21% 0.004 261)",
           "oklch(28% 0.006 261)",
@@ -83,6 +88,7 @@
         "role": "neutral",
         "displayName": "Soft System Background",
         "canonical": "#F6F8FB",
+        "dark": "#0D192C",
         "tonalRamp": [
           "oklch(21% 0.003 258)",
           "oklch(28% 0.004 258)",
@@ -98,6 +104,7 @@
         "role": "neutral",
         "displayName": "Ink",
         "canonical": "#0B1D35",
+        "dark": "#E4EBF5",
         "tonalRamp": [
           "oklch(21% 0.032 256)",
           "oklch(28% 0.042 256)",
@@ -113,6 +120,7 @@
         "role": "neutral",
         "displayName": "Input Border",
         "canonical": "#7C8BA0",
+        "dark": "#687DA0",
         "tonalRamp": [
           "oklch(21% 0.022 257)",
           "oklch(28% 0.029 257)",
@@ -128,6 +136,7 @@
         "role": "neutral",
         "displayName": "Faint Ink",
         "canonical": "#56677F",
+        "dark": "#8A9AB2",
         "tonalRamp": [
           "oklch(21% 0.026 257)",
           "oklch(28% 0.035 257)",
@@ -143,6 +152,7 @@
         "role": "neutral",
         "displayName": "Neutral Ink",
         "canonical": "#2A4468",
+        "dark": "#BAC6D8",
         "tonalRamp": [
           "oklch(21% 0.042 257)",
           "oklch(28% 0.056 257)",
@@ -158,6 +168,7 @@
         "role": "neutral",
         "displayName": "Row Hover",
         "canonical": "#F3F6FB",
+        "dark": "#162741",
         "tonalRamp": [
           "oklch(21% 0.004 261)",
           "oklch(28% 0.006 261)",
@@ -173,6 +184,7 @@
         "role": "neutral",
         "displayName": "Border Soft",
         "canonical": "#E7EBF1",
+        "dark": "#1A2A42",
         "tonalRamp": [
           "oklch(21% 0.005 258)",
           "oklch(28% 0.007 258)",
@@ -188,6 +200,7 @@
         "role": "neutral",
         "displayName": "Control Border",
         "canonical": "#C3CDDA",
+        "dark": "#34496A",
         "tonalRamp": [
           "oklch(21% 0.013 255)",
           "oklch(28% 0.017 255)",
@@ -203,6 +216,7 @@
         "role": "status",
         "displayName": "Success Green",
         "canonical": "#1D7A35",
+        "dark": "#5CCB7B",
         "tonalRamp": [
           "oklch(21% 0.081 148)",
           "oklch(28% 0.107 148)",
@@ -218,6 +232,7 @@
         "role": "status",
         "displayName": "Warning Orange",
         "canonical": "#A14A05",
+        "dark": "#F0A94D",
         "tonalRamp": [
           "oklch(21% 0.08 50)",
           "oklch(28% 0.107 50)",
@@ -233,6 +248,7 @@
         "role": "status",
         "displayName": "Danger Red",
         "canonical": "#B3261E",
+        "dark": "#F08A80",
         "tonalRamp": [
           "oklch(21% 0.107 29)",
           "oklch(28% 0.143 29)",
@@ -248,6 +264,7 @@
         "role": "status",
         "displayName": "Info Teal",
         "canonical": "#0A6E75",
+        "dark": "#4FCBD3",
         "tonalRamp": [
           "oklch(21% 0.049 203)",
           "oklch(28% 0.065 203)",
@@ -296,16 +313,19 @@
       {
         "name": "overlay",
         "value": "0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1)",
+        "darkValue": "0 16px 40px -8px rgb(0 0 0 / 0.6), 0 2px 8px -2px rgb(0 0 0 / 0.45)",
         "purpose": "shadow-overlay: dialogs, sheets, popovers, dropdown menus and toasts only. Panels, cards, and the topbar are flat."
       },
       {
         "name": "field-focus",
         "value": "0 0 0 4px rgb(16 133 141 / 0.16)",
+        "darkValue": "0 0 0 4px rgb(47 169 177 / 0.28)",
         "purpose": "shadow-field-focus: the halo around a focused field (with a 1px ring) and an open SearchableSelect. Not elevation."
       },
       {
         "name": "field-error",
         "value": "0 0 0 4px rgb(179 38 30 / 0.14)",
+        "darkValue": "0 0 0 4px rgb(240 138 128 / 0.24)",
         "purpose": "shadow-field-error: the halo around an unfocused field with aria-invalid. Not elevation."
       }
     ],
@@ -366,7 +386,7 @@
       "name": "Text Field",
       "kind": "input",
       "refersTo": "input",
-      "description": "Standard form field (Input, NativeSelect or Textarea inside Field) for asset, employee, location, search, and settings fields. White fill, 3:1 border, focus halo, error through aria-invalid.",
+      "description": "Standard form field (Input, NativeSelect or Textarea inside Field) for asset, employee, location, search, and settings fields. Panel fill, 3:1 border, focus halo, error through aria-invalid.",
       "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-asset-tag\">Asset tag</label><input id=\"ds-asset-tag\" class=\"ds-input\" placeholder=\"Search asset tag\" aria-describedby=\"ds-asset-tag-hint\" /><p class=\"ds-field-hint\" id=\"ds-asset-tag-hint\">Letters, digits and dashes</p></div>",
       "css": ".ds-field { display: grid; gap: 6px; font-family: \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; color: #0B1D35; } .ds-field-label { font-size: 13px; line-height: 1.5385; font-weight: 500; } .ds-field-hint { margin: 0; font-size: 13px; line-height: 1.5385; color: #56677F; } .ds-input { box-sizing: border-box; height: 44px; width: 100%; border: 1px solid #7C8BA0; border-radius: 8px; background: #FFFFFF; color: #0B1D35; padding: 0 12px; font: 400 16px/1.5 \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; outline: none; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } @media (min-width: 768px) { .ds-input { height: 40px; font-size: 14px; line-height: 1.5714; } } .ds-input::placeholder { color: #56677F; } .ds-input:focus { border-color: #10858D; box-shadow: 0 0 0 1px #10858D, 0 0 0 4px rgb(16 133 141 / 0.16); } .ds-input[aria-invalid=\"true\"] { border-color: #B3261E; box-shadow: 0 0 0 1px #B3261E, 0 0 0 4px rgb(179 38 30 / 0.14); } .ds-input[aria-invalid=\"true\"]:focus { border-color: #10858D; box-shadow: 0 0 0 1px #10858D, 0 0 0 4px rgb(16 133 141 / 0.16); } .ds-input:disabled { background: #F6F8FB; border-color: #D7DEE8; color: #56677F; cursor: not-allowed; }"
     },
@@ -398,7 +418,7 @@
       "name": "Dialog",
       "kind": "custom",
       "refersTo": "dialog-footer",
-      "description": "AccessibleDialog with its parts: a header with the title and the ghost close X (named \"ปิด\"), a white body that scrolls, and a footer that stays in view on the background fill under a border-soft line. Secondary first, primary last: phones stack the buttons full width with Cancel on top, and from 640px they form a right-aligned row. On phones the box sits above the iPhone home bar.",
+      "description": "AccessibleDialog with its parts: a header with the title and the ghost close X (named \"ปิด\"), a body in the panel color that scrolls, and a footer that stays in view on the background fill under a border-soft line. Secondary first, primary last: phones stack the buttons full width with Cancel on top, and from 640px they form a right-aligned row. On phones the box sits above the iPhone home bar.",
       "html": "<div class=\"ds-dialog\" role=\"dialog\" aria-labelledby=\"ds-dialog-title\"><div class=\"ds-dialog-head\"><h2 class=\"ds-dialog-title\" id=\"ds-dialog-title\">Record repair result</h2><button class=\"ds-dialog-x\" type=\"button\" aria-label=\"Close\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M18 6 6 18M6 6l12 12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg></button></div><div class=\"ds-dialog-body\">The body scrolls on its own; the footer stays in view.</div><div class=\"ds-dialog-footer\"><button class=\"ds-dialog-btn\" type=\"button\">Cancel</button><button class=\"ds-dialog-btn ds-dialog-btn-primary\" type=\"button\">Save</button></div></div>",
       "css": ".ds-dialog { width: 100%; max-width: 512px; overflow: hidden; border: 1px solid #D7DEE8; border-radius: 12px; background: #FFFFFF; color: #0B1D35; box-shadow: 0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1); font-family: \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; } .ds-dialog-head { position: relative; padding: 16px 64px 16px 16px; border-bottom: 1px solid #D7DEE8; } .ds-dialog-title { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; } .ds-dialog-x { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #3C4F6B; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-dialog-x svg { width: 16px; height: 16px; } .ds-dialog-x:hover { background: #F6F8FB; color: #0B1D35; } .ds-dialog-x:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-dialog-body { padding: 16px; font-size: 14px; line-height: 1.5714; } .ds-dialog-footer { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-top: 1px solid #E7EBF1; background: #F6F8FB; } .ds-dialog-btn { min-height: 44px; padding: 0 14px; border: 1px solid #C3CDDA; border-radius: 8px; background: #FFFFFF; color: #0B1D35; font: 500 14px/1.5714 \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out; } .ds-dialog-btn:hover { background: #F6F8FB; border-color: #7C8BA0; } .ds-dialog-btn:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-dialog-btn-primary { border-color: #1E4F94; background: #1E4F94; color: #FFFFFF; } .ds-dialog-btn-primary:hover { border-color: #173E76; background: #173E76; } @media (min-width: 640px) { .ds-dialog-head { padding-left: 20px; } .ds-dialog-body { padding: 16px 20px; } .ds-dialog-footer { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; padding: 12px 20px; } } @media (min-width: 768px) { .ds-dialog-x { width: 36px; height: 36px; } .ds-dialog-btn { min-height: 0; height: 36px; } } @media (prefers-reduced-motion: reduce) { .ds-dialog-x, .ds-dialog-btn { transition: none; } }"
     },
@@ -414,7 +434,7 @@
       "name": "Sidebar Navigation Item",
       "kind": "nav",
       "refersTo": "navigation",
-      "description": "RBAC-filtered row in the white sidebar (three sections with headings). Full-width rounded row inside the nav's 8px (px-2) gutter (the margin below stands in for that gutter), sidebar-muted icon, Sidebar Hover; each section is role=group labelled by its heading. The active row is solid navy with white text and a teal icon, with an outline in Windows high-contrast mode; aria-current=page only on the exact page, aria-current=true on the entry above a detail page. Its focus ring sits outside the row on white.",
+      "description": "RBAC-filtered row in the sidebar (three sections with headings). Full-width rounded row inside the nav's 8px (px-2) gutter (the margin below stands in for that gutter), sidebar-muted icon, Sidebar Hover; each section is role=group labelled by its heading. The active row is solid navy with white text and a teal icon, with an outline in Windows high-contrast mode; aria-current=page only on the exact page, aria-current=true on the entry above a detail page. Its focus ring sits outside the row on the sidebar color.",
       "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z\" fill=\"currentColor\"/></svg><span>Dashboard</span></a>",
       "css": ".ds-nav-item { min-height: 36px; margin: 0 8px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; background: #FFFFFF; color: #1F3657; text-decoration: none; font: 500 14px/1.5714 \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item svg { width: 20px; height: 20px; flex: 0 0 auto; color: #586A84; } .ds-nav-item:hover { background: #EBF0F7; } .ds-nav-item:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-nav-item-active, .ds-nav-item-active:hover { background: #083161; color: #FFFFFF; } .ds-nav-item-active svg { color: #18A0A8; } @media (forced-colors: active) { .ds-nav-item-active { outline: 2px solid CanvasText; outline-offset: -2px; } }"
     },
@@ -430,7 +450,7 @@
       "name": "Data Table",
       "kind": "custom",
       "refersTo": "table",
-      "description": "DataTable: a white frame with 12px corners; a white header with 13/500 faint text in sentence case, no fill and no capitals; p-3 rows (about 46px) on border-soft lines, the first and last columns 16px from the edge (20px from 768px); the sorted column has aria-sort and an arrow; hovered or focused rows use row-hover; counts are tabular. The foot holds Pagination.",
+      "description": "DataTable: a frame in the panel color with 12px corners; a header in the panel color with 13/500 faint text in sentence case, no fill and no capitals; p-3 rows (about 46px) on border-soft lines, the first and last columns 16px from the edge (20px from 768px); the sorted column has aria-sort and an arrow; hovered or focused rows use row-hover; counts are tabular. The foot holds Pagination.",
       "html": "<div class=\"ds-table-frame\"><table class=\"ds-table\"><caption class=\"ds-table-caption\">สาขา</caption><thead><tr><th scope=\"col\" aria-sort=\"ascending\"><a href=\"#\">รหัส <span aria-hidden=\"true\">↑</span></a></th><th scope=\"col\">ชื่อสาขา</th><th scope=\"col\" class=\"ds-table-num\">ทรัพย์สิน</th></tr></thead><tbody><tr><td><span class=\"ds-table-code\">BR-001</span></td><td>สำนักงานใหญ่</td><td class=\"ds-table-num\">1,751</td></tr><tr><td><span class=\"ds-table-code\">BR-002</span></td><td>สาขาชลบุรี</td><td class=\"ds-table-num\">0</td></tr></tbody></table><div class=\"ds-table-foot\">1–2 จาก 2 รายการ · หน้า 1 จาก 1</div></div>",
       "css": ".ds-table-frame { min-width: 0; max-width: 100%; overflow: hidden; border: 1px solid #D7DEE8; border-radius: 12px; background: #FFFFFF; font-family: \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; color: #0B1D35; } .ds-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5714; font-variant-numeric: tabular-nums; } .ds-table-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .ds-table th { padding: 10px 12px; border-bottom: 1px solid #D7DEE8; background: #FFFFFF; text-align: left; vertical-align: bottom; font-size: 13px; line-height: 1.5385; font-weight: 500; white-space: nowrap; color: #56677F; } .ds-table th a { color: inherit; text-decoration: none; } .ds-table th[aria-sort] a { color: #0B1D35; } .ds-table th a:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-table td { padding: 12px; border-bottom: 1px solid #E7EBF1; vertical-align: top; } .ds-table tbody tr:last-child td { border-bottom: 0; } .ds-table th:first-child, .ds-table td:first-child { padding-left: 16px; } .ds-table th:last-child, .ds-table td:last-child { padding-right: 16px; } .ds-table tbody tr { transition: background-color 150ms ease-out; } .ds-table tbody tr:hover, .ds-table tbody tr:focus-within { background: #F3F6FB; transition-duration: 0ms; } .ds-table-num { text-align: right; white-space: nowrap; } .ds-table-code { font-family: \"IBM Plex Mono\", ui-monospace, monospace; font-size: calc(1em - 1px); font-weight: 500; white-space: nowrap; user-select: all; } .ds-table-foot { padding: 10px 16px; border-top: 1px solid #D7DEE8; font-size: 13px; line-height: 1.5385; color: #3C4F6B; font-variant-numeric: tabular-nums; } @media (min-width: 768px) { .ds-table th:first-child, .ds-table td:first-child { padding-left: 20px; } .ds-table th:last-child, .ds-table td:last-child { padding-right: 20px; } .ds-table-foot { padding: 10px 20px; } } @media (prefers-reduced-motion: reduce) { .ds-table tbody tr { transition: none; } }"
     },
@@ -511,7 +531,12 @@
       },
       {
         "name": "The Token Contrast Rule",
-        "body": "Status text uses the status ink (text-success, text-warning, text-danger, text-info) on white, the page background, canvas, muted, accent, row-hover, or its own soft surface (bg-{tone}-soft). Never tint with opacity (bg-warning/10, bg-primary/10, border-warning/30, bg-muted/40) and never lighten solid fills on hover (/90): use the -soft, -border and -hover tokens and the solid neutrals (bg-background, bg-row-hover, border-border-soft). Faint text (#56677F) is AA on every neutral surface and on primary-soft, never on a status soft fill. tests/design-tokens-contrast.test.ts enforces every text pair at 4.5:1 and rings, field borders and meaningful icons at 3:1; button outlines are decorative.",
+        "body": "Status text uses the status ink (text-success, text-warning, text-danger, text-info) on the panel, the page background, canvas, muted, accent, row-hover, or its own soft surface (bg-{tone}-soft). Never tint with opacity (bg-warning/10, bg-primary/10, border-warning/30, bg-muted/40) and never lighten solid fills on hover (/90): use the -soft, -border and -hover tokens and the solid neutrals (bg-background, bg-row-hover, border-border-soft). Faint text (#56677F) is AA on every neutral surface and on primary-soft, never on a status soft fill. tests/design-tokens-contrast.test.ts enforces every text pair at 4.5:1 and rings, field borders and meaningful icons at 3:1; button outlines are decorative.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Theme Rule",
+        "body": "Two themes share one set of token names: light (each colorMeta canonical, each shadow value and the css examples here) and dark (each dark and darkValue). They live only in src/app/globals.css: the light :root block, :root[data-theme=\"dark\"] and its identical copy under @media (prefers-color-scheme: dark), one forced-light [data-theme=\"light\"] scope and one print reset. The page follows the OS until the person chooses with the toggle beside the language button; the theme cookie keeps the choice per browser and the server renders it as data-theme on html, so the first paint is right. Components use tokens only: no dark: class and no @custom-variant dark. Paper (the A4 documents, the label sheet and its settings sample, the signature canvas) carries data-theme=\"light\", QR tiles and the camera keep their own colors, and print is always light. Uploaded photos and logos sit on --image-stage #E9EEF5 in both themes; the app icon gets the --app-icon-frame hairline, #FFFFFF in light and #34496A in dark. In dark the solid fills take the dark ink #08172C, brand navy is only the pressed fill, and the contrast suite runs every rule on both sets.",
         "section": "colors"
       },
       {
@@ -542,7 +567,7 @@
     ],
     "dos": [
       "Do preserve existing tokens and shared primitives such as Button, Segmented, the field primitives (Input, NativeSelect, Textarea, Field, SearchField), the dialog parts (AccessibleDialogBody, AccessibleDialogFooter, AccessibleDialogCancel) and useConfirm, StickyFormFooter and ActionBar, ChoiceCard and ChoiceChip, Chip, Steps, FormSection, FileQueueList, Notice, EmptyNote, ActionEmptyState, PageHeader and PageBackLink, DataTable with TableEmptyRow and Pagination, FilterSelect, FilterFormActions and FilterChipList, RowActions, TabNav, StatStrip, KeyValueList, ContentPanel divided, Nil, formatCount and formatMoney, the loading skeletons of page-skeleton.tsx, and the panel and mobile card list helpers.",
-      "Do keep navy #083161 for the logo and the selected menu row, Primary #1E4F94 for actions and links, and teal for info status, focus and the selected menu icon.",
+      "Do keep navy #083161 for the logo and the selected menu row in the light theme, Primary #1E4F94 for actions and links, and teal for info status, focus and the selected menu icon.",
       "Do use borders and tonal layers as the grouping mechanism; use shadow-overlay only for dialogs, sheets, popovers and menus, and bg-scrim behind them.",
       "Do keep tables and forms dense enough for enterprise scanning, but not cramped.",
       "Do pair status colors with readable labels, marker shapes, icons, or explicit workflow context so status does not rely on color alone.",
@@ -552,7 +577,8 @@
     "donts": [
       "Don't use consumer-app styling, bright playful colors, heavy animation, marketing-style hero layouts, gamified UI, casual startup dashboards, decorative gradients, or anything that makes the system feel like a landing page instead of an enterprise operations tool.",
       "Don't use glassmorphism, heavy shadows, decorative gradients, floating marketing cards, or playful surfaces.",
-      "Don't bring back a dark navy sidebar, a second focus color, or green, orange and red outside status badges.",
+      "Don't bring back a dark navy sidebar in the light theme (the dark theme's chrome is its own token), a second focus color, or green, orange and red outside status badges.",
+      "Don't write a dark: class, a color for one theme or a component that reads the theme; paper that must stay light takes data-theme=\"light\".",
       "Don't show database status colors on badges, or use teal brand-accent as text.",
       "Don't redesign business workflows for visual effect.",
       "Don't invent inconsistent button, input, modal, badge, or navigation vocabularies across screens.",

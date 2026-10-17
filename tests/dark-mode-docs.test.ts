@@ -56,3 +56,55 @@ test("DESIGN.md: the two-theme rule replaces Light Only, surfaces are named by r
   const stroke = (value: string) => `#${value.match(/stroke='%23([0-9A-Fa-f]{6})'/)?.[1]}`
   assert.ok(design.includes(`stroke ${stroke(theme["select-chevron-image"])} in \`@theme\` and ${stroke(dark["select-chevron-image"])} in the dark blocks`), "the chevron strokes")
 })
+
+test("docs/14 and .impeccable/design.json follow the two themes, with the dark values globals.css declares (dark mode task 21, D2)", () => {
+  assert.deepEqual([...lightOnlyLines("docs/14_UI_UX_DESIGN_SYSTEM.md"), ...lightOnlyLines(".impeccable/design.json")], [])
+  const index = read("docs/14_UI_UX_DESIGN_SYSTEM.md")
+  assert.ok(!index.includes("White sidebar with sections and a light topbar"), "Adaptive Presentation: the chrome in both themes")
+  assert.match(index, /Both themes come from the same tokens \(The Two-Theme Rule in \[`DESIGN\.md` §2\]\(\.\.\/DESIGN\.md#2-colors\)\)/)
+  assert.match(index, /\n\| An uploaded photo, logo or attachment image \| `bg-image-stage` on the image element \|/)
+  assert.match(index, /\n\| Paper that must stay light in the dark theme \| `data-theme="light"` on the paper element \|/)
+  assert.match(index, /\n\| Themes \(light and dark\) \| \[`2026-10-17-dark-mode-design\.md`\]\(superpowers\/specs\/2026-10-17-dark-mode-design\.md\) .+ \| \[`2026-10-17-dark-mode\.md`\]\(superpowers\/plans\/2026-10-17-dark-mode\.md\) /, "Current-Surface Registry: the Dark Mode row")
+  assert.match(index, /\n- Check light and dark, and with no choice the OS emulated both ways; print preview stays light/)
+
+  type Design = {
+    extensions: {
+      colorMeta: Record<string, { canonical: string; dark?: string }>
+      shadows: Array<{ name: string; value: string; darkValue?: string }>
+    }
+    components: Array<{ name: string; description: string }>
+    narrative: { rules: Array<{ name: string; body: string }>; dos: string[]; donts: string[] }
+  }
+  const design = JSON.parse(read(".impeccable/design.json")) as Design
+  const css = globals()
+  const light = readRootTokens(css)
+  const dark = readDarkTokens(css)
+  const theme = readBlockTokens(css, "@theme")
+  // Each color records its light value as canonical and its dark value beside it, as the token blocks declare them.
+  const TOKEN: Record<string, string> = { "soft-system-background": "background", "primary-slate-ink": "foreground" }
+  for (const [key, entry] of Object.entries(design.extensions.colorMeta)) {
+    const token = TOKEN[key] ?? key
+    assert.deepEqual([key, entry.canonical, entry.dark], [key, light[token], dark[token]])
+  }
+  // Each shadow: its light value in @theme, its dark value in the dark block.
+  const EFFECT: Record<string, string> = { "overlay": "elevation-overlay", "field-focus": "halo-field-focus", "field-error": "halo-field-error" }
+  assert.deepEqual(design.extensions.shadows.map((shadow) => shadow.name).sort(), Object.keys(EFFECT).sort())
+  for (const shadow of design.extensions.shadows) {
+    const name = EFFECT[shadow.name]
+    assert.deepEqual([shadow.name, shadow.value, shadow.darkValue], [shadow.name, theme[name], dark[name]])
+  }
+  const names = design.narrative.rules.map((rule) => rule.name)
+  assert.equal(names.indexOf("The Two-Theme Rule"), names.indexOf("The Token Contrast Rule") + 1, "after The Token Contrast Rule, as in DESIGN.md §2")
+  const rule = design.narrative.rules.find((entry) => entry.name === "The Two-Theme Rule")?.body ?? ""
+  assert.match(rule, /Components use tokens only: no dark: class and no @custom-variant dark\./)
+  assert.match(rule, /one forced-light \[data-theme="light"\] scope and one print reset/)
+  assert.ok(rule.includes(`--image-stage ${light["image-stage"]} in both themes`) && light["image-stage"] === dark["image-stage"], "the image stage")
+  assert.ok(rule.includes(`--app-icon-frame hairline, ${light["app-icon-frame"]} in light and ${dark["app-icon-frame"]} in dark`), "the app icon frame")
+  assert.ok(rule.includes(`the dark ink ${dark["primary-foreground"]}`), "the dark ink of the solid fills")
+  assert.ok(design.narrative.dos.some((entry) => entry.startsWith("Do keep navy #083161 for the logo and the selected menu row in the light theme,")))
+  assert.ok(design.narrative.donts.some((entry) => entry.startsWith("Don't bring back a dark navy sidebar in the light theme ")))
+  assert.ok(design.narrative.donts.some((entry) => entry.startsWith("Don't write a dark: class, a color for one theme or a component that reads the theme")))
+  // Surfaces are named by role in the prose (the css examples keep the light values).
+  const prose = [...design.components.map((entry) => entry.description), ...design.narrative.rules.map((entry) => entry.body)].join("\n")
+  assert.doesNotMatch(prose, /\bwhite (?:sidebar|frame|header|body)\b|\bon white\b|White fill/)
+})
