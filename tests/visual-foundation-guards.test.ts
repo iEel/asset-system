@@ -347,6 +347,20 @@ test("N1 colors come from the tokens, outside the paper and the camera imagery (
   assert.deepEqual(exemptProblems("N1", countMatchesByFile(sources, RAW_COLOR), RAW_COLOR_EXEMPT), [])
 })
 
+// N2: a dashed or dotted line marks a drop target or a signing area, drawn by its shared part (2A 07-feedback.md:331).
+// An empty state is EmptyNote or ActionEmptyState, never a dashed box.
+const DASHED_LINE = /(?<![\w-])(?:[\w\-\[\]=&\/.]+:)*(?:border|divide|outline)-(?:dashed|dotted)(?![\w-])/g
+const DASHED_LINE_OWNERS = ["src/components/ui/file-dropzone.tsx", "src/components/asset-operations/signature-pad.tsx"]
+const DASHED_LINE_EXEMPT: ExemptList = {}
+
+test("N2 a dashed or dotted line is drawn only by the drop zone and the signature pad (spec 2D §5.4 item 2)", () => {
+  const count = (source: string) => countMatchesByFile([{ path: "src/x.tsx", source }], DASHED_LINE)["src/x.tsx"] ?? 0
+  assert.equal(count('"border-dashed md:border-dotted divide-dashed outline-dotted"'), 4)
+  assert.equal(count('"border-solid border-dashed-x decoration-dotted"'), 0)
+  assert.deepEqual(DASHED_LINE_OWNERS.filter((path) => !existsSync(path)), [])
+  assert.deepEqual(exemptProblems("N2", countMatchesByFile(sources, DASHED_LINE), DASHED_LINE_EXEMPT, DASHED_LINE_OWNERS), [])
+})
+
 // Every EXEMPT list of this file, by rule (spec 2D §5.1), last in the file. Each guard file sums its own phase 3 rows:
 // a test file that imports another one runs that file's tests a second time.
 const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
@@ -357,6 +371,7 @@ const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   "Thai leading": LEADING_4_EXEMPT,
   "mockup sizes": MOCKUP_TYPE_PX_EXEMPT,
   N1: RAW_COLOR_EXEMPT,
+  N2: DASHED_LINE_EXEMPT,
 }
 
 test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
