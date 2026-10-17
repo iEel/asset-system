@@ -20,7 +20,7 @@ test("login page uses the real app icon and committed enterprise tokens", () => 
   assert.match(source, /src="\/icon\.png"/)
   assert.match(source, /bg-background/)
   assert.match(source, /bg-surface/)
-  assert.match(source, /text-brand-navy/)
+  assert.match(source, /text-foreground/)
   assert.match(source, /border-border/)
   assert.doesNotMatch(source, /gradient|backdrop-blur|rounded-\[3[2-9]px\]/)
 })

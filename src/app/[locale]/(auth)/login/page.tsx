@@ -40,12 +40,12 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
             priority
             className="mx-auto mb-4 h-16 w-16 rounded-xl sm:h-[72px] sm:w-[72px] ring-1 ring-app-icon-frame"
           />
-          <h1 className="text-balance text-2xl font-bold text-brand-navy">{tCommon("appName")}</h1>
+          <h1 className="text-balance text-2xl font-bold text-foreground">{tCommon("appName")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Asset Management System</p>
         </header>
 
         <section aria-labelledby="login-heading" className="rounded-lg border border-border bg-surface p-5 sm:p-7">
-          <h2 id="login-heading" className="mb-6 text-center text-xl font-semibold text-brand-navy">
+          <h2 id="login-heading" className="mb-6 text-center text-xl font-semibold text-foreground">
             {tAuth("login")}
           </h2>
           <LoginForm callbackUrl={callbackUrl} sessionExpired={sessionExpired} />
