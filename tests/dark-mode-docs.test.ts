@@ -121,7 +121,7 @@ test("the handoff and the changelog record Dark Mode in place, with every marker
   const newest = changelog.indexOf("\n## ")
   const entry = changelog.indexOf("\n### โหมดมืด (Dark Mode)\n")
   assert.ok(newest !== -1 && entry !== -1, "the newest date and the Dark Mode entry")
-  assert.equal(changelog.indexOf("\n### ", newest), entry, "the entry is the first one under the newest date")
+  assert.equal(changelog.lastIndexOf("\n## ", entry), changelog.indexOf("\n## 2026-10-17\n"), "the entry sits under 2026-10-17 (the V track plan 1 entry went above it later, v-track plan 1 task 31)")
   assert.ok(entry < changelog.indexOf("\n### ล็อก guard และเอกสารรอบสุดท้าย (UI รอบ 4 เฟส 2D plan 5)"), "above the 2D-5 entry")
   assert.match(changelog.slice(entry, changelog.indexOf("\n### ", entry + 1)), /\n- \*\*ตรวจบนแอป:\*\* \S/, "the dev-app check bullet")
   // Every marker of the D3 template is filled; a failure lists the path and the markers left.
