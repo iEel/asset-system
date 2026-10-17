@@ -30,3 +30,15 @@ test("the asset state help trigger stays a 24px circle and gets a 44px hit area 
   ]
   for (const [path, count] of callers) assert.equal(read(path).match(/<AssetStateHelpPopover \{\.\.\.\w+\} \/>/g)?.length, count, path)
 })
+
+test("a StatStrip foot wraps to two lines before its ellipsis, and the label, value and foot rows stay aligned (the user, 2026-10-17)", () => {
+  const source = read(`${C}ui/stat-strip.tsx`)
+  assert.match(source, /<span className="line-clamp-2 break-words" title=\{item\.footTitle\}>\{item\.foot\}<\/span>/)
+  assert.doesNotMatch(source, /className="truncate"/, "no one-line cut")
+  // The warning icon sits in a 20px box (the 13/20 line): centred on the first line however many lines follow.
+  assert.match(source, /cn\("flex min-w-0 items-start gap-1 text-meta", item\.attention \? "text-warning" : "text-faint-foreground"\)/)
+  assert.match(source, /<span className="flex h-5 shrink-0 items-center">\s*<AttentionIcon className="size-3\.5" aria-hidden="true" \/>\s*<\/span>/)
+  // Unchanged: the subgrid of three rows per cell, so a two-line foot lowers the whole row of feet, never a value.
+  assert.match(source, /const statClasses = "group relative row-span-3 grid grid-rows-subgrid /)
+  assert.match(source, /lg:grid-rows-\[repeat\(3,auto\)\]/)
+})

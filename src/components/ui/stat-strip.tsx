@@ -12,7 +12,7 @@ export type StatStripItem = {
   value: string | null
   // "บาท", "รายการ"
   unit?: string
-  // One line, cut with an ellipsis; footTitle is its title for the cut text.
+  // Up to two lines, then cut with an ellipsis; footTitle is its title for the cut text.
   foot?: React.ReactNode
   footTitle?: string
   // The whole cell is a link (a filter, or a drill-down to the list).
@@ -54,9 +54,14 @@ export function StatStrip({ items, className }: { items: readonly StatStripItem[
             {item.unit ? <span className="text-base font-medium text-faint-foreground">{item.unit}</span> : null}
           </dd>
           {item.foot ? (
-            <dd className={cn("flex min-w-0 items-center gap-1 text-meta", item.attention ? "text-warning" : "text-faint-foreground")}>
-              {item.attention ? <AttentionIcon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
-              <span className="truncate" title={item.footTitle}>{item.foot}</span>
+            <dd className={cn("flex min-w-0 items-start gap-1 text-meta", item.attention ? "text-warning" : "text-faint-foreground")}>
+              {/* The icon's 20px box is the first line's height, so it stays on that line when the foot wraps. */}
+              {item.attention ? (
+                <span className="flex h-5 shrink-0 items-center">
+                  <AttentionIcon className="size-3.5" aria-hidden="true" />
+                </span>
+              ) : null}
+              <span className="line-clamp-2 break-words" title={item.footTitle}>{item.foot}</span>
             </dd>
           ) : null}
         </div>
