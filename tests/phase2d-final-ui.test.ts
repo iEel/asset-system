@@ -102,3 +102,11 @@ test("the settings screens name the LDAP sync modes, the legacy rules' months an
     assert.equal(typeof messages("en").systemSettingsPage[key], "string", `en ${key}`)
   }
 })
+
+test("the integration client list's screen-reader loading line is Thai on the Thai page (plan 2D-2 hand-on)", () => {
+  assert.equal(messages("th").integrationApiPage.loading, "กำลังโหลดรายการ")
+  assert.equal(messages("en").integrationApiPage.loading, "Loading clients")
+  // The line itself is unchanged: a status beside the list title while the clients load.
+  assert.match(read(`${C}admin/IntegrationClientManager.tsx`), /<span role="status" className="inline-flex">\s*<Loader2 [^>]*\/>\s*<span className="sr-only">\{labels\.loading\}<\/span>/)
+  assert.equal(messages("th").integrationApiPage.loadFailed, "โหลดรายการไม่สำเร็จ")
+})
