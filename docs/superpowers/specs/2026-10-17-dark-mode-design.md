@@ -13,7 +13,7 @@ Success means a person who picks dark sees every screen dark, readable and calm,
 | # | Decision | Said |
 |---|---|---|
 | U1 | Purpose: all-day work on a computer. Phones are not the target, but nothing may break there. | "ใช้ทำงานบนคอม" |
-| U2 | Default follows the OS / browser setting (light or dark). Each person can override it from the user menu in the topbar, next to TH/EN, and the choice is remembered. | "ตรง" |
+| U2 | Default follows the OS / browser setting (light or dark) until the person chooses. The choice is **one toggle button that switches light ⇄ dark** (no three-way menu, no "follow system" item), on the **topbar beside the TH language button**, and the choice is remembered. | "ตรง" · "เป็นปุ่มสลับ สว่าง / มืด" · "บนแถบบนข้างปุ่ม TH" |
 | U3 | Look: direction **A, navy dark**: a dark blue canvas continuing the brand navy, the active menu row still navy with the teal icon. Chosen over a neutral graphite and a softer, lower-contrast dim slate (mockups in `.superpowers/brainstorm/66645-1792224649/content/dark-direction.html`). | "เลือก A" |
 | U4 | Print pages, A4 documents, labels, QR codes, the signature canvas and the camera image keep their colors in every theme. | "ส่วนที่เดาไว้ถูกแล้ว" |
 | U5 | The choice is remembered per browser (a cookie), not per account. No database change, no migration. | "จำในเครื่องตามที่แนะนำ" |
@@ -22,7 +22,7 @@ Success means a person who picks dark sees every screen dark, readable and calm,
 
 **Goals**
 - G1. A complete dark token set (direction A) that passes the same contrast rules as the light set, checked by tests for both sets.
-- G2. Three choices: ตามระบบ (follow system, the default), สว่าง (light), มืด (dark). The page renders in the right theme on the first paint.
+- G2. Before any choice the page follows the OS; one toggle switches light ⇄ dark and the choice sticks. The page renders in the right theme on the first paint.
 - G3. Every screen inside the app shell, the login page, toasts, dialogs, sheets, menus, native form controls, scrollbars and the app's own 404 follow the theme.
 - G4. Paper, labels, QR, signature and camera surfaces never change (U4), and printing from any page in dark prints light.
 - G5. Windows contrast themes (forced colors) keep working in both themes.
@@ -43,22 +43,23 @@ Success means a person who picks dark sees every screen dark, readable and calm,
 
 ## 4. Behavior
 
-### 4.1 The switch
-- Place: the user menu in the topbar (`src/components/layout/topbar.tsx`, the `DropdownMenu` that holds the name and logout), between the name label and logout, as a radio group of three items with icons (system, sun, moon) and a separator before logout. *(Builder's call: the exact icons; my call: radio group, three items.)*
-- Labels (th / en), through `scripts/messages-edit.mjs`, words checked against `docs/19_THAI_GLOSSARY.md`: group "การแสดงผล" / "Appearance"; items "ตามระบบ" / "System", "สว่าง" / "Light", "มืด" / "Dark". *(My call; the user may rename.)*
-- Picking an item applies at once (no reload, no flash), writes the cookie, and keeps the menu's focus behavior as Radix gives it.
-- The login page has no switch (it has no menu). It renders by the cookie if this browser has one, else by the OS. *(My call.)*
+### 4.1 The toggle
+- Place: the topbar (`src/components/layout/topbar.tsx`), directly beside the language button (TH/EN globe), on desktop and on phones. One icon button in the topbar's icon-button size (36px from `md`, 44px below, as the other topbar buttons).
+- It shows what a press does: a moon while the page is light ("switch to dark"), a sun while it is dark ("switch to light"). Its accessible name names the action (th / en, through `scripts/messages-edit.mjs`, words per `docs/19_THAI_GLOSSARY.md`): "เปลี่ยนเป็นโหมดมืด" / "Switch to dark mode" and "เปลี่ยนเป็นโหมดสว่าง" / "Switch to light mode". *(My call on the wording; the user may rename.)*
+- Before the first press the page follows the OS, and the button reflects the theme actually on screen (when the OS is dark, it shows the sun). The icon and name must be right on the first paint too, with no flip after hydration (for example both icons rendered and the theme's CSS showing one). *(The mechanism is the builder's.)*
+- A press switches at once (no reload, no flash) and writes the cookie. From then on that browser keeps the chosen theme even if the OS changes. There is no way back to "follow the OS" in the UI (the user's choice; clearing the cookie does it).
+- The login page has no toggle (its page has no topbar). It renders by the cookie if this browser has one, else by the OS. *(My call.)*
 - Logging out does not clear the choice; it belongs to the browser, not the person (U5).
 
 ### 4.2 The cookie
-- One cookie, name `theme`, values `system` | `light` | `dark`; `Path=/`, `Max-Age` one year, `SameSite=Lax`, not `HttpOnly` (the client writes it), no `Secure` requirement beyond what the site already serves. An unknown or missing value means `system`. *(My call on name and lifetime.)*
+- One cookie, name `theme`, values `light` | `dark`; `Path=/`, `Max-Age` one year, `SameSite=Lax`, not `HttpOnly` (the client writes it), no `Secure` requirement beyond what the site already serves. A missing or unknown value means "follow the OS". *(My call on name and lifetime.)*
 - The root layout (`src/app/layout.tsx`, the only `<html>`) reads it on the server (`cookies()`; the layout already renders per request through `getLocale()`) and renders the explicit choice on `<html>` so the first paint is right.
 
 ### 4.3 How "system" works without a flash
 - `light` and `dark` are rendered by the server as an attribute on `<html>` (for example `data-theme`).
-- `system` (or no cookie) renders no attribute; CSS applies the dark tokens under `@media (prefers-color-scheme: dark)` for a root that is not forced light. The browser resolves this before the first paint. No inline script is needed. *(The mechanism is the builder's, provided there is no flash and no inline script that would need CSP changes.)*
+- No cookie (or an unknown value) renders no attribute; CSS applies the dark tokens under `@media (prefers-color-scheme: dark)` for a root that is not forced light. The browser resolves this before the first paint. No inline script is needed. *(The mechanism is the builder's, provided there is no flash and no inline script that would need CSP changes.)*
 - `color-scheme`: the default root says `light dark`; an explicit light choice and every forced-light scope keep `only light` (it is what keeps Chrome Auto Dark and Samsung Internet dark mode off today); an explicit dark choice says `dark`.
-- `<meta name="theme-color">` follows: one color for an explicit choice, the per-scheme pair (`media` attribute) for system. The values are the dark and light top-bar surfaces.
+- `<meta name="theme-color">` follows: one color for an explicit choice, the per-scheme pair (`media` attribute) when following the OS. The values are the dark and light top-bar surfaces.
 
 ### 4.4 Surfaces that stay light or keep their own colors (U4)
 A single shared way to force the light tokens on a subtree (for example a `data-theme="light"` scope that re-declares the light tokens and `color-scheme: only light`) is used wherever paper sits inside a themed page. It is applied to:
@@ -137,16 +138,16 @@ The builder derives the remaining tokens (`background`, `popover`, `secondary`, 
 - Docs: `DESIGN.md` replaces the "Light Only Rule" with a two-theme rule (tokens only, paper stays light, print stays light), scopes "Don't bring back a dark navy sidebar" to the light theme, and records the dark set; the "white" wording that describes surfaces says "panel"/"surface" or names the theme; `docs/14_UI_UX_DESIGN_SYSTEM.md` and `.impeccable/design.json` follow; a handoff section and a changelog entry as usual; the wiki (`ams-` pages) after the round.
 
 ## 7. Checks the build must pass
-- Tests: both contrast sets; the rewritten guards; one test per behavior (cookie read and validation, the attribute on `<html>`, the switch's three items and labels, the forced-light scope on each paper surface, the print reset, the 404 page).
-- Dev-app check on `next start` in dark and light (and system with the OS emulated both ways) at 1440, 768 and 375, every page group: shell, dashboard, register and asset page, forms and dialogs, audit scan, disposal, maintenance, reports, admin, master data, login, 404, a print page and print preview; no white flash on reload (record a throttled load); axe color-contrast at 0 in both themes; forced colors in both themes; the PDF and label printouts unchanged.
+- Tests: both contrast sets; the rewritten guards; one test per behavior (cookie read and validation, the attribute on `<html>`, the toggle's icon, name and cookie write, the forced-light scope on each paper surface, the print reset, the 404 page).
+- Dev-app check on `next start` in dark and light (and with no cookie, the OS emulated both ways) at 1440, 768 and 375, every page group: shell, dashboard, register and asset page, forms and dialogs, audit scan, disposal, maintenance, reports, admin, master data, login, 404, a print page and print preview; no white flash on reload (record a throttled load); axe color-contrast at 0 in both themes; forced colors in both themes; the PDF and label printouts unchanged.
 - The E2E track that follows runs every workflow in both themes (wiki item 27).
 
 ## 8. Left to the builder
-- Exact dark hex values (within §5), the attribute name and selector structure, how `system` is expressed in CSS, the ring-offset approach, the chevron approach, the image-stage token's name and value, how the app icon frame is drawn, the `generateViewport` details, the split of the work into tasks.
+- Exact dark hex values (within §5), the attribute name and selector structure, how "follow the OS" is expressed in CSS, the ring-offset approach, the chevron approach, the image-stage token's name and value, how the app icon frame is drawn, the `generateViewport` details, the split of the work into tasks.
 
 ## 9. Calls I made (for the user to check)
-1. Switch labels: "การแสดงผล" with "ตามระบบ / สว่าง / มืด".
-2. No switch on the login page; it follows the cookie or the OS.
+1. The toggle's names: "เปลี่ยนเป็นโหมดมืด" / "เปลี่ยนเป็นโหมดสว่าง" (moon while light, sun while dark).
+2. No toggle on the login page; it follows the cookie or the OS.
 3. Cookie `theme`, one year, survives logout.
 4. Toasts flip through the tokens (no `theme` prop).
 5. Photos and logos sit on a fixed light backing in dark.
