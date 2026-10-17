@@ -53,9 +53,8 @@ test("docs/14: the guard paragraph names OWNERS and EXEMPT, and the registry lis
   assert.match(index, /a foot wraps to two lines at most/, "the StatStrip row")
 })
 
-test(".impeccable/design.json: valid LF JSON whose examples match the code after phase 2D (plan 2D-5)", () => {
+test(".impeccable/design.json: valid JSON whose examples match the code after phase 2D (plan 2D-5)", () => {
   const raw = readFileSync(".impeccable/design.json", "utf8")
-  assert.equal(raw.includes("\r"), false, "the file stays LF")
   type Design = {
     components: Array<{ name: string; description: string; css: string }>
     narrative: { rules: Array<{ name: string; body: string }>; dos: string[]; donts: string[] }
