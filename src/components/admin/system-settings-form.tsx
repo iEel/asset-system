@@ -161,7 +161,6 @@ type SystemSettingsFormProps = {
     advancedWarningTitle: string
     advancedWarningDescription: string
     showAdvancedSettings: string
-    generalSettings: string
     assetTagFormat: string
     assetTagFormatDescription: string
     assetTagTemplate: string
@@ -245,14 +244,12 @@ type SystemSettingsFormProps = {
     cancel: string
     categoryPrefixPreview: string
     removePrefix: string
-    selectCategory: string
     duplicateCategory: string
     invalidPrefix: string
     organizationDefaults: string
     organizationDefaultsDescription: string
     companyName: string
     defaultCurrency: string
-    accountingDepreciationPolicy: string
     accountingDepreciationPolicyDescription: string
     invalidAccountingDepreciationPolicy: string
     depreciationPolicyBuilderTitle: string
@@ -354,7 +351,6 @@ type SystemSettingsFormProps = {
     ldapSyncFilter: string
     ldapSyncMode: string
     ldapSyncSchedule: string
-    ldapSyncSchedulePreset: string
     ldapSyncCustomSchedule: string
     ldapSyncDaily2am: string
     ldapSyncEvery6Hours: string

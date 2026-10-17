@@ -58,3 +58,21 @@ test("the dashboard skeleton has the page's shape: totals as 4 + 3, three panels
   assert.match(source, /\{foot \? <SkeletonBlock className="h-4 w-32 max-w-full" \/> : null\}/, "a StatStrip foot line")
   assert.doesNotMatch(dashboard, /count=\{5\}|md:grid-cols-4|p-5"/, "the old five-tile grid and its box of four cards are gone")
 })
+
+const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+
+test("the settings page passes only labels its form reads: the four it never read and their messages are gone (plan 2D-2 R14)", () => {
+  const page = read(`${D}admin/settings/page.tsx`)
+  const form = read(`${C}admin/system-settings-form.tsx`)
+  for (const name of ["generalSettings", "selectCategory", "accountingDepreciationPolicy", "ldapSyncSchedulePreset"]) {
+    assert.doesNotMatch(page, new RegExp(`\\b${name}: t\\("${name}"\\)`), `page passes ${name}`)
+    assert.doesNotMatch(form, new RegExp(`\\n\\s+${name}: string\\n`), `form labels type has ${name}`)
+    assert.doesNotMatch(form, new RegExp(`labels\\.${name}\\b`), `form reads labels.${name}`)
+    for (const locale of ["th", "en"] as const) assert.equal(messages(locale).systemSettingsPage[name], undefined, `${locale}: systemSettingsPage.${name}`)
+  }
+  // Their neighbours stay: the description the form does read, the schedule label and the advanced settings list.
+  assert.match(page, /accountingDepreciationPolicyDescription: t\("accountingDepreciationPolicyDescription"\)/)
+  assert.match(form, /\{labels\.accountingDepreciationPolicyDescription\}/)
+  assert.match(page, /ldapSyncSchedule: t\("ldapSyncSchedule"\)/)
+  assert.match(form, /const generalSettings = settings\.filter\(/)
+})
