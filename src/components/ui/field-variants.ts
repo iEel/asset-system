@@ -39,7 +39,7 @@ export const fieldControlVariants = cva(fieldBase, {
 export const triggerInvalidClasses =
   "data-invalid:border-danger data-invalid:ring-1 data-invalid:ring-danger data-invalid:shadow-field-error data-invalid:focus:border-ring data-invalid:focus:ring-ring data-invalid:focus:shadow-field-focus data-invalid:aria-expanded:border-ring data-invalid:aria-expanded:ring-ring data-invalid:aria-expanded:shadow-field-focus"
 
-export const textareaClasses =`${fieldBase} min-h-24 py-2 text-base md:text-sm resize-y`
+export const textareaClasses = `${fieldBase} min-h-24 py-2 text-base md:text-sm resize-y`
 
 // A read-only value stays readable and copyable: quiet box, normal text color, same focus ring.
 export const fieldReadOnlyClasses = "read-only:border-border read-only:bg-background"
