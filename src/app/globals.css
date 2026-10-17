@@ -64,6 +64,7 @@
   --sidebar-active-foreground: #FFFFFF;
   --sidebar-active-icon: #18A0A8;
   --sidebar-border: #D7DEE8;
+  --image-stage: #E9EEF5;
   --radius: 0.5rem;
 }
 
@@ -129,6 +130,7 @@
   --color-sidebar-active-foreground: var(--sidebar-active-foreground);
   --color-sidebar-active-icon: var(--sidebar-active-icon);
   --color-sidebar-border: var(--sidebar-border);
+  --color-image-stage: var(--image-stage);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
@@ -155,6 +157,138 @@
   --text-count--line-height: calc(24 / 20);
   --text-count--font-weight: 600;
   --text-count--letter-spacing: -0.01em;
+}
+
+/* Dark token set, direction A "navy dark" (Dark Mode spec §5). The light :root block's names, #RRGGBB only (an alias
+   stays the same alias); tests/design-tokens-contrast.test.ts runs every rule on both sets. The root renders
+   data-theme="dark" when the person chose dark; with no choice, the copy below follows a dark OS. Keep the two copies
+   identical (tests/dark-mode-t.test.ts). */
+:root[data-theme="dark"] {
+  --brand-navy: #5D93DE;
+  --brand-accent: #3CC6CE;
+  --canvas: #0A1424;
+  --background: #0D192C;
+  --foreground: #E4EBF5;
+  --card: #101D31;
+  --card-foreground: #E4EBF5;
+  --surface: var(--card);
+  --popover: #15243A;
+  --popover-foreground: #E4EBF5;
+  --primary: #6FA3EA;
+  --primary-foreground: #08172C;
+  --primary-soft: #16294A;
+  --primary-hover: #8DB7F0;
+  --primary-border: #2F4F7E;
+  --secondary: #1A2B44;
+  --secondary-foreground: #E4EBF5;
+  --muted: #1A2B44;
+  --muted-foreground: #A9B7CC;
+  --faint-foreground: #8A9AB2;
+  --neutral-ink: #BAC6D8;
+  --accent: #182A43;
+  --accent-foreground: #E4EBF5;
+  --row-hover: #162741;
+  --border: #22344F;
+  --border-soft: #1A2A42;
+  --control-border: #34496A;
+  --input: #687DA0;
+  --ring: #2FA9B1;
+  --success: #5CCB7B;
+  --success-foreground: #08172C;
+  --success-soft: #10291B;
+  --success-border: #235C36;
+  --success-hover: #7DD796;
+  --warning: #F0A94D;
+  --warning-foreground: #08172C;
+  --warning-soft: #2E2110;
+  --warning-border: #6B4A1C;
+  --warning-hover: #F4BF78;
+  --danger: #F08A80;
+  --danger-foreground: #08172C;
+  --danger-soft: #33171A;
+  --danger-border: #6E2E2B;
+  --danger-hover: #F4A69E;
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
+  --info: #4FCBD3;
+  --info-foreground: #08172C;
+  --info-soft: #0E2A2E;
+  --info-border: #1F5B60;
+  --info-hover: #7AD8DE;
+  --sidebar: #0D182A;
+  --sidebar-foreground: #D3DCE8;
+  --sidebar-muted: #8E9DB4;
+  --sidebar-hover: #16263D;
+  --sidebar-active: #1C3A66;
+  --sidebar-active-foreground: #FFFFFF;
+  --sidebar-active-icon: #3CC6CE;
+  --sidebar-border: #22344F;
+  --image-stage: #E9EEF5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --brand-navy: #5D93DE;
+    --brand-accent: #3CC6CE;
+    --canvas: #0A1424;
+    --background: #0D192C;
+    --foreground: #E4EBF5;
+    --card: #101D31;
+    --card-foreground: #E4EBF5;
+    --surface: var(--card);
+    --popover: #15243A;
+    --popover-foreground: #E4EBF5;
+    --primary: #6FA3EA;
+    --primary-foreground: #08172C;
+    --primary-soft: #16294A;
+    --primary-hover: #8DB7F0;
+    --primary-border: #2F4F7E;
+    --secondary: #1A2B44;
+    --secondary-foreground: #E4EBF5;
+    --muted: #1A2B44;
+    --muted-foreground: #A9B7CC;
+    --faint-foreground: #8A9AB2;
+    --neutral-ink: #BAC6D8;
+    --accent: #182A43;
+    --accent-foreground: #E4EBF5;
+    --row-hover: #162741;
+    --border: #22344F;
+    --border-soft: #1A2A42;
+    --control-border: #34496A;
+    --input: #687DA0;
+    --ring: #2FA9B1;
+    --success: #5CCB7B;
+    --success-foreground: #08172C;
+    --success-soft: #10291B;
+    --success-border: #235C36;
+    --success-hover: #7DD796;
+    --warning: #F0A94D;
+    --warning-foreground: #08172C;
+    --warning-soft: #2E2110;
+    --warning-border: #6B4A1C;
+    --warning-hover: #F4BF78;
+    --danger: #F08A80;
+    --danger-foreground: #08172C;
+    --danger-soft: #33171A;
+    --danger-border: #6E2E2B;
+    --danger-hover: #F4A69E;
+    --destructive: var(--danger);
+    --destructive-foreground: var(--danger-foreground);
+    --info: #4FCBD3;
+    --info-foreground: #08172C;
+    --info-soft: #0E2A2E;
+    --info-border: #1F5B60;
+    --info-hover: #7AD8DE;
+    --sidebar: #0D182A;
+    --sidebar-foreground: #D3DCE8;
+    --sidebar-muted: #8E9DB4;
+    --sidebar-hover: #16263D;
+    --sidebar-active: #1C3A66;
+    --sidebar-active-foreground: #FFFFFF;
+    --sidebar-active-icon: #3CC6CE;
+    --sidebar-border: #22344F;
+    --image-stage: #E9EEF5;
+  }
 }
 
 /* Base Styles */

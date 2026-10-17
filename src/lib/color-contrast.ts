@@ -32,6 +32,31 @@ export function readRootTokens(css: string): Record<string, string> {
   return tokens
 }
 
+// The trimmed declarations of the first rule whose selector is exactly `selector`, written at the start of a line (any
+// indent, so a rule inside @media counts). The dark set and the forced-light scope are read this way.
+export function readBlockDeclarations(css: string, selector: string): string[] {
+  const source = css.replace(/\r\n/g, "\n")
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const block = source.match(new RegExp(`(?:^|\\n)[ \\t]*${escaped} \\{([^}]*)\\}`))
+  if (!block) throw new Error(`${selector} block not found`)
+  return block[1].split("\n").map((line) => line.trim()).filter(Boolean)
+}
+
+export function readBlockTokens(css: string, selector: string): Record<string, string> {
+  const tokens: Record<string, string> = {}
+  for (const declaration of readBlockDeclarations(css, selector)) {
+    const match = declaration.match(/^--([\w-]+)\s*:\s*([^;]+);$/)
+    if (match) tokens[match[1]] = match[2].trim()
+  }
+  return tokens
+}
+
+export const DARK_THEME_SELECTOR = ':root[data-theme="dark"]'
+
+export function readDarkTokens(css: string): Record<string, string> {
+  return readBlockTokens(css, DARK_THEME_SELECTOR)
+}
+
 export function resolveToken(tokens: Record<string, string>, name: string): string {
   const seen = new Set<string>()
   let current = name

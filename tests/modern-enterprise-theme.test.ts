@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { readRootTokens } from "../src/lib/color-contrast.ts"
 
 const css = () => readFileSync("src/app/globals.css", "utf8")
 const assetRegister = () => readFileSync("src/components/assets/asset-register-table.tsx", "utf8")
@@ -23,10 +24,11 @@ function contrast(foreground: string, background: string) {
   return (values[0] + 0.05) / (values[1] + 0.05)
 }
 
+// The light :root block only; the dark set's roles are checked in tests/dark-mode-t.test.ts.
 function token(source: string, name: string) {
-  const match = source.match(new RegExp(`--${name}:\\s*(#[0-9A-Fa-f]{6});`))
-  assert.ok(match, `missing --${name} token`)
-  return match[1]
+  const value = readRootTokens(source)[name]
+  assert.match(value ?? "", /^#[0-9A-Fa-f]{6}$/, `missing --${name} token`)
+  return value
 }
 
 test("modern enterprise tokens keep brand, action, and navigation roles separate", () => {
