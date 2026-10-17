@@ -111,9 +111,11 @@ export function AssetStateReviewWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dialog.mode === "dismiss" ? { reason: input.reason } : input),
       })
-      const body = await response.json().catch(() => ({})) as { error?: string; code?: string }
+      const body = await response.json().catch(() => ({})) as { error?: string; code?: string; fieldErrors?: Record<string, string> }
       if (!response.ok) {
         if (body.code === "ASSET_STATE_REVIEW_STALE") toast.error(labels.staleError)
+        // A validation refusal goes back to the dialog, which shows it under the field (v-track M-R9).
+        else if (body.code === "VALIDATION_FAILED" && body.fieldErrors) return body
         else apiError.toast(body.error ?? labels.saveError)
         return
       }

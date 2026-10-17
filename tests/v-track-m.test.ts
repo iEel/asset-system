@@ -355,3 +355,22 @@ test("integration clients: create and edit show errors under the field, at least
   assert.ok(source.includes("throw new Error(apiError.describe(result?.error ?? labels.actionFailed).message)"))
   assert.doesNotMatch(source, /throw new Error\(labels\.(?:createFailed|actionFailed)\)\n\s+const payload = \(await response\.json\(\)\) as \{ data: IntegrationClient(?:; token: string)? \}/)
 })
+
+test("asset state review: the 10-character reason is an error on submit, and a refusal comes back from the workspace to the dialog's fields (v-track M10)", () => {
+  const dialog = read(`${C}admin/asset-state-review-dialog.tsx`)
+  assertMigratedForm(dialog, {
+    ids: { statusId: "state-review-status", conditionId: "state-review-condition", reason: "state-review-reason" },
+    messages: ["statusId", "conditionId"],
+  })
+  assert.ok(validateBody(dialog).includes('check("reason", required(values.reason) ?? minLength(values.reason, 10) ?? maxLength(values.reason, 2000))'))
+  assert.ok(dialog.includes("error={fieldErrors.errors.reason ? validationMessage(fieldErrors.errors.reason, { min: 10, max: 2000 }) : undefined}"))
+  // A content rule, not a gate (spec §4.4): the confirm button is enabled.
+  assert.doesNotMatch(dialog, /(?<![\w-])disabled=\{/)
+  // The server's target rule has no field: the _form key shows in the dialog's Notice.
+  assert.ok(dialog.includes('{fieldErrors.errors._form ? <Notice tone="danger" role="alert">{fieldErrors.message("_form")}</Notice> : null}'))
+  assert.match(dialog, /onSubmit: \(input: \{ statusId\?: string; conditionId\?: string; reason: string \}\) => Promise<unknown>/)
+  assert.match(dialog, /const refusal = await onSubmit\(\{/)
+  const workspace = read(`${C}admin/asset-state-review-workspace.tsx`)
+  assert.ok(workspace.includes('else if (body.code === "VALIDATION_FAILED" && body.fieldErrors) return body'))
+  assert.ok(workspace.includes('if (body.code === "ASSET_STATE_REVIEW_STALE") toast.error(labels.staleError)'), "the stale conflict keeps its toast")
+})

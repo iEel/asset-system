@@ -44,11 +44,12 @@ test("placeholder labels reach the workspace raw", () => {
 // it saves and keeps its label (plan 2D-1 deleted the unread common.saving); the reason shows the star its required enforces.
 test("the asset state review dialog uses the dialog parts, shared fields and a busy confirm that keeps its label (2C batch 4)", () => {
   const dialog = readFileSync("src/components/admin/asset-state-review-dialog.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.match(dialog, /<form\n\s+className=\{accessibleDialogFormClasses\}\n\s+onSubmit=\{\(event\) => \{/)
+  assert.match(dialog, /<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/)
   assert.match(dialog, /<AccessibleDialogBody className="space-y-4">/)
-  assert.match(dialog, /<Field label=\{labels\.nextStatus\}>\n\s+<NativeSelect\n\s+name="statusId"/)
-  assert.match(dialog, /<Field label=\{labels\.nextCondition\}>\n\s+<NativeSelect\n\s+name="conditionId"/)
-  assert.match(dialog, /<Field label=\{labels\.reason\} required hint=\{labels\.reasonHelp\}>\n\s+<Textarea\n\s+ref=\{reasonRef\}\n\s+name="resolutionReason"/)
-  assert.match(dialog, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s+<Button\n\s+type="submit"\n\s+variant=\{mode === "dismiss" \? "destructive" : "default"\}\n\s+busy=\{busy\}\n\s+disabled=\{reason\.trim\(\)\.length < 10\}\n\s+>\n\s+\{mode === "resolve" \? labels\.confirmResolve : labels\.confirmDismiss\}\n\s+<\/Button>/)
+  // Each Field names its control and shows its error (v-track plan 1 M10).
+  assert.match(dialog, /<Field label=\{labels\.nextStatus\} id="state-review-status" error=\{fieldErrors\.message\("statusId"\)\}>\n\s+<NativeSelect\n\s+name="statusId"/)
+  assert.match(dialog, /<Field label=\{labels\.nextCondition\} id="state-review-condition" error=\{fieldErrors\.message\("conditionId"\)\}>\n\s+<NativeSelect\n\s+name="conditionId"/)
+  assert.match(dialog, /<Field\n\s+label=\{labels\.reason\}\n\s+id="state-review-reason"\n\s+required\n\s+hint=\{labels\.reasonHelp\}\n[^\n]*\n\s+>\n\s+<Textarea\n\s+ref=\{reasonRef\}\n\s+name="resolutionReason"/)
+  assert.match(dialog, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s+<Button\n\s+type="submit"\n\s+variant=\{mode === "dismiss" \? "destructive" : "default"\}\n\s+busy=\{busy\}\n\s+>\n\s+\{mode === "resolve" \? labels\.confirmResolve : labels\.confirmDismiss\}\n\s+<\/Button>/)
   assert.doesNotMatch(dialog, /ActionButton|labels\.saving|<select|<textarea|<label|p-5/)
 })
