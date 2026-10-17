@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 import { exemptProblems, phase3Rows, type ExemptList } from "./helpers/guard-exempt.ts"
-import { countByFile, countMatchesByFile, findMatches, readSourceFiles } from "./helpers/source-files.ts"
+import { countByFile, countMatchesByFile, findJsxTags, findMatches, readSourceFiles } from "./helpers/source-files.ts"
 
 const sources = readSourceFiles("src")
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -361,6 +361,37 @@ test("N2 a dashed or dotted line is drawn only by the drop zone and the signatur
   assert.deepEqual(exemptProblems("N2", countMatchesByFile(sources, DASHED_LINE), DASHED_LINE_EXEMPT, DASHED_LINE_OWNERS), [])
 })
 
+// N3: commands are Button, or buttonVariants on a link. A raw <button> stays only in the shared part that is that
+// control (OWNERS: the row next step and sheet menu, the search clear, the combobox trigger and clear, the segmented
+// options) or where the whole row, the image or a control on the camera image is the button (EXEMPT, each with a comment
+// at the site where the plan that kept it wrote one).
+const RAW_BUTTON_OWNERS = ["src/components/ui/row-actions.tsx", "src/components/ui/search-field.tsx", "src/components/ui/searchable-select.tsx", "src/components/ui/segmented.tsx"]
+const RAW_BUTTON_EXEMPT: ExemptList = {
+  "src/components/assets/asset-attachments.tsx": { count: 3, kind: "permanent", why: "the photo is the control: the checklist, gallery and evidence photos open their preview", ruling: "2D-3 R5" },
+  "src/components/assets/asset-component-manager.tsx": { count: 1, kind: "permanent", why: "a candidate row: a pressed list option of two lines", ruling: "2D-3 R5" },
+  "src/components/assets/asset-label-batch-tool.tsx": { count: 2, kind: "permanent", why: "the search result and recent queue rows: two lines that add the asset to the print list", ruling: "2D-3 R5" },
+  "src/components/assets/asset-state-help-popover.tsx": { count: 1, kind: "permanent", why: "the 24px help circle in a field label row or a table head, with a 44px hit area below md", ruling: "2D-3 R5, the user 2026-10-16" },
+  "src/components/assets/asset-thumbnail.tsx": { count: 1, kind: "permanent", why: "the thumbnail image is the control that opens the photo", ruling: "2D-3 R5" },
+  "src/components/audit/audit-scan-camera.tsx": { count: 3, kind: "permanent", why: "zoom, torch and stop on the camera image, with their own dark fill and white ink", ruling: "2D-4 R5" },
+  "src/components/audit/audit-scan-lookup-card.tsx": { count: 1, kind: "permanent", why: "a two-line register match that opens it", ruling: "2D-4 R5" },
+  "src/components/audit/audit-scan-room-list.tsx": { count: 1, kind: "permanent", why: "the whole row of two to four lines opens the check sheet", ruling: "2D-4 R5" },
+  "src/components/audit/audit-scan-room-picker.tsx": { count: 2, kind: "permanent", why: "the two-line room trigger under SheetTrigger asChild and the pressed room option", ruling: "2D-4 R5" },
+  "src/components/audit/audit-scan-search.tsx": { count: 1, kind: "permanent", why: "the whole result row opens the check sheet", ruling: "2D-4 R5" },
+  "src/components/auth/login-form.tsx": { count: 1, kind: "permanent", why: "the show-password toggle inside the password field, as SearchField's own clear button", ruling: "2C plan 4 Task 8, 2D-5 NG-R4" },
+  "src/components/disposal/disposal-asset-picker.tsx": { count: 1, kind: "permanent", why: "a listbox option with its own check box and two lines", ruling: "2D-4 R5" },
+  "src/components/layout/global-search.tsx": { count: 1, kind: "phase 3", why: "the clear button of the topbar search, which phase 3 redoes", ruling: "2D D2, 2D-2 R10" },
+  "src/components/layout/mobile-field-navigation.tsx": { count: 1, kind: "permanent", why: "the bottom bar's More item: a navigation item that opens the drawer, styled as its sibling links", ruling: "2D-2 R11" },
+  "src/components/layout/sidebar.tsx": { count: 1, kind: "permanent", why: "a sidebar group row that opens and closes its group, styled as the navigation rows", ruling: "2D-2 R11" },
+  "src/components/maintenance/maintenance-attachments.tsx": { count: 1, kind: "permanent", why: "the image or the PDF preview is the control", ruling: "2D-4 R5" },
+  "src/components/ui/scanner-text-input.tsx": { count: 2, kind: "permanent", why: "zoom and torch on the camera image, as the audit camera's", ruling: "2D-4 R5, R17" },
+}
+
+test("N3 commands are Button; a raw <button> stays only in its shared part, a whole row, an image or a camera control (spec 2D §5.4 item 3)", () => {
+  assert.deepEqual(RAW_BUTTON_OWNERS.filter((path) => !existsSync(path)), [])
+  const counts = countByFile(sources, (file) => findJsxTags(file.source, ["button"]).length)
+  assert.deepEqual(exemptProblems("N3", counts, RAW_BUTTON_EXEMPT, RAW_BUTTON_OWNERS), [])
+})
+
 // Every EXEMPT list of this file, by rule (spec 2D §5.1), last in the file. Each guard file sums its own phase 3 rows:
 // a test file that imports another one runs that file's tests a second time.
 const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
@@ -372,15 +403,16 @@ const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   "mockup sizes": MOCKUP_TYPE_PX_EXEMPT,
   N1: RAW_COLOR_EXEMPT,
   N2: DASHED_LINE_EXEMPT,
+  N3: RAW_BUTTON_EXEMPT,
 }
 
 test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
   const rows = phase3Rows(EXEMPT_LISTS)
   assert.deepEqual(
     rows.map(({ rule, file, count }) => `${rule} ${file}: ${count}`),
-    ["R2 src/components/assets/asset-register-table.tsx: 1"],
+    ["R2 src/components/assets/asset-register-table.tsx: 1", "N3 src/components/layout/global-search.tsx: 1"],
   )
-  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 1)
+  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 2)
   // Every EXEMPT list this file declares is in EXEMPT_LISTS once, so the phase 3 rows of a later rule are summed here too.
   const source = read("tests/visual-foundation-guards.test.ts")
   const declared = [...source.matchAll(/^const (\w+): ExemptList = /gm)].map((match) => match[1])
