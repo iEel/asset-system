@@ -240,3 +240,17 @@ test("category: errors under the field, also on each custom field and photo chec
   assert.ok(source.includes('onRowsShift={() => clearRowErrors("customFieldDefs.")}'))
   assert.ok(source.includes('onRowsShift={() => clearRowErrors("photoChecklist.")}'))
 })
+
+test("asset model: errors under the field; a duplicate name for the brand lands under the name, and the photo upload keeps its toasts (v-track M6)", () => {
+  const source = read(`${C}master-data/asset-model-form.tsx`)
+  assertMigratedForm(source, { ids: { name: "asset-model-name", brandId: "asset-model-brand", categoryId: "asset-model-category" } })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("name", required(values.name) ?? maxLength(values.name, 200))',
+    'check("brandId", required(values.brandId))',
+    'check("categoryId", required(values.categoryId))',
+  ]) assert.ok(rules.includes(rule), rule)
+  // Only the save reads fieldErrors; the photo upload and delete are not field errors and keep apiError.toast.
+  assert.equal(source.match(/fieldErrors\.applyServer\(/g)?.length, 1)
+  assert.equal(source.match(/apiError\.toast\(error\)/g)?.length, 3)
+})

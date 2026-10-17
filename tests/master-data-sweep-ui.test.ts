@@ -105,7 +105,7 @@ test("employee page: sections are ContentPanels, follow-ups warning Notices, emp
 
 test("asset model form: the form on the panel classes, the photo panel a ContentPanel, empties EmptyNote, the save-first note a neutral Notice, and no box around the dropzone (spec 2D D7, D9, M21)", () => {
   const source = read("src/components/master-data/asset-model-form.tsx")
-  assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
   assert.match(source, /<ContentPanel title=\{t\("modelPhoto"\)\} description=\{t\("modelPhotoHelp"\)\}>/)
   assert.match(source, /<Notice tone="neutral" className="mb-4">\{t\("saveModelBeforePhoto"\)\}<\/Notice>/)
   assert.equal(source.match(/<EmptyNote\b/g)?.length, 2, "no spec rows, no model photo")

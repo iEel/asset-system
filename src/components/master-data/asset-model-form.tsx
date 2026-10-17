@@ -30,6 +30,8 @@ import {
   type StructuredModelSpecs,
 } from "@/lib/model-specs"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type AssetModelFormValues = {
   id?: string
@@ -70,6 +72,27 @@ const emptyModel: AssetModelFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  name: "asset-model-name",
+  brandId: "asset-model-brand",
+  categoryId: "asset-model-category",
+} as const
+type AssetModelField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as AssetModelField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required and maxLength (v-track M-R2).
+function validate(values: AssetModelFormValues): Partial<Record<AssetModelField, string>> {
+  const errors: Partial<Record<AssetModelField, string>> = {}
+  const check = (key: AssetModelField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  check("brandId", required(values.brandId))
+  check("categoryId", required(values.categoryId))
+  return errors
+}
+
 export function AssetModelForm({
   model,
   brands,
@@ -91,6 +114,7 @@ export function AssetModelForm({
   const confirm = useConfirm()
   const [values, setValues] = useState<AssetModelFormValues>(model ?? emptyModel)
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<AssetModelField>()
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
@@ -100,8 +124,11 @@ export function AssetModelForm({
   const backHref = providedBackHref ?? `/${locale}/master-data/brands`
   const title = useMemo(() => (isEdit ? t("editModelTitle") : t("createModelTitle")), [isEdit, t])
 
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
   function setField<K extends keyof AssetModelFormValues>(field: K, value: AssetModelFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as AssetModelField)
   }
 
   function setSpecItem(id: string, field: "label" | "value", value: string) {
@@ -138,6 +165,8 @@ export function AssetModelForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
 
     const url = isEdit ? `/api/models/${model?.id}` : "/api/models"
@@ -156,6 +185,8 @@ export function AssetModelForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
 
@@ -233,9 +264,9 @@ export function AssetModelForm({
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         {/* A <form> cannot be ContentPanel: the panel classes and its spacing (2D-2 R4, spec 2D D9). */}
-        <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+        <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("modelName")} required>
+          <Field label={t("modelName")} id="asset-model-name" required error={fieldErrors.message("name")}>
             <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
@@ -244,7 +275,7 @@ export function AssetModelForm({
             />
           </Field>
 
-          <Field label={t("brand")} required>
+          <Field label={t("brand")} id="asset-model-brand" required error={fieldErrors.message("brandId")}>
             <NativeSelect
               value={values.brandId}
               onChange={(event) => setField("brandId", event.target.value)}
@@ -259,7 +290,7 @@ export function AssetModelForm({
             </NativeSelect>
           </Field>
 
-          <Field label={t("category")} required>
+          <Field label={t("category")} id="asset-model-category" required error={fieldErrors.message("categoryId")}>
             <NativeSelect
               value={values.categoryId}
               onChange={(event) => setField("categoryId", event.target.value)}
