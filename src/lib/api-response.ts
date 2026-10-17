@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
 import { hideUnexpectedError, isExposableError, validationFailedBody } from "@/lib/api-error-exposure"
+import { fieldErrorResponse } from "@/lib/field-error-response"
+import { FieldRefusalError } from "@/lib/field-errors"
 
 export function errorResponse(error: unknown, fallbackStatus = 500) {
   const validation = validationFailedBody(error)
   if (validation) return NextResponse.json(validation, { status: 400 })
+  if (error instanceof FieldRefusalError) {
+    return fieldErrorResponse({ status: error.status, error: error.message, fieldErrors: error.fieldErrors })
+  }
   if (!isExposableError(error)) {
     return NextResponse.json({ error: hideUnexpectedError(error).text }, { status: 500 })
   }

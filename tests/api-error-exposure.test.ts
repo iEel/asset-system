@@ -72,7 +72,7 @@ test("a ZodError reaches the browser as one fixed message, never the JSON of its
   const parsed = z.object({ name: z.string().min(1) }).safeParse({ name: "" })
   assert.equal(parsed.success, false)
   const body = validationFailedBody(parsed.error)
-  assert.deepEqual(body, { error: "Invalid request data", code: "VALIDATION_FAILED" })
+  assert.deepEqual(body, { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { name: "required" } })
   assert.doesNotMatch(JSON.stringify(body), /too_small|"path"|"origin"/)
 })
 

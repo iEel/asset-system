@@ -2,6 +2,7 @@
 // Messages the code throws on purpose are fine; database, filesystem and programming errors are not.
 import { randomUUID } from "node:crypto"
 import { ZodError } from "zod"
+import { issuesToFieldErrors } from "./field-errors.ts"
 
 const builtInProgrammingErrors = [TypeError, RangeError, ReferenceError, SyntaxError, EvalError, URIError]
 
@@ -28,9 +29,10 @@ export function hideUnexpectedError(error: unknown) {
 
 /**
  * A ZodError's message is the JSON of every issue (zod 4), and forms showed it to users as raw text. Send one fixed
- * message instead, with a code that forms can match (spec 2C §8.5). The V track adds fieldErrors to this body.
+ * message instead, with a code that forms can match (spec 2C §8.5), and fieldErrors: the code of each failing field's
+ * first issue under its dotted path (V track spec §6.1). `keyFor` renames keys (the settings route keys by setting).
  */
-export function validationFailedBody(error: unknown) {
+export function validationFailedBody(error: unknown, keyFor?: (path: readonly PropertyKey[]) => string | null) {
   if (!(error instanceof ZodError)) return null
-  return { error: "Invalid request data", code: "VALIDATION_FAILED" } as const
+  return { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: issuesToFieldErrors(error.issues, keyFor) } as const
 }

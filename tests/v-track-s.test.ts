@@ -1,8 +1,11 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import * as nodeModule from "node:module"
 import test from "node:test"
+import { pathToFileURL } from "node:url"
 import { z } from "zod"
-import { FORM_ERROR_KEY, fieldErrorKey, issueToFieldErrorCode, issuesToFieldErrors } from "../src/lib/field-errors.ts"
+import { FORM_ERROR_KEY, FieldRefusalError, fieldErrorKey, issueToFieldErrorCode, issuesToFieldErrors } from "../src/lib/field-errors.ts"
+import { findMatches, readSourceFiles } from "./helpers/source-files.ts"
 
 // V track plan 1, area S (spec docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md §6): the server names the
 // fields that failed. One test per commit. Sources are read with LF line endings, so the regexes may contain \n.
@@ -12,6 +15,50 @@ const issuesOf = (schema: z.ZodType, input: unknown) => {
   assert.equal(parsed.success, false)
   return parsed.error!.issues
 }
+
+// Route modules import next/server and "@/…", which node --test cannot load, so a resolve hook serves stand-ins (as in
+// tests/admin-user-routes.test.ts). The prisma stand-in calls globalThis.__vTrackS.prisma[model][method]; a call with no
+// handler throws, so a test names every query its route makes.
+const stubs = new Map<string, string>([
+  ["next/server", `
+    export class NextRequest extends Request {}
+    export class NextResponse extends Response {
+      static json(body, init) { return Response.json(body, init) }
+    }
+  `],
+  ["@/lib/auth-utils", `
+    export async function requireAuth() { return { id: "actor-1", roles: ["system_admin"], permissions: [], employeeId: null } }
+    export function hasRole() { return true }
+    export function hasPermission() { return true }
+    export function requirePermission() {}
+  `],
+  ["@/lib/audit-log", `export async function logAudit() {}`],
+  ["@/lib/db", `
+    const call = (model, method) => (...args) => {
+      const handler = globalThis.__vTrackS?.prisma?.[model]?.[method]
+      if (!handler) throw new Error("no stand-in for prisma." + model + "." + method)
+      return handler(...args)
+    }
+    export const prisma = new Proxy({}, {
+      get: (_, model) => model === "$transaction"
+        ? async (work) => (typeof work === "function" ? work(prisma) : Promise.all(work))
+        : new Proxy({}, { get: (_, method) => call(model, method) }),
+    })
+  `],
+])
+;(nodeModule as unknown as { registerHooks(hooks: { resolve(specifier: string, context: unknown, next: (specifier: string, context: unknown) => unknown): unknown }): void }).registerHooks({
+  resolve(specifier, context, next) {
+    const stub = stubs.get(specifier)
+    if (stub !== undefined) return { url: `data:text/javascript;charset=utf-8,${encodeURIComponent(stub)}`, shortCircuit: true }
+    if (specifier.startsWith("@/")) {
+      const base = `src/${specifier.slice(2)}`
+      const file = [`${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((candidate) => existsSync(candidate))
+      if (file) return { url: pathToFileURL(file).href, shortCircuit: true }
+    }
+    return next(specifier, context)
+  },
+})
+const load = <T>(path: string) => import(pathToFileURL(path).href) as Promise<T>
 
 test("zod issues become one camelCase code per dotted field key, the first issue winning (V spec §6.1)", () => {
   assert.equal(FORM_ERROR_KEY, "_form")
@@ -72,4 +119,56 @@ test("zod issues become one camelCase code per dotted field key, the first issue
   // Plain module: tests and client code import it, so no "@/" import and no zod at run time.
   const source = read("src/lib/field-errors.ts")
   assert.doesNotMatch(source, /from "@\/|"use client"|^import \{[^}]*\} from "zod"|^import \* as \w+ from "zod"/m)
+})
+
+test("the 400 for invalid input names its fields, and field refusals and duplicates answer with the same body; Integration v1 keeps its own (V spec §6.1, §6.2)", async (t) => {
+  type ApiResponse = typeof import("../src/lib/api-response.ts")
+  type Cancellation = typeof import("../src/lib/asset-transaction-cancellation-route.ts")
+  type FieldErrorResponse = typeof import("../src/lib/field-error-response.ts")
+  type Exposure = typeof import("../src/lib/api-error-exposure.ts")
+  const { errorResponse } = await load<ApiResponse>("src/lib/api-response.ts")
+  const { assetTransactionCancellationErrorResponse } = await load<Cancellation>("src/lib/asset-transaction-cancellation-route.ts")
+  const { fieldErrorResponse, isPrismaUniqueConstraintError, uniqueConflictResponse } = await load<FieldErrorResponse>("src/lib/field-error-response.ts")
+  const { validationFailedBody } = await load<Exposure>("src/lib/api-error-exposure.ts")
+
+  const parsed = z.object({ name: z.string().trim().min(1), rows: z.array(z.object({ serialNumber: z.string().max(3) })) }).safeParse({ name: "", rows: [{ serialNumber: "ok" }, { serialNumber: "toolong" }] })
+  assert.equal(parsed.success, false)
+  const body = { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { name: "required", "rows.1.serialNumber": "tooLong" } }
+  assert.deepEqual(validationFailedBody(parsed.error), body)
+  assert.deepEqual(validationFailedBody(parsed.error, (path) => (path[0] === "rows" ? `rows.${String(path[1])}` : null)), { ...body, fieldErrors: { name: "required", "rows.1": "tooLong" } })
+  for (const response of [errorResponse(parsed.error, 500), assetTransactionCancellationErrorResponse(parsed.error)]) {
+    assert.equal(response.status, 400)
+    assert.deepEqual(await response.json(), body)
+  }
+
+  // A field refusal the code throws keeps its status and message and names its field.
+  const refusal = errorResponse(new FieldRefusalError("Username already exists", { username: "duplicate" }), 400)
+  assert.equal(refusal.status, 400)
+  assert.deepEqual(await refusal.json(), { error: "Username already exists", fieldErrors: { username: "duplicate" } })
+  const conflict = errorResponse(new FieldRefusalError("Role name already exists", { name: "duplicate" }, 409))
+  assert.equal(conflict.status, 409)
+  assert.equal(new FieldRefusalError("x", {}).name, "FieldRefusalError")
+
+  const explicit = fieldErrorResponse({ status: 400, error: "Invalid assignee", fieldErrors: { assignedToUserId: "invalidAssignee" } })
+  assert.equal(explicit.status, 400)
+  assert.deepEqual(await explicit.json(), { error: "Invalid assignee", fieldErrors: { assignedToUserId: "invalidAssignee" } })
+  const coded = fieldErrorResponse({ status: 400, error: "X", code: "SOME_CODE", fieldErrors: { a: "required" } })
+  assert.deepEqual(await coded.json(), { error: "X", code: "SOME_CODE", fieldErrors: { a: "required" } })
+  const duplicate = uniqueConflictResponse("code", "Supplier code already exists")
+  assert.equal(duplicate.status, 409)
+  assert.deepEqual(await duplicate.json(), { error: "Supplier code already exists", code: "DUPLICATE", fieldErrors: { code: "duplicate" } })
+  assert.equal(isPrismaUniqueConstraintError({ code: "P2002" }), true)
+  assert.equal(isPrismaUniqueConstraintError(new Error("P2002")), false)
+
+  // Unexpected errors stay hidden behind a reference.
+  t.mock.method(console, "error", () => {})
+  const hidden = errorResponse(Object.assign(new Error("Unique constraint failed"), { name: "PrismaClientKnownRequestError", code: "P2002" }), 400)
+  assert.equal(hidden.status, 500)
+  assert.match((await hidden.json() as { error: string }).error, /^Unexpected error · ref [0-9a-f]{8}$/)
+
+  // Integration v1 does not change (spec §3): its routes answer through integrationErrorResponse only.
+  const v1 = readSourceFiles("src/app/api/integrations/v1")
+  assert.ok(v1.length >= 9)
+  assert.deepEqual(findMatches(v1, /\berrorResponse\(|fieldErrors|field-error|api-response|validationFailedBody/g), [])
+  assert.doesNotMatch(read("src/lib/integration-auth.ts"), /fieldErrors|field-error|validationFailedBody/)
 })

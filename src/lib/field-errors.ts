@@ -87,3 +87,18 @@ export function issuesToFieldErrors(
   }
   return fieldErrors
 }
+
+// A refusal about fields that the code throws on purpose (a username or serial number that exists). errorResponse answers
+// it with its status, its message and its fieldErrors. Fields are declared in the class body, not as parameter
+// properties: node's strip-only mode refuses those, and tests import this module.
+export class FieldRefusalError extends Error {
+  readonly fieldErrors: FieldErrors
+  readonly status: number
+
+  constructor(message: string, fieldErrors: FieldErrors, status = 400) {
+    super(message)
+    this.name = "FieldRefusalError"
+    this.fieldErrors = fieldErrors
+    this.status = status
+  }
+}
