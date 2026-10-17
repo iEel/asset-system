@@ -91,3 +91,13 @@ test("the busy keys nobody reads are gone from both languages (spec 2D M8, M9)",
     }
   }
 })
+
+// Plan 2D-5 (spec 2D §5.5, D13): the three guard files share one EXEMPT check, so the budget check they used is gone.
+test("the old budget check is gone, and the three guard files use the shared EXEMPT check (spec 2D §5.5, D13)", () => {
+  assert.doesNotMatch(read("tests/helpers/source-files.ts"), /\bbudgetOverruns\b|\bbudget\b|\bratchet\b/)
+  for (const path of ["tests/visual-foundation-guards.test.ts", "tests/form-migration-guards.test.ts", "tests/list-frame-guards.test.ts"]) {
+    const source = read(path)
+    assert.doesNotMatch(source, /\bbudgetOverruns\b|\bassertWithinBudget\b/, path)
+    assert.match(source, /import \{[^}]*\bexemptProblems\b[^}]*\} from "\.\/helpers\/guard-exempt\.ts"/, path)
+  }
+})

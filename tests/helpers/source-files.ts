@@ -22,7 +22,8 @@ export function findMatches(files: SourceFile[], pattern: RegExp, allow: (path: 
     .flatMap((file) => [...file.source.matchAll(pattern)].map((match) => `${file.path}: ${match[0]}`))
 }
 
-// Matches per file, for ratchet guards whose budget is "at most N in this file". Files with no match are left out.
+// Matches per file, for the guards that hold each file to its EXEMPT row (tests/helpers/guard-exempt.ts). Files with no
+// match are left out.
 export function countMatchesByFile(files: SourceFile[], pattern: RegExp, allow: (path: string) => boolean = () => false): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const file of files) {
@@ -35,7 +36,7 @@ export function countMatchesByFile(files: SourceFile[], pattern: RegExp, allow: 
 
 // JSX reader for the phase 2C guards (tests/form-migration-guards.test.ts). It is not a parser: it skips {…},
 // quoted values and comments inside braces, so `=>` in an onChange and `[&>svg]` in a class never end a tag.
-// When a guard misreads a file, fix the reader and add the case to the reader test in that file; never raise a budget.
+// When a guard misreads a file, fix the reader and add the case to the reader test in that file; never add an EXEMPT row.
 export type JsxTag = { name: string; start: number; end: number; line: number; text: string; selfClosing: boolean }
 export type JsxElement = JsxTag & { children: string | null; closeEnd: number }
 
@@ -191,7 +192,7 @@ function closingBrace(text: string, open: number): number {
   return -1
 }
 
-// Counts per file from a counting function, for ratchet guards. Files counted as 0 are left out.
+// Counts per file from a counting function, for the EXEMPT checks. Files counted as 0 are left out.
 export function countByFile(files: SourceFile[], count: (file: SourceFile) => number, allow: (path: string) => boolean = () => false): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const file of files) {
@@ -200,11 +201,4 @@ export function countByFile(files: SourceFile[], count: (file: SourceFile) => nu
     if (value > 0) counts[file.path] = value
   }
   return counts
-}
-
-// "path: count > budget" for every file over its budget. A file missing from the budget has a budget of 0.
-export function budgetOverruns(counts: Record<string, number>, budget: Record<string, number>): string[] {
-  return Object.entries(counts)
-    .filter(([path, count]) => count > (budget[path] ?? 0))
-    .map(([path, count]) => `${path}: ${count} > ${budget[path] ?? 0}`)
 }
