@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server"
+import { ZodError } from "zod"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { generateAssetTags } from "@/lib/asset-tag"
 import { buildCustodianScopeAudit } from "@/lib/asset-custodian-scope"
 import {
   type AssetBatchCreateItem,
   assetBatchCreateAuditRecordId,
+  assetBatchItemIssuePath,
   buildAssetBatchCreateItems,
+  buildAssetBatchDuplicateFieldErrors,
   buildAssetBatchDuplicateMessage,
   findDuplicateBatchValues,
   summarizeAssetBatchCreateResult,
@@ -60,15 +64,24 @@ export async function POST(request: Request) {
           })
         : Promise.resolve([]),
     ])
+    const existingSerialValues = existingSerials.flatMap((asset) => (asset.serialNumber ? [asset.serialNumber] : []))
+    const existingAssetTagValues = existingAssetTags.map((asset) => asset.assetTag)
     const duplicateMessage = buildAssetBatchDuplicateMessage({
       duplicateBatchSerials: duplicateBatchValues.serialNumbers,
       duplicateBatchAssetTags: duplicateBatchValues.assetTags,
-      existingSerials: existingSerials.flatMap((asset) => (asset.serialNumber ? [asset.serialNumber] : [])),
-      existingAssetTags: existingAssetTags.map((asset) => asset.assetTag),
+      existingSerials: existingSerialValues,
+      existingAssetTags: existingAssetTagValues,
     })
 
     if (duplicateMessage) {
-      return NextResponse.json({ error: duplicateMessage }, { status: 400 })
+      return fieldErrorResponse({
+        status: 400,
+        error: duplicateMessage,
+        fieldErrors: buildAssetBatchDuplicateFieldErrors(input.rows, {
+          serialNumbers: [...duplicateBatchValues.serialNumbers, ...existingSerialValues],
+          assetTags: [...duplicateBatchValues.assetTags, ...existingAssetTagValues],
+        }),
+      })
     }
 
     if (purchaseDocuments.length !== uniquePurchaseDocumentIds.length) {
@@ -90,8 +103,8 @@ export async function POST(request: Request) {
       common: input.common,
       rows: input.rows,
       generatedAssetTags,
-    }).map((asset) => {
-      const parsed = assetSchema.parse(asset)
+    }).map((asset, index) => {
+      const parsed = parseAssetBatchItem(asset, index)
       return {
         ...parsed,
         assetTag: asset.assetTag,
@@ -188,5 +201,16 @@ export async function POST(request: Request) {
     return NextResponse.json(summarizeAssetBatchCreateResult(createdAssets), { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  }
+}
+
+// The per-row parse runs the asset rules the common part skips (the license seats). Its issue paths name no row, so they
+// move under their row or under the common part, the field the batch form shows them under (V track spec §6.1).
+function parseAssetBatchItem(asset: AssetBatchCreateItem, index: number) {
+  try {
+    return assetSchema.parse(asset)
+  } catch (error) {
+    if (!(error instanceof ZodError)) throw error
+    throw new ZodError(error.issues.map((issue) => ({ ...issue, path: assetBatchItemIssuePath(index, issue.path) })))
   }
 }

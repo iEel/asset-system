@@ -212,3 +212,47 @@ test("the settings route keys each setting's error by the setting, not by its pl
   const empty = await PUT(jsonRequest("PUT", { settings: [] }))
   assert.deepEqual((await empty.json() as { fieldErrors: unknown }).fieldErrors, { settings: "required" })
 })
+
+test("the asset batch names the row or the common field that failed, duplicates included (V spec §6.1, §6.2)", async () => {
+  type BatchRoute = { POST(request: Request): Promise<Response> }
+  type BatchCreate = typeof import("../src/lib/asset-batch-create.ts")
+  const { POST } = await load<BatchRoute>("src/app/api/assets/batch/route.ts")
+  const { assetBatchItemIssuePath, buildAssetBatchDuplicateFieldErrors } = await load<BatchCreate>("src/lib/asset-batch-create.ts")
+  assert.deepEqual(assetBatchItemIssuePath(2, ["serialNumber"]), ["rows", 2, "serialNumber"])
+  assert.deepEqual(assetBatchItemIssuePath(2, ["licenseUsedSeats"]), ["common", "licenseUsedSeats"])
+  assert.deepEqual(buildAssetBatchDuplicateFieldErrors(
+    [{ serialNumber: "SN-1", assetTag: null }, { serialNumber: " sn-1 ", assetTag: "T-9" }, { serialNumber: "SN-2", assetTag: "t-9" }],
+    { serialNumbers: ["sn-1"], assetTags: ["T-9"] },
+  ), { "rows.0.serialNumber": "duplicate", "rows.1.serialNumber": "duplicate", "rows.1.assetTag": "duplicate", "rows.2.assetTag": "duplicate" })
+
+  const common = {
+    name: "Laptop", categoryId: "category-1", companyId: "company-1", branchId: "branch-1", currentLocationId: "location-1",
+    statusId: "status-ready", conditionId: "condition-new", ownershipType: "stock", licenseTotalSeats: "", licenseUsedSeats: "",
+    purchaseDate: "", purchasePrice: "", warrantyStartDate: "", warrantyEndDate: "",
+  }
+  const rows = [{ clientId: "r1", assetTag: "T-1", serialNumber: "SN-1" }, { clientId: "r2", assetTag: "T-2", serialNumber: "SN-OLD" }, { clientId: "r3", assetTag: "T-3", serialNumber: "SN-1" }]
+  stubDb({
+    assetStatus: { findFirst: () => ({ id: "status-ready", name: "Ready", isActive: true }) },
+    assetCondition: { findFirst: () => ({ id: "condition-new", name: "New", isActive: true }) },
+    asset: { findMany: (args: { where: { serialNumber?: unknown } }) => (args.where.serialNumber ? [{ serialNumber: "SN-OLD" }] : []) },
+  })
+
+  // Nested zod paths stay dotted.
+  const invalid = await POST(jsonRequest("POST", { common: { ...common, name: "" }, rows: [{ clientId: "r1", serialNumber: "x".repeat(101) }, { clientId: "r2" }] }))
+  assert.equal(invalid.status, 400)
+  const invalidBody = await invalid.json() as { fieldErrors: Record<string, string> }
+  assert.equal(invalidBody.fieldErrors["common.name"], "required")
+  // Serials repeated in the batch or already registered: each row says so under its serial number.
+  const duplicates = await POST(jsonRequest("POST", { common, rows }))
+  assert.equal(duplicates.status, 400)
+  const duplicateBody = await duplicates.json() as { error: string; fieldErrors: Record<string, string> }
+  assert.match(duplicateBody.error, /^พบข้อมูลซ้ำ: /)
+  assert.deepEqual(duplicateBody.fieldErrors, { "rows.0.serialNumber": "duplicate", "rows.1.serialNumber": "duplicate", "rows.2.serialNumber": "duplicate" })
+  // The per-row parse runs the license rule the common part skips; its issue goes to the common field, not to a bare key.
+  const license = await POST(jsonRequest("POST", {
+    common: { ...common, ownershipType: "software_license", licenseTotalSeats: "2", licenseUsedSeats: "5" },
+    rows: [{ clientId: "r1", assetTag: "T-1" }, { clientId: "r2", assetTag: "T-2" }],
+  }))
+  assert.equal(license.status, 400)
+  assert.deepEqual(await license.json(), { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { "common.licenseUsedSeats": "licenseSeatsExceeded" } })
+})

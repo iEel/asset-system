@@ -1,5 +1,6 @@
 import type { AssetInput } from "./validations/asset.ts"
 import type { AssetBatchCreateInput, AssetBatchRowInput } from "./validations/asset-batch.ts"
+import type { FieldErrors } from "./field-errors.ts"
 
 type CreatedAssetSummary = {
   id: string
@@ -202,4 +203,29 @@ export function buildAssetBatchDuplicateCheckSummary(input: {
     message,
     duplicateCount: input.duplicateBatchSerials.length + input.duplicateBatchAssetTags.length + input.existingSerials.length + input.existingAssetTags.length,
   }
+}
+
+// The fields a batch row sets for itself; every other field of a batch item comes from the common part.
+const assetBatchRowFields = new Set<PropertyKey>(["assetTag", "serialNumber", "custodianId", "departmentId", "currentLocationId", "homeLocationId", "remark"])
+
+/** Moves an issue of batch item `index` under its row (`rows.<index>.<field>`) or under the common part (`common.<field>`). */
+export function assetBatchItemIssuePath(index: number, path: readonly PropertyKey[]): PropertyKey[] {
+  return assetBatchRowFields.has(path[0]) ? ["rows", index, ...path] : ["common", ...path]
+}
+
+/** Puts "duplicate" under the serial number or asset tag of every row that holds a duplicated value (trimmed, lower case). */
+export function buildAssetBatchDuplicateFieldErrors(
+  rows: Array<Pick<AssetBatchRowInput, "serialNumber" | "assetTag">>,
+  duplicates: { serialNumbers: string[]; assetTags: string[] },
+): FieldErrors {
+  const serialNumbers = new Set(duplicates.serialNumbers.map((value) => normalizedKey(value)))
+  const assetTags = new Set(duplicates.assetTags.map((value) => normalizedKey(value)))
+  const fieldErrors: FieldErrors = {}
+  rows.forEach((row, index) => {
+    const serial = normalizedKey(row.serialNumber)
+    if (serial && serialNumbers.has(serial)) fieldErrors[`rows.${index}.serialNumber`] = "duplicate"
+    const assetTag = normalizedKey(row.assetTag)
+    if (assetTag && assetTags.has(assetTag)) fieldErrors[`rows.${index}.assetTag`] = "duplicate"
+  })
+  return fieldErrors
 }
