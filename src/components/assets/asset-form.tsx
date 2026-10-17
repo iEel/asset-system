@@ -841,7 +841,7 @@ export function AssetForm({
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Section title={t("basicInfo")}>
-          <Field label={t("assetTag")} error={duplicateState.assetTagExists ? t("duplicateAssetTag") : undefined}>
+          <Field label={t("assetTag")} liveError error={duplicateState.assetTagExists ? t("duplicateAssetTag") : undefined}>
             <Input
               value={values.assetTag ?? ""}
               onChange={(event) => setField("assetTag", event.target.value)}
@@ -893,7 +893,7 @@ export function AssetForm({
             <option value="">{t("selectModel")}</option>
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
-          <Field label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")} error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : undefined}>
+          <Field label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")} liveError error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : undefined}>
             <ScannerTextInput
               value={values.serialNumber ?? ""}
               onChange={(value) => setField("serialNumber", value)}

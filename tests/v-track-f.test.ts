@@ -183,3 +183,22 @@ test("one hook holds a form's errors from validate() and from the server, clears
   // Validation never goes through a toast (spec U2): the hook has none, and a form's catch keeps its own.
   assert.doesNotMatch(hook, /from "sonner"|\btoast\.|useApiError/)
 })
+
+test("errors shown by a submit are read once, through focus, and a live error keeps a polite announcement (V spec §7.3, G5, U8)", () => {
+  const field = read("src/components/ui/field.tsx")
+  // No alert per error: after a submit the hook focuses the first wrong field, which reads its label and its error
+  // (aria-describedby). Five alerts at once are an anti-goal (spec §3).
+  assert.match(field, /function FieldError\(\{ className, \.\.\.props \}: React\.ComponentProps<"p">\) \{\n  return <p data-slot="field-error" className=\{cn\("text-meta text-danger", className\)\} \{\.\.\.props\} \/>\n\}/)
+  assert.doesNotMatch(field, /role="alert"|aria-live="assertive"/)
+  // A check that runs while typing (the asset form's duplicate tag and serial, spec U8) passes liveError: a polite live
+  // region that is always there reads each new error once; the visible line is hidden from reading so it is not read twice.
+  assert.match(field, /liveError\?: boolean/)
+  assert.match(field, /\{liveError \? <span data-slot="field-error-live" className="sr-only" aria-live="polite">\{error\}<\/span> : null\}/)
+  assert.match(field, /\{error \? <FieldError id=\{errorId\} aria-hidden=\{liveError \|\| undefined\}>\{error\}<\/FieldError> : null\}/)
+  const assetForm = read("src/components/assets/asset-form.tsx")
+  assert.match(assetForm, /<Field label=\{t\("assetTag"\)\} liveError error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : undefined\}>/)
+  assert.match(assetForm, /liveError error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : undefined\}>/)
+  assert.equal(assetForm.match(/\bliveError\b/g)?.length, 2)
+  // SearchableSelect renders the same FieldError, so its errors follow the same rule.
+  assert.match(read("src/components/ui/searchable-select.tsx"), /<FieldError id=\{errorId\}>/)
+})

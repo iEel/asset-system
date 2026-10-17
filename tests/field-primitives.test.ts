@@ -85,7 +85,7 @@ test("Field wires label, hint and error to its control without starting browser 
   assert.match(field, /<span aria-hidden="true" className="ml-1 text-warning">\*<\/span>/)
   assert.match(field, /"aria-required": true/)
   assert.match(field, /"aria-invalid": true/)
-  assert.match(field, /role="alert"/)
+  assert.doesNotMatch(field, /role="alert"/, "one announcement per submit: focus reads the error (V track spec §7.3)")
   assert.match(field, /\[element\?\.props\["aria-describedby"\], errorId, hintId\]/, "the error is read before the hint")
   assert.match(field, /React\.cloneElement\(element, control\)/)
   assert.match(field, /visuallyHidden && "sr-only"/)
@@ -165,7 +165,7 @@ test("a Field label and a <legend> share one label class and one required star",
 test("Field puts labelAction beside the label, outside the <label>", () => {
   const field = read("src/components/ui/field.tsx")
   assert.match(field, /labelAction\?: React\.ReactNode/)
-  assert.match(field, /function Field\(\{ label, hideLabel, required, hint, error, id, className, labelAction, children \}: FieldProps\)/)
+  assert.match(field, /function Field\(\{ label, hideLabel, required, hint, error, liveError, id, className, labelAction, children \}: FieldProps\)/)
   const labelElement = field.slice(field.indexOf("<FieldLabel htmlFor={controlId}"), field.indexOf("</FieldLabel>"))
   assert.ok(labelElement.length > 0, "the FieldLabel element was not found")
   // A button inside the <label> would move focus to the field when it is clicked.

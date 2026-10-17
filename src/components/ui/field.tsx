@@ -17,6 +17,9 @@ type FieldProps = {
   required?: boolean
   hint?: React.ReactNode
   error?: React.ReactNode
+  // For an error a check shows while the person types (spec U8): a polite live region reads each new error once. Errors
+  // shown by a submit are read through focus and aria-describedby.
+  liveError?: boolean
   id?: string
   className?: string
   // One icon button beside the label, for example AssetStateHelpPopover. It sits outside the <label>, so clicking it
@@ -29,7 +32,7 @@ type FieldProps = {
 
 // Label, control, hint, error. Server-safe: useId is the only hook and there is no context. Never put a Field
 // inside a <label>.
-function Field({ label, hideLabel, required, hint, error, id, className, labelAction, children }: FieldProps) {
+function Field({ label, hideLabel, required, hint, error, liveError, id, className, labelAction, children }: FieldProps) {
   const generatedId = React.useId()
   const renderControl = typeof children === "function" ? children : null
   const element = typeof children === "function" ? null : children
@@ -65,7 +68,8 @@ function Field({ label, hideLabel, required, hint, error, id, className, labelAc
       )}
       {renderControl ? renderControl(control) : element ? React.cloneElement(element, control) : null}
       {hint ? <FieldHint id={hintId}>{hint}</FieldHint> : null}
-      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
+      {error ? <FieldError id={errorId} aria-hidden={liveError || undefined}>{error}</FieldError> : null}
+      {liveError ? <span data-slot="field-error-live" className="sr-only" aria-live="polite">{error}</span> : null}
     </div>
   )
 }
@@ -96,8 +100,10 @@ function FieldHint({ className, ...props }: React.ComponentProps<"p">) {
   return <p data-slot="field-hint" className={cn("text-meta text-faint-foreground", className)} {...props} />
 }
 
+// No alert role: one submit is one announcement, made by focusing the first wrong field, which reads this line through
+// aria-describedby. An error shown while typing goes through Field liveError.
 function FieldError({ className, ...props }: React.ComponentProps<"p">) {
-  return <p data-slot="field-error" role="alert" className={cn("text-meta text-danger", className)} {...props} />
+  return <p data-slot="field-error" className={cn("text-meta text-danger", className)} {...props} />
 }
 
 export { Field, FieldError, FieldHint, FieldLabel, FieldRequiredMark }

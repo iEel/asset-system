@@ -22,8 +22,8 @@ test("asset form: status and condition keep their help button beside the label, 
 
 test("asset form: the duplicate tag and serial errors belong to their fields (K4 a)", () => {
   const source = read("src/components/assets/asset-form.tsx")
-  assert.match(source, /<Field label=\{t\("assetTag"\)\} error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : undefined\}>/)
-  assert.match(source, /error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : undefined\}>\n\s*<ScannerTextInput/)
+  assert.match(source, /<Field label=\{t\("assetTag"\)\} liveError error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : undefined\}>/)
+  assert.match(source, /liveError error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : undefined\}>\n\s*<ScannerTextInput/)
   assert.doesNotMatch(source, /text-xs font-medium text-danger/)
 })
 

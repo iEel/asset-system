@@ -15,7 +15,7 @@ test("supplier form exposes mobile-friendly field metadata", () => {
 
 test("supplier form presents associated inline errors", () => {
   assert.match(source, /parseSupplierFormError/)
-  // The shared Field ties each error to its control: aria-invalid, aria-describedby and role="alert" (FieldError,
+  // The shared Field ties each error to its control: aria-invalid and aria-describedby (FieldError, no alert role,
   // pinned in field-primitives.test.ts). Field id="supplier-<field>" keeps the old error ids: Field names the error `${id}-error`.
   assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
   for (const id of ["code", "name", "contact", "phone", "email", "address"]) {
