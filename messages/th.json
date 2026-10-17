@@ -4242,6 +4242,13 @@
     "ldapSyncFailed": "ซิงก์ LDAP ไม่สำเร็จ",
     "notificationDigestFailed": "ส่งสรุปแจ้งเตือนไม่สำเร็จ",
     "validationFailed": "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง ตรวจสอบแล้วลองอีกครั้ง",
-    "recipientRequired": "กรุณาระบุผู้รับ ผู้ซื้อ หรือปลายทาง"
+    "recipientRequired": "กรุณาระบุผู้รับ ผู้ซื้อ หรือปลายทาง",
+    "companyCodeExists": "รหัสบริษัทนี้มีอยู่แล้ว",
+    "departmentCodeExists": "รหัสแผนกนี้มีอยู่แล้ว",
+    "employeeCodeExists": "รหัสพนักงานนี้มีอยู่แล้ว",
+    "locationCodeExists": "รหัสที่ตั้งนี้มีอยู่แล้ว",
+    "brandNameExists": "ชื่อยี่ห้อนี้มีอยู่แล้ว",
+    "modelNameExists": "ชื่อรุ่นนี้มีอยู่แล้วในยี่ห้อนี้",
+    "categoryCodeExists": "รหัสหมวดหมู่นี้มีอยู่แล้ว"
   }
 }

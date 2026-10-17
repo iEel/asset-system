@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { brandSchema } from "@/lib/validations/brand-model"
 
 export async function GET(request: NextRequest) {
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(brand, { status: 201 })
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("name", "Brand name already exists")
     return errorResponse(error, 400)
   }
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { uniqueConflictResponse } from "@/lib/field-error-response"
 import { categorySchema, type CategoryInput } from "@/lib/validations/category"
 import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "category", "create")
 
     const input = categorySchema.parse(await request.json())
+    // An inactive category with this code is brought back below; an active one is a duplicate (V track spec §6.2).
+    const activeDuplicate = await prisma.assetCategory.findFirst({ where: { code: input.code, isActive: true }, select: { id: true } })
+    if (activeDuplicate) return uniqueConflictResponse("code", "Category code already exists")
     const existingInactiveCategory = await prisma.assetCategory.findFirst({
       where: { code: input.code, isActive: false },
       include: {

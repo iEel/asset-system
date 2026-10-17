@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { uniqueConflictResponse } from "@/lib/field-error-response"
 import { categorySchema } from "@/lib/validations/category"
 import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { getCategoryDeleteBlockReason } from "@/lib/category-delete-guard"
@@ -62,6 +63,9 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
     if (!existing) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 })
     }
+    // The code is unique across active and inactive categories (V track spec §6.2).
+    const duplicate = await prisma.assetCategory.findFirst({ where: { code: input.code, id: { not: id } }, select: { id: true } })
+    if (duplicate) return uniqueConflictResponse("code", "Category code already exists")
     if (!input.isActive) {
       const blockReason = getCategoryDeleteBlockReason({
         assets: existing._count.assets,

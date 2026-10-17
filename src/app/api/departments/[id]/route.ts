@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { departmentSchema } from "@/lib/validations/department"
 
 type DepartmentRouteContext = {
@@ -72,6 +73,7 @@ export async function PUT(request: NextRequest, context: DepartmentRouteContext)
 
     return NextResponse.json(department)
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Department code already exists")
     return errorResponse(error, 400)
   }
 }

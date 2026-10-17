@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { employeeSchema } from "@/lib/validations/employee"
 import { getEmployeeDeleteBlockReason } from "@/lib/organization-master-query"
 
@@ -74,6 +75,7 @@ export async function PUT(request: NextRequest, context: EmployeeRouteContext) {
 
     return NextResponse.json(employee)
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Employee code already exists")
     return errorResponse(error, 400)
   }
 }

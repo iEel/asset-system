@@ -318,3 +318,49 @@ test("supplier answers with the shared body and codes: 400 VALIDATION_FAILED wit
   const form = read("src/components/master-data/supplier-form.tsx")
   assert.match(form, /if \(code === "duplicate"\) return t\("duplicateCode"\)\n    if \(code === "invalidEmail"\) return t\("invalidEmail"\)\n    if \(code === "tooLong"\) return t\("fieldTooLong"\)/)
 })
+
+test("a duplicate code or name in master data answers 409 under its field, on create and on update (V spec §6.2)", async (t) => {
+  t.mock.method(console, "error", () => {})
+  type Create = { POST(request: Request): Promise<Response> }
+  type Update = { PUT(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> }
+  const cases = [
+    { dir: "companies", model: "company", field: "code", error: "Company code already exists", key: "companyCodeExists", th: "รหัสบริษัทนี้มีอยู่แล้ว", body: { code: "C1", assetTagCode: "", nameTh: "บริษัท", nameEn: "", taxId: "", address: "", isActive: true } },
+    { dir: "departments", model: "department", field: "code", error: "Department code already exists", key: "departmentCodeExists", th: "รหัสแผนกนี้มีอยู่แล้ว", body: { code: "D1", name: "IT", companyId: "", isActive: true } },
+    { dir: "employees", model: "employee", field: "code", error: "Employee code already exists", key: "employeeCodeExists", th: "รหัสพนักงานนี้มีอยู่แล้ว", body: { code: "E1", fullNameTh: "สมชาย", fullNameEn: "", email: "", companyId: "c1", branchId: "b1", departmentId: "d1", position: "", employmentStatus: "active", managerId: "", isActive: true } },
+    { dir: "locations", model: "location", field: "code", error: "Location code already exists", key: "locationCodeExists", th: "รหัสที่ตั้งนี้มีอยู่แล้ว", body: { code: "L1", name: "Store", branchId: "b1", parentId: "", locationType: "Room", description: "", isActive: true } },
+    { dir: "brands", model: "assetBrand", field: "name", error: "Brand name already exists", key: "brandNameExists", th: "ชื่อยี่ห้อนี้มีอยู่แล้ว", body: { name: "Dell", isActive: true } },
+    { dir: "models", model: "assetModel", field: "name", error: "Model name already exists for this brand", key: "modelNameExists", th: "ชื่อรุ่นนี้มีอยู่แล้วในยี่ห้อนี้", body: { name: "Latitude", categoryId: "cat-1", brandId: "brand-1", specs: "", isActive: true } },
+  ]
+  const { getApiErrorKey } = await load<typeof import("../src/lib/api-error-catalog.ts")>("src/lib/api-error-catalog.ts")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).apiErrors
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8")).apiErrors
+  const expectConflict = async (response: Response, item: (typeof cases)[number]) => {
+    assert.equal(response.status, 409, item.dir)
+    assert.deepEqual(await response.json(), { error: item.error, code: "DUPLICATE", fieldErrors: { [item.field]: "duplicate" } }, item.dir)
+  }
+  for (const item of cases) {
+    const { POST } = await load<Create>(`src/app/api/${item.dir}/route.ts`)
+    const { PUT } = await load<Update>(`src/app/api/${item.dir}/[id]/route.ts`)
+    stubDb({ [item.model]: { create: () => { throw uniqueViolation() }, findFirst: () => ({ id: "row-1", isActive: true }), update: () => { throw uniqueViolation() } } })
+    await expectConflict(await POST(jsonRequest("POST", item.body)), item)
+    await expectConflict(await PUT(jsonRequest("PUT", item.body), { params: Promise.resolve({ id: "row-1" }) }), item)
+    assert.equal(getApiErrorKey(item.error), item.key)
+    assert.equal(th[item.key], item.th)
+    assert.equal(en[item.key], item.error)
+  }
+
+  // Category: create answers 409 for an active duplicate (an inactive one is still brought back), update for any other row
+  // with the code. Checked before writing, because the nested custom-field rows have a unique index of their own.
+  const category = { code: "IT", name: "IT", description: "", isActive: true, customFieldDefs: [], photoChecklist: [] }
+  const categoryCase = { dir: "categories", field: "code", error: "Category code already exists", key: "categoryCodeExists", th: "รหัสหมวดหมู่นี้มีอยู่แล้ว" } as (typeof cases)[number]
+  const { POST } = await load<Create>("src/app/api/categories/route.ts")
+  const { PUT } = await load<Update>("src/app/api/categories/[id]/route.ts")
+  const lookups: unknown[] = []
+  stubDb({ assetCategory: { findFirst: (args: { where: Record<string, unknown> }) => { lookups.push(args.where); return args.where.id ? { id: "cat-1", isActive: true, _count: { assets: 0, models: 0 } } : { id: "cat-2" } } } })
+  await expectConflict(await POST(jsonRequest("POST", category)), categoryCase)
+  await expectConflict(await PUT(jsonRequest("PUT", category), { params: Promise.resolve({ id: "cat-1" }) }), categoryCase)
+  assert.deepEqual(lookups, [{ code: "IT", isActive: true }, { id: "cat-1", isActive: true }, { code: "IT", id: { not: "cat-1" } }])
+  assert.equal(getApiErrorKey(categoryCase.error), categoryCase.key)
+  assert.equal(th[categoryCase.key], categoryCase.th)
+  assert.equal(en[categoryCase.key], categoryCase.error)
+})

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { assetModelSchema } from "@/lib/validations/brand-model"
 
 type AssetModelRouteContext = {
@@ -60,6 +61,7 @@ export async function PUT(request: NextRequest, context: AssetModelRouteContext)
 
     return NextResponse.json(model)
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("name", "Model name already exists for this brand")
     return errorResponse(error, 400)
   }
 }

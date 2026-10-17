@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { errorResponse } from "@/lib/api-response"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(company, { status: 201 })
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Company code already exists")
     return errorResponse(error, 400)
   }
 }

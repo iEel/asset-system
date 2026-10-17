@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { locationSchema } from "@/lib/validations/location"
 import { getLocationDeleteBlockReason, wouldCreateLocationCycle } from "@/lib/location-list-query"
 
@@ -99,6 +100,7 @@ export async function PUT(request: NextRequest, context: LocationRouteContext) {
 
     return NextResponse.json(location)
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return uniqueConflictResponse("code", "Location code already exists")
     return errorResponse(error, 400)
   }
 }

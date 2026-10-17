@@ -4242,6 +4242,13 @@
     "ldapSyncFailed": "LDAP sync failed",
     "notificationDigestFailed": "Notification digest failed",
     "validationFailed": "Invalid request data",
-    "recipientRequired": "Recipient, buyer, or destination is required"
+    "recipientRequired": "Recipient, buyer, or destination is required",
+    "brandNameExists": "Brand name already exists",
+    "categoryCodeExists": "Category code already exists",
+    "companyCodeExists": "Company code already exists",
+    "departmentCodeExists": "Department code already exists",
+    "employeeCodeExists": "Employee code already exists",
+    "locationCodeExists": "Location code already exists",
+    "modelNameExists": "Model name already exists for this brand"
   }
 }
