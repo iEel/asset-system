@@ -392,6 +392,19 @@ test("N3 commands are Button; a raw <button> stays only in its shared part, a wh
   assert.deepEqual(exemptProblems("N3", counts, RAW_BUTTON_EXEMPT, RAW_BUTTON_OWNERS), [])
 })
 
+// N4: nothing fades when it is disabled. Button's disabled look is the background fill with faint ink, and busy keeps
+// focus (FMG GB4). Any variant that holds "disabled" counts: disabled:, aria-disabled:, group-disabled:, has-[:disabled]:.
+// An opacity with pointer-events-none or cursor-not-allowed on one line is LFG LT5's.
+const DISABLED_FADE = /(?<=^|[\s"'`{(,])[^\s"'`{}(),]*disabled[^\s"'`{}(),]*:opacity-(?:\d+|\[[^\]\s"'`]*\])(?![\w-])/g
+const DISABLED_FADE_EXEMPT: ExemptList = {}
+
+test("N4 nothing fades through opacity when it is disabled (spec 2D §5.4 item 4)", () => {
+  const count = (source: string) => countMatchesByFile([{ path: "src/x.tsx", source }], DISABLED_FADE)["src/x.tsx"] ?? 0
+  assert.equal(count('"disabled:opacity-60 aria-disabled:opacity-50 group-disabled:opacity-[.4] has-[:disabled]:opacity-70 md:disabled:hover:opacity-80"'), 5)
+  assert.equal(count('"opacity-50 disabled:bg-background disabled:text-faint-foreground hover:opacity-80"'), 0)
+  assert.deepEqual(exemptProblems("N4", countMatchesByFile(sources, DISABLED_FADE), DISABLED_FADE_EXEMPT), [])
+})
+
 // Every EXEMPT list of this file, by rule (spec 2D §5.1), last in the file. Each guard file sums its own phase 3 rows:
 // a test file that imports another one runs that file's tests a second time.
 const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
@@ -404,6 +417,7 @@ const EXEMPT_LISTS: Readonly<Record<string, ExemptList>> = {
   N1: RAW_COLOR_EXEMPT,
   N2: DASHED_LINE_EXEMPT,
   N3: RAW_BUTTON_EXEMPT,
+  N4: DISABLED_FADE_EXEMPT,
 }
 
 test("phase 3: every row the visual guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
