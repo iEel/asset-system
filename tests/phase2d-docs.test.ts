@@ -52,3 +52,34 @@ test("docs/14: the guard paragraph names OWNERS and EXEMPT, and the registry lis
   assert.match(index, /never a height of its own at `sm:` and never `disabled:opacity-\*`/, "the Button row")
   assert.match(index, /a foot wraps to two lines at most/, "the StatStrip row")
 })
+
+test(".impeccable/design.json: valid LF JSON whose examples match the code after phase 2D (plan 2D-5)", () => {
+  const raw = readFileSync(".impeccable/design.json", "utf8")
+  assert.equal(raw.includes("\r"), false, "the file stays LF")
+  type Design = {
+    components: Array<{ name: string; description: string; css: string }>
+    narrative: { rules: Array<{ name: string; body: string }>; dos: string[]; donts: string[] }
+  }
+  const design = JSON.parse(raw) as Design
+  assert.deepEqual(staleLines(".impeccable/design.json"), [])
+  assert.doesNotMatch(raw, /IBM Plex Sans Thai|table shell|per-file budget/)
+  const component = (name: string) => design.components.find((entry) => entry.name === name) ?? { name, description: "", css: "" }
+  for (const [name, cls] of [["Primary Button", "ds-btn-primary"], ["Secondary Button", "ds-btn-secondary"]]) {
+    assert.match(component(name).css, new RegExp(`\\.${cls} \\{ min-height: 44px; padding: 0 14px;`), `${name}: 44px below 768px, 14px padding`)
+    assert.match(component(name).css, new RegExp(`@media \\(min-width: 768px\\) \\{ \\.${cls} \\{ min-height: 0; height: 36px; \\} \\}`), `${name}: 36px from 768px (spec 2D D3)`)
+  }
+  assert.match(component("Dialog").css, /@media \(min-width: 768px\) \{ \.ds-dialog-x \{ width: 36px; height: 36px; \} \.ds-dialog-btn \{ min-height: 0; height: 36px; \} \}/)
+  for (const entry of design.components) {
+    // Only fields stay 40px from 768px (2C K7, spec 2D D4).
+    if (entry.name !== "Text Field") assert.doesNotMatch(entry.css, /\b(?:height|width): 40px/, entry.name)
+    if (/"IBM Plex Sans"/.test(entry.css)) assert.match(entry.css, /"IBM Plex Sans", "Noto Sans Thai Looped", system-ui, sans-serif/, `${entry.name}: the Thai font of src/app/layout.tsx`)
+  }
+  assert.match(component("Stat Strip").description, /foot of at most two lines/)
+  assert.match(component("Stat Strip").css, /\.ds-stat-foot \{[^}]*-webkit-line-clamp: 2;/)
+  const rule = (name: string) => design.narrative.rules.find((entry) => entry.name === name)?.body ?? ""
+  assert.match(rule("The Where Color Lives Rule"), /no screen uses the info tokens/)
+  assert.match(rule("The Border First Rule"), /holds exactly these 8 in its EXEMPT list/)
+  for (const part of ["Chip", "PageHeader", "DataTable", "StatStrip", "KeyValueList", "ContentPanel divided", "ActionBar"]) assert.ok(design.narrative.dos[0].includes(part), `dos[0] names ${part}`)
+  assert.ok(design.narrative.donts.some((entry) => /^Don't fade a disabled control with opacity/.test(entry)))
+  assert.ok(design.narrative.donts.some((entry) => /allow only their shared parts \(OWNERS\) and the sites of their EXEMPT lists\.$/.test(entry)))
+})
