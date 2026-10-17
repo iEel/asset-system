@@ -1,0 +1,54 @@
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import test from "node:test"
+import { contrastRatio, parseHexColor, readRootTokens } from "../src/lib/color-contrast.ts"
+
+// Dark mode, area P (spec 2026-10-17 §4.4): paper keeps the light tokens through the data-theme="light" scope, photos and
+// logos sit on a fixed light image stage, the bell's count dot takes the danger ink and the app icon gets a hairline
+// frame that shows in dark only. One test per commit, each failing before its commit. Sources are read with LF endings.
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+
+// The --name: value pairs of every innermost block of globals.css that declares the color set (the light :root block,
+// the two dark copies, the forced-light scope and the print reset all declare --sidebar-border).
+function tokenSets(css: string): Array<Record<string, string>> {
+  return [...css.matchAll(/\{([^{}]*)\}/g)]
+    .filter((block) => /(?:^|[\s;])--sidebar-border\s*:/.test(block[1]))
+    .map((block) => Object.fromEntries([...block[1].matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)].map((pair) => [pair[1], pair[2].trim()])))
+}
+
+test("photos and logos get a fixed light image stage and the app icon a frame that shows in dark only (dark mode P-R1, P-R6)", () => {
+  const css = read("src/app/globals.css")
+  const light = readRootTokens(css)
+  const STAGE = "#E9EEF5"
+  const FRAME = { light: "#FFFFFF", dark: "#34496A" }
+  assert.equal(light["image-stage"], STAGE, "the light value is the muted fill the thumbnail frames show today")
+  assert.equal(light["app-icon-frame"], FRAME.light)
+  assert.equal(light["app-icon-frame"], light.sidebar, "in light the frame is the sidebar color, so the sidebar looks as before")
+  for (const name of ["image-stage", "app-icon-frame"]) {
+    assert.match(css, new RegExp(`--color-${name}:\\s*var\\(--${name}\\);`), `--color-${name} in @theme inline`)
+  }
+  // Each block that declares the color set declares both tokens: the light value where the block holds the light
+  // canvas (the light block, the forced-light scope, the print reset), the dark value in the two dark copies.
+  const sets = tokenSets(css)
+  assert.ok(sets.length >= 4, `${sets.length} token blocks`)
+  for (const set of sets) {
+    const theme = set.canvas === light.canvas ? "light" : "dark"
+    assert.equal(set["image-stage"], STAGE, `image-stage in a ${theme} block`)
+    assert.equal(set["app-icon-frame"], FRAME[theme], `app-icon-frame in a ${theme} block`)
+  }
+  const dark = sets.find((set) => set.canvas !== light.canvas)
+  assert.ok(dark, "a dark block")
+  for (const opener of [':root[data-theme="dark"] {', ':root:not([data-theme="light"]) {', '[data-theme="light"] {']) {
+    const at = css.indexOf(opener)
+    assert.ok(at > 0, opener)
+    assert.match(css.slice(at, css.indexOf("}", at)), /--image-stage: #E9EEF5;/, opener)
+  }
+  const ratio = (a: string, b: string) => contrastRatio(parseHexColor(a), parseHexColor(b))
+  // The stage stays light in both themes: dark ink in a see-through logo keeps more than 12:1 on it.
+  assert.ok(ratio(STAGE, light.foreground) >= 12)
+  // In dark the hairline separates the near-white icon tile (253 253 254) from the sidebar and the login page.
+  for (const surface of ["sidebar", "background"]) {
+    assert.ok(ratio(FRAME.dark, dark[surface]) >= 1.5, `the frame on the dark ${surface}: ${ratio(FRAME.dark, dark[surface]).toFixed(2)}:1`)
+  }
+  assert.ok(ratio(FRAME.dark, "#FDFDFE") >= 3, "the frame against the icon tile")
+})
