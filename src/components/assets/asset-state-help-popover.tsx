@@ -20,6 +20,9 @@ export function AssetStateHelpPopover({ title, description, items, srLabel }: As
       if (!next) pinnedRef.current = false
       setOpen(next)
     }}>
+      {/* A 24px circle beside a field label, in the page header or in a table head. Below md its ::after box makes the
+          target 44px (the user, 2026-10-17): 10px to each side, 16px up and 4px down, where the field's own control
+          starts. From md, where the pointer is a mouse, it stays 24px. */}
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -35,7 +38,7 @@ export function AssetStateHelpPopover({ title, description, items, srLabel }: As
             pinnedRef.current = true
             setOpen(true)
           }}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 relative after:absolute after:-inset-x-2.5 after:-top-4 after:-bottom-1 md:after:hidden"
         >
           <CircleHelp className="h-4 w-4" aria-hidden="true" />
         </button>
