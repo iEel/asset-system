@@ -41,3 +41,14 @@ test("DESIGN.md: nothing waits for phase 2D, and the guards are their EXEMPT lis
   assert.match(design, /24px help button in `labelAction` \(44px to tap below `md`/, "the help trigger's hit area on phones")
   assert.match(design, /which waits for phase 3 \(the user, 2026-10-16\)/, "codes inside translated sentences")
 })
+
+test("docs/14: the guard paragraph names OWNERS and EXEMPT, and the registry lists phase 2D (plan 2D-5)", () => {
+  assert.deepEqual(staleLines("docs/14_UI_UX_DESIGN_SYSTEM.md"), [])
+  const index = read("docs/14_UI_UX_DESIGN_SYSTEM.md")
+  assert.doesNotMatch(index, /per-file budgets|`KEEP`|sets every budget|ratchet guards in/)
+  assert.match(index, /each rule allows only the shared parts that own its pattern \(`OWNERS`\) and the sites of its `EXEMPT` list/)
+  assert.match(index, /`exemptProblems` in `tests\/helpers\/guard-exempt\.ts`/)
+  assert.match(index, /\n\| [^|\n]+ \| \[`2026-10-15-ui-phase2d-design\.md`\]\(superpowers\/specs\/2026-10-15-ui-phase2d-design\.md\)/, "Current-Surface Registry: the phase 2D row")
+  assert.match(index, /never a height of its own at `sm:` and never `disabled:opacity-\*`/, "the Button row")
+  assert.match(index, /a foot wraps to two lines at most/, "the StatStrip row")
+})
