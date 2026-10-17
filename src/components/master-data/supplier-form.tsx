@@ -6,12 +6,6 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
-import {
-  parseSupplierFormError,
-  type SupplierFormErrorCode,
-  type SupplierFormErrors,
-  type SupplierFormField,
-} from "@/lib/supplier-form-errors"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { Field } from "@/components/ui/field"
@@ -21,8 +15,10 @@ import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { email, maxLength, required } from "@/lib/validation-rules"
 
 type SupplierFormValues = {
   id?: string
@@ -45,6 +41,33 @@ const emptySupplier: SupplierFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  code: "supplier-code",
+  name: "supplier-name",
+  contactPerson: "supplier-contact",
+  phone: "supplier-phone",
+  email: "supplier-email",
+  address: "supplier-address",
+} as const
+type SupplierField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as SupplierField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required, maxLength and type="email" (v-track M-R2).
+function validate(values: SupplierFormValues): Partial<Record<SupplierField, string>> {
+  const errors: Partial<Record<SupplierField, string>> = {}
+  const check = (key: SupplierField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("code", required(values.code) ?? maxLength(values.code, 20))
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  check("contactPerson", maxLength(values.contactPerson, 200))
+  check("phone", maxLength(values.phone, 50))
+  check("email", email(values.email) ?? maxLength(values.email, 200))
+  check("address", maxLength(values.address, 500))
+  return errors
+}
+
 export function SupplierForm({
   supplier,
   backHref: providedBackHref,
@@ -60,7 +83,7 @@ export function SupplierForm({
   const tCommon = useTranslations("common")
   const [initialValues] = useState<SupplierFormValues>(() => supplier ?? emptySupplier)
   const [values, setValues] = useState<SupplierFormValues>(initialValues)
-  const [fieldErrors, setFieldErrors] = useState<SupplierFormErrors>({})
+  const fieldErrors = useFieldErrors<SupplierField>()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -68,6 +91,7 @@ export function SupplierForm({
   const isDirty = !saved && JSON.stringify(values) !== JSON.stringify(initialValues)
   const backHref = providedBackHref ?? `/${locale}/master-data/suppliers`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
 
   useEffect(() => {
     if (!isDirty) return
@@ -83,12 +107,7 @@ export function SupplierForm({
 
   function setField<K extends keyof SupplierFormValues>(field: K, value: SupplierFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
-    setFieldErrors((current) => {
-      if (!current[field as SupplierFormField]) return current
-      const next = { ...current }
-      delete next[field as SupplierFormField]
-      return next
-    })
+    if (field in FIELD_IDS) fieldErrors.clear(field as SupplierField)
   }
 
   function confirmNavigation(event: React.MouseEvent<HTMLAnchorElement>) {
@@ -101,17 +120,11 @@ export function SupplierForm({
     })
   }
 
-  function getErrorMessage(code: SupplierFormErrorCode) {
-    if (code === "duplicate") return t("duplicateCode")
-    if (code === "invalidEmail") return t("invalidEmail")
-    if (code === "tooLong") return t("fieldTooLong")
-    return tCommon("required")
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
-    setFieldErrors({})
 
     const url = isEdit ? `/api/suppliers/${supplier?.id}` : "/api/suppliers"
     const method = isEdit ? "PUT" : "POST"
@@ -125,16 +138,9 @@ export function SupplierForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
-        const parsed = parseSupplierFormError(result)
-        const firstFieldError = Object.values(parsed.fieldErrors)[0]
-
-        if (firstFieldError) {
-          setFieldErrors(parsed.fieldErrors)
-          toast.error(getErrorMessage(firstFieldError))
-          return
-        }
-
-        throw new Error(parsed.message ?? tCommon("error"))
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
+        throw new Error(result?.error ?? tCommon("error"))
       }
 
       setSaved(true)
@@ -157,9 +163,9 @@ export function SupplierForm({
         back={<PageBackLink href={backHref} onClick={confirmNavigation} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+      <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} id="supplier-code" required error={fieldErrors.code ? getErrorMessage(fieldErrors.code) : undefined}>
+          <Field label={t("code")} id="supplier-code" required error={fieldErrors.message("code")}>
             <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
@@ -169,7 +175,7 @@ export function SupplierForm({
             />
           </Field>
 
-          <Field label={t("name")} id="supplier-name" required error={fieldErrors.name ? getErrorMessage(fieldErrors.name) : undefined}>
+          <Field label={t("name")} id="supplier-name" required error={fieldErrors.message("name")}>
             <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
@@ -179,7 +185,7 @@ export function SupplierForm({
             />
           </Field>
 
-          <Field label={t("contactPerson")} id="supplier-contact" error={fieldErrors.contactPerson ? getErrorMessage(fieldErrors.contactPerson) : undefined}>
+          <Field label={t("contactPerson")} id="supplier-contact" error={fieldErrors.message("contactPerson")}>
             <Input
               value={values.contactPerson ?? ""}
               onChange={(event) => setField("contactPerson", event.target.value)}
@@ -188,7 +194,7 @@ export function SupplierForm({
             />
           </Field>
 
-          <Field label={t("phone")} id="supplier-phone" error={fieldErrors.phone ? getErrorMessage(fieldErrors.phone) : undefined}>
+          <Field label={t("phone")} id="supplier-phone" error={fieldErrors.message("phone")}>
             <Input
               type="tel"
               inputMode="tel"
@@ -199,7 +205,7 @@ export function SupplierForm({
             />
           </Field>
 
-          <Field label={t("email")} id="supplier-email" error={fieldErrors.email ? getErrorMessage(fieldErrors.email) : undefined}>
+          <Field label={t("email")} id="supplier-email" error={fieldErrors.message("email")}>
             <Input
               type="email"
               value={values.email ?? ""}
@@ -220,7 +226,7 @@ export function SupplierForm({
           </label>
 
           <div className="md:col-span-2">
-            <Field label={t("address")} id="supplier-address" error={fieldErrors.address ? getErrorMessage(fieldErrors.address) : undefined}>
+            <Field label={t("address")} id="supplier-address" error={fieldErrors.message("address")}>
               <Textarea
                 value={values.address ?? ""}
                 onChange={(event) => setField("address", event.target.value)}

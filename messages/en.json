@@ -1635,9 +1635,6 @@
     "linkedAssets": "Linked Assets",
     "reportedDate": "Reported",
     "unsavedChangesConfirm": "You have unsaved supplier changes. Leave this page?",
-    "duplicateCode": "This tax ID or supplier code already exists.",
-    "invalidEmail": "Enter a valid email address.",
-    "fieldTooLong": "This value exceeds the allowed length.",
     "unsavedChangesLeave": "Leave without saving"
   },
   "checkout": {

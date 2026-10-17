@@ -14,14 +14,15 @@ test("supplier form exposes mobile-friendly field metadata", () => {
 })
 
 test("supplier form presents associated inline errors", () => {
-  assert.match(source, /parseSupplierFormError/)
+  // The shared hook reads the server's fieldErrors and shows the shared messages (v-track plan 1 M4).
+  assert.match(source, /const fieldErrors = useFieldErrors<SupplierField>\(\)/)
   // The shared Field ties each error to its control: aria-invalid and aria-describedby (FieldError, no alert role,
   // pinned in field-primitives.test.ts). Field id="supplier-<field>" keeps the old error ids: Field names the error `${id}-error`.
   assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
   for (const id of ["code", "name", "contact", "phone", "email", "address"]) {
     assert.match(source, new RegExp(`<Field label=\\{t\\("\\w+"\\)\\} id="supplier-${id}"`), `supplier-${id}`)
   }
-  assert.equal(source.match(/error=\{fieldErrors\.\w+ \? getErrorMessage\(fieldErrors\.\w+\) : undefined\}/g)?.length, 6)
+  assert.equal(source.match(/error=\{fieldErrors\.message\("\w+"\)\}/g)?.length, 6)
   assert.doesNotMatch(source, /errorId=|function Field\(/)
   assert.doesNotMatch(source, /aria-invalid=|aria-describedby=/, "Field sets both; a hand-set pair would name the error twice")
   assert.match(source, /fieldErrors/)
@@ -37,7 +38,7 @@ test("supplier form warns before abandoning unsaved changes", () => {
 test("supplier form localization keys stay aligned", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
-  const keys = ["unsavedChangesConfirm", "duplicateCode", "invalidEmail", "fieldTooLong"]
+  const keys = ["unsavedChangesConfirm"]
 
   for (const key of keys) {
     assert.equal(typeof th.supplier[key], "string", `missing Thai supplier.${key}`)

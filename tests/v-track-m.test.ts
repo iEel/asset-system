@@ -177,3 +177,37 @@ test("employee: errors under the field, the email rule, and a company change cle
   // "Employee cannot be their own manager" answers with fieldErrors.managerId (area S), shown under the manager field.
   assert.match(source, /<Field label=\{t\("manager"\)\} id="employee-manager" error=\{fieldErrors\.message\("managerId"\)\}>/)
 })
+
+test("supplier: on the shared hook, codes and messages like the other forms, with no toast for a refused field (v-track M4)", () => {
+  const source = read(`${C}master-data/supplier-form.tsx`)
+  // The ids stay as they were (the supplier test pins them); the keys are the server's.
+  assertMigratedForm(source, {
+    ids: {
+      code: "supplier-code",
+      name: "supplier-name",
+      contactPerson: "supplier-contact",
+      phone: "supplier-phone",
+      email: "supplier-email",
+      address: "supplier-address",
+    },
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("code", required(values.code) ?? maxLength(values.code, 20))',
+    'check("name", required(values.name) ?? maxLength(values.name, 200))',
+    'check("contactPerson", maxLength(values.contactPerson, 200))',
+    'check("phone", maxLength(values.phone, 50))',
+    'check("email", email(values.email) ?? maxLength(values.email, 200))',
+    'check("address", maxLength(values.address, 500))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.doesNotMatch(source, /parseSupplierFormError|getErrorMessage|supplier-form-errors|SupplierForm(?:Errors|ErrorCode|Field)\b/)
+  // The supplier-only texts gave way to common.validation (M-R6).
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+    for (const key of ["duplicateCode", "invalidEmail", "fieldTooLong"]) assert.equal(messages.supplier[key], undefined, `${locale} supplier.${key}`)
+  }
+  // All seven simple master-data forms now carry noValidate (M1 to M4).
+  for (const name of ["branch", "brand", "company", "department", "employee", "location", "supplier"]) {
+    assert.match(read(`${C}master-data/${name}-form.tsx`), /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/, name)
+  }
+})

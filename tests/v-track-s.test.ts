@@ -311,12 +311,9 @@ test("supplier answers with the shared body and codes: 400 VALIDATION_FAILED wit
   assert.equal(updated.status, 409)
   assert.deepEqual(await updated.json(), { error: "Supplier code already exists", code: "DUPLICATE", fieldErrors: { code: "duplicate" } })
 
-  // The supplier-only body and its snake codes are gone; the supplier form reads the shared codes until it moves to the hook.
+  // The supplier-only body and parser are gone: the supplier form reads the shared codes through useFieldErrors (v-track M4).
   assert.equal(existsSync("src/lib/supplier-api-error.ts"), false)
-  const { parseSupplierFormError } = await load<typeof import("../src/lib/supplier-form-errors.ts")>("src/lib/supplier-form-errors.ts")
-  assert.deepEqual(parseSupplierFormError({ error: "Invalid request data", fieldErrors: { code: "duplicate", email: "invalidEmail", phone: "tooLong", name: "required" } }).fieldErrors, { code: "duplicate", name: "required", phone: "tooLong", email: "invalidEmail" })
-  const form = read("src/components/master-data/supplier-form.tsx")
-  assert.match(form, /if \(code === "duplicate"\) return t\("duplicateCode"\)\n    if \(code === "invalidEmail"\) return t\("invalidEmail"\)\n    if \(code === "tooLong"\) return t\("fieldTooLong"\)/)
+  assert.equal(existsSync("src/lib/supplier-form-errors.ts"), false)
 })
 
 test("a duplicate code or name in master data answers 409 under its field, on create and on update (V spec §6.2)", async (t) => {
