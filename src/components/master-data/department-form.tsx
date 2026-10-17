@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { getPanelClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type DepartmentFormValues = {
   id?: string
@@ -37,6 +39,25 @@ const emptyDepartment: DepartmentFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  code: "department-code",
+  name: "department-name",
+} as const
+type DepartmentField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as DepartmentField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required and maxLength (v-track M-R2).
+function validate(values: DepartmentFormValues): Partial<Record<DepartmentField, string>> {
+  const errors: Partial<Record<DepartmentField, string>> = {}
+  const check = (key: DepartmentField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("code", required(values.code) ?? maxLength(values.code, 20))
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  return errors
+}
+
 export function DepartmentForm({
   department,
   companies,
@@ -53,17 +74,23 @@ export function DepartmentForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<DepartmentFormValues>(department ?? emptyDepartment)
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<DepartmentField>()
 
   const isEdit = Boolean(department?.id)
   const backHref = providedBackHref ?? `/${locale}/master-data/departments`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
   function setField<K extends keyof DepartmentFormValues>(field: K, value: DepartmentFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as DepartmentField)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
 
     const url = isEdit ? `/api/departments/${department?.id}` : "/api/departments"
@@ -78,6 +105,8 @@ export function DepartmentForm({
 
       if (!response.ok) {
         const result = await response.json().catch(() => null)
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
 
@@ -100,9 +129,9 @@ export function DepartmentForm({
         back={<PageBackLink href={backHref} label={tCommon("back")} />}
       />
 
-      <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+      <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} required>
+          <Field label={t("code")} id="department-code" required error={fieldErrors.message("code")}>
             <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
@@ -111,7 +140,7 @@ export function DepartmentForm({
             />
           </Field>
 
-          <Field label={t("name")} required>
+          <Field label={t("name")} id="department-name" required error={fieldErrors.message("name")}>
             <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}

@@ -69,7 +69,11 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 
 // The files whose every form shows its errors under the fields (spec G1). Each form task adds its file here, in the
 // commit that moves the file's last form.
-const V_FORMS: readonly string[] = []
+const V_FORMS: readonly string[] = [
+  `${C}master-data/brand-form.tsx`,
+  `${C}master-data/company-form.tsx`,
+  `${C}master-data/department-form.tsx`,
+]
 
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).
 // Exact counts at the plan's base; a row drops in the commit that gives its selects their errors, and a new one fails.

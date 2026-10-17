@@ -124,7 +124,8 @@ test("category form: three ContentPanels with the add buttons as panel actions, 
 test("the seven simple master-data forms: a <form> cannot be ContentPanel, so it takes the panel classes and the one panel spacing (spec 2D D9, 2D-2 R4)", () => {
   for (const name of ["branch", "brand", "company", "department", "employee", "location", "supplier"]) {
     const source = read(`src/components/master-data/${name}-form.tsx`)
-    assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/, name)
+    // noValidate comes in form by form (v-track plan 1, M1 to M4); M4 makes it required for all seven.
+    assert.match(source, /<form onSubmit=\{handleSubmit\}(?: noValidate)? className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/, name)
     assert.doesNotMatch(source, /rounded-lg border/, name)
   }
 })

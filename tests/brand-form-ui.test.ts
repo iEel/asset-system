@@ -10,7 +10,7 @@ test("the brand form uses the shared field and a busy save button (2C batch 2)",
   assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
   assert.doesNotMatch(source, /<label className="block">|mb-1\.5 block text-sm|ml-1 text-danger|<button|Loader2|disabled=/)
   assert.equal(source.match(/<input\b/g)?.length, 1, "only the active checkbox stays a native input")
-  assert.match(source, /<Field label=\{t\("brandName"\)\} required>\n\s+<Input\n\s+value=\{values\.name\}\n[^\n]*\n\s+maxLength=\{200\}\n\s+required\n\s+\/>\n\s+<\/Field>/)
+  assert.match(source, /<Field label=\{t\("brandName"\)\} id="brand-name" required error=\{fieldErrors\.message\("name"\)\}>\n\s+<Input\n\s+value=\{values\.name\}\n[^\n]*\n\s+maxLength=\{200\}\n\s+required\n\s+\/>\n\s+<\/Field>/)
   assert.match(source, /className=\{checkboxVariants\(\)\}/)
   assert.match(source, /<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>\n\s+\{tCommon\("cancel"\)\}/)
   assert.match(source, /<Button type="submit" busy=\{saving\}>\n\s+<Save aria-hidden="true" \/>\n\s+\{tCommon\("save"\)\}/)
