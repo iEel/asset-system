@@ -318,3 +318,40 @@ test("role: errors under the field, the role key's length and pattern restated, 
   assert.ok(source.includes('id={permission.id === firstPermissionId ? "role-permissions" : undefined}'))
   assert.equal(source.match(/\n    fieldErrors\.clear\("permissionIds"\)\n/g)?.length, 2, "togglePermission and setModulePermissions")
 })
+
+test("integration clients: create and edit show errors under the field, at least one scope is an error on submit, and the server's reason is no longer thrown away (v-track M9)", () => {
+  const source = read(`${C}admin/IntegrationClientManager.tsx`)
+  assertMigratedForm(source, {
+    handler: "createClient",
+    table: "CREATE_FIELD_IDS",
+    hook: "createErrors",
+    ids: { clientId: "integration-client-id", displayName: "integration-display-name", scopes: "integration-scopes" },
+    messages: ["displayName", "scopes"],
+  })
+  assertMigratedForm(source, {
+    handler: "updateEditingClient",
+    table: "EDIT_FIELD_IDS",
+    hook: "editErrors",
+    ids: { displayName: "integration-edit-display-name", scopes: "integration-edit-scopes" },
+    messages: ["displayName", "scopes"],
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("clientId", required(values.clientId) ?? minLength(values.clientId, 3) ?? maxLength(values.clientId, 100) ?? pattern(values.clientId, /^[A-Za-z0-9._:-]+$/))',
+    'check("displayName", required(values.displayName) ?? maxLength(values.displayName, 200))',
+    'check("scopes", atLeastOne(values.scopes))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.ok(source.includes("createErrors.setErrors(validate({ clientId, displayName, scopes: selectedScopes }))"))
+  assert.ok(source.includes("editErrors.setErrors(validate({ displayName: editDisplayName, scopes: editScopes }))"))
+  assert.ok(source.includes("error={createErrors.errors.clientId ? validationMessage(createErrors.errors.clientId, { min: 3, max: 100 }) : undefined}"))
+  // "At least one scope" is a content rule (spec §4.4): no silent keep-the-last rule, no disabled save, one group error.
+  assert.doesNotMatch(source, /next\.length > 0 \? next : current|disabled=\{editScopes\.length === 0\}/)
+  // Each scope list is a FieldGroup (F7): its error under the group, tied to the fieldset; focus goes to its first box.
+  assert.ok(source.includes('<FieldGroup legend={labels.scopes} id="integration-scopes" className="lg:col-span-2" error={createErrors.message("scopes")}>'))
+  assert.ok(source.includes('<FieldGroup legend={labels.scopes} id="integration-edit-scopes" error={editErrors.message("scopes")}>'))
+  assert.doesNotMatch(source, /<fieldset\b|fieldLabelClasses|<FieldError\b/)
+  // The server's reason, described like every other server error, instead of the fixed createFailed / actionFailed.
+  assert.ok(source.includes("throw new Error(apiError.describe(result?.error ?? labels.createFailed).message)"))
+  assert.ok(source.includes("throw new Error(apiError.describe(result?.error ?? labels.actionFailed).message)"))
+  assert.doesNotMatch(source, /throw new Error\(labels\.(?:createFailed|actionFailed)\)\n\s+const payload = \(await response\.json\(\)\) as \{ data: IntegrationClient(?:; token: string)? \}/)
+})

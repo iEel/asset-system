@@ -236,12 +236,15 @@ test("integration client manager: the edit dialog uses the dialog parts and show
 
   assert.doesNotMatch(source, /closeLabel=|flex-col-reverse|<select|<textarea|mb-2 text-sm font-medium|rounded border-border|font-normal|toLocaleString\(|bg-muted\//)
   assert.match(source, /description=\{editingClient \? <span className="tag">\{editingClient\.clientId\}<\/span> : undefined\}/)
-  assert.match(source, /<form onSubmit=\{updateEditingClient\} className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="grid gap-4">\n\s+\{error \? \(\n\s+<Notice tone="danger" role="alert">\n\s+\{labels\.error\}: \{error\}\n\s+<\/Notice>/)
+  assert.match(source, /<form onSubmit=\{updateEditingClient\} noValidate className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="grid gap-4">\n\s+\{error \? \(\n\s+<Notice tone="danger" role="alert">\n\s+\{labels\.error\}: \{error\}\n\s+<\/Notice>/)
   assert.match(source, /\{error && !editingClient \? \(\n\s+<Notice tone="danger" role="alert">/, "the page box waits until the dialog is closed")
-  assert.match(source, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" busy=\{updatingClient\} disabled=\{editScopes\.length === 0\}>\n\s+<Pencil aria-hidden="true" \/>\n\s+\{labels\.saveScopes\}\n\s+<\/Button>\n\s+<\/AccessibleDialogFooter>/)
-  assert.equal(source.match(/<Field label=\{labels\.(?:clientId|displayName)\} required>\n\s+<Input\n/g)?.length, 3)
+  assert.match(source, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" busy=\{updatingClient\}>\n\s+<Pencil aria-hidden="true" \/>\n\s+\{labels\.saveScopes\}\n\s+<\/Button>\n\s+<\/AccessibleDialogFooter>/)
+  // Each Field names its control and shows its error (v-track plan 1 M9).
+  assert.equal(source.match(/<Field label=\{labels\.displayName\} id="integration-(?:edit-)?display-name" required error=\{(?:create|edit)Errors\.message\("displayName"\)\}>\n\s+<Input\n/g)?.length, 2)
+  assert.match(source, /<Field\n\s+label=\{labels\.clientId\}\n\s+id="integration-client-id"\n\s+required\n[^\n]*\n\s+>\n\s+<Input\n/)
   assert.match(source, /required\n\s+minLength=\{3\}\n\s+maxLength=\{100\}\n\s+pattern="\[A-Za-z0-9\._:-\]\+"\n/, "the client id keeps every browser check")
-  assert.equal(source.match(/<fieldset className="min-w-0(?: lg:col-span-2)?">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\{labels\.scopes\}<\/legend>/g)?.length, 2)
+  // The scopes are one FieldGroup each, with the error under the group (v-track plan 1 M9).
+  assert.equal(source.match(/<FieldGroup legend=\{labels\.scopes\} id="integration-(?:edit-)?scopes"(?: className="lg:col-span-2")? error=\{(?:create|edit)Errors\.message\("scopes"\)\}>/g)?.length, 2)
   assert.equal(source.match(/className=\{checkboxVariants\(\)\}/g)?.length, 2)
   assert.match(source, /<label className="flex min-h-11 items-start gap-3 py-2 text-sm text-foreground">\n\s+<input\n\s+type="checkbox"\n\s+checked=\{tokenAcknowledgement\}\n(?:[^\n]*\n)\s+className=\{cn\(checkboxVariants\(\), "mt-0\.5"\)\}/)
   assert.match(source, /<Button type="submit" busy=\{saving\} className="w-fit">\n\s+<Plus aria-hidden="true" \/>\n\s+\{labels\.createClient\}/)

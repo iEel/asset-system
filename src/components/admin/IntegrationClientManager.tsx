@@ -21,13 +21,17 @@ import { Chip } from "@/components/ui/chip"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { Field } from "@/components/ui/field"
-import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
+import { FieldGroup } from "@/components/ui/field-group"
+import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { Notice } from "@/components/ui/notice"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
+import { atLeastOne, maxLength, minLength, pattern, required } from "@/lib/validation-rules"
 
 type IntegrationClient = {
   id: string
@@ -117,8 +121,44 @@ const scopeOptions = [
   { value: "integration:read", labelKey: "scopeIntegrationRead" },
 ] as const
 
+// The fields of the create form and of the edit dialog in visual order, keyed like the server's fieldErrors, with the
+// id focus moves to (v-track M-R1). A scope group's id is its FieldGroup's.
+const CREATE_FIELD_IDS = {
+  clientId: "integration-client-id",
+  displayName: "integration-display-name",
+  scopes: "integration-scopes",
+} as const
+type CreateField = keyof typeof CREATE_FIELD_IDS
+const CREATE_FIELD_ORDER = Object.keys(CREATE_FIELD_IDS) as CreateField[]
+const EDIT_FIELD_IDS = {
+  displayName: "integration-edit-display-name",
+  scopes: "integration-edit-scopes",
+} as const
+type EditField = keyof typeof EDIT_FIELD_IDS
+const EDIT_FIELD_ORDER = Object.keys(EDIT_FIELD_IDS) as EditField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required, minLength, maxLength and pattern,
+// and the server's rule of at least one scope (a content rule: the button no longer waits for it, spec §4.4). The edit
+// dialog has no client id (v-track M-R2).
+function validate(values: { clientId?: string; displayName: string; scopes: readonly string[] }) {
+  const errors: Partial<Record<CreateField, string>> = {}
+  const check = (key: CreateField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  if (values.clientId !== undefined) {
+    check("clientId", required(values.clientId) ?? minLength(values.clientId, 3) ?? maxLength(values.clientId, 100) ?? pattern(values.clientId, /^[A-Za-z0-9._:-]+$/))
+  }
+  check("displayName", required(values.displayName) ?? maxLength(values.displayName, 200))
+  check("scopes", atLeastOne(values.scopes))
+  return errors
+}
+
 export function IntegrationClientManager({ labels }: { labels: Labels }) {
   const confirm = useConfirm()
+  const apiError = useApiError()
+  const createErrors = useFieldErrors<CreateField>()
+  const editErrors = useFieldErrors<EditField>()
+  const validationMessage = useValidationMessage()
   const [clients, setClients] = useState<IntegrationClient[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -173,14 +213,13 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
     }
   }, [labels.loadFailed])
 
+  const focusFirstCreateError = () => createErrors.focusFirst(CREATE_FIELD_ORDER, { idFor: (key) => CREATE_FIELD_IDS[key] })
+  const focusFirstEditError = () => editErrors.focusFirst(EDIT_FIELD_ORDER, { idFor: (key) => EDIT_FIELD_IDS[key] })
+
+  // The last scope can be unchecked now: "at least one" shows as an error on submit (spec §4.4).
   function toggleScope(scope: string) {
-    setSelectedScopes((current) => {
-      if (current.includes(scope)) {
-        const next = current.filter((item) => item !== scope)
-        return next.length > 0 ? next : current
-      }
-      return [...current, scope]
-    })
+    setSelectedScopes((current) => (current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope]))
+    createErrors.clear("scopes")
   }
 
   function openEditClient(client: IntegrationClient) {
@@ -188,6 +227,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
     setEditDisplayName(client.displayName)
     setEditScopes(client.scopes)
     setError(null)
+    editErrors.setErrors({})
   }
 
   function closeEditClient() {
@@ -198,13 +238,8 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
   }
 
   function toggleEditScope(scope: string) {
-    setEditScopes((current) => {
-      if (current.includes(scope)) {
-        const next = current.filter((item) => item !== scope)
-        return next.length > 0 ? next : current
-      }
-      return [...current, scope]
-    })
+    setEditScopes((current) => (current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope]))
+    editErrors.clear("scopes")
   }
 
   async function confirmScopeExpansion(client: IntegrationClient, nextScopes: string[]): Promise<boolean> {
@@ -215,6 +250,8 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
 
   async function createClient(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    createErrors.setErrors(validate({ clientId, displayName, scopes: selectedScopes }))
+    if (focusFirstCreateError()) return
     setSaving(true)
     setError(null)
     try {
@@ -223,7 +260,12 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clientId, displayName, scopes: selectedScopes }),
       })
-      if (!response.ok) throw new Error(labels.createFailed)
+      if (!response.ok) {
+        const result = await response.json().catch(() => null)
+        // A refusal that names a field shows under it; any other shows the server's reason, no longer a fixed text.
+        if (createErrors.applyServer(result) && focusFirstCreateError()) return
+        throw new Error(apiError.describe(result?.error ?? labels.createFailed).message)
+      }
       const payload = (await response.json()) as { data: IntegrationClient; token: string }
       setClients((current) => [payload.data, ...current.filter((client) => client.id !== payload.data.id)])
       setOneTimeToken({ clientId: payload.data.clientId, token: payload.token })
@@ -242,6 +284,8 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
   async function updateEditingClient(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingClient) return
+    editErrors.setErrors(validate({ displayName: editDisplayName, scopes: editScopes }))
+    if (focusFirstEditError()) return
     if (!(await confirmScopeExpansion(editingClient, editScopes))) return
 
     setUpdatingClient(true)
@@ -253,7 +297,11 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: editDisplayName, scopes: editScopes }),
       })
-      if (!response.ok) throw new Error(labels.actionFailed)
+      if (!response.ok) {
+        const result = await response.json().catch(() => null)
+        if (editErrors.applyServer(result) && focusFirstEditError()) return
+        throw new Error(apiError.describe(result?.error ?? labels.actionFailed).message)
+      }
       const payload = (await response.json()) as { data: IntegrationClient }
       setClients((current) => current.map((client) => (client.id === payload.data.id ? payload.data : client)))
       closeEditClient()
@@ -401,23 +449,25 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         onClose={closeEditClient}
       >
         {editingClient ? (
-          <form onSubmit={updateEditingClient} className={accessibleDialogFormClasses}>
+          <form onSubmit={updateEditingClient} noValidate className={accessibleDialogFormClasses}>
             <AccessibleDialogBody className="grid gap-4">
               {error ? (
                 <Notice tone="danger" role="alert">
                   {labels.error}: {error}
                 </Notice>
               ) : null}
-              <Field label={labels.displayName} required>
+              <Field label={labels.displayName} id="integration-edit-display-name" required error={editErrors.message("displayName")}>
                 <Input
                   value={editDisplayName}
-                  onChange={(event) => setEditDisplayName(event.target.value)}
+                  onChange={(event) => {
+                    setEditDisplayName(event.target.value)
+                    editErrors.clear("displayName")
+                  }}
                   required
                   maxLength={200}
                 />
               </Field>
-              <fieldset className="min-w-0">
-                <legend className={cn(fieldLabelClasses, "mb-1.5")}>{labels.scopes}</legend>
+              <FieldGroup legend={labels.scopes} id="integration-edit-scopes" error={editErrors.message("scopes")}>
                 <div className="grid gap-2">
                   {scopeOptions.map((scope) => (
                     <label
@@ -434,11 +484,11 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                     </label>
                   ))}
                 </div>
-              </fieldset>
+              </FieldGroup>
             </AccessibleDialogBody>
             <AccessibleDialogFooter>
               <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
-              <Button type="submit" busy={updatingClient} disabled={editScopes.length === 0}>
+              <Button type="submit" busy={updatingClient}>
                 <Pencil aria-hidden="true" />
                 {labels.saveScopes}
               </Button>
@@ -448,11 +498,19 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       </AccessibleDialog>
 
       <ContentPanel divided title={labels.createTitle}>
-        <form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" onSubmit={createClient}>
-          <Field label={labels.clientId} required>
+        <form onSubmit={createClient} noValidate className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Field
+            label={labels.clientId}
+            id="integration-client-id"
+            required
+            error={createErrors.errors.clientId ? validationMessage(createErrors.errors.clientId, { min: 3, max: 100 }) : undefined}
+          >
             <Input
               value={clientId}
-              onChange={(event) => setClientId(event.target.value)}
+              onChange={(event) => {
+                setClientId(event.target.value)
+                createErrors.clear("clientId")
+              }}
               required
               minLength={3}
               maxLength={100}
@@ -460,17 +518,19 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               placeholder={labels.clientIdPlaceholder}
             />
           </Field>
-          <Field label={labels.displayName} required>
+          <Field label={labels.displayName} id="integration-display-name" required error={createErrors.message("displayName")}>
             <Input
               value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
+              onChange={(event) => {
+                setDisplayName(event.target.value)
+                createErrors.clear("displayName")
+              }}
               required
               maxLength={200}
               placeholder={labels.displayNamePlaceholder}
             />
           </Field>
-          <fieldset className="min-w-0 lg:col-span-2">
-            <legend className={cn(fieldLabelClasses, "mb-1.5")}>{labels.scopes}</legend>
+          <FieldGroup legend={labels.scopes} id="integration-scopes" className="lg:col-span-2" error={createErrors.message("scopes")}>
             <div className="grid gap-2 md:grid-cols-3">
               {scopeOptions.map((scope) => (
                 <label key={scope.value} className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
@@ -484,7 +544,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                 </label>
               ))}
             </div>
-          </fieldset>
+          </FieldGroup>
           <div className="lg:col-span-2">
             <Button type="submit" busy={saving} className="w-fit">
               <Plus aria-hidden="true" />
