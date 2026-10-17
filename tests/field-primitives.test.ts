@@ -112,8 +112,10 @@ test("SearchableSelect uses the field look, a real label, and announces the chos
   assert.match(source, /aria-labelledby=\{label \? `\$\{labelId\} \$\{valueId\}` : undefined\}/)
   assert.match(source, /aria-describedby=\{describedBy\}/)
   // A button does not support aria-invalid (jsx-a11y/role-supports-aria-props), so the trigger gets the error look
-  // from classes and screen readers get the message through aria-describedby and the alert role.
-  assert.match(source, /error \? "border-danger ring-1 ring-danger shadow-field-error" : undefined/)
+  // from data-invalid and triggerInvalidClasses (field-variants.ts, teal again while focused or open), and screen
+  // readers get the message through aria-describedby.
+  assert.match(source, /data-invalid=\{error \? true : undefined\}/)
+  assert.match(source, /\n\s+triggerInvalidClasses,\n/)
   assert.doesNotMatch(source, /aria-invalid/)
   assert.match(source, /<ChevronDown className="pointer-events-none absolute right-2\.5 top-1\/2 size-4 -translate-y-1\/2 text-faint-foreground" aria-hidden="true" \/>/)
   assert.match(source, /<FieldHint id=\{hintId\}>/)

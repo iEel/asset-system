@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl"
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
 
 export function AuditScanCheckField({
+  id,
   label,
   value,
   options,
@@ -13,8 +14,11 @@ export function AuditScanCheckField({
   mismatch,
   disabled,
   labelFor,
+  error,
   onChange,
 }: {
+  // The trigger's id, so the check form's focusFirst can reach it; the error shows under the select.
+  id?: string
   label: string
   value: string
   options: SearchableSelectOption[]
@@ -24,6 +28,7 @@ export function AuditScanCheckField({
   mismatch: boolean
   disabled?: boolean
   labelFor: (id: string) => string
+  error?: React.ReactNode
   onChange: (value: string) => void
 }) {
   const t = useTranslations("auditScan")
@@ -37,6 +42,7 @@ export function AuditScanCheckField({
       className={mismatch ? "rounded-md border border-warning-border bg-warning-soft p-2.5" : undefined}
     >
       <SearchableSelect
+        id={id}
         label={label}
         value={value}
         options={options}
@@ -46,6 +52,7 @@ export function AuditScanCheckField({
         searchPlaceholder={tCommon("search")}
         emptyLabel={t("noOptionMatch")}
         clearLabel={t("clearValue")}
+        error={error}
         onChange={onChange}
       />
       {mismatch ? <p className="mt-1 text-meta font-medium text-warning">{t("inSystem", { value: labelFor(expectedValue) })}</p> : null}

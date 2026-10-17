@@ -3,7 +3,7 @@
 import { useId, useMemo, useState } from "react"
 import { Check, ChevronDown, X } from "lucide-react"
 import { FieldError, FieldHint, FieldLabel } from "@/components/ui/field"
-import { fieldControlVariants, type FieldSize } from "@/components/ui/field-variants"
+import { fieldControlVariants, triggerInvalidClasses, type FieldSize } from "@/components/ui/field-variants"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { filterSearchableOptions, type SearchableSelectOption } from "@/lib/searchable-select-filter"
@@ -86,10 +86,11 @@ export function SearchableSelect({
               id={triggerId}
               type="button"
               disabled={disabled}
+              data-invalid={error ? true : undefined}
               className={cn(
                 fieldControlVariants({ fieldSize }),
                 "flex cursor-pointer items-center justify-between gap-2 text-left aria-expanded:border-ring aria-expanded:ring-1 aria-expanded:ring-ring aria-expanded:shadow-field-focus",
-                error ? "border-danger ring-1 ring-danger shadow-field-error" : undefined,
+                triggerInvalidClasses,
                 showClear ? "pr-24 md:pr-20" : "pr-9",
               )}
               aria-labelledby={label ? `${labelId} ${valueId}` : undefined}

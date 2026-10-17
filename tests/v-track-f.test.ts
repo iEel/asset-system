@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 import { firstErrorKey, readFieldErrors, resolveValidationMessage, validationMessageKey, withoutKeys, type MessageLookup } from "../src/lib/field-error-client.ts"
 import { FIELD_FOCUS_MARGIN, fieldScrollTop } from "../src/lib/field-focus.ts"
+import { triggerInvalidClasses } from "../src/components/ui/field-variants.ts"
 import { atLeastOne, email, maxLength, minLength, notBefore, pattern, range, required } from "../src/lib/validation-rules.ts"
 
 // V track plan 1, area F (spec docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md §4, §7): the rule helpers,
@@ -201,4 +202,28 @@ test("errors shown by a submit are read once, through focus, and a live error ke
   assert.equal(assetForm.match(/\bliveError\b/g)?.length, 2)
   // SearchableSelect renders the same FieldError, so its errors follow the same rule.
   assert.match(read("src/components/ui/searchable-select.tsx"), /<FieldError id=\{errorId\}>/)
+})
+
+test("SearchableSelect shows the field error look, turns teal while focused or open, and its wrappers pass id and error on (V spec §7.3)", () => {
+  // The trigger is a button, which takes no aria-invalid (jsx-a11y): data-invalid carries the state, the classes live
+  // with the other field classes, and the error is tied by aria-describedby (field-primitives.test.ts).
+  assert.equal(
+    triggerInvalidClasses,
+    "data-invalid:border-danger data-invalid:ring-1 data-invalid:ring-danger data-invalid:shadow-field-error data-invalid:focus:border-ring data-invalid:focus:ring-ring data-invalid:focus:shadow-field-focus data-invalid:aria-expanded:border-ring data-invalid:aria-expanded:ring-ring data-invalid:aria-expanded:shadow-field-focus",
+  )
+  assert.doesNotMatch(triggerInvalidClasses, /focus:(?:border|ring)-danger|aria-expanded:(?:border|ring)-danger/)
+  const select = read("src/components/ui/searchable-select.tsx")
+  assert.match(select, /import \{ fieldControlVariants, triggerInvalidClasses, type FieldSize \} from "@\/components\/ui\/field-variants"/)
+  assert.match(select, /\n\s+data-invalid=\{error \? true : undefined\}\n/)
+  assert.match(select, /\n\s+triggerInvalidClasses,\n/)
+  assert.doesNotMatch(select, /"border-danger ring-1 ring-danger shadow-field-error"/)
+  // The trigger id is the caller's id when given, so focusFirst finds it (stable ids: the form names them).
+  assert.match(select, /const triggerId = id \?\? `\$\{generatedId\}-trigger`/)
+  for (const path of ["src/components/maintenance/maintenance-option-select.tsx", "src/components/audit/audit-scan-check-field.tsx"]) {
+    const source = read(path)
+    assert.match(source, /\n\s+id\?: string\n/, path)
+    assert.match(source, /\n\s+error\?: React\.ReactNode\n/, path)
+    assert.match(source, /<SearchableSelect\n\s+id=\{id\}\n/, path)
+    assert.match(source, /\n\s+error=\{error\}\n/, path)
+  }
 })

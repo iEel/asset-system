@@ -8,6 +8,7 @@ import type { MaintenanceOptionType } from "@/lib/maintenance-options"
 type MaintenanceOption = SearchableSelectOption & { reason?: string }
 
 export function MaintenanceOptionSelect({
+  id,
   type,
   label,
   value,
@@ -20,8 +21,11 @@ export function MaintenanceOptionSelect({
   initialOption,
   formatReason,
   hint,
+  error,
   onChange,
 }: {
+  // The trigger's id, so the form's focusFirst can reach it; the error shows under the select.
+  id?: string
   type: MaintenanceOptionType
   label: string
   value: string
@@ -34,6 +38,7 @@ export function MaintenanceOptionSelect({
   initialOption?: MaintenanceOption
   formatReason?: (reason: string) => string
   hint?: React.ReactNode
+  error?: React.ReactNode
   onChange: (value: string) => void
 }) {
   // The live line under the select reads in the page's language (plan 2D-4 open issue 10 c).
@@ -82,6 +87,7 @@ export function MaintenanceOptionSelect({
   return (
     <div>
       <SearchableSelect
+        id={id}
         label={label}
         value={value}
         options={displayOptions}
@@ -91,6 +97,7 @@ export function MaintenanceOptionSelect({
         searchPlaceholder={searchPlaceholder}
         emptyLabel={loading ? loadingLabel ?? emptyLabel : emptyLabel}
         hint={hint}
+        error={error}
         onSearchChange={setQuery}
         onChange={onChange}
       />
