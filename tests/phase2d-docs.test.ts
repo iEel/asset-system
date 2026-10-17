@@ -94,7 +94,7 @@ test("the handoff and the changelog record plan 2D-5 in place, with every marker
   const newest = changelog.indexOf("\n## ")
   const entry = changelog.indexOf("\n### ล็อก guard และเอกสารรอบสุดท้าย (UI รอบ 4 เฟส 2D plan 5)")
   assert.ok(newest !== -1 && entry !== -1, "the newest date and the plan 2D-5 entry")
-  assert.equal(changelog.indexOf("\n### ", newest), entry, "the entry is the first one under the newest date")
+  assert.equal(changelog.lastIndexOf("\n## ", entry), changelog.indexOf("\n## 2026-10-17\n"), "the entry sits under 2026-10-17 (the Dark Mode entry went above it later, dark mode D-R5)")
   assert.ok(entry < changelog.indexOf("\n### ตรวจนับ ตัดจำหน่าย ซ่อมบำรุง และธุรกรรมทรัพย์สิน (UI รอบ 4 เฟส 2D plan 4)"), "above the 2D-4 entry")
   // Every marker of the DC-4 template is filled; a failure lists the path and the markers left.
   const markers = /<today>|<N>|<P3F?>|<from (?:task-findings|plan)\b[^>]*>|<จาก task-findings>/g

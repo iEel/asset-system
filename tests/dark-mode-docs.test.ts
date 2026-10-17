@@ -108,3 +108,25 @@ test("docs/14 and .impeccable/design.json follow the two themes, with the dark v
   const prose = [...design.components.map((entry) => entry.description), ...design.narrative.rules.map((entry) => entry.body)].join("\n")
   assert.doesNotMatch(prose, /\bwhite (?:sidebar|frame|header|body)\b|\bon white\b|White fill/)
 })
+
+test("the handoff and the changelog record Dark Mode in place, with every marker filled (dark mode task 23, D3)", () => {
+  const handoff = read("DEVELOPER_HANDOFF.md")
+  const section = handoff.indexOf("\n## Dark Mode (")
+  assert.ok(section > handoff.indexOf("\n## UI Round 4 Phase 2D Plan 5 Guard Lock and Final Docs ("), "the Dark Mode section follows the 2D-5 one")
+  assert.ok(section < handoff.indexOf("\n## Open Go-Live Decisions"), "and comes before Open Go-Live Decisions")
+  const record = handoff.slice(section, handoff.indexOf("\n## Open Go-Live Decisions"))
+  assert.match(record, /\n- Dev-app check: \S/, "the dev-app check bullet")
+  assert.match(record, /`theme=<choice>; Path=\/; Max-Age=31536000; SameSite=Lax`/, "the cookie as src/lib/theme.ts writes it")
+  const changelog = read("docs/99_CHANGELOG.md")
+  const newest = changelog.indexOf("\n## ")
+  const entry = changelog.indexOf("\n### โหมดมืด (Dark Mode)\n")
+  assert.ok(newest !== -1 && entry !== -1, "the newest date and the Dark Mode entry")
+  assert.equal(changelog.indexOf("\n### ", newest), entry, "the entry is the first one under the newest date")
+  assert.ok(entry < changelog.indexOf("\n### ล็อก guard และเอกสารรอบสุดท้าย (UI รอบ 4 เฟส 2D plan 5)"), "above the 2D-5 entry")
+  assert.match(changelog.slice(entry, changelog.indexOf("\n### ", entry + 1)), /\n- \*\*ตรวจบนแอป:\*\* \S/, "the dev-app check bullet")
+  // Every marker of the D3 template is filled; a failure lists the path and the markers left.
+  const markers = /<today>|<N>|<from task-findings>|<จาก task-findings>/g
+  for (const [path, text] of [["DEVELOPER_HANDOFF.md", handoff], ["docs/99_CHANGELOG.md", changelog]]) {
+    assert.deepEqual([path, text.match(markers) ?? []], [path, []])
+  }
+})
