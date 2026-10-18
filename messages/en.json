@@ -1698,7 +1698,6 @@
     "reviewEvidence": "Evidence",
     "reviewEvidenceAttached": "Photo or signature attached",
     "reviewNoEvidence": "No photo or signature attached",
-    "reviewIncomplete": "Select an asset, destination, and condition before continuing.",
     "reviewConfirm": "Confirm handover"
   },
   "checkin": {

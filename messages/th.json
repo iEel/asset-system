@@ -1698,7 +1698,6 @@
     "reviewEvidence": "หลักฐาน",
     "reviewEvidenceAttached": "มีรูปหรือ ลายเซ็นแนบแล้ว",
     "reviewNoEvidence": "ยังไม่ได้แนบรูปหรือ ลายเซ็น",
-    "reviewIncomplete": "กรุณาเลือกทรัพย์สิน ปลายทาง และสภาพก่อนส่งมอบ",
     "reviewConfirm": "ยืนยันส่งมอบ"
   },
   "checkin": {

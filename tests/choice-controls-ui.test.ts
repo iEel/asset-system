@@ -71,7 +71,8 @@ test("the finish-repair dialog picks the outcome with ChoiceCard radios (R3)", (
 test("checkout picks the handover mode with required ChoiceCard radios, and no file in src uses accent-primary (R1)", () => {
   const source = readFileSync("src/components/asset-operations/checkout-form.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(source, /<ChoiceCard\n\s+key=\{mode\}\n\s+type="radio"\n\s+name="handoverModeChoice"\n\s+value=\{mode\}\n\s+checked=\{values\.handoverMode === mode\}\n\s+required\n\s+label=\{label\}\n\s+description=\{help\}/)
-  assert.match(source, /<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\n\s+\{t\("handoverMode"\)\}\n\s+<FieldRequiredMark \/>/)
+  // The radios are one FieldGroup with the star and one error under it (v-track plan 2 O2).
+  assert.match(source, /<FieldGroup legend=\{t\("handoverMode"\)\} id="checkout-handover-mode" required error=\{errorText\("handoverMode"\)\}>\n\s+<div className="grid gap-2 sm:grid-cols-2">/)
   assert.doesNotMatch(source, /<input\b|focus-within:ring|min-h-16|ml-1 text-danger/)
   assert.deepEqual(readSourceFiles("src").filter((file) => /\baccent-primary\b/.test(file.source)).map((file) => file.path), [])
 })

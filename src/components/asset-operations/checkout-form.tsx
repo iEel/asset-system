@@ -9,7 +9,8 @@ import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { Button } from "@/components/ui/button"
 import { ChoiceCard } from "@/components/ui/choice-card"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { Field, FieldRequiredMark } from "@/components/ui/field"
+import { Field } from "@/components/ui/field"
+import { FieldGroup } from "@/components/ui/field-group"
 import { fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
@@ -22,8 +23,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import type { AssetHandoverMode } from "@/lib/asset-handover-mode"
-import { cn } from "@/lib/utils"
+import { waitForDialogToClose } from "@/lib/field-focus"
+import { notBefore, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = "user" | "department" | "location" | "asset"
@@ -40,6 +43,57 @@ type CheckoutFormValues = {
   expectedReturnDate: string
   conditionBefore: string
   remark: string
+}
+
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The one
+// destination select shows the key of the checkout type: custodianId, departmentId, locationId or parentAssetId (O-R3).
+const FIELD_IDS = {
+  assetId: "checkout-asset",
+  checkoutType: "checkout-type",
+  custodianId: "checkout-destination",
+  departmentId: "checkout-destination",
+  locationId: "checkout-destination",
+  parentAssetId: "checkout-destination",
+  handoverMode: "checkout-handover-mode",
+  conditionBefore: "checkout-condition",
+  checkoutDate: "checkout-date",
+  expectedReturnDate: "checkout-expected-return",
+} as const
+type CheckoutField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckoutField[]
+const DESTINATION_KEYS = ["custodianId", "departmentId", "locationId", "parentAssetId"] as const
+// The handover codes (the server's catalog keys, which validate() sends too) read the checkout form's own sentences, in
+// the words of its fields (spec §7.1); every other code reads the shared message (O-R2).
+const HANDOVER_MESSAGE_KEYS: Readonly<Record<string, string>> = {
+  handoverModeRequired: "handoverModeRequired",
+  handoverPermanentUserOnly: "permanentUserOnly",
+  handoverPermanentCustodianRequired: "permanentCustodianRequired",
+  handoverPermanentNoDueDate: "permanentDueDateNotAllowed",
+  handoverTemporaryDueDateRequired: "temporaryDueDateRequired",
+  handoverReturnBeforeCheckout: "returnBeforeCheckout",
+}
+
+// noValidate turns the browser's check off, so this restates the controls' required, and the handover rules with the
+// server's own codes (HANDOVER_*), so a refusal from either side reads the same under the field (v-track M-R2, O-R2).
+function validate(values: CheckoutFormValues): Partial<Record<CheckoutField, string>> {
+  const errors: Partial<Record<CheckoutField, string>> = {}
+  const check = (key: CheckoutField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("assetId", required(values.assetId))
+  check("checkoutType", required(values.checkoutType))
+  check(destinationKey(values.checkoutType), required(destinationValue(values)))
+  if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")
+  check("conditionBefore", required(values.conditionBefore))
+  check("checkoutDate", required(values.checkoutDate))
+  if (values.handoverMode === "temporary_loan") {
+    check(
+      "expectedReturnDate",
+      (required(values.expectedReturnDate) && "handoverTemporaryDueDateRequired") ??
+        (notBefore(values.expectedReturnDate, values.checkoutDate) && "handoverReturnBeforeCheckout"),
+    )
+  }
+  return errors
 }
 
 export function CheckoutForm({
@@ -66,6 +120,7 @@ export function CheckoutForm({
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const fieldErrors = useFieldErrors<CheckoutField>()
   const [photoBefore, setPhotoBefore] = useState<File | null>(null)
   const [receiverSignatureDataUrl, setReceiverSignatureDataUrl] = useState<string | null>(null)
   const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
@@ -123,28 +178,29 @@ export function CheckoutForm({
     },
   })
 
+  // A refusal from the review closes it, and the field takes focus once the dialog has gone (spec §4.2, O-R1).
+  async function leaveReview() {
+    const closed = waitForDialogToClose()
+    setReviewOpen(false)
+    await closed
+  }
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })
+  const errorText = (key: CheckoutField) => {
+    const code = fieldErrors.errors[key]
+    return code && Object.hasOwn(HANDOVER_MESSAGE_KEYS, code) ? t(HANDOVER_MESSAGE_KEYS[code]) : fieldErrors.message(key)
+  }
+
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
+    // The two dates are one rule, so a change of either clears both (spec §4.3).
+    if (field === "checkoutDate" || field === "expectedReturnDate") fieldErrors.clear("checkoutDate", "expectedReturnDate")
+    else if (field in FIELD_IDS) fieldErrors.clear(field as CheckoutField)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedAsset || !selectedDestination || !selectedCondition) {
-      toast.error(t("reviewIncomplete"))
-      return
-    }
-    if (!values.handoverMode) {
-      toast.error(t("handoverModeRequired"))
-      return
-    }
-    if (values.handoverMode === "temporary_loan" && !values.expectedReturnDate) {
-      toast.error(t("temporaryDueDateRequired"))
-      return
-    }
-    if (values.expectedReturnDate && values.expectedReturnDate < values.checkoutDate) {
-      toast.error(t("returnBeforeCheckout"))
-      return
-    }
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setReviewOpen(true)
   }
 
@@ -173,7 +229,11 @@ export function CheckoutForm({
         body,
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(getCheckoutErrorMessage(payload?.code ?? payload?.error))
+      if (!response.ok) {
+        // A refusal that names a field of this form closes the review and shows under it; any other keeps the toast.
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(getCheckoutErrorMessage(payload?.code ?? payload?.error))
+      }
       toast.success(t("success"))
       const documentHref = `/${locale}/asset-management/checkouts/${payload.id}`
       router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
@@ -187,13 +247,14 @@ export function CheckoutForm({
 
   return (
     <OperationShell title={t("title")}>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
+      <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
         {initialAsset ? (
           <div className="md:col-span-2">
             <FormContextBanner label={t("asset")} value={initialAsset.label} />
           </div>
         ) : null}
         <SearchableSelect
+          id="checkout-asset"
           label={t("asset")}
           value={values.assetId}
           required
@@ -201,12 +262,15 @@ export function CheckoutForm({
           placeholder={t("selectAsset")}
           searchPlaceholder={tCommon("searchSelectPlaceholder")}
           emptyLabel={tCommon("searchSelectNoResults")}
+          error={errorText("assetId")}
           onChange={(value) => setField("assetId", value)}
         />
         <Select
           label={t("checkoutType")}
+          id="checkout-type"
           value={values.checkoutType}
           required
+          error={errorText("checkoutType")}
           onChange={(value) => {
             setValues((current) => ({
               ...current,
@@ -218,6 +282,7 @@ export function CheckoutForm({
               parentAssetId: "",
               expectedReturnDate: "",
             }))
+            fieldErrors.clear("checkoutType", ...DESTINATION_KEYS, "handoverMode", "expectedReturnDate")
           }}
         >
           <option value="user">{t("toUser")}</option>
@@ -226,6 +291,7 @@ export function CheckoutForm({
           <option value="asset">{t("toAsset")}</option>
         </Select>
         <SearchableSelect
+          id="checkout-destination"
           label={t("checkoutTo")}
           value={destinationValue(values)}
           required
@@ -233,15 +299,12 @@ export function CheckoutForm({
           placeholder={t("selectDestination")}
           searchPlaceholder={tCommon("searchSelectPlaceholder")}
           emptyLabel={tCommon("searchSelectNoResults")}
+          error={errorText(destinationKey(values.checkoutType))}
           onChange={(value) => setDestinationValue(values.checkoutType, value)}
         />
         <div className="md:col-span-2">
           {values.checkoutType === "user" ? (
-            <fieldset className="min-w-0">
-              <legend className={cn(fieldLabelClasses, "mb-1.5")}>
-                {t("handoverMode")}
-                <FieldRequiredMark />
-              </legend>
+            <FieldGroup legend={t("handoverMode")} id="checkout-handover-mode" required error={errorText("handoverMode")}>
               <div className="grid gap-2 sm:grid-cols-2">
                 {([
                   ["permanent_assignment", t("permanentAssignment"), t("permanentAssignmentHelp")],
@@ -256,15 +319,18 @@ export function CheckoutForm({
                     required
                     label={label}
                     description={help}
-                    onChange={() => setValues((current) => ({
-                      ...current,
-                      handoverMode: mode,
-                      expectedReturnDate: mode === "permanent_assignment" ? "" : current.expectedReturnDate,
-                    }))}
+                    onChange={() => {
+                      setValues((current) => ({
+                        ...current,
+                        handoverMode: mode,
+                        expectedReturnDate: mode === "permanent_assignment" ? "" : current.expectedReturnDate,
+                      }))
+                      fieldErrors.clear("handoverMode", "expectedReturnDate")
+                    }}
                   />
                 ))}
               </div>
-            </fieldset>
+            </FieldGroup>
           ) : (
             <div>
               <p className={fieldLabelClasses}>{t("handoverMode")}</p>
@@ -273,7 +339,14 @@ export function CheckoutForm({
             </div>
           )}
         </div>
-        <Select label={t("conditionBefore")} value={values.conditionBefore} required onChange={(value) => setField("conditionBefore", value)}>
+        <Select
+          label={t("conditionBefore")}
+          id="checkout-condition"
+          value={values.conditionBefore}
+          required
+          error={errorText("conditionBefore")}
+          onChange={(value) => setField("conditionBefore", value)}
+        >
           <option value="">{t("selectCondition")}</option>
           {conditions.map((condition) => (
             <option key={condition.id} value={condition.id}>
@@ -281,11 +354,11 @@ export function CheckoutForm({
             </option>
           ))}
         </Select>
-        <Field label={t("checkoutDate")} required>
+        <Field label={t("checkoutDate")} id="checkout-date" required error={errorText("checkoutDate")}>
           <Input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required />
         </Field>
         {values.handoverMode === "temporary_loan" ? (
-          <Field label={t("expectedReturn")} required>
+          <Field label={t("expectedReturn")} id="checkout-expected-return" required error={errorText("expectedReturnDate")}>
             <Input
               type="date"
               value={values.expectedReturnDate}
@@ -376,6 +449,13 @@ function dataUrlToFile(dataUrl: string, fileName: string) {
   return new File([bytes], fileName, { type: mimeType })
 }
 
+function destinationKey(type: CheckoutType): (typeof DESTINATION_KEYS)[number] {
+  if (type === "user") return "custodianId"
+  if (type === "department") return "departmentId"
+  if (type === "location") return "locationId"
+  return "parentAssetId"
+}
+
 function destinationValue(values: {
   checkoutType: CheckoutType
   custodianId: string
@@ -400,19 +480,23 @@ function OperationShell({ title, children }: { title: string; children: React.Re
 
 function Select({
   label,
+  id,
   value,
   required,
+  error,
   onChange,
   children,
 }: {
   label: string
+  id?: string
   value: string
   required?: boolean
+  error?: React.ReactNode
   onChange: (value: string) => void
   children: React.ReactNode
 }) {
   return (
-    <Field label={label} required={required}>
+    <Field label={label} id={id} required={required} error={error}>
       <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
       </NativeSelect>

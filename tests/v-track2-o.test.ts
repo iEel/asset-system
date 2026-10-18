@@ -62,3 +62,99 @@ test("a review dialog closes before the form's field takes focus: waitForDialogT
   assert.match(focus, /const dialog = document\.activeElement\?\.closest\('\[role="dialog"\]'\)/)
   assert.doesNotMatch(focus, /from "@\/|"use client"|from "react"/)
 })
+
+const C = "src/components/"
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+// The body of the module-level `function validate(`, up to the first line that is only "}".
+function validateBody(source: string) {
+  const start = source.search(/^function validate\(/m)
+  assert.notEqual(start, -1, "a module-level function validate(")
+  const end = source.indexOf("\n}\n", start)
+  return source.slice(start, end)
+}
+
+// The shape every operation form shares (plan 1's M-R1 to M-R4, O-R1): the FIELD_IDS table in visual order (several
+// server keys may share the one control that shows them, O-R3), each id once in the markup, validate() through the hook,
+// the server's refusal on the same fields, focus on the first wrong field, and no toast for a validation error. A
+// dialog without a <form> (O-R6) passes noValidate: false.
+function assertOperationForm(source: string, form: { ids: Record<string, string>; noValidate?: false }) {
+  if (form.noValidate !== false) assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate[ >\n]/, "noValidate directly after onSubmit")
+  assert.match(source, /import \{ useFieldErrors(?:, useValidationMessage)? \} from "@\/components\/ui\/use-field-errors"/)
+  const block = source.match(/const FIELD_IDS = \{\n([\s\S]*?)\n\} as const/)
+  assert.ok(block, "const FIELD_IDS = { … } as const")
+  assert.deepEqual(block[1].split("\n"), Object.entries(form.ids).map(([key, id]) => `  ${key}: "${id}",`), "FIELD_IDS: the fields in visual order with their ids")
+  for (const id of new Set(Object.values(form.ids))) {
+    assert.equal(source.match(new RegExp(`\\bid="${escape(id)}"`, "g"))?.length, 1, `id "${id}" once`)
+  }
+  assert.match(source, /fieldErrors\.setErrors\(validate\(/, "the client's errors come from validate()")
+  assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/, "the server's fieldErrors land on the same fields")
+  assert.match(source, /fieldErrors\.focusFirst\(FIELD_ORDER, /, "focus goes to the first wrong field")
+  assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/, "no validation toast (the catch keeps apiError.toast)")
+}
+
+const messagesOf = (locale: string) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as Record<string, Record<string, unknown>>
+
+test("checkout: errors under the field, the handover rules with the server's codes, and a refusal from the review back on its field (v-track O2)", () => {
+  const source = read(`${C}asset-operations/checkout-form.tsx`)
+  assertOperationForm(source, {
+    ids: {
+      assetId: "checkout-asset",
+      checkoutType: "checkout-type",
+      custodianId: "checkout-destination",
+      departmentId: "checkout-destination",
+      locationId: "checkout-destination",
+      parentAssetId: "checkout-destination",
+      handoverMode: "checkout-handover-mode",
+      conditionBefore: "checkout-condition",
+      checkoutDate: "checkout-date",
+      expectedReturnDate: "checkout-expected-return",
+    },
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("assetId", required(values.assetId))',
+    'check("checkoutType", required(values.checkoutType))',
+    "check(destinationKey(values.checkoutType), required(destinationValue(values)))",
+    'if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")',
+    'check("conditionBefore", required(values.conditionBefore))',
+    'check("checkoutDate", required(values.checkoutDate))',
+    '(required(values.expectedReturnDate) && "handoverTemporaryDueDateRequired") ??',
+    '(notBefore(values.expectedReturnDate, values.checkoutDate) && "handoverReturnBeforeCheckout"),',
+  ]) assert.ok(rules.includes(rule), rule)
+  // Every message under its control; the one destination select shows the key of the checkout type (O-R3).
+  for (const key of ["assetId", "checkoutType", "handoverMode", "conditionBefore", "checkoutDate", "expectedReturnDate"]) {
+    assert.ok(source.includes(`error={errorText("${key}")}`), key)
+  }
+  assert.ok(source.includes("error={errorText(destinationKey(values.checkoutType))}"))
+  // The handover codes, from the form or the server, read the checkout form's own sentences (spec §7.1, O-R2).
+  assert.ok(source.includes("return code && Object.hasOwn(HANDOVER_MESSAGE_KEYS, code) ? t(HANDOVER_MESSAGE_KEYS[code]) : fieldErrors.message(key)"))
+  for (const [code, key] of [
+    ["handoverModeRequired", "handoverModeRequired"],
+    ["handoverPermanentUserOnly", "permanentUserOnly"],
+    ["handoverPermanentCustodianRequired", "permanentCustodianRequired"],
+    ["handoverPermanentNoDueDate", "permanentDueDateNotAllowed"],
+    ["handoverTemporaryDueDateRequired", "temporaryDueDateRequired"],
+    ["handoverReturnBeforeCheckout", "returnBeforeCheckout"],
+  ]) {
+    assert.ok(source.includes(`  ${code}: "${key}",\n`), code)
+    for (const locale of ["th", "en"]) assert.equal(typeof messagesOf(locale).checkout[key], "string", `${locale}.checkout.${key}`)
+  }
+  // The two required selects have an id for focus and show their error (V4); the handover mode is one group (F-R8).
+  assert.match(source, /<SearchableSelect\n\s+id="checkout-asset"\n/)
+  assert.match(source, /<SearchableSelect\n\s+id="checkout-destination"\n/)
+  assert.match(source, /<FieldGroup legend=\{t\("handoverMode"\)\} id="checkout-handover-mode" required error=\{errorText\("handoverMode"\)\}>/)
+  // A refusal from the review: the review closes, and the field takes focus once the dialog has gone (O-R1).
+  assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)
+  assert.ok(source.includes("fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
+  // Clearing (spec §4.3): the dates are one rule; a new checkout type or handover mode clears what it resets.
+  assert.ok(source.includes('if (field === "checkoutDate" || field === "expectedReturnDate") fieldErrors.clear("checkoutDate", "expectedReturnDate")'))
+  assert.ok(source.includes('fieldErrors.clear("checkoutType", ...DESTINATION_KEYS, "handoverMode", "expectedReturnDate")'))
+  assert.ok(source.includes('fieldErrors.clear("handoverMode", "expectedReturnDate")'))
+  // A refusal that names no field of the form keeps today's message through the catch.
+  assert.match(source, /throw new Error\(getCheckoutErrorMessage\(payload\?\.code \?\? payload\?\.error\)\)/)
+  assert.doesNotMatch(source, /reviewIncomplete/)
+  for (const locale of ["th", "en"]) {
+    assert.equal(messagesOf(locale).checkout.reviewIncomplete, undefined, `${locale}.checkout.reviewIncomplete has no reader and is removed`)
+  }
+})

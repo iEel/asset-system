@@ -70,6 +70,7 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 // The files whose every form shows its errors under the fields (spec G1). Each form task adds its file here, in the
 // commit that moves the file's last form.
 const V_FORMS: readonly string[] = [
+  `${C}asset-operations/checkout-form.tsx`,
   `${C}master-data/brand-form.tsx`,
   `${C}master-data/company-form.tsx`,
   `${C}master-data/department-form.tsx`,
@@ -99,7 +100,6 @@ const V_FORMS: readonly string[] = [
 const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
   [`${C}asset-operations/bulk-move-form.tsx`]: 1,
   [`${C}asset-operations/checkin-form.tsx`]: 3,
-  [`${C}asset-operations/checkout-form.tsx`]: 2,
   [`${C}asset-operations/transfer-form.tsx`]: 1,
   [`${C}audit/audit-scan-check-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
