@@ -305,3 +305,51 @@ test("disposal bulk approval: the shared remark shows its error under the field,
   assert.match(source, /const refusal = await commit\(\)\n\s+if \(fieldErrors\.applyServer\(refusal\) && focusFirstError\(\)\) return/)
   assert.match(source, /setApprovalRemark\(event\.target\.value\)\n\s+fieldErrors\.clear\("approvalRemark"\)/)
 })
+
+test("disposal bulk execution: the shared values, the exception and the confirmation are errors on submit, a field refusal goes back to the review step, and nothing eligible says why (v-track D7)", () => {
+  const source = read(`${C}disposal/disposal-bulk-execution.tsx`)
+  assertMigratedForm(source, {
+    ids: {
+      executionDate: "disposal-bulk-execution-date",
+      executedById: "disposal-bulk-execution-executor",
+      nextStatusId: "disposal-bulk-execution-status",
+      sharedRecipientName: "disposal-bulk-execution-recipient",
+      evidenceExceptionReason: "disposal-bulk-execution-exception-reason",
+      evidenceExceptionAcknowledged: "disposal-bulk-execution-exception-acknowledged",
+      permanentConfirmed: "disposal-bulk-execution-permanent",
+    },
+    messages: ["executionDate", "executedById", "nextStatusId", "sharedRecipientName"],
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    "if (code && shown.includes(key)) errors[key] = code",
+    'check("executionDate", required(values.executionDate))',
+    'check("executedById", required(values.executedById))',
+    'check("nextStatusId", required(values.nextStatusId))',
+    'check("sharedRecipientName", maxLength(values.sharedRecipientName, 200))',
+    'check("evidenceExceptionReason", required(values.evidenceExceptionReason) ?? minLength(values.evidenceExceptionReason, 20) ?? maxLength(values.evidenceExceptionReason, 2000))',
+    'check("evidenceExceptionAcknowledged", required(values.evidenceExceptionAcknowledged))',
+    'check("permanentConfirmed", required(values.permanentConfirmed))',
+  ]) assert.ok(rules.includes(rule), rule)
+  // The old gates and silent returns go (spec §4.4): the review button is enabled and preview no longer checks for itself.
+  assert.doesNotMatch(source, /hasSharedValues|validateHistoricalException/)
+  assert.doesNotMatch(source, /if \(!values\.executionDate \|\| !values\.executedById \|\| !values\.nextStatusId\) return/)
+  // Each step checks its own fields (spec §4.2), and a refusal or an all-blocked preview comes back to the review step.
+  assert.match(source, /if \(dialogState === "review"\) \{\n\s+fieldErrors\.setErrors\(validate\(values, fieldsOf\("review"\)\)\)\n\s+if \(focusFirstError\("review"\)\) return\n\s+const refusal = await preview\(\)\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(refusal\) && focusFirstError\("review"\)\) return\n\s+\} else if \(dialogState === "preview"\) \{\n\s+if \(nothingEligible\) return\n\s+fieldErrors\.setErrors\(validate\(values, fieldsOf\("preview"\)\)\)/)
+  assert.match(source, /if \(!previousPayload && result\.eligibleCount === 0 && result\.fieldErrors\) \{\n\s+setDialogState\("review"\)\n\s+return result\n\s+\}/)
+  assert.match(source, /if \(!previousPayload && named && FIELD_ORDER\.some\(\(key\) => key in named\)\) return \{ fieldErrors: named \}/)
+  assert.ok(source.includes("throw new Error(typeof code === \"string\" ? copy.errors[code] ?? fallback : fallback, { cause: body })"))
+  assert.match(source, /preview: \(requestIds\?: string\[\], previousPayload\?: BulkExecutionPreviewPayload\) => Promise<unknown>/)
+  // The prerequisite keeps its gate, focusable and tied to the zero-eligible Notice.
+  assert.ok(source.includes('<Notice tone="warning" role="alert" id="disposal-bulk-execution-zero-eligible">{copy.zeroEligible}</Notice>'))
+  // The exception's two fields and the confirmation say the rule in the domain's words, tied to their checkbox.
+  assert.ok(source.includes("error={fieldErrors.errors.evidenceExceptionReason ? copy.errors.DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED : undefined}"))
+  assert.ok(source.includes('<FieldError id="disposal-bulk-execution-exception-acknowledged-error" className="mt-1.5">{copy.errors.DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED}</FieldError>'))
+  assert.ok(source.includes('<FieldError id="disposal-bulk-execution-permanent-error" className="mt-1.5">{copy.permanentConfirmationRequired}</FieldError>'))
+  assert.match(source, /permanentConfirmationRequired: string\n/)
+  const page = read("src/app/[locale]/(dashboard)/disposal/page.tsx")
+  assert.ok(page.includes('permanentConfirmationRequired: t("bulkExecutionPermanentConfirmationRequired"), '))
+  for (const locale of ["th", "en"] as const) {
+    assert.equal(typeof JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage.bulkExecutionPermanentConfirmationRequired, "string", locale)
+  }
+})

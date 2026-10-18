@@ -3053,7 +3053,8 @@
       "execution": "Execution"
     },
     "bulkDiscardSelectionAction": "Discard selection",
-    "batchNeedsAssets": "Select at least 2 assets before you review the batch."
+    "batchNeedsAssets": "Select at least 2 assets before you review the batch.",
+    "bulkExecutionPermanentConfirmationRequired": "Tick the confirmation box before you continue."
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

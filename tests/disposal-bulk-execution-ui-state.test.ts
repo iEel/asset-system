@@ -10,7 +10,6 @@ import {
   setBulkExecutionSelectionMode,
   toggleBulkExecutionItem,
   toggleBulkExecutionPage,
-  validateHistoricalException,
 } from "../src/lib/disposal-bulk-execution-ui.ts"
 
 const items = [
@@ -59,14 +58,6 @@ test("historical exception requires exact system_admin and zero evidence for eve
   assert.equal(isHistoricalExceptionAvailable(["system_admin"], ["missing"], items), false)
   assert.equal(isHistoricalExceptionAvailable(["system_admin"], ["s1"], [{ ...items[0], effectiveEvidenceCount: 1 }]), false)
   assert.equal(isHistoricalExceptionAvailable(["system_admin"], [], items), false)
-})
-
-test("historical exception validates reason and acknowledgement before preview", () => {
-  assert.equal(validateHistoricalException({ enabled: false, reason: "", acknowledged: false }), null)
-  assert.equal(validateHistoricalException({ enabled: true, reason: "too short", acknowledged: true }), "reason")
-  assert.equal(validateHistoricalException({ enabled: true, reason: "x".repeat(2001), acknowledged: true }), "reason")
-  assert.equal(validateHistoricalException({ enabled: true, reason: "x".repeat(20), acknowledged: false }), "acknowledgement")
-  assert.equal(validateHistoricalException({ enabled: true, reason: " x".repeat(20), acknowledged: true }), null)
 })
 
 test("commit payload preserves the exact successfully previewed shared values", () => {

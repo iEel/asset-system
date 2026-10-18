@@ -141,18 +141,6 @@ export function isHistoricalExceptionAvailable(
   return selectedIds.every((id) => itemsById.get(id)?.effectiveEvidenceCount === 0)
 }
 
-export function validateHistoricalException(input: {
-  enabled: boolean
-  reason: string
-  acknowledged: boolean
-}): "reason" | "acknowledgement" | null {
-  if (!input.enabled) return null
-  const reasonLength = input.reason.trim().length
-  if (reasonLength < 20 || reasonLength > 2000) return "reason"
-  if (!input.acknowledged) return "acknowledgement"
-  return null
-}
-
 export function buildBulkExecutionPayload(
   mode: "preview",
   requestIds: string[],

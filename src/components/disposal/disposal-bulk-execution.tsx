@@ -32,7 +32,6 @@ import {
   setBulkExecutionSelectionMode,
   toggleBulkExecutionItem,
   toggleBulkExecutionPage,
-  validateHistoricalException,
   type BulkExecutionPreviewPayload,
   type BulkExecutionSelectionMessage,
   type BulkExecutionSelectionState,
@@ -46,7 +45,7 @@ import {
 } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
-import { Field, FieldHint } from "@/components/ui/field"
+import { Field, FieldError, FieldHint } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { KeyValueList } from "@/components/ui/key-value-list"
@@ -55,13 +54,72 @@ import { Notice } from "@/components/ui/notice"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { Textarea } from "@/components/ui/textarea"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { formatCount } from "@/lib/display-format"
+import { readFieldErrors } from "@/lib/field-error-client"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
+import { maxLength, minLength, required } from "@/lib/validation-rules"
 
 const BULK_EXECUTION_MODES = {
   preview: { mode: "preview" as const },
   commit: { mode: "commit" as const },
+}
+
+// The dialog's fields in visual order, keyed like the request body, with the id focus moves to (v-track M-R1). The first
+// six are the review step's shared values, the last is the preview step's confirmation (client only).
+const FIELD_IDS = {
+  executionDate: "disposal-bulk-execution-date",
+  executedById: "disposal-bulk-execution-executor",
+  nextStatusId: "disposal-bulk-execution-status",
+  sharedRecipientName: "disposal-bulk-execution-recipient",
+  evidenceExceptionReason: "disposal-bulk-execution-exception-reason",
+  evidenceExceptionAcknowledged: "disposal-bulk-execution-exception-acknowledged",
+  permanentConfirmed: "disposal-bulk-execution-permanent",
+} as const
+type BulkExecutionField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as BulkExecutionField[]
+type BulkExecutionFieldErrors = ReturnType<typeof useFieldErrors<BulkExecutionField>>
+
+type BulkExecutionValues = {
+  executionDate: string
+  executedById: string
+  nextStatusId: string
+  sharedRecipientName: string
+  evidenceExceptionReason: string
+  evidenceExceptionAcknowledged: boolean
+  permanentConfirmed: boolean
+}
+
+// The fields a step shows (spec §4.2: an error goes to the step that owns its field): the review step's shared values,
+// with the recipient for the types that take one and the exception's two fields while it is chosen; the preview step's
+// confirmation while something is eligible. A hidden field is neither checked nor focused (v-track D-R4).
+function shownFields(step: "review" | "preview", options: { recipient: boolean; historical: boolean; confirm: boolean }): BulkExecutionField[] {
+  return FIELD_ORDER.filter((key) => {
+    if (key === "permanentConfirmed") return step === "preview" && options.confirm
+    if (step !== "review") return false
+    if (key === "sharedRecipientName") return options.recipient
+    if (key === "evidenceExceptionReason" || key === "evidenceExceptionAcknowledged") return options.historical
+    return true
+  })
+}
+
+// noValidate turns the browser's check off, so this restates the controls' required, minLength and maxLength; the shared
+// values, the exception's reason and acknowledgement and the confirmation were a disabled button or a silent return
+// (v-track M-R2, D-R9).
+function validate(values: BulkExecutionValues, shown: readonly BulkExecutionField[]): Partial<Record<BulkExecutionField, string>> {
+  const errors: Partial<Record<BulkExecutionField, string>> = {}
+  const check = (key: BulkExecutionField, code: string | null) => {
+    if (code && shown.includes(key)) errors[key] = code
+  }
+  check("executionDate", required(values.executionDate))
+  check("executedById", required(values.executedById))
+  check("nextStatusId", required(values.nextStatusId))
+  check("sharedRecipientName", maxLength(values.sharedRecipientName, 200))
+  check("evidenceExceptionReason", required(values.evidenceExceptionReason) ?? minLength(values.evidenceExceptionReason, 20) ?? maxLength(values.evidenceExceptionReason, 2000))
+  check("evidenceExceptionAcknowledged", required(values.evidenceExceptionAcknowledged))
+  check("permanentConfirmed", required(values.permanentConfirmed))
+  return errors
 }
 
 export type DisposalBulkExecutionSelectableItem = {
@@ -108,6 +166,7 @@ export type DisposalBulkExecutionCopy = {
   historicalAcknowledgement: string
   historicalWarning: string
   permanentConfirmation: string
+  permanentConfirmationRequired: string
   confirm: string
   committing: string
   resultTitle: string
@@ -177,7 +236,9 @@ type ContextValue = {
   setEvidenceExceptionAcknowledged: (value: boolean) => void
   setPermanentConfirmed: (value: boolean) => void
   openReview: () => void
-  preview: (requestIds?: string[], previousPayload?: BulkExecutionPreviewPayload) => Promise<void>
+  // Resolves to a body that names fields of the review step (a refusal, or a preview whose every row such a field blocks);
+  // the dialog shows them under their fields there. Otherwise resolves to nothing.
+  preview: (requestIds?: string[], previousPayload?: BulkExecutionPreviewPayload) => Promise<unknown>
   commit: () => Promise<void>
   retry: () => void
   closeDialog: () => void
@@ -363,7 +424,8 @@ export function DisposalBulkExecutionProvider({
     if (!result.ok || !body || !("items" in body)) {
       const code = body && ("code" in body ? body.code : "error" in body ? body.error : null)
       const fallback = payload.mode === "preview" ? copy.requestFailed : copy.commitFailed
-      throw new Error(typeof code === "string" ? copy.errors[code] ?? fallback : fallback)
+      // The body rides along as the cause, so a refusal that names a field can go back to it (v-track D-R9).
+      throw new Error(typeof code === "string" ? copy.errors[code] ?? fallback : fallback, { cause: body })
     }
     return body
   }
@@ -407,20 +469,7 @@ export function DisposalBulkExecutionProvider({
         }
       : getCurrentValues()
 
-    if (!values.executionDate || !values.executedById || !values.nextStatusId) return
-    const historicalError = validateHistoricalException({
-      enabled: values.useHistoricalEvidenceException,
-      reason: values.evidenceExceptionReason ?? "",
-      acknowledged: values.evidenceExceptionAcknowledged,
-    })
-    if (historicalError) {
-      const code = historicalError === "reason"
-        ? "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED"
-        : "DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED"
-      setError(copy.errors[code] ?? copy.requestFailed)
-      return
-    }
-
+    // The dialog's validate() checked the shared values before this preview; a retry sends values that passed it.
     abortPreview()
     const controller = new AbortController()
     const selectionGeneration = selectionGenerationRef.current
@@ -434,6 +483,11 @@ export function DisposalBulkExecutionProvider({
     try {
       const result = await send(payload, controller)
       if (!currentRequest("preview", controller, selectionGeneration, requestGeneration)) return
+      // Every row blocked by a field of the review step (v-track D1): back to that step, where the field shows it.
+      if (!previousPayload && result.eligibleCount === 0 && result.fieldErrors) {
+        setDialogState("review")
+        return result
+      }
       setResponse(result)
       setPreviewPayload(payload)
       setSelection((current) => ({ ...current, selectedIds: [...requestIds] }))
@@ -441,8 +495,12 @@ export function DisposalBulkExecutionProvider({
       setDialogState("preview")
     } catch (caught) {
       if (!currentRequest("preview", controller, selectionGeneration, requestGeneration)) return
-      setError(caught instanceof Error ? caught.message : copy.requestFailed)
       setDialogState("review")
+      // A refusal that names a field of the review step goes back to the dialog, which shows it there (spec §4.1); any
+      // other keeps the dialog's danger Notice.
+      const named = caught instanceof Error ? readFieldErrors(caught.cause) : null
+      if (!previousPayload && named && FIELD_ORDER.some((key) => key in named)) return { fieldErrors: named }
+      setError(caught instanceof Error ? caught.message : copy.requestFailed)
     } finally {
       if (previewControllerRef.current === controller) previewControllerRef.current = null
     }
@@ -800,7 +858,6 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
   const eligible = response?.items.filter((item) => item.outcome === "eligible") ?? []
   const blocked = response?.items.filter((item) => item.outcome === "blocked") ?? []
   const failed = response?.items.filter((item) => item.outcome === "failed") ?? []
-  const hasSharedValues = Boolean(executionDate && executedById && nextStatusId)
   const recipientFallbackApplicable = selectedType != null
     && ["sell", "donate", "dispose"].includes(selectedType)
   const title = dialogState === "result" ? copy.resultTitle : copy.previewTitle
@@ -809,11 +866,39 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
     : committing
       ? copy.committing
       : copy.preflightHelp
+  const fieldErrors = useFieldErrors<BulkExecutionField>()
+  // A prerequisite, not a field (spec §4.4): nothing to execute. The zero-eligible Notice says why.
+  const nothingEligible = eligible.length === 0
+  const fieldsOf = (step: "review" | "preview") => shownFields(step, {
+    recipient: recipientFallbackApplicable,
+    historical: historicalAvailable && useHistoricalEvidenceException,
+    confirm: !nothingEligible,
+  })
+  const focusFirstError = (step: "review" | "preview") => fieldErrors.focusFirst(fieldsOf(step), { idFor: (key) => FIELD_IDS[key] })
+  const values: BulkExecutionValues = {
+    executionDate,
+    executedById,
+    nextStatusId,
+    sharedRecipientName,
+    evidenceExceptionReason,
+    evidenceExceptionAcknowledged,
+    permanentConfirmed,
+  }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (dialogState === "review") void preview()
-    if (dialogState === "preview") void commit()
+    if (dialogState === "review") {
+      fieldErrors.setErrors(validate(values, fieldsOf("review")))
+      if (focusFirstError("review")) return
+      const refusal = await preview()
+      // A refusal, or a preview whose every row a shared value blocks, comes back to this step's fields (spec §4.2).
+      if (fieldErrors.applyServer(refusal) && focusFirstError("review")) return
+    } else if (dialogState === "preview") {
+      if (nothingEligible) return
+      fieldErrors.setErrors(validate(values, fieldsOf("preview")))
+      if (focusFirstError("preview")) return
+      void commit()
+    }
   }
 
   return (
@@ -831,7 +916,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
       <form
         aria-busy={busy}
         data-disposal-bulk-dialog
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit} noValidate
         className={accessibleDialogFormClasses}
       >
         <AccessibleDialogBody className="space-y-5">
@@ -852,6 +937,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
               sharedRecipientName={sharedRecipientName}
               recipientFallbackApplicable={recipientFallbackApplicable}
               disabled={previewing}
+              fieldErrors={fieldErrors}
               onExecutionDateChange={setExecutionDate}
               onExecutedByChange={setExecutedById}
               onNextStatusChange={setNextStatusId}
@@ -875,7 +961,10 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                 <input
                   type="checkbox"
                   checked={useHistoricalEvidenceException}
-                  onChange={(event) => setUseHistoricalEvidenceException(event.target.checked)}
+                  onChange={(event) => {
+                    setUseHistoricalEvidenceException(event.target.checked)
+                    fieldErrors.clear("evidenceExceptionReason", "evidenceExceptionAcknowledged")
+                  }}
                   aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
                   className={checkboxVariants({ size: "lg" })}
                 />
@@ -883,10 +972,19 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
               </label>
               {useHistoricalEvidenceException ? (
                 <>
-                  <Field label={copy.historicalReason} required>
+                  {/* The reason and the acknowledgement are errors on preview (spec §4.4), in the domain's words. */}
+                  <Field
+                    label={copy.historicalReason}
+                    id="disposal-bulk-execution-exception-reason"
+                    required
+                    error={fieldErrors.errors.evidenceExceptionReason ? copy.errors.DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED : undefined}
+                  >
                     <Textarea
                       value={evidenceExceptionReason}
-                      onChange={(event) => setEvidenceExceptionReason(event.target.value)}
+                      onChange={(event) => {
+                        setEvidenceExceptionReason(event.target.value)
+                        fieldErrors.clear("evidenceExceptionReason")
+                      }}
                       minLength={20}
                       maxLength={2000}
                       required
@@ -900,17 +998,27 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                       max: 2000,
                     })}
                   </FieldHint>
-                  <label className="flex min-h-11 items-center gap-3 text-sm text-foreground">
-                    <input
-                      type="checkbox"
-                      checked={evidenceExceptionAcknowledged}
-                      onChange={(event) => setEvidenceExceptionAcknowledged(event.target.checked)}
-                      required
-                      aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
-                      className={checkboxVariants({ size: "lg" })}
-                    />
-                    {copy.historicalAcknowledgement}
-                  </label>
+                  <div>
+                    <label className="flex min-h-11 items-center gap-3 text-sm text-foreground">
+                      <input
+                        id="disposal-bulk-execution-exception-acknowledged"
+                        type="checkbox"
+                        checked={evidenceExceptionAcknowledged}
+                        onChange={(event) => {
+                          setEvidenceExceptionAcknowledged(event.target.checked)
+                          fieldErrors.clear("evidenceExceptionAcknowledged")
+                        }}
+                        required
+                        aria-invalid={fieldErrors.errors.evidenceExceptionAcknowledged ? true : undefined}
+                        aria-describedby={fieldErrors.errors.evidenceExceptionAcknowledged ? `disposal-bulk-execution-exception-acknowledged-error ${historicalWarningId}` : `${historicalWarningId} ${historicalHelpId}`}
+                        className={checkboxVariants({ size: "lg" })}
+                      />
+                      {copy.historicalAcknowledgement}
+                    </label>
+                    {fieldErrors.errors.evidenceExceptionAcknowledged ? (
+                      <FieldError id="disposal-bulk-execution-exception-acknowledged-error" className="mt-1.5">{copy.errors.DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED}</FieldError>
+                    ) : null}
+                  </div>
                 </>
               ) : (
                 <FieldHint id={historicalHelpId}>
@@ -931,19 +1039,30 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
           ) : null}
 
           {dialogState === "preview" && eligible.length === 0 ? (
-            <Notice tone="warning" role="alert">{copy.zeroEligible}</Notice>
+            <Notice tone="warning" role="alert" id="disposal-bulk-execution-zero-eligible">{copy.zeroEligible}</Notice>
           ) : null}
 
           {dialogState === "preview" && eligible.length > 0 ? (
-            <label className="flex min-h-11 items-start gap-3 border-t border-border pt-4 text-sm font-medium text-foreground">
-              <input
-                type="checkbox"
-                checked={permanentConfirmed}
-                onChange={(event) => setPermanentConfirmed(event.target.checked)}
-                className={cn(checkboxVariants({ size: "lg" }), "mt-0.5")}
-              />
-              {copy.permanentConfirmation}
-            </label>
+            <div className="border-t border-border pt-4">
+              <label className="flex min-h-11 items-start gap-3 text-sm font-medium text-foreground">
+                <input
+                  id="disposal-bulk-execution-permanent"
+                  type="checkbox"
+                  checked={permanentConfirmed}
+                  onChange={(event) => {
+                    setPermanentConfirmed(event.target.checked)
+                    fieldErrors.clear("permanentConfirmed")
+                  }}
+                  aria-invalid={fieldErrors.errors.permanentConfirmed ? true : undefined}
+                  aria-describedby={fieldErrors.errors.permanentConfirmed ? "disposal-bulk-execution-permanent-error" : undefined}
+                  className={cn(checkboxVariants({ size: "lg" }), "mt-0.5")}
+                />
+                {copy.permanentConfirmation}
+              </label>
+              {fieldErrors.errors.permanentConfirmed ? (
+                <FieldError id="disposal-bulk-execution-permanent-error" className="mt-1.5">{copy.permanentConfirmationRequired}</FieldError>
+              ) : null}
+            </div>
           ) : null}
         </AccessibleDialogBody>
 
@@ -952,12 +1071,17 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
             {previewing ? copy.cancelPreview : dialogState === "result" ? copy.close : copy.cancel}
           </AccessibleDialogCancel>
           {dialogState === "review" || previewing ? (
-            <Button type="submit" busy={previewing} disabled={!hasSharedValues}>
+            <Button type="submit" busy={previewing}>
               {format(copy.confirm, { count: reviewedItems.length })}
             </Button>
           ) : null}
           {dialogState === "preview" || committing ? (
-            <Button type="submit" busy={committing} disabled={eligible.length === 0 || !permanentConfirmed}>
+            <Button
+              type="submit"
+              busy={committing}
+              aria-disabled={nothingEligible || undefined}
+              aria-describedby={nothingEligible ? "disposal-bulk-execution-zero-eligible" : undefined}
+            >
               {format(copy.confirm, { count: eligible.length })}
             </Button>
           ) : null}
@@ -989,6 +1113,7 @@ function SharedValueFields({
   sharedRecipientName,
   recipientFallbackApplicable,
   disabled,
+  fieldErrors,
   onExecutionDateChange,
   onExecutedByChange,
   onNextStatusChange,
@@ -1003,6 +1128,7 @@ function SharedValueFields({
   sharedRecipientName: string
   recipientFallbackApplicable: boolean
   disabled: boolean
+  fieldErrors: BulkExecutionFieldErrors
   onExecutionDateChange: (value: string) => void
   onExecutedByChange: (value: string) => void
   onNextStatusChange: (value: string) => void
@@ -1010,18 +1136,24 @@ function SharedValueFields({
 }) {
   return (
     <fieldset disabled={disabled} className="grid gap-4 sm:grid-cols-3">
-      <Field label={copy.executionDate} required>
+      <Field label={copy.executionDate} id="disposal-bulk-execution-date" required error={fieldErrors.message("executionDate")}>
         <Input
           type="date"
           value={executionDate}
-          onChange={(event) => onExecutionDateChange(event.target.value)}
+          onChange={(event) => {
+            onExecutionDateChange(event.target.value)
+            fieldErrors.clear("executionDate")
+          }}
           required
         />
       </Field>
-      <Field label={copy.executor} required>
+      <Field label={copy.executor} id="disposal-bulk-execution-executor" required error={fieldErrors.message("executedById")}>
         <NativeSelect
           value={executedById}
-          onChange={(event) => onExecutedByChange(event.target.value)}
+          onChange={(event) => {
+            onExecutedByChange(event.target.value)
+            fieldErrors.clear("executedById")
+          }}
           required
         >
           <option value="">{copy.selectEmployee}</option>
@@ -1030,10 +1162,13 @@ function SharedValueFields({
           ))}
         </NativeSelect>
       </Field>
-      <Field label={copy.finalStatus} required>
+      <Field label={copy.finalStatus} id="disposal-bulk-execution-status" required error={fieldErrors.message("nextStatusId")}>
         <NativeSelect
           value={nextStatusId}
-          onChange={(event) => onNextStatusChange(event.target.value)}
+          onChange={(event) => {
+            onNextStatusChange(event.target.value)
+            fieldErrors.clear("nextStatusId")
+          }}
           required
         >
           <option value="">{copy.selectStatus}</option>
@@ -1043,10 +1178,19 @@ function SharedValueFields({
         </NativeSelect>
       </Field>
       {recipientFallbackApplicable ? (
-        <Field label={copy.sharedRecipient} hint={copy.sharedRecipientHelp} className="sm:col-span-3">
+        <Field
+          label={copy.sharedRecipient}
+          id="disposal-bulk-execution-recipient"
+          hint={copy.sharedRecipientHelp}
+          className="sm:col-span-3"
+          error={fieldErrors.message("sharedRecipientName")}
+        >
           <Input
             value={sharedRecipientName}
-            onChange={(event) => onSharedRecipientNameChange(event.target.value)}
+            onChange={(event) => {
+              onSharedRecipientNameChange(event.target.value)
+              fieldErrors.clear("sharedRecipientName")
+            }}
             maxLength={200}
           />
         </Field>
