@@ -496,7 +496,6 @@
     "cameraRear": "Back camera (recommended)",
     "duplicateAssetTag": "This asset tag is already in use",
     "duplicateSerialNumber": "This serial number is already in use",
-    "duplicateWarning": "Duplicate data found. Please review before saving.",
     "batchCommonData": "Shared asset data",
     "batchRows": "Batch rows",
     "batchCurrentCount": "{count} rows currently",
@@ -1185,7 +1184,8 @@
     "checklistPhotoDescription": "The photo uploads as soon as you choose it.",
     "noCustodian": "No custodian",
     "createModeLabel": "How to add assets",
-    "duplicateCheckPending": "Checking the asset tag and serial for duplicates. Save once the check finishes."
+    "duplicateCheckPending": "Checking the asset tag and serial for duplicates. Save once the check finishes.",
+    "batchRowDuplicate": "This value repeats another row of this batch."
   },
   "company": {
     "title": "Companies",

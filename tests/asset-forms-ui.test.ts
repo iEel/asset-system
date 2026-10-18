@@ -65,19 +65,21 @@ test("asset form: every button is a Button, the repeater's remove button fits an
 
 test("asset batch form: row fields are named by Field and their help, not by aria-label help text (K20)", () => {
   const source = read("src/components/assets/asset-batch-form.tsx")
-  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} hint=\{t\("batchAssetTagHelp"\)\}>/)
-  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} hideLabel hint=\{t\("batchAssetTagHelp"\)\}>/)
-  assert.match(source, /<Field label=\{t\("batchSerialNumber"\)\} hideLabel hint=\{t\("batchPasteSerialHint"\)\}>\n\s*<ScannerTextInput /)
+  // Each row field has its id (card or table row) and its live error (v-track plan 2 A2).
+  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} id=\{rowFieldId\(index, "assetTag", "card"\)\} hint=\{t\("batchAssetTagHelp"\)\} liveError error=\{rowError\(index, "assetTag"\)\}>/)
+  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} id=\{rowFieldId\(index, "assetTag", "row"\)\} hideLabel hint=\{t\("batchAssetTagHelp"\)\} liveError error=\{rowError\(index, "assetTag"\)\}>/)
+  assert.match(source, /<Field label=\{t\("batchSerialNumber"\)\} id=\{rowFieldId\(index, "serialNumber", "row"\)\} hideLabel hint=\{t\("batchPasteSerialHint"\)\} liveError error=\{rowError\(index, "serialNumber"\)\}>\n\s*<ScannerTextInput /)
   assert.match(source, /<Field label=\{t\("batchRemark"\)\} hideLabel>/)
   assert.doesNotMatch(source, /aria-label=\{t\("batchAssetTagHelp"\)\}/)
-  assert.match(source, /<Field label=\{t\("purchasePriceBaht"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
+  assert.match(source, /<Field label=\{t\("purchasePriceBaht"\)\} id="asset-batch-purchase-price" error=\{errorText\("common\.purchasePrice"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
   assert.match(source, /<fieldset className="min-w-0" aria-describedby=\{optionalColumnsHelpId\}>\n\s*<legend className=\{fieldLabelClasses\}>\{t\("batchOptionalColumns"\)\}<\/legend>/)
 })
 
 test("asset batch form: the duplicate check and the save button are busy without a label swap (K13)", () => {
   const source = read("src/components/assets/asset-batch-form.tsx")
   assert.match(source, /busy=\{checkingDuplicates\} disabled=\{hasClientDuplicates\}>\n\s*\{t\("batchCheckDuplicates"\)\}/)
-  assert.match(source, /<Button type="submit" className="w-full sm:w-auto" busy=\{saving\} disabled=\{hasClientDuplicates\}>/)
+  // A duplicate is an error under its row now, so it does not gate the save (v-track plan 2 A2).
+  assert.match(source, /<Button type="submit" className="w-full sm:w-auto" busy=\{saving\}>/)
   assert.doesNotMatch(source, /batchCheckDuplicatesRunning|<button\b|inputClassName/)
 })
 

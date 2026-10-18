@@ -26,9 +26,19 @@ import { cn } from "@/lib/utils"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
-import { buildAssetBatchPreviewRows, buildAssetBatchReceiptCsv, createAssetBatchRows, findDuplicateBatchValues, parseBatchSerialPaste, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
+import {
+  buildAssetBatchDuplicateFieldErrors,
+  buildAssetBatchPreviewRows,
+  buildAssetBatchReceiptCsv,
+  createAssetBatchRows,
+  findDuplicateBatchValues,
+  parseBatchSerialPaste,
+  type AssetBatchEditableRow,
+} from "@/lib/asset-batch-create"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
+import { atLeastOne, maxLength, notBefore, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { ApiErrorText } from "@/components/ui/api-error-text"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
@@ -121,6 +131,81 @@ const emptyCommon: BatchCommonValues = {
   isActive: true,
 }
 
+// The shared fields in visual order, with the id focus moves to (v-track M-R1). The server keys them common.<field>
+// (S-R12); the rows' tag and serial are rows.<index>.<field>, after the shared fields (fieldOrder).
+const COMMON_FIELD_IDS = {
+  name: "asset-batch-name",
+  categoryId: "asset-batch-category",
+  ownershipType: "asset-batch-ownership-type",
+  companyId: "asset-batch-company",
+  branchId: "asset-batch-branch",
+  departmentId: "asset-batch-department",
+  custodianId: "asset-batch-custodian",
+  currentLocationId: "asset-batch-current-location",
+  statusId: "asset-batch-status",
+  conditionId: "asset-batch-condition",
+  purchaseDate: "asset-batch-purchase-date",
+  purchasePrice: "asset-batch-purchase-price",
+  warrantyStartDate: "asset-batch-warranty-start",
+  warrantyEndDate: "asset-batch-warranty-end",
+  poNumber: "asset-batch-po-number",
+  invoiceNumber: "asset-batch-invoice-number",
+} as const
+type CommonField = keyof typeof COMMON_FIELD_IDS
+type RowField = "assetTag" | "serialNumber"
+type BatchField = `common.${CommonField}` | `rows.${number}.${RowField}`
+
+function commonKey(field: CommonField): BatchField {
+  return `common.${field}`
+}
+
+function rowKey(index: number, field: RowField): BatchField {
+  return `rows.${index}.${field}`
+}
+
+// A row's control in the table (from md) or in its card (below md): both are rendered, one is hidden.
+function rowFieldId(index: number, field: RowField, view: "row" | "card") {
+  return `asset-batch-${view}-${index}-${field === "assetTag" ? "tag" : "serial"}`
+}
+
+// Visual order: the shared fields, then each row's tag and serial.
+function fieldOrder(rows: BatchRow[]): BatchField[] {
+  return [
+    ...(Object.keys(COMMON_FIELD_IDS) as CommonField[]).map(commonKey),
+    ...rows.flatMap((_, index) => [rowKey(index, "assetTag"), rowKey(index, "serialNumber")]),
+  ]
+}
+
+// noValidate turns the browser's check off, so this restates the controls' required, maxLength and min, and the rules
+// the toasts used to say: the license's assignee or department, and the rows' duplicate tags and serials. The warranty
+// pair always holds in a batch (v-track M-R2, spec §7.4).
+function validate(common: BatchCommonValues, rows: BatchRow[]): Partial<Record<BatchField, string>> {
+  const errors: Partial<Record<BatchField, string>> = {}
+  const check = (key: BatchField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
+  const isLicense = ownershipType === "software_license"
+  check("common.name", required(common.name) ?? maxLength(common.name, 200))
+  check("common.categoryId", required(common.categoryId))
+  check("common.ownershipType", required(common.ownershipType))
+  check("common.companyId", required(common.companyId))
+  check("common.branchId", required(common.branchId))
+  check("common.departmentId", ownershipType !== "personal" && !isLicense ? required(common.departmentId) : null)
+  check("common.custodianId", isLicense && atLeastOne([common.departmentId, common.custodianId]) ? "licenseResponsibilityRequired" : null)
+  check("common.currentLocationId", required(common.currentLocationId))
+  check("common.statusId", required(common.statusId))
+  check("common.conditionId", required(common.conditionId))
+  check("common.purchasePrice", range(common.purchasePrice, 0))
+  check("common.warrantyEndDate", notBefore(common.warrantyEndDate, common.warrantyStartDate))
+  check("common.poNumber", maxLength(common.poNumber, 50))
+  check("common.invoiceNumber", maxLength(common.invoiceNumber, 50))
+  rows.forEach((row, index) => check(rowKey(index, "serialNumber"), maxLength(row.serialNumber, 100)))
+  // A tag or a serial two rows share is an error on every row that holds it, keyed as the server keys it (S-R12).
+  Object.assign(errors, buildAssetBatchDuplicateFieldErrors(rows, findDuplicateBatchValues(rows)))
+  return errors
+}
+
 export function AssetBatchForm({
   companies,
   branches,
@@ -154,6 +239,7 @@ export function AssetBatchForm({
   const [allowCrossBranchLocation, setAllowCrossBranchLocation] = useState(false)
   const [saving, setSaving] = useState(false)
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
+  const fieldErrors = useFieldErrors<BatchField>()
   const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
   const isSoftwareLicense = ownershipType === "software_license"
   const filteredBranches = branches.filter((branch) => branch.companyId === common.companyId)
@@ -225,6 +311,25 @@ export function AssetBatchForm({
   const showRowHomeLocation = visibleRowColumns.homeLocation || rowOverrideCounts.homeLocation > 0
   const showRowRemark = visibleRowColumns.remark || rowOverrideCounts.remark > 0
   const hasClientDuplicates = duplicateValues.serialNumbers.length > 0 || duplicateValues.assetTags.length > 0
+  // The duplicate warning shows while typing, under each row that holds the value (spec U8); a save says nothing twice.
+  const liveDuplicates = useMemo(() => buildAssetBatchDuplicateFieldErrors(rows, duplicateValues), [rows, duplicateValues])
+  // A server refusal leaves the review and goes back to the field (spec §4.2); the row on screen takes the focus.
+  const focusFirstError = () =>
+    fieldErrors.focusFirst(fieldOrder(rows), {
+      idFor: (key) => {
+        const row = key.match(/^rows\.(\d+)\.(assetTag|serialNumber)$/)
+        if (!row) return COMMON_FIELD_IDS[key.slice("common.".length) as CommonField]
+        const tableId = rowFieldId(Number(row[1]), row[2] as RowField, "row")
+        return document.getElementById(tableId)?.getClientRects().length ? tableId : rowFieldId(Number(row[1]), row[2] as RowField, "card")
+      },
+      reveal: () => setReviewing(false),
+    })
+  const errorText = (key: BatchField) => {
+    const code = fieldErrors.errors[key]
+    return code === "licenseResponsibilityRequired" ? t(code) : fieldErrors.message(key)
+  }
+  const rowError = (index: number, field: RowField) =>
+    liveDuplicates[rowKey(index, field)] ? t("batchRowDuplicate") : fieldErrors.message(rowKey(index, field))
   const scannerLabels = {
     start: t("scanSerialNumber"),
     stop: t("stopSerialScan"),
@@ -245,6 +350,10 @@ export function AssetBatchForm({
     setReviewing(false)
     clearDuplicateCheck()
     setCommon((current) => ({ ...current, [field]: value }))
+    if (field in COMMON_FIELD_IDS) fieldErrors.clear(commonKey(field as CommonField))
+    // A pair or a group clears together (spec §4.3): the warranty dates; the license's assignee or department.
+    if (field === "warrantyStartDate") fieldErrors.clear("common.warrantyEndDate")
+    if (field === "departmentId" || field === "ownershipType") fieldErrors.clear("common.departmentId", "common.custodianId")
   }
 
   function setRowField<K extends keyof BatchRow>(clientId: string, field: K, value: BatchRow[K]) {
@@ -252,6 +361,13 @@ export function AssetBatchForm({
     setReviewing(false)
     clearDuplicateCheck()
     setRows((current) => current.map((row) => (row.clientId === clientId ? { ...row, [field]: value } : row)))
+    const index = rows.findIndex((row) => row.clientId === clientId)
+    if (field === "assetTag" || field === "serialNumber") fieldErrors.clear(rowKey(index, field as RowField))
+  }
+
+  // Adding, removing or pasting rows moves the rows below, so every row error goes (spec §4.3, v-track M-R7).
+  function clearRowErrors() {
+    fieldErrors.clear(...(Object.keys(fieldErrors.errors).filter((key) => key.startsWith("rows.")) as BatchField[]))
   }
 
   function clearDuplicateCheck() {
@@ -277,6 +393,7 @@ export function AssetBatchForm({
   }
 
   function handleCategoryChange(categoryId: string) {
+    fieldErrors.clear("common.categoryId")
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -325,6 +442,7 @@ export function AssetBatchForm({
   }
 
   function handleCompanyChange(companyId: string) {
+    fieldErrors.clear("common.companyId", "common.branchId", "common.departmentId", "common.custodianId", "common.currentLocationId")
     setReviewing(false)
     clearDuplicateCheck()
     setCommon((current) => ({
@@ -340,6 +458,7 @@ export function AssetBatchForm({
   }
 
   function handleBranchChange(branchId: string) {
+    fieldErrors.clear("common.branchId", "common.custodianId", "common.currentLocationId")
     setReviewing(false)
     clearDuplicateCheck()
     setCommon((current) => ({
@@ -480,6 +599,7 @@ export function AssetBatchForm({
       if (current.length <= 2) return current
       return current.filter((row) => row.clientId !== clientId)
     })
+    clearRowErrors()
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -517,9 +637,9 @@ export function AssetBatchForm({
       }
 
       const message = isDuplicateCheckResult(result) && result.message ? result.message : t("batchCheckDuplicatesFound")
+      // The result shows in the Notice under the buttons, which reads it out (role status); no toast says it again.
       setDuplicateCheckMessage(message)
       setDuplicateCheckStatus("duplicate")
-      toast.error(message)
     } catch (error) {
       const message = error instanceof Error ? error.message : tCommon("error")
       setDuplicateCheckMessage(message)
@@ -551,6 +671,7 @@ export function AssetBatchForm({
 
       return next
     })
+    clearRowErrors()
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
@@ -575,14 +696,8 @@ export function AssetBatchForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (hasClientDuplicates) {
-      toast.error(t("duplicateWarning"))
-      return
-    }
-    if (isSoftwareLicense && !common.departmentId && !common.custodianId) {
-      toast.error(t("licenseResponsibilityRequired"))
-      return
-    }
+    fieldErrors.setErrors(validate(common, rows))
+    if (focusFirstError()) return
     if (!reviewing) {
       setReviewing(true)
       return
@@ -600,7 +715,11 @@ export function AssetBatchForm({
         }),
       })
       const result = (await response.json().catch(() => null)) as CreatedBatch | { error?: string } | null
-      if (!response.ok) throw new Error(getErrorMessage(result) ?? tCommon("error"))
+      if (!response.ok) {
+        // A refusal that names a field leaves the review and shows under it (spec §4.2); any other keeps the toast.
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
+        throw new Error(getErrorMessage(result) ?? tCommon("error"))
+      }
       if (!isCreatedBatch(result)) throw new Error(tCommon("error"))
       setCreatedBatch(result)
       setReviewing(false)
@@ -616,10 +735,10 @@ export function AssetBatchForm({
     <div className="mx-auto max-w-6xl">
       <PageHeader title={t("batchCreateTitle")} meta={t("batchCreateSubtitle")} className="mb-6" />
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <Section title={t("batchCommonData")}>
           <div className="grid min-w-0 gap-2">
-            <Field label={t("assetName")} required hint={t("assetNameHelp")}>
+            <Field label={t("assetName")} id="asset-batch-name" required hint={t("assetNameHelp")} error={errorText("common.name")}>
               <Input
                 value={common.name}
                 onChange={(event) => {
@@ -650,7 +769,14 @@ export function AssetBatchForm({
               </div>
             )}
           </div>
-          <SelectField label={t("category")} value={common.categoryId} required onChange={handleCategoryChange}>
+          <SelectField
+            label={t("category")}
+            id="asset-batch-category"
+            value={common.categoryId}
+            required
+            error={errorText("common.categoryId")}
+            onChange={handleCategoryChange}
+          >
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
           </SelectField>
@@ -662,29 +788,61 @@ export function AssetBatchForm({
             <option value="">{t("selectModel")}</option>
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
-          <SelectField label={t("ownershipType")} value={ownershipType} required onChange={(value) => setCommonField("ownershipType", value)}>
+          <SelectField
+            label={t("ownershipType")}
+            id="asset-batch-ownership-type"
+            value={ownershipType}
+            required
+            error={errorText("common.ownershipType")}
+            onChange={(value) => setCommonField("ownershipType", value)}
+          >
             {assetOwnershipTypes.map((type) => <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>)}
           </SelectField>
-          <SelectField label={t("assetOwnerCompany")} value={common.companyId} required hint={t("assetOwnerCompanyHelp")} onChange={handleCompanyChange}>
+          <SelectField
+            label={t("assetOwnerCompany")}
+            id="asset-batch-company"
+            value={common.companyId}
+            required
+            hint={t("assetOwnerCompanyHelp")}
+            error={errorText("common.companyId")}
+            onChange={handleCompanyChange}
+          >
             <option value="">{t("selectCompany")}</option>
             {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
           </SelectField>
-          <SelectField label={t("assetOwnerBranch")} value={common.branchId} required hint={t("assetOwnerBranchHelp")} onChange={handleBranchChange}>
+          <SelectField
+            label={t("assetOwnerBranch")}
+            id="asset-batch-branch"
+            value={common.branchId}
+            required
+            hint={t("assetOwnerBranchHelp")}
+            error={errorText("common.branchId")}
+            onChange={handleBranchChange}
+          >
             <option value="">{t("selectBranch")}</option>
             {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
           </SelectField>
-          <SelectField label={t("department")} value={common.departmentId} required={ownershipType !== "personal" && !isSoftwareLicense} onChange={(value) => setCommonField("departmentId", value)}>
+          <SelectField
+            label={t("department")}
+            id="asset-batch-department"
+            value={common.departmentId}
+            required={ownershipType !== "personal" && !isSoftwareLicense}
+            error={errorText("common.departmentId")}
+            onChange={(value) => setCommonField("departmentId", value)}
+          >
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
           </SelectField>
           <div>
             <SearchableSelect
+              id="asset-batch-custodian"
               label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
               value={common.custodianId}
               options={filteredEmployees}
               placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
               searchPlaceholder={tCommon("searchSelectPlaceholder")}
               emptyLabel={tCommon("searchSelectNoResults")}
+              error={errorText("common.custodianId")}
               onChange={(value) => setCommonField("custodianId", value)}
             />
             <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
@@ -720,7 +878,14 @@ export function AssetBatchForm({
               <Notice tone="warning" className="mt-2">{t("crossBranchLocationWarning")}</Notice>
             ) : null}
           </div>
-          <SelectField label={t("currentLocation")} value={common.currentLocationId} required onChange={(value) => setCommonField("currentLocationId", value)}>
+          <SelectField
+            label={t("currentLocation")}
+            id="asset-batch-current-location"
+            value={common.currentLocationId}
+            required
+            error={errorText("common.currentLocationId")}
+            onChange={(value) => setCommonField("currentLocationId", value)}
+          >
             <option value="">{t("selectLocation")}</option>
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
@@ -728,37 +893,62 @@ export function AssetBatchForm({
             <option value="">{t("selectLocation")}</option>
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
-          <SelectField label={t("status")} value={common.statusId} required onChange={(value) => setCommonField("statusId", value)}>
+          <SelectField
+            label={t("status")}
+            id="asset-batch-status"
+            value={common.statusId}
+            required
+            error={errorText("common.statusId")}
+            onChange={(value) => setCommonField("statusId", value)}
+          >
             <option value="">{t("selectStatus")}</option>
             {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
           </SelectField>
-          <SelectField label={t("condition")} value={common.conditionId} required onChange={(value) => setCommonField("conditionId", value)}>
+          <SelectField
+            label={t("condition")}
+            id="asset-batch-condition"
+            value={common.conditionId}
+            required
+            error={errorText("common.conditionId")}
+            onChange={(value) => setCommonField("conditionId", value)}
+          >
             <option value="">{t("selectCondition")}</option>
             {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
           </SelectField>
         </Section>
 
         <Section title={t("purchaseWarranty")}>
-          <Field label={t("purchaseDate")}>
+          <Field label={t("purchaseDate")} id="asset-batch-purchase-date" error={errorText("common.purchaseDate")}>
             <Input type="date" value={common.purchaseDate} onChange={(event) => setCommonField("purchaseDate", event.target.value)} />
           </Field>
-          <Field label={t("purchasePriceBaht")}>
+          <Field label={t("purchasePriceBaht")} id="asset-batch-purchase-price" error={errorText("common.purchasePrice")}>
             <Input type="number" min="0" step="0.01" inputMode="decimal" value={common.purchasePrice} onChange={(event) => setCommonField("purchasePrice", event.target.value)} />
           </Field>
           <SelectField label={t("supplier")} value={common.supplierId} onChange={(value) => setCommonField("supplierId", value)}>
             <option value="">{t("selectSupplier")}</option>
             {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
           </SelectField>
-          <Field label={t("warrantyStart")}>
-            <Input type="date" value={common.warrantyStartDate} onChange={(event) => setCommonField("warrantyStartDate", event.target.value)} />
+          {/* The end cannot be picked before the start (spec U4, §7.4). */}
+          <Field label={t("warrantyStart")} id="asset-batch-warranty-start" error={errorText("common.warrantyStartDate")}>
+            <Input
+              type="date"
+              value={common.warrantyStartDate}
+              max={common.warrantyEndDate || undefined}
+              onChange={(event) => setCommonField("warrantyStartDate", event.target.value)}
+            />
           </Field>
-          <Field label={t("warrantyEnd")}>
-            <Input type="date" value={common.warrantyEndDate} onChange={(event) => setCommonField("warrantyEndDate", event.target.value)} />
+          <Field label={t("warrantyEnd")} id="asset-batch-warranty-end" error={errorText("common.warrantyEndDate")}>
+            <Input
+              type="date"
+              value={common.warrantyEndDate}
+              min={common.warrantyStartDate || undefined}
+              onChange={(event) => setCommonField("warrantyEndDate", event.target.value)}
+            />
           </Field>
-          <Field label={t("poNumber")}>
+          <Field label={t("poNumber")} id="asset-batch-po-number" error={errorText("common.poNumber")}>
             <Input value={common.poNumber} onChange={(event) => setCommonField("poNumber", event.target.value)} maxLength={50} />
           </Field>
-          <Field label={t("invoiceNumber")}>
+          <Field label={t("invoiceNumber")} id="asset-batch-invoice-number" error={errorText("common.invoiceNumber")}>
             <Input value={common.invoiceNumber} onChange={(event) => setCommonField("invoiceNumber", event.target.value)} maxLength={50} />
           </Field>
           <Field label={t("remark")}>
@@ -820,19 +1010,13 @@ export function AssetBatchForm({
             </fieldset>
           </div>
 
-          {hasClientDuplicates ? (
-            <Notice tone="warning" className="md:col-span-2">
-              {t("duplicateWarning")}
-              {duplicateValues.serialNumbers.length > 0 ? ` Serial: ${duplicateValues.serialNumbers.join(", ")}` : ""}
-              {duplicateValues.assetTags.length > 0 ? ` Asset Tag: ${duplicateValues.assetTags.join(", ")}` : ""}
-            </Notice>
-          ) : null}
-
-          {/* Spec 2D D7: the check result by meaning. A toast already announces it, so the Notice takes no live role. */}
+          {/* Spec 2D D7: the check result by meaning. The clean result and a failure have their toast; the duplicates found
+              have only this Notice, which reads them out (v-track plan 2 A2). */}
           {duplicateCheckMessage ? (
             <Notice
               tone={duplicateCheckStatus === "clean" ? "success" : duplicateCheckStatus === "duplicate" ? "warning" : "danger"}
               className="md:col-span-2"
+              role={duplicateCheckStatus === "duplicate" ? "status" : undefined}
             >
               {duplicateCheckStatus === "error" ? <ApiErrorText error={duplicateCheckMessage} /> : duplicateCheckMessage}
             </Notice>
@@ -856,10 +1040,10 @@ export function AssetBatchForm({
                   </Button>
                 </div>
                 <div className="grid gap-3">
-                  <Field label={t("batchAssetTag")} hint={t("batchAssetTagHelp")}>
+                  <Field label={t("batchAssetTag")} id={rowFieldId(index, "assetTag", "card")} hint={t("batchAssetTagHelp")} liveError error={rowError(index, "assetTag")}>
                     <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
                   </Field>
-                  <Field label={t("batchSerialNumber")} hint={t("batchPasteSerialHint")}>
+                  <Field label={t("batchSerialNumber")} id={rowFieldId(index, "serialNumber", "card")} hint={t("batchPasteSerialHint")} liveError error={rowError(index, "serialNumber")}>
                     <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
                   </Field>
                   {showRowCustodian ? (
@@ -904,12 +1088,12 @@ export function AssetBatchForm({
                 <tr key={row.clientId}>
                   <DataTableCell className="num font-medium text-foreground">{index + 1}</DataTableCell>
                   <DataTableCell>
-                    <Field label={t("batchAssetTag")} hideLabel hint={t("batchAssetTagHelp")}>
+                    <Field label={t("batchAssetTag")} id={rowFieldId(index, "assetTag", "row")} hideLabel hint={t("batchAssetTagHelp")} liveError error={rowError(index, "assetTag")}>
                       <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
                     </Field>
                   </DataTableCell>
                   <DataTableCell>
-                    <Field label={t("batchSerialNumber")} hideLabel hint={t("batchPasteSerialHint")}>
+                    <Field label={t("batchSerialNumber")} id={rowFieldId(index, "serialNumber", "row")} hideLabel hint={t("batchPasteSerialHint")} liveError error={rowError(index, "serialNumber")}>
                       <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
                     </Field>
                   </DataTableCell>
@@ -1058,7 +1242,7 @@ export function AssetBatchForm({
         ) : null}
 
         <div className="flex justify-end">
-          <Button type="submit" className="w-full sm:w-auto" busy={saving} disabled={hasClientDuplicates}>
+          <Button type="submit" className="w-full sm:w-auto" busy={saving}>
             <Save aria-hidden="true" />
             {reviewing ? t("batchReviewConfirm") : t("batchSubmit")}
           </Button>
@@ -1110,21 +1294,26 @@ function BatchOptionalColumnToggle({
 // that used to sit in a <p> under 2 of them (spec 2C section 4.3 F6).
 function SelectField({
   label,
+  id,
   value,
   required,
   hint,
+  error,
   onChange,
   children,
 }: {
   label: string
+  // The id focus moves to and the error is tied to (v-track M-R1).
+  id?: string
   value: string
   required?: boolean
   hint?: React.ReactNode
+  error?: React.ReactNode
   onChange: (value: string) => void
   children: React.ReactNode
 }) {
   return (
-    <Field label={label} required={required} hint={hint}>
+    <Field label={label} id={id} required={required} hint={hint} error={error}>
       <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
       </NativeSelect>

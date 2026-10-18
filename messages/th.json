@@ -496,7 +496,6 @@
     "cameraRear": "กล้องหลัง (แนะนำ)",
     "duplicateAssetTag": "รหัสทรัพย์สินนี้ถูกใช้งานแล้ว",
     "duplicateSerialNumber": "Serial Number นี้ถูกใช้งานแล้ว",
-    "duplicateWarning": "พบข้อมูลซ้ำ กรุณาตรวจสอบก่อนบันทึก",
     "batchCommonData": "ข้อมูลร่วมของชุดทรัพย์สิน",
     "batchRows": "รายการทรัพย์สินในชุด",
     "batchCurrentCount": "รายการตอนนี้ {count} รายการ",
@@ -1185,7 +1184,8 @@
     "checklistPhotoDescription": "รูปจะอัปโหลดทันทีที่เลือก",
     "noCustodian": "ไม่มีผู้ถือครอง",
     "createModeLabel": "วิธีเพิ่มทรัพย์สิน",
-    "duplicateCheckPending": "กำลังตรวจรหัสทรัพย์สินและ Serial ซ้ำ รอสักครู่แล้วจึงบันทึก"
+    "duplicateCheckPending": "กำลังตรวจรหัสทรัพย์สินและ Serial ซ้ำ รอสักครู่แล้วจึงบันทึก",
+    "batchRowDuplicate": "ค่านี้ซ้ำกับแถวอื่นในชุดนี้"
   },
   "company": {
     "title": "บริษัท",

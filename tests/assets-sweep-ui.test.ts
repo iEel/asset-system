@@ -151,7 +151,8 @@ test("asset batch form: ContentPanel sections, three DataTables, Notice by meani
   assert.match(source, /function Section\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<ContentPanel title=\{title\}>/)
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 3, "Section, the review and the created batch")
   assert.equal(source.match(/<Notice tone="warning" className="mt-2">/g)?.length, 2)
-  assert.match(source, /<Notice tone="warning" className="md:col-span-2">\n\s+\{t\("duplicateWarning"\)\}/)
+  // The duplicate box went under the rows as each row's error (v-track plan 2 A2, spec U8).
+  assert.doesNotMatch(source, /\{t\("duplicateWarning"\)\}/)
   assert.match(source, /<Notice\n\s+tone=\{duplicateCheckStatus === "clean" \? "success" : duplicateCheckStatus === "duplicate" \? "warning" : "danger"\}\n\s+className="md:col-span-2"/)
   assert.match(source, /<EmptyNote className="mt-3">\{t\("noPurchaseDocuments"\)\}<\/EmptyNote>/)
   assert.match(source, /<ChoiceCard\n\s+key=\{document\.id\}\n\s+type="checkbox"/)

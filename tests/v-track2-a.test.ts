@@ -141,3 +141,66 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.match(source, /if \(field === "licenseTotalSeats"\) fieldErrors\.clear\("licenseUsedSeats"\)/)
   assert.match(source, /if \(field === "departmentId"\) fieldErrors\.clear\("custodianId"\)/)
 })
+
+test("asset batch form: shared fields and rows show their errors, duplicates stay live under the rows, and a refusal leaves the review (v-track A2)", () => {
+  const source = read(`${C}assets/asset-batch-form.tsx`)
+  assertMovedForm(source, {
+    table: "COMMON_FIELD_IDS",
+    ids: {
+      name: "asset-batch-name",
+      categoryId: "asset-batch-category",
+      ownershipType: "asset-batch-ownership-type",
+      companyId: "asset-batch-company",
+      branchId: "asset-batch-branch",
+      departmentId: "asset-batch-department",
+      custodianId: "asset-batch-custodian",
+      currentLocationId: "asset-batch-current-location",
+      statusId: "asset-batch-status",
+      conditionId: "asset-batch-condition",
+      purchaseDate: "asset-batch-purchase-date",
+      purchasePrice: "asset-batch-purchase-price",
+      warrantyStartDate: "asset-batch-warranty-start",
+      warrantyEndDate: "asset-batch-warranty-end",
+      poNumber: "asset-batch-po-number",
+      invoiceNumber: "asset-batch-invoice-number",
+    },
+  })
+  // The keys are the server's (S-R12): common.<field> for the shared fields, rows.<index>.<field> for each row.
+  assert.match(source, /type BatchField = `common\.\$\{CommonField\}` \| `rows\.\$\{number\}\.\$\{RowField\}`/)
+  const rules = functionBody(source)
+  for (const rule of [
+    'check("common.name", required(common.name) ?? maxLength(common.name, 200))',
+    'check("common.departmentId", ownershipType !== "personal" && !isLicense ? required(common.departmentId) : null)',
+    'check("common.custodianId", isLicense && atLeastOne([common.departmentId, common.custodianId]) ? "licenseResponsibilityRequired" : null)',
+    'check("common.purchasePrice", range(common.purchasePrice, 0))',
+    'check("common.warrantyEndDate", notBefore(common.warrantyEndDate, common.warrantyStartDate))',
+    'rows.forEach((row, index) => check(rowKey(index, "serialNumber"), maxLength(row.serialNumber, 100)))',
+    "Object.assign(errors, buildAssetBatchDuplicateFieldErrors(rows, findDuplicateBatchValues(rows)))",
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.match(source, /value=\{common\.warrantyStartDate\}\n\s+max=\{common\.warrantyEndDate \|\| undefined\}/)
+  assert.match(source, /value=\{common\.warrantyEndDate\}\n\s+min=\{common\.warrantyStartDate \|\| undefined\}/)
+  // Both row views are rendered (cards below md, the table from md): focus goes to the one on screen; a server refusal
+  // closes the review first (spec §4.2).
+  assert.match(functionBody(source, "rowFieldId"), /return `asset-batch-\$\{view\}-\$\{index\}-\$\{field === "assetTag" \? "tag" : "serial"\}`/)
+  assert.match(source, /return document\.getElementById\(tableId\)\?\.getClientRects\(\)\.length \? tableId : rowFieldId\(Number\(row\[1\]\), row\[2\] as RowField, "card"\)/)
+  assert.match(source, /reveal: \(\) => setReviewing\(false\),/)
+  assert.match(source, /event\.preventDefault\(\)\n\s+fieldErrors\.setErrors\(validate\(common, rows\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+if \(!reviewing\) \{/)
+  // The duplicate warning moves under each row that holds the value and stays live (spec U8); no box says it again.
+  assert.match(source, /const liveDuplicates = useMemo\(\(\) => buildAssetBatchDuplicateFieldErrors\(rows, duplicateValues\), \[rows, duplicateValues\]\)/)
+  assert.match(source, /liveDuplicates\[rowKey\(index, field\)\] \? t\("batchRowDuplicate"\) : fieldErrors\.message\(rowKey\(index, field\)\)/)
+  for (const view of ["card", "row"]) {
+    for (const field of ["assetTag", "serialNumber"]) {
+      assert.match(source, new RegExp(`id=\\{rowFieldId\\(index, "${field}", "${view}"\\)\\}[^\\n]* liveError error=\\{rowError\\(index, "${field}"\\)\\}>`), `${view} ${field}`)
+    }
+  }
+  assert.doesNotMatch(source, /\{t\("duplicateWarning"\)\}/)
+  // No toast for a validation error or for the duplicates the check found: the check's Notice reads them out.
+  assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/)
+  assert.match(source, /className="md:col-span-2"\n\s+role=\{duplicateCheckStatus === "duplicate" \? "status" : undefined\}/)
+  assert.match(source, /<Button type="submit" className="w-full sm:w-auto" busy=\{saving\}>/)
+  assert.match(source, /if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return\n\s+throw new Error\(getErrorMessage\(result\) \?\? tCommon\("error"\)\)/)
+  for (const locale of ["th", "en"] as const) {
+    assert.equal(typeof messages(locale).asset.batchRowDuplicate, "string", `${locale} asset.batchRowDuplicate`)
+    assert.equal(messages(locale).asset.duplicateWarning, undefined, `${locale}: the duplicate box is gone`)
+  }
+})
