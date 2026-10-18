@@ -159,8 +159,9 @@ test("audit cancellation workflow is documented in handoff docs", () => {
 test("the round cancel dialog keeps its footer in view, with a busy destructive confirm and a danger trigger (2C batch 3)", () => {
   const source = readFileSync("src/components/audit/audit-round-cancel-button.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(source, /<Button variant="danger" busy=\{saving\} onClick=\{\(\) => setDialogOpen\(true\)\} className="w-full sm:w-auto">\n\s+<AlertTriangle aria-hidden="true" \/>\n\s+\{t\("cancelRound"\)\}/)
-  assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="space-y-4">/)
-  assert.match(source, /<Field label=\{t\("cancelReason"\)\} required>\n\s+<Textarea\n\s+id=\{reasonId\}[\s\S]*?\n\s+required\n[\s\S]*?className="min-h-28"\n\s+\/>\n\s+<\/Field>/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="space-y-4">/)
+  // The Field names the textarea and shows its error (v-track plan 2 U2).
+  assert.match(source, /<Field\n\s+label=\{t\("cancelReason"\)\}\n\s+id="audit-round-cancel-reason"\n\s+required\n[^\n]*\n\s+>\n\s+<Textarea\n\s+value=\{reason\}[\s\S]*?\n\s+required\n[\s\S]*?className="min-h-28"\n\s+\/>\n\s+<\/Field>/)
   assert.match(source, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel \/>\n\s+<Button type="submit" variant="destructive" busy=\{saving\}>\n\s+<AlertTriangle aria-hidden="true" \/>\n\s+\{t\("cancelConfirm"\)\}\n\s+<\/Button>\n\s+<\/AccessibleDialogFooter>/)
   assert.doesNotMatch(source, /<button\b|<textarea\b|Loader2|max-h-\[calc|disabled:opacity/)
 })

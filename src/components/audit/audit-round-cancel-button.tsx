@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { AlertTriangle } from "lucide-react"
@@ -18,7 +18,9 @@ import { KeyValueList } from "@/components/ui/key-value-list"
 import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { formatCount } from "@/lib/display-format"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type AuditRoundCancellationImpact = {
   pendingItems: number
@@ -29,29 +31,50 @@ type AuditRoundCancellationImpact = {
   scanHistoryRows: number
 }
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  reason: "audit-round-cancel-reason",
+} as const
+type CancelField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as CancelField[]
+// The reason's limit for its message: the textarea has no maxLength, so a long reason can be typed (v-track U-R7).
+const FIELD_PARAMS = { reason: { max: 4000 } }
+
+// noValidate turns the browser's check off, so this restates the control's required and the server's 4,000-character
+// limit (auditRoundCancelSchema) (v-track M-R2, U-R7).
+function validate(values: { reason: string }): Partial<Record<CancelField, string>> {
+  const errors: Partial<Record<CancelField, string>> = {}
+  const check = (key: CancelField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("reason", required(values.reason) ?? maxLength(values.reason, 4000))
+  return errors
+}
+
 export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; impact: AuditRoundCancellationImpact }) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("auditRound")
   const tCommon = useTranslations("common")
-  const reasonId = useId()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [saving, setSaving] = useState(false)
+  const fieldErrors = useFieldErrors<CancelField>({ params: FIELD_PARAMS })
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
 
+  // The next opening starts with no errors.
   function closeDialog() {
     if (saving) return
     setDialogOpen(false)
     setReason("")
+    fieldErrors.setErrors({})
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate({ reason }))
+    if (focusFirstError()) return
     const trimmedReason = reason.trim()
-    if (!trimmedReason) {
-      toast.error(t("cancelReasonRequired"))
-      return
-    }
 
     setSaving(true)
     try {
@@ -61,7 +84,11 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
         body: JSON.stringify({ action: "cancel", reason: trimmedReason }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? tCommon("error"))
+      }
       toast.success(t("cancelSuccess"))
       setDialogOpen(false)
       setReason("")
@@ -88,7 +115,7 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
         size="sm"
         onClose={closeDialog}
       >
-        <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+        <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
           <AccessibleDialogBody className="space-y-4">
             <KeyValueList
               items={[
@@ -101,11 +128,19 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
               ]}
             />
             <Notice tone="warning">{t("cancelNoRollbackWarning")}</Notice>
-            <Field label={t("cancelReason")} required>
+            {/* An empty reason keeps its own message, the one the toast showed before (spec §7.1). */}
+            <Field
+              label={t("cancelReason")}
+              id="audit-round-cancel-reason"
+              required
+              error={fieldErrors.errors.reason === "required" ? t("cancelReasonRequired") : fieldErrors.message("reason")}
+            >
               <Textarea
-                id={reasonId}
                 value={reason}
-                onChange={(event) => setReason(event.target.value)}
+                onChange={(event) => {
+                  setReason(event.target.value)
+                  fieldErrors.clear("reason")
+                }}
                 disabled={saving}
                 rows={4}
                 required

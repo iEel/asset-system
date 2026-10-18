@@ -98,6 +98,7 @@ const V_FORMS: readonly string[] = [
   `${C}assets/asset-label-print.tsx`,
   `${C}reports/report-preset-controls.tsx`,
   `${C}audit/audit-round-form.tsx`,
+  `${C}audit/audit-round-cancel-button.tsx`,
 ]
 
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).

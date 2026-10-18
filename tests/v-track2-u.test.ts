@@ -93,3 +93,18 @@ test("audit round: the date pair limits its pickers, validate() restates every r
   // The save still waits while the preview runs (that is the busy state of another action, not a gate).
   assert.match(source, /<Button type="submit" busy=\{saving\} disabled=\{previewing\}>/)
 })
+
+test("round cancel: the empty reason is an error under the field with its own message, not a toast, and the server's limit is restated (v-track U2)", () => {
+  const source = read(`${C}audit-round-cancel-button.tsx`)
+  assertMigratedForm(source, { ids: { reason: "audit-round-cancel-reason" }, messages: [] })
+  assert.ok(validateBody(source).includes('check("reason", required(values.reason) ?? maxLength(values.reason, 4000))'))
+  // The reason's limit reaches its message through the hook's params (the textarea has no maxLength).
+  assert.match(source, /const FIELD_PARAMS = \{ reason: \{ max: 4000 \} \}/)
+  assert.match(source, /useFieldErrors<CancelField>\(\{ params: FIELD_PARAMS \}\)/)
+  assert.ok(source.includes('error={fieldErrors.errors.reason === "required" ? t("cancelReasonRequired") : fieldErrors.message("reason")}'))
+  // The id is the Field's, stable for focus (no useId on the textarea); a change clears the error; closing starts over.
+  assert.doesNotMatch(source, /useId|reasonId/)
+  assert.match(source, /setReason\(event\.target\.value\)\n\s+fieldErrors\.clear\("reason"\)/)
+  assert.match(source, /setReason\(""\)\n\s+fieldErrors\.setErrors\(\{\}\)/)
+  assert.doesNotMatch(source, /if \(!trimmedReason\)/)
+})
