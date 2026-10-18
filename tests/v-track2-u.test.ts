@@ -1,0 +1,95 @@
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import test from "node:test"
+
+// V track plan 2, area U: the audit forms show their errors under the field (spec
+// docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md §4, §5 #14–#22, §7). One test per task, appended in order.
+// The working tree is CRLF on Windows: every read strips \r before the multi-line regexes.
+const C = "src/components/audit/"
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+// The body of the module-level `function validate(`, up to the first line that is only "}".
+function validateBody(source: string) {
+  const start = source.search(/^function validate\(/m)
+  assert.notEqual(start, -1, "a module-level function validate(")
+  const end = source.indexOf("\n}\n", start)
+  return source.slice(start, end)
+}
+
+// The shape every migrated audit form shares (plan 1's M-R1 to M-R4): noValidate straight after onSubmit (unless the
+// submit has no <form>), the table of ids in visual order, validate() feeding the hook, focus on the first wrong field,
+// each listed key's message under its field, the server's fieldErrors on the same fields (unless the request is sent by
+// a parent, U-R5), and no toast for a validation error.
+function assertMigratedForm(
+  source: string,
+  form: { ids: Record<string, string>; handler?: string; messages?: readonly string[]; table?: string; hook?: string; server?: false; formless?: true },
+) {
+  const handler = form.handler ?? "handleSubmit"
+  const table = form.table ?? "FIELD_IDS"
+  const hook = form.hook ?? "fieldErrors"
+  if (!form.formless) {
+    assert.match(source, new RegExp(`<form onSubmit=\\{${handler}\\} noValidate[ >\\n]`), "noValidate directly after onSubmit")
+  }
+  assert.match(source, /import \{ useFieldErrors(?:, useValidationMessage)? \} from "@\/components\/ui\/use-field-errors"/)
+  const block = source.match(new RegExp(`const ${table} = \\{\\n([\\s\\S]*?)\\n\\} as const`))
+  assert.ok(block, `const ${table} = { … } as const`)
+  const rows = Object.entries(form.ids).map(([key, id]) => `  ${key}: "${id}",`)
+  assert.deepEqual(block[1].split("\n"), rows, `${table}: the fields in visual order with their ids`)
+  // Each id once: id="…", or the table's own entry inside id={…}.
+  for (const [key, id] of Object.entries(form.ids)) {
+    const uses = source.match(new RegExp(`\\bid=(?:"${escape(id)}"|\\{${table}\\.${key}\\})`, "g"))
+    assert.equal(uses?.length, 1, `id "${id}" once`)
+  }
+  for (const key of form.messages ?? Object.keys(form.ids)) {
+    assert.match(source, new RegExp(`error=\\{${hook}\\.message\\("${escape(key)}"\\)\\}`), `${key}: its error under the field`)
+  }
+  assert.match(source, new RegExp(`${hook}\\.setErrors\\(validate\\(`), "the client's errors come from validate()")
+  if (form.server !== false) {
+    assert.match(source, new RegExp(`if \\(${hook}\\.applyServer\\((?:result|payload|body|refusal)\\) && `), "the server's fieldErrors land on the same fields")
+  }
+  assert.match(source, new RegExp(`${hook}\\.focusFirst\\(`), "focus goes to the first wrong field")
+  assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/, "no validation toast (the catch keeps apiError.toast)")
+}
+
+test("audit round: the date pair limits its pickers, validate() restates every rule, and save and preview show the server's refusal under the field (v-track U1)", () => {
+  const source = read(`${C}audit-round-form.tsx`)
+  assertMigratedForm(source, {
+    ids: {
+      name: "audit-round-name",
+      auditYear: "audit-round-year",
+      startDate: "audit-round-start-date",
+      endDate: "audit-round-end-date",
+      status: "audit-round-status",
+      riskPreset: "audit-round-risk-preset",
+      sampleRate: "audit-round-sample-rate",
+    },
+    messages: ["name", "startDate", "endDate", "status", "riskPreset"],
+  })
+  assert.match(source, /^function validate\(\n\s+values: \{ name: string; auditYear: string; startDate: string; endDate: string; status: string; sampleRate: string \},\n\s+yearRange: \{ min: number; max: number \},\n\): Partial<Record<AuditRoundField, string>> \{$/m)
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("name", required(values.name) ?? maxLength(values.name, 200))',
+    'check("auditYear", required(values.auditYear) ?? range(values.auditYear, yearRange.min, yearRange.max) ?? wholeNumber(values.auditYear))',
+    'check("startDate", required(values.startDate))',
+    'check("endDate", required(values.endDate) ?? notBefore(values.endDate, values.startDate))',
+    'check("status", required(values.status))',
+    'check("sampleRate", required(values.sampleRate) ?? range(values.sampleRate, 1, 100) ?? wholeNumber(values.sampleRate))',
+  ]) assert.ok(rules.includes(rule), rule)
+  // The number fields' step of 1, which the browser checked before noValidate (U-R3).
+  assert.match(source, /function wholeNumber\(value: string\) \{\n\s+return Number\.isInteger\(Number\(value\.trim\(\)\)\) \? null : "invalidNumber"\n\}/)
+  assert.match(source, /fieldErrors\.setErrors\(validate\(values, yearRange\)\)/)
+  // The date pair (spec §7.4): each picker is limited by the other date, and changing either clears both errors.
+  assert.match(source, /onChange=\{\(event\) => setField\("startDate", event\.target\.value\)\} required max=\{values\.endDate\} \/>/)
+  assert.match(source, /onChange=\{\(event\) => setField\("endDate", event\.target\.value\)\} required min=\{values\.startDate\} \/>/)
+  assert.match(source, /if \(field === "startDate" \|\| field === "endDate"\) fieldErrors\.clear\("startDate", "endDate"\)\n\s+else if \(field in FIELD_IDS\) fieldErrors\.clear\(field as AuditRoundField\)/)
+  // The year and the sample rate say their limits (the year in the reader's calendar).
+  assert.ok(source.includes("error={fieldErrors.errors.auditYear ? validationMessage(fieldErrors.errors.auditYear, yearRange) : undefined}"))
+  assert.ok(source.includes("error={fieldErrors.errors.sampleRate ? validationMessage(fieldErrors.errors.sampleRate, { min: 1, max: 100 }) : undefined}"))
+  // The status and risk selects pass their id and error through the form's Select (U-R4).
+  assert.match(source, /<Field label=\{label\} id=\{id\} required=\{required\} error=\{error\}>\n\s+<NativeSelect value=\{value\} required=\{required\}/)
+  // Save and preview both put the server's fieldErrors under the fields (the server's endBeforeStart lands on endDate).
+  assert.equal(source.match(/if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/g)?.length, 2)
+  // The save still waits while the preview runs (that is the busy state of another action, not a gate).
+  assert.match(source, /<Button type="submit" busy=\{saving\} disabled=\{previewing\}>/)
+})

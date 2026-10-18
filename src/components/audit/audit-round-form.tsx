@@ -17,10 +17,12 @@ import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { displayYearRange, fromDisplayYear, toDisplayYear } from "@/lib/display-year"
 import { cn } from "@/lib/utils"
+import { maxLength, notBefore, range, required } from "@/lib/validation-rules"
 
 type Option = { id: string; label: string; isClosed?: boolean }
 
@@ -52,6 +54,45 @@ type AuditRoundPreview = {
 
 const riskPresetValues = ["all", "data_quality", "high_value", "stale_movement", "repair_history", "license_expiring"] as const
 
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The scope
+// selects send optional ids the server never refuses, so they stay out.
+const FIELD_IDS = {
+  name: "audit-round-name",
+  auditYear: "audit-round-year",
+  startDate: "audit-round-start-date",
+  endDate: "audit-round-end-date",
+  status: "audit-round-status",
+  riskPreset: "audit-round-risk-preset",
+  sampleRate: "audit-round-sample-rate",
+} as const
+type AuditRoundField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as AuditRoundField[]
+
+// A number field's step is 1 unless it says otherwise, and the browser checked it before noValidate; the server's year
+// and sample rate are whole numbers too (v-track U-R3).
+function wholeNumber(value: string) {
+  return Number.isInteger(Number(value.trim())) ? null : "invalidNumber"
+}
+
+// noValidate turns the browser's check off, so this restates the controls' required, maxLength, min, max and step, and
+// the end date not before the start date, the server's endBeforeStart (spec §7.4; v-track M-R2, U-R1).
+function validate(
+  values: { name: string; auditYear: string; startDate: string; endDate: string; status: string; sampleRate: string },
+  yearRange: { min: number; max: number },
+): Partial<Record<AuditRoundField, string>> {
+  const errors: Partial<Record<AuditRoundField, string>> = {}
+  const check = (key: AuditRoundField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  check("auditYear", required(values.auditYear) ?? range(values.auditYear, yearRange.min, yearRange.max) ?? wholeNumber(values.auditYear))
+  check("startDate", required(values.startDate))
+  check("endDate", required(values.endDate) ?? notBefore(values.endDate, values.startDate))
+  check("status", required(values.status))
+  check("sampleRate", required(values.sampleRate) ?? range(values.sampleRate, 1, 100) ?? wholeNumber(values.sampleRate))
+  return errors
+}
+
 export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const locale = useLocale()
   const yearRange = displayYearRange(locale)
@@ -62,6 +103,8 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const [saving, setSaving] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const [preview, setPreview] = useState<AuditRoundPreview | null>(null)
+  const fieldErrors = useFieldErrors<AuditRoundField>()
+  const validationMessage = useValidationMessage()
   const [values, setValues] = useState({
     name: "",
     auditYear: String(toDisplayYear(new Date().getFullYear(), locale)),
@@ -82,6 +125,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   })
   const statusOptions = filterAuditStatusOptions(options.statuses, values.includeClosedAssets)
   const componentItems = preview?.componentItems ?? 0
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
 
   // The field shows the reader's calendar year; the API stores Gregorian.
   function requestBody() {
@@ -91,6 +135,9 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   function setField(field: string, value: string | boolean) {
     setPreview(null)
     setValues((current) => ({ ...current, [field]: value }))
+    // The date pair clears together: either date can fix "end before start" (spec §4.3).
+    if (field === "startDate" || field === "endDate") fieldErrors.clear("startDate", "endDate")
+    else if (field in FIELD_IDS) fieldErrors.clear(field as AuditRoundField)
   }
 
   function setIncludeClosedAssets(checked: boolean) {
@@ -111,7 +158,11 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
         body: JSON.stringify(requestBody()),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        // The preview sends the round's body: a refusal that names a field shows under it, like save's (v-track U-R2).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? tCommon("error"))
+      }
       setPreview(payload as AuditRoundPreview)
     } catch (error) {
       apiError.toast(error)
@@ -122,6 +173,8 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values, yearRange))
+    if (focusFirstError()) return
     setSaving(true)
     try {
       const response = await fetch("/api/audit-rounds", {
@@ -130,7 +183,11 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
         body: JSON.stringify(requestBody()),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? tCommon("error"))
+      }
       toast.success(t("createSuccess", { count: payload.generatedItems ?? 0 }))
       router.push(`/${locale}/audit/rounds/${payload.id}`)
       router.refresh()
@@ -144,20 +201,26 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t("createTitle")} className="mb-6" />
-        <form onSubmit={handleSubmit} className={cn(getPanelClasses(), "grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2")}>
-          <Field label={t("name")} required>
+        <form onSubmit={handleSubmit} noValidate className={cn(getPanelClasses(), "grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2")}>
+          <Field label={t("name")} id="audit-round-name" required error={fieldErrors.message("name")}>
             <Input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} />
           </Field>
-          <Field label={t("auditYear")} required>
+          <Field
+            label={t("auditYear")}
+            id="audit-round-year"
+            required
+            error={fieldErrors.errors.auditYear ? validationMessage(fieldErrors.errors.auditYear, yearRange) : undefined}
+          >
             <Input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={yearRange.min} max={yearRange.max} />
           </Field>
-          <Field label={t("startDate")} required>
-            <Input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required />
+          {/* The pair limits each other's picker (spec §7.4), as the disposal list's date filter does. */}
+          <Field label={t("startDate")} id="audit-round-start-date" required error={fieldErrors.message("startDate")}>
+            <Input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required max={values.endDate} />
           </Field>
-          <Field label={t("endDate")} required>
-            <Input type="date" value={values.endDate} onChange={(event) => setField("endDate", event.target.value)} required />
+          <Field label={t("endDate")} id="audit-round-end-date" required error={fieldErrors.message("endDate")}>
+            <Input type="date" value={values.endDate} onChange={(event) => setField("endDate", event.target.value)} required min={values.startDate} />
           </Field>
-          <Select label={t("status")} value={values.status} required onChange={(value) => setField("status", value)}>
+          <Select label={t("status")} id="audit-round-status" value={values.status} required error={fieldErrors.message("status")} onChange={(value) => setField("status", value)}>
             <option value="draft">{t("statusDraft")}</option>
             <option value="open">{t("statusOpen")}</option>
           </Select>
@@ -168,14 +231,20 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
               <p className="mt-1 text-sm text-muted-foreground">{t("riskSamplingHelp")}</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <Select label={t("riskPreset")} value={values.riskPreset} onChange={(value) => setField("riskPreset", value)}>
+              <Select label={t("riskPreset")} id="audit-round-risk-preset" value={values.riskPreset} error={fieldErrors.message("riskPreset")} onChange={(value) => setField("riskPreset", value)}>
                 {riskPresetValues.map((preset) => (
                   <option key={preset} value={preset}>
                     {t(`riskPreset_${preset}`)}
                   </option>
                 ))}
               </Select>
-              <Field label={t("sampleRate")} required hint={t("sampleRateHelp")}>
+              <Field
+                label={t("sampleRate")}
+                id="audit-round-sample-rate"
+                required
+                hint={t("sampleRateHelp")}
+                error={fieldErrors.errors.sampleRate ? validationMessage(fieldErrors.errors.sampleRate, { min: 1, max: 100 }) : undefined}
+              >
                 <Input
                   type="number"
                   value={values.sampleRate}
@@ -299,9 +368,25 @@ function OptionList({ emptyLabel, options }: { emptyLabel: string; options: Opti
   )
 }
 
-function Select({ label, value, required, onChange, children }: { label: string; value: string; required?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
+function Select({
+  label,
+  id,
+  value,
+  required,
+  error,
+  onChange,
+  children,
+}: {
+  label: string
+  id?: string
+  value: string
+  required?: boolean
+  error?: string
+  onChange: (value: string) => void
+  children: React.ReactNode
+}) {
   return (
-    <Field label={label} required={required}>
+    <Field label={label} id={id} required={required} error={error}>
       <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
       </NativeSelect>
