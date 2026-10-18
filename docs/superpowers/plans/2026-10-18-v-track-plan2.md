@@ -9,7 +9,8 @@
 - the bugs of spec §5 that sit in these forms are fixed: checkin's return date is checked (Task 10), bulk move's destination (Task 12), the disposal request's asset and requester (Task 21);
 - review dialogs and review steps hand a server field error back to the form (spec §4.2: checkout, checkin, transfer, the asset batch; Tasks 8–11, 2), multi-step flows go back to the owning step (component install, disposal batch, bulk execution; Tasks 4, 22, 26), and the audit scan check keeps focus inside its sheet on a phone (Task 19; offline-queued replays as today);
 - the asterisk-only selects are checked: `SELECT_STAR_ONLY` reaches 0 (the 14 selects in 10 files it locks at `e1caa29`, plan 1's count of the spec's "15", whose recon list names 14 places), and the two other asterisk-only controls of these forms are fixed too: the disposal request's asset picker gets its error (Task 21, D-R2) and the license total seats lose their asterisk (spec §11 call 8, Task 1); FMG `STAR_ONLY` reaches empty (Tasks 1, 10);
-- the disposal execution's evidence domain errors (`DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED` / `_ACK_REQUIRED`) and the bulk execution row codes a dialog field can fix carry `fieldErrors` (the user's answer 4 of 2026-10-17 left this to "the disposal plan"; the recommendation "attach" is taken; Task 20), and the maintenance refusals about the reporter or the vendor name their field (Task 27).
+- the disposal execution's evidence domain errors (`DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED` / `_ACK_REQUIRED`) and the bulk execution row codes a dialog field can fix carry `fieldErrors` (the user's answer 4 of 2026-10-17 left this to "the disposal plan"; the recommendation "attach" is taken; Task 20), and the maintenance refusals about the reporter or the vendor name their field (Task 27);
+- the user's answers of 2026-10-18 to this plan's open issues ("ตามที่แนะนำ": every recommendation) are built in five more tasks, the addendum (Tasks 31a–31e, R8): checkin's two refusals about a field name it, zod's `.int()` reads as a number error, one money rule with its own sentence, the batch's row-limit gates with a visible reason, and the scan check's waiting save opens its photo section.
 
 No migration, no database write, no schema change, no new dependency, no new server rule (spec §6.3). Not in this plan: the settings form (#45) and the prefix editor (#46) (plan 3), DESIGN.md's form-error rule, docs/14 and `.impeccable/design.json` (the track's final plan), the login form (spec §3).
 
@@ -20,19 +21,20 @@ No migration, no database write, no schema change, no new dependency, no new ser
   - **U** audit (Tasks 14–19, U1–U6): the round form, the round cancel, mark not found and component missing, the finding dialogs, batch review, the scan check.
   - **D** disposal (Tasks 20–26, D1–D7): the evidence and bulk-row `fieldErrors` (server, D1), then the request, the batch, the decision, the execution, bulk approval, bulk execution; `NON_VALIDATION_TOASTS` (FIXED addition 9).
   - **M** maintenance (Tasks 27–31, M1–M5): the reporter and vendor refusals (server, M1), `step()` (FIXED addition 10, M2), the PM plan form, the repair record form, the repair record dialogs.
+  - **The addendum** (Tasks 31a–31e, X-R1–X-R5; the user's answers of 2026-10-18): checkin's two refusals name their field (31a, O7), zod's `.int()` reads `invalidNumber` (31b), one money rule `decimals()` (FIXED 12, 31c), the batch's row-limit gates (31d, A8), the scan check's photo section (31e, U7).
 - **One task is one commit**, with its test and every pin or guard edit it causes. The tree is green after every commit.
-- **Hard dependencies:** every task needs plan 1 (merged). Inside an area each task needs the one before (each appends to its area's test file; P-R6). Tasks 9–11 need Task 8 (`waitForDialogToClose`). Task 24 (D5) and Task 26 (D7) need Task 20 (D1). Task 22 (D3) needs Task 21 (D2: the test helpers, `NON_VALIDATION_TOASTS`). Tasks 30 and 31 (M4, M5) need Task 21 (they add rows to `NON_VALIDATION_TOASTS`, P-R4). Tasks 29–31 need Task 27 (the keys the server names) and Task 28 (`step`). Task 10 (O3) needs Task 1 (A1) for its FMG edit (P-R3). Across areas nothing else depends: the areas edit disjoint source files (P-R2).
+- **Hard dependencies:** every task needs plan 1 (merged). Inside an area each task needs the one before (each appends to its area's test file; P-R6). Tasks 9–11 need Task 8 (`waitForDialogToClose`). Task 24 (D5) and Task 26 (D7) need Task 20 (D1). Task 22 (D3) needs Task 21 (D2: the test helpers, `NON_VALIDATION_TOASTS`). Tasks 30 and 31 (M4, M5) need Task 21 (they add rows to `NON_VALIDATION_TOASTS`, P-R4). Tasks 29–31 need Task 27 (the keys the server names) and Task 28 (`step`). Task 10 (O3) needs Task 1 (A1) for its FMG edit (P-R3). Across areas nothing else depends: the areas edit disjoint source files (P-R2). The addendum runs after Task 31, each of its tasks after the one before (one test file): 31a needs Task 10, 31c needs Tasks 1, 2, 21–24, 28, 30 and 31 (it edits their money lines and tests), 31d needs Task 2, 31e needs Task 19.
 - **Task ids:** every task keeps its area id in its title, its test names and its commit message: "(v-track plan 2 task 10, O3)". The text cross-references by "Task N (id)" or by id. **Ids and plan 1's:** a bare `S-R*`, `F-R*` or `M-R*` is plan 1's ruling (the foundation contract every area cites); plan 2's maintenance rulings are `MT-R*`; `A-R*`, `O-R*`, `U-R*`, `D-R*` are this plan's areas; `P-R*` are this plan's assembly rulings; "plan 1 A-R4", "plan 1 M4" name plan 1's (P-R1).
 - **Branch:** `feat/v-track-2` from `master` at `e1caa29`, in the main checkout `D:/Antigravity/asset-system`. No worktree.
-- **Tests:** five new LF test files, one test per task (`tests/v-track2-a.test.ts` 7, `-o` 6, `-u` 6, `-d` 7, `-m` 5); Task 26 (D7) also deletes one test (`validateHistoricalException`'s, D-R9); Task 33 appends one test to plan 1's `tests/v-track-docs.test.ts`. Existing pins that lock what changes are edited in the same commit (each task's Step 4 lists them).
+- **Tests:** six new LF test files, one test per task (`tests/v-track2-a.test.ts` 7, `-o` 6, `-u` 6, `-d` 7, `-m` 5, and `-x` 5 for the addendum); Task 26 (D7) also deletes one test (`validateHistoricalException`'s, D-R9); Task 33 appends one test to plan 1's `tests/v-track-docs.test.ts`. Existing pins that lock what changes are edited in the same commit (each task's Step 4 lists them).
 - **Controller tasks:** Task 0 (branch, baseline, counts, before evidence), Task 32 (verify, production build, dev-app check), Task 34 (final verification, wiki, memory). Task 33 (the docs) is an implementer task; it stops if Task 32's findings file is missing. In Tasks 0 and 32 no request but a GET reaches the server: every other one is aborted, or fulfilled with a stand-in body (the audit scan's always fulfilled, Task 32 Step 5).
 
 **Tech Stack:** Next.js 16.4 App Router · React 19 · Tailwind CSS 4 · next-intl 4 · zod 4.4.1 · Prisma 7 (not changed) · `node --test` with Node 24 type stripping (strip-only: no parameter properties, no enums in modules tests import). No new dependency; `react-hook-form` stays unused (spec §3).
 
 **Spec:** `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` (approved by the user, 2026-10-17). **Foundation contract:** `docs/superpowers/plans/2026-10-17-v-track-plan1.md` (merged at `e1caa29`): its Global Constraints, FIXED INTERFACES as amended, and rulings S-R1–S-R13, F-R1–F-R10, M-R1–M-R14 bind every task here, and the real code they shipped is what the tasks build on: `src/lib/field-errors.ts`, `src/lib/field-error-response.ts`, `src/lib/validation-rules.ts`, `src/lib/field-error-client.ts`, `src/lib/field-focus.ts`, `src/components/ui/use-field-errors.ts`, `src/components/ui/field-group.tsx`, `src/components/ui/field.tsx` (`liveError`), `src/components/ui/searchable-select.tsx` (`data-invalid`), `tests/validation-guards.test.ts` (`V_SCOPE`, `NOT_IN_SCOPE`, `V_FORMS`, `SELECT_STAR_ONLY`), and the migrated forms (`c/master-data/brand-form.tsx`, `c/admin/admin-user-form.tsx` are the pattern).
-- **What this plan covers:** spec §5 #1–#33, §4.1–§4.5 for them, §7.4 (all of it), §6.2's refusals of these forms, §11 calls 2, 6, 7, 8. "Spec coverage" near the end maps each section to its task.
+- **What this plan covers:** spec §5 #1–#33, §4.1–§4.5 for them, §7.4 (all of it), §6.2's refusals of these forms, §11 calls 2, 6, 7, 8, and the user's answers of 2026-10-18 to the open issues (the addendum, Tasks 31a–31e). "Spec coverage" near the end maps each section to its task.
 - **Left to the builder (§10), decided here:** how each review dialog hands back (O-R1: `waitForDialogToClose`; A-R7, A-R9, D-R3, D-R9: `reveal` back to the step), the per-form focus order (each area's field tables), the split (areas A, O, U, D, M; plan 2 of the track).
-- **Line numbers** are of `e1caa29`. No two areas edit the same source file (P-R2), so a source line is still `e1caa29`'s when its task runs unless an earlier task of the same area changed that file; the shared test files (`validation-guards`, `form-migration-guards`, `choice-controls-ui`, `messages/*.json`) are edited only by anchors (P-R3, P-R4). Find every site by its quoted text.
+- **Line numbers** are of `e1caa29`. No two areas edit the same source file (P-R2), so a source line is still `e1caa29`'s when its task runs unless an earlier task of the same area changed that file; the shared test files (`validation-guards`, `form-migration-guards`, `choice-controls-ui`, `messages/*.json`) are edited only by anchors (P-R3, P-R4). Find every site by its quoted text. The addendum's tasks (31a–31e) quote the chain's lines after Task 31 (`37968225`).
 
 `c/` = `src/components/` · `D/` = `src/app/[locale]/(dashboard)/` · `<temp>` = `C:/Users/Eltross/AppData/Local/Temp/claude/D--Antigravity-asset-system/f250ea8d-3040-422b-ad7a-15dd9aed94b9/scratchpad/v2-plan` (the controller hands the path to every implementer; change files go here; the area edit lists `<temp>/area-A-edits/A<N>.md` are read-only) · `<tools>` = `<temp>/tools` (`eol.mjs`, plan 1's, read-only).
 
@@ -55,6 +57,12 @@ No migration, no database write, no schema change, no new dependency, no new ser
 - **Docs rehearsal (Task 33, 2026-10-18):** Task 33 as written below, on `v2-dry` after Task 31 (`37968225`), with a placeholder `task-32-findings.md` and one-sentence placeholder text in each marker: commit `c4146a35` (C1, `<today>` 2026-10-18); C1b (`<today>` 2026-10-19, H1 too) in the working tree, then restored. Every Step 2, "after Step 3" and Step 5 number of Task 33 is what it printed (`npm test` 2287 tests, 2286 pass, 0 fail, 1 skipped; `tsc` clean; lint 0 errors, 146 warnings). Task 34 Step 1's two verify lines were inserted on that commit and restored (`1 0` each). Task 32 and the rest of Task 34 run the app, the vault and the memory, so they were not rehearsed. While writing Task 32 the dry run found that an aborted audit scan request is kept in the browser's offline queue and sent again later (a write after the check): Task 0 Step 6 and Task 32 Step 5 fulfil that route instead of aborting it, and both clean the queue at the end.
 - **Final review (2026-10-18), text only, no task's code or numbers changed:** "Spec coverage" maps each of #1–#33 by name to its task; open issues 15 (the purchase document number's duplicate, which plan 1 handed to this plan, stays a toast; a post-save bug found in passing) and 16 (recon-3 gates left as plain `disabled`) added; Task 0 Step 6 routes the browser context and proves the interception with Task 32's probe; Review Focus 1 names the stand-in body Task 32 uses and Review Focus 2 lists Tasks 3 and 23; the asterisk count in the goal follows plan 1's (14 selects locked, plus the disposal picker and the license seats); two money behaviour changes listed (open issue 3).
 
+**Addendum (2026-10-18).** The user answered the open issues with "ตามที่แนะนำ" (every recommendation). The five answers that change code are Tasks 31a–31e, after Task 31 and before Task 32, so no task number moves (R8, X-R1–X-R5; "Addendum" after area M). Rehearsed in `<temp>/../v-sim` on branch `v2-add` from `37968225` (the dry run's Task 31), one commit per task, every step as an implementer follows this text: 31a `6ef98430` · 31b `0d440c83` · 31c `97ad82af` · 31d `3b5c278c` · 31e `fbda71b9`; then Task 33 again on top, `ae8ed79a`.
+- Before the first task the working-tree endings were set back to the real checkout's file by file (the branch switch had written 18 files as CRLF: the 9 LF tests, the 5 plan-2 test files and the 4 mixed files; `<temp>/add/fix-eol.mjs`, no content change), and the base gave `npm test` 2286 / 2285 / 0 / 1, `tsc` clean, lint 0 errors and 146 warnings.
+- Every Step 2 failed with the test and message it names; every "after Step 3 and before Step 4" list failed exactly as listed (31c: 9 tests; 31d, 31e: 1 each); every task ended at `npm test` 2287 … 2291, 0 fail, 1 skipped, `tsc` clean, lint 0 errors and 146 warnings; every edited file kept its working-tree endings; `tests/v-track2-x.test.ts` is LF. Task 33 then gave 2292.
+- The text of Tasks 31a–31e (their exact edits, pin edits, change files and Step 1 blocks) was read back by a parser and applied in order to `37968225`'s files: after each task every file it touches equals that task's `v2-add` commit (`<temp>/add/replay.mjs`).
+- Tasks 32–34 carry the addendum's counts (2291 after Task 31e, 2292 after Task 33; 4093 leaf keys per locale); Task 33's two answer markers are now the user's answers, written out.
+
 **Base:** `master` at `e1caa29` (V track plan 1 merged and pushed; phase 2D and Dark Mode merged; nothing deployed).
 
 ## Global Constraints
@@ -66,13 +74,13 @@ No migration, no database write, no schema change, no new dependency, no new ser
   - The checkout has untracked folders and files that are not yours: `.codex/`, `.impeccable/config.json`, `.impeccable/critique/`, `.playwright-mcp/`, `.superpowers/brainstorm/` and `docs/superpowers/plans/2026-06-22-audit-component-assets.untracked-backup.md`; another session may add `.claude/` while its preview server runs. Leave them alone.
   - End every commit message with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (each Step 6 passes it as a second `-m`).
   - Never create a git worktree whose `node_modules` is a junction to the main checkout's, and never let git remove one.
-- **Next.js 16.4** is not the Next.js in your training data. This plan uses no new Next API; the two server tasks (20, 27) keep answering with `NextResponse.json(body, { status })` through the existing helpers. Before you change how a route answers, read `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/next-response.md` (`## json()`) and `03-file-conventions/route.md`, and heed their deprecation notices.
+- **Next.js 16.4** is not the Next.js in your training data. This plan uses no new Next API; the server tasks (20, 27, 31a) keep answering with `NextResponse.json(body, { status })` through the existing helpers. Before you change how a route answers, read `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/next-response.md` (`## json()`) and `03-file-conventions/route.md`, and heed their deprecation notices.
 - **Repo facts:** React 19; Tailwind 4; next-intl 4 (`t.has(key)`); zod 4.4.1; Prisma 7; `npm test` runs `node scripts/run-tests.mjs` over `tests/**/*.test.{ts,mjs,js}`; tests import `.ts` with relative imports and read `.tsx` as text; `tsconfig.json` includes `**/*.ts`, so tests are type-checked.
 - **Line endings** (`git ls-files --eol` in the real checkout at `e1caa29`; `git config core.autocrlf` is `true`):
   - **LF (`i/lf w/lf`)**, 9 existing files: `tests/asset-form-sticky-actions.test.ts`, `tests/asset-handover-checkin.test.ts`, `tests/asset-handover-checkout.test.ts`, `tests/assets-sweep-ui.test.ts`, `tests/audit-pages-sweep-ui.test.ts`, `tests/button-size-switch.test.ts`, `tests/maintenance-sweep-ui.test.ts`, `tests/operations-sweep-ui.test.ts`, `tests/sticky-form-footer-ui.test.ts`.
   - **Mixed (`w/mixed`)**, 4 files: `src/lib/disposal-bulk-execution.ts`, `src/lib/disposal-bulk-execution-service.ts`, `src/lib/disposal-bulk-execution-ui.ts`, `tests/disposal-bulk-execution-ui-state.test.ts`. Edit them by exact strings; the Edit tool may rewrite a mixed file as all CRLF (Task 20's rehearsal did): git stores LF either way and `git diff --numstat` shows only the task's lines. Never normalize a file on purpose.
-  - **CRLF (`i/lf w/crlf`)**: every other existing file this plan edits (65 in Tasks 1–31; 68 with Task 33's three: `DEVELOPER_HANDOFF.md`, `docs/99_CHANGELOG.md`, `tests/v-track-docs.test.ts`), among them `messages/th.json`, `messages/en.json`, `src/lib/field-focus.ts`, `src/lib/validation-rules.ts`, `src/app/api/disposal-requests/[id]/route.ts` (CRLF at `e1caa29`; plan 1 called it mixed), every component file of the five areas, `src/app/[locale]/(dashboard)/disposal/page.tsx`, `tests/validation-guards.test.ts`, `tests/form-migration-guards.test.ts`, `tests/choice-controls-ui.test.ts`, `tests/v-track-f.test.ts`.
-  - **New and LF:** `tests/v-track2-a.test.ts`, `tests/v-track2-o.test.ts`, `tests/v-track2-u.test.ts`, `tests/v-track2-d.test.ts`, `tests/v-track2-m.test.ts`.
+  - **CRLF (`i/lf w/crlf`)**: every other existing file this plan edits (65 in Tasks 1–31; 67 with Tasks 31a–31e, which add `src/app/api/assets/[id]/checkin/route.ts` and `src/lib/field-errors.ts`; 70 with Task 33's three: `DEVELOPER_HANDOFF.md`, `docs/99_CHANGELOG.md`, `tests/v-track-docs.test.ts`), among them `messages/th.json`, `messages/en.json`, `src/lib/field-focus.ts`, `src/lib/validation-rules.ts`, `src/app/api/disposal-requests/[id]/route.ts` (CRLF at `e1caa29`; plan 1 called it mixed), every component file of the five areas, `src/app/[locale]/(dashboard)/disposal/page.tsx`, `tests/validation-guards.test.ts`, `tests/form-migration-guards.test.ts`, `tests/choice-controls-ui.test.ts`, `tests/v-track-f.test.ts`.
+  - **New and LF:** `tests/v-track2-a.test.ts`, `tests/v-track2-o.test.ts`, `tests/v-track2-u.test.ts`, `tests/v-track2-d.test.ts`, `tests/v-track2-m.test.ts`, `tests/v-track2-x.test.ts` (Tasks 31a–31e).
   - Before you edit a file, run `git ls-files --eol <file>` and keep what it shows; each task's Files line says the same. In Git Bash, `grep -c $'\r'` reports 0 even for CRLF files: do not use it as a check. `git add` of an LF working-tree file prints "LF will be replaced by CRLF the next time Git touches it": expected and harmless; do not renormalize.
   - Keep each file's line endings: edit with exact-string replacement (the Edit tool keeps them), never a formatter, never `sed -i` (it writes LF in Git Bash).
   - **Never write a test that asserts working-tree line endings.** Tests that read source files strip `\r` before multi-line regexes.
@@ -89,18 +97,19 @@ No migration, no database write, no schema change, no new dependency, no new ser
   - **A test file that imports another test file runs that file's tests again: no test imports a test file.** Each area's test file declares its own helpers (P-R6).
 - **Baseline at `e1caa29`** (Task 0 checks it again): `npm test` 2256 tests, 2255 pass, 0 fail, 1 skipped; `npx tsc --noEmit` clean; `npm run lint` 0 errors, 146 warnings, all under `.agents/`.
 - **Every task ends with all of these green:** `npm test` with 0 fail and the task's count; `npx tsc --noEmit`; `npm run lint` with 0 errors and no new warning in `src/` or `tests/`. Report any failure by name.
-- **Messages:** only through `node scripts/messages-edit.mjs <change file>` (`{"set":{"th":{...},"en":{...}},"delete":[...]}`), with the change files saved in `<temp>`, and only these keys (4092 → 4091 leaf keys per locale, P-R5):
+- **Messages:** only through `node scripts/messages-edit.mjs <change file>` (`{"set":{"th":{...},"en":{...}},"delete":[...]}`), with the change files saved in `<temp>`, and only these keys (4092 → 4093 leaf keys per locale, P-R5):
   - Task 1 (A1) adds `asset.duplicateCheckPending`, deletes `asset.licenseSeatUsageInvalid`, `asset.customFieldRequired`; Task 2 (A2) adds `asset.batchRowDuplicate`, deletes `asset.duplicateWarning`;
   - Task 9 (O2) deletes `checkout.reviewIncomplete`; Task 10 (O3) deletes three `checkin.*` keys (its change file names them); Task 11 (O4) deletes `transfer.destinationRequired`;
   - Task 17 (U4) adds `auditFinding.closeNeedsEvidence`; Task 18 (U5) adds `auditFinding.batchNeedsSelection`;
   - Task 22 (D3) adds `disposalPage.batchNeedsAssets`; Task 26 (D7) adds `disposalPage.bulkExecutionPermanentConfirmationRequired`;
   - Task 31 (M5) adds `repairRecord.returnDateBeforeReported`.
+  - Task 31c adds `common.validation.tooManyDecimals`; Task 31d adds `asset.batchRowLimits`.
   - Words follow `docs/19_THAI_GLOSSARY.md`; `tests/thai-glossary.test.ts`, `tests/messages-parity.test.ts` and `tests/messages-edit.test.ts` stay green. If you think another key is missing, stop and report.
 - **The form convention** (plan 1 FIXED 6, M-R1–M-R5): `<form onSubmit={…} noValidate …>` with `noValidate` directly after `onSubmit`; the HTML constraint attributes stay (FMG `CONSTRAINT_FLOORS`; a floor may rise, Task 10); a module-level `validate()` restates them through the rule helpers; errors go under the field through `Field error=` (a group: one `FieldError` or `FieldGroup error=`); `focusFirst` on the client's errors and `if (<hook>.applyServer(<body>) && <focus>()) return` on the server's, then today's handling for every other refusal (spec §4.1.3); no `toast.error`/`toast.warning` for a validation error (a catch keeps its toast for other failures, spec U2; a non-validation toast outside a catch only through a `NON_VALIDATION_TOASTS` row, P-R4); never `role="alert"` or `aria-live="assertive"` on a field error (F-R6); never `aria-invalid` on a `<button>` (F-R7). Prerequisite gates: `aria-disabled` plus `aria-describedby` to a visible reason, the handler returns first (plan 1 M-R10); inside an `AccessibleDialog` the reason is the body's last line, never in the footer (FMG GD3, U-R9).
 - **Guards:** `tests/form-migration-guards.test.ts` (FMG), `tests/visual-foundation-guards.test.ts` (VFG), `tests/list-frame-guards.test.ts` (LFG), `tests/ui-overlay-guards.test.ts`, `tests/validation-guards.test.ts` (V1–V5).
   - A commit that changes what a guard or pin counts edits it in the same commit.
   - The only guard rows this plan adds are the `V_FORMS` rows of the form tasks and the four `NON_VALIDATION_TOASTS` rows (Tasks 21, 22, 30, 31, each with its reason and ruling); it deletes every `SELECT_STAR_ONLY` row and every FMG `STAR_ONLY` entry, and raises one `CONSTRAINT_FLOORS` floor (checkin `required` 4 → 5, Task 10). No task adds an `EXEMPT` row, an owner, a `V_SCOPE` or `NOT_IN_SCOPE` row. Never add a row to make a test pass. If a change would make a guard fail and the task does not list that edit, stop and report.
-- **The server:** no migration, no database write, no schema change, no new dependency, no new server rule (spec §6.3). Task 20 (D1) and Task 27 (M1) only add `fieldErrors` to refusals that exist (status codes and messages stay; the bulk execution response stays a 200 and gains `fieldErrors` only when a blocked row names a dialog field). Integration v1 does not change.
+- **The server:** no migration, no database write, no schema change, no new dependency, no new server rule (spec §6.3). Task 20 (D1), Task 27 (M1) and Task 31a only add `fieldErrors` to refusals that exist (status codes and messages stay; the bulk execution response stays a 200 and gains `fieldErrors` only when a blocked row names a dialog field); Task 31b changes only how one zod issue maps (`expected: "int"` → `invalidNumber`). Integration v1 does not change.
 - **Off limits:**
   - Never open, read or print `.env` or `.env.prod-admin`.
   - Implementers do not run `npm ci`, `npm install`, `npm run build`, the dev server, or anything against a database. The controller runs the app in Tasks 0 and 32 and writes nothing to the database there.
@@ -157,21 +166,23 @@ Numbered after plan 1's seven; every task uses them by these names.
 
 8. **`waitForDialogToClose(frames = 60): Promise<void>`** in `src/lib/field-focus.ts` (Task 8, O1; area O's "O-F1"; appended at the end of the file): resolves after the dialog that holds focus when it is called (`document.activeElement?.closest('[role="dialog"]')`) has left the page and one more task has run; at once when focus is in no `[role="dialog"]`; after `frames` frames at most. A form whose submit can be refused while its own review dialog is open passes `reveal: leaveReview` to `focusFirst`, with `async function leaveReview() { const closed = waitForDialogToClose(); setReviewOpen(false); await closed }` (O-R1). `OperationReviewDialog` and `AccessibleDialog` do not change.
 9. **`NON_VALIDATION_TOASTS`** in `tests/validation-guards.test.ts` (Task 21, D2; D-R5; the allowance list plan 1 F-R9 left to the later plans): `Readonly<Record<string, { count: number; why: string; ruling: string }>>`, declared directly above `const SELECT_TAGS = [`. V3 compares each `V_FORMS` file's toasts outside a catch with its row's exact `count` (default 0) and fails a row whose file is not in `V_FORMS`. Only a toast that is not about a field goes in (the upload results of a saved record); a count that drops lowers or deletes its row. Rows: `disposal-request-form.tsx` (Task 21), `disposal-batch-form.tsx` (Task 22), `repair-record-form.tsx` (Task 30), `repair-record-actions.tsx` (Task 31). Every later row is inserted directly after the list's opening line (P-R4).
-10. **`step(value, size)`** in `src/lib/validation-rules.ts` (Task 28, M2; MT-R2; an addition to FIXED 4): empty → `null` (left to `required`); not a finite number → `"invalidNumber"`; else `"invalidNumber"` unless `value / size` is within 1e-6 of a whole number. It counts from 0. A money field writes `range(v, 0) ?? step(v, 0.01)`, whole days `range(v, 1, 3650) ?? step(v, 1)`. In this plan only area M uses it (P-R8).
+10. **`step(value, size)`** in `src/lib/validation-rules.ts` (Task 28, M2; MT-R2; an addition to FIXED 4): empty → `null` (left to `required`); not a finite number → `"invalidNumber"`; else `"invalidNumber"` unless `value / size` is within 1e-6 of a whole number. It counts from 0. A money field writes `range(v, 0) ?? step(v, 0.01)`, whole days `range(v, 1, 3650) ?? step(v, 1)`. In this plan only area M uses it (P-R8); from Task 31c a money field writes `range(v, 0) ?? decimals(v, 2)` instead (FIXED 12), and `step` is left to whole numbers (the PM days).
 11. **`getDisposalEvidenceFieldErrors(code, input)`** (`src/lib/disposal-evidence-exception.ts`) and **`getDisposalBulkExecutionFieldErrors(items, input)`** (`src/lib/disposal-bulk-execution.ts`) (Task 20, D1; D-R1): pure, the shared codes (`required`, `tooShort`, `tooLong`) and the catalog key `recipientRequired`; `undefined` when no field is named.
+
+12. **`decimals(value, places)`** in `src/lib/validation-rules.ts` (Task 31c; X-R3; an addition to FIXED 4): empty → `null` (left to `required`); not a finite number → `"invalidNumber"`; else `"tooManyDecimals"` when the typed digits after the point, trailing zeros left out, are more than `places` (exponent notation is counted from the number). `RuleCode` becomes `FieldErrorCode | "endBeforeStart" | "tooManyDecimals"`; the message is `common.validation.tooManyDecimals` (th "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง", en "Use no more than 2 decimal places"). A money field writes `range(v, 0) ?? decimals(v, 2)`; the server never sends the code.
 
 No other shared API changes. Every other new name is local to its form file (A-R1, U-R3, U-R6).
 
 ## Rulings of this plan
 
-- **R1, the earlier rulings apply:** plan 1's S-R*, F-R*, M-R* and its FIXED INTERFACES as amended; spec 2C K4, K5 a, K6 a; plan 2D-5's guard vocabulary; Dark Mode's two-theme rule (every new style uses tokens; the error look and the teal focus work in both themes). Each area's rulings follow under the ids its tasks quote; R7 records the assembly decisions (`P-R1` …).
+- **R1, the earlier rulings apply:** plan 1's S-R*, F-R*, M-R* and its FIXED INTERFACES as amended; spec 2C K4, K5 a, K6 a; plan 2D-5's guard vocabulary; Dark Mode's two-theme rule (every new style uses tokens; the error look and the teal focus work in both themes). Each area's rulings follow under the ids its tasks quote; R7 records the assembly decisions (`P-R1` …); R8 the addendum's (`X-R1` …).
 
 - **R2, area A (assets, Tasks 1–7):**
 
   - **A-R1 Plan 1's form pattern holds (M-R1–M-R5, M-R8–M-R12).** Each form declares its field table at module level in visual order (`FIELD_IDS`, or a named table where a file holds more than one form: `COMMON_FIELD_IDS`, `BULK_FIELD_IDS`, `INSTALL_FIELD_IDS`), keyed like the server's `fieldErrors`, a module-level `validate()` built with `check(...)` lines, the hook, `focusFirst` on the client's errors and `if (<hook>.applyServer(<body>) && <focus>()) return` on the server's, then today's throw/toast for every other refusal (spec §4.1.3). The hook's local name follows the form where a file holds another form or hook (`bulkErrors`, `installErrors`, `removeErrors`). A key the server can name but no client rule checks (a date the server finds invalid) is in the table, so its error has a field to land on (M-R1).
   - **A-R2 Domain messages (spec §7.1).** A rule whose toast had its own asset message keeps it: `validate()` returns the message key as its code (`componentParentRequired`, `componentRoleRequired`, `licenseResponsibilityRequired`, `purchaseDocumentNoRequired`, `fileRequired`, `customFieldsJsonInvalid`), and the form reads it with `t(code)` through a local `isAssetMessageCode` (asset form) or one comparison (batch); every other code reads the hook's `message(key)`. A rule that the server also has uses the server's code, so both sides say one thing: the seats `licenseSeatsExceeded` and the bulk update `bulkUpdateFieldRequired` (catalog keys). A template's required custom field says `required` under itself (the old toast named the field because a toast has no field). Messages that lose their last reader go: `asset.licenseSeatUsageInvalid`, `asset.customFieldRequired` (A1), `asset.duplicateWarning` (A2). Two new ones: `asset.duplicateCheckPending` (A1, A-R3) and `asset.batchRowDuplicate` (A2, A-R7).
   - **A-R3 The asset form's gates (spec §4.4, §11 call 2).** A protected status change (recon §2: a prerequisite with its warning already under the status) and a running duplicate check are prerequisites: `saveBlockedBy` names the reason's id (`asset-status-protected` on the existing warning Notice, `asset-save-reason` on a new status line of the sticky footer, `asset.duplicateCheckPending`), the save is `aria-disabled` with `aria-describedby`, and `handleSubmit` returns first. A duplicate tag or serial is a content error: the live check keeps its line under the field (U8, `liveError`), `validate()` puts `duplicate` on the field so the save focuses it, and the `Field` shows the live line when it is there, else the hook's message (one line, nothing twice). The catch's toast for the server's protected-status refusal stays (it is not a field error).
-  - **A-R4 The license and the warranty pair (spec §7.4, §11 calls 6 and 8).** Total seats lose their star (the server lets them be empty); FMG `STAR_ONLY` drops `asset-form.tsx|t("licenseTotalSeats")` (stale once the star goes) and `asset-form.tsx|t("componentRole")` (its form is a V form from A1, so GF4's `vTrack` rule covers its star; spec §8 "STAR_ONLY shrinks to empty in this round"). Seats restate `min="0"` (`range`) and `step="1"` (`pattern(…, /\d+/)`, `invalidFormat`), because the server's `int()` refuses a fraction; used > total says the server's `licenseSeatsExceeded` under the used seats. The license's "assignee or department" is one group with its error under the assignee (`custodianId`); a department change clears it. The warranty end is `notBefore` the start, with `min`/`max` on the two inputs; on the asset edit it is checked only when one of the two dates changed (`original` = the stored asset), on create and in the batch always. Money keeps `min="0"` (`range`), not `step="0.01"`: the server takes any precision (`optionalMoney`), so the client does not refuse what the server accepts.
+  - **A-R4 The license and the warranty pair (spec §7.4, §11 calls 6 and 8).** Total seats lose their star (the server lets them be empty); FMG `STAR_ONLY` drops `asset-form.tsx|t("licenseTotalSeats")` (stale once the star goes) and `asset-form.tsx|t("componentRole")` (its form is a V form from A1, so GF4's `vTrack` rule covers its star; spec §8 "STAR_ONLY shrinks to empty in this round"). Seats restate `min="0"` (`range`) and `step="1"` (`pattern(…, /\d+/)`, `invalidFormat`), because the server's `int()` refuses a fraction; used > total says the server's `licenseSeatsExceeded` under the used seats. The license's "assignee or department" is one group with its error under the assignee (`custodianId`); a department change clears it. The warranty end is `notBefore` the start, with `min`/`max` on the two inputs; on the asset edit it is checked only when one of the two dates changed (`original` = the stored asset), on create and in the batch always. Money keeps `min="0"` (`range`), not `step="0.01"`: the server takes any precision (`optionalMoney`), so the client does not refuse what the server accepts. (Superseded for money by X-R3, Task 31c: the user chose one money rule on 2026-10-18.)
   - **A-R5 The asset form's add buttons.** "Add purchase document" and "Add photo" check their own fields under the same hook and merge into its map (`setErrors({ ...fieldErrors.errors, … })`), so the save's errors stay: a missing file is `fileRequired` under its drop zone, a missing number `purchaseDocumentNoRequired` under the number. A chosen file without a number also stops the save (the rule the toast had). The drop zones keep their own title as their name (no `Field` label): they take `id`, `aria-invalid` and `aria-describedby` themselves, with a `FieldError` under them; a new file clears its error (and the number's, whose rule depends on it).
   - **A-R6 The import wizard has no typed field.** Its rules are prerequisites (spec scope: a picked file, a ready row). `validate(file)` states the first (`required(file)`, shown as today's `fileRequired` in the wizard's notice); the file's own rules (10 MB, `.xlsx`) stay the server's, whose refusal comes under `_form` and shows in the same notice (S-R7, spec §4.1.3). With no ready row the import button is `aria-disabled`, tied by `aria-describedby` to the counts beside it (`asset-import-ready-summary`, "0 พร้อมนำเข้า · n มีข้อผิดพลาด"), which say why; `confirmImport` keeps its return. No hook: nothing lands under a field.
   - **A-R7 The batch.** Keys are the server's: `common.<field>` for the shared fields (`COMMON_FIELD_IDS` holds the field names, `commonKey()` adds the prefix), `rows.<i>.assetTag` / `rows.<i>.serialNumber` for the rows. The rows render twice (cards below `md`, a table from `md`, one hidden): ids `asset-batch-card-<i>-tag|serial` and `asset-batch-row-<i>-tag|serial`, and `idFor` picks the one on screen (`getClientRects().length`). In-batch duplicates use the server's own `buildAssetBatchDuplicateFieldErrors(rows, findDuplicateBatchValues(rows))` (`src/lib/asset-batch-create.ts`), live under every row that holds the value (`liveError`, `asset.batchRowDuplicate`); the warning box that listed the values goes (U8, anti-goal "a live warning box and an under-field error"). A server `duplicate` (already registered) reads `common.validation.duplicate`. Removing or pasting rows clears every row error (the rows below move, M-R7); adding a row at the end does not. A server refusal sets `reviewing` false first (`reveal`), then focuses (spec §4.2). The duplicate check's "found" result loses its toast (F-R9): its Notice reads it out (`role="status"` for that tone only); the clean result and a failure keep their toasts.
@@ -202,7 +213,7 @@ No other shared API changes. Every other new name is local to its form file (A-R
 
   - **U-R1, the round's date pair** (spec §7.4, §4.3). The start input gets `max={values.endDate}`, the end input `min={values.startDate}` (the disposal list filter's pattern, `disposal/page.tsx:472-475`), so the picker cannot choose a reversed pair. `validate()` checks `notBefore(endDate, startDate)` always (the round form only creates, so spec §7.4's "the audit round always checks" holds); the same day is fine, as on the server (`endDate < startDate`). Changing either date clears both dates' errors. A server `endBeforeStart` lands under the end date through `applyServer`; its text is `common.validation.endBeforeStart` (F-R3 resolves `common.validation` first), not the catalog's older "ต้องอยู่หลัง".
   - **U-R2, the preview** (spec §4.1). The preview posts the round's body to a route that parses the same schema with an empty name filled in. It runs **no** client `validate()` (a client check would refuse an empty name, which the preview accepts today), but a refusal that names a field shows under it like save's (`if (fieldErrors.applyServer(payload) && focusFirstError()) return`), so a reversed pair or a sample rate of 150 no longer ends in "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง". The client rules run on save (U6: errors after pressing save).
-  - **U-R3, whole numbers.** A number input's step is 1 unless it says otherwise, and the browser checked it before `noValidate`; the server's year and sample rate are `int`. The round form restates it with a local `function wholeNumber(value: string)` → `"invalidNumber"` ("กรุณากรอกเป็นตัวเลข") after `range`. It stays local (FIXED 4 has no such helper and no other area U form needs it); if the assembly adds a shared one, U1 switches to it. The client check matters because plan 1's map sends zod's `.int()` failure (`invalid_type`, `expected: "int"`) to `required` (S-R2's "any other `invalid_type`"), so without it a year of 2569.5 would read "กรุณาระบุข้อมูลนี้" (assembly note 1).
+  - **U-R3, whole numbers.** A number input's step is 1 unless it says otherwise, and the browser checked it before `noValidate`; the server's year and sample rate are `int`. The round form restates it with a local `function wholeNumber(value: string)` → `"invalidNumber"` ("กรุณากรอกเป็นตัวเลข") after `range`. It stays local (FIXED 4 has no such helper and no other area U form needs it); if the assembly adds a shared one, U1 switches to it. The client check matters because plan 1's map sends zod's `.int()` failure (`invalid_type`, `expected: "int"`) to `required` (S-R2's "any other `invalid_type`"), so without it a year of 2569.5 would read "กรุณาระบุข้อมูลนี้" (assembly note 1). (Task 31b maps it to `invalidNumber`; the local check stays, X-R2.)
   - **U-R4, the round's keys** (M-R1). `name`, `auditYear`, `startDate`, `endDate`, `status`, `riskPreset`, `sampleRate`, in visual order. The risk preset has no client rule but the server can name it (`invalidChoice`), so it has an id and an error (as plan 1 M2 kept location's `parentId`). The eight scope selects send optional text the server never refuses and stay out. The local `Select` helper gains `id` and `error` and hands them to its `Field`. The year and the sample rate say their limits through `useValidationMessage` (M-R4's pattern for numbers; the year in the reader's calendar, `displayYearRange`).
   - **U-R5, who sends the request.** A dialog whose request is sent by its parent (the decision through the row's `review()`, the component-missing dialog and the scan check through the scan workspace) gets no hand-back: on those routes the schema cannot refuse any field the dialog shows (`reviewRemark`, `remark` and the four `actual…Id` are optional text with no limit; `action`, `confirmConflict`, `assetId` are set by code), so the parent's toast stays the form-level message (spec §4.1.3) and its test says `server: false`. A dialog that sends its own request keeps the `applyServer` line even where the route cannot name a field today (mark not found, close), so a later server rule lands under the field with no client change. The scan workspace, its offline queue and replays do not change (spec §3 non-goal).
   - **U-R6, a form with no rule.** Mark not found, component missing and batch review have nothing a person can get wrong before the request (optional remarks with no server limit, an optional photo, the batch's selection being a prerequisite). They still get `noValidate` (spec §4.5) and a module-level `validate()` that returns `{}` with a comment saying why, because V2 needs `validate(` in every `V_FORMS` file and spec §3 forbids inventing a rule; the two dialogs run it through the hook like every form, the batch calls it before it sends. No `EXEMPT` row (assembly note 2).
@@ -235,12 +246,12 @@ No other shared API changes. Every other new name is local to its form file (A-R
     - `preview()` resolves to a body that names a review-step field: a 400 whose `fieldErrors` hold one of `FIELD_ORDER`'s keys (thrown with the body as `cause`), or a 200 preview with `eligibleCount === 0` and D1's `fieldErrors`; in both cases the dialog returns to the review step and the field shows its error. A preview with eligible rows stays the preview, as today (the person may execute those rows; the blocked ones are listed with their reasons). A retry (which sends the previous payload) never hands back.
     - Nothing eligible is the prerequisite: the confirm button is `aria-disabled` and described by the zero-eligible Notice (`id="disposal-bulk-execution-zero-eligible"`).
   - **D-R10, where the hook lives (D4–D7).** The decision and execution dialogs submit through their button component (`handleSubmit` there), so the hook lives there and the dialog gets it as a prop, typed `ReturnType<typeof useFieldErrors<Field>>`; closing the dialog clears the errors (the button stays mounted). The bulk dialogs own their hook (they unmount when closed) and get the refusal back from the provider (D-R8, D-R9). `useImperativeHandle(ref, () => ({ open: () => setOpen(true) }))` stays as `tests/dialog-trigger-handles.test.ts` pins it.
-  - **D-R11, money fields.** `min="0"` is restated as `range(value, 0)` (`outOfRange`, shown with `{ min: 0 }`); `step="0.01"` is not restated: plan 1 ships no helper for it, and the server takes any non-negative number into a `Decimal(18, 2)` column (open issue 3).
+  - **D-R11, money fields.** `min="0"` is restated as `range(value, 0)` (`outOfRange`, shown with `{ min: 0 }`); `step="0.01"` is not restated: plan 1 ships no helper for it, and the server takes any non-negative number into a `Decimal(18, 2)` column (open issue 3). Superseded by X-R3 (Task 31c): `range(value, 0) ?? decimals(value, 2)`.
 
 - **R6, area M (maintenance, Tasks 27–31; rulings MT-R*, P-R1):**
 
   - **MT-R1, the maintenance refusals about a field name it (Task M1; spec §6.2, U3, U9; plan 1 S-R6, S-R7).** `MaintenanceApiError` gains an optional fourth constructor argument `fieldErrors?: FieldErrors` (a field declared in the class body, not a parameter property, so tests can import the module under type stripping) and `getMaintenanceErrorPayload` adds `fieldErrors` to the body only when it is set, so every other maintenance refusal keeps its body byte for byte. The refusals: "Select who is recording this repair" keeps its code and adds `{ reportedById: "required" }` (a missing value is `required`, S-R7); "Reporter not found or inactive", "Vendor not found or inactive" (repair create, complete and edit, one helper) and "PM vendor not found or inactive" (the PM edit) become `FieldRefusalError` with the catalog key of their own message (`reporterNotFound`, `vendorNotFound`, `pmVendorNotFound`); status 400 and the message stay. No rule is added (spec §6.3). The asset-state refusals (`MAINTENANCE_ASSET_WRITTEN_OFF`, `_ON_LOAN`, `_INELIGIBLE`, `_OPEN_RECORD_EXISTS`) and the conflicts (`MAINTENANCE_CONFLICT`, `_INVALID_TRANSITION`, the plan's state) are about the asset's or the record's state, not a value typed: they keep today's handling (spec §4.1 step 4). The services import `FieldRefusalError` from `./field-errors.ts` and the routes' `errorResponse` from `@/lib/field-errors`: one file, one module, the same way `MaintenanceApiError` already crosses from `./maintenance-api-errors.ts` to the routes' `@/lib/maintenance-api-errors` (the bundler keys a module by its resolved path).
-  - **MT-R2, `step(value, size)` (Task M2; FIXED 4 addition; spec §4.5).** Spec §4.5 keeps `step` on the control and has `validate()` restate it; FIXED 4's eight helpers do not cover it. `step(value, size)` in `src/lib/validation-rules.ts`: empty → `null` (left to `required`); not a finite number → `"invalidNumber"`; else `"invalidNumber"` unless `value / size` is within 1e-6 of a whole number (so `0.29` at `0.01` passes). `invalidNumber` is the code the server gives zod's `not_multiple_of` (plan 1 S-R2), so a client and a server step refusal read the same. It counts from 0, which is the step base of every step field in the maintenance forms (`min="0"` money, `min="1"` whole days). A money field writes `range(v, 0) ?? step(v, 0.01)`, whole days `range(v, 1, 3650) ?? step(v, 1)`. The asset and disposal money fields of the other areas need the same (open issue 14 is its message).
+  - **MT-R2, `step(value, size)` (Task M2; FIXED 4 addition; spec §4.5).** Spec §4.5 keeps `step` on the control and has `validate()` restate it; FIXED 4's eight helpers do not cover it. `step(value, size)` in `src/lib/validation-rules.ts`: empty → `null` (left to `required`); not a finite number → `"invalidNumber"`; else `"invalidNumber"` unless `value / size` is within 1e-6 of a whole number (so `0.29` at `0.01` passes). `invalidNumber` is the code the server gives zod's `not_multiple_of` (plan 1 S-R2), so a client and a server step refusal read the same. It counts from 0, which is the step base of every step field in the maintenance forms (`min="0"` money, `min="1"` whole days). A money field writes `range(v, 0) ?? step(v, 0.01)`, whole days `range(v, 1, 3650) ?? step(v, 1)`. The asset and disposal money fields of the other areas need the same (open issue 14 is its message). (Answered 2026-10-18: X-R3, Task 31c, gives every money field `decimals(v, 2)` with its own sentence; `step` stays for whole numbers.)
   - **MT-R3, the maintenance forms follow plan 1's form pattern** (plan 1 M-R1 to M-R5, word for word where it applies): `FIELD_IDS` in visual order with the server's keys, a module-level `validate()` with `check(…)` lines, `useFieldErrors<…>()`, `fieldErrors.setErrors(validate(…))` then `if (focusFirstError()) return`, on `!response.ok` first `if (fieldErrors.applyServer(payload) && focusFirstError()) return` and then today's `throw new Error(getMaintenanceErrorMessage(payload?.code, …))` (so a refusal that names no shown field keeps today's domain toast, spec §4.1 step 3), `<form onSubmit={…} noValidate …>`, `id` after `label` and `error` last, one prop per line past about 120 characters. Additions: a field with limits says them with `validationMessage` (`{ min: 1, max: 3650 }` for the days, `{ min: 0 }` for a cost); a `MaintenanceOptionSelect` is written one prop per line with `id` first and `error` just before `onChange`; `setField` is typed by the table and clears the key it sets (`fieldErrors.clear(field)`: the values and the table hold the same keys); the PM form's frequency change also clears the days, which only a custom frequency shows (spec §4.3). The PM edit does not check the asset: its select is fixed and the update does not send it.
   - **MT-R4, focus only reaches a field on screen (spec §4.2; Task M4).** The repair form's order is `fieldOrder(values, needsReporter)`: the outcome only when the repair is done, the reporter only for an account without a linked employee. A server key outside the order (the account's own employee inactive: `reportedById` with no reporter select) makes `focusFirst` false, so the refusal falls through to today's toast (plan 1 F-R4) instead of focusing nothing. The four fields inside "more details" (`DETAIL_FIELDS`) open it first through `focusFirst`'s `reveal` (`setShowDetails(true)`), and the hook waits for the field to mount. The two radio questions become `FieldGroup`s (plan 1 F-R8): the star, and an error tied to the group for the server's `done` / `outcome` codes; the client has no rule for them (each always holds a value).
   - **MT-R5, a result toast is not a validation toast (Tasks M4, M5; plan 1 F-R9 "or adds an allowance list … with its own ruling"; P-R4).** "บันทึกแล้ว แต่แนบไฟล์ไม่สำเร็จ {count} ไฟล์ …" is the result of a save that went through; the form has gone when it shows (the page moves to the record, or the dialog closes), so neither a field nor a status line can hold it. Each file gets one row in area D's `NON_VALIDATION_TOASTS` (FIXED 9, created by Task 21): `{ count: 1, why: …, ruling: "v-track plan 2 MT-R5" }`, inserted directly after the list's opening line; V3 then allows exactly that one toast outside a catch, and fails a second one or a row whose file is not in `V_FORMS`. A validation error never goes in it. (Area M's draft created its own `RESULT_TOASTS` list keyed by the exact call; the assembly kept one list, D's, which ran green on the chain with these rows.)
@@ -258,19 +269,26 @@ No other shared API changes. Every other new name is local to its form file (A-R
     - `SELECT_STAR_ONLY`: each task deletes its own row **inside** the block that starts `const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {` (the transfer, bulk-move, scan-check, disposal and plan-form rows read exactly like their `V_SCOPE` rows; include the opening line or a row next to it that is still there). In this order the block shrinks: Task 9 −checkout, 10 −checkin, 11 −transfer, 12 −bulk move, 19 −scan check, 21 −request, 22 −batch, 24 −execution, 29 −plan form (M3's anchor is the two adjacent maintenance rows, which are still both there), 30 −repair record (`: 2,` is unique). After Task 30 the block is `{` then `}` (a `Record` may be empty; `tsc` is clean).
     - FMG `STAR_ONLY`: Task 1 (A1) takes its **variant a** (the checkin entry is still there; the line becomes `` const STAR_ONLY = new Set([`${C}asset-operations/checkin-form.tsx|t("returnDate")`]) ``); Task 10 (O3) takes its **second case** (the checkin entry is the only one left; the line becomes `const STAR_ONLY = new Set<string>([])`, because an empty `new Set([])` is `Set<never>` and `STAR_ONLY.has(…)` fails `tsc`). The other two cases are left out of the tasks.
   - **P-R4, one allowance list for non-validation toasts: `NON_VALIDATION_TOASTS` (FIXED 9), not `RESULT_TOASTS`.** Areas D and M each drafted a list for the same case (an upload result after a save that went through; plan 1 F-R9 left it to the later plans). D runs first, so Task 21 (D2) creates `NON_VALIDATION_TOASTS` and V3's exact count with D2's block, Task 22 (D3) adds its row, and Tasks 30 and 31 (M4, M5) add one row each directly after the list's opening line, `{ count: 1, why: …, ruling: "v-track plan 2 MT-R5" }`, with area M's `why` text; area M's `RESULT_TOASTS` and its V3 change are not written. An exact count per file is the stricter of the two (it fails a second toast of the same text), and it ran green on the chain (`repair-record-actions.tsx` holds one upload toast outside a catch after Task 31). The batch's duplicate-check result toast (named by F-R9) needs no row: Task 2 moves it into its Notice (A-R7).
-  - **P-R5, counts on this plan's chain.** `npm test` after each task (tests; pass one fewer, 0 fail, 1 skipped): base 2256 · Tasks 1–25: 2257 … 2281 (+1 each) · Task 26: 2281 (+1 −1) · Tasks 27–31: 2282 … 2286. Messages (leaf keys per locale): 4092 · Task 1: 4091 · Task 2: 4091 · Task 9: 4090 · Task 10: 4087 · Task 11: 4086 · Task 17: 4087 · Task 18: 4088 · Task 22: 4089 · Task 26: 4090 · Task 31: 4091. Line counts of the shared CRLF files on the chain (each printed twice by `eol.mjs`): `messages/th.json` 4274 at the base, 4273 after Tasks 1–8, 4272 (9), 4269 (10), 4268 (11–16), 4269 (17), 4270 (18–21), 4271 (22–25), 4272 (26–30), 4273 (31); `tests/validation-guards.test.ts` 190 at the base, 191 … 197 (Tasks 1–7), 197 (8–12), 198 (13), 199 (14), 200 (15), 202 (16), 203 (17), 204 (18–20), 217 (21), 218 (22), 219 (23, 24), 220 (25), 221 (26–29), 222 (30), 224 (31); `tests/form-migration-guards.test.ts` 503 throughout; `tests/choice-controls-ui.test.ts` 150 at the base, 151 (Tasks 9–11), 152 (12–29), 153 (30), 154 (31). Each area's Step 5 numbers are rewritten to these; the areas' own rehearsal records at the end of each area keep the numbers they measured alone.
+  - **P-R5, counts on this plan's chain.** `npm test` after each task (tests; pass one fewer, 0 fail, 1 skipped): base 2256 · Tasks 1–25: 2257 … 2281 (+1 each) · Task 26: 2281 (+1 −1) · Tasks 27–31: 2282 … 2286 · the addendum, Tasks 31a–31e: 2287 … 2291 (+1 each) · Task 33: 2292. Messages (leaf keys per locale): 4092 · Task 1: 4091 · Task 2: 4091 · Task 9: 4090 · Task 10: 4087 · Task 11: 4086 · Task 17: 4087 · Task 18: 4088 · Task 22: 4089 · Task 26: 4090 · Task 31: 4091 · Task 31c: 4092 · Task 31d: 4093. Line counts of the shared CRLF files on the chain (each printed twice by `eol.mjs`): `messages/th.json` 4274 at the base, 4273 after Tasks 1–8, 4272 (9), 4269 (10), 4268 (11–16), 4269 (17), 4270 (18–21), 4271 (22–25), 4272 (26–30), 4273 (31, 31a, 31b), 4274 (31c), 4275 (31d, 31e); `tests/validation-guards.test.ts` 190 at the base, 191 … 197 (Tasks 1–7), 197 (8–12), 198 (13), 199 (14), 200 (15), 202 (16), 203 (17), 204 (18–20), 217 (21), 218 (22), 219 (23, 24), 220 (25), 221 (26–29), 222 (30), 224 (31–31e); `tests/form-migration-guards.test.ts` 503 throughout; `tests/choice-controls-ui.test.ts` 150 at the base, 151 (Tasks 9–11), 152 (12–29), 153 (30), 154 (31–31e). Each area's Step 5 numbers are rewritten to these; the areas' own rehearsal records at the end of each area keep the numbers they measured alone.
   - **P-R6, five test files, no shared helper module.** Each area declares its helpers in its own file (A-R12, O-R10, U-R12, D's D2 block, MT-R9); a test file cannot import another (it would run that file's tests again), and a shared `tests/helpers/` module would be a new shared API no area needs. The helpers differ where the forms differ (O's repeated ids, U's formless forms, D's attributes before `onSubmit`, M's `resultToast`).
   - **P-R7, paths.** `<temp>` is the `v2-plan` folder for every area (area D's draft meant the scratchpad above it: its `<temp>/v2-plan/…` paths lost the `v2-plan/` segment and `<temp>/v-sim` became `<temp>/../v-sim`).
-  - **P-R8, number rules restated three ways, kept as rehearsed.** A whole number is restated by `pattern(v, /\d+/)` (license seats, A-R4), a local `wholeNumber` (the round's year and sample rate, U-R3), and `step(v, 1)` (the PM days, MT-R2; FIXED 10 lands in Task 28, after areas A and U). Money keeps `range(v, 0)` without its step in the asset and disposal forms (A-R4, D-R11) and adds `step(v, 0.01)` in the maintenance forms (MT-R2). Moving A and U onto `step` would rewrite rehearsed source; the user decides whether one follow-up task makes them one rule (open issues 3 and 12).
+  - **P-R8, number rules restated three ways, kept as rehearsed.** A whole number is restated by `pattern(v, /\d+/)` (license seats, A-R4), a local `wholeNumber` (the round's year and sample rate, U-R3), and `step(v, 1)` (the PM days, MT-R2; FIXED 10 lands in Task 28, after areas A and U). Money keeps `range(v, 0)` without its step in the asset and disposal forms (A-R4, D-R11) and adds `step(v, 0.01)` in the maintenance forms (MT-R2). Moving A and U onto `step` would rewrite rehearsed source; the user decides whether one follow-up task makes them one rule (open issues 3 and 12). (Answered 2026-10-18: money is one rule, `decimals`, Task 31c, X-R3; the whole numbers keep their three restatements until the final plan's shared rule, X-R2.)
   - **P-R9, open issues merged.** The areas' open issues are one numbered list at the end ("Open issues"), each with its default (what the tasks write) and a recommendation; none blocks execution. Area U's assembly notes 1 and 2 became open issues 12 and 13; its note 3 (dialog gates and GD3) is in the Global Constraints' form convention and was already followed by areas D and O.
   - **P-R10, the server tasks stay at the head of their areas.** Spec §8 put the round's server change first, and plan 1 landed it first (Tasks 1–10). Plan 2's two server tasks are small and each serves only its own area's forms: Task 20 (D1) runs before the disposal forms and Task 27 (M1) before the maintenance forms, each reviewed before its forms start. Either could move to the front of the plan without a conflict (they touch no file of another area); the order A, O, U, D, M is the user's scope order.
+
+- **R8, the addendum: the user's answers of 2026-10-18 (Tasks 31a–31e; rulings X-R*).** The user answered the open issues with "ตามที่แนะนำ", every recommendation. Five answers change code, each one task after Task 31: 5 → 31a, 12 → 31b, 3 and 14 → 31c, 16 → 31d, 7 → 31e. Issue 15: the toast stays in this plan, and the post-save bug becomes a separate task after this plan merges. The other issues keep the defaults the tasks write. The five tasks share one new LF test file, `tests/v-track2-x.test.ts`: Task 31a creates it with its header (the resolve-hook stand-ins of `tests/v-track-s.test.ts` under `globalThis.__vTrack2X`, and `read`, `messages`, `say`), the later tasks append one test each (P-R6: no test imports a test file). Ids: 31a carries O7 (area O's next id), 31d A8 and 31e U7; 31b and 31c belong to no area, so their test names and commit messages say only "(v-track plan 2 task 31b)" and "(v-track plan 2 task 31c)".
+  - **X-R1, checkin's two refusals name their field (31a, O7; open issue 5; spec §6.2).** Plan 1 S10's shape, inline as checkout's `conditionBefore`: "Invalid return condition for check-in" adds `fieldErrors: { conditionAfter: "invalidReturnCondition" }`, "Invalid return status for check-in" adds `{ nextStatusId: "invalidReturnStatus" }`; the codes are their own catalog keys (S-R7), so the field reads the sentence the toast showed. Status, message and `code` stay. The checkin form does not change: Task 10 holds both keys, shows them under the selects and hands a refusal back from its review (O-R1).
+  - **X-R2, zod's `.int()` (31b; open issue 12; S-R2).** `invalid_type` with `expected: "int"` maps to `invalidNumber`; a missing whole number reports `expected: "number"` and stays `required`. The client restatements stay (U-R3's `wholeNumber`, A-R4's seats `pattern`, MT-R2's `step(v, 1)`); one shared whole-number rule is the final plan's (the recommendation's second half).
+  - **X-R3, one money rule (31c; open issues 3 and 14; spec §4.5, §6.3).** `decimals(value, places)` (FIXED 12): every money field writes `range(v, 0) ?? decimals(v, 2)` and reads `common.validation.tooManyDecimals`. The code is a `RuleCode` beside `endBeforeStart`, not a `FieldErrorCode`, because the server never sends it; no server rule. "Every money field of plan 2's forms" is every control with `step="0.01"` under `src/components`, eight files: the asset form (price, document total), the batch (price), the disposal request, batch, decision and execution (sale and salvage values), the repair record form and its dialogs (cost). The decision dialog's two estimated values are money fields like the request's, so they take the rule too (the test compares the list with the source). The maintenance money fields drop `step(v, 0.01)`; whole numbers keep `step()` / `invalidNumber`. Replaces the money parts of A-R4, D-R11, MT-R2 and P-R8.
+  - **X-R4, the batch's row-limit gates (31d, A8; open issue 16; spec §4.4).** A-R6's gate: "add row" at 100 rows (`atRowLimit`), the two "remove row" buttons at 2 rows (`atRowMinimum`) and "check duplicates" while the rows hold a duplicate (`hasClientDuplicates`) become `aria-disabled` with `aria-describedby="asset-batch-row-count"`, and each handler returns first; the row count line takes the id and the limits (`asset.batchRowLimits`). The duplicate check points at the same line, as the answer says; the duplicates themselves are named by the live errors under the rows (A-R7). The print queue's two buttons go to the final plan's sweep.
+  - **X-R5, the scan check's photo section (31e, U7; open issue 7).** Pressing the waiting save opens the note-and-photo section (`setExtrasOpen(true)`) before the gate's return, so the picker shows; the gate, its Notice and focus stay as Task 19 left them.
 
 ## Review Focus
 
 Five failure modes that would bite a person. Each is held by assertions in its owning task's Step 1 block or a guard, and Task 32 checks it on the app.
 
 1. **A server refusal from a review dialog lands on a field behind the closing dialog, or nowhere (Tasks 8–11, 2, 4, 22, 26).** If the field took focus inside the dialog's 200 ms exit, Radix's focus trap would pull it back and the page behind would still be `aria-hidden`; if a step that holds the field is unmounted, focus would find nothing. **Tests:** Task 8 (O1) runs the real `waitForDialogToClose` with a scripted frame queue (dialog gone → its focus return → resolve; at once with no dialog; gives up after `frames`); Tasks 9–11 pin `reveal: leaveReview` with `setReviewOpen(false)` inside it; Task 2 pins the batch's `reveal` that leaves `reviewing`; Task 4 the install's return to `details`; Tasks 22 and 26 the disposal batch's and the bulk execution's return to their edit and review steps. Task 32: a refusal answered on each review by a stand-in body (`route.fulfill`, Task 32 Step 5; no request reaches the server).
-2. **A gate that hides its reason, or a content rule left as a disabled button (Tasks 1, 3, 5, 6, 13, 17–19, 22–26).** A `disabled` button drops out of the Tab order, so its reason is never read; a content rule kept as a gate never says which field is wrong. **Tests:** each owning test pins the `aria-disabled`/`aria-describedby` pair, the reason's id on a visible element and the handler's early `return` (the asset form's `saveBlockedBy`, the import's counts, the cancel dialog's blockers, the finding close's evidence line as the body's last line, batch review, the scan check's photo Notice, the disposal batch's assets line, the execution's evidence Notice, the two bulk dialogs' zero-eligible Notices); and that the content gates are gone (status correction's 5 characters, bulk update's "one of the two", the disposal decision's rejection reason, bulk execution's shared values and permanent confirmation). Task 32: every gate at 1440 and 375, focusable, its reason read.
+2. **A gate that hides its reason, or a content rule left as a disabled button (Tasks 1, 3, 5, 6, 13, 17–19, 22–26, 31d).** A `disabled` button drops out of the Tab order, so its reason is never read; a content rule kept as a gate never says which field is wrong. **Tests:** each owning test pins the `aria-disabled`/`aria-describedby` pair, the reason's id on a visible element and the handler's early `return` (the asset form's `saveBlockedBy`, the import's counts, the cancel dialog's blockers, the finding close's evidence line as the body's last line, batch review, the scan check's photo Notice, the disposal batch's assets line, the execution's evidence Notice, the two bulk dialogs' zero-eligible Notices, the batch's row count line); and that the content gates are gone (status correction's 5 characters, bulk update's "one of the two", the disposal decision's rejection reason, bulk execution's shared values and permanent confirmation). Task 32: every gate at 1440 and 375, focusable, its reason read.
 3. **A refusal about a field the form hides or renders twice focuses nothing and fails silently (Tasks 2, 9, 21–26, 30).** **Tests:** D-R4's `shownFields` in each conditional disposal form (pinned: `check` drops a hidden key, `focusFirstError` passes the shown order); MT-R4's `fieldOrder(values, needsReporter)` and the "more details" `reveal` (Task 30); the batch's `idFor` that picks the rendered row (cards or table, Task 2); checkout's four server keys on one control (O-R3, Task 9). In each, the fall-through line to today's toast or Notice is pinned (spec §4.1.3).
 4. **A live warning shown twice, or an under-field error that hides a live one (Tasks 1, 2; U8).** **Tests:** Task 1 pins the asset tag and serial `Field`s with one `error=` that prefers the live duplicate line and falls back to the hook's message (one line, `liveError` kept); Task 2 pins the batch rows' `liveError` with `asset.batchRowDuplicate` and that the warning box listing duplicates is gone, and the duplicate-check result's Notice with `role="status"` instead of a toast.
 5. **The shared guard lists drift (every form task).** A form moved without its `V_FORMS` row, a star-only select left behind, a toast kept without a reason, or a list edited out of order would let a validation toast or the browser's bubble come back. **Tests:** V1–V5 with `V_FORMS` +28 files, `SELECT_STAR_ONLY` deleted row by row to empty (V5 compares exact counts), V3's exact `NON_VALIDATION_TOASTS` counts (FIXED 9), FMG's `STAR_ONLY` meta-test (a stale entry fails) emptied by Tasks 1 and 10, and `CONSTRAINT_FLOORS` (checkin's floor raised). The assembly check ran the whole chain with these guards green after every conflict (header).
@@ -303,15 +321,21 @@ The date pairs (spec §7.4) are held by their tasks' tests: Task 1 (warranty, on
 | `src/lib/maintenance-api-errors.ts`, `repair-record-service.ts`, `maintenance-plan-service.ts` (CRLF) | reporter and vendor `fieldErrors` | 27 |
 | `src/lib/validation-rules.ts` (CRLF) | `step()` | 28 |
 | `c/maintenance/maintenance-plan-form.tsx`, `repair-record-form.tsx`, `repair-record-actions.tsx` (CRLF) | errors, groups, more details, three dialogs, the return date | 29, 30, 31 |
-| `messages/th.json`, `messages/en.json` (CRLF) | the keys of "Messages" | 1, 2, 9, 10, 11, 17, 18, 22, 26, 31 |
+| `src/app/api/assets/[id]/checkin/route.ts` (CRLF) | the return condition and status refusals' `fieldErrors` | 31a |
+| `src/lib/field-errors.ts` (CRLF) | `.int()` → `invalidNumber` | 31b |
+| `src/lib/validation-rules.ts` (CRLF); `c/assets/asset-form.tsx`, `asset-batch-form.tsx`, `c/disposal/disposal-request-form.tsx`, `disposal-batch-form.tsx`, `disposal-decision-button.tsx`, `disposal-execution-button.tsx`, `c/maintenance/repair-record-form.tsx`, `repair-record-actions.tsx` (CRLF) | `decimals()`; every money field `range(v, 0) ?? decimals(v, 2)` | 31c |
+| `c/assets/asset-batch-form.tsx` (CRLF) | the row-limit and duplicate-check gates, the row count line | 31d |
+| `c/audit/audit-scan-check-form.tsx` (CRLF) | the waiting save opens the photo section | 31e |
+| `messages/th.json`, `messages/en.json` (CRLF) | the keys of "Messages" | 1, 2, 9, 10, 11, 17, 18, 22, 26, 31, 31c, 31d |
 | `tests/validation-guards.test.ts` (CRLF) | `V_FORMS` rows; `SELECT_STAR_ONLY` rows deleted; `NON_VALIDATION_TOASTS` and V3 | every form task; 21 (the list), 22, 30, 31 (rows) |
 | `tests/form-migration-guards.test.ts` (CRLF) | `STAR_ONLY` emptied; checkin floor 4 → 5 | 1, 10 |
 | `tests/choice-controls-ui.test.ts` (CRLF) | one pin each | 9, 12, 30, 31 |
-| `tests/v-track2-a.test.ts`, `-o`, `-u`, `-d`, `-m` (new, LF) | one test per task | 1–7 · 8–13 · 14–19 · 20–26 · 27–31 |
+| `tests/v-track2-a.test.ts`, `-o`, `-u`, `-d`, `-m`, `-x` (new, LF) | one test per task | 1–7 · 8–13 · 14–19 · 20–26 · 27–31 · 31a–31e |
+| pins of the addendum: `v-track-f` (CRLF), `v-track2-a`, `v-track2-d`, `v-track2-m` (LF) (31c); `asset-forms-ui` (CRLF) (31d); `v-track2-u` (LF) (31e) | each in its task's Files line | 31c–31e |
 | pins (each in its task's Files line): `asset-form-sticky-actions` (LF), `asset-forms-ui`, `assets-sweep-ui` (LF), `sticky-form-footer-ui` (LF), `v-track-f`, `asset-register-table-ui`, `asset-operation-status-policy`, `asset-status-correction-ui`, `asset-register-ux`, `asset-label-print-ui`, `button-size-switch` (LF), `asset-handover-checkout` (LF), `asset-handover-checkin` (LF), `asset-operation-confirmation-ui`, `asset-transaction-cancellation-ui`, `operations-sweep-ui` (LF), `audit-round-form-ui`, `audit-pages-sweep-ui` (LF), `audit-round-cancellation`, `confirm-text-dialog-ui`, `list-pages-ui`, `audit-scan-check-ui`, `audit-scan-sweep-ui`, `disposal-sweep-ui`, `disposal-bulk-approval`, `disposal-bulk-execution-ui`, `disposal-bulk-execution-ui-state` (mixed; one test deleted), `pm-plans-ui`, `maintenance-sweep-ui` (LF), `repair-record-ui`, `repair-record-detail-ui` | each in its form's task | 1–31 |
 | `DEVELOPER_HANDOFF.md`, `docs/99_CHANGELOG.md`, `tests/v-track-docs.test.ts` (CRLF) | the plan's section and entry; plan 2's record test appended, plan 1's order assertion moved | 33 |
 
-No change (checked): `src/components/ui/operation-review-dialog.tsx`, `accessible-dialog.tsx`, `use-field-errors.ts`, `field-group.tsx`, `field.tsx`, `searchable-select.tsx`, `maintenance-option-select.tsx`, `audit-scan-check-field.tsx` (plan 1 Task 16 already passes `id`/`error`); the audit scan workspace and its offline queue (U-R5, spec §3 non-goal); `src/lib/field-errors.ts` (the `.int()` mapping stays, open issue 12); every route except Tasks 20 and 27's; `prisma/`; `DESIGN.md`, docs/14, `.impeccable/design.json` (the final plan); `c/admin/system-settings-form.tsx` (plan 3); `tests/list-frame-guards.test.ts`, `tests/ui-overlay-guards.test.ts`, `tests/visual-foundation-guards.test.ts` (run green after every task).
+No change (checked): `src/components/ui/operation-review-dialog.tsx`, `accessible-dialog.tsx`, `use-field-errors.ts`, `field-group.tsx`, `field.tsx`, `searchable-select.tsx`, `maintenance-option-select.tsx`, `audit-scan-check-field.tsx` (plan 1 Task 16 already passes `id`/`error`); the audit scan workspace and its offline queue (U-R5, spec §3 non-goal); every route except Tasks 20, 27 and 31a's; `prisma/`; `DESIGN.md`, docs/14, `.impeccable/design.json` (the final plan); `c/admin/system-settings-form.tsx` (plan 3); `tests/list-frame-guards.test.ts`, `tests/ui-overlay-guards.test.ts`, `tests/visual-foundation-guards.test.ts` (run green after every task).
 
 ## Interfaces between tasks
 
@@ -327,9 +351,12 @@ No change (checked): `src/components/ui/operation-review-dialog.tsx`, `accessibl
 | Task 20 (D1) | FIXED 11: the evidence and bulk-row `fieldErrors`; `tests/v-track2-d.test.ts` | Tasks 24, 26 |
 | Task 21 (D2) | `NON_VALIDATION_TOASTS` and V3's exact count (FIXED 9); the area's test helpers (`C`, the form regex) | Tasks 22–26; Tasks 30, 31 (rows, P-R4) |
 | Task 27 (M1) | `reportedById`, `vendorId` field refusals (`reporterNotFound`, `vendorNotFound`, `pmVendorNotFound`, `required`); `tests/v-track2-m.test.ts` header | Tasks 29–31 |
-| Task 28 (M2) | `step(value, size)` (FIXED 10) | Tasks 29–31 |
+| Task 28 (M2) | `step(value, size)` (FIXED 10) | Tasks 29–31 (from Task 31c only the PM days) |
 | Task 29 (M3) | M's `assertMigratedForm` (with `resultToast`) in `tests/v-track2-m.test.ts` | Tasks 30, 31 |
-| Tasks 1–31 | the code and guard end state (header, "Assembly check") | Tasks 32, 33 |
+| Task 31a (O7) | checkin's `fieldErrors` (`conditionAfter`, `nextStatusId`); `tests/v-track2-x.test.ts` with its header (`C`, `read`, `messages`, `lookup`, `say`, the route stand-ins, `load`, `stubDb`) | Tasks 31b–31e; Task 32 (stand-ins) |
+| Task 31c | FIXED 12 `decimals(value, places)`, `RuleCode` `"tooManyDecimals"`, `common.validation.tooManyDecimals` | Task 32; any later money field (plan 3, the final plan) |
+| Task 31d (A8) | `asset-batch-row-count` with `asset.batchRowLimits`; `atRowLimit`, `atRowMinimum` | Task 32 |
+| Tasks 1–31, 31a–31e | the code and guard end state (header, "Assembly check", "Addendum") | Tasks 32, 33 |
 | Task 32 | `.superpowers/sdd/v-track-plan2/task-32-findings.md` | Task 33 |
 | Task 33 | the handoff section and the changelog entry | Task 34 |
 
@@ -363,7 +390,8 @@ No change (checked): `src/components/ui/operation-review-dialog.tsx`, `accessibl
 - [ ] **Step 7: Before evidence** at 1440 and 375, light and dark (the toggle beside the language button), for every plan-2 form: the asset create and edit (`/th/assets/new`, one edit page), the batch (edit step and review), the register's bulk update dialog, component install (each step) and removal, status correction, the import wizard, label print and the print queue filter; checkout, checkin, transfer, bulk move, the transaction cancel dialog (with and without blockers); the audit round form, round cancel, mark not found, the finding dialogs (decision, action plan, close), batch review, the scan check (aside at 1440, sheet at 375) and its component-missing dialog; the disposal request, batch (both steps), decision, execution, bulk approval, bulk execution (each step); the PM plan form, the repair record form, the complete, cancel and edit dialogs:
   - a screenshot of the form as it opens to `before/<form>-<theme>-<width>.png`;
   - the empty submit (the abort holds any request it sends): which validation toast or browser bubble shows, which field it names, and that no error shows under any field;
-  - every gate as it is: the asset save while a duplicate check runs and on a protected status change, bulk update's apply with neither value, status correction's confirm with 4 characters, import with no ready row, the cancel dialog's confirm when blocked, the finding close with no evidence, batch review with nothing selected, the scan check's save with a required photo missing, the disposal batch's review with one asset, the decision's save on a rejection without a reason, the execution's save without evidence, the two bulk dialogs with nothing eligible, bulk execution's review without shared values and its confirm with the box unticked;
+  - every gate as it is: the asset save while a duplicate check runs and on a protected status change, bulk update's apply with neither value, status correction's confirm with 4 characters, import with no ready row, the cancel dialog's confirm when blocked, the finding close with no evidence, batch review with nothing selected, the scan check's save with a required photo missing, the disposal batch's review with one asset, the decision's save on a rejection without a reason, the execution's save without evidence, the two bulk dialogs with nothing eligible, bulk execution's review without shared values and its confirm with the box unticked, the batch's add row at 100 rows, remove row at 2 and check duplicates with a duplicate in the rows (Task 31d), the scan check's save with a required photo missing and its note-and-photo section closed (Task 31e);
+  - a money field with three decimals (12.345) in the asset form's price and the repair record's cost (Task 31c);
   - the date pairs as they are: a warranty end before its start, a round end before its start, a queue created-to before created-from, a repair return date before the reported date (the pickers allow each today).
 - [ ] **Step 8: Clean up.** Stop your server if you started one and remove your launch configuration (only yours). In your browser context, `indexedDB.deleteDatabase("asset-system-audit-offline")` and remove every `localStorage` key that starts with `audit-offline-scan:` (nothing should be there; say so in the baseline file if something was). `git status --short` shows what Step 1 showed. No commit in this task besides Step 1's plan commit.
 
@@ -7751,6 +7779,1083 @@ Area M's open issues 1–4 are open issues 2, 10, 11 and 14 at the end of the pl
 
 ---
 
+## Addendum: the user's answers of 2026-10-18 (Tasks 31a–31e)
+
+The user answered this plan's open issues on 2026-10-18 with "ตามที่แนะนำ": every recommendation of "Open issues" (end of the plan). Five of the answers change code; each is one task here, after Task 31 and before Task 32, numbered 31a–31e so that no other task number moves. The other answers keep the defaults the tasks already write (R8 lists them). Rulings X-R1–X-R5 (R8, "Rulings of this plan").
+
+- **Order and dependencies:** 31a → 31e, each needs the one before (each appends to `tests/v-track2-x.test.ts`, which 31a creates). 31a needs Task 10 (the checkin form's keys); 31c needs Tasks 1, 2, 21–24, 28, 30, 31 (it edits their `validate()` lines and their tests); 31d needs Task 2 and 31c (the batch form); 31e needs Task 19. 31b needs only plan 1's map.
+- **Line numbers** are the chain's after Task 31 (`37968225`). Inside the addendum only 31c and 31d both edit `asset-batch-form.tsx` and `messages/*.json`: 31c changes two lines of the batch form in place (no line moves), and the messages only through the script, so every line number below holds when its task runs. Find each site by its quoted text.
+- **Rehearsed (2026-10-18)** in `<temp>/../v-sim`, branch `v2-add` from `37968225`, one commit per task as an implementer follows this text: 31a `6ef98430` · 31b `0d440c83` · 31c `97ad82af` · 31d `3b5c278c` · 31e `fbda71b9`. The record is at the end of the addendum.
+
+---
+
+### Task 31a (O7): Checkin's refusals of the return condition and the return status name their field (`src/app/api/assets/[id]/checkin/route.ts`)
+
+The user's answer to open issue 5; spec §6.2, U3, U9; plan 1 S-R7 and its S10 shape (checkout's `conditionBefore` refusal, `assets/[id]/checkout/route.ts:61-64` on the chain); O-R1, O-R8; X-R1.
+
+**Files:**
+- Modify: `src/app/api/assets/[id]/checkin/route.ts` (`i/lf w/crlf`)
+- Test: create `tests/v-track2-x.test.ts` (new, LF): the addendum's test file, one test per task
+- No change (checked): `c/asset-operations/checkin-form.tsx` (Task 10 holds both keys in `FIELD_IDS`, shows each under its select through `fieldErrors.message`, and hands a refusal back from its review: `reveal: leaveReview`); `src/lib/api-error-catalog.ts:160-161` and `messages/*.json` (`invalidReturnCondition` "สภาพตอนรับคืนไม่ถูกต้อง", `invalidReturnStatus` "สถานะตอนรับคืนไม่ถูกต้อง" are catalog keys with their sentences under `apiErrors`).
+
+**Interfaces:**
+- Consumes: Task 10's checkin form; plan 1's `resolveValidationMessage` (`src/lib/field-error-client.ts`).
+- Produces: the two 400 bodies `{ code, error: "Invalid return condition for check-in", fieldErrors: { conditionAfter: "invalidReturnCondition" } }` and `{ error: "Invalid return status for check-in", fieldErrors: { nextStatusId: "invalidReturnStatus" } }` (status, message and `code` unchanged); `tests/v-track2-x.test.ts` with its header (`C`, `read`, `messages`, `lookup`, `say`, the resolve-hook stand-ins of `tests/v-track-s.test.ts` under `globalThis.__vTrack2X`, `load`, `stubDb`), which Tasks 31b–31e append to.
+
+**Changes at `37968225`:**
+
+| Line | Now | Becomes | Rule |
+|---|---|---|---|
+| `route.ts:57` | `      return NextResponse.json({ code: conditionError, error: "Invalid return condition for check-in" }, { status: 400 })` | four lines, S10's shape: `      return NextResponse.json(` / `        { code: conditionError, error: "Invalid return condition for check-in", fieldErrors: { conditionAfter: "invalidReturnCondition" } },` / `        { status: 400 },` / `      )` | S-R7, X-R1 |
+| `route.ts:60` | `      return NextResponse.json({ error: "Invalid return status for check-in" }, { status: 400 })` | `      return NextResponse.json(` / `        { error: "Invalid return status for check-in", fieldErrors: { nextStatusId: "invalidReturnStatus" } },` / `        { status: 400 },` / `      )` | S-R7, X-R1 |
+
+The exact edits (whole lines; each old text occurs once):
+
+- `src/app/api/assets/[id]/checkin/route.ts`, edit 1 of 2. Old:
+
+```ts
+      return NextResponse.json({ code: conditionError, error: "Invalid return condition for check-in" }, { status: 400 })
+```
+
+  New:
+
+```ts
+      return NextResponse.json(
+        { code: conditionError, error: "Invalid return condition for check-in", fieldErrors: { conditionAfter: "invalidReturnCondition" } },
+        { status: 400 },
+      )
+```
+
+- `src/app/api/assets/[id]/checkin/route.ts`, edit 2 of 2. Old:
+
+```ts
+      return NextResponse.json({ error: "Invalid return status for check-in" }, { status: 400 })
+```
+
+  New:
+
+```ts
+      return NextResponse.json(
+        { error: "Invalid return status for check-in", fieldErrors: { nextStatusId: "invalidReturnStatus" } },
+        { status: 400 },
+      )
+```
+
+- [ ] **Step 1: The failing test.** Create `tests/v-track2-x.test.ts` with a file tool (LF; the block has regex backslashes), exactly:
+
+```ts
+import assert from "node:assert/strict"
+import { existsSync, readFileSync } from "node:fs"
+import * as nodeModule from "node:module"
+import test from "node:test"
+import { pathToFileURL } from "node:url"
+import { resolveValidationMessage, type MessageLookup } from "../src/lib/field-error-client.ts"
+
+// V track plan 2, the addendum (the user's answers of 2026-10-18 to the plan's open issues, Tasks 31a–31e). One test per
+// task. Sources are read with LF line endings, so the regexes may contain \n.
+const C = "src/components/"
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+const lookup = (table: Record<string, string>): MessageLookup => ({
+  has: (key) => typeof table[key] === "string",
+  get: (key, params) => table[key].replace(/\{(\w+)\}/g, (_, name: string) => String(params?.[name])),
+})
+// The form's message for a code, as useValidationMessage resolves it (common.validation, then the api-error catalog).
+const say = (locale: "th" | "en", code: string) => {
+  const table = messages(locale)
+  return resolveValidationMessage(code, undefined, { validation: lookup(table.common.validation), apiErrors: lookup(table.apiErrors) })
+}
+
+// Route modules import next/server and "@/…", which node --test cannot load, so a resolve hook serves stand-ins (as in
+// tests/v-track-s.test.ts). The prisma stand-in calls globalThis.__vTrack2X.prisma[model][method]; a call with no handler
+// throws, so a test names every query its route makes.
+const stubs = new Map<string, string>([
+  ["next/server", `
+    export class NextRequest extends Request {}
+    export class NextResponse extends Response {
+      static json(body, init) { return Response.json(body, init) }
+    }
+  `],
+  ["@/lib/auth-utils", `
+    export async function requireAuth() { return { id: "actor-1", roles: ["system_admin"], permissions: [], employeeId: null } }
+    export function hasRole() { return true }
+    export function hasPermission() { return true }
+    export function requirePermission() {}
+  `],
+  ["@/lib/audit-log", `export async function logAudit() {}`],
+  ["@/lib/db", `
+    const call = (model, method) => (...args) => {
+      const handler = globalThis.__vTrack2X?.prisma?.[model]?.[method]
+      if (!handler) throw new Error("no stand-in for prisma." + model + "." + method)
+      return handler(...args)
+    }
+    export const prisma = new Proxy({}, {
+      get: (_, model) => model === "$transaction"
+        ? async (work) => (typeof work === "function" ? work(prisma) : Promise.all(work))
+        : new Proxy({}, { get: (_, method) => call(model, method) }),
+    })
+  `],
+])
+;(nodeModule as unknown as { registerHooks(hooks: { resolve(specifier: string, context: unknown, next: (specifier: string, context: unknown) => unknown): unknown }): void }).registerHooks({
+  resolve(specifier, context, next) {
+    const stub = stubs.get(specifier)
+    if (stub !== undefined) return { url: `data:text/javascript;charset=utf-8,${encodeURIComponent(stub)}`, shortCircuit: true }
+    if (specifier.startsWith("@/")) {
+      const base = `src/${specifier.slice(2)}`
+      const file = [`${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((candidate) => existsSync(candidate))
+      if (file) return { url: pathToFileURL(file).href, shortCircuit: true }
+    }
+    return next(specifier, context)
+  },
+})
+const load = <T>(path: string) => import(pathToFileURL(path).href) as Promise<T>
+const stubDb = (prisma: Record<string, Record<string, (...args: never[]) => unknown>>) => Object.assign(globalThis, { __vTrack2X: { prisma } })
+
+test("checkin's refusals of the return condition and the return status name their field, which the form already shows (v-track plan 2 task 31a, O7)", async () => {
+  type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>
+  const { POST } = await load<{ POST: Handler }>("src/app/api/assets/[id]/checkin/route.ts")
+  const params = { params: Promise.resolve({ id: "asset-1" }) }
+  const checkin = () => new Request("http://localhost/api/assets/asset-1/checkin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      checkoutId: "checkout-1", returnDate: "2026-10-18", returnBy: "Somchai", receiveBy: "Somsri", conditionAfter: "condition-1",
+      nextStatusId: "status-1", nextLocationId: "location-1",
+    }),
+  })
+  const refusal = async (response: Response) => [response.status, await response.json()]
+  const prisma = (condition: unknown, returnStatus: unknown) => ({
+    asset: { findFirst: () => ({ id: "asset-1" }) },
+    assetCheckout: { findFirst: () => ({ id: "checkout-1" }) },
+    assetCondition: { findUnique: () => condition },
+    assetStatus: { findFirst: () => returnStatus },
+  })
+
+  // A condition that is gone, inactive or not offered for a return: the condition select, plan 1 S10's shape (S-R7).
+  stubDb(prisma(null, null))
+  assert.deepEqual(await refusal(await POST(checkin(), params)), [400, {
+    code: "ASSET_STATE_MASTER_NOT_FOUND", error: "Invalid return condition for check-in", fieldErrors: { conditionAfter: "invalidReturnCondition" },
+  }])
+  stubDb(prisma({ name: "Excellent", isActive: true }, null))
+  assert.deepEqual(await refusal(await POST(checkin(), params)), [400, {
+    code: "ASSET_CONDITION_NOT_SELECTABLE", error: "Invalid return condition for check-in", fieldErrors: { conditionAfter: "invalidReturnCondition" },
+  }])
+  // A status that is not a return status: the status select. Status codes and messages are unchanged.
+  stubDb(prisma({ name: "Good", isActive: true }, null))
+  assert.deepEqual(await refusal(await POST(checkin(), params)), [400, {
+    error: "Invalid return status for check-in", fieldErrors: { nextStatusId: "invalidReturnStatus" },
+  }])
+
+  // Both codes are api-error catalog keys, so the field reads the sentence the toast showed, not the generic one.
+  for (const locale of ["th", "en"] as const) {
+    const table = messages(locale)
+    assert.equal(say(locale, "invalidReturnCondition"), table.apiErrors.invalidReturnCondition, locale)
+    assert.equal(say(locale, "invalidReturnStatus"), table.apiErrors.invalidReturnStatus, locale)
+    assert.notEqual(say(locale, "invalidReturnStatus"), table.common.validation.invalid, locale)
+  }
+  assert.equal(say("th", "invalidReturnCondition"), "สภาพตอนรับคืนไม่ถูกต้อง")
+
+  // The checkin form (Task 10, O3) already holds both keys, shows each under its select and hands a refusal back from
+  // its review dialog (O-R1): no form change.
+  const form = read(`${C}asset-operations/checkin-form.tsx`)
+  assert.match(form, /\n  conditionAfter: "checkin-condition-after",\n  nextStatusId: "checkin-next-status",\n/)
+  assert.ok(form.includes('error={fieldErrors.message("conditionAfter")}'))
+  assert.ok(form.includes('error={fieldErrors.message("nextStatusId")}'))
+  assert.ok(form.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
+  assert.ok(form.includes("if (fieldErrors.applyServer(payload) && focusFirstError()) return"))
+})
+```
+
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track2-x.test.ts`. Expected: 1 test, 1 fail: "checkin's refusals of the return condition and the return status name their field, which the form already shows (v-track plan 2 task 31a, O7)" (`Expected values to be strictly deep-equal`: the 400 body has no `fieldErrors`).
+- [ ] **Step 3: Implement** per the exact edits.
+- [ ] **Step 4: Pin and guard edits:** none. The four tests that read or load the route (`asset-component-sync-routes`, `asset-handover-checkin`, `asset-transaction-snapshot-routes`, `checkin-maintenance-ticket-route`) do not read these two lines; plan 1's `tests/v-track-s.test.ts` does not load the checkin route.
+- [ ] **Step 5: Verify.** `node --test tests/v-track2-x.test.ts tests/asset-component-sync-routes.test.ts tests/asset-handover-checkin.test.ts tests/asset-transaction-snapshot-routes.test.ts tests/checkin-maintenance-ticket-route.test.ts tests/v-track-s.test.ts tests/v-track2-o.test.ts` (38 tests, 0 fail); `npm test` (+1; 2287 tests, 2286 pass, 0 fail, 1 skipped on this plan's chain, P-R5); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings, all under `.agents/`). eol: the route `385 385`, `tests/v-track2-x.test.ts` `0 120`. `git diff --numstat`: `8 2` for the route.
+- [ ] **Step 6: Commit.** `git add "src/app/api/assets/[id]/checkin/route.ts" tests/v-track2-x.test.ts`, then `git commit -m "fix(api): checkin's refusals of the return condition and the return status name their field (v-track plan 2 task 31a, O7)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
+
+---
+
+### Task 31b: zod's whole-number refusal of a fraction reads as a number error, not a missing value (`src/lib/field-errors.ts`)
+
+The user's answer to open issue 12 (its recommendation: "a one-line fix in `src/lib/field-errors.ts` … as a small task here"); area U's assembly note 1; plan 1 S-R2 (the map), spec §6.1; X-R2.
+
+**What zod 4.4.1 emits** (probed on the chain, 2026-10-18): `z.number().int()` on `1.5` and `z.coerce.number().int()` on `"2025.5"` give `{ expected: "int", format: "safeint", code: "invalid_type", path, message: "Invalid input: expected int, received number" }`, with no `received`; a missing value gives `expected: "number"` (so it stays `required`), also for `z.int()`; text that is not a number through `coerce` gives `expected: "number", received: "NaN"` (already `invalidNumber`). The test pins the first shape.
+
+**Files:** Modify `src/lib/field-errors.ts` (`i/lf w/crlf`) · Test `tests/v-track2-x.test.ts` (LF, append).
+
+**Interfaces:**
+- Consumes: plan 1's `issueToFieldErrorCode` / `issuesToFieldErrors` (FIXED 1).
+- Produces: `invalid_type` with `expected: "int"` → `"invalidNumber"` in every route's 400 that goes through `validationFailedBody` ("กรุณากรอกเป็นตัวเลข" under the field instead of "กรุณาระบุข้อมูลนี้"). No form changes: plan 2's whole-number fields already check on the client (U-R3's `wholeNumber`, A-R4's seats `pattern`, MT-R2's `step(v, 1)`), so the change shows only when such a refusal comes from the server.
+
+**Changes at `37968225`:**
+
+| Line | Now | Becomes | Rule |
+|---|---|---|---|
+| `field-errors.ts:56-57` | `      if (issue.expected === "number" && issue.received !== undefined) return "invalidNumber"` / `      return "required"` | the first line; then `      // .int() refusing a fraction says expected "int" (a missing value says "number"): a number error, not a missing one.` / `      if (issue.expected === "int") return "invalidNumber"`; then `      return "required"` | S-R2, X-R2 |
+
+The exact edit:
+
+- `src/lib/field-errors.ts`, edit 1 of 1. Old:
+
+```ts
+      if (issue.expected === "number" && issue.received !== undefined) return "invalidNumber"
+      return "required"
+```
+
+  New:
+
+```ts
+      if (issue.expected === "number" && issue.received !== undefined) return "invalidNumber"
+      // .int() refusing a fraction says expected "int" (a missing value says "number"): a number error, not a missing one.
+      if (issue.expected === "int") return "invalidNumber"
+      return "required"
+```
+
+- [ ] **Step 1: The failing test.** Append to `tests/v-track2-x.test.ts` (with a file tool):
+
+```ts
+
+test("zod's .int() refusing a fraction reads as a number error, not as a missing value (v-track plan 2 task 31b)", async () => {
+  const { z } = await import("zod")
+  const { issueToFieldErrorCode, issuesToFieldErrors } = await import("../src/lib/field-errors.ts")
+  // What zod 4.4.1 reports for a fraction in .int(): invalid_type with expected "int" and no received. A missing value
+  // reports expected "number", and text that is not a number received "NaN".
+  const schema = z.object({
+    auditYear: z.coerce.number().int().min(2000).max(2100),
+    licenseTotalSeats: z.number().int().min(0).optional(),
+    intervalDays: z.coerce.number().int().min(1),
+    sampleRate: z.number().int(),
+  })
+  const issues = schema.safeParse({ auditYear: "2025.5", licenseTotalSeats: 1.5, intervalDays: "abc" }).error!.issues
+  assert.deepEqual(issues.find((issue) => issue.path[0] === "auditYear"), {
+    expected: "int", format: "safeint", code: "invalid_type", path: ["auditYear"], message: "Invalid input: expected int, received number",
+  })
+  assert.deepEqual(issuesToFieldErrors(issues), { auditYear: "invalidNumber", licenseTotalSeats: "invalidNumber", intervalDays: "invalidNumber", sampleRate: "required" })
+  assert.equal(issueToFieldErrorCode({ code: "invalid_type", expected: "int", path: ["sampleRate"], message: "Invalid input: expected int, received number" }), "invalidNumber")
+  // The field reads the shared number sentence, no longer "กรุณาระบุข้อมูลนี้".
+  assert.equal(say("th", "invalidNumber"), "กรุณากรอกเป็นตัวเลข")
+})
+```
+
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track2-x.test.ts`. Expected: 2 tests, 1 fail: "zod's .int() refusing a fraction reads as a number error, not as a missing value (v-track plan 2 task 31b)" (`Expected values to be strictly deep-equal`: `auditYear: 'required'` and `licenseTotalSeats: 'required'` where `'invalidNumber'` is expected). The assertion on the issue's shape before it passes: that is zod's own output.
+- [ ] **Step 3: Implement** per the exact edit.
+- [ ] **Step 4: Pin and guard edits:** none (plan 1's mapping test in `tests/v-track-s.test.ts` has no fraction in an `.int()` field; `qty: "abc"` stays `invalidNumber` through `received`).
+- [ ] **Step 5: Verify.** `node --test tests/v-track2-x.test.ts tests/v-track-s.test.ts tests/v-track-f.test.ts tests/v-track2-u.test.ts` (26 tests, 0 fail); `npm test` (+1; 2288 tests, 2287 pass, 0 fail, 1 skipped); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). eol: `src/lib/field-errors.ts` `120 120`, `tests/v-track2-x.test.ts` `0 141`. `git diff --numstat`: `2 0`, `21 0`.
+- [ ] **Step 6: Commit.** `git add src/lib/field-errors.ts tests/v-track2-x.test.ts`, then `git commit -m "fix(forms): zod's whole-number refusal of a fraction reads as a number error, not a missing value (v-track plan 2 task 31b)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
+
+---
+
+### Task 31c: One money rule: every money field refuses more than 2 decimal places with its own sentence (`src/lib/validation-rules.ts`, eight forms, messages)
+
+The user's answers to open issues 3 and 14 (one rule for money; a clearer sentence); spec §4.5 (`validate()` restates `step`), §7.1, §7.2, §6.3 (no server rule); X-R3, which replaces the money parts of A-R4, D-R11, MT-R2 and P-R8.
+
+**Files:**
+- Modify: `src/lib/validation-rules.ts`; `c/assets/asset-form.tsx`, `c/assets/asset-batch-form.tsx`; `c/disposal/disposal-request-form.tsx`, `disposal-batch-form.tsx`, `disposal-decision-button.tsx`, `disposal-execution-button.tsx`; `c/maintenance/repair-record-form.tsx`, `repair-record-actions.tsx` (all `i/lf w/crlf`); `messages/th.json`, `messages/en.json` (`i/lf w/crlf`, through the script)
+- Pins: `tests/v-track-f.test.ts` (`i/lf w/crlf`); `tests/v-track2-a.test.ts`, `tests/v-track2-d.test.ts`, `tests/v-track2-m.test.ts` (LF)
+- Test: `tests/v-track2-x.test.ts` (LF, append)
+- No change: the server (`optionalMoney` keeps taking any precision; the `Decimal(18, 2)` columns round); the money inputs keep `min="0" step="0.01"` (FMG's `CONSTRAINT_FLOORS` and `tests/asset-forms-ui.test.ts:33,34,74` hold); `step()` stays, for whole numbers (the PM days, `maintenance-plan-form.tsx:48`); how each form shows a money error (`errorText(key)` in the asset forms, `validationMessage(code, { min: 0 })` in the disposal and repair forms both resolve `common.validation.tooManyDecimals` first, F-R3).
+
+**Interfaces:**
+- Consumes: `range` (FIXED 4), the forms' message readers above.
+- Produces: FIXED 12, `decimals(value, places)` with the code `"tooManyDecimals"` (`RuleCode` gains it; it is not a `FieldErrorCode`, because the server never sends it); the message `common.validation.tooManyDecimals` (th "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง", en "Use no more than 2 decimal places").
+
+**Changes at `37968225`:**
+
+| Line | Now | Becomes | Rule |
+|---|---|---|---|
+| `validation-rules.ts:9` | `export type RuleCode = FieldErrorCode \| "endBeforeStart"` | a comment line, then `export type RuleCode = FieldErrorCode \| "endBeforeStart" \| "tooManyDecimals"` | X-R3 |
+| after `step()` `:48-56` | — | a blank line, a two-line comment and `export function decimals(…)` (exact edit 2) | FIXED 12, X-R3 |
+| the `@/lib/validation-rules` import of each form (`asset-form.tsx:36`, `asset-batch-form.tsx:39`, `disposal-request-form.tsx:28`, `disposal-batch-form.tsx:29`, `disposal-decision-button.tsx:29`, `disposal-execution-button.tsx:33`, `repair-record-form.tsx:27`, `repair-record-actions.tsx:21`) | e.g. `import { maxLength, range, required } from "@/lib/validation-rules"` | `decimals` added in alphabetical order; the two repair files drop `step` (no money step left in them) | X-R3 |
+| `asset-form.tsx:304`, `:310` | `  check("purchasePrice", range(values.purchasePrice, 0))`; `  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0))` | each `range(v, 0) ?? decimals(v, 2)` | X-R3 |
+| `asset-batch-form.tsx:199` | `  check("common.purchasePrice", range(common.purchasePrice, 0))` | `range(…, 0) ?? decimals(…, 2)` | X-R3 |
+| `disposal-request-form.tsx:79-80`, `disposal-batch-form.tsx:75-76`, `disposal-decision-button.tsx:77-78` | `  check("saleValue", range(values.saleValue, 0))` / `  check("salvageValue", range(values.salvageValue, 0))` | each `range(v, 0) ?? decimals(v, 2)` | X-R3 |
+| `disposal-execution-button.tsx:96-97` | `  check("actualSaleValue", range(values.actualSaleValue, 0))` / `  check("actualSalvageValue", range(values.actualSalvageValue, 0))` | each `range(v, 0) ?? decimals(v, 2)` | X-R3 |
+| `repair-record-form.tsx:81`, `repair-record-actions.tsx:69` | `  check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))` | `  check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))` | X-R3 |
+| `messages/*.json` | — | `common.validation.tooManyDecimals` (the change file below) | X-R3 |
+
+The exact edits (each old text occurs once in its file; a two-line old text keeps both lines):
+
+- `src/lib/validation-rules.ts`, edit 1 of 2. Old:
+
+```ts
+export type RuleCode = FieldErrorCode | "endBeforeStart"
+```
+
+  New:
+
+```ts
+// "tooManyDecimals" is the money rule's own code (common.validation.tooManyDecimals, v-track plan 2 task 31c).
+export type RuleCode = FieldErrorCode | "endBeforeStart" | "tooManyDecimals"
+```
+
+- `src/lib/validation-rules.ts`, edit 2 of 2. Old:
+
+```ts
+  const steps = number / size
+  return Math.abs(steps - Math.round(steps)) < 1e-6 ? null : "invalidNumber"
+}
+```
+
+  New:
+
+```ts
+  const steps = number / size
+  return Math.abs(steps - Math.round(steps)) < 1e-6 ? null : "invalidNumber"
+}
+
+// A money field's step (step="0.01"): at most `places` digits after the point, with its own sentence. The typed digits
+// count, trailing zeros left out (12.50 passes), so a large amount keeps its fraction; 1e-3 is counted as a number.
+export function decimals(value: number | string | null | undefined, places: number): RuleCode | null {
+  if (isEmpty(value)) return null
+  const text = typeof value === "number" ? String(value) : (value as string).trim()
+  const number = Number(text)
+  if (!Number.isFinite(number)) return "invalidNumber"
+  const typed = /^[+-]?\d*(?:\.(\d*))?$/.exec(text)
+  if (typed) return (typed[1] ?? "").replace(/0+$/, "").length > places ? "tooManyDecimals" : null
+  const scaled = number * 10 ** places
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6 ? null : "tooManyDecimals"
+}
+```
+
+- `src/components/assets/asset-form.tsx`, edit 1 of 3. Old:
+
+```ts
+import { atLeastOne, maxLength, notBefore, pattern, range, required } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { atLeastOne, decimals, maxLength, notBefore, pattern, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/assets/asset-form.tsx`, edit 2 of 3. Old:
+
+```ts
+  check("purchasePrice", range(values.purchasePrice, 0))
+```
+
+  New:
+
+```ts
+  check("purchasePrice", range(values.purchasePrice, 0) ?? decimals(values.purchasePrice, 2))
+```
+
+- `src/components/assets/asset-form.tsx`, edit 3 of 3. Old:
+
+```ts
+  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0))
+```
+
+  New:
+
+```ts
+  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0) ?? decimals(purchaseDocument.totalAmount, 2))
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 1 of 2. Old:
+
+```ts
+import { atLeastOne, maxLength, notBefore, range, required } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { atLeastOne, decimals, maxLength, notBefore, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 2 of 2. Old:
+
+```ts
+  check("common.purchasePrice", range(common.purchasePrice, 0))
+```
+
+  New:
+
+```ts
+  check("common.purchasePrice", range(common.purchasePrice, 0) ?? decimals(common.purchasePrice, 2))
+```
+
+- `src/components/disposal/disposal-request-form.tsx`, edit 1 of 2. Old:
+
+```ts
+import { maxLength, range, required } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { decimals, maxLength, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/disposal/disposal-request-form.tsx`, edit 2 of 2. Old:
+
+```ts
+  check("saleValue", range(values.saleValue, 0))
+  check("salvageValue", range(values.salvageValue, 0))
+```
+
+  New:
+
+```ts
+  check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))
+  check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))
+```
+
+- `src/components/disposal/disposal-batch-form.tsx`, edit 1 of 2. Old:
+
+```ts
+import { maxLength, range, required } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { decimals, maxLength, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/disposal/disposal-batch-form.tsx`, edit 2 of 2. Old:
+
+```ts
+  check("saleValue", range(values.saleValue, 0))
+  check("salvageValue", range(values.salvageValue, 0))
+```
+
+  New:
+
+```ts
+  check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))
+  check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))
+```
+
+- `src/components/disposal/disposal-decision-button.tsx`, edit 1 of 2. Old:
+
+```ts
+import { maxLength, range, required } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { decimals, maxLength, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/disposal/disposal-decision-button.tsx`, edit 2 of 2. Old:
+
+```ts
+  check("saleValue", range(values.saleValue, 0))
+  check("salvageValue", range(values.salvageValue, 0))
+```
+
+  New:
+
+```ts
+  check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))
+  check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))
+```
+
+- `src/components/disposal/disposal-execution-button.tsx`, edit 1 of 2. Old:
+
+```ts
+import { maxLength, minLength, range, required } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { decimals, maxLength, minLength, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/disposal/disposal-execution-button.tsx`, edit 2 of 2. Old:
+
+```ts
+  check("actualSaleValue", range(values.actualSaleValue, 0))
+  check("actualSalvageValue", range(values.actualSalvageValue, 0))
+```
+
+  New:
+
+```ts
+  check("actualSaleValue", range(values.actualSaleValue, 0) ?? decimals(values.actualSaleValue, 2))
+  check("actualSalvageValue", range(values.actualSalvageValue, 0) ?? decimals(values.actualSalvageValue, 2))
+```
+
+- `src/components/maintenance/repair-record-form.tsx`, edit 1 of 2. Old:
+
+```ts
+import { maxLength, range, required, step } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { decimals, maxLength, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/maintenance/repair-record-form.tsx`, edit 2 of 2. Old:
+
+```ts
+  check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))
+```
+
+  New:
+
+```ts
+  check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))
+```
+
+- `src/components/maintenance/repair-record-actions.tsx`, edit 1 of 2. Old:
+
+```ts
+import { maxLength, notBefore, range, required, step } from "@/lib/validation-rules"
+```
+
+  New:
+
+```ts
+import { decimals, maxLength, notBefore, range, required } from "@/lib/validation-rules"
+```
+
+- `src/components/maintenance/repair-record-actions.tsx`, edit 2 of 2. Old:
+
+```ts
+  check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))
+```
+
+  New:
+
+```ts
+  check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))
+```
+
+The messages: save this change file as `<temp>/add-31c-messages.json` and run `node scripts/messages-edit.mjs <temp>/add-31c-messages.json` (4091 → 4092 leaf keys per locale; the key goes last in `common.validation`):
+
+```json
+{"set":{"th":{"common.validation.tooManyDecimals":"กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง"},"en":{"common.validation.tooManyDecimals":"Use no more than 2 decimal places"}}}
+```
+
+- [ ] **Step 1: The failing test.** Append to `tests/v-track2-x.test.ts` (with a file tool):
+
+```ts
+
+test("one money rule: every money field of plan 2's forms refuses more than 2 decimal places with its own sentence (v-track plan 2 task 31c)", async () => {
+  const { decimals } = await import("../src/lib/validation-rules.ts")
+  const { readSourceFiles } = await import("./helpers/source-files.ts")
+  // The typed digits after the point count, trailing zeros left out; exponent notation is counted from the number.
+  for (const value of ["12.34", "0.29", "12.5", "12.50", "12.500", "1255", " 7.1 ", "-0.01", "1e2"]) assert.equal(decimals(value, 2), null, value)
+  for (const value of ["12.345", "0.001", "1e-3", 12.345]) assert.equal(decimals(value, 2), "tooManyDecimals", String(value))
+  assert.equal(decimals("12345678901234.567", 2), "tooManyDecimals", "a large amount keeps its fraction")
+  assert.equal(decimals("abc", 2), "invalidNumber")
+  for (const empty of ["", "  ", null, undefined]) assert.equal(decimals(empty, 2), null, "an empty value is left to required")
+  assert.match(read("src/lib/validation-rules.ts"), /^export function decimals\(value: number \| string \| null \| undefined, places: number\): RuleCode \| null \{$/m)
+  assert.match(read("src/lib/validation-rules.ts"), /^export type RuleCode = FieldErrorCode \| "endBeforeStart" \| "tooManyDecimals"$/m)
+  // Its own sentence, clearer than invalidNumber's "กรุณากรอกเป็นตัวเลข" (open issue 14).
+  assert.equal(messages("th").common.validation.tooManyDecimals, "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง")
+  assert.equal(messages("en").common.validation.tooManyDecimals, "Use no more than 2 decimal places")
+  for (const locale of ["th", "en"] as const) assert.equal(say(locale, "tooManyDecimals"), messages(locale).common.validation.tooManyDecimals, locale)
+
+  // Each money control keeps step="0.01" and its validate() restates it after min: range(v, 0) ?? decimals(v, 2).
+  const money: Record<string, readonly string[]> = {
+    [`${C}assets/asset-form.tsx`]: ["values.purchasePrice", "purchaseDocument.totalAmount"],
+    [`${C}assets/asset-batch-form.tsx`]: ["common.purchasePrice"],
+    [`${C}disposal/disposal-request-form.tsx`]: ["values.saleValue", "values.salvageValue"],
+    [`${C}disposal/disposal-batch-form.tsx`]: ["values.saleValue", "values.salvageValue"],
+    [`${C}disposal/disposal-decision-button.tsx`]: ["values.saleValue", "values.salvageValue"],
+    [`${C}disposal/disposal-execution-button.tsx`]: ["values.actualSaleValue", "values.actualSalvageValue"],
+    [`${C}maintenance/repair-record-form.tsx`]: ["values.repairCost"],
+    [`${C}maintenance/repair-record-actions.tsx`]: ["values.repairCost"],
+  }
+  const withMoney = readSourceFiles("src/components").filter((file) => file.source.includes('step="0.01"')).map((file) => file.path)
+  assert.deepEqual(withMoney.sort(), Object.keys(money).sort(), "every money control of the forms is in the list")
+  for (const [path, values] of Object.entries(money)) {
+    const source = read(path)
+    for (const value of values) assert.ok(source.includes(`range(${value}, 0) ?? decimals(${value}, 2))`), `${path}: ${value}`)
+    assert.doesNotMatch(source, /step\([^)]*, 0\.01\)/, `${path}: no money step() left`)
+    assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
+  }
+  // Whole numbers keep step() and invalidNumber: the PM days.
+  assert.ok(read(`${C}maintenance/maintenance-plan-form.tsx`).includes("range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1)"))
+})
+```
+
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track2-x.test.ts`. Expected: 3 tests, 1 fail: "one money rule: every money field of plan 2's forms refuses more than 2 decimal places with its own sentence (v-track plan 2 task 31c)" (`TypeError: decimals is not a function`). After Step 3 and before Step 4, `npm test` fails exactly 9 tests, each on its old money line or the old message table: "every code has a Thai and an English message, with its limits when the form gives them (V spec §6.1, §7.1)", "asset form: validate() restates every rule the toasts said, the save gates name their reason, and the warranty pair holds (v-track A1)", "asset batch form: shared fields and rows show their errors, duplicates stay live under the rows, and a refusal leaves the review (v-track A2)", "disposal request: the asset, the requester and the reason are checked on save, and errors show under the field (v-track D2)", "disposal batch: the edit step is a form whose requester and reason are errors on review, and the asset count says why review waits (v-track D3)", "disposal decision: a rejection's reason is an error on save through the server's own rule, and a refusal lands under its field in the open dialog (v-track D4)", "disposal execution: the executor, the type's own rules and the historical exception are errors on save, and missing evidence says why save waits (v-track D5)", "repair record: errors under the field, the asset and reporter selects checked, the two questions as groups, and more details opened for an error inside (v-track2 M4)", "repair record actions: complete, cancel and edit show errors under the field, the return date is not before the reported date, and a refusal lands in its dialog (v-track2 M5)"; Step 4 is their edit.
+- [ ] **Step 3: Implement** per the exact edits and the change file.
+- [ ] **Step 4: Pin edits** (exact; the money lines of `tests/v-track2-d.test.ts` and `tests/v-track2-m.test.ts` repeat across their tests, so each old text takes a neighbouring line as its anchor):
+
+- `tests/v-track2-a.test.ts`, pin 1 of 2. Old:
+
+```ts
+    'check("purchasePrice", range(values.purchasePrice, 0))',
+```
+
+  New:
+
+```ts
+    'check("purchasePrice", range(values.purchasePrice, 0) ?? decimals(values.purchasePrice, 2))',
+```
+
+- `tests/v-track2-a.test.ts`, pin 2 of 2. Old:
+
+```ts
+    'check("common.purchasePrice", range(common.purchasePrice, 0))',
+```
+
+  New:
+
+```ts
+    'check("common.purchasePrice", range(common.purchasePrice, 0) ?? decimals(common.purchasePrice, 2))',
+```
+
+- `tests/v-track2-d.test.ts`, pin 1 of 4. Old:
+
+```ts
+    'check("saleValue", range(values.saleValue, 0))',
+    'check("salvageValue", range(values.salvageValue, 0))',
+    // The server's own 12-character rule
+```
+
+  New:
+
+```ts
+    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
+    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
+    // The server's own 12-character rule
+```
+
+- `tests/v-track2-d.test.ts`, pin 2 of 4. Old:
+
+```ts
+    'check("saleValue", range(values.saleValue, 0))',
+    'check("salvageValue", range(values.salvageValue, 0))',
+    "const reasonTooShort
+```
+
+  New:
+
+```ts
+    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
+    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
+    "const reasonTooShort
+```
+
+- `tests/v-track2-d.test.ts`, pin 3 of 4. Old:
+
+```ts
+    'check("saleValue", range(values.saleValue, 0))',
+    'check("salvageValue", range(values.salvageValue, 0))',
+    'check("approvalRemark"
+```
+
+  New:
+
+```ts
+    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
+    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
+    'check("approvalRemark"
+```
+
+- `tests/v-track2-d.test.ts`, pin 4 of 4. Old:
+
+```ts
+    'check("actualSaleValue", range(values.actualSaleValue, 0))',
+    'check("actualSalvageValue", range(values.actualSalvageValue, 0))',
+```
+
+  New:
+
+```ts
+    'check("actualSaleValue", range(values.actualSaleValue, 0) ?? decimals(values.actualSaleValue, 2))',
+    'check("actualSalvageValue", range(values.actualSalvageValue, 0) ?? decimals(values.actualSalvageValue, 2))',
+```
+
+- `tests/v-track2-m.test.ts`, pin 1 of 2. Old:
+
+```ts
+    'check("reportedById", needsReporter ? required(values.reportedById) : null)',
+    'check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))',
+```
+
+  New:
+
+```ts
+    'check("reportedById", needsReporter ? required(values.reportedById) : null)',
+    'check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))',
+```
+
+- `tests/v-track2-m.test.ts`, pin 2 of 2. Old:
+
+```ts
+    'if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
+    'check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))',
+```
+
+  New:
+
+```ts
+    'if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
+    'check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))',
+```
+
+- `tests/v-track-f.test.ts`, pin 1 of 1. Old:
+
+```ts
+    invalid: "ข้อมูลไม่ถูกต้อง",
+  })
+```
+
+  New:
+
+```ts
+    invalid: "ข้อมูลไม่ถูกต้อง",
+    tooManyDecimals: "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง",
+  })
+```
+
+- [ ] **Step 5: Verify.** `node --test tests/v-track2-x.test.ts tests/v-track-f.test.ts tests/v-track2-a.test.ts tests/v-track2-d.test.ts tests/v-track2-m.test.ts tests/asset-forms-ui.test.ts tests/thai-glossary.test.ts tests/messages-parity.test.ts tests/messages-edit.test.ts tests/validation-guards.test.ts tests/form-migration-guards.test.ts` (78 tests, 0 fail); `npm test` (+1; 2289 tests, 2288 pass, 0 fail, 1 skipped); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). Leaf keys per locale 4091 → 4092. eol: `validation-rules.ts` `93 93`, `messages/*.json` `4274 4274`, `asset-form.tsx` `2061 2061`, `asset-batch-form.tsx` `1322 1322`, `disposal-request-form.tsx` `345 345`, `disposal-batch-form.tsx` `274 274`, `disposal-decision-button.tsx` `319 319`, `disposal-execution-button.tsx` `432 432`, `repair-record-form.tsx` `344 344`, `repair-record-actions.tsx` `384 384`, `v-track-f` `248 248`, `v-track2-a` `0 311`, `v-track2-d` `0 355`, `v-track2-m` `0 294`, `v-track2-x` `0 180`. `git diff --numstat`: `15 1` validation-rules; `2 1` each messages file; `3 3` the asset form and the four disposal forms; `2 2` the batch and the two repair files; `1 0` v-track-f; `2 2` v-track2-a, `8 8` v-track2-d, `2 2` v-track2-m; `39 0` v-track2-x.
+- [ ] **Step 6: Commit.** `git add src/lib/validation-rules.ts messages/th.json messages/en.json src/components/assets/asset-form.tsx src/components/assets/asset-batch-form.tsx src/components/disposal/disposal-request-form.tsx src/components/disposal/disposal-batch-form.tsx src/components/disposal/disposal-decision-button.tsx src/components/disposal/disposal-execution-button.tsx src/components/maintenance/repair-record-form.tsx src/components/maintenance/repair-record-actions.tsx tests/v-track-f.test.ts tests/v-track2-a.test.ts tests/v-track2-d.test.ts tests/v-track2-m.test.ts tests/v-track2-x.test.ts`, then `git commit -m "feat(forms): every money field refuses more than 2 decimal places with one clear sentence (v-track plan 2 task 31c)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
+
+---
+
+### Task 31d (A8): The batch's row limits and its duplicate check stay focusable and say why beside the row count (`c/assets/asset-batch-form.tsx`, messages)
+
+The user's answer to open issue 16 (its recommendation: one small task, A8); spec §4.4 ("a gate that shows nothing today gets a visible reason line"), §11 call 2; A-R6's gate (Task 6: `aria-disabled` with `aria-describedby` to a visible line, the handler returns first), A-R7; X-R4.
+
+**Files:**
+- Modify: `src/components/assets/asset-batch-form.tsx` (`i/lf w/crlf`); `messages/th.json`, `messages/en.json` (through the script)
+- Pin: `tests/asset-forms-ui.test.ts` (`i/lf w/crlf`)
+- Test: `tests/v-track2-x.test.ts` (LF, append)
+- No change: `tests/button-size-switch.test.ts` (its two remove-button pins end at `onClick`, which stays right after `className="shrink-0"` / `size="icon-lg"`); the paste handler's own 100-row cap (`:654-668`); the label print queue's two print buttons (open issue 16's other half: the final plan's sweep).
+
+**Interfaces:** consumes Task 2's `hasClientDuplicates` and the row count line; produces the reason line `id="asset-batch-row-count"` with `asset.batchRowLimits` (th "ชุดหนึ่งมีได้ 2–100 รายการ", en "A batch holds 2–100 items") and the two gate constants `atRowLimit`, `atRowMinimum`.
+
+**Changes at `37968225`:**
+
+| Line | Now | Becomes | Rule |
+|---|---|---|---|
+| after `:313` `const hasClientDuplicates = …` | — | a two-line comment; `  const atRowLimit = rows.length >= 100`; `  const atRowMinimum = rows.length <= 2` | X-R4 |
+| `handleAddRow :587`, `handleRemoveRow :597`, `handleCheckDuplicates :615` | the function's first line, then its body | `    if (atRowLimit) return`, `    if (atRowMinimum) return`, `    if (hasClientDuplicates) return` as the first statement (a press does nothing; the inner `setRows` guards stay) | A-R6, X-R4 |
+| `:983` | `<div className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })}</div>` | `<div id="asset-batch-row-count" className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })} · {t("batchRowLimits")}</div>` | X-R4 |
+| `:986` add row | `<Button variant="outline" className="w-full sm:w-auto" onClick={handleAddRow} disabled={rows.length >= 100}>` | one prop per line; `disabled` → `aria-disabled={atRowLimit \|\| undefined}` / `aria-describedby={atRowLimit ? "asset-batch-row-count" : undefined}` | A-R6, X-R4 |
+| `:990` check duplicates | `… onClick={handleCheckDuplicates} busy={checkingDuplicates} disabled={hasClientDuplicates}>` | one prop per line; `disabled` → `aria-disabled={hasClientDuplicates \|\| undefined}` / `aria-describedby={hasClientDuplicates ? "asset-batch-row-count" : undefined}` (`busy` keeps its own `aria-disabled`: Button ORs the two) | A-R6, X-R4 |
+| `:1035`, `:1132` remove row (cards, table) | `disabled={rows.length <= 2}` | `aria-disabled={atRowMinimum \|\| undefined}` / `aria-describedby={atRowMinimum ? "asset-batch-row-count" : undefined}` | A-R6, X-R4 |
+| `messages/*.json` | — | `asset.batchRowLimits` (the change file below) | X-R4 |
+
+The exact edits (the two remove buttons differ only in indentation, so each old text starts at the line before `onClick`):
+
+- `src/components/assets/asset-batch-form.tsx`, edit 1 of 9. Old:
+
+```ts
+  const hasClientDuplicates = duplicateValues.serialNumbers.length > 0 || duplicateValues.assetTags.length > 0
+
+```
+
+  New:
+
+```ts
+  const hasClientDuplicates = duplicateValues.serialNumbers.length > 0 || duplicateValues.assetTags.length > 0
+  // A batch holds 2–100 rows. At a limit, add or remove is a prerequisite gate: it stays focusable, does nothing and says
+  // why on the row count line (spec §4.4, A-R6); so does the duplicate check while the rows hold a duplicate (A-R7).
+  const atRowLimit = rows.length >= 100
+  const atRowMinimum = rows.length <= 2
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 2 of 9. Old:
+
+```ts
+  function handleAddRow() {
+    setRows((current) => {
+
+```
+
+  New:
+
+```ts
+  function handleAddRow() {
+    if (atRowLimit) return
+    setRows((current) => {
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 3 of 9. Old:
+
+```ts
+  function handleRemoveRow(clientId: string) {
+    setRows((current) => {
+
+```
+
+  New:
+
+```ts
+  function handleRemoveRow(clientId: string) {
+    if (atRowMinimum) return
+    setRows((current) => {
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 4 of 9. Old:
+
+```ts
+  async function handleCheckDuplicates() {
+    setCheckingDuplicates(true)
+
+```
+
+  New:
+
+```ts
+  async function handleCheckDuplicates() {
+    if (hasClientDuplicates) return
+    setCheckingDuplicates(true)
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 5 of 9. Old:
+
+```ts
+              <div className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })}</div>
+
+```
+
+  New:
+
+```ts
+              <div id="asset-batch-row-count" className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })} · {t("batchRowLimits")}</div>
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 6 of 9. Old:
+
+```ts
+            <Button variant="outline" className="w-full sm:w-auto" onClick={handleAddRow} disabled={rows.length >= 100}>
+
+```
+
+  New:
+
+```ts
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleAddRow}
+              aria-disabled={atRowLimit || undefined}
+              aria-describedby={atRowLimit ? "asset-batch-row-count" : undefined}
+            >
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 7 of 9. Old:
+
+```ts
+            <Button variant="outline" className="w-full sm:w-auto" onClick={handleCheckDuplicates} busy={checkingDuplicates} disabled={hasClientDuplicates}>
+
+```
+
+  New:
+
+```ts
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleCheckDuplicates}
+              busy={checkingDuplicates}
+              aria-disabled={hasClientDuplicates || undefined}
+              aria-describedby={hasClientDuplicates ? "asset-batch-row-count" : undefined}
+            >
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 8 of 9. Old:
+
+```ts
+                    className="shrink-0"
+                    onClick={() => handleRemoveRow(row.clientId)}
+                    disabled={rows.length <= 2}
+
+```
+
+  New:
+
+```ts
+                    className="shrink-0"
+                    onClick={() => handleRemoveRow(row.clientId)}
+                    aria-disabled={atRowMinimum || undefined}
+                    aria-describedby={atRowMinimum ? "asset-batch-row-count" : undefined}
+
+```
+
+- `src/components/assets/asset-batch-form.tsx`, edit 9 of 9. Old:
+
+```ts
+                      size="icon-lg"
+                      onClick={() => handleRemoveRow(row.clientId)}
+                      disabled={rows.length <= 2}
+
+```
+
+  New:
+
+```ts
+                      size="icon-lg"
+                      onClick={() => handleRemoveRow(row.clientId)}
+                      aria-disabled={atRowMinimum || undefined}
+                      aria-describedby={atRowMinimum ? "asset-batch-row-count" : undefined}
+
+```
+
+The messages: save as `<temp>/add-31d-messages.json` and run `node scripts/messages-edit.mjs <temp>/add-31d-messages.json` (4092 → 4093 leaf keys per locale; the key goes last in `asset`):
+
+```json
+{"set":{"th":{"asset.batchRowLimits":"ชุดหนึ่งมีได้ 2–100 รายการ"},"en":{"asset.batchRowLimits":"A batch holds 2–100 items"}}}
+```
+
+- [ ] **Step 1: The failing test.** Append to `tests/v-track2-x.test.ts` (with a file tool):
+
+```ts
+
+test("the batch's row limits and its duplicate check stay focusable and say why beside the row count (v-track plan 2 task 31d, A8)", () => {
+  const source = read(`${C}assets/asset-batch-form.tsx`)
+  // One visible reason line: the row count gains the 2–100 limits (spec §4.4: a gate that showed nothing gets a reason).
+  assert.ok(source.includes('<div id="asset-batch-row-count" className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })} · {t("batchRowLimits")}</div>'))
+  assert.equal(messages("th").asset.batchRowLimits, "ชุดหนึ่งมีได้ 2–100 รายการ")
+  assert.equal(messages("en").asset.batchRowLimits, "A batch holds 2–100 items")
+  assert.match(source, /\n  const atRowLimit = rows\.length >= 100\n  const atRowMinimum = rows\.length <= 2\n/)
+  // Add at 100 rows, remove at 2 (the cards and the table), check duplicates while the rows hold one: each stays
+  // focusable, aria-disabled and tied to the line (A-R6's gate), never disabled.
+  const count = (text: string) => source.split(text).length - 1
+  for (const [condition, buttons] of [["atRowLimit", 1], ["atRowMinimum", 2], ["hasClientDuplicates", 1]] as const) {
+    assert.equal(count(`aria-disabled={${condition} || undefined}`), buttons, condition)
+    assert.equal(count(`aria-describedby={${condition} ? "asset-batch-row-count" : undefined}`), buttons, condition)
+  }
+  assert.match(source, /onClick=\{handleAddRow\}\n\s+aria-disabled=\{atRowLimit /)
+  assert.match(source, /busy=\{checkingDuplicates\}\n\s+aria-disabled=\{hasClientDuplicates /)
+  assert.equal(source.match(/onClick=\{\(\) => handleRemoveRow\(row\.clientId\)\}\n\s+aria-disabled=\{atRowMinimum /g)?.length, 2)
+  assert.doesNotMatch(source, /disabled=\{rows\.length (?:>= 100|<= 2)\}|disabled=\{hasClientDuplicates\}/)
+  // A press does nothing: each handler returns first.
+  assert.match(source, /function handleAddRow\(\) \{\n\s+if \(atRowLimit\) return\n/)
+  assert.match(source, /function handleRemoveRow\(clientId: string\) \{\n\s+if \(atRowMinimum\) return\n/)
+  assert.match(source, /async function handleCheckDuplicates\(\) \{\n\s+if \(hasClientDuplicates\) return\n/)
+})
+```
+
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track2-x.test.ts`. Expected: 4 tests, 1 fail: "the batch's row limits and its duplicate check stay focusable and say why beside the row count (v-track plan 2 task 31d, A8)" (`The expression evaluated to a falsy value`: the row count line has no id yet). After Step 3 and before Step 4, `npm test` fails exactly one test: "asset batch form: the duplicate check and the save button are busy without a label swap (K13)" (`tests/asset-forms-ui.test.ts`, its `disabled={hasClientDuplicates}` pin); Step 4 is its edit.
+- [ ] **Step 3: Implement** per the exact edits and the change file.
+- [ ] **Step 4: Pin edit:**
+
+- `tests/asset-forms-ui.test.ts`, pin 1 of 1. Old:
+
+```ts
+  assert.match(source, /busy=\{checkingDuplicates\} disabled=\{hasClientDuplicates\}>\n\s*\{t\("batchCheckDuplicates"\)\}/)
+```
+
+  New:
+
+```ts
+  // While the rows hold a duplicate the check waits, focusable with its reason (v-track plan 2 task 31d).
+  assert.match(source, /busy=\{checkingDuplicates\}\n\s*aria-disabled=\{hasClientDuplicates \|\| undefined\}\n\s*aria-describedby=\{hasClientDuplicates \? "asset-batch-row-count" : undefined\}\n\s*>\n\s*\{t\("batchCheckDuplicates"\)\}/)
+```
+
+- [ ] **Step 5: Verify.** `node --test tests/v-track2-x.test.ts tests/v-track2-a.test.ts tests/asset-forms-ui.test.ts tests/button-size-switch.test.ts tests/assets-sweep-ui.test.ts tests/thai-glossary.test.ts tests/messages-parity.test.ts tests/messages-edit.test.ts tests/form-migration-guards.test.ts tests/validation-guards.test.ts tests/visual-foundation-guards.test.ts` (115 tests, 0 fail); `npm test` (+1; 2290 tests, 2289 pass, 0 fail, 1 skipped); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). Leaf keys per locale 4092 → 4093. eol: `asset-batch-form.tsx` `1344 1344`, `messages/*.json` `4275 4275`, `asset-forms-ui` `139 139`, `v-track2-x` `0 204`. `git diff --numstat`: `27 5` the batch form, `2 1` each messages file, `2 1` asset-forms-ui, `24 0` v-track2-x.
+- [ ] **Step 6: Commit.** `git add src/components/assets/asset-batch-form.tsx messages/th.json messages/en.json tests/asset-forms-ui.test.ts tests/v-track2-x.test.ts`, then `git commit -m "feat(assets): the batch's row limits and its duplicate check stay focusable and say why beside the row count (v-track plan 2 task 31d, A8)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
+
+---
+
+### Task 31e (U7): The scan check's waiting save opens the note-and-photo section that holds the picker (`c/audit/audit-scan-check-form.tsx`)
+
+The user's answer to open issue 7; spec §4.4 ("a required photo not taken"), §4.2; U-R11; X-R5.
+
+**Files:** Modify `src/components/audit/audit-scan-check-form.tsx` (`i/lf w/crlf`) · Pin `tests/v-track2-u.test.ts` (LF) · Test `tests/v-track2-x.test.ts` (LF, append). No change: the gate itself (Task 19: `aria-disabled` tied to `audit-check-photo-reason`), the toggle button (`tests/audit-scan-sweep-ui.test.ts:50` holds), the workspace.
+
+**Interfaces:** consumes Task 19's `save` and the existing `extrasOpen` state (`:140`, `useState(target.kind === "out_of_scope")`); produces nothing for later tasks.
+
+**Changes at `37968225`:**
+
+| Line | Now | Becomes | Rule |
+|---|---|---|---|
+| `:251-254` | `  // A missing photo is a prerequisite: save stays focusable and returns here (spec §4.4). Then the fields, then saving the` / `  // parent while components are still pending asks first; cancelling sends nothing (D4).` / `  async function save() {` / `    if (missingPhoto) return` | the comment in three lines (save also opens the section); `  async function save() {` / `    if (missingPhoto) {` / `      setExtrasOpen(true)` / `      return` / `    }` | U-R11, X-R5 |
+
+The exact edit:
+
+- `src/components/audit/audit-scan-check-form.tsx`, edit 1 of 1. Old:
+
+```ts
+  // A missing photo is a prerequisite: save stays focusable and returns here (spec §4.4). Then the fields, then saving the
+  // parent while components are still pending asks first; cancelling sends nothing (D4).
+  async function save() {
+    if (missingPhoto) return
+
+```
+
+  New:
+
+```ts
+  // A missing photo is a prerequisite: save stays focusable, opens the note-and-photo section that holds the picker and
+  // returns here (spec §4.4). Then the fields, then saving the parent while components are still pending asks first;
+  // cancelling sends nothing (D4).
+  async function save() {
+    if (missingPhoto) {
+      setExtrasOpen(true)
+      return
+    }
+
+```
+
+- [ ] **Step 1: The failing test.** Append to `tests/v-track2-x.test.ts` (with a file tool):
+
+```ts
+
+test("the scan check's waiting save opens the note-and-photo section, so the missing photo's picker is in view (v-track plan 2 task 31e, U7)", () => {
+  const source = read(`${C}audit/audit-scan-check-form.tsx`)
+  // Save still returns first while a required photo is missing (U-R11), and now opens the section that holds the picker.
+  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) \{\n\s+setExtrasOpen\(true\)\n\s+return\n\s+\}\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n/)
+  const section = source.slice(source.indexOf("{extrasOpen ? ("), source.indexOf("<div data-audit-check-actions"))
+  assert.ok(section.includes('title={t("dropAuditPhotoTitle")}'), "the photo picker sits in that section")
+  // The toggle still opens and closes it, and the gate is as Task 19 left it: focusable, tied to its Notice.
+  assert.ok(source.includes("onClick={() => setExtrasOpen((current) => !current)}"))
+  assert.match(source, /aria-disabled=\{missingPhoto \|\| undefined\}\n\s+aria-describedby=\{missingPhoto \? "audit-check-photo-reason" : undefined\}\n/)
+})
+```
+
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track2-x.test.ts`. Expected: 5 tests, 1 fail: "the scan check's waiting save opens the note-and-photo section, so the missing photo's picker is in view (v-track plan 2 task 31e, U7)" (`The input did not match the regular expression /async function save\(\) \{\n\s+if \(missingPhoto\) \{…/`). After Step 3 and before Step 4, `npm test` fails exactly one test: "scan check: the location's star has its rule and its error, focus stays inside the sheet, and a missing photo keeps save focusable with its reason (v-track U6)" (`tests/v-track2-u.test.ts`, its `if (missingPhoto) return` regex); Step 4 is its edit.
+- [ ] **Step 3: Implement** per the exact edit.
+- [ ] **Step 4: Pin edit:**
+
+- `tests/v-track2-u.test.ts`, pin 1 of 1. Old:
+
+```ts
+  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) return\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
+```
+
+  New:
+
+```ts
+  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) \{\n\s+setExtrasOpen\(true\)\n\s+return\n\s+\}\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
+```
+
+- [ ] **Step 5: Verify.** `node --test tests/v-track2-x.test.ts tests/v-track2-u.test.ts tests/audit-scan-check-ui.test.ts tests/audit-scan-sweep-ui.test.ts tests/audit-component-scan-ui.test.ts tests/form-migration-guards.test.ts tests/validation-guards.test.ts` (80 tests, 0 fail); `npm test` (+1; 2291 tests, 2290 pass, 0 fail, 1 skipped); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). eol: `audit-scan-check-form.tsx` `479 479`, `v-track2-u` `0 219`, `v-track2-x` `0 215`. `git diff --numstat`: `7 3`, `1 1`, `11 0`.
+- [ ] **Step 6: Commit.** `git add src/components/audit/audit-scan-check-form.tsx tests/v-track2-u.test.ts tests/v-track2-x.test.ts`, then `git commit -m "feat(audit): the scan check's waiting save opens the note-and-photo section that holds the picker (v-track plan 2 task 31e, U7)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
+
+---
+
+### Rehearsal record (the addendum)
+
+| Task | `v2-add` | Step 2 (the new test fails first) | failing before Step 4 | `npm test` after (tests / pass / fail / skipped) | `tests/v-track2-x.test.ts` |
+|---|---|---|---|---|---|
+| 31a | `6ef98430` | 31a's test, the 400 body's deep-equal | none | 2287 / 2286 / 0 / 1 | `0 120` |
+| 31b | `0d440c83` | 31b's test, `auditYear: 'required'` | none | 2288 / 2287 / 0 / 1 | `0 141` |
+| 31c | `97ad82af` | 31c's test, `decimals is not a function` | 9 (the money lines of A1, A2, D2–D5, M4, M5 and the message table) | 2289 / 2288 / 0 / 1 | `0 180` |
+| 31d | `3b5c278c` | 31d's test, the row count line | 1 (the K13 pin) | 2290 / 2289 / 0 / 1 | `0 204` |
+| 31e | `fbda71b9` | 31e's test, the `save` regex | 1 (U6's `save` regex) | 2291 / 2290 / 0 / 1 | `0 215` |
+
+- Clone `<temp>/../v-sim`, its own `node_modules`, branch `v2-add` from `37968225`. The switch from `v2-base` wrote 18 files with the wrong endings (the 9 LF tests and the 5 plan-2 test files as CRLF, the 4 mixed files as all CRLF); `<temp>/add/fix-eol.mjs` set the LF files back to LF and rebuilt each mixed file's endings line by line from the real checkout's, and `git add` of those unchanged files refreshed the index. Then `git ls-files --eol` matched `D:/Antigravity/asset-system` file by file, and the base gave `npm test` 2286 / 2285 / 0 / 1, `tsc` clean, lint 0 errors and 146 warnings.
+- Every task: `npx tsc --noEmit` clean; `npm run lint` 0 errors, 146 warnings (all under `.agents/`); every edited file kept its endings; `tests/v-track2-x.test.ts` LF. End state after 31e: `counts.mts` toasts outside a catch 34 in 11 files, `<form … noValidate>` 46, 4093 leaf keys per locale, `V_FORMS` 43, `SELECT_STAR_ONLY` 0 in 0, FMG `STAR_ONLY` `new Set<string>([])`; `tests/validation-guards.test.ts` `224 224`, `tests/form-migration-guards.test.ts` `503 503`, `tests/choice-controls-ui.test.ts` `154 154`, `messages/th.json` `4275 4275`.
+- Text replay: this section's exact edits, change files and Step 1 blocks were read back by a parser and applied in order to `37968225`'s files (LF): after each task every file it touches equals that task's `v2-add` commit (31a–31e, all five).
+- What the rehearsal changed in the draft: 31c includes the disposal decision's two estimated values (every `step="0.01"` control under `src/components` is one of the eight files; X-R3); 31c's test checks that list against the source, so a later money field without the rule fails it; 31d's first test draft built a `RegExp` from a template string whose backslashes a shell heredoc had eaten (it matched everything): the test counts plain strings instead, and every block here is written with a file tool; the 31d gate comment names A-R6 and A-R7.
+- Task 33 rehearsed again on top: `ae8ed79a` (C1, `<today>` 2026-10-18; Task 33's numbers there).
+
+---
+
 ## Controller: verify and dev-app check (Task 32)
 
 ### Task 32: Verify, production build and dev-app check in both themes (controller runs this task, not an implementer)
@@ -7763,13 +8868,13 @@ The shape of plan 1's Task 30. One rule is stricter than plan 1's: **no request 
 - Modify: only files needed to fix problems found here. Each fix is a new small task with its own test through an implementer and the normal review, before Task 33. A fix never adds an `EXEMPT`, `V_SCOPE`, `NOT_IN_SCOPE`, `SELECT_STAR_ONLY`, FMG `STAR_ONLY` or `NON_VALIDATION_TOASTS` row without a ruling, and it changes the counts below; say by how much in the findings.
 
 **Interfaces:**
-- Consumes: Tasks 1–31 committed; Task 0's baseline, counts and before evidence (`.superpowers/sdd/v-track-plan2/task-0-*`, `before/`).
-- Produces: `task-32-findings.md`, which Task 33 turns into the "Dev-app check" and "Still open" bullets of the handoff section and the "ตรวจบนแอป" bullet of the changelog entry. Also any answer the user gives to the open issues on the screenshots (Task 33's `<from open-issues>`).
+- Consumes: Tasks 1–31 and 31a–31e committed; Task 0's baseline, counts and before evidence (`.superpowers/sdd/v-track-plan2/task-0-*`, `before/`).
+- Produces: `task-32-findings.md`, which Task 33 turns into the "Dev-app check" and "Still open" bullets of the handoff section and the "ตรวจบนแอป" bullet of the changelog entry. The user's answers to the open issues (2026-10-18) are already written into Task 33's blocks; a new answer the user gives on the screenshots goes to the controller before Task 33.
 
-- [ ] **Step 1: Verify.** Delete `.next/cache/turbopack` first (a stale Turbopack cache shipped old CSS before, wiki 47), then `npm run verify` (lint, tests, build). Expected: lint 0 errors and 146 warnings (all under `.agents/`); tests **2286, 2285 pass, 0 fail, 1 skipped** (the assembly chain and the dry run, `v2-dry` `37968225`); build **60/60 pages** (plan 1's verify at `e1caa29`; plan 2 adds no route, so another page count is a finding; the dry run did not build, because the build reads `.env`). Then `npx tsc --noEmit` (clean), `git status --short` (only the untracked items of the Global Constraints), and `node <tools>/eol.mjs` on the five new test files (each `0 <lines>`) and the four mixed files of the Global Constraints (two different numbers each: still mixed).
+- [ ] **Step 1: Verify.** Delete `.next/cache/turbopack` first (a stale Turbopack cache shipped old CSS before, wiki 47), then `npm run verify` (lint, tests, build). Expected: lint 0 errors and 146 warnings (all under `.agents/`); tests **2291, 2290 pass, 0 fail, 1 skipped** (the addendum rehearsal, `v2-add` `fbda71b9`; 2286 after Task 31 on the assembly chain and in the dry run); build **60/60 pages** (plan 1's verify at `e1caa29`; plan 2 adds no route, so another page count is a finding; the dry run did not build, because the build reads `.env`). Then `npx tsc --noEmit` (clean), `git status --short` (only the untracked items of the Global Constraints), and `node <tools>/eol.mjs` on the six new test files (each `0 <lines>`) and the four mixed files of the Global Constraints (two different numbers each: still mixed).
 - [ ] **Step 2: The built CSS.** In `.next/static/css/*.css`, the rules the new error states use: the field error look `aria-invalid:border-danger`, `aria-invalid:ring-danger`, `aria-invalid:shadow-field-error` and its focus row `aria-invalid:focus:border-ring` (`src/components/ui/field-variants.ts`; the drop zones of Task 1 and every `Field` take it); the SearchableSelect trigger's `data-invalid` look with `border-danger` and its `focus` and `aria-expanded` compounds with `border-ring` (plan 1 F-R7; the 14 selects of `SELECT_STAR_ONLY` now show it); the label print reason box's `border-danger ring-1 ring-danger shadow-field-error` (Task 7, through `cn`); the Button's `aria-disabled:` styles (every prerequisite gate of plan 2). Plan 2 adds no new utility class: the dry run compared every class token of the `className` strings plan 2 adds (`git diff e1caa29 HEAD -- src`) with `e1caa29`'s `src`, and each was already in use. A missing rule is a finding to fix before Step 4.
 - [ ] **Step 3: Counting evidence after.** `node <temp>/asm/counts.mts .` (repo root as the working directory) and the commands of Task 0 Step 4 again, into `task-32-counts/`, compared with `task-0-counts/`:
-  - toasts outside a catch in `src` 34 in 11 files (61 in 19 at `e1caa29`); `<form … noValidate>` in `src` 46 (17); `messages/th.json` and `en.json` 4091 leaf keys each (4092); `V_FORMS` 43 (15; every `V_SCOPE` file but `admin/system-settings-form.tsx`, plan 3); `SELECT_STAR_ONLY` `0 in 0` (14 in 10); FMG `STAR_ONLY` `new Set<string>([])` (three entries); `NON_VALIDATION_TOASTS` 4 rows (none); FMG `CONSTRAINT_FLOORS` checkin `required` 5 (4). These are the dry run's numbers at `37968225`.
+  - toasts outside a catch in `src` 34 in 11 files (61 in 19 at `e1caa29`); `<form … noValidate>` in `src` 46 (17); `messages/th.json` and `en.json` 4093 leaf keys each (4092); `V_FORMS` 43 (15; every `V_SCOPE` file but `admin/system-settings-form.tsx`, plan 3); `SELECT_STAR_ONLY` `0 in 0` (14 in 10); FMG `STAR_ONLY` `new Set<string>([])` (three entries); `NON_VALIDATION_TOASTS` 4 rows (none); FMG `CONSTRAINT_FLOORS` checkin `required` 5 (4). These are the addendum rehearsal's numbers at `fbda71b9` (Tasks 31a–31e change only the key count among them; the dry run gave the others at `37968225`).
   - `git grep -nE "licenseSeatUsageInvalid|customFieldRequired|duplicateWarning|reviewIncomplete|selectCheckoutRequired|selectReturnAndReceiver|completeRequiredFields|destinationRequired|validateHistoricalException" -- src messages` prints nothing (the eight deleted keys and the deleted function; tests may still name them in a `doesNotMatch`).
 - [ ] **Step 4: Production server.**
   - Add a launch configuration `name: "asset-v2-start-3110"`, `runtimeExecutable: "node"`, `runtimeArgs: ["node_modules/next/dist/bin/next", "start", "-p", "3110"]`, `port: 3110`, `autoPort: false` (another free port if 3110 is taken; say which in the findings), and start it with `preview_start`.
@@ -7818,8 +8923,14 @@ The shape of plan 1's Task 30. One rule is stricter than plan 1's: **no request 
     - The PM plan form (`/th/maintenance/pm/new`, and an edit): empty → the asset select (create); the days 0, 1.5 and 3651 → their range or number errors; on the edit, stand-in `PATCH /api/maintenance-plans/<id>` 400 `{ error: "PM vendor not found or inactive", fieldErrors: { vendorId: "pmVendorNotFound" } }` → under the vendor.
     - The repair record form (`/th/maintenance/new`): empty → the asset, then the reporter where it is asked for; the two questions as groups; a cost of `-1` or `0.001` inside "รายละเอียดเพิ่มเติม" while it is closed → it opens and focus lands on the cost (MT-R4); stand-in `POST /api/maintenance-tickets` 400 `{ error: "Vendor not found or inactive", fieldErrors: { vendorId: "vendorNotFound" } }` → under the vendor; stand-in 409 `{ code: "MAINTENANCE_OPEN_RECORD_EXISTS", error: "…" }` → today's Notice with its link and the toast (MT-R8, open issue 11).
     - The repair dialogs (`/th/maintenance/<id>`): complete — the return date's picker starts at the reported date, a typed earlier date → `repairRecord.returnDateBeforeReported`; cancel — a reason over 1,000 characters → `tooLong`; edit — its errors; a stand-in refusal goes back to the dialog that sent it (MT-R6); a dialog closed with errors opens again without them.
+  - **The addendum** (Tasks 31a–31e):
+    - Checkin (31a): from the review, stand-in `POST /api/assets/<id>/checkin` 400 `{ error: "Invalid return condition for check-in", code: "ASSET_CONDITION_NOT_SELECTABLE", fieldErrors: { conditionAfter: "invalidReturnCondition" } }` → the review closes, focus on the return condition, "สภาพตอนรับคืนไม่ถูกต้อง" under it; again with `{ error: "Invalid return status for check-in", fieldErrors: { nextStatusId: "invalidReturnStatus" } }` → under the next status, "สถานะตอนรับคืนไม่ถูกต้อง". (The route's own body is Task 31a's test; no request reaches the server.)
+    - zod's `.int()` (31b): stand-in `POST /api/audit-rounds/preview` 400 `{ error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { sampleRate: "invalidNumber" } }` → "กรุณากรอกเป็นตัวเลข" under the sample rate (the server's map is Task 31b's test).
+    - The money rule (31c): 12.345 in the asset form's price (create) and its purchase document total, the batch's price, the disposal request's sale value, the execution's actual sale value and the repair record's cost (inside "รายละเอียดเพิ่มเติม", which opens) → "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง" under each, focus on the first; 12.50 and 12.5 pass that rule; −1 still reads its range message.
+    - The batch's gates (31d): at 2 rows each remove button (cards at 375, table at 1440) is focusable, looks disabled, and its accessible description is the row count line "รายการตอนนี้ 2 รายการ · ชุดหนึ่งมีได้ 2–100 รายการ"; Enter or a click removes nothing; after pasting 100 serials, add row the same and nothing is added; two rows with one serial: check duplicates the same, and no request leaves.
+    - The scan check (31e): Step 7.
 - [ ] **Step 7: The shared parts.**
-  - **The scan check** (Task 19, U-R11): at 1440 (the aside) and at 375 (the sheet), light and dark. Empty the location through the console (the select hides its clear button) and save: the error under the location; at 1440 the aside scrolls its own body to it; at 375 the sheet stays open and `document.activeElement` is inside it. With a required photo missing: save `aria-disabled`, its description the photo Notice (open issue 7: the note-and-photo section may be closed; record whether a person would find the picker). The scan stand-in (Step 5) answers any scan request that goes out: record what shows (today's handling; offline replays as today, spec §3). Before leaving the page, the offline bar shows nothing queued.
+  - **The scan check** (Task 19, U-R11): at 1440 (the aside) and at 375 (the sheet), light and dark. Empty the location through the console (the select hides its clear button) and save: the error under the location; at 1440 the aside scrolls its own body to it; at 375 the sheet stays open and `document.activeElement` is inside it. With a required photo missing: save `aria-disabled`, its description the photo Notice; with the note-and-photo section closed, pressing save opens it, the picker shows, and nothing is sent (Task 31e). The scan stand-in (Step 5) answers any scan request that goes out: record what shows (today's handling; offline replays as today, spec §3). Before leaving the page, the offline bar shows nothing queued.
   - **One announcement per submit** (F-R6) on two plan-2 forms, in the accessibility tree (NVDA itself is a person's check, Step 8): the focused field's name and description hold the error, and no other region announces it.
   - **Forced colors and reduced motion** on two plan-2 forms (one page, one dialog): the error text, the field border and the gate's look show; focus scrolls without animation (F-R5).
 - [ ] **Step 8: Findings.** Write `task-32-findings.md` with these parts (Task 33 copies them):
@@ -7827,8 +8938,8 @@ The shape of plan 1's Task 30. One rule is stricter than plan 1's: **no request 
   - **Checked and passed:** what, where, in which themes and widths, with results; the verify numbers of Step 1; the built CSS of Step 2; the counts of Step 3; every non-GET of Step 5 with "fulfilled <status>" or "aborted" (none continued).
   - **Differences from Task 0's before evidence:** each mapped to a decision of this plan (any other is a finding to fix).
   - **Found but not caused by this plan.**
-  - **For the user:** the screenshots for the open issues: 2 (the seven new messages under real fields: `after/*-empty-*`, the asset save's `duplicateCheckPending`, the batch's row duplicate, the finding close and batch review reasons, the disposal batch's assets line, bulk execution's confirmation, the repair return date), 3 (a money field with three decimals in the asset form and in the repair record: one is refused, the other is not), 7 (the scan photo gate with its section closed), 11 (the open repair record's Notice and toast), 16 (the batch's remove-row buttons at 2 rows, with nothing that says why); anything else to decide.
-  - **Still needs a person:** NVDA on one plan-2 page form and one review dialog (the hand-back read once), real phones (iOS Safari and Android Chrome: the scan check sheet, focus clear of the keyboard and the save bar), an English pass of the seven new messages.
+  - **For the user:** the open issues as answered on 2026-10-18, on screenshots: 2 (the nine new messages under real fields: `after/*-empty-*`, the asset save's `duplicateCheckPending`, the batch's row duplicate and row limits, the finding close and batch review reasons, the disposal batch's assets line, bulk execution's confirmation, the repair return date, the money sentence), 3 and 14 (a money field with three decimals in the asset form and in the repair record: both refused with the same sentence), 7 (the scan photo gate, its section opened by save), 11 (the open repair record's Notice and toast, for UAT), 16 (the batch's remove buttons at 2 rows with the row count line); anything else to decide.
+  - **Still needs a person:** NVDA on one plan-2 page form and one review dialog (the hand-back read once), real phones (iOS Safari and Android Chrome: the scan check sheet, focus clear of the keyboard and the save bar), an English pass of the nine new messages.
 - [ ] **Step 9: Clean up.** Stop your server, remove your launch configuration and every helper you put under the repo. In your browser context: `indexedDB.deleteDatabase("asset-system-audit-offline")` and remove every `localStorage` key that starts with `audit-offline-scan:` (nothing should be there; if something was, it is a finding). `git status --short` shows only the untracked folders and files of the Global Constraints. No commit in this task unless Step 8 lists fixes (each its own task).
 
 ---
@@ -7841,7 +8952,7 @@ Spec §9 ("a handoff section and a changelog entry per plan"); the shape of plan
 
 **Files:**
 - Modify: `DEVELOPER_HANDOFF.md` (`i/lf w/crlf`), `docs/99_CHANGELOG.md` (`i/lf w/crlf`), `tests/v-track-docs.test.ts` (`i/lf w/crlf`; one test appended, one assertion of plan 1's test rewritten).
-- Read: `.superpowers/sdd/v-track-plan2/task-32-findings.md` (Task 32, git-ignored) and the user's answers to this plan's open issues, if any (the controller hands them over). **If the findings file is missing, stop and report before editing anything:** never write the dev-app check text without it.
+- Read: `.superpowers/sdd/v-track-plan2/task-32-findings.md` (Task 32, git-ignored). The user's answers to this plan's open issues (2026-10-18, every recommendation) are already written into H2 and C1 below. **If the findings file is missing, stop and report before editing anything:** never write the dev-app check text without it.
 
 **Interfaces:** produces `## V Track Plan 2 (<today>)` with a `- Dev-app check: checked (Task 32) on …` bullet, and `### ข้อความผิดพลาดใต้ช่องกรอก รอบ 2 (งาน V plan 2)` with a `- **ตรวจบนแอป:** (Task 32) ตรวจบน …` bullet; Task 34 inserts the verify line directly above each (both prefixes occur once in their file; checked in the rehearsal).
 
@@ -7867,18 +8978,18 @@ with
 ## V Track Plan 2 (<today>)
 
 - Branch `feat/v-track-2` in the main checkout (from `master` `e1caa29`: V track plan 1 merged and pushed, not deployed). Spec `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` (the user's decisions U1–U9) · plan `docs/superpowers/plans/2026-10-18-v-track-plan2.md` (plan 2 of the track: the asset, asset operation, audit, disposal and maintenance forms, spec §5 #1–#33, 33 forms in 28 files).
-- No migration, database write, schema or dependency change. No server rule was added (spec §6.3): Tasks 20 and 27 only add `fieldErrors` to refusals that existed; status codes and messages are unchanged. Messages (through `scripts/messages-edit.mjs`): +7 keys (`asset.duplicateCheckPending`, `asset.batchRowDuplicate`, `auditFinding.closeNeedsEvidence`, `auditFinding.batchNeedsSelection`, `disposalPage.batchNeedsAssets`, `disposalPage.bulkExecutionPermanentConfirmationRequired`, `repairRecord.returnDateBeforeReported`) and −8 (`asset.licenseSeatUsageInvalid`, `asset.customFieldRequired`, `asset.duplicateWarning`, `checkout.reviewIncomplete`, `checkin.selectCheckoutRequired`, `checkin.selectReturnAndReceiver`, `checkin.completeRequiredFields`, `transfer.destinationRequired`): 4092 → 4091 keys.
-- **The server (Tasks 20, 27):** the disposal execution's evidence refusals `DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED` and `DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED` keep their `code` and add `fieldErrors` under `evidenceExceptionReason` (`required`, `tooShort` or `tooLong`) and `evidenceExceptionAcknowledged` (`required`) (`getDisposalEvidenceFieldErrors`, `src/lib/disposal-evidence-exception.ts`). A bulk execution preview or commit stays a 200 and adds `fieldErrors` when a blocked row's code points at a field of the dialog (`sharedRecipientName: "recipientRequired"` and the exception's two fields; `getDisposalBulkExecutionFieldErrors`, `src/lib/disposal-bulk-execution.ts`). A repair record's reporter refusals (`reportedById`: `required`, `reporterNotFound`), its vendor refusal on create, complete and edit (`vendorId`: `vendorNotFound`) and the PM plan edit's vendor refusal (`vendorId`: `pmVendorNotFound`) name their field, through the new `fieldErrors` of `MaintenanceApiError` and plan 1's `FieldRefusalError`; before, they reached the person as the generic "เกิดข้อผิดพลาด".
-- **Shared additions (Tasks 8, 21, 28):** `waitForDialogToClose(frames = 60)` in `src/lib/field-focus.ts` (a form refused while its own review dialog is open closes the dialog before the field takes focus: `reveal: leaveReview`); `step(value, size)` in `src/lib/validation-rules.ts` (a number field's `step` restated, `invalidNumber`); `NON_VALIDATION_TOASTS` in `tests/validation-guards.test.ts` (the toasts outside a catch that are not about a field, with an exact count, a reason and a ruling each: the upload results of the disposal request and batch and of the repair record form and dialogs).
-- **The forms (Tasks 1–19, 21–26, 29–31):** the asset form, the batch, the register's bulk update, component install and removal, status correction, the import wizard and label print; checkout, checkin, transfer, bulk move and the transaction cancel dialog; the audit round form, round cancel, mark not found, component missing, the finding dialogs (decision, action plan, close), batch review and the scan check; the disposal request, batch, decision, execution, bulk approval and bulk execution; the PM plan form, the repair record form and its complete, cancel and edit dialogs. Each has `noValidate` straight after `onSubmit`, a module-level `validate()` that restates every constraint its controls carry, errors under the field (a group: one error), focus on the first wrong field, and the server's `fieldErrors` on the same fields; a refusal that names no field keeps today's message. 26 validation toasts went (the asset form's 12, checkout's 4, checkin's 4, the batch's 2, component install, transfer, bulk move and round cancel one each); the batch's duplicate-check result moved into its Notice.
+- No migration, database write, schema or dependency change. No server rule was added (spec §6.3): Tasks 20, 27 and 31a only add `fieldErrors` to refusals that existed, and Task 31b changes only how one zod issue reads; status codes and messages are unchanged. Messages (through `scripts/messages-edit.mjs`): +9 keys (`asset.duplicateCheckPending`, `asset.batchRowDuplicate`, `auditFinding.closeNeedsEvidence`, `auditFinding.batchNeedsSelection`, `disposalPage.batchNeedsAssets`, `disposalPage.bulkExecutionPermanentConfirmationRequired`, `repairRecord.returnDateBeforeReported`, `common.validation.tooManyDecimals`, `asset.batchRowLimits`) and −8 (`asset.licenseSeatUsageInvalid`, `asset.customFieldRequired`, `asset.duplicateWarning`, `checkout.reviewIncomplete`, `checkin.selectCheckoutRequired`, `checkin.selectReturnAndReceiver`, `checkin.completeRequiredFields`, `transfer.destinationRequired`): 4092 → 4093 keys.
+- **The server (Tasks 20, 27, 31a, 31b):** the disposal execution's evidence refusals `DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED` and `DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED` keep their `code` and add `fieldErrors` under `evidenceExceptionReason` (`required`, `tooShort` or `tooLong`) and `evidenceExceptionAcknowledged` (`required`) (`getDisposalEvidenceFieldErrors`, `src/lib/disposal-evidence-exception.ts`). A bulk execution preview or commit stays a 200 and adds `fieldErrors` when a blocked row's code points at a field of the dialog (`sharedRecipientName: "recipientRequired"` and the exception's two fields; `getDisposalBulkExecutionFieldErrors`, `src/lib/disposal-bulk-execution.ts`). A repair record's reporter refusals (`reportedById`: `required`, `reporterNotFound`), its vendor refusal on create, complete and edit (`vendorId`: `vendorNotFound`) and the PM plan edit's vendor refusal (`vendorId`: `pmVendorNotFound`) name their field, through the new `fieldErrors` of `MaintenanceApiError` and plan 1's `FieldRefusalError`; before, they reached the person as the generic "เกิดข้อผิดพลาด". Checkin's refusals of the return condition and the return status keep their message and add `fieldErrors` (`conditionAfter: "invalidReturnCondition"`, `nextStatusId: "invalidReturnStatus"`), which the checkin form shows under its selects after closing its review (Task 31a). zod's `.int()` refusing a fraction reads `invalidNumber` instead of `required` (`src/lib/field-errors.ts`, Task 31b).
+- **Shared additions (Tasks 8, 21, 28, 31c):** `waitForDialogToClose(frames = 60)` in `src/lib/field-focus.ts` (a form refused while its own review dialog is open closes the dialog before the field takes focus: `reveal: leaveReview`); `step(value, size)` in `src/lib/validation-rules.ts` (a whole-number field's `step` restated, `invalidNumber`) and `decimals(value, places)` beside it (a money field's two decimal places, with its own code `tooManyDecimals` and sentence `common.validation.tooManyDecimals`, Task 31c); `NON_VALIDATION_TOASTS` in `tests/validation-guards.test.ts` (the toasts outside a catch that are not about a field, with an exact count, a reason and a ruling each: the upload results of the disposal request and batch and of the repair record form and dialogs).
+- **The forms (Tasks 1–19, 21–26, 29–31, 31c–31e):** the asset form, the batch, the register's bulk update, component install and removal, status correction, the import wizard and label print; checkout, checkin, transfer, bulk move and the transaction cancel dialog; the audit round form, round cancel, mark not found, component missing, the finding dialogs (decision, action plan, close), batch review and the scan check; the disposal request, batch, decision, execution, bulk approval and bulk execution; the PM plan form, the repair record form and its complete, cancel and edit dialogs. Each has `noValidate` straight after `onSubmit`, a module-level `validate()` that restates every constraint its controls carry, errors under the field (a group: one error), focus on the first wrong field, and the server's `fieldErrors` on the same fields; a refusal that names no field keeps today's message. 26 validation toasts went (the asset form's 12, checkout's 4, checkin's 4, the batch's 2, component install, transfer, bulk move and round cancel one each); the batch's duplicate-check result moved into its Notice. Every money field (the asset form's price and document total, the batch's price, the disposal request's, batch's, decision's and execution's values, the repair cost) refuses more than two decimal places with one sentence (Task 31c).
 - **Review dialogs and steps (spec §4.2):** checkout, checkin and transfer close their review dialog before the refused field takes focus; a refusal goes back to the batch's edit step, component install's details step, the disposal batch's edit step and bulk execution's review step (also when no row of a preview can run because of the shared values). The audit scan check keeps focus inside its sheet on a phone; offline-queued scans replay as before.
 - **Date pairs (spec §7.4, client rules only):** the warranty end not before its start in the asset form (on edit only when one of the two dates changed) and in the batch; the audit round's end not before its start (the pickers limit each other); the label print queue's created-from/to (`min`/`max`); a repair's completion date not before its reported date (`min` and `repairRecord.returnDateBeforeReported`).
-- **Gates (spec §4.4):** content gates became errors on submit with the button enabled: status correction's 5 characters, bulk update's location or custodian, the disposal batch's requester and reason, the decision's rejection reason, the execution's historical reason and acknowledgement, bulk execution's shared values and its permanent confirmation. Prerequisites stay gated, `aria-disabled` with a visible reason tied by `aria-describedby`: the asset save on a protected status change or while the duplicate check runs, the import with no ready row, the cancel dialog's blockers, the finding close without evidence, batch review with nothing selected, the scan check's missing photo, the disposal batch with fewer than 2 assets, the execution without evidence, and the two bulk dialogs with nothing eligible.
+- **Gates (spec §4.4):** content gates became errors on submit with the button enabled: status correction's 5 characters, bulk update's location or custodian, the disposal batch's requester and reason, the decision's rejection reason, the execution's historical reason and acknowledgement, bulk execution's shared values and its permanent confirmation. Prerequisites stay gated, `aria-disabled` with a visible reason tied by `aria-describedby`: the asset save on a protected status change or while the duplicate check runs, the import with no ready row, the cancel dialog's blockers, the finding close without evidence, batch review with nothing selected, the scan check's missing photo (pressing the waiting save also opens the note-and-photo section that holds the picker, Task 31e), the disposal batch with fewer than 2 assets, the execution without evidence, the two bulk dialogs with nothing eligible, and the batch's add row at 100 rows, remove row at 2 and check duplicates while the rows hold a duplicate (the row count line names the 2–100 limits, `asset.batchRowLimits`, Task 31d).
 - **Spec §5's bugs in these forms:** checkin's return date, bulk move's destination, and the disposal request's asset and requester are checked. The 14 asterisk-only selects show their error (`SELECT_STAR_ONLY` 14 → 0); the license's total seats lost their asterisk (spec §11 call 8).
 - **Guards and pins:** `V_FORMS` 15 → 43 files (every `V_SCOPE` file but the settings form, plan 3); FMG `STAR_ONLY` empty; checkin's `required` floor 4 → 5 in `CONSTRAINT_FLOORS`; `NON_VALIDATION_TOASTS` 4 rows; no `EXEMPT`, `V_SCOPE` or `NOT_IN_SCOPE` row added. `<form … noValidate>` in `src` 17 → 46; toasts outside a catch in `src` 61 in 19 files → 34 in 11. The pins that encoded the old behaviour were rewritten in the commit that changed it.
-- **Tests:** new files `tests/v-track2-a.test.ts` (7), `tests/v-track2-o.test.ts` (6), `tests/v-track2-u.test.ts` (6), `tests/v-track2-d.test.ts` (7), `tests/v-track2-m.test.ts` (5); one test added to `tests/v-track-docs.test.ts`; `validateHistoricalException` and its test deleted (`src/lib/disposal-bulk-execution-ui.ts`, `tests/disposal-bulk-execution-ui-state.test.ts`); 2256 → <N> tests.
-- **Rulings of this plan:** R1 (the earlier rulings), R2 area A (A-R*), R3 area O (O-R*), R4 area U (U-R*), R5 area D (D-R*), R6 area M (MT-R*), R7 assembly (P-R1–P-R10).
-- **The user's answers to the open issues:** <from open-issues>
+- **Tests:** new files `tests/v-track2-a.test.ts` (7), `tests/v-track2-o.test.ts` (6), `tests/v-track2-u.test.ts` (6), `tests/v-track2-d.test.ts` (7), `tests/v-track2-m.test.ts` (5), `tests/v-track2-x.test.ts` (5, the addendum); one test added to `tests/v-track-docs.test.ts`; `validateHistoricalException` and its test deleted (`src/lib/disposal-bulk-execution-ui.ts`, `tests/disposal-bulk-execution-ui-state.test.ts`); 2256 → <N> tests.
+- **Rulings of this plan:** R1 (the earlier rulings), R2 area A (A-R*), R3 area O (O-R*), R4 area U (U-R*), R5 area D (D-R*), R6 area M (MT-R*), R7 assembly (P-R1–P-R10), R8 the addendum (X-R1–X-R5).
+- **The user's answers to the open issues:** answered on 2026-10-18 with "ตามที่แนะนำ", every recommendation of the plan's "Open issues": 1 the protected-status change stays a gate; 2 the seven new messages stay as written (Tasks 31c and 31d add `common.validation.tooManyDecimals` and `asset.batchRowLimits` in the user's words); 3 one money rule: every money field refuses more than two decimal places (Task 31c); 4 the eight messages that lost their reader are deleted; 5 checkin's two refusals carry `fieldErrors` (Task 31a); 6 the photo and evidence upload refusals stay toasts; 7 the scan check's waiting save opens its note-and-photo section (Task 31e); 8 bulk execution goes back to the shared values only when every row is blocked by them; 9 bulk execution's permanent confirmation is a field; 10 the repair edit's reported date gets no pair rule; 11 the open repair record keeps its Notice and its toast, to be decided in UAT; 12 zod's `.int()` reads as `invalidNumber` (Task 31b), and one shared whole-number rule goes to the final plan; 13 the three forms with no rule keep an empty `validate()`; 14 the money rule has its own sentence, "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง" (Task 31c); 15 the purchase document number's duplicate stays a toast, and the bug of a second asset after a failed attachment is queued as a separate task after this plan merges; 16 the batch's add row, remove row and check duplicates gates say why beside the row count (Task 31d), and the print queue's two print buttons go to the final plan's sweep.
 - **Not taken:** a server rule for the warranty or repair date pairs (spec §11 call 6), `react-hook-form`, a `NO_RULE` allowance for the three forms with nothing to check (an empty `validate()` with a comment, U-R6), `aria-invalid` on a `<button>`, an alert role per field error.
 - **Handed on:** V track plan 3 (the settings form and the prefix editor: `settings.<key>`, `reveal` for the tabs), then the final plan (DESIGN.md's form-error rule, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `.impeccable/design.json`); then the E2E suite and the one deploy (wiki 27).
 - Dev-app check: checked (Task 32) on <from task-findings>
@@ -7902,18 +9013,18 @@ with
 
 Branch `feat/v-track-2` (จาก `master` `e1caa29`) · design `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` · plan `docs/superpowers/plans/2026-10-18-v-track-plan2.md` (plan ที่ 2 ของงาน V)
 
-- **ขอบเขต:** ฟอร์มทรัพย์สิน ธุรกรรมทรัพย์สิน ตรวจนับ ตัดจำหน่าย และซ่อมบำรุง 33 ฟอร์มใน 28 ไฟล์ (spec ข้อ 5 #1–#33) · ไม่แตะฐานข้อมูล ไม่มี migration ไม่เพิ่ม dependency ไม่เพิ่มกฎใหม่ฝั่ง server · ข้อความ: เพิ่ม 7 คีย์ ลบ 8 คีย์ ผ่าน `scripts/messages-edit.mjs` (4092 → 4091)
-- **server:** การบันทึกตัดจำหน่ายที่ถูกปฏิเสธเพราะเหตุผลของข้อยกเว้นหลักฐานหรือการยืนยันรับทราบ (`DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED` และ `DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED`) บอกช่องของตัวเองใน `fieldErrors` · บันทึกตัดจำหน่ายหลายรายการ (ทั้งตัวอย่างและการบันทึก) บอกช่องของ dialog เมื่อแถวที่ถูกกันชี้ไปที่ผู้รับร่วมหรือช่องของข้อยกเว้น · ผู้บันทึกการซ่อมและผู้ขาย (ตอนเพิ่ม ปิดงาน และแก้ไข) และผู้ขายของแผน PM ตอนแก้ไข บอกช่องของตัวเองแทน "เกิดข้อผิดพลาด" · status code และข้อความเดิมไม่เปลี่ยน
-- **หน้าจอ:** ฟอร์มทรัพย์สิน เพิ่มหลายรายการ อัปเดตหลายรายการในทะเบียน ติดตั้งและถอดส่วนควบ แก้ไขสถานะ ตัวช่วยนำเข้า พิมพ์ป้าย · ส่งมอบ รับคืน โอนย้าย ย้ายที่ตั้งหลายรายการ ยกเลิกธุรกรรม · รอบตรวจนับ ยกเลิกรอบ ไม่พบทรัพย์สิน ส่วนควบหาย dialog ของรายการไม่ตรง (พิจารณา แผนแก้ไข ปิดรายการ) พิจารณาหลายรายการ และช่องตรวจของหน้าสแกน · คำขอตัดจำหน่าย ชุดคำขอ การพิจารณา การบันทึกตัดจำหน่าย อนุมัติหลายรายการ บันทึกตัดจำหน่ายหลายรายการ · แผน PM บันทึกการซ่อม และ dialog ปิดงาน ยกเลิก แก้ไข ของการซ่อม: แสดงข้อความผิดพลาดใต้ช่องกรอก ไม่ใช้ toast แจ้งการกรอกผิด (เอาออก 26 จุด) ไม่มีกล่องเตือนของเบราว์เซอร์ · กดบันทึกแล้วไปที่ช่องแรกที่ผิด · server ปฏิเสธช่องไหนก็แสดงใต้ช่องนั้น ข้อความที่ไม่ใช่ของช่องใดยังแสดงแบบเดิม
+- **ขอบเขต:** ฟอร์มทรัพย์สิน ธุรกรรมทรัพย์สิน ตรวจนับ ตัดจำหน่าย และซ่อมบำรุง 33 ฟอร์มใน 28 ไฟล์ (spec ข้อ 5 #1–#33) · ไม่แตะฐานข้อมูล ไม่มี migration ไม่เพิ่ม dependency ไม่เพิ่มกฎใหม่ฝั่ง server · ข้อความ: เพิ่ม 9 คีย์ ลบ 8 คีย์ ผ่าน `scripts/messages-edit.mjs` (4092 → 4093)
+- **server:** การบันทึกตัดจำหน่ายที่ถูกปฏิเสธเพราะเหตุผลของข้อยกเว้นหลักฐานหรือการยืนยันรับทราบ (`DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED` และ `DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED`) บอกช่องของตัวเองใน `fieldErrors` · บันทึกตัดจำหน่ายหลายรายการ (ทั้งตัวอย่างและการบันทึก) บอกช่องของ dialog เมื่อแถวที่ถูกกันชี้ไปที่ผู้รับร่วมหรือช่องของข้อยกเว้น · ผู้บันทึกการซ่อมและผู้ขาย (ตอนเพิ่ม ปิดงาน และแก้ไข) และผู้ขายของแผน PM ตอนแก้ไข บอกช่องของตัวเองแทน "เกิดข้อผิดพลาด" · การรับคืนที่ถูกปฏิเสธเพราะสภาพหรือสถานะตอนรับคืนบอกช่องของตัวเอง · ตัวเลขที่ต้องเป็นจำนวนเต็มแต่กรอกทศนิยมมา แสดง "กรุณากรอกเป็นตัวเลข" แทน "กรุณาระบุข้อมูลนี้" · status code และข้อความเดิมไม่เปลี่ยน
+- **หน้าจอ:** ฟอร์มทรัพย์สิน เพิ่มหลายรายการ อัปเดตหลายรายการในทะเบียน ติดตั้งและถอดส่วนควบ แก้ไขสถานะ ตัวช่วยนำเข้า พิมพ์ป้าย · ส่งมอบ รับคืน โอนย้าย ย้ายที่ตั้งหลายรายการ ยกเลิกธุรกรรม · รอบตรวจนับ ยกเลิกรอบ ไม่พบทรัพย์สิน ส่วนควบหาย dialog ของรายการไม่ตรง (พิจารณา แผนแก้ไข ปิดรายการ) พิจารณาหลายรายการ และช่องตรวจของหน้าสแกน · คำขอตัดจำหน่าย ชุดคำขอ การพิจารณา การบันทึกตัดจำหน่าย อนุมัติหลายรายการ บันทึกตัดจำหน่ายหลายรายการ · แผน PM บันทึกการซ่อม และ dialog ปิดงาน ยกเลิก แก้ไข ของการซ่อม: แสดงข้อความผิดพลาดใต้ช่องกรอก ไม่ใช้ toast แจ้งการกรอกผิด (เอาออก 26 จุด) ไม่มีกล่องเตือนของเบราว์เซอร์ · กดบันทึกแล้วไปที่ช่องแรกที่ผิด · server ปฏิเสธช่องไหนก็แสดงใต้ช่องนั้น ข้อความที่ไม่ใช่ของช่องใดยังแสดงแบบเดิม · ช่องจำนวนเงินทุกช่องรับทศนิยมได้ไม่เกิน 2 ตำแหน่ง และแจ้งใต้ช่องว่า "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง"
 - **ขั้นตรวจสอบและหลายขั้น:** ส่งมอบ รับคืน และโอนย้าย ปิดหน้าต่างตรวจสอบก่อนไปที่ช่องที่ server ปฏิเสธ · เพิ่มหลายรายการ ติดตั้งส่วนควบ ชุดคำขอตัดจำหน่าย และบันทึกตัดจำหน่ายหลายรายการ กลับไปขั้นที่มีช่องนั้น · ช่องตรวจของหน้าสแกนบนมือถือเก็บโฟกัสไว้ในแผ่นที่เปิดอยู่ · การสแกนที่ค้างในคิวออฟไลน์ส่งเหมือนเดิม
 - **คู่วันที่ (ตรวจฝั่งหน้าจอเท่านั้น):** วันหมดประกันต้องไม่ก่อนวันเริ่มประกัน ในฟอร์มทรัพย์สิน (ตอนแก้ไขตรวจเฉพาะเมื่อเปลี่ยนวันใดวันหนึ่ง) และในเพิ่มหลายรายการ · วันสิ้นสุดรอบตรวจนับต้องไม่ก่อนวันเริ่ม · ตัวกรองวันที่สร้างของคิวพิมพ์ป้าย · วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม
-- **ปุ่มที่เคยปิด:** กฎของข้อมูลแจ้งตอนกดแทนการปิดปุ่ม (เหตุผลแก้ไขสถานะ 5 ตัวอักษร ที่ตั้งหรือผู้ถือครองของการอัปเดตหลายรายการ ผู้ขอและเหตุผลของชุดคำขอ เหตุผลเมื่อไม่อนุมัติ เหตุผลและการยืนยันของข้อยกเว้นหลักฐาน ค่าร่วมและช่องยืนยันของบันทึกตัดจำหน่ายหลายรายการ) · สิ่งที่ต้องมีก่อนยังรออยู่ แต่ปุ่มกดโฟกัสได้และบอกเหตุผลที่เห็นบนหน้าจอ (บันทึกทรัพย์สินระหว่างตรวจรหัสซ้ำหรือเมื่อเปลี่ยนสถานะที่ป้องกันไว้ นำเข้าเมื่อไม่มีแถวพร้อม ยกเลิกธุรกรรมที่มีรายการกันไว้ ปิดรายการไม่ตรงที่ยังไม่มีหลักฐาน พิจารณาหลายรายการที่ยังไม่ได้เลือก รูปที่ต้องถ่ายของการสแกน ชุดคำขอที่มีทรัพย์สินไม่ถึง 2 รายการ บันทึกตัดจำหน่ายที่ยังไม่มีหลักฐาน และ dialog หลายรายการที่ไม่มีรายการที่ทำได้)
+- **ปุ่มที่เคยปิด:** กฎของข้อมูลแจ้งตอนกดแทนการปิดปุ่ม (เหตุผลแก้ไขสถานะ 5 ตัวอักษร ที่ตั้งหรือผู้ถือครองของการอัปเดตหลายรายการ ผู้ขอและเหตุผลของชุดคำขอ เหตุผลเมื่อไม่อนุมัติ เหตุผลและการยืนยันของข้อยกเว้นหลักฐาน ค่าร่วมและช่องยืนยันของบันทึกตัดจำหน่ายหลายรายการ) · สิ่งที่ต้องมีก่อนยังรออยู่ แต่ปุ่มกดโฟกัสได้และบอกเหตุผลที่เห็นบนหน้าจอ (บันทึกทรัพย์สินระหว่างตรวจรหัสซ้ำหรือเมื่อเปลี่ยนสถานะที่ป้องกันไว้ นำเข้าเมื่อไม่มีแถวพร้อม ยกเลิกธุรกรรมที่มีรายการกันไว้ ปิดรายการไม่ตรงที่ยังไม่มีหลักฐาน พิจารณาหลายรายการที่ยังไม่ได้เลือก รูปที่ต้องถ่ายของการสแกน (กดบันทึกแล้วเปิดส่วนหมายเหตุ / รูปให้) ชุดคำขอที่มีทรัพย์สินไม่ถึง 2 รายการ บันทึกตัดจำหน่ายที่ยังไม่มีหลักฐาน dialog หลายรายการที่ไม่มีรายการที่ทำได้ และปุ่มเพิ่มแถว ลบแถว และตรวจสอบข้อมูลซ้ำของการเพิ่มหลายรายการ ซึ่งบอกไว้ข้างจำนวนรายการว่าชุดหนึ่งมีได้ 2–100 รายการ)
 - **บั๊กที่แก้:** วันที่รับคืน ปลายทางของการย้ายหลายรายการ ทรัพย์สินและผู้ขอของคำขอตัดจำหน่าย ถูกตรวจแล้ว · ช่องเลือกที่มีแต่ดอกจัน 14 ช่องแสดงข้อความผิดพลาดแล้ว (`SELECT_STAR_ONLY` 14 → 0) · จำนวน License ทั้งหมดไม่มีดอกจันแล้ว
-- **ชิ้นส่วนกลาง:** `waitForDialogToClose` (`src/lib/field-focus.ts`) · `step()` (`src/lib/validation-rules.ts`) · `NON_VALIDATION_TOASTS` ใน `tests/validation-guards.test.ts` (toast ผลการอัปโหลดหลังบันทึกสำเร็จ 4 ไฟล์ พร้อมเหตุผล)
-- **test:** ไฟล์ใหม่ `tests/v-track2-a.test.ts` (7), `tests/v-track2-o.test.ts` (6), `tests/v-track2-u.test.ts` (6), `tests/v-track2-d.test.ts` (7), `tests/v-track2-m.test.ts` (5) · เพิ่ม 1 test ใน `tests/v-track-docs.test.ts` · ลบ test ของ `validateHistoricalException` · `V_FORMS` 15 → 43 ไฟล์ (เหลือฟอร์มตั้งค่าระบบใน plan 3) · test 2256 → <N>
+- **ชิ้นส่วนกลาง:** `waitForDialogToClose` (`src/lib/field-focus.ts`) · `step()` และ `decimals()` (`src/lib/validation-rules.ts`) · `NON_VALIDATION_TOASTS` ใน `tests/validation-guards.test.ts` (toast ผลการอัปโหลดหลังบันทึกสำเร็จ 4 ไฟล์ พร้อมเหตุผล)
+- **test:** ไฟล์ใหม่ `tests/v-track2-a.test.ts` (7), `tests/v-track2-o.test.ts` (6), `tests/v-track2-u.test.ts` (6), `tests/v-track2-d.test.ts` (7), `tests/v-track2-m.test.ts` (5), `tests/v-track2-x.test.ts` (5) · เพิ่ม 1 test ใน `tests/v-track-docs.test.ts` · ลบ test ของ `validateHistoricalException` · `V_FORMS` 15 → 43 ไฟล์ (เหลือฟอร์มตั้งค่าระบบใน plan 3) · test 2256 → <N>
 - **deploy:** ไม่ deploy · deploy ครั้งเดียวหลังงาน V ครบทุก plan และชุด E2E
 - **ตรวจบนแอป:** (Task 32) ตรวจบน <จาก task-findings>
-- คำตอบของผู้ใช้ต่อข้อที่ค้างของ plan: <จาก open-issues>
+- คำตอบของผู้ใช้ต่อข้อที่ค้างของ plan: ผู้ใช้ตอบเมื่อ 2026-10-18 ว่า "ตามที่แนะนำ" ทุกข้อ: 1 การเปลี่ยนสถานะที่ป้องกันไว้ยังเป็นเงื่อนไขก่อนบันทึก · 2 ข้อความใหม่ 7 ข้อความใช้ตามที่เขียน (Task 31c และ 31d เพิ่ม `common.validation.tooManyDecimals` และ `asset.batchRowLimits` ตามคำของผู้ใช้) · 3 ช่องจำนวนเงินทุกช่องใช้กฎเดียว ทศนิยมไม่เกิน 2 ตำแหน่ง (Task 31c) · 4 ลบ 8 ข้อความที่ไม่มีที่ใช้แล้ว · 5 การปฏิเสธ 2 กรณีของการรับคืนบอกช่องใน `fieldErrors` (Task 31a) · 6 การปฏิเสธไฟล์รูปและหลักฐานยังแจ้งด้วย toast · 7 กดบันทึกที่รอรูปของการสแกนแล้วเปิดส่วนหมายเหตุ / รูป (Task 31e) · 8 บันทึกตัดจำหน่ายหลายรายการกลับไปที่ค่าร่วมเมื่อทุกแถวถูกกันเพราะค่าร่วมเท่านั้น · 9 ช่องยืนยันการตัดจำหน่ายถาวรเป็นช่องกรอก ไม่ใช่การปิดปุ่ม · 10 วันที่แจ้งซ่อมใน dialog แก้ไขไม่มีกฎคู่วันที่ · 11 บันทึกการซ่อมที่ยังเปิดอยู่แสดงทั้ง Notice และ toast ตัดสินตอน UAT · 12 `.int()` ของ zod อ่านเป็น `invalidNumber` (Task 31b) กฎจำนวนเต็มร่วมไปทำใน plan สุดท้าย · 13 ฟอร์มที่ไม่มีกฎ 3 ฟอร์มใช้ `validate()` ว่างพร้อมคำอธิบาย · 14 กฎจำนวนเงินมีข้อความของตัวเอง "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง" (Task 31c) · 15 เลขที่เอกสารจัดซื้อซ้ำยังแจ้งด้วย toast ส่วนบั๊กที่บันทึกทรัพย์สินซ้ำได้หลังแนบไฟล์ไม่สำเร็จ จัดคิวเป็นงานแยกหลัง merge plan นี้ · 16 ปุ่มเพิ่มแถว ลบแถว และตรวจสอบข้อมูลซ้ำของการเพิ่มหลายรายการบอกเหตุผลไว้ข้างจำนวนรายการ (Task 31d) ส่วนปุ่มพิมพ์ 2 ปุ่มของคิวพิมพ์ป้ายไปทำใน plan สุดท้าย
 - ภาพก่อน/หลัง: `.superpowers/sdd/screenshots/v-track-plan2/before/` และ `after/` (git ignore อยู่บนเครื่องพัฒนา)
 - ต่อไป: merge แล้วทำงาน V plan 3 (ฟอร์มตั้งค่าระบบ) และ plan สุดท้าย แล้วชุด E2E และ deploy ครั้งเดียว
 
@@ -7959,10 +9070,10 @@ test("the handoff and the changelog record V track plan 2 in place, with every m
   - H2 (and H1 on a later date) in `DEVELOPER_HANDOFF.md`; then C1 in `docs/99_CHANGELOG.md` if `<today>` is 2026-10-18 (the newest date at `e1caa29`), otherwise C1b (one of the two, never both). Exact-string edits with the Edit tool, which keeps the files' CRLF.
   - Fill the markers:
     - `<today>`: `YYYY-MM-DD`.
-    - `<N>` (two places): the test count after this commit, Task 32's verify count + 1 for this task's test: **2287** when Task 32 made no fix (the dry run: 2286 before this task); the same number Task 34's verify line records.
+    - `<N>` (two places): the test count after this commit, Task 32's verify count + 1 for this task's test: **2292** when Task 32 made no fix (the addendum rehearsal: 2291 before this task); the same number Task 34's verify line records.
     - `<from task-findings>` (two places in the handoff) with the findings file in English, in the shape of plan 1's "Dev-app check" bullet (`DEVELOPER_HANDOFF.md`, the V Track Plan 1 section): after `checked (Task 32) on `, the server, port and commit, the build, what passed with numbers, every non-GET request of Task 32 Step 5 with "fulfilled" or "aborted" (none reached the server), the differences from Task 0 and their decisions, the fixes or "no fixes"; in the "Still open" bullet the "Still needs a person" and "For the user" parts as sub-bullets (two spaces, `- `), as plan 1's section does.
     - `<จาก task-findings>` with the same in Thai after `(Task 32) ตรวจบน `, glossary words (`docs/19_THAI_GLOSSARY.md`), as plan 1's entry's "ตรวจบนแอป" bullet does.
-    - `<from open-issues>` with the user's answers to this plan's open issues 1–16 (number and answer, one sentence each), or, if the user gave none before this task, "none before this task; each open issue stands at the default the plan wrote (see the plan's "Open issues")"; `<จาก open-issues>` with the same in Thai.
+    - The user's answers (open issues 1–16, 2026-10-18) are already written in both blocks: the bullet "The user's answers to the open issues" and "คำตอบของผู้ใช้ต่อข้อที่ค้างของ plan"; no marker is left for them. If the controller hands over a different answer given later, change that issue's sentence in both.
   - Never invent findings or answers: if the findings file does not exist, stop (the dry run had no Task 32 and wrote one placeholder sentence in each marker; the marker test passes either way, so the test does not catch this).
   - After Step 3 and before Step 4, `node --test tests/v-track-docs.test.ts` fails exactly one test: plan 1's, with "the entry is the first one under the newest date".
 - [ ] **Step 4: Pin edit (P1).** `tests/v-track-docs.test.ts:24`, in plan 1's record test. Replace (it occurs once: the appended test's message says "the plan 2 entry …"):
@@ -7983,8 +9094,8 @@ test("the handoff and the changelog record V track plan 2 in place, with every m
   - `grep -n "<today>\|<N>\|<from \|<จาก " DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md` → nothing.
   - `node <tools>/eol.mjs DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md tests/v-track-docs.test.ts` → equal numbers for each (all three stay CRLF): `59 59` for the test file; the two docs at least `1136 1136` and `1941 1941` (C1) or `1136 1136` and `1945 1945` (C1b) — more when the findings add sub-bullets.
   - `git diff --numstat` → only the three files: `28 1 tests/v-track-docs.test.ts`; C1: the handoff at least `22 0`, the changelog at least `19 0`; C1b: the handoff at least `23 1`, the changelog at least `23 0` (more lines only from the findings' sub-bullets).
-  - `npm test` (**2287 tests, 2286 pass, 0 fail, 1 skipped**; +1); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings, all under `.agents/`).
-  - Rehearsed (2026-10-18) on the dry run's Task 31 result (`v2-dry` `37968225`) with one-sentence placeholder findings: Step 2 failed as written; after Step 3 the four docs test files gave 18 tests, 1 fail (plan 1's, as written); after Step 4, 18 tests, 0 fail. C1 (`<today>` 2026-10-18): eol `1136 1136`, `1941 1941`, `59 59`; numstat `22 0`, `19 0`, `28 1`; `npm test` 2287 / 2286 / 0 / 1; tsc clean; lint 0 errors, 146 warnings; commit `c4146a35`. C1b (`<today>` 2026-10-19, H1 too): eol `1136 1136`, `1945 1945`, `59 59`; numstat `23 1`, `23 0`, `28 1`; the four docs test files 18 tests, 0 fail (working tree only, then restored).
+  - `npm test` (**2292 tests, 2291 pass, 0 fail, 1 skipped**; +1); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings, all under `.agents/`).
+  - Rehearsed (2026-10-18) on the dry run's Task 31 result (`v2-dry` `37968225`) with one-sentence placeholder findings: Step 2 failed as written; after Step 3 the four docs test files gave 18 tests, 1 fail (plan 1's, as written); after Step 4, 18 tests, 0 fail. C1 (`<today>` 2026-10-18): eol `1136 1136`, `1941 1941`, `59 59`; numstat `22 0`, `19 0`, `28 1`; `npm test` 2287 / 2286 / 0 / 1; tsc clean; lint 0 errors, 146 warnings; commit `c4146a35`. C1b (`<today>` 2026-10-19, H1 too): eol `1136 1136`, `1945 1945`, `59 59`; numstat `23 1`, `23 0`, `28 1`; the four docs test files 18 tests, 0 fail (working tree only, then restored). Rehearsed again (2026-10-18) on the addendum (`v2-add` after Task 31e, `fbda71b9`) with the blocks above (the answers written out) and the same placeholder findings: Step 2 as written; after Step 3, 18 tests, 1 fail (plan 1's); after Step 4, 18 tests, 0 fail. C1: eol `1136 1136`, `1941 1941`, `59 59`; numstat `22 0`, `19 0`, `28 1` (the answers lengthen lines and add none); `npm test` 2292 / 2291 / 0 / 1; tsc clean; lint 0 errors, 146 warnings; commit `ae8ed79a`. C1b (`<today>` 2026-10-19): eol `1136 1136`, `1945 1945`, `59 59`; numstat `23 1`, `23 0`, `28 1`; 18 tests, 0 fail (working tree only, then restored).
 - [ ] **Step 6: Commit.** `git add DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md tests/v-track-docs.test.ts`, then `git commit -m "docs(forms): V track plan 2 in the handoff and the changelog (v-track plan 2 task 33)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ---
@@ -7997,19 +9108,19 @@ test("the handoff and the changelog record V track plan 2 in place, with every m
 - Modify (auto-memory `C:\Users\Eltross\.claude\projects\D--Antigravity-asset-system\memory\`): `v-track.md` and `MEMORY.md`'s line for it; `dark-mode-track.md` and `review-2026-10-priorities.md` only if they state the V-track order differently.
 
 - [ ] **Step 1: Verify.**
-  - `npm run verify`: record the test count (**2287 tests, 2286 pass, 0 fail, 1 skipped** when Task 32 made no fix) and the build's page count (60/60 expected; record what verify prints).
+  - `npm run verify`: record the test count (**2292 tests, 2291 pass, 0 fail, 1 skipped** when Task 32 made no fix) and the build's page count (60/60 expected; record what verify prints).
   - Add ``- `npm run verify` ผ่าน (test N · ผ่าน N · ข้าม 1 · build X/X หน้า)`` to the plan's changelog entry, directly above its `- **ตรวจบนแอป:** (Task 32) ตรวจบน ` bullet (numbers with thousands commas, as plan 1's entry writes `test 2,256`): old string `- **ตรวจบนแอป:** (Task 32) ตรวจบน `, new string the verify line, a line break and the old string.
   - Add ``- Verification: `npm run verify` passes (tests N · pass N · skipped 1 · build X/X pages).`` to the handoff section, directly above `- Dev-app check: checked (Task 32) on `, the same way.
-  - Both old strings occur once in their file (plan 1's bullets say `(Task 30)`). Both files are CRLF in the working tree: insert with the Edit tool (or a Node script that writes `\r\n`; `sed -i` in Git Bash writes LF). `node <tools>/eol.mjs DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md` → equal numbers for each, one more than after Task 33; `git diff --numstat` → `1 0` for each. (Rehearsed on the dry run's Task 33 commit with 2,287 / 2,286 / 60/60: `1 0` each, eol `1137 1137` and `1942 1942`, the three docs test files 9 tests, 0 fail; working tree only.)
+  - Both old strings occur once in their file (plan 1's bullets say `(Task 30)`). Both files are CRLF in the working tree: insert with the Edit tool (or a Node script that writes `\r\n`; `sed -i` in Git Bash writes LF). `node <tools>/eol.mjs DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md` → equal numbers for each, one more than after Task 33; `git diff --numstat` → `1 0` for each. (Rehearsed on the dry run's Task 33 commit with 2,287 / 2,286 / 60/60, and again on the addendum's (`ae8ed79a`) with 2,292 / 2,291 / 60/60: `1 0` each, eol `1137 1137` and `1942 1942`, the three docs test files 9 tests, 0 fail; working tree only.)
   - `npm test` again (the docs tests still pass: the verify lines add no marker; the same count as above), then `git add DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md` and `git commit -m "docs(ui): record V track plan 2 verify results" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 - [ ] **Step 2: Wiki.** Read `AssetSystem/_schema/ams-wiki-schema.md` first, then edit:
   - `ams-status.md`: the row that holds the V track (`grep -n "งาน V" AssetSystem/ams-status.md`): plan 2 built on `feat/v-track-2` with the verify numbers, not merged, not deployed; next plan 3 (the settings form), then the final plan. Fix any sentence the row now contradicts.
   - `ams-log.md`: an entry at the top of `## <today>` (a new date heading if `<today>` has none).
-  - `ams-open-questions.md`: item 27's order line shows the V track's progress (plan 1 ✓, plan 2 built); the user's answers to this plan's open issues 1–16 where given (open issues 5 and 6, if the user wants the server tasks, go on plan 3's list; open issue 15's post-save task, if wanted, as its own item); Task 32's "Still needs a person" as one new item after the last number (48 is plan 1's), in the shape of item 48.
+  - `ams-open-questions.md`: item 27's order line shows the V track's progress (plan 1 ✓, plan 2 built); the user's answers of 2026-10-18 to this plan's open issues 1–16 (every recommendation: 3, 5, 7, 12, 14 and 16 built in Tasks 31a–31e; 6 stays toasts; 11 waits for UAT; 12's shared whole-number rule and 16's two print-queue buttons on the final plan's list); open issue 15's post-save bug (a second asset after a failed attachment) as its own item, queued as a separate task after this plan merges; Task 32's "Still needs a person" as one new item after the last number (48 is plan 1's), in the shape of item 48.
   - Pages that say these forms' validation errors are toasts, or that the disposal evidence, the bulk execution rows or the maintenance reporter and vendor refusals carry no field: find them with `grep -rlnE "toast|fieldErrors|DISPOSAL_EVIDENCE_EXCEPTION|Vendor not found|Reporter not found" AssetSystem` and read each hit; state what the code does now, with `sources` pointing at the files of Tasks 20 and 27 (`src/lib/disposal-evidence-exception.ts`, `src/lib/disposal-bulk-execution.ts`, `src/lib/maintenance-api-errors.ts`, `src/lib/repair-record-service.ts`, `src/lib/maintenance-plan-service.ts`) or the form, and `confidence` as the schema says for a page checked against the code.
   - A new page (only if a fact has no page yet) gets its line in `ams-index.md` and an `ams-` name no other page of the vault holds; every page you touch keeps `status` / `verified` / `confidence` / `sources`, with `sources` real paths of the repo.
   - Run `node tools/wiki-lint.mjs AssetSystem --repo D:/Antigravity/asset-system --prefix ams-` from `D:\Obsidian\Eltross` (0 errors), and commit only the files you edited (`git -C D:/Obsidian/Eltross add <each file>`, then `git -C D:/Obsidian/Eltross commit -m "ingest: asset-system V track plan 2 built on feat/v-track-2"`). Never stage other sessions' changes in the vault.
-- [ ] **Step 3: Memory.** `v-track.md`: plan 2 built on `feat/v-track-2` (assets, operations, audit, disposal, maintenance; 2,287 tests, or the number verify printed), not merged, not deployed; the open issues the user answered; the wiki item of Step 2; next plan 3 (settings), then the final plan (DESIGN.md), then E2E in both themes, then the one deploy. `MEMORY.md`'s one-line entry for `v-track.md` says the same in one line. Edit `dark-mode-track.md` or `review-2026-10-priorities.md` only where they state another order.
+- [ ] **Step 3: Memory.** `v-track.md`: plan 2 built on `feat/v-track-2` (assets, operations, audit, disposal, maintenance; 2,292 tests, or the number verify printed), not merged, not deployed; the user's answers of 2026-10-18 (every recommendation, Tasks 31a–31e) and the post-save bug queued after the merge; the wiki item of Step 2; next plan 3 (settings), then the final plan (DESIGN.md), then E2E in both themes, then the one deploy. `MEMORY.md`'s one-line entry for `v-track.md` says the same in one line. Edit `dark-mode-track.md` or `review-2026-10-priorities.md` only where they state another order.
 - [ ] **Step 4: Finish** with superpowers:finishing-a-development-branch. The spec merges each plan of the track in order (§9): a local merge fast-forwards `master` (`git merge --ff-only feat/v-track-2` from `master`) and runs the tests on the merged result. No push and no merge without the user. After a merge, offer once to delete plan 2's scratch clones (`<temp>/sim-A`, `sim-A-base`, `sim-D`, `sim-M`, `sim-O`, `sim-O2`, `sim-U`; the memory's "delete scratch clones once a plan is merged"), and delete only on the user's yes.
 
 ---
@@ -8024,8 +9135,8 @@ Plan 2's scope is spec §5 #1–#33 with §4 for them, §7.4, and §6.2's refusa
 
 | # | Form · file | What the task does | Task |
 |---|---|---|---|
-| 1 | asset form · `c/assets/asset-form.tsx` | 12 validation toasts → under the field (9 in the save, 3 in the add buttons); protected status and running duplicate check stay gates with a reason; live duplicates once (U8); warranty pair on edit only when a date changed; total seats lose their asterisk | 1 (A1) |
-| 2 | asset batch · `c/assets/asset-batch-form.tsx` | `common.*` / `rows.<i>.*` errors; the duplicate box → live row errors; the duplicate-check result → its Notice; review hands back; warranty pair always | 2 (A2) |
+| 1 | asset form · `c/assets/asset-form.tsx` | 12 validation toasts → under the field (9 in the save, 3 in the add buttons); protected status and running duplicate check stay gates with a reason; live duplicates once (U8); warranty pair on edit only when a date changed; total seats lose their asterisk; the money fields to two decimals (31c) | 1 (A1), 31c |
+| 2 | asset batch · `c/assets/asset-batch-form.tsx` | `common.*` / `rows.<i>.*` errors; the duplicate box → live row errors; the duplicate-check result → its Notice; review hands back; warranty pair always; the price to two decimals (31c); add row, remove row and check duplicates gated with the row limits beside the count (31d) | 2 (A2), 31c, 31d (A8) |
 | 3 | register bulk update dialog · `c/assets/asset-register-table.tsx` | "location or custodian" and the reason on submit; apply enabled | 3 (A3) |
 | 4 | component install · `c/assets/asset-component-manager.tsx` | the details step a form; the role's star and rule; back to details on a refusal | 4 (A4) |
 | 5 | component removal dialog · same file | a form with its `maxLength` | 4 (A4) |
@@ -8033,7 +9144,7 @@ Plan 2's scope is spec §5 #1–#33 with §4 for them, §7.4, and §6.2's refusa
 | 7 | import wizard · `c/assets/asset-import-preview-panel.tsx` | prerequisites only (file, a ready row): import `aria-disabled`, tied to the counts | 6 (A6) |
 | 8 | label print · `c/assets/asset-label-print.tsx` | the toolbar a form; the reason's error under the row (and the print queue filter's `min`/`max`, `asset-label-batch-tool.tsx`, not a form) | 7 (A7) |
 | 9 | checkout · `c/asset-operations/checkout-form.tsx` | 4 toasts → under the field; handover group; review hands back (`waitForDialogToClose`); star ×2 | 8 (O1), 9 (O2) |
-| 10 | checkin · `c/asset-operations/checkin-form.tsx` | 4 toasts → under the field; the return date checked (spec §5 bug); review hands back; star ×3 | 10 (O3) |
+| 10 | checkin · `c/asset-operations/checkin-form.tsx` | 4 toasts → under the field; the return date checked (spec §5 bug); review hands back; star ×3; the return condition and status refusals under their selects (31a) | 10 (O3), 31a (O7) |
 | 11 | transfer · `c/asset-operations/transfer-form.tsx` | 1 toast → the asset's `required` and "at least one destination" under the location; review hands back; star | 11 (O4) |
 | 12 | bulk move · `c/asset-operations/bulk-move-form.tsx` | 1 toast → under the asset list; the destination checked (spec §5 bug); star | 12 (O5) |
 | 13 | transaction cancel dialog · `c/asset-operations/transaction-cancel-dialog.tsx` | the reason's 5–2000 under the field; the blockers gate focusable with its reason | 13 (O6) |
@@ -8044,19 +9155,19 @@ Plan 2's scope is spec §5 #1–#33 with §4 for them, §7.4, and §6.2's refusa
 | 18 | action plan · same file | errors under the field | 17 (U4) |
 | 19 | close finding · same file | a form; the evidence gate focusable with its reason | 17 (U4) |
 | 20 | batch review · `c/audit/audit-findings-batch-actions.tsx` (form in `c/ui/confirm-text-dialog.tsx`) | the selection gate with its reason; `noValidate` | 18 (U5) |
-| 21 | scan check · `c/audit/audit-scan-check-form.tsx` | the location's error; focus in the aside or the sheet; the photo gate with its reason; star | 19 (U6) |
+| 21 | scan check · `c/audit/audit-scan-check-form.tsx` | the location's error; focus in the aside or the sheet; the photo gate with its reason; star; the waiting save opens the photo section (31e) | 19 (U6), 31e (U7) |
 | 22 | component missing dialog · `c/audit/audit-scan-component-missing-dialog.tsx` | the pattern, an empty `validate()` (U-R6) | 16 (U3) |
-| 23 | disposal request · `c/disposal/disposal-request-form.tsx` (+ `disposal-asset-picker.tsx`) | the asset and requester checked (spec §5 bug); the picker's `id`/`error`; star | 21 (D2) |
-| 24 | disposal batch · `c/disposal/disposal-batch-form.tsx` | the edit step a form; assets a prerequisite, requester and reason content; back to the edit step; star | 22 (D3) |
-| 25 | decision dialog · `c/disposal/disposal-decision-button.tsx` | the rejection reason on save, save enabled | 23 (D4) |
-| 26 | execution dialog · `c/disposal/disposal-execution-button.tsx` | the executor, the type's rules, the exception pair on save; the evidence gate with its reason; the evidence refusals under their fields; star | 20 (D1), 24 (D5) |
+| 23 | disposal request · `c/disposal/disposal-request-form.tsx` (+ `disposal-asset-picker.tsx`) | the asset and requester checked (spec §5 bug); the picker's `id`/`error`; star; the values to two decimals (31c) | 21 (D2), 31c |
+| 24 | disposal batch · `c/disposal/disposal-batch-form.tsx` | the edit step a form; assets a prerequisite, requester and reason content; back to the edit step; star; the values to two decimals (31c) | 22 (D3), 31c |
+| 25 | decision dialog · `c/disposal/disposal-decision-button.tsx` | the rejection reason on save, save enabled; the estimated values to two decimals (31c) | 23 (D4), 31c |
+| 26 | execution dialog · `c/disposal/disposal-execution-button.tsx` | the executor, the type's rules, the exception pair on save; the evidence gate with its reason; the evidence refusals under their fields; star; the actual values to two decimals (31c) | 20 (D1), 24 (D5), 31c |
 | 27 | bulk approval dialog · `c/disposal/disposal-bulk-approval.tsx` | the remark's refusal under it; nothing eligible a gate with its reason | 25 (D6) |
 | 28 | bulk execution dialog · `c/disposal/disposal-bulk-execution.tsx` | shared values, exception and confirmation on submit; back to the review step; nothing eligible a gate with its reason | 20 (D1), 26 (D7) |
 | 29 | PM plan · `c/maintenance/maintenance-plan-form.tsx` | errors under the field; the days' range and step; the vendor refusal under it; star | 27 (M1), 28 (M2), 29 (M3) |
-| 30 | repair record · `c/maintenance/repair-record-form.tsx` | errors under the field; the two questions as groups; "more details" opens for its field; reporter and vendor refusals under them; star ×2 | 27, 28, 30 (M4) |
-| 31 | complete dialog · `c/maintenance/repair-record-actions.tsx` | errors under the field; the return date not before the reported date | 31 (M5) |
+| 30 | repair record · `c/maintenance/repair-record-form.tsx` | errors under the field; the two questions as groups; "more details" opens for its field; reporter and vendor refusals under them; star ×2; the cost to two decimals (31c) | 27, 28, 30 (M4), 31c |
+| 31 | complete dialog · `c/maintenance/repair-record-actions.tsx` | errors under the field; the return date not before the reported date; the cost to two decimals (31c) | 31 (M5), 31c |
 | 32 | cancel dialog · same file | the reason's limit | 31 (M5) |
-| 33 | edit dialog · same file | errors under the field; the refusal back to this dialog | 31 (M5) |
+| 33 | edit dialog · same file | errors under the field; the refusal back to this dialog; the cost to two decimals (31c) | 31 (M5), 31c |
 
 ### The rest of the spec
 
@@ -8064,27 +9175,27 @@ Plan 2's scope is spec §5 #1–#33 with §4 for them, §7.4, and §6.2's refusa
 |---|---|---|
 | §2 U1 | Errors under the wrong field; the page goes to the first one | every form task (`focusFirstError`, each area's field table in visual order); Task 8 (after a review dialog) |
 | §2 U2 | No validation toasts; toasts stay for other failures | the 26 client validation toasts of these forms go (asset form 12, batch 2, component manager 1, checkout 4, checkin 4, transfer 1, bulk move 1, round cancel 1), and the batch's duplicate-check result moves into its Notice; V3 with `NON_VALIDATION_TOASTS` (P-R4) for the four upload results |
-| §2 U3 | `fieldErrors` in every route's 400 | plan 1; Tasks 20 and 27 add them to the evidence, bulk-row, reporter and vendor refusals |
+| §2 U3 | `fieldErrors` in every route's 400 | plan 1; Tasks 20, 27 and 31a add them to the evidence, bulk-row, reporter, vendor and checkin condition and status refusals |
 | §2 U4 | Date pairs | Tasks 1, 2, 7, 14, 31 |
 | §2 U5 | Every form in one round | plan 2 of the round; `V_FORMS` 43 of `V_SCOPE`'s 44 files after Task 31 (the settings form: plan 3) |
 | §2 U6 | Errors after save; a field's error clears when it changes | every task's `setField`/`clear`; no new live check |
 | §2 U8 | Live warnings stay live, under the field; nothing twice | Task 1 (tag, serial), Task 2 (rows; the warning box goes); Review Focus 4 |
 | §2 U9 | Dotted keys, one code set, other non-zod refusals | Task 2 (`common.*`, `rows.<i>.*`); Tasks 20, 27 |
 | §3 G1–G3, G5 | Every form; the server's errors mapped; gates sorted; one announcement, both themes | Tasks 1–31; `applyServer` in each; each area's gate decisions (A-R3, A-R6, A-R8, A-R10, O-R7, U-R9–U-R11, D-R3, D-R7–D-R9); Task 32 Steps 6–7 |
-| §3 G4 | The custom server messages reach the person | the forms read the catalog keys through `message()` (plan 1 F-R3): `licenseSeatsExceeded` (1), `bulkUpdateFieldRequired` (3), `transferDestinationRequired` (11), `endBeforeStart` (14), the disposal keys of D-R6 (21–26), `reporterNotFound`, `vendorNotFound`, `pmVendorNotFound` (27, 29–31) |
+| §3 G4 | The custom server messages reach the person | the forms read the catalog keys through `message()` (plan 1 F-R3): `licenseSeatsExceeded` (1), `bulkUpdateFieldRequired` (3), `transferDestinationRequired` (11), `endBeforeStart` (14), the disposal keys of D-R6 (21–26), `reporterNotFound`, `vendorNotFound`, `pmVendorNotFound` (27, 29–31), `invalidReturnCondition`, `invalidReturnStatus` (31a) |
 | §3 non-goals | No new live validation, no new server rule, offline scans as today | Global Constraints ("The server"); U-R5 (the workspace and its queue unchanged); Task 32 Step 5 (the scan is fulfilled, never aborted, so nothing enters the queue) |
 | §3 anti-goals | Silent refusals; toast plus error; live box plus error; the bubble; a wrong field hidden or behind a review; five alerts | Review Focus 3 (fall-through pinned), V3 (no toast), Review Focus 4, `noValidate` (V2), Review Focus 1 and D-R4 / MT-R4 (hidden fields), F-R6 (no alert role; Task 32 Step 7) |
 | §4.1 | On submit; form-level fallback; other failures unchanged | each form's refusal line and its pinned fall-through (Review Focus 3) |
 | §4.2 | Review dialogs, review steps, multi-step flows, the mobile sheet | Task 8 (FIXED 8) and Tasks 9–11; Task 2 (batch review); Task 4 (install details); Task 6 (the import has no field: its prerequisites keep their gate, A-R6); Tasks 22, 26 (disposal batch, bulk execution); Task 19 (the sheet; U-R11) |
 | §4.3 | Clearing per field and per group | the pairs and groups of each area (warranty, license, destinations, round dates, transfer's three destinations, checkout's type change, the execution's and bulk execution's exception pair) |
-| §4.4 | Content rules vs prerequisites | the content gates that go: status correction (Task 5), bulk update (3), the batch's in-batch duplicates (2), disposal batch reason and requester (22), the decision's reason (23), the execution's historical reason and acknowledgement (24), bulk execution's shared values and confirmation (26); the prerequisites with a reason: asset save (1), import (6), cancel blockers (13), finding close (17), batch review (18), the scan photo (19), disposal batch assets (22), the execution's evidence (24), the bulk dialogs' eligible rows (25, 26); the gates recon-3 lists that plan 2 leaves as they are: open issue 16 |
-| §4.5 | `noValidate`; the attributes stay; `validate()` restates them | every `<form>` of these files (29 more `noValidate` forms, 46 in `src`); `CONSTRAINT_FLOORS` unchanged except checkin's rise; the money step: P-R8, open issue 3 |
+| §4.4 | Content rules vs prerequisites | the content gates that go: status correction (Task 5), bulk update (3), the batch's in-batch duplicates (2), disposal batch reason and requester (22), the decision's reason (23), the execution's historical reason and acknowledgement (24), bulk execution's shared values and confirmation (26); the prerequisites with a reason: asset save (1), import (6), cancel blockers (13), finding close (17), batch review (18), the scan photo (19), disposal batch assets (22), the execution's evidence (24), the bulk dialogs' eligible rows (25, 26); the batch's add row, remove row and check duplicates with the row count line (31d); the scan photo's section opens on save (31e); the print queue's two buttons go to the final plan (open issue 16) |
+| §4.5 | `noValidate`; the attributes stay; `validate()` restates them | every `<form>` of these files (29 more `noValidate` forms, 46 in `src`); `CONSTRAINT_FLOORS` unchanged except checkin's rise; the money step: one rule, `decimals` (31c, X-R3); whole numbers: P-R8 |
 | §5 counts and bugs | the asterisk-only selects; the checkin return date, bulk move's destination, the disposal request's asset and requester | `SELECT_STAR_ONLY` 14 → 0 (Tasks 9–12, 19, 21, 22, 24, 29, 30), the disposal asset picker (21) and the license total seats' asterisk (1); Tasks 10, 12, 21 |
-| §6.1 | The body; the two special routes keep their `code` | consumed: checkout's `HANDOVER_*` codes (Task 9, O-R2), the execution's `evidenceExceptionReason` zod branch (Task 24), the batch's keys (Task 2); plan 1 built them |
-| §6.2 | Non-zod field refusals | Task 20 (the evidence refusals and the bulk rows; the user's answer 4 of 2026-10-17, "decided in the disposal plan": attach); Task 27 (reporter, vendor, PM vendor on edit); consumed from plan 1 S10: serial `duplicate` (1), checkout condition `conditionBefore` (9), the PM vendor (29), the import rules under `_form` (6); the status correction's `nextStatusId` names no field the panel shows, so it keeps its line (5, A-R10); the purchase document number's `documentNo` stays a toast (open issue 15); checkin's two refusals carry none (open issue 5) |
-| §6.3 | No new server rule | Global Constraints; the warranty and repair-date pairs are client rules (spec §11 call 6) |
-| §7.1 | Shared messages; domain messages stay | the domain messages each area keeps (A-R2, O-R2, U-R7, D-R6, D-R7, MT-R7); "Messages" in the Global Constraints (+7 −8, 4092 → 4091) |
-| §7.2 | One hook, rule helpers, `validate()` per form, the disposal helpers reused | every task; D-R6 (`getDisposalExecutionFieldErrors`, `getDisposalDecisionFieldErrors`, `getDisposalRequestReasonError`); FIXED 10 (`step`) |
+| §6.1 | The body; the two special routes keep their `code` | consumed: checkout's `HANDOVER_*` codes (Task 9, O-R2), the execution's `evidenceExceptionReason` zod branch (Task 24), the batch's keys (Task 2); plan 1 built them; zod's `.int()` on a fraction reads `invalidNumber` (31b) |
+| §6.2 | Non-zod field refusals | Task 20 (the evidence refusals and the bulk rows; the user's answer 4 of 2026-10-17, "decided in the disposal plan": attach); Task 27 (reporter, vendor, PM vendor on edit); consumed from plan 1 S10: serial `duplicate` (1), checkout condition `conditionBefore` (9), the PM vendor (29), the import rules under `_form` (6); the status correction's `nextStatusId` names no field the panel shows, so it keeps its line (5, A-R10); the purchase document number's `documentNo` stays a toast (open issue 15, answered: kept); checkin's two refusals carry `fieldErrors` (31a) |
+| §6.3 | No new server rule | Global Constraints; the warranty and repair-date pairs are client rules (spec §11 call 6); so is the money rule (31c) |
+| §7.1 | Shared messages; domain messages stay | the domain messages each area keeps (A-R2, O-R2, U-R7, D-R6, D-R7, MT-R7); "Messages" in the Global Constraints (+9 −8, 4092 → 4093) |
+| §7.2 | One hook, rule helpers, `validate()` per form, the disposal helpers reused | every task; D-R6 (`getDisposalExecutionFieldErrors`, `getDisposalDecisionFieldErrors`, `getDisposalRequestReasonError`); FIXED 10 (`step`), FIXED 12 (`decimals`) |
 | §7.3 | `Field`/`FieldError`, SearchableSelect, groups, `SignaturePad` unchanged | the SearchableSelect error look on the 14 selects (and `MaintenanceOptionSelect` / `AuditScanCheckField` `error`, plan 1); `FieldGroup` for checkout's handover (9) and the repair questions (30, 31); one `FieldError` under bulk move's list (12), each acknowledgement and confirmation checkbox (24, 26); the license's assignee or department as one error under the assignee and the drop zones (1); `SignaturePad` untouched |
 | §7.4 | Date pairs, the asset edit only when a date changed | Tasks 1, 2, 7, 14, 31 |
 | §8 | No dependency or write; messages through the script; the guards; FMG `STAR_ONLY` shrinks to empty; pins in the same commit; no line-ending test | Global Constraints; Tasks 0 and 32 (no non-GET reaches the server); Review Focus 5; Tasks 1 and 10 (`STAR_ONLY` empty); each Step 4; the rehearsals and the assembly check |
@@ -8093,6 +9204,8 @@ Plan 2's scope is spec §5 #1–#33 with §4 for them, §7.4, and §6.2's refusa
 | §11 calls | 1 `noValidate` · 2 gates · 6 client-only pairs · 7 form-level fallback · 8 license seats asterisk | FIXED 6 · Review Focus 2 · Tasks 1, 2, 31 · Review Focus 3 · Task 1 (A-R4) |
 
 ## Open issues (for the user before execution)
+
+**Answered (2026-10-18):** the user answered "ตามที่แนะนำ", every recommendation below. Built in the addendum: 5 → Task 31a; 12 → Task 31b (the map; the shared whole-number rule stays with the final plan); 3 and 14 → Task 31c (one money rule, `decimals`, with `common.validation.tooManyDecimals`); 16 → Task 31d (the batch's three gates; the print queue's two buttons to the final plan's sweep); 7 → Task 31e. 15: the toast stays in plan 2, and the post-save bug is queued as a separate task after this plan merges. Every other issue (1, 2, 4, 6, 8, 9, 10, 11, 13) stays at the default the tasks write. The issues are kept below for the record.
 
 Only decisions the spec and the user's scope leave open. None blocks execution; each default is what the tasks write, and an answer that differs changes the task named. Issues 15 and 16 came from the final review (coverage against plan 1's hand-over and recon-3's gate list); their defaults change nothing in Tasks 1–31.
 
@@ -8116,8 +9229,8 @@ Only decisions the spec and the user's scope leave open. None blocks execution; 
 ### Behaviour changes a person would notice beyond the spec
 
 Everything else a person sees change is a decision of the spec (errors under the field, no validation toast, focus, the gates of §4.4, the date pairs, the checked selects). Beyond it:
-- **Assets:** the component role shows an asterisk (the server already required it); Enter in a component-install detail continues to the review, and Enter in the label print reason prints (both are forms now); a purchase price or a document total with more than two decimals (12.345) is no longer stopped by the browser's step check: the form sends it and the server stores it rounded to 2 places (`Decimal(18, 2)`; open issue 3); the batch "check duplicates" result that finds duplicates no longer pops a toast (its Notice reads it out); the status correction's reason shows a star and its confirm is always pressable.
-- **Operations:** transfer's missing asset says "required" under the asset, not "choose a destination" in a toast, and "at least one destination" shows under the location select; checkout's handover messages sit under the handover group and the due date in the same words; the cancel dialog's blocked confirm takes focus and reads the blockers; checkin's return date is required by the form (the server always required it).
-- **Audit:** the round's date pickers cannot choose a reversed pair; a server refusal of the preview shows under its field instead of "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง"; the decision and close dialogs submit on Enter.
-- **Disposal:** a sale or salvage value with more than two decimals goes through to the server as in the asset form (open issue 3); the request's save, the batch's review, the decision's save on a rejection without a reason and bulk execution's review are no longer disabled or silent; Enter in the batch's edit step (the asset search included) submits the step; a bulk execution preview that nothing can run because of the shared values goes back to them; the execution dialog no longer closes on the evidence reason or acknowledgement refusal (it keeps the entries and shows the error).
-- **Maintenance:** an inactive vendor or reporter shows its own sentence under its select instead of "เกิดข้อผิดพลาด"; "รายละเอียดเพิ่มเติม" opens by itself when a field inside has an error; the return date's calendar starts at the reported date; a dialog closed with errors opens again without them.
+- **Assets:** the component role shows an asterisk (the server already required it); Enter in a component-install detail continues to the review, and Enter in the label print reason prints (both are forms now); a purchase price or a document total with more than two decimals (12.345) shows "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง" under the field instead of the browser's bubble (Task 31c, as in every money field); the batch's add row, remove row and check duplicates stay focusable at their limits, and the row count line says "ชุดหนึ่งมีได้ 2–100 รายการ" (Task 31d); the batch "check duplicates" result that finds duplicates no longer pops a toast (its Notice reads it out); the status correction's reason shows a star and its confirm is always pressable.
+- **Operations:** transfer's missing asset says "required" under the asset, not "choose a destination" in a toast, and "at least one destination" shows under the location select; checkout's handover messages sit under the handover group and the due date in the same words; the cancel dialog's blocked confirm takes focus and reads the blockers; checkin's return date is required by the form (the server always required it); a checkin refused for its return condition or status shows the reason under that select after the review closes (Task 31a).
+- **Audit:** the round's date pickers cannot choose a reversed pair; a server refusal of the preview shows under its field instead of "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง"; the decision and close dialogs submit on Enter; the scan check's waiting save opens the note-and-photo section (Task 31e).
+- **Disposal:** a sale or salvage value with more than two decimals shows the money sentence under the field, as in the asset form (Task 31c); the request's save, the batch's review, the decision's save on a rejection without a reason and bulk execution's review are no longer disabled or silent; Enter in the batch's edit step (the asset search included) submits the step; a bulk execution preview that nothing can run because of the shared values goes back to them; the execution dialog no longer closes on the evidence reason or acknowledgement refusal (it keeps the entries and shows the error).
+- **Maintenance:** an inactive vendor or reporter shows its own sentence under its select instead of "เกิดข้อผิดพลาด"; "รายละเอียดเพิ่มเติม" opens by itself when a field inside has an error; the return date's calendar starts at the reported date; a dialog closed with errors opens again without them; a repair cost with three decimals reads the money sentence instead of "กรุณากรอกเป็นตัวเลข" (Task 31c).
