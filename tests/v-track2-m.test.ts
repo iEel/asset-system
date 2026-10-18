@@ -90,3 +90,16 @@ test("maintenance refusals about a field name it: the reporter and the vendor of
     assert.match(read(route), /const payload = getMaintenanceErrorPayload\(error\)\n\s+if \(payload\) return NextResponse\.json\(payload\.body, \{ status: payload\.status \}\)\n\s+return errorResponse\(error, 400\)/, route)
   }
 })
+
+test("the step rule: a number field's step (money to 0.01, whole days) is restated like the other constraints (v-track2 M2)", async () => {
+  const { step } = await import("../src/lib/validation-rules.ts")
+  assert.equal(step("12.34", 0.01), null)
+  assert.equal(step("0.29", 0.01), null, "a binary fraction is not off the step")
+  assert.equal(step("1.255", 0.01), "invalidNumber", "the code the server gives zod's not_multiple_of")
+  assert.equal(step("30", 1), null)
+  assert.equal(step(30, 1), null)
+  assert.equal(step("1.5", 1), "invalidNumber")
+  assert.equal(step("abc", 0.01), "invalidNumber")
+  for (const empty of ["", "  ", null, undefined]) assert.equal(step(empty, 0.01), null, "an empty value is left to required")
+  assert.match(read("src/lib/validation-rules.ts"), /^export function step\(value: number \| string \| null \| undefined, size: number\): RuleCode \| null \{$/m)
+})

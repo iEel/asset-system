@@ -45,6 +45,16 @@ export function range(value: number | string | null | undefined, min?: number | 
   return null
 }
 
+// A number field's step (step="0.01" for money, the default step 1 of a whole-number field): a whole multiple of size.
+// Off the step is "invalidNumber", the code the server gives zod's not_multiple_of; text that is not a number too.
+export function step(value: number | string | null | undefined, size: number): RuleCode | null {
+  if (isEmpty(value)) return null
+  const number = typeof value === "number" ? value : Number((value as string).trim())
+  if (!Number.isFinite(number)) return "invalidNumber"
+  const steps = number / size
+  return Math.abs(steps - Math.round(steps)) < 1e-6 ? null : "invalidNumber"
+}
+
 export function email(value: string | null | undefined): RuleCode | null {
   if (isEmpty(value)) return null
   return EMAIL_PATTERN.test((value as string).trim()) ? null : "invalidEmail"
