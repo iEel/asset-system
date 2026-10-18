@@ -229,3 +229,66 @@ test("repair record: errors under the field, the asset and reporter selects chec
   // The upload result is not a field error: it stays a toast after the record is saved (MT-R5).
   assert.equal(source.split(uploadToast).length - 1, 1)
 })
+
+test("repair record actions: complete, cancel and edit show errors under the field, the return date is not before the reported date, and a refusal lands in its dialog (v-track2 M5)", () => {
+  const source = read(`${C}maintenance/repair-record-actions.tsx`)
+  const uploadToast = 'toast.warning(t("uploadFailed", { count: failed }))'
+  const complete = {
+    returnDate: "repair-complete-return-date",
+    outcome: "repair-complete-outcome",
+    vendorId: "repair-complete-vendor",
+    repairCost: "repair-complete-cost",
+    invoiceNo: "repair-complete-invoice-no",
+    remark: "repair-complete-remark",
+  }
+  const edit = {
+    reportedDate: "repair-edit-date",
+    problem: "repair-edit-problem",
+    vendorId: "repair-edit-vendor",
+    repairCost: "repair-edit-cost",
+    invoiceNo: "repair-edit-invoice-no",
+    remark: "repair-edit-remark",
+  }
+  for (const [name, form] of [
+    ["Complete", { ids: complete, messages: ["outcome", "vendorId", "invoiceNo", "remark"] }],
+    ["Cancel", { ids: { reason: "repair-cancel-reason" } }],
+    ["Edit", { ids: edit, messages: ["reportedDate", "problem", "vendorId", "invoiceNo", "remark"] }],
+  ] as const) {
+    const hook = `${name.toLowerCase()}Errors`
+    assertMigratedForm(source, { ...form, handler: `handle${name}`, table: `${name.toUpperCase()}_FIELD_IDS`, hook, server: false, resultToast: uploadToast })
+    // send() hands a refusal back to the dialog that sent it; one that names none of its fields keeps the toast.
+    assert.ok(source.includes(`(payload) => ${hook}.applyServer(payload) && focusFirst${name}Error())`), `${name}: the refusal goes back to its dialog`)
+    // A dialog opens again without the errors of its last try.
+    assert.match(source, new RegExp(`function close\\(\\) \\{[\\s\\S]*?\\n\\s+${hook}\\.setErrors\\(\\{\\}\\)\\n[\\s\\S]*?\\n {2}\\}\\n`))
+  }
+  assert.match(source, /if \(!response\.ok\) \{\n\s+if \(showRefusal\(payload\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, tMaintenance, tCommon\("error"\)\)\)/)
+  assert.match(source, /^function validate\(values: Partial<Record<RepairActionField, string>>, reportedDate: string\) \{$/m)
+  const rules = validateBody(source)
+  for (const rule of [
+    'if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate))',
+    'if (values.reportedDate !== undefined) check("reportedDate", required(values.reportedDate))',
+    'if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
+    'check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))',
+    'check("invoiceNo", maxLength(values.invoiceNo, 100))',
+    'check("remark", maxLength(values.remark, 4000))',
+    'check("reason", maxLength(values.reason, 1000))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.match(source, /completeErrors\.setErrors\(validate\(complete, details\.reportedDate\)\)/)
+  assert.match(source, /cancelErrors\.setErrors\(validate\(\{ reason \}, details\.reportedDate\)\)/)
+  assert.match(source, /editErrors\.setErrors\(validate\(edit, details\.reportedDate\)\)/)
+  // The return date (spec §7.4): the picker starts at the reported date, and the error names the reported date.
+  assert.match(source, /<Input type="date" required min=\{details\.reportedDate\} value=\{complete\.returnDate\} /)
+  assert.ok(source.includes('error={completeErrors.errors.returnDate === "endBeforeStart" ? t("returnDateBeforeReported") : completeErrors.message("returnDate")}'))
+  for (const hook of ["completeErrors", "editErrors"]) {
+    assert.ok(source.includes(`error={${hook}.errors.repairCost ? validationMessage(${hook}.errors.repairCost, { min: 0 }) : undefined}`), `${hook}: the cost says its floor`)
+  }
+  assert.ok(source.includes('<FieldGroup legend={t("outcomeQuestion")} id="repair-complete-outcome" required error={completeErrors.message("outcome")}>'))
+  // A field's error clears when it changes.
+  assert.match(source, /setComplete\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+completeErrors\.clear\(field\)/)
+  assert.match(source, /setEdit\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+editErrors\.clear\(field\)/)
+  assert.match(source, /setReason\(event\.target\.value\)\n\s+cancelErrors\.clear\("reason"\)/)
+  for (const locale of ["th", "en"]) {
+    const repairRecord = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).repairRecord as Record<string, string>
+    assert.ok(repairRecord.returnDateBeforeReported?.trim(), `${locale}.repairRecord.returnDateBeforeReported`)
+  }
+})

@@ -2708,7 +2708,8 @@
     "dropFilesHint": "or click to choose images or PDFs",
     "activeFilters": "Active filters",
     "emptyFilteredTitle": "No repair records match the filters",
-    "emptyFilteredHelp": "Change or clear the filters"
+    "emptyFilteredHelp": "Change or clear the filters",
+    "returnDateBeforeReported": "The return date cannot be before the date the repair was reported"
   },
   "disposalPage": {
     "title": "Disposal",

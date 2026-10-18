@@ -63,7 +63,8 @@ test("old workflow buttons are gone", () => {
 
 test("the three repair dialogs keep their buttons in a fixed footer and keep focus while saving (2C batch 1a)", () => {
   const source = readFileSync(actionsPath, "utf8").replace(/\r\n/g, "\n")
-  assert.equal(source.match(/<form\n\s+className=\{accessibleDialogFormClasses\}/g)?.length, 3)
+  // Each dialog's form checks itself (v-track plan 2 M5).
+  assert.equal(source.match(/<form onSubmit=\{handle(?:Complete|Cancel|Edit)\} noValidate className=\{accessibleDialogFormClasses\}>/g)?.length, 3)
   assert.equal(source.match(/<AccessibleDialogBody className="space-y-4">/g)?.length, 3)
   assert.equal(source.match(/<AccessibleDialogFooter>/g)?.length, 3)
   assert.equal(source.match(/description=\{<span className="tag">\{repairNo\}<\/span>\}/g)?.length, 3)

@@ -2708,7 +2708,8 @@
     "dropFilesHint": "หรือคลิกเพื่อเลือกรูป/PDF ได้หลายไฟล์",
     "activeFilters": "ตัวกรองที่ใช้อยู่",
     "emptyFilteredTitle": "ไม่พบบันทึกการซ่อมที่ตรงกับตัวกรอง",
-    "emptyFilteredHelp": "ลองเปลี่ยนหรือล้างตัวกรอง"
+    "emptyFilteredHelp": "ลองเปลี่ยนหรือล้างตัวกรอง",
+    "returnDateBeforeReported": "วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม"
   },
   "disposalPage": {
     "title": "ตัดจำหน่าย",

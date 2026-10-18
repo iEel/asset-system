@@ -112,6 +112,7 @@ const V_FORMS: readonly string[] = [
   `${C}audit/audit-scan-check-form.tsx`,
   `${C}maintenance/maintenance-plan-form.tsx`,
   `${C}maintenance/repair-record-form.tsx`,
+  `${C}maintenance/repair-record-actions.tsx`,
 ]
 
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).
@@ -123,6 +124,7 @@ const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
 // count per file, why each stays a toast and the ruling that keeps it. Never a validation message; a count that drops
 // lowers or deletes its row.
 const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: string; ruling: string }>> = {
+  [`${C}maintenance/repair-record-actions.tsx`]: { count: 1, why: "the dialog has closed on the saved change; files that did not upload can be attached on the record", ruling: "v-track plan 2 MT-R5" },
   [`${C}maintenance/repair-record-form.tsx`]: { count: 1, why: "the record is saved and the page moves to it; files that did not upload can be attached there", ruling: "v-track plan 2 MT-R5" },
   [`${C}disposal/disposal-batch-form.tsx`]: { count: 1, why: "the batch is saved and some shared evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}disposal/disposal-request-form.tsx`]: { count: 1, why: "the request is saved and some evidence files did not upload", ruling: "v-track plan 2 D-R5" },

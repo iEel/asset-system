@@ -66,7 +66,8 @@ test("the finish-repair dialog picks the outcome with ChoiceCard radios (R3)", (
   const source = readFileSync("src/components/maintenance/repair-record-actions.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.doesNotMatch(source, /accent-primary|<input\b|ml-1 text-danger/)
   assert.match(source, /<ChoiceCard key=\{outcome\} type="radio" name="outcome" checked=\{complete\.outcome === outcome\}/)
-  assert.match(source, /<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\{t\("outcomeQuestion"\)\}<FieldRequiredMark \/><\/legend>/)
+  // The outcome is a FieldGroup with the star and its error (v-track plan 2 M5).
+  assert.match(source, /<FieldGroup legend=\{t\("outcomeQuestion"\)\} id="repair-complete-outcome" required error=\{completeErrors\.message\("outcome"\)\}>/)
 })
 
 test("checkout picks the handover mode with required ChoiceCard radios, and no file in src uses accent-primary (R1)", () => {
