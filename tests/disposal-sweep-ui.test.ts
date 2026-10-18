@@ -70,7 +70,7 @@ test("disposal decision dialog: what a rejection does is a neutral Notice, not a
 
 test("disposal execution dialog: the missing-evidence and historical warnings are warning Notices (spec 2D D7)", () => {
   const source = read(`${C}disposal/disposal-execution-button.tsx`)
-  assert.match(source, /<Notice tone="warning" role="alert" className="md:col-span-2">\{t\("errors\.DISPOSAL_EVIDENCE_REQUIRED"\)\}<\/Notice>/)
+  assert.match(source, /<Notice tone="warning" role="alert" id="disposal-execution-evidence-reason" className="md:col-span-2">\{t\("errors\.DISPOSAL_EVIDENCE_REQUIRED"\)\}<\/Notice>/)
   assert.match(source, /<Notice tone="warning" id=\{historicalEvidenceWarningId\} hidden=\{!values\.useHistoricalEvidenceException\} role="alert" className="mt-2">\{t\("historicalEvidenceWarning"\)\}<\/Notice>/)
   assert.doesNotMatch(source, /AlertTriangle|bg-warning-soft|border-warning-border/)
 })

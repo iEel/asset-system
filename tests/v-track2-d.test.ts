@@ -233,3 +233,56 @@ test("disposal decision: a rejection's reason is an error on save through the se
     assert.ok(source.includes(`error={fieldErrors.errors.${key} ? validationMessage(fieldErrors.errors.${key}, { min: 0 }) : undefined}`), key)
   }
 })
+
+test("disposal execution: the executor, the type's own rules and the historical exception are errors on save, and missing evidence says why save waits (v-track D5)", () => {
+  const source = read(`${C}disposal/disposal-execution-button.tsx`)
+  assertMigratedForm(source, {
+    handler: "onSubmit",
+    ids: {
+      executionDate: "disposal-execution-date",
+      executedById: "disposal-execution-executed-by",
+      nextStatusId: "disposal-execution-next-status",
+      recipientName: "disposal-execution-recipient",
+      documentNo: "disposal-execution-document-no",
+      actualSaleValue: "disposal-execution-sale-value",
+      actualSalvageValue: "disposal-execution-salvage-value",
+      executionRemark: "disposal-execution-remark",
+      evidenceExceptionReason: "disposal-execution-exception-reason",
+      evidenceExceptionAcknowledged: "disposal-execution-exception-acknowledged",
+    },
+    messages: ["executionDate", "executedById", "nextStatusId", "recipientName", "documentNo", "executionRemark"],
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    "if (code && shown.includes(key)) errors[key] = code",
+    'check("executionDate", required(values.executionDate))',
+    'check("executedById", required(values.executedById))',
+    'check("nextStatusId", required(values.nextStatusId))',
+    'check("recipientName", maxLength(values.recipientName, 200))',
+    'check("documentNo", maxLength(values.documentNo, 100))',
+    'check("actualSaleValue", range(values.actualSaleValue, 0))',
+    'check("actualSalvageValue", range(values.actualSalvageValue, 0))',
+    'check("executionRemark", maxLength(values.executionRemark, 4000))',
+    // The server's own rules for the type (spec §7.2): recipient, document, sale value and remark, by catalog key.
+    "for (const error of getDisposalExecutionFieldErrors(policyInput)) check(error.field, getApiErrorKey(error.message))",
+    // The historical exception (spec §4.4): content rules, no longer a disabled save.
+    'check("evidenceExceptionReason", required(values.evidenceExceptionReason) ?? minLength(values.evidenceExceptionReason, 20) ?? maxLength(values.evidenceExceptionReason, 2000))',
+    'check("evidenceExceptionAcknowledged", required(values.evidenceExceptionAcknowledged))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.doesNotMatch(source, /historicalInputInvalid|submitDisabled/)
+  // The prerequisite (no evidence and no exception) keeps its gate, focusable and tied to the dialog's evidence Notice.
+  assert.match(source, /const evidenceBlocked = effectiveEvidenceCount === 0 && !values\.useHistoricalEvidenceException\n/)
+  assert.match(source, /event\.preventDefault\(\)\n\s+if \(evidenceBlocked\) return\n\s+fieldErrors\.setErrors\(validate\(values, disposalType as DisposalType\)\)/)
+  assert.match(source, /<Button\n\s+type="submit"\n\s+busy=\{saving\}\n\s+aria-disabled=\{evidenceBlocked \|\| undefined\}\n\s+aria-describedby=\{evidenceBlocked \? "disposal-execution-evidence-reason" : undefined\}\n\s+>/)
+  assert.ok(source.includes('<Notice tone="warning" role="alert" id="disposal-execution-evidence-reason" className="md:col-span-2">'))
+  // The executor star is checked now (spec §5), and the exception's two fields say the rule in the domain's words.
+  assert.match(source, /<SearchableSelect\n\s+id="disposal-execution-executed-by"\n/)
+  assert.ok(source.includes('error={fieldErrors.errors.evidenceExceptionReason ? t("errors.DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED") : undefined}'))
+  assert.ok(source.includes('<FieldError id="disposal-execution-exception-acknowledged-error" className="mt-1.5">{t("errors.DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED")}</FieldError>'))
+  assert.match(source, /aria-describedby=\{fieldErrors\.errors\.evidenceExceptionAcknowledged \? "disposal-execution-exception-acknowledged-error" : undefined\}/)
+  // A field refusal stays in the open dialog before the evidence refusals that are about no field close it (D1, D-R1).
+  assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+const message = getDisposalApiErrorMessage\(payload, t, tCommon\("error"\)\)\n\s+if \(payload\?\.code && evidencePolicyErrorCodes\.has\(payload\.code\)\) \{\n\s+closeExecutionDialog\(\)/)
+  assert.match(source, /function closeExecutionDialog\(\) \{\n\s+resetHistoricalEvidenceException\(\)\n\s+fieldErrors\.setErrors\(\{\}\)\n\s+setOpen\(false\)\n\s+\}/)
+  assert.match(source, /if \(field === "useHistoricalEvidenceException"\) fieldErrors\.clear\("documentNo", "evidenceExceptionReason", "evidenceExceptionAcknowledged"\)\n\s+else if \(field in FIELD_IDS\) fieldErrors\.clear\(field as ExecutionField\)/)
+  assert.match(source, /if \(key === "evidenceExceptionReason" \|\| key === "evidenceExceptionAcknowledged"\) return values\.useHistoricalEvidenceException\n/)
+})
