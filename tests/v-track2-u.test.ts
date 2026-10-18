@@ -108,3 +108,22 @@ test("round cancel: the empty reason is an error under the field with its own me
   assert.match(source, /setReason\(""\)\n\s+fieldErrors\.setErrors\(\{\}\)/)
   assert.doesNotMatch(source, /if \(!trimmedReason\)/)
 })
+
+test("the two not-found dialogs keep the browser out, name their remark for focus and have a validate() with no rule to restate (v-track U3)", () => {
+  // Mark not found sends its own request, so a refusal that names the remark lands under it.
+  const notFound = read(`${C}audit-mark-not-found-button.tsx`)
+  assertMigratedForm(notFound, { ids: { remark: "audit-not-found-remark" } })
+  // The component-missing dialog hands its values to the scan workspace, which sends them and keeps its toast (U-R5).
+  const missing = read(`${C}audit-scan-component-missing-dialog.tsx`)
+  assertMigratedForm(missing, { ids: { remark: "audit-component-missing-remark" }, handler: "submit", server: false })
+  for (const [name, source, type] of [["not found", notFound, "NotFoundField"], ["component missing", missing, "ComponentMissingField"]] as const) {
+    // Nothing can be wrong before the request (U-R6): the remark is optional with no limit, the photo optional.
+    assert.match(source, new RegExp(`^function validate\\(\\): Partial<Record<${type}, string>> \\{\\n  return \\{\\}\\n\\}$`, "m"), name)
+    assert.match(source, /fieldErrors\.setErrors\(validate\(\)\)/, name)
+    assert.match(source, /setRemark\(event\.target\.value\)\n\s+fieldErrors\.clear\("remark"\)/, name)
+    assert.doesNotMatch(source, /useId|remarkId/, name)
+  }
+  // Closing the mark-not-found dialog starts the next one with no errors; the empty component remark keeps its default.
+  assert.match(notFound, /setEvidenceFile\(null\)\n\s+fieldErrors\.setErrors\(\{\}\)/)
+  assert.ok(missing.includes('onSubmit(remark.trim() || t("componentMissingDefaultRemark", { assetTag: parentAssetTag }), evidence)'))
+})
