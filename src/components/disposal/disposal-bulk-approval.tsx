@@ -32,11 +32,32 @@ import { checkboxVariants } from "@/components/ui/field-variants"
 import { Notice } from "@/components/ui/notice"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { Textarea } from "@/components/ui/textarea"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { formatCount } from "@/lib/display-format"
+import { readFieldErrors } from "@/lib/field-error-client"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
+import { maxLength } from "@/lib/validation-rules"
 
 export const MAX_DISPOSAL_BULK_APPROVAL_ITEMS = 50
+
+// The dialog's one field, keyed like the request body, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  approvalRemark: "disposal-bulk-approval-remark",
+} as const
+type BulkApprovalField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as BulkApprovalField[]
+
+// noValidate turns the browser's check off, so this restates the remark's maxLength (v-track M-R2). Nothing eligible is
+// a prerequisite, not a field: the approve button keeps that gate (v-track D-R8).
+function validate(values: { approvalRemark: string }): Partial<Record<BulkApprovalField, string>> {
+  const errors: Partial<Record<BulkApprovalField, string>> = {}
+  const check = (key: BulkApprovalField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("approvalRemark", maxLength(values.approvalRemark, 4000))
+  return errors
+}
 
 export type DisposalBulkSelectableItem = {
   requestId: string
@@ -109,7 +130,8 @@ type BulkApprovalContextValue = {
   setMobileSelectionMode: (value: boolean) => void
   setApprovalRemark: (value: string) => void
   preview: () => Promise<void>
-  commit: () => Promise<void>
+  // Resolves to the server's body when it refused the shared remark (the dialog shows it under the field), else nothing.
+  commit: () => Promise<unknown>
   closeDialog: () => void
   getErrorLabel: (code: DisposalBulkApprovalCode | null) => string
 }
@@ -264,7 +286,8 @@ export function DisposalBulkApprovalProvider({
     if (!fetchResponse.ok || !payload || !("items" in payload)) {
       if (payload && "code" in payload && isBulkApprovalCode(payload.code)) throw new Error(copy.errors[payload.code])
       if (payload && "error" in payload && isBulkApprovalCode(payload.error)) throw new Error(copy.errors[payload.error])
-      throw new Error(mode === "preview" ? copy.requestFailed : copy.approvalFailed)
+      // The body rides along as the cause, so a refusal of the remark can go back to its field (v-track D-R8).
+      throw new Error(mode === "preview" ? copy.requestFailed : copy.approvalFailed, { cause: payload })
     }
     return payload
   }
@@ -315,6 +338,11 @@ export function DisposalBulkApprovalProvider({
       if (payload.summary.approved > 0) router.refresh()
     } catch (caught) {
       if (!isCurrentRequest("commit", controller, selectionGeneration, requestGeneration)) return
+      // A refusal of the shared remark goes back to the dialog, which shows it under the field (spec §4.1).
+      if (caught instanceof Error && readFieldErrors(caught.cause)?.approvalRemark) {
+        setDialogState("preview")
+        return caught.cause
+      }
       setError(caught instanceof Error ? caught.message : copy.approvalFailed)
       setDialogState("preview")
     } finally {
@@ -542,10 +570,18 @@ function DisposalBulkApprovalDialog() {
   const approved = response?.items.filter((item) => item.outcome === "approved") ?? []
   const groups = groupByCode([...blocked, ...failed])
   const description = dialogState === "previewing" ? copy.previewLoading : dialogState === "committing" ? copy.committing : copy.preflightHelp
+  const fieldErrors = useFieldErrors<BulkApprovalField>()
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+  // A prerequisite, not a field (spec §4.4): nothing to approve. The zero-eligible Notice says why.
+  const nothingEligible = eligible.length === 0
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (dialogState === "preview") void commit()
+    if (dialogState !== "preview" || nothingEligible) return
+    fieldErrors.setErrors(validate({ approvalRemark }))
+    if (focusFirstError()) return
+    const refusal = await commit()
+    if (fieldErrors.applyServer(refusal) && focusFirstError()) return
   }
 
   return (
@@ -559,7 +595,7 @@ function DisposalBulkApprovalDialog() {
       fallbackFocusRef={restoreTargetRef}
       onClose={closeDialog}
     >
-      <form data-disposal-bulk-dialog="true" onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+      <form data-disposal-bulk-dialog="true" onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
         <AccessibleDialogBody className="space-y-5">
           {error ? <Notice tone="danger" role="alert">{error}</Notice> : null}
           {dialogState === "previewing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" />{copy.previewLoading}</div> : null}
@@ -575,13 +611,25 @@ function DisposalBulkApprovalDialog() {
               ]}
             />
             {groups.length ? <div className="space-y-2">{groups.map(([code, group]) => <details key={code} className="rounded-md border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium text-foreground"><span className="inline-flex items-center gap-2"><ShieldAlert aria-hidden="true" className="size-4 text-warning" />{getErrorLabel(code)} ({group.length})</span></summary><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{group.map((item) => <li key={item.requestId}><span className="tag">{item.disposalNo}</span> - <span className="tag">{item.assetTag}</span></li>)}</ul></details>)}</div> : null}
-            {dialogState === "preview" && eligible.length === 0 ? <Notice tone="warning" role="alert">{copy.zeroEligible}</Notice> : null}
+            {dialogState === "preview" && eligible.length === 0 ? <Notice tone="warning" role="alert" id="disposal-bulk-approval-zero-eligible">{copy.zeroEligible}</Notice> : null}
             {dialogState === "preview" ? (
               <Field
                 label={copy.sharedRemark}
+                id="disposal-bulk-approval-remark"
                 hint={<><span className="block">{copy.sharedRemarkHelp}</span><span className="block">{formatCopy(copy.remarkLimit, { count: approvalRemark.length })}</span></>}
+                error={fieldErrors.message("approvalRemark")}
               >
-                <Textarea value={approvalRemark} maxLength={4000} rows={4} disabled={busy} onChange={(event) => setApprovalRemark(event.target.value)} className="min-h-28" />
+                <Textarea
+                  value={approvalRemark}
+                  maxLength={4000}
+                  rows={4}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setApprovalRemark(event.target.value)
+                    fieldErrors.clear("approvalRemark")
+                  }}
+                  className="min-h-28"
+                />
               </Field>
             ) : null}
             {dialogState === "result" && (approved.length || failed.length || blocked.length) ? <ResultDetails approved={approved} blocked={blocked} failed={failed} getErrorLabel={getErrorLabel} /> : null}
@@ -591,7 +639,12 @@ function DisposalBulkApprovalDialog() {
           <AccessibleDialogCancel>{dialogState === "result" ? copy.close : copy.cancel}</AccessibleDialogCancel>
           {dialogState === "preview" && error ? <Button variant="outline" onClick={() => void commit()} disabled={eligible.length === 0}>{copy.retry}</Button> : null}
           {dialogState === "preview" || dialogState === "committing" ? (
-            <Button type="submit" busy={dialogState === "committing"} disabled={eligible.length === 0}>
+            <Button
+              type="submit"
+              busy={dialogState === "committing"}
+              aria-disabled={nothingEligible || undefined}
+              aria-describedby={nothingEligible ? "disposal-bulk-approval-zero-eligible" : undefined}
+            >
               <CheckSquare2 aria-hidden="true" />
               {formatCopy(copy.confirmApproval, { count: eligible.length })}
             </Button>

@@ -80,7 +80,7 @@ test("bulk approval: the toolbar is a quiet grouping, errors and the zero case a
   assert.match(source, /<div className="mx-4 mt-3 flex flex-col gap-3 rounded-md border border-border bg-background p-3 md:mx-5 md:flex-row md:items-center md:justify-between" aria-label=\{copy\.toolbarLabel\}>/)
   assert.match(source, /\{error \? <Notice tone="danger" role="alert" className="mx-4 mt-3 md:mx-5" action=\{<Button variant="outline" size="md" onClick=\{\(\) => void preview\(\)\} disabled=\{busy\}>\{copy\.retry\}<\/Button>\}>\{error\}<\/Notice> : null\}/)
   assert.match(source, /<AccessibleDialogBody className="space-y-5">\n\s+\{error \? <Notice tone="danger" role="alert">\{error\}<\/Notice> : null\}/, "a dialog error is the first thing in its body")
-  assert.match(source, /<Notice tone="warning" role="alert">\{copy\.zeroEligible\}<\/Notice>/)
+  assert.match(source, /<Notice tone="warning" role="alert" id="disposal-bulk-approval-zero-eligible">\{copy\.zeroEligible\}<\/Notice>/)
   assert.equal(source.match(/value: formatCount\(response\.summary\.(?:selected|eligible|blocked|approved|failed)\) \}/g)?.length, 5)
   assert.match(source, /<StatStrip\n\s+items=\{\[/)
   assert.equal(source.match(/<span className="tag">\{item\.disposalNo\}<\/span> - <span className="tag">\{item\.assetTag\}<\/span>/g)?.length, 2, "the blocked groups and the result lists")
