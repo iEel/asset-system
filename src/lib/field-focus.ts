@@ -108,3 +108,27 @@ export function waitForElement(id: string, frames = 30): Promise<HTMLElement | n
     look()
   })
 }
+
+// A review dialog closes before the form's field takes focus (spec §4.2): when a refusal comes back, focus is still in
+// the dialog, and the dialog hands focus back to its opener in a task after it leaves the page. This resolves once the
+// dialog that holds focus now has gone and that task has run, so the field takes focus last; at once when focus is in no
+// dialog. It gives up after `frames` frames, like waitForElement.
+export function waitForDialogToClose(frames = 60): Promise<void> {
+  const dialog = document.activeElement?.closest('[role="dialog"]')
+  return new Promise((resolve) => {
+    if (!dialog) {
+      resolve()
+      return
+    }
+    let left = frames
+    const look = () => {
+      if (!dialog.isConnected || left <= 0) {
+        setTimeout(resolve, 0)
+        return
+      }
+      left -= 1
+      requestAnimationFrame(look)
+    }
+    look()
+  })
+}
