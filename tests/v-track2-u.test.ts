@@ -205,7 +205,7 @@ test("scan check: the location's star has its rule and its error, focus stays in
   assert.match(source, /\n\s+error=\{config\.key \? fieldErrors\.message\(config\.key\) : undefined\}\n/)
   assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, location: value \}\)\)\n\s+fieldErrors\.clear\("actualLocationId"\)/)
   // Save: the photo gate returns first, then the fields; focus is brought into the check's own scroll area (spec §4.2).
-  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) return\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
+  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) \{\n\s+setExtrasOpen\(true\)\n\s+return\n\s+\}\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
   assert.match(source, /reveal: \(key\) => revealFocusInScrollArea\(bodyRef\.current, document\.getElementById\(FIELD_IDS\[key\]\)\)/)
   // The photo is a prerequisite (spec §4.4): aria-disabled tied to the Notice that says why; a closed round still disables.
   assert.match(source, /<Notice id="audit-check-photo-reason" tone="neutral">/)

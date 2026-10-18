@@ -248,10 +248,14 @@ export function AuditScanCheckForm({
     }
   }
 
-  // A missing photo is a prerequisite: save stays focusable and returns here (spec §4.4). Then the fields, then saving the
-  // parent while components are still pending asks first; cancelling sends nothing (D4).
+  // A missing photo is a prerequisite: save stays focusable, opens the note-and-photo section that holds the picker and
+  // returns here (spec §4.4). Then the fields, then saving the parent while components are still pending asks first;
+  // cancelling sends nothing (D4).
   async function save() {
-    if (missingPhoto) return
+    if (missingPhoto) {
+      setExtrasOpen(true)
+      return
+    }
     fieldErrors.setErrors(validate(values))
     if (focusFirstError()) return
     if (pendingComponents.length > 0) {

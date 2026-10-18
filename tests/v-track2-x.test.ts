@@ -202,3 +202,14 @@ test("the batch's row limits and its duplicate check stay focusable and say why 
   assert.match(source, /function handleRemoveRow\(clientId: string\) \{\n\s+if \(atRowMinimum\) return\n/)
   assert.match(source, /async function handleCheckDuplicates\(\) \{\n\s+if \(hasClientDuplicates\) return\n/)
 })
+
+test("the scan check's waiting save opens the note-and-photo section, so the missing photo's picker is in view (v-track plan 2 task 31e, U7)", () => {
+  const source = read(`${C}audit/audit-scan-check-form.tsx`)
+  // Save still returns first while a required photo is missing (U-R11), and now opens the section that holds the picker.
+  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) \{\n\s+setExtrasOpen\(true\)\n\s+return\n\s+\}\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n/)
+  const section = source.slice(source.indexOf("{extrasOpen ? ("), source.indexOf("<div data-audit-check-actions"))
+  assert.ok(section.includes('title={t("dropAuditPhotoTitle")}'), "the photo picker sits in that section")
+  // The toggle still opens and closes it, and the gate is as Task 19 left it: focusable, tied to its Notice.
+  assert.ok(source.includes("onClick={() => setExtrasOpen((current) => !current)}"))
+  assert.match(source, /aria-disabled=\{missingPhoto \|\| undefined\}\n\s+aria-describedby=\{missingPhoto \? "audit-check-photo-reason" : undefined\}\n/)
+})
