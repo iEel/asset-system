@@ -70,6 +70,7 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 // The files whose every form shows its errors under the fields (spec G1). Each form task adds its file here, in the
 // commit that moves the file's last form.
 const V_FORMS: readonly string[] = [
+  `${C}disposal/disposal-decision-button.tsx`,
   `${C}disposal/disposal-batch-form.tsx`,
   `${C}disposal/disposal-request-form.tsx`,
   `${C}asset-operations/transaction-cancel-dialog.tsx`,

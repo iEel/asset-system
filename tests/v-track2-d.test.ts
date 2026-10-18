@@ -192,3 +192,44 @@ test("disposal batch: the edit step is a form whose requester and reason are err
     assert.equal(typeof JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage.batchNeedsAssets, "string", locale)
   }
 })
+
+test("disposal decision: a rejection's reason is an error on save through the server's own rule, and a refusal lands under its field in the open dialog (v-track D4)", () => {
+  const source = read(`${C}disposal/disposal-decision-button.tsx`)
+  assertMigratedForm(source, {
+    handler: "onSubmit",
+    ids: {
+      decision: "disposal-decision-decision",
+      nextStatusId: "disposal-decision-next-status",
+      saleValue: "disposal-decision-sale-value",
+      salvageValue: "disposal-decision-salvage-value",
+      approvalRemark: "disposal-decision-remark",
+    },
+    messages: ["decision", "nextStatusId", "approvalRemark"],
+  })
+  assert.match(source, /^function validate\(values: DecisionValues, disposalType: DisposalType\): Partial<Record<DecisionField, string>> \{$/m)
+  const rules = validateBody(source)
+  for (const rule of [
+    "if (code && shown.includes(key)) errors[key] = code",
+    'check("decision", required(values.decision))',
+    'check("nextStatusId", required(values.nextStatusId))',
+    'check("saleValue", range(values.saleValue, 0))',
+    'check("salvageValue", range(values.salvageValue, 0))',
+    'check("approvalRemark", maxLength(values.approvalRemark, 4000))',
+    // The server's own rule (spec §7.2): its message's catalog key is the code, rejectionReasonRequired.
+    "for (const error of getDisposalDecisionFieldErrors(values)) check(error.field, getApiErrorKey(error.message))",
+  ]) assert.ok(rules.includes(rule), rule)
+  // A content rule, not a gate (spec §4.4): save is enabled while the reason is empty.
+  assert.doesNotMatch(source, /(?<![\w-])disabled=\{rejectionReasonRequired/)
+  assert.match(source, /<Button type="submit" busy=\{saving\}>\n\s+<CheckCircle2 aria-hidden="true" \/>/)
+  // Only the fields the dialog shows are checked and focused, so a refusal about a hidden one keeps the toast (D-R4).
+  assert.match(source, /if \(key === "nextStatusId"\) return values\.decision === "approve"\n\s+if \(key === "saleValue"\) return showsEstimatedSaleValue\(disposalType\)\n\s+if \(key === "salvageValue"\) return showsEstimatedSalvageValue\(disposalType\)\n/)
+  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(shownFields(values, disposalType as DisposalType), { idFor: (key) => FIELD_IDS[key] })"))
+  // The hook lives with the submit; the dialog shows its errors and closing it clears them.
+  assert.ok(source.includes("type DecisionFieldErrors = ReturnType<typeof useFieldErrors<DecisionField>>"))
+  assert.match(source, /function closeDialog\(\) \{\n\s+fieldErrors\.setErrors\(\{\}\)\n\s+setOpen\(false\)\n\s+\}/)
+  assert.match(source, /fieldErrors=\{fieldErrors\}\n\s+onClose=\{closeDialog\}/)
+  assert.match(source, /if \(field === "decision"\) fieldErrors\.clear\("decision", "nextStatusId", "approvalRemark"\)\n\s+else fieldErrors\.clear\(field\)/)
+  for (const key of ["saleValue", "salvageValue"]) {
+    assert.ok(source.includes(`error={fieldErrors.errors.${key} ? validationMessage(fieldErrors.errors.${key}, { min: 0 }) : undefined}`), key)
+  }
+})
