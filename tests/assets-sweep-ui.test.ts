@@ -28,7 +28,8 @@ test("status correction: the trigger says whether its panel is open, and the pan
   const source = read(`${C}assets/asset-status-correction-button.tsx`)
   assert.match(source, /const panelId = useId\(\)/)
   assert.match(source, /aria-expanded=\{open\}\n\s+aria-controls=\{open \? panelId : undefined\}/, "aria-controls only while the panel exists (axe aria-valid-attr-value)")
-  assert.match(source, /<div id=\{panelId\} className="rounded-md border border-border bg-background p-4">/)
+  // v-track plan 2 A5: the quiet grouping is the correction's form.
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate id=\{panelId\} className="rounded-md border border-border bg-background p-4">/)
   assert.match(source, /<Notice tone="neutral" className="mt-1">\{labels\.description\}<\/Notice>/)
   assert.doesNotMatch(source, /border-warning-border|<p className="mt-1 text-sm text-muted-foreground">/)
 })

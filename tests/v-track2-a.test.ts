@@ -265,3 +265,17 @@ test("component install and removal: the details step and the removal dialog are
   assert.match(source, /<Button type="submit" variant="destructive" busy=\{busy\}>/)
   assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/)
 })
+
+test("status correction: the reason's 5 characters are an error on submit with its numbers, and the confirm is enabled (v-track A5)", () => {
+  const source = read(`${C}assets/asset-status-correction-button.tsx`)
+  assertMovedForm(source, { ids: { reason: "asset-status-correction-reason" } })
+  assert.ok(functionBody(source).includes('check("reason", required(values.reason) ?? minLength(values.reason, 5) ?? maxLength(values.reason, 500))'))
+  // A content rule, not a gate (spec §4.4): the panel is a form and its confirm is enabled.
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate id=\{panelId\} className="rounded-md border border-border bg-background p-4">/)
+  assert.match(source, /<Button type="submit" busy=\{isSubmitting\}>/)
+  assert.doesNotMatch(source, /(?<![\w-])disabled=\{/)
+  // The field says its numbers and shows the star; the server's other refusals keep the error line under it.
+  assert.match(source, /<Field\n\s+label=\{labels\.reason\}\n\s+required\n\s+className="mt-3"\n\s+error=\{fieldErrors\.errors\.reason \? validationMessage\(fieldErrors\.errors\.reason, \{ min: 5, max: 500 \}\) : undefined\}\n\s+>/)
+  assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+setError\(payload\?\.error \?\? labels\.errorFallback\)/)
+  assert.match(source, /\{error \? <p className="mt-2 text-sm text-danger"><ApiErrorText error=\{error\} \/><\/p> : null\}/)
+})

@@ -11,9 +11,10 @@ test("the status correction uses Button, a shared reason field and a busy submit
   const source = read("src/components/assets/asset-status-correction-button.tsx")
   // Plan 2D-3 (M27) added aria-expanded and aria-controls to the trigger.
   assert.match(source, /<Button\n\s+variant="outline"\n\s+aria-expanded=\{open\}\n\s+aria-controls=\{open \? panelId : undefined\}\n\s+onClick=\{\(\) => setOpen\(\(value\) => !value\)\}\n\s+>\n\s+<RotateCcw className="text-warning" aria-hidden="true" \/>/)
-  assert.match(source, /<Field label=\{labels\.reason\} className="mt-3">\n\s+<Textarea\n\s+id="asset-status-correction-reason"/)
+  // v-track plan 2 A5: the reason shows the star and its error; its rule is checked on submit, not by a disabled button.
+  assert.match(source, /<Field\n\s+label=\{labels\.reason\}\n\s+required\n\s+className="mt-3"\n[^\n]*\n\s+>\n\s+<Textarea\n\s+id="asset-status-correction-reason"/)
   assert.match(source, /<Button\n\s+variant="outline"\n\s+onClick=\{\(\) => \{\n\s+setOpen\(false\)\n\s+setError\(null\)/)
-  assert.match(source, /<Button busy=\{isSubmitting\} disabled=\{reason\.trim\(\)\.length < 5\} onClick=\{submitCorrection\}>\n\s+\{labels\.submit\}\n\s+<\/Button>/)
+  assert.match(source, /<Button type="submit" busy=\{isSubmitting\}>\n\s+\{labels\.submit\}\n\s+<\/Button>/)
   assert.doesNotMatch(source, /<button\b|<textarea|<label\b|labels\.submitting|disabled:opacity|bg-warning-soft px-3/)
   // The error line stays as it is until the V track ties it to the field (spec 2C §4 ruling 17).
   assert.match(source, /\{error \? <p className="mt-2 text-sm text-danger"><ApiErrorText error=\{error\} \/><\/p> : null\}/)

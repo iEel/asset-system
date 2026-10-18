@@ -102,7 +102,8 @@ test("asset detail exposes controlled status correction action", () => {
   assert.match(pageSource, /AssetStatusCorrectionButton/)
   assert.match(pageSource, /canCorrectAssetStatus/)
   assert.match(componentSource, /\/api\/assets\/\$\{assetId\}\/status-correction/)
-  assert.match(componentSource, /reason\.trim\(\)\.length < 5/)
+  // v-track plan 2 A5: the 5-character rule is checked on submit (validate), not by a disabled button.
+  assert.match(componentSource, /minLength\(values\.reason, 5\)/)
 })
 
 test("asset edit form guides protected lifecycle changes to the right workflow", () => {
