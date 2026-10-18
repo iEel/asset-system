@@ -179,3 +179,53 @@ test("PM plan: errors under the field, the asset select checked, whole days from
   // A refusal with a field (the vendor, a zod 400) lands under it; any other keeps the domain message.
   assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, t, tCommon\("error"\)\)\)/)
 })
+
+test("repair record: errors under the field, the asset and reporter selects checked, the two questions as groups, and more details opened for an error inside (v-track2 M4)", () => {
+  const source = read(`${C}maintenance/repair-record-form.tsx`)
+  const uploadToast = 'toast.warning(t("uploadFailed", { count: failed }))'
+  assertMigratedForm(source, {
+    ids: {
+      assetId: "repair-record-asset",
+      reportedDate: "repair-record-date",
+      problem: "repair-record-problem",
+      done: "repair-record-done",
+      outcome: "repair-record-outcome",
+      reportedById: "repair-record-reporter",
+      vendorId: "repair-record-vendor",
+      repairCost: "repair-record-cost",
+      invoiceNo: "repair-record-invoice-no",
+      remark: "repair-record-remark",
+    },
+    messages: ["assetId", "reportedDate", "problem", "done", "outcome", "reportedById", "vendorId", "invoiceNo", "remark"],
+    resultToast: uploadToast,
+  })
+  assert.match(source, /^function validate\(values: RepairValues, needsReporter: boolean\) \{$/m)
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("assetId", required(values.assetId))',
+    'check("reportedDate", required(values.reportedDate))',
+    'check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
+    'check("reportedById", needsReporter ? required(values.reportedById) : null)',
+    'check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))',
+    'check("invoiceNo", maxLength(values.invoiceNo, 100))',
+    'check("remark", maxLength(values.remark, 4000))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.match(source, /fieldErrors\.setErrors\(validate\(values, needsReporter\)\)/)
+  assert.ok(source.includes("error={fieldErrors.errors.repairCost ? validationMessage(fieldErrors.errors.repairCost, { min: 0 }) : undefined}"), "the cost says its floor")
+  // The two selects were asterisks nothing checked (spec §5): each has an id for focus and shows its error.
+  assert.match(source, /<MaintenanceOptionSelect\n\s+id="repair-record-asset"\n\s+type="asset"\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("assetId"\)\}\n/)
+  assert.match(source, /<MaintenanceOptionSelect\n\s+id="repair-record-reporter"\n\s+type="employee"\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("reportedById"\)\}\n/)
+  // The two questions are FieldGroups (spec §7.3): the star, and an error tied to the group.
+  for (const key of ["done", "outcome"]) {
+    assert.ok(source.includes(`<FieldGroup legend={t("${key}Question")} id="repair-record-${key}" required error={fieldErrors.message("${key}")}>`), key)
+  }
+  // Focus only goes to a field on screen; a field inside "more details" opens it first (spec §4.2).
+  assert.match(source, /^const DETAIL_FIELDS: readonly RepairField\[\] = \["vendorId", "repairCost", "invoiceNo", "remark"\]$/m)
+  assert.match(source, /return FIELD_ORDER\.filter\(\(key\) => \(key !== "outcome" \|\| values\.done\) && \(key !== "reportedById" \|\| needsReporter\)\)/)
+  assert.match(source, /reveal: \(key\) => \{\n\s+if \(DETAIL_FIELDS\.includes\(key\)\) setShowDetails\(true\)\n\s+\},/)
+  // The open record keeps its Notice with the link; a refusal with a field lands under it; the rest keeps the toast.
+  assert.match(source, /if \(payload\?\.code === "MAINTENANCE_OPEN_RECORD_EXISTS"\) setOpenRecordAssetId\(values\.assetId\)\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, tMaintenance, tCommon\("error"\)\)\)/)
+  assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+fieldErrors\.clear\(field\)/)
+  // The upload result is not a field error: it stays a toast after the record is saved (MT-R5).
+  assert.equal(source.split(uploadToast).length - 1, 1)
+})

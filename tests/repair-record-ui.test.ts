@@ -55,8 +55,9 @@ test("recording PM from a plan pre-fills the plan and its asset", () => {
 test("the repair form uses the shared fields, a busy save button and an underlined link on the warning (2C batch 1a)", () => {
   const source = readFileSync("src/components/maintenance/repair-record-form.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.doesNotMatch(source, /function Field\(|const (?:inputClass|textareaClass)\b|<input|<textarea|Loader2/)
-  assert.match(source, /<Field label=\{t\("date"\)\} required>\n\s+<Input type="date" required /)
-  assert.match(source, /<Field label=\{t\("problem"\)\} required>\n\s+<Textarea\n\s+required\n\s+rows=\{3\}\n\s+maxLength=\{4000\}/)
+  // Each Field names its control and shows its error (v-track plan 2 M4).
+  assert.match(source, /<Field label=\{t\("date"\)\} id="repair-record-date" required error=\{fieldErrors\.message\("reportedDate"\)\}>\n\s+<Input type="date" required /)
+  assert.match(source, /<Field label=\{t\("problem"\)\} id="repair-record-problem" required error=\{fieldErrors\.message\("problem"\)\}>\n\s+<Textarea\n\s+required\n\s+rows=\{3\}\n\s+maxLength=\{4000\}/)
   assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "decoration-current"\)\}/)
   assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>\n\s+\{t\("save"\)\}/)
 })

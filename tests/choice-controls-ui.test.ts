@@ -57,8 +57,9 @@ test("the repair form asks its two questions with ChoiceCard radios under a fiel
   assert.doesNotMatch(source, /function Choice\(|accent-primary|<input\b|ml-1 text-danger/)
   assert.equal(source.match(/<ChoiceCard type="radio" name="done" /g)?.length, 2)
   assert.equal(source.match(/<ChoiceCard type="radio" name="outcome" /g)?.length, 2)
-  assert.equal(source.match(/<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>/g)?.length, 2)
-  assert.equal(source.match(/<FieldRequiredMark \/>/g)?.length, 2)
+  // The two questions are FieldGroups with the star and one error each (v-track plan 2 M4).
+  assert.equal(source.match(/<FieldGroup legend=\{t\("(?:done|outcome)Question"\)\} id="repair-record-(?:done|outcome)" required error=\{fieldErrors\.message\("(?:done|outcome)"\)\}>/g)?.length, 2)
+  assert.doesNotMatch(source, /<fieldset\b|<FieldRequiredMark \/>/)
 })
 
 test("the finish-repair dialog picks the outcome with ChoiceCard radios (R3)", () => {

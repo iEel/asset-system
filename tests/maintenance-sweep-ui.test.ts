@@ -27,7 +27,7 @@ test("repair attachments: a ContentPanel, a warning Notice, a plain count, Empty
 
 test("repair form: a ContentPanel, the open-record error and the status effect as Notices, the reporter hint on its select, and an outline disclosure over a quiet grouping (spec 2D D7, D9, M29)", () => {
   const source = read(`${C}maintenance/repair-record-form.tsx`)
-  assert.match(source, /<ContentPanel>\s*<form onSubmit=\{handleSubmit\} className="space-y-5">/)
+  assert.match(source, /<ContentPanel>\s*<form onSubmit=\{handleSubmit\} noValidate className="space-y-5">/)
   assert.match(source, /<Notice tone="danger" role="alert">\s*\{tMaintenance\("errors\.MAINTENANCE_OPEN_RECORD_EXISTS"\)\}/)
   assert.match(source, /<Notice tone="warning">\s*\{t\(`assetStatusEffect\.\$\{effectKey\}`\)\}\s*<\/Notice>/)
   assert.match(source, /hint=\{t\("reporterHelp"\)\}/)

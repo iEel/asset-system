@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { ChoiceCard } from "@/components/ui/choice-card"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { Field, FieldRequiredMark } from "@/components/ui/field"
-import { fieldLabelClasses } from "@/components/ui/field-variants"
+import { Field } from "@/components/ui/field"
+import { FieldGroup } from "@/components/ui/field-group"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
@@ -24,10 +24,65 @@ import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { cn } from "@/lib/utils"
+import { maxLength, range, required, step } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string }
 type Outcome = "usable" | "beyond_repair"
+type RepairValues = {
+  assetId: string
+  reportedDate: string
+  problem: string
+  done: boolean
+  outcome: Outcome
+  reportedById: string
+  vendorId: string
+  repairCost: string
+  invoiceNo: string
+  remark: string
+}
+
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The two
+// questions are radio groups: their id is the FieldGroup's.
+const FIELD_IDS = {
+  assetId: "repair-record-asset",
+  reportedDate: "repair-record-date",
+  problem: "repair-record-problem",
+  done: "repair-record-done",
+  outcome: "repair-record-outcome",
+  reportedById: "repair-record-reporter",
+  vendorId: "repair-record-vendor",
+  repairCost: "repair-record-cost",
+  invoiceNo: "repair-record-invoice-no",
+  remark: "repair-record-remark",
+} as const
+type RepairField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as RepairField[]
+// The fields inside "more details", which opens before focus moves there (spec §4.2).
+const DETAIL_FIELDS: readonly RepairField[] = ["vendorId", "repairCost", "invoiceNo", "remark"]
+
+// The fields on screen: the outcome only when the repair is done, the reporter only for an account without an employee.
+function fieldOrder(values: RepairValues, needsReporter: boolean) {
+  return FIELD_ORDER.filter((key) => (key !== "outcome" || values.done) && (key !== "reportedById" || needsReporter))
+}
+
+// noValidate turns the browser's check off, so this restates the controls' required, maxLength, min and step, and the
+// reporter the server needs from an account without a linked employee (MAINTENANCE_REPORTER_REQUIRED) (v-track M-R2).
+function validate(values: RepairValues, needsReporter: boolean) {
+  const errors: Partial<Record<RepairField, string>> = {}
+  const check = (key: RepairField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("assetId", required(values.assetId))
+  check("reportedDate", required(values.reportedDate))
+  check("problem", required(values.problem) ?? maxLength(values.problem, 4000))
+  check("reportedById", needsReporter ? required(values.reportedById) : null)
+  check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))
+  check("invoiceNo", maxLength(values.invoiceNo, 100))
+  check("remark", maxLength(values.remark, 4000))
+  return errors
+}
 
 export function RepairRecordForm({
   locale,
@@ -52,7 +107,7 @@ export function RepairRecordForm({
   const [showDetails, setShowDetails] = useState(Boolean(plan?.vendor))
   const detailsId = useId()
   const [files, setFiles] = useState<File[]>([])
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<RepairValues>({
     assetId: initialAsset?.id ?? "",
     reportedDate: toLocalDateInputValue(),
     problem: plan?.title ?? "",
@@ -65,9 +120,19 @@ export function RepairRecordForm({
     remark: "",
   })
   const effectKey = !values.done ? "toMaintenance" : values.outcome === "beyond_repair" ? "toDisposal" : null
+  const fieldErrors = useFieldErrors<RepairField>()
+  const validationMessage = useValidationMessage()
+  const focusFirstError = () =>
+    fieldErrors.focusFirst(fieldOrder(values, needsReporter), {
+      idFor: (key) => FIELD_IDS[key],
+      reveal: (key) => {
+        if (DETAIL_FIELDS.includes(key)) setShowDetails(true)
+      },
+    })
 
   function setField<K extends keyof typeof values>(field: K, value: (typeof values)[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    fieldErrors.clear(field)
   }
 
   // New picks append to the list; each file can be taken out before saving.
@@ -81,6 +146,8 @@ export function RepairRecordForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values, needsReporter))
+    if (focusFirstError()) return
     setSaving(true)
     setOpenRecordAssetId(null)
     try {
@@ -104,6 +171,8 @@ export function RepairRecordForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
         if (payload?.code === "MAINTENANCE_OPEN_RECORD_EXISTS") setOpenRecordAssetId(values.assetId)
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
         throw new Error(getMaintenanceErrorMessage(payload?.code, tMaintenance, tCommon("error")))
       }
       const failed = await uploadRepairFiles(payload.id, files, values.done ? "after_repair" : "before_repair")
@@ -119,9 +188,10 @@ export function RepairRecordForm({
 
   return (
     <ContentPanel>
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {plan ? <FormContextBanner label={t("planLabel")} value={plan.label} /> : null}
         <MaintenanceOptionSelect
+          id="repair-record-asset"
           type="asset"
           label={t("asset")}
           value={values.assetId}
@@ -133,6 +203,7 @@ export function RepairRecordForm({
           emptyLabel={tCommon("searchSelectNoResults")}
           loadingLabel={tCommon("loading")}
           formatReason={(code) => getMaintenanceErrorMessage(code, tMaintenance, code)}
+          error={fieldErrors.message("assetId")}
           onChange={(value) => setField("assetId", value)}
         />
         {openRecordAssetId ? (
@@ -147,10 +218,10 @@ export function RepairRecordForm({
           </Notice>
         ) : null}
         <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr]">
-          <Field label={t("date")} required>
+          <Field label={t("date")} id="repair-record-date" required error={fieldErrors.message("reportedDate")}>
             <Input type="date" required value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} />
           </Field>
-          <Field label={t("problem")} required>
+          <Field label={t("problem")} id="repair-record-problem" required error={fieldErrors.message("problem")}>
             <Textarea
               required
               rows={3}
@@ -161,25 +232,19 @@ export function RepairRecordForm({
             />
           </Field>
         </div>
-        <fieldset className="min-w-0">
-          <legend className={cn(fieldLabelClasses, "mb-1.5")}>
-            {t("doneQuestion")}<FieldRequiredMark />
-          </legend>
+        <FieldGroup legend={t("doneQuestion")} id="repair-record-done" required error={fieldErrors.message("done")}>
           <div className="grid gap-2 sm:grid-cols-2">
             <ChoiceCard type="radio" name="done" checked={values.done} label={t("doneYes")} onChange={() => setField("done", true)} />
             <ChoiceCard type="radio" name="done" checked={!values.done} label={t("doneNo")} onChange={() => setField("done", false)} />
           </div>
-        </fieldset>
+        </FieldGroup>
         {values.done ? (
-          <fieldset className="min-w-0">
-            <legend className={cn(fieldLabelClasses, "mb-1.5")}>
-              {t("outcomeQuestion")}<FieldRequiredMark />
-            </legend>
+          <FieldGroup legend={t("outcomeQuestion")} id="repair-record-outcome" required error={fieldErrors.message("outcome")}>
             <div className="grid gap-2 sm:grid-cols-2">
               <ChoiceCard type="radio" name="outcome" checked={values.outcome === "usable"} label={t("outcome.usable")} onChange={() => setField("outcome", "usable")} />
               <ChoiceCard type="radio" name="outcome" checked={values.outcome === "beyond_repair"} label={t("outcome.beyond_repair")} onChange={() => setField("outcome", "beyond_repair")} />
             </div>
-          </fieldset>
+          </FieldGroup>
         ) : null}
         {effectKey ? (
           <Notice tone="warning">
@@ -188,6 +253,7 @@ export function RepairRecordForm({
         ) : null}
         {needsReporter ? (
           <MaintenanceOptionSelect
+            id="repair-record-reporter"
             type="employee"
             label={t("reporter")}
             value={values.reportedById}
@@ -197,6 +263,7 @@ export function RepairRecordForm({
             emptyLabel={tCommon("searchSelectNoResults")}
             loadingLabel={tCommon("loading")}
             hint={t("reporterHelp")}
+            error={fieldErrors.message("reportedById")}
             onChange={(value) => setField("reportedById", value)}
           />
         ) : null}
@@ -214,6 +281,7 @@ export function RepairRecordForm({
           {showDetails ? (
             <div id={detailsId} className="mt-3 grid gap-4 rounded-md border border-border bg-background p-4 md:grid-cols-2">
               <MaintenanceOptionSelect
+                id="repair-record-vendor"
                 type="supplier"
                 label={t("vendor")}
                 value={values.vendorId}
@@ -222,12 +290,17 @@ export function RepairRecordForm({
                 searchPlaceholder={tCommon("searchSelectPlaceholder")}
                 emptyLabel={tCommon("searchSelectNoResults")}
                 loadingLabel={tCommon("loading")}
+                error={fieldErrors.message("vendorId")}
                 onChange={(value) => setField("vendorId", value)}
               />
-              <Field label={t("cost")}>
+              <Field
+                label={t("cost")}
+                id="repair-record-cost"
+                error={fieldErrors.errors.repairCost ? validationMessage(fieldErrors.errors.repairCost, { min: 0 }) : undefined}
+              >
                 <Input type="number" min="0" step="0.01" inputMode="decimal" value={values.repairCost} onChange={(event) => setField("repairCost", event.target.value)} />
               </Field>
-              <Field label={t("invoiceNo")}>
+              <Field label={t("invoiceNo")} id="repair-record-invoice-no" error={fieldErrors.message("invoiceNo")}>
                 <Input maxLength={100} value={values.invoiceNo} onChange={(event) => setField("invoiceNo", event.target.value)} />
               </Field>
               <Field label={t("files")} className="md:col-span-2">
@@ -252,7 +325,7 @@ export function RepairRecordForm({
                 )}
               </Field>
               <div className="md:col-span-2">
-                <Field label={t("remark")}>
+                <Field label={t("remark")} id="repair-record-remark" error={fieldErrors.message("remark")}>
                   <Textarea rows={2} maxLength={4000} value={values.remark} onChange={(event) => setField("remark", event.target.value)} className="min-h-16" />
                 </Field>
               </div>
