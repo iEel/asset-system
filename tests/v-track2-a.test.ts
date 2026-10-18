@@ -279,3 +279,16 @@ test("status correction: the reason's 5 characters are an error on submit with i
   assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+setError\(payload\?\.error \?\? labels\.errorFallback\)/)
   assert.match(source, /\{error \? <p className="mt-2 text-sm text-danger"><ApiErrorText error=\{error\} \/><\/p> : null\}/)
 })
+
+test("import wizard: a picked file is its one rule, and the import waits for a ready row, focusable and tied to the counts (v-track A6)", () => {
+  const source = read(`${C}assets/asset-import-preview-panel.tsx`)
+  // No field a person types: validate() states the wizard's prerequisite; the file's own rules stay the server's (_form).
+  assert.match(functionBody(source), /^function validate\(file: File \| undefined\): string \| null \{\n\s+return required\(file\)$/)
+  assert.match(source, /if \(validate\(file\) \|\| !file\) \{\n\s+setError\(labels\.fileRequired\)/)
+  // A prerequisite keeps its gate and says why (spec §4.4): aria-disabled, tied to the counts beside the button.
+  assert.match(source, /const noReadyRows = preview\?\.summary\.readyRows === 0\n/)
+  assert.match(source, /<p id="asset-import-ready-summary" className="text-sm text-muted-foreground">/)
+  assert.match(source, /aria-disabled=\{noReadyRows \|\| undefined\}\n\s+aria-describedby=\{noReadyRows \? "asset-import-ready-summary" : undefined\}/)
+  assert.doesNotMatch(source, /disabled=\{preview\.summary\.readyRows === 0\}/)
+  assert.match(source, /if \(!selectedFile \|\| !preview \|\| preview\.summary\.readyRows === 0\) return/)
+})

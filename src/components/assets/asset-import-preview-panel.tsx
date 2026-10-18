@@ -24,6 +24,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { Steps } from "@/components/ui/steps"
 import { getAssetImportBatchStatusTone, type AssetImportBatchStatus, type AssetImportBatchSummary } from "@/lib/asset-import-batch"
 import type { AssetImportColumnMapping } from "@/lib/asset-import-mapping"
+import { required } from "@/lib/validation-rules"
 
 type PreviewRow = {
   rowNumber: number
@@ -87,6 +88,13 @@ type AssetImportPreviewPanelProps = {
   }
 }
 
+// The wizard has no field a person types (v-track plan 2 A-R6): its one rule before the upload is its prerequisite, a
+// picked file (spec §4.4). The file's own rules (10 MB, .xlsx) stay the server's; that refusal comes under _form and
+// shows in the wizard's error notice like every other refusal (S-R7, spec §4.1.3).
+function validate(file: File | undefined): string | null {
+  return required(file)
+}
+
 export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -114,6 +122,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
   const issueSummary = preview ? summarizeAssetImportPreviewIssues(preview.rows) : []
   const mappedColumns = preview?.mapping?.filter((column) => column.sourceColumn != null) ?? []
   const missingColumns = preview?.mapping?.filter((column) => column.sourceColumn == null) ?? []
+  // A prerequisite, not a field (spec §4.4): with no ready row the import waits, focusable, and the counts beside it say why.
+  const noReadyRows = preview?.summary.readyRows === 0
   const header = (
     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
@@ -134,7 +144,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
   )
 
   async function handleFile(file?: File) {
-    if (!file) {
+    if (validate(file) || !file) {
       setError(labels.fileRequired)
       return
     }
@@ -348,10 +358,15 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
             </DataTableBody>
           </DataTable>
           <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-muted-foreground">
+            <p id="asset-import-ready-summary" className="text-sm text-muted-foreground">
               {formatCount(preview.summary.readyRows)} {labels.previewReady} · {formatCount(preview.summary.errorRows)} {labels.previewErrors}
             </p>
-            <Button busy={isImporting} disabled={preview.summary.readyRows === 0} onClick={() => void confirmImport()}>
+            <Button
+              busy={isImporting}
+              aria-disabled={noReadyRows || undefined}
+              aria-describedby={noReadyRows ? "asset-import-ready-summary" : undefined}
+              onClick={() => void confirmImport()}
+            >
               {labels.confirmImport}
             </Button>
           </div>

@@ -139,7 +139,8 @@ test("the import panel uses Button with busy for choose and import, and a danger
   const source = importPanelSource().replace(/\r\n/g, "\n")
   assert.match(source, /<Button variant="outline" onClick=\{\(\) => setIsOpen\(\(current\) => !current\)\} aria-expanded=\{isOpen\}>\n\s+\{isOpen \? <ChevronUp aria-hidden="true" \/> : <ChevronDown aria-hidden="true" \/>\}/)
   assert.match(source, /<Button variant="outline" busy=\{isLoading\} disabled=\{isImporting\} onClick=\{\(\) => inputRef\.current\?\.click\(\)\}>\n\s+<Upload aria-hidden="true" \/>\n\s+\{labels\.chooseFile\}\n\s+<\/Button>/)
-  assert.match(source, /<Button busy=\{isImporting\} disabled=\{preview\.summary\.readyRows === 0\} onClick=\{\(\) => void confirmImport\(\)\}>\n\s+\{labels\.confirmImport\}\n\s+<\/Button>/)
+  // v-track plan 2 A6: with no ready row the import waits focusable, tied to the counts beside it.
+  assert.match(source, /<Button\n\s+busy=\{isImporting\}\n\s+aria-disabled=\{noReadyRows \|\| undefined\}\n\s+aria-describedby=\{noReadyRows \? "asset-import-ready-summary" : undefined\}\n\s+onClick=\{\(\) => void confirmImport\(\)\}\n\s+>\n\s+\{labels\.confirmImport\}\n\s+<\/Button>/)
   assert.match(source, /<Notice tone="danger" role="alert" className="mt-4">\n\s+<ApiErrorText error=\{error\} \/>\n\s+<\/Notice>/)
   assert.match(source, /type="file"\n\s+accept="\.xlsx"\n\s+className="hidden"/)
   assert.doesNotMatch(source, /<button\b|labels\.importing|\$\{labels\.chooseFile\}\.\.\.|disabled:opacity|border-danger-border bg-danger-soft/)
