@@ -70,6 +70,7 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 // The files whose every form shows its errors under the fields (spec G1). Each form task adds its file here, in the
 // commit that moves the file's last form.
 const V_FORMS: readonly string[] = [
+  `${C}disposal/disposal-request-form.tsx`,
   `${C}asset-operations/transaction-cancel-dialog.tsx`,
   `${C}asset-operations/bulk-move-form.tsx`,
   `${C}asset-operations/transfer-form.tsx`,
@@ -111,9 +112,15 @@ const V_FORMS: readonly string[] = [
 const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-execution-button.tsx`]: 1,
-  [`${C}disposal/disposal-request-form.tsx`]: 1,
   [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 2,
+}
+
+// Toasts outside a catch in a V form that are not about a field (spec U2: toasts stay for other failures), with the exact
+// count per file, why each stays a toast and the ruling that keeps it. Never a validation message; a count that drops
+// lowers or deletes its row.
+const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: string; ruling: string }>> = {
+  [`${C}disposal/disposal-request-form.tsx`]: { count: 1, why: "the request is saved and some evidence files did not upload", ruling: "v-track plan 2 D-R5" },
 }
 
 const SELECT_TAGS = ["SearchableSelect", "MaintenanceOptionSelect", "AuditScanCheckField"]
@@ -183,7 +190,13 @@ test("V2 a moved form checks itself: validate() and noValidate right after onSub
 })
 
 test("V3 a moved form shows no toast outside a catch: validation errors sit under their fields (spec U2)", () => {
-  const problems = V_FORMS.flatMap((path) => linesOutsideCatch(read(path), VALIDATION_TOAST).map((line) => `${path}:${line}`))
+  const problems: string[] = []
+  for (const path of V_FORMS) {
+    const lines = linesOutsideCatch(read(path), VALIDATION_TOAST)
+    const allowed = NON_VALIDATION_TOASTS[path]?.count ?? 0
+    if (lines.length !== allowed) problems.push(`${path}: ${lines.length} outside a catch (lines ${lines.join(", ")}), NON_VALIDATION_TOASTS allows ${allowed}`)
+  }
+  for (const path of Object.keys(NON_VALIDATION_TOASTS)) if (!V_FORMS.includes(path)) problems.push(`NON_VALIDATION_TOASTS: ${path} is not in V_FORMS`)
   assert.deepEqual(problems, [], "show the error under its field (useFieldErrors); a catch keeps its toast for other failures")
 })
 

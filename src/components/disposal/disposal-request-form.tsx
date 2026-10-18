@@ -16,12 +16,73 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disposal/disposal-asset-picker"
-import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
+import { getApiErrorKey } from "@/lib/api-error-catalog"
+import {
+  getDisposalRequestReasonError,
+  showsEstimatedSaleValue,
+  showsEstimatedSalvageValue,
+  type DisposalType,
+} from "@/lib/disposal-type-policy"
 import { summarizeDisposalEvidenceUploads } from "@/lib/disposal-upload-outcome"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
+import { maxLength, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string }
+
+type DisposalRequestValues = {
+  assetId: string
+  disposalType: string
+  reason: string
+  requestedById: string
+  approverId: string
+  saleValue: string
+  salvageValue: string
+}
+
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The
+// approver has no rule anywhere and stays out.
+const FIELD_IDS = {
+  assetId: "disposal-request-asset",
+  disposalType: "disposal-request-type",
+  requestedById: "disposal-request-requested-by",
+  saleValue: "disposal-request-sale-value",
+  salvageValue: "disposal-request-salvage-value",
+  reason: "disposal-request-reason",
+} as const
+type DisposalRequestField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as DisposalRequestField[]
+
+// The fields the form shows: the estimated values follow the type. A hidden field is neither checked nor focused, so a
+// refusal about one falls through to the toast (v-track D-R4).
+function shownFields(values: DisposalRequestValues): DisposalRequestField[] {
+  const type = values.disposalType as DisposalType
+  return FIELD_ORDER.filter((key) => {
+    if (key === "saleValue") return showsEstimatedSaleValue(type)
+    if (key === "salvageValue") return showsEstimatedSalvageValue(type)
+    return true
+  })
+}
+
+// noValidate turns the browser's check off, so this restates the controls' required, min, minLength and maxLength, and
+// checks the asset and the requester the server requires, which nothing checked before (v-track M-R2, D-R2).
+function validate(values: DisposalRequestValues): Partial<Record<DisposalRequestField, string>> {
+  const errors: Partial<Record<DisposalRequestField, string>> = {}
+  const shown = shownFields(values)
+  const check = (key: DisposalRequestField, code: string | null) => {
+    if (code && shown.includes(key)) errors[key] = code
+  }
+  check("assetId", required(values.assetId))
+  check("disposalType", required(values.disposalType))
+  check("requestedById", required(values.requestedById))
+  check("saleValue", range(values.saleValue, 0))
+  check("salvageValue", range(values.salvageValue, 0))
+  // The server's own 12-character rule; its code is the message's catalog key (disposalReasonTooShort).
+  const reasonTooShort = getDisposalRequestReasonError(values.reason)
+  check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))
+  return errors
+}
 
 export function DisposalRequestForm({
   employees,
@@ -44,7 +105,7 @@ export function DisposalRequestForm({
   const [saving, setSaving] = useState(false)
   const [evidenceFiles, setEvidenceFiles] = useState<File[]>([])
   const [selectedAssets, setSelectedAssets] = useState<DisposalAssetOption[]>(initialAsset ? [initialAsset] : [])
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<DisposalRequestValues>({
     assetId: initialAsset?.id ?? "",
     disposalType: "dispose",
     reason: initialReason ?? "",
@@ -53,15 +114,23 @@ export function DisposalRequestForm({
     saleValue: "",
     salvageValue: "",
   })
+  const fieldErrors = useFieldErrors<DisposalRequestField>()
+  const validationMessage = useValidationMessage()
+  const focusFirstError = () => fieldErrors.focusFirst(shownFields(values), { idFor: (key) => FIELD_IDS[key] })
 
-  function setField(field: string, value: string) {
+  function setField(field: keyof DisposalRequestValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
+    // The type decides which estimated values show: it clears them with itself.
+    if (field === "disposalType") fieldErrors.clear("disposalType", "saleValue", "salvageValue")
+    else if (field in FIELD_IDS) fieldErrors.clear(field as DisposalRequestField)
   }
 
   const approverOptions = employees.filter((employee) => employee.id !== values.requestedById)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setSaving(true)
 
     try {
@@ -81,7 +150,11 @@ export function DisposalRequestForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(getDisposalApiErrorMessage(payload, t, tCommon("error")))
+      if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(getDisposalApiErrorMessage(payload, t, tCommon("error")))
+      }
       const uploadResults: Array<{ fileName: string; ok: boolean }> = []
       for (const file of evidenceFiles) {
         const formData = new FormData()
@@ -114,9 +187,10 @@ export function DisposalRequestForm({
 
   return (
     <ContentPanel>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <FormSection number={1} title={t("formSteps.asset")} className="md:col-span-2" />
         <DisposalAssetPicker
+          id="disposal-request-asset"
           label={t("asset")}
           selected={selectedAssets}
           onChange={(assets) => {
@@ -125,8 +199,16 @@ export function DisposalRequestForm({
           }}
           searchPlaceholder={tCommon("searchSelectPlaceholder")}
           emptyLabel={tCommon("searchSelectNoResults")}
+          error={fieldErrors.message("assetId")}
         />
-        <Select label={t("disposalType")} value={values.disposalType} required onChange={(value) => setField("disposalType", value)}>
+        <Select
+          label={t("disposalType")}
+          id="disposal-request-type"
+          value={values.disposalType}
+          required
+          onChange={(value) => setField("disposalType", value)}
+          error={fieldErrors.message("disposalType")}
+        >
           <option value="dispose">{t("types.dispose")}</option>
           <option value="sell">{t("types.sell")}</option>
           <option value="donate">{t("types.donate")}</option>
@@ -135,6 +217,7 @@ export function DisposalRequestForm({
         </Select>
         <FormSection number={2} title={t("formSteps.request")} className="md:col-span-2" />
         <SearchableSelect
+          id="disposal-request-requested-by"
           label={t("requestedBy")}
           value={values.requestedById}
           required
@@ -142,15 +225,23 @@ export function DisposalRequestForm({
           placeholder={t("selectEmployee")}
           searchPlaceholder={tCommon("searchSelectPlaceholder")}
           emptyLabel={tCommon("searchSelectNoResults")}
-          onChange={(value) => setValues((current) => ({
-            ...current,
-            requestedById: value,
-            approverId: current.approverId === value ? "" : current.approverId,
-          }))}
+          error={fieldErrors.message("requestedById")}
+          onChange={(value) => {
+            setValues((current) => ({
+              ...current,
+              requestedById: value,
+              approverId: current.approverId === value ? "" : current.approverId,
+            }))
+            fieldErrors.clear("requestedById")
+          }}
         />
         <SearchableSelect label={t("approver")} value={values.approverId} options={approverOptions} placeholder={t("noApprover")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("approverId", value)} />
         {showsEstimatedSaleValue(values.disposalType as DisposalType) ? (
-          <Field label={t("saleValueBaht")}>
+          <Field
+            label={t("saleValueBaht")}
+            id="disposal-request-sale-value"
+            error={fieldErrors.errors.saleValue ? validationMessage(fieldErrors.errors.saleValue, { min: 0 }) : undefined}
+          >
             <Input
               type="number"
               inputMode="decimal"
@@ -162,7 +253,11 @@ export function DisposalRequestForm({
           </Field>
         ) : null}
         {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? (
-          <Field label={t("salvageValueBaht")}>
+          <Field
+            label={t("salvageValueBaht")}
+            id="disposal-request-salvage-value"
+            error={fieldErrors.errors.salvageValue ? validationMessage(fieldErrors.errors.salvageValue, { min: 0 }) : undefined}
+          >
             <Input
               type="number"
               inputMode="decimal"
@@ -176,8 +271,10 @@ export function DisposalRequestForm({
         <div className="md:col-span-2">
           <Field
             label={t("reason")}
+            id="disposal-request-reason"
             required
             hint={<span className="block text-right">{t("reasonCharacterCount", { count: values.reason.length, max: 4000 })}</span>}
+            error={fieldErrors.errors.reason ? validationMessage(fieldErrors.errors.reason, { min: 12, max: 4000 }) : undefined}
           >
             <Textarea
               value={values.reason}
@@ -223,19 +320,23 @@ export function DisposalRequestForm({
 
 function Select({
   label,
+  id,
   value,
   required,
   onChange,
+  error,
   children,
 }: {
   label: string
+  id?: string
   value: string
   required?: boolean
   onChange: (value: string) => void
+  error?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
-    <Field label={label} required={required}>
+    <Field label={label} id={id} required={required} error={error}>
       <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
       </NativeSelect>
