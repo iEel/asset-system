@@ -2276,7 +2276,8 @@
     "activeFilters": "Active filters",
     "comparisonColumn": "System → found",
     "dueOn": "Due {date}",
-    "closeNeedsEvidence": "No closure evidence yet. Attach at least one file before you close this discrepancy."
+    "closeNeedsEvidence": "No closure evidence yet. Attach at least one file before you close this discrepancy.",
+    "batchNeedsSelection": "Nothing selected yet. Select at least one discrepancy before you decide."
   },
   "auditPending": {
     "title": "Pending Assets",

@@ -246,8 +246,9 @@ test("the findings batch panel: shared checkboxes, Button with busy, approve in 
   const source = read(FINDINGS_BATCH)
   assert.match(source, /<ChoiceCard\s+key=\{finding\.id\}\s+type="checkbox"\s+label=\{finding\.label\}\s+description=\{finding\.detail\}\s+checked=\{selectedSet\.has\(finding\.id\)\}\s+onChange=\{\(\) => toggleFinding\(finding\.id\)\}/)
   assert.match(source, /actions=\{\s*<>\s*<Button variant="outline" size="md" onClick=\{toggleAll\}>/)
-  assert.match(source, /<Button\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("approve"\)\}\n\s+busy=\{reviewing === "approve"\}\n\s+disabled=\{selectedCount === 0 \|\| reviewing === "reject" \|\| reviewDialogAction !== null\}\n\s+>/)
-  assert.match(source, /<Button\n\s+variant="danger"\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("reject"\)\}\n\s+busy=\{reviewing === "reject"\}\n\s+disabled=\{selectedCount === 0 \|\| reviewing === "approve" \|\| reviewDialogAction !== null\}\n\s+>/)
+  // With nothing selected the buttons are aria-disabled with their reason (v-track plan 2 U5); busy stays disabled.
+  assert.match(source, /<Button\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("approve"\)\}\n\s+busy=\{reviewing === "approve"\}\n\s+aria-disabled=\{noSelection \|\| undefined\}\n[^\n]*\n\s+disabled=\{reviewing === "reject" \|\| reviewDialogAction !== null\}\n\s+>/)
+  assert.match(source, /<Button\n\s+variant="danger"\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("reject"\)\}\n\s+busy=\{reviewing === "reject"\}\n\s+aria-disabled=\{noSelection \|\| undefined\}\n[^\n]*\n\s+disabled=\{reviewing === "approve" \|\| reviewDialogAction !== null\}\n\s+>/)
   assert.doesNotMatch(source, /<button\b|<Loader2\b|\bbg-success\b|\bbg-danger\b|opacity-50|h-4 w-4 rounded/, "no hand-written button, spinner, green fill or old checkbox is left")
   assert.match(source, /<ConfirmTextDialog\n/, "the confirm dialog stays as it is (2C plan 3)")
 })

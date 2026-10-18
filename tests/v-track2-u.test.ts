@@ -165,3 +165,29 @@ test("finding dialogs: decision, action plan and close are forms that validate t
   assert.equal(th.auditFinding.closeNeedsEvidence, "ยังไม่มีหลักฐานปิดงาน ต้องแนบหลักฐานอย่างน้อย 1 ไฟล์ก่อนจึงจะปิดรายการไม่ตรงได้")
   assert.equal(en.auditFinding.closeNeedsEvidence, "No closure evidence yet. Attach at least one file before you close this discrepancy.")
 })
+
+test("batch review: approve and reject stay focusable with nothing selected and say why beside them; the confirm dialog's form keeps the browser out (v-track U5)", () => {
+  const source = read(`${C}audit-findings-batch-actions.tsx`)
+  // The form is ConfirmTextDialog's (a shared part, NOT_IN_SCOPE); it takes noValidate for its caller (spec §4.5).
+  assert.match(read("src/components/ui/confirm-text-dialog.tsx"), /<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/)
+  // Nothing in the dialog can be wrong before the request (U-R6); no toast for a validation error.
+  assert.match(source, /^function validate\(\): Partial<Record<"reviewRemark", string>> \{\n  return \{\}\n\}$/m)
+  assert.match(source, /async function reviewSelected\(action: "approve" \| "reject", reviewRemark: string\) \{\n\s+if \(Object\.keys\(validate\(\)\)\.length > 0\) return/)
+  assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/)
+  // The selection is a prerequisite (spec §4.4): aria-disabled with the reason beside the buttons; busy stays disabled.
+  assert.match(source, /const noSelection = selectedCount === 0/)
+  assert.match(source, /function openReviewDialog\(action: "approve" \| "reject"\) \{\n\s+if \(noSelection\) return/)
+  for (const [action, other] of [["approve", "reject"], ["reject", "approve"]]) {
+    assert.match(
+      source,
+      new RegExp(`onClick=\\{\\(\\) => openReviewDialog\\("${action}"\\)\\}\\n\\s+busy=\\{reviewing === "${action}"\\}\\n\\s+aria-disabled=\\{noSelection \\|\\| undefined\\}\\n\\s+aria-describedby=\\{noSelection \\? "audit-batch-review-reason" : undefined\\}\\n\\s+disabled=\\{reviewing === "${other}" \\|\\| reviewDialogAction !== null\\}\\n`),
+      action,
+    )
+  }
+  assert.ok(source.includes('{noSelection ? <p id="audit-batch-review-reason" className="text-meta text-muted-foreground">{t("batchNeedsSelection")}</p> : null}'))
+  assert.doesNotMatch(source, /selectedCount === 0 \|\|/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.auditFinding.batchNeedsSelection, "ยังไม่ได้เลือกรายการ ต้องเลือกรายการไม่ตรงอย่างน้อย 1 รายการก่อนจึงจะพิจารณาได้")
+  assert.equal(en.auditFinding.batchNeedsSelection, "Nothing selected yet. Select at least one discrepancy before you decide.")
+})

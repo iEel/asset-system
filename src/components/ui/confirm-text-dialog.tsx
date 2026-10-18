@@ -73,8 +73,9 @@ function ConfirmTextForm({
     if (!busy) onConfirm(value.trim())
   }
 
+  // noValidate like every V-track form (spec §4.5): the caller checks what it needs before it acts.
   return (
-    <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+    <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
       <AccessibleDialogBody>
         <Field label={fieldLabel}>
           <Textarea

@@ -17,6 +17,13 @@ type BatchFinding = {
   detail: string
 }
 
+// The batch's form is ConfirmTextDialog's, which turns the browser's check off (spec §4.5). Nothing in it can be wrong
+// before the request: the remark is optional and the server sets no limit on it. The selection is a prerequisite
+// (spec §4.4), gated on the buttons with its reason (v-track U-R6, U-R10).
+function validate(): Partial<Record<"reviewRemark", string>> {
+  return {}
+}
+
 export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding[] }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -27,6 +34,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
   const [reviewDialogAction, setReviewDialogAction] = useState<"approve" | "reject" | null>(null)
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const selectedCount = selectedIds.length
+  const noSelection = selectedCount === 0
 
   function toggleFinding(id: string) {
     setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
@@ -36,12 +44,14 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
     setSelectedIds((current) => (current.length === findings.length ? [] : findings.map((finding) => finding.id)))
   }
 
+  // The buttons stay focusable while nothing is selected (aria-disabled), so the gate returns here.
   function openReviewDialog(action: "approve" | "reject") {
-    if (selectedIds.length === 0) return
+    if (noSelection) return
     setReviewDialogAction(action)
   }
 
   async function reviewSelected(action: "approve" | "reject", reviewRemark: string) {
+    if (Object.keys(validate()).length > 0) return
     setReviewing(action)
     try {
       for (const findingId of selectedIds) {
@@ -80,7 +90,9 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
               size="md"
               onClick={() => openReviewDialog("approve")}
               busy={reviewing === "approve"}
-              disabled={selectedCount === 0 || reviewing === "reject" || reviewDialogAction !== null}
+              aria-disabled={noSelection || undefined}
+              aria-describedby={noSelection ? "audit-batch-review-reason" : undefined}
+              disabled={reviewing === "reject" || reviewDialogAction !== null}
             >
               <Check aria-hidden="true" />
               {t("approveSelected")}
@@ -90,11 +102,15 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
               size="md"
               onClick={() => openReviewDialog("reject")}
               busy={reviewing === "reject"}
-              disabled={selectedCount === 0 || reviewing === "approve" || reviewDialogAction !== null}
+              aria-disabled={noSelection || undefined}
+              aria-describedby={noSelection ? "audit-batch-review-reason" : undefined}
+              disabled={reviewing === "approve" || reviewDialogAction !== null}
             >
               <X aria-hidden="true" />
               {t("rejectSelected")}
             </Button>
+            {/* Why the decision waits: a prerequisite keeps its gate and says so beside the buttons (spec §4.4). */}
+            {noSelection ? <p id="audit-batch-review-reason" className="text-meta text-muted-foreground">{t("batchNeedsSelection")}</p> : null}
           </>
         }
       >
