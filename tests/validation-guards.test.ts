@@ -110,12 +110,12 @@ const V_FORMS: readonly string[] = [
   `${C}audit/audit-finding-review-actions.tsx`,
   `${C}audit/audit-findings-batch-actions.tsx`,
   `${C}audit/audit-scan-check-form.tsx`,
+  `${C}maintenance/maintenance-plan-form.tsx`,
 ]
 
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).
 // Exact counts at the plan's base; a row drops in the commit that gives its selects their errors, and a new one fails.
 const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
-  [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 2,
 }
 

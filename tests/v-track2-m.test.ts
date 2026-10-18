@@ -103,3 +103,79 @@ test("the step rule: a number field's step (money to 0.01, whole days) is restat
   for (const empty of ["", "  ", null, undefined]) assert.equal(step(empty, 0.01), null, "an empty value is left to required")
   assert.match(read("src/lib/validation-rules.ts"), /^export function step\(value: number \| string \| null \| undefined, size: number\): RuleCode \| null \{$/m)
 })
+
+// The maintenance forms, read as text (tests cannot import .tsx).
+const C = "src/components/"
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+// The body of the module-level `function validate(`, up to the first line that is only "}".
+function validateBody(source: string) {
+  const start = source.search(/^function validate\(/m)
+  assert.notEqual(start, -1, "a module-level function validate(")
+  return source.slice(start, source.indexOf("\n}\n", start))
+}
+
+// The shape every migrated form shares (plan 1 M-R1 to M-R4): noValidate straight after onSubmit, the field table in
+// visual order, validate(), the hook, focus on the first wrong field, each listed key's message under its field, and no
+// toast for a validation error. `resultToast` is the one toast a file may keep outside a catch (MT-R5).
+function assertMigratedForm(
+  source: string,
+  form: { ids: Record<string, string>; handler?: string; messages?: readonly string[]; table?: string; hook?: string; server?: false; resultToast?: string },
+) {
+  const handler = form.handler ?? "handleSubmit"
+  const table = form.table ?? "FIELD_IDS"
+  const hook = form.hook ?? "fieldErrors"
+  assert.match(source, new RegExp(`<form onSubmit=\\{${handler}\\} noValidate[ >\\n]`), "noValidate directly after onSubmit")
+  assert.match(source, /import \{ useFieldErrors(?:, useValidationMessage)? \} from "@\/components\/ui\/use-field-errors"/)
+  const block = source.match(new RegExp(`const ${table} = \\{\\n([\\s\\S]*?)\\n\\} as const`))
+  assert.ok(block, `const ${table} = { … } as const`)
+  assert.deepEqual(block[1].split("\n"), Object.entries(form.ids).map(([key, id]) => `  ${key}: "${id}",`), `${table}: the fields in visual order with their ids`)
+  for (const id of Object.values(form.ids)) {
+    assert.equal(source.match(new RegExp(`\\bid="${escape(id)}"`, "g"))?.length, 1, `id "${id}" once`)
+  }
+  for (const key of form.messages ?? Object.keys(form.ids)) {
+    assert.match(source, new RegExp(`error=\\{${hook}\\.message\\("${escape(key)}"\\)\\}`), `${key}: its error under the field`)
+  }
+  assert.match(source, new RegExp(`${hook}\\.setErrors\\(validate\\(`), "the client's errors come from validate()")
+  if (form.server !== false) {
+    assert.match(source, new RegExp(`if \\(${hook}\\.applyServer\\(payload\\) && `), "the server's fieldErrors land on the same fields")
+  }
+  assert.match(source, new RegExp(`${hook}\\.focusFirst\\(`), "focus goes to the first wrong field")
+  const rest = form.resultToast ? source.split(form.resultToast).join("") : source
+  assert.doesNotMatch(rest, /\btoast\.(?:error|warning)\(/, "no validation toast (the catch keeps apiError.toast)")
+}
+
+test("PM plan: errors under the field, the asset select checked, whole days from 1 to 3650, and the server's refusals on the same fields (v-track2 M3)", () => {
+  const source = read(`${C}maintenance/maintenance-plan-form.tsx`)
+  assertMigratedForm(source, {
+    ids: {
+      assetId: "maintenance-plan-asset",
+      title: "maintenance-plan-title",
+      frequency: "maintenance-plan-frequency",
+      intervalDays: "maintenance-plan-interval-days",
+      nextDueDate: "maintenance-plan-next-due-date",
+      vendorId: "maintenance-plan-vendor",
+      notes: "maintenance-plan-notes",
+    },
+    messages: ["assetId", "title", "frequency", "nextDueDate", "vendorId", "notes"],
+  })
+  assert.match(source, /^function validate\(values: PlanValues, isEdit: boolean\) \{$/m)
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("assetId", isEdit ? null : required(values.assetId))',
+    'check("title", required(values.title) ?? maxLength(values.title, 200))',
+    'check("frequency", required(values.frequency))',
+    'check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1) : null)',
+    'check("nextDueDate", required(values.nextDueDate))',
+    'check("notes", maxLength(values.notes, 4000))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.match(source, /fieldErrors\.setErrors\(validate\(values, Boolean\(planId\)\)\)/)
+  // The days say their range (plan 1 M-R4: a field with limits says its numbers).
+  assert.ok(source.includes("error={fieldErrors.errors.intervalDays ? validationMessage(fieldErrors.errors.intervalDays, { min: 1, max: 3650 }) : undefined}"))
+  // The asset select was an asterisk nothing checked (spec §5): it has an id for focus and shows its error.
+  assert.match(source, /<MaintenanceOptionSelect\n\s+id="maintenance-plan-asset"\n\s+type="asset"\n[\s\S]*?\n\s+required\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("assetId"\)\}\n/)
+  // A field's error clears when it changes; a frequency change also clears the days, which only a custom frequency shows.
+  assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n[^\n]*\n\s+if \(field === "frequency"\) fieldErrors\.clear\("frequency", "intervalDays"\)\n\s+else fieldErrors\.clear\(field\)/)
+  // A refusal with a field (the vendor, a zod 400) lands under it; any other keeps the domain message.
+  assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, t, tCommon\("error"\)\)\)/)
+})

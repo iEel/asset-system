@@ -23,8 +23,11 @@ test("the PM plan form uses the shared field primitives and a busy save button (
   const form = readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(form, /import \{ Field \} from "@\/components\/ui\/field"/)
   assert.doesNotMatch(form, /function Field\(|<input|<select|<textarea|Loader2|ml-1 text-danger/)
-  assert.equal(form.match(/<Field label=\{t\("pm\w+"\)\} required>/g)?.length, 4)
-  assert.equal(form.match(/^\s+required$/gm)?.length, 4, "each starred field keeps the browser's own required check")
+  // Each starred Field names its control and shows its error (v-track plan 2 M3); the days Field says its range.
+  assert.equal(form.match(/<Field label=\{t\("pm\w+"\)\} id="maintenance-plan-[\w-]+" required error=\{fieldErrors\.message\("\w+"\)\}>/g)?.length, 3)
+  assert.match(form, /<Field\n\s+label=\{t\("pmIntervalDays"\)\}\n\s+id="maintenance-plan-interval-days"\n\s+required\n/)
+  // Four controls keep the browser's own required; the asset select and the days Field write theirs on a line too.
+  assert.equal(form.match(/^\s+required$/gm)?.length, 6, "each starred field keeps the browser's own required check")
   assert.match(form, /<Textarea\n\s+value=\{values\.notes\}[\s\S]*?maxLength=\{4000\}[\s\S]*?className="min-h-20"/)
   assert.match(form, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
 })

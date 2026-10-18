@@ -14,9 +14,42 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { maxLength, range, required, step } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string }
+type PlanValues = { assetId: string; title: string; frequency: string; intervalDays: string; nextDueDate: string; vendorId: string; notes: string }
+
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
+const FIELD_IDS = {
+  assetId: "maintenance-plan-asset",
+  title: "maintenance-plan-title",
+  frequency: "maintenance-plan-frequency",
+  intervalDays: "maintenance-plan-interval-days",
+  nextDueDate: "maintenance-plan-next-due-date",
+  vendorId: "maintenance-plan-vendor",
+  notes: "maintenance-plan-notes",
+} as const
+type PlanField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as PlanField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required, min, max, step and maxLength, and
+// the asset the server needs on create; an edit keeps its asset (the select is fixed and not sent) (v-track M-R2).
+function validate(values: PlanValues, isEdit: boolean) {
+  const errors: Partial<Record<PlanField, string>> = {}
+  const check = (key: PlanField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("assetId", isEdit ? null : required(values.assetId))
+  check("title", required(values.title) ?? maxLength(values.title, 200))
+  check("frequency", required(values.frequency))
+  // The days count only for a custom frequency: whole days from 1 to 3650.
+  check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1) : null)
+  check("nextDueDate", required(values.nextDueDate))
+  check("notes", maxLength(values.notes, 4000))
+  return errors
+}
 
 export function MaintenancePlanForm({
   locale,
@@ -44,7 +77,7 @@ export function MaintenancePlanForm({
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<PlanValues>({
     assetId: initialAsset?.id ?? "",
     title: initialValues?.title ?? "",
     frequency: initialValues?.frequency ?? "monthly",
@@ -54,12 +87,21 @@ export function MaintenancePlanForm({
     notes: initialValues?.notes ?? "",
   })
 
-  function setField(field: string, value: string) {
+  const fieldErrors = useFieldErrors<PlanField>()
+  const validationMessage = useValidationMessage()
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
+  function setField<K extends PlanField>(field: K, value: PlanValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    // The days show only for a custom frequency, so a frequency change clears their error too.
+    if (field === "frequency") fieldErrors.clear("frequency", "intervalDays")
+    else fieldErrors.clear(field)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate(values, Boolean(planId)))
+    if (focusFirstError()) return
     setSaving(true)
     try {
       const response = await fetch(planId ? `/api/maintenance-plans/${planId}` : "/api/maintenance-plans", {
@@ -76,7 +118,11 @@ export function MaintenancePlanForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
+      if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
+      }
       toast.success(t("pmCreateSuccess"))
       router.push(returnHref)
     } catch (error) {
@@ -88,9 +134,23 @@ export function MaintenancePlanForm({
 
   return (
     <ContentPanel>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <MaintenanceOptionSelect type="asset" label={t("asset")} value={values.assetId} required disabled={Boolean(planId)} initialOption={initialAsset} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setField("assetId", value)} />
-        <Field label={t("pmPlanTitle")} required>
+      <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <MaintenanceOptionSelect
+          id="maintenance-plan-asset"
+          type="asset"
+          label={t("asset")}
+          value={values.assetId}
+          required
+          disabled={Boolean(planId)}
+          initialOption={initialAsset}
+          placeholder={t("selectAsset")}
+          searchPlaceholder={tCommon("searchSelectPlaceholder")}
+          emptyLabel={tCommon("searchSelectNoResults")}
+          loadingLabel={tCommon("loading")}
+          error={fieldErrors.message("assetId")}
+          onChange={(value) => setField("assetId", value)}
+        />
+        <Field label={t("pmPlanTitle")} id="maintenance-plan-title" required error={fieldErrors.message("title")}>
           <Input
             value={values.title}
             required
@@ -98,7 +158,7 @@ export function MaintenancePlanForm({
             onChange={(event) => setField("title", event.target.value)}
           />
         </Field>
-        <Field label={t("pmFrequencyLabel")} required>
+        <Field label={t("pmFrequencyLabel")} id="maintenance-plan-frequency" required error={fieldErrors.message("frequency")}>
           <NativeSelect
             value={values.frequency}
             required
@@ -111,7 +171,12 @@ export function MaintenancePlanForm({
           </NativeSelect>
         </Field>
         {values.frequency === "custom" ? (
-          <Field label={t("pmIntervalDays")} required>
+          <Field
+            label={t("pmIntervalDays")}
+            id="maintenance-plan-interval-days"
+            required
+            error={fieldErrors.errors.intervalDays ? validationMessage(fieldErrors.errors.intervalDays, { min: 1, max: 3650 }) : undefined}
+          >
             <Input
               type="number"
               min="1"
@@ -122,7 +187,7 @@ export function MaintenancePlanForm({
             />
           </Field>
         ) : null}
-        <Field label={t("pmNextDueDate")} required>
+        <Field label={t("pmNextDueDate")} id="maintenance-plan-next-due-date" required error={fieldErrors.message("nextDueDate")}>
           <Input
             type="date"
             value={values.nextDueDate}
@@ -130,9 +195,20 @@ export function MaintenancePlanForm({
             onChange={(event) => setField("nextDueDate", event.target.value)}
           />
         </Field>
-        <MaintenanceOptionSelect type="supplier" label={t("pmExternalProvider")} value={values.vendorId} placeholder={t("pmNoExternalProvider")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setField("vendorId", value)} />
+        <MaintenanceOptionSelect
+          id="maintenance-plan-vendor"
+          type="supplier"
+          label={t("pmExternalProvider")}
+          value={values.vendorId}
+          placeholder={t("pmNoExternalProvider")}
+          searchPlaceholder={tCommon("searchSelectPlaceholder")}
+          emptyLabel={tCommon("searchSelectNoResults")}
+          loadingLabel={tCommon("loading")}
+          error={fieldErrors.message("vendorId")}
+          onChange={(value) => setField("vendorId", value)}
+        />
         <div className="md:col-span-2 xl:col-span-3">
-          <Field label={t("pmNotes")}>
+          <Field label={t("pmNotes")} id="maintenance-plan-notes" error={fieldErrors.message("notes")}>
             <Textarea
               value={values.notes}
               rows={3}
