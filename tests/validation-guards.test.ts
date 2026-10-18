@@ -90,6 +90,7 @@ const V_FORMS: readonly string[] = [
   `${C}assets/asset-component-manager.tsx`,
   `${C}assets/asset-status-correction-button.tsx`,
   `${C}assets/asset-import-preview-panel.tsx`,
+  `${C}assets/asset-label-print.tsx`,
   `${C}reports/report-preset-controls.tsx`,
 ]
 

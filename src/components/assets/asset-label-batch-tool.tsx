@@ -419,10 +419,12 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   options={filteredLocationOptions}
                   allLabel={labels.all}
                 />
+                {/* A filter, not a form: the end cannot be picked before the start (spec U4, §7.4), like the disposal list. */}
                 <Field label={labels.queueFilterCreatedFrom}>
                   <Input
                     type="date"
                     value={queueFilters.createdFrom}
+                    max={queueFilters.createdTo || undefined}
                     onChange={(event) => updateQueueFilter("createdFrom", event.target.value)}
                   />
                 </Field>
@@ -430,6 +432,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   <Input
                     type="date"
                     value={queueFilters.createdTo}
+                    min={queueFilters.createdFrom || undefined}
                     onChange={(event) => updateQueueFilter("createdTo", event.target.value)}
                   />
                 </Field>

@@ -292,3 +292,20 @@ test("import wizard: a picked file is its one rule, and the import waits for a r
   assert.doesNotMatch(source, /disabled=\{preview\.summary\.readyRows === 0\}/)
   assert.match(source, /if \(!selectedFile \|\| !preview \|\| preview\.summary\.readyRows === 0\) return/)
 })
+
+test("label print: the toolbar is a form whose reason shows its error under the row, and the queue's created dates hold their order (v-track A7)", () => {
+  const source = read(`${C}assets/asset-label-print.tsx`)
+  assertMovedForm(source, { handler: "handlePrint", ids: { reason: "asset-label-print-reason" } })
+  assert.ok(functionBody(source).includes('check("reason", maxLength(values.reason, 500))'))
+  assert.match(source, /event\.preventDefault\(\)\n\s+if \(recordingPrint \|\| assetIds\.length === 0\) return\n\s+fieldErrors\.setErrors\(validate\(\{ reason: printReason \}\)\)/)
+  assert.match(source, /<Button type="submit" size="lg" busy=\{recordingPrint\} className="w-full sm:w-auto">/)
+  // The boxed reason (2C K21) takes the error look itself, ties its error line, and turns teal on focus.
+  assert.match(source, /fieldErrors\.errors\.reason && "border-danger ring-1 ring-danger shadow-field-error",/)
+  assert.match(source, /aria-invalid=\{fieldErrors\.errors\.reason \? true : undefined\}\n\s+aria-describedby=\{fieldErrors\.errors\.reason \? "asset-label-print-reason-error" : undefined\}/)
+  assert.ok(source.includes('{fieldErrors.errors.reason ? <FieldError id="asset-label-print-reason-error">{fieldErrors.message("reason")}</FieldError> : null}'))
+  assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\("Unable to record label print"\)/)
+  // The print queue's filter: the end cannot be picked before the start (spec U4, §7.4); a filter has no validate().
+  const queue = read(`${C}assets/asset-label-batch-tool.tsx`)
+  assert.match(queue, /value=\{queueFilters\.createdFrom\}\n\s+max=\{queueFilters\.createdTo \|\| undefined\}/)
+  assert.match(queue, /value=\{queueFilters\.createdTo\}\n\s+min=\{queueFilters\.createdFrom \|\| undefined\}/)
+})

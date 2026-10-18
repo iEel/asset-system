@@ -19,7 +19,7 @@ test("buttons in a row of 40px fields stay 40px: lg for text, icon-lg for icons 
   // The phone card header of the batch form is not a field row: its remove icon follows `icon` to 36px.
   assert.match(read(`${C}assets/asset-batch-form.tsx`), /variant="outline"\n\s+size="icon"\n\s+className="shrink-0"\n\s+onClick=\{\(\) => handleRemoveRow\(row\.clientId\)\}/)
   // The label print toolbar: the print button sits beside two boxed 40px fields (K21).
-  assert.match(read(`${C}assets/asset-label-print.tsx`), /<Button size="lg" onClick=\{handlePrint\} busy=\{recordingPrint\} className="w-full sm:w-auto">/)
+  assert.match(read(`${C}assets/asset-label-print.tsx`), /<Button type="submit" size="lg" busy=\{recordingPrint\} className="w-full sm:w-auto">/)
 })
 
 test("the repair record's header buttons are md, like every PageHeader button (spec 2D D6)", () => {
