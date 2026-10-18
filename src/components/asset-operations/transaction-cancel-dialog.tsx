@@ -10,9 +10,30 @@ import { Field } from "@/components/ui/field"
 import { orNil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { formatCount } from "@/lib/display-format"
+import { maxLength, minLength, required } from "@/lib/validation-rules"
 
 type TransactionType = "checkout" | "checkin" | "transfer"
+
+// The one field, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The confirm button
+// submits, as before: the one field is a textarea, where Enter is a new line, so a form element would add nothing (O-R6).
+const FIELD_IDS = {
+  reason: "transaction-cancel-reason",
+} as const
+type CancelField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as CancelField[]
+
+// The server's 5 to 2000 characters (the textarea carries maxLength); the minimum was a check whose message sat in the
+// dialog's Notice (v-track M-R2).
+function validate(values: { reason: string }): Partial<Record<CancelField, string>> {
+  const errors: Partial<Record<CancelField, string>> = {}
+  const check = (key: CancelField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("reason", required(values.reason) ?? minLength(values.reason, 5) ?? maxLength(values.reason, 2000))
+  return errors
+}
 
 export type TransactionCancellationLabels = {
   action: string
@@ -74,13 +95,22 @@ export function TransactionCancelDialog({
   const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [blockers, setBlockers] = useState<string[]>([])
+  const fieldErrors = useFieldErrors<CancelField>()
+  const blocked = blockers.length > 0
   const endpoint = `/api/asset-${type}s/${transactionId}`
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
+  function changeReason(value: string) {
+    setReason(value)
+    fieldErrors.clear("reason")
+  }
 
   async function openPreview() {
     setOpen(true)
     setLoading(true)
     setError(null)
     setBlockers([])
+    fieldErrors.setErrors({})
     try {
       const response = await fetch(`${endpoint}/cancel-preview`, { cache: "no-store" })
       const payload = await response.json().catch(() => null)
@@ -96,13 +126,12 @@ export function TransactionCancelDialog({
   useImperativeHandle(ref, () => ({ open: () => void openPreview() }))
 
   async function submitCancellation() {
-    if (reason.trim().length < 5) {
-      setError(labels.reasonTooShort)
-      reasonRef.current?.focus()
-      return
-    }
-    setSaving(true)
+    // A blocked cancellation keeps its gate; the blockers beside the reason say why (spec §4.4).
+    if (blocked) return
     setError(null)
+    fieldErrors.setErrors(validate({ reason }))
+    if (focusFirstError()) return
+    setSaving(true)
     try {
       const response = await fetch(`${endpoint}/cancel`, {
         method: "POST",
@@ -112,6 +141,8 @@ export function TransactionCancelDialog({
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
         if (payload?.status === "blocked") setBlockers(Array.isArray(payload.reasons) ? payload.reasons : [])
+        // A refusal that names the reason shows under it; any other keeps the dialog's Notice (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
         throw new Error(payload?.error ?? (payload?.status === "blocked" ? labels.blockedDescription : labels.error))
       }
       setOpen(false)
@@ -149,20 +180,25 @@ export function TransactionCancelDialog({
                 ))}
               </dl>
               {blockers.length > 0 ? (
-                <Notice tone="warning" role="status" title={labels.blockedTitle} className="mt-4">
+                <Notice tone="warning" role="status" title={labels.blockedTitle} id="transaction-cancel-blockers" className="mt-4">
                   <p>{labels.blockedDescription}</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-foreground">{blockers.map((blocker) => <li key={blocker}>{labels.blockers[blocker] ?? blocker}</li>)}</ul>
                 </Notice>
               ) : null}
-              <Field label={labels.reasonLabel} className="mt-4">
-                <Textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={saving || blockers.length > 0} rows={4} maxLength={2000} placeholder={labels.reasonPlaceholder} className="min-h-28" />
+              <Field
+                label={labels.reasonLabel}
+                id="transaction-cancel-reason"
+                className="mt-4"
+                error={fieldErrors.errors.reason === "required" || fieldErrors.errors.reason === "tooShort" ? labels.reasonTooShort : fieldErrors.message("reason")}
+              >
+                <Textarea ref={reasonRef} value={reason} onChange={(event) => changeReason(event.target.value)} disabled={saving || blockers.length > 0} rows={4} maxLength={2000} placeholder={labels.reasonPlaceholder} className="min-h-28" />
               </Field>
             </>
           )}
         </AccessibleDialogBody>
         <AccessibleDialogFooter>
           <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
-          <Button variant="destructive" busy={saving} disabled={loading || blockers.length > 0} onClick={() => void submitCancellation()}>
+          <Button variant="destructive" busy={saving} disabled={loading} aria-disabled={blocked || undefined} aria-describedby={blocked ? "transaction-cancel-blockers" : undefined} onClick={() => void submitCancellation()}>
             {labels.confirm}
           </Button>
         </AccessibleDialogFooter>

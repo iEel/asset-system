@@ -251,3 +251,20 @@ test("bulk move: the destination is checked at last, and the errors show under t
   assert.ok(source.includes('{fieldErrors.errors.assetIds === "required" ? t("selectAssets") : fieldErrors.message("assetIds")}'))
   assert.match(source, /current\.includes\(assetId\) \? current\.filter\(\(id\) => id !== assetId\) : \[\.\.\.current, assetId\]\n\s+\)\n\s+fieldErrors\.clear\("assetIds"\)/)
 })
+
+test("transaction cancel dialog: the reason's error under the field instead of the dialog Notice, and a blocked confirm says why and stays focusable (v-track O6)", () => {
+  const source = read(`${C}asset-operations/transaction-cancel-dialog.tsx`)
+  assertOperationForm(source, { ids: { reason: "transaction-cancel-reason" }, noValidate: false })
+  assert.ok(validateBody(source).includes('check("reason", required(values.reason) ?? minLength(values.reason, 5) ?? maxLength(values.reason, 2000))'))
+  assert.doesNotMatch(source, /<form\b/, "a textarea and a button: no <form> to submit (O-R6)")
+  assert.doesNotMatch(source, /setError\(labels\.reasonTooShort\)|reason\.trim\(\)\.length < 5/)
+  // Empty and too short read the dialog's own sentence; any other code from the server reads the shared one.
+  assert.ok(source.includes('error={fieldErrors.errors.reason === "required" || fieldErrors.errors.reason === "tooShort" ? labels.reasonTooShort : fieldErrors.message("reason")}'))
+  assert.match(source, /function changeReason\(value: string\) \{\n\s+setReason\(value\)\n\s+fieldErrors\.clear\("reason"\)\n/)
+  // A blocked cancellation keeps its gate (a prerequisite, spec §4.4): aria-disabled, tied to the blockers it lists.
+  assert.match(source, /if \(blocked\) return\n/)
+  assert.ok(source.includes('<Button variant="destructive" busy={saving} disabled={loading} aria-disabled={blocked || undefined} aria-describedby={blocked ? "transaction-cancel-blockers" : undefined} onClick={() => void submitCancellation()}>'))
+  assert.match(source, /<Notice tone="warning" role="status" title=\{labels\.blockedTitle\} id="transaction-cancel-blockers" className="mt-4">/)
+  // Each opening starts without the last opening's errors.
+  assert.match(source, /setBlockers\(\[\]\)\n\s+fieldErrors\.setErrors\(\{\}\)/)
+})

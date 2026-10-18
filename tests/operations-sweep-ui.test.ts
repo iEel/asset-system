@@ -49,7 +49,7 @@ test("transaction cancel dialog: the error is the first thing in the body, the b
 
 test("review focus 3: a blocked cancellation keeps its confirm and reason disabled, and the warning Notice says why (plan 2D-4)", () => {
   const source = read(`${C}asset-operations/transaction-cancel-dialog.tsx`)
-  assert.match(source, /<Button variant="destructive" busy=\{saving\} disabled=\{loading \|\| blockers\.length > 0\} onClick=\{\(\) => void submitCancellation\(\)\}>/)
+  assert.match(source, /<Button variant="destructive" busy=\{saving\} disabled=\{loading\} aria-disabled=\{blocked \|\| undefined\} aria-describedby=\{blocked \? "transaction-cancel-blockers" : undefined\} onClick=\{\(\) => void submitCancellation\(\)\}>/)
   assert.match(source, /<Textarea ref=\{reasonRef\}[^\n]*disabled=\{saving \|\| blockers\.length > 0\}/)
   assert.match(source, /\{blockers\.length > 0 \? \(\n\s+<Notice tone="warning" role="status"/)
   assert.match(source, /\{blockers\.map\(\(blocker\) => <li key=\{blocker\}>\{labels\.blockers\[blocker\] \?\? blocker\}<\/li>\)\}/, "every blocker is named in words")
