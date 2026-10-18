@@ -51,7 +51,7 @@ test("the check-in form uses the shared fields and a busy save button (2C batch 
   const source = formSource.replace(/\r\n/g, "\n")
   assert.doesNotMatch(source, /function Field\(|<input|<select|<textarea|Loader2/)
   assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate /)
-  assert.match(source, /<Field label=\{t\("returnDate"\)\} required>\n\s+<Input type="date" value=\{values\.returnDate\}/)
+  assert.match(source, /<Field label=\{t\("returnDate"\)\} id="checkin-return-date" required error=\{fieldErrors\.message\("returnDate"\)\}>\n\s+<Input type="date" value=\{values\.returnDate\}[^\n]* required \/>/)
   assert.match(source, /<NativeSelect value=\{value\} required=\{required\} disabled=\{disabled\} onChange=/)
   assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
   assert.match(source, /actionHref=\{`\/\$\{locale\}\/asset-management\/checkout`\}\n\s+actionLabel=\{t\("goToCheckout"\)\}\n\s+actionVariant="secondary"/)

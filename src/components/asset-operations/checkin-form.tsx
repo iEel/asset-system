@@ -27,8 +27,11 @@ import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { formatCount } from "@/lib/display-format"
+import { waitForDialogToClose } from "@/lib/field-focus"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { maxLength, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type StatusOption = Option & { name?: string }
@@ -62,6 +65,50 @@ type QueuedPhoto = {
   label: string
   file: File
 }
+type CheckinFormValues = {
+  checkoutId: string
+  returnDate: string
+  returnBy: string
+  receiveBy: string
+  conditionAfter: string
+  nextStatusId: string
+  nextLocationId: string
+  missingAccessories: string
+  damageNote: string
+  remark: string
+  maintenanceProblem: string
+}
+
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The two
+// people are keyed by their names (returnBy, receiveBy), the fields the server requires; the selects hold their ids.
+const FIELD_IDS = {
+  checkoutId: "checkin-checkout",
+  returnDate: "checkin-return-date",
+  returnBy: "checkin-return-by",
+  receiveBy: "checkin-receive-by",
+  conditionAfter: "checkin-condition-after",
+  nextStatusId: "checkin-next-status",
+  nextLocationId: "checkin-next-location",
+} as const
+type CheckinField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckinField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required (the return date had the star and
+// no check at all, spec §5) and the server's 100-character limit on the two names (v-track M-R2).
+function validate(values: CheckinFormValues): Partial<Record<CheckinField, string>> {
+  const errors: Partial<Record<CheckinField, string>> = {}
+  const check = (key: CheckinField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("checkoutId", required(values.checkoutId))
+  check("returnDate", required(values.returnDate))
+  check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100))
+  check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))
+  check("conditionAfter", required(values.conditionAfter))
+  check("nextStatusId", required(values.nextStatusId))
+  check("nextLocationId", required(values.nextLocationId))
+  return errors
+}
 
 export function CheckinForm({
   activeCheckouts,
@@ -91,6 +138,7 @@ export function CheckinForm({
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const fieldErrors = useFieldErrors<CheckinField>()
   const [legacyBackfillSavingId, setLegacyBackfillSavingId] = useState<string | null>(null)
   const initialLegacyCandidate = legacyReturnCandidates.find((asset) => asset.id === initialLegacyAssetId)
   const [legacyReturnSearch, setLegacyReturnSearch] = useState(initialLegacyCandidate?.assetTag ?? "")
@@ -101,7 +149,7 @@ export function CheckinForm({
   const [returnByEmployeeId, setReturnByEmployeeId] = useState("")
   const [receiveByEmployeeId, setReceiveByEmployeeId] = useState("")
   const initialCheckout = activeCheckouts.find((checkout) => checkout.id === initialCheckoutId && !checkout.disabled)
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<CheckinFormValues>({
     checkoutId: initialCheckout?.id ?? "",
     returnDate: toLocalDateInputValue(),
     returnBy: "",
@@ -170,8 +218,17 @@ export function CheckinForm({
     },
   })
 
+  // A refusal from the review closes it, and the field takes focus once the dialog has gone (spec §4.2, O-R1).
+  async function leaveReview() {
+    const closed = waitForDialogToClose()
+    setReviewOpen(false)
+    await closed
+  }
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })
+
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as CheckinField)
   }
 
   function setEmployeeField(field: "returnBy" | "receiveBy", employeeId: string) {
@@ -182,6 +239,8 @@ export function CheckinForm({
   }
 
   function handleDamageNoteChange(value: string) {
+    // A damage note picks the repair status when none is chosen yet, which settles that field's error too.
+    if (value.trim() && !values.nextStatusId && repairStatus) fieldErrors.clear("nextStatusId")
     setValues((current) => ({
       ...current,
       damageNote: value,
@@ -222,6 +281,7 @@ export function CheckinForm({
           conditionAfter: current.conditionAfter || candidate.conditionId,
           nextLocationId: current.nextLocationId || candidate.currentLocationId,
         }))
+        fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")
       }
       const checkinHref = `/${locale}/asset-management/checkin?checkoutId=${payload.id}`
       router.replace(returnTo ? appendReturnTo(checkinHref, returnTo) : checkinHref)
@@ -235,28 +295,15 @@ export function CheckinForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedCheckout?.assetId) {
-      toast.error(t("selectCheckoutRequired"))
-      return
-    }
-    if (!returnByEmployeeId || !receiveByEmployeeId) {
-      toast.error(t("selectReturnAndReceiver"))
-      return
-    }
-    if (!values.conditionAfter || !values.nextStatusId || !values.nextLocationId) {
-      toast.error(t("completeRequiredFields"))
-      return
-    }
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setReviewOpen(true)
   }
 
   async function submitCheckin() {
+    // The review opens only after validate() found the checkout, so this only narrows the type.
     const assetId = selectedCheckout?.assetId
-    if (!assetId) {
-      setReviewOpen(false)
-      toast.error(t("selectCheckoutRequired"))
-      return
-    }
+    if (!assetId) return
     setSaving(true)
     const body = new FormData()
     for (const [key, value] of Object.entries(values)) {
@@ -278,6 +325,8 @@ export function CheckinForm({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
+        // A refusal that names a field of this form closes the review and shows under it; any other keeps the toast.
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
         const message = payload?.code === "ASSET_HANDOVER_MODE_MISSING"
           ? t("handoverModeMissing")
           : payload?.code === "ASSET_HANDOVER_STATUS_MISMATCH"
@@ -307,6 +356,7 @@ export function CheckinForm({
             </div>
           ) : null}
           <SearchableSelect
+            id="checkin-checkout"
             label={t("asset")}
             value={values.checkoutId}
             required
@@ -315,6 +365,7 @@ export function CheckinForm({
             placeholder={hasActiveCheckoutRecords ? t("selectCheckout") : t("noActiveCheckoutsOption")}
             searchPlaceholder={tCommon("searchSelectPlaceholder")}
             emptyLabel={tCommon("searchSelectNoResults")}
+            error={fieldErrors.message("checkoutId")}
             onChange={(value) => setField("checkoutId", value)}
           />
 
@@ -395,8 +446,8 @@ export function CheckinForm({
 
           {hasActiveCheckouts && (
             <>
-          <Field label={t("returnDate")} required>
-            <Input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} />
+          <Field label={t("returnDate")} id="checkin-return-date" required error={fieldErrors.message("returnDate")}>
+            <Input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} required />
           </Field>
 
           {selectedCheckout && (
@@ -441,6 +492,7 @@ export function CheckinForm({
           )}
 
           <SearchableSelect
+            id="checkin-return-by"
             label={t("returnBy")}
             value={returnByEmployeeId}
             required
@@ -448,9 +500,11 @@ export function CheckinForm({
             placeholder={t("selectReturnBy")}
             searchPlaceholder={tCommon("searchSelectPlaceholder")}
             emptyLabel={tCommon("searchSelectNoResults")}
+            error={fieldErrors.message("returnBy")}
             onChange={(value) => setEmployeeField("returnBy", value)}
           />
           <SearchableSelect
+            id="checkin-receive-by"
             label={t("receiveBy")}
             value={receiveByEmployeeId}
             required
@@ -458,21 +512,43 @@ export function CheckinForm({
             placeholder={t("selectReceiveBy")}
             searchPlaceholder={tCommon("searchSelectPlaceholder")}
             emptyLabel={tCommon("searchSelectNoResults")}
+            error={fieldErrors.message("receiveBy")}
             onChange={(value) => setEmployeeField("receiveBy", value)}
           />
-          <Select label={t("conditionAfter")} value={values.conditionAfter} required onChange={(value) => setField("conditionAfter", value)}>
+          <Select
+            label={t("conditionAfter")}
+            id="checkin-condition-after"
+            value={values.conditionAfter}
+            required
+            error={fieldErrors.message("conditionAfter")}
+            onChange={(value) => setField("conditionAfter", value)}
+          >
             <option value="">{t("selectCondition")}</option>
             {conditions.map((condition) => (
               <option key={condition.id} value={condition.id}>{condition.label}</option>
             ))}
           </Select>
-          <Select label={t("nextStatus")} value={values.nextStatusId} required onChange={(value) => setField("nextStatusId", value)}>
+          <Select
+            label={t("nextStatus")}
+            id="checkin-next-status"
+            value={values.nextStatusId}
+            required
+            error={fieldErrors.message("nextStatusId")}
+            onChange={(value) => setField("nextStatusId", value)}
+          >
             <option value="">{t("selectStatus")}</option>
             {statuses.map((status) => (
               <option key={status.id} value={status.id}>{status.name === "Under Maintenance" ? t("sendToRepairOption") : status.label}</option>
             ))}
           </Select>
-          <Select label={t("nextLocation")} value={values.nextLocationId} required onChange={(value) => setField("nextLocationId", value)}>
+          <Select
+            label={t("nextLocation")}
+            id="checkin-next-location"
+            value={values.nextLocationId}
+            required
+            error={fieldErrors.message("nextLocationId")}
+            onChange={(value) => setField("nextLocationId", value)}
+          >
             <option value="">{t("selectLocation")}</option>
             {locations.map((location) => (
               <option key={location.id} value={location.id}>{location.label}</option>
@@ -575,9 +651,27 @@ export function CheckinForm({
   )
 }
 
-function Select({ label, value, required, disabled, onChange, children }: { label: string; value: string; required?: boolean; disabled?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
+function Select({
+  label,
+  id,
+  value,
+  required,
+  disabled,
+  error,
+  onChange,
+  children,
+}: {
+  label: string
+  id?: string
+  value: string
+  required?: boolean
+  disabled?: boolean
+  error?: React.ReactNode
+  onChange: (value: string) => void
+  children: React.ReactNode
+}) {
   return (
-    <Field label={label} required={required}>
+    <Field label={label} id={id} required={required} error={error}>
       <NativeSelect value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         {children}
       </NativeSelect>

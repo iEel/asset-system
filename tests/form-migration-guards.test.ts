@@ -50,7 +50,7 @@ const OLD_FIELD_MARKUP = /ml-1 text-danger">\*|mb-1\.5 block text-sm font-medium
 const OLD_HELPER_MARKUP = /\bfunction (?:FormStep|WizardStep|Choice|AssetStateFieldLabel)\b|aria-label=\{t\("batchAssetTagHelp"\)\}/g
 // The stars that the server enforces while the control has no required (spec 2C §4.3 F5), keyed by the label expression,
 // not a line number. The V track adds required and then removes the entry (the meta-test fails while one is stale).
-const STAR_ONLY = new Set([`${C}asset-operations/checkin-form.tsx|t("returnDate")`])
+const STAR_ONLY = new Set<string>([])
 // Files that render StickyFormFooter and the routes that show them. Every route must be a focus route (no bottom navigation).
 const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}assets/asset-form.tsx`]: ["/th/assets/new", "/th/assets/sample-1/edit"],
@@ -81,7 +81,7 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}maintenance/maintenance-plan-form.tsx`]: [4, 2, 0],
   [`${C}maintenance/repair-record-form.tsx`]: [2, 3, 0],
   [`${C}maintenance/repair-record-actions.tsx`]: [3, 6, 0],
-  [`${C}asset-operations/checkin-form.tsx`]: [4, 0, 0],
+  [`${C}asset-operations/checkin-form.tsx`]: [5, 0, 0],
   [`${C}asset-operations/checkout-form.tsx`]: [6, 0, 0],
   [`${C}asset-operations/transfer-form.tsx`]: [1, 1, 0],
   [`${C}asset-operations/bulk-move-form.tsx`]: [1, 1, 0],

@@ -158,3 +158,49 @@ test("checkout: errors under the field, the handover rules with the server's cod
     assert.equal(messagesOf(locale).checkout.reviewIncomplete, undefined, `${locale}.checkout.reviewIncomplete has no reader and is removed`)
   }
 })
+
+test("checkin: the return date is checked at last, errors under the field instead of four toasts, and a refusal from the review back on its field (v-track O3)", () => {
+  const source = read(`${C}asset-operations/checkin-form.tsx`)
+  const ids = {
+    checkoutId: "checkin-checkout",
+    returnDate: "checkin-return-date",
+    returnBy: "checkin-return-by",
+    receiveBy: "checkin-receive-by",
+    conditionAfter: "checkin-condition-after",
+    nextStatusId: "checkin-next-status",
+    nextLocationId: "checkin-next-location",
+  }
+  assertOperationForm(source, { ids })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("checkoutId", required(values.checkoutId))',
+    'check("returnDate", required(values.returnDate))',
+    'check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100))',
+    'check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))',
+    'check("conditionAfter", required(values.conditionAfter))',
+    'check("nextStatusId", required(values.nextStatusId))',
+    'check("nextLocationId", required(values.nextLocationId))',
+  ]) assert.ok(rules.includes(rule), rule)
+  for (const key of Object.keys(ids)) assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
+  // The return date had the star and no check (spec §5): native required joins the star and validate() checks it.
+  assert.match(source, /<Field label=\{t\("returnDate"\)\} id="checkin-return-date" required error=\{fieldErrors\.message\("returnDate"\)\}>\n\s+<Input type="date" value=\{values\.returnDate\} onChange=\{\(event\) => setField\("returnDate", event\.target\.value\)\} required \/>/)
+  // The three required selects have an id for focus and show their error (V4).
+  for (const id of ["checkin-checkout", "checkin-return-by", "checkin-receive-by"]) {
+    assert.match(source, new RegExp(`<SearchableSelect\\n\\s+id="${id}"\\n`), id)
+  }
+  // A refusal from the review closes it, and the field takes focus once the dialog has gone (O-R1).
+  assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)
+  assert.ok(source.includes("fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
+  // A refusal that names no field keeps today's handover messages through the catch.
+  assert.match(source, /payload\?\.code === "ASSET_HANDOVER_MODE_MISSING"/)
+  // Clearing (spec §4.3): a set clears its key; the legacy backfill and the repair status it picks clear theirs.
+  assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+if \(field in FIELD_IDS\) fieldErrors\.clear\(field as CheckinField\)/)
+  assert.ok(source.includes('fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")'))
+  assert.ok(source.includes('if (value.trim() && !values.nextStatusId && repairStatus) fieldErrors.clear("nextStatusId")'))
+  for (const locale of ["th", "en"]) {
+    const checkin = messagesOf(locale).checkin
+    for (const key of ["selectCheckoutRequired", "selectReturnAndReceiver", "completeRequiredFields"]) {
+      assert.equal(checkin[key], undefined, `${locale}.checkin.${key} has no reader and is removed`)
+    }
+  }
+})
