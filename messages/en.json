@@ -2275,7 +2275,8 @@
     "reconcileStatus_reviewed": "Decided",
     "activeFilters": "Active filters",
     "comparisonColumn": "System → found",
-    "dueOn": "Due {date}"
+    "dueOn": "Due {date}",
+    "closeNeedsEvidence": "No closure evidence yet. Attach at least one file before you close this discrepancy."
   },
   "auditPending": {
     "title": "Pending Assets",

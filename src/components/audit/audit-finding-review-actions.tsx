@@ -23,7 +23,9 @@ import { RowActions, type RowActionItem } from "@/components/ui/row-actions"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { formatDateTime } from "@/lib/utils"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type EmployeeOption = { id: string; label: string }
 type ReviewAction = "approve" | "reject"
@@ -32,6 +34,42 @@ type ReviewConflictPayload = {
   error?: string
   assetUpdatedAt?: string
   findingReportedAt?: string
+}
+
+// The fields of the three dialogs in visual order, keyed like the server's fieldErrors, with the id focus moves to
+// (v-track M-R1). The owner select is optional and the server never refuses it, so it stays out.
+const REVIEW_FIELD_IDS = {
+  reviewRemark: "audit-review-remark",
+} as const
+type ReviewField = keyof typeof REVIEW_FIELD_IDS
+const REVIEW_FIELD_ORDER = Object.keys(REVIEW_FIELD_IDS) as ReviewField[]
+const PLAN_FIELD_IDS = {
+  actionPlan: "audit-plan-action-plan",
+  actionDueDate: "audit-plan-due-date",
+  actionStatus: "audit-plan-status",
+} as const
+type PlanField = keyof typeof PLAN_FIELD_IDS
+const PLAN_FIELD_ORDER = Object.keys(PLAN_FIELD_IDS) as PlanField[]
+const CLOSE_FIELD_IDS = {
+  closureRemark: "audit-close-remark",
+} as const
+type CloseField = keyof typeof CLOSE_FIELD_IDS
+const CLOSE_FIELD_ORDER = Object.keys(CLOSE_FIELD_IDS) as CloseField[]
+type FindingField = ReviewField | PlanField | CloseField
+
+// noValidate turns the browser's check off, so this restates the controls' required and maxLength. Each dialog passes
+// only its own fields (v-track M-R2, U-R8).
+function validate(
+  values: { reviewRemark?: string; actionPlan?: string; closureRemark?: string },
+): Partial<Record<FindingField, string>> {
+  const errors: Partial<Record<FindingField, string>> = {}
+  const check = (key: FindingField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  if (values.reviewRemark !== undefined) check("reviewRemark", maxLength(values.reviewRemark, 4000))
+  if (values.actionPlan !== undefined) check("actionPlan", required(values.actionPlan) ?? maxLength(values.actionPlan, 4000))
+  if (values.closureRemark !== undefined) check("closureRemark", maxLength(values.closureRemark, 4000))
+  return errors
 }
 
 // The three dialogs render in a portal, but React still sends their clicks up through this component to the table row
@@ -256,9 +294,15 @@ function ReviewDecisionModal({
   const t = useTranslations("auditFinding")
   const [reviewRemark, setReviewRemark] = useState("")
   const [conflict, setConflict] = useState<ReviewConflictPayload | null>(null)
+  const fieldErrors = useFieldErrors<ReviewField>()
 
-  async function submit(confirmConflict = false) {
-    const nextConflict = await onReview(action, reviewRemark.trim(), confirmConflict)
+  // The row's review() sends the decision and keeps its toast for a refusal: the route cannot refuse the remark
+  // (v-track U-R5). A second press after a conflict confirms it.
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    fieldErrors.setErrors(validate({ reviewRemark }))
+    if (fieldErrors.focusFirst(REVIEW_FIELD_ORDER, { idFor: (key) => REVIEW_FIELD_IDS[key] })) return
+    const nextConflict = await onReview(action, reviewRemark.trim(), Boolean(conflict))
     if (nextConflict?.code === "asset_updated_after_finding") {
       setConflict(nextConflict)
     }
@@ -266,46 +310,56 @@ function ReviewDecisionModal({
 
   return (
     <AccessibleDialog open title={t(`reviewDecisionTitle_${action}`)} busy={reviewing} size="md" onClose={onClose}>
-      <AccessibleDialogBody className="space-y-4">
-        <div className="rounded-md border border-border bg-background p-4">
-          <div className="text-sm font-semibold text-foreground">{assetLabel}</div>
-          <KeyValueList
-            className="mt-3"
-            items={[
-              { key: "findingType", label: t("findingType"), value: findingTypeLabel },
-              { key: "systemValue", label: t("systemValue"), value: expectedValue },
-              { key: "foundValue", label: t("foundValue"), value: actualValue ? <span className="font-semibold">{actualValue}</span> : null },
-            ]}
-          />
-        </div>
-
-        <Notice tone={action === "approve" ? "warning" : "neutral"} title={t(`reviewDecisionImpactTitle_${action}`)}>
-          {t(`reviewDecisionHelp_${action}`)}
-        </Notice>
-
-        {conflict ? (
-          <>
-            <Notice tone="warning" role="alert" title={t("reviewConflictTitle")}>{t("reviewConflictHelp")}</Notice>
+      <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
+        <AccessibleDialogBody className="space-y-4">
+          <div className="rounded-md border border-border bg-background p-4">
+            <div className="text-sm font-semibold text-foreground">{assetLabel}</div>
             <KeyValueList
+              className="mt-3"
               items={[
-                { key: "findingReportedAt", label: t("reviewConflictFindingAt"), value: conflict.findingReportedAt ? formatDateTime(conflict.findingReportedAt) : null },
-                { key: "assetUpdatedAt", label: t("reviewConflictAssetUpdatedAt"), value: conflict.assetUpdatedAt ? formatDateTime(conflict.assetUpdatedAt) : null },
+                { key: "findingType", label: t("findingType"), value: findingTypeLabel },
+                { key: "systemValue", label: t("systemValue"), value: expectedValue },
+                { key: "foundValue", label: t("foundValue"), value: actualValue ? <span className="font-semibold">{actualValue}</span> : null },
               ]}
             />
-          </>
-        ) : null}
+          </div>
 
-        <Field label={t(`reviewRemarkLabel_${action}`)}>
-          <Textarea value={reviewRemark} rows={3} maxLength={4000} onChange={(event) => setReviewRemark(event.target.value)} />
-        </Field>
-      </AccessibleDialogBody>
-      <AccessibleDialogFooter>
-        <AccessibleDialogCancel />
-        <Button variant={action === "approve" ? "default" : "destructive"} busy={reviewing} onClick={() => submit(Boolean(conflict))}>
-          {action === "approve" ? <Check aria-hidden="true" /> : <X aria-hidden="true" />}
-          {conflict ? t("reviewConfirmConflict") : t(`reviewSubmit_${action}`)}
-        </Button>
-      </AccessibleDialogFooter>
+          <Notice tone={action === "approve" ? "warning" : "neutral"} title={t(`reviewDecisionImpactTitle_${action}`)}>
+            {t(`reviewDecisionHelp_${action}`)}
+          </Notice>
+
+          {conflict ? (
+            <>
+              <Notice tone="warning" role="alert" title={t("reviewConflictTitle")}>{t("reviewConflictHelp")}</Notice>
+              <KeyValueList
+                items={[
+                  { key: "findingReportedAt", label: t("reviewConflictFindingAt"), value: conflict.findingReportedAt ? formatDateTime(conflict.findingReportedAt) : null },
+                  { key: "assetUpdatedAt", label: t("reviewConflictAssetUpdatedAt"), value: conflict.assetUpdatedAt ? formatDateTime(conflict.assetUpdatedAt) : null },
+                ]}
+              />
+            </>
+          ) : null}
+
+          <Field label={t(`reviewRemarkLabel_${action}`)} id="audit-review-remark" error={fieldErrors.message("reviewRemark")}>
+            <Textarea
+              value={reviewRemark}
+              rows={3}
+              maxLength={4000}
+              onChange={(event) => {
+                setReviewRemark(event.target.value)
+                fieldErrors.clear("reviewRemark")
+              }}
+            />
+          </Field>
+        </AccessibleDialogBody>
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel />
+          <Button type="submit" variant={action === "approve" ? "default" : "destructive"} busy={reviewing}>
+            {action === "approve" ? <Check aria-hidden="true" /> : <X aria-hidden="true" />}
+            {conflict ? t("reviewConfirmConflict") : t(`reviewSubmit_${action}`)}
+          </Button>
+        </AccessibleDialogFooter>
+      </form>
     </AccessibleDialog>
   )
 }
@@ -340,9 +394,18 @@ function ActionPlanModal({
     actionDueDate: actionDueDate ? new Date(actionDueDate).toISOString().slice(0, 10) : "",
     actionStatus: actionStatus === "not_required" || actionStatus === "closed" ? "planned" : actionStatus,
   })
+  const fieldErrors = useFieldErrors<PlanField>()
+  const focusFirstError = () => fieldErrors.focusFirst(PLAN_FIELD_ORDER, { idFor: (key) => PLAN_FIELD_IDS[key] })
+
+  function setField(field: keyof typeof values, value: string) {
+    setValues((current) => ({ ...current, [field]: value }))
+    if (field in PLAN_FIELD_IDS) fieldErrors.clear(field as PlanField)
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    fieldErrors.setErrors(validate({ actionPlan: values.actionPlan }))
+    if (focusFirstError()) return
     setSaving(true)
     try {
       const response = await fetch(`/api/audit-findings/${findingId}/review`, {
@@ -357,7 +420,11 @@ function ActionPlanModal({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? tCommon("error"))
+      }
       toast.success(t("actionPlanSaved"))
       onClose()
       router.refresh()
@@ -370,15 +437,15 @@ function ActionPlanModal({
 
   return (
     <AccessibleDialog open title={t("actionPlanTitle")} busy={saving} size="md" returnFocusRef={returnFocusRef} onClose={onClose}>
-      <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+      <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
         <AccessibleDialogBody className="grid gap-4">
-          <Field label={t("actionPlan")} required>
+          <Field label={t("actionPlan")} id="audit-plan-action-plan" required error={fieldErrors.message("actionPlan")}>
             <Textarea
               value={values.actionPlan}
               required
               rows={4}
               maxLength={4000}
-              onChange={(event) => setValues((current) => ({ ...current, actionPlan: event.target.value }))}
+              onChange={(event) => setField("actionPlan", event.target.value)}
               className="min-h-28"
             />
           </Field>
@@ -390,20 +457,20 @@ function ActionPlanModal({
               placeholder={t("noActionOwner")}
               searchPlaceholder={tCommon("searchSelectPlaceholder")}
               emptyLabel={tCommon("searchSelectNoResults")}
-              onChange={(value) => setValues((current) => ({ ...current, actionOwnerId: value }))}
+              onChange={(value) => setField("actionOwnerId", value)}
             />
-            <Field label={t("actionDueDate")}>
+            <Field label={t("actionDueDate")} id="audit-plan-due-date" error={fieldErrors.message("actionDueDate")}>
               <Input
                 type="date"
                 value={values.actionDueDate}
-                onChange={(event) => setValues((current) => ({ ...current, actionDueDate: event.target.value }))}
+                onChange={(event) => setField("actionDueDate", event.target.value)}
               />
             </Field>
           </div>
-          <Field label={t("actionStatus")}>
+          <Field label={t("actionStatus")} id="audit-plan-status" error={fieldErrors.message("actionStatus")}>
             <NativeSelect
               value={values.actionStatus}
-              onChange={(event) => setValues((current) => ({ ...current, actionStatus: event.target.value }))}
+              onChange={(event) => setField("actionStatus", event.target.value)}
             >
               {["planned", "in_progress", "done"].map((status) => (
                 <option key={status} value={status}>
@@ -445,6 +512,10 @@ function CloseFindingModal({
   const [file, setFile] = useState<File | null>(null)
   const [uploadedCount, setUploadedCount] = useState(evidenceCount)
   const [closureRemark, setClosureRemark] = useState("")
+  const fieldErrors = useFieldErrors<CloseField>()
+  const focusFirstError = () => fieldErrors.focusFirst(CLOSE_FIELD_ORDER, { idFor: (key) => CLOSE_FIELD_IDS[key] })
+  // A prerequisite, not a field (spec §4.4): closing waits for one evidence file and says so beside the button.
+  const needsEvidence = uploadedCount === 0
 
   async function uploadEvidence(nextFile: File | null) {
     if (!nextFile) return
@@ -467,7 +538,11 @@ function CloseFindingModal({
     }
   }
 
-  async function closeFinding() {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (needsEvidence) return
+    fieldErrors.setErrors(validate({ closureRemark }))
+    if (focusFirstError()) return
     setSaving(true)
     try {
       const response = await fetch(`/api/audit-findings/${findingId}/review`, {
@@ -476,7 +551,11 @@ function CloseFindingModal({
         body: JSON.stringify({ action: "close", closureRemark }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? tCommon("error"))
+      }
       toast.success(t("findingClosed"))
       onClose()
       router.refresh()
@@ -489,29 +568,46 @@ function CloseFindingModal({
 
   return (
     <AccessibleDialog open title={t("closeFindingTitle")} busy={saving} size="md" returnFocusRef={returnFocusRef} onClose={onClose}>
-      <AccessibleDialogBody className="space-y-4">
-        <FileDropzone
-          file={file}
-          onFileChange={uploadEvidence}
-          disabled={uploading}
-          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,application/pdf"
-          capture="environment"
-          title={t("dropClosureEvidenceTitle")}
-          hint={uploading ? t("uploadingEvidence") : t("dropClosureEvidenceSelected")}
-          browseLabel={t("dropClosureEvidenceHint")}
-        />
-        <p className="text-sm text-muted-foreground">{t("closureEvidenceCount", { count: uploadedCount })}</p>
-        <Field label={t("closureRemark")}>
-          <Textarea value={closureRemark} rows={3} maxLength={4000} onChange={(event) => setClosureRemark(event.target.value)} />
-        </Field>
-      </AccessibleDialogBody>
-      <AccessibleDialogFooter>
-        <AccessibleDialogCancel />
-        <Button busy={saving} disabled={uploadedCount === 0} onClick={closeFinding}>
-          <Check aria-hidden="true" />
-          {t("closeFinding")}
-        </Button>
-      </AccessibleDialogFooter>
+      <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
+        <AccessibleDialogBody className="space-y-4">
+          <FileDropzone
+            file={file}
+            onFileChange={uploadEvidence}
+            disabled={uploading}
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,application/pdf"
+            capture="environment"
+            title={t("dropClosureEvidenceTitle")}
+            hint={uploading ? t("uploadingEvidence") : t("dropClosureEvidenceSelected")}
+            browseLabel={t("dropClosureEvidenceHint")}
+          />
+          <p className="text-sm text-muted-foreground">{t("closureEvidenceCount", { count: uploadedCount })}</p>
+          <Field label={t("closureRemark")} id="audit-close-remark" error={fieldErrors.message("closureRemark")}>
+            <Textarea
+              value={closureRemark}
+              rows={3}
+              maxLength={4000}
+              onChange={(event) => {
+                setClosureRemark(event.target.value)
+                fieldErrors.clear("closureRemark")
+              }}
+            />
+          </Field>
+          {/* Why close waits, the body's last line right above the button (the footer holds only buttons, GD3). */}
+          {needsEvidence ? <p id="audit-close-reason" className="text-meta text-muted-foreground">{t("closeNeedsEvidence")}</p> : null}
+        </AccessibleDialogBody>
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel />
+          <Button
+            type="submit"
+            busy={saving}
+            aria-disabled={needsEvidence || undefined}
+            aria-describedby={needsEvidence ? "audit-close-reason" : undefined}
+          >
+            <Check aria-hidden="true" />
+            {t("closeFinding")}
+          </Button>
+        </AccessibleDialogFooter>
+      </form>
     </AccessibleDialog>
   )
 }

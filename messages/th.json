@@ -2275,7 +2275,8 @@
     "reconcileStatus_reviewed": "พิจารณาแล้ว",
     "activeFilters": "ตัวกรองที่ใช้อยู่",
     "comparisonColumn": "ในระบบ → พบ",
-    "dueOn": "กำหนด {date}"
+    "dueOn": "กำหนด {date}",
+    "closeNeedsEvidence": "ยังไม่มีหลักฐานปิดงาน ต้องแนบหลักฐานอย่างน้อย 1 ไฟล์ก่อนจึงจะปิดรายการไม่ตรงได้"
   },
   "auditPending": {
     "title": "รายการรอตรวจ",

@@ -101,6 +101,7 @@ const V_FORMS: readonly string[] = [
   `${C}audit/audit-round-cancel-button.tsx`,
   `${C}audit/audit-mark-not-found-button.tsx`,
   `${C}audit/audit-scan-component-missing-dialog.tsx`,
+  `${C}audit/audit-finding-review-actions.tsx`,
 ]
 
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).

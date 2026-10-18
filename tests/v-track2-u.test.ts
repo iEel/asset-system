@@ -127,3 +127,41 @@ test("the two not-found dialogs keep the browser out, name their remark for focu
   assert.match(notFound, /setEvidenceFile\(null\)\n\s+fieldErrors\.setErrors\(\{\}\)/)
   assert.ok(missing.includes('onSubmit(remark.trim() || t("componentMissingDefaultRemark", { assetTag: parentAssetTag }), evidence)'))
 })
+
+test("finding dialogs: decision, action plan and close are forms that validate themselves, and close waits for evidence with its reason beside the button (v-track U4)", () => {
+  const source = read(`${C}audit-finding-review-actions.tsx`)
+  // Three dialogs, three tables; the decision's request is sent by the row's review(), which keeps its toast (U-R5).
+  assertMigratedForm(source, { ids: { reviewRemark: "audit-review-remark" }, table: "REVIEW_FIELD_IDS", server: false })
+  assertMigratedForm(source, {
+    ids: { actionPlan: "audit-plan-action-plan", actionDueDate: "audit-plan-due-date", actionStatus: "audit-plan-status" },
+    table: "PLAN_FIELD_IDS",
+  })
+  assertMigratedForm(source, { ids: { closureRemark: "audit-close-remark" }, table: "CLOSE_FIELD_IDS" })
+  assert.equal(source.match(/<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/g)?.length, 3)
+  const rules = validateBody(source)
+  for (const rule of [
+    'if (values.reviewRemark !== undefined) check("reviewRemark", maxLength(values.reviewRemark, 4000))',
+    'if (values.actionPlan !== undefined) check("actionPlan", required(values.actionPlan) ?? maxLength(values.actionPlan, 4000))',
+    'if (values.closureRemark !== undefined) check("closureRemark", maxLength(values.closureRemark, 4000))',
+  ]) assert.ok(rules.includes(rule), rule)
+  for (const call of ["validate({ reviewRemark })", "validate({ actionPlan: values.actionPlan })", "validate({ closureRemark })"]) {
+    assert.ok(source.includes(`fieldErrors.setErrors(${call})`), call)
+  }
+  // The decision submits its form; a second press after a conflict confirms it, as before.
+  assert.match(source, /const nextConflict = await onReview\(action, reviewRemark\.trim\(\), Boolean\(conflict\)\)/)
+  assert.match(source, /<Button type="submit" variant=\{action === "approve" \? "default" : "destructive"\} busy=\{reviewing\}>/)
+  assert.doesNotMatch(source, /onClick=\{\(\) => submit\(|onClick=\{closeFinding\}/)
+  // The plan's fields clear their own error when they change.
+  assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+if \(field in PLAN_FIELD_IDS\) fieldErrors\.clear\(field as PlanField\)/)
+  // Close: the evidence is a prerequisite (spec §4.4): the gate returns first, the button stays focusable with its reason.
+  assert.match(source, /const needsEvidence = uploadedCount === 0/)
+  assert.match(source, /event\.preventDefault\(\)\n\s+if \(needsEvidence\) return\n\s+fieldErrors\.setErrors\(validate\(\{ closureRemark \}\)\)/)
+  // The reason is the body's last line, right above the footer, which holds only buttons (FMG GD3).
+  assert.match(source, /\{needsEvidence \? <p id="audit-close-reason" className="text-meta text-muted-foreground">\{t\("closeNeedsEvidence"\)\}<\/p> : null\}\n\s+<\/AccessibleDialogBody>/)
+  assert.match(source, /<Button\n\s+type="submit"\n\s+busy=\{saving\}\n\s+aria-disabled=\{needsEvidence \|\| undefined\}\n\s+aria-describedby=\{needsEvidence \? "audit-close-reason" : undefined\}\n\s+>/)
+  assert.doesNotMatch(source, /disabled=\{uploadedCount === 0\}/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.auditFinding.closeNeedsEvidence, "ยังไม่มีหลักฐานปิดงาน ต้องแนบหลักฐานอย่างน้อย 1 ไฟล์ก่อนจึงจะปิดรายการไม่ตรงได้")
+  assert.equal(en.auditFinding.closeNeedsEvidence, "No closure evidence yet. Attach at least one file before you close this discrepancy.")
+})
