@@ -54,6 +54,8 @@ import {
   type AssetRegisterColumnPresetKey,
 } from "@/lib/asset-register-columns"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { atLeastOne, maxLength, required } from "@/lib/validation-rules"
 
 export type AssetRegisterRow = {
   id: string
@@ -70,6 +72,30 @@ export type AssetRegisterRow = {
   purchasePrice: number | null
   photo: { id: string; alt: string; fileType: string } | null
   transactions: Array<AssetRegisterTransaction & { href: string }>
+}
+
+// The bulk update's fields in visual order, keyed like the server's fieldErrors (validations/asset-operations.ts), with
+// the id focus moves to (v-track M-R1).
+const BULK_FIELD_IDS = {
+  toLocationId: "asset-bulk-location",
+  toCustodianId: "asset-bulk-custodian",
+  reason: "asset-bulk-reason",
+} as const
+type BulkField = keyof typeof BULK_FIELD_IDS
+const BULK_FIELD_ORDER = Object.keys(BULK_FIELD_IDS) as BulkField[]
+
+type BulkUpdateValues = { toLocationId: string; toCustodianId: string; reason: string; remark: string }
+
+// noValidate turns the browser's check off, so this restates the reason's required and maxLength, and the server's rule
+// that one of the two changes is chosen, with the server's own code under the location (v-track M-R2, spec §4.4).
+function validate(values: BulkUpdateValues): Partial<Record<BulkField, string>> {
+  const errors: Partial<Record<BulkField, string>> = {}
+  const check = (key: BulkField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("toLocationId", atLeastOne([values.toLocationId, values.toCustodianId]) ? "bulkUpdateFieldRequired" : null)
+  check("reason", required(values.reason) ?? maxLength(values.reason, 500))
+  return errors
 }
 
 type AssetRegisterTableProps = {
@@ -200,12 +226,14 @@ export function AssetRegisterTable({
   const [selectMode, setSelectMode] = useState(false)
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false)
   const [bulkSaving, setBulkSaving] = useState(false)
-  const [bulkForm, setBulkForm] = useState({
+  const [bulkForm, setBulkForm] = useState<BulkUpdateValues>({
     toLocationId: "",
     toCustodianId: "",
     reason: "",
     remark: "",
   })
+  const bulkErrors = useFieldErrors<BulkField>()
+  const focusBulkError = () => bulkErrors.focusFirst(BULK_FIELD_ORDER, { idFor: (key) => BULK_FIELD_IDS[key] })
   const selectedAssets = useMemo(
     () => assets.filter((asset) => selectedIds.has(asset.id)),
     [assets, selectedIds]
@@ -369,9 +397,24 @@ export function AssetRegisterTable({
     setSelectMode(!selectMode)
   }
 
+  function openBulkUpdate() {
+    bulkErrors.setErrors({})
+    setBulkUpdateOpen(true)
+  }
+
+  function setBulkField(field: keyof BulkUpdateValues, value: string) {
+    setBulkForm((current) => ({ ...current, [field]: value }))
+    // The two changes are one rule: choosing either clears it (spec §4.3).
+    if (field === "toLocationId" || field === "toCustodianId") bulkErrors.clear("toLocationId", "toCustodianId")
+    else if (field === "reason") bulkErrors.clear("reason")
+  }
+
   async function submitBulkUpdate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (selectedAssets.length === 0 || (!bulkForm.toLocationId && !bulkForm.toCustodianId)) return
+    // The dialog opens only from the bar of a selection; the rest are the fields' rules.
+    if (selectedAssets.length === 0) return
+    bulkErrors.setErrors(validate(bulkForm))
+    if (focusBulkError()) return
 
     setBulkSaving(true)
     try {
@@ -384,7 +427,11 @@ export function AssetRegisterTable({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? labels.bulkUpdateFailed)
+      if (!response.ok) {
+        // A refusal that names a field shows under it in the dialog; any other keeps the toast (spec §4.1).
+        if (bulkErrors.applyServer(payload) && focusBulkError()) return
+        throw new Error(payload?.error ?? labels.bulkUpdateFailed)
+      }
 
       toast.success(labels.bulkUpdateSuccess)
       setBulkUpdateOpen(false)
@@ -486,7 +533,7 @@ export function AssetRegisterTable({
               <Printer aria-hidden="true" />
               {labels.printSelectedLabels}
             </Button>
-            <Button variant="outline" size="md" onClick={() => setBulkUpdateOpen(true)} className="w-full sm:w-auto">
+            <Button variant="outline" size="md" onClick={openBulkUpdate} className="w-full sm:w-auto">
               <Edit aria-hidden="true" />
               {labels.bulkUpdate}
             </Button>
@@ -701,12 +748,12 @@ export function AssetRegisterTable({
         size="md"
         onClose={() => setBulkUpdateOpen(false)}
       >
-        <form onSubmit={submitBulkUpdate} className={accessibleDialogFormClasses}>
+        <form onSubmit={submitBulkUpdate} noValidate className={accessibleDialogFormClasses}>
           <AccessibleDialogBody className="space-y-4">
-            <Field label={labels.currentLocation}>
+            <Field label={labels.currentLocation} id="asset-bulk-location" error={bulkErrors.message("toLocationId")}>
               <NativeSelect
                 value={bulkForm.toLocationId}
-                onChange={(event) => setBulkForm((current) => ({ ...current, toLocationId: event.target.value }))}
+                onChange={(event) => setBulkField("toLocationId", event.target.value)}
               >
                 <option value="">{labels.noChange}</option>
                 {bulkOptions.locations.map((location) => (
@@ -716,10 +763,10 @@ export function AssetRegisterTable({
                 ))}
               </NativeSelect>
             </Field>
-            <Field label={labels.custodian}>
+            <Field label={labels.custodian} id="asset-bulk-custodian" error={bulkErrors.message("toCustodianId")}>
               <NativeSelect
                 value={bulkForm.toCustodianId}
-                onChange={(event) => setBulkForm((current) => ({ ...current, toCustodianId: event.target.value }))}
+                onChange={(event) => setBulkField("toCustodianId", event.target.value)}
               >
                 <option value="">{labels.noChange}</option>
                 {bulkOptions.employees.map((employee) => (
@@ -729,10 +776,10 @@ export function AssetRegisterTable({
                 ))}
               </NativeSelect>
             </Field>
-            <Field label={labels.reason} required>
+            <Field label={labels.reason} id="asset-bulk-reason" required error={bulkErrors.message("reason")}>
               <Input
                 value={bulkForm.reason}
-                onChange={(event) => setBulkForm((current) => ({ ...current, reason: event.target.value }))}
+                onChange={(event) => setBulkField("reason", event.target.value)}
                 required
                 maxLength={500}
               />
@@ -740,7 +787,7 @@ export function AssetRegisterTable({
             <Field label={labels.remark}>
               <Textarea
                 value={bulkForm.remark}
-                onChange={(event) => setBulkForm((current) => ({ ...current, remark: event.target.value }))}
+                onChange={(event) => setBulkField("remark", event.target.value)}
                 rows={3}
                 className="min-h-24"
               />
@@ -748,7 +795,7 @@ export function AssetRegisterTable({
           </AccessibleDialogBody>
           <AccessibleDialogFooter>
             <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
-            <Button type="submit" busy={bulkSaving} disabled={!bulkForm.toLocationId && !bulkForm.toCustodianId}>
+            <Button type="submit" busy={bulkSaving}>
               {labels.applyBulkUpdate}
             </Button>
           </AccessibleDialogFooter>

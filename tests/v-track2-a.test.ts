@@ -204,3 +204,29 @@ test("asset batch form: shared fields and rows show their errors, duplicates sta
     assert.equal(messages(locale).asset.duplicateWarning, undefined, `${locale}: the duplicate box is gone`)
   }
 })
+
+test("asset register bulk update: one of the two changes and the reason are errors on submit, apply is enabled, and a refusal stays in the dialog (v-track A3)", () => {
+  const source = read(`${C}assets/asset-register-table.tsx`)
+  assertMovedForm(source, {
+    handler: "submitBulkUpdate",
+    table: "BULK_FIELD_IDS",
+    hook: "bulkErrors",
+    ids: { toLocationId: "asset-bulk-location", toCustodianId: "asset-bulk-custodian", reason: "asset-bulk-reason" },
+  })
+  const rules = functionBody(source)
+  for (const rule of [
+    'check("toLocationId", atLeastOne([values.toLocationId, values.toCustodianId]) ? "bulkUpdateFieldRequired" : null)',
+    'check("reason", required(values.reason) ?? maxLength(values.reason, 500))',
+  ]) assert.ok(rules.includes(rule), rule)
+  // A content rule, not a gate (spec §4.4): apply is enabled. An empty selection cannot open the dialog.
+  assert.match(source, /<Button type="submit" busy=\{bulkSaving\}>/)
+  assert.doesNotMatch(source, /disabled=\{!bulkForm\.toLocationId/)
+  assert.match(source, /if \(selectedAssets\.length === 0\) return\n\s+bulkErrors\.setErrors\(validate\(bulkForm\)\)\n\s+if \(focusBulkError\(\)\) return/)
+  assert.ok(source.includes('<Field label={labels.currentLocation} id="asset-bulk-location" error={bulkErrors.message("toLocationId")}>'))
+  assert.ok(source.includes('<Field label={labels.custodian} id="asset-bulk-custodian" error={bulkErrors.message("toCustodianId")}>'))
+  assert.ok(source.includes('<Field label={labels.reason} id="asset-bulk-reason" required error={bulkErrors.message("reason")}>'))
+  // The two changes are one rule and clear together; each opening starts without errors (spec §4.3).
+  assert.match(source, /if \(field === "toLocationId" \|\| field === "toCustodianId"\) bulkErrors\.clear\("toLocationId", "toCustodianId"\)/)
+  assert.match(source, /function openBulkUpdate\(\) \{\n\s+bulkErrors\.setErrors\(\{\}\)/)
+  assert.match(source, /if \(bulkErrors\.applyServer\(payload\) && focusBulkError\(\)\) return\n\s+throw new Error\(payload\?\.error \?\? labels\.bulkUpdateFailed\)/)
+})
