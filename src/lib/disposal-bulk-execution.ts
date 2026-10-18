@@ -1,5 +1,7 @@
 import { disposalApiErrorCodes, type DisposalApiErrorCode } from "./disposal-api-error-codes.ts"
 import type { DisposalType } from "./disposal-type-policy.ts"
+import { getDisposalEvidenceFieldErrors } from "./disposal-evidence-exception.ts"
+import type { FieldErrors } from "./field-errors.ts"
 
 export const MAX_DISPOSAL_BULK_EXECUTION_ITEMS = 20
 
@@ -44,6 +46,8 @@ export type DisposalBulkExecutionResponse = {
   executedCount: number
   failedCount: number
   items: DisposalBulkExecutionItem[]
+  // The fields of the dialog that a blocked row names (getDisposalBulkExecutionFieldErrors); absent when none.
+  fieldErrors?: FieldErrors
 }
 
 export function normalizeDisposalBulkExecutionIds(ids: string[]) {
@@ -65,4 +69,25 @@ export function summarizeDisposalBulkExecution(items: DisposalBulkExecutionItem[
     summary[item.outcome] += 1
     return summary
   }, { selected: 0, eligible: 0, blocked: 0, executed: 0, failed: 0 })
+}
+
+// The blocked rows whose code a field of the bulk execution dialog can fix name that field (V track spec §6.2): a
+// missing recipient is the shared recipient, the evidence exception's reason and acknowledgement are their own fields.
+// Every other row code is about the request itself (its document, sale value, remark, stage) and names none. The first
+// row of each field wins; undefined when no row names a field.
+export function getDisposalBulkExecutionFieldErrors(
+  items: readonly Pick<DisposalBulkExecutionItem, "outcome" | "code">[],
+  input: { evidenceExceptionReason?: string | null },
+): FieldErrors | undefined {
+  const fieldErrors: FieldErrors = {}
+  for (const item of items) {
+    if (item.outcome !== "blocked") continue
+    const named = item.code === "DISPOSAL_RECIPIENT_REQUIRED"
+      ? { sharedRecipientName: "recipientRequired" }
+      : getDisposalEvidenceFieldErrors(item.code, input)
+    for (const [key, code] of Object.entries(named ?? {})) {
+      if (!(key in fieldErrors)) fieldErrors[key] = code
+    }
+  }
+  return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined
 }

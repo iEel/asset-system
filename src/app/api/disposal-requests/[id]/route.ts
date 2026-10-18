@@ -14,6 +14,7 @@ import { disposalDecisionSchema, disposalExecutionSchema } from "@/lib/validatio
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
 import { disposalApiError } from "@/lib/disposal-api-errors"
+import { getDisposalEvidenceFieldErrors } from "@/lib/disposal-evidence-exception"
 import { approveDisposalRequest, DisposalApprovalServiceError } from "@/lib/disposal-approval-service"
 import { getDisposalBatchSchemaReadiness, isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 import { executeDisposalRequest, DisposalExecutionServiceError } from "@/lib/disposal-execution-service"
@@ -53,7 +54,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
         return NextResponse.json(result.request)
       } catch (error) {
         if (error instanceof DisposalExecutionServiceError) {
-          return disposalApiError(error.code, error.message, getDisposalExecutionErrorStatus(error.code))
+          return disposalApiError(error.code, error.message, getDisposalExecutionErrorStatus(error.code), getDisposalEvidenceFieldErrors(error.code, input))
         }
         throw error
       }

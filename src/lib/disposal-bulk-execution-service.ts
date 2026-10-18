@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 import {
+  getDisposalBulkExecutionFieldErrors,
   getDisposalBulkSelectionBlockCode,
   summarizeDisposalBulkExecution,
   type DisposalBulkExecutionCode,
@@ -80,7 +81,7 @@ export async function inspectDisposalBulkExecution(
   dependencies: DisposalBulkExecutionDependencies,
 ): Promise<DisposalBulkExecutionResponse> {
   const inspection = await inspect(command, dependencies)
-  return buildResponse("preview", inspection.items.map(({ item }) => item))
+  return buildResponse("preview", inspection.items.map(({ item }) => item), command.input)
 }
 
 export async function commitDisposalBulkExecution(
@@ -120,7 +121,7 @@ export async function commitDisposalBulkExecution(
     }
   }
 
-  return buildResponse("commit", items)
+  return buildResponse("commit", items, command.input)
 }
 
 async function inspect(
@@ -301,8 +302,11 @@ function getDisposalExecutionFieldErrorCode(
 function buildResponse(
   mode: DisposalBulkExecutionResponse["mode"],
   items: DisposalBulkExecutionItem[],
+  input: DisposalBulkExecutionInput,
 ): DisposalBulkExecutionResponse {
   const summary = summarizeDisposalBulkExecution(items)
+  // A blocked row that a field of the dialog can fix names that field, so the dialog can show it there (v-track D-R1).
+  const fieldErrors = getDisposalBulkExecutionFieldErrors(items, input)
   return {
     mode,
     selectedCount: summary.selected,
@@ -311,6 +315,7 @@ function buildResponse(
     executedCount: summary.executed,
     failedCount: summary.failed,
     items,
+    ...(fieldErrors ? { fieldErrors } : {}),
   }
 }
 
