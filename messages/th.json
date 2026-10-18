@@ -573,7 +573,6 @@
     "licenseAssignee": "ผู้ใช้/ผู้รับผิดชอบ License",
     "selectLicenseAssignee": "เลือกผู้ใช้หรือผู้รับผิดชอบ License",
     "licenseResponsibilityRequired": "กรุณาระบุผู้ใช้หรือแผนกรับผิดชอบ License",
-    "licenseSeatUsageInvalid": "จำนวนสิทธิ์ที่ใช้งานแล้วต้องไม่มากกว่าจำนวนสิทธิ์ทั้งหมด",
     "licenseManagement": "การจัดการ Software/License",
     "licenseTotalSeats": "จำนวนสิทธิ์ทั้งหมด",
     "licenseUsedSeats": "จำนวนสิทธิ์ที่ใช้งานแล้ว",
@@ -642,7 +641,6 @@
     "hideJson": "ซ่อน JSON",
     "customFieldsJsonHelp": "สำหรับผู้ดูแลที่ต้องแก้ JSON โดยตรงเท่านั้น ต้องเป็น object เช่น {\"cpu\":\"Intel i7\"}",
     "customFieldsJsonInvalid": "ข้อมูลเพิ่มเติม JSON ต้องเป็น object ที่ถูกต้อง",
-    "customFieldRequired": "กรุณากรอก {field}",
     "customFieldsNoTemplate": "หมวดหมู่นี้ยังไม่ได้ตั้งแม่แบบรายละเอียดเฉพาะทรัพย์สิน",
     "customFieldsSelectCategory": "เลือกหมวดหมู่เพื่อแสดงแม่แบบรายละเอียดเฉพาะทรัพย์สิน",
     "customFieldsAdditional": "ข้อมูลอื่น ๆ",
@@ -1186,7 +1184,8 @@
     "photoType": "ประเภทรูป",
     "checklistPhotoDescription": "รูปจะอัปโหลดทันทีที่เลือก",
     "noCustodian": "ไม่มีผู้ถือครอง",
-    "createModeLabel": "วิธีเพิ่มทรัพย์สิน"
+    "createModeLabel": "วิธีเพิ่มทรัพย์สิน",
+    "duplicateCheckPending": "กำลังตรวจรหัสทรัพย์สินและ Serial ซ้ำ รอสักครู่แล้วจึงบันทึก"
   },
   "company": {
     "title": "บริษัท",

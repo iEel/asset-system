@@ -573,7 +573,6 @@
     "licenseAssignee": "License assignee/owner",
     "selectLicenseAssignee": "Select license assignee or owner",
     "licenseResponsibilityRequired": "Select a license assignee or responsible department.",
-    "licenseSeatUsageInvalid": "Used seats cannot be greater than total seats.",
     "licenseManagement": "Software/License Management",
     "licenseTotalSeats": "Total seats",
     "licenseUsedSeats": "Used seats",
@@ -642,7 +641,6 @@
     "hideJson": "Hide JSON",
     "customFieldsJsonHelp": "For admins who need to edit raw JSON directly. It must be an object, such as {\"cpu\":\"Intel i7\"}.",
     "customFieldsJsonInvalid": "Additional data JSON must be a valid object.",
-    "customFieldRequired": "Please enter {field}",
     "customFieldsNoTemplate": "This category does not have an asset detail template yet.",
     "customFieldsSelectCategory": "Select a category to show its asset detail template.",
     "customFieldsAdditional": "Other details",
@@ -1186,7 +1184,8 @@
     "photoType": "Photo type",
     "checklistPhotoDescription": "The photo uploads as soon as you choose it.",
     "noCustodian": "No custodian",
-    "createModeLabel": "How to add assets"
+    "createModeLabel": "How to add assets",
+    "duplicateCheckPending": "Checking the asset tag and serial for duplicates. Save once the check finishes."
   },
   "company": {
     "title": "Companies",

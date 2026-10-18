@@ -8,7 +8,7 @@ test("asset form keeps save actions in a sticky form footer", () => {
   const source = assetFormSource()
 
   assert.match(source, /<StickyFormFooter[\s>]/)
-  assert.match(source, /<form onSubmit=\{handleSubmit\} className="space-y-5">/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className="space-y-5">/)
   assert.doesNotMatch(source, /fixed bottom-3|lg:left-\[calc|bg-surface\/95|backdrop-blur|pb-36 sm:pb-24/)
 })
 
@@ -16,10 +16,9 @@ test("asset form save action is busy while saving and keeps its other disabled g
   const source = assetFormSource()
 
   assert.match(source, /busy=\{saving\}/)
-  assert.match(
-    source,
-    /disabled=\{isProtectedStatusChange\s*\|\|\s*duplicateState\.checking\s*\|\|\s*duplicateState\.assetTagExists\s*\|\|\s*duplicateState\.serialNumberExists\}/,
-  )
+  // A protected status change and a running duplicate check gate the save, focusable with their reason; a duplicate is
+  // an error under its field (v-track plan 2 A1).
+  assert.match(source, /aria-disabled=\{saveBlockedBy \? true : undefined\}\s+aria-describedby=\{saveBlockedBy \?\? undefined\}/)
   // The two "add" buttons and the serial scanner keep disabled={saving} on purpose; only the save gate loses it.
   assert.doesNotMatch(source, /disabled=\{saving\s*\|\|/)
 })

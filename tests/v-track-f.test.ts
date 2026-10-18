@@ -197,8 +197,9 @@ test("errors shown by a submit are read once, through focus, and a live error ke
   assert.match(field, /\{liveError \? <span data-slot="field-error-live" className="sr-only" aria-live="polite">\{error\}<\/span> : null\}/)
   assert.match(field, /\{error \? <FieldError id=\{errorId\} aria-hidden=\{liveError \|\| undefined\}>\{error\}<\/FieldError> : null\}/)
   const assetForm = read("src/components/assets/asset-form.tsx")
-  assert.match(assetForm, /<Field label=\{t\("assetTag"\)\} liveError error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : undefined\}>/)
-  assert.match(assetForm, /liveError error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : undefined\}>/)
+  // v-track plan 2 A1: a save's other error of these fields shows in the same place (errorText).
+  assert.match(assetForm, /id="asset-tag"\n\s+liveError\n\s+error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}/)
+  assert.match(assetForm, /liveError\n\s+error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}/)
   assert.equal(assetForm.match(/\bliveError\b/g)?.length, 2)
   // SearchableSelect renders the same FieldError, so its errors follow the same rule.
   assert.match(read("src/components/ui/searchable-select.tsx"), /<FieldError id=\{errorId\}>/)

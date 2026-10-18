@@ -30,7 +30,7 @@ test("StickyFormFooter is flat, keeps the DOM button order and blends into the c
 test("the asset form ends its <form> with the sticky footer: cancel first, save last (K8, K14)", () => {
   const source = readFileSync("src/components/assets/asset-form.tsx", "utf8").replace(/\r\n/g, "\n")
   const formStart = source.indexOf("<form onSubmit={handleSubmit}")
-  const footerStart = source.indexOf("<StickyFormFooter>")
+  const footerStart = source.indexOf("<StickyFormFooter")
   const footerEnd = source.indexOf("</StickyFormFooter>")
   const formEnd = source.indexOf("</form>", footerEnd)
   assert.ok(formStart !== -1 && formStart < footerStart && footerStart < footerEnd && footerEnd < formEnd, "the footer sits inside the asset <form>")

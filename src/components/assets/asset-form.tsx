@@ -11,7 +11,7 @@ import { linkVariants } from "@/components/ui/button-variants"
 import { ChoiceCard, ChoiceChip } from "@/components/ui/choice-card"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
-import { Field } from "@/components/ui/field"
+import { Field, FieldError } from "@/components/ui/field"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,7 @@ import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
@@ -32,6 +33,7 @@ import { formatCount } from "@/lib/display-format"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { formatFileSize } from "@/lib/uploads"
 import { cn } from "@/lib/utils"
+import { atLeastOne, maxLength, notBefore, pattern, range, required } from "@/lib/validation-rules"
 
 type Option = {
   id: string
@@ -182,6 +184,152 @@ const emptyAsset: AssetFormValues = {
   isActive: true,
 }
 
+// The fields in visual order, keyed like the server's fieldErrors (the asset body's keys; the install, purchase
+// document and photo keys are this form's own), with the id focus moves to (v-track M-R1). The template's custom
+// fields sit between the photo and the raw JSON: fieldOrder() puts them there and fieldId() names them.
+const FIELD_IDS = {
+  assetTag: "asset-tag",
+  name: "asset-name",
+  categoryId: "asset-category",
+  serialNumber: "asset-serial-number",
+  ownershipType: "asset-ownership-type",
+  companyId: "asset-company",
+  branchId: "asset-branch",
+  departmentId: "asset-department",
+  custodianId: "asset-custodian",
+  licenseTotalSeats: "asset-license-total-seats",
+  licenseUsedSeats: "asset-license-used-seats",
+  currentLocationId: "asset-current-location",
+  statusId: "asset-status",
+  conditionId: "asset-condition",
+  parentAssetId: "asset-install-parent",
+  componentRole: "asset-install-role",
+  slotNo: "asset-install-slot",
+  installReason: "asset-install-reason",
+  purchaseDate: "asset-purchase-date",
+  purchasePrice: "asset-purchase-price",
+  warrantyStartDate: "asset-warranty-start",
+  warrantyEndDate: "asset-warranty-end",
+  fixedAssetCode: "asset-fixed-asset-code",
+  poNumber: "asset-po-number",
+  invoiceNumber: "asset-invoice-number",
+  purchaseDocumentNo: "asset-purchase-document-no",
+  purchaseDocumentAmount: "asset-purchase-document-amount",
+  purchaseDocumentFile: "asset-purchase-document-file",
+  assetPhotoFile: "asset-photo-file",
+  customFieldsJson: "asset-custom-fields-json",
+} as const
+type AssetFixedField = keyof typeof FIELD_IDS
+type AssetField = AssetFixedField | `customFields.${string}`
+
+// The asset rules that read the message their toast used (spec §7.1); every other code reads common.validation or the
+// api-error catalog through the hook.
+const ASSET_MESSAGE_CODES = [
+  "componentParentRequired",
+  "componentRoleRequired",
+  "licenseResponsibilityRequired",
+  "purchaseDocumentNoRequired",
+  "fileRequired",
+  "customFieldsJsonInvalid",
+] as const
+type AssetMessageCode = (typeof ASSET_MESSAGE_CODES)[number]
+
+function isAssetMessageCode(code: string): code is AssetMessageCode {
+  return (ASSET_MESSAGE_CODES as readonly string[]).includes(code)
+}
+
+function customFieldKey(fieldName: string): AssetField {
+  return `customFields.${fieldName}`
+}
+
+// Visual order: the fixed fields, the template's custom fields, then the raw JSON.
+function fieldOrder(definitions: CustomFieldDefinition[]): AssetField[] {
+  const fixed = (Object.keys(FIELD_IDS) as AssetFixedField[]).filter((key) => key !== "customFieldsJson")
+  return [...fixed, ...definitions.map((definition) => customFieldKey(definition.fieldName)), "customFieldsJson"]
+}
+
+// A custom field's id is its place in the template: a field name may hold a space, which an id list cannot.
+function fieldId(key: AssetField, definitions: CustomFieldDefinition[]): string {
+  if (key in FIELD_IDS) return FIELD_IDS[key as AssetFixedField]
+  return `asset-custom-field-${definitions.findIndex((definition) => customFieldKey(definition.fieldName) === key)}`
+}
+
+type AssetRuleInput = {
+  values: AssetFormValues
+  // The stored asset on edit: the warranty pair is checked only when one of its dates changed (spec §7.4).
+  original?: AssetFormValues
+  duplicates: { assetTag: boolean; serialNumber: boolean }
+  install: { parentAssetId: string; componentRole: string; slotNo: string; reason: string }
+  customFields: { definitions: CustomFieldDefinition[]; valueOf: (fieldName: string) => string }
+  purchaseDocument: { file: File | null; documentNo: string; totalAmount: string }
+}
+
+// noValidate turns the browser's check off, so this restates the controls' required, maxLength, min and the seats'
+// step, and the rules the toasts used to say: the duplicate tag and serial, the license's assignee or department and
+// its seats, the warranty pair, the install after create, the template's required fields, the raw JSON and a chosen
+// purchase document's number (v-track M-R2, spec §7.4).
+function validate({ values, original, duplicates, install, customFields, purchaseDocument }: AssetRuleInput): Partial<Record<AssetField, string>> {
+  const errors: Partial<Record<AssetField, string>> = {}
+  const check = (key: AssetField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
+  const isLicense = ownershipType === "software_license"
+  const warrantyChanged =
+    !original ||
+    (values.warrantyStartDate ?? "") !== (original.warrantyStartDate ?? "") ||
+    (values.warrantyEndDate ?? "") !== (original.warrantyEndDate ?? "")
+  check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))
+  check("name", required(values.name) ?? maxLength(values.name, 200))
+  check("categoryId", required(values.categoryId))
+  check("serialNumber", duplicates.serialNumber ? "duplicate" : maxLength(values.serialNumber, 100))
+  check("ownershipType", required(values.ownershipType))
+  check("companyId", required(values.companyId))
+  check("branchId", required(values.branchId))
+  check("departmentId", ownershipType !== "personal" && !isLicense ? required(values.departmentId) : null)
+  check("custodianId", isLicense && atLeastOne([values.departmentId, values.custodianId]) ? "licenseResponsibilityRequired" : null)
+  if (isLicense) {
+    check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? pattern(String(values.licenseTotalSeats ?? ""), /\d+/))
+    check("licenseUsedSeats", range(values.licenseUsedSeats, 0) ?? pattern(String(values.licenseUsedSeats ?? ""), /\d+/) ?? seatsExceeded(values))
+  }
+  check("currentLocationId", required(values.currentLocationId))
+  check("statusId", required(values.statusId))
+  check("conditionId", required(values.conditionId))
+  if (!original) {
+    check("parentAssetId", ownershipType === "component" && required(install.parentAssetId) ? "componentParentRequired" : null)
+    check("componentRole", install.parentAssetId && required(install.componentRole) ? "componentRoleRequired" : maxLength(install.componentRole, 100))
+    check("slotNo", maxLength(install.slotNo, 50))
+    check("installReason", maxLength(install.reason, 500))
+  }
+  check("purchasePrice", range(values.purchasePrice, 0))
+  check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)
+  check("fixedAssetCode", maxLength(values.fixedAssetCode, 50))
+  check("poNumber", maxLength(values.poNumber, 50))
+  check("invoiceNumber", maxLength(values.invoiceNumber, 50))
+  check("purchaseDocumentNo", purchaseDocument.file && required(purchaseDocument.documentNo) ? "purchaseDocumentNoRequired" : maxLength(purchaseDocument.documentNo, 100))
+  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0))
+  for (const definition of customFields.definitions) {
+    if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))
+  }
+  check("customFieldsJson", isValidCustomFieldsJson(values.customFieldsJson) ? null : "customFieldsJsonInvalid")
+  return errors
+}
+
+// The purchase document's add button: a file and its number (the number's rule matches the save's).
+function validatePurchaseDocument(file: File | null, documentNo: string): Partial<Record<AssetField, string>> {
+  const errors: Partial<Record<AssetField, string>> = {}
+  if (!file) errors.purchaseDocumentFile = "fileRequired"
+  const number = required(documentNo) ? "purchaseDocumentNoRequired" : maxLength(documentNo, 100)
+  if (number) errors.purchaseDocumentNo = number
+  return errors
+}
+
+// The server's rule (validations/asset.ts): used seats never exceed the total, when both are given.
+function seatsExceeded(values: AssetFormValues): "licenseSeatsExceeded" | null {
+  if (required(values.licenseTotalSeats) || required(values.licenseUsedSeats)) return null
+  return Number(values.licenseUsedSeats) > Number(values.licenseTotalSeats) ? "licenseSeatsExceeded" : null
+}
+
 export function AssetForm({
   asset,
   companies,
@@ -257,6 +405,7 @@ export function AssetForm({
     assetTagExists: boolean
     serialNumberExists: boolean
   }>({ checking: false, assetTagExists: false, serialNumberExists: false })
+  const fieldErrors = useFieldErrors<AssetField>()
 
   const isEdit = Boolean(asset?.id)
   const backHref = providedBackHref ?? `/${locale}/assets`
@@ -364,6 +513,22 @@ export function AssetForm({
     selectedPhotoChecklist[0] ??
     ""
   const effectivePhotoLabel = photoLabel || firstMissingPhotoLabel
+  // Prerequisites, not fields (spec §4.4): a protected status changes through its workflow (the warning under the
+  // status says so), and the duplicate check has to finish. The save stays focusable and names its reason.
+  const saveBlockedBy = isProtectedStatusChange ? "asset-status-protected" : duplicateState.checking ? "asset-save-reason" : null
+  const focusFirstError = () =>
+    fieldErrors.focusFirst(fieldOrder(selectedCustomFieldDefinitions), {
+      idFor: (key) => fieldId(key, selectedCustomFieldDefinitions),
+      // The raw JSON shows only after its toggle.
+      reveal: (key) => {
+        if (key === "customFieldsJson") setShowRawJson(true)
+      },
+    })
+  // A rule with a message of its own reads it from the asset messages; any other code reads the hook's message.
+  const errorText = (key: AssetField) => {
+    const code = fieldErrors.errors[key]
+    return code && isAssetMessageCode(code) ? t(code) : fieldErrors.message(key)
+  }
 
   useEffect(() => {
     const assetTag = values.assetTag?.trim() ?? ""
@@ -422,6 +587,11 @@ export function AssetForm({
 
   function setField<K extends keyof AssetFormValues>(field: K, value: AssetFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field in FIELD_IDS) fieldErrors.clear(field as AssetFixedField)
+    // A pair or a group clears together (spec §4.3): the warranty dates, the seats, the license's assignee or department.
+    if (field === "warrantyStartDate") fieldErrors.clear("warrantyEndDate")
+    if (field === "licenseTotalSeats") fieldErrors.clear("licenseUsedSeats")
+    if (field === "departmentId") fieldErrors.clear("custodianId")
   }
 
   function withSuggestedName(nextValues: AssetFormValues) {
@@ -438,6 +608,7 @@ export function AssetForm({
   }
 
   function handleCompanyChange(companyId: string) {
+    fieldErrors.clear("companyId", "branchId", "departmentId", "custodianId", "currentLocationId")
     setValues((current) => ({
       ...current,
       companyId,
@@ -450,6 +621,7 @@ export function AssetForm({
   }
 
   function handleBranchChange(branchId: string) {
+    fieldErrors.clear("branchId", "custodianId", "currentLocationId")
     setValues((current) => ({
       ...current,
       branchId,
@@ -493,6 +665,8 @@ export function AssetForm({
   }
 
   function handleOwnershipTypeChange(nextOwnershipType: string) {
+    // The ownership type decides the department, the license and the parent rules.
+    fieldErrors.clear("ownershipType", "departmentId", "custodianId", "licenseTotalSeats", "licenseUsedSeats", "parentAssetId")
     setValues((current) => ({
       ...current,
       ownershipType: normalizeAssetOwnershipType(nextOwnershipType),
@@ -501,6 +675,7 @@ export function AssetForm({
   }
 
   function handleCategoryChange(categoryId: string) {
+    fieldErrors.clear("categoryId")
     setValues((current) =>
       withSuggestedName({
         ...current,
@@ -541,49 +716,18 @@ export function AssetForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (isProtectedStatusChange) {
-      toast.error(t("protectedStatusEditBlocked"))
-      return
-    }
-    if (duplicateState.assetTagExists || duplicateState.serialNumberExists) {
-      toast.error(t("duplicateWarning"))
-      return
-    }
-    if (!isValidCustomFieldsJson(values.customFieldsJson)) {
-      toast.error(t("customFieldsJsonInvalid"))
-      return
-    }
-    const missingRequiredField = selectedCustomFieldDefinitions.find(
-      (definition) => definition.isRequired && !getCustomFieldValue(definition.fieldName).trim()
+    if (saveBlockedBy) return
+    fieldErrors.setErrors(
+      validate({
+        values,
+        original: isEdit ? asset : undefined,
+        duplicates: { assetTag: duplicateState.assetTagExists, serialNumber: duplicateState.serialNumberExists },
+        install: installAfterCreate,
+        customFields: { definitions: selectedCustomFieldDefinitions, valueOf: getCustomFieldValue },
+        purchaseDocument: { file: selectedPurchaseFile, documentNo: purchaseDocumentNo, totalAmount: purchaseDocumentTotalAmount },
+      }),
     )
-    if (missingRequiredField) {
-      toast.error(t("customFieldRequired", { field: getTemplateFieldLabel(missingRequiredField, locale) }))
-      return
-    }
-    if (!isEdit && installAfterCreate.parentAssetId && !installAfterCreate.componentRole.trim()) {
-      toast.error(t("componentRoleRequired"))
-      return
-    }
-    if (!isEdit && ownershipType === "component" && !installAfterCreate.parentAssetId) {
-      toast.error(t("componentParentRequired"))
-      return
-    }
-    if (isSoftwareLicense && !values.departmentId && !values.custodianId) {
-      toast.error(t("licenseResponsibilityRequired"))
-      return
-    }
-    if (isSoftwareLicense && values.licenseTotalSeats !== "" && values.licenseUsedSeats !== "") {
-      const totalSeats = Number(values.licenseTotalSeats ?? 0)
-      const usedSeats = Number(values.licenseUsedSeats ?? 0)
-      if (Number.isFinite(totalSeats) && Number.isFinite(usedSeats) && usedSeats > totalSeats) {
-        toast.error(t("licenseSeatUsageInvalid"))
-        return
-      }
-    }
-    if (selectedPurchaseFile && !purchaseDocumentNo.trim()) {
-      toast.error(t("purchaseDocumentNoRequired"))
-      return
-    }
+    if (focusFirstError()) return
     setSaving(true)
 
     const url = isEdit ? `/api/assets/${asset?.id}` : "/api/assets"
@@ -598,6 +742,8 @@ export function AssetForm({
 
       const result = await response.json().catch(() => null)
       if (!response.ok) {
+        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
 
@@ -661,17 +807,31 @@ export function AssetForm({
 
   function setInstallField(field: keyof typeof installAfterCreate, value: string) {
     setInstallAfterCreate((current) => ({ ...current, [field]: value }))
+    // The role's rule depends on the parent, so a parent change clears both.
+    if (field === "parentAssetId") fieldErrors.clear("parentAssetId", "componentRole")
+    else fieldErrors.clear(field === "reason" ? "installReason" : field)
+  }
+
+  function selectPurchaseFile(file: File | null) {
+    setSelectedPurchaseFile(file)
+    // The number's rule depends on the file, so a new file clears both.
+    fieldErrors.clear("purchaseDocumentFile", "purchaseDocumentNo")
+  }
+
+  function selectAssetPhotoFile(file: File | null) {
+    setSelectedAssetPhotoFile(file)
+    fieldErrors.clear("assetPhotoFile")
   }
 
   function addPurchaseDocument() {
-    if (!selectedPurchaseFile) {
-      toast.error(t("fileRequired"))
+    // The add button checks its own two fields; the errors of the save stay as they are.
+    const documentErrors = validatePurchaseDocument(selectedPurchaseFile, purchaseDocumentNo)
+    if (Object.keys(documentErrors).length > 0) {
+      fieldErrors.setErrors({ ...fieldErrors.errors, ...documentErrors })
+      focusFirstError()
       return
     }
-    if (!purchaseDocumentNo.trim()) {
-      toast.error(t("purchaseDocumentNoRequired"))
-      return
-    }
+    if (!selectedPurchaseFile) return
 
     setNewPurchaseDocuments((current) => [
       ...current,
@@ -696,7 +856,8 @@ export function AssetForm({
 
   function addAssetPhoto() {
     if (!selectedAssetPhotoFile) {
-      toast.error(t("fileRequired"))
+      fieldErrors.setErrors({ ...fieldErrors.errors, assetPhotoFile: "fileRequired" })
+      focusFirstError()
       return
     }
 
@@ -803,6 +964,7 @@ export function AssetForm({
       : [...customFieldRows, createCustomFieldRow(fieldName, value)]
 
     handleCustomFieldRowsChange(nextRows)
+    fieldErrors.clear(customFieldKey(fieldName))
   }
 
   function getCustomFieldValue(fieldName: string) {
@@ -839,9 +1001,15 @@ export function AssetForm({
         </Notice>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <Section title={t("basicInfo")}>
-          <Field label={t("assetTag")} liveError error={duplicateState.assetTagExists ? t("duplicateAssetTag") : undefined}>
+          {/* The duplicate check stays live (spec U8); a save that finds it focuses the field and shows the same line. */}
+          <Field
+            label={t("assetTag")}
+            id="asset-tag"
+            liveError
+            error={duplicateState.assetTagExists ? t("duplicateAssetTag") : errorText("assetTag")}
+          >
             <Input
               value={values.assetTag ?? ""}
               onChange={(event) => setField("assetTag", event.target.value)}
@@ -850,7 +1018,7 @@ export function AssetForm({
             />
           </Field>
           <div className="grid min-w-0 gap-2">
-            <Field label={t("assetName")} required hint={t("assetNameHelp")}>
+            <Field label={t("assetName")} id="asset-name" required hint={t("assetNameHelp")} error={errorText("name")}>
               <Input
                 value={values.name}
                 onChange={(event) => {
@@ -881,7 +1049,7 @@ export function AssetForm({
               </div>
             )}
           </div>
-          <SelectField label={t("category")} value={values.categoryId} required onChange={handleCategoryChange}>
+          <SelectField label={t("category")} id="asset-category" value={values.categoryId} required error={errorText("categoryId")} onChange={handleCategoryChange}>
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
           </SelectField>
@@ -893,7 +1061,12 @@ export function AssetForm({
             <option value="">{t("selectModel")}</option>
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
-          <Field label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")} liveError error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : undefined}>
+          <Field
+            label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")}
+            id="asset-serial-number"
+            liveError
+            error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : errorText("serialNumber")}
+          >
             <ScannerTextInput
               value={values.serialNumber ?? ""}
               onChange={(value) => setField("serialNumber", value)}
@@ -919,33 +1092,66 @@ export function AssetForm({
 
         <Section title={t("ownership")}>
           <div className="md:col-span-2">
-            <SelectField label={t("ownershipType")} value={ownershipType} required hint={t(`ownershipType_${ownershipType}_help`)} onChange={handleOwnershipTypeChange}>
+            <SelectField
+              label={t("ownershipType")}
+              id="asset-ownership-type"
+              value={ownershipType}
+              required
+              hint={t(`ownershipType_${ownershipType}_help`)}
+              error={errorText("ownershipType")}
+              onChange={handleOwnershipTypeChange}
+            >
               {assetOwnershipTypes.map((type) => (
                 <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
               ))}
             </SelectField>
           </div>
-          <SelectField label={t("assetOwnerCompany")} value={values.companyId} required hint={t("assetOwnerCompanyHelp")} onChange={handleCompanyChange}>
+          <SelectField
+            label={t("assetOwnerCompany")}
+            id="asset-company"
+            value={values.companyId}
+            required
+            hint={t("assetOwnerCompanyHelp")}
+            error={errorText("companyId")}
+            onChange={handleCompanyChange}
+          >
             <option value="">{t("selectCompany")}</option>
             {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
           </SelectField>
-          <SelectField label={t("assetOwnerBranch")} value={values.branchId} required hint={t("assetOwnerBranchHelp")} onChange={handleBranchChange}>
+          <SelectField
+            label={t("assetOwnerBranch")}
+            id="asset-branch"
+            value={values.branchId}
+            required
+            hint={t("assetOwnerBranchHelp")}
+            error={errorText("branchId")}
+            onChange={handleBranchChange}
+          >
             <option value="">{t("selectBranch")}</option>
             {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
           </SelectField>
-          <SelectField label={t("department")} value={values.departmentId ?? ""} required={ownershipType !== "personal" && !isSoftwareLicense} onChange={(value) => setField("departmentId", value)}>
+          <SelectField
+            label={t("department")}
+            id="asset-department"
+            value={values.departmentId ?? ""}
+            required={ownershipType !== "personal" && !isSoftwareLicense}
+            error={errorText("departmentId")}
+            onChange={(value) => setField("departmentId", value)}
+          >
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
           </SelectField>
           {ownershipType === "personal" || isSoftwareLicense ? (
             <div>
               <SearchableSelect
+                id="asset-custodian"
                 label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
                 value={values.custodianId ?? ""}
                 options={filteredEmployees}
                 placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
                 searchPlaceholder={tCommon("searchSelectPlaceholder")}
                 emptyLabel={tCommon("searchSelectNoResults")}
+                error={errorText("custodianId")}
                 onChange={(value) => setField("custodianId", value)}
               />
               <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
@@ -973,7 +1179,8 @@ export function AssetForm({
 
         {isSoftwareLicense && (
           <Section title={t("licenseManagement")}>
-            <Field label={t("licenseTotalSeats")} required>
+            {/* The server lets the total stay empty, so it has no star (spec §11 call 8). */}
+            <Field label={t("licenseTotalSeats")} id="asset-license-total-seats" error={errorText("licenseTotalSeats")}>
               <Input
                 type="number"
                 min="0"
@@ -982,7 +1189,7 @@ export function AssetForm({
                 onChange={(event) => setField("licenseTotalSeats", event.target.value)}
               />
             </Field>
-            <Field label={t("licenseUsedSeats")}>
+            <Field label={t("licenseUsedSeats")} id="asset-license-used-seats" error={errorText("licenseUsedSeats")}>
               <Input
                 type="number"
                 min="0"
@@ -1032,19 +1239,34 @@ export function AssetForm({
             <option value="">{t("selectLocation")}</option>
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
-          <SelectField label={t("currentLocation")} value={values.currentLocationId} required onChange={(value) => setField("currentLocationId", value)}>
+          <SelectField
+            label={t("currentLocation")}
+            id="asset-current-location"
+            value={values.currentLocationId}
+            required
+            error={errorText("currentLocationId")}
+            onChange={(value) => setField("currentLocationId", value)}
+          >
             <option value="">{t("selectLocation")}</option>
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
           <div>
-            <Field label={t("status")} required labelAction={<AssetStateHelpPopover {...assetStatusHelp} />} hint={selectedStatus?.description}>
+            <Field
+              label={t("status")}
+              id="asset-status"
+              required
+              labelAction={<AssetStateHelpPopover {...assetStatusHelp} />}
+              hint={selectedStatus?.description}
+              error={errorText("statusId")}
+            >
               <NativeSelect value={values.statusId} required onChange={(event) => setField("statusId", event.target.value)}>
                 <option value="">{t("selectStatus")}</option>
                 {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
               </NativeSelect>
             </Field>
+            {/* The save's reason while this change is blocked: the save names it with aria-describedby. */}
             {isProtectedStatusChange && (
-              <Notice tone="warning" className="mt-2" title={t("protectedStatusEditBlocked")}>
+              <Notice id="asset-status-protected" tone="warning" className="mt-2" title={t("protectedStatusEditBlocked")}>
                 {protectedStatusHelp ? (
                   <>
                     <p>{protectedStatusHelp}</p>
@@ -1060,9 +1282,11 @@ export function AssetForm({
           </div>
           <Field
             label={t("condition")}
+            id="asset-condition"
             required
             labelAction={<AssetStateHelpPopover {...assetConditionHelp} />}
             hint={conditions.find((condition) => condition.id === values.conditionId)?.description}
+            error={errorText("conditionId")}
           >
             <NativeSelect value={values.conditionId} required onChange={(event) => setField("conditionId", event.target.value)}>
               <option value="">{t("selectCondition")}</option>
@@ -1080,7 +1304,9 @@ export function AssetForm({
             </div>
             <SelectField
               label={t("parentAsset")}
+              id="asset-install-parent"
               value={installAfterCreate.parentAssetId}
+              error={errorText("parentAssetId")}
               onChange={(value) => setInstallField("parentAssetId", value)}
             >
               <option value="">{t("skipInstallAfterCreate")}</option>
@@ -1088,7 +1314,12 @@ export function AssetForm({
                 <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
               ))}
             </SelectField>
-            <Field label={t("componentRole")} required={Boolean(installAfterCreate.parentAssetId)}>
+            <Field
+              label={t("componentRole")}
+              id="asset-install-role"
+              required={Boolean(installAfterCreate.parentAssetId)}
+              error={errorText("componentRole")}
+            >
               <Input
                 value={installAfterCreate.componentRole}
                 onChange={(event) => setInstallField("componentRole", event.target.value)}
@@ -1097,7 +1328,7 @@ export function AssetForm({
                 disabled={!installAfterCreate.parentAssetId}
               />
             </Field>
-            <Field label={t("slotNo")}>
+            <Field label={t("slotNo")} id="asset-install-slot" error={errorText("slotNo")}>
               <Input
                 value={installAfterCreate.slotNo}
                 onChange={(event) => setInstallField("slotNo", event.target.value)}
@@ -1106,7 +1337,7 @@ export function AssetForm({
                 disabled={!installAfterCreate.parentAssetId}
               />
             </Field>
-            <Field label={t("reason")}>
+            <Field label={t("reason")} id="asset-install-reason" error={errorText("installReason")}>
               <Input
                 value={installAfterCreate.reason}
                 onChange={(event) => setInstallField("reason", event.target.value)}
@@ -1118,29 +1349,40 @@ export function AssetForm({
         )}
 
         <Section title={t("purchaseWarranty")}>
-          <Field label={t("purchaseDate")}>
+          <Field label={t("purchaseDate")} id="asset-purchase-date" error={errorText("purchaseDate")}>
             <Input type="date" value={values.purchaseDate ?? ""} onChange={(event) => setField("purchaseDate", event.target.value)} />
           </Field>
-          <Field label={t("purchasePriceBaht")}>
+          <Field label={t("purchasePriceBaht")} id="asset-purchase-price" error={errorText("purchasePrice")}>
             <Input type="number" min="0" step="0.01" inputMode="decimal" value={values.purchasePrice ?? ""} onChange={(event) => setField("purchasePrice", event.target.value)} />
           </Field>
           <SelectField label={t("supplier")} value={values.supplierId ?? ""} onChange={(value) => setField("supplierId", value)}>
             <option value="">{t("selectSupplier")}</option>
             {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
           </SelectField>
-          <Field label={t("warrantyStart")}>
-            <Input type="date" value={values.warrantyStartDate ?? ""} onChange={(event) => setField("warrantyStartDate", event.target.value)} />
+          {/* The end cannot be picked before the start (spec U4, §7.4). */}
+          <Field label={t("warrantyStart")} id="asset-warranty-start" error={errorText("warrantyStartDate")}>
+            <Input
+              type="date"
+              value={values.warrantyStartDate ?? ""}
+              max={values.warrantyEndDate || undefined}
+              onChange={(event) => setField("warrantyStartDate", event.target.value)}
+            />
           </Field>
-          <Field label={t("warrantyEnd")}>
-            <Input type="date" value={values.warrantyEndDate ?? ""} onChange={(event) => setField("warrantyEndDate", event.target.value)} />
+          <Field label={t("warrantyEnd")} id="asset-warranty-end" error={errorText("warrantyEndDate")}>
+            <Input
+              type="date"
+              value={values.warrantyEndDate ?? ""}
+              min={values.warrantyStartDate || undefined}
+              onChange={(event) => setField("warrantyEndDate", event.target.value)}
+            />
           </Field>
-          <Field label={t("fixedAssetCode")}>
+          <Field label={t("fixedAssetCode")} id="asset-fixed-asset-code" error={errorText("fixedAssetCode")}>
             <Input value={values.fixedAssetCode ?? ""} onChange={(event) => setField("fixedAssetCode", event.target.value)} maxLength={50} />
           </Field>
-          <Field label={t("poNumber")}>
+          <Field label={t("poNumber")} id="asset-po-number" error={errorText("poNumber")}>
             <Input value={values.poNumber ?? ""} onChange={(event) => setField("poNumber", event.target.value)} maxLength={50} />
           </Field>
-          <Field label={t("invoiceNumber")}>
+          <Field label={t("invoiceNumber")} id="asset-invoice-number" error={errorText("invoiceNumber")}>
             <Input value={values.invoiceNumber ?? ""} onChange={(event) => setField("invoiceNumber", event.target.value)} maxLength={50} />
           </Field>
           <div className="md:col-span-2">
@@ -1184,32 +1426,49 @@ export function AssetForm({
                       ))}
                     </NativeSelect>
                   </Field>
-                  <Field label={t("purchaseDocumentNo")}>
-                    <Input value={purchaseDocumentNo} onChange={(event) => setPurchaseDocumentNo(event.target.value)} maxLength={100} />
+                  <Field label={t("purchaseDocumentNo")} id="asset-purchase-document-no" error={errorText("purchaseDocumentNo")}>
+                    <Input
+                      value={purchaseDocumentNo}
+                      onChange={(event) => {
+                        setPurchaseDocumentNo(event.target.value)
+                        fieldErrors.clear("purchaseDocumentNo")
+                      }}
+                      maxLength={100}
+                    />
                   </Field>
                   <Field label={t("purchaseDocumentDate")}>
                     <Input type="date" value={purchaseDocumentDate} onChange={(event) => setPurchaseDocumentDate(event.target.value)} />
                   </Field>
-                  <Field label={t("purchaseDocumentAmountBaht")}>
+                  <Field label={t("purchaseDocumentAmountBaht")} id="asset-purchase-document-amount" error={errorText("purchaseDocumentAmount")}>
                     <Input
                       type="number"
                       min="0"
                       step="0.01"
                       inputMode="decimal"
                       value={purchaseDocumentTotalAmount}
-                      onChange={(event) => setPurchaseDocumentTotalAmount(event.target.value)}
+                      onChange={(event) => {
+                        setPurchaseDocumentTotalAmount(event.target.value)
+                        fieldErrors.clear("purchaseDocumentAmount")
+                      }}
                     />
                   </Field>
                 </div>
+                {/* The drop box's title is its name, so it takes the field's id, error tie and look itself (no Field label). */}
                 <FileDropzone
                   file={selectedPurchaseFile}
-                  onFileChange={setSelectedPurchaseFile}
+                  onFileChange={selectPurchaseFile}
+                  id="asset-purchase-document-file"
+                  aria-invalid={fieldErrors.errors.purchaseDocumentFile ? true : undefined}
+                  aria-describedby={fieldErrors.errors.purchaseDocumentFile ? "asset-purchase-document-file-error" : undefined}
                   disabled={saving}
                   accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.doc,.docx"
                   title={t("dropPurchaseDocumentTitle")}
                   hint={t("dropFileSelected")}
                   browseLabel={t("dropFileHint")}
                 />
+                {fieldErrors.errors.purchaseDocumentFile ? (
+                  <FieldError id="asset-purchase-document-file-error" className="mt-1.5">{errorText("purchaseDocumentFile")}</FieldError>
+                ) : null}
               </div>
 
               <Button variant="outline" size="md" className="mt-3" onClick={addPurchaseDocument} disabled={saving}>
@@ -1289,7 +1548,10 @@ export function AssetForm({
 
             <FileDropzone
               file={selectedAssetPhotoFile}
-              onFileChange={setSelectedAssetPhotoFile}
+              onFileChange={selectAssetPhotoFile}
+              id="asset-photo-file"
+              aria-invalid={fieldErrors.errors.assetPhotoFile ? true : undefined}
+              aria-describedby={fieldErrors.errors.assetPhotoFile ? "asset-photo-file-error" : undefined}
               disabled={saving}
               accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
               capture="environment"
@@ -1297,6 +1559,9 @@ export function AssetForm({
               hint={t("dropFileSelected")}
               browseLabel={t("dropAssetPhotoHint")}
             />
+            {fieldErrors.errors.assetPhotoFile ? (
+              <FieldError id="asset-photo-file-error" className="mt-1.5">{errorText("assetPhotoFile")}</FieldError>
+            ) : null}
 
             {existingAssetPhotos.length > 0 && (
               <div className="mt-4">
@@ -1387,6 +1652,7 @@ export function AssetForm({
                   definitions={selectedCustomFieldDefinitions}
                   locale={locale}
                   getValue={getCustomFieldValue}
+                  getError={(fieldName) => errorText(customFieldKey(fieldName))}
                   onChange={handleTemplateCustomFieldChange}
                 />
               ) : (
@@ -1409,7 +1675,7 @@ export function AssetForm({
               </div>
 
               {showRawJson && (
-                <Field label={t("customFieldsJson")} hint={t("customFieldsJsonHelp")}>
+                <Field label={t("customFieldsJson")} id="asset-custom-fields-json" hint={t("customFieldsJsonHelp")} error={errorText("customFieldsJson")}>
                   <Textarea
                     value={values.customFieldsJson ?? ""}
                     onChange={(event) => handleRawJsonChange(event.target.value)}
@@ -1426,14 +1692,15 @@ export function AssetForm({
           </label>
         </Section>
 
-        <StickyFormFooter>
+        <StickyFormFooter status={duplicateState.checking ? <span id="asset-save-reason">{t("duplicateCheckPending")}</span> : undefined}>
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
           <Button
             type="submit"
             busy={saving}
-            disabled={isProtectedStatusChange || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
+            aria-disabled={saveBlockedBy ? true : undefined}
+            aria-describedby={saveBlockedBy ?? undefined}
           >
             <Save aria-hidden="true" />
             {tCommon("save")}
@@ -1457,21 +1724,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // that used to sit in a <p> under 3 of them (spec 2C section 4.3 F6).
 function SelectField({
   label,
+  id,
   value,
   required,
   hint,
+  error,
   onChange,
   children,
 }: {
   label: string
+  // The id focus moves to and the error is tied to (v-track M-R1).
+  id?: string
   value: string
   required?: boolean
   hint?: React.ReactNode
+  error?: React.ReactNode
   onChange: (value: string) => void
   children: React.ReactNode
 }) {
   return (
-    <Field label={label} required={required} hint={hint}>
+    <Field label={label} id={id} required={required} hint={hint} error={error}>
       <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
       </NativeSelect>
@@ -1559,21 +1831,25 @@ function TemplateCustomFields({
   definitions,
   locale,
   getValue,
+  getError,
   onChange,
 }: {
   definitions: CustomFieldDefinition[]
   locale: string
   getValue: (fieldName: string) => string
+  getError: (fieldName: string) => string | undefined
   onChange: (fieldName: string, value: string) => void
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {definitions.map((definition) => (
+      {definitions.map((definition, index) => (
         <TemplateField
           key={definition.id}
+          id={`asset-custom-field-${index}`}
           definition={definition}
           label={getTemplateFieldLabel(definition, locale)}
           value={getValue(definition.fieldName)}
+          error={getError(definition.fieldName)}
           onChange={(value) => onChange(definition.fieldName, value)}
         />
       ))}
@@ -1582,33 +1858,45 @@ function TemplateCustomFields({
 }
 
 function TemplateField({
+  id,
   definition,
   label,
   value,
+  error,
   onChange,
 }: {
+  // The id fieldId() gives this field's key: its place in the template.
+  id: string
   definition: CustomFieldDefinition
   label: string
   value: string
+  error?: string
   onChange: (value: string) => void
 }) {
   if (definition.fieldType === "boolean") {
+    // A checkbox has no Field: its error sits under the box and is tied to the checkbox.
     return (
-      <label className="flex min-h-10 items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-        <input
-          type="checkbox"
-          checked={value === "true"}
-          onChange={(event) => onChange(event.target.checked ? "true" : "false")}
-          className={checkboxVariants()}
-        />
-        {label}
-      </label>
+      <div className="grid min-w-0 content-start gap-1.5">
+        <label className="flex min-h-10 items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+          <input
+            id={id}
+            type="checkbox"
+            checked={value === "true"}
+            onChange={(event) => onChange(event.target.checked ? "true" : "false")}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+            className={checkboxVariants()}
+          />
+          {label}
+        </label>
+        {error ? <FieldError id={`${id}-error`}>{error}</FieldError> : null}
+      </div>
     )
   }
 
   if (definition.fieldType === "select") {
     return (
-      <Field label={label} required={definition.isRequired}>
+      <Field label={label} id={id} required={definition.isRequired} error={error}>
         <NativeSelect value={value} required={definition.isRequired} onChange={(event) => onChange(event.target.value)}>
           <option value=""></option>
           {definition.options.map((option) => (
@@ -1620,7 +1908,7 @@ function TemplateField({
   }
 
   return (
-    <Field label={label} required={definition.isRequired}>
+    <Field label={label} id={id} required={definition.isRequired} error={error}>
       <Input
         type={definition.fieldType === "number" ? "number" : definition.fieldType === "date" ? "date" : "text"}
         value={value}

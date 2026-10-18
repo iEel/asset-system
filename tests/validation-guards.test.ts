@@ -84,6 +84,7 @@ const V_FORMS: readonly string[] = [
   `${C}admin/IntegrationClientManager.tsx`,
   `${C}admin/asset-state-review-dialog.tsx`,
   `${C}admin/data-quality-rule-form.tsx`,
+  `${C}assets/asset-form.tsx`,
   `${C}reports/report-preset-controls.tsx`,
 ]
 

@@ -13,26 +13,28 @@ test("asset form: status and condition keep their help button beside the label, 
   const source = read("src/components/assets/asset-form.tsx")
   assert.match(
     source,
-    /<Field label=\{t\("status"\)\} required labelAction=\{<AssetStateHelpPopover \{\.\.\.assetStatusHelp\} \/>\} hint=\{selectedStatus\?\.description\}>/,
+    /label=\{t\("status"\)\}\n\s*id="asset-status"\n\s*required\n\s*labelAction=\{<AssetStateHelpPopover \{\.\.\.assetStatusHelp\} \/>\}\n\s*hint=\{selectedStatus\?\.description\}/,
   )
-  assert.match(source, /label=\{t\("condition"\)\}\n\s*required\n\s*labelAction=\{<AssetStateHelpPopover \{\.\.\.assetConditionHelp\} \/>\}/)
+  assert.match(source, /label=\{t\("condition"\)\}\n\s*id="asset-condition"\n\s*required\n\s*labelAction=\{<AssetStateHelpPopover \{\.\.\.assetConditionHelp\} \/>\}/)
   assert.equal(source.match(/<NativeSelect value=\{values\.(?:statusId|conditionId)\} required /g)?.length, 2, "both selects keep native required (K4)")
   assert.doesNotMatch(source, /function AssetStateFieldLabel|function Field\(/)
 })
 
 test("asset form: the duplicate tag and serial errors belong to their fields (K4 a)", () => {
   const source = read("src/components/assets/asset-form.tsx")
-  assert.match(source, /<Field label=\{t\("assetTag"\)\} liveError error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : undefined\}>/)
-  assert.match(source, /liveError error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : undefined\}>\n\s*<ScannerTextInput/)
+  // A save that finds a duplicate shows the same line; any other error of the field shows in its place (v-track plan 2 A1).
+  assert.match(source, /label=\{t\("assetTag"\)\}\n\s*id="asset-tag"\n\s*liveError\n\s*error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}\n\s*>/)
+  assert.match(source, /liveError\n\s*error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}\n\s*>\n\s*<ScannerTextInput/)
   assert.doesNotMatch(source, /text-xs font-medium text-danger/)
 })
 
 test("asset form: money fields carry their unit and the decimal keypad; the new purchase document row has visible labels (K26, I34)", () => {
   const source = read("src/components/assets/asset-form.tsx")
-  assert.match(source, /<Field label=\{t\("purchasePriceBaht"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
-  assert.match(source, /<Field label=\{t\("purchaseDocumentAmountBaht"\)\}>\n\s*<Input\n\s*type="number"\n\s*min="0"\n\s*step="0\.01"\n\s*inputMode="decimal"/)
+  assert.match(source, /<Field label=\{t\("purchasePriceBaht"\)\} id="asset-purchase-price" error=\{errorText\("purchasePrice"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
+  assert.match(source, /<Field label=\{t\("purchaseDocumentAmountBaht"\)\} id="asset-purchase-document-amount" error=\{errorText\("purchaseDocumentAmount"\)\}>\n\s*<Input\n\s*type="number"\n\s*min="0"\n\s*step="0\.01"\n\s*inputMode="decimal"/)
+  // The visible labels stay; the number gains its id and its error (v-track plan 2 A1).
   for (const key of ["documentType", "purchaseDocumentNo", "purchaseDocumentDate"]) {
-    assert.match(source, new RegExp(`<Field label=\\{t\\("${key}"\\)\\}>`), key)
+    assert.match(source, new RegExp(`<Field label=\\{t\\("${key}"\\)\\}[ >]`), key)
   }
   assert.doesNotMatch(source, /placeholder=\{t\("purchaseDocument(?:No|Amount)"\)\}/, "a placeholder is not a label (K20)")
 
