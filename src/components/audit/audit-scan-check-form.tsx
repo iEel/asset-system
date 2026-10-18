@@ -11,6 +11,7 @@ import { FileDropzone } from "@/components/ui/file-dropzone"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { AuditComponentPanel } from "@/components/audit/audit-scan-panels"
 import { AuditScanCheckField } from "@/components/audit/audit-scan-check-field"
 import { isAuditComponentChecked, isAuditComponentPending, revealFocusInScrollArea } from "@/components/audit/audit-scan-helpers"
@@ -32,6 +33,7 @@ import {
   type AuditScanOptions,
   type AuditScanRoom,
 } from "@/lib/audit-scan-session"
+import { required } from "@/lib/validation-rules"
 
 export type AuditCheckTarget =
   | { kind: "item"; item: AuditScanItemRow; openedMode: "scan" | "edit" }
@@ -58,6 +60,25 @@ const fieldLabelKey = {
   department: "expectedDepartment",
   condition: "expectedCondition",
 } as const
+
+// The fields in visual order, keyed like the scan body's actual… ids, with the id focus moves to (v-track M-R1). Only
+// the location has a rule; the other three are optional and the server never refuses them.
+const FIELD_IDS = {
+  actualLocationId: "audit-check-location",
+} as const
+type CheckField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckField[]
+
+// The check is not a form element (it is a panel of rows, photos and component actions), so nothing checks it but this:
+// the location keeps its star and its rule (v-track M-R2, U-R11).
+function validate(values: AuditCheckValues): Partial<Record<CheckField, string>> {
+  const errors: Partial<Record<CheckField, string>> = {}
+  const check = (key: CheckField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("actualLocationId", required(values.location))
+  return errors
+}
 
 function lookupMasterValues(asset: AuditLookupAsset): AuditMasterValues {
   return {
@@ -122,6 +143,14 @@ export function AuditScanCheckForm({
   const mountedRef = useRef(true)
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const extrasId = useId()
+  const fieldErrors = useFieldErrors<CheckField>()
+  // On a phone the check is a sheet: it stays open and focus moves inside it (spec §4.2). The field is first brought into
+  // the check's own scroll area, which the dashboard's scroll does not reach.
+  const focusFirstError = () =>
+    fieldErrors.focusFirst(FIELD_ORDER, {
+      idFor: (key) => FIELD_IDS[key],
+      reveal: (key) => revealFocusInScrollArea(bodyRef.current, document.getElementById(FIELD_IDS[key])),
+    })
   const diff = diffCheckValues(values, expected, ownershipType)
   const photoRequired = requiresCheckPhoto(mode, diff)
   const missingPhoto = photoRequired && photos.length === 0
@@ -219,8 +248,12 @@ export function AuditScanCheckForm({
     }
   }
 
-  // Saving the parent while components are still pending asks first; cancelling sends nothing (D4).
+  // A missing photo is a prerequisite: save stays focusable and returns here (spec §4.4). Then the fields, then saving the
+  // parent while components are still pending asks first; cancelling sends nothing (D4).
   async function save() {
+    if (missingPhoto) return
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     if (pendingComponents.length > 0) {
       const proceed = await confirm({
         title: t("componentsPendingSaveTitle", { count: pendingComponents.length }),
@@ -253,8 +286,17 @@ export function AuditScanCheckForm({
       ? diff.length === 0 ? t("saveEditAllMatch") : t("saveEditMismatch", { count: diff.length, fields })
       : diff.length === 0 ? t("saveAllMatch") : t("saveMismatch", { count: diff.length, fields })
 
-  const fieldConfig: Array<{ field: AuditCheckField; required?: boolean; options: Array<{ id: string; label: string }>; onChange: (value: string) => void }> = [
-    { field: "location", required: true, options: options.locations, onChange: (value) => setValues((current) => ({ ...current, location: value })) },
+  const fieldConfig: Array<{ field: AuditCheckField; key?: CheckField; required?: boolean; options: Array<{ id: string; label: string }>; onChange: (value: string) => void }> = [
+    {
+      field: "location",
+      key: "actualLocationId",
+      required: true,
+      options: options.locations,
+      onChange: (value) => {
+        setValues((current) => ({ ...current, location: value }))
+        fieldErrors.clear("actualLocationId")
+      },
+    },
     { field: "custodian", options: options.employees, onChange: changeCustodian },
     { field: "department", options: options.departments, onChange: changeDepartment },
     { field: "condition", options: options.conditions, onChange: (value) => setValues((current) => ({ ...current, condition: value })) },
@@ -270,6 +312,7 @@ export function AuditScanCheckForm({
           {fieldConfig.map((config) => (
             <AuditScanCheckField
               key={config.field}
+              id={config.key ? FIELD_IDS[config.key] : undefined}
               label={t(fieldLabelKey[config.field])}
               value={values[config.field]}
               options={config.options}
@@ -279,6 +322,7 @@ export function AuditScanCheckForm({
               mismatch={diff.includes(config.field)}
               disabled={saving || disabled}
               labelFor={labelFor(config.field)}
+              error={config.key ? fieldErrors.message(config.key) : undefined}
               onChange={config.onChange}
             />
           ))}
@@ -388,9 +432,10 @@ export function AuditScanCheckForm({
       </div>
 
       <div data-audit-check-actions className="shrink-0 space-y-2 border-t border-border px-4 py-3">
-        {/* Why save is disabled: a condition before acting, one inline line that does not grow the bar (spec 2D D7). */}
+        {/* Why save waits: a condition before acting, one inline line that does not grow the bar (spec 2D D7), tied to
+            the save button, which stays focusable (spec §4.4). */}
         {missingPhoto ? (
-          <Notice tone="neutral">
+          <Notice id="audit-check-photo-reason" tone="neutral">
             {mode === "out_of_scope" ? t("auditPhotoRequiredForMismatch") : t("photoRequiredCondition")}
           </Notice>
         ) : null}
@@ -404,7 +449,9 @@ export function AuditScanCheckForm({
             variant={diff.length === 0 ? "default" : "warning"}
             className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10"
             busy={saving}
-            disabled={disabled || missingPhoto}
+            aria-disabled={missingPhoto || undefined}
+            aria-describedby={missingPhoto ? "audit-check-photo-reason" : undefined}
+            disabled={disabled}
             onClick={() => void save()}
           >
             {saveLabel}

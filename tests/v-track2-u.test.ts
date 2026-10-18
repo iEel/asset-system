@@ -191,3 +191,29 @@ test("batch review: approve and reject stay focusable with nothing selected and 
   assert.equal(th.auditFinding.batchNeedsSelection, "ยังไม่ได้เลือกรายการ ต้องเลือกรายการไม่ตรงอย่างน้อย 1 รายการก่อนจึงจะพิจารณาได้")
   assert.equal(en.auditFinding.batchNeedsSelection, "Nothing selected yet. Select at least one discrepancy before you decide.")
 })
+
+test("scan check: the location's star has its rule and its error, focus stays inside the sheet, and a missing photo keeps save focusable with its reason (v-track U6)", () => {
+  const source = read(`${C}audit-scan-check-form.tsx`)
+  // No <form>: the check is a panel of rows, photos and component actions (U-R11); validate() is its only check.
+  assert.doesNotMatch(source, /<form\b/)
+  assert.match(source, /import \{ useFieldErrors \} from "@\/components\/ui\/use-field-errors"/)
+  assert.match(source, /const FIELD_IDS = \{\n  actualLocationId: "audit-check-location",\n\} as const/)
+  assert.ok(validateBody(source).includes('check("actualLocationId", required(values.location))'))
+  // The location select (AuditScanCheckField) gets the table's id and its error; the other three are optional.
+  assert.match(source, /\{\n\s+field: "location",\n\s+key: "actualLocationId",\n\s+required: true,/)
+  assert.match(source, /<AuditScanCheckField\n\s+key=\{config\.field\}\n\s+id=\{config\.key \? FIELD_IDS\[config\.key\] : undefined\}\n/)
+  assert.match(source, /\n\s+error=\{config\.key \? fieldErrors\.message\(config\.key\) : undefined\}\n/)
+  assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, location: value \}\)\)\n\s+fieldErrors\.clear\("actualLocationId"\)/)
+  // Save: the photo gate returns first, then the fields; focus is brought into the check's own scroll area (spec §4.2).
+  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) return\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
+  assert.match(source, /reveal: \(key\) => revealFocusInScrollArea\(bodyRef\.current, document\.getElementById\(FIELD_IDS\[key\]\)\)/)
+  // The photo is a prerequisite (spec §4.4): aria-disabled tied to the Notice that says why; a closed round still disables.
+  assert.match(source, /<Notice id="audit-check-photo-reason" tone="neutral">/)
+  assert.match(source, /busy=\{saving\}\n\s+aria-disabled=\{missingPhoto \|\| undefined\}\n\s+aria-describedby=\{missingPhoto \? "audit-check-photo-reason" : undefined\}\n\s+disabled=\{disabled\}\n/)
+  assert.doesNotMatch(source, /disabled=\{disabled \|\| missingPhoto\}/)
+  assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/)
+  // The workspace still sends the check and keeps its toasts and its offline queue (spec §3, U-R5).
+  const workspace = read(`${C}audit-scan-workspace.tsx`)
+  assert.match(workspace, /await queueOffline\(payload, submission\.photos\)/)
+  assert.match(workspace, /if \(isRoundClosedError\(result\?\.error\)\) setRoundClosed\(true\)\n\s+apiError\.toast\(result\?\.error\)/)
+})

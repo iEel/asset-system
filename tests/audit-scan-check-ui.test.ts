@@ -20,7 +20,8 @@ test("one save button names the result, and a missing photo blocks it with a rea
     assert.match(source, new RegExp(`t\\("${key}"`), key)
   }
   assert.match(source, /busy=\{saving\}/)
-  assert.match(source, /disabled=\{disabled \|\| missingPhoto\}/)
+  // The photo gate keeps save focusable with its reason (v-track plan 2 U6); a closed round still disables it.
+  assert.match(source, /aria-disabled=\{missingPhoto \|\| undefined\}\n\s+aria-describedby=\{missingPhoto \? "audit-check-photo-reason" : undefined\}\n\s+disabled=\{disabled\}\n/)
   assert.doesNotMatch(source, /disabled=\{saving \|\| disabled \|\| missingPhoto\}/)
   assert.match(source, /variant=\{diff\.length === 0 \? "default" : "warning"\}/)
   assert.doesNotMatch(source, /dataMatches|dataMismatch|quickMatched/)
