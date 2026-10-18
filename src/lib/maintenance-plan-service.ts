@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client"
+import { FieldRefusalError } from "./field-errors.ts"
 import { getMaintenancePlanIntervalDays } from "./preventive-maintenance.ts"
 import type { MaintenancePlanActionInput } from "./validations/maintenance.ts"
 import { MaintenanceApiError } from "./maintenance-api-errors.ts"
@@ -56,7 +57,7 @@ export async function mutateMaintenancePlan(
           where: { id: vendorId, isActive: true },
           select: { id: true },
         })
-        if (!vendor) throw new Error("PM vendor not found or inactive")
+        if (!vendor) throw new FieldRefusalError("PM vendor not found or inactive", { vendorId: "pmVendorNotFound" })
       }
     }
 

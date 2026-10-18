@@ -1,3 +1,5 @@
+import type { FieldErrors } from "./field-errors.ts"
+
 export const maintenanceErrorCodes = [
   "MAINTENANCE_ASSET_INELIGIBLE",
   "MAINTENANCE_INVALID_TRANSITION",
@@ -14,16 +16,20 @@ export type MaintenanceErrorCode = (typeof maintenanceErrorCodes)[number]
 export class MaintenanceApiError extends Error {
   readonly code: MaintenanceErrorCode
   readonly status: number
+  // The field a refusal is about, so the form shows it under that field (v-track plan 2 MT-R1).
+  readonly fieldErrors: FieldErrors | undefined
 
   constructor(
     code: MaintenanceErrorCode,
     message: string,
     status = 400,
+    fieldErrors?: FieldErrors,
   ) {
     super(message)
     this.name = "MaintenanceApiError"
     this.code = code
     this.status = status
+    this.fieldErrors = fieldErrors
   }
 }
 
@@ -35,7 +41,7 @@ export function getMaintenanceErrorPayload(error: unknown) {
   if (!(error instanceof MaintenanceApiError)) return null
   return {
     status: error.status,
-    body: { code: error.code, error: error.message },
+    body: { code: error.code, error: error.message, ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}) },
   }
 }
 

@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
+import { FieldRefusalError } from "./field-errors.ts"
 import { MaintenanceApiError } from "./maintenance-api-errors.ts"
 import { calculateNextMaintenanceDueDate, type MaintenancePlanFrequency } from "./preventive-maintenance.ts"
 import { withPrismaUniqueRetry } from "./prisma-unique-retry.ts"
@@ -41,7 +42,7 @@ type AssetRow = { id: string; statusId: string; ownershipType: string | null; cu
 export async function createRepairRecord(db: RepairServiceDb, input: RepairRecordCreateInput, user: RepairServiceUser) {
   const reportedById = input.reportedById ?? user.employeeId ?? null
   if (!reportedById) {
-    throw new MaintenanceApiError("MAINTENANCE_REPORTER_REQUIRED", "Select who is recording this repair")
+    throw new MaintenanceApiError("MAINTENANCE_REPORTER_REQUIRED", "Select who is recording this repair", 400, { reportedById: "required" })
   }
 
   return withPrismaUniqueRetry(() => db.$transaction(async (tx) => {
@@ -288,12 +289,12 @@ async function advancePlan(tx: Prisma.TransactionClient, planId: string, assetId
 
 async function requireActiveEmployee(tx: Prisma.TransactionClient, id: string) {
   const record = await tx.employee.findFirst({ where: { id, isActive: true }, select: { id: true } })
-  if (!record) throw new Error("Reporter not found or inactive")
+  if (!record) throw new FieldRefusalError("Reporter not found or inactive", { reportedById: "reporterNotFound" })
 }
 
 async function requireActiveSupplier(tx: Prisma.TransactionClient, id: string) {
   const record = await tx.supplier.findFirst({ where: { id, isActive: true }, select: { id: true } })
-  if (!record) throw new Error("Vendor not found or inactive")
+  if (!record) throw new FieldRefusalError("Vendor not found or inactive", { vendorId: "vendorNotFound" })
 }
 
 export async function generateRepairNo(tx: Prisma.TransactionClient, now: Date) {
