@@ -70,6 +70,7 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 // The files whose every form shows its errors under the fields (spec G1). Each form task adds its file here, in the
 // commit that moves the file's last form.
 const V_FORMS: readonly string[] = [
+  `${C}asset-operations/bulk-move-form.tsx`,
   `${C}asset-operations/transfer-form.tsx`,
   `${C}asset-operations/checkin-form.tsx`,
   `${C}asset-operations/checkout-form.tsx`,
@@ -100,7 +101,6 @@ const V_FORMS: readonly string[] = [
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).
 // Exact counts at the plan's base; a row drops in the commit that gives its selects their errors, and a new one fails.
 const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
-  [`${C}asset-operations/bulk-move-form.tsx`]: 1,
   [`${C}audit/audit-scan-check-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-execution-button.tsx`]: 1,

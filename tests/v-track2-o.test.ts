@@ -231,3 +231,23 @@ test("transfer: errors under the field, the at-least-one destination under the l
     assert.equal(messagesOf(locale).transfer.destinationRequired, undefined, `${locale}.transfer.destinationRequired has no reader and is removed`)
   }
 })
+
+test("bulk move: the destination is checked at last, and the errors show under the field and under the asset list (v-track O5)", () => {
+  const source = read(`${C}asset-operations/bulk-move-form.tsx`)
+  assertOperationForm(source, { ids: { assetIds: "bulk-move-assets", toLocationId: "bulk-move-to-location", reason: "bulk-move-reason" } })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("assetIds", required(values.assetIds))',
+    'check("toLocationId", required(values.toLocationId))',
+    'check("reason", required(values.reason) ?? maxLength(values.reason, 500))',
+  ]) assert.ok(rules.includes(rule), rule)
+  assert.match(source, /fieldErrors\.setErrors\(validate\(\{ \.\.\.values, assetIds \}\)\)/)
+  // The destination had the star and nothing checked it (spec §5): an id for focus and its error (V4).
+  assert.match(source, /<SearchableSelect id="bulk-move-to-location" label=\{t\("toLocation"\)\} [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
+  assert.match(source, /<Field label=\{t\("reason"\)\} id="bulk-move-reason" required error=\{fieldErrors\.message\("reason"\)\}>/)
+  // The asset list is one group with one error under it, in the list's own words; focus goes to its first checkbox (O-R5).
+  assert.match(source, /<div\n\s+role="group"\n\s+id="bulk-move-assets"\n\s+aria-labelledby=\{assetsLabelId\}\n\s+aria-describedby=\{fieldErrors\.errors\.assetIds \? "bulk-move-assets-error" : undefined\}\n/)
+  assert.ok(source.includes('<FieldError id="bulk-move-assets-error" className="mt-1.5">'))
+  assert.ok(source.includes('{fieldErrors.errors.assetIds === "required" ? t("selectAssets") : fieldErrors.message("assetIds")}'))
+  assert.match(source, /current\.includes\(assetId\) \? current\.filter\(\(id\) => id !== assetId\) : \[\.\.\.current, assetId\]\n\s+\)\n\s+fieldErrors\.clear\("assetIds"\)/)
+})
