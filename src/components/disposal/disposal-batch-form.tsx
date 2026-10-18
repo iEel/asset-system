@@ -17,12 +17,68 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disposal/disposal-asset-picker"
-import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
+import { getApiErrorKey } from "@/lib/api-error-catalog"
+import {
+  getDisposalRequestReasonError,
+  showsEstimatedSaleValue,
+  showsEstimatedSalvageValue,
+  type DisposalType,
+} from "@/lib/disposal-type-policy"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { formatCount, formatMoney } from "@/lib/display-format"
+import { maxLength, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string }
+
+type DisposalBatchValues = {
+  disposalType: string
+  reason: string
+  requestedById: string
+  approverId: string
+  saleValue: string
+  salvageValue: string
+}
+
+// The fields of the edit step in visual order, keyed like the request body, with the id focus moves to (v-track M-R1).
+// The type always holds a choice and the approver has no rule, so they stay out; the asset count is a prerequisite.
+const FIELD_IDS = {
+  requestedById: "disposal-batch-requested-by",
+  saleValue: "disposal-batch-sale-value",
+  salvageValue: "disposal-batch-salvage-value",
+  reason: "disposal-batch-reason",
+} as const
+type DisposalBatchField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as DisposalBatchField[]
+
+// The fields the edit step shows: the estimated values follow the type. A hidden field is neither checked nor focused
+// (v-track D-R4).
+function shownFields(values: DisposalBatchValues): DisposalBatchField[] {
+  const type = values.disposalType as DisposalType
+  return FIELD_ORDER.filter((key) => {
+    if (key === "saleValue") return showsEstimatedSaleValue(type)
+    if (key === "salvageValue") return showsEstimatedSalvageValue(type)
+    return true
+  })
+}
+
+// The content rules the review button used to hide behind its gate, and the controls' min, minLength and maxLength,
+// which nothing applied because the step was not a form (v-track M-R2, D-R3).
+function validate(values: DisposalBatchValues): Partial<Record<DisposalBatchField, string>> {
+  const errors: Partial<Record<DisposalBatchField, string>> = {}
+  const shown = shownFields(values)
+  const check = (key: DisposalBatchField, code: string | null) => {
+    if (code && shown.includes(key)) errors[key] = code
+  }
+  check("requestedById", required(values.requestedById))
+  check("saleValue", range(values.saleValue, 0))
+  check("salvageValue", range(values.salvageValue, 0))
+  // The server's own 12-character rule; its code is the message's catalog key (disposalReasonTooShort).
+  const reasonTooShort = getDisposalRequestReasonError(values.reason)
+  check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))
+  return errors
+}
 
 export function DisposalBatchForm({ employees }: { employees: Option[] }) {
   const locale = useLocale()
@@ -34,13 +90,32 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
   const [reviewing, setReviewing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [files, setFiles] = useState<File[]>([])
-  const [values, setValues] = useState({ disposalType: "dispose", reason: "", requestedById: "", approverId: "", saleValue: "", salvageValue: "" })
+  const [values, setValues] = useState<DisposalBatchValues>({ disposalType: "dispose", reason: "", requestedById: "", approverId: "", saleValue: "", salvageValue: "" })
+  const fieldErrors = useFieldErrors<DisposalBatchField>()
+  const validationMessage = useValidationMessage()
   const selectedIds = selectedAssets.map((asset) => asset.id)
   const approverOptions = employees.filter((employee) => employee.id !== values.requestedById)
-  const valid = selectedIds.length >= 2 && selectedIds.length <= 100 && values.reason.trim().length >= 12 && Boolean(values.requestedById)
+  // A prerequisite, not a field (spec §4.4): review waits for 2 to 100 assets and says so beside the button.
+  const needsAssets = selectedIds.length < 2 || selectedIds.length > 100
+  // A field the server names on the review step sends the person back to the edit step that owns it (spec §4.2).
+  const focusFirstError = () => fieldErrors.focusFirst(shownFields(values), { idFor: (key) => FIELD_IDS[key], reveal: () => setReviewing(false) })
+
+  function setField(field: keyof DisposalBatchValues, value: string) {
+    setValues((current) => ({ ...current, [field]: value }))
+    // The type decides which estimated values show: it clears them.
+    if (field === "disposalType") fieldErrors.clear("saleValue", "salvageValue")
+    else if (field in FIELD_IDS) fieldErrors.clear(field as DisposalBatchField)
+  }
+
+  function handleReview(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (needsAssets) return
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
+    setReviewing(true)
+  }
 
   async function submit() {
-    if (!valid) return
     setSaving(true)
     try {
       const response = await fetch("/api/disposal-batches", {
@@ -49,7 +124,11 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
         body: JSON.stringify({ assetIds: selectedIds, ...values, approverId: values.approverId || null }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(getDisposalApiErrorMessage(payload, t, tCommon("error")))
+      if (!response.ok) {
+        // A refusal that names a field of the edit step shows under it there; any other keeps the toast (spec §4.1, §4.2).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(getDisposalApiErrorMessage(payload, t, tCommon("error")))
+      }
 
       let failedUploads = 0
       for (const file of files) {
@@ -108,7 +187,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
 
   return (
     <ContentPanel>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+      <form onSubmit={handleReview} noValidate className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <div className="min-w-0 space-y-4">
           <FormSection number={1} title={t("formSteps.asset")} />
           <DisposalAssetPicker
@@ -124,28 +203,52 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
         <div className="space-y-4">
           <FormSection number={2} title={t("formSteps.request")} />
           <Field label={t("disposalType")}>
-            <NativeSelect value={values.disposalType} onChange={(event) => setValues((current) => ({ ...current, disposalType: event.target.value }))}>
+            <NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)}>
               {["dispose", "sell", "donate", "destroy", "lost"].map((type) => <option key={type} value={type}>{t(`types.${type}`)}</option>)}
             </NativeSelect>
           </Field>
-          <SearchableSelect label={t("requestedBy")} required value={values.requestedById} options={employees} placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setValues((current) => ({ ...current, requestedById: value, approverId: current.approverId === value ? "" : current.approverId }))} />
+          <SearchableSelect
+            id="disposal-batch-requested-by"
+            label={t("requestedBy")}
+            required
+            value={values.requestedById}
+            options={employees}
+            placeholder={t("selectEmployee")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            error={fieldErrors.message("requestedById")}
+            onChange={(value) => {
+              setValues((current) => ({ ...current, requestedById: value, approverId: current.approverId === value ? "" : current.approverId }))
+              fieldErrors.clear("requestedById")
+            }}
+          />
           <SearchableSelect label={t("approver")} value={values.approverId} options={approverOptions} placeholder={t("noApprover")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setValues((current) => ({ ...current, approverId: value }))} />
           {showsEstimatedSaleValue(values.disposalType as DisposalType) ? (
-            <Field label={t("saleValueBaht")}>
-              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.saleValue} onChange={(event) => setValues((current) => ({ ...current, saleValue: event.target.value }))} />
+            <Field
+              label={t("saleValueBaht")}
+              id="disposal-batch-sale-value"
+              error={fieldErrors.errors.saleValue ? validationMessage(fieldErrors.errors.saleValue, { min: 0 }) : undefined}
+            >
+              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.saleValue} onChange={(event) => setField("saleValue", event.target.value)} />
             </Field>
           ) : null}
           {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? (
-            <Field label={t("salvageValueBaht")}>
-              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.salvageValue} onChange={(event) => setValues((current) => ({ ...current, salvageValue: event.target.value }))} />
+            <Field
+              label={t("salvageValueBaht")}
+              id="disposal-batch-salvage-value"
+              error={fieldErrors.errors.salvageValue ? validationMessage(fieldErrors.errors.salvageValue, { min: 0 }) : undefined}
+            >
+              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.salvageValue} onChange={(event) => setField("salvageValue", event.target.value)} />
             </Field>
           ) : null}
           <Field
             label={t("reason")}
+            id="disposal-batch-reason"
             required
             hint={<span className="block text-right">{t("reasonCharacterCount", { count: values.reason.length, max: 4000 })}</span>}
+            error={fieldErrors.errors.reason ? validationMessage(fieldErrors.errors.reason, { min: 12, max: 4000 }) : undefined}
           >
-            <Textarea required minLength={12} maxLength={4000} rows={5} value={values.reason} onChange={(event) => setValues((current) => ({ ...current, reason: event.target.value }))} className="min-h-28" />
+            <Textarea required minLength={12} maxLength={4000} rows={5} value={values.reason} onChange={(event) => setField("reason", event.target.value)} className="min-h-28" />
           </Field>
           <FormSection number={3} title={t("formSteps.evidence")} />
           <FileDropzone file={null} onFileChange={(file) => file && setFiles((current) => [...current, file])} disabled={saving} accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" title={t("dropEvidenceTitle")} description={t("batchEvidenceHelp")} browseLabel={t("dropEvidenceHint")} />
@@ -154,12 +257,18 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
             disabled={saving}
             onRemove={(id) => setFiles((current) => current.filter((_, index) => String(index) !== id))}
           />
-          <Button disabled={!valid} onClick={() => setReviewing(true)} className="w-full">
+          <Button
+            type="submit"
+            aria-disabled={needsAssets || undefined}
+            aria-describedby={needsAssets ? "disposal-batch-review-reason" : undefined}
+            className="w-full"
+          >
             <PackageCheck aria-hidden="true" />
             {t("batchReview")}
           </Button>
+          {needsAssets ? <p id="disposal-batch-review-reason" className="text-meta text-muted-foreground">{t("batchNeedsAssets")}</p> : null}
         </div>
-      </div>
+      </form>
     </ContentPanel>
   )
 }

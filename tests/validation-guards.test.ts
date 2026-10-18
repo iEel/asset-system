@@ -70,6 +70,7 @@ const NOT_IN_SCOPE: Readonly<Record<string, string>> = {
 // The files whose every form shows its errors under the fields (spec G1). Each form task adds its file here, in the
 // commit that moves the file's last form.
 const V_FORMS: readonly string[] = [
+  `${C}disposal/disposal-batch-form.tsx`,
   `${C}disposal/disposal-request-form.tsx`,
   `${C}asset-operations/transaction-cancel-dialog.tsx`,
   `${C}asset-operations/bulk-move-form.tsx`,
@@ -110,7 +111,6 @@ const V_FORMS: readonly string[] = [
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).
 // Exact counts at the plan's base; a row drops in the commit that gives its selects their errors, and a new one fails.
 const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
-  [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-execution-button.tsx`]: 1,
   [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 2,
@@ -120,6 +120,7 @@ const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
 // count per file, why each stays a toast and the ruling that keeps it. Never a validation message; a count that drops
 // lowers or deletes its row.
 const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: string; ruling: string }>> = {
+  [`${C}disposal/disposal-batch-form.tsx`]: { count: 1, why: "the batch is saved and some shared evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}disposal/disposal-request-form.tsx`]: { count: 1, why: "the request is saved and some evidence files did not upload", ruling: "v-track plan 2 D-R5" },
 }
 

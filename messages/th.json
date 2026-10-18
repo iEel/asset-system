@@ -3052,7 +3052,8 @@
       "decision": "พิจารณา",
       "execution": "ตัดจำหน่ายจริง"
     },
-    "bulkDiscardSelectionAction": "ละทิ้งรายการที่เลือก"
+    "bulkDiscardSelectionAction": "ละทิ้งรายการที่เลือก",
+    "batchNeedsAssets": "เลือกทรัพย์สินอย่างน้อย 2 รายการก่อนตรวจสอบชุดคำขอ"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

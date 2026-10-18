@@ -3052,7 +3052,8 @@
       "decision": "Decision",
       "execution": "Execution"
     },
-    "bulkDiscardSelectionAction": "Discard selection"
+    "bulkDiscardSelectionAction": "Discard selection",
+    "batchNeedsAssets": "Select at least 2 assets before you review the batch."
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

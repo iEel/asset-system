@@ -150,3 +150,45 @@ test("disposal request: the asset, the requester and the reason are checked on s
   assert.match(picker, /aria-describedby=\{errorId\} aria-invalid=\{error \? true : undefined\}/)
   assert.ok(picker.includes('{error ? <FieldError id={errorId} className="mt-1.5">{error}</FieldError> : null}'))
 })
+
+test("disposal batch: the edit step is a form whose requester and reason are errors on review, and the asset count says why review waits (v-track D3)", () => {
+  const source = read(`${C}disposal/disposal-batch-form.tsx`)
+  assertMigratedForm(source, {
+    handler: "handleReview",
+    ids: {
+      requestedById: "disposal-batch-requested-by",
+      saleValue: "disposal-batch-sale-value",
+      salvageValue: "disposal-batch-salvage-value",
+      reason: "disposal-batch-reason",
+    },
+    messages: ["requestedById"],
+    toasts: 1,
+  })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("requestedById", required(values.requestedById))',
+    'check("saleValue", range(values.saleValue, 0))',
+    'check("salvageValue", range(values.salvageValue, 0))',
+    "const reasonTooShort = getDisposalRequestReasonError(values.reason)",
+    'check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))',
+  ]) assert.ok(rules.includes(rule), rule)
+  // The old gate mixed a prerequisite with content rules (spec §4.4): the reason and the requester are now errors on
+  // review, and only the asset count still holds the button, focusable and tied to the visible reason beside it.
+  assert.doesNotMatch(source, /const valid = /)
+  assert.doesNotMatch(source, /(?<![\w-])disabled=\{!valid\}/)
+  assert.match(source, /const needsAssets = selectedIds\.length < 2 \|\| selectedIds\.length > 100\n/)
+  assert.match(source, /event\.preventDefault\(\)\n\s+if \(needsAssets\) return\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n\s+setReviewing\(true\)/)
+  assert.match(source, /<Button\n\s+type="submit"\n\s+aria-disabled=\{needsAssets \|\| undefined\}\n\s+aria-describedby=\{needsAssets \? "disposal-batch-review-reason" : undefined\}\n\s+className="w-full"\n\s+>/)
+  assert.ok(source.includes('{needsAssets ? <p id="disposal-batch-review-reason" className="text-meta text-muted-foreground">{t("batchNeedsAssets")}</p> : null}'))
+  // A refusal on the review step goes back to the edit step that owns the field (spec §4.2): reveal leaves the review.
+  assert.ok(source.includes("const focusFirstError = () => fieldErrors.focusFirst(shownFields(values), { idFor: (key) => FIELD_IDS[key], reveal: () => setReviewing(false) })"))
+  // A hidden estimated value is neither checked nor focused (D-R4), and a type change clears them.
+  assert.ok(rules.includes("if (code && shown.includes(key)) errors[key] = code"))
+  assert.match(source, /if \(field === "disposalType"\) fieldErrors\.clear\("saleValue", "salvageValue"\)\n\s+else if \(field in FIELD_IDS\) fieldErrors\.clear\(field as DisposalBatchField\)/)
+  assert.ok(source.includes('<NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)}>'))
+  assert.doesNotMatch(source, /if \(!valid\) return/)
+  assert.match(source, /onChange=\{\(value\) => \{\n\s+setValues\(\(current\) => \(\{ \.\.\.current, requestedById: value, approverId: current\.approverId === value \? "" : current\.approverId \}\)\)\n\s+fieldErrors\.clear\("requestedById"\)\n/)
+  for (const locale of ["th", "en"] as const) {
+    assert.equal(typeof JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage.batchNeedsAssets, "string", locale)
+  }
+})
