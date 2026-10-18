@@ -670,7 +670,6 @@
     "addAssetPhotoWithLabel": "Add photo: {label}",
     "removeAssetPhoto": "Remove photo from queue",
     "photoChecklistQueued": "Queued",
-    "assetPhotoUploadFailed": "Asset photo upload failed",
     "dropFileTitle": "Drag and drop a file here",
     "dropFileHint": "or click to choose a file",
     "dropFileSelected": "File selected. Upload starts automatically.",
@@ -686,8 +685,6 @@
     "addPurchaseDocument": "Add document to save queue",
     "removePurchaseDocument": "Remove purchase document",
     "purchaseDocumentNoRequired": "Please enter the purchase document number",
-    "purchaseDocumentUploadFailed": "Purchase document upload failed",
-    "purchaseDocumentLinkFailed": "Could not link purchase document to asset",
     "purchaseDocumentTypes": {
       "purchase_order": "Purchase Order",
       "invoice": "Invoice",
@@ -1131,7 +1128,6 @@
     "skipInstallAfterCreate": "Do not install now",
     "componentRoleRequired": "Please enter the component role / type",
     "installAfterCreateDefaultReason": "Installed during asset creation",
-    "installAfterCreateFailed": "Asset was created, but installing it as a component failed",
     "evidenceCenter": "Asset Evidence Center",
     "evidenceTotal": "Total Evidence",
     "evidenceImages": "Images",
@@ -1187,7 +1183,11 @@
     "createModeLabel": "How to add assets",
     "duplicateCheckPending": "Checking the asset tag and serial for duplicates. Save once the check finishes.",
     "batchRowDuplicate": "This value repeats another row of this batch.",
-    "batchRowLimits": "A batch holds 2–100 items"
+    "batchRowLimits": "A batch holds 2–100 items",
+    "savedWithFollowUpErrors": "The asset is saved, but {items} did not finish. Check and finish them on this page.",
+    "followUpInstall": "installing it as a component",
+    "followUpDocuments": "the purchase documents",
+    "followUpPhotos": "the asset photos"
   },
   "company": {
     "title": "Companies",

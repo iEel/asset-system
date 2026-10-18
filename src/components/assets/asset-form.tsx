@@ -747,20 +747,26 @@ export function AssetForm({
         throw new Error(result?.error ?? tCommon("error"))
       }
 
-      if (!isEdit && installAfterCreate.parentAssetId && result?.id) {
-        const installResponse = await fetch(`/api/assets/${installAfterCreate.parentAssetId}/components`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            componentAssetId: result.id,
-            componentRole: installAfterCreate.componentRole,
-            slotNo: installAfterCreate.slotNo,
-            reason: installAfterCreate.reason || t("installAfterCreateDefaultReason"),
-          }),
-        })
-        const installResult = await installResponse.json().catch(() => null)
-        if (!installResponse.ok) {
-          throw new Error(installResult?.error ?? t("installAfterCreateFailed"))
+      // The asset is saved: from here on the form never stays open, or a second save would post it again. Each
+      // follow-up step runs in its own try; a step that fails is named, and the page moves to the saved asset.
+      const savedId: string | undefined = result?.id
+      const failedSteps: string[] = []
+
+      if (!isEdit && installAfterCreate.parentAssetId && savedId) {
+        try {
+          const installResponse = await fetch(`/api/assets/${installAfterCreate.parentAssetId}/components`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              componentAssetId: savedId,
+              componentRole: installAfterCreate.componentRole,
+              slotNo: installAfterCreate.slotNo,
+              reason: installAfterCreate.reason || t("installAfterCreateDefaultReason"),
+            }),
+          })
+          if (!installResponse.ok) throw new Error(`install ${installResponse.status}`)
+        } catch {
+          failedSteps.push(t("followUpInstall"))
         }
       }
 
@@ -778,19 +784,38 @@ export function AssetForm({
           ]
         : newPurchaseDocuments
 
-      if (result?.id) {
-        const createdDocumentIds = documentsToCreate.length > 0 ? await createPurchaseDocuments(documentsToCreate) : []
-        const purchaseDocumentIds = [...selectedPurchaseDocumentIds, ...createdDocumentIds]
-        if (purchaseDocumentIds.length > 0) {
-          await linkPurchaseDocuments(result.id, purchaseDocumentIds)
+      if (savedId) {
+        // A failed create still links the documents already selected and those created before the failure.
+        const createdDocumentIds: string[] = []
+        let documentsFailed = false
+        try {
+          if (documentsToCreate.length > 0) await createPurchaseDocuments(documentsToCreate, createdDocumentIds)
+        } catch {
+          documentsFailed = true
         }
+        const purchaseDocumentIds = [...selectedPurchaseDocumentIds, ...createdDocumentIds]
+        try {
+          if (purchaseDocumentIds.length > 0) await linkPurchaseDocuments(savedId, purchaseDocumentIds)
+        } catch {
+          documentsFailed = true
+        }
+        if (documentsFailed) failedSteps.push(t("followUpDocuments"))
 
         const photosToUpload = selectedAssetPhotoFile
           ? [...newAssetPhotos, { id: createClientId(), label: effectivePhotoLabel, file: selectedAssetPhotoFile }]
           : newAssetPhotos
-        if (photosToUpload.length > 0) {
-          await uploadAssetPhotos(result.id, photosToUpload)
+        try {
+          if (photosToUpload.length > 0) await uploadAssetPhotos(savedId, photosToUpload)
+        } catch {
+          failedSteps.push(t("followUpPhotos"))
         }
+      }
+
+      if (failedSteps.length > 0) {
+        toast.warning(t("savedWithFollowUpErrors", { items: failedSteps.join(", ") }))
+        router.push(`/${locale}/assets/${savedId}`)
+        router.refresh()
+        return
       }
 
       toast.success(tCommon("savedSuccess"))
@@ -893,15 +918,12 @@ export function AssetForm({
         body: formData,
       })
 
-      if (!response.ok) {
-        const result = await response.json().catch(() => null)
-        throw new Error(result?.error ?? t("assetPhotoUploadFailed"))
-      }
+      if (!response.ok) throw new Error(`photo upload ${response.status}`)
     }
   }
 
-  async function createPurchaseDocuments(documents: PurchaseDocumentDraft[]) {
-    const createdIds: string[] = []
+  // Pushes each created id into createdIds as it goes, so the ids created before a failure stay with the caller.
+  async function createPurchaseDocuments(documents: PurchaseDocumentDraft[], createdIds: string[]) {
     for (const document of documents) {
       const formData = new FormData()
       formData.append("file", document.file)
@@ -919,14 +941,10 @@ export function AssetForm({
         body: formData,
       })
 
-      if (!response.ok) {
-        const result = await response.json().catch(() => null)
-        throw new Error(result?.error ?? t("purchaseDocumentUploadFailed"))
-      }
+      if (!response.ok) throw new Error(`purchase document upload ${response.status}`)
       const createdDocument = await response.json()
       if (createdDocument?.id) createdIds.push(createdDocument.id)
     }
-    return createdIds
   }
 
   async function linkPurchaseDocuments(assetId: string, purchaseDocumentIds: string[]) {
@@ -935,10 +953,7 @@ export function AssetForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ purchaseDocumentIds }),
     })
-    if (!response.ok) {
-      const result = await response.json().catch(() => null)
-      throw new Error(result?.error ?? t("purchaseDocumentLinkFailed"))
-    }
+    if (!response.ok) throw new Error(`purchase document link ${response.status}`)
   }
 
   function togglePurchaseDocument(id: string) {

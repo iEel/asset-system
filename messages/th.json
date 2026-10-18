@@ -670,7 +670,6 @@
     "addAssetPhotoWithLabel": "เพิ่มรูป: {label}",
     "removeAssetPhoto": "ลบรูปจากคิว",
     "photoChecklistQueued": "อยู่ในคิวแล้ว",
-    "assetPhotoUploadFailed": "อัปโหลดรูปทรัพย์สินไม่สำเร็จ",
     "dropFileTitle": "ลากไฟล์มาวางที่นี่",
     "dropFileHint": "หรือคลิกเพื่อเลือกไฟล์",
     "dropFileSelected": "เลือกไฟล์แล้ว ระบบจะอัปโหลดให้อัตโนมัติ",
@@ -686,8 +685,6 @@
     "addPurchaseDocument": "เพิ่มเอกสารเข้าคิวบันทึก",
     "removePurchaseDocument": "ลบเอกสารจัดซื้อ",
     "purchaseDocumentNoRequired": "กรุณากรอกเลขที่เอกสารจัดซื้อ",
-    "purchaseDocumentUploadFailed": "อัปโหลดเอกสารจัดซื้อไม่สำเร็จ",
-    "purchaseDocumentLinkFailed": "ผูกเอกสารจัดซื้อกับทรัพย์สินไม่สำเร็จ",
     "purchaseDocumentTypes": {
       "purchase_order": "ใบ PO",
       "invoice": "ใบกำกับ",
@@ -1131,7 +1128,6 @@
     "skipInstallAfterCreate": "ยังไม่ติดตั้งตอนนี้",
     "componentRoleRequired": "กรุณาระบุบทบาท/ประเภทส่วนควบ",
     "installAfterCreateDefaultReason": "ติดตั้งตอนสร้างทรัพย์สิน",
-    "installAfterCreateFailed": "สร้างทรัพย์สินสำเร็จ แต่ติดตั้งเป็นส่วนควบไม่สำเร็จ",
     "evidenceCenter": "ศูนย์หลักฐานของทรัพย์สิน",
     "evidenceTotal": "หลักฐานทั้งหมด",
     "evidenceImages": "รูปภาพ",
@@ -1187,7 +1183,11 @@
     "createModeLabel": "วิธีเพิ่มทรัพย์สิน",
     "duplicateCheckPending": "กำลังตรวจรหัสทรัพย์สินและ Serial ซ้ำ รอสักครู่แล้วจึงบันทึก",
     "batchRowDuplicate": "ค่านี้ซ้ำกับแถวอื่นในชุดนี้",
-    "batchRowLimits": "ชุดหนึ่งมีได้ 2–100 รายการ"
+    "batchRowLimits": "ชุดหนึ่งมีได้ 2–100 รายการ",
+    "savedWithFollowUpErrors": "บันทึกทรัพย์สินแล้ว แต่ {items} ไม่สำเร็จ ตรวจสอบและทำต่อได้ที่หน้านี้",
+    "followUpInstall": "การติดตั้งเป็นส่วนควบ",
+    "followUpDocuments": "เอกสารจัดซื้อ",
+    "followUpPhotos": "รูปทรัพย์สิน"
   },
   "company": {
     "title": "บริษัท",

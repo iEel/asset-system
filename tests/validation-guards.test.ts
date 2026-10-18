@@ -128,6 +128,7 @@ const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: strin
   [`${C}maintenance/repair-record-form.tsx`]: { count: 1, why: "the record is saved and the page moves to it; files that did not upload can be attached there", ruling: "v-track plan 2 MT-R5" },
   [`${C}disposal/disposal-batch-form.tsx`]: { count: 1, why: "the batch is saved and some shared evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}disposal/disposal-request-form.tsx`]: { count: 1, why: "the request is saved and some evidence files did not upload", ruling: "v-track plan 2 D-R5" },
+  [`${C}assets/asset-form.tsx`]: { count: 1, why: "the asset is saved and the page moves to it; a follow-up step that failed (install, documents, photos) can be finished there", ruling: "asset partial save fix 2026-10-19" },
 }
 
 const SELECT_TAGS = ["SearchableSelect", "MaintenanceOptionSelect", "AuditScanCheckField"]
