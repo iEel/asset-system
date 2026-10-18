@@ -1186,7 +1186,8 @@
     "noCustodian": "No custodian",
     "createModeLabel": "How to add assets",
     "duplicateCheckPending": "Checking the asset tag and serial for duplicates. Save once the check finishes.",
-    "batchRowDuplicate": "This value repeats another row of this batch."
+    "batchRowDuplicate": "This value repeats another row of this batch.",
+    "batchRowLimits": "A batch holds 2–100 items"
   },
   "company": {
     "title": "Companies",

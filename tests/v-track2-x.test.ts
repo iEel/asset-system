@@ -178,3 +178,27 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
   // Whole numbers keep step() and invalidNumber: the PM days.
   assert.ok(read(`${C}maintenance/maintenance-plan-form.tsx`).includes("range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1)"))
 })
+
+test("the batch's row limits and its duplicate check stay focusable and say why beside the row count (v-track plan 2 task 31d, A8)", () => {
+  const source = read(`${C}assets/asset-batch-form.tsx`)
+  // One visible reason line: the row count gains the 2–100 limits (spec §4.4: a gate that showed nothing gets a reason).
+  assert.ok(source.includes('<div id="asset-batch-row-count" className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })} · {t("batchRowLimits")}</div>'))
+  assert.equal(messages("th").asset.batchRowLimits, "ชุดหนึ่งมีได้ 2–100 รายการ")
+  assert.equal(messages("en").asset.batchRowLimits, "A batch holds 2–100 items")
+  assert.match(source, /\n  const atRowLimit = rows\.length >= 100\n  const atRowMinimum = rows\.length <= 2\n/)
+  // Add at 100 rows, remove at 2 (the cards and the table), check duplicates while the rows hold one: each stays
+  // focusable, aria-disabled and tied to the line (A-R6's gate), never disabled.
+  const count = (text: string) => source.split(text).length - 1
+  for (const [condition, buttons] of [["atRowLimit", 1], ["atRowMinimum", 2], ["hasClientDuplicates", 1]] as const) {
+    assert.equal(count(`aria-disabled={${condition} || undefined}`), buttons, condition)
+    assert.equal(count(`aria-describedby={${condition} ? "asset-batch-row-count" : undefined}`), buttons, condition)
+  }
+  assert.match(source, /onClick=\{handleAddRow\}\n\s+aria-disabled=\{atRowLimit /)
+  assert.match(source, /busy=\{checkingDuplicates\}\n\s+aria-disabled=\{hasClientDuplicates /)
+  assert.equal(source.match(/onClick=\{\(\) => handleRemoveRow\(row\.clientId\)\}\n\s+aria-disabled=\{atRowMinimum /g)?.length, 2)
+  assert.doesNotMatch(source, /disabled=\{rows\.length (?:>= 100|<= 2)\}|disabled=\{hasClientDuplicates\}/)
+  // A press does nothing: each handler returns first.
+  assert.match(source, /function handleAddRow\(\) \{\n\s+if \(atRowLimit\) return\n/)
+  assert.match(source, /function handleRemoveRow\(clientId: string\) \{\n\s+if \(atRowMinimum\) return\n/)
+  assert.match(source, /async function handleCheckDuplicates\(\) \{\n\s+if \(hasClientDuplicates\) return\n/)
+})

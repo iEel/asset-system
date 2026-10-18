@@ -311,6 +311,10 @@ export function AssetBatchForm({
   const showRowHomeLocation = visibleRowColumns.homeLocation || rowOverrideCounts.homeLocation > 0
   const showRowRemark = visibleRowColumns.remark || rowOverrideCounts.remark > 0
   const hasClientDuplicates = duplicateValues.serialNumbers.length > 0 || duplicateValues.assetTags.length > 0
+  // A batch holds 2–100 rows. At a limit, add or remove is a prerequisite gate: it stays focusable, does nothing and says
+  // why on the row count line (spec §4.4, A-R6); so does the duplicate check while the rows hold a duplicate (A-R7).
+  const atRowLimit = rows.length >= 100
+  const atRowMinimum = rows.length <= 2
   // The duplicate warning shows while typing, under each row that holds the value (spec U8); a save says nothing twice.
   const liveDuplicates = useMemo(() => buildAssetBatchDuplicateFieldErrors(rows, duplicateValues), [rows, duplicateValues])
   // A server refusal leaves the review and goes back to the field (spec §4.2); the row on screen takes the focus.
@@ -585,6 +589,7 @@ export function AssetBatchForm({
   }
 
   function handleAddRow() {
+    if (atRowLimit) return
     setRows((current) => {
       if (current.length >= 100) return current
       return [...current, createAssetBatchRows(1, `row-${Date.now()}-${current.length + 1}`)[0]]
@@ -595,6 +600,7 @@ export function AssetBatchForm({
   }
 
   function handleRemoveRow(clientId: string) {
+    if (atRowMinimum) return
     setRows((current) => {
       if (current.length <= 2) return current
       return current.filter((row) => row.clientId !== clientId)
@@ -613,6 +619,7 @@ export function AssetBatchForm({
   }
 
   async function handleCheckDuplicates() {
+    if (hasClientDuplicates) return
     setCheckingDuplicates(true)
     setDuplicateCheckMessage("")
     setDuplicateCheckStatus(null)
@@ -980,14 +987,27 @@ export function AssetBatchForm({
         <Section title={t("batchRows")}>
           <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })}</div>
+              <div id="asset-batch-row-count" className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })} · {t("batchRowLimits")}</div>
               <p className="mt-1 text-meta text-muted-foreground">{t("batchRowHelp")}</p>
             </div>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={handleAddRow} disabled={rows.length >= 100}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleAddRow}
+              aria-disabled={atRowLimit || undefined}
+              aria-describedby={atRowLimit ? "asset-batch-row-count" : undefined}
+            >
               <Plus aria-hidden="true" />
               {t("batchAddRow")}
             </Button>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={handleCheckDuplicates} busy={checkingDuplicates} disabled={hasClientDuplicates}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleCheckDuplicates}
+              busy={checkingDuplicates}
+              aria-disabled={hasClientDuplicates || undefined}
+              aria-describedby={hasClientDuplicates ? "asset-batch-row-count" : undefined}
+            >
               {t("batchCheckDuplicates")}
             </Button>
           </div>
@@ -1032,7 +1052,8 @@ export function AssetBatchForm({
                     size="icon"
                     className="shrink-0"
                     onClick={() => handleRemoveRow(row.clientId)}
-                    disabled={rows.length <= 2}
+                    aria-disabled={atRowMinimum || undefined}
+                    aria-describedby={atRowMinimum ? "asset-batch-row-count" : undefined}
                     title={t("batchRemoveRow")}
                   >
                     <Trash2 aria-hidden="true" />
@@ -1129,7 +1150,8 @@ export function AssetBatchForm({
                       variant="outline"
                       size="icon-lg"
                       onClick={() => handleRemoveRow(row.clientId)}
-                      disabled={rows.length <= 2}
+                      aria-disabled={atRowMinimum || undefined}
+                      aria-describedby={atRowMinimum ? "asset-batch-row-count" : undefined}
                       title={t("batchRemoveRow")}
                     >
                       <Trash2 aria-hidden="true" />

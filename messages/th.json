@@ -1186,7 +1186,8 @@
     "noCustodian": "ไม่มีผู้ถือครอง",
     "createModeLabel": "วิธีเพิ่มทรัพย์สิน",
     "duplicateCheckPending": "กำลังตรวจรหัสทรัพย์สินและ Serial ซ้ำ รอสักครู่แล้วจึงบันทึก",
-    "batchRowDuplicate": "ค่านี้ซ้ำกับแถวอื่นในชุดนี้"
+    "batchRowDuplicate": "ค่านี้ซ้ำกับแถวอื่นในชุดนี้",
+    "batchRowLimits": "ชุดหนึ่งมีได้ 2–100 รายการ"
   },
   "company": {
     "title": "บริษัท",

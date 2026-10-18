@@ -77,7 +77,8 @@ test("asset batch form: row fields are named by Field and their help, not by ari
 
 test("asset batch form: the duplicate check and the save button are busy without a label swap (K13)", () => {
   const source = read("src/components/assets/asset-batch-form.tsx")
-  assert.match(source, /busy=\{checkingDuplicates\} disabled=\{hasClientDuplicates\}>\n\s*\{t\("batchCheckDuplicates"\)\}/)
+  // While the rows hold a duplicate the check waits, focusable with its reason (v-track plan 2 task 31d).
+  assert.match(source, /busy=\{checkingDuplicates\}\n\s*aria-disabled=\{hasClientDuplicates \|\| undefined\}\n\s*aria-describedby=\{hasClientDuplicates \? "asset-batch-row-count" : undefined\}\n\s*>\n\s*\{t\("batchCheckDuplicates"\)\}/)
   // A duplicate is an error under its row now, so it does not gate the save (v-track plan 2 A2).
   assert.match(source, /<Button type="submit" className="w-full sm:w-auto" busy=\{saving\}>/)
   assert.doesNotMatch(source, /batchCheckDuplicatesRunning|<button\b|inputClassName/)
