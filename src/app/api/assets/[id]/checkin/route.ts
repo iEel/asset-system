@@ -54,10 +54,16 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     })
     const conditionError = getAssetOperationConditionError(returnCondition)
     if (conditionError) {
-      return NextResponse.json({ code: conditionError, error: "Invalid return condition for check-in" }, { status: 400 })
+      return NextResponse.json(
+        { code: conditionError, error: "Invalid return condition for check-in", fieldErrors: { conditionAfter: "invalidReturnCondition" } },
+        { status: 400 },
+      )
     }
     if (!(await isValidCheckinReturnStatus(input.nextStatusId))) {
-      return NextResponse.json({ error: "Invalid return status for check-in" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Invalid return status for check-in", fieldErrors: { nextStatusId: "invalidReturnStatus" } },
+        { status: 400 },
+      )
     }
     const returnStatus = await prisma.assetStatus.findUnique({
       where: { id: input.nextStatusId },
