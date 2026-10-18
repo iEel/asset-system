@@ -33,7 +33,7 @@ import { formatCount } from "@/lib/display-format"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { formatFileSize } from "@/lib/uploads"
 import { cn } from "@/lib/utils"
-import { atLeastOne, maxLength, notBefore, pattern, range, required } from "@/lib/validation-rules"
+import { atLeastOne, decimals, maxLength, notBefore, pattern, range, required } from "@/lib/validation-rules"
 
 type Option = {
   id: string
@@ -301,13 +301,13 @@ function validate({ values, original, duplicates, install, customFields, purchas
     check("slotNo", maxLength(install.slotNo, 50))
     check("installReason", maxLength(install.reason, 500))
   }
-  check("purchasePrice", range(values.purchasePrice, 0))
+  check("purchasePrice", range(values.purchasePrice, 0) ?? decimals(values.purchasePrice, 2))
   check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)
   check("fixedAssetCode", maxLength(values.fixedAssetCode, 50))
   check("poNumber", maxLength(values.poNumber, 50))
   check("invoiceNumber", maxLength(values.invoiceNumber, 50))
   check("purchaseDocumentNo", purchaseDocument.file && required(purchaseDocument.documentNo) ? "purchaseDocumentNoRequired" : maxLength(purchaseDocument.documentNo, 100))
-  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0))
+  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0) ?? decimals(purchaseDocument.totalAmount, 2))
   for (const definition of customFields.definitions) {
     if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))
   }

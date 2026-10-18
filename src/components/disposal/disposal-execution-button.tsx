@@ -30,7 +30,7 @@ import {
   showsActualSalvageValue,
   type DisposalType,
 } from "@/lib/disposal-type-policy"
-import { maxLength, minLength, range, required } from "@/lib/validation-rules"
+import { decimals, maxLength, minLength, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
@@ -93,8 +93,8 @@ function validate(values: ExecutionValues, disposalType: DisposalType): Partial<
   check("nextStatusId", required(values.nextStatusId))
   check("recipientName", maxLength(values.recipientName, 200))
   check("documentNo", maxLength(values.documentNo, 100))
-  check("actualSaleValue", range(values.actualSaleValue, 0))
-  check("actualSalvageValue", range(values.actualSalvageValue, 0))
+  check("actualSaleValue", range(values.actualSaleValue, 0) ?? decimals(values.actualSaleValue, 2))
+  check("actualSalvageValue", range(values.actualSalvageValue, 0) ?? decimals(values.actualSalvageValue, 2))
   check("executionRemark", maxLength(values.executionRemark, 4000))
   const policyInput = { ...values, disposalType, actualSaleValue: values.actualSaleValue.trim() === "" ? null : Number(values.actualSaleValue) }
   for (const error of getDisposalExecutionFieldErrors(policyInput)) check(error.field, getApiErrorKey(error.message))

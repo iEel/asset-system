@@ -36,7 +36,7 @@ import {
   type AssetBatchEditableRow,
 } from "@/lib/asset-batch-create"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
-import { atLeastOne, maxLength, notBefore, range, required } from "@/lib/validation-rules"
+import { atLeastOne, decimals, maxLength, notBefore, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { ApiErrorText } from "@/components/ui/api-error-text"
@@ -196,7 +196,7 @@ function validate(common: BatchCommonValues, rows: BatchRow[]): Partial<Record<B
   check("common.currentLocationId", required(common.currentLocationId))
   check("common.statusId", required(common.statusId))
   check("common.conditionId", required(common.conditionId))
-  check("common.purchasePrice", range(common.purchasePrice, 0))
+  check("common.purchasePrice", range(common.purchasePrice, 0) ?? decimals(common.purchasePrice, 2))
   check("common.warrantyEndDate", notBefore(common.warrantyEndDate, common.warrantyStartDate))
   check("common.poNumber", maxLength(common.poNumber, 50))
   check("common.invoiceNumber", maxLength(common.invoiceNumber, 50))

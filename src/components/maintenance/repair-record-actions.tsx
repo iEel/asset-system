@@ -18,7 +18,7 @@ import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-op
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
-import { maxLength, notBefore, range, required, step } from "@/lib/validation-rules"
+import { decimals, maxLength, notBefore, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
@@ -66,7 +66,7 @@ function validate(values: Partial<Record<RepairActionField, string>>, reportedDa
   if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate))
   if (values.reportedDate !== undefined) check("reportedDate", required(values.reportedDate))
   if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))
-  check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))
+  check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))
   check("invoiceNo", maxLength(values.invoiceNo, 100))
   check("remark", maxLength(values.remark, 4000))
   check("reason", maxLength(values.reason, 1000))

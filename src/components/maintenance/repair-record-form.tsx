@@ -24,7 +24,7 @@ import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { cn } from "@/lib/utils"
-import { maxLength, range, required, step } from "@/lib/validation-rules"
+import { decimals, maxLength, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
@@ -78,7 +78,7 @@ function validate(values: RepairValues, needsReporter: boolean) {
   check("reportedDate", required(values.reportedDate))
   check("problem", required(values.problem) ?? maxLength(values.problem, 4000))
   check("reportedById", needsReporter ? required(values.reportedById) : null)
-  check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))
+  check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))
   check("invoiceNo", maxLength(values.invoiceNo, 100))
   check("remark", maxLength(values.remark, 4000))
   return errors

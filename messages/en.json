@@ -79,7 +79,8 @@
       "invalidChoice": "Choose an option from the list",
       "duplicate": "This value already exists",
       "endBeforeStart": "The end date cannot be before the start date",
-      "invalid": "This value is not valid"
+      "invalid": "This value is not valid",
+      "tooManyDecimals": "Use no more than 2 decimal places"
     }
   },
   "globalSearch": {

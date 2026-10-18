@@ -206,7 +206,7 @@ test("repair record: errors under the field, the asset and reporter selects chec
     'check("reportedDate", required(values.reportedDate))',
     'check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
     'check("reportedById", needsReporter ? required(values.reportedById) : null)',
-    'check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))',
+    'check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))',
     'check("invoiceNo", maxLength(values.invoiceNo, 100))',
     'check("remark", maxLength(values.remark, 4000))',
   ]) assert.ok(rules.includes(rule), rule)
@@ -268,7 +268,7 @@ test("repair record actions: complete, cancel and edit show errors under the fie
     'if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate))',
     'if (values.reportedDate !== undefined) check("reportedDate", required(values.reportedDate))',
     'if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
-    'check("repairCost", range(values.repairCost, 0) ?? step(values.repairCost, 0.01))',
+    'check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))',
     'check("invoiceNo", maxLength(values.invoiceNo, 100))',
     'check("remark", maxLength(values.remark, 4000))',
     'check("reason", maxLength(values.reason, 1000))',

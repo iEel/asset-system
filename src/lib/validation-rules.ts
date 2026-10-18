@@ -6,7 +6,8 @@
 // field is valid. Pure, with relative imports only, so tests and client code import this file.
 import type { FieldErrorCode } from "./field-errors.ts"
 
-export type RuleCode = FieldErrorCode | "endBeforeStart"
+// "tooManyDecimals" is the money rule's own code (common.validation.tooManyDecimals, v-track plan 2 task 31c).
+export type RuleCode = FieldErrorCode | "endBeforeStart" | "tooManyDecimals"
 
 // The WHATWG pattern the browser uses for type="email".
 const EMAIL_PATTERN =
@@ -53,6 +54,19 @@ export function step(value: number | string | null | undefined, size: number): R
   if (!Number.isFinite(number)) return "invalidNumber"
   const steps = number / size
   return Math.abs(steps - Math.round(steps)) < 1e-6 ? null : "invalidNumber"
+}
+
+// A money field's step (step="0.01"): at most `places` digits after the point, with its own sentence. The typed digits
+// count, trailing zeros left out (12.50 passes), so a large amount keeps its fraction; 1e-3 is counted as a number.
+export function decimals(value: number | string | null | undefined, places: number): RuleCode | null {
+  if (isEmpty(value)) return null
+  const text = typeof value === "number" ? String(value) : (value as string).trim()
+  const number = Number(text)
+  if (!Number.isFinite(number)) return "invalidNumber"
+  const typed = /^[+-]?\d*(?:\.(\d*))?$/.exec(text)
+  if (typed) return (typed[1] ?? "").replace(/0+$/, "").length > places ? "tooManyDecimals" : null
+  const scaled = number * 10 ** places
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6 ? null : "tooManyDecimals"
 }
 
 export function email(value: string | null | undefined): RuleCode | null {

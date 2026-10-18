@@ -26,7 +26,7 @@ import {
 } from "@/lib/disposal-type-policy"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { formatCount, formatMoney } from "@/lib/display-format"
-import { maxLength, range, required } from "@/lib/validation-rules"
+import { decimals, maxLength, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
@@ -72,8 +72,8 @@ function validate(values: DisposalBatchValues): Partial<Record<DisposalBatchFiel
     if (code && shown.includes(key)) errors[key] = code
   }
   check("requestedById", required(values.requestedById))
-  check("saleValue", range(values.saleValue, 0))
-  check("salvageValue", range(values.salvageValue, 0))
+  check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))
+  check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))
   // The server's own 12-character rule; its code is the message's catalog key (disposalReasonTooShort).
   const reasonTooShort = getDisposalRequestReasonError(values.reason)
   check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))

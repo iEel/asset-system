@@ -26,7 +26,7 @@ import {
   showsEstimatedSalvageValue,
   type DisposalType,
 } from "@/lib/disposal-type-policy"
-import { maxLength, range, required } from "@/lib/validation-rules"
+import { decimals, maxLength, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
@@ -74,8 +74,8 @@ function validate(values: DecisionValues, disposalType: DisposalType): Partial<R
   }
   check("decision", required(values.decision))
   check("nextStatusId", required(values.nextStatusId))
-  check("saleValue", range(values.saleValue, 0))
-  check("salvageValue", range(values.salvageValue, 0))
+  check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))
+  check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))
   check("approvalRemark", maxLength(values.approvalRemark, 4000))
   for (const error of getDisposalDecisionFieldErrors(values)) check(error.field, getApiErrorKey(error.message))
   return errors

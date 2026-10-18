@@ -139,3 +139,42 @@ test("zod's .int() refusing a fraction reads as a number error, not as a missing
   // The field reads the shared number sentence, no longer "กรุณาระบุข้อมูลนี้".
   assert.equal(say("th", "invalidNumber"), "กรุณากรอกเป็นตัวเลข")
 })
+
+test("one money rule: every money field of plan 2's forms refuses more than 2 decimal places with its own sentence (v-track plan 2 task 31c)", async () => {
+  const { decimals } = await import("../src/lib/validation-rules.ts")
+  const { readSourceFiles } = await import("./helpers/source-files.ts")
+  // The typed digits after the point count, trailing zeros left out; exponent notation is counted from the number.
+  for (const value of ["12.34", "0.29", "12.5", "12.50", "12.500", "1255", " 7.1 ", "-0.01", "1e2"]) assert.equal(decimals(value, 2), null, value)
+  for (const value of ["12.345", "0.001", "1e-3", 12.345]) assert.equal(decimals(value, 2), "tooManyDecimals", String(value))
+  assert.equal(decimals("12345678901234.567", 2), "tooManyDecimals", "a large amount keeps its fraction")
+  assert.equal(decimals("abc", 2), "invalidNumber")
+  for (const empty of ["", "  ", null, undefined]) assert.equal(decimals(empty, 2), null, "an empty value is left to required")
+  assert.match(read("src/lib/validation-rules.ts"), /^export function decimals\(value: number \| string \| null \| undefined, places: number\): RuleCode \| null \{$/m)
+  assert.match(read("src/lib/validation-rules.ts"), /^export type RuleCode = FieldErrorCode \| "endBeforeStart" \| "tooManyDecimals"$/m)
+  // Its own sentence, clearer than invalidNumber's "กรุณากรอกเป็นตัวเลข" (open issue 14).
+  assert.equal(messages("th").common.validation.tooManyDecimals, "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง")
+  assert.equal(messages("en").common.validation.tooManyDecimals, "Use no more than 2 decimal places")
+  for (const locale of ["th", "en"] as const) assert.equal(say(locale, "tooManyDecimals"), messages(locale).common.validation.tooManyDecimals, locale)
+
+  // Each money control keeps step="0.01" and its validate() restates it after min: range(v, 0) ?? decimals(v, 2).
+  const money: Record<string, readonly string[]> = {
+    [`${C}assets/asset-form.tsx`]: ["values.purchasePrice", "purchaseDocument.totalAmount"],
+    [`${C}assets/asset-batch-form.tsx`]: ["common.purchasePrice"],
+    [`${C}disposal/disposal-request-form.tsx`]: ["values.saleValue", "values.salvageValue"],
+    [`${C}disposal/disposal-batch-form.tsx`]: ["values.saleValue", "values.salvageValue"],
+    [`${C}disposal/disposal-decision-button.tsx`]: ["values.saleValue", "values.salvageValue"],
+    [`${C}disposal/disposal-execution-button.tsx`]: ["values.actualSaleValue", "values.actualSalvageValue"],
+    [`${C}maintenance/repair-record-form.tsx`]: ["values.repairCost"],
+    [`${C}maintenance/repair-record-actions.tsx`]: ["values.repairCost"],
+  }
+  const withMoney = readSourceFiles("src/components").filter((file) => file.source.includes('step="0.01"')).map((file) => file.path)
+  assert.deepEqual(withMoney.sort(), Object.keys(money).sort(), "every money control of the forms is in the list")
+  for (const [path, values] of Object.entries(money)) {
+    const source = read(path)
+    for (const value of values) assert.ok(source.includes(`range(${value}, 0) ?? decimals(${value}, 2))`), `${path}: ${value}`)
+    assert.doesNotMatch(source, /step\([^)]*, 0\.01\)/, `${path}: no money step() left`)
+    assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
+  }
+  // Whole numbers keep step() and invalidNumber: the PM days.
+  assert.ok(read(`${C}maintenance/maintenance-plan-form.tsx`).includes("range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1)"))
+})

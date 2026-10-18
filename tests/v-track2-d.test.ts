@@ -120,8 +120,8 @@ test("disposal request: the asset, the requester and the reason are checked on s
     'check("assetId", required(values.assetId))',
     'check("disposalType", required(values.disposalType))',
     'check("requestedById", required(values.requestedById))',
-    'check("saleValue", range(values.saleValue, 0))',
-    'check("salvageValue", range(values.salvageValue, 0))',
+    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
+    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
     // The server's own 12-character rule; its code is the message's catalog key (disposalReasonTooShort).
     "const reasonTooShort = getDisposalRequestReasonError(values.reason)",
     'check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))',
@@ -167,8 +167,8 @@ test("disposal batch: the edit step is a form whose requester and reason are err
   const rules = validateBody(source)
   for (const rule of [
     'check("requestedById", required(values.requestedById))',
-    'check("saleValue", range(values.saleValue, 0))',
-    'check("salvageValue", range(values.salvageValue, 0))',
+    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
+    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
     "const reasonTooShort = getDisposalRequestReasonError(values.reason)",
     'check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))',
   ]) assert.ok(rules.includes(rule), rule)
@@ -212,8 +212,8 @@ test("disposal decision: a rejection's reason is an error on save through the se
     "if (code && shown.includes(key)) errors[key] = code",
     'check("decision", required(values.decision))',
     'check("nextStatusId", required(values.nextStatusId))',
-    'check("saleValue", range(values.saleValue, 0))',
-    'check("salvageValue", range(values.salvageValue, 0))',
+    'check("saleValue", range(values.saleValue, 0) ?? decimals(values.saleValue, 2))',
+    'check("salvageValue", range(values.salvageValue, 0) ?? decimals(values.salvageValue, 2))',
     'check("approvalRemark", maxLength(values.approvalRemark, 4000))',
     // The server's own rule (spec §7.2): its message's catalog key is the code, rejectionReasonRequired.
     "for (const error of getDisposalDecisionFieldErrors(values)) check(error.field, getApiErrorKey(error.message))",
@@ -260,8 +260,8 @@ test("disposal execution: the executor, the type's own rules and the historical 
     'check("nextStatusId", required(values.nextStatusId))',
     'check("recipientName", maxLength(values.recipientName, 200))',
     'check("documentNo", maxLength(values.documentNo, 100))',
-    'check("actualSaleValue", range(values.actualSaleValue, 0))',
-    'check("actualSalvageValue", range(values.actualSalvageValue, 0))',
+    'check("actualSaleValue", range(values.actualSaleValue, 0) ?? decimals(values.actualSaleValue, 2))',
+    'check("actualSalvageValue", range(values.actualSalvageValue, 0) ?? decimals(values.actualSalvageValue, 2))',
     'check("executionRemark", maxLength(values.executionRemark, 4000))',
     // The server's own rules for the type (spec §7.2): recipient, document, sale value and remark, by catalog key.
     "for (const error of getDisposalExecutionFieldErrors(policyInput)) check(error.field, getApiErrorKey(error.message))",
