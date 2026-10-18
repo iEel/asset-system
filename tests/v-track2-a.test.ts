@@ -230,3 +230,38 @@ test("asset register bulk update: one of the two changes and the reason are erro
   assert.match(source, /function openBulkUpdate\(\) \{\n\s+bulkErrors\.setErrors\(\{\}\)/)
   assert.match(source, /if \(bulkErrors\.applyServer\(payload\) && focusBulkError\(\)\) return\n\s+throw new Error\(payload\?\.error \?\? labels\.bulkUpdateFailed\)/)
 })
+
+test("component install and removal: the details step and the removal dialog are forms that check themselves, and a refusal returns to the details step (v-track A4)", () => {
+  const source = read(`${C}assets/asset-component-manager.tsx`)
+  assertMovedForm(source, {
+    handler: "openReview",
+    table: "INSTALL_FIELD_IDS",
+    hook: "installErrors",
+    ids: {
+      componentRole: "component-install-role",
+      slotNo: "component-install-slot",
+      installedAt: "component-install-installed-at",
+      reason: "component-install-reason",
+    },
+  })
+  const rules = functionBody(source)
+  for (const rule of [
+    'check("componentRole", required(values.componentRole) ?? maxLength(values.componentRole, 100))',
+    'check("slotNo", maxLength(values.slotNo, 50))',
+    'check("reason", maxLength(values.reason, 500))',
+  ]) assert.ok(rules.includes(rule), rule)
+  // The role is required by the server, so it shows the star; the continue button submits the details step.
+  assert.ok(source.includes('<Field label={labels.componentRole} id="component-install-role" required error={installErrors.message("componentRole")}>'))
+  assert.match(source, /<form onSubmit=\{openReview\} noValidate className="space-y-4">/)
+  assert.match(source, /<Button type="submit">\n\s+<CheckCircle2 aria-hidden="true" \/>\n\s+\{labels\.continueReview\}/)
+  // A multi-step flow goes back to the step that owns the field (spec §4.2).
+  assert.match(source, /reveal: \(\) => setInstallStep\("details"\)/)
+  assert.match(source, /if \(installErrors\.applyServer\(payload\) && focusInstallError\(\)\) return\n\s+throw new Error\(payload\?\.error \?\? labels\.error\)/)
+  assert.match(source, /async function installComponent\(\) \{\n\s+\/\/[^\n]*\n\s+if \(!selectedComponent\) return\n/)
+  // The removal dialog is a form too: its optional reason keeps its maxLength; the server has no rule for it.
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/)
+  assert.match(functionBody(source, "validateRemoval"), /const code = maxLength\(reason, 500\)/)
+  assert.match(source, /removeErrors\.setErrors\(validateRemoval\(reason\)\)\n\s+if \(removeErrors\.focusFirst\(\["reason"\], \{ idFor: \(\) => "component-remove-reason" \}\)\) return/)
+  assert.match(source, /<Button type="submit" variant="destructive" busy=\{busy\}>/)
+  assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/)
+})

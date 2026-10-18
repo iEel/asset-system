@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation"
 import { CheckCircle2, Loader2, PackageCheck, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
-import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
@@ -22,6 +28,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { getLinearStepStates } from "@/lib/step-states"
 import { cn, formatDateTime } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { maxLength, required } from "@/lib/validation-rules"
 
 type AssetOption = {
   id: string
@@ -115,6 +123,35 @@ type ManagerLabels = {
 
 const componentRoles = ["RAM", "SSD", "HDD", "Power Supply", "Network Card", "Monitor", "Adapter", "Other"]
 
+// The install's details in visual order, keyed like the server's fieldErrors (validations/asset-operations.ts), with the
+// id focus moves to (v-track M-R1). The component itself is chosen in the step before: a prerequisite, not a field.
+const INSTALL_FIELD_IDS = {
+  componentRole: "component-install-role",
+  slotNo: "component-install-slot",
+  installedAt: "component-install-installed-at",
+  reason: "component-install-reason",
+} as const
+type InstallField = keyof typeof INSTALL_FIELD_IDS
+const INSTALL_FIELD_ORDER = Object.keys(INSTALL_FIELD_IDS) as InstallField[]
+
+// noValidate turns the browser's check off, so this restates the controls' maxLength and the server's required role
+// (v-track M-R2). The removal's reason is optional; its rule is its maxLength (validateRemoval).
+function validate(values: { componentRole: string; slotNo: string; reason: string }): Partial<Record<InstallField, string>> {
+  const errors: Partial<Record<InstallField, string>> = {}
+  const check = (key: InstallField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("componentRole", required(values.componentRole) ?? maxLength(values.componentRole, 100))
+  check("slotNo", maxLength(values.slotNo, 50))
+  check("reason", maxLength(values.reason, 500))
+  return errors
+}
+
+function validateRemoval(reason: string): Partial<Record<"reason", string>> {
+  const code = maxLength(reason, 500)
+  return code ? { reason: code } : {}
+}
+
 export function AssetComponentManager({
   locale,
   assetId,
@@ -150,6 +187,10 @@ export function AssetComponentManager({
   const [removeTarget, setRemoveTarget] = useState<ComponentRecord | null>(null)
   const [historyVisibleCount, setHistoryVisibleCount] = useState(10)
   const [lastInstalledAssetTag, setLastInstalledAssetTag] = useState<string | null>(null)
+  const installErrors = useFieldErrors<InstallField>()
+  // A server refusal at the review goes back to the details step that owns the field (spec §4.2).
+  const focusInstallError = () =>
+    installErrors.focusFirst(INSTALL_FIELD_ORDER, { idFor: (key) => INSTALL_FIELD_IDS[key], reveal: () => setInstallStep("details") })
   const canSearchCandidates = componentSearch.trim().length >= 2
   const visibleHistory = componentHistory.slice(0, historyVisibleCount)
   const hasMoreHistory = historyVisibleCount < componentHistory.length
@@ -199,18 +240,19 @@ export function AssetComponentManager({
     setInstalledAt(toLocalDatetimeInputValue(new Date()))
     setReason("")
     setInstallEvidence(null)
+    installErrors.setErrors({})
   }
 
-  function openReview() {
-    if (!selectedComponent || !componentRole.trim()) {
-      toast.error(labels.error)
-      return
-    }
+  function openReview(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    installErrors.setErrors(validate({ componentRole, slotNo, reason }))
+    if (focusInstallError()) return
     setInstallStep("review")
   }
 
   async function installComponent() {
-    if (!selectedComponent || !componentRole.trim()) return
+    // The review shows only for a chosen component whose details passed validate().
+    if (!selectedComponent) return
     setSaving(true)
 
     try {
@@ -224,7 +266,11 @@ export function AssetComponentManager({
 
       const response = await fetch(`/api/assets/${assetId}/components`, { method: "POST", body: formData })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? labels.error)
+      if (!response.ok) {
+        // A refusal that names a detail goes back to its step and field; any other keeps the toast (spec §4.1, §4.2).
+        if (installErrors.applyServer(payload) && focusInstallError()) return
+        throw new Error(payload?.error ?? labels.error)
+      }
 
       toast.success(labels.installSuccess)
       setLastInstalledAssetTag(selectedComponent.assetTag)
@@ -320,23 +366,53 @@ export function AssetComponentManager({
           ) : null}
 
           {installStep === "details" && selectedComponent ? (
-            <div className="space-y-4">
+            <form onSubmit={openReview} noValidate className="space-y-4">
               <SelectedComponent component={selectedComponent} label={labels.selected} serialLabel={labels.serial} />
               <div className="grid gap-3 md:grid-cols-2">
-                <Field label={labels.componentRole}>
-                  <Input list="component-role-suggestions" value={componentRole} onChange={(event) => setComponentRole(event.target.value)} maxLength={100} />
+                <Field label={labels.componentRole} id="component-install-role" required error={installErrors.message("componentRole")}>
+                  <Input
+                    list="component-role-suggestions"
+                    value={componentRole}
+                    onChange={(event) => {
+                      setComponentRole(event.target.value)
+                      installErrors.clear("componentRole")
+                    }}
+                    maxLength={100}
+                  />
                 </Field>
                 <datalist id="component-role-suggestions">
                   {componentRoles.map((role) => <option key={role} value={role} />)}
                 </datalist>
-                <Field label={labels.slot}>
-                  <Input value={slotNo} onChange={(event) => setSlotNo(event.target.value)} maxLength={50} />
+                <Field label={labels.slot} id="component-install-slot" error={installErrors.message("slotNo")}>
+                  <Input
+                    value={slotNo}
+                    onChange={(event) => {
+                      setSlotNo(event.target.value)
+                      installErrors.clear("slotNo")
+                    }}
+                    maxLength={50}
+                  />
                 </Field>
-                <Field label={labels.installedAt}>
-                  <Input type="datetime-local" value={installedAt} onChange={(event) => setInstalledAt(event.target.value)} />
+                <Field label={labels.installedAt} id="component-install-installed-at" error={installErrors.message("installedAt")}>
+                  <Input
+                    type="datetime-local"
+                    value={installedAt}
+                    onChange={(event) => {
+                      setInstalledAt(event.target.value)
+                      installErrors.clear("installedAt")
+                    }}
+                  />
                 </Field>
-                <Field label={labels.reason} className="md:col-span-2">
-                  <Textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} rows={3} />
+                <Field label={labels.reason} id="component-install-reason" className="md:col-span-2" error={installErrors.message("reason")}>
+                  <Textarea
+                    value={reason}
+                    onChange={(event) => {
+                      setReason(event.target.value)
+                      installErrors.clear("reason")
+                    }}
+                    maxLength={500}
+                    rows={3}
+                  />
                 </Field>
               </div>
               <FileDropzone
@@ -352,12 +428,12 @@ export function AssetComponentManager({
                 <Button variant="outline" onClick={resetInstallFlow}>
                   {labels.cancel}
                 </Button>
-                <Button onClick={openReview}>
+                <Button type="submit">
                   <CheckCircle2 aria-hidden="true" />
                   {labels.continueReview}
                 </Button>
               </div>
-            </div>
+            </form>
           ) : null}
 
           {installStep === "review" && selectedComponent ? (
@@ -531,6 +607,15 @@ function ComponentRemovalDialog({
   const reasonRef = useRef<HTMLTextAreaElement | null>(null)
   const [reason, setReason] = useState("")
   const [removeEvidence, setRemoveEvidence] = useState<File | null>(null)
+  // The removal's reason is optional and the server has no rule for it, so this form has no server step.
+  const removeErrors = useFieldErrors<"reason">()
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    removeErrors.setErrors(validateRemoval(reason))
+    if (removeErrors.focusFirst(["reason"], { idFor: () => "component-remove-reason" })) return
+    onConfirm(reason.trim(), removeEvidence)
+  }
 
   return (
     <AccessibleDialog
@@ -549,21 +634,31 @@ function ComponentRemovalDialog({
       onClose={onClose}
     >
       {component ? (
-        <>
+        <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
           <AccessibleDialogBody className="space-y-4">
-            <Field label={labels.removeReason}>
-              <Textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} rows={4} maxLength={500} />
+            <Field label={labels.removeReason} id="component-remove-reason" error={removeErrors.message("reason")}>
+              <Textarea
+                ref={reasonRef}
+                value={reason}
+                onChange={(event) => {
+                  setReason(event.target.value)
+                  removeErrors.clear("reason")
+                }}
+                disabled={busy}
+                rows={4}
+                maxLength={500}
+              />
             </Field>
             <FileDropzone file={removeEvidence} onFileChange={setRemoveEvidence} disabled={busy} accept="image/*" capture="environment" title={labels.removeEvidence} hint={labels.evidenceHint} browseLabel={labels.browseEvidence} />
           </AccessibleDialogBody>
           <AccessibleDialogFooter>
             <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
-            <Button variant="destructive" busy={busy} onClick={() => onConfirm(reason.trim(), removeEvidence)}>
+            <Button type="submit" variant="destructive" busy={busy}>
               <Trash2 aria-hidden="true" />
               {labels.confirmRemove}
             </Button>
           </AccessibleDialogFooter>
-        </>
+        </form>
       ) : null}
     </AccessibleDialog>
   )

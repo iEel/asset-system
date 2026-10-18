@@ -114,10 +114,11 @@ test("component install: step rail labels, real buttons, primary last, and Back 
 
 test("component removal dialog uses the shared parts, a code tag in its description and a busy destructive confirm (K9, K11, K13)", () => {
   const manager = read("src/components/assets/asset-component-manager.tsx")
-  assert.match(manager, /<AccessibleDialogBody className="space-y-4">\n\s*<Field label=\{labels\.removeReason\}>\n\s*<Textarea ref=\{reasonRef\}/)
+  // v-track plan 2 A4: the dialog is a form; the reason has its id and error, and the confirm submits it.
+  assert.match(manager, /<AccessibleDialogBody className="space-y-4">\n\s*<Field label=\{labels\.removeReason\} id="component-remove-reason" error=\{removeErrors\.message\("reason"\)\}>\n\s*<Textarea\n\s*ref=\{reasonRef\}/)
   assert.match(
     manager,
-    /<AccessibleDialogFooter>\n\s*<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s*<Button variant="destructive" busy=\{busy\} onClick=/,
+    /<AccessibleDialogFooter>\n\s*<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s*<Button type="submit" variant="destructive" busy=\{busy\}>/,
   )
   assert.match(manager, /<span className="tag">\{component\.componentAsset\.assetTag\}<\/span> · \{component\.componentAsset\.name\}/)
   assert.doesNotMatch(manager, /closeLabel=/)
