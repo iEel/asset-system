@@ -118,3 +118,24 @@ test("checkin's refusals of the return condition and the return status name thei
   assert.ok(form.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
   assert.ok(form.includes("if (fieldErrors.applyServer(payload) && focusFirstError()) return"))
 })
+
+test("zod's .int() refusing a fraction reads as a number error, not as a missing value (v-track plan 2 task 31b)", async () => {
+  const { z } = await import("zod")
+  const { issueToFieldErrorCode, issuesToFieldErrors } = await import("../src/lib/field-errors.ts")
+  // What zod 4.4.1 reports for a fraction in .int(): invalid_type with expected "int" and no received. A missing value
+  // reports expected "number", and text that is not a number received "NaN".
+  const schema = z.object({
+    auditYear: z.coerce.number().int().min(2000).max(2100),
+    licenseTotalSeats: z.number().int().min(0).optional(),
+    intervalDays: z.coerce.number().int().min(1),
+    sampleRate: z.number().int(),
+  })
+  const issues = schema.safeParse({ auditYear: "2025.5", licenseTotalSeats: 1.5, intervalDays: "abc" }).error!.issues
+  assert.deepEqual(issues.find((issue) => issue.path[0] === "auditYear"), {
+    expected: "int", format: "safeint", code: "invalid_type", path: ["auditYear"], message: "Invalid input: expected int, received number",
+  })
+  assert.deepEqual(issuesToFieldErrors(issues), { auditYear: "invalidNumber", licenseTotalSeats: "invalidNumber", intervalDays: "invalidNumber", sampleRate: "required" })
+  assert.equal(issueToFieldErrorCode({ code: "invalid_type", expected: "int", path: ["sampleRate"], message: "Invalid input: expected int, received number" }), "invalidNumber")
+  // The field reads the shared number sentence, no longer "กรุณาระบุข้อมูลนี้".
+  assert.equal(say("th", "invalidNumber"), "กรุณากรอกเป็นตัวเลข")
+})

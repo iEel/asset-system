@@ -54,6 +54,8 @@ export function issueToFieldErrorCode(issue: IssueLike): string {
     case "invalid_type":
       if (issue.expected === "date") return "invalidDate"
       if (issue.expected === "number" && issue.received !== undefined) return "invalidNumber"
+      // .int() refusing a fraction says expected "int" (a missing value says "number"): a number error, not a missing one.
+      if (issue.expected === "int") return "invalidNumber"
       return "required"
     case "too_small":
       if (issue.origin === "string") return Number(issue.minimum) > 1 ? "tooShort" : "required"
