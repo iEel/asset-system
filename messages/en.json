@@ -1807,7 +1807,6 @@
     "reason": "Transfer Reason",
     "remark": "Remark",
     "noChange": "No change",
-    "destinationRequired": "Choose at least one transfer destination",
     "success": "Asset transferred successfully",
     "from": "From",
     "reviewTitle": "Review transfer",

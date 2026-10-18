@@ -204,3 +204,30 @@ test("checkin: the return date is checked at last, errors under the field instea
     }
   }
 })
+
+test("transfer: errors under the field, the at-least-one destination under the location with the server's code, and a refusal from the review back on its field (v-track O4)", () => {
+  const source = read(`${C}asset-operations/transfer-form.tsx`)
+  const ids = { assetId: "transfer-asset", toLocationId: "transfer-to-location", reason: "transfer-reason" }
+  assertOperationForm(source, { ids })
+  const rules = validateBody(source)
+  for (const rule of [
+    'check("assetId", required(values.assetId))',
+    'check("toLocationId", atLeastOne([values.toLocationId, values.toCustodianId, values.toDepartmentId]) && "transferDestinationRequired")',
+    'check("reason", required(values.reason) ?? maxLength(values.reason, 500))',
+  ]) assert.ok(rules.includes(rule), rule)
+  for (const key of Object.keys(ids)) assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
+  // The required asset select has an id for focus and shows its error (V4); the destination rule shows under the
+  // location select, the key the server names (O-R4).
+  assert.match(source, /<SearchableSelect id="transfer-asset" label=\{t\("asset"\)\} [^\n]*error=\{fieldErrors\.message\("assetId"\)\}/)
+  assert.match(source, /<SearchableSelect id="transfer-to-location" label=\{t\("toLocation"\)\} [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
+  assert.match(source, /<Field label=\{t\("reason"\)\} id="transfer-reason" required error=\{fieldErrors\.message\("reason"\)\}>/)
+  // The three destinations are one rule: a change of any clears it (spec §4.3).
+  assert.ok(source.includes('if (field === "toLocationId" || field === "toCustodianId" || field === "toDepartmentId") fieldErrors.clear("toLocationId")'))
+  // A refusal from the review closes it, and the field takes focus once the dialog has gone (O-R1).
+  assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)
+  assert.ok(source.includes("fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
+  assert.doesNotMatch(source, /destinationRequired"\)/)
+  for (const locale of ["th", "en"]) {
+    assert.equal(messagesOf(locale).transfer.destinationRequired, undefined, `${locale}.transfer.destinationRequired has no reader and is removed`)
+  }
+})

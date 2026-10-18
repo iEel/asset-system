@@ -15,9 +15,43 @@ import { PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import { waitForDialogToClose } from "@/lib/field-focus"
+import { atLeastOne, maxLength, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string; disabled?: boolean; personalTransferEligible?: boolean }
+type TransferFormValues = {
+  assetId: string
+  toLocationId: string
+  toCustodianId: string
+  toDepartmentId: string
+  reason: string
+  remark: string
+}
+
+// The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The server
+// names "at least one destination" under toLocationId, so the rule shows under the location select (O-R4).
+const FIELD_IDS = {
+  assetId: "transfer-asset",
+  toLocationId: "transfer-to-location",
+  reason: "transfer-reason",
+} as const
+type TransferField = keyof typeof FIELD_IDS
+const FIELD_ORDER = Object.keys(FIELD_IDS) as TransferField[]
+
+// noValidate turns the browser's check off, so this restates the controls' required and maxLength, and the server's
+// "at least one destination" with the server's own code (v-track M-R2, O-R4).
+function validate(values: TransferFormValues): Partial<Record<TransferField, string>> {
+  const errors: Partial<Record<TransferField, string>> = {}
+  const check = (key: TransferField, code: string | null) => {
+    if (code) errors[key] = code
+  }
+  check("assetId", required(values.assetId))
+  check("toLocationId", atLeastOne([values.toLocationId, values.toCustodianId, values.toDepartmentId]) && "transferDestinationRequired")
+  check("reason", required(values.reason) ?? maxLength(values.reason, 500))
+  return errors
+}
 
 export function TransferForm({
   assets,
@@ -41,8 +75,9 @@ export function TransferForm({
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const fieldErrors = useFieldErrors<TransferField>()
   const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<TransferFormValues>({
     assetId: initialAsset?.id ?? "",
     toLocationId: "",
     toCustodianId: "",
@@ -72,7 +107,18 @@ export function TransferForm({
     },
   })
 
+  // A refusal from the review closes it, and the field takes focus once the dialog has gone (spec §4.2, O-R1).
+  async function leaveReview() {
+    const closed = waitForDialogToClose()
+    setReviewOpen(false)
+    await closed
+  }
+  const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })
+
   function setField(field: string, value: string) {
+    // The three destinations are one rule, so a change of any clears it (spec §4.3).
+    if (field === "toLocationId" || field === "toCustodianId" || field === "toDepartmentId") fieldErrors.clear("toLocationId")
+    else if (field in FIELD_IDS) fieldErrors.clear(field as TransferField)
     setValues((current) => {
       if (field === "toCustodianId" && value) {
         const currentAsset = assets.find((asset) => asset.id === current.assetId)
@@ -88,10 +134,8 @@ export function TransferForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedAsset || (!values.toLocationId && !values.toCustodianId && !values.toDepartmentId)) {
-      toast.error(t("destinationRequired"))
-      return
-    }
+    fieldErrors.setErrors(validate(values))
+    if (focusFirstError()) return
     setReviewOpen(true)
   }
 
@@ -110,7 +154,11 @@ export function TransferForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        // A refusal that names a field of this form closes the review and shows under it; any other keeps the toast.
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? tCommon("error"))
+      }
       toast.success(t("success"))
       router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)
       router.refresh()
@@ -125,18 +173,18 @@ export function TransferForm({
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t("title")} className="mb-6" />
       <ContentPanel>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
+        <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {initialAsset ? (
             <div className="md:col-span-2">
               <FormContextBanner label={t("asset")} value={initialAsset.label} />
             </div>
           ) : null}
-          <SearchableSelect label={t("asset")} value={values.assetId} required options={availableAssets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
-          <SearchableSelect label={t("toLocation")} value={values.toLocationId} options={locations} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toLocationId", value)} />
+          <SearchableSelect id="transfer-asset" label={t("asset")} value={values.assetId} required options={availableAssets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("assetId")} onChange={(value) => setField("assetId", value)} />
+          <SearchableSelect id="transfer-to-location" label={t("toLocation")} value={values.toLocationId} options={locations} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toLocationId")} onChange={(value) => setField("toLocationId", value)} />
           <SearchableSelect label={t("toCustodian")} value={values.toCustodianId} options={employees} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toCustodianId", value)} />
           <SearchableSelect label={t("toDepartment")} value={values.toDepartmentId} options={departments} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toDepartmentId", value)} />
           <div className="md:col-span-2">
-            <Field label={t("reason")} required>
+            <Field label={t("reason")} id="transfer-reason" required error={fieldErrors.message("reason")}>
               <Input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} />
             </Field>
           </div>
