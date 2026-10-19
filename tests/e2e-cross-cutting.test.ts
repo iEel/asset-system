@@ -151,3 +151,77 @@ test("roles and permissions: each refused page and request needs a permission th
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
   for (const finding of ["M4", "M5", "M6"]) assert.ok(spec.includes(`test.fail(true, "${finding}: `), finding)
 })
+
+test("errors under the field in the real flow: each form's wrong entry, its field id, its sentence and where its save lands (e2e cross-cutting task 3, EM3)", () => {
+  const spec = read("e2e/cross-cutting/field-errors.spec.ts")
+  const common = thai.common as Record<string, Record<string, string> | string>
+  const validation = common.validation as Record<string, string>
+  const section = (name: string) => thai[name] as Record<string, string>
+  // The sentences the spec reads are the app's own.
+  for (const [constant, value] of [
+    ["REQUIRED", validation.required],
+    ["END_BEFORE_START", validation.endBeforeStart],
+    ["HANDOVER_MODE_REQUIRED", section("checkout").handoverModeRequired],
+    ["DUPLICATE_TAG", section("asset").duplicateAssetTag],
+  ] as const) {
+    assert.ok(spec.includes(`const ${constant} = "${value}"`), constant)
+  }
+  for (const [dialog, confirm] of [
+    [section("checkout").reviewTitle, section("checkout").reviewConfirm],
+    [section("checkin").reviewTitle, section("checkin").reviewConfirm],
+    [section("transfer").reviewTitle, section("transfer").reviewConfirm],
+  ]) {
+    assert.ok(spec.includes(`page.getByRole("dialog", { name: "${dialog}" })`), dialog)
+    assert.ok(spec.includes(`{ name: "${confirm}" }`), confirm)
+  }
+  assert.equal(common.save, "บันทึก")
+  assert.match(read("e2e/cross-cutting/support/forms.ts"), /page\.getByRole\("button", \{ name: "บันทึก", exact: true \}\)\.click\(\)/)
+  // Each form checks the field the test leaves wrong, with the code that sentence reads (the V track's validate()).
+  const forms: [string, string, string][] = [
+    ["src/components/assets/asset-form.tsx", `check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)`, "asset-warranty-end"],
+    ["src/components/assets/asset-form.tsx", `check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))`, "asset-tag"],
+    ["src/components/asset-operations/checkout-form.tsx", `if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")`, "checkout-handover-mode"],
+    ["src/components/asset-operations/checkin-form.tsx", `check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100))`, "checkin-return-by"],
+    ["src/components/asset-operations/transfer-form.tsx", `check("reason", required(values.reason) ?? maxLength(values.reason, 500))`, "transfer-reason"],
+    ["src/components/maintenance/repair-record-form.tsx", `check("problem", required(values.problem) ?? maxLength(values.problem, 4000))`, "repair-record-problem"],
+    ["src/components/maintenance/maintenance-plan-form.tsx", `check("title", required(values.title) ?? maxLength(values.title, 200))`, "maintenance-plan-title"],
+    ["src/components/disposal/disposal-request-form.tsx", `check("reason", required(values.reason) ?? (reasonTooShort && getApiErrorKey(reasonTooShort)) ?? maxLength(values.reason, 4000))`, "disposal-request-reason"],
+    ["src/components/audit/audit-round-form.tsx", `check("endDate", required(values.endDate) ?? notBefore(values.endDate, values.startDate))`, "audit-round-end-date"],
+  ]
+  for (const [file, rule, id] of forms) {
+    const source = read(file)
+    assert.ok(source.includes(rule), `${file}: ${rule}`)
+    assert.ok(source.includes(`"${id}"`), `${file}: ${id}`)
+    assert.ok(spec.includes(`expectFieldError(page, "${id}", `), `the spec checks ${id}`)
+  }
+  // Every other id the spec fills is a control of its form.
+  const controls: Record<string, string[]> = {
+    "src/components/assets/asset-form.tsx": ["asset-name", "asset-category", "asset-ownership-type", "asset-company", "asset-branch", "asset-department", "asset-current-location", "asset-status", "asset-condition", "asset-warranty-start"],
+    "src/components/asset-operations/checkout-form.tsx": ["checkout-asset", "checkout-destination", "checkout-condition"],
+    "src/components/asset-operations/checkin-form.tsx": ["checkin-checkout", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"],
+    "src/components/asset-operations/transfer-form.tsx": ["transfer-asset"],
+    "src/components/maintenance/repair-record-form.tsx": ["repair-record-asset"],
+    "src/components/maintenance/maintenance-plan-form.tsx": ["maintenance-plan-asset"],
+    "src/components/disposal/disposal-request-form.tsx": ["disposal-request-requested-by"],
+    "src/components/audit/audit-round-form.tsx": ["audit-round-name", "audit-round-start-date"],
+  }
+  for (const [file, ids] of Object.entries(controls)) for (const id of ids) assert.ok(read(file).includes(`"${id}"`), `${file}: ${id}`)
+  // Where each save lands, as the spec expects it.
+  for (const [file, push] of [
+    ["src/components/maintenance/repair-record-form.tsx", "router.push(appendOperationalReturnTo(`/${locale}/maintenance/${payload.id}`, returnTo))"],
+    ["src/components/disposal/disposal-request-form.tsx", "router.push(`/${locale}/disposal/${payload.id}${uploadQuery}`)"],
+    ["src/components/audit/audit-round-form.tsx", "router.push(`/${locale}/audit/rounds/${payload.id}`)"],
+    ["src/components/asset-operations/transfer-form.tsx", "router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)"],
+    ["src/components/assets/asset-form.tsx", "router.push(backHref)"],
+  ]) {
+    assert.ok(read(file).includes(push), `${file}: ${push}`)
+  }
+  // The asset form returns to the register with its search kept (the spec opens it filtered to its own tag).
+  assert.match(read("src/lib/asset-return-navigation.ts"), /return `\$\{url\.pathname\}\$\{url\.search\}\$\{url\.hash\}`/)
+  // The audit round's scope is the run's room and the Draft status: the scope where reads both.
+  const scope = read("src/lib/audit-round-scope.ts")
+  assert.ok(scope.includes("...(input.scopeLocationId ? { currentLocationId: input.scopeLocationId } : {}),") && scope.includes("...(input.scopeStatusId ? { statusId: input.scopeStatusId } : {}),"))
+  // The spec: the suite's fixtures, and findings M3, M8 and M9 expected to fail until fixed (M9 on the phone only).
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
+  assert.ok(spec.includes(`test.fail(true, "M3: `) && spec.includes(`test.fail(true, "M8: `) && spec.includes(`test.fail(e2eDevice === "phone", "M9: `))
+})
