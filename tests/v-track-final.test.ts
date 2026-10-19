@@ -54,3 +54,22 @@ test("one whole-number rule: every whole-number field reads its own sentence for
   // No form restates a whole number with step(v, 1) any more.
   assert.deepEqual(findMatches(readSourceFiles("src"), /\bstep\([^()]*, 1\)/g), [])
 })
+
+test("the print queue's three buttons wait with their reason beside them (v-track final task 2, VF2)", () => {
+  const source = read(`${C}assets/asset-label-batch-tool.tsx`)
+  // Add filtered: one label; aria-disabled while the scope holds nothing, tied to the line that says so; the handler
+  // returns first (spec §4.4; plan 2 open issue 16).
+  assert.match(source, /<Button\n\s+aria-disabled=\{recentAssets\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{recentAssets\.length === 0 \? "asset-label-add-filtered-reason" : undefined\}\n\s+onClick=\{addRecentAssets\}\n\s+className="w-full shrink-0 sm:w-auto"\n\s+>\n\s+<Plus aria-hidden="true" \/>\n\s+\{labels\.addFilteredQueue\}\n\s+<\/Button>/)
+  assert.match(source, /\{recentAssets\.length === 0 \? \(\n\s+<p id="asset-label-add-filtered-reason" className="mt-1 text-meta text-muted-foreground">\n\s+\{labels\.addFilteredQueueUnavailable\}\n\s+<\/p>\n\s+\) : null\}\n\s+<\/div>\n\s+<Button\n/)
+  assert.match(source, /function addRecentAssets\(\) \{\n(?:\s+\/\/[^\n]*\n)+\s+if \(recentAssets\.length === 0\) return\n\s+setSelected\(/)
+  // The two print buttons: aria-disabled with nothing selected, tied to the empty note under them; both handlers already
+  // return first.
+  assert.match(source, /<Button\n\s+variant="outline"\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printFirstLabel\}\n\s+className="w-full"\n\s+>/)
+  assert.match(source, /<Button\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printLabels\}\n\s+className="w-full"\n\s+>/)
+  assert.ok(source.includes('<EmptyNote id="asset-label-print-reason">{labels.noSelected}</EmptyNote>'))
+  assert.match(source, /function printLabels\(\) \{\n\s+if \(selectedForPrint\.length === 0\) return\n/)
+  assert.match(source, /function printFirstLabel\(\) \{\n\s+const \[firstAsset\] = selectedForPrint\n\s+if \(!firstAsset\) return\n/)
+  // No plain disabled gate is left on the three, and the add button no longer swaps its label for the reason.
+  assert.doesNotMatch(source, /\bdisabled=\{(?:recentAssets|selectedForPrint)\.length === 0\}/)
+  assert.doesNotMatch(source, /labels\.addFilteredQueueUnavailable : labels\.addFilteredQueue/)
+})

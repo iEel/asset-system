@@ -245,6 +245,9 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
   }
 
   function addRecentAssets() {
+    // Nothing in this scope is a prerequisite, not a field: the button waits and the line beside it says why (spec §4.4,
+    // v-track final task 2). Enter or Space on it still reaches here.
+    if (recentAssets.length === 0) return
     setSelected((current) => mergeSelectedAssets(current, recentAssets))
   }
 
@@ -355,10 +358,20 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   {queueScopeSummary.detail !== labels.queueScopeHelp ? (
                     <p className="mt-1 text-meta text-muted-foreground">{labels.queueScopeHelp}</p>
                   ) : null}
+                  {recentAssets.length === 0 ? (
+                    <p id="asset-label-add-filtered-reason" className="mt-1 text-meta text-muted-foreground">
+                      {labels.addFilteredQueueUnavailable}
+                    </p>
+                  ) : null}
                 </div>
-                <Button disabled={recentAssets.length === 0} onClick={addRecentAssets} className="w-full shrink-0 sm:w-auto">
+                <Button
+                  aria-disabled={recentAssets.length === 0 || undefined}
+                  aria-describedby={recentAssets.length === 0 ? "asset-label-add-filtered-reason" : undefined}
+                  onClick={addRecentAssets}
+                  className="w-full shrink-0 sm:w-auto"
+                >
                   <Plus aria-hidden="true" />
-                  {recentAssets.length === 0 ? labels.addFilteredQueueUnavailable : labels.addFilteredQueue}
+                  {labels.addFilteredQueue}
                 </Button>
               </div>
             </div>
@@ -496,11 +509,22 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
               icon={<ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" />}
             />
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-              <Button variant="outline" disabled={selectedForPrint.length === 0} onClick={printFirstLabel} className="w-full">
+              <Button
+                variant="outline"
+                aria-disabled={selectedForPrint.length === 0 || undefined}
+                aria-describedby={selectedForPrint.length === 0 ? "asset-label-print-reason" : undefined}
+                onClick={printFirstLabel}
+                className="w-full"
+              >
                 <Printer aria-hidden="true" />
                 {labels.printFirstLabel}
               </Button>
-              <Button disabled={selectedForPrint.length === 0} onClick={printLabels} className="w-full">
+              <Button
+                aria-disabled={selectedForPrint.length === 0 || undefined}
+                aria-describedby={selectedForPrint.length === 0 ? "asset-label-print-reason" : undefined}
+                onClick={printLabels}
+                className="w-full"
+              >
                 <Printer aria-hidden="true" />
                 {labels.print}
               </Button>
@@ -508,7 +532,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
           </div>
 
           {selectedForPrint.length === 0 ? (
-            <EmptyNote>{labels.noSelected}</EmptyNote>
+            <EmptyNote id="asset-label-print-reason">{labels.noSelected}</EmptyNote>
           ) : (
             <div className="max-h-[44rem] space-y-2 overflow-y-auto pr-1">
               {selectedForPrint.map((asset) => (
