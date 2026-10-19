@@ -150,7 +150,7 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
   assert.equal(decimals("abc", 2), "invalidNumber")
   for (const empty of ["", "  ", null, undefined]) assert.equal(decimals(empty, 2), null, "an empty value is left to required")
   assert.match(read("src/lib/validation-rules.ts"), /^export function decimals\(value: number \| string \| null \| undefined, places: number\): RuleCode \| null \{$/m)
-  assert.match(read("src/lib/validation-rules.ts"), /^export type RuleCode = FieldErrorCode \| "endBeforeStart" \| "tooManyDecimals"$/m)
+  assert.match(read("src/lib/validation-rules.ts"), /^export type RuleCode = FieldErrorCode \| "endBeforeStart" \| "tooManyDecimals" \| "notWholeNumber"$/m)
   // Its own sentence, clearer than invalidNumber's "กรุณากรอกเป็นตัวเลข" (open issue 14).
   assert.equal(messages("th").common.validation.tooManyDecimals, "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง")
   assert.equal(messages("en").common.validation.tooManyDecimals, "Use no more than 2 decimal places")
@@ -175,8 +175,8 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
     assert.doesNotMatch(source, /step\([^)]*, 0\.01\)/, `${path}: no money step() left`)
     assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
   }
-  // Whole numbers keep step() and invalidNumber: the PM days.
-  assert.ok(read(`${C}maintenance/maintenance-plan-form.tsx`).includes("range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1)"))
+  // Whole numbers have their own rule and sentence, wholeNumber and notWholeNumber: the PM days (v-track final task 1).
+  assert.ok(read(`${C}maintenance/maintenance-plan-form.tsx`).includes("range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays)"))
 })
 
 test("the batch's row limits and its duplicate check stay focusable and say why beside the row count (v-track plan 2 task 31d, A8)", () => {

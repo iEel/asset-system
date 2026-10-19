@@ -85,6 +85,7 @@ test("every code has a Thai and an English message, with its limits when the for
     endBeforeStart: "วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น",
     invalid: "ข้อมูลไม่ถูกต้อง",
     tooManyDecimals: "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง",
+    notWholeNumber: "กรุณากรอกเป็นจำนวนเต็ม",
   })
   assert.deepEqual(Object.keys(en.common.validation), Object.keys(th.common.validation))
   assert.equal(en.common.validation.tooShort, "Enter at least {min} characters")

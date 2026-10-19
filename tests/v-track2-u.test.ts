@@ -76,8 +76,10 @@ test("audit round: the date pair limits its pickers, validate() restates every r
     'check("status", required(values.status))',
     'check("sampleRate", required(values.sampleRate) ?? range(values.sampleRate, 1, 100) ?? wholeNumber(values.sampleRate))',
   ]) assert.ok(rules.includes(rule), rule)
-  // The number fields' step of 1, which the browser checked before noValidate (U-R3).
-  assert.match(source, /function wholeNumber\(value: string\) \{\n\s+return Number\.isInteger\(Number\(value\.trim\(\)\)\) \? null : "invalidNumber"\n\}/)
+  // The number fields' step of 1, which the browser checked before noValidate (U-R3): the shared whole-number rule, not a
+  // helper of the form's own (v-track final task 1).
+  assert.match(source, /^import \{ maxLength, notBefore, range, required, wholeNumber \} from "@\/lib\/validation-rules"$/m)
+  assert.doesNotMatch(source, /function wholeNumber\(/)
   assert.match(source, /fieldErrors\.setErrors\(validate\(values, yearRange\)\)/)
   // The date pair (spec §7.4): each picker is limited by the other date, and changing either clears both errors.
   assert.match(source, /onChange=\{\(event\) => setField\("startDate", event\.target\.value\)\} required max=\{values\.endDate\} \/>/)

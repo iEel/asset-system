@@ -14,7 +14,7 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
-import { maxLength, range, required, step } from "@/lib/validation-rules"
+import { maxLength, range, required, wholeNumber } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 
@@ -45,7 +45,7 @@ function validate(values: PlanValues, isEdit: boolean) {
   check("title", required(values.title) ?? maxLength(values.title, 200))
   check("frequency", required(values.frequency))
   // The days count only for a custom frequency: whole days from 1 to 3650.
-  check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1) : null)
+  check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays) : null)
   check("nextDueDate", required(values.nextDueDate))
   check("notes", maxLength(values.notes, 4000))
   return errors

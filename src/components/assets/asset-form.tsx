@@ -33,7 +33,7 @@ import { formatCount } from "@/lib/display-format"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { formatFileSize } from "@/lib/uploads"
 import { cn } from "@/lib/utils"
-import { atLeastOne, decimals, maxLength, notBefore, pattern, range, required } from "@/lib/validation-rules"
+import { atLeastOne, decimals, maxLength, notBefore, range, required, wholeNumber } from "@/lib/validation-rules"
 
 type Option = {
   id: string
@@ -289,8 +289,8 @@ function validate({ values, original, duplicates, install, customFields, purchas
   check("departmentId", ownershipType !== "personal" && !isLicense ? required(values.departmentId) : null)
   check("custodianId", isLicense && atLeastOne([values.departmentId, values.custodianId]) ? "licenseResponsibilityRequired" : null)
   if (isLicense) {
-    check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? pattern(String(values.licenseTotalSeats ?? ""), /\d+/))
-    check("licenseUsedSeats", range(values.licenseUsedSeats, 0) ?? pattern(String(values.licenseUsedSeats ?? ""), /\d+/) ?? seatsExceeded(values))
+    check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? wholeNumber(values.licenseTotalSeats))
+    check("licenseUsedSeats", range(values.licenseUsedSeats, 0) ?? wholeNumber(values.licenseUsedSeats) ?? seatsExceeded(values))
   }
   check("currentLocationId", required(values.currentLocationId))
   check("statusId", required(values.statusId))

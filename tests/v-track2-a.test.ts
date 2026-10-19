@@ -90,8 +90,9 @@ test("asset form: validate() restates every rule the toasts said, the save gates
     'check("serialNumber", duplicates.serialNumber ? "duplicate" : maxLength(values.serialNumber, 100))',
     'check("departmentId", ownershipType !== "personal" && !isLicense ? required(values.departmentId) : null)',
     'check("custodianId", isLicense && atLeastOne([values.departmentId, values.custodianId]) ? "licenseResponsibilityRequired" : null)',
-    'check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? pattern(String(values.licenseTotalSeats ?? ""), /\\d+/))',
-    'check("licenseUsedSeats", range(values.licenseUsedSeats, 0) ?? pattern(String(values.licenseUsedSeats ?? ""), /\\d+/) ?? seatsExceeded(values))',
+    // The seats are whole numbers: the shared rule (v-track final task 1).
+    'check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? wholeNumber(values.licenseTotalSeats))',
+    'check("licenseUsedSeats", range(values.licenseUsedSeats, 0) ?? wholeNumber(values.licenseUsedSeats) ?? seatsExceeded(values))',
     'check("parentAssetId", ownershipType === "component" && required(install.parentAssetId) ? "componentParentRequired" : null)',
     'check("componentRole", install.parentAssetId && required(install.componentRole) ? "componentRoleRequired" : maxLength(install.componentRole, 100))',
     'check("purchasePrice", range(values.purchasePrice, 0) ?? decimals(values.purchasePrice, 2))',

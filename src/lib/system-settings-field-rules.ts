@@ -20,7 +20,7 @@ import {
   notificationRuleSettingKeys,
   operationDocumentRunningDigitsKey,
 } from "@/lib/system-setting-defaults"
-import { range, step } from "@/lib/validation-rules"
+import { range, step, wholeNumber } from "@/lib/validation-rules"
 import { workflowApprovalMinApproversKey, workflowApprovalSettingKeys, workflowApprovalSlaDaysKey } from "@/lib/workflow-approval"
 
 export type SettingEntry = { key: string; value: string }
@@ -103,13 +103,13 @@ export function settingRuleCode(key: string, value: string): string | null {
 }
 
 // What the control itself allowed before noValidate, where the server allows more: the asset tag's running digits
-// (min 1, max 12), the LDAP sync's deactivation limit (min 0), and the step of the number fields (1, or 0.5 for a label's
-// margin and gap). Client rules only (spec §6.3: no new server rule); a save checks them only on the settings it
-// changes (settingSaveErrors).
+// (min 1, max 12), the LDAP sync's deactivation limit (min 0), whole numbers (the shared wholeNumber, v-track final
+// task 1) and the 0.5 step of a label's margin and gap. Client rules only (spec §6.3: no new server rule); a save checks
+// them only on the settings it changes (settingSaveErrors).
 export function settingControlCode(key: string, value: string): string | null {
-  if (key === "asset_tag_running_digits") return range(value, 1, 12) ?? step(value, 1)
-  if (key === ldapSyncMaxScheduledDeactivationsKey) return range(value, 0) ?? step(value, 1)
-  if (key === operationDocumentRunningDigitsKey || labelWidthKeys.has(key) || labelHeightKeys.has(key) || labelQrSizeKeys.has(key)) return step(value, 1)
+  if (key === "asset_tag_running_digits") return range(value, 1, 12) ?? wholeNumber(value)
+  if (key === ldapSyncMaxScheduledDeactivationsKey) return range(value, 0) ?? wholeNumber(value)
+  if (key === operationDocumentRunningDigitsKey || labelWidthKeys.has(key) || labelHeightKeys.has(key) || labelQrSizeKeys.has(key)) return wholeNumber(value)
   if (labelSpacingKeys.has(key)) return step(value, 0.5)
   return null
 }

@@ -165,7 +165,7 @@ test("PM plan: errors under the field, the asset select checked, whole days from
     'check("assetId", isEdit ? null : required(values.assetId))',
     'check("title", required(values.title) ?? maxLength(values.title, 200))',
     'check("frequency", required(values.frequency))',
-    'check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? step(values.intervalDays, 1) : null)',
+    'check("intervalDays", values.frequency === "custom" ? required(values.intervalDays) ?? range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays) : null)',
     'check("nextDueDate", required(values.nextDueDate))',
     'check("notes", maxLength(values.notes, 4000))',
   ]) assert.ok(rules.includes(rule), rule)

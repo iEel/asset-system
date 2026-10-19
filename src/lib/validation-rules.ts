@@ -6,8 +6,10 @@
 // field is valid. Pure, with relative imports only, so tests and client code import this file.
 import type { FieldErrorCode } from "./field-errors.ts"
 
-// "tooManyDecimals" is the money rule's own code (common.validation.tooManyDecimals, v-track plan 2 task 31c).
-export type RuleCode = FieldErrorCode | "endBeforeStart" | "tooManyDecimals"
+// "tooManyDecimals" is the money rule's own code (common.validation.tooManyDecimals, v-track plan 2 task 31c), and
+// "notWholeNumber" the whole-number rule's (common.validation.notWholeNumber, v-track final task 1). The server sends
+// neither: its .int() refusal reads invalidNumber (v-track plan 2 X-R2).
+export type RuleCode = FieldErrorCode | "endBeforeStart" | "tooManyDecimals" | "notWholeNumber"
 
 // The WHATWG pattern the browser uses for type="email".
 const EMAIL_PATTERN =
@@ -46,14 +48,27 @@ export function range(value: number | string | null | undefined, min?: number | 
   return null
 }
 
-// A number field's step (step="0.01" for money, the default step 1 of a whole-number field): a whole multiple of size.
-// Off the step is "invalidNumber", the code the server gives zod's not_multiple_of; text that is not a number too.
+// A number field's step other than 1 (step="0.5" of a label's margin and gap): a whole multiple of size. Off the step is
+// "invalidNumber", the code the server gives zod's not_multiple_of; text that is not a number too. A whole-number field
+// uses wholeNumber and a money field decimals, each with its own sentence.
 export function step(value: number | string | null | undefined, size: number): RuleCode | null {
   if (isEmpty(value)) return null
   const number = typeof value === "number" ? value : Number((value as string).trim())
   if (!Number.isFinite(number)) return "invalidNumber"
   const steps = number / size
   return Math.abs(steps - Math.round(steps)) < 1e-6 ? null : "invalidNumber"
+}
+
+// A whole-number field (a number input with the default step of 1: license seats, an audit round's year and sample rate,
+// the PM days, the settings' running digits, deactivation limit and label sizes): a fraction has its own sentence,
+// "notWholeNumber" (v-track final task 1; it replaced the seats' pattern, the audit round's own helper and the step of
+// 1). Text that is not a number is "invalidNumber"; an empty value is left to required. Write it after range:
+// range(v, 0) ?? wholeNumber(v).
+export function wholeNumber(value: number | string | null | undefined): RuleCode | null {
+  if (isEmpty(value)) return null
+  const number = typeof value === "number" ? value : Number((value as string).trim())
+  if (!Number.isFinite(number)) return "invalidNumber"
+  return Number.isInteger(number) ? null : "notWholeNumber"
 }
 
 // A money field's step (step="0.01"): at most `places` digits after the point, with its own sentence. The typed digits

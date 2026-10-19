@@ -80,7 +80,8 @@
       "duplicate": "This value already exists",
       "endBeforeStart": "The end date cannot be before the start date",
       "invalid": "This value is not valid",
-      "tooManyDecimals": "Use no more than 2 decimal places"
+      "tooManyDecimals": "Use no more than 2 decimal places",
+      "notWholeNumber": "Enter a whole number"
     }
   },
   "globalSearch": {

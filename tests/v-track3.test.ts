@@ -98,19 +98,19 @@ test("the settings rules answer what the server answers for every setting, and t
   // What the control allowed before noValidate, where the server allows more: client only, on save.
   const control: [string, string, string | null][] = [
     ["asset_tag_running_digits", "13", "outOfRange"],
-    ["asset_tag_running_digits", "2.5", "invalidNumber"],
+    ["asset_tag_running_digits", "2.5", "notWholeNumber"],
     ["asset_tag_running_digits", "", null],
     ["ldap_sync_max_scheduled_deactivations", "-1", "outOfRange"],
-    ["ldap_sync_max_scheduled_deactivations", "1.5", "invalidNumber"],
-    ["operation_document_running_digits", "4.5", "invalidNumber"],
-    ["asset_label_12_width_mm", "40.5", "invalidNumber"],
+    ["ldap_sync_max_scheduled_deactivations", "1.5", "notWholeNumber"],
+    ["operation_document_running_digits", "4.5", "notWholeNumber"],
+    ["asset_label_12_width_mm", "40.5", "notWholeNumber"],
     ["asset_label_custom_margin_mm", "0.3", "invalidNumber"],
     ["asset_label_custom_margin_mm", "1.5", null],
     ["company_name", "1.5", null],
   ]
   for (const [key, value, code] of control) assert.equal(rules.settingControlCode(key, value), code, `${key} = ${value}`)
   assert.deepEqual(await serverErrors(defaults.map((entry) => (entry.key === "asset_label_12_width_mm" ? { ...entry, value: "40.5" } : entry))), {}, "the server takes a width of 40.5")
-  assert.deepEqual(rules.settingSaveErrors(defaults.map((entry) => (entry.key === "asset_label_12_width_mm" ? { ...entry, value: "40.5" } : entry)), [], every), { "settings.asset_label_12_width_mm": "invalidNumber" })
+  assert.deepEqual(rules.settingSaveErrors(defaults.map((entry) => (entry.key === "asset_label_12_width_mm" ? { ...entry, value: "40.5" } : entry)), [], every), { "settings.asset_label_12_width_mm": "notWholeNumber" })
   // A field key is the server's: settings.<key>, and back.
   assert.equal(rules.settingFieldKey("asset_label_12_width_mm"), "settings.asset_label_12_width_mm")
   assert.equal(rules.settingKeyOf("settings.asset_label_12_width_mm"), "asset_label_12_width_mm")
@@ -140,7 +140,7 @@ test("a stored value only a control's own limit refuses stops a save only when t
   // A save of another setting (the company name): the stored values do not stop it.
   assert.deepEqual(rules.settingSaveErrors(entries, [], new Set(["company_name"])), {})
   // The same value stops the save when the save changes that setting itself.
-  const codes: [string, string][] = [["asset_tag_running_digits", "outOfRange"], ["asset_label_12_width_mm", "invalidNumber"], ["asset_label_custom_margin_mm", "invalidNumber"]]
+  const codes: [string, string][] = [["asset_tag_running_digits", "outOfRange"], ["asset_label_12_width_mm", "notWholeNumber"], ["asset_label_custom_margin_mm", "invalidNumber"]]
   for (const [key, code] of codes) {
     assert.deepEqual(rules.settingSaveErrors(entries, [], new Set(["company_name", key])), { [`settings.${key}`]: code }, key)
   }

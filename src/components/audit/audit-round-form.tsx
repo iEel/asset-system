@@ -22,7 +22,7 @@ import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { displayYearRange, fromDisplayYear, toDisplayYear } from "@/lib/display-year"
 import { cn } from "@/lib/utils"
-import { maxLength, notBefore, range, required } from "@/lib/validation-rules"
+import { maxLength, notBefore, range, required, wholeNumber } from "@/lib/validation-rules"
 
 type Option = { id: string; label: string; isClosed?: boolean }
 
@@ -67,12 +67,6 @@ const FIELD_IDS = {
 } as const
 type AuditRoundField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as AuditRoundField[]
-
-// A number field's step is 1 unless it says otherwise, and the browser checked it before noValidate; the server's year
-// and sample rate are whole numbers too (v-track U-R3).
-function wholeNumber(value: string) {
-  return Number.isInteger(Number(value.trim())) ? null : "invalidNumber"
-}
 
 // noValidate turns the browser's check off, so this restates the controls' required, maxLength, min, max and step, and
 // the end date not before the start date, the server's endBeforeStart (spec §7.4; v-track M-R2, U-R1).
