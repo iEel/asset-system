@@ -33,19 +33,17 @@ import { TabNav } from "@/components/ui/tab-nav"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import {
-  assetLabelLayouts,
   assetLabelPresets,
   assetLabelSettingKeys,
   assetLabelTapeSizes,
   assetLabelTemplateTokens,
   parseAssetLabelTemplates,
   renderAssetLabelTemplate,
-  type AssetLabelLayout,
   type AssetLabelTapeSize,
   type AssetLabelTemplates,
 } from "@/lib/asset-label-template"
-import { depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
-import { assetQrPublicBaseUrlKey, buildAssetQrValue, normalizePublicQrBaseUrl } from "@/lib/asset-qr"
+import { depreciationPolicySettingKey } from "@/lib/asset-depreciation"
+import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import {
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
@@ -65,15 +63,13 @@ import {
   operationDocumentSettingKeys,
   retentionPolicySettingKeys,
 } from "@/lib/system-setting-defaults"
-import { operationDocumentTemplateTokens, renderOperationDocumentTemplate, validateOperationDocumentTemplate } from "@/lib/operation-document-number"
+import { operationDocumentTemplateTokens, renderOperationDocumentTemplate } from "@/lib/operation-document-number"
 import { retiredSystemSettingKeys } from "@/lib/retired-system-settings"
 import {
-  isValidRetentionDays,
   retentionAttachmentDaysKey,
   retentionAuditLogDaysKey,
   retentionOrphanFileDaysKey,
 } from "@/lib/retention-policy"
-import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
 import { buildSystemSettingsTabHref, parseSystemSettingsTab } from "@/lib/system-settings-tabs"
 import { findSystemSettingsSearchResults, getSystemSettingsTabForKey } from "@/lib/settings-search"
@@ -88,6 +84,17 @@ import {
   type CategoryPrefixRow,
 } from "@/lib/category-prefix-groups"
 import {
+  assetTagFormatTokens,
+  isValidCategoryPrefix,
+  settingControlParams,
+  settingFieldKey,
+  settingKeyOf,
+  settingLiveErrors,
+  settingSaveErrors,
+  type SettingEntry,
+  type SettingFieldKey,
+} from "@/lib/system-settings-field-rules"
+import {
   parseWorkflowApprovalPolicy,
   workflowApprovalAuditCloseRequiredKey,
   workflowApprovalDisposalRequiredKey,
@@ -97,6 +104,7 @@ import {
   workflowApprovalSettingKeys,
 } from "@/lib/workflow-approval"
 import { useApiError } from "@/components/ui/use-api-error"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { ApiErrorText } from "@/components/ui/api-error-text"
 
 type SystemSettingItem = {
@@ -452,21 +460,6 @@ type LdapDeactivationImpact = {
   }>
 }
 
-const assetTagFormatTokens = [
-  "companyCode",
-  "assetCompanyCode",
-  "branchCode",
-  "categoryCode",
-  "assetPrefix",
-  "globalPrefix",
-  "year",
-  "year2",
-  "month",
-  "day",
-  "running",
-  "separator",
-]
-
 const formatPresets = [
   {
     labelKey: "presetCompanyPrefixMonthRunning",
@@ -508,6 +501,67 @@ const ldapSchedulePresets = [
   { value: "0 2 * * 1", labelKey: "ldapSyncMonday2am" },
   { value: "custom", labelKey: "ldapSyncCustomSchedule" },
 ] as const
+
+// Each setting the form shows, in visual order (the tabs in their order, then down each tab), with the id focus moves to
+// (v-track M-R1, plan 3 ST-R4). The form's field keys are the server's, settings.<key>. A tape's nine label settings
+// follow its panel; the advanced settings come after all of these, in the page's order, as setting-<key>.
+const LABEL_FIELD_SUFFIXES = ["width_mm", "height_mm", "qr_size", "margin_mm", "gap_mm", "layout", "primary_template", "secondary_template", "tertiary_template"]
+const SETTING_FIELD_IDS: Readonly<Record<string, string>> = {
+  asset_tag_format_template: "asset-tag-template",
+  asset_tag_running_digits: "asset-tag-running-digits",
+  asset_tag_separator: "asset-tag-separator",
+  asset_tag_prefix: "asset-tag-global-prefix",
+  asset_tag_category_prefixes: "category-prefix-groups",
+  asset_qr_public_base_url: "asset-qr-public-base-url",
+  asset_label_default_tape_size: "asset-label-default-tape-size",
+  asset_label_compact_asset_name_enabled: "asset-label-compact-asset-name",
+  ...Object.fromEntries(
+    assetLabelTapeSizes.flatMap((size) => LABEL_FIELD_SUFFIXES.map((suffix) => [`asset_label_${size}_${suffix}`, `asset_label_${size}-${suffix.replace(/_/g, "-")}`]))
+  ),
+  checkout_document_template: "checkout-document-template",
+  checkin_document_template: "checkin-document-template",
+  operation_document_running_digits: "operation-document-running-digits",
+  company_name: "company-name",
+  default_currency: "default-currency",
+  accounting_depreciation_policy: "depreciation-policy-json",
+  notification_return_due_soon_days: "notification-return-due-days",
+  notification_audit_action_due_soon_days: "notification-audit-action-days",
+  notification_warranty_expiry_days: "notification-warranty-expiry-days",
+  notification_license_expiry_days: "notification-license-expiry-days",
+  workflow_approval_disposal_required: "workflow-approval-disposal-required",
+  workflow_approval_audit_close_required: "workflow-approval-audit-close-required",
+  workflow_approval_segregation_required: "workflow-approval-segregation-required",
+  workflow_approval_min_approvers: "workflow-approval-min-approvers",
+  workflow_approval_sla_days: "workflow-approval-sla-days",
+  retention_attachment_days: "retention-attachment-days",
+  retention_audit_log_days: "retention-audit-log-days",
+  retention_orphan_file_days: "retention-orphan-file-days",
+  ldap_url: "ldap-url",
+  ldap_base_dn: "ldap-base-dn",
+  ldap_bind_dn: "ldap-bind-dn",
+  ldap_bind_password: "ldap-bind-password",
+  ldap_user_filter: "ldap-user-filter",
+  ldap_upn_domain: "ldap-upn-domain",
+  ldap_domain: "ldap-domain",
+  ldap_user_dn_template: "ldap-user-dn-template",
+  ldap_sync_mode: "ldap-sync-mode",
+  ldap_sync_max_scheduled_deactivations: "ldap-sync-max-scheduled-deactivations",
+  ldap_sync_base_dn: "ldap-sync-base-dn",
+  ldap_sync_default_company_code: "ldap-sync-default-company",
+  ldap_sync_default_branch_code: "ldap-sync-default-branch",
+  ldap_sync_default_department_code: "ldap-sync-default-department",
+  ldap_sync_filter: "ldap-sync-filter",
+  ldap_sync_schedule: "ldap-sync-custom-schedule",
+}
+const settingFieldId = (key: string) => SETTING_FIELD_IDS[key] ?? `setting-${key}`
+
+// noValidate turns the browser's check off, so this restates the controls' min, max and step, every rule the server
+// checks for the settings a save sends (with the server's own codes) and the prefix groups' rule (v-track M-R2, plan 3
+// ST-R2). The controls' own limits are checked only on the settings the save changes (open issue 13). The rules live in
+// src/lib/system-settings-field-rules.ts, which tests run against the server's schema.
+function validate(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[], changed: readonly { key: string }[]) {
+  return settingSaveErrors(entries, prefixRows, new Set(changed.map((setting) => setting.key)))
+}
 
 function normalizeSettingValue(key: string, value: string | undefined) {
   if (key === assetTagCategoryPrefixesKey) {
@@ -567,6 +621,8 @@ export function SystemSettingsForm({
   const [selectedCategorySearch, setSelectedCategorySearch] = useState("")
   const [checkedAvailableCategoryIds, setCheckedAvailableCategoryIds] = useState<string[]>([])
   const [checkedSelectedCategoryIds, setCheckedSelectedCategoryIds] = useState<string[]>([])
+  const fieldErrors = useFieldErrors<SettingFieldKey>()
+  const validationMessage = useValidationMessage()
   const activeCategoryIds = categories.map((category) => category.id)
   const generalSettings = settings.filter((setting) => !friendlySettingKeys.has(setting.key) && !retiredSystemSettingKeys.has(setting.key))
   const formatTemplate = values[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate
@@ -576,7 +632,11 @@ export function SystemSettingsForm({
   const operationDocumentExampleDate = new Date(2026, 4, 13)
   const operationDocumentExampleDigits = Number.isFinite(operationDocumentDigits) ? operationDocumentDigits : 4
   const getValue = (key: string) => values[key] ?? ""
-  const setValue = (key: string, value: string) => setValues((current) => ({ ...current, [key]: value }))
+  // A change clears the setting's error from the last save or refusal (spec §4.3); a live rule shows again while it fails.
+  const setValue = (key: string, value: string) => {
+    setValues((current) => ({ ...current, [key]: value }))
+    fieldErrors.clear(settingFieldKey(key))
+  }
   const setBooleanValue = (key: string, checked: boolean) => setValue(key, checked ? "true" : "false")
   const resetPrefixEditorFilters = () => {
     setAvailableCategorySearch("")
@@ -631,11 +691,13 @@ export function SystemSettingsForm({
         categoryIds: prefixEditor.categoryIds,
       })
     )
+    fieldErrors.clear(settingFieldKey(assetTagCategoryPrefixesKey))
     closePrefixEditor()
   }
   const removePrefixGroup = (prefix: string) => {
     const normalizedPrefix = normalizeCategoryPrefix(prefix)
     setPrefixRows((current) => current.filter((row) => normalizeCategoryPrefix(row.prefix) !== normalizedPrefix))
+    fieldErrors.clear(settingFieldKey(assetTagCategoryPrefixesKey))
   }
   const effectiveValues: Record<string, string> = {
     ...values,
@@ -665,9 +727,6 @@ export function SystemSettingsForm({
       .map((row) => [row.categoryId, normalizeCategoryPrefix(row.prefix)] as const)
       .filter(([categoryId, prefix]) => categoryId && prefix)
   )
-  const selectedPrefixCategoryIds = activePrefixRows.map((row) => row.categoryId).filter(Boolean)
-  const hasDuplicateCategory = new Set(selectedPrefixCategoryIds).size !== selectedPrefixCategoryIds.length
-  const hasInvalidPrefix = activePrefixRows.some((row) => row.categoryId && !isValidCategoryPrefix(row.prefix))
   const unassignedCategoryCount = categories.filter((category) => !assignedPrefixByCategoryId.has(category.id)).length
   const prefixEditorSelectedIds = prefixEditor?.categoryIds ?? []
   const prefixEditorSelectedIdSet = new Set(prefixEditorSelectedIds)
@@ -679,76 +738,29 @@ export function SystemSettingsForm({
     (category) => prefixEditorSelectedIdSet.has(category.id) && matchesCategorySearch(category, selectedCategorySearch)
   )
   const canApplyPrefixEditor = Boolean(prefixEditor && isValidCategoryPrefix(prefixEditor.prefix) && prefixEditor.categoryIds.length > 0)
-  const templateTokens = Array.from(formatTemplate.matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
-  const hasInvalidTemplate =
-    !formatTemplate.includes("{running}") || templateTokens.some((token) => !assetTagFormatTokens.includes(token))
   const publicQrBaseUrl = getValue(assetQrPublicBaseUrlKey)
-  const hasInvalidPublicQrBaseUrl = Boolean(publicQrBaseUrl) && !normalizePublicQrBaseUrl(publicQrBaseUrl)
   const publicQrPreviewValue = buildAssetQrValue({
     assetId: "sample-asset-id",
     publicBaseUrl: publicQrBaseUrl,
   })
-  const labelTemplateKeys = assetLabelSettingKeys.filter((key) => key.endsWith("_template"))
-  const hasInvalidLabelTemplate = labelTemplateKeys.some((key) => {
-    const tokens = Array.from(getValue(key).matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
-    return tokens.some((token) => !assetLabelTemplateTokens.includes(token as (typeof assetLabelTemplateTokens)[number]))
-  })
-  const hasInvalidLabelSize =
-    assetLabelTapeSizes.some((size) => {
-      const key = `asset_label_${size}_width_mm`
-      const width = Number(getValue(key))
-      return !Number.isFinite(width) || width < 30 || width > 120
-    }) ||
-    assetLabelTapeSizes.some((size) => {
-      const key = `asset_label_${size}_height_mm`
-      const height = Number(getValue(key))
-      return !Number.isFinite(height) || height < 10 || height > 100
-    }) ||
-    assetLabelTapeSizes.some((size) => {
-      const key = `asset_label_${size}_qr_size`
-      const qrSize = Number(getValue(key))
-      return !Number.isFinite(qrSize) || qrSize < 20 || qrSize > 90
-    }) ||
-    assetLabelTapeSizes.some((size) => {
-      const margin = Number(getValue(`asset_label_${size}_margin_mm`))
-      const gap = Number(getValue(`asset_label_${size}_gap_mm`))
-      return !Number.isFinite(margin) || margin < 0 || margin > 10 || !Number.isFinite(gap) || gap < 0 || gap > 10
-    }) ||
-    assetLabelTapeSizes.some((size) => {
-      const layout = getValue(`asset_label_${size}_layout`) as AssetLabelLayout
-      return !assetLabelLayouts.includes(layout)
-    })
   const labelTemplates = parseAssetLabelTemplates(values)
-  const operationDigits = Number(getValue(operationDocumentRunningDigitsKey))
-  const hasInvalidOperationDocumentTemplate =
-    !validateOperationDocumentTemplate(checkoutDocumentTemplate) ||
-    !validateOperationDocumentTemplate(checkinDocumentTemplate) ||
-    !Number.isFinite(operationDigits) ||
-    operationDigits < 1 ||
-    operationDigits > 12
-  const hasInvalidNotificationRule = notificationRuleSettingKeys.some((key) => {
-    const days = Number(getValue(key))
-    return !Number.isInteger(days) || days < 0 || days > 365
-  })
-  const hasInvalidRetentionPolicy = retentionPolicySettingKeys.some((key) => !isValidRetentionDays(getValue(key)))
-  const depreciationPolicyParse = parseDepreciationPolicySetting(getValue(depreciationPolicySettingKey))
-  const hasInvalidDepreciationPolicy = !depreciationPolicyParse.isValid
-  const workflowApprovalToggleKeys = workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey && key !== workflowApprovalSlaDaysKey)
-  const workflowApprovalMinApprovers = Number(getValue(workflowApprovalMinApproversKey))
-  const workflowApprovalSlaDays = Number(getValue(workflowApprovalSlaDaysKey))
-  const hasInvalidWorkflowApproval =
-    workflowApprovalToggleKeys.some((key) => getValue(key) !== "true" && getValue(key) !== "false") ||
-    !Number.isInteger(workflowApprovalMinApprovers) ||
-    workflowApprovalMinApprovers < 1 ||
-    workflowApprovalMinApprovers > 5 ||
-    !Number.isInteger(workflowApprovalSlaDays) ||
-    workflowApprovalSlaDays < 1 ||
-    workflowApprovalSlaDays > 90
   const syncSchedule = getValue("ldap_sync_schedule")
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
     : "custom"
-  const hasInvalidSchedulerSchedule = !isSupportedCronExpression(syncSchedule)
+  // The settings as a save sends them: every setting the page loaded, the prefix groups serialized.
+  const submittedSettings: SettingEntry[] = settings.map((setting) => ({ key: setting.key, value: effectiveValues[setting.key] ?? "" }))
+  // The rules the old boxes showed while typing now show under their fields, at the same moment (spec U8, ST-R3).
+  const liveErrors = settingLiveErrors(submittedSettings, activePrefixRows)
+  // A setting's error under its field: its live rule while the value breaks it, else what the last save or the server
+  // found. The prefix groups read the prefix editor's own sentence (ST-R2).
+  const settingError = (key: string) => {
+    const field = settingFieldKey(key)
+    const code = liveErrors[field] ?? fieldErrors.errors[field]
+    if (!code) return undefined
+    return code === "invalidPrefix" ? labels.invalidPrefix : validationMessage(code, settingControlParams[key])
+  }
+  const prefixGroupsError = settingError(assetTagCategoryPrefixesKey)
   const tabLabels: Record<SettingsTabId, string> = {
     "asset-numbering": labels.tabAssetNumbering,
     "label-template": labels.tabLabelTemplate,
@@ -780,6 +792,14 @@ export function SystemSettingsForm({
     setSettingsSearch("")
     window.requestAnimationFrame(() => document.getElementById("settings-workspace")?.scrollIntoView({ block: "start" }))
   }
+  // A save goes to the first wrong setting in visual order: its tab opens first, then focus waits for its field (spec
+  // §4.2, U1). The advanced settings come last, in the page's order, on the advanced tab whatever their key's prefix.
+  const fieldOrder = [...Object.keys(SETTING_FIELD_IDS), ...generalSettings.map((setting) => setting.key)].map(settingFieldKey)
+  const focusFirstError = () =>
+    fieldErrors.focusFirst(fieldOrder, {
+      idFor: (field) => settingFieldId(settingKeyOf(field)),
+      reveal: (field) => selectTab(SETTING_FIELD_IDS[settingKeyOf(field)] ? getSystemSettingsTabForKey(settingKeyOf(field)) : "advanced"),
+    })
   // The overview is two label and value lists (DESIGN KeyValueList): no tone fills, an empty value is Nil, and the two
   // LDAP switches are status badges.
   const ldapLoginEnabled = getValue("ldap_enabled") === "true"
@@ -851,73 +871,22 @@ export function SystemSettingsForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (hasDuplicateCategory) {
-      toast.error(labels.duplicateCategory)
-      return
-    }
-    if (hasInvalidPrefix) {
-      toast.error(labels.invalidPrefix)
-      return
-    }
-    if (hasInvalidTemplate) {
-      toast.error(labels.invalidFormatTemplate)
-      return
-    }
-    if (hasInvalidPublicQrBaseUrl) {
-      toast.error(labels.invalidPublicQrBaseUrl)
-      return
-    }
-    if (hasInvalidLabelTemplate) {
-      toast.error(labels.invalidLabelTemplate)
-      return
-    }
-    if (hasInvalidLabelSize) {
-      toast.error(labels.invalidLabelSize)
-      return
-    }
-    if (hasInvalidOperationDocumentTemplate) {
-      toast.error(labels.invalidOperationDocumentTemplate)
-      return
-    }
-    if (hasInvalidNotificationRule) {
-      toast.error(labels.invalidNotificationRule)
-      return
-    }
-    if (hasInvalidRetentionPolicy) {
-      toast.error(labels.invalidRetentionPolicy)
-      return
-    }
-    if (hasInvalidDepreciationPolicy) {
-      toast.error(labels.invalidAccountingDepreciationPolicy)
-      return
-    }
-    if (hasInvalidWorkflowApproval) {
-      toast.error(labels.invalidWorkflowApproval)
-      return
-    }
-    if (hasInvalidSchedulerSchedule) {
-      toast.error(labels.invalidSchedulerSchedule)
-      return
-    }
+    fieldErrors.setErrors(validate(submittedSettings, activePrefixRows, changedSettings))
+    if (focusFirstError()) return
 
     setSaving(true)
-    const nextValues: Record<string, string> = {
-      ...values,
-      [assetTagCategoryPrefixesKey]: serializePrefixRows(prefixRows),
-    }
     try {
       const response = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          settings: settings.map((setting) => ({
-            key: setting.key,
-            value: nextValues[setting.key] ?? "",
-          })),
-        }),
+        body: JSON.stringify({ settings: submittedSettings }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? labels.error)
+      if (!response.ok) {
+        // A refusal that names a setting shows under its field, on its tab; any other keeps the toast (spec §4.1).
+        if (fieldErrors.applyServer(payload) && focusFirstError()) return
+        throw new Error(payload?.error ?? labels.error)
+      }
       toast.success(labels.success)
       router.refresh()
     } catch (error) {
@@ -974,7 +943,7 @@ export function SystemSettingsForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
       <TabNav
         aria-label={tPage("title")}
         items={tabs}
@@ -1030,7 +999,7 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-2">
-              <Field label={labels.assetTagTemplate}>
+              <Field label={labels.assetTagTemplate} error={settingError(assetTagFormatTemplateKey)} liveError>
                 <Input
                   id="asset-tag-template"
                   value={formatTemplate}
@@ -1039,7 +1008,6 @@ export function SystemSettingsForm({
                 />
               </Field>
               <p className="text-sm text-muted-foreground">{labels.assetTagTemplateHelp}</p>
-              {hasInvalidTemplate ? <ValidationMessage message={labels.invalidFormatTemplate} /> : null}
             </div>
             <div className="space-y-2">
               <div className={fieldLabelClasses}>{labels.formatPresets}</div>
@@ -1065,12 +1033,7 @@ export function SystemSettingsForm({
                   key={token}
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    setValues((current) => ({
-                      ...current,
-                      [assetTagFormatTemplateKey]: `${current[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate}{${token}}`,
-                    }))
-                  }
+                  onClick={() => setValue(assetTagFormatTemplateKey, `${formatTemplate}{${token}}`)}
                 >
                   <span className="tag">{`{${token}}`}</span>
                 </Button>
@@ -1086,7 +1049,7 @@ export function SystemSettingsForm({
 
       <ContentPanel divided title={labels.numberingOptions}>
         <div className="grid gap-4 md:grid-cols-3">
-          <Field label={labels.runningDigits}>
+          <Field label={labels.runningDigits} error={settingError("asset_tag_running_digits")}>
             <Input
               id="asset-tag-running-digits"
               type="number"
@@ -1096,14 +1059,14 @@ export function SystemSettingsForm({
               onChange={(event) => setValue("asset_tag_running_digits", event.target.value)}
             />
           </Field>
-          <Field label={labels.separator}>
+          <Field label={labels.separator} error={settingError("asset_tag_separator")}>
             <Input
               id="asset-tag-separator"
               value={getValue("asset_tag_separator")}
               onChange={(event) => setValue("asset_tag_separator", event.target.value)}
             />
           </Field>
-          <Field label={labels.globalPrefix}>
+          <Field label={labels.globalPrefix} error={settingError("asset_tag_prefix")}>
             <Input
               id="asset-tag-global-prefix"
               value={getValue("asset_tag_prefix")}
@@ -1121,7 +1084,7 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
             <div className="space-y-2">
-              <Field label={labels.publicQrBaseUrl}>
+              <Field label={labels.publicQrBaseUrl} error={settingError(assetQrPublicBaseUrlKey)} liveError>
                 <Input
                   id="asset-qr-public-base-url"
                   value={publicQrBaseUrl}
@@ -1131,7 +1094,6 @@ export function SystemSettingsForm({
                 />
               </Field>
               <p className="text-sm text-muted-foreground">{labels.publicQrBaseUrlDescription}</p>
-              {hasInvalidPublicQrBaseUrl ? <ValidationMessage message={labels.invalidPublicQrBaseUrl} /> : null}
             </div>
             <div className="space-y-1">
               <div className={fieldLabelClasses}>{labels.publicQrPreview}</div>
@@ -1141,7 +1103,7 @@ export function SystemSettingsForm({
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-[minmax(220px,330px)_minmax(300px,420px)] md:items-start">
-            <Field label={labels.defaultTapeSize}>
+            <Field label={labels.defaultTapeSize} error={settingError("asset_label_default_tape_size")}>
               <NativeSelect
                 id="asset-label-default-tape-size"
                 value={getValue("asset_label_default_tape_size")}
@@ -1155,11 +1117,13 @@ export function SystemSettingsForm({
               </NativeSelect>
             </Field>
             <LabelAssetNameModeField
+              id="asset-label-compact-asset-name"
               label={labels.compactLabelAssetName}
               description={labels.compactLabelAssetNameDescription}
               compactLabel={labels.compactLabelAssetNameShort}
               fullLabel={labels.compactLabelAssetNameFull}
               compactEnabled={getValue("asset_label_compact_asset_name_enabled") === "true"}
+              error={settingError("asset_label_compact_asset_name_enabled")}
               onChange={(compactEnabled) => setBooleanValue("asset_label_compact_asset_name_enabled", compactEnabled)}
             />
           </div>
@@ -1180,11 +1144,10 @@ export function SystemSettingsForm({
                 labels={labels}
                 getValue={getValue}
                 setValue={setValue}
+                errorFor={settingError}
               />
             ))}
           </div>
-          {hasInvalidLabelTemplate ? <ValidationMessage message={labels.invalidLabelTemplate} /> : null}
-          {hasInvalidLabelSize ? <ValidationMessage message={labels.invalidLabelSize} /> : null}
           <LabelPreviewPanel labels={labels} templates={labelTemplates} qrValue={publicQrPreviewValue} />
           <div className="space-y-2">
             <div className={fieldLabelClasses}>{labels.labelTemplateTokens}</div>
@@ -1205,7 +1168,7 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={labels.checkoutDocumentTemplate}>
+              <Field label={labels.checkoutDocumentTemplate} error={settingError(checkoutDocumentTemplateKey)} liveError>
                 <Input
                   id="checkout-document-template"
                   value={checkoutDocumentTemplate}
@@ -1213,7 +1176,7 @@ export function SystemSettingsForm({
                   className="font-mono"
                 />
               </Field>
-              <Field label={labels.checkinDocumentTemplate}>
+              <Field label={labels.checkinDocumentTemplate} error={settingError(checkinDocumentTemplateKey)} liveError>
                 <Input
                   id="checkin-document-template"
                   value={checkinDocumentTemplate}
@@ -1221,7 +1184,7 @@ export function SystemSettingsForm({
                   className="font-mono"
                 />
               </Field>
-              <Field label={labels.operationDocumentRunningDigits}>
+              <Field label={labels.operationDocumentRunningDigits} error={settingError(operationDocumentRunningDigitsKey)} liveError>
                 <Input
                   id="operation-document-running-digits"
                   type="number"
@@ -1243,7 +1206,6 @@ export function SystemSettingsForm({
             </div>
           </div>
           <p className="text-sm text-muted-foreground">{labels.operationDocumentTemplateHelp}</p>
-          {hasInvalidOperationDocumentTemplate ? <ValidationMessage message={labels.invalidOperationDocumentTemplate} /> : null}
           <div className="space-y-2">
             <div className={fieldLabelClasses}>{labels.operationDocumentTokens}</div>
             <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-foreground">
@@ -1270,7 +1232,15 @@ export function SystemSettingsForm({
           </Button>
         }
       >
-        <div className="space-y-4">
+        {/* The prefix groups are one group: a stored prefix that breaks the rule shows its error under the table, and
+            focus goes to the table's first edit button (ST-R5). */}
+        <div
+          id="category-prefix-groups"
+          role="group"
+          aria-label={labels.categoryPrefixes}
+          aria-describedby={prefixGroupsError ? "category-prefix-groups-error" : undefined}
+          className="space-y-4"
+        >
           <div className="space-y-1 text-sm text-muted-foreground">
             <div className="font-medium text-foreground">
               {formatTemplateText(labels.prefixGroupCount, { count: String(prefixGroups.length) })}
@@ -1346,8 +1316,7 @@ export function SystemSettingsForm({
             </DataTable>
           )}
 
-          {hasDuplicateCategory ? <ValidationMessage message={labels.duplicateCategory} /> : null}
-          {hasInvalidPrefix ? <ValidationMessage message={labels.invalidPrefix} /> : null}
+          {prefixGroupsError ? <FieldError id="category-prefix-groups-error">{prefixGroupsError}</FieldError> : null}
         </div>
 
         <AccessibleDialog
@@ -1469,14 +1438,14 @@ export function SystemSettingsForm({
       {activeTab === "organization" ? (
       <ContentPanel divided title={labels.organizationDefaults} description={labels.organizationDefaultsDescription}>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label={labels.companyName}>
+          <Field label={labels.companyName} error={settingError("company_name")}>
             <Input
               id="company-name"
               value={getValue("company_name")}
               onChange={(event) => setValue("company_name", event.target.value)}
             />
           </Field>
-          <Field label={labels.defaultCurrency}>
+          <Field label={labels.defaultCurrency} error={settingError("default_currency")}>
             <Input
               id="default-currency"
               value={getValue("default_currency")}
@@ -1490,9 +1459,10 @@ export function SystemSettingsForm({
               policyJson={getValue(depreciationPolicySettingKey)}
               labels={labels}
               onPolicyJsonChange={(value) => setValue(depreciationPolicySettingKey, value)}
+              jsonId="depreciation-policy-json"
+              jsonError={settingError(depreciationPolicySettingKey)}
             />
             <p className="mt-2 text-sm text-muted-foreground">{labels.accountingDepreciationPolicyDescription}</p>
-            {hasInvalidDepreciationPolicy ? <ValidationMessage message={labels.invalidAccountingDepreciationPolicy} /> : null}
           </div>
         </div>
       </ContentPanel>
@@ -1502,7 +1472,7 @@ export function SystemSettingsForm({
       <ContentPanel divided title={labels.notificationRules} description={labels.notificationRulesDescription}>
         <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Field label={labels.returnDueSoonDays}>
+          <Field label={labels.returnDueSoonDays} error={settingError(notificationReturnDueSoonDaysKey)} liveError>
             <Input
               id="notification-return-due-days"
               type="number"
@@ -1512,7 +1482,7 @@ export function SystemSettingsForm({
               onChange={(event) => setValue(notificationReturnDueSoonDaysKey, event.target.value)}
             />
           </Field>
-          <Field label={labels.auditActionDueSoonDays}>
+          <Field label={labels.auditActionDueSoonDays} error={settingError(notificationAuditActionDueSoonDaysKey)} liveError>
             <Input
               id="notification-audit-action-days"
               type="number"
@@ -1522,7 +1492,7 @@ export function SystemSettingsForm({
               onChange={(event) => setValue(notificationAuditActionDueSoonDaysKey, event.target.value)}
             />
           </Field>
-          <Field label={labels.warrantyExpiryDays}>
+          <Field label={labels.warrantyExpiryDays} error={settingError(notificationWarrantyExpiryDaysKey)} liveError>
             <Input
               id="notification-warranty-expiry-days"
               type="number"
@@ -1532,7 +1502,7 @@ export function SystemSettingsForm({
               onChange={(event) => setValue(notificationWarrantyExpiryDaysKey, event.target.value)}
             />
           </Field>
-          <Field label={labels.licenseExpiryDays}>
+          <Field label={labels.licenseExpiryDays} error={settingError(notificationLicenseExpiryDaysKey)} liveError>
             <Input
               id="notification-license-expiry-days"
               type="number"
@@ -1544,7 +1514,6 @@ export function SystemSettingsForm({
           </Field>
         </div>
         <p className="text-sm text-muted-foreground">{labels.notificationDaysHelp}</p>
-        {hasInvalidNotificationRule ? <ValidationMessage message={labels.invalidNotificationRule} /> : null}
         </div>
       </ContentPanel>
       ) : null}
@@ -1555,21 +1524,27 @@ export function SystemSettingsForm({
           <Notice tone="info">{labels.workflowApprovalFoundationNote}</Notice>
           <div className="grid gap-4 lg:grid-cols-2">
             <ToggleField
+              id="workflow-approval-disposal-required"
               label={labels.workflowApprovalDisposalRequired}
               checked={getValue(workflowApprovalDisposalRequiredKey) === "true"}
+              error={settingError(workflowApprovalDisposalRequiredKey)}
               onChange={(checked) => setBooleanValue(workflowApprovalDisposalRequiredKey, checked)}
             />
             <ToggleField
+              id="workflow-approval-audit-close-required"
               label={labels.workflowApprovalAuditCloseRequired}
               checked={getValue(workflowApprovalAuditCloseRequiredKey) === "true"}
+              error={settingError(workflowApprovalAuditCloseRequiredKey)}
               onChange={(checked) => setBooleanValue(workflowApprovalAuditCloseRequiredKey, checked)}
             />
             <ToggleField
+              id="workflow-approval-segregation-required"
               label={labels.workflowApprovalSegregationRequired}
               checked={getValue(workflowApprovalSegregationRequiredKey) === "true"}
+              error={settingError(workflowApprovalSegregationRequiredKey)}
               onChange={(checked) => setBooleanValue(workflowApprovalSegregationRequiredKey, checked)}
             />
-            <Field label={labels.workflowApprovalMinApprovers}>
+            <Field label={labels.workflowApprovalMinApprovers} error={settingError(workflowApprovalMinApproversKey)} liveError>
               <Input
                 id="workflow-approval-min-approvers"
                 type="number"
@@ -1579,7 +1554,7 @@ export function SystemSettingsForm({
                 onChange={(event) => setValue(workflowApprovalMinApproversKey, event.target.value)}
               />
             </Field>
-            <Field label={labels.workflowApprovalSlaDays}>
+            <Field label={labels.workflowApprovalSlaDays} error={settingError(workflowApprovalSlaDaysKey)} liveError>
               <Input
                 id="workflow-approval-sla-days"
                 type="number"
@@ -1592,7 +1567,6 @@ export function SystemSettingsForm({
           </div>
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalMinApproversHelp}</p>
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalSlaDaysHelp}</p>
-          {hasInvalidWorkflowApproval ? <ValidationMessage message={labels.invalidWorkflowApproval} /> : null}
         </div>
       </ContentPanel>
       ) : null}
@@ -1601,7 +1575,6 @@ export function SystemSettingsForm({
       <ContentPanel divided title={labels.schedulerSettings} description={labels.schedulerSettingsDescription}>
         <div className="space-y-4">
           <Notice tone="neutral">{labels.schedulerHeartbeatNote}</Notice>
-          {hasInvalidSchedulerSchedule ? <ValidationMessage message={labels.invalidSchedulerSchedule} /> : null}
         </div>
       </ContentPanel>
       ) : null}
@@ -1619,7 +1592,7 @@ export function SystemSettingsForm({
             </a>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            <Field label={labels.retentionAttachmentDays}>
+            <Field label={labels.retentionAttachmentDays} error={settingError(retentionAttachmentDaysKey)} liveError>
               <Input
                 id="retention-attachment-days"
                 type="number"
@@ -1629,7 +1602,7 @@ export function SystemSettingsForm({
                 onChange={(event) => setValue(retentionAttachmentDaysKey, event.target.value)}
               />
             </Field>
-            <Field label={labels.retentionAuditLogDays}>
+            <Field label={labels.retentionAuditLogDays} error={settingError(retentionAuditLogDaysKey)} liveError>
               <Input
                 id="retention-audit-log-days"
                 type="number"
@@ -1639,7 +1612,7 @@ export function SystemSettingsForm({
                 onChange={(event) => setValue(retentionAuditLogDaysKey, event.target.value)}
               />
             </Field>
-            <Field label={labels.retentionOrphanFileDays}>
+            <Field label={labels.retentionOrphanFileDays} error={settingError(retentionOrphanFileDaysKey)} liveError>
               <Input
                 id="retention-orphan-file-days"
                 type="number"
@@ -1651,7 +1624,6 @@ export function SystemSettingsForm({
             </Field>
           </div>
           <Notice tone="neutral">{labels.retentionDaysHelp}</Notice>
-          {hasInvalidRetentionPolicy ? <ValidationMessage message={labels.invalidRetentionPolicy} /> : null}
         </div>
       </ContentPanel>
       ) : null}
@@ -1678,7 +1650,7 @@ export function SystemSettingsForm({
               />
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <Field label={labels.ldapUrl}>
+              <Field label={labels.ldapUrl} error={settingError("ldap_url")}>
                 <Input
                   id="ldap-url"
                   value={getValue("ldap_url")}
@@ -1686,7 +1658,7 @@ export function SystemSettingsForm({
                   placeholder="ldap://dc.company.local:389"
                 />
               </Field>
-              <Field label={labels.ldapBaseDn}>
+              <Field label={labels.ldapBaseDn} error={settingError("ldap_base_dn")}>
                 <Input
                   id="ldap-base-dn"
                   value={getValue("ldap_base_dn")}
@@ -1694,7 +1666,7 @@ export function SystemSettingsForm({
                   placeholder="DC=company,DC=local"
                 />
               </Field>
-              <Field label={labels.ldapBindDn}>
+              <Field label={labels.ldapBindDn} error={settingError("ldap_bind_dn")}>
                 <Input
                   id="ldap-bind-dn"
                   value={getValue("ldap_bind_dn")}
@@ -1702,7 +1674,7 @@ export function SystemSettingsForm({
                   placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
                 />
               </Field>
-              <Field label={labels.ldapBindPassword}>
+              <Field label={labels.ldapBindPassword} error={settingError("ldap_bind_password")}>
                 <Input
                   id="ldap-bind-password"
                   type="password"
@@ -1719,7 +1691,7 @@ export function SystemSettingsForm({
 
           <FormSection as="h3" number={2} title={labels.ldapStepLoginMapping}>
             <div className="grid gap-4 lg:grid-cols-2">
-              <Field label={labels.ldapUserFilter}>
+              <Field label={labels.ldapUserFilter} error={settingError("ldap_user_filter")}>
                 <Input
                   id="ldap-user-filter"
                   value={getValue("ldap_user_filter")}
@@ -1727,7 +1699,7 @@ export function SystemSettingsForm({
                   className="font-mono"
                 />
               </Field>
-              <Field label={labels.ldapUpnDomain}>
+              <Field label={labels.ldapUpnDomain} error={settingError("ldap_upn_domain")}>
                 <Input
                   id="ldap-upn-domain"
                   value={getValue("ldap_upn_domain")}
@@ -1735,7 +1707,7 @@ export function SystemSettingsForm({
                   placeholder="company.local"
                 />
               </Field>
-              <Field label={labels.ldapDomain}>
+              <Field label={labels.ldapDomain} error={settingError("ldap_domain")}>
                 <Input
                   id="ldap-domain"
                   value={getValue("ldap_domain")}
@@ -1744,7 +1716,7 @@ export function SystemSettingsForm({
                 />
               </Field>
               <div className="lg:col-span-2">
-                <Field label={labels.ldapUserDnTemplate}>
+                <Field label={labels.ldapUserDnTemplate} error={settingError("ldap_user_dn_template")}>
                   <Input
                     id="ldap-user-dn-template"
                     value={getValue("ldap_user_dn_template")}
@@ -1808,7 +1780,7 @@ export function SystemSettingsForm({
                 checked={getValue("ldap_sync_deactivate_missing") === "true"}
                 onChange={(checked) => setBooleanValue("ldap_sync_deactivate_missing", checked)}
               />
-              <Field label={labels.ldapSyncMode}>
+              <Field label={labels.ldapSyncMode} error={settingError("ldap_sync_mode")}>
                 <NativeSelect
                   id="ldap-sync-mode"
                   value={getValue("ldap_sync_mode")}
@@ -1819,7 +1791,7 @@ export function SystemSettingsForm({
                   <option value="scheduled">{labels.ldapSyncModeScheduled}</option>
                 </NativeSelect>
               </Field>
-              <Field label={labels.ldapSyncMaxScheduledDeactivations}>
+              <Field label={labels.ldapSyncMaxScheduledDeactivations} error={settingError("ldap_sync_max_scheduled_deactivations")}>
                 <Input
                   id="ldap-sync-max-scheduled-deactivations"
                   type="number"
@@ -1828,7 +1800,7 @@ export function SystemSettingsForm({
                   onChange={(event) => setValue("ldap_sync_max_scheduled_deactivations", event.target.value)}
                 />
               </Field>
-              <Field label={labels.ldapSyncBaseDn}>
+              <Field label={labels.ldapSyncBaseDn} error={settingError("ldap_sync_base_dn")}>
                 <Input
                   id="ldap-sync-base-dn"
                   value={getValue("ldap_sync_base_dn")}
@@ -1844,7 +1816,7 @@ export function SystemSettingsForm({
                 <div className="text-sm font-medium text-foreground">{labels.ldapSyncDefaultMapping}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncDefaultMappingDescription}</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  <Field label={labels.ldapSyncDefaultCompanyCode}>
+                  <Field label={labels.ldapSyncDefaultCompanyCode} error={settingError("ldap_sync_default_company_code")}>
                     <Input
                       id="ldap-sync-default-company"
                       value={getValue("ldap_sync_default_company_code")}
@@ -1852,7 +1824,7 @@ export function SystemSettingsForm({
                       className="uppercase"
                     />
                   </Field>
-                  <Field label={labels.ldapSyncDefaultBranchCode}>
+                  <Field label={labels.ldapSyncDefaultBranchCode} error={settingError("ldap_sync_default_branch_code")}>
                     <Input
                       id="ldap-sync-default-branch"
                       value={getValue("ldap_sync_default_branch_code")}
@@ -1860,7 +1832,7 @@ export function SystemSettingsForm({
                       className="uppercase"
                     />
                   </Field>
-                  <Field label={labels.ldapSyncDefaultDepartmentCode}>
+                  <Field label={labels.ldapSyncDefaultDepartmentCode} error={settingError("ldap_sync_default_department_code")}>
                     <Input
                       id="ldap-sync-default-department"
                       value={getValue("ldap_sync_default_department_code")}
@@ -1894,7 +1866,7 @@ export function SystemSettingsForm({
               </NativeSelect>
             </Field>
             <div className="lg:col-span-2">
-              <Field label={labels.ldapSyncFilter}>
+              <Field label={labels.ldapSyncFilter} error={settingError("ldap_sync_filter")}>
                 <Input
                   id="ldap-sync-filter"
                   value={getValue("ldap_sync_filter")}
@@ -1905,7 +1877,7 @@ export function SystemSettingsForm({
             </div>
             {selectedSyncSchedulePreset === "custom" ? (
               <div className="lg:col-span-2">
-                <Field label={labels.ldapSyncCustomSchedule}>
+                <Field label={labels.ldapSyncCustomSchedule} error={settingError("ldap_sync_schedule")} liveError>
                   <Input
                     id="ldap-sync-custom-schedule"
                     value={syncSchedule}
@@ -1973,10 +1945,11 @@ export function SystemSettingsForm({
                       <span className="tag font-medium text-foreground">{setting.key}</span>
                     </DataTableCell>
                     <DataTableCell className="min-w-80">
-                      <Field label={setting.key} hideLabel>
+                      <Field label={setting.key} hideLabel error={settingError(setting.key)}>
                         <Input
+                          id={settingFieldId(setting.key)}
                           value={values[setting.key] ?? ""}
-                          onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
+                          onChange={(event) => setValue(setting.key, event.target.value)}
                         />
                       </Field>
                     </DataTableCell>
@@ -2127,10 +2100,6 @@ function formatHistoryDateTime(value: string, locale = "th") {
 
 function getIntlLocale(locale: string) {
   return locale === "en" ? "en-US" : "th-TH"
-}
-
-function isValidCategoryPrefix(prefix: string) {
-  return /^[A-Z0-9]{2,10}$/.test(normalizeCategoryPrefix(prefix))
 }
 
 function matchesCategorySearch(category: SystemSettingsCategory, search: string) {

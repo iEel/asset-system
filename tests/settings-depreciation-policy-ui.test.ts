@@ -66,7 +66,8 @@ test("settings form renders depreciation builder instead of primary json textare
   assert.match(form, /policyJson=\{getValue\(depreciationPolicySettingKey\)\}/)
   assert.match(form, /labels=\{labels\}/)
   assert.match(form, /onPolicyJsonChange=\{\(value\) => setValue\(depreciationPolicySettingKey, value\)\}/)
-  assert.match(form, /hasInvalidDepreciationPolicy[\s\S]*ValidationMessage/)
+  // The policy's error sits under its JSON in the builder (v-track plan 3 task 3, ST3).
+  assert.match(form, /jsonId="depreciation-policy-json"\s+jsonError=\{settingError\(depreciationPolicySettingKey\)\}/)
   assert.doesNotMatch(form, /id="accounting-depreciation-policy"[\s\S]{0,200}rows=\{10\}/)
 })
 
@@ -74,7 +75,10 @@ test("settings form blocks invalid depreciation policy before saving", () => {
   const form = readFileSync("src/components/admin/system-settings-form.tsx", "utf8")
   const handleSubmit = form.slice(form.indexOf("async function handleSubmit"), form.indexOf("setSaving(true)"))
 
-  assert.match(handleSubmit, /if \(hasInvalidDepreciationPolicy\) \{[\s\S]*toast\.error\(labels\.invalidAccountingDepreciationPolicy\)[\s\S]*return[\s\S]*\}/)
+  // validate() checks every setting sent, the depreciation policy among them, and the save goes to the first wrong field
+  // instead of a toast (v-track plan 3 task 3, ST3).
+  assert.match(handleSubmit, /fieldErrors\.setErrors\(validate\(submittedSettings, activePrefixRows, changedSettings\)\)\s+if \(focusFirstError\(\)\) return/)
+  assert.doesNotMatch(handleSubmit, /toast\.error/)
 })
 
 test("depreciation policy builder sanitizes structured numeric policy inputs", () => {

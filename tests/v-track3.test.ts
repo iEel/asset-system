@@ -185,3 +185,108 @@ test("a switch, the label's name choice, each label field and the depreciation J
   assert.match(builder, /useEffect\(\(\) => \{\n\s+if \(!isPolicyJsonValid && jsonDetailsRef\.current\) jsonDetailsRef\.current\.open = true\n\s+\}, \[isPolicyJsonValid\]\)/)
   assert.match(builder, /hint=\{labels\.depreciationAdvancedJsonDescription\}\n\s+id=\{jsonId\}\n\s+error=\{jsonError\}\n\s+liveError\n\s+className="mt-3"\n\s+>\n\s+<Textarea value=\{policyJson\}/)
 })
+
+// Each setting the form shows, in visual order, with its id, as the form's SETTING_FIELD_IDS lists them, and the
+// expression its error is read with (true: the rule shows while typing, spec U8).
+function settingFields(): [key: string, id: string, errorKey: string, live: boolean][] {
+  return [
+    ["asset_tag_format_template", "asset-tag-template", "assetTagFormatTemplateKey", true],
+    ["asset_tag_running_digits", "asset-tag-running-digits", '"asset_tag_running_digits"', false],
+    ["asset_tag_separator", "asset-tag-separator", '"asset_tag_separator"', false],
+    ["asset_tag_prefix", "asset-tag-global-prefix", '"asset_tag_prefix"', false],
+    ["asset_tag_category_prefixes", "category-prefix-groups", "assetTagCategoryPrefixesKey", false],
+    ["asset_qr_public_base_url", "asset-qr-public-base-url", "assetQrPublicBaseUrlKey", true],
+    ["asset_label_default_tape_size", "asset-label-default-tape-size", '"asset_label_default_tape_size"', false],
+    ["asset_label_compact_asset_name_enabled", "asset-label-compact-asset-name", '"asset_label_compact_asset_name_enabled"', false],
+    ["checkout_document_template", "checkout-document-template", "checkoutDocumentTemplateKey", true],
+    ["checkin_document_template", "checkin-document-template", "checkinDocumentTemplateKey", true],
+    ["operation_document_running_digits", "operation-document-running-digits", "operationDocumentRunningDigitsKey", true],
+    ["company_name", "company-name", '"company_name"', false],
+    ["default_currency", "default-currency", '"default_currency"', false],
+    ["accounting_depreciation_policy", "depreciation-policy-json", "depreciationPolicySettingKey", true],
+    ["notification_return_due_soon_days", "notification-return-due-days", "notificationReturnDueSoonDaysKey", true],
+    ["notification_audit_action_due_soon_days", "notification-audit-action-days", "notificationAuditActionDueSoonDaysKey", true],
+    ["notification_warranty_expiry_days", "notification-warranty-expiry-days", "notificationWarrantyExpiryDaysKey", true],
+    ["notification_license_expiry_days", "notification-license-expiry-days", "notificationLicenseExpiryDaysKey", true],
+    ["workflow_approval_disposal_required", "workflow-approval-disposal-required", "workflowApprovalDisposalRequiredKey", false],
+    ["workflow_approval_audit_close_required", "workflow-approval-audit-close-required", "workflowApprovalAuditCloseRequiredKey", false],
+    ["workflow_approval_segregation_required", "workflow-approval-segregation-required", "workflowApprovalSegregationRequiredKey", false],
+    ["workflow_approval_min_approvers", "workflow-approval-min-approvers", "workflowApprovalMinApproversKey", true],
+    ["workflow_approval_sla_days", "workflow-approval-sla-days", "workflowApprovalSlaDaysKey", true],
+    ["retention_attachment_days", "retention-attachment-days", "retentionAttachmentDaysKey", true],
+    ["retention_audit_log_days", "retention-audit-log-days", "retentionAuditLogDaysKey", true],
+    ["retention_orphan_file_days", "retention-orphan-file-days", "retentionOrphanFileDaysKey", true],
+    ["ldap_url", "ldap-url", '"ldap_url"', false],
+    ["ldap_base_dn", "ldap-base-dn", '"ldap_base_dn"', false],
+    ["ldap_bind_dn", "ldap-bind-dn", '"ldap_bind_dn"', false],
+    ["ldap_bind_password", "ldap-bind-password", '"ldap_bind_password"', false],
+    ["ldap_user_filter", "ldap-user-filter", '"ldap_user_filter"', false],
+    ["ldap_upn_domain", "ldap-upn-domain", '"ldap_upn_domain"', false],
+    ["ldap_domain", "ldap-domain", '"ldap_domain"', false],
+    ["ldap_user_dn_template", "ldap-user-dn-template", '"ldap_user_dn_template"', false],
+    ["ldap_sync_mode", "ldap-sync-mode", '"ldap_sync_mode"', false],
+    ["ldap_sync_max_scheduled_deactivations", "ldap-sync-max-scheduled-deactivations", '"ldap_sync_max_scheduled_deactivations"', false],
+    ["ldap_sync_base_dn", "ldap-sync-base-dn", '"ldap_sync_base_dn"', false],
+    ["ldap_sync_default_company_code", "ldap-sync-default-company", '"ldap_sync_default_company_code"', false],
+    ["ldap_sync_default_branch_code", "ldap-sync-default-branch", '"ldap_sync_default_branch_code"', false],
+    ["ldap_sync_default_department_code", "ldap-sync-default-department", '"ldap_sync_default_department_code"', false],
+    ["ldap_sync_filter", "ldap-sync-filter", '"ldap_sync_filter"', false],
+    ["ldap_sync_schedule", "ldap-sync-custom-schedule", '"ldap_sync_schedule"', true],
+  ]
+}
+
+test("the settings form shows every setting's error under its field, opens its tab and focuses it, and takes the server's refusals (v-track plan 3 task 3, ST3)", async () => {
+  const form = formSource()
+  assert.match(form, /<form onSubmit=\{handleSubmit\} noValidate className="space-y-6">/)
+  assert.match(form, /^import \{ useFieldErrors, useValidationMessage \} from "@\/components\/ui\/use-field-errors"$/m)
+  assert.match(form, /\} from "@\/lib\/system-settings-field-rules"\n/)
+  // The field table in visual order: the rows, with the four tapes' label settings after the compact choice.
+  const table = form.match(/const SETTING_FIELD_IDS: Readonly<Record<string, string>> = \{\n([\s\S]*?)\n\}\n/)
+  assert.ok(table, "const SETTING_FIELD_IDS = { … }")
+  const rows = table[1].split("\n").filter((line) => /^ {2}\w+: "[\w-]+",$/.test(line))
+  assert.deepEqual(rows, settingFields().map(([key, id]) => `  ${key}: "${id}",`))
+  assert.match(table[1], /\n {2}\.\.\.Object\.fromEntries\(\n {4}assetLabelTapeSizes\.flatMap\(\(size\) => LABEL_FIELD_SUFFIXES\.map\(\(suffix\) => \[`asset_label_\$\{size\}_\$\{suffix\}`, `asset_label_\$\{size\}-\$\{suffix\.replace\(\/_\/g, "-"\)\}`\]\)\)\n {2}\),\n {2}checkout_document_template:/)
+  assert.match(form, /const LABEL_FIELD_SUFFIXES = \["width_mm", "height_mm", "qr_size", "margin_mm", "gap_mm", "layout", "primary_template", "secondary_template", "tertiary_template"\]/)
+  // Visual order is tab order: the tabs of the table's settings never go back.
+  const { getSystemSettingsTabForKey } = await load<{ getSystemSettingsTabForKey(key: string): string }>("src/lib/settings-search.ts")
+  const { settingsTabIds } = await load<{ settingsTabIds: readonly string[] }>("src/lib/settings-information-architecture.ts")
+  const tabs = settingFields().map(([key]) => settingsTabIds.indexOf(getSystemSettingsTabForKey(key)))
+  assert.ok(tabs.every((tab, index) => tab >= 0 && (index === 0 || tab >= tabs[index - 1])), `tab order ${tabs.join(" ")}`)
+  // Each id once on its control, and each setting's error under its field, live where a box showed it (spec U8).
+  for (const [key, id, errorKey, live] of settingFields()) {
+    // The prefix groups and the depreciation JSON take their ids in their own lines (below).
+    if (key !== "asset_tag_category_prefixes" && key !== "accounting_depreciation_policy") assert.equal(form.split(`id="${id}"`).length - 1, 1, `id "${id}" once`)
+    if (key === "asset_tag_category_prefixes" || key === "accounting_depreciation_policy") continue
+    const error = live ? `error={settingError(${errorKey})} liveError` : `error={settingError(${errorKey})}`
+    assert.equal(form.split(error).length - 1, 1, `${key}: ${error}`)
+    if (!live) assert.ok(!form.includes(`${error} liveError`), `${key} waits for save (U6)`)
+  }
+  assert.ok(form.includes('jsonId="depreciation-policy-json"\n              jsonError={settingError(depreciationPolicySettingKey)}'))
+  assert.match(form, /<div\n\s+id="category-prefix-groups"\n\s+role="group"\n\s+aria-label=\{labels\.categoryPrefixes\}\n\s+aria-describedby=\{prefixGroupsError \? "category-prefix-groups-error" : undefined\}/)
+  assert.ok(form.includes('{prefixGroupsError ? <FieldError id="category-prefix-groups-error">{prefixGroupsError}</FieldError> : null}'))
+  assert.ok(form.includes("errorFor={settingError}"))
+  assert.match(form, /<Field label=\{setting\.key\} hideLabel error=\{settingError\(setting\.key\)\}>\n\s+<Input\n\s+id=\{settingFieldId\(setting\.key\)\}/)
+  assert.match(form, /const settingFieldId = \(key: string\) => SETTING_FIELD_IDS\[key\] \?\? `setting-\$\{key\}`/)
+  // The live rules and the save's errors: one line per field, the live one first; invalidPrefix reads the editor's sentence.
+  assert.match(form, /const liveErrors = settingLiveErrors\(submittedSettings, activePrefixRows\)/)
+  assert.match(form, /const code = liveErrors\[field\] \?\? fieldErrors\.errors\[field\]\n\s+if \(!code\) return undefined\n\s+return code === "invalidPrefix" \? labels\.invalidPrefix : validationMessage\(code, settingControlParams\[key\]\)/)
+  assert.match(form, /^function validate\(entries: readonly SettingEntry\[\], prefixRows: readonly CategoryPrefixRow\[\], changed: readonly \{ key: string \}\[\]\) \{\n {2}return settingSaveErrors\(entries, prefixRows, new Set\(changed\.map\(\(setting\) => setting\.key\)\)\)\n\}$/m)
+  // The controls' own limits apply to the settings this save changes: changedSettings compares each with its stored
+  // value (open issue 13).
+  assert.match(form, /const changedSettings = settings\.filter\(\n\s+\(setting\) => normalizeSettingValue\(setting\.key, effectiveValues\[setting\.key\]\) !== normalizeSettingValue\(setting\.key, initialValues\[setting\.key\]\)\n\s+\)/)
+  // Save: validate, then the first wrong setting's tab opens and its field takes focus; a refusal does the same.
+  const submit = form.slice(form.indexOf("  async function handleSubmit("), form.indexOf("  async function handleLdapTest("))
+  assert.match(submit, /fieldErrors\.setErrors\(validate\(submittedSettings, activePrefixRows, changedSettings\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
+  assert.match(submit, /body: JSON\.stringify\(\{ settings: submittedSettings \}\)/)
+  assert.match(submit, /if \(!response\.ok\) \{\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(payload\?\.error \?\? labels\.error\)\n\s+\}/)
+  assert.match(form, /const fieldOrder = \[\.\.\.Object\.keys\(SETTING_FIELD_IDS\), \.\.\.generalSettings\.map\(\(setting\) => setting\.key\)\]\.map\(settingFieldKey\)/)
+  assert.match(form, /fieldErrors\.focusFirst\(fieldOrder, \{\n\s+idFor: \(field\) => settingFieldId\(settingKeyOf\(field\)\),\n\s+reveal: \(field\) => selectTab\(SETTING_FIELD_IDS\[settingKeyOf\(field\)\] \? getSystemSettingsTabForKey\(settingKeyOf\(field\)\) : "advanced"\),\n\s+\}\)/)
+  // A change clears its setting's error; so does a change of the prefix groups.
+  assert.match(form, /const setValue = \(key: string, value: string\) => \{\n\s+setValues\(\(current\) => \(\{ \.\.\.current, \[key\]: value \}\)\)\n\s+fieldErrors\.clear\(settingFieldKey\(key\)\)\n\s+\}/)
+  assert.equal(form.split("fieldErrors.clear(settingFieldKey(assetTagCategoryPrefixesKey))").length - 1, 2)
+  assert.doesNotMatch(form, /setValues\(\(current\) => \(\{ \.\.\.current, \[(?:setting\.key|assetTagFormatTemplateKey)\]/)
+  // No validation toast and no box on the page: the rules live in the rules module (the prefix editor is task 4).
+  assert.doesNotMatch(form, /\btoast\.(?:error|warning)\(/)
+  assert.doesNotMatch(form, /hasInvalid|hasDuplicateCategory|const assetTagFormatTokens = \[|function isValidCategoryPrefix/)
+  assert.doesNotMatch(form, /<ValidationMessage message=\{labels\.(?!invalidPrefix\})/)
+})
