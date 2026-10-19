@@ -159,3 +159,12 @@ test("three assets added on the batch form move to the second room in one bulk m
   assert.match(spec, /await page\.waitForLoadState\("networkidle"\)/)
   assert.deepEqual(expectedFailures(spec), [])
 })
+
+test("the latest transaction cancelled: the state before it, the VOID document with the reason, the cancel in the history; its two gaps are expected to fail (e2e transactions task 6, TX6)", async () => {
+  const spec = readTxSpec("e2e/transactions/cancel.spec.ts")
+  assert.match(spec, /await expectFieldError\(page, "transaction-cancel-reason", "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร"\)/)
+  assert.match(spec, /page\.getByRole\("status"\)\.filter\(\{ hasText: "VOID \/ ยกเลิกแล้ว" \}\)/)
+  assert.match(spec, /expect\(after\.custodianId\)\.toBeNull\(\)/)
+  assert.match(spec, /await visitAssetPage\(measure, asset\.id, "asset history after the cancel", testInfo, "operations"\)/)
+  assert.deepEqual(expectedFailures(spec), ["TX-A5", "TX-A7"])
+})
