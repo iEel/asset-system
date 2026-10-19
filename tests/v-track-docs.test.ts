@@ -48,9 +48,36 @@ test("the handoff and the changelog record V track plan 2 in place, with every m
   const newest = changelog.indexOf("\n## ")
   const entry = changelog.indexOf("\n### ข้อความผิดพลาดใต้ช่องกรอก รอบ 2 (งาน V plan 2)\n")
   assert.ok(newest !== -1 && entry !== -1, "the newest date and the V track plan 2 entry")
-  assert.equal(changelog.indexOf("\n### ", newest), entry, "the plan 2 entry is the first one under the newest date")
+  assert.equal(changelog.lastIndexOf("\n## ", entry), changelog.indexOf("\n## 2026-10-19\n"), "the entry sits under 2026-10-19 (the V track plan 3 entry went above it later, v-track plan 3 task 8)")
   assert.ok(entry < changelog.indexOf("\n### ข้อความผิดพลาดใต้ช่องกรอก รอบ 1 (งาน V plan 1)\n"), "above the plan 1 entry")
   assert.match(changelog.slice(entry, changelog.indexOf("\n### ", entry + 1)), /\n- \*\*ตรวจบนแอป:\*\* \(Task 32\) ตรวจบน \S/, "the dev-app check bullet")
+  // Every marker of the template is filled; a failure lists the path and the markers left.
+  const markers = /<today>|<N>|<from task-findings>|<จาก task-findings>|<from open-issues>|<จาก open-issues>/g
+  for (const [path, text] of [["DEVELOPER_HANDOFF.md", handoff], ["docs/99_CHANGELOG.md", changelog]]) {
+    assert.deepEqual([path, text.match(markers) ?? []], [path, []])
+  }
+})
+
+// V track plan 3, the docs (task 8): the handoff section and the Thai changelog entry record plan 3 after plan 2's, with
+// every marker filled; two names the section gives are checked against the code that holds them.
+test("the handoff and the changelog record V track plan 3 in place, with every marker filled (v-track plan 3 task 8)", () => {
+  const handoff = read("DEVELOPER_HANDOFF.md")
+  const section = handoff.indexOf("\n## V Track Plan 3 (")
+  assert.ok(section > handoff.indexOf("\n## V Track Plan 2 ("), "the V track plan 3 section follows the plan 2 one")
+  assert.ok(section < handoff.indexOf("\n## Open Go-Live Decisions"), "and comes before Open Go-Live Decisions")
+  const record = handoff.slice(section, handoff.indexOf("\n## Open Go-Live Decisions"))
+  assert.match(record, /\n- Dev-app check: checked \(Task 7\) on \S/, "the dev-app check bullet")
+  assert.ok(record.includes("`src/lib/system-settings-field-rules.ts`"), "the rules module")
+  assert.match(read("src/lib/system-settings-field-rules.ts"), /\nexport function settingSaveErrors\(entries: readonly SettingEntry\[\], prefixRows: readonly CategoryPrefixRow\[\], changedKeys: ReadonlySet<string>\) \{\n/)
+  assert.ok(record.includes("`V_FORMS` 43 → 44 (= `V_SCOPE`)"), "the V forms")
+  assert.ok(read("tests/validation-guards.test.ts").includes("  `${C}admin/system-settings-form.tsx`,\n]\n"), "the settings form's V_FORMS row")
+  const changelog = read("docs/99_CHANGELOG.md")
+  const newest = changelog.indexOf("\n## ")
+  const entry = changelog.indexOf("\n### ข้อความผิดพลาดใต้ช่องกรอก รอบ 3 (งาน V plan 3)\n")
+  assert.ok(newest !== -1 && entry !== -1, "the newest date and the V track plan 3 entry")
+  assert.equal(changelog.indexOf("\n### ", newest), entry, "the plan 3 entry is the first one under the newest date")
+  assert.ok(entry < changelog.indexOf("\n### ข้อความผิดพลาดใต้ช่องกรอก รอบ 2 (งาน V plan 2)\n"), "above the plan 2 entry")
+  assert.match(changelog.slice(entry, changelog.indexOf("\n### ", entry + 1)), /\n- \*\*ตรวจบนแอป:\*\* \(Task 7\) ตรวจบน \S/, "the dev-app check bullet")
   // Every marker of the template is filled; a failure lists the path and the markers left.
   const markers = /<today>|<N>|<from task-findings>|<จาก task-findings>|<from open-issues>|<จาก open-issues>/g
   for (const [path, text] of [["DEVELOPER_HANDOFF.md", handoff], ["docs/99_CHANGELOG.md", changelog]]) {
