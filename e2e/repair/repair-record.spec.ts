@@ -200,7 +200,7 @@ test("a second record for an asset under repair is refused, and a mistaken recor
 // <dl> (src/components/asset-operations/operation-document-print.tsx), an axe serious "dlitem" violation on every print
 // (handover, return, transfer, disposal, repair). When AR1 is fixed this test passes and Playwright reports it.
 test("the repair print opens with the record's number, state and outcome (ER3, finding AR1)", async ({ page, measure }, testInfo) => {
-  test.fail(true, "AR1: the print sheet's dt/dd pairs sit outside a dl (axe dlitem, serious)")
+  // AR1 fixed (FX1): this test now keeps the print's fields a description list.
   const masters = await readAssetMasters(page)
   const tag = areaTag(testInfo, "R4")
   const asset = await createAsset(page.request, masters, { tag, name: `${tag} เครื่องพิมพ์บันทึกซ่อม`, ownershipType: "stock" })

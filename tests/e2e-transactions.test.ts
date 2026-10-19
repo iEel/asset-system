@@ -109,10 +109,10 @@ test("a handover signed with the device's own pointer and printed, a due date be
   assert.match(support, /await cdp\.send\("Input\.dispatchTouchEvent", \{ type: "touchStart", touchPoints: \[points\[0\]\] \}\)/)
   assert.match(support, /expect\(pointerTypes, "the stroke reached the pad as the device's own pointer"\)\.toEqual\(\[device === "desktop" \? "mouse" : "touch"\]\)/)
   assert.match(support, /await group\.locator\("div\[id\]"\)\.first\(\)\.tap\(\)/)
-  // The A4 documents' known finding, with its own expected-to-fail test.
+  // The A4 documents' finding is fixed (FX1): no workflow drops it, and its test is no longer expected to fail.
   const known = await import("../e2e/transactions/known-findings.ts")
-  assert.ok(known.KNOWN_AXE.some((entry) => entry.finding === "TX-A3" && entry.rule === "dlitem"))
-  assert.ok(expectedFailures(read("e2e/transactions/findings.spec.ts")).includes("TX-A3"))
+  assert.ok(!known.KNOWN_AXE.some((entry) => entry.rule === "dlitem"))
+  assert.ok(!expectedFailures(read("e2e/transactions/findings.spec.ts")).includes("TX-A3"))
 })
 
 test("a return to the second room prints the RT- document, and a return sent to repair opens a repair record (e2e transactions task 3, TX3)", async () => {

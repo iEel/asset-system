@@ -16,7 +16,7 @@ test("the asset page's QR code has a text alternative (finding TX-A2)", async ({
 })
 
 test("an A4 document's fields are a description list (finding TX-A3)", async ({ page, measure }, testInfo) => {
-  test.fail(true, "TX-A3: axe dlitem, the document's dt and dd sit in a div grid with no dl")
+  // TX-A3 fixed (FX1): this test now keeps the documents' fields a description list.
   const masters = await readAssetMasters(page)
   const asset = await createTxAsset(page, masters, testInfo.project.name, "DL1", "โน้ตบุ๊กตรวจเอกสาร A4")
   const handover = await handoverByApi(page, asset.id, readRunData().employees.receiver2.id, masters.goodConditionId)

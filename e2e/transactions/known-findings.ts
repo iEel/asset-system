@@ -15,15 +15,6 @@ export const QR_WITHOUT_NAME: KnownAxe = {
   why: "the asset page's QR code is an image with no text alternative",
 }
 
-// TX-A3: the A4 documents' fields (operation-document-print.tsx) are <dt>/<dd> pairs in a <div> grid with no <dl>. axe
-// names a pair's cell by its tag or by its classes, inside the field's grid-cols-[38%_1fr] row.
-export const PRINT_FIELDS_WITHOUT_DL: KnownAxe = {
-  finding: "TX-A3",
-  rule: "dlitem",
-  target: /grid-cols-\\\[38\\%_1fr\\\]/,
-  why: "the A4 document's field pairs are dt and dd outside a dl",
-}
-
 // TX-A8: on the phone, a region that scrolls has no keyboard access: the review dialog's body when its rows are taller
 // than the screen (return, transfer), and the batch receipt's table.
 export const SCROLL_REGION_WITHOUT_KEYS: KnownAxe = {
@@ -33,7 +24,8 @@ export const SCROLL_REGION_WITHOUT_KEYS: KnownAxe = {
   why: "a scrolling region on the phone takes no keyboard focus",
 }
 
-export const KNOWN_AXE: readonly KnownAxe[] = [QR_WITHOUT_NAME, PRINT_FIELDS_WITHOUT_DL, SCROLL_REGION_WITHOUT_KEYS]
+// TX-A3 (the A4 documents' fields) is fixed (FX1) and no longer dropped.
+export const KNOWN_AXE: readonly KnownAxe[] = [QR_WITHOUT_NAME, SCROLL_REGION_WITHOUT_KEYS]
 
 // Drop the known violations from a recorded page (the counts stay as axe gave them, so the summary still shows them),
 // and say so on the test.

@@ -50,8 +50,8 @@ test("one disposal is requested, approved alone and executed with evidence by th
     `.toBe("Disposed")`,
     `"ใบอนุมัติตัดจำหน่ายทรัพย์สิน"`,
   ]) assert.ok(spec.includes(step), step)
-  // Finding D1 stays an expected failure until the print layout is fixed.
-  assert.ok(spec.includes(`test.fail(true, "finding D1:`), "D1 expected to fail")
+  // Finding D1 is fixed (FX1): the print's test is a plain test.
+  assert.ok(!spec.includes(`test.fail(true, "finding D1:`), "D1 is fixed")
   assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "the print test follows the workflow")
 })
 

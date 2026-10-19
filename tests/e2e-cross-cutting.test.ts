@@ -223,5 +223,5 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   assert.ok(scope.includes("...(input.scopeLocationId ? { currentLocationId: input.scopeLocationId } : {}),") && scope.includes("...(input.scopeStatusId ? { statusId: input.scopeStatusId } : {}),"))
   // The spec: the suite's fixtures, and findings M3, M8 and M9 expected to fail until fixed (M9 on the phone only).
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
-  assert.ok(spec.includes(`test.fail(true, "M3: `) && spec.includes(`test.fail(true, "M8: `) && spec.includes(`test.fail(e2eDevice === "phone", "M9: `))
+  assert.ok(spec.includes(`test.fail(true, "M3: `) && !spec.includes(`test.fail(true, "M8: `) && spec.includes(`test.fail(e2eDevice === "phone", "M9: `))
 })

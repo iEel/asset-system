@@ -178,7 +178,7 @@ test("IT staff request one disposal, the IT head approves it, IT staff execute i
 // dt and dd in a div grid with no dl, an axe serious violation (dlitem) on every print page. Expected to fail until it
 // is fixed; Playwright then reports "expected to fail but passed".
 test("the disposal print has no serious or critical axe violation (finding D1)", async ({ page, measure }) => {
-  test.fail(true, "finding D1: dt and dd outside a dl on the print layout (axe dlitem, serious)")
+  // Finding D1 fixed (FX1): this test now keeps the print's fields a description list.
   expect(printPath, "the workflow test opened the print").not.toBe("")
   await measure.visit(printPath, "IT staff: the disposal print")
   await expect(page.getByText("ใบอนุมัติตัดจำหน่ายทรัพย์สิน").first()).toBeVisible()

@@ -21,3 +21,13 @@ test("a page reached by a client-side navigation records no load time of its own
   const measure = read("e2e/support/measure.ts")
   assert.match(measure, /if \(!navigation \|\| navigation\.loadEventEnd === 0 \|\| new URL\(navigation\.name\)\.pathname !== location\.pathname\) return null/)
 })
+
+test("the A4 documents' fields are a description list (e2e fix task FX1: TX-A3, AR1, D1, M8)", () => {
+  const print = read("src/components/asset-operations/operation-document-print.tsx")
+  assert.match(print, /<dl className="grid grid-cols-1 border border-slate-300 sm:grid-cols-2">\n\s*\{section\.fields\.map\(\(field, index\) => \(\n[\s\S]*?<\/dt>\n[\s\S]*?<\/dd>\n\s*<\/div>\n\s*\)\)\}\n\s*<\/dl>/)
+  assert.doesNotMatch(print, /<div className="grid grid-cols-1 border border-slate-300 sm:grid-cols-2">/)
+  assert.ok(!read("e2e/transactions/findings.spec.ts").includes(`test.fail(true, "TX-A3: `))
+  assert.ok(!read("e2e/repair/repair-record.spec.ts").includes(`test.fail(true, "AR1: `))
+  assert.ok(!read("e2e/disposal/single-request.spec.ts").includes(`test.fail(true, "finding D1:`))
+  assert.ok(!read("e2e/cross-cutting/field-errors.spec.ts").includes(`test.fail(true, "M8: `))
+})

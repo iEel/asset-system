@@ -147,7 +147,7 @@ test("return: no one who returns it shows its error, and the corrected return sa
 // Finding M8 (expected to fail until fixed): the handover (HO-) and return (RT-) documents lay their fields out as
 // <dt>/<dd> pairs outside a <dl>, an axe serious violation (dlitem, WCAG 1.3.1), on every device.
 test("the handover and return documents open and pass axe (finding M8)", async ({ page, measure }, testInfo) => {
-  test.fail(true, "M8: the HO- and RT- documents put <dt>/<dd> outside a <dl>")
+  // M8 fixed (FX1): this test now keeps the documents' fields a description list.
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-DOC", name: "เอกสารส่งมอบ", ownershipType: "personal" })
