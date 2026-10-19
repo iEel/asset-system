@@ -580,6 +580,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const movementEmployeeLabels = new Map(movementEmployees.map((employee) => [employee.id, formatEmployeeLabel(employee)]))
   const checkoutsById = new Map(asset.checkouts.map((checkout) => [checkout.id, checkout]))
   const checkinsById = new Map(asset.checkouts.flatMap((checkout) => checkout.checkin ? [[checkout.checkin.id, { ...checkout.checkin, checkout }]] : []))
+  // The transfers' TR- documents, so each transfer in the history links its paper as a handover and a return do (the
+  // E2E suite's TX-A4: nothing linked the TR- document before).
+  const transferIds = [...new Set(asset.movements.flatMap((movement) => (movement.referenceType === "transfer" && movement.referenceId ? [movement.referenceId] : [])))]
+  const transfersById = new Map(
+    (transferIds.length > 0 ? await prisma.assetTransfer.findMany({ where: { id: { in: transferIds } }, select: { id: true, documentNo: true } }) : []).map((transfer) => [transfer.id, transfer]),
+  )
   const movementLabels = await getMovementDisplayLabels(asset.movements)
   const movementTimelineItems: MovementTimelineItem[] = asset.movements.map((movement) => {
     const details: MovementCustodyDetail[] = []
@@ -632,6 +638,13 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           { label: t("returnBy"), value: returnBy },
           { label: t("receiveBy"), value: receiveBy }
         )
+      }
+    }
+
+    if (movement.referenceType === "transfer" && movement.referenceId) {
+      const transfer = transfersById.get(movement.referenceId)
+      if (transfer) {
+        details.push({ label: t("documentNo"), value: transfer.documentNo, href: `/${locale}/asset-management/transfers/${movement.referenceId}` })
       }
     }
 

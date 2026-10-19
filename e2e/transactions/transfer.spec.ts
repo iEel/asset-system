@@ -84,7 +84,7 @@ test.describe("transfer", () => {
   // Finding TX-A4: no page links to /asset-management/transfers/<id> (the asset page's timeline links the HO- and RT-
   // documents only), so a person cannot open the TR- document they just made.
   test("the TR- document opens from the asset page (finding TX-A4)", async ({ page, measure }, testInfo) => {
-    test.fail(true, "TX-A4: the TR- document has no way in from the UI")
+    // TX-A4 fixed (FX10): this test now keeps the TR- document linked from the asset's history.
     const transfer = transfers.get(testInfo.project.name)
     expect(transfer, "the transfer test ran first").toBeTruthy()
     if (!transfer) return

@@ -133,3 +133,14 @@ test("every asset lifecycle refusal has its Thai sentence, and the handover form
   assert.match(read("src/components/asset-operations/checkout-form.tsx"), /throw new Error\(getCheckoutErrorMessage\(payload\?\.code \?\? payload\?\.error\)\)/)
   assert.ok(!read("e2e/transactions/handover.spec.ts").includes(`test.fail(true, "TX-A1: `))
 })
+
+test("a transfer's TR- document is reached from the asset's history (e2e fix task FX10: TX-A4)", () => {
+  const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  assert.match(detail, /await prisma\.assetTransfer\.findMany\(\{ where: \{ id: \{ in: transferIds \} \}, select: \{ id: true, documentNo: true \} \}\)/)
+  assert.match(detail, /if \(movement\.referenceType === "transfer" && movement\.referenceId\) \{\n\s*const transfer = transfersById\.get\(movement\.referenceId\)/)
+  assert.match(detail, /\{ label: t\("documentNo"\), value: transfer\.documentNo, href: `\/\$\{locale\}\/asset-management\/transfers\/\$\{movement\.referenceId\}` \}/)
+  // The transfer form still goes back to where it came from (whether it should open the TR- document, as the handover
+  // and the return open theirs, is the user's call).
+  assert.ok(read("src/components/asset-operations/transfer-form.tsx").includes("router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)"))
+  assert.ok(!read("e2e/transactions/transfer.spec.ts").includes(`test.fail(true, "TX-A4: `))
+})
