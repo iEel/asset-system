@@ -4263,6 +4263,7 @@
     "modelNameExists": "ชื่อรุ่นนี้มีอยู่แล้วในยี่ห้อนี้",
     "categoryCodeExists": "รหัสหมวดหมู่นี้มีอยู่แล้ว",
     "customFieldNameDuplicate": "ชื่อ field ต้องไม่ซ้ำกันในหมวดหมู่เดียวกัน",
-    "integrationClientIdExists": "Client ID นี้มีอยู่แล้ว"
+    "integrationClientIdExists": "Client ID นี้มีอยู่แล้ว",
+    "assetTagExists": "รหัสทรัพย์สินนี้ถูกใช้งานแล้ว"
   }
 }

@@ -4263,6 +4263,7 @@
     "locationCodeExists": "Location code already exists",
     "modelNameExists": "Model name already exists for this brand",
     "customFieldNameDuplicate": "Custom field names must be unique in a category",
-    "integrationClientIdExists": "Integration client ID already exists"
+    "integrationClientIdExists": "Integration client ID already exists",
+    "assetTagExists": "Asset tag already exists"
   }
 }

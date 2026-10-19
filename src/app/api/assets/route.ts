@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ code: stateError, error: stateError }, { status: 400 })
     }
     await assertUniqueSerial(input.serialNumber)
+    await assertUniqueAssetTag(input.assetTag)
     const assetTag =
       input.assetTag ??
       (await generateAssetTag({
@@ -141,5 +142,23 @@ async function assertUniqueSerial(serialNumber?: string | null, excludeId?: stri
 
   if (existing) {
     throw new FieldRefusalError("Serial Number already exists", { serialNumber: "duplicate" })
+  }
+}
+
+// A typed asset tag that another asset holds is the tag's field error, not the database's refusal (a 500; the E2E
+// suite's M3). The tag is unique over every row, active or not, as the unique index is.
+async function assertUniqueAssetTag(assetTag?: string | null, excludeId?: string) {
+  if (!assetTag) return
+
+  const existing = await prisma.asset.findFirst({
+    where: {
+      assetTag,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true },
+  })
+
+  if (existing) {
+    throw new FieldRefusalError("Asset tag already exists", { assetTag: "duplicate" })
   }
 }

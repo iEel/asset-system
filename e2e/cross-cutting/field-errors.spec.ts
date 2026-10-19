@@ -65,7 +65,7 @@ test("asset register: a tag already in use shows its error under the tag as it i
 // neither) reach the database's unique constraint, and the asset route answers 500 "Unexpected error" instead of the
 // tag's field error.
 test("a typed tag that already exists is refused with the tag's field error, not a 500 (finding M3)", async ({ page, measure }, testInfo) => {
-  test.fail(true, "M3: POST /api/assets with a tag that exists answers 500 (P2002), not 400 fieldErrors.assetTag")
+  // M3 fixed (FX7): this test now keeps a taken typed tag the tag's field error.
   const choices = await readAssetChoices(page, measure)
   const existing = await createAsset(page.request, testInfo, choices, { slug: "FE-RACE", name: "รหัสซ้ำพร้อมกัน" })
   const again = await page.request.post("/api/assets", {

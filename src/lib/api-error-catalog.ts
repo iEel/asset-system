@@ -22,6 +22,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Asset status does not allow checkout": "statusBlocksCheckout",
   "Asset status does not allow transfer": "statusBlocksTransfer",
   "Asset status not found": "assetStatusNotFound",
+  "Asset tag already exists": "assetTagExists",
   "Asset tag batch size must be between 1 and 100": "assetTagBatchSize",
   "Asset tag format template must include {running} and only use supported tokens": "assetTagTemplateInvalid",
   "ASSET_ACTIVE_CHECKOUT_EXISTS": "assetActiveCheckoutExists",

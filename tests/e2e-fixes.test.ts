@@ -89,3 +89,16 @@ test("a view-only role is offered no create, edit or scan link (e2e fix task FX6
   assert.match(rounds, /actions=\{canCreateRound \? \(\n\s*<Link href=\{`\/\$\{locale\}\/audit\/rounds\/new`\}/)
   assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M5: `))
 })
+
+test("a typed asset tag that exists is the tag's field error, not a 500 (e2e fix task FX7: M3)", async () => {
+  const { apiErrorKeyByMessage } = await import("../src/lib/api-error-catalog.ts")
+  assert.equal(apiErrorKeyByMessage["Asset tag already exists"], "assetTagExists")
+  assert.equal((messages("th").apiErrors as Record<string, string>).assetTagExists, "รหัสทรัพย์สินนี้ถูกใช้งานแล้ว")
+  for (const route of ["src/app/api/assets/route.ts", "src/app/api/assets/[id]/route.ts"]) {
+    const source = read(route)
+    assert.match(source, /async function assertUniqueAssetTag\(assetTag\?: string \| null, excludeId\?: string\)/, route)
+    assert.match(source, /throw new FieldRefusalError\("Asset tag already exists", \{ assetTag: "duplicate" \}\)/, route)
+  }
+  assert.match(read("src/app/api/assets/route.ts"), /await assertUniqueSerial\(input\.serialNumber\)\n\s*await assertUniqueAssetTag\(input\.assetTag\)/)
+  assert.ok(!read("e2e/cross-cutting/field-errors.spec.ts").includes(`test.fail(true, "M3: `))
+})
