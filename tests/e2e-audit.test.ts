@@ -153,3 +153,26 @@ test("offline the check waits on the device and is sent when the phone is back; 
   const pendingSteps = read("e2e/audit/pending-steps.ts")
   for (const key of ["markNotFound", "notFoundDialogTitle", "notFoundConfirm", "notFoundSuccess"]) assert.ok(pendingSteps.includes(thai("auditPending")[key]), key)
 })
+
+test("IT staff are refused the review and the close; the IT head reviews every finding and closes the round (e2e audit task 4, EA4)", async () => {
+  const spec = read(SPEC)
+  const refused = block(spec, "IT staff are refused the review and the close")
+  assert.ok(refused.includes(`asUser("itStaff")`))
+  assert.ok(refused.includes(thai("auditFinding").segregationReviewBlocked))
+  // Both refusals are the test's own: declared, then read from the route.
+  assert.ok(refused.includes('measure.expectRefusal({ method: "POST", url: /\\/api\\/audit-findings\\/[^/]+\\/review$/, status: 403'))
+  assert.ok(refused.includes('measure.expectRefusal({ method: "PATCH", url: new RegExp(`/api/audit-rounds/${chain.roundId}$`), status: 403'))
+  assert.equal((refused.match(/\{ status: 403, body: \{ error: "Forbidden: insufficient permissions" \} \}/g) ?? []).length, 2)
+
+  const head = block(spec, "The IT head reviews and closes")
+  assert.ok(head.includes(`asUser("itHead")`))
+  const finding = thai("auditFinding")
+  // Every finding the walk made: the department approved, the condition rejected, both not-founds and the outsider.
+  for (const type of ["type_wrong_department", "type_wrong_condition", "type_not_found", "type_out_of_scope"]) assert.ok(head.includes(`type: "${finding[type]}"`), type)
+  assert.equal((head.match(/action: "approve", remark/g) ?? []).length, 4)
+  assert.equal((head.match(/action: "reject", remark/g) ?? []).length, 1)
+  assert.ok(head.includes(`expect(mismatch.department?.code, "the approved department").toBe(runDepartment)`))
+  assert.ok(head.includes(thai("auditRound").closeConfirm) && head.includes(thai("auditRound").closeSuccess))
+  const review = read("e2e/audit/review-steps.ts")
+  assert.ok(review.includes("export function findingEntry(") && review.includes("export async function browserFetch("))
+})

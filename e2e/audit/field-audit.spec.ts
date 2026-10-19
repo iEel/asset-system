@@ -20,6 +20,7 @@ import { runRecords } from "../support/run-plan.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createAuditAssets, createAuditPlaces, readAuditMasters, type AuditWalkData } from "./audit-data.ts"
 import * as pending from "./pending-steps.ts"
+import * as review from "./review-steps.ts"
 import * as scan from "./scan-steps.ts"
 import { recordSettled } from "./settle.ts"
 
@@ -283,5 +284,94 @@ test.describe("IT staff in room B, offline, and not found", () => {
     // The round has no item left to check (a GET of the round).
     const round = (await (await page.request.get(`/api/audit-rounds/${chain.roundId}`)).json()) as { items: { auditStatus: string; asset: { assetTag: string } }[] }
     expect(round.items.filter((item) => item.auditStatus === "pending").map((item) => item.asset.assetTag), "no item left to check").toEqual([])
+  })
+})
+
+test.describe("IT staff are refused the review and the close", () => {
+  asUser("itStaff")
+
+  test("IT staff are refused the review of their own findings and the close of the round they opened", async ({ page, measure }, testInfo) => {
+    const chain = readChain(testInfo.project.name)
+    if (!chain.notFoundFindingId) throw new Error("the not-found save left no finding id")
+    await measure.visit(`/th/audit/findings?status=pending&roundId=${chain.roundId}`, "findings of the round (IT staff)")
+    await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()
+    // Every finding of the round is theirs: the review buttons give way to the segregation note.
+    await expect(page.getByText("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้").filter({ visible: true }).first()).toBeVisible()
+    await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: "ปฏิเสธ", exact: true })).toHaveCount(0)
+
+    // The review route refuses them: IT staff hold no audit approve.
+    measure.expectRefusal({ method: "POST", url: /\/api\/audit-findings\/[^/]+\/review$/, status: 403, reason: "IT staff hold no audit approve (spec §6.2.4)" })
+    const reviewed = await review.browserFetch(page, `/api/audit-findings/${chain.notFoundFindingId}/review`, "POST", { action: "approve" })
+    expect(reviewed).toEqual({ status: 403, body: { error: "Forbidden: insufficient permissions" } })
+
+    // The round page offers them no close, and the close route refuses them: no approve, and they opened it.
+    await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page (IT staff)")
+    await expect(page.getByRole("heading", { level: 1, name: chain.records.round.name })).toBeVisible()
+    await expect(page.getByRole("button", { name: "ปิดรอบตรวจ" })).toHaveCount(0)
+    measure.expectRefusal({ method: "PATCH", url: new RegExp(`/api/audit-rounds/${chain.roundId}$`), status: 403, reason: "IT staff, who opened the round, may not close it (spec §6.2.4)" })
+    const closed = await review.browserFetch(page, `/api/audit-rounds/${chain.roundId}`, "PATCH", { action: "close" })
+    expect(closed).toEqual({ status: 403, body: { error: "Forbidden: insufficient permissions" } })
+  })
+})
+
+test.describe("The IT head reviews and closes", () => {
+  asUser("itHead")
+
+  test("the IT head reviews every finding of the round and closes it", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.setTimeout(240_000)
+    const chain = readChain(testInfo.project.name)
+    const { assets } = chain
+    const runDepartment = runRecords(readRunState().runId).department.code
+    await measure.visit(`/th/audit/findings?status=pending&roundId=${chain.roundId}`, "findings of the round (IT head)")
+
+    // Each finding of the walk, approved or rejected with a remark in its dialog.
+    const decisions: { tag: string; type: string; action: "approve" | "reject"; remark: string }[] = [
+      { tag: assets.mismatch.tag, type: "แผนกไม่ตรง", action: "approve", remark: `ย้ายไปแผนก ${runDepartment} ตามที่พบ` },
+      { tag: assets.mismatch.tag, type: "สภาพไม่ตรง", action: "reject", remark: "ตรวจซ้ำแล้ว สภาพยังดี" },
+      { tag: assets.component2.tag, type: "ไม่พบทรัพย์สิน", action: "approve", remark: "ยืนยันไม่พบส่วนควบ" },
+      { tag: assets.notFound.tag, type: "ไม่พบทรัพย์สิน", action: "approve", remark: "ยืนยันไม่พบ" },
+      { tag: assets.outOfScope.tag, type: "ทรัพย์สินนอกขอบเขต", action: "approve", remark: "อยู่นอกขอบเขตรอบนี้จริง" },
+    ]
+    await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(decisions.length)
+    for (const [index, decision] of decisions.entries()) {
+      const approve = decision.action === "approve"
+      const entry = review.findingEntry(page, e2eDevice, decision.tag, decision.type)
+      await expect(entry).toHaveCount(1)
+      await entry.getByRole("button", { name: approve ? "อนุมัติ" : "ปฏิเสธ", exact: true }).click()
+      const dialog = page.getByRole("dialog", { name: approve ? "ยืนยันการอนุมัติรายการไม่ตรง" : "ยืนยันการปฏิเสธรายการไม่ตรง" })
+      await expect(dialog).toBeVisible()
+      await dialog.getByLabel(approve ? "หมายเหตุการอนุมัติ" : "หมายเหตุการปฏิเสธ").fill(decision.remark)
+      if (index === 0) await recordSettled(page, measure, "review dialog")
+      await measure.timed(`${decision.action} ${decision.type} ${decision.tag}`, async () => {
+        await dialog.getByRole("button", { name: approve ? "อนุมัติรายการไม่ตรง" : "ปฏิเสธรายการไม่ตรง" }).click()
+        await expect(dialog).toBeHidden()
+        await expect(entry).toHaveCount(0)
+      })
+      await expect(page.getByText(approve ? "อนุมัติรายการไม่ตรงและปรับข้อมูลทรัพย์สินสำเร็จ" : "ปฏิเสธรายการไม่ตรงสำเร็จ").first()).toBeVisible()
+    }
+    await recordSettled(page, measure, "findings of the round, all reviewed")
+
+    // The approved department is the asset's now; the rejected condition is not (a GET of the asset).
+    const mismatch = (await (await page.request.get(`/api/assets/${assets.mismatch.id}`)).json()) as { department: { code: string } | null; condition: { name: string } }
+    expect(mismatch.department?.code, "the approved department").toBe(runDepartment)
+    expect(mismatch.condition.name, "the rejected condition stays").toBe("Good")
+
+    // The checklist is clear and the IT head did not open the round: the close goes through.
+    await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page (IT head)")
+    const close = page.getByRole("button", { name: "ปิดรอบตรวจ" })
+    await expect(close).toBeEnabled()
+    await expect(page.getByText("ผู้ปิดรอบต้องไม่ใช่ผู้สร้างรอบ")).toHaveCount(0)
+    await close.click()
+    const confirm = page.getByRole("alertdialog", { name: "ยืนยันปิดรอบตรวจนับนี้?" })
+    await expect(confirm).toBeVisible()
+    await recordSettled(page, measure, "close confirmation")
+    await measure.timed("close the round", async () => {
+      await confirm.getByRole("button", { name: "ปิดรอบตรวจ" }).click()
+      await expect(page.getByText("ปิดรอบตรวจนับสำเร็จ")).toBeVisible()
+      await expect(close).toHaveCount(0)
+    })
+    await expect(page.getByRole("main").getByText("ปิดรอบ", { exact: true }).first()).toBeVisible()
+    await recordSettled(page, measure, "round page, closed")
   })
 })
