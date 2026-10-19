@@ -94,11 +94,12 @@ export class Measure {
   }
 
   // Record the page on screen now (after a client-side navigation or with a dialog open): timing when it is a fresh
-  // document, and axe.
+  // document, and axe. A page reached by a client-side navigation keeps the first document's navigation entry, so its
+  // path differs from the entry's: it records no load time (null), never the first document's again (suite note SN2).
   async recordPage(label: string): Promise<PageRecord> {
     const timing = await this.page.evaluate(() => {
       const [navigation] = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[]
-      if (!navigation || navigation.loadEventEnd === 0) return null
+      if (!navigation || navigation.loadEventEnd === 0 || new URL(navigation.name).pathname !== location.pathname) return null
       return { loadMs: Math.round(navigation.loadEventEnd - navigation.startTime), domContentLoadedMs: Math.round(navigation.domContentLoadedEventEnd - navigation.startTime) }
     })
     const record: PageRecord = { label, url: this.page.url(), loadMs: timing?.loadMs ?? null, domContentLoadedMs: timing?.domContentLoadedMs ?? null, axe: null }
