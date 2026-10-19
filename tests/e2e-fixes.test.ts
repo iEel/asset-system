@@ -56,3 +56,13 @@ test("a region that scrolls takes the keyboard: the dialog body and the batch re
   assert.ok(!read("e2e/disposal/batch-bulk-approval.spec.ts").includes(`test.fail(true, "finding D3:`))
   assert.ok(!read("e2e/cross-cutting/field-errors.spec.ts").includes(`"M9: `))
 })
+
+test("the audit exports show only to a role with audit:export (e2e fix task FX4: AU1, M1)", () => {
+  const findings = read("src/app/[locale]/(dashboard)/audit/findings/page.tsx")
+  assert.match(findings, /const canExport = hasPermission\(user, "audit", "export"\)/)
+  assert.match(findings, /\{canExport \? \(\n\s*<div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">\n\s*<a href=\{`\/api\/audit-findings\/export\?/)
+  const round = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx")
+  assert.match(round, /const canExportRound = round\.status !== "cancelled" && hasPermission\(user, "audit", "export"\)/)
+  assert.ok(!read("e2e/audit/field-audit.spec.ts").includes(`test.fail(true, "AU1: `))
+  assert.ok(!read("e2e/cross-cutting/reports.spec.ts").includes(`test.fail(true, "M1: `))
+})

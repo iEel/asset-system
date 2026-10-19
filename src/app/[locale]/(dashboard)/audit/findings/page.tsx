@@ -60,6 +60,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const user = await requirePagePermission(locale, "audit", "view")
   const canEdit = hasPermission(user, "audit", "edit")
   const canApprove = hasPermission(user, "audit", "approve")
+  // The exports' routes need audit:export (spec §6.5: a role without it does not see them; the E2E suite's AU1, M1).
+  const canExport = hasPermission(user, "audit", "export")
   const canCreateDisposal = hasPermission(user, "disposal", "create")
 
   const t = await getTranslations("auditFinding")
@@ -303,16 +305,18 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             <h2 id="audit-finding-queue-title" className="text-base font-semibold text-foreground">{t("quickFilters")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("quickFiltersHelp")}</p>
           </div>
-          <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">
-            <a href={`/api/audit-findings/export?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
-              <Download aria-hidden="true" />
-              {t("exportFindings")}
-            </a>
-            <a href={`/api/audit-findings/export-pdf?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
-              <FileText aria-hidden="true" />
-              {t("exportFindingsPdf")}
-            </a>
-          </div>
+          {canExport ? (
+            <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">
+              <a href={`/api/audit-findings/export?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
+                <Download aria-hidden="true" />
+                {t("exportFindings")}
+              </a>
+              <a href={`/api/audit-findings/export-pdf?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
+                <FileText aria-hidden="true" />
+                {t("exportFindingsPdf")}
+              </a>
+            </div>
+          ) : null}
         </div>
         <TabNav aria-label={t("quickFilters")} items={resolutionFilters} current={status} scroll={false} />
         <FilterChipList chips={filterChips} label={t("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} />

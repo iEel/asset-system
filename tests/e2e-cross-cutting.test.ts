@@ -69,7 +69,7 @@ test("reports and exports: each export's route permission, the reports page's ga
   // The spec: every test imports the suite's fixtures; finding M1 and M2 stay expected to fail until fixed.
   const spec = read("e2e/cross-cutting/reports.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
-  assert.ok(spec.includes(`test.fail(true, "M1: `) && spec.includes(`test.fail(true, "M2: `))
+  assert.ok(!spec.includes(`test.fail(true, "M1: `) && spec.includes(`test.fail(true, "M2: `))
 })
 
 test("roles and permissions: each refused page and request needs a permission the user lacks, checked before any read (e2e cross-cutting task 2, EM2)", async () => {

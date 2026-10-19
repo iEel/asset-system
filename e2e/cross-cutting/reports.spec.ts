@@ -114,7 +114,7 @@ test.describe("the IT head", () => {
   // Finding M1 (expected to fail until fixed): the audit findings page and an audit round's page show their exports to
   // a role without audit:export, and the export routes answer it 403.
   test("the audit findings and round pages offer no export without audit:export (finding M1)", async ({ page, measure }) => {
-    test.fail(true, "M1: /th/audit/findings and /th/audit/rounds/<id> show the exports to a role without audit:export")
+    // M1 fixed (FX4): this test now keeps the audit exports hidden from a role without audit:export.
     const rounds = (await (await page.request.get("/api/audit-rounds")).json()) as { id: string; status: string }[]
     const round = rounds.find((candidate) => candidate.status !== "cancelled")
     if (!round) throw new Error("no audit round that is not cancelled")

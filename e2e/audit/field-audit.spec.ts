@@ -453,7 +453,7 @@ test.describe("The audit exports by permission", () => {
     asUser("itStaff")
 
     test("IT staff, who hold no audit export, are not offered the findings export (finding AU1)", async ({ page, measure }, testInfo) => {
-      test.fail(true, "AU1: the findings page offers the audit exports without audit:export")
+      // AU1 fixed (FX4): this test now keeps the exports hidden from a role without audit:export.
       const chain = readChain(testInfo.project.name)
       await measure.visit(`/th/audit/findings?status=all&roundId=${chain.roundId}`, "findings of the round, all (IT staff)")
       await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()

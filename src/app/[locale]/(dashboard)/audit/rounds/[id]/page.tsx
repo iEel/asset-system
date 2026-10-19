@@ -260,7 +260,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
 
   const isRoundCreator = isSameAuditActor(user.id, round.createdBy)
   const isRoundReadOnly = isAuditRoundReadOnlyStatus(round.status)
-  const canExportRound = round.status !== "cancelled"
+  // The round's exports need audit:export (their routes check it; the E2E suite's AU1, M1).
+  const canExportRound = round.status !== "cancelled" && hasPermission(user, "audit", "export")
   const cancelledByDisplayName = cancelledByUser
     ? cancelledByUser.displayName === cancelledByUser.username
       ? cancelledByUser.username

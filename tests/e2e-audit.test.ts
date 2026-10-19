@@ -190,7 +190,7 @@ test("the IT head's own finding and own close are refused by the segregation rul
 
   // The exports: expected to fail until finding AU1 (offered without audit:export) and decision U1 (no role holds it).
   const exports = block(spec, "The audit exports by permission")
-  assert.ok(exports.includes(`test.fail(true, "AU1: `) && exports.includes(`test.fail(true, "U1: `))
+  assert.ok(!exports.includes(`test.fail(true, "AU1: `) && exports.includes(`test.fail(true, "U1: `), "AU1 is fixed (FX4); U1 waits for the user")
   assert.ok(exports.includes(`page.getByRole("link", { name: "${thai("auditFinding").exportFindings}" })`))
   const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
   for (const permissions of Object.values(E2E_ROLE_PERMISSIONS)) assert.ok(!permissions.includes("audit:export"), "no E2E role holds audit:export (U1)")
