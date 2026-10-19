@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
-import { assertSafeUploadPath } from "@/lib/uploads"
+import { assertSafeUploadPath, isOutsideUploadRootError } from "@/lib/uploads"
 import { assertCanViewAttachment } from "@/lib/attachment-access"
 import {
   attachmentThumbnailSize,
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest, context: ThumbnailRouteContext) 
     try {
       file = await readFile(assertSafeUploadPath(attachment.filePath))
     } catch (error) {
-      if (isMissingFileError(error)) {
+      if (isMissingFileError(error) || isOutsideUploadRootError(error)) {
         return NextResponse.json({ error: "Attachment file not found" }, { status: 404 })
       }
       throw error

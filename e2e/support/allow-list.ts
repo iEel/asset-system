@@ -18,10 +18,10 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
     id: "foreign-attachment-thumbnail",
     kind: "response",
     url: /\/api\/attachments\/[0-9a-f-]{36}\/thumbnail$/,
-    status: [500],
+    status: [404],
     reason:
-      "An attachment row stores the absolute path of the upload folder that wrote it. The dev database is a copy of Production, so many rows hold Production paths (wiki #15, #25, #43), and rows written by another checkout of the app hold that checkout's folder; the thumbnail route refuses a path outside this app's UPLOAD_DIR with 500 Invalid attachment path. The asset register shows the newest assets' thumbnails, so a workflow that the app sends there meets them. A test's own photo is checked on its own asset page, not through these thumbnails.",
-    reviewed: "2026-10-19",
+      "An attachment row stores the absolute path of the upload folder that wrote it. The dev database is a copy of Production, so many rows hold Production paths (wiki #15, #25, #43), and rows written by another checkout of the app hold that checkout's folder; the thumbnail route answers 404 Attachment file not found for a path outside this app's UPLOAD_DIR (FX8; it answered 500 before) as for a file that is gone. The asset register shows the newest assets' thumbnails, so a workflow that the app sends there meets them. A test's own photo is checked on its own asset page, not through these thumbnails; a thumbnail that answers 500 is still a failure.",
+    reviewed: "2026-10-20",
   },
   {
     id: "thumbnail-cancelled-on-leave",

@@ -59,8 +59,8 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   const findings = readTxSpec("e2e/transactions/findings.spec.ts")
   for (const entry of known.KNOWN_AXE) assert.ok(expectedFailures(findings).includes(entry.finding), entry.finding)
 
-  // The register's thumbnails (the shared allow-list, ruling TX-R9): a 500 or a cancelled image of
-  // /api/attachments/<id>/thumbnail passes; the same answer of the attachment itself does not.
+  // The register's thumbnails (the shared allow-list, ruling TX-R9): a 404 (a file outside this server's upload folder,
+  // FX8) or a cancelled image of /api/attachments/<id>/thumbnail passes; the same answer of the attachment itself does not.
   const core = await import("../e2e/support/measure-core.ts")
   const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
   const register = "http://localhost:3100/th/assets"
@@ -69,8 +69,8 @@ test("an asset registered on the form with a photo and a purchase document, a wr
     {
       console: [],
       responses: [
-        { method: "GET", url: `${attachment}/thumbnail`, status: 500, resourceType: "image", pageUrl: register },
-        { method: "GET", url: attachment, status: 500, resourceType: "image", pageUrl: register },
+        { method: "GET", url: `${attachment}/thumbnail`, status: 404, resourceType: "image", pageUrl: register },
+        { method: "GET", url: attachment, status: 404, resourceType: "image", pageUrl: register },
       ],
       failures: [{ method: "GET", url: `${attachment}/thumbnail`, errorText: "net::ERR_ABORTED", resourceType: "image", pageUrl: register }],
     },

@@ -34,7 +34,10 @@ const mockedModuleSources = new Map<string, string>([
     export async function requireAuth() { return { id: "user-1", roles: [], permissions: [], employeeId: "emp-1" } }
     export function hasPermission() { return globalThis.__thumbnailRouteState.allowed }
   `],
-  ["@/lib/uploads", `export function assertSafeUploadPath(filePath) { return filePath }`],
+  ["@/lib/uploads", `
+    export function assertSafeUploadPath(filePath) { return filePath }
+    export function isOutsideUploadRootError() { return false }
+  `],
   ["@/lib/db", `
     const state = () => globalThis.__thumbnailRouteState
     export const prisma = {

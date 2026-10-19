@@ -40,11 +40,25 @@ export function getUploadRoot() {
   return path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.UPLOAD_DIR ?? "./uploads")
 }
 
+// A stored path outside this server's upload folder (a row another server wrote, or a Production path in a copy of its
+// database) is refused, as a path traversal is, with an error of its own: a thumbnail answers "not found" for it rather
+// than 500 (the E2E suite's M7). The download route still refuses it through the API's error answer.
+export class OutsideUploadRootError extends Error {
+  constructor() {
+    super("Invalid attachment path")
+    this.name = "OutsideUploadRootError"
+  }
+}
+
+export function isOutsideUploadRootError(error: unknown): error is OutsideUploadRootError {
+  return error instanceof OutsideUploadRootError
+}
+
 export function assertSafeUploadPath(filePath: string) {
   const uploadRoot = getUploadRoot()
   const resolved = path.resolve(filePath)
   if (resolved !== uploadRoot && !resolved.startsWith(`${uploadRoot}${path.sep}`)) {
-    throw new Error("Invalid attachment path")
+    throw new OutsideUploadRootError()
   }
   return resolved
 }

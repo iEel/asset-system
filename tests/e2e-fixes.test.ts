@@ -102,3 +102,15 @@ test("a typed asset tag that exists is the tag's field error, not a 500 (e2e fix
   assert.match(read("src/app/api/assets/route.ts"), /await assertUniqueSerial\(input\.serialNumber\)\n\s*await assertUniqueAssetTag\(input\.assetTag\)/)
   assert.ok(!read("e2e/cross-cutting/field-errors.spec.ts").includes(`test.fail(true, "M3: `))
 })
+
+test("a thumbnail whose file is outside this server's upload folder is not found, not a 500 (e2e fix task FX8: M7)", async () => {
+  const uploads = await import("../src/lib/uploads.ts")
+  assert.equal(typeof uploads.isOutsideUploadRootError, "function")
+  const outside = (() => { try { uploads.assertSafeUploadPath(path.resolve("/var/www/asset-system/uploads/x.png")); return null } catch (error) { return error } })()
+  assert.ok(outside && uploads.isOutsideUploadRootError(outside), "a path outside the root is its own error")
+  assert.ok(!uploads.isOutsideUploadRootError(new Error("ENOENT")))
+  const route = read("src/app/api/attachments/[id]/thumbnail/route.ts")
+  assert.match(route, /if \(isMissingFileError\(error\) \|\| isOutsideUploadRootError\(error\)\) \{\n\s*return NextResponse\.json\(\{ error: "Attachment file not found" \}, \{ status: 404 \}\)/)
+  const allow = read("e2e/support/allow-list.ts")
+  assert.match(allow, /id: "foreign-attachment-thumbnail",\n\s*kind: "response",\n\s*url: \/\\\/api\\\/attachments\\\/\[0-9a-f-\]\{36\}\\\/thumbnail\$\/,\n\s*status: \[404\],/)
+})
