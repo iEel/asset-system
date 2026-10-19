@@ -54,3 +54,30 @@ test("one disposal is requested, approved alone and executed with evidence by th
   assert.ok(spec.includes(`test.fail(true, "finding D1:`), "D1 expected to fail")
   assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "the print test follows the workflow")
 })
+
+test("a batch of two is requested with shared evidence, approved in one bulk approval, and executed; the own request and the approver's execution are refused (e2e disposal task 2, ED2)", () => {
+  assert.deepEqual(disposalSpecs().filter((file) => file === "batch-bulk-approval.spec.ts"), ["batch-bulk-approval.spec.ts"])
+  const spec = read("e2e/disposal/batch-bulk-approval.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "IT staff walk it")
+  assert.ok(spec.includes(`recordPrefix(testInfo, "DSP2")`), "its own records")
+  assert.ok(spec.includes(`test.describe.configure({ mode: "serial" })`), "one batch through four tests")
+  for (const step of [
+    `await measure.visit("/th/disposal/batch/new"`,
+    `"#disposal-batch-requested-by-error"`,
+    `"ยืนยันสร้างชุดคำขอ"`,
+    String.raw`/^DPB-\d{8}-\d{4}$/`,
+    `requestedById: readRunData().employees.itHead.id`,
+    `"ไม่สามารถอนุมัติได้เนื่องจากขัดกับการแยกหน้าที่"`,
+    `"ยืนยันอนุมัติ 2 รายการ"`,
+    `"อนุมัติแล้ว (2)"`,
+    `code: "DISPOSAL_SOD_CONFLICT"`,
+    `"ไม่สามารถดำเนินการได้เนื่องจากขัดกับการแยกหน้าที่"`,
+  ]) assert.ok(spec.includes(step), step)
+  // The phone's queue needs its selection mode before a row can be ticked.
+  assert.ok(spec.includes(`if (e2eDevice === "phone") await page.getByRole("button", { name: "เลือกหลายรายการ" }).click()`), "the phone's selection mode")
+  // Findings D3 and D2 stay expected failures until fixed.
+  assert.ok(spec.includes(`test.fail(true, "finding D3:`), "D3 expected to fail")
+  assert.ok(spec.includes(`test.fail(true, "finding D2:`), "D2 expected to fail")
+  assert.ok(spec.indexOf(`"finding D3:`) < spec.indexOf(`"finding D2:`), "the approver's preview runs while the request is still approved")
+})
