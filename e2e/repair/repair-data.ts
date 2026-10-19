@@ -155,6 +155,19 @@ export async function completeRecord(page: Page, measure: Measure, recordId: str
   await expect(dialog).toBeHidden()
 }
 
+// One state change on a PM list row: its button, the confirm dialog and its button, the PATCH, the toast, the dialog
+// closes.
+export async function planAction(page: Page, row: Locator, action: string, dialogTitle: string, toast: string) {
+  await row.getByRole("button", { name: action, exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: dialogTitle })
+  await expect(dialog).toBeVisible()
+  const changed = page.waitForResponse((response) => /\/api\/maintenance-plans\/[^/]+$/.test(response.url()) && response.request().method() === "PATCH")
+  await dialog.getByRole("button", { name: action, exact: true }).click()
+  expect((await changed).status(), action).toBe(200)
+  await expect(page.getByText(toast)).toBeVisible()
+  await expect(dialog).toBeHidden()
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }

@@ -84,3 +84,40 @@ test("repair records: a second open record is refused, a mistaken one is cancell
   assert.equal(policy.getRepairRecordCancelEffect(stock).nextStatusName, "Ready")
   assert.ok(spec.includes(`expect((await readAsset(page.request, asset.id)).status.name, "cancelled: back to Ready").toBe("Ready")`))
 })
+
+test("the PM plan: created with a wrong entry first, recorded done on 31 Jan with the next due date clamped to 28 Feb, paused, resumed and ended, IT staff (e2e repair task 4, ER4)", async () => {
+  const spec = read("e2e/repair/pm-plan.spec.ts")
+  const data = read("e2e/repair/repair-data.ts")
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`))
+  assert.ok(!spec.includes("runPhoneOnWebKit()"))
+  assert.ok(titles(spec).some((title) => title.endsWith("(ER4)")), "the ER4 test")
+  assert.deepEqual(writes(spec), [])
+  assert.ok(data.includes("export async function planAction(page: Page, row: Locator, action: string, dialogTitle: string, toast: string)"))
+  // Spec §6.7: the plan name left empty first, shown under its field.
+  assert.ok(spec.includes(`await expect(page.locator("#maintenance-plan-title-error")).toHaveText("${th.common.validation.required}")`))
+  // The month-end clamp the test expects is the app's own (src/lib/preventive-maintenance.ts): 31 Jan + 1 month is
+  // 28 Feb 2026, shown as 28/02/2569 (th-TH, the Buddhist year).
+  const { calculateNextMaintenanceDueDate } = await import("../src/lib/preventive-maintenance.ts")
+  const next = calculateNextMaintenanceDueDate(new Date("2026-01-31"), "monthly")
+  assert.equal(next.toISOString().slice(0, 10), "2026-02-28")
+  assert.equal(next.toLocaleDateString("th-TH", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Bangkok" }), "28/02/2569")
+  assert.ok(spec.includes(`await page.locator("#repair-record-date").fill("2026-01-31")`))
+  assert.ok(spec.includes(`await expect(page.locator("#maintenance-plan-next-due-date")).toHaveValue("2026-02-28")`))
+  assert.ok(spec.includes(`toContainText("${th.maintenancePage.pmNextDueDate}: 28/02/2569")`))
+  // The list page size is one the PM list offers (src/lib/list-pagination.ts).
+  const { LIST_PAGE_SIZES } = await import("../src/lib/list-pagination.ts")
+  assert.ok((LIST_PAGE_SIZES as readonly number[]).includes(100))
+  assert.ok(spec.includes(`const PM_LIST = "/th/maintenance/pm?pageSize=100"`))
+  // Every state change and its Thai copy, from messages/th.json.
+  const actions = th.maintenancePage.pmActions
+  for (const [action, title, toast] of [
+    [actions.pause, actions.pauseTitle, actions.pauseSuccess],
+    [actions.resume, actions.resumeTitle, actions.resumeSuccess],
+    [actions.end, actions.endTitle, actions.endSuccess],
+  ]) {
+    assert.ok(spec.includes(`await planAction(page, row(), "${action}", "${title}", "${toast}")`), action)
+  }
+  for (const text of [th.maintenancePage.pmCreateTitle, th.repairRecord.pmRecordDone, th.repairRecord.pmOverdue, th.maintenancePage.pmPlanStates.paused, th.maintenancePage.pmPlanStates.ended]) {
+    assert.ok(spec.includes(text), text)
+  }
+})
