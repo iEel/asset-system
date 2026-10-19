@@ -49,7 +49,9 @@ test("an asset registered on the form with a photo and a purchase document, a wr
     axe: { serious: 2, critical: 0, moderate: 0, minor: 0, failing: [violation(`svg[height="160"]`), violation("svg.chart")] },
   }
   const annotations: { type: string; description?: string }[] = []
-  known.dropKnownAxe(record, known.KNOWN_AXE, { annotations } as never)
+  // The rule is shown on a list of its own: TX-A2, the finding it was written for, is fixed (FX2).
+  const qrWithoutName = { finding: "TX-A2", rule: "svg-img-alt", target: /^svg\[height="160"\]$/, why: "the asset page's QR code is an image with no text alternative" }
+  known.dropKnownAxe(record, [qrWithoutName], { annotations } as never)
   assert.deepEqual(record.axe.failing.map((item) => item.targets[0]), ["svg.chart"])
   assert.equal(record.axe.serious, 2, "axe's counts stay in the summary")
   assert.match(annotations[0]?.description ?? "", /^TX-A2: /)

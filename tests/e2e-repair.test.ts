@@ -51,7 +51,7 @@ test("repair records: repaired brings a Ready asset back to Ready and beyond rep
   // test, marked expected to fail, so it reports itself once AR2 is fixed.
   assert.ok(spec.includes("  await page.goto(`/th/assets/${asset.id}`)\n"))
   assert.ok(spec.includes(`test("the asset page passes axe (ER2, finding AR2)"`))
-  assert.ok(spec.includes(`  test.fail(true, "AR2: `))
+  assert.ok(!spec.includes(`  test.fail(true, "AR2: `), "AR2 is fixed (FX2)")
   assert.ok(spec.includes("  await measure.visit(`/th/assets/${asset.id}`, \"asset page\")\n"), "AR2's test runs axe on the asset page")
   assert.ok(data.includes("export async function completeRecord(page: Page, measure: Measure, recordId: string, outcome:"))
   for (const text of [th.repairRecord.outcome.beyond_repair, th.repairRecord.status.closed]) assert.ok(spec.includes(text), text)

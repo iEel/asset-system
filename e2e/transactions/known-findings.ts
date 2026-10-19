@@ -7,14 +7,6 @@ import type { PageRecord } from "../support/measure-core.ts"
 
 export type KnownAxe = { finding: string; rule: string; target: RegExp; why: string }
 
-// TX-A2: the asset page's QR code (qrcode.react's QRCodeSVG draws role="img" and the app gives it no title).
-export const QR_WITHOUT_NAME: KnownAxe = {
-  finding: "TX-A2",
-  rule: "svg-img-alt",
-  target: /^svg\[height="160"\]$/,
-  why: "the asset page's QR code is an image with no text alternative",
-}
-
 // TX-A8: on the phone, a region that scrolls has no keyboard access: the review dialog's body when its rows are taller
 // than the screen (return, transfer), and the batch receipt's table.
 export const SCROLL_REGION_WITHOUT_KEYS: KnownAxe = {
@@ -24,8 +16,8 @@ export const SCROLL_REGION_WITHOUT_KEYS: KnownAxe = {
   why: "a scrolling region on the phone takes no keyboard focus",
 }
 
-// TX-A3 (the A4 documents' fields) is fixed (FX1) and no longer dropped.
-export const KNOWN_AXE: readonly KnownAxe[] = [QR_WITHOUT_NAME, SCROLL_REGION_WITHOUT_KEYS]
+// TX-A3 (the A4 documents' fields, FX1) and TX-A2 (the asset page's QR code, FX2) are fixed and no longer dropped.
+export const KNOWN_AXE: readonly KnownAxe[] = [SCROLL_REGION_WITHOUT_KEYS]
 
 // Drop the known violations from a recorded page (the counts stay as axe gave them, so the summary still shows them),
 // and say so on the test.

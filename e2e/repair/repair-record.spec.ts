@@ -139,7 +139,7 @@ test("repaired brings a Ready asset back to Ready, and a second record found bey
 // Finding AR2 (expected to fail until it is fixed): the asset page's QR code is an <svg role="img"> with no name
 // (src/components/assets/asset-qr-code.tsx, qrcode.react without a title), an axe serious "svg-img-alt" violation.
 test("the asset page passes axe (ER2, finding AR2)", async ({ page, measure }, testInfo) => {
-  test.fail(true, "AR2: the asset page's QR code svg has role img and no name (axe svg-img-alt, serious)")
+  // AR2 fixed (FX2): this test now keeps the QR code named.
   const masters = await readAssetMasters(page)
   const tag = areaTag(testInfo, "R5")
   const asset = await createAsset(page.request, masters, { tag, name: `${tag} หน้าทรัพย์สิน`, ownershipType: "stock" })

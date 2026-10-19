@@ -1188,7 +1188,8 @@
     "savedWithFollowUpErrors": "The asset is saved, but {items} did not finish. Check and finish them on this page.",
     "followUpInstall": "installing it as a component",
     "followUpDocuments": "the purchase documents",
-    "followUpPhotos": "the asset photos"
+    "followUpPhotos": "the asset photos",
+    "qrCodeTitle": "QR code of {label}"
   },
   "company": {
     "title": "Companies",

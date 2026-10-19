@@ -49,7 +49,7 @@ test.describe("the viewer", () => {
   // Finding M6 (expected to fail until fixed): an asset's page draws its QR code as <svg role="img"> with no name
   // (qrcode.react without a title), an axe serious violation (svg-img-alt, WCAG 1.1.1) for every person who opens it.
   test("an asset's page passes axe: its QR code has a name (finding M6)", async ({ page, measure, browser }, testInfo) => {
-    test.fail(true, "M6: the asset page's QR code (src/components/assets/asset-qr-code.tsx) is an <svg role=img> without a name")
+    // M6 fixed (FX2): this test now keeps the QR code named.
     const desk = await registerAssetsAsItStaff(browser, testInfo, [{ slug: "ROLE4", name: "หน้าทรัพย์สิน" }])
     await desk.close()
     await measure.visit(`/th/assets/${desk.assets[0].id}`, "asset page (viewer)")

@@ -1188,7 +1188,8 @@
     "savedWithFollowUpErrors": "บันทึกทรัพย์สินแล้ว แต่ {items} ไม่สำเร็จ ตรวจสอบและทำต่อได้ที่หน้านี้",
     "followUpInstall": "การติดตั้งเป็นส่วนควบ",
     "followUpDocuments": "เอกสารจัดซื้อ",
-    "followUpPhotos": "รูปทรัพย์สิน"
+    "followUpPhotos": "รูปทรัพย์สิน",
+    "qrCodeTitle": "QR Code ของ {label}"
   },
   "company": {
     "title": "บริษัท",
