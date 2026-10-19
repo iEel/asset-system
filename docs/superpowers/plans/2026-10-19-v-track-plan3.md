@@ -2,10 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** the third plan of the V track, "errors under the field" (`docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md`, the user's decisions U1–U9), on the foundation of plans 1 and 2 as merged at `f1ae1828`. After it:
+**Goal:** the third plan of the V track, "errors under the field" (`docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md`, the user's decisions U1–U9), on the foundation of plans 1 and 2 as merged at `f1ae1828`, from `master` `ede37dd0` (the asset partial-save fix on top of them, open issue 12). After it:
 - the system settings form (spec §5 #45, `src/components/admin/system-settings-form.tsx`, 11 tabs) shows every setting's error under its field, never as a validation toast: its 12 validation toasts go, a save opens the tab of the first wrong setting (spec §4.2, U1), opens a closed `<details>` that holds it, and focuses it; a refusal of the server (`fieldErrors` keyed `settings.<key>`, plan 1 S-R4) lands on the same field and the same tab (G1, G2; Tasks 1–3);
 - the 13 live `ValidationMessage` boxes (spec U8) move under their fields and stay live: the 12 of the page become each setting's own error, read once through `Field liveError`, and the prefix editor's box becomes the prefix field's error (Tasks 3, 4); a save shows nothing twice;
-- the form and the server speak one rule set: a new pure module `src/lib/system-settings-field-rules.ts` answers, setting by setting, the code the server's `systemSettingsUpdateSchema` answers (its api-error catalog key, or `tooLong`), and restates what the controls allowed before `noValidate` (min, max, step); a test runs it against the server's schema on the same values (Task 1);
+- the form and the server speak one rule set: a new pure module `src/lib/system-settings-field-rules.ts` answers, setting by setting, the code the server's `systemSettingsUpdateSchema` answers (its api-error catalog key, or `tooLong`), and restates what the controls allowed before `noValidate` (min, max, step) on the settings a save changes (open issue 13's answer); a test runs it against the server's schema on the same values (Task 1);
 - the prefix editor (spec §5 #46: the `AccessibleDialog` inside the settings form) checks its prefix and its categories when its save is pressed, its save is no longer disabled, and its errors sit under the prefix and under the category lists (Task 4); the settings form joins `V_FORMS`, so `V_FORMS` equals `V_SCOPE` (44 files);
 - the two gates of the page that hide their reason say it: the save while nothing changed and the LDAP sync apply before a preview are `aria-disabled`, tied by `aria-describedby` to the visible line that says why (spec §4.4; Task 5);
 - the eleven group sentences that only the boxes and toasts read are retired (Task 6): each setting now reads its own sentence (`apiErrors.*`), the one the server already sends.
@@ -22,8 +22,8 @@ No migration, no database write, no schema change, no new dependency, no server 
   - **Task 6 (ST6)** the retired sentences.
 - **Hard dependencies:** each task needs the one before (one test file, appended in order; Tasks 2–6 edit the file the task before left). Task 3 needs Task 1's module and Task 2's props; Task 4 needs Task 3's hook and `isValidCategoryPrefix` import; Task 6 needs Tasks 3 and 4 (the last readers of the sentences go there).
 - **Task ids:** "ST1"…"ST6" in test names and commit messages ("(v-track plan 3 task 3, ST3)"). Rulings of this plan are `ST-R1`…`ST-R11`; a bare `S-R*`, `F-R*`, `M-R*` is plan 1's, a bare `A-R*`, `O-R*`, `U-R*`, `D-R*`, `MT-R*`, `P-R*`, `X-R*` plan 2's.
-- **Branch:** `feat/v-track-3` from `master` at `f1ae1828`, in the main checkout `D:/Antigravity/asset-system`. No worktree.
-- **Tests:** one new LF test file, `tests/v-track3.test.ts`, one test per task (Task 1 creates it, Tasks 2–6 append). Task 8 appends one test to `tests/v-track-docs.test.ts`.
+- **Branch:** `feat/v-track-3` from `master` at `ede37dd0`, in the main checkout `D:/Antigravity/asset-system`. No worktree.
+- **Tests:** one new LF test file, `tests/v-track3.test.ts`, one test per task and a second for Task 1 (open issue 13; Task 1 creates the file, Tasks 2–6 append). Task 8 appends one test to `tests/v-track-docs.test.ts`.
 - **Controller tasks:** Task 0 (branch, baseline, counts, before evidence), Task 7 (verify, production build, dev-app check), Task 9 (final verification, wiki, memory, merge). Task 8 (the docs) is an implementer task; it stops if Task 7's findings file is missing. In Tasks 0 and 7 **no request but a GET reaches the server**: the settings save (`PUT /api/admin/settings`) writes `system_settings`, so it is always fulfilled with a stand-in or aborted, never continued; so are the LDAP test and sync (`POST`), which reach the directory.
 
 **Tech Stack:** Next.js 16.4 App Router · React 19 · Tailwind CSS 4 · next-intl 4 · zod 4.4.1 · Prisma 7 (not changed) · `node --test` with Node 24 type stripping (strip-only: no parameter properties, no enums in modules tests import). No new dependency.
@@ -31,33 +31,33 @@ No migration, no database write, no schema change, no new dependency, no server 
 **Spec:** `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` (approved by the user, 2026-10-17). **Foundation contract:** `docs/superpowers/plans/2026-10-17-v-track-plan1.md` and `docs/superpowers/plans/2026-10-18-v-track-plan2.md` (merged at `f1ae1828`): their Global Constraints, FIXED INTERFACES 1–12 as amended, and rulings (plan 1 S-R1–S-R13, F-R1–F-R10, M-R1–M-R14; plan 2 R1–R8 with A-R*, O-R*, U-R*, D-R*, MT-R*, P-R1–P-R10, X-R1–X-R5) bind every task here. The real code they shipped is what the tasks build on: `src/lib/field-errors.ts` (`settingFieldKeyFor`, `issuesToFieldErrors`), `src/lib/field-error-client.ts`, `src/lib/validation-rules.ts` (`required`, `range`, `step`, `atLeastOne`, …), `src/lib/field-focus.ts` (`focusField` opens a closed `<details>`; `waitForElement`), `src/components/ui/use-field-errors.ts` (`focusFirst(order, { idFor, reveal })`, `useValidationMessage`), `src/components/ui/field.tsx` (`liveError`), `src/components/ui/field-group.tsx`, `tests/validation-guards.test.ts` (`V_SCOPE`, `V_FORMS`, `NON_VALIDATION_TOASTS`, V1–V5).
 - **What this plan covers:** spec §5 #45 and #46, §4.1–§4.5 for them (§4.2's "settings tabs" in full), U8 for the 13 settings boxes and the prefix editor, §6.1's `settings.<key>` keys on the client, §11 calls 1, 2, 3 and 7 for this form. "Spec coverage" near the end maps each section to its task.
 - **Left to the builder (§10), decided here:** the per-form field order (`SETTING_FIELD_IDS`, ST-R4), how the tab switch is the hook's `reveal` (ST-R4), how the live boxes become live field errors (ST-R3), the split (six tasks, ST-R10).
-- **Line numbers** are of `f1ae1828` in every "Changes" table. Tasks 2–6 edit the file the task before left, so find every site by its quoted text: every exact old text below occurs once in the file at the moment its task applies it (the rehearsal checked each).
+- **Line numbers** are of `ede37dd0` in every "Changes" table (the same as `f1ae1828` for every file this plan edits but `tests/validation-guards.test.ts`, which gained one `NON_VALIDATION_TOASTS` row at line 131). Tasks 2–6 edit the file the task before left, so find every site by its quoted text: every exact old text below occurs once in the file at the moment its task applies it (the rehearsal checked each).
 
 `c/` = `src/components/` · `D/` = `src/app/[locale]/(dashboard)/` · `<temp>` = `C:/Users/Eltross/AppData/Local/Temp/claude/D--Antigravity-asset-system/f250ea8d-3040-422b-ad7a-15dd9aed94b9/scratchpad/v3-plan` (the controller hands the path to every implementer; message change files go to `<temp>/changes/`) · `<tools>` = `<temp>/tools` (`eol.mjs` prints, per file, its CRLF count, its line count and its path; `counts.mts` prints the track's counts; both read-only, run with the repo root as the working directory).
 
-**Rehearsal (done, 2026-10-19).** The plan was drafted in a scratch clone and then replayed task by task from this text, as an implementer follows it:
-- **Clone:** `<temp>/sim`, `git clone --no-hardlinks D:/Antigravity/asset-system` at `master` `f1ae1828`, `core.autocrlf=true`; every working-tree line ending set to the real checkout's file by file (`git ls-files --eol` compared; 612 files rewritten byte for byte from the real checkout's working tree, no content change, `<tools>/fix-eol.mjs`); its own `node_modules` by `npm ci`, then `npx prisma generate` (npm ci ran no install scripts, and two audit tests import `@prisma/client`; no `.env` in the clone). Base: `npm test` 2292 tests, 2291 pass, 0 fail, 1 skipped; `npx tsc --noEmit` clean; `npm run lint` 0 errors, 146 warnings (all under `.agents/`).
-- **Draft** on branch `v3-draft`; the exact edits below were cut from it, and `<tools>/check-blocks.mjs` applied every edit of Tasks 1–6 to `f1ae1828`'s files and compared each file with the draft: identical.
-- **Replay** on branch `v3-dry` from `f1ae1828`, by `<tools>/replay.mjs`, which reads this file: Step 1's block appended (or created) byte for byte, Step 2 run, Step 3's created files, change files and exact edits applied from this text, the "after Step 3" list run, Step 4's exact edits applied, Step 5's commands run and its eol numbers measured, Step 6's `git add` and commit. Sim commits: Task 1 `e841d208` · Task 2 `fe29d530` · Task 3 `685a7d44` · Task 4 `a946f0ed` · Task 5 `ee8af3e3` · Task 6 `d4571bc2` · Task 8 `a24f89b1` (on top of Task 6, with one placeholder sentence in each findings and answers marker and `<today>` 2026-10-19, so C1; C1b was not rehearsed).
-- **Results:** every Step 2 failed with the test and message it names; every "after Step 3 and before Step 4" list failed exactly as listed; every task ended at the count of "Counts" below, 0 fail, 1 skipped; `tsc` clean; lint 0 errors and 146 warnings; every eol number of every Step 5 as printed; every edited file kept its working-tree endings; `tests/v-track3.test.ts` and `src/lib/system-settings-field-rules.ts` are LF. End state after Task 6: `npm test` **2298 tests, 2297 pass, 0 fail, 1 skipped**; `counts.mts`: toasts outside a catch in `src` 22 in 10 files, `<form … noValidate>` 47, 4083 leaf keys per locale, `V_FORMS` 44, `SELECT_STAR_ONLY` 0 in 0, FMG `STAR_ONLY` `new Set<string>([])`.
-- **Text replay:** after the measured numbers were written in, `<tools>/text-replay.mjs` read this file back and applied each task's Steps 1, 3 and 4 to the previous sim commit's files: every file each task touches equals that task's sim commit (the messages excepted: `messages-edit.mjs` writes them from the change files printed here).
-- **Final review (2026-10-19):** one change of code after the replay: Task 3's `reveal` sends an advanced setting to the advanced tab whatever its key's prefix (ST-R4; edit 14 and one line of Task 3's test, the same line counts). It was applied on branch `v3-critic` (`39398e42`, on top of the Task 8 commit): `tests/v-track3.test.ts` 6 of 6, `npx tsc --noEmit` clean, eslint clean on both files, `npm test` 2299 tests, 2298 pass, 0 fail, 1 skipped (the Task 8 count), eol `2639 2639` and `0 337` (unchanged). A cumulative text replay (Tasks 1–6 of this file applied in order to `f1ae1828`) gives `v3-critic`'s files exactly (messages aside). Every count, eol number and Step 2 message of the tasks is unchanged; Task 3's commit differs from `685a7d44` in those three lines only, and its own test passes there (checked on `685a7d44` with the change).
+**Rehearsal (done, 2026-10-19; re-based on `ede37dd0` the same day).** The plan was drafted in a scratch clone and then replayed task by task from this text, as an implementer follows it:
+- **Clone:** `<temp>/sim`, `git clone --no-hardlinks D:/Antigravity/asset-system`, `core.autocrlf=true`; every working-tree line ending set to the real checkout's file by file (`git ls-files --eol` compared; `<tools>/fix-eol.mjs` rewrites a file byte for byte from the real checkout's working tree, no content change); its own `node_modules` by `npm ci`, then `npx prisma generate` (npm ci ran no install scripts, and two audit tests import `@prisma/client`; no `.env` in the clone).
+- **First rehearsal, on `f1ae1828`** (superseded): drafted on `v3-draft` (`<tools>/check-blocks.mjs` applied every edit of Tasks 1–6 to `f1ae1828`'s files and compared each file with the draft: identical), replayed on `v3-dry` (Tasks 1–6 and 8), the final review's `reveal` change on `v3-critic` (`39398e42`), and a text replay. Its counts were `f1ae1828`'s (base 2292 tests).
+- **Rehearsal (re-based on `ede37dd0`, 2026-10-19), after the user's answers:** `master` `ede37dd0` fetched into the clone (`git fetch --refetch` from the real checkout, read-only there), branch `v3-dry2` at `ede37dd0`; `git ls-files --eol` equal to the real checkout's for all 1483 entries (`fix-eol.mjs` rewrote none; `tests/asset-partial-save.test.ts` is `i/lf w/crlf` in both); no `npm ci` (`package-lock.json`, `package.json` and `prisma/` are the same at `f1ae1828` and `ede37dd0`), the generated Prisma client kept. Base: `npm test` 2297 tests, 2296 pass, 0 fail, 1 skipped; `npx tsc --noEmit` clean; `npm run lint` 0 errors, 146 warnings (all under `.agents/`); `counts.mts`: toasts outside a catch in `src` 35 in 12 files, `<form … noValidate>` 46, 4093 leaf keys per locale, `V_FORMS` 43, `SELECT_STAR_ONLY` 0 in 0, FMG `STAR_ONLY` `new Set<string>([])`.
+- **Replay** on `v3-dry2` by `<tools>/replay.mjs`, which reads this file: Step 1's block appended (or created) byte for byte, Step 2 run, Step 3's created files, change files and exact edits applied from this text, the "after Step 3" list run, Step 4's exact edits applied, Step 5's commands run and its eol numbers measured, Step 6's `git add` and commit. The text replayed holds open issue 13's answer (Tasks 1 and 3) and the final review's `reveal` (Task 3). Sim commits: Task 1 `45264512` · Task 2 `d392df36` · Task 3 `1a6f16ae` · Task 4 `2194bd13` · Task 5 `4096e6a1` · Task 6 `804be5d5` · Task 8 `eaf63db9` (on top of Task 6, `<today>` 2026-10-19 so C1, the user's answers as the template writes them, and one placeholder sentence in each findings marker; C1b was not rehearsed).
+- **Results:** every Step 2 failed with the tests and message it names; every "after Step 3 and before Step 4" list failed exactly as listed; every task ended at the count of "Counts" below, 0 fail, 1 skipped; `tsc` clean; lint 0 errors and 146 warnings; every eol number of every Step 5 as printed; every edited file kept its working-tree endings; `tests/v-track3.test.ts` and `src/lib/system-settings-field-rules.ts` are LF. End state after Task 6: `npm test` **2304 tests, 2303 pass, 0 fail, 1 skipped**; `counts.mts`: toasts outside a catch in `src` 23 in 11 files, `<form … noValidate>` 47, 4083 leaf keys per locale, `V_FORMS` 44, `SELECT_STAR_ONLY` 0 in 0, FMG `STAR_ONLY` `new Set<string>([])`. Task 1's second test was also run against the module with the old line (`settingControlCode` on every setting): it fails, so it holds the answer.
+- **Text replay:** after the measured numbers were written in, `<tools>/text-replay.mjs` read this file back and applied each task's Steps 1, 3 and 4 to the previous sim commit's files (from `ede37dd0`): every file each task touches equals that task's sim commit (the messages excepted: `messages-edit.mjs` writes them from the change files printed here).
 - **Not covered by the rehearsal:** the form running in React (no dev server, no browser: the dev server and the build read `.env`) and the production build; Task 7 covers both.
 
-**Base:** `master` at `f1ae1828` (V track plans 1 and 2 merged and pushed; phase 2D and Dark Mode merged; nothing deployed).
+**Base:** `master` at `ede37dd0` (V track plans 1 and 2 merged and pushed at `f1ae1828`; the asset partial-save fix `ede37dd0` on top, merged and pushed; phase 2D and Dark Mode merged; nothing deployed).
 
 ## Global Constraints
 
 - **Git:**
-  - Work in the main checkout `D:/Antigravity/asset-system` on branch `feat/v-track-3`, which holds `f1ae1828` and this plan's commit (`docs/superpowers/plans/2026-10-19-v-track-plan3.md`).
+  - Work in the main checkout `D:/Antigravity/asset-system` on branch `feat/v-track-3`, which holds `ede37dd0` and this plan's commit (`docs/superpowers/plans/2026-10-19-v-track-plan3.md`).
   - Never run `git checkout`, `git switch`, `git reset`, `git stash`, `git rebase` or `git clean`, never touch `master`, never push. (A branch switch or a stash rewrites working-tree line endings: plan 2's rehearsals and this one saw it.)
   - Commit only the files your task names. Use `git add <paths>` (quote paths with brackets or parentheses) and never a bare `git add -A` or `git add .`.
-  - The checkout has untracked folders and files that are not yours: `.codex/`, `.impeccable/config.json`, `.impeccable/critique/`, `.playwright-mcp/`, `.superpowers/brainstorm/` and `docs/superpowers/plans/2026-06-22-audit-component-assets.untracked-backup.md`; another session may add `.claude/` while its preview server runs. Leave them alone. The local branch `fix/asset-partial-save` (`ede37dd0`, one commit on `f1ae1828`, not merged) is another piece of work: this plan does not touch it (see "Open issues", 12).
+  - The checkout has untracked folders and files that are not yours: `.codex/`, `.impeccable/config.json`, `.impeccable/critique/`, `.playwright-mcp/`, `.superpowers/brainstorm/` and `docs/superpowers/plans/2026-06-22-audit-component-assets.untracked-backup.md`; another session may add `.claude/` while its preview server runs. Leave them alone. The asset partial-save fix (`ede37dd0`, open issue 12) is merged and is this plan's base: `src/components/assets/asset-form.tsx`, its `NON_VALIDATION_TOASTS` row and `tests/asset-partial-save.test.ts` are not this plan's to touch.
   - End every commit message with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (each Step 6 passes it as a second `-m`).
 - **Next.js 16.4** is not the Next.js in your training data. This plan uses one Next behaviour beyond plan 1's and 2's: the tab switch is the form's existing `selectTab`, `window.history.replaceState`, which Next syncs with `useSearchParams` (`node_modules/next/dist/docs/01-app/01-getting-started/04-linking-and-navigating.md`, "Native History API", "`window.history.replaceState`"; read it before changing how a tab is chosen). No route changes.
 - **Repo facts:** React 19; Tailwind 4; next-intl 4; zod 4.4.1; Prisma 7; `npm test` runs `node scripts/run-tests.mjs` over `tests/**/*.test.{ts,mjs,js}`; tests import `.ts` with relative imports and read `.tsx` as text; a test that must load a module with `@/` imports registers a resolve hook for `@/` (as `tests/v-track-s.test.ts` does; Task 1's header does the same); `tsconfig.json` includes `**/*.ts`, so tests are type-checked.
-- **Line endings** (`git ls-files --eol` in the real checkout at `f1ae1828`; `git config core.autocrlf` is `true`):
-  - **CRLF (`i/lf w/crlf`)**: every existing file this plan edits, 15 in all: `src/components/admin/system-settings-form.tsx` (2612 lines), `src/components/admin/depreciation-policy-builder.tsx` (432), `src/app/[locale]/(dashboard)/admin/settings/page.tsx` (365), `src/lib/settings-search.ts` (45), `messages/th.json` and `messages/en.json` (4275 each), `tests/settings-depreciation-policy-ui.test.ts` (103), `tests/settings-tab-persistence-ui.test.ts` (27), `tests/validation-guards.test.ts` (224), `tests/accessible-dialog.test.ts` (104), `tests/admin-sweep-ui.test.ts` (179), `tests/sticky-form-footer-ui.test.ts` (56), and Task 8's `DEVELOPER_HANDOFF.md` (1142), `docs/99_CHANGELOG.md` (1946), `tests/v-track-docs.test.ts` (59).
+- **Line endings** (`git ls-files --eol` in the real checkout at `ede37dd0`; `git config core.autocrlf` is `true`):
+  - **CRLF (`i/lf w/crlf`)**: every existing file this plan edits, 15 in all: `src/components/admin/system-settings-form.tsx` (2612 lines), `src/components/admin/depreciation-policy-builder.tsx` (432), `src/app/[locale]/(dashboard)/admin/settings/page.tsx` (365), `src/lib/settings-search.ts` (45), `messages/th.json` and `messages/en.json` (4275 each), `tests/settings-depreciation-policy-ui.test.ts` (103), `tests/settings-tab-persistence-ui.test.ts` (27), `tests/validation-guards.test.ts` (225), `tests/accessible-dialog.test.ts` (104), `tests/admin-sweep-ui.test.ts` (179), `tests/sticky-form-footer-ui.test.ts` (56), and Task 8's `DEVELOPER_HANDOFF.md` (1142), `docs/99_CHANGELOG.md` (1946), `tests/v-track-docs.test.ts` (59).
   - **New and LF:** `src/lib/system-settings-field-rules.ts` (Task 1), `tests/v-track3.test.ts` (Task 1, appended by Tasks 2–6).
   - No mixed file is edited.
   - Before you edit a file, run `git ls-files --eol <file>` and keep what it shows. In Git Bash, `grep -c $'\r'` reports 0 even for CRLF files: do not use it as a check. `git add` of an LF working-tree file prints "LF will be replaced by CRLF the next time Git touches it": expected and harmless; do not renormalize.
@@ -65,23 +65,23 @@ No migration, no database write, no schema change, no new dependency, no server 
   - **Never write a test that asserts working-tree line endings.** Tests that read source files strip `\r` before multi-line regexes.
   - Check line endings with `node <tools>/eol.mjs <file>…`: a CRLF file prints the same number twice; an LF file prints 0 and then its line count.
 - **How to read a task** (as in plans 1 and 2):
-  - **Changes at f1ae1828** is a table of the sites: the line, what is there now, what it becomes, and the rule. The exact edits that follow it are the rehearsed text: applied in order, each old text occurs once in the file at that moment, and they give the rehearsal commit byte for byte. Where a row and an exact edit differ, the exact edit wins.
+  - **Changes at ede37dd0** is a table of the sites: the line, what is there now, what it becomes, and the rule. The exact edits that follow it are the rehearsed text: applied in order, each old text occurs once in the file at that moment, and they give the rehearsal commit byte for byte. Where a row and an exact edit differ, the exact edit wins.
   - **Step 1 code blocks are exact:** create or append them byte for byte. "Append" adds the block at the end of the file; the first line of a block shown empty is the blank line before it.
   - **Pin edits and guard edits** are exact old → new strings; each old string occurs once in its file.
   - **A comment a row adds is source the tests read.** It must not contain a string a task's `doesNotMatch` forbids (for example the words `ValidationMessage`, `hasInvalid` or a retired message key).
-  - **Counts.** Each task's `npm test` numbers are the full totals after the task (below). A total that differs means stop and report, with the task's own delta (+1 for every task).
-- **Counts on this plan's chain** (tests / pass / fail / skipped): base 2292 / 2291 / 0 / 1 · Task 1 2293 · Task 2 2294 · Task 3 2295 · Task 4 2296 · Task 5 2297 · Task 6 2298 · Task 8 2299 (pass one fewer, 0 fail, 1 skipped). Messages (leaf keys per locale): 4093 · Task 4: 4094 · Task 6: 4083. `V_FORMS` 43 · Task 4: 44. `<form … noValidate>` in `src` 46 · Task 3: 47. Toasts outside a catch in `src` 34 in 11 files · Task 3: 22 in 10.
+  - **Counts.** Each task's `npm test` numbers are the full totals after the task (below). A total that differs means stop and report, with the task's own delta (+2 for Task 1, +1 for every other task).
+- **Counts on this plan's chain** (tests / pass / fail / skipped): base 2297 / 2296 / 0 / 1 · Task 1 2299 · Task 2 2300 · Task 3 2301 · Task 4 2302 · Task 5 2303 · Task 6 2304 · Task 8 2305 (pass one fewer, 0 fail, 1 skipped). Messages (leaf keys per locale): 4093 · Task 4: 4094 · Task 6: 4083. `V_FORMS` 43 · Task 4: 44. `<form … noValidate>` in `src` 46 · Task 3: 47. Toasts outside a catch in `src` 35 in 12 files · Task 3: 23 in 11. `NON_VALIDATION_TOASTS` 5 rows throughout.
 - **Tests:**
   - Run one file with `node --test tests/<file>.test.ts`.
   - Tests cannot import `.tsx`; they read it as text. A plain import of a type name fails under type stripping: use inline `type` specifiers.
   - **No test imports a test file** (it would run that file's tests again). `tests/v-track3.test.ts` declares its helpers; the blocks Tasks 2–6 append declare theirs as `function` declarations (hoisted), never as `const` used by an earlier block.
-- **Baseline at `f1ae1828`** (Task 0 checks it again): `npm test` 2292 tests, 2291 pass, 0 fail, 1 skipped; `npx tsc --noEmit` clean; `npm run lint` 0 errors, 146 warnings, all under `.agents/`.
+- **Baseline at `ede37dd0`** (Task 0 checks it again): `npm test` 2297 tests, 2296 pass, 0 fail, 1 skipped; `npx tsc --noEmit` clean; `npm run lint` 0 errors, 146 warnings, all under `.agents/`.
 - **Every task ends with all of these green:** `npm test` with 0 fail and the task's count; `npx tsc --noEmit`; `npm run lint` with 0 errors and no new warning in `src/` or `tests/`. Report any failure by name.
 - **Messages:** only through `node scripts/messages-edit.mjs <change file>`, with the change files saved in `<temp>/changes/`, and only these keys: Task 4 adds `systemSettingsPage.prefixCategoriesRequired`; Task 6 deletes eleven `systemSettingsPage.*` keys (its change file names them). Words follow `docs/19_THAI_GLOSSARY.md` (category is หมวดหมู่, prefix is คำนำหน้ารหัส); `tests/thai-glossary.test.ts`, `tests/messages-parity.test.ts` and `tests/messages-edit.test.ts` stay green. If you think another key is missing, stop and report.
 - **The form convention** (plan 1 FIXED 6, M-R1–M-R5; plan 2's Global Constraints): `<form onSubmit={handleSubmit} noValidate …>` with `noValidate` directly after `onSubmit`; the HTML constraint attributes stay (FMG `CONSTRAINT_FLOORS` `[0, 1, 0]` for this file: the prefix input's `maxLength={10}`); a module-level `validate()` restates them; errors go under the field through `Field error=` (a group: `FieldGroup error=` or one `FieldError` tied by `aria-describedby`); `focusFirst` on the client's errors and `if (fieldErrors.applyServer(payload) && focusFirstError()) return` on the server's, then today's toast for every other refusal (spec §4.1.3); no `toast.error`/`toast.warning` for a validation error; never `role="alert"` or `aria-live="assertive"` on a field error (F-R6); never `aria-invalid` on a `<button>` (F-R7). Prerequisite gates: `aria-disabled` plus `aria-describedby` to a visible reason, the handler returns first (M-R10).
 - **Guards:** `tests/form-migration-guards.test.ts` (FMG: GD5 keeps the prefix dialog inside the settings form with no `<form>` or submit of its own; GF4; GF5), `tests/visual-foundation-guards.test.ts`, `tests/list-frame-guards.test.ts`, `tests/ui-overlay-guards.test.ts`, `tests/validation-guards.test.ts` (V1–V5).
   - A commit that changes what a guard or pin counts edits it in the same commit.
-  - The only guard row this plan adds is the settings form's `V_FORMS` row (Task 4). No `EXEMPT`, `V_SCOPE`, `NOT_IN_SCOPE`, `SELECT_STAR_ONLY`, `NON_VALIDATION_TOASTS` or FMG row changes: the file's toasts outside a catch after Task 3 are none (`toast.success` and `apiError.toast` are not validation toasts, and the two `apiError.toast` calls sit in a catch). Never add a row to make a test pass. If a change would make a guard fail and the task does not list that edit, stop and report.
+  - The only guard row this plan adds is the settings form's `V_FORMS` row (Task 4). No `EXEMPT`, `V_SCOPE`, `NOT_IN_SCOPE`, `SELECT_STAR_ONLY`, `NON_VALIDATION_TOASTS` (5 rows at `ede37dd0`, the asset form's the last) or FMG row changes: the file's toasts outside a catch after Task 3 are none (`toast.success` and `apiError.toast` are not validation toasts, and the two `apiError.toast` calls sit in a catch). Never add a row to make a test pass. If a change would make a guard fail and the task does not list that edit, stop and report.
 - **The server:** no change. `src/app/api/admin/settings/route.ts` and `src/lib/validations/system-settings.ts` stay byte for byte (Task 1's test loads the schema to compare; it never edits it). Integration v1 does not change.
 - **Off limits:**
   - Never open, read or print `.env` or `.env.prod-admin`.
@@ -97,9 +97,10 @@ No migration, no database write, no schema change, no new dependency, no server 
 - **ST-R1, the earlier rulings apply.** Plan 1's S-R*, F-R*, M-R* and its FIXED INTERFACES as amended; plan 2's FIXED 8–12 and rulings (A-R*, O-R*, U-R*, D-R*, MT-R*, P-R*, X-R*); spec 2C K4, K5 a, K6 a; Dark Mode's two-theme rule (every new style is a token class already in use: the field error look of `Field`, `FieldError`, `FieldGroup`). Where a plan-1 or plan-2 ruling and this list differ for the settings form, this list says so and why.
 
 - **ST-R2, one rule set, the server's codes (Task 1; spec G2, §6.1, §7.1, §7.2).**
-  - The rules live in `src/lib/system-settings-field-rules.ts` (new, LF, `@/` imports like the server schema it mirrors). `settingRuleCode(key, value)` answers, for one setting and its trimmed value, the code `systemSettingsUpdateSchema` answers: its custom issue's api-error catalog key (`assetTagTemplateInvalid`, `labelWidthRange`, …, `approvalSlaDaysRange`; plan 1 S-R2), so the client's error and the server's error for the same mistake read the same `apiErrors.*` sentence. `settingSaveErrors(entries, prefixRows)` checks every setting a save sends: the server's 5000-character limit after trimming (`tooLong`), then the server's rule, then `settingControlCode` (below), first failing wins; and the prefix groups (ST-R5).
+  - The rules live in `src/lib/system-settings-field-rules.ts` (new, LF, `@/` imports like the server schema it mirrors). `settingRuleCode(key, value)` answers, for one setting and its trimmed value, the code `systemSettingsUpdateSchema` answers: its custom issue's api-error catalog key (`assetTagTemplateInvalid`, `labelWidthRange`, …, `approvalSlaDaysRange`; plan 1 S-R2), so the client's error and the server's error for the same mistake read the same `apiErrors.*` sentence. `settingSaveErrors(entries, prefixRows, changedKeys)` checks every setting a save sends: the server's 5000-character limit after trimming (`tooLong`), then the server's rule, then, only for a setting this save changes (`changedKeys`), `settingControlCode` (below), first failing wins; and the prefix groups (ST-R5).
   - `settingControlCode(key, value)` restates what the controls allowed before `noValidate` where the server allows more (spec §4.5, client only, §6.3): the asset tag's running digits `range(1, 12) ?? step(1)` (no rule on either side today), the LDAP sync's deactivation limit `range(0) ?? step(1)` (no rule today), the document running digits and each label's width, height and QR size `step(1)` (the server takes 40.5), each label's margin and gap `step(0.5)` (`step="0.5"`). Their codes are the shared `outOfRange` (with `{ min, max }` from `settingControlParams`) and `invalidNumber` (plan 2 MT-R2, X-R2).
-  - The form's `validate()` is a module-level wrapper over `settingSaveErrors`, so the V2 guard finds `validate(` and the rules stay testable as a `.ts` module. **Task 1's test runs the module and the server's schema on the same values** (the shipped defaults, one broken value for each of the schema's 20 rules (22 values: the margin and the gap, two notification days), a 5001-character value, the controls' own limits): the form finds exactly the codes the route answers, plus the controls' own limits. A future server rule that the module lacks fails that test only if the test gains a broken value for it; the module's header says so.
+  - **The controls' own limits apply only to the settings a save changes** (the user's answer to open issue 13, 2026-10-19). They are client rules the server does not have, and before `noValidate` the browser checked them only on the tab on screen, so a stored value may break one (running digits 13, a width of 40.5, a margin of 0.3). The form passes `changedSettings` (each setting whose value differs from its stored value: the list the change review and the save count read) to `validate()`, which hands `settingSaveErrors` their keys: an unchanged stored value does not stop a save of another setting, and the same value stops the save when the save changes that setting. Spec §7.4 treats the asset edit form's warranty pair the same way. The server's 20 rules and the 5000 limit stay on every setting sent, as the server checks them. Task 1's second test holds both halves.
+  - The form's `validate()` is a module-level wrapper over `settingSaveErrors` (it turns `changedSettings` into the keys), so the V2 guard finds `validate(` and the rules stay testable as a `.ts` module. **Task 1's test runs the module and the server's schema on the same values** (the shipped defaults, one broken value for each of the schema's 20 rules (22 values: the margin and the gap, two notification days), a 5001-character value, the controls' own limits): the form finds exactly the codes the route answers, plus the controls' own limits. A future server rule that the module lacks fails that test only if the test gains a broken value for it; the module's header says so.
   - The form keeps no copy of the rules: its `assetTagFormatTokens` list moves to the module (the token buttons import it), `isValidCategoryPrefix` moves too (the prefix table and the editor share it), and the twelve `hasInvalid…` computations go (Task 3).
   - A setting the page did not load is not sent, so it is not checked (today's boxes read a missing setting as `""`: the client checks exactly what the server will see).
 
@@ -127,7 +128,7 @@ No migration, no database write, no schema change, no new dependency, no server 
 
 - **ST-R9, messages (Tasks 4, 6; spec §7.1; plan 2 open issue 4's answer: a message that loses its last reader goes).** Task 4 adds `systemSettingsPage.prefixCategoriesRequired`. Task 6 deletes the eleven sentences only the boxes and toasts read (`duplicateCategory`, `invalidFormatTemplate`, `invalidPublicQrBaseUrl`, `invalidLabelTemplate`, `invalidLabelSize`, `invalidOperationDocumentTemplate`, `invalidNotificationRule`, `invalidRetentionPolicy`, `invalidAccountingDepreciationPolicy`, `invalidWorkflowApproval`, `invalidSchedulerSchedule`), with their page labels and their lines in the form's `labels` type: each was one sentence for a group of fields; each field now reads its own catalog sentence (open issue 1). `invalidPrefix` stays (the editor and the prefix groups read it). 4093 → 4094 → 4083 keys per locale.
 
-- **ST-R10, the split and the tests.** Six code tasks on one file so that each commit is reviewable (Task 3 alone holds 70 exact edits of the form); the order puts the pure module first (it is tested against the server alone), the props before the form uses them, the editor last among the forms (its commit adds the `V_FORMS` row: "in the commit that moves the file's last form"), then the gates and the retired sentences. One new LF test file, `tests/v-track3.test.ts`: Task 1 creates it with a resolve hook for `@/` (the module and the server schema import `@/…`) and `messages`, `load`; Task 2's block adds `read` and `formSource` as `function` declarations; one test per task.
+- **ST-R10, the split and the tests.** Six code tasks on one file so that each commit is reviewable (Task 3 alone holds 70 exact edits of the form); the order puts the pure module first (it is tested against the server alone), the props before the form uses them, the editor last among the forms (its commit adds the `V_FORMS` row: "in the commit that moves the file's last form"), then the gates and the retired sentences. One new LF test file, `tests/v-track3.test.ts`: Task 1 creates it with a resolve hook for `@/` (the module and the server schema import `@/…`) and `messages`, `load`; Task 2's block adds `read` and `formSource` as `function` declarations; one test per task, and Task 1's second test for open issue 13.
 
 - **ST-R11, what does not change.** The route, the schema, `settingFieldKeyFor` and the hook; the LDAP test and sync routes and their toasts; the `syncError` Notice (`role="alert"`, a sync failure, not a field); the `ldapDefaultRoleMissing` warning (a warning, not an error; it never blocked the save); the "assigned to another prefix" badges; the search panel and the change review table (their links and buttons only switch tabs); `LabelPreviewPanel`; `tests/category-prefix-groups.test.ts` and `src/lib/category-prefix-groups.ts`.
 
@@ -135,7 +136,7 @@ No migration, no database write, no schema change, no new dependency, no server 
 
 Five failure modes that would bite a person. Failure modes 1–4 are each held by assertions in their owning task's Step 1 block or a guard, and Task 7 checks them on the app. Failure mode 5 cannot be held by a test (it is about the controller's browser, not the code): it is held by Task 0 Step 6's handler, its two probes and the end count, and Task 8 refuses to write the check without Task 7's findings.
 
-1. **The form and the server disagree about a setting (Task 1).** A rule only the server has ends in a refusal the person could have seen before; a rule only the client has refuses what the server accepts (spec §6.3 allows it only for the controls' own limits). **Tests:** Task 1 runs `settingSaveErrors` and `systemSettingsUpdateSchema` on the defaults, on one broken value for each of the schema's 20 rules (22 values: the margin and the gap, two notification days), and on a 5001-character value, and compares the keyed codes exactly; the controls' own limits are listed one by one, with the server shown accepting a width of 40.5. Task 7: a server refusal through a stand-in lands on its field.
+1. **The form and the server disagree about a setting (Task 1).** A rule only the server has ends in a refusal the person could have seen before; a rule only the client has refuses what the server accepts (spec §6.3 allows it only for the controls' own limits). **Tests:** Task 1 runs `settingSaveErrors` and `systemSettingsUpdateSchema` on the defaults, on one broken value for each of the schema's 20 rules (22 values: the margin and the gap, two notification days), and on a 5001-character value, and compares the keyed codes exactly; the controls' own limits are listed one by one, with the server shown accepting a width of 40.5; Task 1's second test holds that a stored value only a control's limit refuses stops a save only when the save changes that setting (open issue 13). Task 7: a server refusal through a stand-in lands on its field, and a stored value stood in through the page's GET does not stop a save of another setting.
 2. **A wrong setting on another tab or in a closed `<details>`, and focus lands nowhere (Task 3; spec §4.2's anti-goal).** **Tests:** Task 3 pins `reveal: (field) => selectTab(SETTING_FIELD_IDS[settingKeyOf(field)] ? getSystemSettingsTabForKey(settingKeyOf(field)) : "advanced")` (an advanced setting opens the advanced tab whatever its prefix, ST-R4), `idFor` over `SETTING_FIELD_IDS` (each id once on its control) and the advanced inputs' `setting-<key>`, the table's tab order, and the depreciation key's tab (Task 1). Task 7: an invalid value on one tab, saved from another, at 1440 and 375.
 3. **A live error shown twice, or no longer live (Tasks 3, 4; U8).** **Tests:** Task 3 pins `liveErrors[field] ?? fieldErrors.errors[field]` (one line), `liveError` on exactly the live settings' fields and on none of the others, and no `ValidationMessage` box but the editor's; Task 4 pins the prefix's live rule (`prefixLiveCode`) and that no box is left. Task 7: typing a bad value shows its error at once under the field, read once.
 4. **A gate that hides its reason, or a content rule left as a disabled button (Tasks 4, 5).** **Tests:** Task 4 pins the editor's save without `disabled` and its `validatePrefixEditor`; Task 5 pins both `aria-disabled` / `aria-describedby` pairs, the reasons' ids on visible elements and the handlers' early returns. Task 7: both gates focusable, their reasons read, Enter sends nothing.
@@ -157,7 +158,7 @@ Five failure modes that would bite a person. Failure modes 1–4 are each held b
 | `tests/accessible-dialog.test.ts` (CRLF) | the editor's save without `disabled` | 4 |
 | `tests/admin-sweep-ui.test.ts` (CRLF) | the `ValidationMessage` pin becomes its absence | 4 |
 | `tests/sticky-form-footer-ui.test.ts` (CRLF) | the save button's gate | 5 |
-| `tests/v-track3.test.ts` (new, LF) | one test per task | 1–6 |
+| `tests/v-track3.test.ts` (new, LF) | one test per task, two for Task 1 | 1–6 |
 | `DEVELOPER_HANDOFF.md`, `docs/99_CHANGELOG.md`, `tests/v-track-docs.test.ts` (CRLF) | the plan's section and entry; plan 3's record test appended, plan 2's order assertion moved | 8 |
 
 No change (checked): `src/app/api/admin/settings/route.ts`, `src/app/api/admin/settings/ldap-test/route.ts`, `ldap-sync/route.ts`, `src/lib/validations/system-settings.ts`, `src/lib/field-errors.ts`, `src/lib/field-error-client.ts`, `src/lib/field-focus.ts`, `src/lib/validation-rules.ts`, `src/components/ui/use-field-errors.ts`, `field.tsx`, `field-group.tsx`, `segmented.tsx`, `accessible-dialog.tsx`, `src/lib/category-prefix-groups.ts`, `src/lib/system-settings-tabs.ts`, `src/lib/settings-information-architecture.ts`; `tests/form-migration-guards.test.ts`, `tests/list-frame-guards.test.ts`, `tests/ui-overlay-guards.test.ts`, `tests/visual-foundation-guards.test.ts`, `tests/field-primitives.test.ts`, `tests/asset-label-print-ui.test.ts`, `tests/phase2d-final-ui.test.ts`, `tests/steps-ui.test.ts`, `tests/form-frames-ui.test.ts`, `tests/dark-mode-p.test.ts`, `tests/settings-ldap-role-ui.test.ts`, `tests/system-log-history.test.ts`, `tests/settings-search.test.ts`, `tests/v-track-s.test.ts` (each runs green after every task); `DESIGN.md`, docs/14, `.impeccable/design.json` (the final plan).
@@ -167,9 +168,9 @@ No change (checked): `src/app/api/admin/settings/route.ts`, `src/app/api/admin/s
 | Made in | What | Used by |
 |---|---|---|
 | plans 1 and 2 (merged) | FIXED 1–12 as amended; `useFieldErrors` (`focusFirst(order, { idFor, reveal })`, `applyServer`, `clear`, `errors`), `useValidationMessage`, the rule helpers (`required`, `range`, `step`, `atLeastOne`), `Field liveError`, `FieldError`, `FieldGroup`, `settingFieldKeyFor` (the route's `settings.<key>`), `V_SCOPE`/`V_FORMS`/`NON_VALIDATION_TOASTS`, V1–V5 | every task |
-| Task 1 (ST1) | `src/lib/system-settings-field-rules.ts`: `type SettingEntry`, `type SettingFieldKey`, `settingFieldKey`, `settingKeyOf`, `assetTagFormatTokens`, `settingRuleCode`, `settingControlCode`, `settingControlParams`, `isLiveSetting`, `isValidCategoryPrefix`, `settingSaveErrors`, `settingLiveErrors`; `getSystemSettingsTabForKey("accounting_depreciation_policy") === "organization"`; `tests/v-track3.test.ts` with its header (`messages`, the `@/` resolve hook, `load`) | Tasks 2–6 |
+| Task 1 (ST1) | `src/lib/system-settings-field-rules.ts`: `type SettingEntry`, `type SettingFieldKey`, `settingFieldKey`, `settingKeyOf`, `assetTagFormatTokens`, `settingRuleCode`, `settingControlCode`, `settingControlParams`, `isLiveSetting`, `isValidCategoryPrefix`, `settingSaveErrors(entries, prefixRows, changedKeys)`, `settingLiveErrors`; `getSystemSettingsTabForKey("accounting_depreciation_policy") === "organization"`; `tests/v-track3.test.ts` with its header (`messages`, the `@/` resolve hook, `load`) | Tasks 2–6 |
 | Task 2 (ST2) | `ToggleField({ id, error })`, `LabelAssetNameModeField({ id, error })` (a `FieldGroup`), `LabelTemplatePanel({ errorFor })`, `DepreciationPolicyBuilder({ jsonId, jsonError })`; `read`, `formSource` in the test file | Task 3 |
-| Task 3 (ST3) | `SETTING_FIELD_IDS`, `settingFieldId`, `validate(entries, prefixRows)`, `fieldErrors`, `validationMessage`, `submittedSettings`, `liveErrors`, `settingError(key)`, `prefixGroupsError`, `fieldOrder`, `focusFirstError` | Tasks 4, 5, 7 |
+| Task 3 (ST3) | `SETTING_FIELD_IDS`, `settingFieldId`, `validate(entries, prefixRows, changed)`, `fieldErrors`, `validationMessage`, `submittedSettings`, `liveErrors`, `settingError(key)`, `prefixGroupsError`, `fieldOrder`, `focusFirstError` | Tasks 4, 5, 7 |
 | Task 4 (ST4) | `prefixErrors`, `PREFIX_EDITOR_FIELD_IDS`, `validatePrefixEditor`; `systemSettingsPage.prefixCategoriesRequired`; the `V_FORMS` row (44) | Tasks 6, 7 |
 | Task 5 (ST5) | `settings-save-status`, `ldap-sync-no-preview` | Task 7 |
 | Task 6 (ST6) | 4083 keys per locale | Tasks 7, 8 |
@@ -185,18 +186,19 @@ No change (checked): `src/app/api/admin/settings/route.ts`, `src/app/api/admin/s
 - Evidence (git-ignored): `.superpowers/sdd/screenshots/v-track-plan3/before/`, `.superpowers/sdd/v-track-plan3/task-0-baseline.md`, `.superpowers/sdd/v-track-plan3/task-0-counts/`.
 
 **Interfaces:**
-- Consumes: `master` at `f1ae1828`.
+- Consumes: `master` at `ede37dd0`.
 - Produces: `feat/v-track-3` with this plan's commit; the baseline numbers; the counting evidence; the before images and behaviour of the settings form and the prefix editor, which Task 7 compares against.
 
 - [ ] **Step 1: Branch and base.**
-  - `git rev-parse master` must print `f1ae1828645c773a89be67c10d94e41081df46c0`. If `master` moved (for example `fix/asset-partial-save` was merged first: one more `NON_VALIDATION_TOASTS` row, its own tests and a toast in `asset-form.tsx`), stop and tell the user: every count of this plan is `f1ae1828`'s, and the plan is re-based before it runs (open issue 12).
+  - `git rev-parse master` must print `ede37dd0640e13118c40ec7b8193e5995dfdcb42` (the asset partial-save fix, merged first: open issue 12's answer). If `master` moved again, stop and tell the user: every count of this plan is `ede37dd0`'s, and the plan is re-based before it runs, as it was for open issue 12.
   - From `master`: `git switch -c feat/v-track-3` (the controller's one branch command; implementers never switch), then copy this plan to `docs/superpowers/plans/2026-10-19-v-track-plan3.md`, `git add docs/superpowers/plans/2026-10-19-v-track-plan3.md` and `git commit -m "docs(forms): V track plan 3 (the settings form and its prefix editor)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
-  - `git rev-parse --abbrev-ref HEAD` → `feat/v-track-3`; `git diff --name-only f1ae1828 HEAD` lists only this plan; `git status --short` → only the untracked items of the Global Constraints.
-- [ ] **Step 2: Baseline.** `npm test` (expected 2292 tests, 2291 pass, 0 fail, 1 skipped), `npx tsc --noEmit` (clean), `npm run lint` (0 errors; 146 warnings, every one under `.agents/`). Record the numbers in `task-0-baseline.md`.
+  - `git rev-parse --abbrev-ref HEAD` → `feat/v-track-3`; `git diff --name-only ede37dd0 HEAD` lists only this plan; `git status --short` → only the untracked items of the Global Constraints.
+- [ ] **Step 2: Baseline.** `npm test` (expected 2297 tests, 2296 pass, 0 fail, 1 skipped), `npx tsc --noEmit` (clean), `npm run lint` (0 errors; 146 warnings, every one under `.agents/`). Record the numbers in `task-0-baseline.md`.
 - [ ] **Step 3: Temp files.** Check that `<tools>/eol.mjs`, `<tools>/counts.mts`, `<tools>/apply-blocks.mjs`, `<tools>/replay.mjs` and `<temp>/changes/` exist; hand the paths of `<temp>` and `<tools>` to every implementer. The change files of Tasks 4 and 6 are written by those tasks (their text is in the task).
-- [ ] **Step 4: Counting evidence at `f1ae1828`** (read-only; save the output under `task-0-counts/`; a difference stops the plan, because an inventory row would be wrong):
-  - `node <tools>/counts.mts .` prints: toasts outside a catch 34 in 11 files; `<form … noValidate>` in `src` 46; `messages/th.json` and `en.json` 4093 leaf keys; `V_FORMS` 43; `SELECT_STAR_ONLY` `0 in 0`; FMG `STAR_ONLY` `new Set<string>([])`.
+- [ ] **Step 4: Counting evidence at `ede37dd0`** (read-only; save the output under `task-0-counts/`; a difference stops the plan, because an inventory row would be wrong):
+  - `node <tools>/counts.mts .` prints: toasts outside a catch 35 in 12 files (the asset form's one among them); `<form … noValidate>` in `src` 46; `messages/th.json` and `en.json` 4093 leaf keys; `V_FORMS` 43; `SELECT_STAR_ONLY` `0 in 0`; FMG `STAR_ONLY` `new Set<string>([])`.
   - In `src/components/admin/system-settings-form.tsx` (2612 lines): `grep -c "toast.error(labels\." ` → 12 (lines 854–898); `grep -c "<ValidationMessage"` → 13; one `<form onSubmit={handleSubmit} className="space-y-6">` (line 976); the save `<Button type="submit" busy={saving} disabled={changedCount === 0}>` (line 2044); the editor's `<Button onClick={applyPrefixEditor} disabled={!canApplyPrefixEditor}>` (line 1457).
+  - `tests/validation-guards.test.ts` (225 lines): `NON_VALIDATION_TOASTS` holds 5 rows, the asset form's (`asset partial save fix 2026-10-19`) the last.
   - `git ls-files --eol` of every file the File structure names: as the Global Constraints list them (all CRLF).
 - [ ] **Step 5: Dev server.**
   - If `preview_list` shows a dev server of this checkout on `:3000`, use it and do not stop it. Otherwise add a launch configuration `name: "asset-v3-dev-3100"`, `runtimeExecutable: "node"`, `runtimeArgs: ["node_modules/next/dist/bin/next", "dev", "-p", "3100"]`, `port: 3100`, `autoPort: false` (if another session's server holds 3100, use 3102 and say so in the baseline file), and start it with `preview_start`.
@@ -237,7 +239,7 @@ async (page) => {
   - the browser's own bubble: an asset tag running digit of 13 saved on its own tab (the bubble), and saved from another tab (nothing checks it; the request goes out and the stand-in answers);
   - the two gates as they are: the save with nothing changed (disabled, skipped by Tab), the LDAP sync apply before a preview (disabled; do not press preview: it is a POST and is aborted anyway);
   - the editor: its save disabled with an empty prefix or no category; a prefix of one letter; the transfer arrows;
-  - **the stored values the controls' own limits would refuse** (read only, from the page as it loads, before you type anything): the asset tag running digits (1–12, whole), the LDAP sync's deactivation limit (≥ 0, whole), the document running digits (whole), and each tape's width, height and QR size (whole) and margin and gap (steps of 0.5). Write each value that breaks its limit into `task-0-baseline.md`, or "none": after Task 3 such a value stops every save until it is changed (open issue 13), and Task 7 needs to know whether the dev data holds one.
+  - **the stored values the controls' own limits would refuse** (read only, from the page as it loads, before you type anything): the asset tag running digits (1–12, whole), the LDAP sync's deactivation limit (≥ 0, whole), the document running digits (whole), and each tape's width, height and QR size (whole) and margin and gap (steps of 0.5). Write each value that breaks its limit into `task-0-baseline.md`, or "none": after Task 3 such a value does not stop a save of another setting but stops a save that changes it (open issue 13's answer); Task 7 checks both halves with a stand-in either way, and on the dev data too if it holds one.
 - [ ] **Step 8: Clean up.** Stop your server if you started one and remove your launch configuration (only yours). `git status --short` shows what Step 1 showed. No commit in this task besides Step 1's plan commit.
 
 ---
@@ -246,18 +248,18 @@ async (page) => {
 
 Spec `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` (approved 2026-10-17): §2 U1, U2, U6, U8; §3 G1–G3, G5 and the anti-goals; §4.1–§4.5; §5 #45 and #46; §6.1 (`settings.<key>`); §7.1–§7.3; §11 calls 1, 2, 3, 7.
 
-### Inventory (at `f1ae1828`)
+### Inventory (at `ede37dd0`)
 
 `F` = `c/admin/system-settings-form.tsx` (2612 lines). One `<form onSubmit={handleSubmit} className="space-y-6">` (F:976) around 11 tabs, of which only the active one is mounted (`{activeTab === "…" ? … : null}`; `activeTab` from `useSearchParams`, F:543; `selectTab` F:772–776 by `window.history.replaceState`). The prefix editor is an `AccessibleDialog` inside it (F:1352–1464), saved by `applyPrefixEditor` (F:624–634) into the `prefixRows` state, which the main save sends as `asset_tag_category_prefixes`.
 
-| What | Where at `f1ae1828` | Becomes | Task |
+| What | Where at `ede37dd0` | Becomes | Task |
 |---|---|---|---|
 | 12 validation toasts in `handleSubmit` | F:853–900 (`duplicateCategory`, `invalidPrefix`, `invalidFormatTemplate`, `invalidPublicQrBaseUrl`, `invalidLabelTemplate`, `invalidLabelSize`, `invalidOperationDocumentTemplate`, `invalidNotificationRule`, `invalidRetentionPolicy`, `invalidAccountingDepreciationPolicy`, `invalidWorkflowApproval`, `invalidSchedulerSchedule`) | `fieldErrors.setErrors(validate(…))`, focus on the first wrong setting, its tab first | 3 |
 | the server's `fieldErrors` dropped | F:919 `throw new Error(payload?.error ?? labels.error)` | `if (fieldErrors.applyServer(payload) && focusFirstError()) return` before it | 3 |
 | 12 live boxes on the page | F:1041, 1133, 1185, 1186, 1245, 1348, 1349, 1494, 1546, 1594, 1603 (automation tab; its field is on LDAP sync), 1653 | each setting's error under its field, live (ST-R3); 1348's duplicate check deleted (ST-R5) | 3 |
 | the editor's live box | F:1384 (shows on an empty prefix as the editor opens) | the prefix field's error, live once a prefix is typed | 4 |
 | 12 rule computations | F:667–669, F:681–750 (`hasInvalid…`), the token list F:454–467, `isValidCategoryPrefix` F:2131–2133 | the rules module (Task 1) | 1, 3 |
-| native checks the browser made on the mounted tab only | `min`/`max`/`step` on the number inputs (F:1088–1097 running digits 1–12, F:1223–1232, F:1504–1543, F:1571–1590, F:1621–1650, F:1821–1829 `min={0}`, F:2437–2488 incl. `step="0.5"`) | `noValidate`; `settingControlCode` restates them on every tab (ST-R2) | 1, 3 |
+| native checks the browser made on the mounted tab only | `min`/`max`/`step` on the number inputs (F:1088–1097 running digits 1–12, F:1223–1232, F:1504–1543, F:1571–1590, F:1621–1650, F:1821–1829 `min={0}`, F:2437–2488 incl. `step="0.5"`) | `noValidate`; `settingControlCode` restates them on every tab, for the settings a save changes (ST-R2, open issue 13) | 1, 3 |
 | fields with no id or no error | the JSON textarea (builder:333–338, in a closed `<details>`), the advanced inputs (F:1975–1980, in a closed `<details>`), the 3 approval switches (`ToggleField`, F:2242–2267), the label name choice (`LabelAssetNameModeField`, F:2374–2396) | ids and errors (ST-R6, ST-R4) | 2, 3 |
 | the editor's content gate | F:1457 `disabled={!canApplyPrefixEditor}`, F:625 silent return | errors on save, save enabled (ST-R7) | 4 |
 | the save's prerequisite | F:2044 `disabled={changedCount === 0}` (its reason F:2037–2039 untied) | `aria-disabled` + `aria-describedby` (ST-R8) | 5 |
@@ -280,11 +282,11 @@ Spec §4.5, §6.1, §6.3, §7.2; ST-R2, ST-R4, ST-R10.
 - Consumes: `src/lib/validations/system-settings.ts` (read by the test only), `issuesToFieldErrors` and `settingFieldKeyFor` (`src/lib/field-errors.ts`), `range` and `step` (`src/lib/validation-rules.ts`), the key constants of `system-setting-defaults.ts`, `asset-label-template.ts`, `asset-depreciation.ts`, `asset-qr.ts`, `retention-policy.ts`, `workflow-approval.ts`, `ldap-sync-safety.ts`, and `normalizeCategoryPrefix` (`category-prefix-groups.ts`).
 - Produces: the module's exports (Interfaces table); `tests/v-track3.test.ts` with `messages`, the `@/` resolve hook, `load`.
 
-**Changes at f1ae1828:**
+**Changes at ede37dd0:**
 
 | Line | Now | Becomes | Rule |
 |---|---|---|---|
-| — | — | `src/lib/system-settings-field-rules.ts`, exactly as Step 3 prints it: per setting, the server's rule (`settingRuleCode`: the same 20 checks as `systemSettingsUpdateSchema`'s `superRefine`, on the trimmed value, answering the catalog key of each custom message), the controls' own limits (`settingControlCode`, `settingControlParams`), the live settings (`isLiveSetting`), `settingSaveErrors` and `settingLiveErrors` (both also check the prefix groups), `isValidCategoryPrefix` and `assetTagFormatTokens` (moved from the form in Task 3), `settingFieldKey` and `settingKeyOf` | ST-R2, ST-R3 |
+| — | — | `src/lib/system-settings-field-rules.ts`, exactly as Step 3 prints it: per setting, the server's rule (`settingRuleCode`: the same 20 checks as `systemSettingsUpdateSchema`'s `superRefine`, on the trimmed value, answering the catalog key of each custom message), the controls' own limits (`settingControlCode`, `settingControlParams`), the live settings (`isLiveSetting`), `settingSaveErrors` (the controls' own limits only on the settings a save changes, open issue 13) and `settingLiveErrors` (both also check the prefix groups), `isValidCategoryPrefix` and `assetTagFormatTokens` (moved from the form in Task 3), `settingFieldKey` and `settingKeyOf` | ST-R2, ST-R3 |
 | `settings-search.ts:19` | `if (key === "company_name" \|\| key === "default_currency" \|\| key.startsWith("depreciation_")) return "organization"` | the same with `\|\| key === "accounting_depreciation_policy"`, and a comment line above | ST-R4 |
 
 - [ ] **Step 1: The failing test.** Create `tests/v-track3.test.ts` (LF) with exactly (write it with a file tool):
@@ -318,7 +320,7 @@ const load = <T>(path: string) => import(pathToFileURL(path).href) as Promise<T>
 
 type Entry = { key: string; value: string }
 type Rules = {
-  settingSaveErrors(entries: readonly Entry[], prefixRows: readonly { categoryId: string; prefix: string }[]): Record<string, string>
+  settingSaveErrors(entries: readonly Entry[], prefixRows: readonly { categoryId: string; prefix: string }[], changedKeys: ReadonlySet<string>): Record<string, string>
   settingLiveErrors(entries: readonly Entry[], prefixRows: readonly { categoryId: string; prefix: string }[]): Record<string, string>
   settingControlCode(key: string, value: string): string | null
   isValidCategoryPrefix(prefix: string): boolean
@@ -339,9 +341,11 @@ test("the settings rules answer what the server answers for every setting, and t
   const rules = await load<Rules>("src/lib/system-settings-field-rules.ts")
   const { systemSettingDefaults } = await load<{ systemSettingDefaults: readonly Entry[] }>("src/lib/system-setting-defaults.ts")
   const defaults = systemSettingDefaults.map(({ key, value }) => ({ key, value }))
+  // A save checks the controls' own limits only on the settings it changes (open issue 13): here every setting changes.
+  const every = new Set(defaults.map(({ key }) => key))
   // The shipped defaults break no rule on either side.
   assert.deepEqual(await serverErrors(defaults), {})
-  assert.deepEqual(rules.settingSaveErrors(defaults, []), {})
+  assert.deepEqual(rules.settingSaveErrors(defaults, [], every), {})
   // One broken value for every rule of systemSettingsUpdateSchema: the form finds the code the server answers.
   const broken: Record<string, [string, string]> = {
     asset_tag_format_template: ["{companyCode}-{bogus}", "assetTagTemplateInvalid"],
@@ -371,7 +375,7 @@ test("the settings rules answer what the server answers for every setting, and t
   assert.equal(entries.filter((entry) => broken[entry.key]).length, Object.keys(broken).length, "every broken key is a default setting")
   const expected = Object.fromEntries(Object.entries(broken).map(([key, [, code]]) => [`settings.${key}`, code]))
   assert.deepEqual(await serverErrors(entries), expected)
-  assert.deepEqual(rules.settingSaveErrors(entries, []), expected)
+  assert.deepEqual(rules.settingSaveErrors(entries, [], every), expected)
   // Every code reads its own sentence in both languages (the hook resolves apiErrors after common.validation).
   for (const code of new Set(Object.values(expected))) {
     for (const locale of ["th", "en"] as const) assert.equal(typeof messages(locale).apiErrors[code], "string", `${locale} apiErrors.${code}`)
@@ -384,7 +388,7 @@ test("the settings rules answer what the server answers for every setting, and t
   // The server's 5000-character limit, after trimming as the server does.
   const long = defaults.map(({ key, value }) => ({ key, value: key === "company_name" ? `  ${"x".repeat(5001)}  ` : value }))
   assert.deepEqual(await serverErrors(long), { "settings.company_name": "tooLong" })
-  assert.deepEqual(rules.settingSaveErrors(long, []), { "settings.company_name": "tooLong" })
+  assert.deepEqual(rules.settingSaveErrors(long, [], every), { "settings.company_name": "tooLong" })
   // What the control allowed before noValidate, where the server allows more: client only, on save.
   const control: [string, string, string | null][] = [
     ["asset_tag_running_digits", "13", "outOfRange"],
@@ -400,7 +404,7 @@ test("the settings rules answer what the server answers for every setting, and t
   ]
   for (const [key, value, code] of control) assert.equal(rules.settingControlCode(key, value), code, `${key} = ${value}`)
   assert.deepEqual(await serverErrors(defaults.map((entry) => (entry.key === "asset_label_12_width_mm" ? { ...entry, value: "40.5" } : entry))), {}, "the server takes a width of 40.5")
-  assert.deepEqual(rules.settingSaveErrors(defaults.map((entry) => (entry.key === "asset_label_12_width_mm" ? { ...entry, value: "40.5" } : entry)), []), { "settings.asset_label_12_width_mm": "invalidNumber" })
+  assert.deepEqual(rules.settingSaveErrors(defaults.map((entry) => (entry.key === "asset_label_12_width_mm" ? { ...entry, value: "40.5" } : entry)), [], every), { "settings.asset_label_12_width_mm": "invalidNumber" })
   // A field key is the server's: settings.<key>, and back.
   assert.equal(rules.settingFieldKey("asset_label_12_width_mm"), "settings.asset_label_12_width_mm")
   assert.equal(rules.settingKeyOf("settings.asset_label_12_width_mm"), "asset_label_12_width_mm")
@@ -409,16 +413,42 @@ test("the settings rules answer what the server answers for every setting, and t
   assert.equal(rules.isValidCategoryPrefix("A"), false)
   assert.equal(rules.isValidCategoryPrefix("AB-1"), false)
   const badPrefix = [{ categoryId: "c1", prefix: "COM" }, { categoryId: "c2", prefix: "A" }]
-  assert.deepEqual(rules.settingSaveErrors(defaults, badPrefix), { "settings.asset_tag_category_prefixes": "invalidPrefix" })
+  assert.deepEqual(rules.settingSaveErrors(defaults, badPrefix, every), { "settings.asset_tag_category_prefixes": "invalidPrefix" })
   assert.deepEqual(rules.settingLiveErrors(defaults, badPrefix), { "settings.asset_tag_category_prefixes": "invalidPrefix" })
   // Each setting opens on the tab that shows it (spec §4.2); the depreciation policy is on the organization tab.
   const { getSystemSettingsTabForKey } = await load<{ getSystemSettingsTabForKey(key: string): string }>("src/lib/settings-search.ts")
   assert.equal(getSystemSettingsTabForKey("accounting_depreciation_policy"), "organization")
   assert.equal(getSystemSettingsTabForKey("asset_tag_category_prefixes"), "asset-numbering")
 })
+
+// The controls' own limits are client rules the server does not have (ST-R2), so a value stored before noValidate (a
+// save from another tab, which the browser did not check) can break one. Like the asset edit form's warranty pair (spec
+// §7.4), they are checked only on the settings a save changes; the server's rules stay on every setting sent (open issue
+// 13, the user's answer).
+test("a stored value only a control's own limit refuses stops a save only when the save changes that setting (v-track plan 3 task 1, ST1, open issue 13)", async () => {
+  const rules = await load<Rules>("src/lib/system-settings-field-rules.ts")
+  const { systemSettingDefaults } = await load<{ systemSettingDefaults: readonly Entry[] }>("src/lib/system-setting-defaults.ts")
+  const stored: Record<string, string> = { asset_tag_running_digits: "13", asset_label_12_width_mm: "40.5", asset_label_custom_margin_mm: "0.3" }
+  const entries = systemSettingDefaults.map(({ key, value }) => ({ key, value: key === "company_name" ? "Another Company" : (stored[key] ?? value) }))
+  assert.deepEqual(await serverErrors(entries), {}, "the server takes each stored value")
+  // A save of another setting (the company name): the stored values do not stop it.
+  assert.deepEqual(rules.settingSaveErrors(entries, [], new Set(["company_name"])), {})
+  // The same value stops the save when the save changes that setting itself.
+  const codes: [string, string][] = [["asset_tag_running_digits", "outOfRange"], ["asset_label_12_width_mm", "invalidNumber"], ["asset_label_custom_margin_mm", "invalidNumber"]]
+  for (const [key, code] of codes) {
+    assert.deepEqual(rules.settingSaveErrors(entries, [], new Set(["company_name", key])), { [`settings.${key}`]: code }, key)
+  }
+  // The server's own rules and its 5000-character limit stay on every setting sent, changed or not.
+  const serverBroken = entries.map((entry) =>
+    entry.key === "operation_document_running_digits" ? { ...entry, value: "13" } : entry.key === "ldap_base_dn" ? { ...entry, value: "x".repeat(5001) } : entry,
+  )
+  const serverCodes = { "settings.operation_document_running_digits": "documentRunningDigitsRange", "settings.ldap_base_dn": "tooLong" }
+  assert.deepEqual(await serverErrors(serverBroken), serverCodes)
+  assert.deepEqual(rules.settingSaveErrors(serverBroken, [], new Set(["company_name"])), serverCodes)
+})
 ```
 
-- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 1 test, 1 fail: "the settings rules answer what the server answers for every setting, and the controls' own limits on top (v-track plan 3 task 1, ST1)" (`Error [ERR_MODULE_NOT_FOUND]: Cannot find module '…/src/lib/system-settings-field-rules.ts'`).
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 2 tests, 2 fail: "the settings rules answer what the server answers for every setting, and the controls' own limits on top (v-track plan 3 task 1, ST1)" and "a stored value only a control's own limit refuses stops a save only when the save changes that setting (v-track plan 3 task 1, ST1, open issue 13)" (each `Error [ERR_MODULE_NOT_FOUND]: Cannot find module '…/src/lib/system-settings-field-rules.ts'`).
 - [ ] **Step 3: Implement** (exact; the new file with a file tool, LF; the edit with the Edit tool, which keeps the CRLF):
 
 - Create `src/lib/system-settings-field-rules.ts` (LF) with exactly:
@@ -530,7 +560,8 @@ export function settingRuleCode(key: string, value: string): string | null {
 
 // What the control itself allowed before noValidate, where the server allows more: the asset tag's running digits
 // (min 1, max 12), the LDAP sync's deactivation limit (min 0), and the step of the number fields (1, or 0.5 for a label's
-// margin and gap). Client rules only (spec §6.3: no new server rule).
+// margin and gap). Client rules only (spec §6.3: no new server rule); a save checks them only on the settings it
+// changes (settingSaveErrors).
 export function settingControlCode(key: string, value: string): string | null {
   if (key === "asset_tag_running_digits") return range(value, 1, 12) ?? step(value, 1)
   if (key === ldapSyncMaxScheduledDeactivationsKey) return range(value, 0) ?? step(value, 1)
@@ -581,13 +612,16 @@ function prefixRowsCode(rows: readonly CategoryPrefixRow[]): string | null {
   return rows.some((row) => row.categoryId && !isValidCategoryPrefix(row.prefix)) ? "invalidPrefix" : null
 }
 
-// The errors a save finds, per setting sent: the server's 5000-character limit, its rule, then the control's own rule;
-// and the prefix groups of the active categories.
-export function settingSaveErrors(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[]) {
+// The errors a save finds, per setting sent: the server's 5000-character limit and its rule on every setting, then the
+// control's own rule on the settings this save changes only (changedKeys, compared with the stored values by the form):
+// a value stored before noValidate that only a control's limit refuses does not stop a save of another setting, as
+// spec §7.4 treats the asset edit form's warranty pair (plan 3 open issue 13). And the prefix groups of the active
+// categories.
+export function settingSaveErrors(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[], changedKeys: ReadonlySet<string>) {
   const errors: Partial<Record<SettingFieldKey, string>> = {}
   for (const { key, value } of entries) {
     const trimmed = value.trim()
-    const code = (trimmed.length > 5000 ? "tooLong" : null) ?? settingRuleCode(key, trimmed) ?? settingControlCode(key, trimmed)
+    const code = (trimmed.length > 5000 ? "tooLong" : null) ?? settingRuleCode(key, trimmed) ?? (changedKeys.has(key) ? settingControlCode(key, trimmed) : null)
     if (code) errors[settingFieldKey(key)] = code
   }
   const prefixCode = prefixRowsCode(prefixRows)
@@ -621,9 +655,9 @@ export function settingLiveErrors(entries: readonly SettingEntry[], prefixRows: 
   if (key === "company_name" || key === "default_currency" || key.startsWith("depreciation_") || key === "accounting_depreciation_policy") return "organization"
 ```
 
-  After Step 3, `node --test tests/v-track3.test.ts tests/settings-search.test.ts` passes (3 tests); no pin breaks.
+  After Step 3, `node --test tests/v-track3.test.ts tests/settings-search.test.ts` passes (4 tests); no pin breaks.
 - [ ] **Step 4: Pin and guard edits.** None (the module is new; `tests/settings-search.test.ts` keeps its five keys).
-- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/settings-search.test.ts tests/v-track-s.test.ts tests/validation-guards.test.ts` (20 tests, 0 fail in the rehearsal); `npm test` (+1; **2293 tests, 2292 pass, 0 fail, 1 skipped**); `npx tsc --noEmit` (clean); `npm run lint` (0 errors, 146 warnings, all under `.agents/`). `node <tools>/eol.mjs src/lib/system-settings-field-rules.ts src/lib/settings-search.ts tests/v-track3.test.ts` prints `0 182`, `46 46` and `0 126`.
+- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/settings-search.test.ts tests/v-track-s.test.ts tests/validation-guards.test.ts` (21 tests, 0 fail in the rehearsal); `npm test` (+2; **2299 tests, 2298 pass, 0 fail, 1 skipped**); `npx tsc --noEmit` (clean); `npm run lint` (0 errors, 146 warnings, all under `.agents/`). `node <tools>/eol.mjs src/lib/system-settings-field-rules.ts src/lib/settings-search.ts tests/v-track3.test.ts` prints `0 186`, `46 46` and `0 154`.
 - [ ] **Step 6: Commit.** `git add src/lib/system-settings-field-rules.ts src/lib/settings-search.ts tests/v-track3.test.ts`, then `git commit -m "feat(settings): one rule set for the settings form with the server's own codes, and the depreciation policy's tab (v-track plan 3 task 1, ST1)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ---
@@ -641,7 +675,7 @@ Spec §7.3 (groups, `<details>`), U8; ST-R6.
 - Consumes: `FieldError` (`c/ui/field.tsx`), `FieldGroup` (`c/ui/field-group.tsx`), `Field`'s `id`, `error`, `liveError`.
 - Produces: `ToggleField({ id?, error? })`, `LabelAssetNameModeField({ id?, error? })`, `LabelTemplatePanel({ errorFor? })`, `DepreciationPolicyBuilder({ jsonId?, jsonError? })`; nothing calls them with these props yet (Task 3 does), so the page looks and behaves as before except the depreciation JSON's section, which now opens by itself while the JSON is invalid. `read` and `formSource` in the test file.
 
-**Changes at f1ae1828:**
+**Changes at ede37dd0:**
 
 | Line | Now | Becomes | Rule |
 |---|---|---|---|
@@ -693,7 +727,7 @@ test("a switch, the label's name choice, each label field and the depreciation J
 })
 ```
 
-- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 2 tests, 1 fail: "a switch, the label's name choice, each label field and the depreciation JSON take an id and an error (v-track plan 3 task 2, ST2)" (`AssertionError: The input did not match the regular expression /<input\n\s+id=\{id\}\n…/`).
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 3 tests, 1 fail: "a switch, the label's name choice, each label field and the depreciation JSON take an id and an error (v-track plan 3 task 2, ST2)" (`AssertionError: The input did not match the regular expression /<input\n\s+id=\{id\}\n…/`).
 - [ ] **Step 3: Implement** (exact; the Edit tool keeps the files' CRLF):
 
 - `src/components/admin/system-settings-form.tsx`, edit 1 of 13. Old:
@@ -1072,7 +1106,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
   assert.match(builder, /<Field\n\s+label=\{labels\.depreciationAdvancedJson\}\n\s+hideLabel\n\s+hint=\{labels\.depreciationAdvancedJsonDescription\}\n[\s\S]*?className="mt-3"\n\s+>/)
 ```
 
-- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/settings-depreciation-policy-ui.test.ts tests/asset-label-print-ui.test.ts tests/field-primitives.test.ts tests/admin-sweep-ui.test.ts tests/steps-ui.test.ts tests/form-migration-guards.test.ts tests/visual-foundation-guards.test.ts tests/list-frame-guards.test.ts tests/validation-guards.test.ts` (146 tests, 0 fail in the rehearsal); `npm test` (+1; **2294 tests, 2293 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx src/components/admin/depreciation-policy-builder.tsx tests/settings-depreciation-policy-ui.test.ts tests/v-track3.test.ts` prints `2633 2633`, `448 448`, `103 103` and `0 159`.
+- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/settings-depreciation-policy-ui.test.ts tests/asset-label-print-ui.test.ts tests/field-primitives.test.ts tests/admin-sweep-ui.test.ts tests/steps-ui.test.ts tests/form-migration-guards.test.ts tests/visual-foundation-guards.test.ts tests/list-frame-guards.test.ts tests/validation-guards.test.ts` (147 tests, 0 fail in the rehearsal); `npm test` (+1; **2300 tests, 2299 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx src/components/admin/depreciation-policy-builder.tsx tests/settings-depreciation-policy-ui.test.ts tests/v-track3.test.ts` prints `2633 2633`, `448 448`, `103 103` and `0 187`.
 - [ ] **Step 6: Commit.** `git add src/components/admin/system-settings-form.tsx src/components/admin/depreciation-policy-builder.tsx tests/settings-depreciation-policy-ui.test.ts tests/v-track3.test.ts`, then `git commit -m "feat(settings): a switch, the label name choice, each label field and the depreciation JSON can show their error (v-track plan 3 task 2, ST2)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ---
@@ -1090,7 +1124,7 @@ Spec §4.1, §4.2 (settings tabs), §4.3, §4.5, §5 #45, U1, U2, U6, U8, §6.1;
 - Consumes: Task 1's module; Task 2's props; `useFieldErrors`, `useValidationMessage`; `getSystemSettingsTabForKey`, `selectTab`.
 - Produces: the form as a V form (its `V_FORMS` row waits for Task 4, the file's last form): `SETTING_FIELD_IDS`, `settingFieldId`, `validate`, `fieldErrors`, `validationMessage`, `submittedSettings`, `liveErrors`, `settingError`, `prefixGroupsError`, `fieldOrder`, `focusFirstError`.
 
-**Changes at f1ae1828** (70 exact edits below, in the order they apply; each row names its edits):
+**Changes at ede37dd0** (70 exact edits below, in the order they apply; each row names its edits):
 
 | Line | Now | Becomes | Rule | Edits |
 |---|---|---|---|---|
@@ -1098,13 +1132,13 @@ Spec §4.1, §4.2 (settings tabs), §4.3, §4.5, §5 #45, U1, U2, U6, U8, §6.1;
 | after F:88 | — | the rules module's import (`assetTagFormatTokens`, `isValidCategoryPrefix`, `settingControlParams`, `settingFieldKey`, `settingKeyOf`, `settingLiveErrors`, `settingSaveErrors`, `type SettingEntry`, `type SettingFieldKey`) | ST-R2 | 3 |
 | after F:98 | — | `import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"` | M-R3 | 4 |
 | F:454–467 | `const assetTagFormatTokens = [ … ]` | gone (imported) | ST-R2 | 5 |
-| after F:509 | — | `LABEL_FIELD_SUFFIXES`, `SETTING_FIELD_IDS` (visual order), `settingFieldId`, and the module-level `validate(entries, prefixRows)` over `settingSaveErrors`, each with its comment | M-R1, M-R2, ST-R4 | 6 |
+| after F:509 | — | `LABEL_FIELD_SUFFIXES`, `SETTING_FIELD_IDS` (visual order), `settingFieldId`, and the module-level `validate(entries, prefixRows, changed)` over `settingSaveErrors` (the controls' own limits on the changed settings only), each with its comment | M-R1, M-R2, ST-R2, ST-R4 | 6 |
 | after F:568 | — | `const fieldErrors = useFieldErrors<SettingFieldKey>()`, `const validationMessage = useValidationMessage()` | M-R3 | 7 |
 | F:578 `setValue` | one line, `setValues` only | also `fieldErrors.clear(settingFieldKey(key))`, with a comment | M-R5, spec §4.3 | 8 |
 | F:633, F:637 | `applyPrefixEditor`, `removePrefixGroup` change the groups | each also clears `settings.asset_tag_category_prefixes` | spec §4.3 | 9, 10 |
 | F:667–669 | `selectedPrefixCategoryIds`, `hasDuplicateCategory`, `hasInvalidPrefix` | gone (ST-R5) | ST-R5 | 11 |
 | F:681–750 | `templateTokens` … `hasInvalidSchedulerSchedule` | the values the page still shows (`publicQrBaseUrl`, `publicQrPreviewValue`, `labelTemplates`, `syncSchedule`, `selectedSyncSchedulePreset`), then `submittedSettings`, `liveErrors`, `settingError(key)`, `prefixGroupsError` | ST-R2, ST-R3 | 12 |
-| F:851–919 `handleSubmit` | 12 `toast.error(…)` + `return`; `nextValues`; `throw` on any refusal | `fieldErrors.setErrors(validate(submittedSettings, activePrefixRows))`, `if (focusFirstError()) return`; the body `{ settings: submittedSettings }` (the same JSON as before); `if (fieldErrors.applyServer(payload) && focusFirstError()) return` before the `throw` | M-R4, spec §4.1 | 13 |
+| F:851–919 `handleSubmit` | 12 `toast.error(…)` + `return`; `nextValues`; `throw` on any refusal | `fieldErrors.setErrors(validate(submittedSettings, activePrefixRows, changedSettings))`, `if (focusFirstError()) return`; the body `{ settings: submittedSettings }` (the same JSON as before); `if (fieldErrors.applyServer(payload) && focusFirstError()) return` before the `throw` | M-R4, spec §4.1 | 13 |
 | after F:781 | — | `fieldOrder` and `focusFirstError` with `idFor` and `reveal` (the tab switch: the setting's tab, the advanced tab for an advanced setting whatever its prefix) | ST-R4, spec §4.2 | 14 |
 | F:976 | `<form onSubmit={handleSubmit} className="space-y-6">` | `noValidate` after `onSubmit` | FIXED 6 | 15 |
 | F:1032, 1041 | the template `Field`; its box | `error={settingError(assetTagFormatTemplateKey)} liveError`; the box gone | ST-R3 | 16, 17 |
@@ -1215,10 +1249,13 @@ test("the settings form shows every setting's error under its field, opens its t
   // The live rules and the save's errors: one line per field, the live one first; invalidPrefix reads the editor's sentence.
   assert.match(form, /const liveErrors = settingLiveErrors\(submittedSettings, activePrefixRows\)/)
   assert.match(form, /const code = liveErrors\[field\] \?\? fieldErrors\.errors\[field\]\n\s+if \(!code\) return undefined\n\s+return code === "invalidPrefix" \? labels\.invalidPrefix : validationMessage\(code, settingControlParams\[key\]\)/)
-  assert.match(form, /^function validate\(entries: readonly SettingEntry\[\], prefixRows: readonly CategoryPrefixRow\[\]\) \{\n {2}return settingSaveErrors\(entries, prefixRows\)\n\}$/m)
+  assert.match(form, /^function validate\(entries: readonly SettingEntry\[\], prefixRows: readonly CategoryPrefixRow\[\], changed: readonly \{ key: string \}\[\]\) \{\n {2}return settingSaveErrors\(entries, prefixRows, new Set\(changed\.map\(\(setting\) => setting\.key\)\)\)\n\}$/m)
+  // The controls' own limits apply to the settings this save changes: changedSettings compares each with its stored
+  // value (open issue 13).
+  assert.match(form, /const changedSettings = settings\.filter\(\n\s+\(setting\) => normalizeSettingValue\(setting\.key, effectiveValues\[setting\.key\]\) !== normalizeSettingValue\(setting\.key, initialValues\[setting\.key\]\)\n\s+\)/)
   // Save: validate, then the first wrong setting's tab opens and its field takes focus; a refusal does the same.
   const submit = form.slice(form.indexOf("  async function handleSubmit("), form.indexOf("  async function handleLdapTest("))
-  assert.match(submit, /fieldErrors\.setErrors\(validate\(submittedSettings, activePrefixRows\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
+  assert.match(submit, /fieldErrors\.setErrors\(validate\(submittedSettings, activePrefixRows, changedSettings\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
   assert.match(submit, /body: JSON\.stringify\(\{ settings: submittedSettings \}\)/)
   assert.match(submit, /if \(!response\.ok\) \{\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(payload\?\.error \?\? labels\.error\)\n\s+\}/)
   assert.match(form, /const fieldOrder = \[\.\.\.Object\.keys\(SETTING_FIELD_IDS\), \.\.\.generalSettings\.map\(\(setting\) => setting\.key\)\]\.map\(settingFieldKey\)/)
@@ -1234,7 +1271,7 @@ test("the settings form shows every setting's error under its field, opens its t
 })
 ```
 
-- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 3 tests, 1 fail: "the settings form shows every setting's error under its field, opens its tab and focuses it, and takes the server's refusals (v-track plan 3 task 3, ST3)" (`AssertionError: The input did not match the regular expression /<form onSubmit=\{handleSubmit\} noValidate className="space-y-6">/`).
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 4 tests, 1 fail: "the settings form shows every setting's error under its field, opens its tab and focuses it, and takes the server's refusals (v-track plan 3 task 3, ST3)" (`AssertionError: The input did not match the regular expression /<form onSubmit=\{handleSubmit\} noValidate className="space-y-6">/`).
 - [ ] **Step 3: Implement** (exact, in this order; the Edit tool keeps the file's CRLF; each old text occurs once at its turn):
 
 - `src/components/admin/system-settings-form.tsx`, edit 1 of 70. Old:
@@ -1432,9 +1469,10 @@ const settingFieldId = (key: string) => SETTING_FIELD_IDS[key] ?? `setting-${key
 
 // noValidate turns the browser's check off, so this restates the controls' min, max and step, every rule the server
 // checks for the settings a save sends (with the server's own codes) and the prefix groups' rule (v-track M-R2, plan 3
-// ST-R2). The rules live in src/lib/system-settings-field-rules.ts, which tests run against the server's schema.
-function validate(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[]) {
-  return settingSaveErrors(entries, prefixRows)
+// ST-R2). The controls' own limits are checked only on the settings the save changes (open issue 13). The rules live in
+// src/lib/system-settings-field-rules.ts, which tests run against the server's schema.
+function validate(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[], changed: readonly { key: string }[]) {
+  return settingSaveErrors(entries, prefixRows, new Set(changed.map((setting) => setting.key)))
 }
 ```
 
@@ -1699,7 +1737,7 @@ function validate(entries: readonly SettingEntry[], prefixRows: readonly Categor
 ```tsx
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    fieldErrors.setErrors(validate(submittedSettings, activePrefixRows))
+    fieldErrors.setErrors(validate(submittedSettings, activePrefixRows, changedSettings))
     if (focusFirstError()) return
 
     setSaving(true)
@@ -2520,7 +2558,7 @@ function matchesCategorySearch(
 ```ts
   // validate() checks every setting sent, the depreciation policy among them, and the save goes to the first wrong field
   // instead of a toast (v-track plan 3 task 3, ST3).
-  assert.match(handleSubmit, /fieldErrors\.setErrors\(validate\(submittedSettings, activePrefixRows\)\)\s+if \(focusFirstError\(\)\) return/)
+  assert.match(handleSubmit, /fieldErrors\.setErrors\(validate\(submittedSettings, activePrefixRows, changedSettings\)\)\s+if \(focusFirstError\(\)\) return/)
   assert.doesNotMatch(handleSubmit, /toast\.error/)
 ```
 
@@ -2536,7 +2574,7 @@ function matchesCategorySearch(
   assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className="space-y-6">\n\s+<TabNav
 ```
 
-- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/settings-depreciation-policy-ui.test.ts tests/settings-tab-persistence-ui.test.ts tests/accessible-dialog.test.ts tests/admin-sweep-ui.test.ts tests/sticky-form-footer-ui.test.ts tests/phase2d-final-ui.test.ts tests/asset-label-print-ui.test.ts tests/field-primitives.test.ts tests/steps-ui.test.ts tests/form-frames-ui.test.ts tests/dark-mode-p.test.ts tests/settings-ldap-role-ui.test.ts tests/system-log-history.test.ts tests/pm-generation-removed.test.ts tests/attachment-preview-dialog-ui.test.ts tests/form-migration-guards.test.ts tests/validation-guards.test.ts tests/list-frame-guards.test.ts tests/visual-foundation-guards.test.ts tests/settings-search.test.ts` (200 tests, 0 fail in the rehearsal); `npm test` (+1; **2295 tests, 2294 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx tests/settings-depreciation-policy-ui.test.ts tests/settings-tab-persistence-ui.test.ts tests/v-track3.test.ts` prints `2601 2601`, `107 107`, `27 27` and `0 261`. `node <tools>/counts.mts .`: toasts outside a catch 22 in 10 files, `<form … noValidate>` 47, `V_FORMS` 43.
+- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/settings-depreciation-policy-ui.test.ts tests/settings-tab-persistence-ui.test.ts tests/accessible-dialog.test.ts tests/admin-sweep-ui.test.ts tests/sticky-form-footer-ui.test.ts tests/phase2d-final-ui.test.ts tests/asset-label-print-ui.test.ts tests/field-primitives.test.ts tests/steps-ui.test.ts tests/form-frames-ui.test.ts tests/dark-mode-p.test.ts tests/settings-ldap-role-ui.test.ts tests/system-log-history.test.ts tests/pm-generation-removed.test.ts tests/attachment-preview-dialog-ui.test.ts tests/form-migration-guards.test.ts tests/validation-guards.test.ts tests/list-frame-guards.test.ts tests/visual-foundation-guards.test.ts tests/settings-search.test.ts` (201 tests, 0 fail in the rehearsal); `npm test` (+1; **2301 tests, 2300 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx tests/settings-depreciation-policy-ui.test.ts tests/settings-tab-persistence-ui.test.ts tests/v-track3.test.ts` prints `2602 2602`, `107 107`, `27 27` and `0 292`. `node <tools>/counts.mts .`: toasts outside a catch 23 in 11 files, `<form … noValidate>` 47, `V_FORMS` 43.
 - [ ] **Step 6: Commit.** `git add src/components/admin/system-settings-form.tsx tests/settings-depreciation-policy-ui.test.ts tests/settings-tab-persistence-ui.test.ts tests/v-track3.test.ts`, then `git commit -m "feat(settings): every setting shows its error under its field, and a save opens the tab of the first wrong one (v-track plan 3 task 3, ST3)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ---
@@ -2555,7 +2593,7 @@ Spec §4.1, §4.4 (a content gate becomes errors on submit), §5 #46, U6, U8; pl
 - Consumes: Task 3's `fieldErrors`, `validationMessage`, `settingFieldKey`; Task 1's `isValidCategoryPrefix`; `required`, `atLeastOne`; `FieldError`.
 - Produces: `prefixErrors`, `PREFIX_EDITOR_FIELD_IDS`, `validatePrefixEditor`, `prefixLiveCode`, `prefixEditorError`, `prefixCategoriesError`; `labels.prefixCategoriesRequired`; the file's `V_FORMS` row (`V_FORMS` 44 = `V_SCOPE`'s 44 files).
 
-**Changes at f1ae1828:**
+**Changes at ede37dd0:**
 
 | Line | Now | Becomes | Rule |
 |---|---|---|---|
@@ -2612,7 +2650,7 @@ test("the prefix editor checks its prefix and its categories on save, its save i
 })
 ```
 
-- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 4 tests, 1 fail: "the prefix editor checks its prefix and its categories on save, its save is enabled, and the form is a V form (v-track plan 3 task 4, ST4)" (`AssertionError: The input did not match the regular expression /const PREFIX_EDITOR_FIELD_IDS = \{\n …/`).
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 5 tests, 1 fail: "the prefix editor checks its prefix and its categories on save, its save is enabled, and the form is a V form (v-track plan 3 task 4, ST4)" (`AssertionError: The input did not match the regular expression /const PREFIX_EDITOR_FIELD_IDS = \{\n …/`).
 - [ ] **Step 3: Implement** (exact, in this order; the Edit tool keeps the files' CRLF):
 
 - `src/components/admin/system-settings-form.tsx`, edit 1 of 12. Old:
@@ -2631,16 +2669,16 @@ import { atLeastOne, required } from "@/lib/validation-rules"
 - `src/components/admin/system-settings-form.tsx`, edit 2 of 12. Old:
 
 ```tsx
-function validate(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[]) {
-  return settingSaveErrors(entries, prefixRows)
+function validate(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[], changed: readonly { key: string }[]) {
+  return settingSaveErrors(entries, prefixRows, new Set(changed.map((setting) => setting.key)))
 }
 ```
 
   New:
 
 ```tsx
-function validate(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[]) {
-  return settingSaveErrors(entries, prefixRows)
+function validate(entries: readonly SettingEntry[], prefixRows: readonly CategoryPrefixRow[], changed: readonly { key: string }[]) {
+  return settingSaveErrors(entries, prefixRows, new Set(changed.map((setting) => setting.key)))
 }
 
 // The prefix editor's fields in visual order, with the id focus moves to (v-track M-R1, plan 3 ST-R7): the prefix, then
@@ -2949,7 +2987,7 @@ function ValidationMessage({ message }: { message: string }) {
 // Required selects
 ```
 
-- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/accessible-dialog.test.ts tests/admin-sweep-ui.test.ts tests/validation-guards.test.ts tests/form-migration-guards.test.ts tests/thai-glossary.test.ts tests/messages-parity.test.ts tests/messages-edit.test.ts tests/phase2d-final-ui.test.ts tests/list-frame-guards.test.ts tests/ui-overlay-guards.test.ts` (110 tests, 0 fail in the rehearsal); `npm test` (+1; **2296 tests, 2295 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx "src/app/[locale]/(dashboard)/admin/settings/page.tsx" messages/th.json messages/en.json tests/accessible-dialog.test.ts tests/admin-sweep-ui.test.ts tests/validation-guards.test.ts tests/v-track3.test.ts` prints `2638 2638`, `366 366`, `4276 4276`, `4276 4276`, `104 104`, `180 180`, `225 225` and `0 294`. `node <tools>/counts.mts .`: 4094 leaf keys per locale, `V_FORMS` 44.
+- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/accessible-dialog.test.ts tests/admin-sweep-ui.test.ts tests/validation-guards.test.ts tests/form-migration-guards.test.ts tests/thai-glossary.test.ts tests/messages-parity.test.ts tests/messages-edit.test.ts tests/phase2d-final-ui.test.ts tests/list-frame-guards.test.ts tests/ui-overlay-guards.test.ts` (111 tests, 0 fail in the rehearsal); `npm test` (+1; **2302 tests, 2301 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx "src/app/[locale]/(dashboard)/admin/settings/page.tsx" messages/th.json messages/en.json tests/accessible-dialog.test.ts tests/admin-sweep-ui.test.ts tests/validation-guards.test.ts tests/v-track3.test.ts` prints `2639 2639`, `366 366`, `4276 4276`, `4276 4276`, `104 104`, `180 180`, `226 226` and `0 325`. `node <tools>/counts.mts .`: 4094 leaf keys per locale, `V_FORMS` 44.
 - [ ] **Step 6: Commit.** `git add src/components/admin/system-settings-form.tsx "src/app/[locale]/(dashboard)/admin/settings/page.tsx" messages/th.json messages/en.json tests/accessible-dialog.test.ts tests/admin-sweep-ui.test.ts tests/validation-guards.test.ts tests/v-track3.test.ts`, then `git commit -m "feat(settings): the prefix editor checks its prefix and its categories on save, and the settings form joins V_FORMS (v-track plan 3 task 4, ST4)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ---
@@ -2967,7 +3005,7 @@ Spec §4.4 (prerequisites keep their gate and always say why), §11 call 2; plan
 - Consumes: `changedCount`, `syncPreview`, `Button`'s `aria-disabled` styles (it stays focusable; its `aria-disabled:` classes look disabled and drop pointer events).
 - Produces: the ids `settings-save-status` and `ldap-sync-no-preview`.
 
-**Changes at f1ae1828:**
+**Changes at ede37dd0:**
 
 | Line | Now | Becomes | Rule |
 |---|---|---|---|
@@ -2999,7 +3037,7 @@ test("the save waits with its reason when nothing changed, and LDAP apply waits 
 })
 ```
 
-- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 5 tests, 1 fail: "the save waits with its reason when nothing changed, and LDAP apply waits for a preview with its reason (v-track plan 3 task 5, ST5)" (`AssertionError: The input did not match the regular expression /<p id="settings-save-status" …/`).
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 6 tests, 1 fail: "the save waits with its reason when nothing changed, and LDAP apply waits for a preview with its reason (v-track plan 3 task 5, ST5)" (`AssertionError: The input did not match the regular expression /<p id="settings-save-status" …/`).
 - [ ] **Step 3: Implement** (exact; the Edit tool keeps the file's CRLF):
 
 - `src/components/admin/system-settings-form.tsx`, edit 1 of 6. Old:
@@ -3120,7 +3158,7 @@ test("the save waits with its reason when nothing changed, and LDAP apply waits 
   assert.match(source, /<Button\n\s+type="submit"\n\s+busy=\{saving\}\n\s+aria-disabled=\{changedCount === 0 \|\| undefined\}\n\s+aria-describedby=\{changedCount === 0 \? "settings-save-status" : undefined\}\n\s+>/)
 ```
 
-- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/sticky-form-footer-ui.test.ts tests/admin-sweep-ui.test.ts tests/form-migration-guards.test.ts tests/validation-guards.test.ts tests/visual-foundation-guards.test.ts` (86 tests, 0 fail in the rehearsal); `npm test` (+1; **2297 tests, 2296 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx tests/sticky-form-footer-ui.test.ts tests/v-track3.test.ts` prints `2650 2650`, `57 57` and `0 310`.
+- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/sticky-form-footer-ui.test.ts tests/admin-sweep-ui.test.ts tests/form-migration-guards.test.ts tests/validation-guards.test.ts tests/visual-foundation-guards.test.ts` (87 tests, 0 fail in the rehearsal); `npm test` (+1; **2303 tests, 2302 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx tests/sticky-form-footer-ui.test.ts tests/v-track3.test.ts` prints `2651 2651`, `57 57` and `0 341`.
 - [ ] **Step 6: Commit.** `git add src/components/admin/system-settings-form.tsx tests/sticky-form-footer-ui.test.ts tests/v-track3.test.ts`, then `git commit -m "feat(settings): the save and the LDAP apply wait with their reason beside them (v-track plan 3 task 5, ST5)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ---
@@ -3137,7 +3175,7 @@ Spec §7.1; plan 2 open issue 4's answer (a message that loses its last reader g
 - Consumes: Tasks 3 and 4 (the last readers of these sentences are gone; `labels.invalidPrefix` and `labels.prefixCategoriesRequired` stay).
 - Produces: 4083 leaf keys per locale.
 
-**Changes at f1ae1828:**
+**Changes at ede37dd0:**
 
 | Where | Lines that go (each a whole line; an exact edit takes the next line as its anchor) | Rule |
 |---|---|---|
@@ -3177,7 +3215,7 @@ test("the eleven group sentences of the old boxes and toasts are gone with their
 })
 ```
 
-- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 6 tests, 1 fail: "the eleven group sentences of the old boxes and toasts are gone with their labels; the prefix sentence stays (v-track plan 3 task 6, ST6)" (`AssertionError: form: duplicateCategory`).
+- [ ] **Step 2: Watch it fail.** `node --test tests/v-track3.test.ts`. Expected: 7 tests, 1 fail: "the eleven group sentences of the old boxes and toasts are gone with their labels; the prefix sentence stays (v-track plan 3 task 6, ST6)" (`AssertionError: form: duplicateCategory`).
 - [ ] **Step 3: Implement** (exact; the Edit tool keeps the files' CRLF):
 
 - `src/components/admin/system-settings-form.tsx`, edit 1 of 9. Old:
@@ -3440,22 +3478,25 @@ test("the eleven group sentences of the old boxes and toasts are gone with their
 
   After Step 3 no other test fails (the eleven keys have no reader left; `tests/phase2d-final-ui.test.ts` checks four other names).
 - [ ] **Step 4: Pin and guard edits.** None.
-- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/phase2d-final-ui.test.ts tests/admin-sweep-ui.test.ts tests/thai-glossary.test.ts tests/messages-parity.test.ts tests/messages-edit.test.ts tests/thai-page-english-copy.test.ts tests/validation-guards.test.ts` (50 tests, 0 fail in the rehearsal); `npm test` (+1; **2298 tests, 2297 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx "src/app/[locale]/(dashboard)/admin/settings/page.tsx" messages/th.json messages/en.json tests/v-track3.test.ts` prints `2639 2639`, `355 355`, `4265 4265`, `4265 4265` and `0 337`. `node <tools>/counts.mts .`: 4083 leaf keys per locale; toasts outside a catch 22 in 10 files; `<form … noValidate>` 47; `V_FORMS` 44; `SELECT_STAR_ONLY` `0 in 0`; FMG `STAR_ONLY` `new Set<string>([])`.
+- [ ] **Step 5: Verify.** `node --test tests/v-track3.test.ts tests/phase2d-final-ui.test.ts tests/admin-sweep-ui.test.ts tests/thai-glossary.test.ts tests/messages-parity.test.ts tests/messages-edit.test.ts tests/thai-page-english-copy.test.ts tests/validation-guards.test.ts` (51 tests, 0 fail in the rehearsal); `npm test` (+1; **2304 tests, 2303 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings). `node <tools>/eol.mjs src/components/admin/system-settings-form.tsx "src/app/[locale]/(dashboard)/admin/settings/page.tsx" messages/th.json messages/en.json tests/v-track3.test.ts` prints `2640 2640`, `355 355`, `4265 4265`, `4265 4265` and `0 368`. `node <tools>/counts.mts .`: 4083 leaf keys per locale; toasts outside a catch 23 in 11 files; `<form … noValidate>` 47; `V_FORMS` 44; `SELECT_STAR_ONLY` `0 in 0`; FMG `STAR_ONLY` `new Set<string>([])`.
 - [ ] **Step 6: Commit.** `git add src/components/admin/system-settings-form.tsx "src/app/[locale]/(dashboard)/admin/settings/page.tsx" messages/th.json messages/en.json tests/v-track3.test.ts`, then `git commit -m "chore(settings): retire the eleven group sentences the old boxes and toasts read (v-track plan 3 task 6, ST6)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ### Rehearsal record (Tasks 1–6)
 
-| Task | `v3-dry` | Step 2 (the new test fails first) | failing after Step 3, before Step 4 | `npm test` after (tests / pass / fail / skipped) | `tests/v-track3.test.ts` |
+Re-based on `ede37dd0`, branch `v3-dry2` (the first rehearsal's `v3-dry` on `f1ae1828` is superseded):
+
+| Task | `v3-dry2` | Step 2 (the new test fails first) | failing after Step 3, before Step 4 | `npm test` after (tests / pass / fail / skipped) | `tests/v-track3.test.ts` |
 |---|---|---|---|---|---|
-| 1 | `e841d208` | 1 test, 1 fail: `ERR_MODULE_NOT_FOUND` for the module | none | 2293 / 2292 / 0 / 1 | `0 126` |
-| 2 | `fe29d530` | the new test: the `ToggleField` input regex | 1 (the builder's JSON `Field` pin) | 2294 / 2293 / 0 / 1 | `0 159` |
-| 3 | `685a7d44` | the new test: the `noValidate` form regex | 3 (the two depreciation pins, the tab row pin) | 2295 / 2294 / 0 / 1 | `0 261` |
-| 4 | `a946f0ed` | the new test: the `PREFIX_EDITOR_FIELD_IDS` regex | 3 (its own `V_FORMS` assertion, the dialog footer pin, the `ValidationMessage` pin) | 2296 / 2295 / 0 / 1 | `0 294` |
-| 5 | `ee8af3e3` | the new test: the `settings-save-status` regex | 1 (the save button pin) | 2297 / 2296 / 0 / 1 | `0 310` |
-| 6 | `d4571bc2` | the new test: `form: duplicateCategory` | none | 2298 / 2297 / 0 / 1 | `0 337` |
+| 1 | `45264512` | 2 tests, 2 fail: `ERR_MODULE_NOT_FOUND` for the module | none | 2299 / 2298 / 0 / 1 | `0 154` |
+| 2 | `d392df36` | the new test: the `ToggleField` input regex | 1 (the builder's JSON `Field` pin) | 2300 / 2299 / 0 / 1 | `0 187` |
+| 3 | `1a6f16ae` | the new test: the `noValidate` form regex | 3 (the two depreciation pins, the tab row pin) | 2301 / 2300 / 0 / 1 | `0 292` |
+| 4 | `2194bd13` | the new test: the `PREFIX_EDITOR_FIELD_IDS` regex | 3 (its own `V_FORMS` assertion, the dialog footer pin, the `ValidationMessage` pin) | 2302 / 2301 / 0 / 1 | `0 325` |
+| 5 | `4096e6a1` | the new test: the `settings-save-status` regex | 1 (the save button pin) | 2303 / 2302 / 0 / 1 | `0 341` |
+| 6 | `804be5d5` | the new test: `form: duplicateCategory` | none | 2304 / 2303 / 0 / 1 | `0 368` |
 
 - Every task: `npx tsc --noEmit` clean; `npm run lint` 0 errors, 146 warnings (all under `.agents/`); every edited CRLF file printed the same number twice; `src/lib/system-settings-field-rules.ts` and `tests/v-track3.test.ts` LF.
-- What the drafting changed before the replay: Task 3's test first counted the editor's box (`<ValidationMessage ` once), which Task 4 removes, so a green Task 3 test would have failed after Task 4: it now forbids any box but the editor's (`/<ValidationMessage message=\{labels\.(?!invalidPrefix\})/`); a fix-up of the draft by `git rebase --autosquash` rewrote the two new LF files as CRLF (restored; the Global Constraints forbid a rebase); a shell `node -e` turned `\b` into a backspace in a test line (rewritten with a file tool; the Global Constraints say so).
+- What the re-based rehearsal changed (open issue 13's answer): Task 1's module (`settingSaveErrors` takes `changedKeys`; the comments of `settingControlCode` and `settingSaveErrors`), Task 1's test (the `Rules` type, `every` in the six `settingSaveErrors` calls, the second test), Task 3's edit 6 (the `validate` wrapper and its comment) and edit 13 (the call with `changedSettings`), two assertions of Task 3's test (the wrapper, the call) and one more (`changedSettings` compares each setting with its stored value), Task 3's depreciation pin (the call), Task 4's edit 2 (its anchor is the new wrapper), Task 8's record test (the new signature) and its template (the base, the counts, the answers). Every other edit, test and anchor is the first rehearsal's, unchanged; `ede37dd0` touches none of the files this plan edits but `tests/validation-guards.test.ts` (one row above `V_FORMS`'s anchor) and the messages (four `asset.*` values).
+- What the drafting changed before the first replay: Task 3's test first counted the editor's box (`<ValidationMessage ` once), which Task 4 removes, so a green Task 3 test would have failed after Task 4: it now forbids any box but the editor's (`/<ValidationMessage message=\{labels\.(?!invalidPrefix\})/`); a fix-up of the draft by `git rebase --autosquash` rewrote the two new LF files as CRLF (restored; the Global Constraints forbid a rebase); a shell `node -e` turned `\b` into a backspace in a test line (rewritten with a file tool; the Global Constraints say so).
 
 ---
 
@@ -3472,11 +3513,11 @@ The shape of plan 2's Task 32. **No request but a GET reaches the server:** the 
 
 **Interfaces:**
 - Consumes: Tasks 1–6 committed; Task 0's baseline, counts and before evidence.
-- Produces: `task-7-findings.md`, which Task 8 turns into the "Dev-app check" and "Still open" bullets of the handoff section and the "ตรวจบนแอป" bullet of the changelog entry, and the user's answers to the open issues (if the user has answered; else "the defaults as written").
+- Produces: `task-7-findings.md`, which Task 8 turns into the "Dev-app check" and "Still open" bullets of the handoff section and the "ตรวจบนแอป" bullet of the changelog entry. The user's answers to the open issues (2026-10-19, the first line of "Open issues") are written in Task 8's template.
 
-- [ ] **Step 1: Verify.** Delete `.next/cache/turbopack` first (a stale Turbopack cache shipped old CSS before, wiki 47), then `npm run verify` (lint, tests, build). Expected: lint 0 errors and 146 warnings (all under `.agents/`); tests **2298 tests, 2297 pass, 0 fail, 1 skipped** (the replay's Task 6); build **60/60 pages** (plan 2's verify; plan 3 adds no route, so another page count is a finding). Then `npx tsc --noEmit` (clean), `git status --short` (only the untracked items of the Global Constraints), and `node <tools>/eol.mjs src/lib/system-settings-field-rules.ts tests/v-track3.test.ts` (`0 <lines>` each).
-- [ ] **Step 2: The built CSS.** In `.next/static/css/*.css`, the rules the new error states use: `aria-invalid:border-danger`, `aria-invalid:ring-danger`, `aria-invalid:shadow-field-error` and `aria-invalid:focus:border-ring` (`src/components/ui/field-variants.ts`; every `Field` control takes them), `text-danger` (`FieldError`), and the Button's `aria-disabled:` styles (the two gates). Plan 3 adds no new utility class: every class token of the `className` strings it adds (`git diff f1ae1828 HEAD -- src`) was already in use at `f1ae1828` (the rehearsal checked: `grid min-w-0 content-start gap-1.5`, `space-y-4`, the grid of the transfer lists). A missing rule is a finding to fix before Step 4.
-- [ ] **Step 3: Counting evidence after.** `node <tools>/counts.mts .` and the commands of Task 0 Step 4 again, into `task-7-counts/`, compared with `task-0-counts/`: toasts outside a catch in `src` 22 in 10 files (34 in 11); `<form … noValidate>` 47 (46); 4083 leaf keys per locale (4093); `V_FORMS` 44 (43); `SELECT_STAR_ONLY` `0 in 0`; FMG `STAR_ONLY` `new Set<string>([])`; in the form `grep -c "toast.error("` 0 (12), `grep -c "ValidationMessage"` 0 (13 boxes and the function), `grep -c "disabled={changedCount === 0}"` 0, `grep -c "canApplyPrefixEditor"` 0. `git grep -nE "duplicateCategory|invalidFormatTemplate|invalidPublicQrBaseUrl|invalidLabelTemplate|invalidLabelSize|invalidOperationDocumentTemplate|invalidNotificationRule|invalidRetentionPolicy|invalidAccountingDepreciationPolicy|invalidWorkflowApproval|invalidSchedulerSchedule" -- src messages` prints nothing (`category-form` matches `duplicateCategoryCustomField`: use `-w`).
+- [ ] **Step 1: Verify.** Delete `.next/cache/turbopack` first (a stale Turbopack cache shipped old CSS before, wiki 47), then `npm run verify` (lint, tests, build). Expected: lint 0 errors and 146 warnings (all under `.agents/`); tests **2304 tests, 2303 pass, 0 fail, 1 skipped** (the replay's Task 6); build **60/60 pages** (plan 2's verify; plan 3 adds no route, so another page count is a finding). Then `npx tsc --noEmit` (clean), `git status --short` (only the untracked items of the Global Constraints), and `node <tools>/eol.mjs src/lib/system-settings-field-rules.ts tests/v-track3.test.ts` (`0 <lines>` each).
+- [ ] **Step 2: The built CSS.** In `.next/static/css/*.css`, the rules the new error states use: `aria-invalid:border-danger`, `aria-invalid:ring-danger`, `aria-invalid:shadow-field-error` and `aria-invalid:focus:border-ring` (`src/components/ui/field-variants.ts`; every `Field` control takes them), `text-danger` (`FieldError`), and the Button's `aria-disabled:` styles (the two gates). Plan 3 adds no new utility class: every class token of the `className` strings it adds (`git diff ede37dd0 HEAD -- src`) was already in use at `ede37dd0` (the rehearsal checked: `grid min-w-0 content-start gap-1.5`, `space-y-4`, the grid of the transfer lists). A missing rule is a finding to fix before Step 4.
+- [ ] **Step 3: Counting evidence after.** `node <tools>/counts.mts .` and the commands of Task 0 Step 4 again, into `task-7-counts/`, compared with `task-0-counts/`: toasts outside a catch in `src` 23 in 11 files (35 in 12); `NON_VALIDATION_TOASTS` 5 rows (5); `<form … noValidate>` 47 (46); 4083 leaf keys per locale (4093); `V_FORMS` 44 (43); `SELECT_STAR_ONLY` `0 in 0`; FMG `STAR_ONLY` `new Set<string>([])`; in the form `grep -c "toast.error("` 0 (12), `grep -c "ValidationMessage"` 0 (13 boxes and the function), `grep -c "disabled={changedCount === 0}"` 0, `grep -c "canApplyPrefixEditor"` 0. `git grep -nE "duplicateCategory|invalidFormatTemplate|invalidPublicQrBaseUrl|invalidLabelTemplate|invalidLabelSize|invalidOperationDocumentTemplate|invalidNotificationRule|invalidRetentionPolicy|invalidAccountingDepreciationPolicy|invalidWorkflowApproval|invalidSchedulerSchedule" -- src messages` prints nothing (`category-form` matches `duplicateCategoryCustomField`: use `-w`).
 - [ ] **Step 4: Production server.**
   - Add a launch configuration `name: "asset-v3-start-3110"`, `runtimeExecutable: "node"`, `runtimeArgs: ["node_modules/next/dist/bin/next", "start", "-p", "3110"]`, `port: 3110`, `autoPort: false` (another free port if 3110 is taken; say which in the findings), and start it with `preview_start`.
   - Confirm the dev database as in Task 0 Step 5 without opening `.env` (`/th/admin/readiness`); if anything suggests the production database, stop. Every page opens in the Playwright browser, never in the Browser pane `preview_start` opens (Task 0 Step 5). Log in with the seed admin of `prisma/seed.ts` (a `system_admin`); do not echo the password. The login is the one non-GET that reaches the server (Task 0 Step 5); never sign out during the task.
@@ -3493,16 +3534,36 @@ The shape of plan 2's Task 32. **No request but a GET reaches the server:** the 
   - **Save-only rules (U6):** the running digits 13 and 2.5, the LDAP deactivation limit −1, a label width of 40.5 and a margin of 0.3: no error while typing; on save each under its field ("ต้องอยู่ระหว่าง 1 ถึง 12", "ต้องไม่น้อยกว่า 0", "กรุณากรอกเป็นตัวเลข"), the first focused.
   - **Server refusals (stand-ins):** 400 `{ "error": "Invalid request data", "code": "VALIDATION_FAILED", "fieldErrors": { "settings.ldap_sync_mode": "schedulerModeInvalid" } }` saved from the asset-numbering tab → the LDAP sync tab, the mode select focused, "โหมดตั้งเวลาไม่ถูกต้อง" under it; `{ …, "fieldErrors": { "settings.workflow_approval_disposal_required": "approvalToggleInvalid" } }` → the switch line's error, the checkbox focused; `{ …, "fieldErrors": { "settings.asset_label_compact_asset_name_enabled": "labelToggleInvalid" } }` → the group's error, its first choice focused; 400 `{ "error": "Unknown settings: x" }` and 403 `{ "error": "Forbidden: only system_admin can change ldap_url" }` → today's toast once, the form as it was.
   - **Clearing:** changing a field with a save's or a refusal's error removes that error only; a new save recomputes.
-  - **A stored value a control's limit refuses** (only if Task 0's baseline lists one): a save of an unrelated change stops on that field, on its tab, with its error (open issue 13's default); record it in the findings for the user.
+  - **A stored value only a control's own limit refuses (open issue 13's answer), with stand-ins only.** Nothing is written to the dev data: the stored value is a stand-in in the page's own GET. Open a fresh page in the routed context, then run (it adds the task's one other route, on this page only, for the document GET of the settings page; `page.route` comes before the context's handler, and every other request falls back to it):
+
+```js
+async (page) => {
+  await page.route("**/th/admin/settings**", async (route) => {
+    const request = route.request()
+    if (request.method() !== "GET" || request.resourceType() !== "document") return route.fallback()
+    const response = await route.fetch()
+    const html = await response.text()
+    const pattern = /(\\"key\\":\\"asset_tag_running_digits\\",\\"value\\":\\")[^\\"]*(\\")/g
+    page.context().vTrack.log.push(`GET ${new URL(request.url()).pathname} stood in: ${(html.match(pattern) ?? []).length} match`)
+    return route.fulfill({ response, body: html.replace(pattern, (_, before, after) => `${before}13${after}`) })
+  })
+  return "standing in"
+}
+```
+
+    - Open `/th/admin/settings?tab=organization` (the running digits are not on its server markup, so the page takes the stood-in 13 from its props). The log must end with `… stood in: 1 match`; any other count: stop this check, `page.unroute("**/th/admin/settings**")`, and record it as a finding of the check, not of the code.
+    - The asset-numbering tab shows running digits 13 with no error (it has no live rule) and the change count 0. Change the company name on the organization tab and save: the log ends with `PUT /api/admin/settings fulfilled 400` (the default stand-in), today's toast shows once, no error under the running digits, the page stays on the organization tab.
+    - Set the running digits to 14 and save: the asset-numbering tab opens, the field is focused with "ต้องอยู่ระหว่าง 1 ถึง 12" under it, and no new `PUT` is in the log. Set it back to 13 (its stored value: the change review lists the company name only) and save: the `PUT` goes out again (`fulfilled 400`).
+    - Then `async (page) => page.unroute("**/th/admin/settings**")`, reload, and go on with the dev data. If Task 0's baseline lists a stored value that breaks a limit, check the same two halves on it without a stand-in. Record all of it in the findings.
   - **The prefix editor:** "เพิ่มคำนำหน้ารหัส" opens with no error; save → "กรุณาระบุข้อมูลนี้" under the prefix, focus in it; one letter typed → its rule at once; a valid prefix and no category → the categories' sentence under the lists, focus on the search of the available categories; inside the dialog at 375 too; cancel and reopen → no error; a valid group saves into the table (no request). The prefix-groups error under the table can be seen only with a stored bad prefix: skip it unless the dev data holds one ("covered by Task 3's test").
   - **The gates:** with nothing changed, the save is focusable, looks disabled, and its accessible description is "ยังไม่มีรายการที่เปลี่ยนแปลง"; Enter in a field sends nothing. The LDAP sync apply before a preview: focusable, described by "ยังไม่มีผลตัวอย่าง …"; Enter sends nothing (do not press preview).
-- [ ] **Step 7: The shared parts.** One announcement per submit (F-R6) in the accessibility tree: the focused field's name and description hold the error, and no other region announces it, with one known exception (open issue 14): a field with `liveError` that gets its error from the save or the server, not from its live rule (the editor's empty prefix; a label width of 40.5 or a margin of 0.3 saved on the label tab; a refusal naming a live setting), also puts that error in its polite region. Record what the tree shows for the empty prefix and for a width of 40.5 in the findings; it is not a finding to fix unless the user answers open issue 14 otherwise. Forced colors and reduced motion on the settings page and the prefix editor: the error text, the field border and the gates' look show; focus scrolls without animation.
+- [ ] **Step 7: The shared parts.** One announcement per submit (F-R6) in the accessibility tree: the focused field's name and description hold the error, and no other region announces it, with one known exception (open issue 14): a field with `liveError` that gets its error from the save or the server, not from its live rule (the editor's empty prefix; a label width of 40.5 or a margin of 0.3 saved on the label tab; a refusal naming a live setting), also puts that error in its polite region. Record what the tree shows for the empty prefix and for a width of 40.5 in the findings; it is not a finding to fix: the user handed it to the final plan of the track (open issue 14's answer). Forced colors and reduced motion on the settings page and the prefix editor: the error text, the field border and the gates' look show; focus scrolls without animation.
 - [ ] **Step 8: Findings.** Write `task-7-findings.md` with these parts (Task 8 copies them):
   - **Fixes made:** commit and one line each, or "none".
   - **Checked and passed:** what, where, in which themes and widths, with results; the verify numbers of Step 1; the built CSS of Step 2; the counts of Step 3; every non-GET of Step 5 with "fulfilled <status>" or "aborted" (none continued).
   - **Differences from Task 0's before evidence:** each mapped to a decision of this plan (any other is a finding to fix).
   - **Found but not caused by this plan.**
-  - **For the user:** the open issues on screenshots (1 the per-field sentences, 3 the scheduler's error on the LDAP sync tab, 6 the editor's empty prefix, 10 the two gates), what Step 6 and Step 7 saw for 13 (a stored value a control's limit refuses, if the dev data holds one) and 14 (the second reading of a save's error on a live field), and the user's answers if given.
+  - **For the user:** the open issues on screenshots (1 the per-field sentences, 3 the scheduler's error on the LDAP sync tab, 6 the editor's empty prefix, 10 the two gates), what Step 6 saw for 13 (the answer: a stored value only a control's limit refuses stops a save only when the save changes it; the stand-in check and the dev data's values) and Step 7 for 14 (the second reading of a save's error on a live field, handed to the final plan).
   - **Still needs a person:** NVDA on the settings page (a save that switches tabs is read once) and the prefix editor; real phones (the tab row and the save bar with the focused field); an English pass of the new message.
 - [ ] **Step 9: Clean up.** Stop your server, remove your launch configuration and every helper you put under the repo. `git status --short` shows only the untracked items of the Global Constraints. No commit in this task unless Step 8 lists fixes (each its own task).
 
@@ -3544,7 +3605,7 @@ test("the handoff and the changelog record V track plan 3 in place, with every m
   const record = handoff.slice(section, handoff.indexOf("\n## Open Go-Live Decisions"))
   assert.match(record, /\n- Dev-app check: checked \(Task 7\) on \S/, "the dev-app check bullet")
   assert.ok(record.includes("`src/lib/system-settings-field-rules.ts`"), "the rules module")
-  assert.match(read("src/lib/system-settings-field-rules.ts"), /\nexport function settingSaveErrors\(entries: readonly SettingEntry\[\], prefixRows: readonly CategoryPrefixRow\[\]\) \{\n/)
+  assert.match(read("src/lib/system-settings-field-rules.ts"), /\nexport function settingSaveErrors\(entries: readonly SettingEntry\[\], prefixRows: readonly CategoryPrefixRow\[\], changedKeys: ReadonlySet<string>\) \{\n/)
   assert.ok(record.includes("`V_FORMS` 43 → 44 (= `V_SCOPE`)"), "the V forms")
   assert.ok(read("tests/validation-guards.test.ts").includes("  `${C}admin/system-settings-form.tsx`,\n]\n"), "the settings form's V_FORMS row")
   const changelog = read("docs/99_CHANGELOG.md")
@@ -3577,17 +3638,17 @@ test("the handoff and the changelog record V track plan 3 in place, with every m
 ```md
 ## V Track Plan 3 (<today>)
 
-- Branch `feat/v-track-3` in the main checkout (from `master` `f1ae1828`: V track plans 1 and 2 merged and pushed, not deployed). Spec `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` (the user's decisions U1–U9) · plan `docs/superpowers/plans/2026-10-19-v-track-plan3.md` (plan 3 of the track: the system settings form and its prefix editor, spec §5 #45 and #46).
+- Branch `feat/v-track-3` in the main checkout (from `master` `ede37dd0`: V track plans 1 and 2 merged and pushed at `f1ae1828`, the asset partial-save fix on top; not deployed). Spec `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` (the user's decisions U1–U9) · plan `docs/superpowers/plans/2026-10-19-v-track-plan3.md` (plan 3 of the track: the system settings form and its prefix editor, spec §5 #45 and #46).
 - No migration, database write, schema, dependency or server change: `src/app/api/admin/settings/route.ts` and `src/lib/validations/system-settings.ts` are as plan 1 left them. Messages (through `scripts/messages-edit.mjs`): +1 key (`systemSettingsPage.prefixCategoriesRequired`) and −11 (`systemSettingsPage.duplicateCategory`, `invalidFormatTemplate`, `invalidPublicQrBaseUrl`, `invalidLabelTemplate`, `invalidLabelSize`, `invalidOperationDocumentTemplate`, `invalidNotificationRule`, `invalidRetentionPolicy`, `invalidAccountingDepreciationPolicy`, `invalidWorkflowApproval`, `invalidSchedulerSchedule`): 4093 → 4083 keys.
-- **The rules (Task 1):** `src/lib/system-settings-field-rules.ts` holds the settings form's rules setting by setting: `settingRuleCode` answers the code the server's `systemSettingsUpdateSchema` answers for the same setting (its api-error catalog key), `settingControlCode` restates what the controls allowed before `noValidate` (running digits 1–12, the LDAP deactivation limit ≥ 0, whole numbers, a label's margin and gap in steps of 0.5), `settingSaveErrors` and `settingLiveErrors` add the 5000-character limit and the prefix groups. `tests/v-track3.test.ts` runs it and the schema on the same values. `getSystemSettingsTabForKey("accounting_depreciation_policy")` now answers the organization tab (it answered "advanced"; the change review's link for that setting opens the right tab too).
+- **The rules (Task 1):** `src/lib/system-settings-field-rules.ts` holds the settings form's rules setting by setting: `settingRuleCode` answers the code the server's `systemSettingsUpdateSchema` answers for the same setting (its api-error catalog key), `settingControlCode` restates what the controls allowed before `noValidate` (running digits 1–12, the LDAP deactivation limit ≥ 0, whole numbers, a label's margin and gap in steps of 0.5), `settingSaveErrors` and `settingLiveErrors` add the 5000-character limit and the prefix groups; a save checks the controls' own limits only on the settings it changes (open issue 13), so a stored value only they refuse does not stop a save of another setting. `tests/v-track3.test.ts` runs it and the schema on the same values. `getSystemSettingsTabForKey("accounting_depreciation_policy")` now answers the organization tab (it answered "advanced"; the change review's link for that setting opens the right tab too).
 - **The form (Tasks 2, 3):** `<form onSubmit={handleSubmit} noValidate …>`, a module-level `validate()`, `useFieldErrors` keyed `settings.<key>` like the route's `fieldErrors`. Every setting the form shows has its error under its field (`SETTING_FIELD_IDS`, in visual order; the advanced settings as `setting-<key>`); a save goes to the first wrong one, switching to its tab first and opening a closed `<details>` (the advanced table, the depreciation JSON); a refusal of the server that names a setting lands the same way, and any other keeps today's toast. The 12 validation toasts went, and the 12 danger boxes of the page became each setting's error under its field, still shown while typing (`Field liveError`, spec U8); the scheduler's error now sits under the custom schedule on the LDAP sync tab, not on the automation tab. The approval switches, the label name choice (now a `FieldGroup`), each tape's nine label fields and the depreciation JSON (whose closed section opens while the JSON is invalid) can show their error.
 - **The prefix editor (Task 4):** its save is no longer disabled: it checks the prefix (required, 2–10 letters A-Z or digits) and the categories (at least one, `systemSettingsPage.prefixCategoriesRequired`) and focuses the first wrong one inside the dialog; the prefix's rule shows while typing once a prefix is typed (it no longer shows on an empty prefix as the editor opens).
 - **Gates (Task 5):** the save while nothing changed and the LDAP sync apply before a preview are `aria-disabled` (focusable), tied by `aria-describedby` to the line that says why (`settings-save-status`, `ldap-sync-no-preview`); their handlers return first.
-- **Guards and pins:** `V_FORMS` 43 → 44 (= `V_SCOPE`); toasts outside a catch in `src` 34 in 11 files → 22 in 10; `<form … noValidate>` in `src` 46 → 47; no `EXEMPT`, `V_SCOPE`, `NOT_IN_SCOPE`, `NON_VALIDATION_TOASTS` or FMG row added. The pins that encoded the old behaviour were rewritten in the commit that changed it.
-- **Tests:** new file `tests/v-track3.test.ts` (6); one test added to `tests/v-track-docs.test.ts`; 2292 → <N> tests.
+- **Guards and pins:** `V_FORMS` 43 → 44 (= `V_SCOPE`); toasts outside a catch in `src` 35 in 12 files → 23 in 11; `<form … noValidate>` in `src` 46 → 47; no `EXEMPT`, `V_SCOPE`, `NOT_IN_SCOPE`, `NON_VALIDATION_TOASTS` or FMG row added. The pins that encoded the old behaviour were rewritten in the commit that changed it.
+- **Tests:** new file `tests/v-track3.test.ts` (7); one test added to `tests/v-track-docs.test.ts`; 2297 → <N> tests.
 - **Rulings of this plan:** ST-R1–ST-R11.
-- **The user's answers to the open issues:** <from open-issues>
-- **Handed on:** the final plan of the track (`DESIGN.md`'s form-error rule, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `.impeccable/design.json`, one shared whole-number rule, the label print queue's two print buttons); then the E2E suite and the one deploy (wiki 27).
+- **The user's answers to the open issues:** 2026-10-19, "ตามที่แนะนำ" (every recommendation): 1–11 as written; 12 done (the asset partial-save fix merged first, `ede37dd0`, and this plan was re-based on it); 13 the controls' own limits are checked only on the settings a save changes, so a stored value only they refuse does not stop a save of another setting (Tasks 1 and 3); 14 handed to the final plan of the track (a `Field` change so a save's error on a live field is read once).
+- **Handed on:** the final plan of the track (`DESIGN.md`'s form-error rule, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `.impeccable/design.json`, one shared whole-number rule, the label print queue's two print buttons, a `Field` change so a save's error on a live field is read once (open issue 14)); then the E2E suite and the one deploy (wiki 27).
 - Dev-app check: checked (Task 7) on <from task-findings>
 - Before/after screenshots: `.superpowers/sdd/screenshots/v-track-plan3/before/` and `after/` (git-ignored, on the development machine only).
 - Still open, for a person before the one deploy: <from task-findings>, together with the open checks of the sections above.
@@ -3607,17 +3668,17 @@ test("the handoff and the changelog record V track plan 3 in place, with every m
 ```md
 ### ข้อความผิดพลาดใต้ช่องกรอก รอบ 3 (งาน V plan 3)
 
-Branch `feat/v-track-3` (จาก `master` `f1ae1828`) · design `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` · plan `docs/superpowers/plans/2026-10-19-v-track-plan3.md` (plan ที่ 3 ของงาน V)
+Branch `feat/v-track-3` (จาก `master` `ede37dd0`) · design `docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md` · plan `docs/superpowers/plans/2026-10-19-v-track-plan3.md` (plan ที่ 3 ของงาน V)
 
 - **ขอบเขต:** ฟอร์มตั้งค่าระบบ (11 แท็บ) และหน้าต่างคำนำหน้ารหัสตามหมวดหมู่ (spec ข้อ 5 #45 และ #46) · ไม่แตะฐานข้อมูล ไม่มี migration ไม่เพิ่ม dependency ไม่แก้ server · ข้อความ: เพิ่ม 1 คีย์ ลบ 11 คีย์ ผ่าน `scripts/messages-edit.mjs` (4093 → 4083)
-- **กฎชุดเดียว:** `src/lib/system-settings-field-rules.ts` ตรวจค่าตั้งค่าทีละรายการด้วยรหัสเดียวกับที่ server ตอบ จึงแสดงข้อความเดียวกันใต้ช่อง ไม่ว่าหน้าจอหรือ server จะเป็นฝ่ายพบ · ตรวจเพิ่มเฉพาะขอบเขตของช่องเดิม (จำนวนหลักเลขลำดับ 1–12 จำนวนปิดใช้งานสูงสุดต่อรอบอัตโนมัติไม่ต่ำกว่า 0 เลขจำนวนเต็ม และระยะขอบ / ช่องว่างของป้ายทีละ 0.5) · test เทียบกับ schema ของ server ด้วยค่าชุดเดียวกัน
+- **กฎชุดเดียว:** `src/lib/system-settings-field-rules.ts` ตรวจค่าตั้งค่าทีละรายการด้วยรหัสเดียวกับที่ server ตอบ จึงแสดงข้อความเดียวกันใต้ช่อง ไม่ว่าหน้าจอหรือ server จะเป็นฝ่ายพบ · ตรวจเพิ่มเฉพาะขอบเขตของช่องเดิม (จำนวนหลักเลขลำดับ 1–12 จำนวนปิดใช้งานสูงสุดต่อรอบอัตโนมัติไม่ต่ำกว่า 0 เลขจำนวนเต็ม และระยะขอบ / ช่องว่างของป้ายทีละ 0.5) และตรวจเฉพาะค่าที่เปลี่ยนในการบันทึกครั้งนั้น ค่าที่บันทึกไว้แล้วจึงไม่ขวางการบันทึกค่าอื่น · test เทียบกับ schema ของ server ด้วยค่าชุดเดียวกัน
 - **หน้าจอ:** ทุกช่องแสดงข้อความผิดพลาดใต้ช่องของตัวเอง ไม่ใช้ toast แจ้งการกรอกผิด (เอาออก 12 จุด) ไม่มีกล่องเตือนของเบราว์เซอร์ · กดบันทึกแล้วสลับไปแท็บของช่องแรกที่ผิด เปิดส่วนที่ซ่อนอยู่ (รายการขั้นสูง ข้อมูลขั้นสูง JSON ของนโยบายค่าเสื่อมราคา) แล้วไปที่ช่องนั้น · server ปฏิเสธช่องไหนก็แสดงใต้ช่องนั้นบนแท็บของช่อง ข้อความที่ไม่ใช่ของช่องใดยังแสดงแบบเดิม · กล่องแดง 12 กล่องที่ขึ้นระหว่างพิมพ์ย้ายมาอยู่ใต้ช่องของตัวเองและยังขึ้นระหว่างพิมพ์เหมือนเดิม · ข้อผิดพลาดของรอบเวลาซิงก์อยู่ใต้ช่องรอบเวลาบนแท็บซิงก์ LDAP ไม่อยู่บนแท็บงานอัตโนมัติแล้ว
 - **คำนำหน้ารหัส:** ปุ่มบันทึกในหน้าต่างกดได้เสมอ และบอกใต้ช่องว่าคำนำหน้ารหัสไม่ถูกต้องหรือยังไม่ได้เลือกหมวดหมู่ · ข้อความเรื่องรูปแบบคำนำหน้ารหัสไม่ขึ้นตั้งแต่เปิดหน้าต่างแล้ว ขึ้นเมื่อเริ่มพิมพ์
 - **ปุ่มที่รอ:** ปุ่มบันทึกเมื่อยังไม่มีรายการที่เปลี่ยนแปลง และปุ่มซิงก์ทันทีเมื่อยังไม่ได้ดูตัวอย่าง กดโฟกัสได้และบอกเหตุผลที่เห็นบนหน้าจอ
-- **test:** ไฟล์ใหม่ `tests/v-track3.test.ts` (6) · เพิ่ม 1 test ใน `tests/v-track-docs.test.ts` · `V_FORMS` 43 → 44 ไฟล์ (ครบทุกฟอร์มของ `V_SCOPE`) · test 2292 → <N>
+- **test:** ไฟล์ใหม่ `tests/v-track3.test.ts` (7) · เพิ่ม 1 test ใน `tests/v-track-docs.test.ts` · `V_FORMS` 43 → 44 ไฟล์ (ครบทุกฟอร์มของ `V_SCOPE`) · test 2297 → <N>
 - **deploy:** ไม่ deploy · deploy ครั้งเดียวหลังงาน V ครบทุก plan และชุด E2E
 - **ตรวจบนแอป:** (Task 7) ตรวจบน <จาก task-findings>
-- คำตอบของผู้ใช้ต่อข้อที่ค้างของ plan: <จาก open-issues>
+- คำตอบของผู้ใช้ต่อข้อที่ค้างของ plan: 2026-10-19 ผู้ใช้ตอบ "ตามที่แนะนำ" ทุกข้อ: ข้อ 1–11 ตามที่เขียนไว้ · ข้อ 12 เสร็จแล้ว (งานแก้การบันทึกทรัพย์สินซ้ำ merge ก่อนที่ `ede37dd0` และ plan นี้ปรับฐานตาม) · ข้อ 13 ตรวจขอบเขตของช่องเองเฉพาะค่าที่เปลี่ยนในการบันทึกครั้งนั้น ค่าที่บันทึกไว้แล้วจึงไม่ขวางการบันทึกค่าอื่น (Task 1 และ 3) · ข้อ 14 ส่งต่อให้ plan สุดท้ายของงาน V (แก้ `Field` ให้ข้อความผิดพลาดจากการบันทึกบนช่องที่ตรวจระหว่างพิมพ์ถูกอ่านครั้งเดียว)
 - ภาพก่อน/หลัง: `.superpowers/sdd/screenshots/v-track-plan3/before/` และ `after/` (git ignore อยู่บนเครื่องพัฒนา)
 - ต่อไป: merge แล้วทำ plan สุดท้ายของงาน V แล้วชุด E2E และ deploy ครั้งเดียว
 
@@ -3627,11 +3688,11 @@ Branch `feat/v-track-3` (จาก `master` `f1ae1828`) · design `docs/superpow
   - **C1b, only if `<today>` is not 2026-10-19, instead of the changelog edit above:** replace the line `## 2026-10-19` (it occurs once) with: `## <today>`, a blank line, C1's new text without its last line (from `### ข้อความผิดพลาดใต้ช่องกรอก รอบ 3 (งาน V plan 3)` to its `- ต่อไป:` bullet), a blank line, `---`, a blank line and `## 2026-10-19`.
   - Fill the markers:
     - `<today>`: `YYYY-MM-DD`.
-    - `<N>` (two places): the test count after this commit, Task 7's verify count + 1 for this task's test: **2299** when Task 7 made no fix; the same number Task 9's verify line records.
+    - `<N>` (two places): the test count after this commit, Task 7's verify count + 1 for this task's test: **2305** when Task 7 made no fix; the same number Task 9's verify line records.
     - `<from task-findings>` (two places in the handoff) with the findings file in English, in the shape of plan 2's "Dev-app check" bullet: after `checked (Task 7) on `, the server, port and commit, the build, what passed with numbers, every non-GET request of Task 7 Step 5 with "fulfilled" or "aborted" (none reached the server), the differences from Task 0 and their decisions, the fixes or "no fixes"; in the "Still open" bullet the "Still needs a person" and "For the user" parts as sub-bullets (two spaces, `- `).
     - `<จาก task-findings>` with the same in Thai after `(Task 7) ตรวจบน `, glossary words.
-    - `<from open-issues>` and `<จาก open-issues>`: the user's answers to this plan's open issues, issue by issue, as plan 2's section words them; if the user has not answered, "not answered yet: the tasks wrote the defaults of the plan's Open issues" / "ยังไม่ได้ตอบ: งานทำตามค่าตั้งต้นของข้อที่ค้างใน plan".
-  - Never invent findings or answers: if the findings file does not exist, stop (the rehearsal wrote one placeholder sentence in each marker; the marker test passes either way, so the test does not catch this).
+    - The user's answers (2026-10-19) are already in the template, in both files: no marker for them is left to fill.
+  - Never invent findings or answers: if the findings file does not exist, stop (the rehearsal wrote one placeholder sentence in each findings marker; the marker test passes either way, so the test does not catch this).
   - After Step 3 and before Step 4, `node --test tests/v-track-docs.test.ts` fails exactly one test: plan 2's, with "the plan 2 entry is the first one under the newest date".
 - [ ] **Step 4: Pin edit (P1)** (exact; the old string occurs once: the appended test's message says "the plan 3 entry …"):
 
@@ -3653,7 +3714,7 @@ Branch `feat/v-track-3` (จาก `master` `f1ae1828`) · design `docs/superpow
   - `grep -n "<today>\|<N>\|<from \|<จาก " DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md` → nothing.
   - `node <tools>/eol.mjs DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md tests/v-track-docs.test.ts` → equal numbers for each (all three stay CRLF): `1160 1160`, `1962 1962` and `86 86` with C1 and one-sentence findings (more when the findings add sub-bullets).
   - `git diff --numstat` → only the three files: `18 0 DEVELOPER_HANDOFF.md`, `16 0 docs/99_CHANGELOG.md`, `28 1 tests/v-track-docs.test.ts` with C1 (more lines only from the findings' sub-bullets).
-  - `npm test` (+1; **2299 tests, 2298 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings, all under `.agents/`).
+  - `npm test` (+1; **2305 tests, 2304 pass, 0 fail, 1 skipped**); `npx tsc --noEmit`; `npm run lint` (0 errors, 146 warnings, all under `.agents/`).
 - [ ] **Step 6: Commit.** `git add DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md tests/v-track-docs.test.ts`, then `git commit -m "docs(forms): V track plan 3 in the handoff and the changelog (v-track plan 3 task 8)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`.
 
 ---
@@ -3666,7 +3727,7 @@ Branch `feat/v-track-3` (จาก `master` `f1ae1828`) · design `docs/superpow
 - Modify (auto-memory `C:\Users\Eltross\.claude\projects\D--Antigravity-asset-system\memory\`): `v-track.md` and `MEMORY.md`'s line for it.
 
 - [ ] **Step 1: Verify.**
-  - `npm run verify`: record the test count (**2299 tests** when Task 7 made no fix) and the build's page count (60/60 expected; record what verify prints).
+  - `npm run verify`: record the test count (**2305 tests** when Task 7 made no fix) and the build's page count (60/60 expected; record what verify prints).
   - Add ``- `npm run verify` ผ่าน (test N · ผ่าน N · ข้าม 1 · build X/X หน้า)`` to the plan's changelog entry, directly above its `- **ตรวจบนแอป:** (Task 7) ตรวจบน ` bullet (numbers with thousands commas, as plan 2's entry writes them): old string `- **ตรวจบนแอป:** (Task 7) ตรวจบน `, new string the verify line, a line break and the old string.
   - Add ``- Verification: `npm run verify` passes (tests N · pass N · skipped 1 · build X/X pages).`` to the handoff section, directly above `- Dev-app check: checked (Task 7) on `, the same way.
   - Both old strings occur once in their file (plans 1 and 2 say `(Task 30)` and `(Task 32)`). Both files are CRLF: insert with the Edit tool. `node <tools>/eol.mjs DEVELOPER_HANDOFF.md docs/99_CHANGELOG.md` → equal numbers for each, one more than after Task 8; `git diff --numstat` → `1 0` for each.
@@ -3674,11 +3735,11 @@ Branch `feat/v-track-3` (จาก `master` `f1ae1828`) · design `docs/superpow
 - [ ] **Step 2: Wiki.** Read `AssetSystem/_schema/ams-wiki-schema.md` first, then edit:
   - `ams-status.md`: the row that holds the V track (`grep -n "งาน V" AssetSystem/ams-status.md`): plan 3 built on `feat/v-track-3` with the verify numbers, not merged, not deployed; next the final plan. Fix any sentence the row now contradicts.
   - `ams-log.md`: an entry at the top of `## <today>` (a new date heading if `<today>` has none).
-  - `ams-open-questions.md`: item 27's order line shows the V track's progress (plans 1 and 2 ✓, plan 3 built); this plan's open issues as answered (or as open, with their defaults); Task 7's "Still needs a person" as one new item after the last number, in the shape of plan 2's.
+  - `ams-open-questions.md`: item 27's order line shows the V track's progress (plans 1 and 2 ✓, plan 3 built); this plan's open issues as answered (2026-10-19, as recommended: 13 in Tasks 1 and 3; 14 handed to the final plan); Task 7's "Still needs a person" as one new item after the last number, in the shape of plan 2's.
   - Pages that say the settings form's validation errors are toasts or danger boxes, or describe the settings rules: find them with `grep -rlnE "ValidationMessage|system-settings-form|settings-search|toast" AssetSystem` and read each hit; state what the code does now, with `sources` pointing at `src/components/admin/system-settings-form.tsx`, `src/lib/system-settings-field-rules.ts` or `src/lib/settings-search.ts`, and `confidence` as the schema says for a page checked against the code.
   - A new page (only if a fact has no page yet) gets its line in `ams-index.md` and an `ams-` name no other page of the vault holds; every page you touch keeps `status` / `verified` / `confidence` / `sources`.
   - Run `node tools/wiki-lint.mjs AssetSystem --repo D:/Antigravity/asset-system --prefix ams-` from `D:\Obsidian\Eltross` (0 errors), and commit only the files you edited (`git -C D:/Obsidian/Eltross add <each file>`, then `git -C D:/Obsidian/Eltross commit -m "ingest: asset-system V track plan 3 built on feat/v-track-3"`). Never stage other sessions' changes in the vault.
-- [ ] **Step 3: Memory.** `v-track.md`: plan 3 built on `feat/v-track-3` (the settings form and its prefix editor; the test count verify printed), not merged, not deployed; the user's answers to its open issues (or that they are open); the wiki item of Step 2; next the final plan (DESIGN.md, docs/14, `.impeccable/design.json`, the shared whole-number rule, the print queue's two buttons), then E2E in both themes, then the one deploy. `MEMORY.md`'s one-line entry for `v-track.md` says the same in one line.
+- [ ] **Step 3: Memory.** `v-track.md`: plan 3 built on `feat/v-track-3` (the settings form and its prefix editor; the test count verify printed), not merged, not deployed; the user's answers to its open issues (2026-10-19, as recommended; 14 handed on); the wiki item of Step 2; next the final plan (DESIGN.md, docs/14, `.impeccable/design.json`, the shared whole-number rule, the print queue's two buttons, open issue 14's `Field` change), then E2E in both themes, then the one deploy. `MEMORY.md`'s one-line entry for `v-track.md` says the same in one line.
 - [ ] **Step 4: Finish** with superpowers:finishing-a-development-branch. The spec merges each plan of the track in order (§9): a local merge fast-forwards `master` (`git merge --ff-only feat/v-track-3` from `master`; if `master` moved, stop and ask) and runs the tests on the merged result. No push and no merge without the user. After a merge, offer once to delete this plan's scratch clone (`<temp>/sim`; the memory's "delete scratch clones once a plan is merged"), and delete only on the user's yes.
 
 ---
@@ -3691,7 +3752,7 @@ Plan 3's scope is spec §5 #45 and #46 with §4 for them, U8 for the 13 settings
 
 | # | Form · file | What the tasks do | Task |
 |---|---|---|---|
-| 45 | system settings · `c/admin/system-settings-form.tsx` | `noValidate`, `validate()` over the rules module (the server's 20 rules with its codes, the 5000 limit, the controls' min/max/step on every tab, the prefix groups); 12 validation toasts → under the field; 12 live boxes → each setting's live error under its field; a save and a server refusal open the setting's tab and its closed `<details>` and focus it; the switch lines, the label name group, the label fields, the depreciation JSON and the advanced inputs show their error; the save's "nothing changed" and LDAP apply's "preview first" gates with their reason; eleven group sentences retired | 1, 2, 3, 5, 6 |
+| 45 | system settings · `c/admin/system-settings-form.tsx` | `noValidate`, `validate()` over the rules module (the server's 20 rules with its codes, the 5000 limit, the controls' min/max/step on every tab for the settings a save changes, the prefix groups); 12 validation toasts → under the field; 12 live boxes → each setting's live error under its field; a save and a server refusal open the setting's tab and its closed `<details>` and focus it; the switch lines, the label name group, the label fields, the depreciation JSON and the advanced inputs show their error; the save's "nothing changed" and LDAP apply's "preview first" gates with their reason; eleven group sentences retired | 1, 2, 3, 5, 6 |
 | 46 | category prefix editor · same file (an `AccessibleDialog` inside the form, formless) | its own `validatePrefixEditor` (prefix required and 2–10 A-Z or digits, at least one category), errors under the prefix and the category lists, focus inside the dialog, the save enabled, the live box → the prefix's live error once typed; the file joins `V_FORMS` | 4 |
 
 `V_SCOPE` counts 2 forms for this file (the form and the editor's formless submit); after Task 4 `V_FORMS` holds all 44 `V_SCOPE` files (spec U5: every form).
@@ -3706,7 +3767,7 @@ Plan 3's scope is spec §5 #45 and #46 with §4 for them, U8 for the 13 settings
 | §2 U4 | Date pairs | none in the settings form or the editor (no date field) |
 | §2 U5 | every form in one round | after Task 4 `V_FORMS` = `V_SCOPE` (44 files); the settings form is the last |
 | §2 U7 | no new dependency; one shared hook plus a `validate()` per form | `useFieldErrors` ×2, module-level `validate()` and `validatePrefixEditor()`; no dependency |
-| §2 U6 | Errors after save; a field's error clears when it changes | the save-only rules (ST-R3); `setValue` clears; the editor's fields clear |
+| §2 U6 | Errors after save; a field's error clears when it changes | the save-only rules (ST-R3; the controls' own limits on the changed settings only, ST-R2); `setValue` clears; the editor's fields clear |
 | §2 U8 | Live boxes stay live, under the field; nothing twice | Tasks 3, 4 (`liveErrors[field] ?? fieldErrors.errors[field]`, `Field liveError`); Review Focus 3 |
 | §3 G1–G3, G5 | under the field; server errors mapped; gates sorted; one announcement, both themes | Tasks 3–5; Task 7 Steps 6–7 |
 | §3 G4 | custom server messages reach the person | every settings code reads its `apiErrors.*` sentence, client and server alike (ST-R2) |
@@ -3719,19 +3780,21 @@ Plan 3's scope is spec §5 #45 and #46 with §4 for them, U8 for the 13 settings
 | §5 (counts, bugs) | settings 12 of the 38 client validation toasts; the listed bugs | the 12 go (Task 3); none of §5's bugs is in this file |
 | §6.1 | `fieldErrors` keyed `settings.<key>`, first issue's code, catalog keys for custom issues | consumed as plan 1 S-R4 shipped it: the form's field keys are `settings.<key>` (`settingFieldKey`, ST-R4) and its codes are the same catalog keys (Task 1's test compares the module with the route's `issuesToFieldErrors(…, settingFieldKeyFor(…))`) |
 | §6.2 | non-zod field refusals with `fieldErrors` | none for the settings route; the LDAP test's 400 (bind password) is not listed and keeps its toast (open issue 8); the route's `Unknown settings` 400 and the LDAP 403 name no field and keep the toast (ST-R4) |
-| §6.3 | no new server rule | no server change at all; the controls' own limits are client rules (ST-R2; open issue 13 on stored values) |
+| §6.3 | no new server rule | no server change at all; the controls' own limits are client rules, checked only on the settings a save changes, so a stored value the server accepts never stops a save of another setting (ST-R2; open issue 13's answer; Task 1's second test) |
 | §7.1 | shared messages; domain messages | the catalog sentences per setting; `invalidPrefix` kept; one new key; eleven retired (ST-R9) |
 | §7.2 | one hook, rule helpers, `validate()` per form | `useFieldErrors` ×2 (the form, the editor); `range`, `step`, `required`, `atLeastOne`; the rules module |
 | §7.3 | groups (`Segmented`, a `fieldset`), one error under the group; `FieldError` not an alert; `SearchableSelect` | the label name `FieldGroup`; the prefix groups and the category lists as `role="group"` with one `FieldError` (Tasks 2–4); `FieldError` has no alert role (plan 1 F-R6) and Task 2's test keeps the switch line's error free of one; the form's one `SearchableSelect` (the LDAP default role) has no rule (open issue 9) |
-| §7.4 | date pairs | none in this file |
+| §7.4 | date pairs | none in this file; its rule for an edit (the warranty pair checked only when one of its dates changed) is the model for the controls' own limits (open issue 13's answer, ST-R2) |
 | §8 | no dependency or write; messages through the script; the guards; pins in the same commit | Global Constraints; Tasks 0 and 7 (no settings save reaches the server); each Step 4 |
 | §9 | order of work | plan 3 = the settings form; the final plan: DESIGN.md, docs/14, `.impeccable/design.json`; Task 8 (handoff, changelog), Task 9 (wiki) |
 | §10 | left to the builder | the header's "Left to the builder (§10), decided here" |
 | §11 calls | 1 `noValidate` · 2 gates · 3 `settings.<key>` · 7 form-level fallback | Task 3 · Task 5 · Task 3 · Task 3; calls 4 (one code set) by Task 1's codes; 5, 6, 8, 9 do not touch this file |
 
-## Open issues (for the user before execution)
+## Open issues (answered by the user, 2026-10-19)
 
-Only decisions the spec and the user's scope leave open. None blocks execution: each default is what the tasks write, and an answer that differs changes the task named.
+**The user's answers (2026-10-19): "ตามที่แนะนำ", every recommendation.** Issues 1–11: as written (each default is its recommendation; the tasks write it). Issue 12: done: the asset partial-save fix merged first (`master` `ede37dd0`) and this plan is re-based on it (the base, every count and Task 0 Step 1's check are `ede37dd0`'s). Issue 13: the controls' own limits are checked only on the settings a save changes, the server's rules still on every setting sent: Task 1 (`settingSaveErrors(entries, prefixRows, changedKeys)` and its second test) and Task 3 (`validate(submittedSettings, activePrefixRows, changedSettings)` and its test lines), ST-R2; Task 7 Step 6 checks it with a stand-in. Issue 14: handed to the final plan of the track (a `Field` change so a save's error on a live field is read once); not in this plan: Task 7 Step 7 records what the tree shows, Task 8's "Handed on" names it.
+
+Only decisions the spec and the user's scope leave open. The tasks write the answers above.
 
 1. **Each setting reads its own server sentence; the eleven group sentences go** (Tasks 3, 6, ST-R2, ST-R9). Today one sentence covered a group ("ขนาดป้ายต้องอยู่ในช่วงที่รองรับ: กว้าง 30-120 mm, สูง 10-100 mm, QR 20-90 px และระยะขอบ/ช่องว่าง 0-10 mm"); after this plan the width says "ความกว้างป้ายต้องอยู่ระหว่าง 30–120 mm" under the width, the same sentence the server already sends (`apiErrors.labelWidthRange`). **Default:** as written. **Recommendation:** as written (one sentence per field, the same from both sides; the old ones would show twice or show the server's under some fields and the group's under others).
 2. **A whole-number or half-step setting with a fraction reads "กรุณากรอกเป็นตัวเลข"** (ST-R2: a label width of 40.5, a margin of 0.3, running digits of 2.5): the browser refused these before `noValidate`, but only on the open tab; the server takes all but none of them is a valid choice of the control. **Default:** `step()` with the shared `invalidNumber` (plan 2 MT-R2, X-R2). **Recommendation:** keep it now; the final plan's shared whole-number rule (plan 2 X-R2) can give it a clearer sentence for every form at once.
@@ -3744,15 +3807,15 @@ Only decisions the spec and the user's scope leave open. None blocks execution: 
 9. **The LDAP switches, the auto-provision checkbox and the default role have no field error** (ST-R4): the UI can only set them to `"true"`/`"false"` or an option id, and their only server rule is the 5000 limit. **Default:** out of the field table (a refusal for one falls back to the toast). **Recommendation:** as written.
 10. **The save with nothing changed and LDAP apply before a preview become `aria-disabled` with their reason** (Task 5, spec §4.4, §11 call 2). They stay focusable and read "ยังไม่มีรายการที่เปลี่ยนแปลง" / "ยังไม่มีผลตัวอย่าง …". **Default:** as written. **Recommendation:** as written (plan 2 open issue 16's answer did the same for the batch's gates).
 11. **The editor's transfer arrows keep `disabled` while nothing is ticked** (ST-R8): a picker's action, not a submit, and the ticked boxes beside them show why. **Default:** unchanged. **Recommendation:** leave them to the final plan's sweep with the print queue's two buttons.
-12. **`fix/asset-partial-save` (`ede37dd0`) is not merged.** It changes `asset-form.tsx`, adds a `NON_VALIDATION_TOASTS` row, swaps four `asset.*` messages and adds tests; none of this plan's edits touches its lines, but every count here is `f1ae1828`'s. **Default:** this plan runs on `f1ae1828` (Task 0 Step 1 stops if `master` moved). **Recommendation:** merge one of the two first and re-count the other's numbers before it runs (the anchors hold; only the test totals, the toast counts and `NON_VALIDATION_TOASTS` move).
+12. **`fix/asset-partial-save` (`ede37dd0`) was not merged when this plan was written.** It changes `asset-form.tsx`, adds a `NON_VALIDATION_TOASTS` row, swaps four `asset.*` messages and adds tests; none of this plan's edits touches its lines, but every count here is `f1ae1828`'s. **Default:** this plan runs on `f1ae1828` (Task 0 Step 1 stops if `master` moved). **Recommendation:** merge one of the two first and re-count the other's numbers before it runs (the anchors hold; only the test totals, the toast counts and `NON_VALIDATION_TOASTS` move). **Answer:** done: the fix merged first (`ede37dd0`); this plan is re-based and re-rehearsed on it.
 
-13. **A stored value that only a control's own limit refuses stops every save** (Tasks 1, 3, ST-R2; added by the final review). `settingSaveErrors` checks every setting the save sends, changed or not, and `settingControlCode` (running digits 1–12, the LDAP deactivation limit ≥ 0, whole numbers, the 0.5 step of a label's margin and gap) is a client-only rule: the server accepts such values, and before `noValidate` the browser checked them only on the tab on screen, so a save from another tab could have stored, say, running digits 13 or a width of 40.5. After Task 3 that stored value stops a save of any other setting: the page goes to it and asks for a change the person did not come to make (the asset tag's digits change the next asset tags). The server's own rules do not have this problem (the server checks every setting sent too, so such a save fails today as well). Spec §7.4 made the same call for the asset edit form's warranty pair (checked only when one of its dates changed). Task 0 Step 7 records whether the dev data holds such a value; production cannot be checked from here. **Default:** as written (every setting sent is checked). **Recommendation:** check the controls' own limits only on the settings this save changes (the server's rules and the 5000 limit stay on every setting): `settingSaveErrors(entries, prefixRows, changedKeys?)` in Task 1 and `validate(submittedSettings, activePrefixRows, changedSettings)` in Task 3, with a test line each; it changes Tasks 1 and 3 and needs a short re-rehearsal of both, so answer before execution starts.
-14. **A save's error on a field that is live is read twice** (Tasks 3, 4, ST-R3; added by the final review). `Field liveError` puts whatever error the field shows into its polite region, and focus then reads the same error through `aria-describedby`. For an error that the live rule showed while typing this is one reading (the region already held it), but where the save or the server sets the error on a live field, the region changes on submit too: the prefix editor's empty prefix (`required` on save; its most common mistake), and in the form the controls' own limits on a live label or document field (a width of 40.5), the 5000 limit, and a refusal naming a live setting. It is the pattern plan 2 shipped for the asset form's tag and serial (a save's `required` through the same `liveError` field), so it is the track's, not this plan's. **Default:** as written; Task 7 Step 7 records it. **Recommendation:** leave it to the final plan, which can give `Field` a live text separate from its error (a foundation change for the asset form, the batch and the settings form at once); the prefix editor alone could avoid it now by passing `liveError` only while the live rule fails, at the cost of the first live error after a save-time `required` not being read.
+13. **A stored value that only a control's own limit refuses stops every save** (Tasks 1, 3, ST-R2; added by the final review). `settingSaveErrors` checks every setting the save sends, changed or not, and `settingControlCode` (running digits 1–12, the LDAP deactivation limit ≥ 0, whole numbers, the 0.5 step of a label's margin and gap) is a client-only rule: the server accepts such values, and before `noValidate` the browser checked them only on the tab on screen, so a save from another tab could have stored, say, running digits 13 or a width of 40.5. After Task 3 that stored value stops a save of any other setting: the page goes to it and asks for a change the person did not come to make (the asset tag's digits change the next asset tags). The server's own rules do not have this problem (the server checks every setting sent too, so such a save fails today as well). Spec §7.4 made the same call for the asset edit form's warranty pair (checked only when one of its dates changed). Task 0 Step 7 records whether the dev data holds such a value; production cannot be checked from here. **Default:** as written (every setting sent is checked). **Recommendation:** check the controls' own limits only on the settings this save changes (the server's rules and the 5000 limit stay on every setting): `settingSaveErrors(entries, prefixRows, changedKeys?)` in Task 1 and `validate(submittedSettings, activePrefixRows, changedSettings)` in Task 3, with a test line each; it changes Tasks 1 and 3 and needs a short re-rehearsal of both, so answer before execution starts. **Answer:** as recommended; Tasks 1 and 3 carry it (ST-R2), and the re-based rehearsal replayed it.
+14. **A save's error on a field that is live is read twice** (Tasks 3, 4, ST-R3; added by the final review). `Field liveError` puts whatever error the field shows into its polite region, and focus then reads the same error through `aria-describedby`. For an error that the live rule showed while typing this is one reading (the region already held it), but where the save or the server sets the error on a live field, the region changes on submit too: the prefix editor's empty prefix (`required` on save; its most common mistake), and in the form the controls' own limits on a live label or document field (a width of 40.5), the 5000 limit, and a refusal naming a live setting. It is the pattern plan 2 shipped for the asset form's tag and serial (a save's `required` through the same `liveError` field), so it is the track's, not this plan's. **Default:** as written; Task 7 Step 7 records it. **Recommendation:** leave it to the final plan, which can give `Field` a live text separate from its error (a foundation change for the asset form, the batch and the settings form at once); the prefix editor alone could avoid it now by passing `liveError` only while the live rule fails, at the cost of the first live error after a save-time `required` not being read. **Answer:** handed to the final plan of the track; not in this plan.
 
 ### Behaviour changes a person would notice beyond the spec
 
 Everything else a person sees change is a decision of the spec (errors under the field, no validation toast, focus with the tab switch, the gates of §4.4). Beyond it:
-- A save checks every tab, not only the one shown: a running digit of 13 on the asset-numbering tab, saved from the LDAP tab, is caught and shown (before, the browser checked only the mounted tab and the server took it).
+- A save checks every tab, not only the one shown: a running digit of 13 on the asset-numbering tab, saved from the LDAP tab, is caught and shown (before, the browser checked only the mounted tab and the server took it). A value already stored that only a control's limit refuses does not stop a save of another setting; it is checked when the save changes it (open issue 13).
 - Fractions in whole-number settings (a label's width, height and QR size, the document running digits) and margins off the 0.5 step say "กรุณากรอกเป็นตัวเลข" under the field on save (open issue 2).
 - The automation tab no longer shows the schedule's error; the LDAP sync tab does, under the custom schedule (open issue 3).
 - The depreciation policy's link in the change review opens the organization tab (it opened the advanced tab, where the setting is not listed).
