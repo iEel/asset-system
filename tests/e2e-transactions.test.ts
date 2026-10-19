@@ -147,7 +147,7 @@ test("a transfer to the second room and a new custodian, and its TR- document; t
   assert.match(spec, /expect\(after\.custodianId\)\.toBe\(receiver\.id\)/)
   assert.match(spec, /await visit\(measure, `\/th\/asset-management\/transfers\/\$\{transfer\.id\}`, "TR- document", testInfo\)/)
   assert.match(spec, /await expectPrints\(page, "พิมพ์เอกสารโอนย้าย"\)/)
-  assert.deepEqual(expectedFailures(spec), ["TX-A6"], "TX-A4 is fixed (FX10)")
+  assert.deepEqual(expectedFailures(spec), [], "TX-A4 (FX10) and TX-A6 (FX13) are fixed")
   assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/)
 })
 

@@ -2,7 +2,9 @@ import { prisma } from "@/lib/db"
 
 export async function buildReferenceLabelMap(ids: Array<string | null | undefined>) {
   const uniqueIds = Array.from(new Set(ids.filter((id): id is string => Boolean(id))))
-  const [locations, departments, assets, conditions, statuses] = await Promise.all([
+  // Employees too: a snapshot's custodianId (the TR- document names the custodian before and after; the E2E suite's
+  // TX-A6).
+  const [locations, departments, assets, conditions, statuses, employees] = await Promise.all([
     prisma.location.findMany({
       where: { id: { in: uniqueIds } },
       select: { id: true, code: true, name: true },
@@ -23,6 +25,10 @@ export async function buildReferenceLabelMap(ids: Array<string | null | undefine
       where: { id: { in: uniqueIds } },
       select: { id: true, name: true, nameTh: true },
     }),
+    prisma.employee.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, code: true, fullNameTh: true },
+    }),
   ])
 
   const labels = new Map<string, string>()
@@ -31,6 +37,7 @@ export async function buildReferenceLabelMap(ids: Array<string | null | undefine
   for (const asset of assets) labels.set(asset.id, `${asset.assetTag} - ${asset.name}`)
   for (const condition of conditions) labels.set(condition.id, condition.nameTh || condition.name)
   for (const status of statuses) labels.set(status.id, status.nameTh || status.name)
+  for (const employee of employees) labels.set(employee.id, `${employee.code} - ${employee.fullNameTh}`)
   return labels
 }
 

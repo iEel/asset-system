@@ -171,3 +171,10 @@ test("the cancel dialog names the person who made the transaction (e2e fix task 
   assert.match(read("src/app/[locale]/(print)/asset-management/transfers/[id]/page.tsx"), /originalOperator=\{await getTransactionOperatorLabel\(transfer\.createdBy\)\}/)
   assert.ok(!read("e2e/transactions/cancel.spec.ts").includes(`test.fail(true, "TX-A7: `))
 })
+
+test("the TR- document names the custodian before and after (e2e fix task FX13: TX-A6)", () => {
+  const print = read("src/app/[locale]/(print)/asset-management/transfers/[id]/page.tsx")
+  assert.match(print, /label: t\("fromCustodian"\)/)
+  assert.match(print, /label: t\("toCustodian"\)/)
+  assert.ok(!read("e2e/transactions/transfer.spec.ts").includes(`test.fail(true, "TX-A6: `))
+})

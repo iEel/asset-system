@@ -100,7 +100,7 @@ test.describe("transfer", () => {
   // Finding TX-A6: the TR- document prints the status, room and department before and after, but not the custodian, so
   // a transfer that hands the asset to a new holder has no paper naming them.
   test("the TR- document names the new custodian (finding TX-A6)", async ({ page, measure }, testInfo) => {
-    test.fail(true, "TX-A6: the TR- document leaves out the custodian")
+    // TX-A6 fixed (FX13): this test now keeps the custodian on the TR- document.
     const transfer = transfers.get(testInfo.project.name)
     expect(transfer, "the transfer test ran first").toBeTruthy()
     if (!transfer) return

@@ -1824,7 +1824,8 @@
     "statusUnchanged": "Keep current status",
     "reviewEvidence": "Evidence",
     "reviewNoEvidence": "No evidence files are attached to this transfer.",
-    "reviewConfirm": "Confirm transfer"
+    "reviewConfirm": "Confirm transfer",
+    "fromCustodian": "Previous Custodian"
   },
   "bulkMove": {
     "title": "Bulk Move Locations",

@@ -1824,7 +1824,8 @@
     "statusUnchanged": "คงสถานะเดิม",
     "reviewEvidence": "หลักฐาน",
     "reviewNoEvidence": "ไม่มีไฟล์หลักฐานในรายการโอนย้ายนี้",
-    "reviewConfirm": "ยืนยันโอนย้าย"
+    "reviewConfirm": "ยืนยันโอนย้าย",
+    "fromCustodian": "ผู้ถือครองเดิม"
   },
   "bulkMove": {
     "title": "ย้ายที่ตั้งหลายรายการ",
