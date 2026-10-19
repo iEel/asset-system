@@ -1167,6 +1167,7 @@ npm run build
   - NVDA: a save on a live field is read once (the settings width, the prefix editor); the print queue's buttons read their reason.
   - An English pass of `common.validation.notWholeNumber` ("Enter a whole number").
   - For the user: the whole-number sentence "กรุณากรอกเป็นจำนวนเต็ม" in `after/audit-round-year-fraction-light-1440.png` and `after/settings-width-fraction-light-1440.png`; the print queue's reasons in `after/labels-nothing-selected-*.png`; open issue 11 in `after/labels-forced-colors-1440.png`.
+- Follow-up on `fix/v-track-polish` (2026-10-19, the user's answers 11, 7 and 6): an `aria-disabled` button keeps `GrayText` in forced colors (`globals.css`); `waitForDialogToClose` treats a dialog with no layout box as closed and resolves on Radix's focus hand-back (field focused ~2 ms after it, was ~1 s); the prefix editor's transfer arrows are `aria-disabled` with "ติ๊กเลือกหมวดหมู่ในรายการก่อน แล้วจึงกดย้าย". Tests 2313; checked on the dev app with every non-GET aborted or stood in.
 - Next: merge this branch (the V track is then complete); then the E2E suite and the one deploy (wiki 27).
 
 ## Open Go-Live Decisions
