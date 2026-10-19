@@ -178,3 +178,9 @@ test("the TR- document names the custodian before and after (e2e fix task FX13: 
   assert.match(print, /label: t\("toCustodian"\)/)
   assert.ok(!read("e2e/transactions/transfer.spec.ts").includes(`test.fail(true, "TX-A6: `))
 })
+
+test("two rounds opened at once both get a number: the round's create retries a taken number (e2e fix task FX14: D4)", () => {
+  const route = read("src/app/api/audit-rounds/route.ts")
+  assert.match(route, /const round = await withPrismaUniqueRetry\(async \(\) => \{\n\s*const auditNo = await generateAuditNo\(input\.auditYear\)/)
+  assert.match(route, /import \{ withPrismaUniqueRetry \} from "@\/lib\/prisma-unique-retry"/)
+})
