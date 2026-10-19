@@ -105,7 +105,7 @@ test("a handover signed with the device's own pointer and printed, a due date be
   // The double checkout: a second form of the same asset, refused (409) as the test itself declares.
   assert.match(spec, /const otherDesk = await page\.context\(\)\.newPage\(\)/)
   assert.match(spec, /measure\.expectRefusal\(\{ method: "POST", url: new RegExp\(`\/api\/assets\/\$\{asset\.id\}\/checkout\$`\), status: 409,/)
-  assert.deepEqual(expectedFailures(spec), ["TX-A1"])
+  assert.deepEqual(expectedFailures(spec), [], "TX-A1 is fixed (FX9)")
   // The pad: the mouse on the desktop, Chromium's touch input on the phone, then the tap the emulation loses.
   const support = read("e2e/transactions/tx-support.ts")
   assert.match(support, /await cdp\.send\("Input\.dispatchTouchEvent", \{ type: "touchStart", touchPoints: \[points\[0\]\] \}\)/)

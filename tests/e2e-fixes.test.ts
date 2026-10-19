@@ -114,3 +114,22 @@ test("a thumbnail whose file is outside this server's upload folder is not found
   const allow = read("e2e/support/allow-list.ts")
   assert.match(allow, /id: "foreign-attachment-thumbnail",\n\s*kind: "response",\n\s*url: \/\\\/api\\\/attachments\\\/\[0-9a-f-\]\{36\}\\\/thumbnail\$\/,\n\s*status: \[404\],/)
 })
+
+test("every asset lifecycle refusal has its Thai sentence, and the handover form shows it (e2e fix task FX9: TX-A1)", async () => {
+  const { apiErrorKeyByMessage } = await import("../src/lib/api-error-catalog.ts")
+  const policy = read("src/lib/asset-lifecycle-policy.ts")
+  const union = policy.slice(policy.indexOf("export type AssetLifecycleErrorCode ="), policy.indexOf("export type AssetCustodyContext"))
+  const codes = [...union.matchAll(/"(ASSET_STATUS_[A-Z_]+)"/g)].map((match) => match[1])
+  assert.equal(codes.length, 7)
+  const th = messages("th").apiErrors as Record<string, string>
+  for (const code of codes) {
+    const key = apiErrorKeyByMessage[code]
+    assert.ok(key, `${code} has a catalog key`)
+    assert.ok(th[key] && !/ASSET_STATUS/.test(th[key]), `${code} → apiErrors.${key}`)
+  }
+  assert.equal(apiErrorKeyByMessage.ASSET_STATUS_CHECKOUT_NOT_ALLOWED, "statusBlocksCheckout")
+  assert.equal(apiErrorKeyByMessage.ASSET_STATUS_TRANSFER_NOT_ALLOWED, "statusBlocksTransfer")
+  // The handover and transfer forms pass the code on to the toast, which reads it through the catalog (describeApiError).
+  assert.match(read("src/components/asset-operations/checkout-form.tsx"), /throw new Error\(getCheckoutErrorMessage\(payload\?\.code \?\? payload\?\.error\)\)/)
+  assert.ok(!read("e2e/transactions/handover.spec.ts").includes(`test.fail(true, "TX-A1: `))
+})

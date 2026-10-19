@@ -193,7 +193,7 @@ test.describe("no double checkout", () => {
   })
 
   test("the refusal says why: the asset is already handed over (finding TX-A1)", async ({ e2eTheme }, testInfo) => {
-    test.fail(true, "TX-A1: a refused second handover shows only เกิดข้อผิดพลาด, the server's code is not in the error catalog")
+    // TX-A1 fixed (FX9): this test now keeps the refusal's reason in Thai.
     const text = refusalToasts.get(testInfo.project.name)
     expect(text, `the refusal test ran first (${e2eTheme})`).toBeTruthy()
     expect(text).toMatch(/ส่งมอบหรือยืมไม่ได้|ยังไม่รับคืน|ถูกส่งมอบแล้ว|ข้อมูลทรัพย์สินเปลี่ยนระหว่างบันทึก/)

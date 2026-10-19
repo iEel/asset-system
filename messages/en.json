@@ -4264,6 +4264,10 @@
     "modelNameExists": "Model name already exists for this brand",
     "customFieldNameDuplicate": "Custom field names must be unique in a category",
     "integrationClientIdExists": "Integration client ID already exists",
-    "assetTagExists": "Asset tag already exists"
+    "assetTagExists": "Asset tag already exists",
+    "statusBlocksCheckin": "Asset status does not allow a return",
+    "statusBlocksCreate": "This status cannot be used for a new asset",
+    "statusBlocksEdit": "Asset status does not allow editing",
+    "statusBlocksMaintenance": "Asset status does not allow a repair record"
   }
 }
