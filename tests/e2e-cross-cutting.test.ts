@@ -149,8 +149,8 @@ test("roles and permissions: each refused page and request needs a permission th
   // The spec: the suite's fixtures, and findings M4, M5 and M6 expected to fail until fixed.
   const spec = read("e2e/cross-cutting/roles.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
-  for (const finding of ["M4", "M5"]) assert.ok(spec.includes(`test.fail(true, "${finding}: `), finding)
-  assert.ok(!spec.includes(`test.fail(true, "M6: `), "M6 is fixed (FX2)")
+  assert.ok(spec.includes(`test.fail(true, "M4: `), "M4 waits for the user's decision")
+  for (const finding of ["M5", "M6"]) assert.ok(!spec.includes(`test.fail(true, "${finding}: `), `${finding} is fixed`)
 })
 
 test("errors under the field in the real flow: each form's wrong entry, its field id, its sentence and where its save lands (e2e cross-cutting task 3, EM3)", () => {

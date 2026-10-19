@@ -704,6 +704,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
   const encodedAssetId = encodeURIComponent(asset.id)
   const editHref = appendReturnTo(`/${locale}/assets/${asset.id}/edit`, returnToHref)
+  // A data-health item's fix opens the edit page for a person who may edit; for anyone else it opens the section
+  // that shows the item, never a page they are refused (the E2E suite's M5).
+  const healthFixHref = (section: string) => (canEditAsset ? editHref : section)
   const cloneHref = appendReturnTo(`/${locale}/assets/new?cloneFrom=${encodedAssetId}`, returnToHref)
   const componentsManagerHref = appendReturnTo(
     `/${locale}/assets/${asset.id}/components`,
@@ -713,14 +716,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const sectionHref = (sectionId: AssetDetailSectionId) => buildAssetDetailSectionHref(locale, asset.id, assetDetailView, sectionId, returnToHref)
   const dataHealthItems = ownershipType === "software_license"
     ? [
-        createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), editHref),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), editHref),
-        createHealthItem(asset.licenseTotalSeats != null, t("dataHealthLicenseSeats"), "#overview", t("dataHealthFixLicenseSeats"), editHref),
+        createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), healthFixHref("#overview")),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), healthFixHref(sectionHref("ownership"))),
+        createHealthItem(asset.licenseTotalSeats != null, t("dataHealthLicenseSeats"), "#overview", t("dataHealthFixLicenseSeats"), healthFixHref("#overview")),
         createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
-        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase", t("dataHealthFixExpiry"), editHref),
+        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase", t("dataHealthFixExpiry"), healthFixHref("#purchase")),
       ]
     : [
-        createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview", t("dataHealthFixIdentity"), editHref),
+        createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview", t("dataHealthFixIdentity"), healthFixHref("#overview")),
         createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), "#photos", t("dataHealthFixPhoto"), "#photos"),
         createHealthItem(
           checklistMissingLabels.length === 0,
@@ -732,8 +735,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           "#photos"
         ),
         createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), editHref),
-        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase", t("dataHealthFixExpiry"), editHref),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), healthFixHref(sectionHref("ownership"))),
+        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase", t("dataHealthFixExpiry"), healthFixHref("#purchase")),
       ]
   const dataHealthDone = dataHealthItems.filter((item) => item.done).length
   const dataHealthTone = dataHealthDone === dataHealthItems.length ? "success" : dataHealthDone >= dataHealthItems.length - 2 ? "warning" : "danger"

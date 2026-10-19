@@ -332,12 +332,12 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         className="mb-4 md:mb-6"
         title={t("title")}
         meta={t("subtitle")}
-        actions={
+        actions={canCreateAssets ? (
           <Link href={`/${locale}/assets/new`} className={buttonVariants({ size: "md" })}>
             <Plus aria-hidden="true" />
             {tCommon("create")}
           </Link>
-        }
+        ) : undefined}
       />
       <AssetRegisterViewMemory locale={locale} returnHref={registerReturnHref} />
 

@@ -75,3 +75,17 @@ test("the import template and the import wizard show only to a role with asset:c
   assert.match(register, /\{canCreateAssets \? \(\n\s*<AssetImportPreviewPanel/)
   assert.ok(!read("e2e/cross-cutting/reports.spec.ts").includes(`test.fail(true, "M2: `))
 })
+
+test("a view-only role is offered no create, edit or scan link (e2e fix task FX6: M5)", () => {
+  const register = read("src/app/[locale]/(dashboard)/assets/page.tsx")
+  assert.match(register, /actions=\{canCreateAssets \? \(\n\s*<Link href=\{`\/\$\{locale\}\/assets\/new`\}/)
+  const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  assert.match(detail, /const healthFixHref = \(section: string\) => \(canEditAsset \? editHref : section\)/)
+  assert.doesNotMatch(detail, /createHealthItem\([^\n]*, editHref\)/)
+  const rounds = read("src/app/[locale]/(dashboard)/audit/rounds/page.tsx")
+  assert.match(rounds, /const canCreateRound = hasPermission\(user, "audit", "create"\)/)
+  assert.match(rounds, /const canScan = hasPermission\(user, "audit", "edit"\)/)
+  assert.match(rounds, /href: canScan && pendingRounds\[0\] \? appendOperationalReturnTo\(/)
+  assert.match(rounds, /actions=\{canCreateRound \? \(\n\s*<Link href=\{`\/\$\{locale\}\/audit\/rounds\/new`\}/)
+  assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M5: `))
+})

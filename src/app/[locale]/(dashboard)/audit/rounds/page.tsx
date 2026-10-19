@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server"
 import { AlertTriangle, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { hasPermission } from "@/lib/auth-utils"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { cn, formatDate } from "@/lib/utils"
 import { toDisplayYear } from "@/lib/display-year"
@@ -87,7 +88,10 @@ type ActionPanelItem = {
 export default async function AuditRoundsPage({ params, searchParams }: AuditRoundsPageProps) {
   const { locale } = await params
   const { search = "", view = "all", page, pageSize } = await searchParams
-  await requirePagePermission(locale, "audit", "view")
+  const user = await requirePagePermission(locale, "audit", "view")
+  // A view-only role is offered no create or scan link (their pages need audit:create and audit:edit; the E2E suite's M5).
+  const canCreateRound = hasPermission(user, "audit", "create")
+  const canScan = hasPermission(user, "audit", "edit")
 
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
@@ -227,7 +231,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       label: t("actionContinueScan"),
       help: t("actionContinueScanHelp"),
       count: pendingRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.pending ?? 0), 0),
-      href: pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", searchText, { pageSize: listPage.pageSize }),
+      href: canScan && pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", searchText, { pageSize: listPage.pageSize }),
       tone: "primary",
     },
     {
@@ -275,12 +279,12 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       <PageHeader
         title={t("title")}
         meta={t("subtitle")}
-        actions={
+        actions={canCreateRound ? (
           <Link href={`/${locale}/audit/rounds/new`} className={buttonVariants({ size: "md" })}>
             <Plus aria-hidden="true" />
             {t("createTitle")}
           </Link>
-        }
+        ) : undefined}
       />
 
       <ContentPanel

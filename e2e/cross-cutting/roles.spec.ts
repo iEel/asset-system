@@ -32,7 +32,7 @@ test.describe("the viewer", () => {
   // Finding M5 (expected to fail until fixed): the asset register, an asset's page and the audit rounds offer the
   // viewer create, edit and scan links (and the import helper) that lead to the access-denied page.
   test("the viewer's lists offer no create, edit or approve control (finding M5)", async ({ page, measure, browser }, testInfo) => {
-    test.fail(true, "M5: the register's create and import helper, an asset's data-health edit links and the rounds' create and scan links show to a view-only role")
+    // M5 fixed (FX5, FX6): this test now keeps the view-only lists free of create, edit and scan links.
     const desk = await registerAssetsAsItStaff(browser, testInfo, [{ slug: "ROLE2", name: "รายการอ่านอย่างเดียว" }])
     await desk.close()
     const offered: string[] = []

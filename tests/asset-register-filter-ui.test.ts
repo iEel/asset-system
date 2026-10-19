@@ -166,7 +166,7 @@ test("the register page header is PageHeader with its create link, and the tab c
   const source = page()
 
   assert.match(source, /^import \{ PageHeader \} from "@\/components\/ui\/page-header"$/m)
-  assert.match(source, /<div>\n\s+<PageHeader\n\s+compactOnMobile\n\s+className="mb-4 md:mb-6"\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{\n\s+<Link href=\{`\/\$\{locale\}\/assets\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{tCommon\("create"\)\}\n\s+<\/Link>\n\s+\}\n\s+\/>/)
+  assert.match(source, /<div>\n\s+<PageHeader\n\s+compactOnMobile\n\s+className="mb-4 md:mb-6"\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{canCreateAssets \? \(\n\s+<Link href=\{`\/\$\{locale\}\/assets\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{tCommon\("create"\)\}\n\s+<\/Link>\n\s+\) : undefined\}\n\s+\/>/)
   assert.match(source, /count: formatCount\(tab\.count\)/)
   assert.doesNotMatch(source, /toLocaleString\(|MasterDataHeader|numberLocale/)
 })
