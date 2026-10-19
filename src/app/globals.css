@@ -514,6 +514,14 @@ body {
   }
 }
 
+/* An aria-disabled button keeps its disabled look in forced colors, where its colors are replaced. */
+@media (forced-colors: active) {
+  [data-slot="button"][aria-disabled="true"] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
+
 /* Thai stacked vowels and tone marks need at least ~1.44× the font size. Values are ratios. */
 @layer base {
   html:lang(th) {
