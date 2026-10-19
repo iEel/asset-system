@@ -14,9 +14,12 @@
 // 7. the audit exports by permission (spec §6.2.5, §6.5), expected to fail until finding AU1 and decision U1.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { asUser, expect, runPhoneOnWebKit, test } from "../support/fixtures.ts"
+import { PHONE } from "../support/matrix.ts"
 import { ADMIN_STATE_FILE, fromRoot, runDir } from "../support/paths.ts"
+import { runRecords } from "../support/run-plan.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createAuditAssets, createAuditPlaces, readAuditMasters, type AuditWalkData } from "./audit-data.ts"
+import * as scan from "./scan-steps.ts"
 import { recordSettled } from "./settle.ts"
 
 runPhoneOnWebKit()
@@ -100,5 +103,127 @@ test.describe("IT staff open the round", () => {
     await recordSettled(page, measure, "round page after the save")
     saveChain(project, { ...walk, roundId: round.id, auditNo: round.auditNo })
     expect(readChain(project).roundId, "the chain's state is saved for the next blocks").toBe(round.id)
+  })
+})
+
+test.describe("IT staff walk room A", () => {
+  asUser("itStaff")
+
+  test("IT staff walk room A by typing: matched, mismatch with its photo, a parent with components, an unknown and an out-of-scope search", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.setTimeout(300_000)
+    const chain = readChain(testInfo.project.name)
+    const { records, assets } = chain
+    if (e2eDevice === "phone") await scan.slowNetwork(page)
+
+    await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page")
+    await page.getByRole("link", { name: "สแกนตรวจนับ" }).first().click()
+    await page.waitForURL(`**/th/audit/rounds/${chain.roundId}/scan**`)
+    // Two rooms and none chosen yet: the room sheet opens by itself.
+    await expect(page.getByRole("dialog", { name: "ห้องที่กำลังตรวจ" })).toBeVisible()
+    await measure.recordPage("scan page with the room sheet")
+    await scan.pickRoom(page, records.rooms.roomA)
+    await measure.recordPage("scan page in room A")
+
+    // Matched: found by its tag, every field as the system has it.
+    await scan.findAndOpen(page, assets.matched.tag, assets.matched.tag)
+    await expect(scan.saveButton(page)).toHaveText("บันทึก · ตรงทุกข้อ")
+    await measure.recordPage("check of the matched asset")
+    if (e2eDevice === "phone") {
+      // The keyboard opens over the sheet for the note: the note stays above the pinned save bar, and the bar on screen.
+      await scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" }).click()
+      const note = scan.checkForm(page).getByLabel("หมายเหตุผู้ตรวจ")
+      await note.click()
+      await page.setViewportSize(scan.KEYBOARD_OPEN_VIEWPORT)
+      await expect(note).toBeFocused()
+      await expect(note).toBeInViewport()
+      await expect(scan.saveButton(page)).toBeInViewport({ ratio: 1 })
+      await measure.recordPage("check of the matched asset, keyboard open")
+      await page.setViewportSize(PHONE.viewport)
+    }
+    await measure.timed("save matched", async () => {
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(`${assets.matched.tag} บันทึกแล้ว · ตรงทุกข้อ`)
+    })
+
+    // Mismatch: found by a word of its name; it stands in another department and its condition is worse, so the save
+    // waits for a photo. The person opens the note-and-photo section and adds it. (A tap on the waiting save does
+    // nothing: finding AU2.)
+    await scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch.tag)
+    const runDepartment = runRecords(readRunState().runId).department.code
+    await scan.chooseInCheckField(page, "แผนก", runDepartment, `${runDepartment} - `)
+    await scan.chooseInCheckField(page, "สภาพ", "พอใช้", "พอใช้")
+    await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)")
+    await expect(scan.saveButton(page)).toHaveAttribute("aria-disabled", "true")
+    await expect(scan.checkForm(page).getByText("สภาพไม่ตรง ต้องแนบรูปก่อนบันทึก")).toBeVisible()
+    await scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" }).click()
+    await scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))
+    await expect(scan.saveButton(page)).not.toHaveAttribute("aria-disabled", "true")
+    await measure.recordPage("check of the mismatch with its photo")
+    const photoUploaded = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${assets.mismatch.id}/attachments`) && response.request().method() === "POST")
+    await measure.timed("save the mismatch with its photo", async () => {
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(`${assets.mismatch.tag} บันทึกแล้ว · ไม่ตรง: แผนก, สภาพ`)
+      expect((await photoUploaded).status(), "the photo is uploaded after the save").toBe(201)
+    })
+
+    // A parent with two installed components: one confirmed with the parent; saving the parent asks first while the
+    // other is unchecked, and cancelling sends nothing; the other is then marked missing, and the parent saves.
+    await scan.findAndOpen(page, assets.parent.tag, assets.parent.tag)
+    const components = scan.checkForm(page).locator("[data-audit-component-row]")
+    await expect(scan.checkForm(page).getByRole("heading", { name: "ส่วนควบ 2 ชิ้น" })).toBeVisible()
+    await expect(components).toHaveCount(2)
+    await measure.recordPage("check of the parent with its components")
+    await components.filter({ hasText: assets.component1.tag }).getByRole("button", { name: `พบ ${assets.component1.tag}` }).click()
+    await expect(page.getByText("ยืนยันส่วนควบกับทรัพย์สินหลักแล้ว")).toBeVisible()
+    await expect(components.filter({ hasText: assets.component1.tag })).toContainText("ยืนยันกับทรัพย์สินหลัก")
+    await expect(scan.checkForm(page).getByText("ส่วนควบตรวจแล้ว 1 / 2")).toBeVisible()
+    const parentScans: string[] = []
+    const watchParent = (request: { url(): string; method(): string; postData(): string | null }) => {
+      if (request.method() === "POST" && request.url().endsWith(`/api/audit-rounds/${chain.roundId}/scan`) && request.postData()?.includes(`"assetId":"${assets.parent.id}"`)) parentScans.push(request.url())
+    }
+    page.on("request", watchParent)
+    await scan.saveButton(page).click()
+    const ask = page.getByRole("alertdialog", { name: "ส่วนควบยังตรวจไม่ครบ 1 ชิ้น" })
+    await expect(ask).toBeVisible()
+    await recordSettled(page, measure, "the parent's save asks about the unchecked component")
+    await ask.getByRole("button", { name: "ยกเลิก" }).click()
+    await expect(ask).toBeHidden()
+    expect(parentScans, "cancelling the question sends nothing").toEqual([])
+    await components.filter({ hasText: assets.component2.tag }).getByRole("button", { name: `การดำเนินการของ ${assets.component2.tag}` }).click()
+    await page.getByRole("menuitem", { name: "ไม่พบส่วนควบนี้" }).click()
+    const missing = page.getByRole("dialog", { name: "บันทึกส่วนควบที่ไม่พบ" })
+    await expect(missing).toBeVisible()
+    await recordSettled(page, measure, "component missing dialog")
+    await missing.getByRole("button", { name: "ยืนยันว่าไม่พบส่วนควบ" }).click()
+    await expect(page.getByText("บันทึกว่าไม่พบส่วนควบแล้ว")).toBeVisible()
+    await expect(missing).toBeHidden()
+    await expect(scan.checkForm(page).getByText("ส่วนควบตรวจแล้ว 1 / 2")).toHaveCount(0)
+    await measure.timed("save the parent", async () => {
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(`${assets.parent.tag} บันทึกแล้ว · ตรงทุกข้อ`)
+    })
+    await expect(ask).toBeHidden()
+    page.off("request", watchParent)
+    expect(parentScans, "the parent is saved once, with no question").toHaveLength(1)
+
+    // An unknown tag: not in the round, not in the register.
+    await scan.typeSearch(page, records.unknownTag)
+    await page.getByRole("button", { name: "ค้นในทะเบียนทั้งหมด" }).click()
+    await expect(page.getByText("ไม่พบรหัสนี้ในทะเบียน · ตรวจตัวสะกดหรือพิมพ์ Serial")).toBeVisible()
+    await recordSettled(page, measure, "unknown tag")
+
+    // An asset of the run's department standing in room A: outside the round's scope, recorded as such.
+    await scan.typeSearch(page, assets.outOfScope.tag)
+    await page.getByRole("button", { name: "ค้นในทะเบียนทั้งหมด" }).click()
+    await expect(page.getByText(`${assets.outOfScope.tag} ไม่อยู่ในขอบเขตรอบนี้`)).toBeVisible()
+    await page.getByRole("button", { name: "บันทึกเป็นนอกขอบเขต" }).click()
+    await expect(scan.checkHeading(page, assets.outOfScope.tag)).toBeVisible()
+    await expect(scan.checkForm(page).getByText("นอกขอบเขตรอบนี้")).toBeVisible()
+    await expect(scan.saveButton(page)).toHaveText("บันทึกนอกขอบเขต")
+    await recordSettled(page, measure, "check of the out-of-scope asset")
+    await measure.timed("save out of scope", async () => {
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(`${assets.outOfScope.tag} บันทึกเป็นนอกขอบเขตแล้ว`)
+    })
   })
 })
