@@ -910,6 +910,9 @@ export function SystemSettingsForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    // Nothing changed is a prerequisite, not a field: the save waits and the status line beside it says why (spec §4.4,
+    // ST-R8). Enter in a field still reaches here.
+    if (changedCount === 0) return
     fieldErrors.setErrors(validate(submittedSettings, activePrefixRows, changedSettings))
     if (focusFirstError()) return
 
@@ -959,6 +962,8 @@ export function SystemSettingsForm({
   }
 
   async function handleLdapSync(action: "preview" | "apply") {
+    // Apply needs a preview first: the button waits and the empty preview line says why (spec §4.4, ST-R8).
+    if (action === "apply" && !syncPreview) return
     setSyncingLdap(action)
     setSyncError(null)
     try {
@@ -1952,7 +1957,9 @@ export function SystemSettingsForm({
             <Button
               onClick={() => handleLdapSync("apply")}
               busy={syncingLdap === "apply"}
-              disabled={syncingLdap === "preview" || !syncPreview}
+              disabled={syncingLdap === "preview"}
+              aria-disabled={!syncPreview || undefined}
+              aria-describedby={!syncPreview ? "ldap-sync-no-preview" : undefined}
               className="w-full sm:w-auto"
             >
               {labels.ldapSyncApply}
@@ -2055,14 +2062,19 @@ export function SystemSettingsForm({
       <StickyFormFooter
         status={
           <>
-            <p className="text-sm font-semibold text-foreground">
+            <p id="settings-save-status" className="text-sm font-semibold text-foreground">
               {changedCount > 0 ? labels.unsavedChanges.replace("{count}", String(changedCount)) : labels.noUnsavedChanges}
             </p>
             <p className="mt-1 hidden text-meta text-muted-foreground sm:block">{labels.settingsOverviewDescription}</p>
           </>
         }
       >
-        <Button type="submit" busy={saving} disabled={changedCount === 0}>
+        <Button
+          type="submit"
+          busy={saving}
+          aria-disabled={changedCount === 0 || undefined}
+          aria-describedby={changedCount === 0 ? "settings-save-status" : undefined}
+        >
           <Save />
           {labels.save}
         </Button>
@@ -2296,7 +2308,7 @@ function SyncPreviewPanel({
   locale: string
 }) {
   if (!preview) {
-    return <EmptyNote>{labels.ldapSyncNoPreview}</EmptyNote>
+    return <EmptyNote id="ldap-sync-no-preview">{labels.ldapSyncNoPreview}</EmptyNote>
   }
   const deactivationImpacts = (preview.deactivationImpacts ?? []).filter(
     (impact) => impact.activeAssetCount > 0 || impact.activeUserCount > 0

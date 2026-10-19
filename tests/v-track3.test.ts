@@ -323,3 +323,19 @@ test("the prefix editor checks its prefix and its categories on save, its save i
   const guards = read("tests/validation-guards.test.ts")
   assert.ok(guards.includes("  `${C}admin/system-settings-form.tsx`,\n]\n\n// Required selects"))
 })
+
+test("the save waits with its reason when nothing changed, and LDAP apply waits for a preview with its reason (v-track plan 3 task 5, ST5)", () => {
+  const form = formSource()
+  // Save: aria-disabled (it stays focusable), tied to the visible status line, and the handler returns first.
+  assert.match(form, /<p id="settings-save-status" className="text-sm font-semibold text-foreground">\n\s+\{changedCount > 0 \? labels\.unsavedChanges/)
+  assert.match(form, /<Button\n\s+type="submit"\n\s+busy=\{saving\}\n\s+aria-disabled=\{changedCount === 0 \|\| undefined\}\n\s+aria-describedby=\{changedCount === 0 \? "settings-save-status" : undefined\}\n\s+>/)
+  assert.doesNotMatch(form, /disabled=\{changedCount === 0\}/)
+  const submit = form.slice(form.indexOf("  async function handleSubmit("), form.indexOf("  async function handleLdapTest("))
+  assert.match(submit, /event\.preventDefault\(\)\n(?:\s+\/\/[^\n]*\n)+\s+if \(changedCount === 0\) return\n\s+fieldErrors\.setErrors\(validate\(/)
+  // LDAP apply: still disabled while a preview runs (another action is busy, not a gate); without a preview it is
+  // aria-disabled, tied to the line that says no preview has run, and its handler returns first.
+  assert.match(form, /disabled=\{syncingLdap === "preview"\}\n\s+aria-disabled=\{!syncPreview \|\| undefined\}\n\s+aria-describedby=\{!syncPreview \? "ldap-sync-no-preview" : undefined\}/)
+  assert.match(form, /return <EmptyNote id="ldap-sync-no-preview">\{labels\.ldapSyncNoPreview\}<\/EmptyNote>/)
+  assert.match(form, /async function handleLdapSync\(action: "preview" \| "apply"\) \{\n(?:\s+\/\/[^\n]*\n)+\s+if \(action === "apply" && !syncPreview\) return\n/)
+  assert.doesNotMatch(form, /\|\| !syncPreview\}/)
+})
