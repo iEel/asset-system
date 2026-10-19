@@ -8,6 +8,7 @@ import {
   areaTag,
   bangkokToday,
   chooseAsset,
+  completeRecord,
   createAsset,
   dayBefore,
   handOverPermanently,
@@ -87,4 +88,61 @@ test("an unfinished repair sends an asset in use to Under Maintenance, and repai
   const after = await readAsset(page.request, asset.id)
   expect(after.status.name, "repaired, with an active handover: In Use").toBe("In Use")
   expect(after.custodian?.code, "the custodian is kept").toBe(receiver.code)
+})
+
+test("repaired brings a Ready asset back to Ready, and a second record found beyond repair sends it to Pending Disposal (ER2)", async ({ page, measure }, testInfo) => {
+  const masters = await readAssetMasters(page)
+  const tag = areaTag(testInfo, "R2")
+  const asset = await createAsset(page.request, masters, { tag, name: `${tag} เครื่องส่วนกลางส่งซ่อม`, ownershipType: "shared" })
+
+  // From the asset's own page: its "บันทึกซ่อม" opens the form with the asset chosen. The page is opened without its
+  // axe check here (finding AR2 has its own test below); its console and requests are still measured.
+  await page.goto(`/th/assets/${asset.id}`)
+  await page.getByRole("main").getByRole("link", { name: "บันทึกซ่อม", exact: true }).first().click()
+  await page.waitForURL(/\/th\/maintenance\/new\?assetId=/)
+  await expect(page.locator("#repair-record-asset-value")).toContainText(tag)
+  await measure.recordPage("repair form from the asset")
+  await page.locator("#repair-record-problem").fill(`${tag} พัดลมดัง ส่งช่างภายใน`)
+  await page.getByRole("radio", { name: "ยังซ่อมไม่เสร็จ (ส่งซ่อม / รออะไหล่)" }).check()
+  const first = await saveRepairForm(page, measure, "save the first unfinished repair")
+  await expect(headerBadge(page)).toHaveText("ยังซ่อมไม่เสร็จ")
+  await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("อยู่ระหว่างซ่อม")
+  expect((await readAsset(page.request, asset.id)).status.name).toBe("Under Maintenance")
+
+  // Repaired: no custodian, so Ready.
+  await completeRecord(page, measure, first.id, "ใช้งานได้", "save the first repaired")
+  await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
+  await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("พร้อมใช้งาน")
+  await measure.recordPage("first record repaired")
+  expect((await readAsset(page.request, asset.id)).status.name, "repaired, no custodian: Ready").toBe("Ready")
+
+  // It breaks again: a second record, unfinished, then found beyond repair.
+  await measure.visit(`/th/maintenance/new?assetId=${asset.id}`, "second repair form")
+  await expect(page.locator("#repair-record-asset-value")).toContainText(tag)
+  await page.locator("#repair-record-problem").fill(`${tag} เมนบอร์ดเสีย`)
+  await page.getByRole("radio", { name: "ยังซ่อมไม่เสร็จ (ส่งซ่อม / รออะไหล่)" }).check()
+  const second = await saveRepairForm(page, measure, "save the second unfinished repair")
+  expect(second.id).not.toBe(first.id)
+  await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("อยู่ระหว่างซ่อม")
+  await completeRecord(page, measure, second.id, "ซ่อมไม่ได้ เสนอจำหน่าย", "save beyond repair")
+  await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
+  await expect(valueBeside(page, "ผลการซ่อม")).toHaveText("ซ่อมไม่ได้ เสนอจำหน่าย")
+  await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("รอตัดจำหน่าย")
+  await measure.recordPage("second record beyond repair")
+  expect((await readAsset(page.request, asset.id)).status.name, "beyond repair: Pending Disposal").toBe("Pending Disposal")
+
+  // The asset's repair history lists both records.
+  await measure.visit(`/th/maintenance?assetId=${asset.id}`, "the asset's repair records")
+  for (const record of [first, second]) await expect(page.getByRole("main").getByText(record.repairNo).first()).toBeAttached()
+})
+
+// Finding AR2 (expected to fail until it is fixed): the asset page's QR code is an <svg role="img"> with no name
+// (src/components/assets/asset-qr-code.tsx, qrcode.react without a title), an axe serious "svg-img-alt" violation.
+test("the asset page passes axe (ER2, finding AR2)", async ({ page, measure }, testInfo) => {
+  test.fail(true, "AR2: the asset page's QR code svg has role img and no name (axe svg-img-alt, serious)")
+  const masters = await readAssetMasters(page)
+  const tag = areaTag(testInfo, "R5")
+  const asset = await createAsset(page.request, masters, { tag, name: `${tag} หน้าทรัพย์สิน`, ownershipType: "stock" })
+  await measure.visit(`/th/assets/${asset.id}`, "asset page")
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(tag)
 })

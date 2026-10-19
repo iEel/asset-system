@@ -141,6 +141,20 @@ export async function saveRepairForm(page: Page, measure: Measure, label: string
   return record
 }
 
+// "ซ่อมเสร็จ" on the record page: today's date, the outcome, save, and the dialog closes.
+export async function completeRecord(page: Page, measure: Measure, recordId: string, outcome: "ใช้งานได้" | "ซ่อมไม่ได้ เสนอจำหน่าย", label: string) {
+  await page.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "บันทึกว่าซ่อมเสร็จ" })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole("radio", { name: outcome }).check()
+  const completed = page.waitForResponse((response) => response.url().endsWith(`/api/maintenance-tickets/${recordId}`) && response.request().method() === "PATCH")
+  await measure.timed(label, async () => {
+    await dialog.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()
+    expect((await completed).status(), label).toBe(200)
+  })
+  await expect(dialog).toBeHidden()
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }

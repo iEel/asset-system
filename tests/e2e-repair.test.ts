@@ -42,3 +42,23 @@ test("repair records: an unfinished record sends an asset in use to Under Mainte
   assert.equal(policy.getRepairRecordCompleteEffect({ ...inUse, statusName: "Under Maintenance" }, "usable").nextStatusName, "In Use")
   assert.ok(spec.includes(`toBe("Under Maintenance")`) && spec.includes(`expect(after.status.name, "repaired, with an active handover: In Use").toBe("In Use")`))
 })
+
+test("repair records: repaired brings a Ready asset back to Ready and beyond repair sends it to Pending Disposal; the asset page's axe finding stays expected to fail (e2e repair task 2, ER2)", async () => {
+  const spec = read("e2e/repair/repair-record.spec.ts")
+  const data = read("e2e/repair/repair-data.ts")
+  assert.ok(titles(spec).some((title) => title.endsWith("(ER2)")), "the ER2 test")
+  // The walk starts on the asset's own page (its "บันทึกซ่อม"), which opens without its axe check: finding AR2 has its own
+  // test, marked expected to fail, so it reports itself once AR2 is fixed.
+  assert.ok(spec.includes("  await page.goto(`/th/assets/${asset.id}`)\n"))
+  assert.ok(spec.includes(`test("the asset page passes axe (ER2, finding AR2)"`))
+  assert.ok(spec.includes(`  test.fail(true, "AR2: `))
+  assert.ok(spec.includes("  await measure.visit(`/th/assets/${asset.id}`, \"asset page\")\n"), "AR2's test runs axe on the asset page")
+  assert.ok(data.includes("export async function completeRecord(page: Page, measure: Measure, recordId: string, outcome:"))
+  for (const text of [th.repairRecord.outcome.beyond_repair, th.repairRecord.status.closed]) assert.ok(spec.includes(text), text)
+  // A shared asset with no custodian: repaired is Ready, beyond repair is Pending Disposal (the app's rules).
+  const policy = await import("../src/lib/repair-record-policy.ts")
+  const shared = { statusName: "Under Maintenance", ownershipType: "shared", custodianId: null, hasActiveCheckout: false, hasOpenRecord: false }
+  assert.equal(policy.getRepairRecordCompleteEffect(shared, "usable").nextStatusName, "Ready")
+  assert.equal(policy.getRepairRecordCompleteEffect(shared, "beyond_repair").nextStatusName, "Pending Disposal")
+  assert.ok(spec.includes(`.toBe("Ready")`) && spec.includes(`.toBe("Pending Disposal")`))
+})
