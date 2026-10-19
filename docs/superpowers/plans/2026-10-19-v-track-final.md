@@ -2507,7 +2507,7 @@ The user's approved scope (2026-10-19) and what plans 1–3 handed on:
 
 ## Open issues (answer before execution; each default is what the tasks write)
 
-**Not answered yet.** Task 0 Step 1 stops until the user answers. Recommended answer for all: "ตามที่แนะนำ".
+**Answered by the user on 2026-10-19: "ตามที่แนะนำ"** — every recommendation: 1–5, 8–10 as written (the defaults the tasks write); 6 (the prefix editor's transfer arrows) and 7 (`waitForDialogToClose` ~1 s late, with Radix's close auto-focus) and 11 (forced colors: `aria-disabled` buttons look enabled) are small tasks after this plan merges, before E2E; the Thai sentence "กรุณากรอกเป็นจำนวนเต็ม" as written.
 
 1. **The server still reads a fraction as `invalidNumber`** (VF-R2). zod's `.int()` maps to `invalidNumber` (`src/lib/field-errors.ts:57–58`, X-R2), so a fraction that reaches the server reads "กรุณากรอกเป็นตัวเลข" while the form says "กรุณากรอกเป็นจำนวนเต็ม". After Task 1 every form refuses a fraction before it sends, so only a request that skips the form meets it. **Default:** no server change. **Recommendation:** as written (the spec keeps the server out of this round; mapping `.int()` to `notWholeNumber` would make it a `FieldErrorCode` and widen `tests/v-track-f.test.ts`'s code list, a later one-line task if ever wanted).
 2. **A label margin or gap off the 0.5 step still reads "กรุณากรอกเป็นตัวเลข"** (`step(value, 0.5)`, VF-R2): not a whole number, so the new sentence does not fit it. **Default:** unchanged. **Recommendation:** leave it (one setting pair, admin only); a sentence with the step (`{step}`) is a later message if UAT asks.
