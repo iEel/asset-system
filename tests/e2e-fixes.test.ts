@@ -184,3 +184,11 @@ test("two rounds opened at once both get a number: the round's create retries a 
   assert.match(route, /const round = await withPrismaUniqueRetry\(async \(\) => \{\n\s*const auditNo = await generateAuditNo\(input\.auditYear\)/)
   assert.match(route, /import \{ withPrismaUniqueRetry \} from "@\/lib\/prisma-unique-retry"/)
 })
+
+test("a form proposes today's date in Bangkok, not the UTC date (e2e fix task FX15: TX-N1, AU3)", () => {
+  const offenders = filesUnder("src/components").filter((file) => /\.tsx?$/.test(file) && read(file).includes("new Date().toISOString().slice(0, 10)"))
+  assert.deepEqual(offenders, [])
+  for (const file of ["src/components/asset-operations/checkout-form.tsx", "src/components/audit/audit-round-form.tsx", "src/components/disposal/disposal-execution-button.tsx"]) {
+    assert.match(read(file), /toLocalDateInputValue\(\)/, file)
+  }
+})

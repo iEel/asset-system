@@ -21,6 +21,7 @@ import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { displayYearRange, fromDisplayYear, toDisplayYear } from "@/lib/display-year"
+import { toLocalDateInputValue } from "@/lib/local-date"
 import { cn } from "@/lib/utils"
 import { maxLength, notBefore, range, required, wholeNumber } from "@/lib/validation-rules"
 
@@ -113,8 +114,8 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
     includeClosedAssets: false,
     riskPreset: "all",
     sampleRate: "100",
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: new Date().toISOString().slice(0, 10),
+    startDate: toLocalDateInputValue(),
+    endDate: toLocalDateInputValue(),
     status: "draft",
   })
   const statusOptions = filterAuditStatusOptions(options.statuses, values.includeClosedAssets)

@@ -24,6 +24,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
+import { toLocalDateInputValue } from "@/lib/local-date"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
 import {
@@ -693,7 +694,7 @@ export function AssetBatchForm({
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `asset-batch-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `asset-batch-${toLocalDateInputValue()}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }

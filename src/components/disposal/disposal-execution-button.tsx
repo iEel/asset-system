@@ -20,6 +20,7 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 import { getApiErrorKey } from "@/lib/api-error-catalog"
+import { toLocalDateInputValue } from "@/lib/local-date"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
@@ -154,7 +155,7 @@ export function DisposalExecutionButton({
   const disposedStatus = statuses.find((status) => status.name === "Disposed")
   const defaultStatus = disposedStatus
   const [values, setValues] = useState<ExecutionValues>({
-    executionDate: new Date().toISOString().slice(0, 10),
+    executionDate: toLocalDateInputValue(),
     executedById: "",
     nextStatusId: defaultStatus?.id ?? statuses[0]?.id ?? "",
     recipientName: "",

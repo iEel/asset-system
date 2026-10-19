@@ -22,6 +22,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { toLocalDateInputValue } from "@/lib/local-date"
 import type { AssetHandoverMode } from "@/lib/asset-handover-mode"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { notBefore, required } from "@/lib/validation-rules"
@@ -132,7 +133,7 @@ export function CheckoutForm({
     departmentId: "",
     locationId: "",
     parentAssetId: "",
-    checkoutDate: new Date().toISOString().slice(0, 10),
+    checkoutDate: toLocalDateInputValue(),
     expectedReturnDate: "",
     conditionBefore: "",
     remark: "",

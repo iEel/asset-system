@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { toLocalDateInputValue } from "@/lib/local-date"
 import { rememberAssetRegisterScrollPosition } from "@/lib/asset-register-view-memory"
 import type { AssetActivityFilter } from "@/lib/asset-activity-filter"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
@@ -375,7 +376,7 @@ export function AssetRegisterTable({
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `assets-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `assets-${toLocalDateInputValue()}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }
