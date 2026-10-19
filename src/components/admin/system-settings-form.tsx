@@ -186,7 +186,6 @@ type SystemSettingsFormProps = {
     runningDigits: string
     separator: string
     globalPrefix: string
-    invalidFormatTemplate: string
     labelPrintTemplate: string
     labelPrintTemplateDescription: string
     compactLabelAssetName: string
@@ -219,9 +218,6 @@ type SystemSettingsFormProps = {
     labelSecondaryLine: string
     labelTertiaryLine: string
     labelTemplateTokens: string
-    invalidLabelTemplate: string
-    invalidLabelSize: string
-    invalidPublicQrBaseUrl: string
     operationDocumentNumbers: string
     operationDocumentNumbersDescription: string
     checkoutDocumentTemplate: string
@@ -231,7 +227,6 @@ type SystemSettingsFormProps = {
     operationDocumentTokens: string
     checkoutDocumentExample: string
     checkinDocumentExample: string
-    invalidOperationDocumentTemplate: string
     categoryPrefixes: string
     categoryPrefixesDescription: string
     noCategoryPrefixes: string
@@ -255,7 +250,6 @@ type SystemSettingsFormProps = {
     cancel: string
     categoryPrefixPreview: string
     removePrefix: string
-    duplicateCategory: string
     invalidPrefix: string
     prefixCategoriesRequired: string
     organizationDefaults: string
@@ -263,7 +257,6 @@ type SystemSettingsFormProps = {
     companyName: string
     defaultCurrency: string
     accountingDepreciationPolicyDescription: string
-    invalidAccountingDepreciationPolicy: string
     depreciationPolicyBuilderTitle: string
     depreciationPolicyBuilderDescription: string
     depreciationMethod: string
@@ -307,7 +300,6 @@ type SystemSettingsFormProps = {
     warrantyExpiryDays: string
     licenseExpiryDays: string
     notificationDaysHelp: string
-    invalidNotificationRule: string
     workflowApprovalPolicy: string
     workflowApprovalPolicyDescription: string
     workflowApprovalDisposalRequired: string
@@ -320,11 +312,9 @@ type SystemSettingsFormProps = {
     workflowApprovalFoundationNote: string
     workflowApprovalSodOn: string
     workflowApprovalSodOff: string
-    invalidWorkflowApproval: string
     schedulerSettings: string
     schedulerSettingsDescription: string
     schedulerHeartbeatNote: string
-    invalidSchedulerSchedule: string
     governanceSettings: string
     governanceSettingsDescription: string
     retentionPolicy: string
@@ -334,7 +324,6 @@ type SystemSettingsFormProps = {
     retentionOrphanFileDays: string
     retentionDaysHelp: string
     openStorageGovernance: string
-    invalidRetentionPolicy: string
     advancedSettings: string
     advancedSettingsDescription: string
     ldapSettings: string

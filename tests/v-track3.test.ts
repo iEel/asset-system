@@ -339,3 +339,30 @@ test("the save waits with its reason when nothing changed, and LDAP apply waits 
   assert.match(form, /async function handleLdapSync\(action: "preview" \| "apply"\) \{\n(?:\s+\/\/[^\n]*\n)+\s+if \(action === "apply" && !syncPreview\) return\n/)
   assert.doesNotMatch(form, /\|\| !syncPreview\}/)
 })
+
+test("the eleven group sentences of the old boxes and toasts are gone with their labels; the prefix sentence stays (v-track plan 3 task 6, ST6)", () => {
+  const form = formSource()
+  const page = read("src/app/[locale]/(dashboard)/admin/settings/page.tsx")
+  const retired = [
+    "duplicateCategory",
+    "invalidFormatTemplate",
+    "invalidPublicQrBaseUrl",
+    "invalidLabelTemplate",
+    "invalidLabelSize",
+    "invalidOperationDocumentTemplate",
+    "invalidNotificationRule",
+    "invalidRetentionPolicy",
+    "invalidAccountingDepreciationPolicy",
+    "invalidWorkflowApproval",
+    "invalidSchedulerSchedule",
+  ]
+  for (const key of retired) {
+    assert.doesNotMatch(form, new RegExp(`\\b${key}\\b`), `form: ${key}`)
+    assert.doesNotMatch(page, new RegExp(`\\b${key}\\b`), `page: ${key}`)
+    for (const locale of ["th", "en"] as const) assert.equal(messages(locale).systemSettingsPage[key], undefined, `${locale}: systemSettingsPage.${key}`)
+  }
+  // Each setting now reads its own sentence from apiErrors (task 1); the prefix editor and the prefix groups keep theirs.
+  assert.match(page, /\n\s+invalidPrefix: t\("invalidPrefix"\),\n\s+prefixCategoriesRequired: t\("prefixCategoriesRequired"\),\n/)
+  assert.match(form, /\n\s+invalidPrefix: string\n\s+prefixCategoriesRequired: string\n/)
+  for (const locale of ["th", "en"] as const) assert.equal(typeof messages(locale).systemSettingsPage.invalidPrefix, "string")
+})
