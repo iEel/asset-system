@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
-export function AssetRegisterExportMenu({ exportHref, templateHref }: { exportHref: string; templateHref: string }) {
+// templateHref is given only to a role that may import (asset:create); without it the menu offers the export alone.
+export function AssetRegisterExportMenu({ exportHref, templateHref }: { exportHref: string; templateHref?: string }) {
   const t = useTranslations("asset")
 
   return (
@@ -23,12 +24,14 @@ export function AssetRegisterExportMenu({ exportHref, templateHref }: { exportHr
             {t("exportFiltered")}
           </a>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href={templateHref} download>
-            <FileSpreadsheet aria-hidden="true" />
-            {t("downloadTemplate")}
-          </a>
-        </DropdownMenuItem>
+        {templateHref ? (
+          <DropdownMenuItem asChild>
+            <a href={templateHref} download>
+              <FileSpreadsheet aria-hidden="true" />
+              {t("downloadTemplate")}
+            </a>
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )

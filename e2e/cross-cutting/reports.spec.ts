@@ -87,7 +87,7 @@ test.describe("the viewer", () => {
   // Finding M2 (expected to fail until fixed): the import and export page shows the import template's download to a
   // role without asset:create, and the template route answers it 403.
   test("the import and export page offers no import template without asset:create (finding M2)", async ({ page, measure }) => {
-    test.fail(true, "M2: /th/asset-management/import-export shows the import template link to a role without asset:create")
+    // M2 fixed (FX5): this test now keeps the import template hidden from a role without asset:create.
     await measure.visit("/th/asset-management/import-export", "asset import and export (viewer)")
     expect((await page.request.get("/api/assets/import-template")).status()).toBe(403)
     await expect(page.locator('main a[href^="/api/assets/import-template"]')).toHaveCount(0)

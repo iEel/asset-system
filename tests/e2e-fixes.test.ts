@@ -66,3 +66,12 @@ test("the audit exports show only to a role with audit:export (e2e fix task FX4:
   assert.ok(!read("e2e/audit/field-audit.spec.ts").includes(`test.fail(true, "AU1: `))
   assert.ok(!read("e2e/cross-cutting/reports.spec.ts").includes(`test.fail(true, "M1: `))
 })
+
+test("the import template and the import wizard show only to a role with asset:create (e2e fix task FX5: M2)", () => {
+  const page = read("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx")
+  assert.match(page, /const canImport = hasPermission\(user, "asset", "create"\)/)
+  assert.match(page, /\{canImport \? \(\n\s*<ActionLink\n\s*download\n\s*href="\/api\/assets\/import-template"/)
+  const register = read("src/app/[locale]/(dashboard)/assets/page.tsx")
+  assert.match(register, /\{canCreateAssets \? \(\n\s*<AssetImportPreviewPanel/)
+  assert.ok(!read("e2e/cross-cutting/reports.spec.ts").includes(`test.fail(true, "M2: `))
+})

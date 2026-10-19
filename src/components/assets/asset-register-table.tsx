@@ -512,7 +512,7 @@ export function AssetRegisterTable({
           </Button>
           <div className="hidden items-center gap-2 md:flex">
             <AssetRegisterColumnPicker visibleColumns={visibleColumns} onToggleColumn={toggleColumn} onApplyPreset={applyColumnPreset} />
-            <AssetRegisterExportMenu exportHref={`/api/assets/export?${buildAssetQueryString(filters)}`} templateHref="/api/assets/import-template" />
+            <AssetRegisterExportMenu exportHref={`/api/assets/export?${buildAssetQueryString(filters)}`} templateHref={permissions.canCreate ? "/api/assets/import-template" : undefined} />
           </div>
         </div>
       </div>
