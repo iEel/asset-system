@@ -8,6 +8,7 @@
     "start": "node scripts/next-with-env-port.mjs start",
     "lint": "eslint",
     "test": "node scripts/run-tests.mjs",
+    "test:e2e": "playwright test",
     "verify": "node scripts/verify.mjs",
     "prisma:generate": "prisma generate",
     "integration:token": "node scripts/generate-integration-token.mjs",
@@ -60,6 +61,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",

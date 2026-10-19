@@ -51,3 +51,10 @@ next-env.d.ts
 
 # unused local AI tooling
 /.gemini/
+
+# E2E suite (Playwright, npm run test:e2e): the HTML report, the per-test artifacts (traces, screenshots) and the
+# run summary, and the run state (run id, users with their generated passwords, sessions). .env.e2e, the seed
+# admin sign-in, is ignored by .env* above.
+/e2e-report/
+/e2e-results/
+/e2e/.state/
