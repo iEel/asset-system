@@ -168,3 +168,20 @@ test("the latest transaction cancelled: the state before it, the VOID document w
   assert.match(spec, /await visitAssetPage\(measure, asset\.id, "asset history after the cancel", testInfo, "operations"\)/)
   assert.deepEqual(expectedFailures(spec), ["TX-A5", "TX-A7"])
 })
+
+test("the desk delivery on the phone: taps, the keyboard over the form, a finger signature, the HO- document on the phone (e2e transactions task 7, TX7)", async () => {
+  const spec = readTxSpec("e2e/transactions/desk-delivery.spec.ts")
+  assert.match(spec, /test\.skip\(e2eDevice !== "phone", "the desk delivery is done on the phone \(spec §6\.1\.8\)"\)/)
+  // Chromium on the phone (ruling TX-R3): Playwright draws a finger only through Chromium's touch input.
+  assert.ok(!spec.split("\n").includes("runPhoneOnWebKit()"), "the desk delivery stays on Chromium")
+  assert.match(spec, /await openPhoneKeyboard\(page\)/)
+  assert.match(spec, /await expectReachable\(save\)/)
+  assert.match(spec, /await expectReachable\(confirm\)/)
+  assert.match(spec, /\.tap\(\)/)
+  assert.match(spec, /await signOnPad\(page, page\.getByRole\("group", \{ name: "ลายเซ็นผู้รับ" \}\), e2eDevice, browserName\)/)
+  // Every spec of the area is pinned by this file.
+  const { readdirSync } = await import("node:fs")
+  assert.deepEqual(readdirSync("e2e/transactions").filter((file) => file.endsWith(".spec.ts")).sort(), [
+    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return.spec.ts", "transfer.spec.ts",
+  ])
+})
