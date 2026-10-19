@@ -146,3 +146,88 @@ test("the asset page passes axe (ER2, finding AR2)", async ({ page, measure }, t
   await measure.visit(`/th/assets/${asset.id}`, "asset page")
   await expect(page.getByRole("heading", { level: 1 })).toContainText(tag)
 })
+
+test("a second record for an asset under repair is refused, and a mistaken record is cancelled with the asset back to Ready (ER3)", async ({ page, measure }, testInfo) => {
+  const masters = await readAssetMasters(page)
+  const tag = areaTag(testInfo, "R3")
+  const asset = await createAsset(page.request, masters, { tag, name: `${tag} เครื่องบันทึกผิด`, ownershipType: "stock" })
+
+  await measure.visit(`/th/maintenance/new?assetId=${asset.id}`, "repair form")
+  await page.locator("#repair-record-problem").fill(`${tag} บันทึกผิดเครื่อง`)
+  await page.getByRole("radio", { name: "ยังซ่อมไม่เสร็จ (ส่งซ่อม / รออะไหล่)" }).check()
+  const record = await saveRepairForm(page, measure, "save the mistaken repair")
+  await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("อยู่ระหว่างซ่อม")
+
+  // No second open record: the asset search shows it, but it cannot be chosen, with the reason beside it.
+  await measure.visit("/th/maintenance/new", "repair form, a second record")
+  await page.locator("#repair-record-asset").click()
+  await page.getByPlaceholder("พิมพ์เพื่อค้นหา...").fill(tag)
+  const option = page.getByRole("option", { name: new RegExp(`^${tag} - `) })
+  await expect(option).toContainText('ทรัพย์สินนี้มีงานซ่อมที่ยังไม่เสร็จ กด "ซ่อมเสร็จ" ที่บันทึกนั้นแทน')
+  await expect(option).toHaveAttribute("aria-disabled", "true")
+  await page.keyboard.press("Escape")
+  await expect(page.getByPlaceholder("พิมพ์เพื่อค้นหา...")).toBeHidden()
+  await expect(page.locator("#repair-record-asset")).toBeFocused()
+  await expect(page.locator("#repair-record-asset-value")).not.toContainText(tag)
+  // axe after the search closes (finding AR3 has its own test below: the open search hides the page with aria-hidden).
+  await measure.recordPage("repair form after the refused search")
+
+  // Cancel the mistaken record: the reason stays in its history, the asset goes back to Ready.
+  await measure.visit(`/th/maintenance/${record.id}`, "mistaken record")
+  await page.getByRole("button", { name: "ยกเลิกบันทึก", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "ยกเลิกบันทึกนี้?" })
+  await expect(dialog).toBeVisible()
+  await dialog.locator("#repair-cancel-reason").fill(`${tag} เลือกเครื่องผิด`)
+  await measure.recordPage("cancel dialog")
+  const cancelled = page.waitForResponse((response) => response.url().endsWith(`/api/maintenance-tickets/${record.id}`) && response.request().method() === "PATCH")
+  await measure.timed("cancel the mistaken record", async () => {
+    await dialog.getByRole("button", { name: "ยืนยันยกเลิก", exact: true }).click()
+    expect((await cancelled).status()).toBe(200)
+  })
+  await expect(dialog).toBeHidden()
+  await expect(headerBadge(page)).toHaveText("ยกเลิก")
+  await expect(valueBeside(page, "สถานะปัจจุบัน")).toHaveText("พร้อมใช้งาน")
+  await expect(page.locator("#history")).toContainText("ยกเลิกบันทึก")
+  await expect(page.locator("#history")).toContainText(`${tag} เลือกเครื่องผิด`)
+  // A cancelled record cannot be finished or cancelled again.
+  await expect(page.getByRole("button", { name: "ซ่อมเสร็จ", exact: true })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "ยกเลิกบันทึก", exact: true })).toHaveCount(0)
+  await measure.recordPage("cancelled record")
+  expect((await readAsset(page.request, asset.id)).status.name, "cancelled: back to Ready").toBe("Ready")
+})
+
+// Finding AR1 (expected to fail until it is fixed): the print sheet's fields are <dt>/<dd> pairs in a <div> grid with no
+// <dl> (src/components/asset-operations/operation-document-print.tsx), an axe serious "dlitem" violation on every print
+// (handover, return, transfer, disposal, repair). When AR1 is fixed this test passes and Playwright reports it.
+test("the repair print opens with the record's number, state and outcome (ER3, finding AR1)", async ({ page, measure }, testInfo) => {
+  test.fail(true, "AR1: the print sheet's dt/dd pairs sit outside a dl (axe dlitem, serious)")
+  const masters = await readAssetMasters(page)
+  const tag = areaTag(testInfo, "R4")
+  const asset = await createAsset(page.request, masters, { tag, name: `${tag} เครื่องพิมพ์บันทึกซ่อม`, ownershipType: "stock" })
+
+  await measure.visit(`/th/maintenance/new?assetId=${asset.id}`, "repair form")
+  await page.locator("#repair-record-problem").fill(`${tag} เปลี่ยนแบตเตอรี่`)
+  const record = await saveRepairForm(page, measure, "save a finished repair")
+  await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
+  await page.getByRole("main").getByRole("link", { name: "พิมพ์" }).first().click()
+  await page.waitForURL(new RegExp(`/th/maintenance/${record.id}/print`))
+  await expect(page.getByRole("heading", { level: 1, name: "บันทึกการซ่อม" })).toBeVisible()
+  await expect(page.getByText(record.repairNo).first()).toBeVisible()
+  await expect(page.getByText(tag).first()).toBeVisible()
+  await expect(page.getByText("ซ่อมเสร็จแล้ว").first()).toBeVisible()
+  await expect(page.getByText("ใช้งานได้").first()).toBeVisible()
+  await measure.recordPage("repair print")
+})
+
+// Finding AR3 (expected to fail until it is decided): while a searchable select is open, its modal popover hides the
+// rest of the page with aria-hidden, and the page's links and buttons under it stay focusable: an axe serious
+// "aria-hidden-focus" violation on every searchable select (src/components/ui/searchable-select.tsx, Radix Popover
+// modal). Focus is trapped in the popover, so the controller decides: inert instead of aria-hidden, or a reviewed
+// allow-list entry.
+test("the open asset search passes axe (ER3, finding AR3)", async ({ page, measure }) => {
+  test.fail(true, "AR3: the open searchable select leaves focusable content under aria-hidden (axe aria-hidden-focus, serious)")
+  await measure.visit("/th/maintenance/new", "repair form")
+  await page.locator("#repair-record-asset").click()
+  await expect(page.getByPlaceholder("พิมพ์เพื่อค้นหา...")).toBeFocused()
+  await measure.recordPage("repair form with the asset search open")
+})

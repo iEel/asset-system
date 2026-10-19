@@ -62,3 +62,25 @@ test("repair records: repaired brings a Ready asset back to Ready and beyond rep
   assert.equal(policy.getRepairRecordCompleteEffect(shared, "beyond_repair").nextStatusName, "Pending Disposal")
   assert.ok(spec.includes(`.toBe("Ready")`) && spec.includes(`.toBe("Pending Disposal")`))
 })
+
+test("repair records: a second open record is refused, a mistaken one is cancelled back to Ready; the print and the open search stay expected to fail (e2e repair task 3, ER3)", async () => {
+  const spec = read("e2e/repair/repair-record.spec.ts")
+  assert.ok(titles(spec).some((title) => title.endsWith("(ER3)")), "the ER3 test")
+  // The refusal of a second open record is the app's own reason, beside the asset it will not take.
+  assert.ok(spec.includes(th.maintenancePage.errors.MAINTENANCE_OPEN_RECORD_EXISTS))
+  assert.ok(spec.includes(`await expect(option).toHaveAttribute("aria-disabled", "true")`))
+  for (const text of [th.repairRecord.cancel, th.repairRecord.cancelTitle, th.repairRecord.confirmCancel, th.repairRecord.status.cancelled, th.repairRecord.movement.cancel, th.repairRecord.printTitle]) {
+    assert.ok(spec.includes(text), text)
+  }
+  // The findings of this task: each its own test, marked expected to fail with its id.
+  for (const [title, id] of [["the repair print opens with the record's number, state and outcome (ER3, finding AR1)", "AR1"], ["the open asset search passes axe (ER3, finding AR3)", "AR3"]]) {
+    const start = spec.indexOf(`test("${title}"`)
+    assert.ok(start >= 0, title)
+    assert.ok(spec.slice(start, spec.indexOf("\n})", start)).includes(`  test.fail(true, "${id}: `), `${id} is expected to fail`)
+  }
+  // Cancelled, a stock asset with no custodian goes back to Ready (the app's rule).
+  const policy = await import("../src/lib/repair-record-policy.ts")
+  const stock = { statusName: "Under Maintenance", ownershipType: "stock", custodianId: null, hasActiveCheckout: false, hasOpenRecord: false }
+  assert.equal(policy.getRepairRecordCancelEffect(stock).nextStatusName, "Ready")
+  assert.ok(spec.includes(`expect((await readAsset(page.request, asset.id)).status.name, "cancelled: back to Ready").toBe("Ready")`))
+})
