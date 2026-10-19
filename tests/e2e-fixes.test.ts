@@ -159,3 +159,15 @@ test("a cancel in the asset's history reads in Thai (e2e fix task FX11: TX-A5)",
   assert.equal(th.transfer_cancel, "ยกเลิกการโอนย้าย")
   assert.ok(!read("e2e/transactions/cancel.spec.ts").includes(`test.fail(true, "TX-A5: `))
 })
+
+test("the cancel dialog names the person who made the transaction (e2e fix task FX12: TX-A7)", () => {
+  const helper = read("src/lib/transaction-operator-label.ts")
+  assert.match(helper, /export async function getTransactionOperatorLabel\(userId: string\): Promise<string> \{/)
+  assert.match(helper, /if \(user\.employee\) return `\$\{user\.employee\.code\} - \$\{user\.employee\.fullNameTh\}`/)
+  const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  assert.match(detail, /originalOperator: latestTransactionOperator,/)
+  assert.match(detail, /latestAssetTransaction && latestAssetTransaction\.type !== "checkin"\n\s*\? await getTransactionOperatorLabel\(latestAssetTransaction\.operator\)/)
+  assert.match(read("src/app/[locale]/(print)/asset-management/checkouts/[id]/page.tsx"), /originalOperator=\{await getTransactionOperatorLabel\(checkout\.checkedOutBy\)\}/)
+  assert.match(read("src/app/[locale]/(print)/asset-management/transfers/[id]/page.tsx"), /originalOperator=\{await getTransactionOperatorLabel\(transfer\.createdBy\)\}/)
+  assert.ok(!read("e2e/transactions/cancel.spec.ts").includes(`test.fail(true, "TX-A7: `))
+})

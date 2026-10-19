@@ -24,6 +24,7 @@ import {
   Wrench,
 } from "lucide-react"
 import { prisma } from "@/lib/db"
+import { getTransactionOperatorLabel } from "@/lib/transaction-operator-label"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
@@ -305,6 +306,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     latestCancellationTransfer ? { ...latestCancellationTransfer, type: "transfer" as const, operator: latestCancellationTransfer.createdBy } : null,
   ].filter((transaction): transaction is NonNullable<typeof transaction> => transaction !== null)
     .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null
+  // The cancel dialog names who made it: a handover and a transfer store the user's id, a return the receiver's name.
+  const latestTransactionOperator = latestAssetTransaction && latestAssetTransaction.type !== "checkin"
+    ? await getTransactionOperatorLabel(latestAssetTransaction.operator)
+    : latestAssetTransaction?.operator ?? ""
   const cancellationBeforeSnapshot = latestAssetTransaction
     ? parseAssetTransactionSnapshot(latestAssetTransaction.beforeSnapshotJson)
     : null
@@ -945,7 +950,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                       type: latestAssetTransaction.type,
                       transactionId: latestAssetTransaction.id,
                       expectedUpdatedAt: latestAssetTransaction.updatedAt.toISOString(),
-                      originalOperator: latestAssetTransaction.operator,
+                      originalOperator: latestTransactionOperator,
                       currentState: formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels),
                       restoreState: formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels),
                       componentCount: cancellationBeforeSnapshot?.components.length ?? 0,

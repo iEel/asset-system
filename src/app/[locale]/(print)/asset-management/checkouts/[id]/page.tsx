@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
+import { getTransactionOperatorLabel } from "@/lib/transaction-operator-label"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { formatDate, formatDateTime } from "@/lib/utils"
@@ -95,7 +96,7 @@ export default async function CheckoutPrintPage({ params, searchParams }: Checko
           type="checkout"
           transactionId={checkout.id}
           expectedUpdatedAt={checkout.updatedAt.toISOString()}
-          originalOperator={checkout.checkedOutBy}
+          originalOperator={await getTransactionOperatorLabel(checkout.checkedOutBy)}
           currentState={formatSnapshotState(afterSnapshot, labels)}
           restoreState={formatSnapshotState(beforeSnapshot, labels)}
           componentCount={beforeSnapshot?.components.length ?? 0}

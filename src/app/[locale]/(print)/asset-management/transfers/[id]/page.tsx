@@ -4,6 +4,7 @@ import { hasPermission } from "@/lib/auth-utils"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { prisma } from "@/lib/db"
+import { getTransactionOperatorLabel } from "@/lib/transaction-operator-label"
 import { requirePagePermission } from "@/lib/page-auth"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { formatDateTime } from "@/lib/utils"
@@ -71,7 +72,7 @@ export default async function TransferPrintPage({ params, searchParams }: Transf
           type="transfer"
           transactionId={transfer.id}
           expectedUpdatedAt={transfer.updatedAt.toISOString()}
-          originalOperator={transfer.createdBy}
+          originalOperator={await getTransactionOperatorLabel(transfer.createdBy)}
           currentState={formatSnapshotState(afterSnapshot, labels)}
           restoreState={formatSnapshotState(beforeSnapshot, labels)}
           componentCount={beforeSnapshot?.components.length ?? 0}

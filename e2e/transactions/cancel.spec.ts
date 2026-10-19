@@ -96,9 +96,10 @@ test.describe("cancel the latest transaction", () => {
   // Finding TX-A7: the cancel dialog's "ผู้ทำรายการเดิม" (who made the transaction) shows the user's id, a UUID, not the
   // person's name.
   test("the cancel dialog names the person who made the transaction (finding TX-A7)", async ({ e2eTheme }, testInfo) => {
-    test.fail(true, "TX-A7: the dialog shows the operator's user id")
+    // TX-A7 fixed (FX12): the dialog names the person as the asset's history does (the employee's code and name).
     const shown = cancelled.get(testInfo.project.name)
     expect(shown, `the cancel test ran first (${e2eTheme})`).toBeTruthy()
-    expect(shown?.operator).toBe(shown?.staffName)
+    expect(shown?.operator).toContain(shown?.staffName ?? "")
+    expect(shown?.operator).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-/)
   })
 })
