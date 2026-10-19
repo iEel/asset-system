@@ -81,3 +81,26 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
   assert.ok(spec.includes(`test.fail(true, "finding D2:`), "D2 expected to fail")
   assert.ok(spec.indexOf(`"finding D3:`) < spec.indexOf(`"finding D2:`), "the approver's preview runs while the request is still approved")
 })
+
+test("an asset in an open audit round cannot be requested for disposal, with the reason, and can once the round is cancelled (e2e disposal task 3, ED3)", () => {
+  assert.deepEqual(disposalSpecs(), ["batch-bulk-approval.spec.ts", "open-audit-block.spec.ts", "single-request.spec.ts"])
+  const spec = read("e2e/disposal/open-audit-block.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "IT staff walk it")
+  assert.ok(spec.includes(`recordPrefix(testInfo, "DSP3")`), "its own records")
+  // The round is the test's own, on its own room, open.
+  assert.ok(spec.includes(`scopeLocationId: roomId,`) && spec.includes(`status: "open",`), "an open round on the test's room")
+  for (const step of [
+    `await expect(option).toBeDisabled()`,
+    `"อยู่ในรอบตรวจนับที่ยังไม่ปิด"`,
+    String.raw`measure.expectRefusal({ method: "POST", url: /\/api\/disposal-requests$/, status: 400,`,
+    `"ทรัพย์สินยังมีงานค้างที่ต้องปิดก่อนสร้างคำขอตัดจำหน่าย"`,
+    `expect(before.status?.name).toBe("Ready")`,
+    `await actAs(page, "itHead", e2eTheme)`,
+    `{ data: { action: "cancel", reason:`,
+    `"สร้างคำขอตัดจำหน่ายสำเร็จ"`,
+  ]) assert.ok(spec.includes(step), step)
+  // Every disposal test makes its own records under its own workflow code.
+  const codes = disposalSpecs().map((file) => read(`e2e/disposal/${file}`).match(/recordPrefix\(testInfo, "(DSP\d)"\)/)?.[1])
+  assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3"])
+})
