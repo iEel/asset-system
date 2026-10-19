@@ -137,3 +137,14 @@ test("a return to the second room prints the RT- document, and a return sent to 
   assert.ok(expectedFailures(findings).includes("TX-A8"))
   assert.match(findings, /test\.skip\(e2eDevice !== "phone", "the review dialog scrolls on the phone only"\)/)
 })
+
+test("a transfer to the second room and a new custodian, and its TR- document; the two gaps of the document are expected to fail (e2e transactions task 4, TX4)", async () => {
+  const spec = readTxSpec("e2e/transactions/transfer.spec.ts")
+  assert.match(spec, /await expectFieldError\(page, "transfer-to-location", "เลือกปลายทางการโอนย้ายอย่างน้อย 1 รายการ"\)/)
+  assert.match(spec, /await expectFieldError\(page, "transfer-reason", "กรุณาระบุข้อมูลนี้"\)/)
+  assert.match(spec, /expect\(after\.custodianId\)\.toBe\(receiver\.id\)/)
+  assert.match(spec, /await visit\(measure, `\/th\/asset-management\/transfers\/\$\{transfer\.id\}`, "TR- document", testInfo\)/)
+  assert.match(spec, /await expectPrints\(page, "พิมพ์เอกสารโอนย้าย"\)/)
+  assert.deepEqual(expectedFailures(spec), ["TX-A4", "TX-A6"])
+  assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/)
+})
