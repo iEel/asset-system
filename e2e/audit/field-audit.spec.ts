@@ -13,6 +13,7 @@
 // 6. the IT head's own round: their own finding and their own close are refused, and the round is cancelled;
 // 7. the audit exports by permission (spec §6.2.5, §6.5), expected to fail until finding AU1 and decision U1.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import ExcelJS from "exceljs"
 import { asUser, expect, runPhoneOnWebKit, test } from "../support/fixtures.ts"
 import { PHONE } from "../support/matrix.ts"
 import { ADMIN_STATE_FILE, fromRoot, runDir } from "../support/paths.ts"
@@ -373,5 +374,121 @@ test.describe("The IT head reviews and closes", () => {
     })
     await expect(page.getByRole("main").getByText("ปิดรอบ", { exact: true }).first()).toBeVisible()
     await recordSettled(page, measure, "round page, closed")
+  })
+})
+
+test.describe("The IT head's own round", () => {
+  asUser("itHead")
+
+  test("the IT head's own round: their own finding and their own close are refused, and the round is cancelled", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.setTimeout(180_000)
+    const chain = readChain(testInfo.project.name)
+    const { records, assets } = chain
+
+    // A round of room B that the IT head opens themselves, through the round route with the body the form sends.
+    const opened = await page.request.post("/api/audit-rounds", {
+      data: {
+        name: records.ownRound.name,
+        auditYear: Number(bangkokDate().slice(0, 4)),
+        scopeDepartmentId: chain.departmentId,
+        scopeLocationId: chain.rooms.roomB,
+        includeClosedAssets: false,
+        riskPreset: "all",
+        sampleRate: 100,
+        startDate: bangkokDate(),
+        endDate: bangkokDate(7),
+        status: "open",
+      },
+    })
+    expect(opened.status(), "the IT head's round is saved").toBe(201)
+    const own = (await opened.json()) as { id: string; auditNo: string; generatedItems: number }
+    expect(own.generatedItems, "room B's two assets").toBe(2)
+
+    // They mark one asset not found: the finding is theirs.
+    await measure.visit(`/th/audit/rounds/${own.id}/pending`, "pending list of the IT head's round")
+    const findingId = await pending.markNotFound(page, e2eDevice, assets.notFound.tag)
+
+    // Their own finding: the note instead of the buttons, and the review route refuses it (segregation of duties).
+    await measure.visit(`/th/audit/findings?status=pending&roundId=${own.id}`, "findings of the IT head's round")
+    const entry = review.findingEntry(page, e2eDevice, assets.notFound.tag, "ไม่พบทรัพย์สิน")
+    await expect(entry.getByText("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้")).toBeVisible()
+    await expect(entry.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0)
+    measure.expectRefusal({ method: "POST", url: new RegExp(`/api/audit-findings/${findingId}/review$`), status: 403, reason: "the reporter may not review their own finding (segregation of duties)" })
+    const reviewed = await review.browserFetch(page, `/api/audit-findings/${findingId}/review`, "POST", { action: "approve" })
+    expect(reviewed).toEqual({ status: 403, body: { error: "Audit finding must be reviewed by a different user than the reporter" } })
+
+    // Their own round: the close waits with the rule beside it, and the close route refuses the opener (spec §6.2.4:
+    // the rule as the code has it, src/app/api/audit-rounds/[id]/route.ts closeOwnRound).
+    await measure.visit(`/th/audit/rounds/${own.id}`, "the IT head's round")
+    await expect(page.getByText("ผู้ปิดรอบต้องไม่ใช่ผู้สร้างรอบ")).toBeVisible()
+    await expect(page.getByRole("button", { name: "ปิดรอบตรวจ" })).toBeDisabled()
+    measure.expectRefusal({ method: "PATCH", url: new RegExp(`/api/audit-rounds/${own.id}$`), status: 403, reason: "the opener may not close their own round (closeOwnRound)" })
+    const closed = await review.browserFetch(page, `/api/audit-rounds/${own.id}`, "PATCH", { action: "close" })
+    expect(closed).toEqual({ status: 403, body: { error: "Audit round must be closed by a different approver than the creator" } })
+
+    // The round is cancelled with a reason; an empty reason first shows its error under the field.
+    await page.getByRole("button", { name: "ยกเลิกรอบตรวจ" }).click()
+    const cancel = page.getByRole("dialog", { name: "ยืนยันยกเลิกรอบตรวจ" })
+    await expect(cancel).toBeVisible()
+    await cancel.getByRole("button", { name: "ยืนยันยกเลิก" }).click()
+    await expect(page.locator("#audit-round-cancel-reason-error")).toHaveText("กรุณาระบุเหตุผลการยกเลิก")
+    await expect(page.locator("#audit-round-cancel-reason")).toBeFocused()
+    await page.locator("#audit-round-cancel-reason").fill("รอบทดสอบการแยกหน้าที่ของ E2E")
+    await recordSettled(page, measure, "cancel dialog")
+    await measure.timed("cancel the round", async () => {
+      await cancel.getByRole("button", { name: "ยืนยันยกเลิก" }).click()
+      await expect(page.getByText("ยกเลิกรอบตรวจสำเร็จ")).toBeVisible()
+    })
+    await expect(page.getByText("รอบนี้ถูกยกเลิกและอ่านได้อย่างเดียว ไม่สามารถสแกน แก้ผลตรวจ พิจารณา หรือปิดรอบต่อได้")).toBeVisible()
+    await recordSettled(page, measure, "the IT head's round, cancelled")
+  })
+})
+
+// Spec §6.5: a role without the export permission does not see it; spec §6.2.5: the findings export downloads. No E2E
+// role holds audit export (spec §7's table), yet the findings page offers the export to every audit viewer and the
+// download is the route's 403 body: WebKit saves it as export.json, Chromium cancels it (finding AU1; decision U1 for
+// the user). Expected to fail until then; Playwright reports it when it passes.
+test.describe("The audit exports by permission", () => {
+  test.describe("IT staff", () => {
+    asUser("itStaff")
+
+    test("IT staff, who hold no audit export, are not offered the findings export (finding AU1)", async ({ page, measure }, testInfo) => {
+      test.fail(true, "AU1: the findings page offers the audit exports without audit:export")
+      const chain = readChain(testInfo.project.name)
+      await measure.visit(`/th/audit/findings?status=all&roundId=${chain.roundId}`, "findings of the round, all (IT staff)")
+      await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()
+      await expect(page.getByRole("link", { name: "ส่งออกรายการไม่ตรง" })).toHaveCount(0)
+      await expect(page.getByRole("link", { name: "ส่งออก PDF" })).toHaveCount(0)
+    })
+  })
+
+  test.describe("IT head", () => {
+    asUser("itHead")
+
+    test("the findings export downloads the round's findings (decision U1)", async ({ page, measure }, testInfo) => {
+      test.fail(true, "U1: no E2E role holds audit:export (spec §7)")
+      const chain = readChain(testInfo.project.name)
+      await measure.visit(`/th/audit/findings?status=all&roundId=${chain.roundId}`, "findings of the round, all (IT head)")
+      const downloading = page.waitForEvent("download")
+      await page.getByRole("link", { name: "ส่งออกรายการไม่ตรง" }).click()
+      const download = await downloading
+      // The file as downloaded, kept in the report (until U1: the route's 403 body, export.json, which Chromium cancels).
+      const file = await download.path().catch(() => null)
+      if (file) await testInfo.attach(`download ${download.suggestedFilename()}`, { path: file, contentType: "application/octet-stream" })
+      expect(download.suggestedFilename(), "an Excel file").toMatch(/\.xlsx$/)
+      expect(file, "the download completed").not.toBeNull()
+      const workbook = new ExcelJS.Workbook()
+      await workbook.xlsx.readFile(file ?? "")
+      // The "Asset Tag" column (src/lib/audit-excel.ts auditFindingColumns), found by its header.
+      const sheet = workbook.getWorksheet("Audit Findings")
+      const header = (sheet?.getRow(1).values ?? []) as unknown[]
+      const tagColumn = header.indexOf("Asset Tag")
+      expect(tagColumn, "the Asset Tag column").toBeGreaterThan(0)
+      const tags = new Set<string>()
+      sheet?.eachRow((row) => tags.add(String(row.getCell(tagColumn).value ?? "")))
+      for (const asset of [chain.assets.mismatch, chain.assets.component2, chain.assets.notFound, chain.assets.outOfScope]) {
+        expect(tags.has(asset.tag), `${asset.tag} is in the export`).toBe(true)
+      }
+    })
   })
 })

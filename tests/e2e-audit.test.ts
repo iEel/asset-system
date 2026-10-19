@@ -176,3 +176,22 @@ test("IT staff are refused the review and the close; the IT head reviews every f
   const review = read("e2e/audit/review-steps.ts")
   assert.ok(review.includes("export function findingEntry(") && review.includes("export async function browserFetch("))
 })
+
+test("the IT head's own finding and own close are refused by the segregation rules and the round is cancelled; the audit exports by permission (e2e audit task 5, EA5)", async () => {
+  const { auditSegregationErrors } = await import("../src/lib/audit-segregation.ts")
+  const spec = read(SPEC)
+  const own = block(spec, "The IT head's own round")
+  assert.ok(own.includes(`asUser("itHead")`))
+  // The rules as the code has them (spec §6.2.4, the user's "เลือก 3"): the reporter may not review, the opener may not close.
+  assert.ok(own.includes(`body: { error: "${auditSegregationErrors.reviewOwnFinding}" }`))
+  assert.ok(own.includes(`body: { error: "${auditSegregationErrors.closeOwnRound}" }`))
+  assert.ok(own.includes(thai("auditRound").closeSeparateApprover))
+  assert.ok(own.includes(thai("auditRound").cancelReasonRequired) && own.includes(thai("auditRound").cancelSuccess))
+
+  // The exports: expected to fail until finding AU1 (offered without audit:export) and decision U1 (no role holds it).
+  const exports = block(spec, "The audit exports by permission")
+  assert.ok(exports.includes(`test.fail(true, "AU1: `) && exports.includes(`test.fail(true, "U1: `))
+  assert.ok(exports.includes(`page.getByRole("link", { name: "${thai("auditFinding").exportFindings}" })`))
+  const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
+  for (const permissions of Object.values(E2E_ROLE_PERMISSIONS)) assert.ok(!permissions.includes("audit:export"), "no E2E role holds audit:export (U1)")
+})
