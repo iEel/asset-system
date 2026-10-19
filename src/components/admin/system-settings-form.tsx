@@ -15,7 +15,8 @@ import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
-import { Field, FieldHint } from "@/components/ui/field"
+import { Field, FieldError } from "@/components/ui/field"
+import { FieldGroup } from "@/components/ui/field-group"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { FormSection } from "@/components/ui/form-section"
 import { Input } from "@/components/ui/input"
@@ -2239,30 +2240,43 @@ function ValidationMessage({ message }: { message: string }) {
   )
 }
 
+// A switch setting on one line. With an error (a stored value that is neither true nor false), the error shows under
+// the line and the checkbox is tied to it; id is what focus moves to (v-track plan 3 ST-R6).
 function ToggleField({
+  id,
   label,
   description,
   checked,
+  error,
   onChange,
 }: {
+  id?: string
   label: string
   description?: string
   checked: boolean
+  error?: React.ReactNode
   onChange: (checked: boolean) => void
 }) {
+  const errorId = error && id ? `${id}-error` : undefined
   return (
-    <label className="flex min-h-10 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
-      <span className="min-w-0">
-        <span className="block">{label}</span>
-        {description ? <span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">{description}</span> : null}
-      </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className={checkboxVariants()}
-      />
-    </label>
+    <div data-slot="field" className="grid min-w-0 content-start gap-1.5">
+      <label className="flex min-h-10 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
+        <span className="min-w-0">
+          <span className="block">{label}</span>
+          {description ? <span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">{description}</span> : null}
+        </span>
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
+          onChange={(event) => onChange(event.target.checked)}
+          className={checkboxVariants()}
+        />
+      </label>
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
+    </div>
   )
 }
 
@@ -2371,27 +2385,31 @@ function SyncPreviewPanel({
   )
 }
 
+// The two choices are one group (spec §7.3): its legend, its hint and, for a stored value that is neither true nor
+// false, its error, tied to the group; focus goes to its first choice (v-track plan 3 ST-R6).
 function LabelAssetNameModeField({
+  id,
   label,
   description,
   compactLabel,
   fullLabel,
   compactEnabled,
+  error,
   onChange,
 }: {
+  id?: string
   label: string
   description: string
   compactLabel: string
   fullLabel: string
   compactEnabled: boolean
+  error?: React.ReactNode
   onChange: (compactEnabled: boolean) => void
 }) {
   return (
-    <div className="space-y-2">
-      <div className={fieldLabelClasses}>{label}</div>
+    <FieldGroup legend={label} hint={description} error={error} id={id}>
       <Segmented aria-label={label} value={compactEnabled ? "compact" : "full"} options={[{ value: "compact", label: compactLabel }, { value: "full", label: fullLabel }]} onValueChange={(next) => onChange(next === "compact")} showCheck />
-      <FieldHint>{description}</FieldHint>
-    </div>
+    </FieldGroup>
   )
 }
 
@@ -2401,12 +2419,15 @@ function LabelTemplatePanel({
   labels,
   getValue,
   setValue,
+  errorFor,
 }: {
   tapeSize: AssetLabelTapeSize
   title: string
   labels: SystemSettingsFormProps["labels"]
   getValue: (key: string) => string
   setValue: (key: string, value: string) => void
+  // A setting's error under its field: its rule shows while the value breaks it (spec U8), so the field announces it.
+  errorFor?: (key: string) => string | undefined
 }) {
   const prefix = `asset_label_${tapeSize}`
   const preset = assetLabelPresets[tapeSize]
@@ -2434,7 +2455,7 @@ function LabelTemplatePanel({
         </Button>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <Field label={labels.labelWidthMm}>
+        <Field label={labels.labelWidthMm} error={errorFor?.(`${prefix}_width_mm`)} liveError>
           <Input
             id={`${prefix}-width-mm`}
             type="number"
@@ -2444,7 +2465,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelHeightMm}>
+        <Field label={labels.labelHeightMm} error={errorFor?.(`${prefix}_height_mm`)} liveError>
           <Input
             id={`${prefix}-height-mm`}
             type="number"
@@ -2454,7 +2475,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_height_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelQrSize}>
+        <Field label={labels.labelQrSize} error={errorFor?.(`${prefix}_qr_size`)} liveError>
           <Input
             id={`${prefix}-qr-size`}
             type="number"
@@ -2464,7 +2485,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelMarginMm}>
+        <Field label={labels.labelMarginMm} error={errorFor?.(`${prefix}_margin_mm`)} liveError>
           <Input
             id={`${prefix}-margin-mm`}
             type="number"
@@ -2475,7 +2496,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_margin_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelGapMm}>
+        <Field label={labels.labelGapMm} error={errorFor?.(`${prefix}_gap_mm`)} liveError>
           <Input
             id={`${prefix}-gap-mm`}
             type="number"
@@ -2486,7 +2507,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_gap_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelLayout}>
+        <Field label={labels.labelLayout} error={errorFor?.(`${prefix}_layout`)} liveError>
           <NativeSelect
             id={`${prefix}-layout`}
             value={getValue(`${prefix}_layout`)}
@@ -2500,7 +2521,7 @@ function LabelTemplatePanel({
         </Field>
       </div>
       <div className="mt-3 grid gap-3">
-        <Field label={labels.labelPrimaryLine}>
+        <Field label={labels.labelPrimaryLine} error={errorFor?.(`${prefix}_primary_template`)} liveError>
           <Input
             id={`${prefix}-primary-template`}
             value={getValue(`${prefix}_primary_template`)}
@@ -2508,7 +2529,7 @@ function LabelTemplatePanel({
             className="font-mono"
           />
         </Field>
-        <Field label={labels.labelSecondaryLine}>
+        <Field label={labels.labelSecondaryLine} error={errorFor?.(`${prefix}_secondary_template`)} liveError>
           <Input
             id={`${prefix}-secondary-template`}
             value={getValue(`${prefix}_secondary_template`)}
@@ -2516,7 +2537,7 @@ function LabelTemplatePanel({
             className="font-mono"
           />
         </Field>
-        <Field label={labels.labelTertiaryLine}>
+        <Field label={labels.labelTertiaryLine} error={errorFor?.(`${prefix}_tertiary_template`)} liveError>
           <Input
             id={`${prefix}-tertiary-template`}
             value={getValue(`${prefix}_tertiary_template`)}

@@ -152,3 +152,36 @@ test("a stored value only a control's own limit refuses stops a save only when t
   assert.deepEqual(await serverErrors(serverBroken), serverCodes)
   assert.deepEqual(rules.settingSaveErrors(serverBroken, [], new Set(["company_name"])), serverCodes)
 })
+
+// The source files the later tests read, with LF line endings.
+function read(path: string) {
+  return readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+}
+function formSource() {
+  return read("src/components/admin/system-settings-form.tsx")
+}
+
+test("a switch, the label's name choice, each label field and the depreciation JSON take an id and an error (v-track plan 3 task 2, ST2)", () => {
+  const form = formSource()
+  // ToggleField: the checkbox takes the id, aria-invalid and aria-describedby; the error sits under the line, never as an alert.
+  const toggle = form.slice(form.indexOf("function ToggleField("), form.indexOf("function SyncPreviewPanel("))
+  assert.match(toggle, /<input\n\s+id=\{id\}\n\s+type="checkbox"\n\s+checked=\{checked\}\n\s+aria-invalid=\{error \? true : undefined\}\n\s+aria-describedby=\{errorId\}\n/)
+  assert.match(toggle, /const errorId = error && id \? `\$\{id\}-error` : undefined/)
+  assert.match(toggle, /\{error \? <FieldError id=\{errorId\}>\{error\}<\/FieldError> : null\}/)
+  assert.doesNotMatch(toggle, /role="alert"|aria-live/)
+  // The label's name choice is one group with its legend, hint and error (spec §7.3); the Segmented line is unchanged.
+  assert.match(form, /<FieldGroup legend=\{label\} hint=\{description\} error=\{error\} id=\{id\}>\n\s+<Segmented aria-label=\{label\} value=\{compactEnabled \? "compact" : "full"\}/)
+  assert.doesNotMatch(form, /FieldHint/)
+  // Each of the nine fields of a tape's panel shows its setting's error and announces it while typing (spec U8).
+  const panel = form.slice(form.indexOf("function LabelTemplatePanel("), form.indexOf("function LabelPreviewPanel("))
+  assert.match(panel, /errorFor\?: \(key: string\) => string \| undefined\n/)
+  for (const suffix of ["width_mm", "height_mm", "qr_size", "margin_mm", "gap_mm", "layout", "primary_template", "secondary_template", "tertiary_template"]) {
+    assert.ok(panel.includes(`error={errorFor?.(\`\${prefix}_${suffix}\`)} liveError>`), suffix)
+  }
+  // The depreciation JSON: its id and its live error, and its closed section opens while the JSON is invalid.
+  const builder = read("src/components/admin/depreciation-policy-builder.tsx")
+  assert.match(builder, /export function DepreciationPolicyBuilder\(\{ categories, policyJson, labels, onPolicyJsonChange, jsonId, jsonError \}: DepreciationPolicyBuilderProps\) \{/)
+  assert.match(builder, /<details ref=\{jsonDetailsRef\} className="rounded-md border border-border bg-background p-4">/)
+  assert.match(builder, /useEffect\(\(\) => \{\n\s+if \(!isPolicyJsonValid && jsonDetailsRef\.current\) jsonDetailsRef\.current\.open = true\n\s+\}, \[isPolicyJsonValid\]\)/)
+  assert.match(builder, /hint=\{labels\.depreciationAdvancedJsonDescription\}\n\s+id=\{jsonId\}\n\s+error=\{jsonError\}\n\s+liveError\n\s+className="mt-3"\n\s+>\n\s+<Textarea value=\{policyJson\}/)
+})

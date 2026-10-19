@@ -72,9 +72,12 @@ type DepreciationPolicyBuilderProps = {
   policyJson: string
   labels: DepreciationPolicyBuilderLabels
   onPolicyJsonChange: (value: string) => void
+  // The policy JSON's id and its error (the settings form's rule for accounting_depreciation_policy, spec U8).
+  jsonId?: string
+  jsonError?: React.ReactNode
 }
 
-export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPolicyJsonChange }: DepreciationPolicyBuilderProps) {
+export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPolicyJsonChange, jsonId, jsonError }: DepreciationPolicyBuilderProps) {
   const policyParse = useMemo(() => parseDepreciationPolicySetting(policyJson), [policyJson])
   const isPolicyJsonValid = policyParse.isValid
   const initialState = useMemo(() => buildDepreciationPolicyEditorState(parsePolicyForEditor(policyJson), categories), [categories, policyJson])
@@ -89,6 +92,11 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
   // The group chips are one radio group, named by the "groups" heading (spec 2C section 7.4.4, T6).
   const groupsHeadingId = useId()
   const groupRadioName = useId()
+  // Invalid JSON disables every control above it, so its closed section opens to show the JSON and its error (spec §4.2).
+  const jsonDetailsRef = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    if (!isPolicyJsonValid && jsonDetailsRef.current) jsonDetailsRef.current.open = true
+  }, [isPolicyJsonValid])
 
   useEffect(() => {
     if (policyJson === lastEmittedPolicyJsonRef.current) return
@@ -330,9 +338,17 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
         </Notice>
       ) : null}
 
-      <details className="rounded-md border border-border bg-background p-4">
+      <details ref={jsonDetailsRef} className="rounded-md border border-border bg-background p-4">
         <summary className="cursor-pointer text-sm font-semibold text-foreground">{labels.depreciationAdvancedJson}</summary>
-        <Field label={labels.depreciationAdvancedJson} hideLabel hint={labels.depreciationAdvancedJsonDescription} className="mt-3">
+        <Field
+          label={labels.depreciationAdvancedJson}
+          hideLabel
+          hint={labels.depreciationAdvancedJsonDescription}
+          id={jsonId}
+          error={jsonError}
+          liveError
+          className="mt-3"
+        >
           <Textarea value={policyJson} onChange={(event) => onPolicyJsonChange(event.target.value)} rows={8} className="font-mono" />
         </Field>
       </details>
