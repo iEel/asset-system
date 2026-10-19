@@ -1049,7 +1049,10 @@
       "removed_from_parent": "ถูกถอดจากทรัพย์สินหลัก",
       "maintenance_create": "เปิดใบซ่อม",
       "maintenance_pm_create": "เปิดใบงาน PM",
-      "audit_correction": "ปรับปรุงจากการตรวจนับ"
+      "audit_correction": "ปรับปรุงจากการตรวจนับ",
+      "checkout_cancel": "ยกเลิกการส่งมอบ",
+      "checkin_cancel": "ยกเลิกการรับคืน",
+      "transfer_cancel": "ยกเลิกการโอนย้าย"
     },
     "auditHistory": "ประวัติการตรวจนับ",
     "auditRound": "รอบตรวจนับ",

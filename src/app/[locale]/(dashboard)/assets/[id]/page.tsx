@@ -2725,4 +2725,8 @@ const knownMovementTypeKeys = new Set([
   "maintenance_create",
   "maintenance_pm_create",
   "audit_correction",
+  // The cancels of the latest transaction (asset-transaction-cancellation-service.ts; the E2E suite's TX-A5).
+  "checkout_cancel",
+  "checkin_cancel",
+  "transfer_cancel",
 ])

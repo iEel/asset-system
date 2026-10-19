@@ -1049,7 +1049,10 @@
       "removed_from_parent": "Removed From Parent Asset",
       "maintenance_create": "Maintenance Ticket Created",
       "maintenance_pm_create": "PM Ticket Created",
-      "audit_correction": "Audit Correction"
+      "audit_correction": "Audit Correction",
+      "checkout_cancel": "Handover Cancelled",
+      "checkin_cancel": "Return Cancelled",
+      "transfer_cancel": "Transfer Cancelled"
     },
     "auditHistory": "Audit History",
     "auditRound": "Audit Round",

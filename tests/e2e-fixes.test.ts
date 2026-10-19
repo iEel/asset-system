@@ -144,3 +144,18 @@ test("a transfer's TR- document is reached from the asset's history (e2e fix tas
   assert.ok(read("src/components/asset-operations/transfer-form.tsx").includes("router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)"))
   assert.ok(!read("e2e/transactions/transfer.spec.ts").includes(`test.fail(true, "TX-A4: `))
 })
+
+test("a cancel in the asset's history reads in Thai (e2e fix task FX11: TX-A5)", () => {
+  const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  const known = detail.slice(detail.indexOf("const knownMovementTypeKeys = new Set(["))
+  const th = messages("th").asset.movementTypes as Record<string, string>
+  const en = messages("en").asset.movementTypes as Record<string, string>
+  for (const type of ["checkout_cancel", "checkin_cancel", "transfer_cancel"]) {
+    assert.ok(known.slice(0, known.indexOf("])")).includes(`"${type}",`), type)
+    assert.ok(th[type] && en[type], type)
+  }
+  assert.equal(th.checkout_cancel, "ยกเลิกการส่งมอบ")
+  assert.equal(th.checkin_cancel, "ยกเลิกการรับคืน")
+  assert.equal(th.transfer_cancel, "ยกเลิกการโอนย้าย")
+  assert.ok(!read("e2e/transactions/cancel.spec.ts").includes(`test.fail(true, "TX-A5: `))
+})

@@ -87,7 +87,7 @@ test.describe("cancel the latest transaction", () => {
   // Finding TX-A5: the cancel's movement has no Thai label (movementTypes has no checkout_cancel), so the Thai page shows
   // the raw type, "Checkout Cancel".
   test("the cancel reads in Thai in the asset's history (finding TX-A5)", async ({ e2eTheme }, testInfo) => {
-    test.fail(true, "TX-A5: the history shows the cancel as Checkout Cancel")
+    // TX-A5 fixed (FX11): this test now keeps the cancel in Thai in the history.
     const shown = cancelled.get(testInfo.project.name)
     expect(shown, `the cancel test ran first (${e2eTheme})`).toBeTruthy()
     expect(shown?.history).not.toMatch(/Checkout Cancel/)

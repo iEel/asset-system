@@ -168,7 +168,7 @@ test("the latest transaction cancelled: the state before it, the VOID document w
   assert.match(spec, /page\.getByRole\("status"\)\.filter\(\{ hasText: "VOID \/ ยกเลิกแล้ว" \}\)/)
   assert.match(spec, /expect\(after\.custodianId\)\.toBeNull\(\)/)
   assert.match(spec, /await visitAssetPage\(measure, asset\.id, "asset history after the cancel", testInfo, "operations"\)/)
-  assert.deepEqual(expectedFailures(spec), ["TX-A5", "TX-A7"])
+  assert.deepEqual(expectedFailures(spec), ["TX-A7"], "TX-A5 is fixed (FX11)")
 })
 
 test("the desk delivery on the phone: taps, the keyboard over the form, a finger signature, the HO- document on the phone (e2e transactions task 7, TX7)", async () => {
