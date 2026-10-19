@@ -23,13 +23,15 @@ export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
   forbidOnly: true,
   timeout: 120_000,
   expect: { timeout: 10_000 },
-  reporter: [["list"], ["html", { outputFolder: REPORT_DIR, open: "never" }]],
+  reporter: [["list"], ["html", { outputFolder: REPORT_DIR, open: "never" }], ["./e2e/support/summary-reporter.ts"]],
   use: {
     baseURL,
     locale: "th-TH",
     timezoneId: "Asia/Bangkok",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   // A production build (spec §5): `npm run build` first; the suite starts next start on its own port and stops it after.
   // The app's base URL is this server's, so a sign-in stays on it.

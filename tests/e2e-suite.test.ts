@@ -204,3 +204,81 @@ test("the setup creates the spec's users with exactly the spec's permissions, ma
     assert.ok(file.includes(0), "a fixture holds a NUL byte, so git treats it as binary")
   }
 })
+
+test("every test is measured: console errors, failed requests, axe serious and critical, load times, screenshots, one summary (e2e foundation task 4, EF4)", async () => {
+  const core = await import("../e2e/support/measure-core.ts")
+  const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
+  const page = "http://localhost:3100/th/dashboard"
+  const refusal = { method: "POST", url: /\/api\/assets\/[^/]+\/checkout$/, status: 409, reason: "a second handover of the same asset" }
+  const records = {
+    console: [
+      { kind: "console" as const, text: "Failed to load resource: the server responded with a status of 409 (Conflict)", url: "http://localhost:3100/api/assets/a1/checkout", pageUrl: page },
+      { kind: "console" as const, text: "Failed to load resource: the server responded with a status of 500 (Internal Server Error)", url: "http://localhost:3100/api/reports", pageUrl: page },
+      { kind: "pageerror" as const, text: "TypeError: x is undefined", pageUrl: page },
+    ],
+    responses: [
+      { method: "POST", url: "http://localhost:3100/api/assets/a1/checkout", status: 409, resourceType: "fetch", pageUrl: page },
+      { method: "GET", url: "http://localhost:3100/api/reports", status: 500, resourceType: "fetch", pageUrl: page },
+    ],
+    failures: [
+      { method: "GET", url: "http://localhost:3100/th/assets?_rsc=abc", errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page },
+      { method: "GET", url: "http://localhost:3100/api/assets", errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page },
+      { method: "GET", url: "http://localhost:3100/th/assets?_rsc=abc", errorText: "net::ERR_CONNECTION_REFUSED", resourceType: "fetch", pageUrl: page },
+    ],
+  }
+  const unmet = { url: /\/api\/disposal-requests$/, status: 403, reason: "the viewer may not request a disposal" }
+  const classified = core.classify(records, ALLOW_LIST, [refusal, unmet])
+  // The refused handover and its console line are the test's own; the 500 and its console line, the page error, the
+  // aborted API call and the refused connection are not; the cancelled prefetch is on the reviewed list.
+  assert.deepEqual(classified.expected, [{ reason: refusal.reason, method: "POST", url: "http://localhost:3100/api/assets/a1/checkout", status: 409 }])
+  assert.deepEqual(classified.unexpectedResponses.map((response) => response.status), [500])
+  assert.deepEqual(classified.unexpectedConsole.map((message) => message.kind), ["console", "pageerror"])
+  assert.deepEqual(classified.unexpectedFailures.map((failure) => `${failure.url} ${failure.errorText}`), [
+    "http://localhost:3100/api/assets net::ERR_ABORTED",
+    "http://localhost:3100/th/assets?_rsc=abc net::ERR_CONNECTION_REFUSED",
+  ])
+  assert.deepEqual(classified.allowed, [{ id: "next-prefetch-cancelled", kind: "requestfailed", url: "http://localhost:3100/th/assets?_rsc=abc" }])
+  assert.deepEqual(classified.unmetRefusals.map((item) => item.reason), [unmet.reason])
+
+  // axe: serious and critical fail the test, moderate and minor are counted only.
+  const node = (target: string) => ({ target: [target] })
+  const axe = core.axeCounts([
+    { id: "color-contrast", impact: "serious", help: "Elements must meet minimum color contrast", helpUrl: "", nodes: [node(".a"), node(".b")] },
+    { id: "button-name", impact: "critical", help: "Buttons must have discernible text", helpUrl: "", nodes: [node("#x")] },
+    { id: "region", impact: "moderate", help: "All page content should be contained by landmarks", helpUrl: "", nodes: [node("div")] },
+  ])
+  assert.deepEqual([axe.serious, axe.critical, axe.moderate, axe.minor], [1, 1, 1, 0])
+  assert.deepEqual(axe.failing.map((violation) => `${violation.impact} ${violation.id} ${violation.targets.join(",")}`), ["serious color-contrast .a,.b", "critical button-name #x"])
+  assert.deepEqual(core.AXE_TAGS, ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+  const problems = core.measurementProblems(classified, [{ label: "landing", url: page, loadMs: 300, domContentLoadedMs: 200, axe }])
+  assert.equal(problems.length, 2 + 1 + 2 + 1 + 2)
+  assert.ok(problems.some((problem) => problem.startsWith("axe serious color-contrast on landing")))
+  assert.ok(problems.some((problem) => problem.startsWith("expected refusal not seen: any")))
+
+  // The run summary: per project, an expected failure is its own count, never a pass or a failure.
+  const summaryRow = { title: "t", file: "f", device: "phone", theme: "dark", browser: "webkit", user: null, durationMs: 1, pages: [], timings: [], allowed: [], expected: [], problems: [], screenshots: [], errors: [] }
+  const row = (project: string, status: string, expectedStatus = "passed") => ({ ...summaryRow, project, status, expectedStatus })
+  const summary = core.buildRunSummary("E2E-1019A", "2026-10-19T00:00:00.000Z", "passed", [row("phone-dark", "passed"), row("phone-dark", "failed"), row("setup", "failed", "failed"), row("setup", "skipped")])
+  assert.deepEqual(summary.projects, { "phone-dark": { passed: 1, failed: 1, skipped: 0, expectedFailures: 0 }, setup: { passed: 0, failed: 0, skipped: 1, expectedFailures: 1 } })
+
+  // Every allow-list entry is reviewed and says why; there are few of them.
+  assert.ok(ALLOW_LIST.length <= 5, "the allow-list stays short")
+  for (const entry of ALLOW_LIST) {
+    assert.match(entry.reviewed, /^\d{4}-\d{2}-\d{2}$/, entry.id)
+    assert.ok(entry.reason.length >= 40, `${entry.id} says why`)
+  }
+  // Every test gets the measurements (an auto fixture), the end screenshot, and the reporter collects the rows.
+  const fixtures = read("e2e/support/fixtures.ts")
+  assert.match(fixtures, /measure: \[\n[\s\S]*?\{ auto: true \},\n  \],/)
+  assert.match(read("e2e/support/measure.ts"), /await this\.screenshot\("end"\)/)
+  // The login page smoke runs the measurements with no one signed in.
+  const loginSmoke = read("e2e/smoke/login-page.spec.ts")
+  assert.ok(loginSmoke.includes(`import { expect, test } from "../support/fixtures.ts"`), "the login page smoke uses the suite's fixtures")
+  assert.ok(loginSmoke.includes(`await measure.visit("/th/login", "login page")`), "the login page is a measured visit")
+  const config = read("playwright.config.ts")
+  assert.match(config, /\["\.\/e2e\/support\/summary-reporter\.ts"\]/)
+  assert.match(config, /trace: "retain-on-failure",\n    screenshot: "only-on-failure",/)
+  // The report's trace viewer is bundled JS: ESLint leaves the report and the results alone.
+  const eslint = read("eslint.config.mjs")
+  for (const folder of [`"e2e-report/**",`, `"e2e-results/**",`]) assert.ok(eslint.includes(folder), `eslint ignores ${folder}`)
+})

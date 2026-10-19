@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     "coverage/**",
     ".worktrees/**",
     "next-env.d.ts",
+    // The E2E suite's report and results (git-ignored): Playwright writes its trace viewer's bundled JS into them.
+    "e2e-report/**",
+    "e2e-results/**",
   ]),
 ]);
 
