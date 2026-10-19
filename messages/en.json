@@ -3936,7 +3936,8 @@
     "ldapSyncModePreview": "Preview",
     "ldapSyncModeManual": "Manual",
     "ldapSyncModeScheduled": "Scheduled",
-    "prefixCategoriesRequired": "Choose at least one category for this prefix"
+    "prefixCategoriesRequired": "Choose at least one category for this prefix",
+    "prefixTransferNeedsSelection": "Tick categories in a list first, then move them."
   },
   "transactionCancellation": {
     "action": "Cancel transaction",

@@ -3936,7 +3936,8 @@
     "ldapSyncModePreview": "ดูตัวอย่างเท่านั้น",
     "ldapSyncModeManual": "กดซิงก์เอง",
     "ldapSyncModeScheduled": "ซิงก์ตามรอบเวลา",
-    "prefixCategoriesRequired": "เลือกหมวดหมู่อย่างน้อย 1 หมวดหมู่สำหรับคำนำหน้ารหัสนี้"
+    "prefixCategoriesRequired": "เลือกหมวดหมู่อย่างน้อย 1 หมวดหมู่สำหรับคำนำหน้ารหัสนี้",
+    "prefixTransferNeedsSelection": "ติ๊กเลือกหมวดหมู่ในรายการก่อน แล้วจึงกดย้าย"
   },
   "transactionCancellation": {
     "action": "ยกเลิกรายการ",

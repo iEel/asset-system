@@ -182,6 +182,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           noSelectedCategories: t("noSelectedCategories"),
           addSelectedCategories: t("addSelectedCategories"),
           removeSelectedCategories: t("removeSelectedCategories"),
+          prefixTransferNeedsSelection: t("prefixTransferNeedsSelection"),
           savePrefixGroup: t("savePrefixGroup"),
           cancel: tCommon("cancel"),
           categoryPrefixPreview: t("categoryPrefixPreview"),

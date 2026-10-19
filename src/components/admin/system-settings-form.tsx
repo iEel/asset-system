@@ -246,6 +246,7 @@ type SystemSettingsFormProps = {
     noSelectedCategories: string
     addSelectedCategories: string
     removeSelectedCategories: string
+    prefixTransferNeedsSelection: string
     savePrefixGroup: string
     cancel: string
     categoryPrefixPreview: string
@@ -676,6 +677,7 @@ export function SystemSettingsForm({
     prefixErrors.setErrors({})
   }
   const addCheckedCategoriesToPrefix = () => {
+    if (checkedAvailableCategoryIds.length === 0) return
     setPrefixEditor((current) =>
       current
         ? {
@@ -688,6 +690,7 @@ export function SystemSettingsForm({
     prefixErrors.clear("categoryIds")
   }
   const removeCheckedCategoriesFromPrefix = () => {
+    if (checkedSelectedCategoryIds.length === 0) return
     const checkedIds = new Set(checkedSelectedCategoryIds)
     setPrefixEditor((current) =>
       current
@@ -1432,15 +1435,32 @@ export function SystemSettingsForm({
                     )}
                   </CategoryTransferPanel>
 
-                  <div className="flex items-center justify-center gap-2 lg:flex-col">
-                    <Button variant="outline" onClick={addCheckedCategoriesToPrefix} disabled={checkedAvailableCategoryIds.length === 0}>
-                      <ArrowRight />
-                      <span className="sr-only sm:not-sr-only">{labels.addSelectedCategories}</span>
-                    </Button>
-                    <Button variant="outline" onClick={removeCheckedCategoriesFromPrefix} disabled={checkedSelectedCategoryIds.length === 0}>
-                      <ArrowLeft />
-                      <span className="sr-only sm:not-sr-only">{labels.removeSelectedCategories}</span>
-                    </Button>
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 lg:flex-col">
+                      <Button
+                        variant="outline"
+                        onClick={addCheckedCategoriesToPrefix}
+                        aria-disabled={checkedAvailableCategoryIds.length === 0 || undefined}
+                        aria-describedby={checkedAvailableCategoryIds.length === 0 ? "category-prefix-transfer-reason" : undefined}
+                      >
+                        <ArrowRight />
+                        <span className="sr-only sm:not-sr-only">{labels.addSelectedCategories}</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={removeCheckedCategoriesFromPrefix}
+                        aria-disabled={checkedSelectedCategoryIds.length === 0 || undefined}
+                        aria-describedby={checkedSelectedCategoryIds.length === 0 ? "category-prefix-transfer-reason" : undefined}
+                      >
+                        <ArrowLeft />
+                        <span className="sr-only sm:not-sr-only">{labels.removeSelectedCategories}</span>
+                      </Button>
+                    </div>
+                    {(checkedAvailableCategoryIds.length === 0 || checkedSelectedCategoryIds.length === 0) && (
+                      <p id="category-prefix-transfer-reason" className="text-meta text-muted-foreground text-center lg:max-w-40">
+                        {labels.prefixTransferNeedsSelection}
+                      </p>
+                    )}
                   </div>
 
                   <CategoryTransferPanel

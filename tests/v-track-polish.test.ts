@@ -123,3 +123,33 @@ test("a review's refusal focuses its field as soon as the dialog has lost its la
   assert.match(focus, /export function waitForDialogToClose\(frames = 60\): Promise<void>/)
   assert.match(focus, /getClientRects\(\)\.length === 0/)
 })
+
+test("the prefix editor's transfer arrows wait with their reason beside them: aria-disabled, described by one visible line (v-track polish 6)", () => {
+  const form = read("src/components/admin/system-settings-form.tsx")
+  assert.doesNotMatch(form, /disabled=\{checkedAvailableCategoryIds\.length === 0\}/)
+  assert.doesNotMatch(form, /disabled=\{checkedSelectedCategoryIds\.length === 0\}/)
+  // Both buttons stay focusable, say they wait, and point at the reason while they wait.
+  assert.match(
+    form,
+    /onClick=\{addCheckedCategoriesToPrefix\}\s+aria-disabled=\{checkedAvailableCategoryIds\.length === 0 \|\| undefined\}\s+aria-describedby=\{checkedAvailableCategoryIds\.length === 0 \? "category-prefix-transfer-reason" : undefined\}/
+  )
+  assert.match(
+    form,
+    /onClick=\{removeCheckedCategoriesFromPrefix\}\s+aria-disabled=\{checkedSelectedCategoryIds\.length === 0 \|\| undefined\}\s+aria-describedby=\{checkedSelectedCategoryIds\.length === 0 \? "category-prefix-transfer-reason" : undefined\}/
+  )
+  // One visible line under the two buttons, shown only while either waits.
+  assert.match(
+    form,
+    /\{\(checkedAvailableCategoryIds\.length === 0 \|\| checkedSelectedCategoryIds\.length === 0\) && \(\s*<p id="category-prefix-transfer-reason" className="text-meta text-muted-foreground[^"]*">\s*\{labels\.prefixTransferNeedsSelection\}\s*<\/p>\s*\)\}/
+  )
+  assert.match(form, /prefixTransferNeedsSelection: string/)
+  assert.match(read("src/app/[locale]/(dashboard)/admin/settings/page.tsx"), /prefixTransferNeedsSelection: t\("prefixTransferNeedsSelection"\)/)
+  // Both handlers return first when nothing is checked.
+  assert.match(form, /const addCheckedCategoriesToPrefix = \(\) => \{\n\s+if \(checkedAvailableCategoryIds\.length === 0\) return\n/)
+  assert.match(form, /const removeCheckedCategoriesFromPrefix = \(\) => \{\n\s+if \(checkedSelectedCategoryIds\.length === 0\) return\n/)
+  // The reason's text in both languages.
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.systemSettingsPage.prefixTransferNeedsSelection, "ติ๊กเลือกหมวดหมู่ในรายการก่อน แล้วจึงกดย้าย")
+  assert.equal(en.systemSettingsPage.prefixTransferNeedsSelection, "Tick categories in a list first, then move them.")
+})
