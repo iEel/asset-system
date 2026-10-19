@@ -1,0 +1,133 @@
+// Spec §6.1.4: IT staff take an E2E asset back (รับคืน) from the receiver: the RT- document, then the asset's status
+// and room after it; a return marked "send to repair" (ส่งซ่อม) opens a repair record. A wrong entry first shows its
+// errors under the fields (spec §6.7). The handover before each return goes through the checkout API (handover.spec.ts
+// walks the handover form itself).
+import { asUser, expect, test } from "../support/fixtures.ts"
+import { readRunData } from "../support/state.ts"
+import {
+  createTxAsset,
+  ensureSecondLocation,
+  expectFieldError,
+  expectPrints,
+  handoverByApi,
+  PHOTO_FIXTURE,
+  pickSearchable,
+  readAsset,
+  readAssetMasters,
+  record,
+  signOnPad,
+  visit,
+  visitAssetPage,
+} from "./tx-support.ts"
+
+asUser("itStaff")
+
+test("a return: the RT- document prints, and the asset is Ready in the room it was taken to, with no custodian", async ({ page, measure, e2eDevice, browserName }, testInfo) => {
+  const data = readRunData()
+  const receiver = data.employees.receiver1
+  const staff = data.employees.itStaff
+  const room = await ensureSecondLocation()
+  const masters = await readAssetMasters(page)
+  const asset = await createTxAsset(page, masters, testInfo.project.name, "RT1", "โน้ตบุ๊กรับคืน")
+  const handover = await handoverByApi(page, asset.id, receiver.id, masters.goodConditionId)
+
+  // From the asset page's quick action.
+  await visitAssetPage(measure, asset.id, "asset handed over", testInfo)
+  await page.getByRole("link", { name: "รับคืน", exact: true }).first().click()
+  await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkin\\?checkoutId=${handover.id}`))
+  await expect(page.getByRole("heading", { level: 1, name: "รับคืนทรัพย์สิน" })).toBeVisible()
+  await expect(page.getByRole("main")).toContainText(handover.documentNo)
+  await record(measure, "return form", testInfo)
+
+  // A wrong entry first: nothing chosen; each error shows under its field and the first takes focus.
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  for (const field of ["checkin-return-by", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"]) {
+    await expectFieldError(page, field, "กรุณาระบุข้อมูลนี้")
+  }
+  await expect(page.locator("#checkin-return-by")).toBeFocused()
+
+  await pickSearchable(page, "checkin-return-by", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
+  await pickSearchable(page, "checkin-receive-by", staff.code, `${staff.code} - ${staff.fullNameTh}`)
+  await page.locator("#checkin-condition-after").selectOption({ label: "ดี" })
+  await page.locator("#checkin-next-status").selectOption({ label: "พร้อมใช้งาน" })
+  await page.locator("#checkin-next-location").selectOption({ label: `${room.code} - ${room.name}` })
+  await page.locator("form input[type=file]").setInputFiles(PHOTO_FIXTURE)
+  await expect(page.getByRole("main")).toContainText("photo.png")
+  await signOnPad(page, page.getByRole("group", { name: "ลายเซ็นผู้คืน" }), e2eDevice, browserName)
+  await signOnPad(page, page.getByRole("group", { name: "ลายเซ็นผู้รับคืน" }), e2eDevice, browserName)
+
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })
+  await expect(review).toContainText(receiver.fullNameTh)
+  await expect(review).toContainText(staff.fullNameTh)
+  await expect(review).toContainText("พร้อมใช้งาน")
+  await expect(review).toContainText(room.code)
+  await expect(review).toContainText("รูปหรือ ลายเซ็น 3 รายการ")
+  await record(measure, "return review", testInfo)
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkin`) && response.request().method() === "POST")
+  await measure.timed("return save", async () => {
+    await review.getByRole("button", { name: "ยืนยันรับคืน" }).click()
+    await saved
+  })
+  const checkin = (await (await saved).json()) as { id: string; documentNo: string }
+  expect(checkin.documentNo).toMatch(/^RT-/)
+
+  await page.waitForURL(`**/th/asset-management/checkins/${checkin.id}`)
+  await expect(page.getByRole("heading", { level: 1, name: "ใบรับคืนทรัพย์สิน" })).toBeVisible()
+  await expect(page.getByText(checkin.documentNo, { exact: true }).first()).toBeVisible()
+  await record(measure, "RT- document", testInfo)
+  await expectPrints(page, "พิมพ์ใบรับคืน")
+
+  const after = await readAsset(page, asset.id)
+  expect(after.status.name).toBe("Ready")
+  expect(after.currentLocationId).toBe(room.id)
+  expect(after.custodianId).toBeNull()
+  await visitAssetPage(measure, asset.id, "asset after the return", testInfo)
+  await expect(page.getByTestId("asset-identity-summary")).toContainText("พร้อมใช้งาน")
+  await expect(page.getByRole("main")).toContainText(room.name)
+})
+
+test("a return sent to repair opens an unfinished repair record, and the asset is Under Maintenance", async ({ page, measure, e2eDevice, browserName }, testInfo) => {
+  const data = readRunData()
+  const receiver = data.employees.receiver2
+  const staff = data.employees.itStaff
+  const room = await ensureSecondLocation()
+  const masters = await readAssetMasters(page)
+  const asset = await createTxAsset(page, masters, testInfo.project.name, "RT2", "โน้ตบุ๊กคืนส่งซ่อม")
+  const handover = await handoverByApi(page, asset.id, receiver.id, masters.goodConditionId)
+  const problem = `${asset.assetTag} จอแตกตอนรับคืน`
+
+  await visit(measure, `/th/asset-management/checkin?checkoutId=${handover.id}`, "return form", testInfo)
+  await pickSearchable(page, "checkin-return-by", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
+  await pickSearchable(page, "checkin-receive-by", staff.code, `${staff.code} - ${staff.fullNameTh}`)
+  await page.locator("#checkin-condition-after").selectOption({ label: "เสียหาย" })
+  await page.locator("#checkin-next-status").selectOption({ label: "ส่งซ่อม" })
+  await page.locator("#checkin-next-location").selectOption({ label: `${room.code} - ${room.name}` })
+  await expect(page.getByRole("main")).toContainText("ระบบจะสร้างบันทึกซ่อม (ยังซ่อมไม่เสร็จ) ให้อัตโนมัติ")
+  await page.getByLabel("รายละเอียดปัญหาในใบซ่อม").fill(problem)
+  await signOnPad(page, page.getByRole("group", { name: "ลายเซ็นผู้คืน" }), e2eDevice, browserName)
+
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })
+  await expect(review).toContainText("อยู่ระหว่างซ่อม")
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkin`) && response.request().method() === "POST")
+  await review.getByRole("button", { name: "ยืนยันรับคืน" }).click()
+  const checkin = (await (await saved).json()) as { id: string; documentNo: string }
+  await page.waitForURL(`**/th/asset-management/checkins/${checkin.id}`)
+  await record(measure, "RT- document (sent to repair)", testInfo)
+
+  const after = await readAsset(page, asset.id)
+  expect(after.status.name).toBe("Under Maintenance")
+  const tickets = (await (await page.request.get(`/api/maintenance-tickets?assetId=${asset.id}`)).json()) as { data: { id: string; repairNo: string; repairStatus: string; problem: string }[] }
+  expect(tickets.data, "one repair record for the asset").toHaveLength(1)
+  const [ticket] = tickets.data
+  expect(ticket.problem).toContain(problem)
+  expect(["open", "in_progress"]).toContain(ticket.repairStatus)
+
+  // The repair record is where the person goes next: it opens from the asset page.
+  await visitAssetPage(measure, asset.id, "asset sent to repair", testInfo)
+  await expect(page.getByTestId("asset-identity-summary")).toContainText("อยู่ระหว่างซ่อม")
+  await visit(measure, `/th/maintenance/${ticket.id}`, "the repair record", testInfo)
+  await expect(page.getByRole("main")).toContainText(ticket.repairNo)
+  await expect(page.getByRole("main")).toContainText(asset.assetTag)
+})

@@ -24,7 +24,16 @@ export const PRINT_FIELDS_WITHOUT_DL: KnownAxe = {
   why: "the A4 document's field pairs are dt and dd outside a dl",
 }
 
-export const KNOWN_AXE: readonly KnownAxe[] = [QR_WITHOUT_NAME, PRINT_FIELDS_WITHOUT_DL]
+// TX-A8: on the phone, a region that scrolls has no keyboard access: the review dialog's body when its rows are taller
+// than the screen (return, transfer), and the batch receipt's table.
+export const SCROLL_REGION_WITHOUT_KEYS: KnownAxe = {
+  finding: "TX-A8",
+  rule: "scrollable-region-focusable",
+  target: /data-slot="accessible-dialog-body"|data-slot="data-table-scroll"/,
+  why: "a scrolling region on the phone takes no keyboard focus",
+}
+
+export const KNOWN_AXE: readonly KnownAxe[] = [QR_WITHOUT_NAME, PRINT_FIELDS_WITHOUT_DL, SCROLL_REGION_WITHOUT_KEYS]
 
 // Drop the known violations from a recorded page (the counts stay as axe gave them, so the summary still shows them),
 // and say so on the test.

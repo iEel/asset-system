@@ -114,3 +114,26 @@ test("a handover signed with the device's own pointer and printed, a due date be
   assert.ok(known.KNOWN_AXE.some((entry) => entry.finding === "TX-A3" && entry.rule === "dlitem"))
   assert.ok(expectedFailures(read("e2e/transactions/findings.spec.ts")).includes("TX-A3"))
 })
+
+test("a return to the second room prints the RT- document, and a return sent to repair opens a repair record (e2e transactions task 3, TX3)", async () => {
+  const spec = readTxSpec("e2e/transactions/return.spec.ts")
+  for (const field of ["checkin-return-by", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"]) {
+    assert.ok(spec.includes(`"${field}"`), field)
+  }
+  assert.match(spec, /await expectPrints\(page, "พิมพ์ใบรับคืน"\)/)
+  assert.match(spec, /expect\(after\.currentLocationId\)\.toBe\(room\.id\)/)
+  assert.match(spec, /selectOption\(\{ label: "ส่งซ่อม" \}\)/)
+  assert.match(spec, /page\.request\.get\(`\/api\/maintenance-tickets\?assetId=\$\{asset\.id\}`\)/)
+  assert.match(spec, /expect\(after\.status\.name\)\.toBe\("Under Maintenance"\)/)
+  assert.deepEqual(expectedFailures(spec), [])
+  // The run's second room: once per run, as the seed admin, through the location API.
+  const support = read("e2e/transactions/tx-support.ts")
+  assert.match(support, /request\.newContext\(\{ baseURL, storageState: fromRoot\(ADMIN_STATE_FILE\) \}\)/)
+  assert.match(support, /admin\.post\("\/api\/locations"/)
+  // The phone's scrolling review: a known finding with its own phone-only expected-to-fail test.
+  const known = await import("../e2e/transactions/known-findings.ts")
+  assert.ok(known.KNOWN_AXE.some((entry) => entry.finding === "TX-A8" && entry.rule === "scrollable-region-focusable"))
+  const findings = read("e2e/transactions/findings.spec.ts")
+  assert.ok(expectedFailures(findings).includes("TX-A8"))
+  assert.match(findings, /test\.skip\(e2eDevice !== "phone", "the review dialog scrolls on the phone only"\)/)
+})
