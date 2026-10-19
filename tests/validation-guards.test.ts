@@ -6,8 +6,9 @@ import { linesOutsideCatch, withoutBlockComments } from "./helpers/validation-re
 // The V track guards (spec docs/superpowers/specs/2026-10-17-v-track-field-errors-design.md §5, §8): every form a person
 // submits is in V_SCOPE; a form joins V_FORMS in the commit that moves it to errors under the field, and from then on it
 // validates itself (validate(), noValidate right after onSubmit), shows no toast outside a catch, and gives every
-// required select an id and an error. SELECT_STAR_ONLY counts down the required selects that nothing checks yet; the
-// V track ends with V_FORMS equal to V_SCOPE and SELECT_STAR_ONLY empty. Never add a row to make a guard pass.
+// required select an id and an error. Since V track plan 3, V_FORMS equals V_SCOPE and SELECT_STAR_ONLY is empty: a new
+// form joins both lists in the commit that adds it, and a new required select is checked from the start. Never add a row
+// to make a guard pass.
 const sources = readSourceFiles("src")
 const C = "src/components/"
 const read = (path: string) => sources.find((file) => file.path === path)?.source ?? ""

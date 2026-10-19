@@ -117,3 +117,48 @@ test("a live field's polite region reads only its live check; a save's or the se
   assert.match(builder, /\n {2}jsonLiveError\?: string \| null\n/)
   assert.match(builder, /error=\{jsonError\}\n\s+liveError=\{jsonLiveError\}\n\s+className="mt-3"/)
 })
+
+test("the design docs state the form-error rule, and no doc or guard still waits for the V track (v-track final task 4, VF4)", () => {
+  const design = read("DESIGN.md")
+  const start = design.indexOf("\n### Forms: Errors Under the Field\n")
+  assert.ok(start > design.indexOf("\n### Forms: Save Bar, Steps, Sections and Signature\n"), "DESIGN.md §5 holds the rule after the forms section")
+  const section = design.slice(start, design.indexOf("\n### Navigation\n"))
+  assert.ok(section.startsWith("\n### Forms: Errors Under the Field\n\n**The Error Under the Field Rule.** "), "the rule opens the section")
+  for (const phrase of ["`noValidate`", "`validate()`", "`useFieldErrors`", "`focusFirst(order, { idFor, reveal })`", "`waitForDialogToClose`", "`fieldErrors`", "Guard V3", "`aria-disabled`", "`aria-describedby`", "`Field liveError`", "**One announcement per save:**", "`notWholeNumber`", "`FieldGroup`", "never in a box of its own"]) {
+    assert.ok(section.includes(phrase), `the section names ${phrase}`)
+  }
+  // The clauses the V track made untrue are gone, and the rest of DESIGN.md points at the rule.
+  assert.doesNotMatch(design, /one fixed answer|`role="alert"`, under the hint|until the V track|the rest come with the V track|in many forms they are the only check|such as a validation gate|disabled with the reason shown/)
+  assert.match(design, /The V track \(spec `docs\/superpowers\/specs\/2026-10-17-v-track-field-errors-design\.md`, four plans\)/, "the overview")
+  assert.ok(design.includes('`{ error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors }`'), "the Thai Copy Rule")
+  assert.match(design, /\n- \*\*Do\*\* check a form on save /)
+  assert.match(design, /\n- \*\*Don't\*\* show a field's error in a toast /)
+  // docs/14: the rows, the guard paragraph, the registry row and the QA line.
+  const index = read("docs/14_UI_UX_DESIGN_SYSTEM.md")
+  assert.match(index, /\n\| A form's errors \| `useFieldErrors`/)
+  assert.ok(index.includes("a prerequisite gate is `aria-disabled` with `aria-describedby` to its visible reason"), "the Button row")
+  assert.ok(index.includes("\n\n`tests/validation-guards.test.ts` holds the V track"), "the V guards")
+  assert.match(index, /\n\| Form errors \| \[`2026-10-17-v-track-field-errors-design\.md`\]\(superpowers\/specs\/2026-10-17-v-track-field-errors-design\.md\)/)
+  assert.ok(index.includes("[`2026-10-19-v-track-final.md`](superpowers/plans/2026-10-19-v-track-final.md)"), "the registry names the final plan")
+  assert.match(index, /\n- Save each form empty and with a wrong value: /)
+  // .impeccable/design.json: the gate, the error line, one Do and one Don't; no new narrative rule (its schema's sections
+  // are colors, typography and elevation).
+  type Design = {
+    components: Array<{ name: string; description: string; html: string; css: string }>
+    narrative: { rules: Array<{ section: string }>; dos: string[]; donts: string[] }
+  }
+  const json = JSON.parse(readFileSync(".impeccable/design.json", "utf8")) as Design
+  const component = (name: string) => json.components.find((entry) => entry.name === name) ?? { name, description: "", html: "", css: "" }
+  assert.match(component("Primary Button").description, /A prerequisite gate is aria-disabled: it keeps focus/)
+  assert.ok(component("Text Field").html.includes('aria-describedby="ds-asset-tag-error ds-asset-tag-hint"'))
+  assert.ok(component("Text Field").html.includes('<p class="ds-field-error" id="ds-asset-tag-error">'))
+  assert.ok(component("Text Field").css.includes(".ds-field-error { margin: 0; font-size: 13px; line-height: 1.5385; color: #B3261E; }"))
+  assert.match(component("Dialog").description, /A field's error shows under its field in the body/)
+  assert.ok(json.narrative.dos.some((entry) => entry.startsWith("Do check a form on save")))
+  assert.ok(json.narrative.donts.some((entry) => entry.startsWith("Don't show a field's error in a toast")))
+  assert.deepEqual([...new Set(json.narrative.rules.map((entry) => entry.section))].sort(), ["colors", "elevation", "typography"])
+  // The guards and pins no longer say the V track is still to come.
+  for (const path of ["tests/form-migration-guards.test.ts", "tests/asset-status-correction-ui.test.ts", "tests/validation-guards.test.ts"]) {
+    assert.doesNotMatch(read(path), /wait for the V track|the V track removes it|The V track adds required|until the V track|the V track ends with/, path)
+  }
+})

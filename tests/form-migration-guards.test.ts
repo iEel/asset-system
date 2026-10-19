@@ -20,7 +20,7 @@ import {
 // write the markup itself, OWNERS) or a row of the rule's EXEMPT list with its exact count, why it stays, the ruling that
 // keeps it and its kind, "permanent" or "phase 3" (the last test lists those); every other file counts 0. A count that
 // drops fails too: lower or delete the row in the commit that moves the site. A new site uses the shared part, never a
-// new row. Two lists are not budgets: CONSTRAINT_FLOORS only protect, and STAR_ONLY's three stars wait for the V track.
+// new row. Two lists are not budgets: CONSTRAINT_FLOORS only protect, and STAR_ONLY stays empty since the V track (a form that checks itself may show a star alone, GF4).
 const sources = readSourceFiles("src")
 const C = "src/components/"
 const read = (path: string) => sources.find((file) => file.path === path)?.source ?? ""
@@ -49,7 +49,8 @@ const CLOSE_IS_CANCEL = /closeLabel=\{[^}]*\bcancel\b[^}]*\}/g
 const OLD_FIELD_MARKUP = /ml-1 text-danger">\*|mb-1\.5 block text-sm font-medium text-foreground|<legend className="mb-2 text-sm font-medium text-foreground"|\b(?:h-4 w-4|h-5 w-5|h-3\.5 w-3\.5) rounded border-border\b|\baccent-primary\b/g
 const OLD_HELPER_MARKUP = /\bfunction (?:FormStep|WizardStep|Choice|AssetStateFieldLabel)\b|aria-label=\{t\("batchAssetTagHelp"\)\}/g
 // The stars that the server enforces while the control has no required (spec 2C §4.3 F5), keyed by the label expression,
-// not a line number. The V track adds required and then removes the entry (the meta-test fails while one is stale).
+// not a line number. Empty since the V track, which checks every starred field in its form's validate() (GF4); the
+// meta-test fails while an entry is stale.
 const STAR_ONLY = new Set<string>([])
 // Files that render StickyFormFooter and the routes that show them. Every route must be a focus route (no bottom navigation).
 const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
@@ -231,7 +232,8 @@ test("the guard's own lists name real files, and every EXEMPT row has a count, a
   if (declared.length !== Object.keys(EXEMPT_LISTS).length) problems.push(`EXEMPT_LISTS holds ${Object.keys(EXEMPT_LISTS).length} lists; the file declares ${declared.join(", ")}`)
   for (const path of Object.keys(CONSTRAINT_FLOORS)) if (!exists(path)) problems.push(`CONSTRAINT_FLOORS: ${path} not found`)
   for (const path of Object.keys(STICKY_FOOTER_ROUTES)) if (!exists(path)) problems.push(`STICKY_FOOTER_ROUTES: ${path} not found`)
-  // A STAR_ONLY entry is still a Field with the star whose control has no native required; the V track removes it.
+  // A STAR_ONLY entry is still a Field with the star whose control has no native required (the list is empty since the V
+  // track).
   for (const key of STAR_ONLY) {
     const [path, label] = [key.slice(0, key.indexOf("|")), key.slice(key.indexOf("|") + 1)]
     const field = findJsxElements(read(path), "Field").find((element) => jsxAttrValue(element.text, "label") === label && hasJsxAttr(element.text, "required"))

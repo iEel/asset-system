@@ -16,6 +16,7 @@ test("the status correction uses Button, a shared reason field and a busy submit
   assert.match(source, /<Button\n\s+variant="outline"\n\s+onClick=\{\(\) => \{\n\s+setOpen\(false\)\n\s+setError\(null\)/)
   assert.match(source, /<Button type="submit" busy=\{isSubmitting\}>\n\s+\{labels\.submit\}\n\s+<\/Button>/)
   assert.doesNotMatch(source, /<button\b|<textarea|<label\b|labels\.submitting|disabled:opacity|bg-warning-soft px-3/)
-  // The error line stays as it is until the V track ties it to the field (spec 2C §4 ruling 17).
+  // A refusal that names no field keeps this line under the form (spec §4.1.3); the reason's own error sits under its field
+  // (v-track plan 2 A5).
   assert.match(source, /\{error \? <p className="mt-2 text-sm text-danger"><ApiErrorText error=\{error\} \/><\/p> : null\}/)
 })
