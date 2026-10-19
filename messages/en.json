@@ -3945,7 +3945,8 @@
     "depreciationLegacyRuleMonths": "{months} months",
     "ldapSyncModePreview": "Preview",
     "ldapSyncModeManual": "Manual",
-    "ldapSyncModeScheduled": "Scheduled"
+    "ldapSyncModeScheduled": "Scheduled",
+    "prefixCategoriesRequired": "Choose at least one category for this prefix"
   },
   "transactionCancellation": {
     "action": "Cancel transaction",

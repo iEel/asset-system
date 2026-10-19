@@ -290,3 +290,36 @@ test("the settings form shows every setting's error under its field, opens its t
   assert.doesNotMatch(form, /hasInvalid|hasDuplicateCategory|const assetTagFormatTokens = \[|function isValidCategoryPrefix/)
   assert.doesNotMatch(form, /<ValidationMessage message=\{labels\.(?!invalidPrefix\})/)
 })
+
+test("the prefix editor checks its prefix and its categories on save, its save is enabled, and the form is a V form (v-track plan 3 task 4, ST4)", () => {
+  const form = formSource()
+  // The editor's fields in visual order and its own rules: the prefix required and 2 to 10 A-Z or digits, a category.
+  assert.match(form, /const PREFIX_EDITOR_FIELD_IDS = \{\n {2}prefix: "category-prefix-editor-prefix",\n {2}categoryIds: "category-prefix-editor-categories",\n\} as const/)
+  assert.match(form, /const prefixCode = required\(editor\.prefix\) \?\? \(isValidCategoryPrefix\(editor\.prefix\) \? null : "invalidPrefix"\)/)
+  assert.match(form, /const categoriesCode = atLeastOne\(editor\.categoryIds\)/)
+  // Save runs the rules and focuses the first wrong field inside the dialog; the content gate is gone (spec §4.4).
+  assert.match(form, /const applyPrefixEditor = \(\) => \{\n\s+if \(!prefixEditor\) return\n\s+prefixErrors\.setErrors\(validatePrefixEditor\(prefixEditor\)\)\n\s+if \(prefixErrors\.focusFirst\(PREFIX_EDITOR_ORDER, \{ idFor: \(key\) => PREFIX_EDITOR_FIELD_IDS\[key\] \}\)\) return\n/)
+  assert.match(form, /<Button onClick=\{applyPrefixEditor\}>\n\s+<Save \/>\n\s+\{labels\.savePrefixGroup\}/)
+  assert.doesNotMatch(form, /canApplyPrefixEditor/)
+  // The prefix: a star, its error under it, live once there is a prefix (spec U8); an empty one waits for save (U6).
+  assert.match(form, /<Field label=\{labels\.prefix\} required error=\{prefixEditorError\("prefix"\)\} liveError>/)
+  assert.match(form, /const prefixLiveCode = prefixEditor\?\.prefix\.trim\(\) && !isValidCategoryPrefix\(prefixEditor\.prefix\) \? "invalidPrefix" : null/)
+  assert.match(form, /return field === "categoryIds" \? labels\.prefixCategoriesRequired : validationMessage\(code\)/)
+  // The two lists are one group with its error under them, still inside the dialog body (no form, no submit: GD5).
+  assert.match(form, /<div\n\s+id="category-prefix-editor-categories"\n\s+role="group"\n\s+aria-label=\{labels\.selectedPrefixCategories\}\n\s+aria-describedby=\{prefixCategoriesError \? "category-prefix-editor-categories-error" : undefined\}/)
+  assert.ok(form.includes('{prefixCategoriesError ? <FieldError id="category-prefix-editor-categories-error">{prefixCategoriesError}</FieldError> : null}\n              </AccessibleDialogBody>'))
+  // A change clears its error; opening and closing start clean.
+  assert.equal(form.split('prefixErrors.clear("categoryIds")').length - 1, 2)
+  assert.match(form, /prefix: event\.target\.value\.toUpperCase\(\) \} : current\n\s+\)\n\s+prefixErrors\.clear\("prefix"\)/)
+  assert.equal(form.split("prefixErrors.setErrors({})").length - 1, 2)
+  // The boxes are gone; the editor keeps its maxLength (FMG CONSTRAINT_FLOORS).
+  assert.doesNotMatch(form, /\bValidationMessage\b/)
+  assert.match(form, /maxLength=\{10\}/)
+  // The new sentence, in the glossary's words (หมวดหมู่), and the page passes it.
+  assert.equal(messages("th").systemSettingsPage.prefixCategoriesRequired, "เลือกหมวดหมู่อย่างน้อย 1 หมวดหมู่สำหรับคำนำหน้ารหัสนี้")
+  assert.equal(messages("en").systemSettingsPage.prefixCategoriesRequired, "Choose at least one category for this prefix")
+  assert.match(read("src/app/[locale]/(dashboard)/admin/settings/page.tsx"), /prefixCategoriesRequired: t\("prefixCategoriesRequired"\),/)
+  // The file is a V form now: V_FORMS equals V_SCOPE (spec §5, U5).
+  const guards = read("tests/validation-guards.test.ts")
+  assert.ok(guards.includes("  `${C}admin/system-settings-form.tsx`,\n]\n\n// Required selects"))
+})

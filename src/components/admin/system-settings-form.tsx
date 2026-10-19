@@ -94,6 +94,7 @@ import {
   type SettingEntry,
   type SettingFieldKey,
 } from "@/lib/system-settings-field-rules"
+import { atLeastOne, required } from "@/lib/validation-rules"
 import {
   parseWorkflowApprovalPolicy,
   workflowApprovalAuditCloseRequiredKey,
@@ -256,6 +257,7 @@ type SystemSettingsFormProps = {
     removePrefix: string
     duplicateCategory: string
     invalidPrefix: string
+    prefixCategoriesRequired: string
     organizationDefaults: string
     organizationDefaultsDescription: string
     companyName: string
@@ -563,6 +565,27 @@ function validate(entries: readonly SettingEntry[], prefixRows: readonly Categor
   return settingSaveErrors(entries, prefixRows, new Set(changed.map((setting) => setting.key)))
 }
 
+// The prefix editor's fields in visual order, with the id focus moves to (v-track M-R1, plan 3 ST-R7): the prefix, then
+// the category picker as one group (focus goes to its first control, the search of the available categories).
+const PREFIX_EDITOR_FIELD_IDS = {
+  prefix: "category-prefix-editor-prefix",
+  categoryIds: "category-prefix-editor-categories",
+} as const
+type PrefixEditorField = keyof typeof PREFIX_EDITOR_FIELD_IDS
+const PREFIX_EDITOR_ORDER = Object.keys(PREFIX_EDITOR_FIELD_IDS) as PrefixEditorField[]
+
+// The prefix editor saves into the form's prefix groups, not to the server: its prefix is required and 2 to 10 letters
+// A-Z or digits (which covers the input's maxLength), and it needs at least one category (ST-R7). Its save button was
+// disabled until both held; now it says what is missing.
+function validatePrefixEditor(editor: { prefix: string; categoryIds: readonly string[] }) {
+  const errors: Partial<Record<PrefixEditorField, string>> = {}
+  const prefixCode = required(editor.prefix) ?? (isValidCategoryPrefix(editor.prefix) ? null : "invalidPrefix")
+  if (prefixCode) errors.prefix = prefixCode
+  const categoriesCode = atLeastOne(editor.categoryIds)
+  if (categoriesCode) errors.categoryIds = categoriesCode
+  return errors
+}
+
 function normalizeSettingValue(key: string, value: string | undefined) {
   if (key === assetTagCategoryPrefixesKey) {
     return serializePrefixRows(parsePrefixRows(value))
@@ -623,6 +646,7 @@ export function SystemSettingsForm({
   const [checkedSelectedCategoryIds, setCheckedSelectedCategoryIds] = useState<string[]>([])
   const fieldErrors = useFieldErrors<SettingFieldKey>()
   const validationMessage = useValidationMessage()
+  const prefixErrors = useFieldErrors<PrefixEditorField>()
   const activeCategoryIds = categories.map((category) => category.id)
   const generalSettings = settings.filter((setting) => !friendlySettingKeys.has(setting.key) && !retiredSystemSettingKeys.has(setting.key))
   const formatTemplate = values[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate
@@ -654,10 +678,13 @@ export function SystemSettingsForm({
       categoryIds: group?.categoryIds ?? [],
     })
     resetPrefixEditorFilters()
+    prefixErrors.setErrors({})
   }
+  // Closing drops the editor's errors, so it opens again without them.
   const closePrefixEditor = () => {
     setPrefixEditor(null)
     resetPrefixEditorFilters()
+    prefixErrors.setErrors({})
   }
   const addCheckedCategoriesToPrefix = () => {
     setPrefixEditor((current) =>
@@ -669,6 +696,7 @@ export function SystemSettingsForm({
         : current
     )
     setCheckedAvailableCategoryIds([])
+    prefixErrors.clear("categoryIds")
   }
   const removeCheckedCategoriesFromPrefix = () => {
     const checkedIds = new Set(checkedSelectedCategoryIds)
@@ -681,9 +709,12 @@ export function SystemSettingsForm({
         : current
     )
     setCheckedSelectedCategoryIds([])
+    prefixErrors.clear("categoryIds")
   }
   const applyPrefixEditor = () => {
-    if (!prefixEditor || !isValidCategoryPrefix(prefixEditor.prefix) || prefixEditor.categoryIds.length === 0) return
+    if (!prefixEditor) return
+    prefixErrors.setErrors(validatePrefixEditor(prefixEditor))
+    if (prefixErrors.focusFirst(PREFIX_EDITOR_ORDER, { idFor: (key) => PREFIX_EDITOR_FIELD_IDS[key] })) return
     setPrefixRows((current) =>
       applyCategoryPrefixGroupEdit(current, {
         previousPrefix: prefixEditor.previousPrefix,
@@ -737,7 +768,15 @@ export function SystemSettingsForm({
   const filteredSelectedCategories = categories.filter(
     (category) => prefixEditorSelectedIdSet.has(category.id) && matchesCategorySearch(category, selectedCategorySearch)
   )
-  const canApplyPrefixEditor = Boolean(prefixEditor && isValidCategoryPrefix(prefixEditor.prefix) && prefixEditor.categoryIds.length > 0)
+  // The prefix's rule shows while the person types, once there is a prefix (spec U8; an empty prefix waits for save, U6).
+  const prefixLiveCode = prefixEditor?.prefix.trim() && !isValidCategoryPrefix(prefixEditor.prefix) ? "invalidPrefix" : null
+  const prefixEditorError = (field: PrefixEditorField) => {
+    const code = (field === "prefix" ? prefixLiveCode : null) ?? prefixErrors.errors[field]
+    if (!code) return undefined
+    if (code === "invalidPrefix") return labels.invalidPrefix
+    return field === "categoryIds" ? labels.prefixCategoriesRequired : validationMessage(code)
+  }
+  const prefixCategoriesError = prefixEditorError("categoryIds")
   const publicQrBaseUrl = getValue(assetQrPublicBaseUrlKey)
   const publicQrPreviewValue = buildAssetQrValue({
     assetId: "sample-asset-id",
@@ -1330,15 +1369,16 @@ export function SystemSettingsForm({
             <>
               <AccessibleDialogBody className="space-y-4">
                 <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
-                  <Field label={labels.prefix}>
+                  <Field label={labels.prefix} required error={prefixEditorError("prefix")} liveError>
                     <Input
                       id="category-prefix-editor-prefix"
                       value={prefixEditor.prefix}
-                      onChange={(event) =>
+                      onChange={(event) => {
                         setPrefixEditor((current) =>
                           current ? { ...current, prefix: event.target.value.toUpperCase() } : current
                         )
-                      }
+                        prefixErrors.clear("prefix")
+                      }}
                       maxLength={10}
                       className="font-mono uppercase"
                     />
@@ -1351,9 +1391,15 @@ export function SystemSettingsForm({
                   </div>
                 </div>
 
-                {!isValidCategoryPrefix(prefixEditor.prefix) ? <ValidationMessage message={labels.invalidPrefix} /> : null}
-
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                {/* The two lists are one field: "at least one category" shows under them, and focus goes to the first
+                    control, the search of the available categories (ST-R7). */}
+                <div
+                  id="category-prefix-editor-categories"
+                  role="group"
+                  aria-label={labels.selectedPrefixCategories}
+                  aria-describedby={prefixCategoriesError ? "category-prefix-editor-categories-error" : undefined}
+                  className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
+                >
                   <CategoryTransferPanel
                     title={labels.availableCategories}
                     count={filteredAvailableCategories.length}
@@ -1421,10 +1467,11 @@ export function SystemSettingsForm({
                     )}
                   </CategoryTransferPanel>
                 </div>
+                {prefixCategoriesError ? <FieldError id="category-prefix-editor-categories-error">{prefixCategoriesError}</FieldError> : null}
               </AccessibleDialogBody>
               <AccessibleDialogFooter>
                 <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
-                <Button onClick={applyPrefixEditor} disabled={!canApplyPrefixEditor}>
+                <Button onClick={applyPrefixEditor}>
                   <Save />
                   {labels.savePrefixGroup}
                 </Button>
@@ -2196,16 +2243,6 @@ function CategoryTransferRow({
       </span>
       {badge ? <StatusBadge tone="warning" label={badge} /> : null}
     </label>
-  )
-}
-
-// A rule the current values break, under the fields of its group (D7: an error is a danger Notice). No live region: it
-// shows while the user types, and the save toast says the same.
-function ValidationMessage({ message }: { message: string }) {
-  return (
-    <Notice tone="danger" className="my-2">
-      {message}
-    </Notice>
   )
 }
 

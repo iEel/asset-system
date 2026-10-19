@@ -193,6 +193,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           removePrefix: t("removePrefix"),
           duplicateCategory: t("duplicateCategory"),
           invalidPrefix: t("invalidPrefix"),
+          prefixCategoriesRequired: t("prefixCategoriesRequired"),
           organizationDefaults: t("organizationDefaults"),
           organizationDefaultsDescription: t("organizationDefaultsDescription"),
           companyName: t("companyName"),

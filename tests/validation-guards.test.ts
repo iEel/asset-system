@@ -113,6 +113,7 @@ const V_FORMS: readonly string[] = [
   `${C}maintenance/maintenance-plan-form.tsx`,
   `${C}maintenance/repair-record-form.tsx`,
   `${C}maintenance/repair-record-actions.tsx`,
+  `${C}admin/system-settings-form.tsx`,
 ]
 
 // Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).

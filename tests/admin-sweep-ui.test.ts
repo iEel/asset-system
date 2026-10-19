@@ -22,7 +22,8 @@ test("settings: panels are ContentPanel, notes are Notice, tables DataTable, no 
   }
   assert.match(source, /<Notice tone="warning">\{labels\.ldapDefaultRoleMissing\.replace\("\{role\}", getValue\("ldap_default_role"\)\)\}<\/Notice>/)
   assert.match(source, /<Notice tone="danger" role="alert">\n\s+<ApiErrorText error=\{syncError\} \/>\n\s+<\/Notice>/)
-  assert.match(source, /function ValidationMessage\(\{ message \}: \{ message: string \}\) \{\n\s+return \(\n\s+<Notice tone="danger" className="my-2">/)
+  // The danger boxes became each setting's error under its field (v-track plan 3 task 4, ST4).
+  assert.doesNotMatch(source, /function ValidationMessage|<ValidationMessage\b/)
   assert.match(source, /className="h-auto justify-start whitespace-normal py-2 text-left md:h-auto md:min-h-9"/, "R3 hand-on: the presets are 36px from md")
   assert.match(source, /<span className="tag">\{result\.key\}<\/span>/)
   assert.match(source, /<span className="tag font-medium text-foreground">\{group\.prefix\}<\/span>/)

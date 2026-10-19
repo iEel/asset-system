@@ -3945,7 +3945,8 @@
     "depreciationLegacyRuleMonths": "{months} เดือน",
     "ldapSyncModePreview": "ดูตัวอย่างเท่านั้น",
     "ldapSyncModeManual": "กดซิงก์เอง",
-    "ldapSyncModeScheduled": "ซิงก์ตามรอบเวลา"
+    "ldapSyncModeScheduled": "ซิงก์ตามรอบเวลา",
+    "prefixCategoriesRequired": "เลือกหมวดหมู่อย่างน้อย 1 หมวดหมู่สำหรับคำนำหน้ารหัสนี้"
   },
   "transactionCancellation": {
     "action": "ยกเลิกรายการ",

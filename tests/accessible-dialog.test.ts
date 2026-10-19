@@ -100,5 +100,5 @@ test("the settings prefix dialog renders inside the settings form, so it has no 
   assert.doesNotMatch(dialog, /<form(?=[\s>])|type="submit"|\sform=/)
   assert.doesNotMatch(dialog, /closeLabel=/, "the X reads ปิด from tCommon(\"close\"), not ยกเลิก")
   assert.match(dialog, /<AccessibleDialogBody className="space-y-4">/)
-  assert.match(dialog, /<AccessibleDialogFooter>\s*<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\s*<Button onClick=\{applyPrefixEditor\} disabled=\{!canApplyPrefixEditor\}>/)
+  assert.match(dialog, /<AccessibleDialogFooter>\s*<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\s*<Button onClick=\{applyPrefixEditor\}>/)
 })
