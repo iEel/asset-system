@@ -148,3 +148,14 @@ test("a transfer to the second room and a new custodian, and its TR- document; t
   assert.deepEqual(expectedFailures(spec), ["TX-A4", "TX-A6"])
   assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/)
 })
+
+test("three assets added on the batch form move to the second room in one bulk move, a wrong entry first (e2e transactions task 5, TX5)", async () => {
+  const spec = readTxSpec("e2e/transactions/bulk-move.spec.ts")
+  assert.match(spec, /getByRole\("button", \{ name: "เพิ่มเป็นชุด" \}\)/)
+  assert.match(spec, /expect\(batch\.created\)\.toBe\(3\)/)
+  assert.match(spec, /await expectFieldError\(page, "bulk-move-assets", "กรุณาเลือกทรัพย์สินอย่างน้อย 1 รายการ"\)/)
+  assert.match(spec, /await expectFieldError\(page, "bulk-move-to-location", "กรุณาระบุข้อมูลนี้"\)/)
+  assert.match(spec, /expect\(after\.currentLocationId, asset\.assetTag\)\.toBe\(room\.id\)/)
+  assert.match(spec, /await page\.waitForLoadState\("networkidle"\)/)
+  assert.deepEqual(expectedFailures(spec), [])
+})
