@@ -73,3 +73,47 @@ test("the print queue's three buttons wait with their reason beside them (v-trac
   assert.doesNotMatch(source, /\bdisabled=\{(?:recentAssets|selectedForPrint)\.length === 0\}/)
   assert.doesNotMatch(source, /labels\.addFilteredQueueUnavailable : labels\.addFilteredQueue/)
 })
+
+test("a live field's polite region reads only its live check; a save's or the server's error is read once, by focus (v-track final task 3, VF3)", () => {
+  const field = read(`${C}ui/field.tsx`)
+  assert.match(field, /\n {2}liveError\?: string \| null\n/)
+  assert.ok(field.includes('{liveError !== undefined ? <span data-slot="field-error-live" className="sr-only" aria-live="polite">{liveError}</span> : null}'), "the region holds the live text only")
+  assert.ok(field.includes("{error ? <FieldError id={errorId} aria-hidden={(liveError && liveError === error) || undefined}>{error}</FieldError> : null}"), "the line is hidden from reading only while the region holds it")
+  assert.doesNotMatch(field, /aria-live="polite">\{error\}/)
+  // Every caller passes its live check's own text (null while it finds nothing), never the shown error.
+  const sources = readSourceFiles("src")
+  assert.deepEqual(findMatches(sources, /\bliveError(?=[\s>])/g, (path) => path === `${C}ui/field.tsx`), [], "no liveError without a value")
+  assert.deepEqual(countMatchesByFile(sources, /\bliveError=\{/g), {
+    [`${C}admin/depreciation-policy-builder.tsx`]: 1,
+    [`${C}admin/system-settings-form.tsx`]: 25,
+    [`${C}assets/asset-batch-form.tsx`]: 4,
+    [`${C}assets/asset-form.tsx`]: 2,
+  })
+  const assetForm = read(`${C}assets/asset-form.tsx`)
+  assert.match(assetForm, /liveError=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : null\}\n\s+error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}/)
+  assert.match(assetForm, /liveError=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : null\}\n\s+error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}/)
+  const batch = read(`${C}assets/asset-batch-form.tsx`)
+  assert.ok(batch.includes('const rowLiveError = (index: number, field: RowField) => (liveDuplicates[rowKey(index, field)] ? t("batchRowDuplicate") : null)'))
+  for (const view of ["card", "row"]) {
+    for (const name of ["assetTag", "serialNumber"]) {
+      assert.match(batch, new RegExp(`id=\\{rowFieldId\\(index, "${name}", "${view}"\\)\\}[^\\n]* liveError=\\{rowLiveError\\(index, "${name}"\\)\\} error=\\{rowError\\(index, "${name}"\\)\\}>`), `${view} ${name}`)
+    }
+  }
+  const form = read(`${C}admin/system-settings-form.tsx`)
+  assert.match(form, /const settingLiveError = \(key: string\) => \{\n\s+const code = liveErrors\[settingFieldKey\(key\)\]\n\s+if \(!code\) return null\n\s+return code === "invalidPrefix" \? labels\.invalidPrefix : validationMessage\(code, settingControlParams\[key\]\)\n\s+\}/)
+  // Each live setting names its key twice: the error it shows and its live text.
+  const sites = [...form.matchAll(/error=\{settingError\(([^)]+)\)\} liveError=\{settingLiveError\(([^)]+)\)\}>/g)]
+  assert.equal(sites.length, 15)
+  for (const [, shown, live] of sites) assert.equal(live, shown)
+  assert.ok(form.includes("errorFor={settingError}\n                liveErrorFor={settingLiveError}"))
+  assert.ok(form.includes("jsonLiveError={settingLiveError(depreciationPolicySettingKey)}"))
+  assert.ok(form.includes('<Field label={labels.prefix} required error={prefixEditorError("prefix")} liveError={prefixLiveCode ? labels.invalidPrefix : null}>'))
+  const panel = form.slice(form.indexOf("function LabelTemplatePanel("), form.indexOf("function LabelPreviewPanel("))
+  assert.match(panel, /\n {2}liveErrorFor\?: \(key: string\) => string \| null\n/)
+  for (const suffix of ["width_mm", "height_mm", "qr_size", "margin_mm", "gap_mm", "layout", "primary_template", "secondary_template", "tertiary_template"]) {
+    assert.ok(panel.includes(`error={errorFor?.(\`\${prefix}_${suffix}\`)} liveError={liveErrorFor?.(\`\${prefix}_${suffix}\`)}>`), suffix)
+  }
+  const builder = read(`${C}admin/depreciation-policy-builder.tsx`)
+  assert.match(builder, /\n {2}jsonLiveError\?: string \| null\n/)
+  assert.match(builder, /error=\{jsonError\}\n\s+liveError=\{jsonLiveError\}\n\s+className="mt-3"/)
+})

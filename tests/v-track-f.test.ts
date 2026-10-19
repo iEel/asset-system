@@ -193,15 +193,17 @@ test("errors shown by a submit are read once, through focus, and a live error ke
   // (aria-describedby). Five alerts at once are an anti-goal (spec §3).
   assert.match(field, /function FieldError\(\{ className, \.\.\.props \}: React\.ComponentProps<"p">\) \{\n  return <p data-slot="field-error" className=\{cn\("text-meta text-danger", className\)\} \{\.\.\.props\} \/>\n\}/)
   assert.doesNotMatch(field, /role="alert"|aria-live="assertive"/)
-  // A check that runs while typing (the asset form's duplicate tag and serial, spec U8) passes liveError: a polite live
-  // region that is always there reads each new error once; the visible line is hidden from reading so it is not read twice.
-  assert.match(field, /liveError\?: boolean/)
-  assert.match(field, /\{liveError \? <span data-slot="field-error-live" className="sr-only" aria-live="polite">\{error\}<\/span> : null\}/)
-  assert.match(field, /\{error \? <FieldError id=\{errorId\} aria-hidden=\{liveError \|\| undefined\}>\{error\}<\/FieldError> : null\}/)
+  // A check that runs while typing (the asset form's duplicate tag and serial, spec U8) passes its own text as liveError
+  // (null while it finds nothing): a polite live region that is always there reads each new one once. A save's or the
+  // server's error never goes into it, so focus reads it once (v-track final task 3); the visible line is hidden from
+  // reading only while the region holds the same text.
+  assert.match(field, /liveError\?: string \| null/)
+  assert.match(field, /\{liveError !== undefined \? <span data-slot="field-error-live" className="sr-only" aria-live="polite">\{liveError\}<\/span> : null\}/)
+  assert.match(field, /\{error \? <FieldError id=\{errorId\} aria-hidden=\{\(liveError && liveError === error\) \|\| undefined\}>\{error\}<\/FieldError> : null\}/)
   const assetForm = read("src/components/assets/asset-form.tsx")
-  // v-track plan 2 A1: a save's other error of these fields shows in the same place (errorText).
-  assert.match(assetForm, /id="asset-tag"\n\s+liveError\n\s+error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}/)
-  assert.match(assetForm, /liveError\n\s+error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}/)
+  // v-track plan 2 A1: a save's other error of these fields shows in the same place (errorText), outside the region.
+  assert.match(assetForm, /id="asset-tag"\n\s+liveError=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : null\}\n\s+error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}/)
+  assert.match(assetForm, /liveError=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : null\}\n\s+error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}/)
   assert.equal(assetForm.match(/\bliveError\b/g)?.length, 2)
   // SearchableSelect renders the same FieldError, so its errors follow the same rule.
   assert.match(read("src/components/ui/searchable-select.tsx"), /<FieldError id=\{errorId\}>/)

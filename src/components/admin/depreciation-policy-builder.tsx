@@ -75,9 +75,12 @@ type DepreciationPolicyBuilderProps = {
   // The policy JSON's id and its error (the settings form's rule for accounting_depreciation_policy, spec U8).
   jsonId?: string
   jsonError?: React.ReactNode
+  // The text of that rule while the JSON breaks it, or null, for the JSON field's polite region; a save's error is read
+  // once, by focus (v-track final task 3).
+  jsonLiveError?: string | null
 }
 
-export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPolicyJsonChange, jsonId, jsonError }: DepreciationPolicyBuilderProps) {
+export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPolicyJsonChange, jsonId, jsonError, jsonLiveError }: DepreciationPolicyBuilderProps) {
   const policyParse = useMemo(() => parseDepreciationPolicySetting(policyJson), [policyJson])
   const isPolicyJsonValid = policyParse.isValid
   const initialState = useMemo(() => buildDepreciationPolicyEditorState(parsePolicyForEditor(policyJson), categories), [categories, policyJson])
@@ -346,7 +349,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
           hint={labels.depreciationAdvancedJsonDescription}
           id={jsonId}
           error={jsonError}
-          liveError
+          liveError={jsonLiveError}
           className="mt-3"
         >
           <Textarea value={policyJson} onChange={(event) => onPolicyJsonChange(event.target.value)} rows={8} className="font-mono" />

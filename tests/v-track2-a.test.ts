@@ -126,8 +126,8 @@ test("asset form: validate() restates every rule the toasts said, the save gates
     assert.equal(messages(locale).asset.customFieldRequired, undefined, `${locale}: a template field says required under itself`)
   }
   // The duplicate checks stay live (spec U8): a save that finds one shows the same line, not a second one.
-  assert.match(source, /liveError\n\s+error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}/)
-  assert.match(source, /liveError\n\s+error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}/)
+  assert.match(source, /liveError=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : null\}\n\s+error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}/)
+  assert.match(source, /liveError=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : null\}\n\s+error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}/)
   // The server lets the total seats stay empty, so the star goes (spec §11 call 8).
   assert.ok(source.includes('<Field label={t("licenseTotalSeats")} id="asset-license-total-seats" error={errorText("licenseTotalSeats")}>'))
   // The server's refusal lands on the same fields; the raw JSON opens first; the template fields are ids by place.
@@ -191,7 +191,7 @@ test("asset batch form: shared fields and rows show their errors, duplicates sta
   assert.match(source, /liveDuplicates\[rowKey\(index, field\)\] \? t\("batchRowDuplicate"\) : fieldErrors\.message\(rowKey\(index, field\)\)/)
   for (const view of ["card", "row"]) {
     for (const field of ["assetTag", "serialNumber"]) {
-      assert.match(source, new RegExp(`id=\\{rowFieldId\\(index, "${field}", "${view}"\\)\\}[^\\n]* liveError error=\\{rowError\\(index, "${field}"\\)\\}>`), `${view} ${field}`)
+      assert.match(source, new RegExp(`id=\\{rowFieldId\\(index, "${field}", "${view}"\\)\\}[^\\n]* liveError=\\{rowLiveError\\(index, "${field}"\\)\\} error=\\{rowError\\(index, "${field}"\\)\\}>`), `${view} ${field}`)
     }
   }
   assert.doesNotMatch(source, /\{t\("duplicateWarning"\)\}/)

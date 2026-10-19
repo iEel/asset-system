@@ -788,6 +788,13 @@ export function SystemSettingsForm({
     if (!code) return undefined
     return code === "invalidPrefix" ? labels.invalidPrefix : validationMessage(code, settingControlParams[key])
   }
+  // Only the live rule's text, or null: the field's polite region reads it while the person types. An error the last
+  // save or the server found is not here, so focus reads it once (v-track final task 3).
+  const settingLiveError = (key: string) => {
+    const code = liveErrors[settingFieldKey(key)]
+    if (!code) return null
+    return code === "invalidPrefix" ? labels.invalidPrefix : validationMessage(code, settingControlParams[key])
+  }
   const prefixGroupsError = settingError(assetTagCategoryPrefixesKey)
   const tabLabels: Record<SettingsTabId, string> = {
     "asset-numbering": labels.tabAssetNumbering,
@@ -1032,7 +1039,7 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-2">
-              <Field label={labels.assetTagTemplate} error={settingError(assetTagFormatTemplateKey)} liveError>
+              <Field label={labels.assetTagTemplate} error={settingError(assetTagFormatTemplateKey)} liveError={settingLiveError(assetTagFormatTemplateKey)}>
                 <Input
                   id="asset-tag-template"
                   value={formatTemplate}
@@ -1117,7 +1124,7 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
             <div className="space-y-2">
-              <Field label={labels.publicQrBaseUrl} error={settingError(assetQrPublicBaseUrlKey)} liveError>
+              <Field label={labels.publicQrBaseUrl} error={settingError(assetQrPublicBaseUrlKey)} liveError={settingLiveError(assetQrPublicBaseUrlKey)}>
                 <Input
                   id="asset-qr-public-base-url"
                   value={publicQrBaseUrl}
@@ -1178,6 +1185,7 @@ export function SystemSettingsForm({
                 getValue={getValue}
                 setValue={setValue}
                 errorFor={settingError}
+                liveErrorFor={settingLiveError}
               />
             ))}
           </div>
@@ -1201,7 +1209,7 @@ export function SystemSettingsForm({
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={labels.checkoutDocumentTemplate} error={settingError(checkoutDocumentTemplateKey)} liveError>
+              <Field label={labels.checkoutDocumentTemplate} error={settingError(checkoutDocumentTemplateKey)} liveError={settingLiveError(checkoutDocumentTemplateKey)}>
                 <Input
                   id="checkout-document-template"
                   value={checkoutDocumentTemplate}
@@ -1209,7 +1217,7 @@ export function SystemSettingsForm({
                   className="font-mono"
                 />
               </Field>
-              <Field label={labels.checkinDocumentTemplate} error={settingError(checkinDocumentTemplateKey)} liveError>
+              <Field label={labels.checkinDocumentTemplate} error={settingError(checkinDocumentTemplateKey)} liveError={settingLiveError(checkinDocumentTemplateKey)}>
                 <Input
                   id="checkin-document-template"
                   value={checkinDocumentTemplate}
@@ -1217,7 +1225,7 @@ export function SystemSettingsForm({
                   className="font-mono"
                 />
               </Field>
-              <Field label={labels.operationDocumentRunningDigits} error={settingError(operationDocumentRunningDigitsKey)} liveError>
+              <Field label={labels.operationDocumentRunningDigits} error={settingError(operationDocumentRunningDigitsKey)} liveError={settingLiveError(operationDocumentRunningDigitsKey)}>
                 <Input
                   id="operation-document-running-digits"
                   type="number"
@@ -1363,7 +1371,7 @@ export function SystemSettingsForm({
             <>
               <AccessibleDialogBody className="space-y-4">
                 <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
-                  <Field label={labels.prefix} required error={prefixEditorError("prefix")} liveError>
+                  <Field label={labels.prefix} required error={prefixEditorError("prefix")} liveError={prefixLiveCode ? labels.invalidPrefix : null}>
                     <Input
                       id="category-prefix-editor-prefix"
                       value={prefixEditor.prefix}
@@ -1502,6 +1510,7 @@ export function SystemSettingsForm({
               onPolicyJsonChange={(value) => setValue(depreciationPolicySettingKey, value)}
               jsonId="depreciation-policy-json"
               jsonError={settingError(depreciationPolicySettingKey)}
+              jsonLiveError={settingLiveError(depreciationPolicySettingKey)}
             />
             <p className="mt-2 text-sm text-muted-foreground">{labels.accountingDepreciationPolicyDescription}</p>
           </div>
@@ -1513,7 +1522,7 @@ export function SystemSettingsForm({
       <ContentPanel divided title={labels.notificationRules} description={labels.notificationRulesDescription}>
         <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Field label={labels.returnDueSoonDays} error={settingError(notificationReturnDueSoonDaysKey)} liveError>
+          <Field label={labels.returnDueSoonDays} error={settingError(notificationReturnDueSoonDaysKey)} liveError={settingLiveError(notificationReturnDueSoonDaysKey)}>
             <Input
               id="notification-return-due-days"
               type="number"
@@ -1523,7 +1532,7 @@ export function SystemSettingsForm({
               onChange={(event) => setValue(notificationReturnDueSoonDaysKey, event.target.value)}
             />
           </Field>
-          <Field label={labels.auditActionDueSoonDays} error={settingError(notificationAuditActionDueSoonDaysKey)} liveError>
+          <Field label={labels.auditActionDueSoonDays} error={settingError(notificationAuditActionDueSoonDaysKey)} liveError={settingLiveError(notificationAuditActionDueSoonDaysKey)}>
             <Input
               id="notification-audit-action-days"
               type="number"
@@ -1533,7 +1542,7 @@ export function SystemSettingsForm({
               onChange={(event) => setValue(notificationAuditActionDueSoonDaysKey, event.target.value)}
             />
           </Field>
-          <Field label={labels.warrantyExpiryDays} error={settingError(notificationWarrantyExpiryDaysKey)} liveError>
+          <Field label={labels.warrantyExpiryDays} error={settingError(notificationWarrantyExpiryDaysKey)} liveError={settingLiveError(notificationWarrantyExpiryDaysKey)}>
             <Input
               id="notification-warranty-expiry-days"
               type="number"
@@ -1543,7 +1552,7 @@ export function SystemSettingsForm({
               onChange={(event) => setValue(notificationWarrantyExpiryDaysKey, event.target.value)}
             />
           </Field>
-          <Field label={labels.licenseExpiryDays} error={settingError(notificationLicenseExpiryDaysKey)} liveError>
+          <Field label={labels.licenseExpiryDays} error={settingError(notificationLicenseExpiryDaysKey)} liveError={settingLiveError(notificationLicenseExpiryDaysKey)}>
             <Input
               id="notification-license-expiry-days"
               type="number"
@@ -1585,7 +1594,7 @@ export function SystemSettingsForm({
               error={settingError(workflowApprovalSegregationRequiredKey)}
               onChange={(checked) => setBooleanValue(workflowApprovalSegregationRequiredKey, checked)}
             />
-            <Field label={labels.workflowApprovalMinApprovers} error={settingError(workflowApprovalMinApproversKey)} liveError>
+            <Field label={labels.workflowApprovalMinApprovers} error={settingError(workflowApprovalMinApproversKey)} liveError={settingLiveError(workflowApprovalMinApproversKey)}>
               <Input
                 id="workflow-approval-min-approvers"
                 type="number"
@@ -1595,7 +1604,7 @@ export function SystemSettingsForm({
                 onChange={(event) => setValue(workflowApprovalMinApproversKey, event.target.value)}
               />
             </Field>
-            <Field label={labels.workflowApprovalSlaDays} error={settingError(workflowApprovalSlaDaysKey)} liveError>
+            <Field label={labels.workflowApprovalSlaDays} error={settingError(workflowApprovalSlaDaysKey)} liveError={settingLiveError(workflowApprovalSlaDaysKey)}>
               <Input
                 id="workflow-approval-sla-days"
                 type="number"
@@ -1633,7 +1642,7 @@ export function SystemSettingsForm({
             </a>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            <Field label={labels.retentionAttachmentDays} error={settingError(retentionAttachmentDaysKey)} liveError>
+            <Field label={labels.retentionAttachmentDays} error={settingError(retentionAttachmentDaysKey)} liveError={settingLiveError(retentionAttachmentDaysKey)}>
               <Input
                 id="retention-attachment-days"
                 type="number"
@@ -1643,7 +1652,7 @@ export function SystemSettingsForm({
                 onChange={(event) => setValue(retentionAttachmentDaysKey, event.target.value)}
               />
             </Field>
-            <Field label={labels.retentionAuditLogDays} error={settingError(retentionAuditLogDaysKey)} liveError>
+            <Field label={labels.retentionAuditLogDays} error={settingError(retentionAuditLogDaysKey)} liveError={settingLiveError(retentionAuditLogDaysKey)}>
               <Input
                 id="retention-audit-log-days"
                 type="number"
@@ -1653,7 +1662,7 @@ export function SystemSettingsForm({
                 onChange={(event) => setValue(retentionAuditLogDaysKey, event.target.value)}
               />
             </Field>
-            <Field label={labels.retentionOrphanFileDays} error={settingError(retentionOrphanFileDaysKey)} liveError>
+            <Field label={labels.retentionOrphanFileDays} error={settingError(retentionOrphanFileDaysKey)} liveError={settingLiveError(retentionOrphanFileDaysKey)}>
               <Input
                 id="retention-orphan-file-days"
                 type="number"
@@ -1918,7 +1927,7 @@ export function SystemSettingsForm({
             </div>
             {selectedSyncSchedulePreset === "custom" ? (
               <div className="lg:col-span-2">
-                <Field label={labels.ldapSyncCustomSchedule} error={settingError("ldap_sync_schedule")} liveError>
+                <Field label={labels.ldapSyncCustomSchedule} error={settingError("ldap_sync_schedule")} liveError={settingLiveError("ldap_sync_schedule")}>
                   <Input
                     id="ldap-sync-custom-schedule"
                     value={syncSchedule}
@@ -2427,6 +2436,7 @@ function LabelTemplatePanel({
   getValue,
   setValue,
   errorFor,
+  liveErrorFor,
 }: {
   tapeSize: AssetLabelTapeSize
   title: string
@@ -2435,6 +2445,9 @@ function LabelTemplatePanel({
   setValue: (key: string, value: string) => void
   // A setting's error under its field: its rule shows while the value breaks it (spec U8), so the field announces it.
   errorFor?: (key: string) => string | undefined
+  // Only the live rule's text, or null, for the field's polite region; a save's error is read once, by focus (v-track
+  // final task 3).
+  liveErrorFor?: (key: string) => string | null
 }) {
   const prefix = `asset_label_${tapeSize}`
   const preset = assetLabelPresets[tapeSize]
@@ -2462,7 +2475,7 @@ function LabelTemplatePanel({
         </Button>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <Field label={labels.labelWidthMm} error={errorFor?.(`${prefix}_width_mm`)} liveError>
+        <Field label={labels.labelWidthMm} error={errorFor?.(`${prefix}_width_mm`)} liveError={liveErrorFor?.(`${prefix}_width_mm`)}>
           <Input
             id={`${prefix}-width-mm`}
             type="number"
@@ -2472,7 +2485,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelHeightMm} error={errorFor?.(`${prefix}_height_mm`)} liveError>
+        <Field label={labels.labelHeightMm} error={errorFor?.(`${prefix}_height_mm`)} liveError={liveErrorFor?.(`${prefix}_height_mm`)}>
           <Input
             id={`${prefix}-height-mm`}
             type="number"
@@ -2482,7 +2495,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_height_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelQrSize} error={errorFor?.(`${prefix}_qr_size`)} liveError>
+        <Field label={labels.labelQrSize} error={errorFor?.(`${prefix}_qr_size`)} liveError={liveErrorFor?.(`${prefix}_qr_size`)}>
           <Input
             id={`${prefix}-qr-size`}
             type="number"
@@ -2492,7 +2505,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelMarginMm} error={errorFor?.(`${prefix}_margin_mm`)} liveError>
+        <Field label={labels.labelMarginMm} error={errorFor?.(`${prefix}_margin_mm`)} liveError={liveErrorFor?.(`${prefix}_margin_mm`)}>
           <Input
             id={`${prefix}-margin-mm`}
             type="number"
@@ -2503,7 +2516,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_margin_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelGapMm} error={errorFor?.(`${prefix}_gap_mm`)} liveError>
+        <Field label={labels.labelGapMm} error={errorFor?.(`${prefix}_gap_mm`)} liveError={liveErrorFor?.(`${prefix}_gap_mm`)}>
           <Input
             id={`${prefix}-gap-mm`}
             type="number"
@@ -2514,7 +2527,7 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_gap_mm`, event.target.value)}
           />
         </Field>
-        <Field label={labels.labelLayout} error={errorFor?.(`${prefix}_layout`)} liveError>
+        <Field label={labels.labelLayout} error={errorFor?.(`${prefix}_layout`)} liveError={liveErrorFor?.(`${prefix}_layout`)}>
           <NativeSelect
             id={`${prefix}-layout`}
             value={getValue(`${prefix}_layout`)}
@@ -2528,7 +2541,7 @@ function LabelTemplatePanel({
         </Field>
       </div>
       <div className="mt-3 grid gap-3">
-        <Field label={labels.labelPrimaryLine} error={errorFor?.(`${prefix}_primary_template`)} liveError>
+        <Field label={labels.labelPrimaryLine} error={errorFor?.(`${prefix}_primary_template`)} liveError={liveErrorFor?.(`${prefix}_primary_template`)}>
           <Input
             id={`${prefix}-primary-template`}
             value={getValue(`${prefix}_primary_template`)}
@@ -2536,7 +2549,7 @@ function LabelTemplatePanel({
             className="font-mono"
           />
         </Field>
-        <Field label={labels.labelSecondaryLine} error={errorFor?.(`${prefix}_secondary_template`)} liveError>
+        <Field label={labels.labelSecondaryLine} error={errorFor?.(`${prefix}_secondary_template`)} liveError={liveErrorFor?.(`${prefix}_secondary_template`)}>
           <Input
             id={`${prefix}-secondary-template`}
             value={getValue(`${prefix}_secondary_template`)}
@@ -2544,7 +2557,7 @@ function LabelTemplatePanel({
             className="font-mono"
           />
         </Field>
-        <Field label={labels.labelTertiaryLine} error={errorFor?.(`${prefix}_tertiary_template`)} liveError>
+        <Field label={labels.labelTertiaryLine} error={errorFor?.(`${prefix}_tertiary_template`)} liveError={liveErrorFor?.(`${prefix}_tertiary_template`)}>
           <Input
             id={`${prefix}-tertiary-template`}
             value={getValue(`${prefix}_tertiary_template`)}

@@ -176,14 +176,14 @@ test("a switch, the label's name choice, each label field and the depreciation J
   const panel = form.slice(form.indexOf("function LabelTemplatePanel("), form.indexOf("function LabelPreviewPanel("))
   assert.match(panel, /errorFor\?: \(key: string\) => string \| undefined\n/)
   for (const suffix of ["width_mm", "height_mm", "qr_size", "margin_mm", "gap_mm", "layout", "primary_template", "secondary_template", "tertiary_template"]) {
-    assert.ok(panel.includes(`error={errorFor?.(\`\${prefix}_${suffix}\`)} liveError>`), suffix)
+    assert.ok(panel.includes(`error={errorFor?.(\`\${prefix}_${suffix}\`)} liveError={liveErrorFor?.(\`\${prefix}_${suffix}\`)}>`), suffix)
   }
   // The depreciation JSON: its id and its live error, and its closed section opens while the JSON is invalid.
   const builder = read("src/components/admin/depreciation-policy-builder.tsx")
-  assert.match(builder, /export function DepreciationPolicyBuilder\(\{ categories, policyJson, labels, onPolicyJsonChange, jsonId, jsonError \}: DepreciationPolicyBuilderProps\) \{/)
+  assert.match(builder, /export function DepreciationPolicyBuilder\(\{ categories, policyJson, labels, onPolicyJsonChange, jsonId, jsonError, jsonLiveError \}: DepreciationPolicyBuilderProps\) \{/)
   assert.match(builder, /<details ref=\{jsonDetailsRef\} className="rounded-md border border-border bg-background p-4">/)
   assert.match(builder, /useEffect\(\(\) => \{\n\s+if \(!isPolicyJsonValid && jsonDetailsRef\.current\) jsonDetailsRef\.current\.open = true\n\s+\}, \[isPolicyJsonValid\]\)/)
-  assert.match(builder, /hint=\{labels\.depreciationAdvancedJsonDescription\}\n\s+id=\{jsonId\}\n\s+error=\{jsonError\}\n\s+liveError\n\s+className="mt-3"\n\s+>\n\s+<Textarea value=\{policyJson\}/)
+  assert.match(builder, /hint=\{labels\.depreciationAdvancedJsonDescription\}\n\s+id=\{jsonId\}\n\s+error=\{jsonError\}\n\s+liveError=\{jsonLiveError\}\n\s+className="mt-3"\n\s+>\n\s+<Textarea value=\{policyJson\}/)
 })
 
 // Each setting the form shows, in visual order, with its id, as the form's SETTING_FIELD_IDS lists them, and the
@@ -302,7 +302,7 @@ test("the prefix editor checks its prefix and its categories on save, its save i
   assert.match(form, /<Button onClick=\{applyPrefixEditor\}>\n\s+<Save \/>\n\s+\{labels\.savePrefixGroup\}/)
   assert.doesNotMatch(form, /canApplyPrefixEditor/)
   // The prefix: a star, its error under it, live once there is a prefix (spec U8); an empty one waits for save (U6).
-  assert.match(form, /<Field label=\{labels\.prefix\} required error=\{prefixEditorError\("prefix"\)\} liveError>/)
+  assert.match(form, /<Field label=\{labels\.prefix\} required error=\{prefixEditorError\("prefix"\)\} liveError=\{prefixLiveCode \? labels\.invalidPrefix : null\}>/)
   assert.match(form, /const prefixLiveCode = prefixEditor\?\.prefix\.trim\(\) && !isValidCategoryPrefix\(prefixEditor\.prefix\) \? "invalidPrefix" : null/)
   assert.match(form, /return field === "categoryIds" \? labels\.prefixCategoriesRequired : validationMessage\(code\)/)
   // The two lists are one group with its error under them, still inside the dialog body (no form, no submit: GD5).

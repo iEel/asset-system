@@ -17,9 +17,11 @@ type FieldProps = {
   required?: boolean
   hint?: React.ReactNode
   error?: React.ReactNode
-  // For an error a check shows while the person types (spec U8): a polite live region reads each new error once. Errors
-  // shown by a submit are read through focus and aria-describedby.
-  liveError?: boolean
+  // The text a check shows while the person types (spec U8), or null while it finds nothing. A field with such a check
+  // always passes it, so its polite live region is there before the first error and reads each new text once. An error
+  // that a save or the server set is not passed here: focus reads it once, through aria-describedby (v-track final
+  // task 3). While the check finds something, error shows the same text.
+  liveError?: string | null
   id?: string
   className?: string
   // One icon button beside the label, for example AssetStateHelpPopover. It sits outside the <label>, so clicking it
@@ -68,8 +70,8 @@ function Field({ label, hideLabel, required, hint, error, liveError, id, classNa
       )}
       {renderControl ? renderControl(control) : element ? React.cloneElement(element, control) : null}
       {hint ? <FieldHint id={hintId}>{hint}</FieldHint> : null}
-      {error ? <FieldError id={errorId} aria-hidden={liveError || undefined}>{error}</FieldError> : null}
-      {liveError ? <span data-slot="field-error-live" className="sr-only" aria-live="polite">{error}</span> : null}
+      {error ? <FieldError id={errorId} aria-hidden={(liveError && liveError === error) || undefined}>{error}</FieldError> : null}
+      {liveError !== undefined ? <span data-slot="field-error-live" className="sr-only" aria-live="polite">{liveError}</span> : null}
     </div>
   )
 }

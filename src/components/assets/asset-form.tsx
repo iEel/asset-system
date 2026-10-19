@@ -1022,7 +1022,7 @@ export function AssetForm({
           <Field
             label={t("assetTag")}
             id="asset-tag"
-            liveError
+            liveError={duplicateState.assetTagExists ? t("duplicateAssetTag") : null}
             error={duplicateState.assetTagExists ? t("duplicateAssetTag") : errorText("assetTag")}
           >
             <Input
@@ -1079,7 +1079,7 @@ export function AssetForm({
           <Field
             label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")}
             id="asset-serial-number"
-            liveError
+            liveError={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : null}
             error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : errorText("serialNumber")}
           >
             <ScannerTextInput

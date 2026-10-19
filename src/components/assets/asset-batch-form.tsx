@@ -334,6 +334,9 @@ export function AssetBatchForm({
   }
   const rowError = (index: number, field: RowField) =>
     liveDuplicates[rowKey(index, field)] ? t("batchRowDuplicate") : fieldErrors.message(rowKey(index, field))
+  // Only the live duplicate's text, for the row field's polite region; a save's error is read once, by focus (v-track
+  // final task 3).
+  const rowLiveError = (index: number, field: RowField) => (liveDuplicates[rowKey(index, field)] ? t("batchRowDuplicate") : null)
   const scannerLabels = {
     start: t("scanSerialNumber"),
     stop: t("stopSerialScan"),
@@ -1061,10 +1064,10 @@ export function AssetBatchForm({
                   </Button>
                 </div>
                 <div className="grid gap-3">
-                  <Field label={t("batchAssetTag")} id={rowFieldId(index, "assetTag", "card")} hint={t("batchAssetTagHelp")} liveError error={rowError(index, "assetTag")}>
+                  <Field label={t("batchAssetTag")} id={rowFieldId(index, "assetTag", "card")} hint={t("batchAssetTagHelp")} liveError={rowLiveError(index, "assetTag")} error={rowError(index, "assetTag")}>
                     <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
                   </Field>
-                  <Field label={t("batchSerialNumber")} id={rowFieldId(index, "serialNumber", "card")} hint={t("batchPasteSerialHint")} liveError error={rowError(index, "serialNumber")}>
+                  <Field label={t("batchSerialNumber")} id={rowFieldId(index, "serialNumber", "card")} hint={t("batchPasteSerialHint")} liveError={rowLiveError(index, "serialNumber")} error={rowError(index, "serialNumber")}>
                     <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
                   </Field>
                   {showRowCustodian ? (
@@ -1109,12 +1112,12 @@ export function AssetBatchForm({
                 <tr key={row.clientId}>
                   <DataTableCell className="num font-medium text-foreground">{index + 1}</DataTableCell>
                   <DataTableCell>
-                    <Field label={t("batchAssetTag")} id={rowFieldId(index, "assetTag", "row")} hideLabel hint={t("batchAssetTagHelp")} liveError error={rowError(index, "assetTag")}>
+                    <Field label={t("batchAssetTag")} id={rowFieldId(index, "assetTag", "row")} hideLabel hint={t("batchAssetTagHelp")} liveError={rowLiveError(index, "assetTag")} error={rowError(index, "assetTag")}>
                       <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
                     </Field>
                   </DataTableCell>
                   <DataTableCell>
-                    <Field label={t("batchSerialNumber")} id={rowFieldId(index, "serialNumber", "row")} hideLabel hint={t("batchPasteSerialHint")} liveError error={rowError(index, "serialNumber")}>
+                    <Field label={t("batchSerialNumber")} id={rowFieldId(index, "serialNumber", "row")} hideLabel hint={t("batchPasteSerialHint")} liveError={rowLiveError(index, "serialNumber")} error={rowError(index, "serialNumber")}>
                       <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
                     </Field>
                   </DataTableCell>

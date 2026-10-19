@@ -23,8 +23,9 @@ test("asset form: status and condition keep their help button beside the label, 
 test("asset form: the duplicate tag and serial errors belong to their fields (K4 a)", () => {
   const source = read("src/components/assets/asset-form.tsx")
   // A save that finds a duplicate shows the same line; any other error of the field shows in its place (v-track plan 2 A1).
-  assert.match(source, /label=\{t\("assetTag"\)\}\n\s*id="asset-tag"\n\s*liveError\n\s*error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}\n\s*>/)
-  assert.match(source, /liveError\n\s*error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}\n\s*>\n\s*<ScannerTextInput/)
+  // The live region reads only the duplicate check's own text (v-track final task 3).
+  assert.match(source, /label=\{t\("assetTag"\)\}\n\s*id="asset-tag"\n\s*liveError=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : null\}\n\s*error=\{duplicateState\.assetTagExists \? t\("duplicateAssetTag"\) : errorText\("assetTag"\)\}\n\s*>/)
+  assert.match(source, /liveError=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : null\}\n\s*error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}\n\s*>\n\s*<ScannerTextInput/)
   assert.doesNotMatch(source, /text-xs font-medium text-danger/)
 })
 
@@ -66,9 +67,9 @@ test("asset form: every button is a Button, the repeater's remove button fits an
 test("asset batch form: row fields are named by Field and their help, not by aria-label help text (K20)", () => {
   const source = read("src/components/assets/asset-batch-form.tsx")
   // Each row field has its id (card or table row) and its live error (v-track plan 2 A2).
-  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} id=\{rowFieldId\(index, "assetTag", "card"\)\} hint=\{t\("batchAssetTagHelp"\)\} liveError error=\{rowError\(index, "assetTag"\)\}>/)
-  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} id=\{rowFieldId\(index, "assetTag", "row"\)\} hideLabel hint=\{t\("batchAssetTagHelp"\)\} liveError error=\{rowError\(index, "assetTag"\)\}>/)
-  assert.match(source, /<Field label=\{t\("batchSerialNumber"\)\} id=\{rowFieldId\(index, "serialNumber", "row"\)\} hideLabel hint=\{t\("batchPasteSerialHint"\)\} liveError error=\{rowError\(index, "serialNumber"\)\}>\n\s*<ScannerTextInput /)
+  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} id=\{rowFieldId\(index, "assetTag", "card"\)\} hint=\{t\("batchAssetTagHelp"\)\} liveError=\{rowLiveError\(index, "assetTag"\)\} error=\{rowError\(index, "assetTag"\)\}>/)
+  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} id=\{rowFieldId\(index, "assetTag", "row"\)\} hideLabel hint=\{t\("batchAssetTagHelp"\)\} liveError=\{rowLiveError\(index, "assetTag"\)\} error=\{rowError\(index, "assetTag"\)\}>/)
+  assert.match(source, /<Field label=\{t\("batchSerialNumber"\)\} id=\{rowFieldId\(index, "serialNumber", "row"\)\} hideLabel hint=\{t\("batchPasteSerialHint"\)\} liveError=\{rowLiveError\(index, "serialNumber"\)\} error=\{rowError\(index, "serialNumber"\)\}>\n\s*<ScannerTextInput /)
   assert.match(source, /<Field label=\{t\("batchRemark"\)\} hideLabel>/)
   assert.doesNotMatch(source, /aria-label=\{t\("batchAssetTagHelp"\)\}/)
   assert.match(source, /<Field label=\{t\("purchasePriceBaht"\)\} id="asset-batch-purchase-price" error=\{errorText\("common\.purchasePrice"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
