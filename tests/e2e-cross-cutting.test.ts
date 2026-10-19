@@ -71,3 +71,83 @@ test("reports and exports: each export's route permission, the reports page's ga
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
   assert.ok(spec.includes(`test.fail(true, "M1: `) && spec.includes(`test.fail(true, "M2: `))
 })
+
+test("roles and permissions: each refused page and request needs a permission the user lacks, checked before any read (e2e cross-cutting task 2, EM2)", async () => {
+  const refusals = await import("../e2e/cross-cutting/support/refusals.ts")
+  const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
+  const { classify } = await import("../e2e/support/measure-core.ts")
+  // Each page: its file asks requirePagePermission for the permission listed, before it reads a record; the approval
+  // inbox is not found without disposal:approve or audit:approve.
+  for (const refusal of refusals.VIEWER_PAGE_REFUSALS) {
+    const page = read(`src/app/[locale]/(dashboard)/${refusal.file}`)
+    assert.ok(refusals.lacks("viewer", refusal.permission), `the viewer lacks ${refusal.permission}`)
+    if (refusal.permission === "approve-inbox") {
+      assert.ok(page.includes("if (!snapshot.access.canAnyApproval) notFound()"), refusal.file)
+      continue
+    }
+    const [moduleName, action] = refusal.permission.split(":")
+    const call = `requirePagePermission(locale, "${moduleName}", "${action}")`
+    assert.ok(page.includes(call), `${refusal.file}: ${call}`)
+    assert.ok(page.indexOf("prisma.") < 0 || page.indexOf(call) < page.indexOf("prisma."), `${refusal.file}: the permission before any read`)
+    const route = `/th/${refusal.file.replace(/\/page\.tsx$/, "").replace("[id]", refusal.path.includes(":asset") ? ":asset" : refusals.NO_RECORD)}`
+    assert.equal(refusal.path, route, `${refusal.file}: its path`)
+  }
+  // Each request: its route's handler asks requirePermission for the permission listed before it reads a record, and
+  // every record id is one that does not exist.
+  for (const [user, list] of [["viewer", [...refusals.VIEWER_API_REFUSALS, ...refusals.APPROVE_API_REFUSALS]], ["itStaff", refusals.APPROVE_API_REFUSALS]] as const) {
+    for (const refusal of list) assert.ok(refusals.lacks(user, refusal.permission), `${user} lacks ${refusal.permission}`)
+  }
+  for (const refusal of [...refusals.VIEWER_API_REFUSALS, ...refusals.APPROVE_API_REFUSALS]) {
+    const handler = handlerBody(read(`src/app/api/${refusal.file}`), refusal.method)
+    const call = requireCall(refusal.permission)
+    assert.ok(handler.includes(call), `${refusal.file} ${refusal.method}: ${call}`)
+    assert.ok(handler.indexOf("prisma.") < 0 || handler.indexOf(call) < handler.indexOf("prisma."), `${refusal.file} ${refusal.method}: the permission before any read`)
+    assert.equal(refusal.path, `/api/${refusal.file.replace(/\/route\.ts$/, "").replace("[id]", refusals.NO_RECORD)}`, `${refusal.file}: its path`)
+  }
+  // The disposal decision picks its permission from the body: "decision" (any action but execute) is approve.
+  assert.match(handlerBody(read("src/app/api/disposal-requests/[id]/route.ts"), "PATCH"), /if \(action === "execute"\) \{\n\s+requirePermission\(user, "disposal", "edit"\)\n\s+\} else \{\n\s+requirePermission\(user, "disposal", "approve"\)/)
+  // The write controls are the app's own words.
+  const messages = thai as Record<string, Record<string, Record<string, string> | string>>
+  const words = [
+    messages.asset.openImportWizard,
+    messages.auditFinding.approve,
+    messages.auditFinding.reject,
+    messages.auditFinding.actionPlan,
+    messages.auditFinding.closeFinding,
+    messages.disposalPage.reviewRequest,
+    (messages.maintenancePage.pmActions as Record<string, string>).pause,
+    (messages.maintenancePage.pmActions as Record<string, string>).end,
+    messages.disposalPage.executeDisposal,
+  ]
+  assert.deepEqual([...refusals.WRITE_BUTTON_NAMES], words)
+  assert.deepEqual([...refusals.REVIEW_BUTTON_NAMES], words.slice(1, 5))
+  assert.ok(refusals.isWriteLink("/th/assets/abc/edit?returnTo=%2Fth%2Fassets") && refusals.isWriteLink("/th/audit/rounds/abc/scan"))
+  assert.ok(!refusals.isWriteLink("/th/assets/abc") && !refusals.isWriteLink("/th/audit/rounds/new-look") && !refusals.isWriteLink("/th/asset-management/scan"))
+  // The screens a refusal ends on (their titles are plain text: findings, note N13).
+  assert.equal((thai.accessDeniedPage as Record<string, string>).title, "ไม่มีสิทธิ์เข้าหน้านี้")
+  assert.equal((thai.common as Record<string, string>).pageNotFoundTitle, "ไม่พบหน้าที่ต้องการ")
+  // The reviewed allow-list entry for the top bar's fetch that a client redirect cancels: a cancelled fetch passes,
+  // the same fetch answered 500 still fails, and any other cancelled request still fails.
+  const page = "http://localhost:3100/th/assets/new"
+  const notifications = "http://localhost:3100/api/notifications?locale=th"
+  const classified = classify(
+    {
+      console: [],
+      responses: [{ method: "GET", url: notifications, status: 500, resourceType: "fetch", pageUrl: page }],
+      failures: [
+        { method: "GET", url: notifications, errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page },
+        { method: "GET", url: "http://localhost:3100/api/notifications/summary", errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page },
+      ],
+    },
+    ALLOW_LIST,
+    [],
+  )
+  assert.deepEqual(classified.allowed, [{ id: "topbar-notifications-cancelled-by-redirect", kind: "requestfailed", url: notifications }])
+  assert.deepEqual(classified.unexpectedResponses.map((response) => response.status), [500])
+  assert.deepEqual(classified.unexpectedFailures.map((failure) => failure.url), ["http://localhost:3100/api/notifications/summary"])
+  assert.match(read("src/components/layout/topbar.tsx"), /fetch\(`\/api\/notifications\?locale=\$\{locale\}`\)/)
+  // The spec: the suite's fixtures, and findings M4, M5 and M6 expected to fail until fixed.
+  const spec = read("e2e/cross-cutting/roles.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
+  for (const finding of ["M4", "M5", "M6"]) assert.ok(spec.includes(`test.fail(true, "${finding}: `), finding)
+})

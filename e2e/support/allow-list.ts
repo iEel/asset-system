@@ -32,4 +32,13 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
       "A list page loads its thumbnails as images; when the workflow moves on to the next page, the browser cancels the images still loading (Chromium net::ERR_ABORTED). A cancelled image is the browser leaving the page, not a failed request; a thumbnail answered with an error status is still a response record.",
     reviewed: "2026-10-19",
   },
+  {
+    id: "topbar-notifications-cancelled-by-redirect",
+    kind: "requestfailed",
+    url: /\/api\/notifications\?locale=[a-z]{2}$/,
+    errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
+    reason:
+      "The top bar fetches the notifications as soon as a dashboard page hydrates (src/components/layout/topbar.tsx). The dashboard's loading.tsx streams every page, so requirePagePermission's redirect to the access-denied page arrives after that, as a client navigation, and the browser cancels the fetch of the page it leaves. A cancelled fetch is the navigation's doing; the notifications answered with an error status are still a failure (a response record).",
+    reviewed: "2026-10-19",
+  },
 ]
