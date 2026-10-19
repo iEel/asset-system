@@ -1,14 +1,20 @@
 // The E2E workflow suite (spec docs/superpowers/specs/2026-10-19-e2e-workflow-suite-design.md): `npm run test:e2e`.
 // Kept out of `npm test`: its files are e2e/**/*.spec.ts and e2e/setup/*.setup.ts, never *.test.ts under tests/.
 import { defineConfig } from "@playwright/test"
+import { guardAppEnv } from "./e2e/support/app-env.ts"
 import { E2E_PROJECTS, type E2eTestOptions, type E2eWorkerOptions } from "./e2e/support/matrix.ts"
-import { ARTIFACTS_DIR, e2eBaseUrl, REPORT_DIR } from "./e2e/support/paths.ts"
+import { ARTIFACTS_DIR, e2eBaseUrl, e2ePort, REPORT_DIR } from "./e2e/support/paths.ts"
+
+// The guard, first (spec §5): Playwright starts the web server before the global setup, so the config itself checks
+// the env files next start reads, and stops on anything but asset_management_dev with the login asset_dev.
+guardAppEnv(process.cwd())
 
 const baseURL = e2eBaseUrl()
 
 export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
   testDir: "e2e",
   outputDir: ARTIFACTS_DIR,
+  globalSetup: "./e2e/global-setup.ts",
   // The workflows write to the dev database through the app; one worker keeps the run in a readable order.
   workers: 1,
   fullyParallel: false,
@@ -24,6 +30,17 @@ export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
     timezoneId: "Asia/Bangkok",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
+  },
+  // A production build (spec §5): `npm run build` first; the suite starts next start on its own port and stops it after.
+  // The app's base URL is this server's, so a sign-in stays on it.
+  webServer: {
+    command: `node node_modules/next/dist/bin/next start -p ${e2ePort()}`,
+    url: `${baseURL}/th/login`,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    env: { AUTH_URL: baseURL, NEXTAUTH_URL: baseURL },
+    stdout: "ignore",
+    stderr: "pipe",
   },
   projects: [
     // Every workflow four times (spec §6): desktop and phone, light and dark.
