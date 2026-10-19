@@ -282,3 +282,24 @@ test("every test is measured: console errors, failed requests, axe serious and c
   const eslint = read("eslint.config.mjs")
   for (const folder of [`"e2e-report/**",`, `"e2e-results/**",`]) assert.ok(eslint.includes(folder), `eslint ignores ${folder}`)
 })
+
+test("one smoke spec per E2E user lands on its page with the run's session, through the suite's fixtures (e2e foundation task 5, EF5)", async () => {
+  const { E2E_USER_KEYS } = await import("../e2e/support/run-plan.ts")
+  const specs = filesUnder("e2e").filter((file) => file.endsWith(".spec.ts"))
+  const smoke = specs.filter((file) => file.startsWith("e2e/smoke/") && file !== "e2e/smoke/login-page.spec.ts").sort()
+  assert.deepEqual(smoke, ["e2e/smoke/employee.spec.ts", "e2e/smoke/it-head.spec.ts", "e2e/smoke/it-staff.spec.ts", "e2e/smoke/viewer.spec.ts"])
+  const slugs: Record<string, string> = { itStaff: "it-staff", itHead: "it-head", viewer: "viewer", employee: "employee" }
+  for (const key of E2E_USER_KEYS) {
+    const source = read(`e2e/smoke/${slugs[key]}.spec.ts`)
+    assert.ok(source.split("\n").includes(`asUser("${key}")`), `${key}: asUser`)
+    assert.ok(source.includes(`await expectLanding(page, measure, "${key}", e2eTheme)`), `${key}: expectLanding`)
+  }
+  // Spec §8: IT staff walk the audit and deliver at the desk, so their phone runs are WebKit; the others stay Chromium.
+  assert.deepEqual(smoke.filter((file) => read(file).split("\n").includes("runPhoneOnWebKit()")), ["e2e/smoke/it-staff.spec.ts"])
+  // Every spec takes test from the suite's fixtures, so every test is measured, themed and signed in.
+  for (const file of specs) assert.ok(!read(file).includes(`from "@playwright/test"`), file)
+  const landing = read("e2e/support/landing.ts")
+  assert.ok(landing.includes(`await measure.visit("/th", `), "the landing is a measured visit")
+  assert.ok(landing.includes(`toHaveAttribute("data-theme", theme)`), "the landing carries the project's theme")
+  assert.ok(landing.includes(`page.request.get("/api/auth/session")`), "the session is the user's")
+})
