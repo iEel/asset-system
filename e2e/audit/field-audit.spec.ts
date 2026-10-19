@@ -19,6 +19,7 @@ import { ADMIN_STATE_FILE, fromRoot, runDir } from "../support/paths.ts"
 import { runRecords } from "../support/run-plan.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createAuditAssets, createAuditPlaces, readAuditMasters, type AuditWalkData } from "./audit-data.ts"
+import * as pending from "./pending-steps.ts"
 import * as scan from "./scan-steps.ts"
 import { recordSettled } from "./settle.ts"
 
@@ -225,5 +226,62 @@ test.describe("IT staff walk room A", () => {
       await scan.saveButton(page).click()
       await expect(scan.savedBanner(page)).toContainText(`${assets.outOfScope.tag} บันทึกเป็นนอกขอบเขตแล้ว`)
     })
+  })
+})
+
+test.describe("IT staff in room B, offline, and not found", () => {
+  asUser("itStaff")
+
+  test("IT staff in room B: the phone goes offline, saves a check and sends it when it is back; one asset is marked not found", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.setTimeout(240_000)
+    const project = testInfo.project.name
+    const chain = readChain(project)
+    const { records, assets } = chain
+    if (e2eDevice === "phone") await scan.slowNetwork(page)
+
+    await measure.visit(`/th/audit/rounds/${chain.roundId}/scan`, "scan page")
+    await scan.pickRoom(page, records.rooms.roomB)
+    const list = page.locator("[data-audit-scan-room-list]")
+    const offlineRow = list.getByRole("button", { name: scan.tagPattern(assets.offline.tag) })
+    await expect(offlineRow).toBeVisible()
+
+    // Offline (spec §6.2.3): the save fails to reach the server, so the check is kept on the device and marked to send.
+    // The first answer of the scan route is the queued check's, sent once the phone is back: waited for over the whole
+    // offline window (20 s on the slow WebKit phone in the rehearsal, more than the 15 s action timeout).
+    const sent = page.waitForResponse((response) => response.url().endsWith(`/api/audit-rounds/${chain.roundId}/scan`) && response.request().method() === "POST", { timeout: 90_000 })
+    await measure.whileOffline(async () => {
+      await expect(scan.offlineBar(page)).toContainText("ออฟไลน์ · รอส่ง 0 รายการ")
+      await offlineRow.click()
+      await expect(scan.checkHeading(page, assets.offline.tag)).toBeVisible()
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(`${assets.offline.tag} เก็บไว้ในเครื่อง · จะส่งเมื่อมีสัญญาณ`)
+      await expect(scan.offlineBar(page)).toContainText("ออฟไลน์ · รอส่ง 1 รายการ")
+      await expect(offlineRow).toContainText("รอส่ง")
+      await recordSettled(page, measure, "offline with one check in the queue")
+    })
+
+    // Back online: the queue is sent by itself.
+    await measure.timed("back online: the queue is sent", async () => {
+      expect((await sent).status(), "the queued check is sent").toBe(200)
+      await expect(scan.offlineBar(page)).toHaveCount(0)
+    })
+    await list.getByRole("button", { name: /^ตรวจแล้ว/ }).click()
+    await expect(list.getByRole("button", { name: scan.tagPattern(assets.offline.tag) })).toContainText("ตรวจแล้ว")
+
+    // Not found: from the room's pending list, the in-app dialog, no remark needed.
+    await list.getByRole("button", { name: /^ยังไม่ตรวจ/ }).click()
+    await page.getByRole("link", { name: "ของที่หาไม่เจอ → รายการค้าง" }).click()
+    await page.waitForURL(`**/th/audit/rounds/${chain.roundId}/pending**`)
+    await expect(pending.pendingEntry(page, e2eDevice, assets.notFound.tag)).toBeVisible()
+    await measure.recordPage("pending list of room B")
+    const findingId = await measure.timed("mark not found", () =>
+      pending.markNotFound(page, e2eDevice, assets.notFound.tag, () => recordSettled(page, measure, "not found dialog")),
+    )
+    await expect(pending.pendingEntry(page, e2eDevice, assets.notFound.tag)).toHaveCount(0)
+    saveChain(project, { ...chain, notFoundFindingId: findingId })
+
+    // The round has no item left to check (a GET of the round).
+    const round = (await (await page.request.get(`/api/audit-rounds/${chain.roundId}`)).json()) as { items: { auditStatus: string; asset: { assetTag: string } }[] }
+    expect(round.items.filter((item) => item.auditStatus === "pending").map((item) => item.asset.assetTag), "no item left to check").toEqual([])
   })
 })

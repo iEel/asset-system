@@ -106,3 +106,50 @@ test("IT staff walk room A by typing on the phone, on a slow network: matched, m
   // The keyboard-open height on the phone, then back.
   assert.ok(walk.includes("await page.setViewportSize(scan.KEYBOARD_OPEN_VIEWPORT)") && walk.includes("await page.setViewportSize(PHONE.viewport)"))
 })
+
+test("offline the check waits on the device and is sent when the phone is back; the not-found from the pending list; the test's own offline window (e2e audit task 3, EA3)", async () => {
+  const core = await import("../e2e/support/measure-core.ts")
+  const page = "http://localhost:3100/th/audit/rounds/r1/scan"
+  const records = {
+    console: [
+      { kind: "console" as const, text: "Failed to load resource: net::ERR_INTERNET_DISCONNECTED", pageUrl: page },
+      { kind: "console" as const, text: "Failed to load resource: WebKit encountered an internal error", pageUrl: page },
+      { kind: "console" as const, text: "Failed to load resource: WebKit encountered an internal error", pageUrl: page },
+    ],
+    failures: [
+      { method: "GET", url: "http://localhost:3100/before", errorText: "net::ERR_INTERNET_DISCONNECTED", resourceType: "fetch", pageUrl: page },
+      { method: "POST", url: "http://localhost:3100/api/audit-rounds/r1/scan", errorText: "WebKit encountered an internal error", resourceType: "fetch", pageUrl: page },
+      { method: "GET", url: "http://localhost:3100/api/x", errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page },
+    ],
+  }
+  // Only what the window holds, and only the browser's offline error: the record before it and the aborted one stay.
+  const split = core.splitOfflineRecords(records, { console: 1, failures: 1 })
+  assert.deepEqual(split.console.map((message) => message.text), ["Failed to load resource: net::ERR_INTERNET_DISCONNECTED"])
+  assert.deepEqual(split.failures.map((failure) => failure.url), ["http://localhost:3100/before", "http://localhost:3100/api/x"])
+  assert.deepEqual(split.allowed, [
+    { id: "offline-by-the-test", kind: "console", text: "Failed to load resource: WebKit encountered an internal error" },
+    { id: "offline-by-the-test", kind: "console", text: "Failed to load resource: WebKit encountered an internal error" },
+    { id: "offline-by-the-test", kind: "requestfailed", url: "http://localhost:3100/api/audit-rounds/r1/scan" },
+  ])
+  const measure = read("e2e/support/measure.ts")
+  assert.match(measure, /async whileOffline<T>\(step: \(\) => Promise<T>\): Promise<T> \{\n[\s\S]*?setOffline\(true\)[\s\S]*?finally \{\n\s*await this\.page\.context\(\)\.setOffline\(false\)/)
+  assert.ok(measure.includes("allowed: [...classified.allowed, ...this.offlineAllowed],"))
+  // The reviewed allow-list is not widened for it: no entry lets the browser's offline error, or its console line, through.
+  const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
+  for (const entry of ALLOW_LIST) {
+    for (const text of ["net::ERR_INTERNET_DISCONNECTED", "WebKit encountered an internal error"]) {
+      assert.ok(!(entry.errorText?.test(text) ?? false), `${entry.id} lets ${text} through`)
+      assert.ok(!(entry.text?.test(`Failed to load resource: ${text}`) ?? false), `${entry.id} lets its console line through`)
+    }
+  }
+
+  const words = thai("auditScan")
+  const room = block(read(SPEC), "IT staff in room B, offline, and not found")
+  assert.ok(room.includes("await measure.whileOffline(async () => {"))
+  assert.ok(!room.includes("setOffline("), "the window is the measurement's")
+  assert.ok(room.includes(words.savedQueued.replace("{assetTag}", "${assets.offline.tag}")), "kept on the device")
+  assert.ok(room.includes(words.offlineBarOffline.replace("{count}", "1")) && room.includes(words.pendingLink))
+  assert.ok(room.includes("pending.markNotFound(page, e2eDevice, assets.notFound.tag"))
+  const pendingSteps = read("e2e/audit/pending-steps.ts")
+  for (const key of ["markNotFound", "notFoundDialogTitle", "notFoundConfirm", "notFoundSuccess"]) assert.ok(pendingSteps.includes(thai("auditPending")[key]), key)
+})

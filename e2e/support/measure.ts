@@ -10,6 +10,8 @@ import {
   axeCounts,
   classify,
   measurementProblems,
+  splitOfflineRecords,
+  type Classified,
   type ConsoleRecord,
   type ExpectedRefusal,
   type FailureRecord,
@@ -30,6 +32,7 @@ export class Measure {
   readonly timings: { label: string; ms: number }[] = []
   readonly refusals: ExpectedRefusal[] = []
   readonly screenshots: string[] = []
+  readonly offlineAllowed: Classified["allowed"] = []
 
   constructor(page: Page, testInfo: TestInfo, context: Measure["context"]) {
     this.page = page
@@ -64,6 +67,24 @@ export class Measure {
   // A refusal the test itself asserts (spec §3.3: "other than the expected refusals"): call it before the step.
   expectRefusal(refusal: ExpectedRefusal) {
     this.refusals.push(refusal)
+  }
+
+  // The test takes the browser offline itself for the steps of step (spec §6.2.3, the audit walk's offline queue), and
+  // the browser is back online when step ends. A request that fails meanwhile with the browser's offline error, and its
+  // console line, are the test's own, as an expected refusal is: listed as allowed ("offline-by-the-test"). Any other
+  // record, and any record after the window, still counts.
+  async whileOffline<T>(step: () => Promise<T>): Promise<T> {
+    const from = { console: this.consoleRecords.length, failures: this.failures.length }
+    await this.page.context().setOffline(true)
+    try {
+      return await step()
+    } finally {
+      await this.page.context().setOffline(false)
+      const split = splitOfflineRecords({ console: this.consoleRecords, failures: this.failures }, from)
+      this.consoleRecords.splice(0, this.consoleRecords.length, ...split.console)
+      this.failures.splice(0, this.failures.length, ...split.failures)
+      this.offlineAllowed.push(...split.allowed)
+    }
   }
 
   // Open a page as a person does: navigate, wait for it to load, record its load time, and run axe on it.
@@ -118,7 +139,7 @@ export class Measure {
       user: this.context.user,
       pages: this.pages,
       timings: this.timings,
-      allowed: classified.allowed,
+      allowed: [...classified.allowed, ...this.offlineAllowed],
       expected: classified.expected,
       problems,
       screenshots: this.screenshots,

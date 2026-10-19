@@ -125,6 +125,31 @@ export function axeCounts(violations: readonly AxeViolation[]): NonNullable<Page
   }
 }
 
+// The browser's own error for a request made while the test has set it offline (context.setOffline, the audit walk's
+// offline queue, spec §6.2.3): Chromium's net::ERR_INTERNET_DISCONNECTED; WebKit names every offline failure "WebKit
+// encountered an internal error". Only the records made inside the test's offline window are the test's own (as an
+// expected refusal is); the same text at any other moment still fails the test.
+export const OFFLINE_ERROR_TEXT = /^(?:net::ERR_INTERNET_DISCONNECTED|WebKit encountered an internal error)$/
+const OFFLINE_CONSOLE_TEXT = /^Failed to load resource: (?:net::ERR_INTERNET_DISCONNECTED|WebKit encountered an internal error)$/
+
+// Splits the records from the window's first index on: the offline failures and their console lines become allowed
+// entries ("offline-by-the-test"), everything else is kept as it was.
+export function splitOfflineRecords(
+  records: { console: readonly ConsoleRecord[]; failures: readonly FailureRecord[] },
+  from: { console: number; failures: number },
+): { console: ConsoleRecord[]; failures: FailureRecord[]; allowed: Classified["allowed"] } {
+  const result: { console: ConsoleRecord[]; failures: FailureRecord[]; allowed: Classified["allowed"] } = { console: [], failures: [], allowed: [] }
+  records.console.forEach((message, index) => {
+    if (index >= from.console && OFFLINE_CONSOLE_TEXT.test(message.text)) result.allowed.push({ id: "offline-by-the-test", kind: "console", text: message.text })
+    else result.console.push(message)
+  })
+  records.failures.forEach((failure, index) => {
+    if (index >= from.failures && OFFLINE_ERROR_TEXT.test(failure.errorText)) result.allowed.push({ id: "offline-by-the-test", kind: "requestfailed", url: failure.url })
+    else result.failures.push(failure)
+  })
+  return result
+}
+
 // The attachment that carries a test's summary row from its fixture to the summary reporter.
 export const SUMMARY_ATTACHMENT = "e2e-summary"
 
