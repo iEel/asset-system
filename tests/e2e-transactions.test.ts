@@ -91,3 +91,26 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   assert.match(support, /return dropKnownAxe\(await measure\.recordPage\(label\), KNOWN_AXE, testInfo\)/)
   assert.doesNotMatch(spec, /measure\.(visit|recordPage)\(/)
 })
+
+test("a handover signed with the device's own pointer and printed, a due date before the handover refused under the field, and no double checkout (e2e transactions task 2, TX2)", async () => {
+  const spec = readTxSpec("e2e/transactions/handover.spec.ts")
+  assert.match(spec, /await expectFieldError\(page, "checkout-handover-mode", "กรุณาเลือกลักษณะการส่งมอบก่อนดำเนินการต่อ"\)/)
+  assert.match(spec, /await expectFieldError\(page, "checkout-expected-return", "วันกำหนดคืนต้องเป็นวันเดียวกับหรือหลังวันที่ส่งมอบ"\)/)
+  assert.match(spec, /review\.getByRole\("button", \{ name: "ยืนยันส่งมอบ" \}\)/)
+  assert.match(spec, /await expectPrints\(page, "พิมพ์ใบส่งมอบ"\)/)
+  assert.match(spec, /expect\(after\.status\.name\)\.toBe\("In Use"\)/)
+  assert.match(spec, /expect\(after\.status\.name\)\.toBe\("Checked Out"\)/)
+  // The double checkout: a second form of the same asset, refused (409) as the test itself declares.
+  assert.match(spec, /const otherDesk = await page\.context\(\)\.newPage\(\)/)
+  assert.match(spec, /measure\.expectRefusal\(\{ method: "POST", url: new RegExp\(`\/api\/assets\/\$\{asset\.id\}\/checkout\$`\), status: 409,/)
+  assert.deepEqual(expectedFailures(spec), ["TX-A1"])
+  // The pad: the mouse on the desktop, Chromium's touch input on the phone, then the tap the emulation loses.
+  const support = read("e2e/transactions/tx-support.ts")
+  assert.match(support, /await cdp\.send\("Input\.dispatchTouchEvent", \{ type: "touchStart", touchPoints: \[points\[0\]\] \}\)/)
+  assert.match(support, /expect\(pointerTypes, "the stroke reached the pad as the device's own pointer"\)\.toEqual\(\[device === "desktop" \? "mouse" : "touch"\]\)/)
+  assert.match(support, /await group\.locator\("div\[id\]"\)\.first\(\)\.tap\(\)/)
+  // The A4 documents' known finding, with its own expected-to-fail test.
+  const known = await import("../e2e/transactions/known-findings.ts")
+  assert.ok(known.KNOWN_AXE.some((entry) => entry.finding === "TX-A3" && entry.rule === "dlitem"))
+  assert.ok(expectedFailures(read("e2e/transactions/findings.spec.ts")).includes("TX-A3"))
+})
