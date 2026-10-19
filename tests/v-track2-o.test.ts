@@ -25,8 +25,10 @@ test("a review dialog closes before the form's field takes focus: waitForDialogT
 
     // Focus in the review dialog: it resolves only after the dialog has left the page, and after the task in which the
     // dialog hands focus back to its opener (Radix runs it after the unmount), so the field takes focus last.
-    const dialog = { isConnected: true }
-    globals.document = { activeElement: { closest: (selector: string) => (selector === '[role="dialog"]' ? dialog : null) } }
+    // The fake document keeps no focusin listeners: here the hand-back is a task, and the 10 frames after the close end the wait.
+    const listen = { addEventListener: () => {}, removeEventListener: () => {} }
+    const dialog = { isConnected: true, getClientRects: () => [{}] }
+    globals.document = { ...listen, activeElement: { closest: (selector: string) => (selector === '[role="dialog"]' ? dialog : null) } }
     const order: string[] = []
     const closing = waitForDialogToClose().then(() => order.push("field"))
     nextFrame()
@@ -35,13 +37,13 @@ test("a review dialog closes before the form's field takes focus: waitForDialogT
     assert.equal(order.length, 0, "still open")
     dialog.isConnected = false
     setTimeout(() => order.push("dialog hands focus back"), 0)
-    nextFrame()
+    for (let frame = 0; frame <= 10; frame += 1) nextFrame()
     await closing
     assert.deepEqual(order, ["dialog hands focus back", "field"])
 
     // A dialog that never leaves: it gives up after the frames it was given, like waitForElement.
-    const stuck = { isConnected: true }
-    globals.document = { activeElement: { closest: () => stuck } }
+    const stuck = { isConnected: true, getClientRects: () => [{}] }
+    globals.document = { ...listen, activeElement: { closest: () => stuck } }
     let gaveUp = false
     const waiting = waitForDialogToClose(2).then(() => {
       gaveUp = true

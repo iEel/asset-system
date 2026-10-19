@@ -110,9 +110,11 @@ export function waitForElement(id: string, frames = 30): Promise<HTMLElement | n
 }
 
 // A review dialog closes before the form's field takes focus (spec §4.2): when a refusal comes back, focus is still in
-// the dialog, and the dialog hands focus back to its opener in a task after it leaves the page. This resolves once the
-// dialog that holds focus now has gone and that task has run, so the field takes focus last; at once when focus is in no
-// dialog. It gives up after `frames` frames, like waitForElement.
+// the dialog. The dialog that holds focus now counts as closed once it has left the page or lost its layout box (in the
+// running app it stays connected after it has visibly closed). Radix then hands focus back to the opener, so after the
+// close this resolves on the first focusin outside the dialog (in a task after it, so the hand-back finishes first) or
+// after 10 more frames, whichever comes first, and the field takes focus last. It resolves at once when focus is in no
+// dialog, gives up after `frames` frames in all, like waitForElement, and removes its focusin listener either way.
 export function waitForDialogToClose(frames = 60): Promise<void> {
   const dialog = document.activeElement?.closest('[role="dialog"]')
   return new Promise((resolve) => {
@@ -120,11 +122,32 @@ export function waitForDialogToClose(frames = 60): Promise<void> {
       resolve()
       return
     }
+    const closed = () => !dialog.isConnected || dialog.getClientRects().length === 0
+    let done = false
+    const finish = () => {
+      if (done) return
+      done = true
+      document.removeEventListener("focusin", handBack)
+      setTimeout(resolve, 0)
+    }
+    function handBack(event: FocusEvent) {
+      if (closed() && !dialog?.contains(event.target as Node | null)) finish()
+    }
+    document.addEventListener("focusin", handBack)
     let left = frames
+    let afterClose = 10
     const look = () => {
-      if (!dialog.isConnected || left <= 0) {
-        setTimeout(resolve, 0)
+      if (done) return
+      if (left <= 0) {
+        finish()
         return
+      }
+      if (closed()) {
+        if (afterClose <= 0) {
+          finish()
+          return
+        }
+        afterClose -= 1
       }
       left -= 1
       requestAnimationFrame(look)
