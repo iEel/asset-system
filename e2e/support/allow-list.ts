@@ -14,4 +14,22 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
       "Next.js prefetches the routes of the links on screen (RSC payloads, ?_rsc=) and cancels the prefetches it no longer needs; Chromium reports each cancelled one as net::ERR_ABORTED. A cancelled prefetch is the router's choice, not a failed request; a prefetch answered with an error status is still a failure (a response record).",
     reviewed: "2026-10-19",
   },
+  {
+    id: "foreign-attachment-thumbnail",
+    kind: "response",
+    url: /\/api\/attachments\/[0-9a-f-]{36}\/thumbnail$/,
+    status: [500],
+    reason:
+      "An attachment row stores the absolute path of the upload folder that wrote it. The dev database is a copy of Production, so many rows hold Production paths (wiki #15, #25, #43), and rows written by another checkout of the app hold that checkout's folder; the thumbnail route refuses a path outside this app's UPLOAD_DIR with 500 Invalid attachment path. The asset register shows the newest assets' thumbnails, so a workflow that the app sends there meets them. A test's own photo is checked on its own asset page, not through these thumbnails.",
+    reviewed: "2026-10-19",
+  },
+  {
+    id: "thumbnail-cancelled-on-leave",
+    kind: "requestfailed",
+    url: /\/api\/attachments\/[0-9a-f-]{36}\/thumbnail$/,
+    errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
+    reason:
+      "A list page loads its thumbnails as images; when the workflow moves on to the next page, the browser cancels the images still loading (Chromium net::ERR_ABORTED). A cancelled image is the browser leaving the page, not a failed request; a thumbnail answered with an error status is still a response record.",
+    reviewed: "2026-10-19",
+  },
 ]
