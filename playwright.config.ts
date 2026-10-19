@@ -2,7 +2,7 @@
 // Kept out of `npm test`: its files are e2e/**/*.spec.ts and e2e/setup/*.setup.ts, never *.test.ts under tests/.
 import { defineConfig } from "@playwright/test"
 import { guardAppEnv } from "./e2e/support/app-env.ts"
-import { E2E_PROJECTS, type E2eTestOptions, type E2eWorkerOptions } from "./e2e/support/matrix.ts"
+import { DESKTOP, E2E_PROJECTS, type E2eTestOptions, type E2eWorkerOptions } from "./e2e/support/matrix.ts"
 import { ARTIFACTS_DIR, e2eBaseUrl, e2ePort, REPORT_DIR } from "./e2e/support/paths.ts"
 
 // The guard, first (spec §5): Playwright starts the web server before the global setup, so the config itself checks
@@ -43,10 +43,17 @@ export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
     stderr: "pipe",
   },
   projects: [
+    // The run's data and users, created once through the app as the seed admin (spec §7). No trace: it types passwords.
+    {
+      name: "setup",
+      testMatch: /setup[\\/][^\\/]+\.setup\.ts$/,
+      use: { ...DESKTOP, trace: "off", screenshot: "off" },
+    },
     // Every workflow four times (spec §6): desktop and phone, light and dark.
     ...E2E_PROJECTS.map((project) => ({
       name: project.name,
       testMatch: /\.spec\.ts$/,
+      dependencies: ["setup"],
       use: {
         viewport: project.viewport,
         screen: project.screen,

@@ -138,3 +138,69 @@ test("the guard stops on any database but asset_management_dev, on an upload fol
   assert.match(config, /reuseExistingServer: false/)
   assert.match(read("e2e/global-setup.ts"), /guardAppEnv\(root\)/)
 })
+
+test("the setup creates the spec's users with exactly the spec's permissions, marked with the run id, and the fixtures are small (e2e foundation task 3, EF3)", async () => {
+  const plan = await import("../e2e/support/run-plan.ts")
+  // Spec §7, the users table.
+  const itStaff = [
+    "asset:view", "asset:create", "asset:edit", "audit:view", "audit:create", "audit:edit",
+    "maintenance:view", "maintenance:create", "maintenance:edit", "disposal:view", "disposal:create", "disposal:edit",
+    "report:view", "report:export",
+  ]
+  assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.itStaff, itStaff)
+  assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.itHead, [...itStaff, "audit:approve", "disposal:approve"])
+  assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.viewer, ["asset:view", "audit:view", "maintenance:view", "disposal:view", "report:view"])
+  assert.deepEqual(plan.E2E_ROLE_PERMISSIONS.employee, [])
+  assert.ok(!plan.E2E_ROLE_PERMISSIONS.itStaff.some((permission) => permission.endsWith(":approve")), "IT staff hold no approve")
+  // Every permission is one the role form offers (prisma/seed.ts: 25 modules × 6 actions).
+  const roleForm = read("src/app/[locale]/(dashboard)/admin/roles/page.tsx")
+  for (const permission of Object.values(plan.E2E_ROLE_PERMISSIONS).flat()) {
+    const [moduleName, action] = permission.split(":")
+    assert.match(roleForm, new RegExp(`"${moduleName}",`), moduleName)
+    assert.match(roleForm, new RegExp(`"${action}"`), action)
+  }
+  // Linked to an employee as §7 says, but the viewer (finding A1, see run-plan.ts); the landing pages of default-home.ts.
+  assert.deepEqual(plan.E2E_USER_KEYS, ["itStaff", "itHead", "viewer", "employee"])
+  assert.deepEqual(plan.E2E_USER_KEYS.map((key) => plan.E2E_USER_PLANS[key].linked), [true, true, true, true])
+  assert.deepEqual(plan.E2E_USER_KEYS.map((key) => plan.E2E_USER_PLANS[key].landingPath), ["/th/dashboard", "/th/dashboard", "/th/dashboard", "/th/my-assets"])
+  // The run id on every username, role, code and name (spec §5), within the schemas' limits.
+  assert.equal(plan.usernameFor("itStaff", "E2E-1019A"), "e2e.it-staff-1019a")
+  assert.equal(plan.roleNameFor("itHead", "E2E-1019A"), "e2e_it_head_1019a")
+  assert.match(plan.roleNameFor("employee", "E2E-1019T1432"), /^[a-z][a-z0-9_]{1,49}$/)
+  assert.deepEqual(plan.roleDisplayFor("viewer", "E2E-1019A"), { displayName: "E2E-1019A Viewer", displayNameTh: "E2E-1019A ผู้ดูอย่างเดียว" })
+  for (const runId of ["E2E-1019A", "E2E-1019T1432"]) {
+    const records = plan.runRecords(runId)
+    assert.ok(records.department.code.startsWith(runId) && records.department.code.length <= 20, records.department.code)
+    assert.ok(records.location.code.startsWith(runId) && records.location.code.length <= 50, records.location.code)
+    assert.deepEqual(records.employees.map((employee) => employee.key), ["itStaff", "itHead", "viewer", "employee", "receiver1", "receiver2"])
+    for (const employee of records.employees) {
+      assert.ok(employee.code.startsWith(`${runId}-`) && employee.code.length <= 20, employee.code)
+      assert.ok(employee.fullNameTh.startsWith(runId), employee.fullNameTh)
+    }
+  }
+  // Generated passwords: long, from the bytes given, never the same twice for different bytes.
+  const first = plan.passwordFrom(new Uint8Array(24).fill(7))
+  assert.equal(first.length, 28)
+  assert.notEqual(first, plan.passwordFrom(new Uint8Array(24).fill(8)))
+  assert.throws(() => plan.passwordFrom(new Uint8Array(8)), /24 random bytes/)
+
+  // The setup signs in as the seed admin's saved session, creates the roles on the role form and reads them back, and
+  // keeps finding A1's expected failure.
+  const setup = read("e2e/setup/run-data.setup.ts")
+  assert.match(setup, /setup\.use\(\{ storageState: fromRoot\(ADMIN_STATE_FILE\) \}\)/)
+  assert.match(setup, /await page\.goto\("\/th\/admin\/roles\/new"\)/)
+  assert.match(setup, /await page\.goto\(`\/th\/admin\/roles\/\$\{role\.id\}\/edit`\)/)
+  assert.match(setup, /setup\.fail\(true, "A1: /)
+  assert.doesNotMatch(setup, /console\.log/, "the setup prints nothing")
+
+  // The fixtures: a small PNG photo and a small PDF, both binary (git never converts their line ends).
+  const photo = readFileSync("e2e/fixtures/photo.png")
+  const pdf = readFileSync("e2e/fixtures/evidence.pdf")
+  assert.deepEqual([...photo.subarray(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  assert.equal(pdf.subarray(0, 8).toString("latin1"), "%PDF-1.4")
+  assert.match(pdf.toString("latin1"), /startxref\n\d+\n%%EOF\n$/)
+  for (const file of [photo, pdf]) {
+    assert.ok(file.length < 2048, "a fixture stays under 2 KB")
+    assert.ok(file.includes(0), "a fixture holds a NUL byte, so git treats it as binary")
+  }
+})
