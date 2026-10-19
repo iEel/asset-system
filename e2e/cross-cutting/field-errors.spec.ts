@@ -162,8 +162,8 @@ test("the handover and return documents open and pass axe (finding M8)", async (
 // Finding M9 (expected to fail on the phone until fixed): the return's review dialog scrolls its body on a phone, and
 // the scrolling body cannot take keyboard focus (axe serious scrollable-region-focusable, WCAG 2.1.1). On the desktop
 // the body does not scroll and the dialog passes.
-test("the return's review dialog passes axe (finding M9 on the phone)", async ({ page, measure, e2eDevice }, testInfo) => {
-  test.fail(e2eDevice === "phone", "M9: the return review dialog's scrolling body is not keyboard-focusable on the phone")
+test("the return's review dialog passes axe (finding M9 on the phone)", async ({ page, measure }, testInfo) => {
+  // M9 fixed (FX3): this test now keeps the return review's scrolling body reachable from the keyboard on the phone.
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-RV", name: "ตรวจสอบก่อนรับคืน", ownershipType: "personal" })

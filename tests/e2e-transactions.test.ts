@@ -132,11 +132,11 @@ test("a return to the second room prints the RT- document, and a return sent to 
   const support = read("e2e/transactions/tx-support.ts")
   assert.match(support, /request\.newContext\(\{ baseURL, storageState: fromRoot\(ADMIN_STATE_FILE\) \}\)/)
   assert.match(support, /admin\.post\("\/api\/locations"/)
-  // The phone's scrolling review: a known finding with its own phone-only expected-to-fail test.
+  // The phone's scrolling review: fixed (FX3); its phone-only test keeps it fixed.
   const known = await import("../e2e/transactions/known-findings.ts")
-  assert.ok(known.KNOWN_AXE.some((entry) => entry.finding === "TX-A8" && entry.rule === "scrollable-region-focusable"))
+  assert.ok(!known.KNOWN_AXE.some((entry) => entry.rule === "scrollable-region-focusable"))
   const findings = read("e2e/transactions/findings.spec.ts")
-  assert.ok(expectedFailures(findings).includes("TX-A8"))
+  assert.ok(!expectedFailures(findings).includes("TX-A8"))
   assert.match(findings, /test\.skip\(e2eDevice !== "phone", "the review dialog scrolls on the phone only"\)/)
 })
 

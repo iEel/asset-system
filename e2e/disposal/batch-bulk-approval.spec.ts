@@ -164,7 +164,7 @@ test("IT staff execute one batch request on its page with the batch's shared evi
 // execution preview with nothing to execute is one: here the approver's own preview, which segregation of duties blocks
 // (the approver cannot execute, in bulk too). Expected to fail until fixed.
 test("the approver's bulk execution preview is blocked with the reason, and its body scrolls from the keyboard (finding D3)", async ({ page, measure, e2eTheme }) => {
-  test.fail(true, "finding D3: the dialog body scrolls with nothing focusable (axe scrollable-region-focusable, serious)")
+  // Finding D3 fixed (FX3): this test now keeps a scrolling dialog body reachable from the keyboard.
   const asset = batchAssets[1]
   expect(asset, "the batch test made the request").toBeTruthy()
   await actAs(page, "itHead", e2eTheme)

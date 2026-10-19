@@ -26,7 +26,7 @@ test("an A4 document's fields are a description list (finding TX-A3)", async ({ 
 
 test("a review dialog that scrolls on the phone takes keyboard focus (finding TX-A8)", async ({ page, measure, e2eDevice }, testInfo) => {
   test.skip(e2eDevice !== "phone", "the review dialog scrolls on the phone only")
-  test.fail(true, "TX-A8: axe scrollable-region-focusable, the dialog body scrolls and takes no focus")
+  // TX-A8 fixed (FX3): this test now keeps a scrolling dialog body reachable from the keyboard.
   const receiver = readRunData().employees.receiver2
   const room = await ensureSecondLocation()
   const masters = await readAssetMasters(page)

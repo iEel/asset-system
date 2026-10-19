@@ -42,3 +42,17 @@ test("the asset page's QR code has a name a screen reader reads (e2e fix task FX
   assert.ok(!read("e2e/repair/repair-record.spec.ts").includes(`test.fail(true, "AR2: `))
   assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M6: `))
 })
+
+test("a region that scrolls takes the keyboard: the dialog body and the batch receipt's table (e2e fix task FX3: TX-A8, D3, M9)", () => {
+  const dialog = read("src/components/ui/accessible-dialog.tsx")
+  const body = dialog.slice(dialog.indexOf("export function AccessibleDialogBody("), dialog.indexOf("export function AccessibleDialogFooter("))
+  assert.match(body, /new ResizeObserver\(measure\)/)
+  assert.match(body, /new MutationObserver\(measure\)/)
+  assert.match(body, /element\.scrollHeight > element\.clientHeight \+ 1/)
+  assert.match(body, /element\.closest\("\[aria-labelledby\]"\)\?\.getAttribute\("aria-labelledby"\)/)
+  assert.match(body, /role=\{overflowing \? "region" : undefined\} aria-labelledby=\{overflowing \? labelledBy : undefined\} tabIndex=\{overflowing \? 0 : undefined\} data-slot="accessible-dialog-body" className=\{cn\("min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5", className\)\}/)
+  assert.match(read("src/components/assets/asset-batch-form.tsx"), /<DataTable framed=\{false\} minWidth=\{640\} caption=\{t\("batchReceiptAssets"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\} className="mt-2">/)
+  assert.ok(!read("e2e/transactions/findings.spec.ts").includes(`test.fail(true, "TX-A8: `))
+  assert.ok(!read("e2e/disposal/batch-bulk-approval.spec.ts").includes(`test.fail(true, "finding D3:`))
+  assert.ok(!read("e2e/cross-cutting/field-errors.spec.ts").includes(`"M9: `))
+})

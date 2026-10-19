@@ -7,17 +7,9 @@ import type { PageRecord } from "../support/measure-core.ts"
 
 export type KnownAxe = { finding: string; rule: string; target: RegExp; why: string }
 
-// TX-A8: on the phone, a region that scrolls has no keyboard access: the review dialog's body when its rows are taller
-// than the screen (return, transfer), and the batch receipt's table.
-export const SCROLL_REGION_WITHOUT_KEYS: KnownAxe = {
-  finding: "TX-A8",
-  rule: "scrollable-region-focusable",
-  target: /data-slot="accessible-dialog-body"|data-slot="data-table-scroll"/,
-  why: "a scrolling region on the phone takes no keyboard focus",
-}
-
-// TX-A3 (the A4 documents' fields, FX1) and TX-A2 (the asset page's QR code, FX2) are fixed and no longer dropped.
-export const KNOWN_AXE: readonly KnownAxe[] = [SCROLL_REGION_WITHOUT_KEYS]
+// TX-A3 (the A4 documents' fields, FX1), TX-A2 (the asset page's QR code, FX2) and TX-A8 (a scrolling region on the
+// phone, FX3) are fixed: no known finding is dropped. A new one is added here with its own expected-to-fail test.
+export const KNOWN_AXE: readonly KnownAxe[] = []
 
 // Drop the known violations from a recorded page (the counts stay as axe gave them, so the summary still shows them),
 // and say so on the test.

@@ -76,10 +76,10 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
   ]) assert.ok(spec.includes(step), step)
   // The phone's queue needs its selection mode before a row can be ticked.
   assert.ok(spec.includes(`if (e2eDevice === "phone") await page.getByRole("button", { name: "เลือกหลายรายการ" }).click()`), "the phone's selection mode")
-  // Findings D3 and D2 stay expected failures until fixed.
-  assert.ok(spec.includes(`test.fail(true, "finding D3:`), "D3 expected to fail")
+  // Finding D3 is fixed (FX3); D2 stays an expected failure until it is decided and fixed.
+  assert.ok(!spec.includes(`test.fail(true, "finding D3:`), "D3 is fixed")
   assert.ok(spec.includes(`test.fail(true, "finding D2:`), "D2 expected to fail")
-  assert.ok(spec.indexOf(`"finding D3:`) < spec.indexOf(`"finding D2:`), "the approver's preview runs while the request is still approved")
+  assert.ok(spec.indexOf("(finding D3)") < spec.indexOf("(finding D2)"), "the approver's preview runs while the request is still approved")
 })
 
 test("an asset in an open audit round cannot be requested for disposal, with the reason, and can once the round is cancelled (e2e disposal task 3, ED3)", () => {

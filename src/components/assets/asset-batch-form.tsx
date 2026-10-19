@@ -1244,7 +1244,7 @@ export function AssetBatchForm({
             </div>
             <div className="mt-4">
               <h3 className="text-sm font-semibold text-foreground">{t("batchReceiptAssets")}</h3>
-              <DataTable framed={false} minWidth={640} caption={t("batchReceiptAssets")} className="mt-2">
+              <DataTable framed={false} minWidth={640} caption={t("batchReceiptAssets")} scrollHint={tCommon("tableScrollHint")} className="mt-2">
                 <DataTableHeader>
                   <tr>
                     <DataTableHead>{t("assetTag")}</DataTableHead>

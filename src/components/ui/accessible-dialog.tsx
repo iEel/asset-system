@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useRef, type ComponentProps, type ReactNode, type RefObject } from "react"
+import { createContext, useContext, useEffect, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -100,8 +100,32 @@ export function AccessibleDialog({
 }
 
 // The parts are optional. Children that do not use them keep their own height, so the content slot scrolls them as before.
+// A body that scrolls takes the keyboard (WCAG 2.1.1, axe scrollable-region-focusable; the E2E suite's findings TX-A8,
+// D3, M9): while its content overflows it is a focusable region named by the dialog's title, as a wide table's scroll
+// area is (DataTableScrollArea). The observers run on the content's changes too (a preview that loads after the open).
 export function AccessibleDialogBody({ className, ...props }: ComponentProps<"div">) {
-  return <div data-slot="accessible-dialog-body" className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5", className)} {...props} />
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [overflowing, setOverflowing] = useState(false)
+  const [labelledBy, setLabelledBy] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    const measure = () => {
+      setOverflowing(element.scrollHeight > element.clientHeight + 1)
+      setLabelledBy(element.closest("[aria-labelledby]")?.getAttribute("aria-labelledby") ?? undefined)
+    }
+    const resize = new ResizeObserver(measure)
+    resize.observe(element)
+    const mutation = new MutationObserver(measure)
+    mutation.observe(element, { childList: true, subtree: true, characterData: true })
+    return () => {
+      resize.disconnect()
+      mutation.disconnect()
+    }
+  }, [])
+
+  return <div ref={ref} role={overflowing ? "region" : undefined} aria-labelledby={overflowing ? labelledBy : undefined} tabIndex={overflowing ? 0 : undefined} data-slot="accessible-dialog-body" className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5", className)} {...props} />
 }
 
 // Buttons only (guard GD3), secondary first and primary last (K8): phones stack them full width with cancel on top,
