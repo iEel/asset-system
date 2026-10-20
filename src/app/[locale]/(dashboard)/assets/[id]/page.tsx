@@ -29,6 +29,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
+import { getAssetRegisterTransactionActions } from "@/lib/asset-operation-policy"
 import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { Button } from "@/components/ui/button"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
@@ -770,10 +771,21 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         result: formatAuditState(latestAuditItem.auditStatus, latestAuditItem.auditResult),
       })
     : tCommon("noData")
+  // The register's rule decides "ส่งมอบ", "รับคืน" and "โอนย้าย" here too, so both pages offer what the server accepts.
+  const [checkoutTransaction, checkinTransaction, transferTransaction] = getAssetRegisterTransactionActions({
+    statusName: asset.status.name,
+    custodianId: asset.custodianId,
+    openCheckoutId: activeCheckout?.id ?? null,
+    openCheckoutHandoverMode: activeCheckout?.handoverMode ?? null,
+    hasActiveMaintenance: openMaintenanceCount > 0,
+    canEdit: canEditAsset,
+  })
   const checkoutHref = `/${locale}/asset-management/checkout?assetId=${encodedAssetId}`
-  const checkinHref = activeCheckout
-    ? `/${locale}/asset-management/checkin?checkoutId=${encodeURIComponent(activeCheckout.id)}`
-    : sectionHref("handover")
+  const checkinHref = checkinTransaction.enabled && checkinTransaction.mode === "legacy_return"
+    ? `/${locale}/asset-management/checkin?assetId=${encodedAssetId}`
+    : activeCheckout && checkinTransaction.mode === "open_checkout"
+      ? `/${locale}/asset-management/checkin?checkoutId=${encodeURIComponent(activeCheckout.id)}`
+      : sectionHref("handover")
   const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
   const maintenanceHref = `/${locale}/maintenance/new?assetId=${encodedAssetId}`
   const assignedAssetHref = licenseAssignedAsset ? `/${locale}/assets/${licenseAssignedAsset.id}` : "#overview"
@@ -781,6 +793,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const lifecycle = getOwnershipLifecycle({
     ownershipType,
     activeCheckout: Boolean(activeCheckout),
+    // The checkout and transfer APIs also refuse an asset with an open checkout.
+    checkoutEnabled: checkoutTransaction.enabled && !activeCheckout,
+    checkinEnabled: checkinTransaction.enabled,
+    transferEnabled: transferTransaction.enabled && !activeCheckout,
     latestCheckout: Boolean(latestCheckout),
     checkoutHref,
     checkinHref,
@@ -1613,6 +1629,9 @@ type LifecycleAction = {
 function getOwnershipLifecycle({
   ownershipType,
   activeCheckout,
+  checkoutEnabled,
+  checkinEnabled,
+  transferEnabled,
   latestCheckout,
   checkoutHref,
   checkinHref,
@@ -1630,6 +1649,9 @@ function getOwnershipLifecycle({
 }: {
   ownershipType: string
   activeCheckout: boolean
+  checkoutEnabled: boolean
+  checkinEnabled: boolean
+  transferEnabled: boolean
   latestCheckout: boolean
   checkoutHref: string
   checkinHref: string
@@ -1678,7 +1700,7 @@ function getOwnershipLifecycle({
   }
 
   if (ownershipType === "stock") {
-    const issueAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickIssueFromStock"), disabled: activeCheckout }
+    const issueAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickIssueFromStock"), disabled: !checkoutEnabled }
     const relocateAction = { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickMoveStock"), disabled: activeCheckout }
 
     return {
@@ -1697,7 +1719,7 @@ function getOwnershipLifecycle({
 
   if (ownershipType === "shared") {
     const relocateAction = { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickRelocateShared"), disabled: activeCheckout }
-    const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickTemporaryHandover"), disabled: activeCheckout }
+    const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickTemporaryHandover"), disabled: !checkoutEnabled }
 
     return {
       title: t("lifecycleSharedTitle"),
@@ -1731,8 +1753,8 @@ function getOwnershipLifecycle({
     }
   }
 
-  const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickCheckout"), disabled: activeCheckout }
-  const checkinAction = { href: checkinHref, icon: <RotateCcw className="h-4 w-4" />, label: t("quickCheckin"), disabled: !activeCheckout }
+  const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickCheckout"), disabled: !checkoutEnabled }
+  const checkinAction = { href: checkinHref, icon: <RotateCcw className="h-4 w-4" />, label: t("quickCheckin"), disabled: !checkinEnabled }
 
   return {
     title: t("lifecyclePersonalTitle"),
@@ -1747,7 +1769,7 @@ function getOwnershipLifecycle({
     actions: [
       checkoutAction,
       checkinAction,
-      { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickTransfer"), disabled: activeCheckout },
+      { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickTransfer"), disabled: !transferEnabled },
       { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") },
       { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") },
       latestDocumentAction,

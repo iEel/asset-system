@@ -186,7 +186,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     assetIds.length
       ? prisma.assetCheckout.findMany({
           where: { assetId: { in: assetIds }, isReturned: false, transactionStatus: "active" },
-          select: { id: true, assetId: true },
+          select: { id: true, assetId: true, handoverMode: true },
           orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([]),
@@ -203,9 +203,11 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       modelPhotoByModelId.set(photo.referenceId, photo)
     }
   }
-  const openCheckoutByAssetId = new Map<string, string>()
+  const openCheckoutByAssetId = new Map<string, { id: string; handoverMode: string | null }>()
   for (const checkout of openCheckouts) {
-    if (!openCheckoutByAssetId.has(checkout.assetId)) openCheckoutByAssetId.set(checkout.assetId, checkout.id)
+    if (!openCheckoutByAssetId.has(checkout.assetId)) {
+      openCheckoutByAssetId.set(checkout.assetId, { id: checkout.id, handoverMode: checkout.handoverMode })
+    }
   }
   const activeMaintenanceAssetIds = new Set(activeMaintenanceTickets.map((ticket) => ticket.assetId))
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
@@ -275,11 +277,13 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     },
   })
   const tableAssets: AssetRegisterRow[] = assets.map((asset) => {
-    const openCheckoutId = openCheckoutByAssetId.get(asset.id) ?? null
+    const openCheckout = openCheckoutByAssetId.get(asset.id) ?? null
+    const openCheckoutId = openCheckout?.id ?? null
     const transactions = getAssetRegisterTransactionActions({
       statusName: asset.status.name,
       custodianId: asset.custodianId,
       openCheckoutId,
+      openCheckoutHandoverMode: openCheckout?.handoverMode ?? null,
       hasActiveMaintenance: activeMaintenanceAssetIds.has(asset.id),
       canEdit: canEditAssets,
     }).map((transaction) => ({

@@ -1,6 +1,8 @@
 import {
   getAssetLifecycleTransitionError,
+  getCheckinHandoverStatusError,
   getTransferTargetStatusName,
+  isLegacyReturnEligible,
 } from "./asset-lifecycle-policy.ts"
 
 export { getTransferTargetStatusName }
@@ -42,12 +44,15 @@ export function getAssetRegisterTransactionActions({
   statusName,
   custodianId,
   openCheckoutId,
+  openCheckoutHandoverMode,
   hasActiveMaintenance,
   canEdit,
 }: {
   statusName: string
   custodianId: string | null
   openCheckoutId: string | null
+  /** The open checkout's handover mode: a permanent handover returns from In Use, a loan from Checked Out. */
+  openCheckoutHandoverMode: string | null
   hasActiveMaintenance: boolean
   canEdit: boolean
 }): AssetRegisterTransaction[] {
@@ -61,13 +66,19 @@ export function getAssetRegisterTransactionActions({
 
   const checkoutEnabled = getAssetLifecycleTransitionError("checkout", statusName) === null
   const transferEnabled = getAssetLifecycleTransitionError("assign_custodian", statusName) === null
-  const legacyReturnEnabled = Boolean(custodianId)
-    && !openCheckoutId
-    && !hasActiveMaintenance
-    && getAssetLifecycleTransitionError("legacy_return_backfill", statusName) === null
+  const legacyReturnEnabled = isLegacyReturnEligible({
+    statusName,
+    custodianId,
+    hasOpenCheckout: Boolean(openCheckoutId),
+    hasActiveMaintenance,
+  })
 
   let checkin: AssetRegisterTransaction
-  if (openCheckoutId && getAssetLifecycleTransitionError("checkin", statusName) === null && !hasActiveMaintenance) {
+  if (
+    openCheckoutId
+    && getCheckinHandoverStatusError(openCheckoutHandoverMode, statusName) === null
+    && !hasActiveMaintenance
+  ) {
     checkin = { action: "checkin", enabled: true, mode: "open_checkout" }
   } else if (legacyReturnEnabled) {
     checkin = { action: "checkin", enabled: true, mode: "legacy_return" }

@@ -159,18 +159,33 @@ export function filterCheckoutEligibleAssets<T extends { status?: AssetStateMast
   return assets.filter((asset) => getAssetLifecycleTransitionError("checkout", asset.status?.name) === null)
 }
 
+// The server's legacy return (api/assets/[id]/legacy-checkout) accepts exactly this: Ready or In Use,
+// a custodian, no open checkout and no open repair. The register, the asset page and the check-in
+// picker all ask this one rule.
+export function isLegacyReturnEligible(input: {
+  statusName?: string | null
+  custodianId?: string | null
+  hasOpenCheckout: boolean
+  hasActiveMaintenance: boolean
+}): boolean {
+  return Boolean(input.custodianId)
+    && !input.hasOpenCheckout
+    && !input.hasActiveMaintenance
+    && getAssetLifecycleTransitionError("legacy_return_backfill", input.statusName) === null
+}
+
 export function filterLegacyReturnEligibleAssets<T extends {
   status?: AssetStateMaster | null
   custodianId?: string | null
   hasOpenCheckout: boolean
   hasActiveMaintenance: boolean
 }>(assets: readonly T[]): T[] {
-  return assets.filter((asset) =>
-    Boolean(asset.custodianId)
-    && !asset.hasOpenCheckout
-    && !asset.hasActiveMaintenance
-    && getAssetLifecycleTransitionError("legacy_return_backfill", asset.status?.name) === null
-  )
+  return assets.filter((asset) => isLegacyReturnEligible({
+    statusName: asset.status?.name,
+    custodianId: asset.custodianId,
+    hasOpenCheckout: asset.hasOpenCheckout,
+    hasActiveMaintenance: asset.hasActiveMaintenance,
+  }))
 }
 
 export function filterPersonalTransferEligibleAssets<T extends { status?: AssetStateMaster | null }>(assets: readonly T[]): T[] {
