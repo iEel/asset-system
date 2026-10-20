@@ -17,7 +17,7 @@ export default async function EditDepartmentPage({ params, searchParams }: EditD
 
   const [department, companies] = await Promise.all([
     prisma.department.findFirst({
-      where: { id, isActive: true },
+      where: { id },
     }),
     prisma.company.findMany({
       where: { isActive: true },

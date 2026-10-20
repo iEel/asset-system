@@ -61,3 +61,31 @@ export function paginationRange(page: number, pageSize: number, total: number) {
     totalPages,
   }
 }
+
+// "ไม่ใช้งาน" is also how master data is deleted (soft delete), so a list shows active records by default and can show
+// the inactive ones to bring them back (critique 2026-10-20 E1). No imports: tests and pages both load this module.
+export const recordStatusFilters = ["active", "inactive", "all"] as const
+export type RecordStatusFilter = (typeof recordStatusFilters)[number]
+
+export function parseRecordStatus(value: string | string[] | number | null | undefined): RecordStatusFilter {
+  const raw = Array.isArray(value) ? value[0] : value
+  const normalized = String(raw ?? "")
+  return recordStatusFilters.includes(normalized as RecordStatusFilter) ? (normalized as RecordStatusFilter) : "active"
+}
+
+export function recordStatusWhere(status: RecordStatusFilter): { isActive?: boolean } {
+  if (status === "inactive") return { isActive: false }
+  if (status === "all") return {}
+  return { isActive: true }
+}
+
+// The default stays out of the URL, so links built before the filter keep their exact query strings.
+export function setRecordStatusParam(params: URLSearchParams, status: RecordStatusFilter) {
+  if (status !== "active") params.set("status", status)
+  return params
+}
+
+// Unticking "ใช้งาน" on an active record removes it from use the way "ลบ" does; ticking it again never is.
+export function isDeactivation(current: boolean, next: boolean) {
+  return current && !next
+}

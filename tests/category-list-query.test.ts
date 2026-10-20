@@ -139,3 +139,12 @@ test("builds category drilldown links for related operational views", () => {
     edit: "/th/master-data/categories/cat-1/edit",
   })
 })
+
+test("the category list filters by record status, ใช้งาน by default (critique 2026-10-20 E1)", () => {
+  assert.equal(parseCategoryListParams({}).status, "active")
+  assert.equal(buildCategoryWhere(parseCategoryListParams({})).isActive, true)
+  assert.equal(buildCategoryWhere(parseCategoryListParams({ status: "inactive" })).isActive, false)
+  assert.equal("isActive" in buildCategoryWhere(parseCategoryListParams({ status: "all" })), false)
+  assert.match(buildCategoryQueryString(parseCategoryListParams({ status: "inactive" }), {}), /(^|&)status=inactive(&|$)/)
+  assert.doesNotMatch(buildCategoryQueryString(parseCategoryListParams({}), {}), /status=/)
+})

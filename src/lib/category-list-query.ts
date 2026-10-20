@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
 
 export const categorySorts = ["code", "name", "models", "assets", "customFields", "createdAt"] as const
 export const categoryAssetUsageFilters = ["all", "withAssets", "withoutAssets"] as const
@@ -15,6 +16,7 @@ export type CategoryChecklistStatusFilter = (typeof categoryChecklistStatusFilte
 export type CategoryPrefixStatusFilter = (typeof categoryPrefixStatusFilters)[number]
 
 export type CategoryListParams = {
+  status?: string | string[] | number | null
   search?: string | string[] | number | null
   page?: string | string[] | number | null
   pageSize?: string | string[] | number | null
@@ -29,6 +31,7 @@ export type CategoryListParams = {
 
 export type CategoryListState = {
   search: string
+  status: RecordStatusFilter
   page: number
   pageSize: number
   sort: CategorySort
@@ -55,6 +58,7 @@ export function parseCategoryListParams(input: CategoryListParams): CategoryList
 
   return {
     search: firstValue(input.search).trim(),
+    status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
     sort: categorySorts.includes(sortValue as CategorySort) ? (sortValue as CategorySort) : "code",
@@ -95,7 +99,7 @@ export function buildCategoryWhere(
   }
 
   return {
-    isActive: true,
+    ...recordStatusWhere(state.status),
     ...(state.search
       ? {
           OR: [
@@ -128,6 +132,7 @@ export function buildCategoryQueryString(current: CategoryListState, next: Parti
   params.set("customFieldStatus", merged.customFieldStatus)
   params.set("checklistStatus", merged.checklistStatus)
   params.set("prefixStatus", merged.prefixStatus)
+  setRecordStatusParam(params, merged.status)
   return params.toString()
 }
 

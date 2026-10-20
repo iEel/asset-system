@@ -16,7 +16,7 @@ export default async function EditSupplierPage({ params, searchParams }: EditSup
   await requirePagePermission(locale, "supplier", "edit")
 
   const supplier = await prisma.supplier.findFirst({
-    where: { id, isActive: true },
+    where: { id },
   })
 
   if (!supplier) notFound()

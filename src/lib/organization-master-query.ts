@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
 
 export const companySorts = ["createdAt", "code", "assetTagCode", "nameTh", "branches", "employees", "assets"] as const
 export const branchSorts = ["createdAt", "code", "name", "company", "locations", "employees", "assets"] as const
@@ -23,6 +24,7 @@ export type CustodyUsageFilter = (typeof custodyUsageFilters)[number]
 export type PurchaseDocumentUsageFilter = (typeof purchaseDocumentUsageFilters)[number]
 
 export type CompanyListParams = {
+  status?: string | string[] | number | null
   search?: string | string[] | number | null
   page?: string | string[] | number | null
   pageSize?: string | string[] | number | null
@@ -33,6 +35,7 @@ export type CompanyListParams = {
 }
 
 export type BranchListParams = {
+  status?: string | string[] | number | null
   search?: string | string[] | number | null
   page?: string | string[] | number | null
   pageSize?: string | string[] | number | null
@@ -44,6 +47,7 @@ export type BranchListParams = {
 }
 
 export type EmployeeListParams = {
+  status?: string | string[] | number | null
   search?: string | string[] | number | null
   page?: string | string[] | number | null
   pageSize?: string | string[] | number | null
@@ -57,6 +61,7 @@ export type EmployeeListParams = {
 }
 
 export type SupplierListParams = {
+  status?: string | string[] | number | null
   search?: string | string[] | number | null
   page?: string | string[] | number | null
   pageSize?: string | string[] | number | null
@@ -68,6 +73,7 @@ export type SupplierListParams = {
 
 export type CompanyListState = {
   search: string
+  status: RecordStatusFilter
   page: number
   pageSize: number
   sort: CompanySort
@@ -78,6 +84,7 @@ export type CompanyListState = {
 
 export type BranchListState = {
   search: string
+  status: RecordStatusFilter
   page: number
   pageSize: number
   sort: BranchSort
@@ -89,6 +96,7 @@ export type BranchListState = {
 
 export type EmployeeListState = {
   search: string
+  status: RecordStatusFilter
   page: number
   pageSize: number
   sort: EmployeeSort
@@ -102,6 +110,7 @@ export type EmployeeListState = {
 
 export type SupplierListState = {
   search: string
+  status: RecordStatusFilter
   page: number
   pageSize: number
   sort: SupplierSort
@@ -144,6 +153,7 @@ export function parseCompanyListParams(input: CompanyListParams): CompanyListSta
 
   return {
     search: firstValue(input.search).trim(),
+    status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
     sort: companySorts.includes(sortValue as CompanySort) ? (sortValue as CompanySort) : "createdAt",
@@ -159,6 +169,7 @@ export function parseBranchListParams(input: BranchListParams): BranchListState 
 
   return {
     search: firstValue(input.search).trim(),
+    status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
     sort: branchSorts.includes(sortValue as BranchSort) ? (sortValue as BranchSort) : "createdAt",
@@ -175,6 +186,7 @@ export function parseEmployeeListParams(input: EmployeeListParams): EmployeeList
 
   return {
     search: firstValue(input.search).trim(),
+    status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
     sort: employeeSorts.includes(sortValue as EmployeeSort) ? (sortValue as EmployeeSort) : "createdAt",
@@ -193,6 +205,7 @@ export function parseSupplierListParams(input: SupplierListParams): SupplierList
 
   return {
     search: firstValue(input.search).trim(),
+    status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
     sort: supplierSorts.includes(sortValue as SupplierSort) ? (sortValue as SupplierSort) : "createdAt",
@@ -204,7 +217,7 @@ export function parseSupplierListParams(input: SupplierListParams): SupplierList
 
 export function buildCompanyWhere(state: CompanyListState): Prisma.CompanyWhereInput {
   return {
-    isActive: true,
+    ...recordStatusWhere(state.status),
     ...(state.search
       ? {
           OR: [
@@ -226,7 +239,7 @@ export function buildCompanyWhere(state: CompanyListState): Prisma.CompanyWhereI
 
 export function buildBranchWhere(state: BranchListState): Prisma.BranchWhereInput {
   return {
-    isActive: true,
+    ...recordStatusWhere(state.status),
     ...(state.companyId ? { companyId: state.companyId } : {}),
     ...(state.search
       ? {
@@ -249,7 +262,7 @@ export function buildBranchWhere(state: BranchListState): Prisma.BranchWhereInpu
 
 export function buildEmployeeWhere(state: EmployeeListState): Prisma.EmployeeWhereInput {
   return {
-    isActive: true,
+    ...recordStatusWhere(state.status),
     ...(state.companyId ? { companyId: state.companyId } : {}),
     ...(state.branchId ? { branchId: state.branchId } : {}),
     ...(state.departmentId ? { departmentId: state.departmentId } : {}),
@@ -280,7 +293,7 @@ export function buildEmployeeWhere(state: EmployeeListState): Prisma.EmployeeWhe
 
 export function buildSupplierWhere(state: SupplierListState): Prisma.SupplierWhereInput {
   return {
-    isActive: true,
+    ...recordStatusWhere(state.status),
     ...(state.search
       ? {
           OR: [
@@ -351,6 +364,7 @@ export function buildCompanyQueryString(current: CompanyListState, next: Partial
   params.set("direction", merged.direction)
   params.set("assetUsage", merged.assetUsage)
   params.set("branchUsage", merged.branchUsage)
+  setRecordStatusParam(params, merged.status)
   return params.toString()
 }
 
@@ -365,6 +379,7 @@ export function buildBranchQueryString(current: BranchListState, next: Partial<B
   if (merged.companyId) params.set("companyId", merged.companyId)
   params.set("assetUsage", merged.assetUsage)
   params.set("locationUsage", merged.locationUsage)
+  setRecordStatusParam(params, merged.status)
   return params.toString()
 }
 
@@ -381,6 +396,7 @@ export function buildEmployeeQueryString(current: EmployeeListState, next: Parti
   if (merged.departmentId) params.set("departmentId", merged.departmentId)
   params.set("employmentStatus", merged.employmentStatus)
   params.set("custodyUsage", merged.custodyUsage)
+  setRecordStatusParam(params, merged.status)
   return params.toString()
 }
 
@@ -394,6 +410,7 @@ export function buildSupplierQueryString(current: SupplierListState, next: Parti
   params.set("direction", merged.direction)
   params.set("assetUsage", merged.assetUsage)
   params.set("purchaseDocumentUsage", merged.purchaseDocumentUsage)
+  setRecordStatusParam(params, merged.status)
   return params.toString()
 }
 

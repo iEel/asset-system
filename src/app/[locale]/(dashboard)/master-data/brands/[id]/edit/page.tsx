@@ -15,7 +15,7 @@ export default async function EditBrandPage({ params, searchParams }: EditBrandP
   const returnToHref = normalizeMasterDataReturnTo(locale, "brands", rawSearchParams.returnTo)
   await requirePagePermission(locale, "brand", "edit")
 
-  const brand = await prisma.assetBrand.findFirst({ where: { id, isActive: true } })
+  const brand = await prisma.assetBrand.findFirst({ where: { id } })
 
   if (!brand) notFound()
 

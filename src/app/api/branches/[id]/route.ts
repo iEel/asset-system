@@ -6,6 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { fieldErrorResponse } from "@/lib/field-error-response"
 import { branchSchema } from "@/lib/validations/branch"
 import { getBranchDeleteBlockReason } from "@/lib/organization-master-query"
+import { isDeactivation } from "@/lib/master-data-query"
 
 type BranchRouteContext = {
   params: Promise<{ id: string }>
@@ -47,12 +48,34 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
 
     const { id } = await context.params
     const input = branchSchema.parse(await request.json())
+    // An inactive branch opens and saves too: ticking "ใช้งาน" again brings it back (critique 2026-10-20 E1).
     const existing = await prisma.branch.findFirst({
-      where: { id, isActive: true },
+      where: { id },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Branch not found" }, { status: 404 })
+    }
+
+    // Unticking "ใช้งาน" removes the branch from use the way "ลบ" does, so the same counts refuse it.
+    if (isDeactivation(existing.isActive, input.isActive)) {
+      const usage = await prisma.branch.findFirst({
+        where: { id },
+        select: {
+          _count: {
+            select: {
+              locations: { where: { isActive: true } },
+              employees: { where: { isActive: true } },
+              assets: { where: { isActive: true } },
+              auditRounds: { where: { isActive: true } },
+            },
+          },
+        },
+      })
+      const blockReason = usage ? getBranchDeleteBlockReason(usage._count) : null
+      if (blockReason) {
+        return NextResponse.json({ error: blockReason }, { status: 409 })
+      }
     }
 
     // Every other branch of the company counts, inactive ones too: the unique index on (companyId, code) covers them all (V track spec §6.2).

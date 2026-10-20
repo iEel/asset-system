@@ -38,7 +38,8 @@ export async function PUT(request: NextRequest, context: BrandRouteContext) {
 
     const { id } = await context.params
     const input = brandSchema.parse(await request.json())
-    const existing = await prisma.assetBrand.findFirst({ where: { id, isActive: true } })
+    // An inactive record opens and saves too: ticking "ใช้งาน" again brings it back (critique 2026-10-20 E1).
+    const existing = await prisma.assetBrand.findFirst({ where: { id } })
 
     if (!existing) {
       return NextResponse.json({ error: "Brand not found" }, { status: 404 })

@@ -27,6 +27,7 @@ export type SupplierListItem = {
   phone: string | null
   email: string | null
   address: string | null
+  isActive: boolean
   _count: {
     assets: number
     maintenanceTickets: number
@@ -146,7 +147,7 @@ export function SupplierListView({
                     menuLabel={labels.moreActionsFor(supplier.code)}
                     next={{ label: labels.edit, href: hrefs.edit, icon: <Pencil aria-hidden="true" /> }}
                     groups={[]}
-                    deleteAction={{ endpoint: `/api/suppliers/${supplier.id}` }}
+                    deleteAction={supplier.isActive ? { endpoint: `/api/suppliers/${supplier.id}` } : undefined}
                   />
                 </DataTableCell>
               </ClickableTableRow>
@@ -190,7 +191,7 @@ export function SupplierListView({
                 menuLabel={labels.moreActionsFor(supplier.code)}
                 next={{ label: labels.edit, href: hrefs.edit, icon: <Pencil aria-hidden="true" /> }}
                 groups={[]}
-                deleteAction={{ endpoint: `/api/suppliers/${supplier.id}` }}
+                deleteAction={supplier.isActive ? { endpoint: `/api/suppliers/${supplier.id}` } : undefined}
               />
             </article>
           )

@@ -331,3 +331,22 @@ test("builds supplier filters, summary, drilldown, query string, and delete guar
     "ไม่สามารถลบผู้ขายนี้ได้ เพราะยังมีแผน PM 2 รายการใช้งานอยู่"
   )
 })
+
+test("company, branch, employee and supplier lists filter by record status, ใช้งาน by default (critique 2026-10-20 E1)", () => {
+  const lists = [
+    { parse: parseCompanyListParams, where: buildCompanyWhere, query: buildCompanyQueryString },
+    { parse: parseBranchListParams, where: buildBranchWhere, query: buildBranchQueryString },
+    { parse: parseEmployeeListParams, where: buildEmployeeWhere, query: buildEmployeeQueryString },
+    { parse: parseSupplierListParams, where: buildSupplierWhere, query: buildSupplierQueryString },
+  ] as const
+  for (const { parse, where, query } of lists) {
+    const build = where as (state: ReturnType<typeof parse>) => Record<string, unknown>
+    const toQuery = query as (current: ReturnType<typeof parse>, next: object) => string
+    assert.equal(parse({}).status, "active")
+    assert.equal(build(parse({})).isActive, true)
+    assert.equal(build(parse({ status: "inactive" })).isActive, false)
+    assert.equal("isActive" in build(parse({ status: "all" })), false)
+    assert.match(toQuery(parse({ status: "inactive" }), {}), /(^|&)status=inactive(&|$)/)
+    assert.doesNotMatch(toQuery(parse({}), {}), /status=/)
+  }
+})

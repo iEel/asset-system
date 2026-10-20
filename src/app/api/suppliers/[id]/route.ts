@@ -46,8 +46,9 @@ export async function PUT(request: NextRequest, context: SupplierRouteContext) {
 
     const { id } = await context.params
     const input = supplierSchema.parse(await request.json())
+    // An inactive record opens and saves too: ticking "ใช้งาน" again brings it back (critique 2026-10-20 E1).
     const existing = await prisma.supplier.findFirst({
-      where: { id, isActive: true },
+      where: { id },
       include: {
         _count: {
           select: {

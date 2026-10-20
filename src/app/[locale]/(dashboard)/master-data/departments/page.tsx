@@ -9,6 +9,7 @@ import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { FilterSelect } from "@/components/ui/filter-select"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
@@ -16,32 +17,34 @@ import { RowActions } from "@/components/ui/row-actions"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
-import { paginationRange } from "@/lib/master-data-query"
+import { paginationRange, parseRecordStatus, recordStatusWhere, setRecordStatusParam } from "@/lib/master-data-query"
 
 type DepartmentsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; page?: string | string[]; pageSize?: string | string[] }>
+  searchParams: Promise<{ search?: string; page?: string | string[]; pageSize?: string | string[]; status?: string | string[] }>
 }
 
 export default async function DepartmentsPage({ params, searchParams }: DepartmentsPageProps) {
   const { locale } = await params
-  const { search = "", page, pageSize } = await searchParams
+  const { search = "", page, pageSize, status } = await searchParams
   await requirePagePermission(locale, "department", "view")
 
   const t = await getTranslations("department")
   const tCommon = await getTranslations("common")
   const searchText = search.trim()
   const listPage = parseListPage({ page, pageSize })
+  // "ใช้งาน" by default; "ไม่ใช้งาน" finds a deleted department again (critique 2026-10-20 E1).
+  const recordStatus = parseRecordStatus(status)
   const basePath = `/${locale}/master-data/departments`
   // The list URL with its search, page and page size; the default page and page size stay out of it (spec 2B B4).
   const listHref = (next: { page?: number; pageSize?: number }) => {
-    const query = appendListPage(new URLSearchParams(searchText ? { search: searchText } : {}), next).toString()
+    const query = setRecordStatusParam(appendListPage(new URLSearchParams(searchText ? { search: searchText } : {}), next), recordStatus).toString()
     return query ? `${basePath}?${query}` : basePath
   }
   const departmentReturnHref = listHref(listPage)
 
   const where: Prisma.DepartmentWhereInput = {
-    isActive: true,
+    ...recordStatusWhere(recordStatus),
     ...(searchText
       ? {
           OR: [
@@ -97,7 +100,20 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
         hiddenInputs={Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize }))}
-      />
+      >
+        <FilterSelect
+          label={tCommon("status")}
+          name="status"
+          defaultValue={recordStatus}
+          hideLabel
+          fieldSize="md"
+          options={[
+            { value: "active", label: tCommon("active") },
+            { value: "inactive", label: tCommon("inactive") },
+            { value: "all", label: tCommon("all") },
+          ]}
+        />
+      </MasterDataSearch>
 
       <DataTable
         caption={t("title")}
@@ -159,7 +175,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                     )}
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
-                    <StatusBadge label={tCommon("active")} tone="success" />
+                    <StatusBadge label={department.isActive ? tCommon("active") : tCommon("inactive")} tone={department.isActive ? "success" : "muted"} />
                   </DataTableCell>
                   <DataTableCell align="right" sticky="right">
                     <RowActions
@@ -168,7 +184,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                       menuLabel={tCommon("moreActionsFor", { code: department.code })}
                       next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
                       groups={[]}
-                      deleteAction={{ endpoint: `/api/departments/${department.id}` }}
+                      deleteAction={department.isActive ? { endpoint: `/api/departments/${department.id}` } : undefined}
                     />
                   </DataTableCell>
                 </ClickableTableRow>

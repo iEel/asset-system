@@ -53,7 +53,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
   const tDisposal = await getTranslations("disposalPage")
 
   const employee = await prisma.employee.findFirst({
-    where: { id, isActive: true },
+    where: { id },
     include: {
       company: { select: { code: true, nameTh: true } },
       branch: { select: { code: true, name: true } },

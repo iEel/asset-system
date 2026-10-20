@@ -137,7 +137,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
     redirect(listHref({ page: lastPage }))
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
-  const hasActiveFilters = Boolean(listState.search || listState.branchId || listState.locationType || listState.assetUsage !== "all" || listState.hierarchy !== "all")
+  const hasActiveFilters = listState.status !== "active" || Boolean(listState.search || listState.branchId || listState.locationType || listState.assetUsage !== "all" || listState.hierarchy !== "all")
   const sortBy = (field: LocationSort): DataTableSort => ({
     href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
     direction: listState.sort === field ? listState.direction : null,
@@ -207,7 +207,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
       />
 
       <FilterPanel>
-        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(4,minmax(150px,1fr))_auto]">
+        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           <input type="hidden" name="sort" value={listState.sort} />
@@ -255,6 +255,16 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
               { value: "root", label: t("rootLocations") },
               { value: "child", label: t("childLocations") },
               { value: "leaf", label: t("leafLocations") },
+            ]}
+          />
+          <FilterSelect
+            label={tCommon("status")}
+            name="status"
+            defaultValue={listState.status}
+            options={[
+              { value: "active", label: tCommon("active") },
+              { value: "inactive", label: tCommon("inactive") },
+              { value: "all", label: tCommon("all") },
             ]}
           />
           <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
@@ -351,7 +361,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
                   </DataTableCell>
                   <DataTableCell numeric className="text-muted-foreground">{formatCount(location._count.children)}</DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
-                    <StatusBadge label={tCommon("active")} tone="success" />
+                    <StatusBadge label={location.isActive ? tCommon("active") : tCommon("inactive")} tone={location.isActive ? "success" : "muted"} />
                   </DataTableCell>
                   <DataTableCell align="right" sticky="right">
                     <RowActions
@@ -360,7 +370,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
                       menuLabel={tCommon("moreActionsFor", { code: location.code })}
                       next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
                       groups={[]}
-                      deleteAction={{ endpoint: `/api/locations/${location.id}` }}
+                      deleteAction={location.isActive ? { endpoint: `/api/locations/${location.id}` } : undefined}
                     />
                   </DataTableCell>
                 </ClickableTableRow>

@@ -16,7 +16,7 @@ export default async function EditCompanyPage({ params, searchParams }: EditComp
   await requirePagePermission(locale, "company", "edit")
 
   const company = await prisma.company.findFirst({
-    where: { id, isActive: true },
+    where: { id },
   })
 
   if (!company) notFound()

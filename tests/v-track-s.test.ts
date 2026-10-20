@@ -356,7 +356,7 @@ test("a duplicate code or name in master data answers 409 under its field, on cr
   stubDb({ assetCategory: { findFirst: (args: { where: Record<string, unknown> }) => { lookups.push(args.where); return args.where.id ? { id: "cat-1", isActive: true, _count: { assets: 0, models: 0 } } : { id: "cat-2" } } } })
   await expectConflict(await POST(jsonRequest("POST", category)), categoryCase)
   await expectConflict(await PUT(jsonRequest("PUT", category), { params: Promise.resolve({ id: "cat-1" }) }), categoryCase)
-  assert.deepEqual(lookups, [{ code: "IT", isActive: true }, { id: "cat-1", isActive: true }, { code: "IT", id: { not: "cat-1" } }])
+  assert.deepEqual(lookups, [{ code: "IT", isActive: true }, { id: "cat-1" }, { code: "IT", id: { not: "cat-1" } }])
   assert.equal(getApiErrorKey(categoryCase.error), categoryCase.key)
   assert.equal(th[categoryCase.key], categoryCase.th)
   assert.equal(en[categoryCase.key], categoryCase.error)
@@ -512,7 +512,7 @@ test("the last duplicates and the employee's user account land under their field
   const branchRefusal = { error: "รหัสสาขา BKK มีอยู่แล้วในบริษัท GL - จีลิงค์", fieldErrors: { code: "duplicate" } }
   await expectBody(await branches.POST(jsonRequest("POST", branchBody)), 400, branchRefusal)
   await expectBody(await branch.PUT(jsonRequest("PUT", branchBody), params("branch-1")), 400, branchRefusal)
-  assert.deepEqual(branchLookups, [{ code: "BKK", companyId: "c1" }, { id: "branch-1", isActive: true }, { code: "BKK", companyId: "c1", id: { not: "branch-1" } }])
+  assert.deepEqual(branchLookups, [{ code: "BKK", companyId: "c1" }, { id: "branch-1" }, { code: "BKK", companyId: "c1", id: { not: "branch-1" } }])
 
   // Two custom fields with one name in a category (the unique index on the custom-field rows): 409 under every row that
   // holds the name, compared trimmed and case-folded, on create and on update, before anything is written.

@@ -18,7 +18,7 @@ export default async function EditCategoryPage({ params, searchParams }: EditCat
 
   const [category, photoChecklist] = await Promise.all([
     prisma.assetCategory.findFirst({
-      where: { id, isActive: true },
+      where: { id },
       include: {
         customFieldDefs: {
           where: { isActive: true },

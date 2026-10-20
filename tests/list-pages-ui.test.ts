@@ -44,7 +44,8 @@ test("master-data lists build on PageHeader, DataTable, TableEmptyRow, RowAction
     assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: [\w.]+ \}\)\}/, `${path}: ⋯ is named after its row (I33)`)
     assert.match(source, /next=\{\{ label: (?:tCommon\("edit"\)|t\("\w+"\)), href: \w+, icon: <Pencil aria-hidden="true" \/> \}\}/, `${path}: the next step is the edit link (B5)`)
     for (const endpoint of deleteEndpoints) {
-      assert.ok(source.includes(`deleteAction={{ endpoint: \`${endpoint}\` }}`), `${path}: "ลบ" in ⋯ calls ${endpoint}`)
+      // "ลบ" shows on active rows only: an inactive row comes back by ticking "ใช้งาน" (critique 2026-10-20 E1).
+      assert.ok(/deleteAction=\{\w+\.isActive \? \{ endpoint: /.test(source) && source.includes(`{ endpoint: \`${endpoint}\` } : undefined}`), `${path}: "ลบ" in ⋯ calls ${endpoint}`)
     }
     for (const wrapper of removedWrappers) assert.equal(existsSync(wrapper), false, `${wrapper} has no caller left (I5)`)
   }
@@ -65,7 +66,7 @@ test("the selected brand keeps the vertical brand picker and gets RowActions: ed
   const panel = source.slice(start, source.indexOf("</aside>", start))
   assert.match(panel, /<RowActions\n\s+code=\{selectedBrand\.name\}/)
   assert.match(panel, /next=\{\{ label: t\("editSelectedBrand"\), href: selectedBrandEditHref, icon: <Pencil aria-hidden="true" \/> \}\}/)
-  assert.match(panel, /deleteAction=\{\{ endpoint: `\/api\/brands\/\$\{selectedBrand\.id\}` \}\}/)
+  assert.match(panel, /deleteAction=\{selectedBrand\.isActive \? \{ endpoint: `\/api\/brands\/\$\{selectedBrand\.id\}` \} : undefined\}/)
   assert.equal(source.match(/aria-current=\{/g)?.length, 2, "the picker keeps aria-current=\"page\" on its two links (I11, LFG EXEMPT.LN1)")
   assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n/, "the model table sits flush in a divided panel: no frame in a frame")
   assert.match(source, /<DataTable\n\s+framed=\{false\}/)
@@ -116,7 +117,7 @@ test("suppliers: the page and its list view build on PageHeader, StatStrip, Data
   assert.match(page, /const lastPage = lastListPage\(total, listState\.pageSize\)\n\s+if \(suppliers\.length === 0 && total > 0 && listState\.page > lastPage\) \{\n\s+redirect\(/)
   assert.equal(page.match(/<SupplierFilterForm [^\n]*hasActiveFilters=\{hasActiveFilters\}/g)?.length, 2, "both filter forms show clear filters only while a filter is on")
   assert.equal(list.match(/next=\{\{ label: labels\.edit, href: hrefs\.edit, icon: <Pencil aria-hidden="true" \/> \}\}/g)?.length, 2, "the desktop row and the phone card")
-  assert.equal(list.match(/deleteAction=\{\{ endpoint: `\/api\/suppliers\/\$\{supplier\.id\}` \}\}/g)?.length, 2)
+  assert.equal(list.match(/deleteAction=\{supplier\.isActive \? \{ endpoint: `\/api\/suppliers\/\$\{supplier\.id\}` \} : undefined\}/g)?.length, 2)
   assert.match(list, /scrollHint=\{labels\.tableScrollHint\}/)
   assert.match(list, /actionVariant=\{hasActiveFilters \? "secondary" : "primary"\}/)
   assert.equal(existsSync(`${C}master-data/supplier-delete-button.tsx`), false, "the wrapper has no caller left (I5)")

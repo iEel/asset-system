@@ -310,7 +310,9 @@ test("MasterDataSearch is a frameless search toolbar on SearchField and Button, 
   const source = readFileSync("src/components/master-data/master-data-layout.tsx", "utf8").replace(/\r\n/g, "\n")
   const search = source.match(/export function MasterDataSearch\([\s\S]*?\n\}\n/)?.[0] ?? ""
   assert.ok(search, "function MasterDataSearch not found")
-  assert.match(search, /^export function MasterDataSearch\(\{\n  action,\n  defaultValue,\n  placeholder,\n  submitLabel,\n  hiddenInputs = \{\},\n\}: \{/)
+  // An optional children slot (between the field and the button) carries the departments status filter (critique 2026-10-20 E1).
+  assert.match(search, /^export function MasterDataSearch\(\{\n  action,\n  defaultValue,\n  placeholder,\n  submitLabel,\n  hiddenInputs = \{\},\n  children,\n\}: \{/)
+  assert.ok(search.indexOf("{children}") > search.indexOf("<SearchField") && search.indexOf("{children}") < search.indexOf("<Button"), "the slot sits between the field and the button")
   assert.match(search, /<form role="search" action=\{action\} className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">/)
   assert.match(search, /<input key=\{name\} type="hidden" name=\{name\} value=\{value\} \/>/)
   assert.match(search, /<SearchField name="search" defaultValue=\{defaultValue\} placeholder=\{placeholder\} aria-label=\{submitLabel\} fieldSize="md" className="sm:flex-\[1_1_320px\]" \/>/)

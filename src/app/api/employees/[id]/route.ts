@@ -6,6 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { fieldErrorResponse, isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { employeeSchema } from "@/lib/validations/employee"
 import { getEmployeeDeleteBlockReason } from "@/lib/organization-master-query"
+import { isDeactivation } from "@/lib/master-data-query"
 
 type EmployeeRouteContext = {
   params: Promise<{ id: string }>
@@ -44,8 +45,9 @@ export async function PUT(request: NextRequest, context: EmployeeRouteContext) {
 
     const { id } = await context.params
     const input = employeeSchema.parse(await request.json())
+    // An inactive employee opens and saves too: ticking "ใช้งาน" again brings them back (critique 2026-10-20 E1).
     const existing = await prisma.employee.findFirst({
-      where: { id, isActive: true },
+      where: { id },
     })
 
     if (!existing) {
@@ -54,6 +56,36 @@ export async function PUT(request: NextRequest, context: EmployeeRouteContext) {
 
     if (input.managerId === id) {
       return fieldErrorResponse({ status: 400, error: "Employee cannot be their own manager", fieldErrors: { managerId: "employeeOwnManager" } })
+    }
+
+    // Unticking "ใช้งาน" removes the employee from use the way "ลบ" does, so the same counts refuse it.
+    if (isDeactivation(existing.isActive, input.isActive)) {
+      const [usage, userAccounts, openCheckouts] = await Promise.all([
+        prisma.employee.findFirst({
+          where: { id },
+          select: {
+            _count: {
+              select: {
+                custodianAssets: { where: { isActive: true } },
+                subordinates: { where: { isActive: true } },
+                auditRounds: { where: { isActive: true } },
+              },
+            },
+          },
+        }),
+        prisma.user.count({ where: { employeeId: id, isActive: true } }),
+        prisma.assetCheckout.count({ where: { custodianId: id, isReturned: false, transactionStatus: "active" } }),
+      ])
+      const blockReason = getEmployeeDeleteBlockReason({
+        custodianAssets: usage?._count.custodianAssets ?? 0,
+        subordinates: usage?._count.subordinates ?? 0,
+        userAccounts,
+        openCheckouts,
+        auditRounds: usage?._count.auditRounds ?? 0,
+      })
+      if (blockReason) {
+        return NextResponse.json({ error: blockReason }, { status: 409 })
+      }
     }
 
     const employee = await prisma.employee.update({

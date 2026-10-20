@@ -18,7 +18,7 @@ export default async function EditLocationPage({ params, searchParams }: EditLoc
 
   const [location, branches, parentLocations] = await Promise.all([
     prisma.location.findFirst({
-      where: { id, isActive: true },
+      where: { id },
     }),
     prisma.branch.findMany({
       where: { isActive: true },

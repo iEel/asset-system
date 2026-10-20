@@ -1,3 +1,5 @@
+import { parseRecordStatus, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
+
 export const modelPhotoFilters = ["all", "with", "without"] as const
 export const modelUsageFilters = ["all", "used", "unused"] as const
 
@@ -5,6 +7,7 @@ export type ModelPhotoFilter = (typeof modelPhotoFilters)[number]
 export type ModelUsageFilter = (typeof modelUsageFilters)[number]
 
 export type BrandModelListParams = {
+  status?: string | string[] | number | null
   search?: string | string[] | number | null
   brandPage?: string | string[] | number | null
   brandPageSize?: string | string[] | number | null
@@ -18,6 +21,7 @@ export type BrandModelListParams = {
 
 export type BrandModelListState = {
   search: string
+  status: RecordStatusFilter
   brandPage: number
   brandPageSize: number
   modelPage: number
@@ -58,6 +62,7 @@ type ReturnToParam = string | string[] | undefined
 export function parseBrandModelListParams(input: BrandModelListParams): BrandModelListState {
   return {
     search: firstValue(input.search).trim(),
+    status: parseRecordStatus(input.status),
     brandPage: parsePositiveInteger(input.brandPage, 1),
     brandPageSize: parsePageSize(input.brandPageSize),
     modelPage: parsePositiveInteger(input.modelPage, 1),
@@ -81,6 +86,7 @@ export function buildBrandModelQueryString(current: BrandModelListState, next: P
   if (merged.modelCategoryId) params.set("modelCategoryId", merged.modelCategoryId)
   params.set("modelPhoto", merged.modelPhoto)
   params.set("modelUsage", merged.modelUsage)
+  setRecordStatusParam(params, merged.status)
   return params.toString()
 }
 

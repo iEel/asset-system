@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
 
 export const locationSorts = [
   "createdAt",
@@ -18,6 +19,7 @@ export type LocationAssetUsageFilter = (typeof locationAssetUsageFilters)[number
 export type LocationHierarchyFilter = (typeof locationHierarchyFilters)[number]
 
 export type LocationListParams = {
+  status?: string | string[] | number | null
   search?: string | string[] | number | null
   page?: string | string[] | number | null
   pageSize?: string | string[] | number | null
@@ -31,6 +33,7 @@ export type LocationListParams = {
 
 export type LocationListState = {
   search: string
+  status: RecordStatusFilter
   page: number
   pageSize: number
   sort: LocationSort
@@ -63,6 +66,7 @@ export function parseLocationListParams(input: LocationListParams): LocationList
 
   return {
     search: firstValue(input.search).trim(),
+    status: parseRecordStatus(input.status),
     page: parsePositiveInteger(input.page, 1),
     pageSize: parsePageSize(input.pageSize),
     sort: locationSorts.includes(sortValue as LocationSort) ? (sortValue as LocationSort) : "createdAt",
@@ -76,7 +80,7 @@ export function parseLocationListParams(input: LocationListParams): LocationList
 
 export function buildLocationWhere(state: LocationListState): Prisma.LocationWhereInput {
   return {
-    isActive: true,
+    ...recordStatusWhere(state.status),
     ...(state.branchId ? { branchId: state.branchId } : {}),
     ...(state.locationType ? { locationType: state.locationType } : {}),
     ...(state.hierarchy === "root" ? { parentId: null } : {}),
@@ -124,6 +128,7 @@ export function buildLocationQueryString(current: LocationListState, next: Parti
   if (merged.locationType) params.set("locationType", merged.locationType)
   params.set("assetUsage", merged.assetUsage)
   params.set("hierarchy", merged.hierarchy)
+  setRecordStatusParam(params, merged.status)
   return params.toString()
 }
 

@@ -43,7 +43,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
   const tAsset = await getTranslations("asset")
 
   const supplier = await prisma.supplier.findFirst({
-    where: { id, isActive: true },
+    where: { id },
     select: {
       id: true,
       code: true,

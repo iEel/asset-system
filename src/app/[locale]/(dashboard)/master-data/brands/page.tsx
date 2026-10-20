@@ -24,7 +24,7 @@ import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
-import { paginationRange } from "@/lib/master-data-query"
+import { paginationRange, recordStatusWhere } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   appendBrandModelReturnTo,
@@ -77,8 +77,10 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
         select: { referenceId: true },
       })).map((attachment) => attachment.referenceId)))
 
+  // One status filter for the brand list and the model table: "ไม่ใช้งาน" finds a deleted brand or model again (critique 2026-10-20 E1).
+  const recordStatus = recordStatusWhere(listState.status)
   const modelWhere: Prisma.AssetModelWhereInput = {
-    isActive: true,
+    ...recordStatus,
     ...(searchText
       ? {
           OR: [
@@ -110,10 +112,11 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
     duplicateModelSource,
   ] = await Promise.all([
     prisma.assetBrand.findMany({
-      where: { isActive: true },
+      where: recordStatus,
       select: {
         id: true,
         name: true,
+        isActive: true,
         _count: { select: { models: true, assets: true } },
       },
       orderBy: { name: "asc" },
@@ -169,7 +172,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
     activeModelCountGroups.map((group) => ({ brandId: group.brandId, count: group._count._all })),
     activeAssetCountGroups.map((group) => ({ brandId: group.brandId, count: group._count._all }))
   )
-  const brandOptions = brandNavigatorItems.map((brand) => ({ id: brand.id, name: brand.name }))
+  const brandOptions = brandNavigatorItems.filter((brand) => brand.isActive).map((brand) => ({ id: brand.id, name: brand.name }))
   const modelPhotos = models.length
     ? await prisma.attachment.findMany({
         where: {
@@ -202,7 +205,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
     : ""
   const { start, end, totalPages } = paginationRange(listState.modelPage, listState.modelPageSize, modelTotal)
   // modelBrandId is not a filter of this form: the brand list beside it has its own "all brands" link.
-  const hasActiveFilters = Boolean(searchText || listState.modelCategoryId || listState.modelPhoto !== "all" || listState.modelUsage !== "all")
+  const hasActiveFilters = listState.status !== "active" || Boolean(searchText || listState.modelCategoryId || listState.modelPhoto !== "all" || listState.modelUsage !== "all")
   const modelColumnCount = selectedBrand ? 6 : 7
 
   return (
@@ -337,7 +340,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                 menuLabel={tCommon("moreActionsFor", { code: selectedBrand.name })}
                 next={{ label: t("editSelectedBrand"), href: selectedBrandEditHref, icon: <Pencil aria-hidden="true" /> }}
                 groups={[]}
-                deleteAction={{ endpoint: `/api/brands/${selectedBrand.id}` }}
+                deleteAction={selectedBrand.isActive ? { endpoint: `/api/brands/${selectedBrand.id}` } : undefined}
                 className="justify-start"
               />
             </div>
@@ -357,7 +360,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             }
             actions={<span className="text-sm text-muted-foreground">{t("modelResultSummary", { count: modelTotal })}</span>}
           >
-            <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(150px,1fr))_auto]">
+            <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(4,minmax(150px,1fr))_auto]">
               <input type="hidden" name="brandPage" value="1" />
               <input type="hidden" name="brandPageSize" value={listState.brandPageSize} />
               <input type="hidden" name="modelPage" value="1" />
@@ -394,6 +397,16 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                   { value: "all", label: t("allUsage") },
                   { value: "used", label: t("usedModels") },
                   { value: "unused", label: t("unusedModels") },
+                ]}
+              />
+              <FilterSelect
+                label={tCommon("status")}
+                name="status"
+                defaultValue={listState.status}
+                options={[
+                  { value: "active", label: tCommon("active") },
+                  { value: "inactive", label: tCommon("inactive") },
+                  { value: "all", label: tCommon("all") },
                 ]}
               />
               <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
@@ -526,7 +539,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                           )}
                         </DataTableCell>
                         <DataTableCell className="whitespace-nowrap">
-                          <StatusBadge label={tCommon("active")} tone="success" />
+                          <StatusBadge label={model.isActive ? tCommon("active") : tCommon("inactive")} tone={model.isActive ? "success" : "muted"} />
                         </DataTableCell>
                         <DataTableCell align="right" sticky="right">
                           <RowActions
@@ -534,7 +547,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                             menuLabel={tCommon("moreActionsFor", { code: model.name })}
                             next={{ label: tCommon("edit"), href: editModelHref, icon: <Pencil aria-hidden="true" /> }}
                             groups={[]}
-                            deleteAction={{ endpoint: `/api/models/${model.id}` }}
+                            deleteAction={model.isActive ? { endpoint: `/api/models/${model.id}` } : undefined}
                           />
                         </DataTableCell>
                       </ClickableTableRow>

@@ -70,6 +70,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
   const supplierReturnHref = `${basePath}?${buildSupplierQueryString(listState, {})}`
   const createHref = appendMasterDataReturnTo(`/${locale}/master-data/suppliers/new`, supplierReturnHref)
   const hasActiveFilters = Boolean(
+    listState.status !== "active" ||
     listState.search || listState.assetUsage !== "all" || listState.purchaseDocumentUsage !== "all"
   )
   const listHref = (next: Partial<SupplierListState>) => `${basePath}?${buildSupplierQueryString(listState, next)}`
@@ -91,6 +92,9 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
     withoutPurchaseDocuments: t("withoutPurchaseDocuments"),
     filter: tCommon("filter"),
     clear: t("clearFilters"),
+    status: tCommon("status"),
+    active: tCommon("active"),
+    inactive: tCommon("inactive"),
   }
 
   return (
@@ -159,7 +163,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
       </details>
 
       <FilterPanel className="hidden md:block">
-        <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} hasActiveFilters={hasActiveFilters} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(2,minmax(160px,1fr))_auto]" />
+        <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} hasActiveFilters={hasActiveFilters} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(3,minmax(160px,1fr))_auto]" />
       </FilterPanel>
 
       <SupplierListView
@@ -228,6 +232,9 @@ type FilterLabels = {
   withoutPurchaseDocuments: string
   filter: string
   clear: string
+  status: string
+  active: string
+  inactive: string
 }
 
 // Rendered twice: in the phone disclosure and in the desktop panel. Field gives each copy its own ids (useId), and
@@ -263,6 +270,11 @@ function SupplierFilterForm({
         <option value="all">{labels.all}</option>
         <option value="withPurchaseDocuments">{labels.withPurchaseDocuments}</option>
         <option value="withoutPurchaseDocuments">{labels.withoutPurchaseDocuments}</option>
+      </FilterSelect>
+      <FilterSelect label={labels.status} name="status" defaultValue={current.status}>
+        <option value="active">{labels.active}</option>
+        <option value="inactive">{labels.inactive}</option>
+        <option value="all">{labels.all}</option>
       </FilterSelect>
       <FilterFormActions submitLabel={labels.filter} clear={hasActiveFilters ? { href: basePath, label: labels.clear } : undefined} />
     </form>

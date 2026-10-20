@@ -142,3 +142,12 @@ test("builds location query strings while preserving filters", () => {
     "search=rack&page=1&pageSize=50&sort=code&direction=asc&branchId=branch-1&locationType=Rack&assetUsage=withAssets&hierarchy=all"
   )
 })
+
+test("the location list filters by record status, ใช้งาน by default (critique 2026-10-20 E1)", () => {
+  assert.equal(parseLocationListParams({}).status, "active")
+  assert.equal(buildLocationWhere(parseLocationListParams({})).isActive, true)
+  assert.equal(buildLocationWhere(parseLocationListParams({ status: "inactive" })).isActive, false)
+  assert.equal("isActive" in buildLocationWhere(parseLocationListParams({ status: "all" })), false)
+  assert.match(buildLocationQueryString(parseLocationListParams({ status: "inactive" }), {}), /(^|&)status=inactive(&|$)/)
+  assert.doesNotMatch(buildLocationQueryString(parseLocationListParams({}), {}), /status=/)
+})

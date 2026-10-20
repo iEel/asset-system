@@ -46,8 +46,9 @@ export async function PUT(request: NextRequest, context: DepartmentRouteContext)
 
     const { id } = await context.params
     const input = departmentSchema.parse(await request.json())
+    // An inactive record opens and saves too: ticking "ใช้งาน" again brings it back (critique 2026-10-20 E1).
     const existing = await prisma.department.findFirst({
-      where: { id, isActive: true },
+      where: { id },
     })
 
     if (!existing) {

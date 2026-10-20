@@ -6,6 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { fieldErrorResponse, isPrismaUniqueConstraintError, uniqueConflictResponse } from "@/lib/field-error-response"
 import { locationSchema } from "@/lib/validations/location"
 import { getLocationDeleteBlockReason, wouldCreateLocationCycle } from "@/lib/location-list-query"
+import { isDeactivation } from "@/lib/master-data-query"
 
 type LocationRouteContext = {
   params: Promise<{ id: string }>
@@ -59,12 +60,34 @@ export async function PUT(request: NextRequest, context: LocationRouteContext) {
       return fieldErrorResponse({ status: 400, error: "Location cannot be its own parent", fieldErrors: { parentId: "locationOwnParent" } })
     }
 
+    // An inactive location opens and saves too: ticking "ใช้งาน" again brings it back (critique 2026-10-20 E1).
     const existing = await prisma.location.findFirst({
-      where: { id, isActive: true },
+      where: { id },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Location not found" }, { status: 404 })
+    }
+
+    // Unticking "ใช้งาน" removes the location from use the way "ลบ" does, so the same counts refuse it.
+    if (isDeactivation(existing.isActive, input.isActive)) {
+      const usage = await prisma.location.findFirst({
+        where: { id },
+        select: {
+          _count: {
+            select: {
+              currentAssets: { where: { isActive: true } },
+              homeAssets: { where: { isActive: true } },
+              children: { where: { isActive: true } },
+              auditRounds: true,
+            },
+          },
+        },
+      })
+      const blockReason = usage ? getLocationDeleteBlockReason(usage._count) : null
+      if (blockReason) {
+        return NextResponse.json({ error: blockReason }, { status: 409 })
+      }
     }
 
     if (input.parentId) {

@@ -118,7 +118,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
     redirect(listHref({ page: lastPage }))
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
-  const hasActiveFilters = Boolean(
+  const hasActiveFilters = listState.status !== "active" || Boolean(
     searchText ||
       listState.assetUsage !== "all" ||
       listState.modelStatus !== "all" ||
@@ -198,7 +198,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
       />
 
       <FilterPanel>
-        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]">
+        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(6,minmax(150px,1fr))_auto]">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           <input type="hidden" name="sort" value={listState.sort} />
@@ -254,6 +254,16 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
               { value: "all", label: tCommon("all") },
               { value: "withPrefix", label: t("withPrefix") },
               { value: "withoutPrefix", label: t("withoutPrefix") },
+            ]}
+          />
+          <FilterSelect
+            label={tCommon("status")}
+            name="status"
+            defaultValue={listState.status}
+            options={[
+              { value: "active", label: tCommon("active") },
+              { value: "inactive", label: tCommon("inactive") },
+              { value: "all", label: tCommon("all") },
             ]}
           />
           <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
@@ -347,7 +357,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                   </DataTableCell>
                   <DataTableCell numeric className="text-muted-foreground">{formatCount(category._count.customFieldDefs)}</DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
-                    <StatusBadge label={tCommon("active")} tone="success" />
+                    <StatusBadge label={category.isActive ? tCommon("active") : tCommon("inactive")} tone={category.isActive ? "success" : "muted"} />
                   </DataTableCell>
                   <DataTableCell align="right" sticky="right">
                     <RowActions
@@ -364,7 +374,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                           ],
                         },
                       ]}
-                      deleteAction={{ endpoint: `/api/categories/${category.id}` }}
+                      deleteAction={category.isActive ? { endpoint: `/api/categories/${category.id}` } : undefined}
                     />
                   </DataTableCell>
                 </ClickableTableRow>

@@ -16,7 +16,7 @@ export default async function EditAssetModelPage({ params, searchParams }: EditA
   await requirePagePermission(locale, "brand", "edit")
 
   const [model, brands, categories] = await Promise.all([
-    prisma.assetModel.findFirst({ where: { id, isActive: true } }),
+    prisma.assetModel.findFirst({ where: { id } }),
     prisma.assetBrand.findMany({
       where: { isActive: true },
       select: { id: true, name: true },

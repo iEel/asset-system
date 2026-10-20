@@ -14,41 +14,41 @@ const drilldownLink = /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "i
 test("branches list: drill-down counts are text links with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
   const source = read(`${D}master-data/branches/page.tsx`)
   assert.equal(source.match(drilldownLink)?.length, 2)
-  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
 
 test("categories list: the model and asset counts are text links with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
   const source = read(`${D}master-data/categories/page.tsx`)
   assert.equal(source.match(drilldownLink)?.length, 2)
-  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
 
 test("companies list: the branch and asset counts are text links with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
   const source = read(`${D}master-data/companies/page.tsx`)
   assert.equal(source.match(drilldownLink)?.length, 2)
-  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
 
 test("departments list: the active state is a StatusBadge (spec 2D M7)", () => {
   const source = read(`${D}master-data/departments/page.tsx`)
-  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
 
 test("employees list: the asset count is a text link with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
   const source = read(`${D}master-data/employees/page.tsx`)
   assert.equal(source.match(drilldownLink)?.length, 1)
-  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
 
 test("locations list: the asset count is a text link with a 44px phone target, and the active state is a StatusBadge (spec 2D M7, §3.3)", () => {
   const source = read(`${D}master-data/locations/page.tsx`)
   assert.equal(source.match(drilldownLink)?.length, 1)
-  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|\bh-8\b|className="px-2"/)
 })
 
@@ -60,7 +60,7 @@ test("brands page: drill-down text links, the panel frame on the picker and the 
   assert.match(source, /<ContentPanel\n\s+title=\{t\("modelWorkspaceTitle"\)\}/)
   assert.match(source, /<details className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
   assert.match(source, /<Link href=\{createModelHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
-  assert.match(source, /<StatusBadge label=\{tCommon\("active"\)\} tone="success" \/>/)
+  assert.match(source, /<StatusBadge label=\{(\w+)\.isActive \? tCommon\("active"\) : tCommon\("inactive"\)\} tone=\{\1\.isActive \? "success" : "muted"\} \/>/)
   assert.equal(source.match(/aria-current=\{/g)?.length, 2, "LN1 stays 2 (I11)")
   assert.doesNotMatch(source, /ActiveBadge|hover:bg-primary-soft|hover:bg-accent|\bh-[78]\b|className="px-2"|size: "lg"|bg-warning-soft|\btext-xs\b|text-lg|rounded-lg border/)
 })

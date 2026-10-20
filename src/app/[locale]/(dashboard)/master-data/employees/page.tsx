@@ -105,7 +105,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
     redirect(listHref({ page: lastPage }))
   }
   const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
-  const hasActiveFilters = Boolean(listState.search || listState.companyId || listState.branchId || listState.departmentId || listState.employmentStatus !== "all" || listState.custodyUsage !== "all")
+  const hasActiveFilters = listState.status !== "active" || Boolean(listState.search || listState.companyId || listState.branchId || listState.departmentId || listState.employmentStatus !== "all" || listState.custodyUsage !== "all")
   const sortBy = (field: EmployeeSort): DataTableSort => ({
     href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
     direction: listState.sort === field ? listState.direction : null,
@@ -172,7 +172,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       />
 
       <FilterPanel>
-        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]">
+        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(6,minmax(150px,1fr))_auto]">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           <input type="hidden" name="sort" value={listState.sort} />
@@ -215,6 +215,16 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             <option value="withAssets">{t("withAssets")}</option>
             <option value="withoutAssets">{t("withoutAssets")}</option>
           </FilterSelect>
+          <FilterSelect
+            label={tCommon("status")}
+            name="status"
+            defaultValue={listState.status}
+            options={[
+              { value: "active", label: tCommon("active") },
+              { value: "inactive", label: tCommon("inactive") },
+              { value: "all", label: tCommon("all") },
+            ]}
+          />
           <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
         </form>
       </FilterPanel>
@@ -319,7 +329,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                     )}
                   </DataTableCell>
                   <DataTableCell className="whitespace-nowrap">
-                    <StatusBadge label={tCommon("active")} tone="success" />
+                    <StatusBadge label={employee.isActive ? tCommon("active") : tCommon("inactive")} tone={employee.isActive ? "success" : "muted"} />
                   </DataTableCell>
                   <DataTableCell align="right" sticky="right">
                     <RowActions
@@ -328,7 +338,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                       menuLabel={tCommon("moreActionsFor", { code: employee.code })}
                       next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
                       groups={[]}
-                      deleteAction={{ endpoint: `/api/employees/${employee.id}` }}
+                      deleteAction={employee.isActive ? { endpoint: `/api/employees/${employee.id}` } : undefined}
                     />
                   </DataTableCell>
                 </ClickableTableRow>

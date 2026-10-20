@@ -100,3 +100,11 @@ test("builds brand and model drilldown links for related records", () => {
     assets: "/th/assets?modelId=model-1&page=1",
   })
 })
+
+test("the brand navigator and the model table share one record status filter, ใช้งาน by default (critique 2026-10-20 E1)", () => {
+  assert.equal(parseBrandModelListParams({}).status, "active")
+  assert.equal(parseBrandModelListParams({ status: "inactive" }).status, "inactive")
+  assert.equal(parseBrandModelListParams({ status: ["all"] }).status, "all")
+  assert.match(buildBrandModelQueryString(parseBrandModelListParams({ status: "inactive" }), {}), /(^|&)status=inactive(&|$)/)
+  assert.doesNotMatch(buildBrandModelQueryString(parseBrandModelListParams({}), {}), /status=/)
+})

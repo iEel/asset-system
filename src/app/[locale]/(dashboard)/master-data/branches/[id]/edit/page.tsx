@@ -17,7 +17,7 @@ export default async function EditBranchPage({ params, searchParams }: EditBranc
 
   const [branch, companies] = await Promise.all([
     prisma.branch.findFirst({
-      where: { id, isActive: true },
+      where: { id },
     }),
     prisma.company.findMany({
       where: { isActive: true },
