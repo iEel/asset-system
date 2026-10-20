@@ -278,3 +278,22 @@ test("the bulk execution's dialog takes one shared reference document number for
   assert.ok(!spec.includes(`test.fail(true, "finding D2:`))
   assert.match(read("e2e/disposal/disposal-support.ts"), /if \(documentNo\) await dialog\.locator\("#disposal-bulk-execution-document-no"\)\.fill\(documentNo\)/)
 })
+
+test("a second user with no employee link can be saved, and a clash on the employee answers under its field (e2e decision DX1 (ก): A1)", () => {
+  // The migration turns the plain unique constraint (SQL Server keeps one NULL) into a unique index of the same name
+  // that ignores NULL, as 2026-10-07-add-active-checkout-unique-index.sql does.
+  const migration = read("prisma/manual-migrations/2026-10-20-users-employee-filtered-unique.sql")
+  assert.match(migration, /ALTER TABLE \[dbo\]\.\[users\] DROP CONSTRAINT \[users_employeeId_key\];/)
+  assert.match(migration, /CREATE UNIQUE NONCLUSTERED INDEX \[users_employeeId_key\]\s+ON \[dbo\]\.\[users\]\(\[employeeId\]\)\s+WHERE \[employeeId\] IS NOT NULL;/)
+  assert.match(migration, /SET XACT_ABORT ON;\nBEGIN TRANSACTION;[\s\S]*COMMIT TRANSACTION;\n$/)
+  assert.ok(read("docs/03_DATABASE.md").includes("2026-10-20-users-employee-filtered-unique.sql"))
+
+  // A save racing past the route's checks gets the field error, not a 500.
+  const route = read("src/app/api/admin/users/route.ts")
+  assert.match(route, /if \(isPrismaUniqueConstraintError\(error\)\) return errorResponse\(toUniqueUserRefusal\(error\), 400\)/)
+  assert.match(route, /new FieldRefusalError\("Employee already has a user account", \{ employeeId: "employeeHasUser" \}\)/)
+
+  // The suite's viewer is unlinked again (spec §7), and the setup's A1 test runs as a plain test.
+  assert.match(read("e2e/support/run-plan.ts"), /viewer: \{ slug: "viewer", linked: false,/)
+  assert.ok(!read("e2e/setup/run-data.setup.ts").includes(`setup.fail(true, "A1: `))
+})

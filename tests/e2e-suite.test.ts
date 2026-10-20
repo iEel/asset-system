@@ -162,9 +162,9 @@ test("the setup creates the spec's users with exactly the spec's permissions, ma
     assert.match(roleForm, new RegExp(`"${moduleName}",`), moduleName)
     assert.match(roleForm, new RegExp(`"${action}"`), action)
   }
-  // Linked to an employee as §7 says, but the viewer (finding A1, see run-plan.ts); the landing pages of default-home.ts.
+  // Linked to an employee as §7 says, the viewer not (finding A1 fixed by decision DX1); the landing pages of default-home.ts.
   assert.deepEqual(plan.E2E_USER_KEYS, ["itStaff", "itHead", "viewer", "employee"])
-  assert.deepEqual(plan.E2E_USER_KEYS.map((key) => plan.E2E_USER_PLANS[key].linked), [true, true, true, true])
+  assert.deepEqual(plan.E2E_USER_KEYS.map((key) => plan.E2E_USER_PLANS[key].linked), [true, true, false, true])
   assert.deepEqual(plan.E2E_USER_KEYS.map((key) => plan.E2E_USER_PLANS[key].landingPath), ["/th/dashboard", "/th/dashboard", "/th/dashboard", "/th/my-assets"])
   // The run id on every username, role, code and name (spec §5), within the schemas' limits.
   assert.equal(plan.usernameFor("itStaff", "E2E-1019A"), "e2e.it-staff-1019a")
@@ -175,7 +175,7 @@ test("the setup creates the spec's users with exactly the spec's permissions, ma
     const records = plan.runRecords(runId)
     assert.ok(records.department.code.startsWith(runId) && records.department.code.length <= 20, records.department.code)
     assert.ok(records.location.code.startsWith(runId) && records.location.code.length <= 50, records.location.code)
-    assert.deepEqual(records.employees.map((employee) => employee.key), ["itStaff", "itHead", "viewer", "employee", "receiver1", "receiver2"])
+    assert.deepEqual(records.employees.map((employee) => employee.key), ["itStaff", "itHead", "employee", "receiver1", "receiver2"])
     for (const employee of records.employees) {
       assert.ok(employee.code.startsWith(`${runId}-`) && employee.code.length <= 20, employee.code)
       assert.ok(employee.fullNameTh.startsWith(runId), employee.fullNameTh)
@@ -188,12 +188,12 @@ test("the setup creates the spec's users with exactly the spec's permissions, ma
   assert.throws(() => plan.passwordFrom(new Uint8Array(8)), /24 random bytes/)
 
   // The setup signs in as the seed admin's saved session, creates the roles on the role form and reads them back, and
-  // keeps finding A1's expected failure.
+  // runs finding A1's test as a plain test (decision DX1).
   const setup = read("e2e/setup/run-data.setup.ts")
   assert.match(setup, /setup\.use\(\{ storageState: fromRoot\(ADMIN_STATE_FILE\) \}\)/)
   assert.match(setup, /await page\.goto\("\/th\/admin\/roles\/new"\)/)
   assert.match(setup, /await page\.goto\(`\/th\/admin\/roles\/\$\{role\.id\}\/edit`\)/)
-  assert.match(setup, /setup\.fail\(true, "A1: /)
+  assert.doesNotMatch(setup, /setup\.fail\(true, "A1: /)
   assert.doesNotMatch(setup, /console\.log/, "the setup prints nothing")
 
   // The fixtures: a small PNG photo and a small PDF, both binary (git never converts their line ends).

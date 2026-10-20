@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { fieldErrorResponse } from "@/lib/field-error-response"
+import { fieldErrorResponse, isPrismaUniqueConstraintError } from "@/lib/field-error-response"
 import { FieldRefusalError } from "@/lib/field-errors"
 import { adminUserSchema } from "@/lib/validations/admin-user"
 import { adminUserSecretOmit, toAdminUserResponse } from "@/lib/admin-user-response"
@@ -88,8 +88,18 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(toAdminUserResponse(created), { status: 201 })
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) return errorResponse(toUniqueUserRefusal(error), 400)
     return errorResponse(error, 400)
   }
+}
+
+// A save that raced past the checks above hits users_employeeId_key (a filtered unique index, e2e decision DX1) or
+// the username's: the refusal names the field, as the checks do.
+function toUniqueUserRefusal(error: unknown) {
+  const detail = error instanceof Error ? `${error.message} ${JSON.stringify((error as { meta?: unknown }).meta ?? null)}` : ""
+  return detail.includes("employeeId")
+    ? new FieldRefusalError("Employee already has a user account", { employeeId: "employeeHasUser" })
+    : new FieldRefusalError("Username already exists", { username: "duplicate" })
 }
 
 async function assertUniqueUsername(username: string) {

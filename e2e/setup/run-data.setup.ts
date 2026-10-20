@@ -148,12 +148,9 @@ setup("the run's department, location, employees, roles and users, and a session
   }
 })
 
-// Finding A1 (expected to fail until it is fixed): Admin > Users cannot create a second user with no employee link.
-// users.employeeId is a unique constraint (users_employeeId_key, no filter), SQL Server lets it hold one NULL, and the
-// seed admin holds it: the save answers 500. When A1 is fixed this test passes, Playwright reports it, and the viewer
-// goes back to unlinked (run-plan.ts).
+// Finding A1, fixed by decision DX1: users_employeeId_key ignores NULL, so the seed admin and the unlinked viewer leave
+// room for one more user with no employee link.
 setup("a second user with no employee link can be created (finding A1)", async ({ page }) => {
-  setup.fail(true, "A1: users.employeeId allows one NULL on SQL Server")
   const { runId } = readRunState()
   const viewer = readRunData(runId).users.viewer
   if (!viewer) throw new Error("the run has no viewer role: the setup test did not finish")

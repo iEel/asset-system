@@ -37,10 +37,8 @@ type UserPlan = {
 export const E2E_USER_PLANS: Record<E2eUserKey, UserPlan> = {
   itStaff: { slug: "it-staff", linked: true, roleTh: "เจ้าหน้าที่ IT", roleEn: "IT staff", landingPath: "/th/dashboard" },
   itHead: { slug: "it-head", linked: true, roleTh: "หัวหน้า IT", roleEn: "IT head", landingPath: "/th/dashboard" },
-  // Spec §7 has the viewer unlinked, but the app cannot create a second user with no employee link (finding A1:
-  // users.employeeId is a unique constraint, and SQL Server lets it hold one NULL, the seed admin's). Linked until A1 is
-  // fixed; run-data.setup.ts keeps an expected-to-fail test of an unlinked user.
-  viewer: { slug: "viewer", linked: true, roleTh: "ผู้ดูอย่างเดียว", roleEn: "Viewer", landingPath: "/th/dashboard" },
+  // Unlinked, as spec §7 says (finding A1 fixed by decision DX1: users_employeeId_key ignores NULL).
+  viewer: { slug: "viewer", linked: false, roleTh: "ผู้ดูอย่างเดียว", roleEn: "Viewer", landingPath: "/th/dashboard" },
   employee: { slug: "employee", linked: true, roleTh: "พนักงาน", roleEn: "Employee", landingPath: "/th/my-assets" },
 }
 
