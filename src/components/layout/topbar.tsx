@@ -45,6 +45,7 @@ import {
   type NotificationClientSummary,
 } from "@/lib/notification-client-sync"
 import type { NotificationSummaryItem } from "@/lib/notification-summary-items"
+import { hasNavigationPermission } from "@/lib/navigation-permissions"
 
 async function fetchNotificationSummary(locale: string) {
   try {
@@ -79,6 +80,8 @@ export function Topbar({
   const [notificationRequestGuard] = useState(createLatestNotificationRequestGuard)
   const userDisplayLabel = getUserDisplayLabel(user)
   const userSecondaryLabel = getUserSecondaryLabel(user)
+  // C2: the work center needs dashboard:view, so the bell offers it only to people who can open it.
+  const canOpenWorkCenter = hasNavigationPermission(user, { module: "dashboard", action: "view" })
   const localeCode = locale === "th" ? "TH" : "EN"
 
   const loadNotificationSummary = useCallback(async () => {
@@ -220,13 +223,15 @@ export function Topbar({
                 >
                   {tNotifications("openNotificationCenter")}
                 </Link>
-                <Link
-                  href={`/${locale}/work-center`}
-                  onClick={() => setNotificationOpen(false)}
-                  className={cn(buttonVariants({ variant: "ghost", size: "md" }), "w-full")}
-                >
-                  {tNotifications("openWorkCenter")}
-                </Link>
+                {canOpenWorkCenter ? (
+                  <Link
+                    href={`/${locale}/work-center`}
+                    onClick={() => setNotificationOpen(false)}
+                    className={cn(buttonVariants({ variant: "ghost", size: "md" }), "w-full")}
+                  >
+                    {tNotifications("openWorkCenter")}
+                  </Link>
+                ) : null}
               </div>
             </PopoverContent>
           </Popover>

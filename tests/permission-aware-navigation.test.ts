@@ -98,3 +98,41 @@ test("login and dashboard entry points use the role-aware default home", () => {
   assert.match(dashboardPage, /shouldUseEmployeeHome\(user\)/)
   assert.match(dashboardPage, /redirect\(`\/\$\{locale\}\/my-assets`\)/)
 })
+
+// Critique 2026-10-20 C2: the work center needs dashboard:view (work-center/page.tsx requirePagePermission). Every link
+// to it shows only to a person who has that permission, and access denied's main button goes to the person's home page.
+test("every work-center link needs dashboard:view, and access denied goes home (critique 2026-10-20 C2)", () => {
+  const readLf = (path: string) => readFileSync(path, "utf8").replace(/\r/g, "")
+  const D = "src/app/[locale]/(dashboard)/"
+  const sources = {
+    myAssets: readLf(`${D}my-assets/page.tsx`),
+    accessDenied: readLf(`${D}access-denied/page.tsx`),
+    dashboard: readLf(`${D}dashboard/page.tsx`),
+    notifications: readLf(`${D}notifications/page.tsx`),
+    topbar: readLf("src/components/layout/topbar.tsx"),
+  }
+  for (const [name, source] of Object.entries(sources)) {
+    assert.equal(source.match(/\/work-center/g)?.length, 1, `${name} has one work-center link`)
+    assert.match(source, /\{?canOpenWorkCenter \? \(\n\s+<Link(?:\n\s+| )href=\{`\/\$\{locale\}\/work-center[`?]/, `${name} guards its work-center link`)
+  }
+  assert.match(sources.myAssets, /const canOpenWorkCenter = hasPermission\(user, "dashboard", "view"\)/)
+  assert.match(sources.myAssets, /actions=\{canOpenWorkCenter \? \(\n\s+<Link href=\{`\/\$\{locale\}\/work-center\?view=mine`\}/)
+  assert.match(sources.notifications, /const canOpenWorkCenter = hasPermission\(user, "dashboard", "view"\)/)
+  assert.match(sources.dashboard, /const canOpenWorkCenter = user \? hasPermission\(user, "dashboard", "view"\) : false/)
+  assert.match(sources.topbar, /const canOpenWorkCenter = hasNavigationPermission\(user, \{ module: "dashboard", action: "view" \}\)/)
+  assert.match(sources.topbar, /import \{ hasNavigationPermission \} from "@\/lib\/navigation-permissions"/)
+
+  assert.match(sources.accessDenied, /const canOpenWorkCenter = user \? hasPermission\(user, "dashboard", "view"\) : false/)
+  assert.match(sources.accessDenied, /getDefaultHomeHref\(locale, user\)/)
+  assert.match(sources.accessDenied, /<Link href=\{homeHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+\{t\("backHome"\)\}/)
+  assert.doesNotMatch(sources.accessDenied, /backDashboard/)
+
+  for (const locale of ["th", "en"]) {
+    const page = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).accessDeniedPage
+    assert.equal(typeof page.backHome, "string")
+    assert.equal(page.backDashboard, undefined)
+  }
+  assert.equal(JSON.parse(readFileSync("messages/th.json", "utf8")).accessDeniedPage.backHome, "กลับหน้าแรก")
+  assert.equal(JSON.parse(readFileSync("messages/en.json", "utf8")).accessDeniedPage.backHome, "Back to Home")
+  assert.equal(getDefaultHomeHref("th", { roles: ["employee"], permissions: [], employeeId: "emp-1" }), "/th/my-assets")
+})

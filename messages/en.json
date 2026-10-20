@@ -119,7 +119,7 @@
     "saved": "Notification state saved",
     "saveFailed": "Could not save notification state",
     "approvalInbox": "Approval Inbox",
-    "approvalInboxDetail": "Central queue across disposal, maintenance, and audit approvals",
+    "approvalInboxDetail": "Central queue across disposal and audit approvals",
     "duePm": "PM due",
     "duePmDetail": "PM plans due within 7 days. Record them as done on the maintenance page",
     "pendingAuditFindings": "Discrepancies pending decision",
@@ -320,8 +320,8 @@
     "title": "You do not have access to this page",
     "description": "Your account does not have permission for this menu or action. Contact an administrator if you need access for your work.",
     "requestedPermission": "Required permission: {permission}",
-    "backDashboard": "Back to Dashboard",
-    "openWorkCenter": "Open Work Center"
+    "openWorkCenter": "Open Work Center",
+    "backHome": "Back to Home"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -113,3 +113,11 @@ test("the snapshot's summary and the counts share one database count (critique C
   assert.equal(src.match(/countApprovalInbox\(user, access, policy\)/g)?.length, 2)
   assert.match(src, /return buildApprovalInboxCounts\(\{ disposal, auditFindings, auditRoundsReady \}\)/)
 })
+
+test("the approval inbox sentence names only the queues it counts (critique C3)", () => {
+  for (const locale of ["th", "en"]) {
+    const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+    assert.equal(m.notifications.approvalInboxDetail, m.workCenter.approvalInboxDetail)
+    assert.doesNotMatch(m.notifications.approvalInboxDetail, /ซ่อม|maintenance/i)
+  }
+})

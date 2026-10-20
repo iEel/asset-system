@@ -16,7 +16,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
-import { getSessionUser } from "@/lib/auth-utils"
+import { getSessionUser, hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
@@ -74,6 +74,8 @@ export default async function MyAssetsPage({ params, searchParams }: MyAssetsPag
     )
   }
 
+  // C2: the work center needs dashboard:view, so its link shows only to people who can open it.
+  const canOpenWorkCenter = hasPermission(user, "dashboard", "view")
   const listPage = parseListPage({ page, pageSize })
   const basePath = `/${locale}/my-assets`
   // The list URL with its page and page size; the defaults stay out of it, so page 1 keeps today's URL (spec 2B B4).
@@ -131,11 +133,11 @@ export default async function MyAssetsPage({ params, searchParams }: MyAssetsPag
       <PageHeader
         title={t("title")}
         meta={t("subtitle")}
-        actions={
+        actions={canOpenWorkCenter ? (
           <Link href={`/${locale}/work-center?view=mine`} className={buttonVariants({ variant: "outline", size: "md" })}>
             {t("openWorkCenter")}
           </Link>
-        }
+        ) : undefined}
       />
 
       <section aria-label={t("summary")}>

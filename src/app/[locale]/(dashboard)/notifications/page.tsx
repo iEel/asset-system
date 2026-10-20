@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { requireAuth } from "@/lib/auth-utils"
+import { hasPermission, requireAuth } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
@@ -21,6 +21,8 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
   const { locale } = await params
   const user = await requireAuth()
   const t = await getTranslations("notifications")
+  // C2: the work center needs dashboard:view, so its link shows only to people who can open it.
+  const canOpenWorkCenter = hasPermission(user, "dashboard", "view")
   const [center, assignees, deliveredNotifications] = await Promise.all([
     getNotificationCenter(user, locale),
     prisma.user.findMany({
@@ -55,11 +57,11 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
       <PageHeader
         title={t("centerTitle")}
         meta={t("centerSubtitle")}
-        actions={
+        actions={canOpenWorkCenter ? (
           <Link href={`/${locale}/work-center`} className={buttonVariants({ variant: "outline", size: "md" })}>
             {t("openWorkCenter")}
           </Link>
-        }
+        ) : undefined}
       />
 
       <StatStrip

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getMessages, getTranslations } from "next-intl/server"
 import { ArrowRight } from "lucide-react"
-import { getSessionUser } from "@/lib/auth-utils"
+import { getSessionUser, hasPermission } from "@/lib/auth-utils"
 import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import {
   buildDashboardActionCardKeys,
@@ -53,6 +53,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     redirect(`/${locale}/my-assets`)
   }
 
+  // C2: the work center needs dashboard:view, so its link shows only to people who can open it.
+  const canOpenWorkCenter = user ? hasPermission(user, "dashboard", "view") : false
   const [t, messages] = await Promise.all([getTranslations("dashboard"), getMessages()])
   const systemLogMessages = messages.systemLogPage && typeof messages.systemLogPage === "object"
     ? messages.systemLogPage as Record<string, string>
@@ -323,12 +325,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       <ContentPanel
         title={t("actionableTitle")}
         description={t("actionableSubtitle")}
-        actions={
+        actions={canOpenWorkCenter ? (
           <Link href={`/${locale}/work-center?panel=overview`} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
             {t("openWorkCenter")}
             <ArrowRight aria-hidden="true" className="size-4" />
           </Link>
-        }
+        ) : undefined}
       >
         <div className="space-y-3">
           {splitStatRows(actionItems).map((row) => (
