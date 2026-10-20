@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
-import { buildApprovalInboxItems, summarizeApprovalInbox } from "../src/lib/approval-inbox.ts"
+import { buildApprovalInboxCounts, buildApprovalInboxItems } from "../src/lib/approval-inbox.ts"
 
 test("builds approval inbox items from pending workflow records", () => {
   const items = buildApprovalInboxItems({
@@ -55,7 +56,6 @@ test("builds approval inbox items from pending workflow records", () => {
   assert.equal(items[0].tone, "danger")
   assert.equal(items[1].module, "audit")
   assert.equal(items[2].tone, "primary")
-  assert.deepEqual(summarizeApprovalInbox(items), { total: 3, disposal: 1, audit: 2 })
 })
 
 test("respects approval policy toggles", () => {
@@ -100,4 +100,16 @@ test("respects approval policy toggles", () => {
   })
 
   assert.deepEqual(items.map((item) => item.kind), ["audit_finding_review"])
+})
+
+test("approval inbox counts are the full counts, not the capped rows (critique C1)", () => {
+  assert.deepEqual(buildApprovalInboxCounts({ disposal: 60, auditFindings: 12, auditRoundsReady: 1 }), { total: 73, disposal: 60, audit: 13 })
+  assert.deepEqual(buildApprovalInboxCounts({ disposal: 0, auditFindings: 0, auditRoundsReady: 0 }), { total: 0, disposal: 0, audit: 0 })
+})
+
+test("the snapshot's summary and the counts share one database count (critique C1)", () => {
+  const src = readFileSync("src/lib/approval-inbox-query.ts", "utf8").replace(/\r/g, "")
+  assert.doesNotMatch(src, /summarizeApprovalInbox|items\.length/)
+  assert.equal(src.match(/countApprovalInbox\(user, access, policy\)/g)?.length, 2)
+  assert.match(src, /return buildApprovalInboxCounts\(\{ disposal, auditFindings, auditRoundsReady \}\)/)
 })

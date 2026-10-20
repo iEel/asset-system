@@ -110,12 +110,11 @@ export function buildApprovalInboxItems(source: ApprovalInboxSource): ApprovalIn
   })
 }
 
-export function summarizeApprovalInbox(items: ApprovalInboxItem[]) {
-  return {
-    total: items.length,
-    disposal: items.filter((item) => item.module === "disposal").length,
-    audit: items.filter((item) => item.module === "audit").length,
-  }
+export type ApprovalInboxCountParts = { disposal: number; auditFindings: number; auditRoundsReady: number }
+
+export function buildApprovalInboxCounts(parts: ApprovalInboxCountParts): { total: number; disposal: number; audit: number } {
+  const audit = parts.auditFindings + parts.auditRoundsReady
+  return { total: parts.disposal + audit, disposal: parts.disposal, audit }
 }
 
 function tonePriority(tone: ApprovalInboxItem["tone"]) {

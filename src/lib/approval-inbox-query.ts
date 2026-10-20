@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
-import { buildApprovalInboxItems, summarizeApprovalInbox } from "@/lib/approval-inbox"
-import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
+import { buildApprovalInboxCounts, buildApprovalInboxItems } from "@/lib/approval-inbox"
+import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys, type WorkflowApprovalPolicy } from "@/lib/workflow-approval"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 
 export type ApprovalInboxAccess = {
@@ -20,7 +20,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
   const access = getApprovalInboxAccess(user)
   const policy = await getWorkflowApprovalPolicy()
 
-  const [disposalRequests, auditFindings, auditRoundsReadyToClose] = await Promise.all([
+  const [disposalRequests, auditFindings, auditRoundsReadyToClose, summary] = await Promise.all([
     access.canApproveDisposal && policy.disposalRequired
       ? prisma.disposalRequest.findMany({
           where: { isActive: true, requestStatus: "pending" },
@@ -47,6 +47,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
     access.canApproveAudit && policy.auditCloseRequired
       ? getAuditRoundsReadyToClose(user.id)
       : Promise.resolve([]),
+    countApprovalInbox(user, access, policy),
   ])
 
   const items = buildApprovalInboxItems({
@@ -75,7 +76,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
     access,
     policy,
     items,
-    summary: summarizeApprovalInbox(items),
+    summary,
   }
 }
 
@@ -84,6 +85,11 @@ export async function getApprovalInboxCounts(user: SessionUser): Promise<Approva
   if (!access.canAnyApproval) return { total: 0, disposal: 0, audit: 0 }
 
   const policy = await getWorkflowApprovalPolicy()
+  return countApprovalInbox(user, access, policy)
+}
+
+// The real database counts. The lists in the snapshot are capped (take: 50 / 100), so counting their rows stops at the cap.
+async function countApprovalInbox(user: SessionUser, access: ApprovalInboxAccess, policy: WorkflowApprovalPolicy): Promise<ApprovalInboxCounts> {
   const [disposal, auditFindings, auditRoundsReady] = await Promise.all([
     access.canApproveDisposal && policy.disposalRequired
       ? prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } })
@@ -95,13 +101,8 @@ export async function getApprovalInboxCounts(user: SessionUser): Promise<Approva
       ? getReadyAuditRoundCloseCount(user.id)
       : Promise.resolve(0),
   ])
-  const audit = auditFindings + auditRoundsReady
 
-  return {
-    total: disposal + audit,
-    disposal,
-    audit,
-  }
+  return buildApprovalInboxCounts({ disposal, auditFindings, auditRoundsReady })
 }
 
 export function getApprovalInboxAccess(user: SessionUser): ApprovalInboxAccess {
