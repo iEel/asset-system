@@ -200,10 +200,10 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const decisionStatuses = getDisposalDecisionStatusOptions(statusOptions)
   const executionStatuses = getDisposalExecutionStatusOptions(statusOptions)
   const stageLabels = {
-    pending_approval: t("stages.pending_approval"),
-    awaiting_execution: t("stages.awaiting_execution"),
-    complete: t("stages.complete"),
-    rejected: t("stages.rejected"),
+    pending_approval: t("statuses.pending"),
+    awaiting_execution: t("statuses.approved"),
+    complete: t("statuses.disposed"),
+    rejected: t("statuses.rejected"),
   }
   const bulkApprovalCopy: DisposalBulkApprovalCopy = {
     toolbarLabel: t("bulkToolbarLabel"),

@@ -96,7 +96,7 @@ export default async function DisposalBatchHistoryPage({ params, searchParams }:
           <DataTable framed={false} className="hidden md:block" caption={t("batchHistory")} scrollHint={tCommon("tableScrollHint")}>
             <DataTableHeader>
               <tr>
-                <DataTableHead>{t("sourceBatch")}</DataTableHead>
+                <DataTableHead>{t("batchNo")}</DataTableHead>
                 <DataTableHead>{t("disposalType")}</DataTableHead>
                 <DataTableHead>{t("requestedBy")}</DataTableHead>
                 <DataTableHead>{t("requestDate")}</DataTableHead>

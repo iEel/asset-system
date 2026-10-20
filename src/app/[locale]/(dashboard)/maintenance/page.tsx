@@ -62,8 +62,10 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const returnHref = `/${locale}/maintenance?${listQuery}`
   const now = new Date()
   const todayKey = getBangkokDateKey(now)
+  // D2: the box lists the first 20 due plans but counts every one, as the notifications do.
+  const duePmWhere = buildDuePmPlanWhere(now)
 
-  const [records, total, duePlans, stuckAssets, stuckTotal] = await Promise.all([
+  const [records, total, duePlans, dueTotal, stuckAssets, stuckTotal] = await Promise.all([
     prisma.maintenanceTicket.findMany({
       where,
       include: {
@@ -77,7 +79,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
     }),
     prisma.maintenanceTicket.count({ where }),
     prisma.maintenancePlan.findMany({
-      where: buildDuePmPlanWhere(now),
+      where: duePmWhere,
       select: {
         id: true,
         planNo: true,
@@ -89,6 +91,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       orderBy: { nextDueDate: "asc" },
       take: 20,
     }),
+    prisma.maintenancePlan.count({ where: duePmWhere }),
     prisma.asset.findMany({
       where: stuckAssetWhere,
       select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } },
@@ -161,7 +164,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       <section id="pm-due" className={cn(getPanelClasses(), "p-4 sm:p-5")}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-foreground">{t("pmDueTitle")} ({formatCount(duePlans.length)})</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("pmDueTitle")} ({formatCount(dueTotal)})</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("pmDueHelp")}</p>
           </div>
           <Link href={`/${locale}/maintenance/pm`} className={buttonVariants({ variant: "outline" })}>
@@ -193,6 +196,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             })}
           </ul>
         ) : null}
+        {dueTotal > duePlans.length ? <p className="mt-2 text-meta text-muted-foreground">{t("pmDueMore", { count: dueTotal - duePlans.length })}</p> : null}
       </section>
 
       <FilterPanel>

@@ -166,3 +166,26 @@ test("review focus 2: a missing amount on the disposal printout stays null and p
     assert.match(source, new RegExp(`disposalRequest\\.${name} == null \\? null : formatMoney\\(Number\\(disposalRequest\\.${name}\\), \\{ unit: tCommon\\("baht"\\) \\}\\)`), field)
   }
 })
+
+test("one set of disposal status names (critique 2026-10-20 D3)", () => {
+  const D = "src/app/[locale]/(dashboard)/"
+  const queue = read(`${D}disposal/page.tsx`)
+  const workCenter = read(`${D}work-center/page.tsx`)
+  const th = JSON.parse(read("messages/th.json")), en = JSON.parse(read("messages/en.json"))
+  assert.doesNotMatch(queue, /t\("stages\./)
+  assert.match(queue, /pending_approval: t\("statuses\.pending"\),\s+awaiting_execution: t\("statuses\.approved"\),\s+complete: t\("statuses\.disposed"\),\s+rejected: t\("statuses\.rejected"\)/)
+  assert.match(workCenter, /tDisposal\(`statuses\.\$\{request\.requestStatus\}`\)/); assert.doesNotMatch(workCenter, /disposalStatus_/)
+  assert.deepEqual(th.disposalPage.statuses, { pending: "รอพิจารณา", approved: "อนุมัติแล้ว รอตัดจำหน่าย", disposed: "ตัดจำหน่ายแล้ว", rejected: "ไม่อนุมัติ" })
+  assert.deepEqual(en.disposalPage.statuses, { pending: "Pending decision", approved: "Approved, awaiting disposal", disposed: "Disposed", rejected: "Not approved" })
+  for (const m of [th, en]) { assert.equal(m.disposalPage.stages, undefined); assert.equal(m.workCenter.disposalStatus_pending, undefined); assert.equal(m.workCenter.disposalStatus_approved, undefined) }
+  assert.equal(th.disposalPage.subtitle, "ติดตามคำขอที่รอพิจารณา รอตัดจำหน่าย และปิดงานตัดจำหน่าย")
+  assert.equal(en.disposalPage.subtitle, "Track disposal requests pending decision, awaiting disposal, and completed.")
+})
+
+test("the batch list names its first column the batch number (critique 2026-10-20 D4)", () => {
+  const src = read("src/app/[locale]/(dashboard)/disposal/batches/page.tsx")
+  assert.match(src, /<DataTableHead>\{t\("batchNo"\)\}<\/DataTableHead>/)
+  assert.doesNotMatch(src, /t\("sourceBatch"\)/)
+  assert.equal(JSON.parse(read("messages/th.json")).disposalPage.batchNo, "เลขที่ชุด")
+  assert.equal(JSON.parse(read("messages/en.json")).disposalPage.batchNo, "Batch No.")
+})

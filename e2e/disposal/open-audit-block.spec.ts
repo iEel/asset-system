@@ -85,6 +85,6 @@ test("IT staff cannot request disposal of an asset in an open audit round, and c
     await page.waitForURL(/\/th\/disposal\/[0-9a-f-]{36}$/)
   })
   await expectToast(page, "สร้างคำขอตัดจำหน่ายสำเร็จ")
-  await expect(page.getByRole("main").getByText("รออนุมัติ").first()).toBeVisible()
+  await expect(page.getByRole("main").getByText("รอพิจารณา").first()).toBeVisible()
   await measure.recordPage("IT staff: the request, pending approval")
 })

@@ -124,7 +124,7 @@ test("IT staff request two disposals in one batch with shared evidence, and the 
 
   // Their own request stays pending: no review on its page, and the bulk preview blocks it for segregation of duties.
   await measure.visit(`/th/disposal/${ownRequestId}`, "IT head: their own request")
-  await expect(page.getByRole("main").getByText("รออนุมัติ").first()).toBeVisible()
+  await expect(page.getByRole("main").getByText("รอพิจารณา").first()).toBeVisible()
   await expect(visibleButton(page, "พิจารณาคำขอ")).toHaveCount(0)
   const ownPreview = await page.request.post("/api/disposal-requests/bulk-decision", { data: { mode: "preview", requestIds: [ownRequestId] } })
   expect(ownPreview.status()).toBe(200)
@@ -141,7 +141,7 @@ test("IT staff execute one batch request on its page with the batch's shared evi
   const path = requestPaths[asset.assetTag]
   expect(path, "the batch test read the request's page").toBeTruthy()
   await measure.visit(path, "IT staff: an approved batch request")
-  await expect(page.getByRole("main").getByText("อนุมัติแล้ว").first()).toBeVisible()
+  await expect(page.getByRole("main").getByText("อนุมัติแล้ว รอตัดจำหน่าย").first()).toBeVisible()
   // The batch's evidence counts for the request: the execution has no evidence notice.
   await visibleButton(page, "บันทึกตัดจำหน่ายจริง").click()
   const execution = page.getByRole("dialog", { name: "บันทึกผลการตัดจำหน่ายจริง" })

@@ -446,8 +446,6 @@
     "findingReview_approved": "อนุมัติ",
     "findingReview_rejected": "ปฏิเสธ",
     "findingReview_exception": "ยกเว้น",
-    "disposalStatus_pending": "รออนุมัติ",
-    "disposalStatus_approved": "อนุมัติแล้ว",
     "viewNavigation": "มุมมองงาน"
   },
   "asset": {
@@ -2586,7 +2584,8 @@
       "completed": "ซ่อมเสร็จ",
       "closed": "ซ่อมเสร็จแล้ว",
       "cancelled": "ยกเลิก"
-    }
+    },
+    "pmUpdateSuccess": "บันทึกการแก้ไขแผน PM แล้ว"
   },
   "repairRecord": {
     "title": "ซ่อมบำรุง",
@@ -2719,17 +2718,19 @@
     "activeFilters": "ตัวกรองที่ใช้อยู่",
     "emptyFilteredTitle": "ไม่พบบันทึกการซ่อมที่ตรงกับตัวกรอง",
     "emptyFilteredHelp": "ลองเปลี่ยนหรือล้างตัวกรอง",
-    "returnDateBeforeReported": "วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม"
+    "returnDateBeforeReported": "วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม",
+    "pmDueMore": "และอีก {count} แผน"
   },
   "disposalPage": {
     "title": "ตัดจำหน่าย",
-    "subtitle": "ติดตามคำขอที่รออนุมัติ รอดำเนินการ และปิดงานตัดจำหน่าย",
+    "subtitle": "ติดตามคำขอที่รอพิจารณา รอตัดจำหน่าย และปิดงานตัดจำหน่าย",
     "createTitle": "สร้างคำขอตัดจำหน่าย",
     "createSubtitle": "เลือกทรัพย์สิน ระบุเหตุผล ผู้ขอ ผู้อนุมัติ และมูลค่าที่เกี่ยวข้อง",
     "formSteps": {
       "asset": "เลือกทรัพย์สินและประเภท",
       "request": "ระบุข้อมูลคำขอ",
-      "evidence": "แนบหลักฐาน"
+      "evidence": "แนบหลักฐาน",
+      "batchAssets": "เลือกทรัพย์สิน"
     },
     "reasonCharacterCount": "{count} / {max} ตัวอักษร",
     "requestList": "รายการคำขอตัดจำหน่ายล่าสุด",
@@ -3039,16 +3040,10 @@
       "dispose": "ตัดจำหน่าย"
     },
     "statuses": {
-      "pending": "รออนุมัติ",
-      "approved": "อนุมัติแล้ว",
+      "pending": "รอพิจารณา",
+      "approved": "อนุมัติแล้ว รอตัดจำหน่าย",
       "disposed": "ตัดจำหน่ายแล้ว",
-      "rejected": "ปฏิเสธ"
-    },
-    "stages": {
-      "pending_approval": "รออนุมัติ",
-      "awaiting_execution": "อนุมัติแล้ว รอดำเนินการ",
-      "complete": "ดำเนินการเสร็จสิ้น",
-      "rejected": "คำขอถูกปฏิเสธ"
+      "rejected": "ไม่อนุมัติ"
     },
     "saleValueBaht": "มูลค่าขาย (บาท)",
     "salvageValueBaht": "มูลค่าซาก (บาท)",
@@ -3067,7 +3062,8 @@
     "batchNeedsAssets": "เลือกทรัพย์สินอย่างน้อย 2 รายการก่อนตรวจสอบชุดคำขอ",
     "bulkExecutionPermanentConfirmationRequired": "กรุณาเลือกช่องยืนยันก่อนดำเนินการ",
     "bulkExecutionSharedDocumentNo": "เลขที่เอกสารอ้างอิงร่วม",
-    "bulkExecutionSharedDocumentNoHelp": "ใช้เฉพาะรายการที่ยังไม่มีเลขที่เอกสารอ้างอิง และจะไม่ทับเลขเดิมของคำขอ"
+    "bulkExecutionSharedDocumentNoHelp": "ใช้เฉพาะรายการที่ยังไม่มีเลขที่เอกสารอ้างอิง และจะไม่ทับเลขเดิมของคำขอ",
+    "batchNo": "เลขที่ชุด"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

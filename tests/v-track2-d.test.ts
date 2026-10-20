@@ -185,7 +185,7 @@ test("disposal batch: the edit step is a form whose requester and reason are err
   // A hidden estimated value is neither checked nor focused (D-R4), and a type change clears them.
   assert.ok(rules.includes("if (code && shown.includes(key)) errors[key] = code"))
   assert.match(source, /if \(field === "disposalType"\) fieldErrors\.clear\("saleValue", "salvageValue"\)\n\s+else if \(field in FIELD_IDS\) fieldErrors\.clear\(field as DisposalBatchField\)/)
-  assert.ok(source.includes('<NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)}>'))
+  assert.ok(source.includes('<NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)} required>'))
   assert.doesNotMatch(source, /if \(!valid\) return/)
   assert.match(source, /onChange=\{\(value\) => \{\n\s+setValues\(\(current\) => \(\{ \.\.\.current, requestedById: value, approverId: current\.approverId === value \? "" : current\.approverId \}\)\)\n\s+fieldErrors\.clear\("requestedById"\)\n/)
   for (const locale of ["th", "en"] as const) {

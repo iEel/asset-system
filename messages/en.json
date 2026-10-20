@@ -446,8 +446,6 @@
     "findingReview_approved": "Approved",
     "findingReview_rejected": "Rejected",
     "findingReview_exception": "Exception",
-    "disposalStatus_pending": "Pending approval",
-    "disposalStatus_approved": "Approved",
     "viewNavigation": "Work view"
   },
   "asset": {
@@ -2586,7 +2584,8 @@
       "completed": "Completed",
       "closed": "Finished",
       "cancelled": "Cancelled"
-    }
+    },
+    "pmUpdateSuccess": "PM plan updated"
   },
   "repairRecord": {
     "title": "Maintenance",
@@ -2719,17 +2718,19 @@
     "activeFilters": "Active filters",
     "emptyFilteredTitle": "No repair records match the filters",
     "emptyFilteredHelp": "Change or clear the filters",
-    "returnDateBeforeReported": "The return date cannot be before the date the repair was reported"
+    "returnDateBeforeReported": "The return date cannot be before the date the repair was reported",
+    "pmDueMore": "and {count} more"
   },
   "disposalPage": {
     "title": "Disposal",
-    "subtitle": "Track disposal requests awaiting approval, execution, and completion.",
+    "subtitle": "Track disposal requests pending decision, awaiting disposal, and completed.",
     "createTitle": "Create Disposal Request",
     "createSubtitle": "Select an asset, reason, requester, approver, and related values",
     "formSteps": {
       "asset": "Select assets and type",
       "request": "Enter request details",
-      "evidence": "Attach evidence"
+      "evidence": "Attach evidence",
+      "batchAssets": "Select assets"
     },
     "reasonCharacterCount": "{count} / {max} characters",
     "requestList": "Latest Disposal Requests",
@@ -3039,16 +3040,10 @@
       "dispose": "Dispose"
     },
     "statuses": {
-      "pending": "Pending Approval",
-      "approved": "Approved",
+      "pending": "Pending decision",
+      "approved": "Approved, awaiting disposal",
       "disposed": "Disposed",
-      "rejected": "Rejected"
-    },
-    "stages": {
-      "pending_approval": "Pending approval",
-      "awaiting_execution": "Approved, awaiting execution",
-      "complete": "Execution complete",
-      "rejected": "Request rejected"
+      "rejected": "Not approved"
     },
     "saleValueBaht": "Sale Value (THB)",
     "salvageValueBaht": "Salvage Value (THB)",
@@ -3067,7 +3062,8 @@
     "batchNeedsAssets": "Select at least 2 assets before you review the batch.",
     "bulkExecutionPermanentConfirmationRequired": "Tick the confirmation box before you continue.",
     "bulkExecutionSharedDocumentNo": "Shared reference document number",
-    "bulkExecutionSharedDocumentNoHelp": "Applied only to requests without a reference document number. A request's own number is not overwritten."
+    "bulkExecutionSharedDocumentNoHelp": "Applied only to requests without a reference document number. A request's own number is not overwritten.",
+    "batchNo": "Batch No."
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

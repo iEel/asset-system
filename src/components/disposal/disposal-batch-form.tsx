@@ -189,7 +189,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
     <ContentPanel>
       <form onSubmit={handleReview} noValidate className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <div className="min-w-0 space-y-4">
-          <FormSection number={1} title={t("formSteps.asset")} />
+          <FormSection number={1} title={t("formSteps.batchAssets")} />
           <DisposalAssetPicker
             label={t("asset")}
             selected={selectedAssets}
@@ -202,8 +202,8 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
         </div>
         <div className="space-y-4">
           <FormSection number={2} title={t("formSteps.request")} />
-          <Field label={t("disposalType")}>
-            <NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)}>
+          <Field label={t("disposalType")} required>
+            <NativeSelect value={values.disposalType} onChange={(event) => setField("disposalType", event.target.value)} required>
               {["dispose", "sell", "donate", "destroy", "lost"].map((type) => <option key={type} value={type}>{t(`types.${type}`)}</option>)}
             </NativeSelect>
           </Field>

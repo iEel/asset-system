@@ -105,3 +105,13 @@ test("an asset in an open audit round cannot be requested for disposal, with the
   const codes = disposalSpecs().map((file) => read(`e2e/disposal/${file}`).match(/recordPrefix\(testInfo, "(DSP\d)"\)/)?.[1])
   assert.deepEqual(codes.sort(), ["DSP1", "DSP2", "DSP3"])
 })
+
+test("the disposal specs read the request statuses by their one set of names (critique 2026-10-20 D3)", () => {
+  const specs = ["single-request.spec.ts", "batch-bulk-approval.spec.ts", "open-audit-block.spec.ts"].map((file) => read(`e2e/disposal/${file}`))
+  for (const spec of specs) {
+    assert.ok(spec.includes('getByText("รอพิจารณา")'))
+    assert.doesNotMatch(spec, /getByText\("รออนุมัติ"\)/)
+    assert.doesNotMatch(spec, /getByText\("อนุมัติแล้ว"\)/)
+  }
+  for (const spec of specs.slice(0, 2)) assert.ok(spec.includes('getByText("อนุมัติแล้ว รอตัดจำหน่าย")'))
+})

@@ -39,3 +39,10 @@ test("PM plan state buttons are Button sm, and their dialog keeps a busy verb co
   assert.match(source, /<AccessibleDialog\n/, "the dialog stays: it waits with busy while the plan saves, which useConfirm cannot (K12)")
   assert.doesNotMatch(source, /<button\b|Loader2|flex-col-reverse|tCommon\("confirm"\)|useConfirm/)
 })
+
+test("an edited PM plan says it was saved, not created (critique 2026-10-20 D1)", () => {
+  const form = readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8")
+  assert.ok(form.includes('toast.success(t(planId ? "pmUpdateSuccess" : "pmCreateSuccess"))'))
+  assert.doesNotMatch(form, /toast\.success\(t\("pmCreateSuccess"\)\)/)
+  for (const l of ["th", "en"]) assert.equal(typeof JSON.parse(readFileSync(`messages/${l}.json`, "utf8")).maintenancePage.pmUpdateSuccess, "string")
+})

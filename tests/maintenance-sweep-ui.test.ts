@@ -56,7 +56,7 @@ test("repair-record list: the stuck and PM-due sections keep their ids on the pa
   assert.match(source, /<span className="tag">\{asset\.assetTag\}<\/span> - \{asset\.name\} <span className="text-meta text-muted-foreground">\(\{asset\.status\.nameTh\}\)<\/span>/)
   assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "shrink-0"\)\}>\n\s+\{t\("createTitle"\)\}/)
   assert.match(source, /<section id="pm-due" className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
-  assert.match(source, /<h2 className="text-base font-semibold text-foreground">\{t\("pmDueTitle"\)\} \(\{formatCount\(duePlans\.length\)\}\)<\/h2>/)
+  assert.match(source, /<h2 className="text-base font-semibold text-foreground">\{t\("pmDueTitle"\)\} \(\{formatCount\(dueTotal\)\}\)<\/h2>/)
   assert.match(source, /<ul className="mt-3 divide-y divide-border-soft rounded-md border border-border bg-background">/)
   assert.match(source, /<span className="tag">\{plan\.planNo\}<\/span> · <span className="tag">\{plan\.asset\.assetTag\}<\/span> - \{plan\.asset\.name\}/)
   assert.match(source, /href=\{appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/new\?planId=\$\{plan\.id\}`, returnHref\)\} className=\{buttonVariants\(\)\}/)
@@ -115,4 +115,14 @@ test("formatCurrency is gone from src/lib/utils.ts once both print pages show mo
     assert.match(source, /\bformatMoney\(/, path)
     assert.doesNotMatch(source, /formatCurrency/, path)
   }
+})
+
+test("PM due box counts every due plan and says how many more (critique 2026-10-20 D2)", () => {
+  const source = read(`${D}maintenance/page.tsx`)
+  assert.match(source, /const duePmWhere = buildDuePmPlanWhere\(now\)/)
+  assert.match(source, /prisma\.maintenancePlan\.findMany\(\{\n\s+where: duePmWhere,/)
+  assert.match(source, /prisma\.maintenancePlan\.count\(\{ where: duePmWhere \}\)/)
+  assert.doesNotMatch(source, /formatCount\(duePlans\.length\)/)
+  assert.ok(source.includes('{t("pmDueMore", { count: dueTotal - duePlans.length })}'))
+  for (const l of ["th", "en"]) assert.equal(typeof JSON.parse(read(`messages/${l}.json`)).repairRecord.pmDueMore, "string")
 })

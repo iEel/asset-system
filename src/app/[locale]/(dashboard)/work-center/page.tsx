@@ -58,6 +58,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
 
   const t = await getTranslations("workCenter")
   const tCommon = await getTranslations("common")
+  const tDisposal = await getTranslations("disposalPage")
   const approvalInboxAccess = getApprovalInboxAccess(user)
   const employeeProfile = user.employeeId
     ? await prisma.employee.findUnique({ where: { id: user.employeeId }, select: { departmentId: true } })
@@ -552,7 +553,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
                 key={request.id}
                 href={`/${locale}/disposal/${request.id}`}
                 title={`${request.disposalNo} - ${request.asset.assetTag}`}
-                meta={`${request.asset.name} · ${t(`disposalStatus_${request.requestStatus}`)} · ${formatDateTime(request.requestDate)}`}
+                meta={`${request.asset.name} · ${tDisposal(`statuses.${request.requestStatus}`)} · ${formatDateTime(request.requestDate)}`}
                 tone={request.requestStatus === "pending" ? "danger" : "warning"}
               />
             ))

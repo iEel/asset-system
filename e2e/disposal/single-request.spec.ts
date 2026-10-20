@@ -58,7 +58,7 @@ test("IT staff request one disposal, the IT head approves it, IT staff execute i
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(asset.name)
   const disposalNo = (await page.locator("header .tag").first().textContent())?.trim() ?? ""
   expect(disposalNo).toMatch(/^DP-\d{8}-\d{4}$/)
-  await expect(page.getByRole("main").getByText("รออนุมัติ").first()).toBeVisible()
+  await expect(page.getByRole("main").getByText("รอพิจารณา").first()).toBeVisible()
   await expect(page.getByRole("main").getByText("รอตัดจำหน่าย").first()).toBeVisible()
   await measure.recordPage("IT staff: the request, pending approval")
 
@@ -96,7 +96,7 @@ test("IT staff request one disposal, the IT head approves it, IT staff execute i
     await expect(decision).toHaveCount(0)
   })
   await expectToast(page, "บันทึกผลการพิจารณาสำเร็จ")
-  await expect(page.getByRole("main").getByText("อนุมัติแล้ว").first()).toBeVisible()
+  await expect(page.getByRole("main").getByText("อนุมัติแล้ว รอตัดจำหน่าย").first()).toBeVisible()
   await expect(page.getByText(employeeLabel("itHead").split(" - ")[0]).first()).toBeVisible()
 
   // The approver cannot execute: no execute on the page, and the execute API refuses them.

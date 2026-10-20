@@ -123,7 +123,7 @@ export function MaintenancePlanForm({
         if (fieldErrors.applyServer(payload) && focusFirstError()) return
         throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       }
-      toast.success(t("pmCreateSuccess"))
+      toast.success(t(planId ? "pmUpdateSuccess" : "pmCreateSuccess"))
       router.push(returnHref)
     } catch (error) {
       apiError.toast(error)

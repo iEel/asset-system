@@ -10,7 +10,9 @@ test("disposal forms use one page title and compact numbered sections", () => {
   assert.doesNotMatch(batch, /<h2[^>]*>\{t\("batchCreateTitle"\)\}/)
   assert.match(single, /<FormSection number=\{1\} title=\{t\("formSteps\.asset"\)\}/)
   assert.doesNotMatch(single, /function FormStep/)
-  assert.match(batch, /<FormSection number=\{1\} title=\{t\("formSteps\.asset"\)\}/)
+  // Step 1 of the batch form only picks the assets; the type is under step 2 and marked required (critique 2026-10-20 D5).
+  assert.match(batch, /<FormSection number=\{1\} title=\{t\("formSteps\.batchAssets"\)\}/)
+  assert.match(batch, /<Field label=\{t\("disposalType"\)\} required>\s+<NativeSelect /)
   assert.doesNotMatch(batch, /function FormStep/)
   assert.match(single, /reasonCharacterCount/)
   assert.match(batch, /reasonCharacterCount/)
@@ -20,6 +22,7 @@ test("disposal form section copy exists in both locales", () => {
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
     assert.equal(typeof messages.formSteps.asset, "string")
+    assert.equal(typeof messages.formSteps.batchAssets, "string")
     assert.equal(typeof messages.formSteps.request, "string")
     assert.equal(typeof messages.formSteps.evidence, "string")
     assert.equal(typeof messages.reasonCharacterCount, "string")
