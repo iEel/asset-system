@@ -101,6 +101,11 @@ test("IT staff walk room A by typing on the phone, on a slow network: matched, m
   // The mismatch: another department and the condition, with the photo; the parent asks while a component is unchecked.
   assert.ok(walk.includes(`"บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)"`))
   assert.ok(walk.includes(`scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))`))
+  // DX5 (ก): a tap on the waiting save opens the note-and-photo section (finding AU2), so the walk taps it.
+  const mismatch = walk.slice(walk.indexOf(`"บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)"`), walk.indexOf(`scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))`))
+  assert.ok(mismatch.includes(`await scan.saveButton(page).click({ force: true })`), "the waiting save is tapped (aria-disabled: forced past Playwright's wait)")
+  assert.ok(mismatch.includes(`.toHaveAttribute("aria-expanded", "true")`), "and the section is open")
+  assert.ok(!mismatch.includes(`getByRole("button", { name: "หมายเหตุ / รูป" }).click()`), "the walk does not open the section itself")
   assert.ok(walk.includes(`page.getByRole("alertdialog", { name: "ส่วนควบยังตรวจไม่ครบ 1 ชิ้น" })`))
   assert.ok(walk.includes(`expect(parentScans, "cancelling the question sends nothing").toEqual([])`))
   // The keyboard-open height on the phone, then back.

@@ -61,7 +61,7 @@ test("the save and not-this-item buttons sit in a pinned action bar below the sc
   }
   assert.ok(source.indexOf("{saveLabel}") < source.indexOf('t("notThisOne")'), "save stays first in the Tab order")
   assert.match(source, /<div className="flex items-stretch gap-2">/)
-  assert.match(source, /className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10"/)
+  assert.match(source, /className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10 aria-disabled:pointer-events-auto"/)
 })
 
 test("the panel hands its height to the form: the sheet body and the wide aside no longer scroll as one block (D1)", () => {

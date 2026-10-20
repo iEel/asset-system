@@ -446,12 +446,14 @@ export function AuditScanCheckForm({
         {pendingComponents.length > 0 ? (
           <p className="text-sm text-muted-foreground">{t("componentsSaveHint", { checked: checkedComponents, total: components.components.length })}</p>
         ) : null}
-        {/* One row keeps the bar short on a phone; save comes first in the Tab order and wraps a long label. */}
+        {/* One row keeps the bar short on a phone; save comes first in the Tab order and wraps a long label. The shared
+            Button blocks the pointer while aria-disabled; this one takes a tap, so a waiting save opens the
+            note-and-photo section as Enter does (e2e decision DX5). */}
         <div className="flex items-stretch gap-2">
           <Button
             type="button"
             variant={diff.length === 0 ? "default" : "warning"}
-            className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10"
+            className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10 aria-disabled:pointer-events-auto"
             busy={saving}
             aria-disabled={missingPhoto || undefined}
             aria-describedby={missingPhoto ? "audit-check-photo-reason" : undefined}

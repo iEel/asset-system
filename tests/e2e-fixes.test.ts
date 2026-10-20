@@ -215,3 +215,24 @@ test("the findings page offers the review controls only to a role with audit:app
   assert.doesNotMatch(findings, /canEdit \|\| canApprove/)
   assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M4: `))
 })
+
+test("a tap on the audit check's waiting save opens the note-and-photo section, as the keyboard does (e2e decision DX5 (ก): AU2)", async () => {
+  const { cn } = await import("../src/lib/utils.ts")
+  const { buttonVariants } = await import("../src/components/ui/button-variants.ts")
+  const form = read("src/components/audit/audit-scan-check-form.tsx")
+  // save() already opens the section while the photo is missing; the save button alone lets the pointer reach it.
+  assert.match(form, /async function save\(\) \{\n\s*if \(missingPhoto\) \{\n\s*setExtrasOpen\(true\)\n\s*return\n\s*\}/)
+  const saveButton = form.slice(form.lastIndexOf("<Button", form.indexOf("aria-disabled={missingPhoto || undefined}")), form.indexOf("{saveLabel}"))
+  assert.match(saveButton, /className="[^"]*\baria-disabled:pointer-events-auto\b[^"]*"/)
+  assert.match(saveButton, /onClick=\{\(\) => void save\(\)\}/)
+  assert.equal((form.match(/aria-disabled:pointer-events-auto/g) ?? []).length, 1, "only the save button")
+  // The shared Button still blocks the pointer for every other aria-disabled caller; the class merge keeps the override.
+  const shared = buttonVariants({ variant: "warning" })
+  assert.match(shared, /\baria-disabled:pointer-events-none\b/)
+  const merged = cn(shared, "aria-disabled:pointer-events-auto")
+  assert.match(merged, /\baria-disabled:pointer-events-auto\b/)
+  assert.doesNotMatch(merged, /\baria-disabled:pointer-events-none\b/)
+  // The walk taps the waiting save instead of finding the section itself.
+  const walk = read("e2e/audit/field-audit.spec.ts")
+  assert.match(walk, /toHaveAttribute\("aria-disabled", "true"\)\n(?:[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*\s*await scan\.saveButton\(page\)\.click\(\{ force: true \}\)\n\s*await expect\(scan\.checkForm\(page\)\.getByRole\("button", \{ name: "หมายเหตุ \/ รูป" \}\)\)\.toHaveAttribute\("aria-expanded", "true"\)\n\s*await scan\.addPhoto\(/)
+})

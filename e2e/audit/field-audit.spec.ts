@@ -149,8 +149,8 @@ test.describe("IT staff walk room A", () => {
     })
 
     // Mismatch: found by a word of its name; it stands in another department and its condition is worse, so the save
-    // waits for a photo. The person opens the note-and-photo section and adds it. (A tap on the waiting save does
-    // nothing: finding AU2.)
+    // waits for a photo. A tap on the waiting save opens the note-and-photo section (finding AU2, decided DX5 (ก)),
+    // and the person adds it there.
     await scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch.tag)
     const runDepartment = runRecords(readRunState().runId).department.code
     await scan.chooseInCheckField(page, "แผนก", runDepartment, `${runDepartment} - `)
@@ -158,7 +158,10 @@ test.describe("IT staff walk room A", () => {
     await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)")
     await expect(scan.saveButton(page)).toHaveAttribute("aria-disabled", "true")
     await expect(scan.checkForm(page).getByText("สภาพไม่ตรง ต้องแนบรูปก่อนบันทึก")).toBeVisible()
-    await scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" }).click()
+    // Playwright waits for an aria-disabled button to be enabled, so the tap is forced; it is still a real pointer
+    // event at the button's centre, which pointer-events: none would hand to whatever lies under it.
+    await scan.saveButton(page).click({ force: true })
+    await expect(scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" })).toHaveAttribute("aria-expanded", "true")
     await scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))
     await expect(scan.saveButton(page)).not.toHaveAttribute("aria-disabled", "true")
     await recordSettled(page, measure, "check of the mismatch with its photo")
