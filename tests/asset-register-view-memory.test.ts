@@ -4,8 +4,10 @@ import test from "node:test"
 import {
   assetRegisterScrollMemoryKey,
   assetRegisterViewPreferenceKey,
+  buildExactAssetRegisterHref,
   getPersistedAssetRegisterView,
   hasExplicitAssetRegisterView,
+  isExactAssetRegisterLink,
 } from "../src/lib/asset-register-view-memory.ts"
 
 test("asset register view memory keeps filters, sort, and page size but never pagination", () => {
@@ -29,4 +31,12 @@ test("asset register memory keys are stable and locale-safe", () => {
     assetRegisterScrollMemoryKey("/th/assets?search=monitor&page=2"),
     "asset-register-scroll:v1:/th/assets?search=monitor&page=2"
   )
+})
+
+test("an exact link is recognised and built with the flag", () => {
+  assert.equal(isExactAssetRegisterLink(new URLSearchParams("exact=1&statusId=x")), true)
+  assert.equal(isExactAssetRegisterLink(new URLSearchParams("statusId=x")), false)
+  assert.equal(buildExactAssetRegisterHref("th"), "/th/assets?exact=1")
+  assert.equal(buildExactAssetRegisterHref("th", { dataQuality: "warranty" }), "/th/assets?dataQuality=warranty&exact=1")
+  assert.equal(getPersistedAssetRegisterView(new URLSearchParams("exact=1&search=a")).toString(), "search=a")
 })

@@ -16,6 +16,7 @@ import { splitStatRows } from "@/lib/stat-strip-rows"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
+import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalInboxAccess, getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { buildWorkCenterMetricKeys, calculateWorkCenterUrgentCount, type WorkCenterMetricKey } from "@/lib/work-center-metrics"
@@ -243,7 +244,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       label: t("missingCustodian"),
       value: missingCustodian,
       detail: t("missingCustodianDetail"),
-      href: `/${locale}/assets`,
+      href: buildExactAssetRegisterHref(locale, { dataQuality: "responsibility" }),
       tone: "warning",
     },
     missingSerial: {
@@ -251,7 +252,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       label: t("missingSerial"),
       value: missingSerial,
       detail: t("missingSerialDetail"),
-      href: `/${locale}/assets`,
+      href: buildExactAssetRegisterHref(locale, { dataQuality: "serial" }),
       tone: "muted",
     },
     missingPhoto: {
@@ -259,7 +260,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       label: t("missingPhoto"),
       value: missingPhoto,
       detail: t("missingPhotoDetail"),
-      href: `/${locale}/assets`,
+      href: buildExactAssetRegisterHref(locale, { dataQuality: "photo" }),
       tone: "muted",
     },
     openRepairs: {
@@ -431,7 +432,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         {isPanelFocused("assets") ? <FollowUpPanel
           title={t("assetDataTitle")}
           subtitle={t("assetDataSubtitle")}
-          href={`/${locale}/assets`}
+          href={buildExactAssetRegisterHref(locale)}
           locale={locale}
           panel="assets"
           currentParams={workCenterParams}

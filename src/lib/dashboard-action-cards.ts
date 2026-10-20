@@ -1,3 +1,5 @@
+import { buildExactAssetRegisterHref } from "./asset-register-view-memory.ts"
+
 export type DashboardActionCardKey =
   | "approvalInbox"
   | "openRepairs"
@@ -80,7 +82,6 @@ export function buildDashboardAssetStatusMetrics(
 }
 
 function buildAssetStatusMetric(locale: string, row?: DashboardAssetStatusRow): DashboardAssetStatusMetric {
-  if (!row) return { count: 0, href: `/${locale}/assets` }
-  const query = new URLSearchParams({ statusId: row.id })
-  return { count: row.count, href: `/${locale}/assets?${query.toString()}` }
+  if (!row) return { count: 0, href: buildExactAssetRegisterHref(locale) }
+  return { count: row.count, href: buildExactAssetRegisterHref(locale, { statusId: row.id }) }
 }

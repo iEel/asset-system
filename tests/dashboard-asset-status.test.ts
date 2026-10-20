@@ -13,19 +13,19 @@ test("dashboard separates Pending Repair assets from Under Maintenance assets", 
   ])
 
   assert.deepEqual(metrics, {
-    ready: { count: 0, href: "/th/assets" },
-    inUse: { count: 0, href: "/th/assets" },
-    pendingRepair: { count: 8, href: "/th/assets?statusId=pending%2Fid" },
-    underMaintenance: { count: 2, href: "/th/assets?statusId=maintenance+id" },
+    ready: { count: 0, href: "/th/assets?exact=1" },
+    inUse: { count: 0, href: "/th/assets?exact=1" },
+    pendingRepair: { count: 8, href: "/th/assets?statusId=pending%2Fid&exact=1" },
+    underMaintenance: { count: 2, href: "/th/assets?statusId=maintenance+id&exact=1" },
   })
 })
 
 test("dashboard status metrics remain safe when a configured status is missing", () => {
   assert.deepEqual(buildDashboardAssetStatusMetrics("en", []), {
-    ready: { count: 0, href: "/en/assets" },
-    inUse: { count: 0, href: "/en/assets" },
-    pendingRepair: { count: 0, href: "/en/assets" },
-    underMaintenance: { count: 0, href: "/en/assets" },
+    ready: { count: 0, href: "/en/assets?exact=1" },
+    inUse: { count: 0, href: "/en/assets?exact=1" },
+    pendingRepair: { count: 0, href: "/en/assets?exact=1" },
+    underMaintenance: { count: 0, href: "/en/assets?exact=1" },
   })
 })
 

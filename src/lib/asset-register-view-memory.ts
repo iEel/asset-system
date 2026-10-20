@@ -17,6 +17,20 @@ const assetRegisterViewKeys = [
   "direction",
 ] as const
 
+// A link from a number on the dashboard or the work center carries this flag: the register
+// shows exactly what the link asks for, without restoring or overwriting the saved view.
+export const assetRegisterExactLinkParam = "exact"
+
+export function isExactAssetRegisterLink(params: URLSearchParams): boolean {
+  return params.get(assetRegisterExactLinkParam) === "1"
+}
+
+export function buildExactAssetRegisterHref(locale: string, params: Record<string, string> = {}): string {
+  const query = new URLSearchParams(params)
+  query.set(assetRegisterExactLinkParam, "1")
+  return `/${locale}/assets?${query.toString()}`
+}
+
 export function assetRegisterViewPreferenceKey(locale: string) {
   return `asset-register-view:v1:${locale}`
 }

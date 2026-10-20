@@ -71,6 +71,30 @@ test("asset register restores browser-local views and detail-return scroll witho
   assert.match(source, /\[data-dashboard-main\]/)
 })
 
+test("an exact register link neither restores nor overwrites the saved view", () => {
+  const source = registerViewMemorySource()
+
+  assert.match(source, /if \(isExactAssetRegisterLink\(current\)\) return[\s\S]*hasExplicitAssetRegisterView\(current\)/)
+})
+
+test("dashboard, work-center and notification links open the register exactly", () => {
+  const read = (path: string) => readFileSync(path, "utf8").replace(/\r/g, "")
+  const dashboard = read("src/app/[locale]/(dashboard)/dashboard/page.tsx")
+  const workCenter = read("src/app/[locale]/(dashboard)/work-center/page.tsx")
+  const notifications = read("src/lib/notification-summary-items.ts")
+  const dashboardCards = read("src/lib/dashboard-action-cards.ts")
+
+  for (const source of [dashboard, workCenter, dashboardCards]) {
+    assert.doesNotMatch(source, /`\/\$\{locale\}\/assets(\?|`)/)
+    assert.match(source, /buildExactAssetRegisterHref\(/)
+  }
+  assert.doesNotMatch(notifications, /`\/\$\{locale\}\/assets`/)
+  assert.doesNotMatch(notifications, /\/assets\?dataQuality=/)
+  assert.match(notifications, /buildExactAssetRegisterHref\(locale, \{ dataQuality: "warranty" \}\)/)
+  assert.match(dashboard, /buildExactAssetRegisterHref\(locale, \{ dataQuality: "warranty" \}\)/)
+  assert.match(dashboard, /buildExactAssetRegisterHref\(locale, \{ sort: "createdAt", direction: "desc" \}\)/)
+})
+
 test("asset register and dashboard state routes reuse the standard state surface", () => {
   const tableSource = registerTableSource()
   const accessDeniedSource = readFileSync("src/app/[locale]/(dashboard)/access-denied/page.tsx", "utf8")

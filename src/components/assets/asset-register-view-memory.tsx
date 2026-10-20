@@ -7,6 +7,7 @@ import {
   assetRegisterViewPreferenceKey,
   getPersistedAssetRegisterView,
   hasExplicitAssetRegisterView,
+  isExactAssetRegisterLink,
   readPersistedAssetRegisterView,
 } from "@/lib/asset-register-view-memory"
 
@@ -20,6 +21,8 @@ export function AssetRegisterViewMemory({ locale, returnHref }: { locale: string
 
   useEffect(() => {
     const current = new URLSearchParams(search)
+
+    if (isExactAssetRegisterLink(current)) return
 
     if (hasExplicitAssetRegisterView(current)) {
       window.localStorage.setItem(assetRegisterViewPreferenceKey(locale), getPersistedAssetRegisterView(current).toString())

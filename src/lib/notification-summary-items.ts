@@ -1,3 +1,5 @@
+import { buildExactAssetRegisterHref } from "./asset-register-view-memory.ts"
+
 export type NotificationSummaryItem = {
   key: string
   count: number
@@ -74,7 +76,7 @@ export function buildNotificationSummaryItems(
     {
       key: "warrantyExpiringSoon",
       count: counts.warrantyExpiringSoon,
-      href: `/${locale}/assets`,
+      href: buildExactAssetRegisterHref(locale, { dataQuality: "warranty" }),
       tone: "warning",
     },
     {

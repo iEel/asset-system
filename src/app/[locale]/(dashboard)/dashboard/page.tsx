@@ -10,6 +10,7 @@ import {
   dashboardAssetStatusNames,
   type DashboardActionCardKey,
 } from "@/lib/dashboard-action-cards"
+import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
@@ -163,12 +164,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const underMaintenance = assetStatusMetrics.underMaintenance.count
   // The seven totals are StatStrip cells, each opening its list (no icons and no tone colors).
   const kpiItems: StatStripItem[] = [
-    { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets), href: `/${locale}/assets` },
+    { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets), href: buildExactAssetRegisterHref(locale) },
     { key: "inUse", label: t("inUse"), value: formatCount(inUse), href: assetStatusMetrics.inUse.href },
     { key: "readyToDeploy", label: t("readyToDeploy"), value: formatCount(ready), href: assetStatusMetrics.ready.href },
     { key: "pendingRepair", label: t("pendingRepair"), value: formatCount(pendingRepair), href: assetStatusMetrics.pendingRepair.href },
     { key: "underMaintenance", label: t("underMaintenance"), value: formatCount(underMaintenance), href: assetStatusMetrics.underMaintenance.href },
-    { key: "warrantyExpiring", label: t("warrantyExpiring"), value: formatCount(warrantyExpiring), href: `/${locale}/assets` },
+    { key: "warrantyExpiring", label: t("warrantyExpiring"), value: formatCount(warrantyExpiring), href: buildExactAssetRegisterHref(locale, { dataQuality: "warranty" }) },
     { key: "crossScopeAssets", label: t("crossScopeAssets"), value: formatCount(crossScopeTotal), href: crossScopeAssetsHref },
   ]
 
@@ -259,7 +260,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const trendCards = [
     {
       label: t("trendAssetsCreated"),
-      href: `/${locale}/assets`,
+      href: buildExactAssetRegisterHref(locale, { sort: "createdAt", direction: "desc" }),
       current: currentMonthAssets,
       previous: previousMonthAssets,
     },
@@ -490,7 +491,7 @@ function DashboardCrossScopePreview({
 }
 
 function buildDashboardCrossScopeHref(locale: string, crossScope: AssetCrossScopeFilter) {
-  return `/${locale}/assets?crossScope=${crossScope}&page=1`
+  return buildExactAssetRegisterHref(locale, { crossScope, page: "1" })
 }
 
 function getMonthRange(now: Date) {
