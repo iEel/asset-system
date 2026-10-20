@@ -189,3 +189,22 @@ test("the batch list names its first column the batch number (critique 2026-10-2
   assert.equal(JSON.parse(read("messages/th.json")).disposalPage.batchNo, "เลขที่ชุด")
   assert.equal(JSON.parse(read("messages/en.json")).disposalPage.batchNo, "Batch No.")
 })
+
+test("queue names use the disposal status words (critique 2026-10-20 D3)", () => {
+  const th = JSON.parse(read("messages/th.json")), en = JSON.parse(read("messages/en.json"))
+  for (const ns of ["dashboard", "notifications", "workCenter"]) {
+    assert.match(th[ns].pendingDisposals, /รอพิจารณา/, `th.${ns}.pendingDisposals`)
+    assert.doesNotMatch(th[ns].pendingDisposals, /รออนุมัติ/, `th.${ns}.pendingDisposals`)
+    assert.equal(th[ns].approvedDisposals, "อนุมัติแล้ว รอตัดจำหน่าย", `th.${ns}.approvedDisposals`)
+    assert.equal(en[ns].pendingDisposals, "Disposals pending decision", `en.${ns}.pendingDisposals`)
+    assert.equal(en[ns].approvedDisposals, "Approved, awaiting disposal", `en.${ns}.approvedDisposals`)
+  }
+  assert.doesNotMatch(th.workCenter.disposalSubtitle, /รออนุมัติ|รอดำเนินการ/)
+  assert.doesNotMatch(en.workCenter.disposalSubtitle, /pending approval/)
+  const digest = read("src/lib/notification-digest-format.ts")
+  const disposalLines = digest.split("\n").filter((line) => /(?:pending|approved)Disposals:/.test(line))
+  assert.equal(disposalLines.length, 4)
+  for (const line of disposalLines) assert.doesNotMatch(line, /รออนุมัติ|รอดำเนินการ|pending approval/)
+  assert.ok(digest.includes('pendingDisposals: "ตัดจำหน่ายรอพิจารณา"'))
+  assert.ok(digest.includes('approvedDisposals: "อนุมัติแล้ว รอตัดจำหน่าย"'))
+})
