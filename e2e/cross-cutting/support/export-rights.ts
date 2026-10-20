@@ -1,6 +1,7 @@
 // Which exports each E2E user may use (spec §6.5 "a role without the export permission does not see it"), as plain
 // data the unit test pins against the code: the permission each export route requires (requirePermission in its
-// route) and the role sets of spec §7 (run-plan.ts). The reports page shows each export only with that permission
+// route) and the role sets of spec §7 (run-plan.ts; since decision DX6 (ก) the IT head also holds the audit,
+// maintenance and disposal exports). The reports page shows each export only with that permission
 // (its canReportExport, canAssetExport, ... in src/app/[locale]/(dashboard)/reports/page.tsx), and its catalog lists
 // the same six in "สิทธิ์รายงานของคุณ" with ใช้ได้ or ไม่มีสิทธิ์.
 import { E2E_ROLE_PERMISSIONS, type E2eUserKey } from "../../support/run-plan.ts"

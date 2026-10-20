@@ -51,12 +51,13 @@ test("reports and exports: each export's route permission, the reports page's ga
     assert.equal(plan.label, labels[labelKeys[plan.key]], `${plan.key}: its label`)
   }
   assert.deepEqual([ALLOWED, NOT_ALLOWED], [labels.allowed, labels.notAllowed])
-  // Spec §7's roles: IT staff and the IT head may use the overview and the register, the viewer the register only, and
-  // none of them a module export (no <module>:export in spec §7; finding M1's test shows the audit pages offer it).
+  // Spec §7's roles: IT staff may use the overview and the register, the viewer the register only, and the IT head the
+  // overview, the register and the three module exports (decision DX6 (ก)); no E2E role holds the role-audit export.
   assert.deepEqual(EXPORTS.filter((plan) => mayExport("itStaff", plan.key)).map((plan) => plan.key), ["overview", "register"])
-  assert.deepEqual(EXPORTS.filter((plan) => mayExport("itHead", plan.key)).map((plan) => plan.key), ["overview", "register"])
+  assert.deepEqual(EXPORTS.filter((plan) => mayExport("itHead", plan.key)).map((plan) => plan.key), ["overview", "register", "maintenance", "audit", "disposal"])
   assert.deepEqual(EXPORTS.filter((plan) => mayExport("viewer", plan.key)).map((plan) => plan.key), ["register"])
-  assert.ok(!E2E_ROLE_PERMISSIONS.itHead.some((permission) => permission.endsWith(":export") && permission !== "report:export"))
+  assert.deepEqual(E2E_ROLE_PERMISSIONS.itHead.filter((permission) => permission.endsWith(":export")).sort(), ["audit:export", "disposal:export", "maintenance:export", "report:export"])
+  assert.ok(!E2E_ROLE_PERMISSIONS.itStaff.some((permission) => permission.endsWith(":export") && permission !== "report:export"))
   assert.equal(permissionBadge("viewer", EXPORTS[0]), `${labels.exportAssetOverview}: ${labels.notAllowed}`)
   // The report views' tab names and the overview's export filenames the spec reads.
   assert.deepEqual([labels.viewAccounting, labels.viewOperations, labels.viewCatalog, labels.viewNavigation], ["บัญชี", "การปฏิบัติงาน", "คลังรายงาน", "มุมมองรายงาน"])
@@ -70,6 +71,17 @@ test("reports and exports: each export's route permission, the reports page's ga
   const spec = read("e2e/cross-cutting/reports.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
   assert.ok(!spec.includes(`test.fail(true, "M1: `) && !spec.includes(`test.fail(true, "M2: `))
+  // DX6 (ก): the IT head's session downloads the repair, disposal and findings exports (no seed admin), and finding M1's
+  // check runs as IT staff, who hold audit:view without audit:export.
+  assert.ok(!spec.includes("ADMIN_STATE_FILE") && !spec.includes("playwright.request.newContext"), "no seed admin session")
+  const itHead = spec.slice(spec.indexOf(`test.describe("the IT head"`))
+  assert.ok(itHead.includes(`asUser("itHead")`))
+  for (const route of ["/api/maintenance-tickets/export", "/api/disposal-requests/export", "/api/audit-findings/export?status=all", "/api/audit-findings/export-pdf?status=all"]) {
+    assert.ok(itHead.includes(`"${route}"`), route)
+  }
+  assert.ok(!itHead.includes("toBe(403)"), "the IT head is refused none of them")
+  const itStaff = spec.slice(spec.indexOf(`test.describe("IT staff"`), spec.indexOf(`test.describe("the viewer"`))
+  assert.ok(itStaff.includes("(finding M1)") && !itHead.includes("(finding M1)"), "M1's check runs as IT staff")
 })
 
 test("roles and permissions: each refused page and request needs a permission the user lacks, checked before any read (e2e cross-cutting task 2, EM2)", async () => {

@@ -11,7 +11,8 @@
 // 4. IT staff are refused the review of their own findings and the close of the round they opened (spec §6.2.4);
 // 5. the IT head reviews every finding and closes the round (spec §6.2.4);
 // 6. the IT head's own round: their own finding and their own close are refused, and the round is cancelled;
-// 7. the audit exports by permission (spec §6.2.5, §6.5), expected to fail until finding AU1 and decision U1.
+// 7. the audit exports by permission (spec §6.2.5, §6.5): hidden from IT staff (finding AU1, fixed), downloaded by the
+//    IT head (decision U1, DX6 (ก)).
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import ExcelJS from "exceljs"
 import { asUser, expect, runPhoneOnWebKit, test } from "../support/fixtures.ts"
@@ -447,10 +448,9 @@ test.describe("The IT head's own round", () => {
   })
 })
 
-// Spec §6.5: a role without the export permission does not see it; spec §6.2.5: the findings export downloads. No E2E
-// role holds audit export (spec §7's table), yet the findings page offers the export to every audit viewer and the
-// download is the route's 403 body: WebKit saves it as export.json, Chromium cancels it (finding AU1; decision U1 for
-// the user). Expected to fail until then; Playwright reports it when it passes.
+// Spec §6.5: a role without the export permission does not see it; spec §6.2.5: the findings export downloads. IT staff
+// hold no audit export and are offered none (finding AU1, fixed by FX4); the IT head holds it (spec §7's table since
+// decision DX6 (ก)) and downloads the round's findings.
 test.describe("The audit exports by permission", () => {
   test.describe("IT staff", () => {
     asUser("itStaff")
@@ -469,13 +469,12 @@ test.describe("The audit exports by permission", () => {
     asUser("itHead")
 
     test("the findings export downloads the round's findings (decision U1)", async ({ page, measure }, testInfo) => {
-      test.fail(true, "U1: no E2E role holds audit:export (spec §7)")
       const chain = readChain(testInfo.project.name)
       await measure.visit(`/th/audit/findings?status=all&roundId=${chain.roundId}`, "findings of the round, all (IT head)")
       const downloading = page.waitForEvent("download")
       await page.getByRole("link", { name: "ส่งออกรายการไม่ตรง" }).click()
       const download = await downloading
-      // The file as downloaded, kept in the report (until U1: the route's 403 body, export.json, which Chromium cancels).
+      // The file as downloaded, kept in the report.
       const file = await download.path().catch(() => null)
       if (file) await testInfo.attach(`download ${download.suggestedFilename()}`, { path: file, contentType: "application/octet-stream" })
       expect(download.suggestedFilename(), "an Excel file").toMatch(/\.xlsx$/)

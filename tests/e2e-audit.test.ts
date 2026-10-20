@@ -193,10 +193,10 @@ test("the IT head's own finding and own close are refused by the segregation rul
   assert.ok(own.includes(thai("auditRound").closeSeparateApprover))
   assert.ok(own.includes(thai("auditRound").cancelReasonRequired) && own.includes(thai("auditRound").cancelSuccess))
 
-  // The exports: expected to fail until finding AU1 (offered without audit:export) and decision U1 (no role holds it).
+  // The exports: finding AU1 is fixed (FX4) and decision U1 is DX6 (ก): the IT head holds audit:export and downloads.
   const exports = block(spec, "The audit exports by permission")
-  assert.ok(!exports.includes(`test.fail(true, "AU1: `) && exports.includes(`test.fail(true, "U1: `), "AU1 is fixed (FX4); U1 waits for the user")
+  assert.ok(!exports.includes(`test.fail(true, "AU1: `) && !exports.includes(`test.fail(true, "U1: `), "AU1 is fixed (FX4); U1 is decided (DX6)")
   assert.ok(exports.includes(`page.getByRole("link", { name: "${thai("auditFinding").exportFindings}" })`))
   const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
-  for (const permissions of Object.values(E2E_ROLE_PERMISSIONS)) assert.ok(!permissions.includes("audit:export"), "no E2E role holds audit:export (U1)")
+  assert.deepEqual(Object.entries(E2E_ROLE_PERMISSIONS).filter(([, permissions]) => permissions.includes("audit:export")).map(([key]) => key), ["itHead"], "only the IT head holds audit:export (DX6)")
 })
