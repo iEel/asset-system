@@ -9,6 +9,7 @@
 // The fixtures name their callback provide, not use: the React hooks lint reads a call of use as a hook.
 import { test as base, expect } from "@playwright/test"
 import { browserFor, phoneUserAgent, type E2eBrowser, type E2eTestOptions, type E2eWorkerOptions } from "./matrix.ts"
+import { hazardOf, isHazardPath } from "./hazards.ts"
 import { Measure } from "./measure.ts"
 import { authStateFile, fromRoot } from "./paths.ts"
 import type { E2eUserKey } from "./run-plan.ts"
@@ -28,7 +29,24 @@ export const test = base.extend<SuiteTestOptions & { measure: Measure }, E2eWork
   context: async ({ context, e2eTheme, baseURL }, provide) => {
     if (!baseURL) throw new Error("playwright.config.ts sets use.baseURL")
     await context.addCookies([{ name: "theme", value: e2eTheme, url: baseURL }])
+    // The hazards (hazards.ts: LDAP, the settings save, Excel import, a sender, the integration API, stored files, a
+    // sign-in, a DELETE) are stopped here: a request to a hazard's path is aborted before it leaves the browser, a
+    // DELETE is caught as it is sent, and either fails the test after it (spec §5, §11).
+    const hazards: string[] = []
+    await context.route((url) => isHazardPath(url.href), async (route) => {
+      const request = route.request()
+      const hazard = hazardOf(request.method(), request.url())
+      if (!hazard) return route.continue()
+      hazards.push(`${hazard.id}: ${request.method()} ${new URL(request.url()).pathname} (${hazard.reason})`)
+      return route.abort("blockedbyclient")
+    })
+    context.on("request", (request) => {
+      if (request.method().toUpperCase() === "DELETE" && !isHazardPath(request.url())) {
+        hazards.push(`delete: DELETE ${new URL(request.url()).pathname} (the suite deletes nothing, spec §5)`)
+      }
+    })
     await provide(context)
+    if (hazards.length > 0) throw new Error(`E2E hazard stopped: ${hazards.join("; ")}`)
   },
   measure: [
     async ({ page, e2eDevice, e2eTheme, browserName, e2eUser }, provide, testInfo) => {

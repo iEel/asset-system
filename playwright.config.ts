@@ -40,7 +40,9 @@ export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
     url: `${baseURL}/th/login`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { AUTH_URL: baseURL, NEXTAUTH_URL: baseURL },
+    // The app's only sender is the notification digest's webhook (src/lib/notification-delivery.ts): blank for the app
+    // under test, so nothing it does reaches outside (spec §5). The process environment wins over the env files.
+    env: { AUTH_URL: baseURL, NEXTAUTH_URL: baseURL, NOTIFICATION_DIGEST_WEBHOOK_URL: "" },
     stdout: "ignore",
     stderr: "pipe",
   },
