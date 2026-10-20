@@ -161,7 +161,7 @@ test.describe("IT staff walk room A", () => {
     await scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" }).click()
     await scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))
     await expect(scan.saveButton(page)).not.toHaveAttribute("aria-disabled", "true")
-    await measure.recordPage("check of the mismatch with its photo")
+    await recordSettled(page, measure, "check of the mismatch with its photo")
     const photoUploaded = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${assets.mismatch.id}/attachments`) && response.request().method() === "POST")
     await measure.timed("save the mismatch with its photo", async () => {
       await scan.saveButton(page).click()

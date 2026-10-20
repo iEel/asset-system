@@ -192,3 +192,10 @@ test("a form proposes today's date in Bangkok, not the UTC date (e2e fix task FX
     assert.match(read(file), /toLocalDateInputValue\(\)/, file)
   }
 })
+
+test("an audit page is measured once every finite animation has ended, so a button turning from waiting to ready is read in its final colours (e2e fix loop 1: the dry run's colour-contrast race in the audit walk)", () => {
+  const settle = read("e2e/audit/settle.ts")
+  assert.match(settle, /document\.getAnimations\(\)\.every\(\(animation\) => animation\.playState !== "running" \|\| animation\.effect\?\.getComputedTiming\(\)\.iterations === Infinity\)/)
+  assert.doesNotMatch(settle, /data-sonner-toaster/)
+  assert.match(read("e2e/audit/field-audit.spec.ts"), /await recordSettled\(page, measure, "check of the mismatch with its photo"\)/)
+})
