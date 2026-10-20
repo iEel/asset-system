@@ -1,9 +1,10 @@
 import Link from "next/link"
 import type React from "react"
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { ChevronRight, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
+import { redirectToLogin } from "@/lib/page-auth"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
 import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilter, type ApprovalInboxFilter } from "@/lib/approval-inbox-filter"
@@ -32,7 +33,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
   const { locale } = await params
   const query = await searchParams
   const user = await getSessionUser()
-  if (!user) redirect(`/${locale}/login`)
+  if (!user) return redirectToLogin(locale)
 
   const snapshot = await getApprovalInboxSnapshot(user, locale)
   if (!snapshot.access.canAnyApproval) notFound()

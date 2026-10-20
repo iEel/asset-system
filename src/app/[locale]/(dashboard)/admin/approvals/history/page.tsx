@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import { getMessages, getTranslations } from "next-intl/server"
 import { CheckCircle2, ClipboardList, History, RotateCcw, XCircle } from "lucide-react"
 import { getSessionUser, hasPermission } from "@/lib/auth-utils"
+import { redirectToLogin } from "@/lib/page-auth"
 import {
   approvalDecisionFilters,
   approvalDecisionModuleFilters,
@@ -45,7 +46,7 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
   const { locale } = await params
   const query = await searchParams
   const user = await getSessionUser()
-  if (!user) redirect(`/${locale}/login`)
+  if (!user) return redirectToLogin(locale)
 
   const access = getApprovalInboxAccess(user)
   if (!access.canAnyApproval) notFound()

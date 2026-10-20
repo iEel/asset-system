@@ -1,6 +1,8 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
+  buildLoginHref,
+  buildRequestPath,
   isSessionExpiredLogin,
   normalizeLoginCallbackUrl,
 } from "../src/lib/login-redirect.ts"
@@ -36,4 +38,13 @@ test("detects explicit session-expired login states", () => {
   assert.equal(isSessionExpiredLogin(undefined, "SessionExpired"), true)
   assert.equal(isSessionExpiredLogin("signed-out", "CredentialsSignin"), false)
   assert.equal(isSessionExpiredLogin(["session-expired"], undefined), false)
+})
+
+test("the login link keeps the page asked for, and only a safe one", () => {
+  assert.equal(buildLoginHref("th", "/th/assets/a1?view=custody"), "/th/login?callbackUrl=%2Fth%2Fassets%2Fa1%3Fview%3Dcustody")
+  for (const requestPath of [null, undefined, "/th", "/th/login?callbackUrl=%2Fth%2Fx", "/th/login", "//evil.test/th/a", "/en/assets"]) {
+    assert.equal(buildLoginHref("th", requestPath), "/th/login", String(requestPath))
+  }
+  assert.equal(buildRequestPath(new URL("http://x/th/assets?_rsc=1&search=a")), "/th/assets?search=a")
+  assert.equal(buildRequestPath(new URL("http://x/th/assets/a1")), "/th/assets/a1")
 })

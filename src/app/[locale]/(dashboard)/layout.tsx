@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { getSessionUser } from "@/lib/auth-utils"
+import { redirectToLogin } from "@/lib/page-auth"
 
 export default function DashboardLayout({
   children,
@@ -23,7 +23,7 @@ async function DashboardLayoutContent({
   const user = await getSessionUser()
 
   if (!user) {
-    redirect(`/${locale}/login`)
+    return redirectToLogin(locale)
   }
 
   return <DashboardShell user={user}>{children}</DashboardShell>
