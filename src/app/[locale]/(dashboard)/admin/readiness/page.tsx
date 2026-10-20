@@ -102,7 +102,8 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
                 description: t(`check_${check.key}_description`),
                 status: t(`status_${check.status}`),
                 value: t("value"),
-                action: t(`check_${check.key}_action`),
+                action: check.href ? t(`check_${check.key}_action`) : null,
+                fix: check.href ? null : t(`check_${check.key}_fix`),
               }}
             />
           ))}
@@ -129,7 +130,8 @@ function ReadinessCheckCard({
     description: string
     status: string
     value: string
-    action: string
+    action: string | null
+    fix: string | null
   }
 }) {
   return (
@@ -145,15 +147,18 @@ function ReadinessCheckCard({
         <div>
           <div className="text-xs font-medium text-muted-foreground">{labels.value}</div>
           <div className="mt-1 break-all text-xs text-foreground"><span className="tag">{check.value}</span></div>
+          {labels.fix ? <p className="mt-2 text-xs text-muted-foreground">{labels.fix}</p> : null}
         </div>
-        <Link
-          href={`/${locale}${check.href}`}
-          className={buttonVariants({ variant: "outline", size: "md" })}
-          aria-label={`${labels.action}: ${labels.title}`}
-        >
-          {labels.action}
-          <ArrowRight aria-hidden="true" />
-        </Link>
+        {check.href ? (
+          <Link
+            href={`/${locale}${check.href}`}
+            className={buttonVariants({ variant: "outline", size: "md" })}
+            aria-label={`${labels.action}: ${labels.title}`}
+          >
+            {labels.action}
+            <ArrowRight aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
     </article>
   )

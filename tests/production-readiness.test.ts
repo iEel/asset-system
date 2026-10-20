@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { buildProductionReadinessChecks } from "../src/lib/production-readiness.ts"
@@ -20,50 +21,52 @@ const readyApprovers = [
   { key: "audit", status: "ready", approverCount: 2 },
 ] as const
 
+const healthyInput: Parameters<typeof buildProductionReadinessChecks>[0] = {
+  settings: baseSettings,
+  approverMatrix: readyApprovers,
+  activeAdminUsers: 2,
+  activeUserCount: 8,
+  deployment: {
+    nodeEnv: "production",
+    authUrl: "https://asset.company.com",
+    nextAuthUrl: "https://asset.company.com",
+    authSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+    nextAuthSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+    uploadDir: "/var/www/asset-system/uploads",
+    databaseUrl: "sqlserver://192.168.1.10;database=asset_management;user=asset_app;password=secret",
+    dbServer: "192.168.1.10",
+    dbUser: "asset_app",
+    dbPassword: "secret",
+    ldapSyncToken: "ldap-token",
+    notificationDigestToken: "digest-token",
+    uploadScanCommand: "/usr/bin/clamscan",
+    uploadScanArgs: "--no-summary {file}",
+    uploadScanTimeoutMs: "30000",
+    schedulerRunStatuses: [
+      { name: "ldap_sync", status: "success" },
+      { name: "notification_digest", status: "success" },
+    ],
+    backupStatus: "success",
+    backupLastRunAt: "2026-05-20T01:00:00.000Z",
+    backupLastRestoreTestAt: "2026-05-21T01:00:00.000Z",
+    pwaAssets: {
+      available: 8,
+      total: 8,
+    },
+  },
+  masterDataCounts: {
+    companies: 1,
+    branches: 2,
+    departments: 3,
+    locations: 4,
+    categories: 5,
+    statuses: 3,
+    conditions: 3,
+  },
+}
+
 test("marks core production readiness checks as pass when settings and coverage are healthy", () => {
-  const checks = buildProductionReadinessChecks({
-    settings: baseSettings,
-    approverMatrix: readyApprovers,
-    activeAdminUsers: 2,
-    activeUserCount: 8,
-    deployment: {
-      nodeEnv: "production",
-      authUrl: "https://asset.company.com",
-      nextAuthUrl: "https://asset.company.com",
-      authSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
-      nextAuthSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
-      uploadDir: "/var/www/asset-system/uploads",
-      databaseUrl: "sqlserver://192.168.1.10;database=asset_management;user=asset_app;password=secret",
-      dbServer: "192.168.1.10",
-      dbUser: "asset_app",
-      dbPassword: "secret",
-      ldapSyncToken: "ldap-token",
-      notificationDigestToken: "digest-token",
-      uploadScanCommand: "/usr/bin/clamscan",
-      uploadScanArgs: "--no-summary {file}",
-      uploadScanTimeoutMs: "30000",
-      schedulerRunStatuses: [
-        { name: "ldap_sync", status: "success" },
-        { name: "notification_digest", status: "success" },
-      ],
-      backupStatus: "success",
-      backupLastRunAt: "2026-05-20T01:00:00.000Z",
-      backupLastRestoreTestAt: "2026-05-21T01:00:00.000Z",
-      pwaAssets: {
-        available: 8,
-        total: 8,
-      },
-    },
-    masterDataCounts: {
-      companies: 1,
-      branches: 2,
-      departments: 3,
-      locations: 4,
-      categories: 5,
-      statuses: 3,
-      conditions: 3,
-    },
-  })
+  const checks = buildProductionReadinessChecks(healthyInput)
 
   assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
   assert.equal(checks.find((check) => check.key === "backupRestoreDrill")?.value, "2026-05-21T01:00:00.000Z")
@@ -241,4 +244,41 @@ test("fails upload scanner readiness when an enabled scanner has an invalid time
 
   assert.equal(checks.find((check) => check.key === "uploadScanner")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "uploadScanner")?.value, "invalid timeout")
+})
+
+test("each check links to the page that fixes it, or has no link when it is set on the server (critique F1)", () => {
+  const hrefs = Object.fromEntries(buildProductionReadinessChecks(healthyInput).map((c) => [c.key, c.href]))
+  assert.deepEqual(hrefs, {
+    publicQrBaseUrl: "/admin/settings?tab=label-template",
+    workflowApprovers: "/admin/approvals",
+    notificationRules: "/admin/settings?tab=notifications",
+    adminCoverage: "/admin/users",
+    masterData: "/admin/data-quality",
+    appBaseUrl: null,
+    authSecret: null,
+    uploadDir: null,
+    databaseConfig: null,
+    schedulerTokens: null,
+    uploadScanner: null,
+    schedulerRuns: "/admin/settings?tab=automation",
+    backupStatus: null,
+    backupRestoreDrill: null,
+    retentionPolicy: "/admin/settings?tab=governance",
+    pwaAssets: null,
+  })
+})
+
+test("a linked check has an action label and an unlinked one has a fix line, in th and en (critique F1)", () => {
+  const checks = buildProductionReadinessChecks(healthyInput)
+  for (const locale of ["th", "en"]) {
+    const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).productionReadinessPage
+    for (const c of checks) {
+      if (c.href) {
+        assert.equal(typeof m[`check_${c.key}_action`], "string", `${locale} ${c.key}_action`)
+      } else {
+        assert.equal(typeof m[`check_${c.key}_fix`], "string", `${locale} ${c.key}_fix`)
+        assert.equal(m[`check_${c.key}_action`], undefined, `${locale} ${c.key}_action is gone`)
+      }
+    }
+  }
 })

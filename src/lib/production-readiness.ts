@@ -1,4 +1,6 @@
 import { summarizeRetentionPolicy } from "./retention-policy.ts"
+import type { SettingsTabId } from "./settings-information-architecture.ts"
+import { buildSystemSettingsTabHref } from "./system-settings-tabs.ts"
 import { getUploadScanReadiness } from "./upload-virus-scan.ts"
 
 export type ProductionReadinessStatus = "pass" | "warning" | "fail"
@@ -80,7 +82,8 @@ export type ProductionReadinessCheck = {
   key: ProductionReadinessCheckKey
   status: ProductionReadinessStatus
   value: string
-  href: string
+  // null: the value is set on the server (env file or the deployed files), outside the app, so the card says how to fix it instead of linking.
+  href: string | null
 }
 
 const notificationKeys = [
@@ -100,6 +103,8 @@ const masterDataKeys: Array<keyof ProductionReadinessMasterDataCounts> = [
   "conditions",
 ]
 
+const settingsTab = (tab: SettingsTabId) => buildSystemSettingsTabHref("/admin/settings", "", tab)
+
 export function buildProductionReadinessChecks(input: ProductionReadinessInput): ProductionReadinessCheck[] {
   const publicQrBaseUrl = input.settings.get("asset_qr_public_base_url")?.trim() ?? ""
   const notificationReadyCount = notificationKeys.filter((key) => isValidNotificationRule(input.settings.get(key))).length
@@ -118,7 +123,7 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       key: "publicQrBaseUrl",
       status: getPublicQrStatus(publicQrBaseUrl),
       value: publicQrBaseUrl || "-",
-      href: "/admin/settings",
+      href: settingsTab("label-template"),
     },
     {
       key: "workflowApprovers",
@@ -130,7 +135,7 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       key: "notificationRules",
       status: notificationReadyCount === notificationKeys.length ? "pass" : "fail",
       value: `${notificationReadyCount}/${notificationKeys.length}`,
-      href: "/admin/settings",
+      href: settingsTab("notifications"),
     },
     {
       key: "adminCoverage",
@@ -148,67 +153,67 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       key: "appBaseUrl",
       status: getAppBaseUrlStatus(input.deployment),
       value: getAppBaseUrlValue(input.deployment),
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "authSecret",
       status: getAuthSecretStatus(input.deployment),
       value: getSecretValue(input.deployment),
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "uploadDir",
       status: getUploadDirStatus(input.deployment?.uploadDir),
       value: input.deployment?.uploadDir?.trim() || "-",
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "databaseConfig",
       status: getDatabaseConfigStatus(input.deployment),
       value: getDatabaseConfigValue(input.deployment),
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "schedulerTokens",
       status: getSchedulerTokensStatus(input.deployment),
       value: getSchedulerTokensValue(input.deployment),
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "uploadScanner",
       status: uploadScanner.status,
       value: uploadScanner.value,
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "schedulerRuns",
       status: getSchedulerRunsStatus(input.deployment),
       value: getSchedulerRunsValue(input.deployment),
-      href: "/admin/settings",
+      href: settingsTab("automation"),
     },
     {
       key: "backupStatus",
       status: getBackupStatus(input.deployment),
       value: getBackupValue(input.deployment),
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "backupRestoreDrill",
       status: getBackupRestoreDrillStatus(input.deployment),
       value: getBackupRestoreDrillValue(input.deployment),
-      href: "/admin/readiness",
+      href: null,
     },
     {
       key: "retentionPolicy",
       status: retentionPolicy.invalidKeys.length > 0 ? "fail" : "pass",
       value: `${retentionPolicy.configured}/${retentionPolicy.total} configured`,
-      href: "/admin/settings",
+      href: settingsTab("governance"),
     },
     {
       key: "pwaAssets",
       status: getPwaAssetsStatus(input.deployment),
       value: getPwaAssetsValue(input.deployment),
-      href: "/admin/readiness",
+      href: null,
     },
   ]
 }

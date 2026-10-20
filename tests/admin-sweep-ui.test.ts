@@ -178,3 +178,12 @@ test("system log: the record link and the details toggle are text links, and the
   assert.match(source, /<DataTable caption=\{t\("viewDetails"\)\}>/)
   assert.doesNotMatch(source, /<table\b|<thead\b|<th\b|hover:underline|rounded-md border border-border bg-background p-3/)
 })
+
+test("readiness: an unlinked check shows its fix line instead of a link (critique 2026-10-20 F1)", () => {
+  const src = read(`${D}admin/readiness/page.tsx`)
+  assert.match(src, /fix: check\.href \? null : t\(`check_\$\{check\.key\}_fix`\)/)
+  assert.match(src, /action: check\.href \? t\(`check_\$\{check\.key\}_action`\) : null/)
+  assert.match(src, /\{check\.href \? \(\n\s+<Link/)
+  assert.match(src, /\{labels\.fix \? <p className="mt-2 text-xs text-muted-foreground">\{labels\.fix\}<\/p> : null\}/)
+  assert.doesNotMatch(read("src/lib/production-readiness.ts"), /"\/admin\/readiness"/)
+})
