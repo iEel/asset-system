@@ -1434,7 +1434,19 @@
     "summaryLeafHelp": "เหมาะกับจุดติดตั้ง/จุดเก็บจริง",
     "summaryRootCard": "ที่ตั้งหลัก",
     "summaryRootHelp": "ระดับบนสุดของโครงสร้างที่ตั้ง",
-    "saveNeedsBranch": "ยังไม่มีสาขา ต้องเพิ่มสาขาก่อนจึงจะบันทึกที่ตั้งได้"
+    "saveNeedsBranch": "ยังไม่มีสาขา ต้องเพิ่มสาขาก่อนจึงจะบันทึกที่ตั้งได้",
+    "type_Site": "สถานที่",
+    "type_Building": "อาคาร",
+    "type_Floor": "ชั้น",
+    "type_Room": "ห้อง",
+    "type_Area": "บริเวณ",
+    "type_Zone": "โซน",
+    "type_Rack": "แร็ก",
+    "type_Desk": "โต๊ะทำงาน",
+    "type_Storage": "คลังจัดเก็บ",
+    "type_Vehicle": "ยานพาหนะ",
+    "type_User-held": "อยู่กับผู้ถือครอง",
+    "type_Offsite": "นอกสถานที่"
   },
   "category": {
     "title": "หมวดหมู่ทรัพย์สิน",

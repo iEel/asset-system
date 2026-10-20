@@ -1,20 +1,8 @@
 import { z } from "zod"
 import { optionalText } from "@/lib/validations/shared"
+import { locationTypes } from "@/lib/location-types"
 
-export const locationTypes = [
-  "Site",
-  "Building",
-  "Floor",
-  "Room",
-  "Area",
-  "Zone",
-  "Rack",
-  "Desk",
-  "Storage",
-  "Vehicle",
-  "User-held",
-  "Offsite",
-] as const
+export { locationTypes }
 
 export const locationSchema = z.object({
   code: z.string().trim().min(1).max(50),

@@ -9,6 +9,8 @@ import {
   type GlobalSearchResultType,
 } from "@/lib/global-search"
 import { toRepairRecordStatus } from "@/lib/repair-record-policy"
+import { getTranslations } from "next-intl/server"
+import { formatLocationType } from "@/lib/location-types"
 
 type SearchResult = {
   id: string
@@ -297,6 +299,7 @@ async function searchLocations(query: string, locale: string): Promise<SearchRes
     orderBy: [{ updatedAt: "desc" }, { code: "asc" }],
     take: 4,
   })
+  const t = await getTranslations({ locale, namespace: "location" })
 
   return locations.map((location) => ({
     id: location.id,
@@ -305,7 +308,7 @@ async function searchLocations(query: string, locale: string): Promise<SearchRes
     title: `${location.code} - ${location.name}`,
     subtitle: `${location.branch.code} - ${location.branch.name}`,
     href: `/${locale}/master-data/locations/${location.id}/edit`,
-    badge: { label: location.locationType, colorCode: null },
+    badge: { label: formatLocationType(location.locationType, t), colorCode: null },
     metadata: [],
   }))
 }

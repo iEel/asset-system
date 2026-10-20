@@ -23,6 +23,7 @@ import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import { locationTypes } from "@/lib/validations/location"
+import { formatLocationType } from "@/lib/location-types"
 import {
   buildLocationDrilldownHrefs,
   buildLocationOrderBy,
@@ -233,7 +234,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
             defaultValue={listState.locationType}
             options={[
               { value: "", label: tCommon("all") },
-              ...locationTypes.map((type) => ({ value: type, label: type })),
+              ...locationTypes.map((type) => ({ value: type, label: formatLocationType(type, t) })),
             ]}
           />
           <FilterSelect
@@ -337,7 +338,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
                   <DataTableCell className="min-w-56 text-muted-foreground">
                     <span className="tag">{location.branch.company.code}</span> / <span className="tag">{location.branch.code}</span> - {location.branch.name}
                   </DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground">{location.locationType}</DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatLocationType(location.locationType, t)}</DataTableCell>
                   <DataTableCell className="min-w-44 text-muted-foreground">
                     {location.parent ? (
                       <>

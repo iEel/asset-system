@@ -1434,7 +1434,19 @@
     "summaryLeafHelp": "Best candidates for actual install or storage points.",
     "summaryRootCard": "Root Locations",
     "summaryRootHelp": "Top-level entries in the location hierarchy.",
-    "saveNeedsBranch": "No branch yet. Add a branch before you save a location."
+    "saveNeedsBranch": "No branch yet. Add a branch before you save a location.",
+    "type_Site": "Site",
+    "type_Building": "Building",
+    "type_Floor": "Floor",
+    "type_Room": "Room",
+    "type_Area": "Area",
+    "type_Zone": "Zone",
+    "type_Rack": "Rack",
+    "type_Desk": "Desk",
+    "type_Storage": "Storage",
+    "type_Vehicle": "Vehicle",
+    "type_User-held": "Held by custodian",
+    "type_Offsite": "Off-site"
   },
   "category": {
     "title": "Asset Categories",

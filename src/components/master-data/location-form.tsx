@@ -7,6 +7,7 @@ import { Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { locationTypes } from "@/lib/validations/location"
+import { formatLocationType } from "@/lib/location-types"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
@@ -203,7 +204,7 @@ export function LocationForm({
             >
               {locationTypes.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {formatLocationType(type, t)}
                 </option>
               ))}
             </NativeSelect>
