@@ -56,11 +56,24 @@ export function buildDashboardActionCardKeys(
   return keys
 }
 
+export const dashboardAssetStatusNames = ["Ready", "In Use", "Pending Repair", "Under Maintenance"] as const
+
+export type DashboardAssetStatusMetrics = {
+  ready: DashboardAssetStatusMetric
+  inUse: DashboardAssetStatusMetric
+  pendingRepair: DashboardAssetStatusMetric
+  underMaintenance: DashboardAssetStatusMetric
+}
+
+// Statuses are found by their exact name, the way the register's tabs are, so a
+// Thai name that merely contains another ("พร้อมใช้งาน" contains "ใช้งาน") never leaks in.
 export function buildDashboardAssetStatusMetrics(
   locale: string,
   rows: DashboardAssetStatusRow[],
-): { pendingRepair: DashboardAssetStatusMetric; underMaintenance: DashboardAssetStatusMetric } {
+): DashboardAssetStatusMetrics {
   return {
+    ready: buildAssetStatusMetric(locale, rows.find((row) => row.name === "Ready")),
+    inUse: buildAssetStatusMetric(locale, rows.find((row) => row.name === "In Use")),
     pendingRepair: buildAssetStatusMetric(locale, rows.find((row) => row.name === "Pending Repair")),
     underMaintenance: buildAssetStatusMetric(locale, rows.find((row) => row.name === "Under Maintenance")),
   }

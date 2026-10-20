@@ -7,6 +7,7 @@ import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCount
 import {
   buildDashboardActionCardKeys,
   buildDashboardAssetStatusMetrics,
+  dashboardAssetStatusNames,
   type DashboardActionCardKey,
 } from "@/lib/dashboard-action-cards"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
@@ -64,7 +65,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const dashboardTimingMeta = { route: "/dashboard", locale, approvalInbox: Boolean(approvalInboxAccess?.canAnyApproval) }
 
   const [
-    [totalAssets, inUse, ready, repairStatusRows, warrantyExpiring],
+    [totalAssets, assetStatusRows, warrantyExpiring],
     recentLogs,
     [openRepairs, pendingAuditFindings, pendingDisposals, approvedDisposals],
     approvalInboxCounts,
@@ -86,20 +87,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         "dashboard.kpi-counts",
         () => Promise.all([
           prisma.asset.count({ where: { isActive: true } }),
-          prisma.asset.count({
-            where: {
-              isActive: true,
-              status: { OR: [{ name: { contains: "In Use" } }, { nameTh: { contains: "ใช้งาน" } }] },
-            },
-          }),
-          prisma.asset.count({
-            where: {
-              isActive: true,
-              status: { OR: [{ name: { contains: "Ready" } }, { nameTh: { contains: "พร้อม" } }] },
-            },
-          }),
           prisma.assetStatus.findMany({
-            where: { isActive: true, name: { in: ["Pending Repair", "Under Maintenance"] } },
+            where: { isActive: true, name: { in: [...dashboardAssetStatusNames] } },
             select: {
               id: true,
               name: true,
@@ -164,19 +153,21 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
   const crossScopeTotal = crossScopeSummary.all
   const crossScopeAssetsHref = buildDashboardCrossScopeHref(locale, "all")
-  const repairStatusMetrics = buildDashboardAssetStatusMetrics(
+  const assetStatusMetrics = buildDashboardAssetStatusMetrics(
     locale,
-    repairStatusRows.map((row) => ({ id: row.id, name: row.name, count: row._count.assets })),
+    assetStatusRows.map((row) => ({ id: row.id, name: row.name, count: row._count.assets })),
   )
-  const pendingRepair = repairStatusMetrics.pendingRepair.count
-  const underMaintenance = repairStatusMetrics.underMaintenance.count
+  const inUse = assetStatusMetrics.inUse.count
+  const ready = assetStatusMetrics.ready.count
+  const pendingRepair = assetStatusMetrics.pendingRepair.count
+  const underMaintenance = assetStatusMetrics.underMaintenance.count
   // The seven totals are StatStrip cells, each opening its list (no icons and no tone colors).
   const kpiItems: StatStripItem[] = [
     { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets), href: `/${locale}/assets` },
-    { key: "inUse", label: t("inUse"), value: formatCount(inUse), href: `/${locale}/assets` },
-    { key: "readyToDeploy", label: t("readyToDeploy"), value: formatCount(ready), href: `/${locale}/assets` },
-    { key: "pendingRepair", label: t("pendingRepair"), value: formatCount(pendingRepair), href: repairStatusMetrics.pendingRepair.href },
-    { key: "underMaintenance", label: t("underMaintenance"), value: formatCount(underMaintenance), href: repairStatusMetrics.underMaintenance.href },
+    { key: "inUse", label: t("inUse"), value: formatCount(inUse), href: assetStatusMetrics.inUse.href },
+    { key: "readyToDeploy", label: t("readyToDeploy"), value: formatCount(ready), href: assetStatusMetrics.ready.href },
+    { key: "pendingRepair", label: t("pendingRepair"), value: formatCount(pendingRepair), href: assetStatusMetrics.pendingRepair.href },
+    { key: "underMaintenance", label: t("underMaintenance"), value: formatCount(underMaintenance), href: assetStatusMetrics.underMaintenance.href },
     { key: "warrantyExpiring", label: t("warrantyExpiring"), value: formatCount(warrantyExpiring), href: `/${locale}/assets` },
     { key: "crossScopeAssets", label: t("crossScopeAssets"), value: formatCount(crossScopeTotal), href: crossScopeAssetsHref },
   ]
@@ -310,10 +301,10 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     foot: `${t("thisMonth")} · ${t("previousMonth")}: ${formatCount(card.previous)} · ${formatTrendDelta(card.current, card.previous)}`,
   }))
   const statusItems = [
-    { key: "inUse", label: t("inUse"), value: inUse, href: `/${locale}/assets`, tone: "success" as const },
-    { key: "readyToDeploy", label: t("readyToDeploy"), value: ready, href: `/${locale}/assets`, tone: "info" as const },
-    { key: "pendingRepair", label: t("pendingRepair"), value: pendingRepair, href: repairStatusMetrics.pendingRepair.href, tone: "warning" as const },
-    { key: "underMaintenance", label: t("underMaintenance"), value: underMaintenance, href: repairStatusMetrics.underMaintenance.href, tone: "danger" as const },
+    { key: "inUse", label: t("inUse"), value: inUse, href: assetStatusMetrics.inUse.href, tone: "success" as const },
+    { key: "readyToDeploy", label: t("readyToDeploy"), value: ready, href: assetStatusMetrics.ready.href, tone: "info" as const },
+    { key: "pendingRepair", label: t("pendingRepair"), value: pendingRepair, href: assetStatusMetrics.pendingRepair.href, tone: "warning" as const },
+    { key: "underMaintenance", label: t("underMaintenance"), value: underMaintenance, href: assetStatusMetrics.underMaintenance.href, tone: "danger" as const },
   ]
   const recentLogLabels = await buildSystemLogRecordLabels(recentLogs)
   const readableLogs = recentLogs.map((log) => formatDashboardLog(buildSystemLogPresentation(log, recentLogLabels, locale, translateSystemLog), t))
