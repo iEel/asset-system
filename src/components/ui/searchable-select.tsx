@@ -11,6 +11,23 @@ import { cn } from "@/lib/utils"
 
 export type { SearchableSelectOption } from "@/lib/searchable-select-filter"
 
+// The popover is not modal, so inside a modal dialog or sheet it is portalled outside the dialog's scroll lock
+// (react-remove-scroll), which cancels a wheel or touch scroll it sees from outside. Stopping the event at the popover
+// keeps the list's own scroll; the page behind stays locked by the dialog.
+function stopScrollLock(event: Event) {
+  event.stopPropagation()
+}
+
+function keepOwnScroll(node: HTMLDivElement | null) {
+  if (!node) return
+  node.addEventListener("wheel", stopScrollLock, { passive: true })
+  node.addEventListener("touchmove", stopScrollLock, { passive: true })
+  return () => {
+    node.removeEventListener("wheel", stopScrollLock)
+    node.removeEventListener("touchmove", stopScrollLock)
+  }
+}
+
 export function SearchableSelect({
   id,
   label,
@@ -80,7 +97,9 @@ export function SearchableSelect({
         </FieldLabel>
       ) : null}
       <div className="relative min-w-0 max-w-full">
-        <Popover modal open={open && !disabled} onOpenChange={setOpenState}>
+        {/* Not modal (the WAI-ARIA combobox): nothing outside is hidden from a screen reader while it stays focusable.
+            Escape or a choice closes it and Radix returns focus to the trigger. */}
+        <Popover modal={false} open={open && !disabled} onOpenChange={setOpenState}>
           <PopoverTrigger asChild>
             <button
               id={triggerId}
@@ -102,11 +121,13 @@ export function SearchableSelect({
               </span>
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-(--radix-popover-trigger-width) max-w-[calc(100vw-2rem)] p-0">
+          <PopoverContent ref={keepOwnScroll} align="start" className="w-(--radix-popover-trigger-width) max-w-[calc(100vw-2rem)] p-0">
             <Command shouldFilter={false} loop defaultValue={value || undefined}>
               <CommandInput value={query} onValueChange={updateQuery} placeholder={searchPlaceholder} aria-label={searchPlaceholder} />
-              <CommandList className="max-h-64">
-                <CommandEmpty>{emptyLabel}</CommandEmpty>
+              {/* cmdk's list is always role="listbox": with no option it is hidden (its id stays for the input's
+                  aria-controls) and the empty line sits outside it, so no listbox is ever empty. */}
+              <CommandEmpty>{emptyLabel}</CommandEmpty>
+              <CommandList className="max-h-64" hidden={filteredOptions.length === 0}>
                 {filteredOptions.map((option) => (
                   <CommandItem
                     key={option.id}

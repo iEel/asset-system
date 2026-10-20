@@ -169,7 +169,7 @@ test("a second record for an asset under repair is refused, and a mistaken recor
   await expect(page.getByPlaceholder("พิมพ์เพื่อค้นหา...")).toBeHidden()
   await expect(page.locator("#repair-record-asset")).toBeFocused()
   await expect(page.locator("#repair-record-asset-value")).not.toContainText(tag)
-  // axe after the search closes (finding AR3 has its own test below: the open search hides the page with aria-hidden).
+  // axe after the search closes (the open search has its own test below, finding AR3).
   await measure.recordPage("repair form after the refused search")
 
   // Cancel the mistaken record: the reason stays in its history, the asset goes back to Ready.
@@ -219,13 +219,10 @@ test("the repair print opens with the record's number, state and outcome (ER3, f
   await measure.recordPage("repair print")
 })
 
-// Finding AR3 (expected to fail until it is decided): while a searchable select is open, its modal popover hides the
-// rest of the page with aria-hidden, and the page's links and buttons under it stay focusable: an axe serious
-// "aria-hidden-focus" violation on every searchable select (src/components/ui/searchable-select.tsx, Radix Popover
-// modal). Focus is trapped in the popover, so the controller decides: inert instead of aria-hidden, or a reviewed
-// allow-list entry.
+// Finding AR3, decided (DX4 (ก)): the searchable select's popover is not modal, so the open search hides nothing under
+// aria-hidden (axe aria-hidden-focus), and an empty result is no listbox (axe aria-required-children)
+// (src/components/ui/searchable-select.tsx).
 test("the open asset search passes axe (ER3, finding AR3)", async ({ page, measure }) => {
-  test.fail(true, "AR3: the open searchable select leaves focusable content under aria-hidden (axe aria-hidden-focus, serious)")
   await measure.visit("/th/maintenance/new", "repair form")
   await page.locator("#repair-record-asset").click()
   await expect(page.getByPlaceholder("พิมพ์เพื่อค้นหา...")).toBeFocused()

@@ -73,12 +73,12 @@ test("repair records: a second open record is refused, a mistaken one is cancell
     assert.ok(spec.includes(text), text)
   }
   // The findings of this task: each its own test, marked expected to fail with its id.
-  // AR1 is fixed (FX1): its test runs as a plain test.
+  // AR1 is fixed (FX1) and AR3 is decided (DX4 (ก)): their tests run as plain tests.
   assert.ok(!spec.includes(`test.fail(true, "AR1: `), "AR1 is fixed")
   for (const [title, id] of [["the open asset search passes axe (ER3, finding AR3)", "AR3"]]) {
     const start = spec.indexOf(`test("${title}"`)
     assert.ok(start >= 0, title)
-    assert.ok(spec.slice(start, spec.indexOf("\n})", start)).includes(`  test.fail(true, "${id}: `), `${id} is expected to fail`)
+    assert.ok(!spec.slice(start, spec.indexOf("\n})", start)).includes(`test.fail(true, "${id}: `), `${id} is fixed`)
   }
   // Cancelled, a stock asset with no custodian goes back to Ready (the app's rule).
   const policy = await import("../src/lib/repair-record-policy.ts")
