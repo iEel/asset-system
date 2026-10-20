@@ -23,13 +23,15 @@ export type BulkExecutionSharedValues = {
   executedById: string
   nextStatusId: string
   sharedRecipientName: string | null
+  sharedDocumentNo: string | null
   useHistoricalEvidenceException: boolean
   evidenceExceptionReason: string | null
   evidenceExceptionAcknowledged: boolean
 }
 
-type BulkExecutionSharedValuesInput = Omit<BulkExecutionSharedValues, "sharedRecipientName"> & {
+type BulkExecutionSharedValuesInput = Omit<BulkExecutionSharedValues, "sharedRecipientName" | "sharedDocumentNo"> & {
   sharedRecipientName?: string | null
+  sharedDocumentNo?: string | null
 }
 
 export type BulkExecutionPreviewPayload = BulkExecutionSharedValuesInput & {
@@ -58,6 +60,19 @@ export function resolveBulkExecutionRecipientReview(
     }
   }
   return { recipientName: selectableRecipientName, recipientSource: null }
+}
+
+// The number a row's execution uses (resolveDisposalExecutionDocumentNo on the server, e2e decision DX2): the request's
+// own, else the shared number the preview sent; the source is unknown until a preview has sent one.
+export function resolveBulkExecutionDocumentReview(
+  selectableDocumentNo: string | null,
+  sharedDocumentNo: string | null | undefined,
+): { documentNo: string | null; documentSource: "request" | "shared" | null } {
+  const own = selectableDocumentNo?.trim() ? selectableDocumentNo : null
+  if (sharedDocumentNo === undefined) return { documentNo: own, documentSource: null }
+  if (own) return { documentNo: own, documentSource: "request" }
+  const shared = sharedDocumentNo?.trim() || null
+  return { documentNo: shared, documentSource: shared ? "shared" : null }
 }
 
 export function setBulkExecutionSelectionMode(
@@ -170,6 +185,9 @@ export function buildBulkExecutionCommitPayload(
     ...(previewPayload.sharedRecipientName === undefined
       ? {}
       : { sharedRecipientName: previewPayload.sharedRecipientName }),
+    ...(previewPayload.sharedDocumentNo === undefined
+      ? {}
+      : { sharedDocumentNo: previewPayload.sharedDocumentNo }),
     useHistoricalEvidenceException: previewPayload.useHistoricalEvidenceException,
     evidenceExceptionReason: previewPayload.evidenceExceptionReason,
     evidenceExceptionAcknowledged: previewPayload.evidenceExceptionAcknowledged,

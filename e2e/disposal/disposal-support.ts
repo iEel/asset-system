@@ -168,7 +168,8 @@ export function visibleLink(page: Page, name: string | RegExp): Locator {
 // A bulk execution of one approved request, up to its preview, from the approved tab of the queue: select the row, fill
 // the shared values (executor, final status Disposed, shared recipient) and ask for the preview. Returns the dialog once
 // the preview has answered (its counts show).
-export async function openBulkExecutionPreview(page: Page, asset: DisposalAsset, executor: string, recipient: string): Promise<Locator> {
+// documentNo fills the dialog's shared reference document number (e2e decision DX2), which a row without its own takes.
+export async function openBulkExecutionPreview(page: Page, asset: DisposalAsset, executor: string, recipient: string, documentNo?: string): Promise<Locator> {
   const toggle = page.getByRole("button", { name: "เลือกหลายรายการ" }).filter({ visible: true })
   if (await toggle.count()) await toggle.click()
   // The bulk execution names each row by the asset tag and name ("ทรัพย์สิน <tag> - <name>").
@@ -178,6 +179,7 @@ export async function openBulkExecutionPreview(page: Page, asset: DisposalAsset,
   await dialog.locator("#disposal-bulk-execution-executor").selectOption({ label: executor })
   await dialog.locator("#disposal-bulk-execution-status").selectOption({ label: "ตัดจำหน่ายแล้ว" })
   await dialog.locator("#disposal-bulk-execution-recipient").fill(recipient)
+  if (documentNo) await dialog.locator("#disposal-bulk-execution-document-no").fill(documentNo)
   await dialog.getByRole("button", { name: "ยืนยันดำเนินการ 1 รายการ" }).click()
   await expect(dialog.getByText("ดำเนินการได้", { exact: true })).toBeVisible()
   return dialog

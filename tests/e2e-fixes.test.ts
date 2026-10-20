@@ -236,3 +236,45 @@ test("a tap on the audit check's waiting save opens the note-and-photo section, 
   const walk = read("e2e/audit/field-audit.spec.ts")
   assert.match(walk, /toHaveAttribute\("aria-disabled", "true"\)\n(?:[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*\s*await scan\.saveButton\(page\)\.click\(\{ force: true \}\)\n\s*await expect\(scan\.checkForm\(page\)\.getByRole\("button", \{ name: "หมายเหตุ \/ รูป" \}\)\)\.toHaveAttribute\("aria-expanded", "true"\)\n\s*await scan\.addPhoto\(/)
 })
+
+test("the bulk execution's dialog takes one shared reference document number for the rows that have none (e2e decision DX2 (ก): D2)", async () => {
+  const { disposalBulkExecutionSchema } = await import("../src/lib/validations/disposal.ts")
+  const ui = await import("../src/lib/disposal-bulk-execution-ui.ts")
+  const base = { mode: "preview", requestIds: ["request-1"], executionDate: "2026-10-20", executedById: "employee-1", nextStatusId: "status-1" }
+  // The body: trimmed, blank is none, at most 100 characters (the request's column, and the single execution's field).
+  assert.equal(disposalBulkExecutionSchema.parse({ ...base, sharedDocumentNo: "  DOC-1  " }).sharedDocumentNo, "DOC-1")
+  assert.equal(disposalBulkExecutionSchema.parse({ ...base, sharedDocumentNo: "   " }).sharedDocumentNo, null)
+  assert.equal(disposalBulkExecutionSchema.parse(base).sharedDocumentNo, undefined)
+  assert.equal(disposalBulkExecutionSchema.safeParse({ ...base, sharedDocumentNo: "x".repeat(101) }).success, false)
+  // The commit sends the number the preview sent; the review shows which number a row uses, as it does the recipient.
+  const values = { executionDate: "2026-10-20", executedById: "employee-1", nextStatusId: "status-1", sharedRecipientName: null, sharedDocumentNo: "DOC-SHARED", useHistoricalEvidenceException: false, evidenceExceptionReason: null, evidenceExceptionAcknowledged: false }
+  const preview = ui.buildBulkExecutionPayload("preview", ["request-1"], values)
+  assert.equal(ui.buildBulkExecutionCommitPayload(preview, ["request-1"]).sharedDocumentNo, "DOC-SHARED")
+  assert.deepEqual(ui.resolveBulkExecutionDocumentReview(null, "DOC-SHARED"), { documentNo: "DOC-SHARED", documentSource: "shared" })
+  assert.deepEqual(ui.resolveBulkExecutionDocumentReview("DOC-OWN", "DOC-SHARED"), { documentNo: "DOC-OWN", documentSource: "request" })
+  assert.deepEqual(ui.resolveBulkExecutionDocumentReview(" ", null), { documentNo: null, documentSource: null })
+  assert.deepEqual(ui.resolveBulkExecutionDocumentReview("DOC-OWN", undefined), { documentNo: "DOC-OWN", documentSource: null })
+
+  // The dialog's field: its id, its check (maxLength 100 under the field, V track), shown on the review step.
+  const dialog = read("src/components/disposal/disposal-bulk-execution.tsx")
+  assert.match(dialog, /sharedDocumentNo: "disposal-bulk-execution-document-no",/)
+  assert.match(dialog, /check\("sharedDocumentNo", maxLength\(values\.sharedDocumentNo, 100\)\)/)
+  assert.match(dialog, /error=\{fieldErrors\.message\("sharedDocumentNo"\)\}/)
+  assert.match(dialog, /fieldErrors\.clear\("sharedDocumentNo"\)/)
+  assert.match(dialog, /sharedDocumentNo: sharedDocumentNo\.trim\(\) \|\| null,/)
+  // The copy, in Thai and English, from the app's messages.
+  for (const locale of ["th", "en"] as const) {
+    const page = messages(locale).disposalPage as Record<string, string>
+    for (const key of ["bulkExecutionSharedDocumentNo", "bulkExecutionSharedDocumentNoHelp"]) {
+      assert.ok(page[key], `${locale} ${key}`)
+    }
+  }
+  assert.equal((messages("th").disposalPage as Record<string, string>).bulkExecutionSharedDocumentNo, "เลขที่เอกสารอ้างอิงร่วม")
+  // With neither, the row's refusal reads as today.
+  assert.equal(((messages("th").disposalPage as Record<string, Record<string, string>>).errors).DISPOSAL_DOCUMENT_REQUIRED, "กรุณาระบุเลขที่เอกสารอ้างอิงในคำขอตัดจำหน่ายนี้ก่อนดำเนินการ")
+
+  // D2 runs as a plain test: IT staff fill the shared number and the bulk execution executes.
+  const spec = read("e2e/disposal/batch-bulk-approval.spec.ts")
+  assert.ok(!spec.includes(`test.fail(true, "finding D2:`))
+  assert.match(read("e2e/disposal/disposal-support.ts"), /if \(documentNo\) await dialog\.locator\("#disposal-bulk-execution-document-no"\)\.fill\(documentNo\)/)
+})

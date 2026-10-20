@@ -3063,7 +3063,9 @@
     },
     "bulkDiscardSelectionAction": "ละทิ้งรายการที่เลือก",
     "batchNeedsAssets": "เลือกทรัพย์สินอย่างน้อย 2 รายการก่อนตรวจสอบชุดคำขอ",
-    "bulkExecutionPermanentConfirmationRequired": "กรุณาเลือกช่องยืนยันก่อนดำเนินการ"
+    "bulkExecutionPermanentConfirmationRequired": "กรุณาเลือกช่องยืนยันก่อนดำเนินการ",
+    "bulkExecutionSharedDocumentNo": "เลขที่เอกสารอ้างอิงร่วม",
+    "bulkExecutionSharedDocumentNoHelp": "ใช้เฉพาะรายการที่ยังไม่มีเลขที่เอกสารอ้างอิง และจะไม่ทับเลขเดิมของคำขอ"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

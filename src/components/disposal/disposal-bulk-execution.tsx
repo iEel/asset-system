@@ -28,6 +28,7 @@ import {
   getBulkExecutionUnresolvedIds,
   isHistoricalExceptionAvailable,
   mergeBulkExecutionResults,
+  resolveBulkExecutionDocumentReview,
   resolveBulkExecutionRecipientReview,
   setBulkExecutionSelectionMode,
   toggleBulkExecutionItem,
@@ -67,12 +68,13 @@ const BULK_EXECUTION_MODES = {
 }
 
 // The dialog's fields in visual order, keyed like the request body, with the id focus moves to (v-track M-R1). The first
-// six are the review step's shared values, the last is the preview step's confirmation (client only).
+// seven are the review step's shared values, the last is the preview step's confirmation (client only).
 const FIELD_IDS = {
   executionDate: "disposal-bulk-execution-date",
   executedById: "disposal-bulk-execution-executor",
   nextStatusId: "disposal-bulk-execution-status",
   sharedRecipientName: "disposal-bulk-execution-recipient",
+  sharedDocumentNo: "disposal-bulk-execution-document-no",
   evidenceExceptionReason: "disposal-bulk-execution-exception-reason",
   evidenceExceptionAcknowledged: "disposal-bulk-execution-exception-acknowledged",
   permanentConfirmed: "disposal-bulk-execution-permanent",
@@ -86,6 +88,7 @@ type BulkExecutionValues = {
   executedById: string
   nextStatusId: string
   sharedRecipientName: string
+  sharedDocumentNo: string
   evidenceExceptionReason: string
   evidenceExceptionAcknowledged: boolean
   permanentConfirmed: boolean
@@ -116,6 +119,7 @@ function validate(values: BulkExecutionValues, shown: readonly BulkExecutionFiel
   check("executedById", required(values.executedById))
   check("nextStatusId", required(values.nextStatusId))
   check("sharedRecipientName", maxLength(values.sharedRecipientName, 200))
+  check("sharedDocumentNo", maxLength(values.sharedDocumentNo, 100))
   check("evidenceExceptionReason", required(values.evidenceExceptionReason) ?? minLength(values.evidenceExceptionReason, 20) ?? maxLength(values.evidenceExceptionReason, 2000))
   check("evidenceExceptionAcknowledged", required(values.evidenceExceptionAcknowledged))
   check("permanentConfirmed", required(values.permanentConfirmed))
@@ -187,6 +191,8 @@ export type DisposalBulkExecutionCopy = {
   sharedValues: string
   sharedRecipient: string
   sharedRecipientHelp: string
+  sharedDocumentNo: string
+  sharedDocumentNoHelp: string
   reviewedValues: string
   recipient: string
   recipientSourceRequest: string
@@ -215,6 +221,7 @@ type ContextValue = {
   executedById: string
   nextStatusId: string
   sharedRecipientName: string
+  sharedDocumentNo: string
   useHistoricalEvidenceException: boolean
   evidenceExceptionReason: string
   evidenceExceptionAcknowledged: boolean
@@ -231,6 +238,7 @@ type ContextValue = {
   setExecutedById: (value: string) => void
   setNextStatusId: (value: string) => void
   setSharedRecipientName: (value: string) => void
+  setSharedDocumentNo: (value: string) => void
   setUseHistoricalEvidenceException: (value: boolean) => void
   setEvidenceExceptionReason: (value: string) => void
   setEvidenceExceptionAcknowledged: (value: boolean) => void
@@ -301,6 +309,7 @@ export function DisposalBulkExecutionProvider({
   const [executedById, setExecutedById] = useState("")
   const [nextStatusId, setNextStatusId] = useState("")
   const [sharedRecipientName, setSharedRecipientName] = useState("")
+  const [sharedDocumentNo, setSharedDocumentNo] = useState("")
   const [useHistoricalEvidenceException, setUseHistoricalEvidenceException] = useState(false)
   const [evidenceExceptionReason, setEvidenceExceptionReason] = useState("")
   const [evidenceExceptionAcknowledged, setEvidenceExceptionAcknowledged] = useState(false)
@@ -354,6 +363,7 @@ export function DisposalBulkExecutionProvider({
     resetReviewedState()
     clearHistoricalException()
     setSharedRecipientName("")
+    setSharedDocumentNo("")
     setSelectionMessage(null)
   }, [selectionKey])
 
@@ -371,6 +381,7 @@ export function DisposalBulkExecutionProvider({
       abortPreview()
       resetReviewedState()
       setSharedRecipientName("")
+      setSharedDocumentNo("")
     }
   }
 
@@ -442,6 +453,7 @@ export function DisposalBulkExecutionProvider({
       executedById,
       nextStatusId,
       sharedRecipientName: sharedRecipientName.trim() || null,
+      sharedDocumentNo: sharedDocumentNo.trim() || null,
       useHistoricalEvidenceException: historicalAvailable && useHistoricalEvidenceException,
       evidenceExceptionReason: historicalAvailable && useHistoricalEvidenceException
         ? evidenceExceptionReason.trim() || null
@@ -463,6 +475,7 @@ export function DisposalBulkExecutionProvider({
           executedById: previousPayload.executedById,
           nextStatusId: previousPayload.nextStatusId,
           sharedRecipientName: previousPayload.sharedRecipientName ?? null,
+          sharedDocumentNo: previousPayload.sharedDocumentNo ?? null,
           useHistoricalEvidenceException: previousPayload.useHistoricalEvidenceException,
           evidenceExceptionReason: previousPayload.evidenceExceptionReason,
           evidenceExceptionAcknowledged: previousPayload.evidenceExceptionAcknowledged,
@@ -551,6 +564,7 @@ export function DisposalBulkExecutionProvider({
     if (dialogState === "previewing") abortPreview()
     setDialogState("closed")
     setSharedRecipientName("")
+    setSharedDocumentNo("")
   }
 
   async function discardSelectionThen(proceed: () => void) {
@@ -618,6 +632,7 @@ export function DisposalBulkExecutionProvider({
     executedById,
     nextStatusId,
     sharedRecipientName,
+    sharedDocumentNo,
     useHistoricalEvidenceException,
     evidenceExceptionReason,
     evidenceExceptionAcknowledged,
@@ -634,6 +649,7 @@ export function DisposalBulkExecutionProvider({
     setExecutedById,
     setNextStatusId,
     setSharedRecipientName,
+    setSharedDocumentNo,
     setUseHistoricalEvidenceException,
     setEvidenceExceptionReason,
     setEvidenceExceptionAcknowledged,
@@ -821,6 +837,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
     executedById,
     nextStatusId,
     sharedRecipientName,
+    sharedDocumentNo,
     useHistoricalEvidenceException,
     evidenceExceptionReason,
     evidenceExceptionAcknowledged,
@@ -832,6 +849,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
     setExecutedById,
     setNextStatusId,
     setSharedRecipientName,
+    setSharedDocumentNo,
     setUseHistoricalEvidenceException,
     setEvidenceExceptionReason,
     setEvidenceExceptionAcknowledged,
@@ -880,6 +898,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
     executedById,
     nextStatusId,
     sharedRecipientName,
+    sharedDocumentNo,
     evidenceExceptionReason,
     evidenceExceptionAcknowledged,
     permanentConfirmed,
@@ -935,6 +954,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
               executedById={executedById}
               nextStatusId={nextStatusId}
               sharedRecipientName={sharedRecipientName}
+              sharedDocumentNo={sharedDocumentNo}
               recipientFallbackApplicable={recipientFallbackApplicable}
               disabled={previewing}
               fieldErrors={fieldErrors}
@@ -942,6 +962,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
               onExecutedByChange={setExecutedById}
               onNextStatusChange={setNextStatusId}
               onSharedRecipientNameChange={setSharedRecipientName}
+              onSharedDocumentNoChange={setSharedDocumentNo}
             />
           ) : previewPayload ? (
             <ReviewedSharedValues
@@ -1028,7 +1049,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
             </section>
           ) : null}
 
-          <AuthoritativeItems copy={copy} items={reviewedItems} responseItems={response?.items ?? []} />
+          <AuthoritativeItems copy={copy} items={reviewedItems} responseItems={response?.items ?? []} sharedDocumentNo={previewPayload?.sharedDocumentNo} />
 
           {response && dialogState !== "review" && !previewing ? (
             <ResponseSummary
@@ -1111,6 +1132,7 @@ function SharedValueFields({
   executedById,
   nextStatusId,
   sharedRecipientName,
+  sharedDocumentNo,
   recipientFallbackApplicable,
   disabled,
   fieldErrors,
@@ -1118,6 +1140,7 @@ function SharedValueFields({
   onExecutedByChange,
   onNextStatusChange,
   onSharedRecipientNameChange,
+  onSharedDocumentNoChange,
 }: {
   copy: DisposalBulkExecutionCopy
   employees: Option[]
@@ -1126,6 +1149,7 @@ function SharedValueFields({
   executedById: string
   nextStatusId: string
   sharedRecipientName: string
+  sharedDocumentNo: string
   recipientFallbackApplicable: boolean
   disabled: boolean
   fieldErrors: BulkExecutionFieldErrors
@@ -1133,6 +1157,7 @@ function SharedValueFields({
   onExecutedByChange: (value: string) => void
   onNextStatusChange: (value: string) => void
   onSharedRecipientNameChange: (value: string) => void
+  onSharedDocumentNoChange: (value: string) => void
 }) {
   return (
     <fieldset disabled={disabled} className="grid gap-4 sm:grid-cols-3">
@@ -1195,6 +1220,23 @@ function SharedValueFields({
           />
         </Field>
       ) : null}
+      {/* One number for the rows that have none of their own (e2e decision DX2), next to the shared recipient. */}
+      <Field
+        label={copy.sharedDocumentNo}
+        id="disposal-bulk-execution-document-no"
+        hint={copy.sharedDocumentNoHelp}
+        className="sm:col-span-3"
+        error={fieldErrors.message("sharedDocumentNo")}
+      >
+        <Input
+          value={sharedDocumentNo}
+          onChange={(event) => {
+            onSharedDocumentNoChange(event.target.value)
+            fieldErrors.clear("sharedDocumentNo")
+          }}
+          maxLength={100}
+        />
+      </Field>
     </fieldset>
   )
 }
@@ -1224,6 +1266,7 @@ function ReviewedSharedValues({
           { key: "executor", label: copy.executor, value: employee, nilLabel: copy.notProvided },
           { key: "finalStatus", label: copy.finalStatus, value: status, nilLabel: copy.notProvided },
           ...(payload.sharedRecipientName ? [{ key: "sharedRecipient", label: copy.sharedRecipient, value: payload.sharedRecipientName }] : []),
+          ...(payload.sharedDocumentNo ? [{ key: "sharedDocumentNo", label: copy.sharedDocumentNo, value: <span className="tag">{payload.sharedDocumentNo}</span> }] : []),
         ]}
       />
     </section>
@@ -1234,10 +1277,13 @@ function AuthoritativeItems({
   copy,
   items,
   responseItems,
+  sharedDocumentNo,
 }: {
   copy: DisposalBulkExecutionCopy
   items: DisposalBulkExecutionSelectableItem[]
   responseItems: DisposalBulkExecutionResponse["items"]
+  // The shared number the preview sent; undefined before a preview.
+  sharedDocumentNo: string | null | undefined
 }) {
   const responseItemsById = new Map(responseItems.map((item) => [item.requestId, item]))
   return (
@@ -1254,6 +1300,12 @@ function AuthoritativeItems({
             : recipient.recipientSource === "request"
               ? copy.recipientSourceRequest
               : null
+          const documentReview = resolveBulkExecutionDocumentReview(item.documentNo, sharedDocumentNo)
+          const documentSource = documentReview.documentSource === "shared"
+            ? copy.recipientSourceShared
+            : documentReview.documentSource === "request"
+              ? copy.recipientSourceRequest
+              : null
           return (
           <article key={item.requestId} className="space-y-3 p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -1263,7 +1315,7 @@ function AuthoritativeItems({
             <KeyValueList
               items={[
                 { key: "recipient", label: copy.recipient, value: recipient.recipientName ? <>{recipient.recipientName}{recipientSource ? <span className="mt-1 block text-meta text-muted-foreground">{recipientSource}</span> : null}</> : null, nilLabel: copy.notProvided },
-                { key: "documentNo", label: copy.documentNo, value: item.documentNo ? <span className="tag">{item.documentNo}</span> : null, nilLabel: copy.notProvided },
+                { key: "documentNo", label: copy.documentNo, value: documentReview.documentNo ? <><span className="tag">{documentReview.documentNo}</span>{documentSource ? <span className="mt-1 block text-meta text-muted-foreground">{documentSource}</span> : null}</> : null, nilLabel: copy.notProvided },
                 { key: "saleValue", label: copy.saleValue, value: item.saleValue, nilLabel: copy.notProvided },
                 { key: "salvageValue", label: copy.salvageValue, value: item.salvageValue, nilLabel: copy.notProvided },
                 { key: "remark", label: copy.remark, value: item.executionRemark, nilLabel: copy.notProvided },

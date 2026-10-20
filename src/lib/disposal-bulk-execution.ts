@@ -72,9 +72,10 @@ export function summarizeDisposalBulkExecution(items: DisposalBulkExecutionItem[
 }
 
 // The blocked rows whose code a field of the bulk execution dialog can fix name that field (V track spec §6.2): a
-// missing recipient is the shared recipient, the evidence exception's reason and acknowledgement are their own fields.
-// Every other row code is about the request itself (its document, sale value, remark, stage) and names none. The first
-// row of each field wins; undefined when no row names a field.
+// missing recipient is the shared recipient, a missing reference document number the shared one (e2e decision DX2),
+// the evidence exception's reason and acknowledgement are their own fields. Every other row code is about the request
+// itself (its sale value, remark, stage) and names none. The first row of each field wins; undefined when no row names
+// a field.
 export function getDisposalBulkExecutionFieldErrors(
   items: readonly Pick<DisposalBulkExecutionItem, "outcome" | "code">[],
   input: { evidenceExceptionReason?: string | null },
@@ -84,7 +85,9 @@ export function getDisposalBulkExecutionFieldErrors(
     if (item.outcome !== "blocked") continue
     const named = item.code === "DISPOSAL_RECIPIENT_REQUIRED"
       ? { sharedRecipientName: "recipientRequired" }
-      : getDisposalEvidenceFieldErrors(item.code, input)
+      : item.code === "DISPOSAL_DOCUMENT_REQUIRED"
+        ? { sharedDocumentNo: "referenceDocumentRequired" }
+        : getDisposalEvidenceFieldErrors(item.code, input)
     for (const [key, code] of Object.entries(named ?? {})) {
       if (!(key in fieldErrors)) fieldErrors[key] = code
     }

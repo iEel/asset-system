@@ -76,9 +76,10 @@ test("a batch of two is requested with shared evidence, approved in one bulk app
   ]) assert.ok(spec.includes(step), step)
   // The phone's queue needs its selection mode before a row can be ticked.
   assert.ok(spec.includes(`if (e2eDevice === "phone") await page.getByRole("button", { name: "เลือกหลายรายการ" }).click()`), "the phone's selection mode")
-  // Finding D3 is fixed (FX3); D2 stays an expected failure until it is decided and fixed.
+  // Finding D3 is fixed (FX3); D2 is decided (DX2 (ก)): IT staff fill the shared reference document number.
   assert.ok(!spec.includes(`test.fail(true, "finding D3:`), "D3 is fixed")
-  assert.ok(spec.includes(`test.fail(true, "finding D2:`), "D2 expected to fail")
+  assert.ok(!spec.includes(`test.fail(true, "finding D2:`), "D2 is fixed")
+  assert.ok(spec.includes("openBulkExecutionPreview(page, asset, employeeLabel(\"itStaff\"), `${queueSearch} ผู้รับซาก`, `${queueSearch}-BULK-DOC`)"), "D2 fills the shared number")
   assert.ok(spec.indexOf("(finding D3)") < spec.indexOf("(finding D2)"), "the approver's preview runs while the request is still approved")
 })
 

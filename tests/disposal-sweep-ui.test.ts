@@ -95,7 +95,8 @@ test("bulk execution: a quiet toolbar, danger and warning Notices, KeyValueList 
   assert.match(source, /<section className="space-y-3">\n\s+<Notice tone="warning" id=\{historicalWarningId\}>\n\s+\{copy\.historicalWarning\}\n\s+<\/Notice>/, "the warning is a Notice and the controls sit outside its fill")
   assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the shared values and each request's values")
   assert.equal(source.match(/nilLabel: copy\.notProvided/g)?.length, 7)
-  assert.match(source, /\{ key: "documentNo", label: copy\.documentNo, value: item\.documentNo \? <span className="tag">\{item\.documentNo\}<\/span> : null, nilLabel: copy\.notProvided \}/)
+  // The number a row uses, and whether it is the request's own or the shared one (e2e decision DX2), as the recipient.
+  assert.match(source, /\{ key: "documentNo", label: copy\.documentNo, value: documentReview\.documentNo \? <><span className="tag">\{documentReview\.documentNo\}<\/span>\{documentSource \? <span className="mt-1 block text-meta text-muted-foreground">\{documentSource\}<\/span> : null\}<\/> : null, nilLabel: copy\.notProvided \}/)
   assert.match(source, /<h4 className="text-sm text-foreground"><span className="tag font-medium">\{item\.disposalNo\}<\/span><\/h4>/)
   assert.equal(source.match(/value: formatCount\(response\.(?:selected|eligible|executed|blocked|failed)Count\) \}/g)?.length, 5)
   assert.match(source, /<StatusBadge label=\{copy\[item\.outcome\]\} tone=\{outcomeTones\[item\.outcome\]\} \/>/)

@@ -75,6 +75,11 @@ export const disposalBulkExecutionSchema = z.object({
     (value) => typeof value === "string" ? value.trim() || null : value,
     z.string().max(200).nullable(),
   ).optional(),
+  // One reference document number for the rows that have none of their own (e2e decision DX2), as the recipient above.
+  sharedDocumentNo: z.preprocess(
+    (value) => typeof value === "string" ? value.trim() || null : value,
+    z.string().max(100).nullable(),
+  ).optional(),
   useHistoricalEvidenceException: z.boolean().optional().default(false),
   evidenceExceptionReason: z.preprocess(
     (value) => (value === "" || value == null ? null : value),

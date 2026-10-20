@@ -63,6 +63,7 @@ export type DisposalExecutionSharedInput = Pick<
   | "evidenceExceptionAcknowledged"
 > & {
   sharedRecipientName?: string | null
+  sharedDocumentNo?: string | null
 }
 
 export const disposalExecutionCandidateBaseSelect = {
@@ -371,6 +372,22 @@ export function resolveDisposalExecutionRecipient(
   }
 }
 
+// A request's own reference document number wins; a row without one takes the bulk execution's shared number (e2e
+// decision DX2), the way the recipient does. With neither it stays empty and the row is refused as before.
+export function resolveDisposalExecutionDocumentNo(
+  requestDocumentNo: string | null | undefined,
+  sharedDocumentNo: string | null | undefined,
+) {
+  const requestValue = requestDocumentNo?.trim() ? requestDocumentNo : null
+  if (requestValue) return { documentNo: requestValue, source: "request" as const }
+
+  const sharedValue = sharedDocumentNo?.trim() || null
+  return {
+    documentNo: sharedValue ?? requestDocumentNo ?? null,
+    source: sharedValue ? "shared" as const : null,
+  }
+}
+
 export function buildDisposalExecutionInput(
   candidate: DisposalExecutionInputCandidate,
   shared: DisposalExecutionSharedInput,
@@ -386,7 +403,7 @@ export function buildDisposalExecutionInput(
     executedById: shared.executedById,
     nextStatusId: shared.nextStatusId,
     recipientName,
-    documentNo: candidate.documentNo,
+    documentNo: resolveDisposalExecutionDocumentNo(candidate.documentNo, shared.sharedDocumentNo).documentNo,
     actualSaleValue: candidate.saleValue == null ? null : Number(candidate.saleValue),
     actualSalvageValue: candidate.salvageValue == null ? null : Number(candidate.salvageValue),
     executionRemark: candidate.executionRemark,

@@ -177,16 +177,16 @@ test("the approver's bulk execution preview is blocked with the reason, and its 
   await expect(dialog).toHaveCount(0)
 })
 
-// Finding D2: a bulk execution can never execute for IT staff. It takes each request's own document number
-// (buildDisposalExecutionInput, src/lib/disposal-execution-service.ts), which only an execution writes, and its
-// dialog has no document number field; so every row is blocked "กรุณาระบุเลขที่เอกสารอ้างอิงในคำขอตัดจำหน่ายนี้ก่อน
-// ดำเนินการ" (DISPOSAL_DOCUMENT_REQUIRED) unless a system admin uses the historical exception. Expected to fail until fixed.
+// Finding D2, decided (DX2 (ก)): a request has no document number until it is executed, so the bulk execution's
+// dialog takes one shared reference document number, used by every row without its own (as the shared recipient is).
+// IT staff fill it and the request is executed.
 test("IT staff execute the other batch request in a bulk execution (finding D2)", async ({ page, measure }) => {
-  test.fail(true, "finding D2: bulk execution blocks every request for its missing document number")
   const asset = batchAssets[1]
   expect(asset, "the batch test made the request").toBeTruthy()
   await measure.visit(`/th/disposal?status=approved&search=${encodeURIComponent(asset.assetTag)}`, "IT staff: approved disposals")
-  const dialog = await openBulkExecutionPreview(page, asset, employeeLabel("itStaff"), `${queueSearch} ผู้รับซาก`)
+  const dialog = await openBulkExecutionPreview(page, asset, employeeLabel("itStaff"), `${queueSearch} ผู้รับซาก`, `${queueSearch}-BULK-DOC`)
+  // The row uses the shared number, and says so.
+  await expect(dialog.getByText(`${queueSearch}-BULK-DOC`).first()).toBeVisible()
   await measure.recordPage("IT staff: the bulk execution's preview")
   await expect(dialog.locator("#disposal-bulk-execution-permanent")).toBeVisible()
   await dialog.locator("#disposal-bulk-execution-permanent").check()

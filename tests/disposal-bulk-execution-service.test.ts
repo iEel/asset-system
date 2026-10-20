@@ -182,6 +182,50 @@ for (const scenario of [
   })
 }
 
+// Decision DX2 (ก): one shared reference document number in the dialog, applied to every row that has none of its own,
+// as the shared recipient is (e2e finding D2).
+async function previewAndCommitWithSharedDocument(request: FakeRequest, sharedDocumentNo: string | null) {
+  const input = { ...baseCommand.input, sharedDocumentNo }
+  const preview = await inspectDisposalBulkExecution({ ...baseCommand, input }, {
+    database: makeDatabase(makeState({ requests: [request] })),
+    batchSchemaReadiness: "ready",
+  })
+  const executions: DisposalExecutionCommand[] = []
+  const commit = await commitDisposalBulkExecution({ ...baseCommand, input: { ...input, mode: "commit" } }, {
+    database: makeDatabase(makeState({ requests: [request] })),
+    batchSchemaReadiness: "ready",
+    executeDisposalRequest: async (command) => {
+      executions.push(command)
+    },
+  })
+  return { preview, commit, executions }
+}
+
+test("preview and commit fill a missing reference document number from the shared one (e2e decision DX2)", async () => {
+  const { preview, commit, executions } = await previewAndCommitWithSharedDocument(makeRequest({ documentNo: null }), " DPB-SHARED-01 ")
+  assert.equal(preview.items[0].outcome, "eligible")
+  assert.equal(preview.items[0].code, null)
+  assert.equal(preview.fieldErrors, undefined)
+  assert.equal(commit.items[0].outcome, "executed")
+  assert.deepEqual(executions.map((command) => command.input.documentNo), ["DPB-SHARED-01"])
+})
+
+test("a request's own reference document number is kept over the shared one (e2e decision DX2)", async () => {
+  const { preview, executions } = await previewAndCommitWithSharedDocument(makeRequest({ documentNo: "DOC-OWN-01" }), "DPB-SHARED-01")
+  assert.equal(preview.items[0].outcome, "eligible")
+  assert.deepEqual(executions.map((command) => command.input.documentNo), ["DOC-OWN-01"])
+})
+
+test("with neither its own nor a shared reference document number the row is still refused, and the shared field is named (e2e decision DX2)", async () => {
+  for (const shared of [null, "   "]) {
+    const { preview, executions } = await previewAndCommitWithSharedDocument(makeRequest({ documentNo: null }), shared)
+    assert.equal(preview.items[0].outcome, "blocked")
+    assert.equal(preview.items[0].code, "DISPOSAL_DOCUMENT_REQUIRED")
+    assert.deepEqual(preview.fieldErrors, { sharedDocumentNo: "referenceDocumentRequired" })
+    assert.deepEqual(executions, [])
+  }
+})
+
 test("commit executes each eligible item independently with shared date executor and status", async () => {
   const state = makeState({
     requests: [

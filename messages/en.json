@@ -3063,7 +3063,9 @@
     },
     "bulkDiscardSelectionAction": "Discard selection",
     "batchNeedsAssets": "Select at least 2 assets before you review the batch.",
-    "bulkExecutionPermanentConfirmationRequired": "Tick the confirmation box before you continue."
+    "bulkExecutionPermanentConfirmationRequired": "Tick the confirmation box before you continue.",
+    "bulkExecutionSharedDocumentNo": "Shared reference document number",
+    "bulkExecutionSharedDocumentNoHelp": "Applied only to requests without a reference document number. A request's own number is not overwritten."
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

@@ -28,7 +28,8 @@ test("the execution's evidence refusals and the bulk rows a dialog field can fix
   assert.ok(route.includes("return disposalApiError(error.code, error.message, getDisposalExecutionErrorStatus(error.code), getDisposalEvidenceFieldErrors(error.code, input))"))
 
   // The bulk execution: a blocked row whose code a field of the dialog can fix names that field; the rows' own fields
-  // (document, sale value, remark) are not in the dialog and name none.
+  // (sale value, remark) are not in the dialog and name none. The document number has the shared field since e2e
+  // decision DX2.
   const { getDisposalBulkExecutionFieldErrors } = await import("../src/lib/disposal-bulk-execution.ts")
   assert.deepEqual(
     getDisposalBulkExecutionFieldErrors([
@@ -39,10 +40,9 @@ test("the execution's evidence refusals and the bulk rows a dialog field can fix
       { outcome: "blocked", code: ackCode },
       { outcome: "blocked", code: "DISPOSAL_RECIPIENT_REQUIRED" },
     ], { evidenceExceptionReason: "short" }),
-    { sharedRecipientName: "recipientRequired", evidenceExceptionReason: "tooShort", evidenceExceptionAcknowledged: "required" },
+    { sharedDocumentNo: "referenceDocumentRequired", sharedRecipientName: "recipientRequired", evidenceExceptionReason: "tooShort", evidenceExceptionAcknowledged: "required" },
   )
   assert.equal(getDisposalBulkExecutionFieldErrors([
-    { outcome: "blocked", code: "DISPOSAL_DOCUMENT_REQUIRED" },
     { outcome: "blocked", code: "DISPOSAL_SALE_VALUE_REQUIRED" },
     { outcome: "blocked", code: "DISPOSAL_EXECUTION_REMARK_REQUIRED" },
     { outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" },
@@ -314,11 +314,12 @@ test("disposal bulk execution: the shared values, the exception and the confirma
       executedById: "disposal-bulk-execution-executor",
       nextStatusId: "disposal-bulk-execution-status",
       sharedRecipientName: "disposal-bulk-execution-recipient",
+      sharedDocumentNo: "disposal-bulk-execution-document-no",
       evidenceExceptionReason: "disposal-bulk-execution-exception-reason",
       evidenceExceptionAcknowledged: "disposal-bulk-execution-exception-acknowledged",
       permanentConfirmed: "disposal-bulk-execution-permanent",
     },
-    messages: ["executionDate", "executedById", "nextStatusId", "sharedRecipientName"],
+    messages: ["executionDate", "executedById", "nextStatusId", "sharedRecipientName", "sharedDocumentNo"],
   })
   const rules = validateBody(source)
   for (const rule of [
@@ -327,6 +328,7 @@ test("disposal bulk execution: the shared values, the exception and the confirma
     'check("executedById", required(values.executedById))',
     'check("nextStatusId", required(values.nextStatusId))',
     'check("sharedRecipientName", maxLength(values.sharedRecipientName, 200))',
+    'check("sharedDocumentNo", maxLength(values.sharedDocumentNo, 100))',
     'check("evidenceExceptionReason", required(values.evidenceExceptionReason) ?? minLength(values.evidenceExceptionReason, 20) ?? maxLength(values.evidenceExceptionReason, 2000))',
     'check("evidenceExceptionAcknowledged", required(values.evidenceExceptionAcknowledged))',
     'check("permanentConfirmed", required(values.permanentConfirmed))',
