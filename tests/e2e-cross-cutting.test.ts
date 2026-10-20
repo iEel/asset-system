@@ -146,11 +146,10 @@ test("roles and permissions: each refused page and request needs a permission th
   assert.deepEqual(classified.unexpectedResponses.map((response) => response.status), [500])
   assert.deepEqual(classified.unexpectedFailures.map((failure) => failure.url), ["http://localhost:3100/api/notifications/summary"])
   assert.match(read("src/components/layout/topbar.tsx"), /fetch\(`\/api\/notifications\?locale=\$\{locale\}`\)/)
-  // The spec: the suite's fixtures, and findings M4, M5 and M6 expected to fail until fixed.
+  // The spec: the suite's fixtures; findings M5 and M6 are fixed and M4 is decided (DX3 (ก)), none expected to fail.
   const spec = read("e2e/cross-cutting/roles.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
-  assert.ok(spec.includes(`test.fail(true, "M4: `), "M4 waits for the user's decision")
-  for (const finding of ["M5", "M6"]) assert.ok(!spec.includes(`test.fail(true, "${finding}: `), `${finding} is fixed`)
+  for (const finding of ["M4", "M5", "M6"]) assert.ok(!spec.includes(`test.fail(true, "${finding}: `), `${finding} is fixed`)
 })
 
 test("errors under the field in the real flow: each form's wrong entry, its field id, its sentence and where its save lands (e2e cross-cutting task 3, EM3)", () => {

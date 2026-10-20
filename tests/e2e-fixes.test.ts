@@ -205,3 +205,13 @@ test("an audit page is measured once every finite animation has ended, so a butt
 test("the PM plan's edit page is left only once its asset select has loaded its label, so nothing is cancelled on the phone (e2e fix loop 2: the dry run's aborted maintenance-options request)", () => {
   assert.match(read("e2e/repair/pm-plan.spec.ts"), /toHaveValue\("2026-02-28"\)\n(?:\s*\/\/[^\n]*\n)*\s*await page\.waitForLoadState\("networkidle"\)\n\s*await measure\.visit\(PM_LIST, "PM plans after done"\)/)
 })
+
+test("the findings page offers the review controls only to a role with audit:approve (e2e decision DX3 (ก): M4)", () => {
+  const findings = read("src/app/[locale]/(dashboard)/audit/findings/page.tsx")
+  // Both the card and the table row render AuditFindingReviewActions for canApprove alone, as the review route checks.
+  const reviewActions = findings.match(/\{canApprove \? \(\n\s*<AuditFindingReviewActions\b/g) ?? []
+  assert.equal(reviewActions.length, 2)
+  assert.equal((findings.match(/<AuditFindingReviewActions\b/g) ?? []).length, 2)
+  assert.doesNotMatch(findings, /canEdit \|\| canApprove/)
+  assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M4: `))
+})

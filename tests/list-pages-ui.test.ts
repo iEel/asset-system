@@ -530,7 +530,7 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
   ])
   assert.match(table, /scrollHint=\{tCommon\("tableScrollHint"\)\}/, "the shared hint still shows while the table overflows")
   assert.match(table, /<DataTableCell align="right" sticky="right">\n\s+\{\/\* Pattern ช1/)
-  assert.match(table, /\{canEdit \|\| canApprove \? \(\n\s+<AuditFindingReviewActions\n\s+compact\n\s+menuCode=\{rowCode\}\n\s+menuLinks=\{disposalMenuLinks\}\n/, "fix round 3: plan, close and the disposal request in one ⋯")
+  assert.match(table, /\{canApprove \? \(\n\s+<AuditFindingReviewActions\n\s+compact\n\s+menuCode=\{rowCode\}\n\s+menuLinks=\{disposalMenuLinks\}\n/, "fix round 3: plan, close and the disposal request in one ⋯")
   assert.match(table, /\) : disposalMenuLinks\.length > 0 \? \(\n\s+<RowActions code=\{rowCode\} name=\{assetLabel\} menuLabel=\{tCommon\("moreActionsFor", \{ code: rowCode \}\)\} groups=\{\[\{ key: "finding", items: disposalMenuLinks \}\]\} \/>/, "without review rights the disposal request still has its ⋯")
   assert.match(table, /const disposalMenuLinks: RowActionItem\[\] = canCreateDisposal && finding\.asset\n\s+\? \[\{ kind: "link", key: "disposal", label: t\("openDisposalRequest"\), href: appendOperationalReturnTo\(/)
   assert.doesNotMatch(table, /buttonVariants\(/, "no button-styled link left in the table cell")

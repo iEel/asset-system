@@ -389,7 +389,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     >
                       {tCommon("view")}
                     </Link>
-                    {canEdit || canApprove ? (
+                    {canApprove ? (
                       <AuditFindingReviewActions
                         findingId={finding.id}
                         assetLabel={assetLabel}
@@ -522,7 +522,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     <DataTableCell align="right" sticky="right">
                       {/* Pattern ช1 (2B, fix round 3): the review decision stays visible; plan, close and the disposal request
                           are in one ⋯, whose items mount the dialogs (AuditFindingReviewActions compact). */}
-                      {canEdit || canApprove ? (
+                      {canApprove ? (
                         <AuditFindingReviewActions
                           compact
                           menuCode={rowCode}

@@ -89,14 +89,13 @@ test.describe("IT staff", () => {
     await expect(page.getByRole("button", { name: "พิจารณาคำขอ" })).toHaveCount(0)
   })
 
-  // Finding M4 (expected to fail until fixed): the findings page shows IT staff the approve, reject, plan and close
-  // controls of each pending finding (canEdit || canApprove), and the review route answers all four 403.
+  // Finding M4, decided (DX3 (ก)): the findings page shows the approve, reject, plan and close controls only to a role
+  // with audit:approve, the permission the review route checks; IT staff hold audit:edit and see none of them.
   test("the findings page offers IT staff no review control without audit:approve (finding M4)", async ({ page, measure }) => {
     await measure.visit("/th/audit/findings", "audit findings (IT staff)")
     // The queue's empty state (auditFinding.emptyTitle) shows when there is no pending finding to look at.
     const empty = await page.getByRole("main").getByText("ไม่พบรายการไม่ตรงตามตัวกรอง", { exact: true }).filter({ visible: true }).count()
     test.skip(empty > 0, "no pending finding in the dev database to look at")
-    test.fail(true, "M4: /th/audit/findings shows the review controls to a role with audit:edit and no audit:approve")
     for (const name of REVIEW_BUTTON_NAMES) await expect(page.getByRole("main").getByRole("button", { name, exact: true }).filter({ visible: true })).toHaveCount(0)
   })
 })
