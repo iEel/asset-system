@@ -101,6 +101,8 @@ test("a typed asset tag that exists is the tag's field error, not a 500 (e2e fix
   }
   assert.match(read("src/app/api/assets/route.ts"), /await assertUniqueSerial\(input\.serialNumber\)\n\s*await assertUniqueAssetTag\(input\.assetTag\)/)
   assert.ok(!read("e2e/cross-cutting/field-errors.spec.ts").includes(`test.fail(true, "M3: `))
+  // The E2E request sends every preprocessed key the form sends (N16), so the route reaches the tag check (dry run).
+  assert.match(read("e2e/cross-cutting/field-errors.spec.ts"), /conditionId: choices\.goodConditionId,\n\s*purchaseDate: null,\n\s*purchasePrice: null,\n\s*licenseTotalSeats: null,/)
 })
 
 test("a thumbnail whose file is outside this server's upload folder is not found, not a 500 (e2e fix task FX8: M7)", async () => {
@@ -198,4 +200,8 @@ test("an audit page is measured once every finite animation has ended, so a butt
   assert.match(settle, /document\.getAnimations\(\)\.every\(\(animation\) => animation\.playState !== "running" \|\| animation\.effect\?\.getComputedTiming\(\)\.iterations === Infinity\)/)
   assert.doesNotMatch(settle, /data-sonner-toaster/)
   assert.match(read("e2e/audit/field-audit.spec.ts"), /await recordSettled\(page, measure, "check of the mismatch with its photo"\)/)
+})
+
+test("the PM plan's edit page is left only once its asset select has loaded its label, so nothing is cancelled on the phone (e2e fix loop 2: the dry run's aborted maintenance-options request)", () => {
+  assert.match(read("e2e/repair/pm-plan.spec.ts"), /toHaveValue\("2026-02-28"\)\n(?:\s*\/\/[^\n]*\n)*\s*await page\.waitForLoadState\("networkidle"\)\n\s*await measure\.visit\(PM_LIST, "PM plans after done"\)/)
 })

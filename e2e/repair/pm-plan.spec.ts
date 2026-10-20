@@ -72,6 +72,9 @@ test("a monthly PM plan is created, recorded done on 31 Jan with its next due da
   // The next due date: 31 Jan + 1 month = 28 Feb 2026 (not 3 Mar). The edit page holds it as the date input's value.
   await measure.visit(`/th/maintenance/pm/${plan.id}/edit`, "PM plan edit page")
   await expect(page.locator("#maintenance-plan-next-due-date")).toHaveValue("2026-02-28")
+  // The asset select loads its chosen asset's label 250 ms after the page opens; leaving before it answers cancels it
+  // (net::ERR_ABORTED on the phone in the dry run). Let it finish first (e2e fix loop 2).
+  await page.waitForLoadState("networkidle")
   await measure.visit(PM_LIST, "PM plans after done")
   const row = () => page.getByRole("main").locator("li").filter({ hasText: title })
   await expect(row()).toContainText("กำหนด PM ครั้งถัดไป: 28/02/2569")

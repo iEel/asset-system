@@ -80,6 +80,8 @@ test("a typed tag that already exists is refused with the tag's field error, not
       currentLocationId: readRunData().locationId,
       statusId: choices.readyStatusId,
       conditionId: choices.goodConditionId,
+      purchaseDate: null,
+      purchasePrice: null,
       licenseTotalSeats: null,
       licenseUsedSeats: null,
       warrantyStartDate: null,
