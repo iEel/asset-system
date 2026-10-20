@@ -99,10 +99,11 @@ test("the handoff and the changelog record the V track's final plan in place, wi
   assert.ok(record.includes("`Field liveError`"), "the live field")
   assert.ok(read("src/components/ui/field.tsx").includes("\n  liveError?: string | null\n"), "Field's liveError takes the live text")
   const changelog = read("docs/99_CHANGELOG.md")
-  const newest = changelog.indexOf("\n## ")
+  // Its date, not the newest one: later work adds dates above it.
+  const newest = changelog.indexOf("\n## 2026-10-19\n")
   const entry = changelog.indexOf("\n### ข้อความผิดพลาดใต้ช่องกรอก รอบสุดท้าย (งาน V plan สุดท้าย)\n")
-  assert.ok(newest !== -1 && entry !== -1, "the newest date and the final plan's entry")
-  assert.equal(changelog.indexOf("\n### ", newest), entry, "the final plan's entry is the first one under the newest date")
+  assert.ok(newest !== -1 && entry !== -1, "the final plan's date and its entry")
+  assert.equal(changelog.indexOf("\n### ", newest), entry, "the final plan's entry is the first one under its date")
   assert.ok(entry < changelog.indexOf("\n### ข้อความผิดพลาดใต้ช่องกรอก รอบ 3 (งาน V plan 3)\n"), "above the plan 3 entry")
   assert.match(changelog.slice(entry, changelog.indexOf("\n### ", entry + 1)), /\n- \*\*ตรวจบนแอป:\*\* \(Task 5\) ตรวจบน \S/, "the dev-app check bullet")
   // Every marker of the template is filled; a failure lists the path and the markers left.
