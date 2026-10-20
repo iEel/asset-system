@@ -121,3 +121,26 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   assert.match(scan, /process\.exit\(hits\.length === 0 \? 0 : 1\)/)
   for (const line of scan.split("\n").filter((text) => /console\.(?:log|error)/.test(text))) assert.doesNotMatch(line, /\$\{secret\b|\(secret\b|secrets\[|password\}/, line)
 })
+
+test("IT staff register a software licence on the asset form, a wrong entry first, in all four projects (spec §7 'Assets', §6.7; e2e review task LC1)", () => {
+  const spec = read("e2e/assets/licence.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
+  assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "as IT staff")
+  assert.ok(!spec.includes("runPhoneOnWebKit()"), "the phone on Chromium (spec §8: WebKit for the audit walk and the desk delivery)")
+  assert.match(spec, /#asset-ownership-type"\)\.selectOption\("software_license"\)/)
+  assert.match(spec, /fill\("5"\)[\s\S]*fill\("7"\)[\s\S]*expectFieldError\(page, "asset-license-used-seats", "จำนวนสิทธิ์ที่ใช้ต้องไม่เกินจำนวนสิทธิ์ทั้งหมด"\)[\s\S]*toBeFocused\(\)[\s\S]*expect\(posted, "the wrong entry posts nothing"\)\.toBe\(0\)/)
+  assert.match(spec, /toEqual\(\["software_license", 5, 2, data\.departmentId, null\]\)/)
+  assert.match(spec, /await expect\(page\.locator\("#overview"\)\)\.toContainText\("ใช้แล้ว 2\/5 คงเหลือ 3"\)/)
+  // Measured through the transactions area's helpers (TX-R5, TX-R6): the known findings and the settle before axe.
+  assert.match(spec, /import \{ expectFieldError, readAssetMasters, record, visit, visitAssetPage \} from "\.\.\/transactions\/tx-support\.ts"/)
+  // The sentences the test reads are the app's own.
+  const th = read("messages/th.json")
+  for (const line of [
+    `"ownershipType_software_license": "ซอฟต์แวร์/License"`,
+    `"licenseSeatSummary": "ใช้แล้ว {used}/{total} คงเหลือ {remaining}"`,
+    `"licenseSeatsExceeded": "จำนวนสิทธิ์ที่ใช้ต้องไม่เกินจำนวนสิทธิ์ทั้งหมด"`,
+  ]) {
+    assert.ok(th.includes(line), line)
+  }
+  assert.match(read("src/components/assets/asset-form.tsx"), /Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
+})
