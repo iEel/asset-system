@@ -44,6 +44,8 @@ test("the E2E suite is its own Playwright project: four device × theme runs, th
   assert.match(config, /\.\.\.E2E_PROJECTS\.map\(\(project\) => \(\{/)
   assert.match(config, /testMatch: \/\\\.spec\\\.ts\$\//)
   assert.match(config, /retries: 0,/)
+  // A run whose database dropped mid-run stops after 90 minutes instead of hanging (the dry run's open issue 1).
+  assert.match(config, /globalTimeout: 90 \* 60 \* 1000,/)
 
   // The pinned versions; Playwright 1.61.1's browsers are the builds in the machine's cache (chromium-1228,
   // chromium_headless_shell-1228, webkit-2311), so nothing is downloaded.
