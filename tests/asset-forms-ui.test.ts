@@ -138,3 +138,23 @@ test("asset photos: the photo-type select has a visible label and the delete ico
   assert.equal(assetMessages("th").photoType, "ประเภทรูป")
   assert.equal(assetMessages("en").photoType, "Photo type")
 })
+
+test("asset form: the location section is named for what it holds, and the photo section speaks to edit mode (critique 2026-10-20 B3)", () => {
+  const source = read("src/components/assets/asset-form.tsx")
+  assert.match(source, /const isEdit = Boolean\(asset\?\.id\)/)
+  const location = source.slice(source.indexOf('<Section title={t("locationStatus")}>'))
+  const body = location.slice(0, location.indexOf("<Section", 10))
+  assert.match(body, /homeLocationId/); assert.match(body, /currentLocation/); assert.match(body, /t\("status"\)/); assert.match(body, /t\("condition"\)/)
+  assert.doesNotMatch(body, /custodianId/)
+  assert.doesNotMatch(source, /locationCustodian/)
+  assert.match(source, /<Section title=\{t\(isEdit \? "assetPhotos" : "initialAssetPhotos"\)\}>/)
+  assert.match(source, /\{t\(isEdit \? "assetPhotosEditHelp" : "initialAssetPhotosHelp"\)\}/)
+  for (const locale of ["th", "en"] as const) {
+    const m = assetMessages(locale)
+    assert.equal(m.locationCustodian, undefined)
+    assert.doesNotMatch(String(m.assetPhotosEditHelp), /หลังสร้าง|after the asset is created/)
+  }
+  assert.equal(assetMessages("th").locationStatus, "ที่ตั้งและสถานะ")
+  assert.equal(assetMessages("en").locationStatus, "Location & Status")
+  assert.equal(assetMessages("th").assetPhotosEditHelp, "ถ่ายหรือแนบรูปตามรายการรูปที่ต้องถ่าย เช่น ป้ายรหัสทรัพย์สิน, Serial Number หรือสภาพเครื่อง รูปจะถูกบันทึกเมื่อกดบันทึก")
+})

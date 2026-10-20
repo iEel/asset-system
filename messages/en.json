@@ -300,8 +300,9 @@
     "importExportSubtitle": "Excel tools for downloading the template, validating import files, confirming imports, and exporting asset records",
     "downloadTemplateDescription": "Download the Excel template with reference data for preparing imports",
     "exportAllDescription": "Export all asset records available to your current access permissions",
-    "exportWithFilters": "Export with filters",
-    "exportWithFiltersDescription": "Return to the asset register to choose filters before exporting"
+    "exportWithFilters": "Filter in the register, then export",
+    "exportWithFiltersDescription": "Return to the asset register to choose filters before exporting",
+    "exportAll": "Export all (Excel)"
   },
   "auth": {
     "login": "Sign In",
@@ -627,7 +628,6 @@
     "selectSupplier": "Select supplier",
     "basicInfo": "Basic Information",
     "ownership": "Ownership",
-    "locationCustodian": "Location & Custodian",
     "purchaseWarranty": "Purchase & Warranty",
     "customFields": "Technical Details",
     "customFieldsJson": "Advanced JSON",
@@ -1192,7 +1192,9 @@
     "followUpInstall": "installing it as a component",
     "followUpDocuments": "the purchase documents",
     "followUpPhotos": "the asset photos",
-    "qrCodeTitle": "QR code of {label}"
+    "qrCodeTitle": "QR code of {label}",
+    "locationStatus": "Location & Status",
+    "assetPhotosEditHelp": "Capture or attach checklist photos, such as the asset tag, serial number, or condition. Photos are saved when you press Save."
   },
   "company": {
     "title": "Companies",

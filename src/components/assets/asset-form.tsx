@@ -1232,7 +1232,7 @@ export function AssetForm({
           </Section>
         )}
 
-        <Section title={t("locationCustodian")}>
+        <Section title={t("locationStatus")}>
           <div className="md:col-span-2">
             <label className="flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
               <input
@@ -1519,9 +1519,9 @@ export function AssetForm({
           </div>
         </Section>
 
-        <Section title={t("initialAssetPhotos")}>
+        <Section title={t(isEdit ? "assetPhotos" : "initialAssetPhotos")}>
           <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-            <p className="mb-3 text-sm text-muted-foreground">{t("initialAssetPhotosHelp")}</p>
+            <p className="mb-3 text-sm text-muted-foreground">{t(isEdit ? "assetPhotosEditHelp" : "initialAssetPhotosHelp")}</p>
 
             {selectedPhotoChecklist.length > 0 ? (
               <div className="mb-3">

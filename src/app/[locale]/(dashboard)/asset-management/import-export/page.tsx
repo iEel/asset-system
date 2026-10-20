@@ -56,7 +56,7 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           download
           href="/api/assets/export"
           icon={<FileDown className="h-5 w-5" />}
-          title={t("exportFiltered")}
+          title={tTools("exportAll")}
           description={tTools("exportAllDescription")}
         />
         <ActionLink

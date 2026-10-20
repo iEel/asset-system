@@ -300,8 +300,9 @@
     "importExportSubtitle": "รวมเครื่องมือ Excel สำหรับดาวน์โหลดแม่แบบ, ตรวจสอบไฟล์นำเข้า, ยืนยันนำเข้า และส่งออกรายการทรัพย์สิน",
     "downloadTemplateDescription": "ดาวน์โหลดแม่แบบไฟล์ Excel พร้อมข้อมูลอ้างอิงสำหรับเตรียมข้อมูลนำเข้า",
     "exportAllDescription": "ส่งออกทะเบียนทรัพย์สินทั้งหมดตามสิทธิ์การเข้าถึงปัจจุบัน",
-    "exportWithFilters": "ส่งออกพร้อมตัวกรอง",
-    "exportWithFiltersDescription": "กลับไปที่หน้าทะเบียนเพื่อเลือกตัวกรองก่อนส่งออก"
+    "exportWithFilters": "เลือกตัวกรองในทะเบียนแล้วส่งออก",
+    "exportWithFiltersDescription": "กลับไปที่หน้าทะเบียนเพื่อเลือกตัวกรองก่อนส่งออก",
+    "exportAll": "ส่งออกทั้งหมด (Excel)"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",
@@ -627,7 +628,6 @@
     "selectSupplier": "เลือกผู้ขาย",
     "basicInfo": "ข้อมูลพื้นฐาน",
     "ownership": "ความเป็นเจ้าของ",
-    "locationCustodian": "ที่ตั้งและผู้ถือครอง",
     "purchaseWarranty": "การจัดซื้อและประกัน",
     "customFields": "ข้อมูลเพิ่มเติม",
     "customFieldsJson": "JSON ขั้นสูง",
@@ -1192,7 +1192,9 @@
     "followUpInstall": "การติดตั้งเป็นส่วนควบ",
     "followUpDocuments": "เอกสารจัดซื้อ",
     "followUpPhotos": "รูปทรัพย์สิน",
-    "qrCodeTitle": "QR Code ของ {label}"
+    "qrCodeTitle": "QR Code ของ {label}",
+    "locationStatus": "ที่ตั้งและสถานะ",
+    "assetPhotosEditHelp": "ถ่ายหรือแนบรูปตามรายการรูปที่ต้องถ่าย เช่น ป้ายรหัสทรัพย์สิน, Serial Number หรือสภาพเครื่อง รูปจะถูกบันทึกเมื่อกดบันทึก"
   },
   "company": {
     "title": "บริษัท",

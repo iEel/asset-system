@@ -174,7 +174,8 @@ test("the asset form's evidence boxes lose their tinted icon squares and the rep
   const source = readFileSync("src/components/assets/asset-form.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.equal(source.match(/rounded-md bg-primary-soft text-primary/g)?.length ?? 0, 0)
   assert.doesNotMatch(source, /\b(?:Camera|FileText)\b/)
-  assert.equal(source.match(/\{t\("initialAssetPhotos"\)\}/g)?.length, 1, "the photo section title shows once, as its Section heading")
+  assert.equal(source.match(/<Section title=\{t\(isEdit \? "assetPhotos" : "initialAssetPhotos"\)\}>/g)?.length, 1, "the photo section title shows once, as its Section heading")
+  assert.equal(source.match(/"initialAssetPhotos"/g)?.length, 1)
   // The two drop zones themselves do not change.
   assert.match(source, /<FileDropzone\n\s*file=\{selectedPurchaseFile\}/)
   assert.match(source, /<FileDropzone\n\s*file=\{selectedAssetPhotoFile\}/)

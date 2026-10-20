@@ -280,3 +280,13 @@ test("components summary: on a phone the serial goes under the component instead
   assert.match(source, /<span className="text-meta text-muted-foreground \[overflow-wrap:anywhere\] sm:shrink-0">SN: \{component\.componentAsset\.serialNumber\}<\/span>/)
   assert.doesNotMatch(source, /"shrink-0 text-meta text-muted-foreground">SN:/)
 })
+
+test("import-export: the unfiltered export is named export all; the register link names the filter step (critique 2026-10-20 B1)", () => {
+  const source = read(`${D}asset-management/import-export/page.tsx`)
+  assert.match(source, /href="\/api\/assets\/export"\n\s+icon=\{<FileDown className="h-5 w-5" \/>\}\n\s+title=\{tTools\("exportAll"\)\}\n\s+description=\{tTools\("exportAllDescription"\)\}/)
+  assert.doesNotMatch(source, /t\("exportFiltered"\)/)
+  assert.match(read(`${C}assets/asset-register-export-menu.tsx`), /\{t\("exportFiltered"\)\}/)
+  const th = JSON.parse(read("messages/th.json")).assetTools, en = JSON.parse(read("messages/en.json")).assetTools
+  assert.equal(th.exportAll, "ส่งออกทั้งหมด (Excel)"); assert.equal(en.exportAll, "Export all (Excel)")
+  assert.equal(th.exportWithFilters, "เลือกตัวกรองในทะเบียนแล้วส่งออก"); assert.equal(en.exportWithFilters, "Filter in the register, then export")
+})

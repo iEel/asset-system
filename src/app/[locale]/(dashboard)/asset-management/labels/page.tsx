@@ -137,7 +137,7 @@ export default async function AssetLabelsToolPage({ params, searchParams }: Asse
         title: t("labelsTitle"),
         subtitle: t("labelsSubtitle"),
         searchLabel: t("labelSearchLabel"),
-        searchPlaceholder: tGlobalSearch("placeholder"),
+        searchPlaceholder: t("scanPlaceholder"),
         selectedTitle: t("selectedLabelsTitle"),
         selectedCount: tAsset("selectedCount"),
         print: tAsset("printSelectedLabels"),

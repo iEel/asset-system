@@ -222,3 +222,10 @@ test("the label print toolbar keeps its boxed fields with a focus ring and a bus
   assert.match(source, /<h1 className="text-2xl font-bold">\{translations\.title\}<\/h1>/, "the print heading stays 700")
   assert.match(source, /maxLength=\{500\}/)
 })
+
+test("the label search placeholder names only what the asset search finds (critique 2026-10-20 B2)", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
+  assert.match(page, /searchPlaceholder: t\("scanPlaceholder"\)/)
+  assert.doesNotMatch(page, /searchPlaceholder: tGlobalSearch\("placeholder"\)/)
+  assert.match(readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8"), /&scope=asset`/)
+})
