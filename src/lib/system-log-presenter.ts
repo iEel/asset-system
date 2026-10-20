@@ -1,3 +1,6 @@
+import { isBlankValue } from "./display-format.ts"
+import { formatDate, formatDateTime } from "./utils.ts"
+
 export type SystemLogPresenterInput = {
   id: string
   action: string
@@ -55,6 +58,30 @@ type RecordLabelKey =
   | "condition"
 
 type Translate = (key: string) => string
+
+// The one stand-in for an empty value in the before/after table; a summary reads it as value.empty.
+const blankValue = "-"
+
+// Fields that hold a code: their value reads through value.<module>.<field>.<code>, then value.<field>.<code>;
+// an unknown code still shows as stored (critique 2026-10-20 F2).
+const CODE_FIELDS = new Set([
+  "requestStatus",
+  "reviewStatus",
+  "findingType",
+  "actionTaken",
+  "actionStatus",
+  "disposalType",
+  "repairStatus",
+  "outcome",
+  "auditStatus",
+  "auditResult",
+  "reconcileStatus",
+  "ownershipType",
+  "status",
+])
+// A date-only value, or a timestamp at midnight UTC, is a date; any other ISO timestamp is a date and time.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:T00:00(?::00(?:\.0{1,3})?)?Z)?$/
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/
 
 const FIELD_LABEL_KEYS: Record<string, string> = {
   assetTag: "field.assetTag",
@@ -126,7 +153,7 @@ export function buildSystemLogPresentation(
   const recordLabel = getRecordLabel(log, moduleKey, labels, t)
   const moduleLabel = translateWithFallback(t, `module.${log.module}`, log.module)
   const actionLabel = translateWithFallback(t, `action.${log.action}`, humanizeKey(log.action))
-  const changes = getChanges(log, labels, t)
+  const changes = getChanges(log, moduleKey, labels, t)
 
   return {
     id: log.id,
@@ -136,7 +163,7 @@ export function buildSystemLogPresentation(
     moduleLabel,
     actionLabel,
     recordLabel,
-    summary: buildSummary(log, recordLabel, actionLabel, moduleLabel, changes, labels, t),
+    summary: buildSummary(log, moduleKey, locale, recordLabel, actionLabel, moduleLabel, changes, labels, t),
     changes,
     href: getLogHref(log, locale, moduleKey),
     remark: getLogRemark(log),
@@ -208,7 +235,7 @@ function getResolvedRecordLabel(labels: SystemLogRecordLabels, moduleKey: string
   return labels[moduleKey as RecordLabelKey]?.get(recordId) ?? null
 }
 
-function getChanges(log: SystemLogPresenterInput, labels: SystemLogRecordLabels, t: Translate): SystemLogChange[] {
+function getChanges(log: SystemLogPresenterInput, moduleKey: string, labels: SystemLogRecordLabels, t: Translate): SystemLogChange[] {
   if (isNotificationDigestLog(log)) return []
 
   const oldValue = parseLogJson(log.oldValue)
@@ -216,22 +243,29 @@ function getChanges(log: SystemLogPresenterInput, labels: SystemLogRecordLabels,
   if (!oldValue && !newValue) return []
 
   if (log.action === "checkin") {
-    return buildSelectedChanges(oldValue, newValue, ["returnBy", "returnByEmployeeId", "receiveBy", "receiveByEmployeeId", "nextLocationId", "nextStatusId", "conditionAfter", "remark"], labels, t)
+    return buildSelectedChanges(oldValue, newValue, ["returnBy", "returnByEmployeeId", "receiveBy", "receiveByEmployeeId", "nextLocationId", "nextStatusId", "conditionAfter", "remark"], moduleKey, labels, t)
   }
   if (log.action === "checkout") {
-    return buildSelectedChanges(oldValue, newValue, ["checkoutType", "custodianId", "departmentId", "locationId", "parentAssetId", "checkoutDate", "expectedReturnDate", "conditionBefore", "remark"], labels, t)
+    return buildSelectedChanges(oldValue, newValue, ["checkoutType", "custodianId", "departmentId", "locationId", "parentAssetId", "checkoutDate", "expectedReturnDate", "conditionBefore", "remark"], moduleKey, labels, t)
   }
   if (log.action === "transfer") {
-    return buildSelectedChanges(oldValue, newValue, ["currentLocationId", "locationId", "custodianId", "departmentId", "remark"], labels, t)
+    return buildSelectedChanges(oldValue, newValue, ["currentLocationId", "locationId", "custodianId", "departmentId", "remark"], moduleKey, labels, t)
   }
 
-  const keys = Array.from(new Set([...Object.keys(oldValue ?? {}), ...Object.keys(newValue ?? {})]))
+  // Only the keys the new value carries: a field logged in the old value alone is context (e.g. a finding's type), not a change.
+  const keys = newValue ? Object.keys(newValue) : Object.keys(oldValue ?? {})
   return keys
-    .filter((key) => !SENSITIVE_FIELDS.has(key) && !IGNORED_CHANGE_FIELDS.has(key) && !valuesEqual(oldValue?.[key], newValue?.[key]))
+    .filter(
+      (key) =>
+        !SENSITIVE_FIELDS.has(key) &&
+        !IGNORED_CHANGE_FIELDS.has(key) &&
+        !valuesEqual(oldValue?.[key], newValue?.[key]) &&
+        !(isBlankValue(oldValue?.[key]) && isBlankValue(newValue?.[key]))
+    )
     .map((key) => ({
-      field: getFieldLabel(key, t),
-      before: formatValue(oldValue?.[key], key, labels, t),
-      after: formatValue(newValue?.[key], key, labels, t),
+      field: getFieldLabel(key, moduleKey, t),
+      before: formatValue(oldValue?.[key], key, moduleKey, labels, t),
+      after: formatValue(newValue?.[key], key, moduleKey, labels, t),
     }))
 }
 
@@ -239,20 +273,23 @@ function buildSelectedChanges(
   oldValue: Record<string, unknown> | null,
   newValue: Record<string, unknown> | null,
   keys: string[],
+  moduleKey: string,
   labels: SystemLogRecordLabels,
   t: Translate
 ) {
   return keys
     .filter((key) => !SENSITIVE_FIELDS.has(key) && (newValue?.[key] !== undefined || oldValue?.[key] !== undefined))
     .map((key) => ({
-      field: getFieldLabel(key, t),
-      before: formatValue(oldValue?.[key], key, labels, t),
-      after: formatValue(newValue?.[key], key, labels, t),
+      field: getFieldLabel(key, moduleKey, t),
+      before: formatValue(oldValue?.[key], key, moduleKey, labels, t),
+      after: formatValue(newValue?.[key], key, moduleKey, labels, t),
     }))
 }
 
 function buildSummary(
   log: SystemLogPresenterInput,
+  moduleKey: string,
+  locale: string,
   recordLabel: string,
   actionLabel: string,
   moduleLabel: string,
@@ -263,19 +300,28 @@ function buildSummary(
   if (isNotificationDigestLog(log)) return formatNotificationDigestSummary(log, t)
 
   const newValue = parseLogJson(log.newValue)
+  // Thai reads the action and the module as one word ("รับคืนทรัพย์สิน"); English needs the space ("Return Asset").
+  const actionModule = locale === "th" ? `${actionLabel}${moduleLabel}` : `${actionLabel} ${moduleLabel}`
   if (log.action === "checkin") {
-    const returnBy = formatValue(newValue?.returnByEmployeeId ?? newValue?.returnBy, "returnByEmployeeId", labels, t)
-    const destination = formatValue(newValue?.nextLocationId, "nextLocationId", labels, t)
-    return `${actionLabel}${moduleLabel} ${recordLabel} ${translateWithFallback(t, "summary.from", "from")} ${returnBy} ${translateWithFallback(t, "summary.to", "to")} ${destination}`
+    const returnBy = formatValue(newValue?.returnByEmployeeId ?? newValue?.returnBy, "returnByEmployeeId", moduleKey, labels, t)
+    const destination = formatValue(newValue?.nextLocationId, "nextLocationId", moduleKey, labels, t)
+    return `${actionModule} ${recordLabel} ${translateWithFallback(t, "summary.from", "from")} ${returnBy} ${translateWithFallback(t, "summary.to", "to")} ${destination}`
   }
   if (log.action === "checkout") {
-    const destination = formatCheckoutDestination(newValue, labels, t)
-    return `${actionLabel}${moduleLabel} ${recordLabel} ${translateWithFallback(t, "summary.to", "to")} ${destination}`
+    const destination = formatCheckoutDestination(newValue, moduleKey, labels, t)
+    return `${actionModule} ${recordLabel} ${translateWithFallback(t, "summary.to", "to")} ${destination}`
   }
   if (changes.length > 0) {
-    return `${actionLabel}${recordLabel}: ${changes.map((change) => `${change.field} ${translateWithFallback(t, "summary.from", "from")} ${change.before} ${translateWithFallback(t, "summary.changedTo", "to")} ${change.after}`).join(", ")}`
+    return `${actionLabel} ${recordLabel}: ${changes.map((change) => formatSummaryChange(change, t)).join(", ")}`
   }
-  return `${actionLabel}${moduleLabel} ${recordLabel}`
+  return `${actionModule} ${recordLabel}`
+}
+
+// A value set from nothing reads "field set to X"; a value cleared reads "from X to none", never "from - to -".
+function formatSummaryChange(change: SystemLogChange, t: Translate) {
+  if (change.before === blankValue) return `${change.field} ${translateWithFallback(t, "summary.setTo", "set to")} ${change.after}`
+  const after = change.after === blankValue ? translateWithFallback(t, "value.empty", "none") : change.after
+  return `${change.field} ${translateWithFallback(t, "summary.from", "from")} ${change.before} ${translateWithFallback(t, "summary.changedTo", "to")} ${after}`
 }
 
 function isNotificationDigestLog(log: Pick<SystemLogPresenterInput, "action" | "module" | "recordId">) {
@@ -307,13 +353,13 @@ function getNumberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
 }
 
-function formatCheckoutDestination(newValue: Record<string, unknown> | null, labels: SystemLogRecordLabels, t: Translate) {
-  if (!newValue) return "-"
-  if (newValue.checkoutType === "user") return formatValue(newValue.custodianId, "custodianId", labels, t)
-  if (newValue.checkoutType === "department") return formatValue(newValue.departmentId, "departmentId", labels, t)
-  if (newValue.checkoutType === "location") return formatValue(newValue.locationId, "locationId", labels, t)
-  if (newValue.checkoutType === "asset") return formatValue(newValue.parentAssetId, "parentAssetId", labels, t)
-  return formatValue(newValue.checkoutType, "checkoutType", labels, t)
+function formatCheckoutDestination(newValue: Record<string, unknown> | null, moduleKey: string, labels: SystemLogRecordLabels, t: Translate) {
+  if (!newValue) return blankValue
+  if (newValue.checkoutType === "user") return formatValue(newValue.custodianId, "custodianId", moduleKey, labels, t)
+  if (newValue.checkoutType === "department") return formatValue(newValue.departmentId, "departmentId", moduleKey, labels, t)
+  if (newValue.checkoutType === "location") return formatValue(newValue.locationId, "locationId", moduleKey, labels, t)
+  if (newValue.checkoutType === "asset") return formatValue(newValue.parentAssetId, "parentAssetId", moduleKey, labels, t)
+  return formatValue(newValue.checkoutType, "checkoutType", moduleKey, labels, t)
 }
 
 function getLogRecordLabel(log: SystemLogPresenterInput) {
@@ -334,8 +380,8 @@ function getFirstString(record: Record<string, unknown>, keys: string[]) {
   return null
 }
 
-function formatValue(value: unknown, key: string, labels: SystemLogRecordLabels, t: Translate): string {
-  if (value === null || value === undefined || value === "") return "-"
+function formatValue(value: unknown, key: string, moduleKey: string, labels: SystemLogRecordLabels, t: Translate): string {
+  if (value === null || value === undefined || value === "") return blankValue
   if (typeof value === "boolean") return value ? translateWithFallback(t, "value.true", "true") : translateWithFallback(t, "value.false", "false")
   if (typeof value === "number") return String(value)
   if (Array.isArray(value)) return `${value.length} ${translateWithFallback(t, "value.items", "items")}`
@@ -346,6 +392,9 @@ function formatValue(value: unknown, key: string, labels: SystemLogRecordLabels,
   const structuredValue = parseStructuredString(value)
   if (Array.isArray(structuredValue)) return `${structuredValue.length} ${translateWithFallback(t, "value.items", "items")}`
   if (structuredValue && typeof structuredValue === "object") return translateWithFallback(t, "value.complex", "Complex data")
+  if (CODE_FIELDS.has(key)) return translateWithFallback(t, `value.${moduleKey}.${key}.${value}`, translateWithFallback(t, `value.${key}.${value}`, value))
+  if (ISO_DATE.test(value)) return formatDate(value)
+  if (ISO_DATE_TIME.test(value)) return formatDateTime(value)
   const labelKey = getLabelKeyForField(key)
   if (labelKey) return labels[labelKey]?.get(value) ?? (isUuid(value) ? translateWithFallback(t, "value.unresolvedReference", "Referenced record") : value)
   if (isUuid(value)) return translateWithFallback(t, "value.unresolvedReference", "Referenced record")
@@ -355,23 +404,26 @@ function formatValue(value: unknown, key: string, labels: SystemLogRecordLabels,
 function getLabelKeyForField(key: string): RecordLabelKey | null {
   if (key === "currentLocationId" || key === "locationId" || key === "nextLocationId") return "location"
   if (key === "custodianId" || key === "returnByEmployeeId" || key === "receiveByEmployeeId") return "employee"
-  if (key === "departmentId") return "department"
+  if (key === "executedById" || key === "actionOwnerId" || key === "actualCustodianId") return "employee"
+  if (key === "actualLocationId") return "location"
+  if (key === "departmentId" || key === "actualDepartmentId") return "department"
   if (key === "parentAssetId" || key === "assetId") return "asset"
   if (key === "companyId") return "company"
   if (key === "branchId") return "branch"
   if (key === "categoryId") return "category"
   if (key === "brandId") return "brand"
   if (key === "modelId") return "model"
-  if (key === "supplierId") return "supplier"
+  if (key === "supplierId" || key === "vendorId") return "supplier"
   if (key === "homeLocationId") return "location"
-  if (key === "statusId" || key === "nextStatusId") return "status"
+  if (key === "statusId" || key === "nextStatusId" || key === "assetStatusId") return "status"
   if (key === "conditionId" || key === "conditionBefore" || key === "conditionAfter") return "condition"
   if (key === "roleId" || key === "ldap_default_role") return "role"
   return null
 }
 
-function getFieldLabel(key: string, t: Translate) {
-  return translateWithFallback(t, FIELD_LABEL_KEYS[key] ?? `field.${key}`, humanizeKey(key))
+// A module's own name for a field wins (an audit round's "status" is not the integration log's HTTP status).
+function getFieldLabel(key: string, moduleKey: string, t: Translate) {
+  return translateWithFallback(t, `field.${moduleKey}.${key}`, translateWithFallback(t, FIELD_LABEL_KEYS[key] ?? `field.${key}`, humanizeKey(key)))
 }
 
 function getLogHref(log: SystemLogPresenterInput, locale: string, moduleKey: string) {

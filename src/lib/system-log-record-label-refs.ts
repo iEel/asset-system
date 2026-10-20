@@ -62,6 +62,14 @@ function addReferencedValueIds(idsByModule: SystemLogRecordLabelRefs, log: Syste
     addStringReference(idsByModule, "condition", value.conditionAfter)
     addStringReference(idsByModule, "role", value.roleId)
     addStringReference(idsByModule, "role", value.ldap_default_role)
+    // Disposal, audit and repair logs (critique 2026-10-20 F2).
+    addStringReference(idsByModule, "employee", value.executedById)
+    addStringReference(idsByModule, "employee", value.actionOwnerId)
+    addStringReference(idsByModule, "employee", value.actualCustodianId)
+    addStringReference(idsByModule, "status", value.assetStatusId)
+    addStringReference(idsByModule, "supplier", value.vendorId)
+    addStringReference(idsByModule, "location", value.actualLocationId)
+    addStringReference(idsByModule, "department", value.actualDepartmentId)
   }
 }
 
