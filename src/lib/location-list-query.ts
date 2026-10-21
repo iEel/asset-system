@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { parseRecordStatus, recordStatusWhere, setRecordStatusParam, type RecordStatusFilter } from "./master-data-query.ts"
+import type { LocationType } from "./location-types.ts"
 
 export const locationSorts = [
   "createdAt",
@@ -78,7 +79,11 @@ export function parseLocationListParams(input: LocationListParams): LocationList
   }
 }
 
-export function buildLocationWhere(state: LocationListState): Prisma.LocationWhereInput {
+// matchingTypes: the types whose label matches the search (matchLocationTypesByLabel), so a Thai type name finds them.
+export function buildLocationWhere(
+  state: LocationListState,
+  matchingTypes: readonly LocationType[] = [],
+): Prisma.LocationWhereInput {
   return {
     ...recordStatusWhere(state.status),
     ...(state.branchId ? { branchId: state.branchId } : {}),
@@ -99,6 +104,7 @@ export function buildLocationWhere(state: LocationListState): Prisma.LocationWhe
             { branch: { name: { contains: state.search } } },
             { branch: { company: { code: { contains: state.search } } } },
             { branch: { company: { nameTh: { contains: state.search } } } },
+            ...(matchingTypes.length > 0 ? [{ locationType: { in: [...matchingTypes] } }] : []),
           ],
         }
       : {}),

@@ -65,6 +65,16 @@ test("builds location where clauses from search, branch, type, usage, and hierar
   })
 })
 
+test("a search that matches type labels also finds the locations of those types (user decision 2026-10-21 Y3)", () => {
+  const state = parseLocationListParams({ search: "ห้อง" })
+  const where = buildLocationWhere(state, ["Room"])
+  assert.deepEqual(where.OR?.at(-1), { locationType: { in: ["Room"] } })
+  assert.equal(where.OR?.length, 9)
+  assert.equal(buildLocationWhere(state, []).OR?.length, 8)
+  assert.equal(buildLocationWhere(state).OR?.length, 8)
+  assert.equal("OR" in buildLocationWhere(parseLocationListParams({}), ["Room"]), false)
+})
+
 test("builds location order by including relation-count columns", () => {
   assert.deepEqual(buildLocationOrderBy({ sort: "currentAssets", direction: "desc" }), {
     currentAssets: { _count: "desc" },

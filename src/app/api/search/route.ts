@@ -10,7 +10,7 @@ import {
 } from "@/lib/global-search"
 import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { getTranslations } from "next-intl/server"
-import { formatLocationType } from "@/lib/location-types"
+import { formatLocationType, getLocationTypeLabels, matchLocationTypesByLabel } from "@/lib/location-types"
 
 type SearchResult = {
   id: string
@@ -284,6 +284,9 @@ async function searchBranches(query: string, locale: string): Promise<SearchResu
 }
 
 async function searchLocations(query: string, locale: string): Promise<SearchResult[]> {
+  const t = await getTranslations({ locale, namespace: "location" })
+  // A type's label in the person's language also finds its locations (user decision 2026-10-21 Y3).
+  const matchingTypes = matchLocationTypesByLabel(query, getLocationTypeLabels(t))
   const locations = await prisma.location.findMany({
     where: {
       isActive: true,
@@ -293,13 +296,13 @@ async function searchLocations(query: string, locale: string): Promise<SearchRes
         { locationType: { contains: query } },
         { branch: { code: { contains: query } } },
         { branch: { name: { contains: query } } },
+        ...(matchingTypes.length > 0 ? [{ locationType: { in: matchingTypes } }] : []),
       ],
     },
     select: { id: true, code: true, name: true, locationType: true, branch: { select: { code: true, name: true } } },
     orderBy: [{ updatedAt: "desc" }, { code: "asc" }],
     take: 4,
   })
-  const t = await getTranslations({ locale, namespace: "location" })
 
   return locations.map((location) => ({
     id: location.id,

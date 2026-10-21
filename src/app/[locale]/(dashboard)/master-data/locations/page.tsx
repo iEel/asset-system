@@ -23,7 +23,7 @@ import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import { locationTypes } from "@/lib/validations/location"
-import { formatLocationType } from "@/lib/location-types"
+import { formatLocationType, getLocationTypeLabels, matchLocationTypesByLabel } from "@/lib/location-types"
 import {
   buildLocationDrilldownHrefs,
   buildLocationOrderBy,
@@ -51,7 +51,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
   const tCommon = await getTranslations("common")
   const listState = parseLocationListParams(rawSearchParams)
   const searchText = listState.search
-  const where = buildLocationWhere(listState)
+  const where = buildLocationWhere(listState, matchLocationTypesByLabel(listState.search, getLocationTypeLabels(t)))
 
   const [locations, total, summaryLocations, branches, pathLocations] = await Promise.all([
     prisma.location.findMany({

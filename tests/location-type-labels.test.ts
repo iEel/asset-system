@@ -63,3 +63,27 @@ test("the location form, the list, its filter and the global search read the typ
   // The integration API is a data contract and keeps the stored value.
   assert.doesNotMatch(read("src/lib/integration-reference.ts"), /formatLocationType/)
 })
+
+// User decision 2026-10-21 Y3: a type's label (the person's language, any case, any part of it) finds its locations.
+test("matchLocationTypesByLabel finds the types whose label contains the query", async () => {
+  const { matchLocationTypesByLabel, getLocationTypeLabels } = await import("../src/lib/location-types.ts")
+  const thLabels = getLocationTypeLabels((key) => String(th[key]))
+  const enLabels = getLocationTypeLabels((key) => String(en[key]))
+  assert.equal(thLabels.Room, "ห้อง"); assert.equal(enLabels["User-held"], "Held by custodian")
+  assert.deepEqual(matchLocationTypesByLabel("ห้อง", thLabels), ["Room"])
+  assert.deepEqual(matchLocationTypesByLabel("ชั้น", thLabels), ["Floor"])
+  assert.deepEqual(matchLocationTypesByLabel("room", enLabels), ["Room"])
+  assert.deepEqual(matchLocationTypesByLabel(" CUSTODIAN ", enLabels), ["User-held"])
+  assert.deepEqual(matchLocationTypesByLabel("สถานที่", thLabels), ["Site", "Offsite"])
+  assert.deepEqual(matchLocationTypesByLabel("", thLabels), [])
+  assert.deepEqual(matchLocationTypesByLabel("   ", thLabels), [])
+  assert.deepEqual(matchLocationTypesByLabel("ไม่มีประเภทนี้", thLabels), [])
+})
+
+test("the locations list and the global search pass the person's type labels to the search", () => {
+  const page = read("src/app/[locale]/(dashboard)/master-data/locations/page.tsx")
+  assert.match(page, /buildLocationWhere\(listState, matchLocationTypesByLabel\(listState\.search, getLocationTypeLabels\(t\)\)\)/)
+  const search = read("src/app/api/search/route.ts")
+  assert.match(search, /const matchingTypes = matchLocationTypesByLabel\(query, getLocationTypeLabels\(t\)\)/)
+  assert.match(search, /\.\.\.\(matchingTypes\.length > 0 \? \[\{ locationType: \{ in: matchingTypes \} \}\] : \[\]\),/)
+})

@@ -28,3 +28,16 @@ export function formatLocationType(type: string, t: (key: LocationTypeLabelKey) 
   const key = getLocationTypeLabelKey(type)
   return key ? t(key) : type
 }
+
+// Every type's label in the person's language, read through the location translator.
+export function getLocationTypeLabels(t: (key: LocationTypeLabelKey) => string): Record<LocationType, string> {
+  return Object.fromEntries(locationTypes.map((type) => [type, t(`type_${type}`)])) as Record<LocationType, string>
+}
+
+// The types whose label contains the query (any case), so typing "ห้อง" finds the rooms although the database stores
+// "Room" (user decision 2026-10-21 Y3). An empty query matches nothing: it is not a search.
+export function matchLocationTypesByLabel(query: string, labels: Record<LocationType, string>): LocationType[] {
+  const needle = query.trim().toLocaleLowerCase()
+  if (!needle) return []
+  return locationTypes.filter((type) => labels[type]?.toLocaleLowerCase().includes(needle))
+}
