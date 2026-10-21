@@ -6,6 +6,7 @@ import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { prisma } from "@/lib/db"
 import { getTransactionOperatorLabel } from "@/lib/transaction-operator-label"
 import { requirePagePermission } from "@/lib/page-auth"
+import { buildTransferSignatures } from "@/lib/transfer-document-signatures"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
@@ -124,10 +125,10 @@ export default async function TransferPrintPage({ params, searchParams }: Transf
           ],
         },
       ]}
-      signatures={[
-        { title: tCheckout("checkedOutBy"), helper: tCheckout("signatureDate") },
-        { title: tCheckout("approver"), helper: tCheckout("signatureDate") },
-      ]}
+      signatures={buildTransferSignatures(
+        { beforeCustodianId: beforeSnapshot?.custodianId, afterCustodianId: afterSnapshot?.custodianId },
+        { checkedOutBy: tCheckout("checkedOutBy"), receiver: tCheckout("receiver"), approver: tCheckout("approver"), signatureDate: tCheckout("signatureDate") },
+      )}
     />
   )
 }
