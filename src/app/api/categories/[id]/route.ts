@@ -8,6 +8,7 @@ import { duplicateCustomFieldNameErrors } from "@/lib/category-custom-field-name
 import { categorySchema } from "@/lib/validations/category"
 import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { getCategoryDeleteBlockReason } from "@/lib/category-delete-guard"
+import { isDeactivation } from "@/lib/master-data-query"
 
 type CategoryRouteContext = {
   params: Promise<{ id: string }>
@@ -73,7 +74,8 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
     if (fieldNameErrors) {
       return fieldErrorResponse({ status: 409, error: "Custom field names must be unique in a category", code: "DUPLICATE", fieldErrors: fieldNameErrors })
     }
-    if (!input.isActive) {
+    // Only unticking "ใช้งาน" is guarded like ลบ: an inactive category with assets still saves (user decision 2026-10-21 Y5).
+    if (isDeactivation(existing.isActive, input.isActive)) {
       const blockReason = getCategoryDeleteBlockReason({
         assets: existing._count.assets,
         models: existing._count.models,

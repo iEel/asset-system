@@ -59,7 +59,7 @@ const LOADERS = [
   "suppliers/[id]/edit",
 ]
 const PUT_ROUTES = ["companies", "branches", "departments", "locations", "categories", "brands", "models", "employees", "suppliers"]
-const GUARDED_PUT_ROUTES = ["companies", "branches", "locations", "employees"]
+const GUARDED_PUT_ROUTES = ["companies", "branches", "locations", "employees", "categories"]
 const putSource = (dir: string) => {
   const source = read(`src/app/api/${dir}/[id]/route.ts`)
   const start = source.indexOf("export async function PUT")
@@ -214,4 +214,37 @@ test("a referenced record that is inactive comes back when ticked ใช้ง�
     const stay = await run(true, true)
     assert.equal(stay.response.status, 200, `${item.dir}: an ordinary save is refused`)
   }
+})
+
+test("an inactive category that still has assets saves while it stays inactive; only unticking an active one is refused (user decision 2026-10-21 Y5)", async () => {
+  const { getCategoryDeleteBlockReason } = await load<typeof import("../src/lib/category-delete-guard.ts")>("src/lib/category-delete-guard.ts")
+  const counts = { assets: 3, models: 1 }
+  const reason = getCategoryDeleteBlockReason(counts)
+  assert.ok(reason, "the stand-in counts block ลบ")
+  const { PUT } = await load<Update>("src/app/api/categories/[id]/route.ts")
+  const body = { code: "IT", name: "IT", description: "", isActive: true, customFieldDefs: [], photoChecklist: [] }
+  const run = async (stored: boolean, next: boolean) => {
+    const updates: unknown[] = []
+    stubDb({
+      assetCategory: {
+        findFirst: (args: { where: Record<string, unknown> }) => (args.where.code ? null : { id: "cat-1", isActive: stored, _count: counts }),
+        update: (args: unknown) => { updates.push(args); return { id: "cat-1" } },
+      },
+      systemSetting: { upsert: () => ({}) },
+    })
+    const response = await PUT(put({ ...body, isActive: next }), params("cat-1"))
+    return { response, updates }
+  }
+
+  const stayInactive = await run(false, false)
+  assert.equal(stayInactive.response.status, 200, "an inactive category in use cannot be edited")
+  assert.equal(stayInactive.updates.length, 1)
+
+  const away = await run(true, false)
+  assert.equal(away.response.status, 409, "deactivating a category in use is not guarded")
+  assert.deepEqual(await away.response.json(), { error: reason })
+  assert.equal(away.updates.length, 0)
+
+  assert.equal((await run(false, true)).response.status, 200, "reactivation is refused")
+  assert.equal((await run(true, true)).response.status, 200, "an ordinary save is refused")
 })
