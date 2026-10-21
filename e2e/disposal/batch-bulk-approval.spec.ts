@@ -193,7 +193,8 @@ test("IT staff execute the other batch request in a bulk execution (finding D2)"
   await dialog.locator("#disposal-bulk-execution-permanent").check()
   await dialog.getByRole("button", { name: "ยืนยันดำเนินการ 1 รายการ" }).click()
   const result = page.getByRole("dialog", { name: "ผลการดำเนินการตัดจำหน่ายแบบกลุ่ม" })
-  await expect(result.getByText("ดำเนินการแล้ว", { exact: true })).toBeVisible()
+  // The row's outcome; the result's summary term reads the same words.
+  await expect(result.getByRole("listitem").getByText("ดำเนินการแล้ว", { exact: true })).toBeVisible()
   await expect(result.getByText(asset.assetTag).first()).toBeVisible()
   await measure.recordPage("IT staff: the bulk execution's result")
   await result.getByRole("button", { name: "ปิด" }).first().click()

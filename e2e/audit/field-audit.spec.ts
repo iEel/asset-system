@@ -24,7 +24,7 @@ import { createAuditAssets, createAuditPlaces, readAuditMasters, type AuditWalkD
 import * as pending from "./pending-steps.ts"
 import * as review from "./review-steps.ts"
 import * as scan from "./scan-steps.ts"
-import { recordSettled } from "./settle.ts"
+import { recordSettled, settleToasts } from "./settle.ts"
 
 runPhoneOnWebKit()
 test.describe.configure({ mode: "serial" })
@@ -160,7 +160,11 @@ test.describe("IT staff walk room A", () => {
     await expect(scan.saveButton(page)).toHaveAttribute("aria-disabled", "true")
     await expect(scan.checkForm(page).getByText("สภาพไม่ตรง ต้องแนบรูปก่อนบันทึก")).toBeVisible()
     // Playwright waits for an aria-disabled button to be enabled, so the tap is forced; it is still a real pointer
-    // event at the button's centre, which pointer-events: none would hand to whatever lies under it.
+    // event at the button's centre, which pointer-events: none would hand to whatever lies under it. A forced tap skips
+    // the check that nothing covers the button, so it waits until the condition's list has closed: in Task 51's third
+    // run the tap landed on the closing list's "ดี" and changed the condition instead.
+    await expect(page.getByRole("listbox")).toHaveCount(0)
+    await settleToasts(page)
     await scan.saveButton(page).click({ force: true })
     await expect(scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" })).toHaveAttribute("aria-expanded", "true")
     await scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))

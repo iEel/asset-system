@@ -234,7 +234,8 @@ test("a tap on the audit check's waiting save opens the note-and-photo section, 
   assert.doesNotMatch(merged, /\baria-disabled:pointer-events-none\b/)
   // The walk taps the waiting save instead of finding the section itself.
   const walk = read("e2e/audit/field-audit.spec.ts")
-  assert.match(walk, /toHaveAttribute\("aria-disabled", "true"\)\n(?:[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*\s*await scan\.saveButton\(page\)\.click\(\{ force: true \}\)\n\s*await expect\(scan\.checkForm\(page\)\.getByRole\("button", \{ name: "หมายเหตุ \/ รูป" \}\)\)\.toHaveAttribute\("aria-expanded", "true"\)\n\s*await scan\.addPhoto\(/)
+  // Task 51 loop 11 waits for the condition's list to close before the tap (the two lines it adds are allowed here).
+  assert.match(walk, /toHaveAttribute\("aria-disabled", "true"\)\n(?:[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*(?:\s*await expect\(page\.getByRole\("listbox"\)\)\.toHaveCount\(0\)\n\s*await settleToasts\(page\)\n)?\s*await scan\.saveButton\(page\)\.click\(\{ force: true \}\)\n\s*await expect\(scan\.checkForm\(page\)\.getByRole\("button", \{ name: "หมายเหตุ \/ รูป" \}\)\)\.toHaveAttribute\("aria-expanded", "true"\)\n\s*await scan\.addPhoto\(/)
 })
 
 test("the bulk execution's dialog takes one shared reference document number for the rows that have none (e2e decision DX2 (ก): D2)", async () => {
@@ -327,4 +328,10 @@ test("a page's font cancelled as the workflow leaves the page is allowed, review
   assert.ok(entry.url instanceof RegExp && entry.url.test("http://localhost:3100/_next/static/media/99e609270109b47d-s.40sczeszzbjw1.woff2"))
   assert.ok(entry.url.test("http://localhost:3100/_next/static/chunks/3zxrz4psxl9wv.js"))
   assert.ok(!entry.url.test("http://localhost:3100/api/assets"))
+})
+
+test("the bulk execution's result is read on the row; the forced tap on the waiting save waits for the condition list to close (e2e Task 51 loops 10-11)", () => {
+  assert.match(read("e2e/disposal/batch-bulk-approval.spec.ts"), /await expect\(result\.getByRole\("listitem"\)\.getByText\("ดำเนินการแล้ว", \{ exact: true \}\)\)\.toBeVisible\(\)/)
+  const walk = read("e2e/audit/field-audit.spec.ts")
+  assert.match(walk, /await expect\(page\.getByRole\("listbox"\)\)\.toHaveCount\(0\)\n\s+await settleToasts\(page\)\n\s+await scan\.saveButton\(page\)\.click\(\{ force: true \}\)/)
 })
