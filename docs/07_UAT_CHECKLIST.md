@@ -310,6 +310,19 @@ Controller evidence on 2026-07-15 used the authenticated Chrome `system_admin` s
 - [ ] Review the previously reported 13 dependency vulnerabilities (1 low, 8 moderate, 4 high) in a separate security/dependency change; do not force dependency updates during UI UAT.
 - [x] The inherited raw Asset Detail handover colors were replaced with shared semantic `StatusPill` tones. Audit Scan now clears stale `scanFeedback` when the target changes or clears.
 
+## E2E Suite Follow-up (2026-10-21)
+
+The automated suite (`npm run test:e2e`, plan `docs/superpowers/plans/2026-10-20-e2e-suite.md`) passed every workflow on desktop and phone in both themes. A person still checks:
+
+- [ ] VoiceOver (iOS) and TalkBack (Android) on real phones: the field audit, a handover, the searchable select.
+- [ ] NVDA on a computer: the asset QR Code's name, a dialog's scrolling body, the searchable select (not modal since DX4), a save read once.
+- [ ] iOS Safari and Android Chrome: the keyboard does not cover the form; the receiver signs with a finger at the desk; a tap right after choosing an option does not land on another option.
+- [ ] The field audit on a slow real phone and network (the suite only delays 150 ms).
+- [ ] The camera on real QR labels (the labels are not printed yet: typed search meanwhile), and label printing.
+- [ ] Field use: low light, one hand, a weak network.
+- [ ] HO-, RT- and TR- documents print on one A4 page each.
+- [ ] An English pass of the new messages, and the standalone server on the production build.
+
 ## Sign-Off
 
 | Role | Tester | Date | Result | Notes |
