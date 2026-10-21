@@ -18,6 +18,7 @@ import { isAuditComponentChecked, isAuditComponentPending, revealFocusInScrollAr
 import type { AuditInstalledInParent, AuditLookupAsset, AuditScanComponent, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import {
   buildCheckDefaults,
+  checkPhotoReasonKey,
   diffCheckValues,
   expectedCheckValues,
   getLatestValueNotes,
@@ -440,7 +441,7 @@ export function AuditScanCheckForm({
             the save button, which stays focusable (spec §4.4). */}
         {missingPhoto ? (
           <Notice id="audit-check-photo-reason" tone="neutral">
-            {mode === "out_of_scope" ? t("auditPhotoRequiredForMismatch") : t("photoRequiredCondition")}
+            {t(checkPhotoReasonKey(mode, diff))}
           </Notice>
         ) : null}
         {pendingComponents.length > 0 ? (

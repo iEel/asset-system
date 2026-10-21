@@ -272,8 +272,22 @@ export function diffCheckValues(values: AuditCheckValues, expected: AuditCheckVa
   return fields
 }
 
+/** In scope a condition, department or location mismatch needs a photo, a custodian alone does not (N-AU1). */
 export function requiresCheckPhoto(mode: AuditCheckMode, diff: readonly AuditCheckField[]) {
-  return mode === "out_of_scope" ? diff.length > 0 : diff.includes("condition")
+  return mode === "out_of_scope" ? diff.length > 0 : diff.includes("condition") || hasPlacementMismatch(diff)
+}
+
+function hasPlacementMismatch(diff: readonly AuditCheckField[]) {
+  return diff.includes("department") || diff.includes("location")
+}
+
+/** The auditScan message the waiting save shows: it names what differs (N-AU1). */
+export function checkPhotoReasonKey(mode: AuditCheckMode, diff: readonly AuditCheckField[]) {
+  if (mode === "out_of_scope") return "auditPhotoRequiredForMismatch" as const
+  const condition = diff.includes("condition")
+  const placement = hasPlacementMismatch(diff)
+  if (condition && placement) return "photoRequiredMismatch" as const
+  return placement ? ("photoRequiredPlacement" as const) : ("photoRequiredCondition" as const)
 }
 
 export function suggestDepartmentForCustodian(employees: readonly AuditScanEmployeeOption[], custodianId: string) {

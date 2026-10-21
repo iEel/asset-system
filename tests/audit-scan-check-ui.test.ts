@@ -122,11 +122,15 @@ test("components keep their three actions and the missing dialog keeps its share
 })
 
 test("check sheet copy exists in Thai and English", () => {
-  const keys = ["sheetStatusPending", "sheetStatusEdit", "sheetStatusNotFound", "sheetStatusOutOfScope", "sheetStatusJustChecked", "inSystem", "latestValue", "noOptionMatch", "clearValue", "addNotePhoto", "photoType", "photoRequiredCondition", "componentsSection", "saveAllMatch", "saveMismatch", "saveEditAllMatch", "saveEditMismatch", "saveOutOfScope", "notThisOne", "checkPanelEmpty"]
+  const keys = ["sheetStatusPending", "sheetStatusEdit", "sheetStatusNotFound", "sheetStatusOutOfScope", "sheetStatusJustChecked", "inSystem", "latestValue", "noOptionMatch", "clearValue", "addNotePhoto", "photoType", "photoRequiredCondition", "photoRequiredPlacement", "photoRequiredMismatch", "componentsSection", "saveAllMatch", "saveMismatch", "saveEditAllMatch", "saveEditMismatch", "saveOutOfScope", "notThisOne", "checkPanelEmpty"]
   for (const locale of ["th", "en"] as const) {
     assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
   }
   assert.equal(messages("th").saveMismatch, "บันทึก · ไม่ตรง {count} ข้อ ({fields})")
+  // N-AU1: the waiting save names what differs.
+  assert.equal(messages("th").photoRequiredCondition, "สภาพไม่ตรง ต้องแนบรูปก่อนบันทึก")
+  assert.equal(messages("th").photoRequiredPlacement, "แผนกหรือที่ตั้งไม่ตรง ต้องแนบรูปก่อนบันทึก")
+  assert.equal(messages("th").photoRequiredMismatch, "ข้อมูลไม่ตรง ต้องแนบรูปก่อนบันทึก")
 })
 
 test("the phone check sheet takes its X name and header from Sheet (2C batch 3)", () => {

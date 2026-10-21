@@ -2172,7 +2172,9 @@
     "componentsSaveHint": "ส่วนควบตรวจแล้ว {checked} / {total}",
     "componentsPendingSaveTitle": "ส่วนควบยังตรวจไม่ครบ {count} ชิ้น",
     "componentsPendingSaveDescription": "ระบบจะบันทึกเฉพาะตัวหลัก ส่วนควบที่ยังไม่ได้ตรวจจะยังเป็น “ยังไม่ตรวจ” และตรวจต่อภายหลังได้",
-    "componentsPendingSaveAction": "บันทึกตัวหลัก"
+    "componentsPendingSaveAction": "บันทึกตัวหลัก",
+    "photoRequiredPlacement": "แผนกหรือที่ตั้งไม่ตรง ต้องแนบรูปก่อนบันทึก",
+    "photoRequiredMismatch": "ข้อมูลไม่ตรง ต้องแนบรูปก่อนบันทึก"
   },
   "auditFinding": {
     "title": "รายการไม่ตรงจากการตรวจนับ",

@@ -90,7 +90,7 @@ test("IT staff walk room A by typing on the phone, on a slow network: matched, m
   const helper = read("e2e/audit/scan-steps.ts")
   for (const key of ["searchItemsLabel", "roomSheetTitle"]) assert.ok(helper.includes(`"${words[key]}"`), key)
   const walk = block(read(SPEC), "IT staff walk room A")
-  for (const key of ["saveAllMatch", "photoRequiredCondition", "addNotePhoto", "componentMarkMissing", "componentMissingConfirm", "searchRegister", "recordOutOfScope", "saveOutOfScope"]) {
+  for (const key of ["saveAllMatch", "photoRequiredMismatch", "addNotePhoto", "componentMarkMissing", "componentMissingConfirm", "searchRegister", "recordOutOfScope", "saveOutOfScope"]) {
     assert.ok(walk.includes(words[key]), key)
   }
   assert.ok(walk.includes(`asUser("itStaff")`))
@@ -100,6 +100,10 @@ test("IT staff walk room A by typing on the phone, on a slow network: matched, m
   assert.ok(walk.includes(`scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch.tag)`))
   // The mismatch: another department and the condition, with the photo; the parent asks while a component is unchecked.
   assert.ok(walk.includes(`"บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)"`))
+  // N-AU1 (user decision 2026-10-21): the department and the condition differ, so the waiting save names both
+  // ("ข้อมูลไม่ตรง ..."), not the condition alone.
+  assert.ok(walk.includes(`scan.checkForm(page).getByText("${words.photoRequiredMismatch}")`), "the reason for a department and a condition mismatch")
+  assert.ok(!walk.includes(words.photoRequiredCondition), "not the condition-alone reason")
   assert.ok(walk.includes(`scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))`))
   // DX5 (ก): a tap on the waiting save opens the note-and-photo section (finding AU2), so the walk taps it.
   const mismatch = walk.slice(walk.indexOf(`"บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)"`), walk.indexOf(`scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))`))

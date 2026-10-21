@@ -2172,7 +2172,9 @@
     "componentsSaveHint": "Components checked {checked} / {total}",
     "componentsPendingSaveTitle": "{count} components not checked yet",
     "componentsPendingSaveDescription": "Only the parent asset is saved. The unchecked components stay “Pending” and can be checked later.",
-    "componentsPendingSaveAction": "Save parent"
+    "componentsPendingSaveAction": "Save parent",
+    "photoRequiredPlacement": "The department or location changed, so add a photo before saving",
+    "photoRequiredMismatch": "The data does not match, so add a photo before saving"
   },
   "auditFinding": {
     "title": "Audit Findings",

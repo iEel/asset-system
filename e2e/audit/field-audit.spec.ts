@@ -150,15 +150,15 @@ test.describe("IT staff walk room A", () => {
     })
 
     // Mismatch: found by a word of its name; it stands in another department and its condition is worse, so the save
-    // waits for a photo. A tap on the waiting save opens the note-and-photo section (finding AU2, decided DX5 (ก)),
-    // and the person adds it there.
+    // waits for a photo and its reason names both (N-AU1: a department or location mismatch needs a photo too). A tap
+    // on the waiting save opens the note-and-photo section (finding AU2, decided DX5 (ก)), and the person adds it there.
     await scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch.tag)
     const runDepartment = runRecords(readRunState().runId).department.code
     await scan.chooseInCheckField(page, "แผนก", runDepartment, `${runDepartment} - `)
     await scan.chooseInCheckField(page, "สภาพ", "พอใช้", "พอใช้")
     await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)")
     await expect(scan.saveButton(page)).toHaveAttribute("aria-disabled", "true")
-    await expect(scan.checkForm(page).getByText("สภาพไม่ตรง ต้องแนบรูปก่อนบันทึก")).toBeVisible()
+    await expect(scan.checkForm(page).getByText("ข้อมูลไม่ตรง ต้องแนบรูปก่อนบันทึก")).toBeVisible()
     // Playwright waits for an aria-disabled button to be enabled, so the tap is forced; it is still a real pointer
     // event at the button's centre, which pointer-events: none would hand to whatever lies under it. A forced tap skips
     // the check that nothing covers the button, so it waits until the condition's list has closed: in Task 51's third

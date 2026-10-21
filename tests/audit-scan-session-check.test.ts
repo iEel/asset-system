@@ -9,6 +9,7 @@ import {
   getCheckMode,
   getLatestValueNotes,
   mergeStatusUpdates,
+  checkPhotoReasonKey,
   requiresCheckPhoto,
   suggestDepartmentForCustodian,
   toScanPayloadValues,
@@ -63,10 +64,28 @@ test("mismatches mirror the server rules for ownership types", () => {
 })
 
 test("photos are required for a condition change, and for any out-of-scope difference", () => {
-  assert.equal(requiresCheckPhoto("scan", ["location", "custodian"]), false)
+  assert.equal(requiresCheckPhoto("scan", ["custodian"]), false)
   assert.equal(requiresCheckPhoto("edit", ["condition"]), true)
   assert.equal(requiresCheckPhoto("out_of_scope", ["department"]), true)
   assert.equal(requiresCheckPhoto("out_of_scope", []), false)
+})
+
+test("in scope, a department or location mismatch also needs a photo; a custodian alone does not (user decision 2026-10-21, N-AU1)", () => {
+  assert.equal(requiresCheckPhoto("scan", ["department"]), true)
+  assert.equal(requiresCheckPhoto("scan", ["location"]), true)
+  assert.equal(requiresCheckPhoto("edit", ["location", "custodian"]), true)
+  assert.equal(requiresCheckPhoto("scan", ["custodian"]), false)
+  assert.equal(requiresCheckPhoto("scan", ["condition"]), true)
+  assert.equal(requiresCheckPhoto("scan", []), false)
+})
+
+test("the waiting save names what differs (N-AU1)", () => {
+  assert.equal(checkPhotoReasonKey("out_of_scope", ["custodian"]), "auditPhotoRequiredForMismatch")
+  assert.equal(checkPhotoReasonKey("scan", ["condition"]), "photoRequiredCondition")
+  assert.equal(checkPhotoReasonKey("scan", ["condition", "custodian"]), "photoRequiredCondition")
+  assert.equal(checkPhotoReasonKey("scan", ["department"]), "photoRequiredPlacement")
+  assert.equal(checkPhotoReasonKey("edit", ["location", "custodian"]), "photoRequiredPlacement")
+  assert.equal(checkPhotoReasonKey("scan", ["location", "condition"]), "photoRequiredMismatch")
 })
 
 test("picking a custodian suggests that employee's department", () => {
