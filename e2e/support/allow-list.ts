@@ -42,12 +42,12 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
     reviewed: "2026-10-19",
   },
   {
-    id: "static-font-cancelled-on-leave",
+    id: "static-file-cancelled-on-leave",
     kind: "requestfailed",
-    url: /\/_next\/static\/media\/[^/?]+\.woff2$/,
+    url: /\/_next\/static\/(?:media|chunks)\/[^/?]+\.(?:woff2|js|css)$/,
     errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
     reason:
-      "next/font preloads the page's font files; when the workflow saves and the app navigates on before a file finishes, the browser cancels it (Chromium net::ERR_ABORTED, seen once in Task 51's first run on the asset form). A cancelled font is the browser leaving the page, not a failed request; a font answered with an error status is still a response record.",
+      "A page loads its fonts and script chunks from /_next/static; when the app navigates on before a file finishes, the browser cancels it (Chromium net::ERR_ABORTED). Task 51 saw it on the asset form after a save, and on the bare register, whose view memory restores the person's saved view at once with router.replace. A cancelled static file is the browser leaving the page, not a failed request; a static file answered with an error status is still a response record.",
     reviewed: "2026-10-21",
   },
 ]

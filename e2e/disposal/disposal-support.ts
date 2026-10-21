@@ -181,8 +181,9 @@ export async function openBulkExecutionPreview(page: Page, asset: DisposalAsset,
   await dialog.locator("#disposal-bulk-execution-recipient").fill(recipient)
   if (documentNo) await dialog.locator("#disposal-bulk-execution-document-no").fill(documentNo)
   await dialog.getByRole("button", { name: "ยืนยันดำเนินการ 1 รายการ" }).click()
-  // The row's outcome; the summary's term reads the same words.
-  await expect(dialog.getByRole("listitem").getByText("ดำเนินการได้", { exact: true })).toBeVisible()
+  // The preview has arrived: its summary's term shows whether the row is eligible (D2) or blocked (D3). The row's own
+  // outcome reads the same words only when it is eligible, so each test reads its row itself.
+  await expect(dialog.getByRole("term").filter({ hasText: /^ดำเนินการได้$/ })).toBeVisible()
   return dialog
 }
 

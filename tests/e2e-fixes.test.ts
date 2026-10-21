@@ -303,7 +303,8 @@ test("the check field's search is found by its exact name, not the global search
 })
 
 test("the bulk execution's preview is read on the row, not the summary term of the same words (e2e Task 51 loop 4: D2 runs now)", () => {
-  assert.match(read("e2e/disposal/disposal-support.ts"), /await expect\(dialog\.getByRole\("listitem"\)\.getByText\("ดำเนินการได้", \{ exact: true \}\)\)\.toBeVisible\(\)/)
+  // The summary's term shows on every preview, eligible or blocked (D3 shares the helper): it says the preview arrived.
+  assert.match(read("e2e/disposal/disposal-support.ts"), /await expect\(dialog\.getByRole\("term"\)\.filter\(\{ hasText: \/\^ดำเนินการได้\$\/ \}\)\)\.toBeVisible\(\)/)
 })
 
 test("the PM plan form's save is checked on the plan it created, not found on a long list (e2e Task 51 loop 5: the dev data grows run by run)", () => {
@@ -321,8 +322,9 @@ test("IT staff see neither the review controls nor the segregation note on the f
 
 test("a page's font cancelled as the workflow leaves the page is allowed, reviewed (e2e Task 51 loop 7)", async () => {
   const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
-  const entry = ALLOW_LIST.find((item) => item.id === "static-font-cancelled-on-leave")
+  const entry = ALLOW_LIST.find((item) => item.id === "static-file-cancelled-on-leave")
   assert.ok(entry && entry.kind === "requestfailed")
   assert.ok(entry.url instanceof RegExp && entry.url.test("http://localhost:3100/_next/static/media/99e609270109b47d-s.40sczeszzbjw1.woff2"))
-  assert.ok(!entry.url.test("http://localhost:3100/_next/static/chunks/app.js"))
+  assert.ok(entry.url.test("http://localhost:3100/_next/static/chunks/3zxrz4psxl9wv.js"))
+  assert.ok(!entry.url.test("http://localhost:3100/api/assets"))
 })

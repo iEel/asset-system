@@ -185,7 +185,8 @@ test("IT staff execute the other batch request in a bulk execution (finding D2)"
   expect(asset, "the batch test made the request").toBeTruthy()
   await measure.visit(`/th/disposal?status=approved&search=${encodeURIComponent(asset.assetTag)}`, "IT staff: approved disposals")
   const dialog = await openBulkExecutionPreview(page, asset, employeeLabel("itStaff"), `${queueSearch} ผู้รับซาก`, `${queueSearch}-BULK-DOC`)
-  // The row uses the shared number, and says so.
+  // The row is eligible, and uses the shared number.
+  await expect(dialog.getByRole("listitem").getByText("ดำเนินการได้", { exact: true })).toBeVisible()
   await expect(dialog.getByText(`${queueSearch}-BULK-DOC`).first()).toBeVisible()
   await measure.recordPage("IT staff: the bulk execution's preview")
   await expect(dialog.locator("#disposal-bulk-execution-permanent")).toBeVisible()
