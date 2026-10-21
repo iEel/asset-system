@@ -6,6 +6,7 @@ import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/
 import { applyAssetCrossScopeFilter, formatAssetCrossScopeFlags } from "@/lib/asset-cross-scope"
 import { assetExportColumns, createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { ASSET_EXPORT_MAX_ROWS } from "@/lib/asset-export-limits"
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
         licenseAssignedAsset: { select: { assetTag: true, name: true } },
       },
       orderBy: buildAssetOrderBy(filters),
-      take: 5000,
+      take: ASSET_EXPORT_MAX_ROWS,
     })
 
     const workbook = createWorkbook()

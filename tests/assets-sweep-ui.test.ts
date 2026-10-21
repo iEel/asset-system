@@ -283,10 +283,26 @@ test("components summary: on a phone the serial goes under the component instead
 
 test("import-export: the unfiltered export is named export all; the register link names the filter step (critique 2026-10-20 B1)", () => {
   const source = read(`${D}asset-management/import-export/page.tsx`)
-  assert.match(source, /href="\/api\/assets\/export"\n\s+icon=\{<FileDown className="h-5 w-5" \/>\}\n\s+title=\{tTools\("exportAll"\)\}\n\s+description=\{tTools\("exportAllDescription"\)\}/)
+  assert.match(source, /href="\/api\/assets\/export"\n\s+icon=\{<FileDown className="h-5 w-5" \/>\}\n\s+title=\{tTools\("exportAll"\)\}\n\s+description=\{tTools\("exportAllDescription", \{ max: formatCount\(ASSET_EXPORT_MAX_ROWS\) \}\)\}/)
   assert.doesNotMatch(source, /t\("exportFiltered"\)/)
   assert.match(read(`${C}assets/asset-register-export-menu.tsx`), /\{t\("exportFiltered"\)\}/)
   const th = JSON.parse(read("messages/th.json")).assetTools, en = JSON.parse(read("messages/en.json")).assetTools
   assert.equal(th.exportAll, "ส่งออกทั้งหมด (Excel)"); assert.equal(en.exportAll, "Export all (Excel)")
   assert.equal(th.exportWithFilters, "เลือกตัวกรองในทะเบียนแล้วส่งออก"); assert.equal(en.exportWithFilters, "Filter in the register, then export")
+})
+
+test("import-export: the export-all card says its 5,000-row limit, from the one constant the route caps with (user decision 2026-10-21 Y1)", async () => {
+  const { ASSET_EXPORT_MAX_ROWS } = await import("../src/lib/asset-export-limits.ts")
+  assert.equal(ASSET_EXPORT_MAX_ROWS, 5000)
+  const route = read("src/app/api/assets/export/route.ts")
+  assert.match(route, /import \{ ASSET_EXPORT_MAX_ROWS \} from "@\/lib\/asset-export-limits"/)
+  assert.match(route, /take: ASSET_EXPORT_MAX_ROWS,/)
+  assert.doesNotMatch(route, /take: 5000/)
+  assert.match(read(`${D}asset-management/import-export/page.tsx`), /import \{ ASSET_EXPORT_MAX_ROWS \} from "@\/lib\/asset-export-limits"/)
+  const th = JSON.parse(read("messages/th.json")).assetTools, en = JSON.parse(read("messages/en.json")).assetTools
+  assert.equal(th.exportAllDescription, "ส่งออกทะเบียนทรัพย์สินทั้งหมดตามสิทธิ์การเข้าถึงปัจจุบัน สูงสุด {max} รายการ")
+  assert.equal(en.exportAllDescription, "Export all asset records available to your current access permissions, up to {max} rows")
+  const max = new Intl.NumberFormat("en-US").format(ASSET_EXPORT_MAX_ROWS)
+  assert.match(th.exportAllDescription.replace("{max}", max), /สูงสุด 5,000 รายการ/)
+  assert.match(en.exportAllDescription.replace("{max}", max), /up to 5,000 rows/)
 })

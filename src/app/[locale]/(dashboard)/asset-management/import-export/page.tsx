@@ -9,6 +9,7 @@ import { getAssetImportBatchStatusTone } from "@/lib/asset-import-batch"
 import { buildAssetImportHistory, type AssetImportHistoryItem } from "@/lib/asset-import-history"
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
+import { ASSET_EXPORT_MAX_ROWS } from "@/lib/asset-export-limits"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
@@ -57,7 +58,7 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           href="/api/assets/export"
           icon={<FileDown className="h-5 w-5" />}
           title={tTools("exportAll")}
-          description={tTools("exportAllDescription")}
+          description={tTools("exportAllDescription", { max: formatCount(ASSET_EXPORT_MAX_ROWS) })}
         />
         <ActionLink
           href={`/${locale}/assets`}
