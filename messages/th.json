@@ -4344,8 +4344,8 @@
     "labelTemplateTokens": "แม่แบบป้ายมีตัวแปรที่ไม่รองรับ",
     "labelToggleInvalid": "ค่าเปิด/ปิดของป้ายไม่ถูกต้อง",
     "labelWidthRange": "ความกว้างป้ายต้องอยู่ระหว่าง 30–120 mm",
-    "statusBlocksCheckout": "สถานะทรัพย์สินนี้ส่งมอบหรือยืมไม่ได้",
-    "statusBlocksTransfer": "สถานะทรัพย์สินนี้โอนย้ายไม่ได้",
+    "statusBlocksCheckout": "สถานะทรัพย์สินนี้ส่งมอบหรือยืมไม่ได้ โหลดหน้าใหม่เพื่อดูสถานะล่าสุด",
+    "statusBlocksTransfer": "สถานะทรัพย์สินนี้โอนย้ายไม่ได้ โหลดหน้าใหม่เพื่อดูสถานะล่าสุด",
     "assetTagTemplateInvalid": "แม่แบบรหัสทรัพย์สินต้องมีเลขลำดับ และใช้เฉพาะตัวแปรที่รองรับ",
     "bulkUpdateFieldRequired": "เลือกข้อมูลที่จะแก้อย่างน้อย 1 รายการ",
     "transferDestinationRequired": "เลือกปลายทางการโอนย้ายอย่างน้อย 1 รายการ",
@@ -4406,10 +4406,10 @@
     "customFieldNameDuplicate": "ชื่อ field ต้องไม่ซ้ำกันในหมวดหมู่เดียวกัน",
     "integrationClientIdExists": "Client ID นี้มีอยู่แล้ว",
     "assetTagExists": "รหัสทรัพย์สินนี้ถูกใช้งานแล้ว",
-    "statusBlocksCheckin": "สถานะทรัพย์สินนี้รับคืนไม่ได้",
+    "statusBlocksCheckin": "สถานะทรัพย์สินนี้รับคืนไม่ได้ โหลดหน้าใหม่เพื่อดูสถานะล่าสุด",
     "statusBlocksCreate": "สถานะนี้ใช้ลงทะเบียนทรัพย์สินใหม่ไม่ได้",
     "statusBlocksEdit": "สถานะทรัพย์สินนี้แก้ไขข้อมูลไม่ได้",
-    "statusBlocksMaintenance": "สถานะทรัพย์สินนี้บันทึกซ่อมไม่ได้",
+    "statusBlocksMaintenance": "สถานะทรัพย์สินนี้บันทึกซ่อมไม่ได้ โหลดหน้าใหม่เพื่อดูสถานะล่าสุด",
     "employeeActiveFromAd": "สถานะนี้มาจาก AD: ปิดหรือเปิดบัญชีใน AD แล้วรอซิงก์"
   }
 }

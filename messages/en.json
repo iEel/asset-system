@@ -4309,8 +4309,8 @@
     "labelWidthRange": "Asset label width must be between 30 and 120 mm",
     "assetChangedDuringOperation": "Asset status changed while this request was being saved. Reload the asset and try again.",
     "disposalAssetIneligible": "Asset status does not allow a new disposal request",
-    "statusBlocksCheckout": "Asset status does not allow checkout",
-    "statusBlocksTransfer": "Asset status does not allow transfer",
+    "statusBlocksCheckout": "Asset status does not allow checkout. Reload the page to see its current status.",
+    "statusBlocksTransfer": "Asset status does not allow transfer. Reload the page to see its current status.",
     "assetTagTemplateInvalid": "Asset tag format template must include the running-number token and only use supported tokens",
     "bulkUpdateFieldRequired": "At least one bulk update field is required",
     "transferDestinationRequired": "At least one transfer destination is required",
@@ -4406,10 +4406,10 @@
     "customFieldNameDuplicate": "Custom field names must be unique in a category",
     "integrationClientIdExists": "Integration client ID already exists",
     "assetTagExists": "Asset tag already exists",
-    "statusBlocksCheckin": "Asset status does not allow a return",
+    "statusBlocksCheckin": "Asset status does not allow a return. Reload the page to see its current status.",
     "statusBlocksCreate": "This status cannot be used for a new asset",
     "statusBlocksEdit": "Asset status does not allow editing",
-    "statusBlocksMaintenance": "Asset status does not allow a repair record",
+    "statusBlocksMaintenance": "Asset status does not allow a repair record. Reload the page to see its current status.",
     "employeeActiveFromAd": "This status comes from AD: disable or enable the account in AD, then wait for the sync"
   }
 }

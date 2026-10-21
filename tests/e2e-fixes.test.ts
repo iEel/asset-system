@@ -136,6 +136,23 @@ test("every asset lifecycle refusal has its Thai sentence, and the handover form
   assert.ok(!read("e2e/transactions/handover.spec.ts").includes(`test.fail(true, "TX-A1: `))
 })
 
+test("an operation refused for the asset's status says to reload the page (user decision 2026-10-21, FX9)", () => {
+  const th = messages("th").apiErrors as Record<string, string>
+  const en = messages("en").apiErrors as Record<string, string>
+  const thHint = " โหลดหน้าใหม่เพื่อดูสถานะล่าสุด"
+  const enHint = " Reload the page to see its current status."
+  for (const key of ["statusBlocksCheckout", "statusBlocksTransfer", "statusBlocksCheckin", "statusBlocksMaintenance"]) {
+    assert.ok(th[key].endsWith(thHint) && th[key].length > thHint.length, `th ${key}`)
+    assert.ok(en[key].endsWith(enHint) && en[key].length > enHint.length, `en ${key}`)
+  }
+  assert.equal(th.statusBlocksCheckout, "สถานะทรัพย์สินนี้ส่งมอบหรือยืมไม่ได้ โหลดหน้าใหม่เพื่อดูสถานะล่าสุด")
+  assert.equal(en.statusBlocksCheckout, "Asset status does not allow checkout. Reload the page to see its current status.")
+  for (const key of ["statusBlocksCreate", "statusBlocksEdit"]) {
+    assert.ok(!th[key].includes(thHint.trim()), `th ${key} unchanged`)
+    assert.ok(!en[key].includes(enHint.trim()), `en ${key} unchanged`)
+  }
+})
+
 test("a transfer's TR- document is reached from the asset's history (e2e fix task FX10: TX-A4)", () => {
   const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
   assert.match(detail, /await prisma\.assetTransfer\.findMany\(\{ where: \{ id: \{ in: transferIds \} \}, select: \{ id: true, documentNo: true \} \}\)/)
