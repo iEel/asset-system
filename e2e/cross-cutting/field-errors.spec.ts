@@ -195,10 +195,10 @@ test("transfer: an empty reason shows its error, and the corrected transfer save
   await measure.recordPage("transfer review")
   await measure.timed("transfer save", async () => {
     await review.getByRole("button", { name: "ยืนยันโอนย้าย" }).click()
-    // The transfer returns to the asset's page (src/components/asset-operations/transfer-form.tsx).
-    await expect(page).toHaveURL(new RegExp(`/th/assets/${asset.id}(?:[?#]|$)`))
+    // The transfer opens its TR- document (src/components/asset-operations/transfer-form.tsx, FX10).
+    await expect(page).toHaveURL(new RegExp(`/th/asset-management/transfers/[^/?#]+(?:[?#]|$)`))
   })
-  // The transfer lands on the asset's page (finding M6's axe); here, what was saved.
+  // The transfer lands on its TR- document; here, what was saved.
   expect((await readAsset(page.request, asset.id)).custodianId).toBe(run.employees.receiver1.id)
 })
 

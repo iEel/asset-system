@@ -141,10 +141,26 @@ test("a transfer's TR- document is reached from the asset's history (e2e fix tas
   assert.match(detail, /await prisma\.assetTransfer\.findMany\(\{ where: \{ id: \{ in: transferIds \} \}, select: \{ id: true, documentNo: true \} \}\)/)
   assert.match(detail, /if \(movement\.referenceType === "transfer" && movement\.referenceId\) \{\n\s*const transfer = transfersById\.get\(movement\.referenceId\)/)
   assert.match(detail, /\{ label: t\("documentNo"\), value: transfer\.documentNo, href: `\/\$\{locale\}\/asset-management\/transfers\/\$\{movement\.referenceId\}` \}/)
-  // The transfer form still goes back to where it came from (whether it should open the TR- document, as the handover
-  // and the return open theirs, is the user's call).
-  assert.ok(read("src/components/asset-operations/transfer-form.tsx").includes("router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)"))
   assert.ok(!read("e2e/transactions/transfer.spec.ts").includes(`test.fail(true, "TX-A4: `))
+})
+
+test("saving a transfer opens its TR- document, as a handover and a return open theirs (user decision 2026-10-21, FX10)", () => {
+  const form = read("src/components/asset-operations/transfer-form.tsx")
+  assert.ok(form.includes('import { appendReturnTo } from "@/lib/asset-return-navigation"'))
+  assert.ok(form.includes("const documentHref = `/${locale}/asset-management/transfers/${payload.id}`"))
+  assert.ok(form.includes("router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)"))
+  assert.ok(!form.includes("router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)"), "no longer back to the asset page")
+  // The transfer API answers the created transfer, so the form has its id (and the spec its documentNo).
+  const route = read("src/app/api/assets/[id]/transfer/route.ts")
+  assert.match(route, /const transfer = await tx\.assetTransfer\.create\(/)
+  assert.match(route, /return NextResponse\.json\(transfer, \{ status: 201 \}\)/)
+  // The E2E specs expect the TR- document after the save, not the asset page.
+  const spec = read("e2e/transactions/transfer.spec.ts")
+  assert.ok(spec.includes("await page.waitForURL(new RegExp(`/th/asset-management/transfers/${transfer.id}(?:[?#]|$)`))"))
+  assert.ok(!spec.includes("await page.waitForURL(`**/th/assets/${asset.id}`)"))
+  const fieldErrors = read("e2e/cross-cutting/field-errors.spec.ts")
+  assert.ok(fieldErrors.includes("await expect(page).toHaveURL(new RegExp(`/th/asset-management/transfers/[^/?#]+(?:[?#]|$)`))"))
+  assert.ok(!fieldErrors.includes("await expect(page).toHaveURL(new RegExp(`/th/assets/${asset.id}(?:[?#]|$)`))"))
 })
 
 test("a cancel in the asset's history reads in Thai (e2e fix task FX11: TX-A5)", () => {

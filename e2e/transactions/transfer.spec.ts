@@ -62,8 +62,9 @@ test.describe("transfer", () => {
     expect(transfer.documentNo).toMatch(/^TR-/)
     transfers.set(testInfo.project.name, { assetId: asset.id, transferId: transfer.id, documentNo: transfer.documentNo, custodian: receiver.fullNameTh })
 
-    // The form goes back to the asset page: the new room and custodian.
-    await page.waitForURL(`**/th/assets/${asset.id}`)
+    // The form opens the TR- document (user decision 2026-10-21, FX10); the asset has the new room and custodian.
+    await page.waitForURL(new RegExp(`/th/asset-management/transfers/${transfer.id}(?:[?#]|$)`))
+    await expect(page.getByRole("heading", { level: 1, name: "โอนย้ายทรัพย์สิน" })).toBeVisible()
     const after = await readAsset(page, asset.id)
     expect(after.currentLocationId).toBe(room.id)
     expect(after.custodianId).toBe(receiver.id)

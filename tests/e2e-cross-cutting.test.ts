@@ -223,7 +223,7 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
     ["src/components/maintenance/repair-record-form.tsx", "router.push(appendOperationalReturnTo(`/${locale}/maintenance/${payload.id}`, returnTo))"],
     ["src/components/disposal/disposal-request-form.tsx", "router.push(`/${locale}/disposal/${payload.id}${uploadQuery}`)"],
     ["src/components/audit/audit-round-form.tsx", "router.push(`/${locale}/audit/rounds/${payload.id}`)"],
-    ["src/components/asset-operations/transfer-form.tsx", "router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)"],
+    ["src/components/asset-operations/transfer-form.tsx", "router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)"],
     ["src/components/assets/asset-form.tsx", "router.push(backHref)"],
   ]) {
     assert.ok(read(file).includes(push), `${file}: ${push}`)

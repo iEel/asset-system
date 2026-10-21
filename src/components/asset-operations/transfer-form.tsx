@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { atLeastOne, maxLength, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -160,7 +161,9 @@ export function TransferForm({
         throw new Error(payload?.error ?? tCommon("error"))
       }
       toast.success(t("success"))
-      router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)
+      // The TR- document opens, as the handover and the return open theirs (user decision 2026-10-21, FX10).
+      const documentHref = `/${locale}/asset-management/transfers/${payload.id}`
+      router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
       router.refresh()
     } catch (error) {
       apiError.toast(error)
