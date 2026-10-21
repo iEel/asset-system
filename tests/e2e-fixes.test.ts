@@ -335,3 +335,9 @@ test("the bulk execution's result is read on the row; the forced tap on the wait
   const walk = read("e2e/audit/field-audit.spec.ts")
   assert.match(walk, /await expect\(page\.getByRole\("listbox"\)\)\.toHaveCount\(0\)\n\s+await settleToasts\(page\)\n\s+await scan\.saveButton\(page\)\.click\(\{ force: true \}\)/)
 })
+
+test("the open asset search is measured once its opening animation has ended (e2e Task 51 loop 12: axe read the empty line mid-fade on the phone in the dark)", () => {
+  const spec = read("e2e/repair/repair-record.spec.ts")
+  assert.match(spec, /import \{ recordSettled \} from "\.\.\/audit\/settle\.ts"/)
+  assert.match(spec, /await recordSettled\(page, measure, "repair form with the asset search open"\)/)
+})

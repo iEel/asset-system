@@ -4,6 +4,7 @@
 // is refused, and the repair print opens. Each workflow starts with one wrong entry that shows under its field (§6.7).
 import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData } from "../support/state.ts"
+import { recordSettled } from "../audit/settle.ts"
 import {
   areaTag,
   bangkokToday,
@@ -226,5 +227,6 @@ test("the open asset search passes axe (ER3, finding AR3)", async ({ page, measu
   await measure.visit("/th/maintenance/new", "repair form")
   await page.locator("#repair-record-asset").click()
   await expect(page.getByPlaceholder("พิมพ์เพื่อค้นหา...")).toBeFocused()
-  await measure.recordPage("repair form with the asset search open")
+  // The popover fades in; axe read its empty line mid-fade once (Task 51's sixth run, phone-dark): measure it settled.
+  await recordSettled(page, measure, "repair form with the asset search open")
 })
