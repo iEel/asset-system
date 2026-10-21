@@ -52,7 +52,8 @@ export function checkHeading(page: Page, tag: string): Locator {
 export async function chooseInCheckField(page: Page, label: "ที่ตั้ง" | "ผู้ถือครอง" | "แผนก" | "สภาพ", search: string, optionStart: string) {
   const field = checkForm(page).locator("[data-audit-check-field]").filter({ has: page.locator("label", { hasText: new RegExp(`^${label}`) }) })
   await field.getByRole("button").first().click()
-  const searchInput = page.getByRole("combobox", { name: "ค้นหา" })
+  // Exact: the popover is not modal (decision DX4), so the top bar's "ค้นหาทั่วระบบ" stays reachable beside it.
+  const searchInput = page.getByRole("combobox", { name: "ค้นหา", exact: true })
   await searchInput.fill(search)
   await page.getByRole("option", { name: new RegExp(`^${escapeRegExp(optionStart)}`) }).click()
   await expect(field).toHaveAttribute("data-mismatch", "true")

@@ -41,4 +41,13 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
       "The top bar fetches the notifications as soon as a dashboard page hydrates (src/components/layout/topbar.tsx). The dashboard's loading.tsx streams every page, so requirePagePermission's redirect to the access-denied page arrives after that, as a client navigation, and the browser cancels the fetch of the page it leaves. A cancelled fetch is the navigation's doing; the notifications answered with an error status are still a failure (a response record).",
     reviewed: "2026-10-19",
   },
+  {
+    id: "static-font-cancelled-on-leave",
+    kind: "requestfailed",
+    url: /\/_next\/static\/media\/[^/?]+\.woff2$/,
+    errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
+    reason:
+      "next/font preloads the page's font files; when the workflow saves and the app navigates on before a file finishes, the browser cancels it (Chromium net::ERR_ABORTED, seen once in Task 51's first run on the asset form). A cancelled font is the browser leaving the page, not a failed request; a font answered with an error status is still a response record.",
+    reviewed: "2026-10-21",
+  },
 ]

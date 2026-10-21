@@ -297,3 +297,32 @@ test("a second user with no employee link can be saved, and a clash on the emplo
   assert.match(read("e2e/support/run-plan.ts"), /viewer: \{ slug: "viewer", linked: false,/)
   assert.ok(!read("e2e/setup/run-data.setup.ts").includes(`setup.fail(true, "A1: `))
 })
+
+test("the check field's search is found by its exact name, not the global search beside it (e2e Task 51 loop 3: DX4 left the global search reachable)", () => {
+  assert.match(read("e2e/audit/scan-steps.ts"), /const searchInput = page\.getByRole\("combobox", \{ name: "ค้นหา", exact: true \}\)/)
+})
+
+test("the bulk execution's preview is read on the row, not the summary term of the same words (e2e Task 51 loop 4: D2 runs now)", () => {
+  assert.match(read("e2e/disposal/disposal-support.ts"), /await expect\(dialog\.getByRole\("listitem"\)\.getByText\("ดำเนินการได้", \{ exact: true \}\)\)\.toBeVisible\(\)/)
+})
+
+test("the PM plan form's save is checked on the plan it created, not found on a long list (e2e Task 51 loop 5: the dev data grows run by run)", () => {
+  const spec = read("e2e/cross-cutting/field-errors.spec.ts")
+  assert.match(spec, /page\.waitForResponse\(\(response\) => response\.request\(\)\.method\(\) === "POST" && new URL\(response\.url\(\)\)\.pathname === "\/api\/maintenance-plans"\)/)
+  assert.match(spec, /await measure\.visit\(`\/th\/maintenance\/pm\/\$\{planId\}\/edit`, "the saved PM plan"\)/)
+  assert.match(spec, /await expect\(page\.locator\("#maintenance-plan-title"\)\)\.toHaveValue\(title\)/)
+})
+
+test("IT staff see neither the review controls nor the segregation note on the findings page (e2e Task 51 loop 6: decision DX3)", () => {
+  const spec = read("e2e/audit/field-audit.spec.ts")
+  assert.match(spec, /await expect\(page\.getByText\("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้"\)\.filter\(\{ visible: true \}\)\)\.toHaveCount\(0\)/)
+  assert.doesNotMatch(spec, /getByText\("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้"\)\.filter\(\{ visible: true \}\)\.first\(\)\)\.toBeVisible\(\)/)
+})
+
+test("a page's font cancelled as the workflow leaves the page is allowed, reviewed (e2e Task 51 loop 7)", async () => {
+  const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
+  const entry = ALLOW_LIST.find((item) => item.id === "static-font-cancelled-on-leave")
+  assert.ok(entry && entry.kind === "requestfailed")
+  assert.ok(entry.url instanceof RegExp && entry.url.test("http://localhost:3100/_next/static/media/99e609270109b47d-s.40sczeszzbjw1.woff2"))
+  assert.ok(!entry.url.test("http://localhost:3100/_next/static/chunks/app.js"))
+})

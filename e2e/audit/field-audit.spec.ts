@@ -300,8 +300,9 @@ test.describe("IT staff are refused the review and the close", () => {
     if (!chain.notFoundFindingId) throw new Error("the not-found save left no finding id")
     await measure.visit(`/th/audit/findings?status=pending&roundId=${chain.roundId}`, "findings of the round (IT staff)")
     await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()
-    // Every finding of the round is theirs: the review buttons give way to the segregation note.
-    await expect(page.getByText("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้").filter({ visible: true }).first()).toBeVisible()
+    // IT staff hold no audit approve, so the page offers them no review controls at all (decision DX3), nor the
+    // segregation note that stands in for them for an approver who reported the finding.
+    await expect(page.getByText("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้").filter({ visible: true })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "ปฏิเสธ", exact: true })).toHaveCount(0)
 

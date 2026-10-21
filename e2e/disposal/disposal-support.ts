@@ -181,7 +181,8 @@ export async function openBulkExecutionPreview(page: Page, asset: DisposalAsset,
   await dialog.locator("#disposal-bulk-execution-recipient").fill(recipient)
   if (documentNo) await dialog.locator("#disposal-bulk-execution-document-no").fill(documentNo)
   await dialog.getByRole("button", { name: "ยืนยันดำเนินการ 1 รายการ" }).click()
-  await expect(dialog.getByText("ดำเนินการได้", { exact: true })).toBeVisible()
+  // The row's outcome; the summary's term reads the same words.
+  await expect(dialog.getByRole("listitem").getByText("ดำเนินการได้", { exact: true })).toBeVisible()
   return dialog
 }
 

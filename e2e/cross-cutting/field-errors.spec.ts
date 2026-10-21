@@ -232,12 +232,21 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   const title = `${projectMarker(testInfo)} ทำความสะอาดรายเดือน`
   await page.locator("#maintenance-plan-title").fill(title)
   await expectNoFieldError(page, "maintenance-plan-title")
+  let planId = ""
   await measure.timed("PM plan save", async () => {
+    const created = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/maintenance-plans")
     await save(page)
+    const response = await created
+    expect(response.status(), "the plan is created").toBe(201)
+    planId = ((await response.json()) as { id: string }).id
     await expect(page).toHaveURL(/\/th\/maintenance\/pm(?:[?#]|$)/)
   })
   await measure.recordPage("after the PM plan save")
-  await expect(page.getByRole("main").getByText(title).first()).toBeVisible()
+  // The list is sorted by due date and grows run by run on the dev data: the saved plan is read on its own page.
+  await measure.visit(`/th/maintenance/pm/${planId}/edit`, "the saved PM plan")
+  await expect(page.locator("#maintenance-plan-title")).toHaveValue(title)
+  // The asset select loads its label after the page opens; the test ends once it has (e2e fix loop 2).
+  await page.waitForLoadState("networkidle")
 })
 
 test("disposal request: an empty reason shows its error, and the corrected request saves", async ({ page, measure }, testInfo) => {
