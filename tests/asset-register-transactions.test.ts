@@ -182,3 +182,26 @@ test("the asset page asks the register's rule", () => {
   assert.match(source, /getAssetRegisterTransactionActions\(/)
   assert.doesNotMatch(source, /disabled: !activeCheckout/)
 })
+
+test("the register does not offer โอนย้าย while a handover is open, and says why (user decision 2026-10-21 Y2)", () => {
+  const getActions = policy.getAssetRegisterTransactionActions!
+  const input = {
+    statusName: "In Use",
+    custodianId: "e1",
+    openCheckoutId: "c1",
+    openCheckoutHandoverMode: "permanent_assignment",
+    hasActiveMaintenance: false,
+    canEdit: true,
+  }
+
+  assert.deepEqual(getActions(input)[2], { action: "transfer", enabled: false, reason: "open_checkout" })
+  assert.deepEqual(getActions({ ...input, openCheckoutId: null, openCheckoutHandoverMode: null })[2], { action: "transfer", enabled: true })
+  assert.deepEqual(getActions({ ...input, statusName: "Ready" })[2], { action: "transfer", enabled: false, reason: "open_checkout" })
+
+  const rowActions = readFileSync("src/components/assets/asset-register-row-actions.tsx", "utf8").replace(/\r/g, "")
+  assert.match(rowActions, /open_checkout: "transactionReasonOpenCheckout",/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).asset
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8")).asset
+  assert.equal(th.transactionReasonOpenCheckout, "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้")
+  assert.equal(en.transactionReasonOpenCheckout, "A handover is open: return the asset before transferring it")
+})

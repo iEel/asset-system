@@ -1192,7 +1192,8 @@
     "followUpPhotos": "the asset photos",
     "qrCodeTitle": "QR code of {label}",
     "locationStatus": "Location & Status",
-    "assetPhotosEditHelp": "Capture or attach checklist photos, such as the asset tag, serial number, or condition. Photos are saved when you press Save."
+    "assetPhotosEditHelp": "Capture or attach checklist photos, such as the asset tag, serial number, or condition. Photos are saved when you press Save.",
+    "transactionReasonOpenCheckout": "A handover is open: return the asset before transferring it"
   },
   "company": {
     "title": "Companies",

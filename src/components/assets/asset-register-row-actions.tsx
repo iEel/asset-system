@@ -29,6 +29,7 @@ const reasonLabelKeys = {
   active_maintenance: "transactionReasonActiveMaintenance",
   status_not_returnable: "transactionReasonStatusNotReturnable",
   status_not_transferable: "transactionReasonStatusNotTransferable",
+  open_checkout: "transactionReasonOpenCheckout",
 } as const
 
 // The register's row actions, pattern ช1 (spec 2B I5, §7.9): a client wrapper that turns one row into the data-only

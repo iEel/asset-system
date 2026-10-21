@@ -17,6 +17,7 @@ export type AssetRegisterTransactionReason =
   | "active_maintenance"
   | "status_not_returnable"
   | "status_not_transferable"
+  | "open_checkout"
 
 export type AssetRegisterTransaction = {
   action: AssetRegisterTransactionAction
@@ -95,9 +96,12 @@ export function getAssetRegisterTransactionActions({
       ? { action: "checkout", enabled: true }
       : { action: "checkout", enabled: false, reason: "status_not_ready" },
     checkin,
-    transferEnabled
-      ? { action: "transfer", enabled: true }
-      : { action: "transfer", enabled: false, reason: "status_not_transferable" },
+    // The transfer API refuses an asset with an open checkout: the handover is returned first (user decision 2026-10-21 Y2).
+    !transferEnabled
+      ? { action: "transfer", enabled: false, reason: "status_not_transferable" }
+      : openCheckoutId
+        ? { action: "transfer", enabled: false, reason: "open_checkout" }
+        : { action: "transfer", enabled: true },
   ]
 }
 
