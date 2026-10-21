@@ -1398,7 +1398,8 @@
     "auditRoundStatusClosed": "Closed",
     "disposalRelatedTitle": "Related Disposal",
     "disposalRelatedHelp": "Requests where this employee is requester, approver, or executor.",
-    "emptyDisposals": "No related disposal requests"
+    "emptyDisposals": "No related disposal requests",
+    "activeLockedBySyncHint": "This status comes from AD: disable or enable the account in AD, then wait for the sync"
   },
   "location": {
     "title": "Locations",
@@ -4406,6 +4407,7 @@
     "statusBlocksCheckin": "Asset status does not allow a return",
     "statusBlocksCreate": "This status cannot be used for a new asset",
     "statusBlocksEdit": "Asset status does not allow editing",
-    "statusBlocksMaintenance": "Asset status does not allow a repair record"
+    "statusBlocksMaintenance": "Asset status does not allow a repair record",
+    "employeeActiveFromAd": "This status comes from AD: disable or enable the account in AD, then wait for the sync"
   }
 }

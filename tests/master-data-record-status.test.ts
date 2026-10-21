@@ -173,7 +173,8 @@ test("a referenced record that is inactive comes back when ticked ใช้ง�
       body: { code: "E1", fullNameTh: "สมชาย", fullNameEn: "", email: "", companyId: "c1", branchId: "b1", departmentId: "d1", position: "", employmentStatus: "active", managerId: "", isActive: true },
       counts: { custodianAssets: 2, subordinates: 0, auditRounds: 0 },
       reason: org.getEmployeeDeleteBlockReason({ custodianAssets: 2, subordinates: 0, userAccounts: 1, openCheckouts: 0, auditRounds: 0 }),
-      extra: { user: { count: () => 1 }, assetCheckout: { count: () => 0 } },
+      // LDAP sync off: with it on, the sync owns an employee's ใช้งาน (tests/employee-active-ldap-lock.test.ts).
+      extra: { user: { count: () => 1 }, assetCheckout: { count: () => 0 }, systemSetting: { findUnique: () => null } },
     },
   ]
 

@@ -113,6 +113,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "DISPOSAL_SOD_CONFLICT": "disposalSameRequesterApprover",
   "DISPOSAL_STATUS_NOT_FOUND": "disposalNextStatusNotFound",
   "Disposed or retired assets cannot be moved.": "disposedAssetCannotMove",
+  "Employee active status comes from AD while LDAP sync is on": "employeeActiveFromAd",
   "Employee already has a user account": "employeeHasUser",
   "Employee cannot be their own manager": "employeeOwnManager",
   "Employee code already exists": "employeeCodeExists",

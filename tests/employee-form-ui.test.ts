@@ -5,7 +5,7 @@ import test from "node:test"
 const source = readFileSync("src/components/master-data/employee-form.tsx", "utf8").replace(/\r\n/g, "\n")
 
 test("the employee form uses the shared fields, checkbox and buttons (2C batch 2)", () => {
-  assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
+  assert.match(source, /import \{ Field, FieldHint \} from "@\/components\/ui\/field"/)
   assert.doesNotMatch(source, /function Field\(|<select|<textarea|Loader2|ml-1 text-danger|disabled=\{saving\}/)
   assert.equal(source.match(/<input\b/g)?.length, 1, "only the active checkbox stays a raw input")
   // Each Field names its control (employee-…) and shows its error (v-track plan 1 M3).

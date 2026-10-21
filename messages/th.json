@@ -1398,7 +1398,8 @@
     "auditRoundStatusClosed": "ปิดรอบ",
     "disposalRelatedTitle": "ตัดจำหน่ายที่เกี่ยวข้อง",
     "disposalRelatedHelp": "รวมคำขอที่เป็นผู้ขอ ผู้อนุมัติ หรือผู้ดำเนินการ",
-    "emptyDisposals": "ไม่มีคำขอตัดจำหน่ายที่เกี่ยวข้อง"
+    "emptyDisposals": "ไม่มีคำขอตัดจำหน่ายที่เกี่ยวข้อง",
+    "activeLockedBySyncHint": "สถานะนี้มาจาก AD: ปิดหรือเปิดบัญชีใน AD แล้วรอซิงก์"
   },
   "location": {
     "title": "ที่ตั้ง",
@@ -4406,6 +4407,7 @@
     "statusBlocksCheckin": "สถานะทรัพย์สินนี้รับคืนไม่ได้",
     "statusBlocksCreate": "สถานะนี้ใช้ลงทะเบียนทรัพย์สินใหม่ไม่ได้",
     "statusBlocksEdit": "สถานะทรัพย์สินนี้แก้ไขข้อมูลไม่ได้",
-    "statusBlocksMaintenance": "สถานะทรัพย์สินนี้บันทึกซ่อมไม่ได้"
+    "statusBlocksMaintenance": "สถานะทรัพย์สินนี้บันทึกซ่อมไม่ได้",
+    "employeeActiveFromAd": "สถานะนี้มาจาก AD: ปิดหรือเปิดบัญชีใน AD แล้วรอซิงก์"
   }
 }

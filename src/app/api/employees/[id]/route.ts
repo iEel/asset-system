@@ -7,6 +7,7 @@ import { fieldErrorResponse, isPrismaUniqueConstraintError, uniqueConflictRespon
 import { employeeSchema } from "@/lib/validations/employee"
 import { getEmployeeDeleteBlockReason } from "@/lib/organization-master-query"
 import { isDeactivation } from "@/lib/master-data-query"
+import { isLdapSyncEnabled } from "@/lib/ldap-sync-enabled"
 
 type EmployeeRouteContext = {
   params: Promise<{ id: string }>
@@ -56,6 +57,11 @@ export async function PUT(request: NextRequest, context: EmployeeRouteContext) {
 
     if (input.managerId === id) {
       return fieldErrorResponse({ status: 400, error: "Employee cannot be their own manager", fieldErrors: { managerId: "employeeOwnManager" } })
+    }
+
+    // While LDAP sync is on, the sync owns "ใช้งาน": a change to it is refused, other edits save (user decision 2026-10-21 Y4).
+    if (input.isActive !== existing.isActive && (await isLdapSyncEnabled())) {
+      return fieldErrorResponse({ status: 400, error: "Employee active status comes from AD while LDAP sync is on", fieldErrors: { isActive: "employeeActiveFromAd" } })
     }
 
     // Unticking "ใช้งาน" removes the employee from use the way "ลบ" does, so the same counts refuse it.

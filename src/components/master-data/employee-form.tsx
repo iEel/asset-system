@@ -7,7 +7,7 @@ import { Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Field } from "@/components/ui/field"
+import { Field, FieldHint } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
@@ -114,6 +114,7 @@ export function EmployeeForm({
   departments,
   managers,
   backHref: providedBackHref,
+  activeLockedBySync = false,
 }: {
   employee?: EmployeeFormValues
   companies: CompanyOption[]
@@ -121,6 +122,8 @@ export function EmployeeForm({
   departments: DepartmentOption[]
   managers: ManagerOption[]
   backHref?: string
+  // While LDAP sync is on, the sync owns "ใช้งาน" (user decision 2026-10-21 Y4); the edit page passes it.
+  activeLockedBySync?: boolean
 }) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -324,15 +327,20 @@ export function EmployeeForm({
             </NativeSelect>
           </Field>
 
-          <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm md:self-end">
-            <input
-              type="checkbox"
-              checked={values.isActive}
-              onChange={(event) => setField("isActive", event.target.checked)}
-              className={checkboxVariants()}
-            />
-            {tCommon("active")}
-          </label>
+          <div className="flex flex-col gap-1.5 md:self-end">
+            <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={values.isActive}
+                disabled={activeLockedBySync}
+                aria-describedby={activeLockedBySync ? "employee-active-hint" : undefined}
+                onChange={(event) => setField("isActive", event.target.checked)}
+                className={checkboxVariants()}
+              />
+              {tCommon("active")}
+            </label>
+            {activeLockedBySync ? <FieldHint id="employee-active-hint">{t("activeLockedBySyncHint")}</FieldHint> : null}
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">

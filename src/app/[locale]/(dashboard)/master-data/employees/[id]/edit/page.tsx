@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { EmployeeForm } from "@/components/master-data/employee-form"
 import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
+import { isLdapSyncEnabled } from "@/lib/ldap-sync-enabled"
 
 type EditEmployeePageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -15,7 +16,7 @@ export default async function EditEmployeePage({ params, searchParams }: EditEmp
   const returnToHref = normalizeMasterDataReturnTo(locale, "employees", rawSearchParams.returnTo)
   await requirePagePermission(locale, "employee", "edit")
 
-  const [employee, companies, branches, departments, managers] = await Promise.all([
+  const [employee, companies, branches, departments, managers, activeLockedBySync] = await Promise.all([
     prisma.employee.findFirst({
       where: { id },
     }),
@@ -39,6 +40,7 @@ export default async function EditEmployeePage({ params, searchParams }: EditEmp
       select: { id: true, code: true, fullNameTh: true },
       orderBy: { code: "asc" },
     }),
+    isLdapSyncEnabled(),
   ])
 
   if (!employee) notFound()
@@ -64,6 +66,7 @@ export default async function EditEmployeePage({ params, searchParams }: EditEmp
         isActive: employee.isActive,
       }}
       backHref={returnToHref}
+      activeLockedBySync={activeLockedBySync}
     />
   )
 }
