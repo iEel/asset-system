@@ -105,9 +105,11 @@ test("the theme toggle sits beside the language button and shows the moon while 
   // setting, the <html> attribute or the cookie.
   const themeAware = ["src/lib/theme.ts", "src/app/layout.tsx", `${C}layout/theme-toggle.tsx`]
   assert.deepEqual(
-    findMatches(readSourceFiles("src"), /prefers-color-scheme|dataset\.theme|\bTHEME_COOKIE\b|\bcookies\(\)|["'`]theme[="'`;]|from "@\/lib\/theme"/g, (path) => themeAware.includes(path)),
+    findMatches(readSourceFiles("src"), /prefers-color-scheme|dataset\.theme|\bTHEME_COOKIE\b|["'`]theme[="'`;]|from "@\/lib\/theme"/g, (path) => themeAware.includes(path)),
     [],
   )
+  // the dashboard layout reads only the sidebar cookie (menu B shell §6.2)
+  assert.deepEqual(findMatches(readSourceFiles("src"), /\bcookies\(\)/g, (path) => [...themeAware, "src/app/[locale]/(dashboard)/layout.tsx"].includes(path)), [])
   for (const [locale, toDark, toLight] of [["th", "เปลี่ยนเป็นโหมดมืด", "เปลี่ยนเป็นโหมดสว่าง"], ["en", "Switch to dark mode", "Switch to light mode"]]) {
     const common = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).common
     assert.equal(common.switchToDark, toDark, locale)

@@ -12,6 +12,7 @@ import {
   ScanLine,
   ChevronDown,
   PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 import { useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
@@ -41,11 +42,13 @@ import { hasNavigationPermission } from "@/lib/navigation-permissions"
 
 export function Topbar({
   user,
+  sidebarCollapsed,
   onToggleSidebar,
   onMobileMenuToggle,
   mobileNavigationMode,
 }: {
   user: SessionUser
+  sidebarCollapsed: boolean
   onToggleSidebar: () => void
   onMobileMenuToggle: () => void
   mobileNavigationMode: boolean
@@ -66,6 +69,8 @@ export function Topbar({
   // C2: the work center needs dashboard:view, so the bell offers it only to people who can open it.
   const canOpenWorkCenter = hasNavigationPermission(user, { module: "dashboard", action: "view" })
   const localeCode = locale === "th" ? "TH" : "EN"
+  // The toggle names what a press does, and aria-expanded says whether the menu is open (spec §6.2).
+  const sidebarToggleLabel = tNav(sidebarCollapsed ? "expandSidebar" : "collapseSidebar")
   // Read and snoozed rows stay out of the bell for now; Task 7 lists them as read.
   const notificationItems = notificationSummary?.items.filter((item) => !item.isSuppressed) ?? []
 
@@ -113,10 +118,12 @@ export function Topbar({
           size="icon"
           onClick={onToggleSidebar}
           className="hidden lg:inline-flex"
-          title={tNav("toggleSidebar")}
-          aria-label={tNav("toggleSidebar")}
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="desktop-primary-navigation"
+          title={sidebarToggleLabel}
+          aria-label={sidebarToggleLabel}
         >
-          <PanelLeftClose aria-hidden="true" className="size-5" />
+          {sidebarCollapsed ? <PanelLeftOpen aria-hidden="true" className="size-5" /> : <PanelLeftClose aria-hidden="true" className="size-5" />}
         </Button>
 
         <GlobalSearch />

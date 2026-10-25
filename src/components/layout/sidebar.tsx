@@ -52,6 +52,7 @@ import { useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { LabelTooltip, TooltipProvider } from "@/components/ui/tooltip"
 import {
   filterNavigationSectionsByPermission,
   type NavigationPermission,
@@ -88,6 +89,9 @@ const rowClasses =
 const activeRowClasses =
   "bg-sidebar-active font-medium text-sidebar-active-foreground shadow-[inset_3px_0_0_var(--sidebar-active-bar)] hover:bg-sidebar-active forced-colors:outline forced-colors:outline-2 forced-colors:-outline-offset-2"
 
+// A rail row: a 40px square centred in the 64px rail, holding only its icon (spec §6.2).
+const railRowClasses = "lg:mx-auto lg:size-10 lg:justify-center lg:px-0"
+
 export function Sidebar({
   collapsed,
   mobileOpen,
@@ -95,6 +99,7 @@ export function Sidebar({
   account,
   onMobileClose,
   onMobileNavigate,
+  onExpand,
 }: {
   collapsed: boolean
   mobileOpen: boolean
@@ -102,6 +107,7 @@ export function Sidebar({
   account: ShellAccount
   onMobileClose: () => void
   onMobileNavigate: () => void
+  onExpand: () => void
 }) {
   const t = useTranslations("nav")
   const locale = useLocale()
@@ -293,6 +299,7 @@ export function Sidebar({
                       pathname={pathname}
                       t={t}
                       onNavigate={onMobileNavigate}
+                      onExpand={onExpand}
                     />
                   ))}
                 </div>
@@ -308,12 +315,16 @@ export function Sidebar({
   return (
     <>
       <aside
+        id="desktop-primary-navigation"
         className={cn(
           "relative hidden max-h-dvh flex-col bg-sidebar text-sidebar-foreground scheme-dark transition-all duration-300 motion-reduce:transition-none lg:flex",
           collapsed ? "lg:w-16" : "lg:w-64"
         )}
       >
-        {renderBody(false)}
+        {/* Radix tooltips need a provider; in the rail a row names itself after 300 ms of hover, at once on focus. */}
+        <TooltipProvider delayDuration={300}>
+          {renderBody(false)}
+        </TooltipProvider>
       </aside>
 
       <Sheet
@@ -344,7 +355,10 @@ export function Sidebar({
           className="w-[min(18rem,85vw)] gap-0 border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground scheme-dark lg:hidden"
         >
           <SheetTitle className="sr-only">{t("mainNavigation")}</SheetTitle>
-          {renderBody(true)}
+          {/* The rows' tooltips stay off in the drawer, but a Radix Tooltip Root throws without a provider. */}
+          <TooltipProvider delayDuration={300}>
+            {renderBody(true)}
+          </TooltipProvider>
         </SheetContent>
       </Sheet>
     </>
@@ -358,6 +372,7 @@ type SidebarItemProps = {
   pathname: string
   t: (key: string) => string
   onNavigate: () => void
+  onExpand: () => void
 }
 
 function SidebarItem(props: SidebarItemProps) {
@@ -365,10 +380,12 @@ function SidebarItem(props: SidebarItemProps) {
 }
 
 // The menu is at most two levels deep (spec 2B B1), so a group's rows always sit 20px in.
-function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate }: SidebarItemProps) {
+// The rail never shows a group's children: a click on a rail group expands the menu and opens that group (spec §6.2).
+function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, onExpand }: SidebarItemProps) {
   const containsActive = containsNavigationHref(item, activeHref)
   const [open, setOpen] = useState(containsActive)
   const [seenActiveHref, setSeenActiveHref] = useState(activeHref)
+  const expanded = open && !collapsed
 
   // After navigation, open the group that holds the current page. Groups the user opened stay open.
   if (seenActiveHref !== activeHref) {
@@ -378,20 +395,33 @@ function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate }: 
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className={cn(rowClasses, "font-medium", open && "font-semibold text-sidebar-active-foreground", collapsed && "lg:justify-center lg:px-2")}
-      >
-        <span className="shrink-0 text-sidebar-muted">{item.icon}</span>
-        <span className={cn("flex-1 truncate text-left", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
-        <span aria-hidden="true" className={cn("shrink-0 text-sidebar-muted", collapsed && "lg:hidden")}>
-          {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </span>
-      </button>
-      {open && (
-        <div className={cn("mt-0.5 ml-5 space-y-0.5 border-l border-sidebar-border pl-1", collapsed && "lg:ml-0 lg:border-l-0 lg:pl-0")}>
+      <LabelTooltip label={t(item.labelKey)} enabled={collapsed}>
+        <button
+          type="button"
+          onClick={() => {
+            if (collapsed) {
+              setOpen(true)
+              onExpand()
+            } else setOpen(!open)
+          }}
+          aria-expanded={expanded}
+          className={cn(
+            rowClasses,
+            "font-medium",
+            expanded && "font-semibold text-sidebar-active-foreground",
+            collapsed && railRowClasses,
+            collapsed && containsActive && activeRowClasses,
+          )}
+        >
+          <span className={cn("shrink-0 text-sidebar-muted", collapsed && containsActive && "text-sidebar-active-icon")}>{item.icon}</span>
+          <span className={cn("flex-1 truncate text-left", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
+          <span aria-hidden="true" className={cn("shrink-0 text-sidebar-muted", collapsed && "lg:hidden")}>
+            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
+        </button>
+      </LabelTooltip>
+      {expanded && (
+        <div className="mt-0.5 ml-5 space-y-0.5 border-l border-sidebar-border pl-1">
           {item.children?.map((child) => (
             <SidebarItem
               key={child.labelKey}
@@ -401,6 +431,7 @@ function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate }: 
               pathname={pathname}
               t={t}
               onNavigate={onNavigate}
+              onExpand={onExpand}
             />
           ))}
         </div>
@@ -414,24 +445,26 @@ function SidebarLink({ item, collapsed, activeHref, pathname, t, onNavigate }: S
   const ariaCurrent = isActive && item.href !== undefined ? (isExactNavigationMatch(pathname, item.href) ? "page" : "true") : undefined
 
   return (
-    <Link
-      href={item.href || "#"}
-      onClick={onNavigate}
-      aria-current={ariaCurrent}
-      className={cn(
-        rowClasses,
-        isActive && activeRowClasses,
-        collapsed && "lg:justify-center lg:px-2"
-      )}
-    >
-      <span className={cn("shrink-0 text-sidebar-muted", isActive && "text-sidebar-active-icon")}>{item.icon}</span>
-      <span className={cn("truncate", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
-      {item.attention ? (
-        <>
-          <span aria-hidden="true" className={cn("ml-auto size-2 shrink-0 rounded-full bg-sidebar-dot", collapsed && "lg:absolute lg:right-1 lg:top-1 lg:ml-0")} />
-          <span className="sr-only">{item.attention}</span>
-        </>
-      ) : null}
-    </Link>
+    <LabelTooltip label={t(item.labelKey)} enabled={collapsed}>
+      <Link
+        href={item.href || "#"}
+        onClick={onNavigate}
+        aria-current={ariaCurrent}
+        className={cn(
+          rowClasses,
+          isActive && activeRowClasses,
+          collapsed && railRowClasses
+        )}
+      >
+        <span className={cn("shrink-0 text-sidebar-muted", isActive && "text-sidebar-active-icon")}>{item.icon}</span>
+        <span className={cn("truncate", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
+        {item.attention ? (
+          <>
+            <span aria-hidden="true" className={cn("ml-auto size-2 shrink-0 rounded-full bg-sidebar-dot", collapsed && "lg:absolute lg:right-1 lg:top-1 lg:ml-0")} />
+            <span className="sr-only">{item.attention}</span>
+          </>
+        ) : null}
+      </Link>
+    </LabelTooltip>
   )
 }

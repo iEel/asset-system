@@ -9,6 +9,7 @@ import { Topbar } from "@/components/layout/topbar"
 import { ConfirmProvider } from "@/components/ui/confirm-dialog"
 import type { SessionUser } from "@/lib/auth-utils"
 import type { ShellAccount } from "@/lib/user-display"
+import { sidebarCookieString, type SidebarPreference } from "@/lib/sidebar-preference"
 import { getMobileShellMode, isMobileVirtualKeyboardVisible } from "@/lib/mobile-field-navigation"
 import { cn } from "@/lib/utils"
 
@@ -16,15 +17,17 @@ export function DashboardShell({
   children,
   user,
   account,
+  initialSidebar,
 }: {
   children: React.ReactNode
   user: SessionUser
   account: ShellAccount
+  initialSidebar: SidebarPreference
 }) {
   const shellRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const pathname = usePathname()
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebar === "collapsed")
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [mobileKeyboardVisible, setMobileKeyboardVisible] = useState(false)
   const isNavigationMode = getMobileShellMode(pathname) === "navigation"
@@ -38,6 +41,14 @@ export function DashboardShell({
     if (shell.scrollTop !== 0) shell.scrollTop = 0
     if (shell.scrollLeft !== 0) shell.scrollLeft = 0
   }, [])
+
+  // The cookie mirrors the menu's width on every change, so the next page load paints it the same way (spec §6.2).
+  const changeSidebarCollapsed = useCallback((next: boolean) => {
+    setSidebarCollapsed(next)
+    document.cookie = sidebarCookieString(next ? "collapsed" : "expanded")
+  }, [])
+
+  const expandSidebar = useCallback(() => changeSidebarCollapsed(false), [changeSidebarCollapsed])
 
   const closeMobileSidebar = useCallback(() => {
     setMobileSidebarOpen(false)
@@ -117,12 +128,14 @@ export function DashboardShell({
             account={account}
             onMobileClose={closeMobileSidebar}
             onMobileNavigate={closeMobileSidebar}
+            onExpand={expandSidebar}
           />
 
           <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
             <Topbar
               user={user}
-              onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+              sidebarCollapsed={sidebarCollapsed}
+              onToggleSidebar={() => changeSidebarCollapsed(!sidebarCollapsed)}
               onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
               mobileNavigationMode={isNavigationMode}
             />

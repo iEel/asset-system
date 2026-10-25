@@ -58,7 +58,7 @@ test("topbar language and user menus are Radix dropdowns", () => {
   }
   for (const locale of ["th", "en"] as const) {
     const nav = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav
-    for (const key of ["openMenu", "closeMenu", "toggleSidebar", "languageMenu", "userMenu"]) {
+    for (const key of ["openMenu", "closeMenu", "collapseSidebar", "expandSidebar", "languageMenu", "userMenu"]) {
       assert.equal(typeof nav[key], "string", `${locale} nav.${key}`)
     }
     assert.match(nav.languageMenu, /\{code\}/, locale)

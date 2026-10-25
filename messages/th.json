@@ -200,10 +200,11 @@
     "sectionSystem": "ภาพรวมและระบบ",
     "openMenu": "เปิดเมนู",
     "closeMenu": "ปิดเมนู",
-    "toggleSidebar": "ย่อหรือขยายเมนูข้าง",
     "languageMenu": "เปลี่ยนภาษา ({code})",
     "userMenu": "เมนูผู้ใช้: {name}",
-    "workCenterWaiting": "มีงานรอคุณ {count} รายการ"
+    "workCenterWaiting": "มีงานรอคุณ {count} รายการ",
+    "collapseSidebar": "ย่อเมนู",
+    "expandSidebar": "ขยายเมนู"
   },
   "myAssets": {
     "title": "ทรัพย์สินของฉัน",

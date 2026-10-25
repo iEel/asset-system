@@ -200,10 +200,11 @@
     "sectionSystem": "Reports and system",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "toggleSidebar": "Toggle sidebar",
     "languageMenu": "Change language ({code})",
     "userMenu": "User menu: {name}",
-    "workCenterWaiting": "{count, plural, one {# item waits for you} other {# items wait for you}}"
+    "workCenterWaiting": "{count, plural, one {# item waits for you} other {# items wait for you}}",
+    "collapseSidebar": "Collapse menu",
+    "expandSidebar": "Expand menu"
   },
   "myAssets": {
     "title": "My Assets",

@@ -19,7 +19,7 @@ test("menu rows are navy rows: 40px, 6px corners, the teal ring on a navy offset
   assert.match(sidebar, /"min-w-0 truncate text-sm font-semibold text-sidebar-foreground"/)
   assert.doesNotMatch(sidebar, /(?<![\w-])text-foreground\b|focus-visible:ring-ring\b|border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all/)
   assert.match(sidebar, /"relative hidden max-h-dvh flex-col bg-sidebar text-sidebar-foreground scheme-dark transition-all duration-300 motion-reduce:transition-none lg:flex"/)
-  assert.match(sidebar, /open && "font-semibold text-sidebar-active-foreground"/) // the open group's title: white, bold
+  assert.match(sidebar, /expanded && "font-semibold text-sidebar-active-foreground"/) // the open group's title: white, bold
   assert.doesNotMatch(sidebar, /containsActive && "font-semibold"/)
   assert.match(sidebar, /"mt-0\.5 ml-5 space-y-0\.5 border-l border-sidebar-border pl-1"/) // the guide line
 })
@@ -66,8 +66,8 @@ test("a long Thai name and role stay on one line each, cut short, the full text 
 
 test("the dashboard layout reads the role and department once and hands them to the shell", () => {
   const layout = read("src/app/[locale]/(dashboard)/layout.tsx")
-  assert.match(layout, /const account = await getShellAccount\(user, locale\)/)
-  assert.match(layout, /<DashboardShell user=\{user\} account=\{account\}>/)
+  assert.match(layout, /getShellAccount\(user, locale\)/)
+  assert.match(layout, /<DashboardShell user=\{user\} account=\{account\}[ >]/)
   const server = read("src/lib/shell-account.ts")
   assert.match(server, /displayNameTh: true/)
   assert.match(server, /isActive: true/)
