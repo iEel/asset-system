@@ -1623,7 +1623,7 @@ git commit -m "feat(shell): search groups by type, highlights the match, opens o
 - E2E impact:
   - No spec uses the drawer or the phone controls.
   - Phone focus pages lose the bell.
-  - The dot stays a UAT check, because no E2E role has `dashboard:view`.
+  - Task 13A gives the E2E IT head `dashboard:view` and checks the sheet's dot.
 
 - [ ] **Step 1: Write the failing tests** (`assert` from `node:assert/strict`, `test` from `node:test`)
 
