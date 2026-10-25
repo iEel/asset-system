@@ -4,7 +4,7 @@ import { useRef, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Eye, EyeOff, ShieldCheck } from "lucide-react"
+import { ArrowBigUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -12,10 +12,9 @@ import { Notice } from "@/components/ui/notice"
 
 type LoginFormProps = {
   callbackUrl: string
-  sessionExpired: boolean
 }
 
-export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
+export function LoginForm({ callbackUrl }: LoginFormProps) {
   const t = useTranslations("auth")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -23,6 +22,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [capsLockOn, setCapsLockOn] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -56,14 +56,14 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {sessionExpired ? (
-        <Notice tone="info" role="status" aria-live="polite">
-          {t("sessionExpired")}
-        </Notice>
-      ) : null}
+  const updateCapsLock = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    setCapsLockOn(event.getModifierState("CapsLock"))
+  }
 
+  // The form posts: a POST to the login answers the page again, so a submit before hydration keeps the password in
+  // the request body and never in the URL.
+  return (
+    <form method="post" onSubmit={handleSubmit} className="space-y-5">
       <div className="grid gap-1.5">
         <FieldLabel htmlFor="login-username">{t("username")}</FieldLabel>
         <Input
@@ -71,6 +71,9 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
           name="username"
           type="text"
           autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          enterKeyHint="next"
           value={username}
           onChange={(event) => {
             setUsername(event.target.value)
@@ -90,34 +93,42 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
             name="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
+            enterKeyHint="go"
+            aria-describedby={capsLockOn ? "login-caps-lock" : undefined}
             value={password}
             onChange={(event) => {
               setPassword(event.target.value)
               setError("")
             }}
-            className="pr-12"
+            onKeyDown={updateCapsLock}
+            onKeyUp={updateCapsLock}
+            onBlur={() => setCapsLockOn(false)}
+            className="pr-16"
             required
           />
           <button
             type="button"
             aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             aria-controls="login-password"
-            aria-pressed={showPassword}
             onPointerDown={(event) => event.preventDefault()}
             onClick={() => {
               setShowPassword((visible) => !visible)
               passwordRef.current?.focus()
             }}
-            className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-10 md:min-w-10"
+            className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-10 md:min-w-10"
           >
-            {showPassword ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+            {showPassword ? t("hidePasswordShort") : t("showPasswordShort")}
           </button>
         </div>
-      </div>
-
-      <div className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-        <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" />
-        <span>{t("directoryLoginHint")}</span>
+        {/* Stays in the DOM while empty, so the first Caps Lock announcement is heard. */}
+        <p id="login-caps-lock" role="status" aria-live="polite" className="flex min-h-5 items-center gap-1.5 text-sm text-warning">
+          {capsLockOn ? (
+            <>
+              <ArrowBigUp aria-hidden="true" className="h-4 w-4" />
+              {t("capsLockOn")}
+            </>
+          ) : null}
+        </p>
       </div>
 
       {error ? (

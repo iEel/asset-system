@@ -351,7 +351,10 @@
     "directoryLoginHint": "ใช้บัญชีในระบบ หรือบัญชี AD/LDAP เมื่อผู้ดูแลเปิดใช้งาน",
     "loginFailed": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
     "loginRateLimited": "ลองเข้าสู่ระบบผิดหลายครั้งเกินไป กรุณารอ 15 นาทีแล้วลองใหม่",
-    "sessionExpired": "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่"
+    "sessionExpired": "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    "capsLockOn": "Caps Lock เปิดอยู่",
+    "showPasswordShort": "แสดง",
+    "hidePasswordShort": "ซ่อน"
   },
   "accessDeniedPage": {
     "title": "ไม่มีสิทธิ์เข้าหน้านี้",

@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { getTranslations } from "next-intl/server"
 import { LoginForm } from "@/components/auth/login-form"
+import { Notice } from "@/components/ui/notice"
 import { isSessionExpiredLogin, normalizeLoginCallbackUrl } from "@/lib/login-redirect"
 
 type LoginSearchParams = {
@@ -48,7 +49,15 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
           <h2 id="login-heading" className="mb-6 text-center text-xl font-semibold text-foreground">
             {tAuth("login")}
           </h2>
-          <LoginForm callbackUrl={callbackUrl} sessionExpired={sessionExpired} />
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">{tAuth("directoryLoginHint")}</p>
+            {sessionExpired ? (
+              <Notice tone="info" role="status" aria-live="polite">
+                {tAuth("sessionExpired")}
+              </Notice>
+            ) : null}
+            <LoginForm callbackUrl={callbackUrl} />
+          </div>
         </section>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">

@@ -29,7 +29,7 @@ test("bottom bar: the round scan button's icon takes the primary foreground toke
 test("login: the show-password toggle changes size at md with its field, never at sm (spec 2D §5.4 item 5)", () => {
   const source = read("src/components/auth/login-form.tsx")
   // Full field height through inset-y-0; 44 × 44px below md and 40 × 40px from md, as the 40px field (2C plan 4 Task 8).
-  assert.match(source, /className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-10 md:min-w-10"/)
+  assert.match(source, /className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-10 md:min-w-10"/)
   assert.doesNotMatch(source, /(?<![\w-])sm:(?:h|min-h|max-h|size|w|min-w)-/)
   // It stays the one raw button: a control inside the password field's box, as SearchField's clear button.
   assert.equal(source.match(/<button\b/g)?.length, 1)
