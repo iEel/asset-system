@@ -202,7 +202,8 @@
     "closeMenu": "Close menu",
     "toggleSidebar": "Toggle sidebar",
     "languageMenu": "Change language ({code})",
-    "userMenu": "User menu: {name}"
+    "userMenu": "User menu: {name}",
+    "workCenterWaiting": "{count, plural, one {# item waits for you} other {# items wait for you}}"
   },
   "myAssets": {
     "title": "My Assets",

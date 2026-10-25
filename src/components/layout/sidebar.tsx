@@ -58,6 +58,10 @@ import {
 } from "@/lib/navigation-permissions"
 import { collectNavigationHrefs, containsNavigationHref, getActiveNavigationHref, isExactNavigationMatch } from "@/lib/navigation-active"
 import type { SessionUser } from "@/lib/auth-utils"
+import { countUnreadDecisions } from "@/lib/notification-groups"
+import type { ShellAccount } from "@/lib/user-display"
+import { SidebarAccount } from "@/components/layout/sidebar-account"
+import { useShellNotifications } from "@/components/layout/shell-notifications"
 
 type MenuItem = {
   labelKey: string
@@ -66,6 +70,8 @@ type MenuItem = {
   anyPermissions?: NavigationPermission[]
   icon: React.ReactNode
   children?: MenuItem[]
+  // A sentence for screen readers beside the row's dot. The menu never shows a number (The One Count Rule).
+  attention?: string
 }
 
 type MenuSection = {
@@ -76,18 +82,24 @@ type MenuSection = {
 // Rows sit inside the nav's px-2 gutter. The focus ring is drawn outside the row on an offset of the sidebar's own
 // color, because a teal ring inside the navy active row is under 3:1.
 const rowClasses =
-  "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar lg:min-h-9"
+  "relative flex min-h-11 w-full items-center gap-2.5 rounded-control px-2.5 text-sm text-sidebar-foreground transition-colors motion-reduce:transition-none hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar lg:min-h-10"
+
+// The open page's row: a lighter navy with the 3px teal bar on its leading edge (spec §6.2).
+const activeRowClasses =
+  "bg-sidebar-active font-medium text-sidebar-active-foreground shadow-[inset_3px_0_0_var(--sidebar-active-bar)] hover:bg-sidebar-active forced-colors:outline forced-colors:outline-2 forced-colors:-outline-offset-2"
 
 export function Sidebar({
   collapsed,
   mobileOpen,
   user,
+  account,
   onMobileClose,
   onMobileNavigate,
 }: {
   collapsed: boolean
   mobileOpen: boolean
   user: SessionUser
+  account: ShellAccount
   onMobileClose: () => void
   onMobileNavigate: () => void
 }) {
@@ -95,6 +107,8 @@ export function Sidebar({
   const locale = useLocale()
   const pathname = usePathname()
   const mobileRestoreFocusRef = useRef<HTMLElement | null>(null)
+  const { summary } = useShellNotifications()
+  const waitingDecisions = countUnreadDecisions(summary?.items ?? [])
 
   const menuSections: MenuSection[] = [
     {
@@ -111,6 +125,7 @@ export function Sidebar({
           href: `/${locale}/work-center`,
           permission: { module: "dashboard", action: "view" },
           icon: <Inbox size={20} />,
+          attention: waitingDecisions > 0 ? t("workCenterWaiting", { count: waitingDecisions }) : undefined,
         },
         ...(user.employeeId
           ? [
@@ -235,7 +250,7 @@ export function Sidebar({
     return (
       <>
         {/* Brand */}
-        <div className="flex h-16 min-w-0 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4">
+        <div className="flex h-14 min-w-0 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4">
           <Image
             src="/icons/icon-192.png"
             alt=""
@@ -249,14 +264,14 @@ export function Sidebar({
             {t("brandName")}
           </span>
           {mobile ? (
-            <Button variant="ghost" size="icon" onClick={onMobileClose} className="ml-auto" aria-label={t("closeMenu")}>
+            <Button variant="ghost" size="icon" onClick={onMobileClose} className="ml-auto text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-active-foreground focus-visible:ring-sidebar-ring focus-visible:ring-offset-sidebar" aria-label={t("closeMenu")}>
               <X aria-hidden="true" />
             </Button>
           ) : null}
         </div>
 
         {/* Menu */}
-        <nav aria-label={t("mainNavigation")} className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
+        <nav aria-label={t("mainNavigation")} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3">
           {visibleSections.map((section, index) => {
             // The body renders twice (desktop aside and mobile drawer), so heading ids must differ.
             const headingId = `${mobile ? "mobile-" : ""}nav-section-${section.labelKey}`
@@ -265,7 +280,7 @@ export function Sidebar({
                 {bodyCollapsed && index > 0 ? (
                   <div aria-hidden="true" className="mx-2 mb-3 hidden h-px bg-sidebar-border lg:block" />
                 ) : null}
-                <p id={headingId} className={cn("flex h-6 items-center px-3 text-xs font-medium text-sidebar-muted", bodyCollapsed && "lg:sr-only")}>
+                <p id={headingId} className={cn("flex h-6 items-center px-2.5 text-xs font-medium text-sidebar-muted", bodyCollapsed && "lg:sr-only")}>
                   {t(section.labelKey)}
                 </p>
                 <div className="space-y-0.5">
@@ -285,6 +300,7 @@ export function Sidebar({
             )
           })}
         </nav>
+        {mobile ? null : <SidebarAccount user={user} account={account} collapsed={bodyCollapsed} />}
       </>
     )
   }
@@ -293,7 +309,7 @@ export function Sidebar({
     <>
       <aside
         className={cn(
-          "relative hidden max-h-dvh flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 motion-reduce:transition-none lg:flex",
+          "relative hidden max-h-dvh flex-col bg-sidebar text-sidebar-foreground scheme-dark transition-all duration-300 motion-reduce:transition-none lg:flex",
           collapsed ? "lg:w-16" : "lg:w-64"
         )}
       >
@@ -325,7 +341,7 @@ export function Sidebar({
             event.preventDefault()
             target.focus()
           }}
-          className="w-[min(18rem,85vw)] gap-0 border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground lg:hidden"
+          className="w-[min(18rem,85vw)] gap-0 border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground scheme-dark lg:hidden"
         >
           <SheetTitle className="sr-only">{t("mainNavigation")}</SheetTitle>
           {renderBody(true)}
@@ -366,7 +382,7 @@ function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate }: 
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className={cn(rowClasses, "font-medium", containsActive && "font-semibold", collapsed && "lg:justify-center lg:px-2")}
+        className={cn(rowClasses, "font-medium", open && "font-semibold text-sidebar-active-foreground", collapsed && "lg:justify-center lg:px-2")}
       >
         <span className="shrink-0 text-sidebar-muted">{item.icon}</span>
         <span className={cn("flex-1 truncate text-left", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
@@ -404,12 +420,18 @@ function SidebarLink({ item, collapsed, activeHref, pathname, t, onNavigate }: S
       aria-current={ariaCurrent}
       className={cn(
         rowClasses,
-        isActive && "bg-sidebar-active font-medium text-sidebar-active-foreground hover:bg-sidebar-active forced-colors:outline forced-colors:outline-2 forced-colors:-outline-offset-2",
+        isActive && activeRowClasses,
         collapsed && "lg:justify-center lg:px-2"
       )}
     >
       <span className={cn("shrink-0 text-sidebar-muted", isActive && "text-sidebar-active-icon")}>{item.icon}</span>
       <span className={cn("truncate", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
+      {item.attention ? (
+        <>
+          <span aria-hidden="true" className={cn("ml-auto size-2 shrink-0 rounded-full bg-sidebar-dot", collapsed && "lg:absolute lg:right-1 lg:top-1 lg:ml-0")} />
+          <span className="sr-only">{item.attention}</span>
+        </>
+      ) : null}
     </Link>
   )
 }

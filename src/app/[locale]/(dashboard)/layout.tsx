@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { getSessionUser } from "@/lib/auth-utils"
 import { redirectToLogin } from "@/lib/page-auth"
+import { getShellAccount } from "@/lib/shell-account"
 
 export default function DashboardLayout({
   children,
@@ -26,5 +27,7 @@ async function DashboardLayoutContent({
     return redirectToLogin(locale)
   }
 
-  return <DashboardShell user={user}>{children}</DashboardShell>
+  const account = await getShellAccount(user, locale)
+
+  return <DashboardShell user={user} account={account}>{children}</DashboardShell>
 }

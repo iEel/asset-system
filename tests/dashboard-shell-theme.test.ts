@@ -15,6 +15,8 @@ test("the menu uses the navy menu tokens and marks the current page", () => {
   assert.match(source, /border-sidebar-border/)
   assert.match(source, /hover:bg-sidebar-hover/)
   assert.match(source, /focus-visible:ring-offset-sidebar/)
+  assert.match(source, /shadow-\[inset_3px_0_0_var\(--sidebar-active-bar\)\]/)
+  assert.match(source, /focus-visible:ring-sidebar-ring/)
   assert.match(source, /aria-current=\{ariaCurrent\}/)
   assert.match(source, /isExactNavigationMatch\(pathname, item\.href\) \? "page" : "true"/)
   assert.match(source, /role="group" aria-labelledby=\{headingId\}/)

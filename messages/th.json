@@ -202,7 +202,8 @@
     "closeMenu": "ปิดเมนู",
     "toggleSidebar": "ย่อหรือขยายเมนูข้าง",
     "languageMenu": "เปลี่ยนภาษา ({code})",
-    "userMenu": "เมนูผู้ใช้: {name}"
+    "userMenu": "เมนูผู้ใช้: {name}",
+    "workCenterWaiting": "มีงานรอคุณ {count} รายการ"
   },
   "myAssets": {
     "title": "ทรัพย์สินของฉัน",

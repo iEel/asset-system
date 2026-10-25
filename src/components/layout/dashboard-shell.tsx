@@ -8,15 +8,18 @@ import { ShellNotificationsProvider } from "@/components/layout/shell-notificati
 import { Topbar } from "@/components/layout/topbar"
 import { ConfirmProvider } from "@/components/ui/confirm-dialog"
 import type { SessionUser } from "@/lib/auth-utils"
+import type { ShellAccount } from "@/lib/user-display"
 import { getMobileShellMode, isMobileVirtualKeyboardVisible } from "@/lib/mobile-field-navigation"
 import { cn } from "@/lib/utils"
 
 export function DashboardShell({
   children,
   user,
+  account,
 }: {
   children: React.ReactNode
   user: SessionUser
+  account: ShellAccount
 }) {
   const shellRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -111,6 +114,7 @@ export function DashboardShell({
             collapsed={sidebarCollapsed}
             mobileOpen={mobileSidebarOpen}
             user={user}
+            account={account}
             onMobileClose={closeMobileSidebar}
             onMobileNavigate={closeMobileSidebar}
           />
