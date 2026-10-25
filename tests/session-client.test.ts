@@ -20,6 +20,7 @@ test("SessionKeeper asks the status on mount, turns input into a throttled keep-
   assert.match(s, /const \[lastCheckAt, setLastCheckAt\] = useState<number \| null>\(null\)/)
   assert.match(s, /nextSessionStep\(\{ online, times, offsetMs, now: clientNow, lastCheckAt \}\)/)
   assert.match(s, /readSessionAnswer\(/); assert.match(s, /shouldSendKeepAlive\(/); assert.match(s, /planSessionTimers\(/)
+  assert.match(s, /sessionRetryDelay\(failures\.current\)/)
   assert.match(s, /for \(const type of SESSION_ACTIVITY_EVENTS\) window\.addEventListener\(type, onActivity, \{ capture: true, passive: true \}\)/)
   assert.match(s, /fetch\("\/api\/session\/keep-alive", \{ method: "POST", cache: "no-store", keepalive: true \}\)/)
   assert.match(s, /fetch\("\/api\/session\/status", \{ cache: "no-store" \}\)/)

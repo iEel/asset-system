@@ -13,6 +13,7 @@ import {
   SESSION_EXPIRY_GRACE_MS,
   SESSION_KEEP_ALIVE_MIN_GAP_MS,
   SESSION_WARNING_MS,
+  sessionRetryDelay,
   shouldSendKeepAlive,
 } from "../src/lib/session-keeper-plan.ts"
 
@@ -52,6 +53,11 @@ test("the ceiling copy names its hours; the status reads as ms with the server's
   for (const bad of [null, {}, { ...body, idleDeadline: "soon" }]) assert.equal(readSessionTimes(bad), null)
   assert.equal(readServerOffset(body, Date.parse("2026-10-21T01:20:00.000Z")), 10_000)
   assert.equal(readServerOffset({}, 5), 0)
+})
+
+test("a failed check backs off from 2 s, doubling up to a minute", () => {
+  assert.equal(sessionRetryDelay(1), 2000); assert.equal(sessionRetryDelay(2), 4000); assert.equal(sessionRetryDelay(3), 8000)
+  assert.equal(sessionRetryDelay(6), 60_000); assert.equal(sessionRetryDelay(10), 60_000)
 })
 
 test("the first step on mount is the status request", () => {

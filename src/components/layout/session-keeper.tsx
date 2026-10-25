@@ -15,7 +15,7 @@ import {
   readSessionAnswer,
   readSessionTimes,
   SESSION_ACTIVITY_EVENTS,
-  SESSION_EXPIRY_GRACE_MS,
+  sessionRetryDelay,
   shouldSendKeepAlive,
 } from "@/lib/session-keeper-plan"
 import { useOnlineStatus } from "@/lib/use-online-status"
@@ -41,6 +41,7 @@ export function SessionKeeper({ initialClock }: { initialClock: SessionClock | n
   const [extending, setExtending] = useState(false)
   const lastSentAt = useRef<number | null>(null)
   const inFlight = useRef(0)
+  const failures = useRef(0)
   const stayFocused = useRef(false)
 
   // A new clock from the layout (a refresh) and the switch to offline are adopted during render, not in an effect.
@@ -61,11 +62,13 @@ export function SessionKeeper({ initialClock }: { initialClock: SessionClock | n
   const wakeAt = step.kind === "quiet" || step.kind === "warning" ? step.wakeAt : null
   const plan = times ? planSessionTimers(times, offsetMs) : null
 
-  const retryAfterGrace = useCallback(() => {
-    window.setTimeout(() => setClientNow(Date.now()), SESSION_EXPIRY_GRACE_MS)
+  // Failed answers in a row back off (2 s doubling up to a minute), so an outage is never hammered by every tab.
+  const retryAfterFailure = useCallback(() => {
+    failures.current += 1
+    window.setTimeout(() => setClientNow(Date.now()), sessionRetryDelay(failures.current))
   }, [])
 
-  // Every answer, the keep-alive's included, goes through readSessionAnswer. A failure re-arms after the grace.
+  // Every answer, the keep-alive's included, goes through readSessionAnswer. A failure re-arms after a backoff.
   const ask = useCallback(async (endpoint: "status" | "keep-alive"): Promise<SessionAnswer | null> => {
     inFlight.current += 1
     try {
@@ -75,6 +78,7 @@ export function SessionKeeper({ initialClock }: { initialClock: SessionClock | n
       const receivedAt = Date.now()
       const body: unknown = await response.json().catch(() => null)
       const answer = readSessionAnswer({ status: response.status, body }, receivedAt)
+      if (answer.kind !== "ignore") failures.current = 0
       if (answer.kind === "expired") {
         redirectToSessionExpiredLogin(locale)
       } else if (answer.kind === "times") {
@@ -83,16 +87,16 @@ export function SessionKeeper({ initialClock }: { initialClock: SessionClock | n
         setLastCheckAt(receivedAt)
         setClientNow(receivedAt)
       } else {
-        retryAfterGrace()
+        retryAfterFailure()
       }
       return answer
     } catch {
-      retryAfterGrace()
+      retryAfterFailure()
       return null
     } finally {
       inFlight.current -= 1
     }
-  }, [locale, retryAfterGrace])
+  }, [locale, retryAfterFailure])
 
   // One effect drives the steps: a check asks the server, quiet and warning wake at their time.
   useEffect(() => {

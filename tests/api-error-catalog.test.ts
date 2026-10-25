@@ -98,4 +98,8 @@ test("a cross-site keep-alive has its own message", () => {
 test("a 401's text is recognised wherever it reaches the screen", () => {
   assert.equal(isUnauthorizedError(new Error("Unauthorized")), true); assert.equal(isUnauthorizedError("Unauthorized"), true)
   for (const other of [new Error("Forbidden: insufficient permissions"), "กรุณาเข้าสู่ระบบใหม่", null, undefined]) assert.equal(isUnauthorizedError(other), false)
+  // Only the session's own 401 text counts; the integration token's refusal is not the person's session.
+  assert.equal(isUnauthorizedError("Unauthorized · ref 0123abcd"), true)
+  assert.equal(isUnauthorizedError("INTEGRATION_UNAUTHORIZED"), false)
+  assert.equal(isUnauthorizedError(new Error("Forbidden")), false)
 })

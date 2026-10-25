@@ -88,6 +88,11 @@ export function shouldSendKeepAlive(input: { times: SessionTimes; offsetMs: numb
   return now + offsetMs - times.activeAt >= SESSION_KEEP_ALIVE_MIN_GAP_MS
 }
 
+/** The wait after the nth failed answer in a row: 2 s, doubling up to a minute, so an outage is never hammered. */
+export function sessionRetryDelay(failures: number): number {
+  return Math.min(SESSION_EXPIRY_GRACE_MS * 2 ** (Math.max(1, failures) - 1), 60_000)
+}
+
 /** m:ss, rounded up to the whole second, never below 0:00. */
 export function formatSessionCountdown(ms: number): string {
   const seconds = Math.max(0, Math.ceil(ms / 1000))
