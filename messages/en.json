@@ -98,10 +98,9 @@
   },
   "notifications": {
     "title": "Notifications",
-    "subtitle": "Automatically summarized from follow-up work",
     "empty": "No follow-up work to notify",
     "openWorkCenter": "Open Work Center",
-    "openNotificationCenter": "Manage Notifications",
+    "openNotificationCenter": "Open Notification Center",
     "centerTitle": "Notification Center",
     "centerSubtitle": "Track notification state with read, snooze, and assignment controls",
     "active": "Active",
@@ -145,7 +144,15 @@
     "type_warning": "Needs attention",
     "type_danger": "Urgent",
     "type_success": "Done",
-    "increaseAnnouncement": "{title}: {count} more"
+    "increaseAnnouncement": "{title}: {count} more",
+    "bellLabel": "Notifications, {count} waiting",
+    "bellEmpty": "Nothing waiting",
+    "bellEmptyDetail": "Work that waits for your decision or needs follow-up shows up here.",
+    "groupDecide": "Waiting for your decision",
+    "groupFollow": "Follow up",
+    "markAllRead": "Mark all read",
+    "allRead": "All read",
+    "updatedAt": "Updated {time}"
   },
   "nav": {
     "mainNavigation": "Main navigation",

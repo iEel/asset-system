@@ -22,3 +22,30 @@ export function countUnreadDecisions(
     0,
   )
 }
+
+// Read wins over snoozed: a row the person has read shows "อ่านแล้ว" even while it is also snoozed (menu B shell task 7).
+export function getNotificationRowState(item: { isRead?: boolean; isSnoozed?: boolean }): "unread" | "read" | "snoozed" {
+  if (item.isRead) return "read"
+  if (item.isSnoozed) return "snoozed"
+  return "unread"
+}
+
+// The bell's accessible name: the unread count when there is one, "ไม่มีงานค้าง" for an empty box, else the plain title
+// (rows that are all read, or a summary that has not loaded yet).
+export function getNotificationBellNameKey(
+  summary: { total: number; items: readonly unknown[] } | null,
+): "bellLabel" | "bellEmpty" | "title" {
+  if (!summary) return "title"
+  if (summary.total > 0) return "bellLabel"
+  return summary.items.length === 0 ? "bellEmpty" : "title"
+}
+
+// The box header's right side: "อ่านแล้วทั้งหมด" while something is unread, "อ่านครบแล้ว" when rows are listed and all
+// read, nothing for an empty or unloaded box.
+export function getNotificationHeaderAction(
+  summary: { total: number; items: readonly unknown[] } | null,
+): "markAllRead" | "allRead" | null {
+  if (!summary) return null
+  if (summary.total > 0) return "markAllRead"
+  return summary.items.length > 0 ? "allRead" : null
+}

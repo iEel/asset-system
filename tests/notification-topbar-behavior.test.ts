@@ -2,14 +2,14 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const topbarSource = () => readFileSync("src/components/layout/topbar.tsx", "utf8")
+const topbarSource = () => readFileSync("src/components/layout/notification-bell.tsx", "utf8")
 const centerActionsSource = () => readFileSync("src/components/notifications/notification-center-actions.tsx", "utf8")
 
 test("the bell reads the shell's summary and fetches nothing itself (menu B shell task 3)", () => {
   const source = topbarSource()
 
-  assert.match(source, /const \{ summary: notificationSummary, markRead \} = useShellNotifications\(\)/)
-  assert.match(source, /\{notificationTotal > 99 \? "99\+" : notificationTotal\}/)
+  assert.match(source, /const \{ summary, markRead, markAllRead \} = useShellNotifications\(\)/)
+  assert.match(source, /\{total > 99 \? "99\+" : total\}/)
   assert.doesNotMatch(source, /fetch\(|notificationSummaryChangedEvent|createLatestNotificationRequestGuard/)
 })
 

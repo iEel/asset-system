@@ -19,7 +19,7 @@ test("the top bar's right side reads scan (an icon), bell, language, theme; the 
   assert.match(topbar, /className=\{cn\(buttonVariants\(\{ variant: "outline", size: "icon" \}\), "hidden lg:inline-flex"\)\}/)
   assert.match(topbar, /<ScanLine aria-hidden="true" className="size-5" \/>\n\s+<\/Link>/)
   assert.doesNotMatch(topbar, /xl:inline/)
-  const at = ["asset-management/scan", "{/* Notifications */}", "<DropdownMenuRadioGroup", "<ThemeToggle />", "{/* User Menu */}"].map((m) => topbar.indexOf(m))
+  const at = ["asset-management/scan", "<NotificationBell user={user} />", "<DropdownMenuRadioGroup", "<ThemeToggle />", "{/* User Menu */}"].map((m) => topbar.indexOf(m))
   assert.ok(at.every((v, i) => v > 0 && (i === 0 || v > at[i - 1])), `order ${at}`)
   assert.match(topbar, /\{\/\* User Menu \*\/\}\n\s+<div className="relative shrink-0 lg:hidden">/)
 })

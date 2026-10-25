@@ -302,7 +302,7 @@ test("R3 no text smaller than 12px outside the thermal label", () => {
   assert.deepEqual(exemptProblems("R3", countMatchesByFile(sources, SMALL_TEXT), SMALL_TEXT_EXEMPT), [])
   assert.deepEqual(exemptProblems("Thai leading", classStringsByFile((text) => /\bleading-4\b/.test(text)), LEADING_4_EXEMPT), [])
   // The count on the solid danger dot is 600, not 700 (spec 2A section 9.8, ruling 11), in the danger ink (dark mode P-R7).
-  assert.match(read("src/components/layout/topbar.tsx"), /rounded-full bg-danger px-1 text-xs font-semibold leading-none text-danger-foreground/)
+  assert.match(read("src/components/layout/notification-bell.tsx"), /rounded-full bg-danger px-1 text-xs font-semibold leading-none text-danger-foreground/)
 })
 
 test("no emoji in source or messages: icons come from lucide and languages are named in words", () => {

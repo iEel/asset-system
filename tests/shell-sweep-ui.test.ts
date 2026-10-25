@@ -11,12 +11,10 @@ const C = "src/components/"
 test("the topbar uses Button for its icon buttons and menu triggers, and its right group keeps its width (spec 2D D18, M29)", () => {
   const source = read(`${C}layout/topbar.tsx`)
   assert.doesNotMatch(source, /<button\b|border-dashed|rounded-full px-2 py-0\.5|sm:h-9|sm:min-h-0|size=\{\d+\}|bg-primary text-sm font-medium text-white/)
-  assert.equal(source.match(/<Button\s+variant="ghost"\s+size="icon"/g)?.length, 3, "menu, sidebar toggle and bell")
+  assert.equal(source.match(/<Button\s+variant="ghost"\s+size="icon"/g)?.length, 2, "menu and sidebar toggle")
   assert.equal(source.match(/<Button variant="ghost" size="md"/g)?.length, 2, "the language and user menu triggers")
   assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline", size: "icon" \}\), "hidden lg:inline-flex"\)\}/)
   assert.match(source, /<div className="flex shrink-0 items-center gap-1 sm:gap-2">/)
-  assert.match(source, /<StatusBadge label=\{formatCount\(item\.count\)\} tone=\{item\.tone\} \/>/)
-  assert.match(source, /<EmptyNote className="px-3 py-3">\{tNotifications\("empty"\)\}<\/EmptyNote>/)
   assert.match(source, /<span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">/)
   const search = read(`${C}layout/global-search.tsx`)
   assert.match(search, /<div ref=\{anchorRef\} className="relative hidden w-\[min\(28rem,36vw\)\] min-w-0 max-w-full lg:block">/)

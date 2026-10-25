@@ -98,10 +98,9 @@
   },
   "notifications": {
     "title": "การแจ้งเตือน",
-    "subtitle": "สรุปอัตโนมัติจากงานที่ต้องติดตาม",
     "empty": "ยังไม่มีงานค้างที่ต้องแจ้งเตือน",
     "openWorkCenter": "เปิดศูนย์งานค้าง",
-    "openNotificationCenter": "จัดการแจ้งเตือน",
+    "openNotificationCenter": "เปิดศูนย์แจ้งเตือน",
     "centerTitle": "ศูนย์แจ้งเตือน",
     "centerSubtitle": "ติดตามรายการแจ้งเตือนแบบอ่านแล้ว เลื่อนเตือน และมอบหมายผู้รับผิดชอบ",
     "active": "ยังต้องติดตาม",
@@ -145,7 +144,15 @@
     "type_warning": "ควรติดตาม",
     "type_danger": "เร่งด่วน",
     "type_success": "เรียบร้อย",
-    "increaseAnnouncement": "{title} เพิ่ม {count} รายการ"
+    "increaseAnnouncement": "{title} เพิ่ม {count} รายการ",
+    "bellLabel": "การแจ้งเตือน {count} รายการ",
+    "bellEmpty": "ไม่มีงานค้าง",
+    "bellEmptyDetail": "งานที่รอคุณตัดสินหรือควรติดตามจะขึ้นที่นี่",
+    "groupDecide": "รอคุณตัดสิน",
+    "groupFollow": "ควรติดตาม",
+    "markAllRead": "อ่านแล้วทั้งหมด",
+    "allRead": "อ่านครบแล้ว",
+    "updatedAt": "อัปเดต {time} น."
   },
   "nav": {
     "mainNavigation": "เมนูหลัก",

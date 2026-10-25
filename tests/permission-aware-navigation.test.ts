@@ -109,7 +109,7 @@ test("every work-center link needs dashboard:view, and access denied goes home (
     accessDenied: readLf(`${D}access-denied/page.tsx`),
     dashboard: readLf(`${D}dashboard/page.tsx`),
     notifications: readLf(`${D}notifications/page.tsx`),
-    topbar: readLf("src/components/layout/topbar.tsx"),
+    bell: readLf("src/components/layout/notification-bell.tsx"),
   }
   for (const [name, source] of Object.entries(sources)) {
     assert.equal(source.match(/\/work-center/g)?.length, 1, `${name} has one work-center link`)
@@ -119,8 +119,8 @@ test("every work-center link needs dashboard:view, and access denied goes home (
   assert.match(sources.myAssets, /actions=\{canOpenWorkCenter \? \(\n\s+<Link href=\{`\/\$\{locale\}\/work-center\?view=mine`\}/)
   assert.match(sources.notifications, /const canOpenWorkCenter = hasPermission\(user, "dashboard", "view"\)/)
   assert.match(sources.dashboard, /const canOpenWorkCenter = user \? hasPermission\(user, "dashboard", "view"\) : false/)
-  assert.match(sources.topbar, /const canOpenWorkCenter = hasNavigationPermission\(user, \{ module: "dashboard", action: "view" \}\)/)
-  assert.match(sources.topbar, /import \{ hasNavigationPermission \} from "@\/lib\/navigation-permissions"/)
+  assert.match(sources.bell, /const canOpenWorkCenter = hasNavigationPermission\(user, \{ module: "dashboard", action: "view" \}\)/)
+  assert.match(sources.bell, /import \{ hasNavigationPermission \} from "@\/lib\/navigation-permissions"/)
 
   assert.match(sources.accessDenied, /const canOpenWorkCenter = user \? hasPermission\(user, "dashboard", "view"\) : false/)
   assert.match(sources.accessDenied, /getDefaultHomeHref\(locale, user\)/)
