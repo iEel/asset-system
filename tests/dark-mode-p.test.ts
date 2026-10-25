@@ -172,7 +172,7 @@ test("the app icon keeps its light tile and gets a hairline frame that shows in 
   const sidebar = read(`${C}layout/sidebar.tsx`)
   assert.match(sidebar, /src="\/icons\/icon-192\.png"[\s\S]*?className="h-8 w-8 shrink-0 rounded-md ring-1 ring-app-icon-frame"/)
   const login = read("src/app/[locale]/(auth)/login/page.tsx")
-  assert.match(login, /src="\/icon\.png"[\s\S]*?className="mx-auto mb-4 h-16 w-16 rounded-xl sm:h-\[72px\] sm:w-\[72px\] ring-1 ring-app-icon-frame"/)
+  assert.match(login, /src="\/icon\.png"[\s\S]*?className="h-\[34px\] w-\[34px\] rounded-\[10px\] ring-1 ring-app-icon-frame lg:h-\[38px\] lg:w-\[38px\]"/)
   assert.deepEqual(sources.filter((file) => /\bring-app-icon-frame\b/.test(file.source)).map((file) => file.path).sort(), [
     "src/app/[locale]/(auth)/login/page.tsx",
     `${C}layout/sidebar.tsx`,

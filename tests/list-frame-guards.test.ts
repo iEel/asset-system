@@ -137,7 +137,7 @@ const OWNERS: Readonly<Record<string, readonly string[]>> = {
 // "2B I11" and "2B §9.4.3" (the KEEP table of phase 2B) are spec 2B's; "2C K23" is the ActionBar; "2D-4 R17" print.
 const EXEMPT: Readonly<Record<string, ExemptList>> = {
   LH1: {
-    "src/app/[locale]/(auth)/login/page.tsx": { count: 1, kind: "phase 3", why: "the login page has no shell; its title belongs to the login frame that phase 3 redoes", ruling: "2D D2" },
+    "src/app/[locale]/(auth)/login/page.tsx": { count: 1, kind: "permanent", why: "the login page has no shell; its card title is the page's one h1", ruling: "group 1 login (spec 2026-10-25 §8)" },
     [`${C}asset-operations/operation-document-print.tsx`]: { count: 1, kind: "permanent", why: "the A4 document's own title, printed on the paper", ruling: "2D-4 R17" },
     [`${C}assets/asset-label-print.tsx`]: { count: 1, kind: "permanent", why: "the label print page has no shell: its own title above the label preview", ruling: "2B §9.4.3" },
     [`${C}audit/audit-scan-header.tsx`]: { count: 1, kind: "permanent", why: "the field scan header, its own one-line variant", ruling: "2B §9.4.3" },
@@ -232,13 +232,13 @@ test("L0 every rule has a title, a counter and an EXEMPT list, and every OWNERS 
 })
 
 // Spec 2D §5.1 (D1): the rows this file leaves to phase 3, and their sum. Phase 3 is D2's line (the register's bulk
-// selection bar, the login page frame, the topbar search); here only the login page's title. Each guard file sums its
-// own phase 3 rows: a test file that imports another one runs that file's tests a second time.
+// selection bar, the topbar search); this file has no row left there. Each guard file sums its own phase 3 rows: a test
+// file that imports another one runs that file's tests a second time.
 test("phase 3: every row the list-frame guards leave to phase 3, and their sum (spec 2D §5.1, D2)", () => {
   const rows = phase3Rows(EXEMPT)
   assert.deepEqual(
     rows.map(({ rule, file, count }) => `${rule} ${file}: ${count}`),
-    ["LH1 src/app/[locale]/(auth)/login/page.tsx: 1"],
+    [],
   )
-  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 1)
+  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 0)
 })

@@ -138,8 +138,8 @@ test("the topbar and the phone bottom bar take the chrome color, the same white 
 test("the login headings take the foreground ink, and brand navy is a fill only, never text (dark mode spec §5.2 Brand navy)", () => {
   const login = read("src/app/[locale]/(auth)/login/page.tsx")
   // #0B1D35 instead of #083161 in light, so the page looks the same; in dark the headings stay readable on the panel.
-  assert.match(login, /<h1 className="text-balance text-2xl font-bold text-foreground">\{tCommon\("appName"\)\}<\/h1>/)
-  assert.match(login, /<h2 id="login-heading" className="mb-6 text-center text-xl font-semibold text-foreground">/)
+  assert.match(login, /<h1 className="[^"]*text-foreground[^"]*">\{tAuth\("login"\)\}<\/h1>/)
+  assert.doesNotMatch(login, /<h2\b/)
   assert.deepEqual(findMatches(readSourceFiles("src"), /\btext-brand-navy\b/g), [])
 })
 

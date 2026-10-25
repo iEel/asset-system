@@ -16,12 +16,30 @@ test("login page is a server wrapper for normalized query state", () => {
   assert.match(source, /<Notice tone="info" role="status" aria-live="polite">\n\s+\{tAuth\("sessionExpired"\)\}\n\s+<\/Notice>/)
 })
 
-test("login page uses the real app icon and committed enterprise tokens", () => {
+test("login page: the navy frame comes from token classes, the card from the surface tokens, and the one h1 is the card title (spec §8)", () => {
   const source = readFileSync(pagePath, "utf8")
-  assert.match(source, /src="\/icon\.png"/)
-  assert.match(source, /bg-background/)
+  assert.match(source, /login-backdrop/)
+  assert.match(source, /login-glow/)
+  assert.match(source, /login-pattern/)
   assert.match(source, /bg-surface/)
-  assert.match(source, /text-foreground/)
   assert.match(source, /border-border/)
-  assert.doesNotMatch(source, /gradient|backdrop-blur|rounded-\[3[2-9]px\]/)
+  assert.doesNotMatch(source, /gradient|backdrop-blur|#[0-9a-f]{3,8}\b|rgba?\(|shadow-|dark:|ThemeToggle|@\/lib\/theme/i)
+  assert.equal(source.match(/<h1\b/g)?.length, 1)
+  assert.match(source, /<h1 className="[^"]*text-foreground[^"]*">\{tAuth\("login"\)\}<\/h1>/)
+  assert.doesNotMatch(source, /<h2\b|Asset Management System|getFullYear|IT Helpdesk/)
+})
+
+test("login page: what it shows before sign-in comes only from the helpers and the one setting (spec §8)", () => {
+  const source = readFileSync(pagePath, "utf8")
+  assert.match(source, /getLoginCompanyName\(\)/)
+  assert.match(source, /isTestSystem\(\)/)
+  assert.match(source, /getLoginDestinationKey\(locale, callbackUrl\)/)
+  assert.match(source, /buildLoginLocaleHref\(locale, language\.locale, callbackUrl, sessionExpired\)/)
+  assert.match(source, /formatLoginYear\(locale\)/)
+  assert.doesNotMatch(source, /prisma|systemSetting|process\.env\.DATABASE_URL|NEXT_PUBLIC_/)
+})
+
+test("login page: a signed-in visitor goes on to the callback, except after a session expiry (Review Focus 4)", () => {
+  const source = readFileSync(pagePath, "utf8")
+  assert.match(source, /if \(user && !sessionExpired\) redirect\(callbackUrl\)/)
 })

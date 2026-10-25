@@ -50,7 +50,11 @@ test("the dark set has every light token as #RRGGBB, in two identical copies, wi
   assert.deepEqual(readBlockDeclarations(css, ':root:not([data-theme="light"])'), readBlockDeclarations(css, ':root[data-theme="dark"]'), "the two dark copies are identical")
   // The light theme looks as it did (Review Focus 1): every light value of 87e4756 stays while the dark set is tuned; the
   // plan only adds --image-stage (here) and --app-icon-frame (Task 5, P1).
-  const added = ["image-stage", "app-icon-frame", "chrome", "chrome-border", "sidebar-active-bar", "sidebar-ring", "sidebar-dot"]
+  // Group 1 login adds the navy backdrop of the login page, the same in both themes.
+  const added = [
+    "image-stage", "app-icon-frame", "chrome", "chrome-border", "sidebar-active-bar", "sidebar-ring", "sidebar-dot",
+    "login-backdrop-start", "login-backdrop-mid", "login-backdrop-end", "login-glow",
+  ]
   assert.deepEqual(Object.fromEntries(Object.entries(light).filter(([name]) => !added.includes(name))), { ...LIGHT_AT_BASE, ...MENU_B_LIGHT }, "the light values of 87e4756")
   // Elevation (spec §5.2): the canvas is darkest, the wells (background) sit darker than the panels, menus a step lighter,
   // and the chrome (topbar, bottom bar) sits between the canvas and the panels.

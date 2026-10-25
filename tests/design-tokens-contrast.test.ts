@@ -119,6 +119,16 @@ function contrastRules(prefix: "" | "dark: ", set: Record<string, string>) {
     assertContrast("ring", "sidebar", NON_TEXT, "ring on sidebar") // the base outline of anything in the menu without its own ring
   })
 
+  test(`${prefix}the login backdrop: its text AA, and the test-system dot and the focus ring at 3:1, on every backdrop token (group 1 login)`, () => {
+    for (const fill of ["login-backdrop-start", "login-backdrop-mid", "login-backdrop-end", "login-glow"]) {
+      assertAA("sidebar-foreground", fill, `sidebar-foreground on ${fill}`)
+      assertAA("sidebar-muted", fill, `sidebar-muted on ${fill}`)
+      assertAA("sidebar-active-icon", fill, `sidebar-active-icon on ${fill}`)
+      assertContrast("sidebar-dot", fill, NON_TEXT, `sidebar-dot on ${fill}`)
+      assertContrast("sidebar-ring", fill, NON_TEXT, `sidebar-ring on ${fill}`)
+    }
+  })
+
   test(`${prefix}the chrome (topbar, phone bottom bar) keeps the page inks AA and the ring and field border at 3:1 (menu B §6.1)`, () => {
     for (const ink of ["foreground", "muted-foreground", "faint-foreground", "primary"]) assertAA(ink, "chrome", `${ink} on chrome`)
     for (const line of ["ring", "input"]) assertContrast(line, "chrome", NON_TEXT, `${line} on chrome`)

@@ -27,7 +27,7 @@ test("DESIGN.md: nothing waits for phase 2D, and the guards are their EXEMPT lis
   const design = read("DESIGN.md")
   assert.doesNotMatch(design, /per-file budget|may only go down|`KEEP`|MIGRATED_FILTER_FILES|ratchet guards|has not moved to the parts yet/, "since plan 2D-5 every rule holds an exact EXEMPT list")
   assert.match(design, /Phase 2D \(spec `docs\/superpowers\/specs\/2026-10-15-ui-phase2d-design\.md`/, "the overview reaches phase 2D")
-  assert.match(design, /the register's bulk selection bar, the login page frame and the topbar search/, "the three phase 3 places (D2)")
+  assert.match(design, /the register's bulk selection bar and the topbar search/, "the two phase 3 places left (D2; the login frame closed in group 1)")
   assert.match(design, /holds exactly these 8 in its `EXEMPT` list/, "§4: the shadows that stay")
   assert.match(design, /fails a raw palette class/, "§2: the raw-color guard")
   assert.match(design, /A raw `<button>` stays only in a shared part that owns it \(the guard's `OWNERS`/, "§5: the raw button guard")
