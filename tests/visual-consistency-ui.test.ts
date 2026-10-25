@@ -6,13 +6,14 @@ import { buttonVariants } from "../src/components/ui/button-variants.ts"
 
 const readSource = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
-test("app shell uses the light-shell visual tokens", async () => {
+test("app shell uses the menu B visual tokens", async () => {
   const globals = readSource("src/app/globals.css")
   const layout = readSource("src/app/layout.tsx")
   const { default: manifest } = await import("../src/app/manifest.ts")
   const tokens = readRootTokens(globals)
 
-  assert.equal(tokens["sidebar-active"], tokens["brand-navy"])
+  assert.equal(tokens["sidebar-active"], tokens.primary)
+  assert.equal(tokens.chrome, tokens.card)
   assert.notEqual(tokens.primary, tokens["brand-navy"])
   assert.notEqual(tokens.canvas, tokens.card)
   assert.match(layout, /themeColor: themeColorFor\(await readThemeChoice\(\)\),/, "the browser bar takes the chrome color of the theme on screen (src/lib/theme.ts)")

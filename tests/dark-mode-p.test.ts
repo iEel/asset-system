@@ -24,7 +24,7 @@ test("photos and logos get a fixed light image stage and the app icon a frame th
   const FRAME = { light: "#FFFFFF", dark: "#34496A" }
   assert.equal(light["image-stage"], STAGE, "the light value is the muted fill the thumbnail frames show today")
   assert.equal(light["app-icon-frame"], FRAME.light)
-  assert.equal(light["app-icon-frame"], light.sidebar, "in light the frame is the sidebar color, so the sidebar looks as before")
+  assert.equal(light["app-icon-frame"], light.card, "in light the frame is white like the icon tile, so it does not show")
   for (const name of ["image-stage", "app-icon-frame"]) {
     assert.match(css, new RegExp(`--color-${name}:\\s*var\\(--${name}\\);`), `--color-${name} in @theme inline`)
   }

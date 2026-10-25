@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-19T00:00:00+07:00",
+  "generatedAt": "2026-10-21T00:00:00+07:00",
   "title": "Design System: Asset Management System",
   "extensions": {
     "colorMeta": {
@@ -434,9 +434,17 @@
       "name": "Sidebar Navigation Item",
       "kind": "nav",
       "refersTo": "navigation",
-      "description": "RBAC-filtered row in the sidebar (three sections with headings). Full-width rounded row inside the nav's 8px (px-2) gutter (the margin below stands in for that gutter), sidebar-muted icon, Sidebar Hover; each section is role=group labelled by its heading. The active row is solid navy with white text and a teal icon, with an outline in Windows high-contrast mode; aria-current=page only on the exact page, aria-current=true on the entry above a detail page. Its focus ring sits outside the row on the sidebar color.",
+      "description": "RBAC-filtered row in the navy menu (three sections with headings). Full-width rounded row inside the nav's 8px (px-2) gutter (the margin below stands in for that gutter), sidebar-foreground text and a sidebar-muted icon on --sidebar, Sidebar Hover; each section is role=group labelled by its heading. The open row is the action blue (--sidebar-active) with white text, the light teal icon (--sidebar-active-icon) and a 3px teal bar on its left edge (--sidebar-active-bar), with an outline in Windows high-contrast mode; aria-current=page only on the exact page, aria-current=true on the entry above a detail page. Its focus ring is --sidebar-ring, outside the row on the menu color.",
       "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z\" fill=\"currentColor\"/></svg><span>Dashboard</span></a>",
-      "css": ".ds-nav-item { min-height: 36px; margin: 0 8px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; background: #FFFFFF; color: #1F3657; text-decoration: none; font: 500 14px/1.5714 \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item svg { width: 20px; height: 20px; flex: 0 0 auto; color: #586A84; } .ds-nav-item:hover { background: #EBF0F7; } .ds-nav-item:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-nav-item-active, .ds-nav-item-active:hover { background: #083161; color: #FFFFFF; } .ds-nav-item-active svg { color: #18A0A8; } @media (forced-colors: active) { .ds-nav-item-active { outline: 2px solid CanvasText; outline-offset: -2px; } }"
+      "css": ".ds-nav-item { min-height: 36px; margin: 0 8px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; background: #082A54; color: #DCE6F2; text-decoration: none; font: 500 14px/1.5714 \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item svg { width: 20px; height: 20px; flex: 0 0 auto; color: #9FB3D1; } .ds-nav-item:hover { background: #1C3B62; } .ds-nav-item:focus-visible { outline: 2px solid #5FD6DD; outline-offset: 2px; } .ds-nav-item-active, .ds-nav-item-active:hover { position: relative; background: #1E4F94; color: #FFFFFF; } .ds-nav-item-active svg { color: #5FD6DD; } .ds-nav-item-active::before { content: \"\"; position: absolute; top: 6px; bottom: 6px; left: 0; width: 3px; border-radius: 0 3px 3px 0; background: #18A0A8; } @media (forced-colors: active) { .ds-nav-item-active { outline: 2px solid CanvasText; outline-offset: -2px; } }"
+    },
+    {
+      "name": "App Shell",
+      "kind": "nav",
+      "refersTo": "app-shell",
+      "description": "The menu B shell (spec docs/superpowers/specs/2026-10-21-menu-b-shell-design.md) that every dashboard page shares: the navy menu (--sidebar) with the person at its foot, a 56px topbar on --chrome with a --chrome-border line, the banner region under it, and on the phone the light top and bottom bars with the More sheet. The One Count Rule: in the shell a number for waiting work appears on the bell only, bg-danger with text-danger-foreground, 99+ at most; the menu marks the work center with the orange --sidebar-dot and a hidden sentence, and no menu row, tab or bar repeats the number. The One Banner Rule: a message of the shell (the session ending, offline) appears in one region under the topbar, warning-soft with the warning ink, role=status, one message at a time, and offline wins while the device is offline.",
+      "html": "<div class=\"ds-shell-menu\"><a class=\"ds-nav-item\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v4H4V4Zm0 6h16v10H4V10Zm4 3v2h8v-2H8Z\" fill=\"currentColor\"/></svg><span>ศูนย์งานค้าง</span><span class=\"ds-nav-dot\" aria-hidden=\"true\"></span><span class=\"ds-sr-only\">มีงานรอคุณ 3 รายการ</span></a></div> <button type=\"button\" class=\"ds-bell\" aria-label=\"การแจ้งเตือน 3 รายการ\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z\" fill=\"currentColor\"/></svg><span class=\"ds-bell-count\" aria-hidden=\"true\">3</span></button> <div class=\"ds-shell-banner\" role=\"status\">ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์</div>",
+      "css": ".ds-shell-menu { padding: 8px 0; background: #082A54; } .ds-nav-dot { flex: 0 0 auto; width: 8px; height: 8px; margin-left: auto; border-radius: 9999px; background: #F0A94D; } .ds-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; } .ds-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: 6px; background: #FFFFFF; color: #3C4F6B; } .ds-bell svg { width: 20px; height: 20px; } .ds-bell-count { position: absolute; top: -4px; right: -6px; box-sizing: border-box; height: 20px; min-width: 20px; padding: 0 5px; border-radius: 9999px; background: #B3261E; color: #FFFFFF; font: 600 12px/20px \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; text-align: center; } .ds-shell-banner { padding: 8px 16px; background: #FDF4E4; color: #A14A05; font: 400 14px/1.5714 \"IBM Plex Sans\", \"Noto Sans Thai Looped\", system-ui, sans-serif; } @media (forced-colors: active) { .ds-nav-dot { forced-color-adjust: none; background: CanvasText; } }"
     },
     {
       "name": "Page Header",
@@ -516,7 +524,7 @@
     "rules": [
       {
         "name": "The Where Color Lives Rule",
-        "body": "Navy #083161 lives only in the logo and the selected menu row. Actions and links use Primary #1E4F94. Teal is for info status, the focus ring (#10858D) and the selected menu icon. Green, orange and red appear only inside status badges, as the icon of a toast, a Notice or an ActionEmptyState, and on destructive buttons and menu items; only warning and danger toasts and Notice boxes get a soft fill. Names are the neutral Chip, states StatusBadge and notes Notice by meaning, so outside the shared parts (the info status ring and the info Notice icon) no screen uses the info tokens (phase 2D).",
+        "body": "Navy #083161 lives only in the logo and the pressed primary fill; the menu has its own navy (--sidebar #082A54, #0E2445 in dark) with color only on its open row. Actions and links use Primary #1E4F94, also the open row's fill. Teal is for info status, the focus ring (#10858D; #5FD6DD inside the menu) and the open row's icon and bar. Green, orange and red appear only inside status badges, as the icon of a toast, a Notice or an ActionEmptyState, on destructive buttons and menu items, as the bell's count (red) and as the menu's work dot (orange); only warning and danger toasts and Notice boxes get a soft fill. Names are the neutral Chip, states StatusBadge and notes Notice by meaning, so outside the shared parts (the info status ring and the info Notice icon) no screen uses the info tokens (phase 2D).",
         "section": "colors"
       },
       {
@@ -531,7 +539,7 @@
       },
       {
         "name": "The Token Contrast Rule",
-        "body": "Status text uses the status ink (text-success, text-warning, text-danger, text-info) on the panel, the page background, canvas, muted, accent, row-hover, or its own soft surface (bg-{tone}-soft). Never tint with opacity (bg-warning/10, bg-primary/10, border-warning/30, bg-muted/40) and never lighten solid fills on hover (/90): use the -soft, -border and -hover tokens and the solid neutrals (bg-background, bg-row-hover, border-border-soft). Faint text (#56677F) is AA on every neutral surface and on primary-soft, never on a status soft fill. tests/design-tokens-contrast.test.ts enforces every text pair at 4.5:1 and rings, field borders and meaningful icons at 3:1; button outlines are decorative.",
+        "body": "Status text uses the status ink (text-success, text-warning, text-danger, text-info) on the panel, the page background, canvas, muted, accent, row-hover, or its own soft surface (bg-{tone}-soft). Never tint with opacity (bg-warning/10, bg-primary/10, border-warning/30, bg-muted/40) and never lighten solid fills on hover (/90): use the -soft, -border and -hover tokens and the solid neutrals (bg-background, bg-row-hover, border-border-soft). Faint text (#56677F) is AA on every neutral surface and on primary-soft, never on a status soft fill. tests/design-tokens-contrast.test.ts enforces every text pair at 4.5:1 and rings, field borders and meaningful icons at 3:1, the navy menu's on its own fills; button outlines are decorative.",
         "section": "colors"
       },
       {
@@ -567,7 +575,8 @@
     ],
     "dos": [
       "Do preserve existing tokens and shared primitives such as Button, Segmented, the field primitives (Input, NativeSelect, Textarea, Field, SearchField), the dialog parts (AccessibleDialogBody, AccessibleDialogFooter, AccessibleDialogCancel) and useConfirm, StickyFormFooter and ActionBar, ChoiceCard and ChoiceChip, Chip, Steps, FormSection, FileQueueList, Notice, EmptyNote, ActionEmptyState, PageHeader and PageBackLink, DataTable with TableEmptyRow and Pagination, FilterSelect, FilterFormActions and FilterChipList, RowActions, TabNav, StatStrip, KeyValueList, ContentPanel divided, Nil, formatCount and formatMoney, the loading skeletons of page-skeleton.tsx, and the panel and mobile card list helpers.",
-      "Do keep navy #083161 for the logo and the selected menu row in the light theme, Primary #1E4F94 for actions and links, and teal for info status, focus and the selected menu icon.",
+      "Do keep the menu navy (#082A54, #0E2445 in dark) with color only on its open row (the action blue fill, the light teal icon #5FD6DD and the teal bar), navy #083161 for the logo and the pressed primary fill, Primary #1E4F94 for actions and links, and teal for info status and focus.",
+      "Do show a count of waiting work on the bell only and every shell message in the one banner region under the topbar.",
       "Do use borders and tonal layers as the grouping mechanism; use shadow-overlay only for dialogs, sheets, popovers and menus, and bg-scrim behind them.",
       "Do keep tables and forms dense enough for enterprise scanning, but not cramped.",
       "Do pair status colors with readable labels, marker shapes, icons, or explicit workflow context so status does not rely on color alone.",
@@ -578,14 +587,14 @@
     "donts": [
       "Don't use consumer-app styling, bright playful colors, heavy animation, marketing-style hero layouts, gamified UI, casual startup dashboards, decorative gradients, or anything that makes the system feel like a landing page instead of an enterprise operations tool.",
       "Don't use glassmorphism, heavy shadows, decorative gradients, floating marketing cards, or playful surfaces.",
-      "Don't bring back a dark navy sidebar in the light theme (the dark theme's chrome is its own token), a second focus color, or green, orange and red outside status badges.",
+      "Don't bring back the old slate sidebar (Tailwind #0F172A, which competed with the content) or color the menu beyond its open row and the work dot; no focus color beyond --ring and, inside the navy menu, --sidebar-ring; no green, orange or red outside status badges, the bell's count and the menu's work dot.",
       "Don't write a dark: class, a color for one theme or a component that reads the theme; paper that must stay light takes data-theme=\"light\".",
       "Don't show database status colors on badges, or use teal brand-accent as text.",
       "Don't redesign business workflows for visual effect.",
       "Don't invent inconsistent button, input, modal, badge, or navigation vocabularies across screens.",
       "Don't rely on color alone for status, permission, validation, audit, or lifecycle state.",
       "Don't use display fonts, fluid hero typography, gradient text, oversized cards, or landing-page composition inside product workflows.",
-      "Don't use colored side-stripe borders as a decorative accent. Use full borders, status badges, text labels, and icons instead.",
+      "Don't use colored side-stripe borders as a decorative accent. Use full borders, status badges, text labels, and icons instead; the open menu row's 3px teal bar is a state mark, not decoration, and the only stripe.",
       "Don't fade a disabled control with opacity, put faint text on a status soft fill, or tint a fill or border with /NN; use the disabled look, the tone ink and the solid tokens.",
       "Don't change a button's label while it is busy, put the primary action first in the DOM (flex-col-reverse), drop required or maxLength from a control when it moves into Field, or give a dialog its own form when it renders inside another form.",
       "Don't show a field's error in a toast or the browser's bubble, announce it as an alert, or keep a rule behind a disabled button with no reason on screen.",

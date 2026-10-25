@@ -18,10 +18,10 @@ test("the theme cookie holds light or dark for a year, and anything else follows
   for (const value of [undefined, null, "", "system", "Dark", " dark", "light;"]) assert.equal(parseThemeChoice(value), null, String(value))
   assert.equal(themeCookieString("dark"), "theme=dark; Path=/; Max-Age=31536000; SameSite=Lax")
   assert.equal(themeCookieString("light"), "theme=light; Path=/; Max-Age=31536000; SameSite=Lax")
-  // The chrome color of each theme is that theme's --sidebar (the topbar and the phone bottom bar take it too).
+  // The chrome color of each theme is that theme's --chrome (the topbar and the phone bottom bar; the navy menu has its own --sidebar).
   const css = read("src/app/globals.css")
-  assert.equal(THEME_COLORS.light, readRootTokens(css).sidebar)
-  assert.equal(THEME_COLORS.dark, readDarkTokens(css).sidebar)
+  assert.equal(THEME_COLORS.light, readRootTokens(css).chrome)
+  assert.equal(THEME_COLORS.dark, readDarkTokens(css).chrome)
   // theme-color: an explicit choice is one color; following the OS is the media pair.
   assert.equal(themeColorFor("light"), THEME_COLORS.light)
   assert.equal(themeColorFor("dark"), THEME_COLORS.dark)
@@ -115,20 +115,20 @@ test("the theme toggle sits beside the language button and shows the moon while 
   }
 })
 
-test("the topbar and the phone bottom bar take the sidebar's chrome color, the same white as today in light (dark mode spec §5.2 Top bars)", () => {
+test("the topbar and the phone bottom bar take the chrome color, the same white as today in light (menu B §6.1)", () => {
   const topbar = read(`${C}layout/topbar.tsx`)
-  assert.match(topbar, /<header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-border bg-sidebar px-3 sm:gap-2 sm:px-4">/)
+  assert.match(topbar, /<header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-chrome-border bg-chrome px-3 sm:gap-2 sm:px-4">/)
   const nav = read(`${C}layout/mobile-field-navigation.tsx`)
-  assert.match(nav, /className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-sidebar px-2 pb-\[max\(0\.5rem,env\(safe-area-inset-bottom\)\)\] pt-1 lg:hidden"/)
-  for (const source of [topbar, nav]) assert.doesNotMatch(source, /\bbg-surface\b/)
-  // The inks and the focus ring of both bars now sit on --sidebar, in both token sets.
+  assert.match(nav, /className="fixed inset-x-0 bottom-0 z-20 border-t border-chrome-border bg-chrome px-2 pb-\[max\(0\.5rem,env\(safe-area-inset-bottom\)\)\] pt-1 lg:hidden"/)
+  for (const source of [topbar, nav]) assert.doesNotMatch(source, /\bbg-surface\b|\bbg-sidebar\b/)
+  // The inks and the focus ring of both bars sit on --chrome, in both token sets.
   const css = read("src/app/globals.css")
   for (const [theme, tokens] of [["light", readRootTokens(css)], ["dark", readDarkTokens(css)]] as const) {
-    const chrome = resolveToken(tokens, "sidebar")
+    const chrome = resolveToken(tokens, "chrome")
     assert.equal(chrome, THEME_COLORS[theme], theme)
     for (const [ink, floor] of [["foreground", 4.5], ["muted-foreground", 4.5], ["primary", 4.5], ["ring", 3]] as const) {
       const ratio = contrastRatio(parseHexColor(resolveToken(tokens, ink)), parseHexColor(chrome))
-      assert.ok(ratio >= floor, `${theme}: ${ink} on sidebar is ${ratio.toFixed(2)}:1`)
+      assert.ok(ratio >= floor, `${theme}: ${ink} on chrome is ${ratio.toFixed(2)}:1`)
     }
   }
 })

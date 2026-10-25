@@ -29,7 +29,7 @@ test("DESIGN.md: the two-theme rule replaces Light Only, surfaces are named by r
     /carry `data-theme="light"` \(exactly these four, `tests\/dark-mode-p\.test\.ts`\)/,
     /`tests\/design-tokens-contrast\.test\.ts` runs every contrast rule on both sets/,
   ]) assert.match(design, fact)
-  assert.match(design, /\n- \*\*Don't\*\* bring back a dark navy sidebar in the light theme /, "the navy sidebar Don't is scoped to the light theme")
+  assert.match(design, /\n- \*\*Don't\*\* bring back the old slate sidebar \(Tailwind #0F172A, which competed with the content\) /, "menu B: the reason replaces the light-theme navy Don't")
   assert.match(design, /\n- \*\*Don't\*\* write a `dark:` class, a color for one theme or a component that reads the theme/)
   assert.match(design, /The theme toggle \(`ThemeToggle`, `src\/components\/layout\/theme-toggle\.tsx`/, "§5 Navigation: the toggle")
   // Surfaces are named by their role or their theme, not as white. White stays only where it is white in both themes
@@ -101,8 +101,8 @@ test("docs/14 and .impeccable/design.json follow the two themes, with the dark v
   assert.ok(rule.includes(`--image-stage ${light["image-stage"]} in both themes`) && light["image-stage"] === dark["image-stage"], "the image stage")
   assert.ok(rule.includes(`--app-icon-frame hairline, ${light["app-icon-frame"]} in light and ${dark["app-icon-frame"]} in dark`), "the app icon frame")
   assert.ok(rule.includes(`the dark ink ${dark["primary-foreground"]}`), "the dark ink of the solid fills")
-  assert.ok(design.narrative.dos.some((entry) => entry.startsWith("Do keep navy #083161 for the logo and the selected menu row in the light theme,")))
-  assert.ok(design.narrative.donts.some((entry) => entry.startsWith("Don't bring back a dark navy sidebar in the light theme ")))
+  assert.ok(design.narrative.dos.some((entry) => entry.startsWith("Do keep the menu navy (#082A54, #0E2445 in dark) with color only on its open row ")))
+  assert.ok(design.narrative.donts.some((entry) => entry.startsWith("Don't bring back the old slate sidebar (Tailwind #0F172A, which competed with the content) ")))
   assert.ok(design.narrative.donts.some((entry) => entry.startsWith("Don't write a dark: class, a color for one theme or a component that reads the theme")))
   // Surfaces are named by role in the prose (the css examples keep the light values).
   const prose = [...design.components.map((entry) => entry.description), ...design.narrative.rules.map((entry) => entry.body)].join("\n")
@@ -129,4 +129,30 @@ test("the handoff and the changelog record Dark Mode in place, with every marker
   for (const [path, text] of [["DEVELOPER_HANDOFF.md", handoff], ["docs/99_CHANGELOG.md", changelog]]) {
     assert.deepEqual([path, text.match(markers) ?? []], [path, []])
   }
+})
+
+test("menu B: DESIGN.md, .impeccable/design.json and docs/14 record the navy menu, the chrome pair and the two shell rules as globals.css declares them (menu B shell task 1)", () => {
+  const design = read("DESIGN.md")
+  const light = readRootTokens(globals())
+  const shellNames = Object.keys(light).filter((name) => /^(?:chrome|sidebar)/.test(name))
+  assert.deepEqual(shellNames, ["chrome", "chrome-border", "sidebar", "sidebar-foreground", "sidebar-muted", "sidebar-hover", "sidebar-active", "sidebar-active-foreground", "sidebar-active-icon", "sidebar-active-bar", "sidebar-ring", "sidebar-dot", "sidebar-border"], "the :root order")
+  assert.ok(design.includes(`${shellNames.map((name) => `\n  ${name}: "${light[name]}"`).join("")}\n  image-stage: "${light["image-stage"]}"`), "frontmatter")
+  const start = design.indexOf("\n### Sidebar\n")
+  const section = design.slice(start, design.indexOf("\n### ", start + 1))
+  const recorded = Object.fromEntries([...section.matchAll(/`--([a-z-]+)` (#[0-9A-F]{6})\b/g)].map(([, name, value]) => [name, value]))
+  assert.deepEqual(recorded, Object.fromEntries(shellNames.filter((name) => name.startsWith("sidebar")).map((name) => [name, light[name]])))
+  assert.ok(section.includes("Tailwind slate #0F172A"), "why the menu is navy again")
+  assert.ok(design.includes(`\n- **Chrome** (\`--chrome\` ${light.chrome}, \`--chrome-border\` ${light["chrome-border"]}; `), "§2 Neutral")
+  assert.match(design, /holds `THEME_COLORS`, the chrome color of each theme for `theme-color`, equal to `--chrome`/)
+  const shell = design.indexOf("\n### App Shell\n")
+  assert.ok(shell > design.indexOf("\n### Navigation\n") && shell < design.indexOf("\n### Data Tables\n"), "§5 App Shell follows Navigation")
+  const body = design.slice(shell, design.indexOf("\n### Data Tables\n"))
+  assert.match(body, /\n\*\*The One Count Rule\.\*\* In the shell, a number for waiting work appears on the bell only\./)
+  assert.match(body, /\n\*\*The One Banner Rule\.\*\* A message of the shell \(the session ending, offline\) appears in one region under the topbar/)
+  assert.doesNotMatch(design, /No colored side stripe\.|`--sidebar-active` equals `--brand-navy`|selected menu row \(`--sidebar-active`\)|`--sidebar` #0D182A/)
+  const json = JSON.parse(read(".impeccable/design.json")) as { components: Array<{ name: string; description: string; css: string }> }
+  const nav = json.components.find((entry) => entry.name === "Sidebar Navigation Item")?.css ?? ""
+  for (const name of ["sidebar", "sidebar-foreground", "sidebar-muted", "sidebar-hover", "sidebar-active", "sidebar-active-icon", "sidebar-active-bar", "sidebar-ring"]) assert.ok(nav.includes(light[name]), `nav example uses --${name}`)
+  assert.match(json.components.find((entry) => entry.name === "App Shell")?.description ?? "", /The One Count Rule: .+ The One Banner Rule: /)
+  assert.ok(read("docs/14_UI_UX_DESIGN_SYSTEM.md").includes("\n| Navigation | The navy menu with sections beside the topbar on the chrome color, in the light or the dark theme |"))
 })

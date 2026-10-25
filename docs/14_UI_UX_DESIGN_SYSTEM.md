@@ -25,7 +25,7 @@ Before editing UI, read:
 
 | Concern | Desktop Management / Review | Mobile Field Operation |
 |---|---|---|
-| Navigation | Sidebar with sections and the topbar on the chrome color, in the light or the dark theme | Field navigation on navigation routes; hidden in focus-task routes |
+| Navigation | The navy menu with sections beside the topbar on the chrome color, in the light or the dark theme | Field navigation on navigation routes; hidden in focus-task routes |
 | Asset Register | Dense table, presets, columns, bulk actions | Search-first cards, compact filters, touch-safe row actions |
 | Asset Detail | Comparison, history, documents, review actions | Compact identity, collapsible sections, contextual quick actions |
 | Audit | Round setup, pending review, findings, close readiness | Scanner-first counting, evidence, pending queue, recent scans |

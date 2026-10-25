@@ -103,13 +103,25 @@ function contrastRules(prefix: "" | "dark: ", set: Record<string, string>) {
     }
   })
 
-  test(`${prefix}sidebar pairs are readable`, () => {
-    assertAA("sidebar-foreground", "sidebar", "sidebar-foreground on sidebar")
-    assertAA("sidebar-foreground", "sidebar-hover", "sidebar-foreground on sidebar-hover")
-    assertAA("sidebar-muted", "sidebar", "sidebar-muted on sidebar")
+  test(`${prefix}the navy menu: text AA on its fills; the open icon, ring, bar and dot at 3:1 (menu B §6.1)`, () => {
+    for (const fill of ["sidebar", "sidebar-hover"]) {
+      assertAA("sidebar-foreground", fill, `sidebar-foreground on ${fill}`)
+      assertAA("sidebar-muted", fill, `sidebar-muted on ${fill}`)
+      assertAA("sidebar-active-foreground", fill, `sidebar-active-foreground on ${fill}`)
+    }
     assertAA("sidebar-active-foreground", "sidebar-active", "sidebar-active-foreground on sidebar-active")
-    assertContrast("sidebar-active-icon", "sidebar-active", NON_TEXT, "sidebar-active-icon on sidebar-active")
-    assertContrast("ring", "sidebar", NON_TEXT, "ring on sidebar")
+    for (const fill of ["sidebar", "sidebar-active"]) assertContrast("sidebar-active-icon", fill, NON_TEXT, `sidebar-active-icon on ${fill}`)
+    for (const fill of ["sidebar", "sidebar-hover", "sidebar-active"]) {
+      assertContrast("sidebar-ring", fill, NON_TEXT, `sidebar-ring on ${fill}`)
+      assertContrast("sidebar-dot", fill, NON_TEXT, `sidebar-dot on ${fill}`)
+    }
+    assertContrast("sidebar-active-bar", "sidebar", NON_TEXT, "sidebar-active-bar on sidebar")
+    assertContrast("ring", "sidebar", NON_TEXT, "ring on sidebar") // the base outline of anything in the menu without its own ring
+  })
+
+  test(`${prefix}the chrome (topbar, phone bottom bar) keeps the page inks AA and the ring and field border at 3:1 (menu B §6.1)`, () => {
+    for (const ink of ["foreground", "muted-foreground", "faint-foreground", "primary"]) assertAA(ink, "chrome", `${ink} on chrome`)
+    for (const line of ["ring", "input"]) assertContrast(line, "chrome", NON_TEXT, `${line} on chrome`)
   })
 
   test(`${prefix}focus ring and field borders reach 3:1 on the surfaces they sit on`, () => {
@@ -129,6 +141,7 @@ function contrastRules(prefix: "" | "dark: ", set: Record<string, string>) {
     assert.notEqual(value("canvas"), value("card"), "the page canvas must differ from panels")
     assert.notEqual(value("canvas"), value("background"), "the canvas must differ from field and dialog backgrounds")
     assert.notEqual(value("row-hover"), value("card"), "a hovered row must differ from the panel it sits in")
+    assert.notEqual(value("sidebar"), value("chrome"), "the menu and the topbar no longer share a color")
   })
 
   test(`${prefix}lines and text levels keep their order on a panel`, () => {

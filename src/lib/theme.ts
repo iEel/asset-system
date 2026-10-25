@@ -9,7 +9,7 @@ export type ThemeChoice = "light" | "dark"
 // The value of <meta name="theme-color">: one color for an explicit choice, a media pair when following the OS.
 export type ThemeColor = string | Array<{ media: string; color: string }>
 
-// The chrome color of each theme: its --sidebar token (the sidebar, the topbar and the phone bottom bar).
+// The chrome color of each theme: its --chrome token (the topbar and the phone bottom bar; the navy menu has its own --sidebar).
 export const THEME_COLORS = { "light": "#FFFFFF", "dark": "#0D182A" } as const
 
 export function parseThemeChoice(value: string | undefined | null): ThemeChoice | null {

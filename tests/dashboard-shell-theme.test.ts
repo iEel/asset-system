@@ -2,10 +2,10 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const sidebar = () => readFileSync("src/components/layout/sidebar.tsx", "utf8")
-const topbar = () => readFileSync("src/components/layout/topbar.tsx", "utf8")
+const sidebar = () => readFileSync("src/components/layout/sidebar.tsx", "utf8").replace(/\r/g, "")
+const topbar = () => readFileSync("src/components/layout/topbar.tsx", "utf8").replace(/\r/g, "")
 
-test("sidebar uses the light navigation tokens and marks the current page", () => {
+test("the menu uses the navy menu tokens and marks the current page", () => {
   const source = sidebar()
   assert.match(source, /bg-sidebar\b/)
   assert.match(source, /text-sidebar-foreground/)
@@ -30,8 +30,8 @@ test("sidebar uses the light navigation tokens and marks the current page", () =
   assert.doesNotMatch(source, /border-r-2 border-primary/)
 })
 
-test("topbar takes the sidebar's chrome color", () => {
+test("the topbar takes the chrome color", () => {
   const source = topbar()
-  assert.match(source, /bg-sidebar\b/)
-  assert.match(source, /border-border/)
+  assert.match(source, /border-chrome-border bg-chrome\b/)
+  assert.doesNotMatch(source, /\bbg-sidebar\b/)
 })

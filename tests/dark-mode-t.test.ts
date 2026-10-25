@@ -33,6 +33,7 @@ const LIGHT_AT_BASE: Record<string, string> = {
   "sidebar": "#FFFFFF", "sidebar-foreground": "#1F3657", "sidebar-muted": "#586A84", "sidebar-hover": "#EBF0F7", "sidebar-active": "#083161",
   "sidebar-active-foreground": "#FFFFFF", "sidebar-active-icon": "#18A0A8", "sidebar-border": "#D7DEE8", "radius": "0.5rem",
 }
+const MENU_B_LIGHT: Record<string, string> = { "sidebar": "#082A54", "sidebar-foreground": "#DCE6F2", "sidebar-muted": "#9FB3D1", "sidebar-hover": "#1C3B62", "sidebar-active": "#1E4F94", "sidebar-active-foreground": "#FFFFFF", "sidebar-active-icon": "#5FD6DD", "sidebar-border": "#213F65" }
 
 test("the dark set has every light token as #RRGGBB, in two identical copies, with the elevation of direction A (dark mode task T1)", () => {
   const css = globals()
@@ -49,19 +50,17 @@ test("the dark set has every light token as #RRGGBB, in two identical copies, wi
   assert.deepEqual(readBlockDeclarations(css, ':root:not([data-theme="light"])'), readBlockDeclarations(css, ':root[data-theme="dark"]'), "the two dark copies are identical")
   // The light theme looks as it did (Review Focus 1): every light value of 87e4756 stays while the dark set is tuned; the
   // plan only adds --image-stage (here) and --app-icon-frame (Task 5, P1).
-  const added = ["image-stage", "app-icon-frame"]
-  assert.deepEqual(Object.fromEntries(Object.entries(light).filter(([name]) => !added.includes(name))), LIGHT_AT_BASE, "the light values of 87e4756")
+  const added = ["image-stage", "app-icon-frame", "chrome", "chrome-border", "sidebar-active-bar", "sidebar-ring", "sidebar-dot"]
+  assert.deepEqual(Object.fromEntries(Object.entries(light).filter(([name]) => !added.includes(name))), { ...LIGHT_AT_BASE, ...MENU_B_LIGHT }, "the light values of 87e4756")
   // Elevation (spec §5.2): the canvas is darkest, the wells (background) sit darker than the panels, menus a step lighter,
-  // and the chrome (sidebar, topbar, bottom bar) sits between the canvas and the panels.
+  // and the chrome (topbar, bottom bar) sits between the canvas and the panels.
   const luminance = (name: string) => relativeLuminance(parseHexColor(resolveToken(dark, name)))
   const steps = ["canvas", "background", "card", "popover"]
   for (let index = 1; index < steps.length; index++) {
     assert.ok(luminance(steps[index - 1]) < luminance(steps[index]), `dark --${steps[index - 1]} must be darker than --${steps[index]}`)
   }
-  assert.ok(luminance("canvas") < luminance("sidebar") && luminance("sidebar") < luminance("card"), "dark chrome sits between the canvas and the panels")
-  // Roles (the light ones: tests/modern-enterprise-theme.test.ts). The selected menu row stays navy with the brand teal
-  // icon; the pressed primary fill (active:bg-brand-navy) is darker than the action blue, whose hover is lighter.
-  assert.equal(dark["sidebar-active-icon"], dark["brand-accent"], "the selected menu icon carries the brand teal")
+  assert.ok(luminance("canvas") < luminance("chrome") && luminance("chrome") < luminance("card"), "dark chrome sits between the canvas and the panels")
+  for (const tokens of [light, dark]) assert.equal(tokens["sidebar-active-bar"], tokens["brand-accent"], "the open menu row's bar carries the brand teal")
   assert.notEqual(dark["sidebar-active"], dark.sidebar, "the selected menu row stands out from the sidebar")
   assert.ok(luminance("brand-navy") < luminance("primary") && luminance("primary") < luminance("primary-hover"), "pressed, rest and hover keep their order")
   for (const [set, tokens] of [["light", light], ["dark", dark]] as const) {
@@ -127,7 +126,7 @@ test("a focus ring's gap takes the panel color, not white, and floating parts ke
   assert.match(read("src/components/layout/mobile-field-navigation.tsx"), /rounded-full bg-primary text-primary-foreground shadow-md/)
   assert.match(read("src/components/audit/audit-scan-check-form.tsx"), /variant="outline"\s+size="icon"\s+onClick=\{\(\) => removePhoto\(photo\.id\)\}\s+aria-label=\{t\("removeQueuedPhoto"\)\}\s+className="absolute right-1 top-1 shadow-sm"/)
   for (const [set, tokens] of [["light", readRootTokens(css)], ["dark", readDarkTokens(css)]] as const) {
-    const ratio = contrastRatio(parseHexColor(resolveToken(tokens, "primary")), parseHexColor(resolveToken(tokens, "sidebar")))
+    const ratio = contrastRatio(parseHexColor(resolveToken(tokens, "primary")), parseHexColor(resolveToken(tokens, "chrome")))
     assert.ok(ratio >= 3, `${set}: the scan button's fill on the bottom bar is ${ratio.toFixed(2)}:1`)
   }
 })

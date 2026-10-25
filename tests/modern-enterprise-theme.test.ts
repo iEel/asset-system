@@ -34,9 +34,10 @@ function token(source: string, name: string) {
 test("modern enterprise tokens keep brand, action, and navigation roles separate", () => {
   const source = css()
   assert.notEqual(token(source, "primary"), token(source, "brand-navy"), "actions use their own blue, not the logo navy")
-  assert.equal(token(source, "sidebar-active"), token(source, "brand-navy"), "the selected menu row carries the logo navy")
-  assert.equal(token(source, "sidebar-active-icon"), token(source, "brand-accent"), "the selected menu icon carries the logo teal")
-  assert.equal(token(source, "sidebar"), token(source, "card"), "the light-shell sidebar is a white surface")
+  assert.equal(token(source, "sidebar-active"), token(source, "primary"), "the open menu row carries the action blue")
+  assert.equal(token(source, "sidebar-active-bar"), token(source, "brand-accent"), "the open menu row's bar carries the logo teal")
+  assert.equal(token(source, "chrome"), token(source, "card"), "the topbar's chrome is a white surface in light")
+  assert.notEqual(token(source, "sidebar"), token(source, "chrome"), "the menu is navy beside the light chrome")
   assert.notEqual(token(source, "info"), token(source, "primary"), "info has its own teal ink")
 })
 

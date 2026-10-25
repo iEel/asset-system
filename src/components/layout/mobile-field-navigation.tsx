@@ -48,7 +48,7 @@ export function MobileFieldNavigation({
     <nav
       data-mobile-field-navigation
       aria-label={t("mobileNavigationLabel")}
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-sidebar px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-chrome-border bg-chrome px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 lg:hidden"
     >
       <div className="mx-auto flex min-h-16 max-w-lg items-end justify-around gap-1">
         {destinations.map((destination) => {
