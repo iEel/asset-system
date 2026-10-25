@@ -120,7 +120,7 @@ These were settled while the plan was written. Each task's **Decisions** block r
 
 **Search and the phone**
 - **Search group name.** "รอบตรวจนับ".
-- **The asset total.** "ดูทั้งหมดในทะเบียน (N)" uses the register's own matching. The dropdown can still list an asset the register search would not find, for example by brand name.
+- **The asset total.** "ดูทั้งหมดในทะเบียน (N)" uses the register's own matching. The register widens to the global search's 19 fields, so the dropdown, N and the register all find the same assets.
 - **Phone top bar.** It shows the open menu row's label as its title, as the spec asks, but only on pages with the bottom menu. Focus task pages keep their own task header.
 
 **How the shell nests (dashboard-shell.tsx)**
@@ -136,13 +136,13 @@ These were settled while the plan was written. Each task's **Decisions** block r
 - Task 12 is split into 12a (the keeper) and 12b (the audit queue's user binding).
 - Task 13 is split into 13A (E2E code), 13B (the run) and 13C (docs).
 
-## Open questions for the user (the plan ships with the default)
+## The user's answers (2026-10-25), already written into the tasks
 
-1. **The work center's dot in E2E.** No E2E role holds `dashboard:view`, so for now the dot is checked by hand in UAT. Giving the IT head that permission would change the E2E users table.
-2. **A held scan queued by someone else.** No one gets "ลบออกจากคิว" for it. An admin could be allowed to discard it.
-3. **Register search coverage.** The register search could also match brand, model, company, branch and location names, so that "(N)" never shows fewer than the dropdown lists. This would change what the register finds.
-4. **The two departures above.** Confirm both: no `scroll-padding-top`, and activity means the person's own input only.
-5. **The offline line on the audit scan page.** The spec's general wording, "ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์", contradicts the queued saves on that page. The plan keeps the spec's words and adds the page's queue line. The page's own line could replace the second clause instead.
+1. **The work center's dot in E2E: yes.** The E2E IT head gains `dashboard:view`, and Task 13A checks the dot.
+2. **Held scans queued by someone else: left for now.** Nobody gets "ลบออกจากคิว" for them (Task 12b).
+3. **Register search coverage: widen it.** The register, its export and the reports match the global search's 19 fields through `assetSearchConditions` (Task 8).
+4. **The two departures above: accepted.** There is no `scroll-padding-top`, and only the person's own input counts as activity.
+5. **The offline line on the audit scan page: the page's line replaces the second clause.** The banner reads "ออฟไลน์อยู่ · การตรวจนับ N รายการรอส่ง จะส่งเองเมื่อออนไลน์". With nothing queued, it reads "ออฟไลน์อยู่ · ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์" (Tasks 10 and 12b).
 
 ---
 
@@ -347,7 +347,7 @@ Menu B (spec `docs/superpowers/specs/2026-10-21-menu-b-shell-design.md`): what e
 
 **The One Count Rule.** In the shell, a number for waiting work appears on the bell only. The menu marks "ศูนย์งานค้าง" with the orange `--sidebar-dot` and a hidden sentence ("มีงานรอคุณ N รายการ", `nav.workCenterWaiting`) while the bell's "รอคุณตัดสิน" group holds unread work; no menu row, tab or bar repeats the number. Pages keep their own counts as page content.
 
-**The One Banner Rule.** A message of the shell (the session ending, offline) appears in one region under the topbar (`ShellBanner`): full width, `bg-warning-soft` with the warning ink, `role="status"`, always mounted outside `<main>`, one message at a time (offline wins while offline, then the session; on the audit scan page the offline message carries the page's queue line). No page draws its own banner for these; the scan page's queue tools and failed saves stay page content. The region's height joins `--shell-top`.
+**The One Banner Rule.** A message of the shell (the session ending, offline) appears in one region under the topbar (`ShellBanner`): full width, `bg-warning-soft` with the warning ink, `role="status"`, always mounted outside `<main>`, one message at a time (offline wins while offline, then the session; on the audit scan page the page's own line takes the offline message's second clause, because saves there queue on the device). No page draws its own banner for these; the scan page's queue tools and failed saves stay page content. The region's height joins `--shell-top`.
 
 - **Frame:** the skip link "ข้ามไปเนื้อหาหลัก" first, the menu, the 56px topbar (`h-14`, `bg-chrome`, `border-chrome-border`), the banner region, then `<main id="main" tabIndex={-1}>`. `--shell-top` (topbar plus banner) places the toasts and the viewport-height panels; only `<main>` scrolls, below the bar and the banner, so nothing scrolls under them; `scroll-padding-bottom` on `<main>` clears the phone bottom menu.
 - **Menu (desktop):** a 56px brand row over a `sidebar-border` line; an open group's pages on a guide line under a white, bold title. The menu scrolls between the brand row and the person pinned at the foot (`SidebarAccount`: initial, name, role, chevron, each line truncated; its menu holds the name, the e-mail and "ออกจากระบบ").
@@ -1328,6 +1328,7 @@ git commit -m "feat(shell): the bell box groups waiting work, keeps read rows di
 **Interfaces:**
 - Consumes: Task 6's top bar; `buildExactAssetRegisterHref(locale: string, params?: Record<string, string>): string` (`src/lib/asset-register-view-memory.ts`, no imports); `hasNavigationPermission(user, { module, action })`.
 - Produces:
+  - `assetSearchConditions(search: string): Prisma.AssetWhereInput[]` in `src/lib/asset-list-query.ts`: the 19 `contains` conditions of today's search-route asset query, in its order. `buildAssetWhere` uses `OR: assetSearchConditions(filters.search)`.
   - `buildAssetSearchWhere(search: string): Prisma.AssetWhereInput` = `buildAssetWhere(parseAssetListParams({ search }))`.
   - `global-search.ts`: `globalSearchMinChars = 2`; `globalSearchGroupOrder = ["asset","maintenance","audit","disposal","employee","location","supplier","company","branch"] as const`; `groupGlobalSearchResults<T extends { type: GlobalSearchResultType }>(results: T[]): Array<{ type: GlobalSearchResultType; results: T[] }>`; `type GlobalSearchResponse<T> = { results: T[]; scope: GlobalSearchScope; assetTotal: number | null }`.
   - `search-highlight.ts`: `splitSearchHighlight(value: string, term: string): [string, string, string] | null`.
@@ -1336,7 +1337,20 @@ git commit -m "feat(shell): the bell box groups waiting work, keeps read rows di
   - `GlobalSearch({ variant = "bar", canViewAssets, canCreateAssets, onNavigate }: { variant?: "bar" | "sheet"; canViewAssets: boolean; canCreateAssets: boolean; onNavigate?: () => void })`; `MobileSearchSheet({ canViewAssets, canCreateAssets }: { canViewAssets: boolean; canCreateAssets: boolean })` (Task 9 keeps it on every phone page).
 
 **Decisions:**
-- `assetTotal` counts with the register's own search (`buildAssetWhere`, 11 fields) only for `scope=all`, 2+ characters and `asset:view`, else `null`. Listed asset rows keep today's 19-field `findMany` (`take: 10`) and caps 8/14, so for a brand, model or company name N can be below the rows listed.
+- The register's search widens to the global search's 19 fields (user decision 2026-10-25). `assetSearchConditions(search)` holds the one list, in the route's order:
+  - tag, name, serial, fixed-asset code;
+  - category code and name;
+  - brand name and model name;
+  - company code, `nameTh` and `nameEn`;
+  - branch code and name;
+  - custodian code, `fullNameTh`, `fullNameEn` and email;
+  - location code and name.
+
+  `buildAssetWhere` and the route's asset `findMany` both use it. So "ดูทั้งหมดในทะเบียน (N)", the rows listed, the register, its export and the reports that read `buildAssetWhere` all find the same assets.
+- `assetTotal` (`prisma.asset.count` on `buildAssetSearchWhere`) is computed only for `scope=all`, 2+ characters and `asset:view`; otherwise it is `null`. The listed asset rows keep `take: 10` and the caps 8/14.
+- `asset.searchPlaceholder` becomes:
+  - th "ค้นหา รหัส · ชื่อ · Serial · ยี่ห้อ/รุ่น · ผู้ถือครอง · ที่ตั้ง"
+  - en "Search tag, name, serial, brand or model, custodian or location"
 - The Thai API label for audit becomes "รอบตรวจนับ" (`label()`); English "Audit" stays.
 - `/` matches `key === "/"` or `code === "Slash"` without Shift (Thai layout: "ฝ"); never with Alt/Ctrl/Meta, composing, `defaultPrevented`, focus in INPUT/TEXTAREA/SELECT, contentEditable, or inside `[role="dialog"]`. Bar only; it focuses the input only when `input.getClientRects().length > 0`. Its one `window` keydown listener gets a one-entry allow list in the overlay guard.
 - Recents, "ล้าง" and the ways forward are `li role="option"` (arrows + Enter), not buttons; the field stays hand-written (not `SearchField`), so the phase 3 guard rows stay.
@@ -1441,22 +1455,35 @@ test("results group in the shell's type order and keep their rank inside a group
 })
 test("the route counts assets with the register's search only for scope=all and 2+ characters (menu B shell task 8)", () => {
   const route = read("src/app/api/search/route.ts")
-  assert.match(route, /import \{ buildAssetSearchWhere \} from "@\/lib\/asset-list-query"/)
   assert.match(route, /if \(query\.length < globalSearchMinChars\) return NextResponse\.json\(\{ results: \[\], scope, assetTotal: null \}\)/)
   assert.match(route, /const canSearchAssets = hasPermission\(user, "asset", "view"\)/)
   assert.match(route, /scope === "all" && canSearchAssets \? prisma\.asset\.count\(\{ where: buildAssetSearchWhere\(query\) \}\) : Promise\.resolve\(null\)/)
   assert.match(route, /results: sortGlobalSearchResults\(results\.flat\(\), query, scope === "asset" \? 8 : 14\),\s*scope,\s*assetTotal,/)
   assert.match(route, /audit: "รอบตรวจนับ",/)
+  assert.match(route, /import \{ assetSearchConditions, buildAssetSearchWhere \} from "@\/lib\/asset-list-query"/)
+  assert.match(route, /OR: assetSearchConditions\(query\)/)
+  assert.doesNotMatch(route, /\{ brand: \{ name: \{ contains: query \} \} \}/, "one list of asset search fields")
 })
 ```
 
-`tests/asset-list-query.test.ts` (import `buildAssetSearchWhere`):
+`tests/asset-list-query.test.ts` (import `assetSearchConditions`, `buildAssetSearchWhere`):
 
 ```ts
 test("the global search counts assets with the register's own search (menu B shell task 8)", () => {
   const where = buildAssetSearchWhere("  NB-01 ")
   assert.deepEqual(where, buildAssetWhere(parseAssetListParams({ search: "NB-01" })))
-  assert.deepEqual(Object.keys(where).sort(), ["OR", "isActive"]); assert.equal((where.OR as unknown[]).length, 11)
+  assert.deepEqual(Object.keys(where).sort(), ["OR", "isActive"]); assert.equal((where.OR as unknown[]).length, 19)
+})
+test("the register finds brand, model, company, branch, custodian e-mail and location names (user decision 2026-10-25)", () => {
+  const conditions = assetSearchConditions("Dell")
+  assert.equal(conditions.length, 19)
+  for (const expected of [
+    { brand: { name: { contains: "Dell" } } }, { model: { name: { contains: "Dell" } } },
+    { company: { nameTh: { contains: "Dell" } } }, { company: { nameEn: { contains: "Dell" } } },
+    { branch: { name: { contains: "Dell" } } }, { custodian: { fullNameEn: { contains: "Dell" } } },
+    { custodian: { email: { contains: "Dell" } } }, { currentLocation: { name: { contains: "Dell" } } },
+  ]) assert.ok(conditions.some((condition) => JSON.stringify(condition) === JSON.stringify(expected)), JSON.stringify(expected))
+  assert.deepEqual(buildAssetWhere(parseAssetListParams({ search: "Dell" })).OR, conditions)
 })
 ```
 
@@ -1501,7 +1528,8 @@ test("search messages (menu B shell task 8)", () => {
 - [ ] **Step 2: Run and see them fail.** `node --test tests/global-search-panel.test.ts tests/global-search-recent.test.ts tests/global-search.test.ts tests/asset-list-query.test.ts tests/global-search-ui.test.ts` → `ERR_MODULE_NOT_FOUND` for the three new lib modules; SyntaxError: no export `buildAssetSearchWhere` / `globalSearchGroupOrder`; AssertionErrors on the route, component, sheet and message tests.
 
 - [ ] **Step 3: Implement.**
-  - **Route `GET`:** the pinned early return (no query runs); `const canSearchAssets = …`; `const [results, assetTotal] = await Promise.all([Promise.all([<today's nine searches, the asset one gated by canSearchAssets>]), <the pinned count>])`; answer `{ results: <pinned>, scope, assetTotal }`. Asset `findMany` unchanged. `label()` Thai map: `audit: "รอบตรวจนับ",`.
+  - **Route `GET`:** the pinned early return (no query runs); `const canSearchAssets = …`; `const [results, assetTotal] = await Promise.all([Promise.all([<today's nine searches, the asset one gated by canSearchAssets>]), <the pinned count>])`; answer `{ results: <pinned>, scope, assetTotal }`. In the asset `findMany`, the inline OR list becomes `OR: assetSearchConditions(query)`, and nothing else in it changes. `label()` Thai map: `audit: "รอบตรวจนับ",`.
+  - **`asset-list-query.ts`:** add `assetSearchConditions` (the route's 19 conditions, in its order). `buildAssetWhere`'s search branch becomes `OR: assetSearchConditions(filters.search)`. Then add `buildAssetSearchWhere`.
   - **`search-highlight.ts`:** the function moved verbatim, `term.trim().toLocaleLowerCase()` inline; `audit-scan-session.ts` gets `export { splitSearchHighlight } from "./search-highlight.ts"`.
   - **`global-search-recent.ts`:** imports `globalSearchGroupOrder` from `./global-search.ts`; rules in Decisions.
   - **`global-search-panel.ts`** (relative imports): `getGlobalSearchPanelState` on `q = query.trim()`, first match wins: `"hint"` empty, `"minChars"` below `globalSearchMinChars`, `"results"` when `resultCount > 0`, `"loading"` when `settledQuery !== q`, `"error"` when `failed`, else `"notFound"`. `buildGlobalSearchSections`: `"results"` → `groupGlobalSearchResults` with keys `${type}:${id}`, plus `registerAll` (`buildExactAssetRegisterHref(locale, { search: q })`) at the end of the asset group when `assetTotal > 0` (its own asset group first if none); `"hint"` with recents → `recent` (`recent:${href}`, then `clearRecent`); `"notFound"` with an action → `notFound`; else `[]`.
@@ -1517,11 +1545,12 @@ test("search messages (menu B shell task 8)", () => {
 
 ```json
 { "set": {
-  "th": { "globalSearch.group_asset": "ทรัพย์สิน", "globalSearch.group_maintenance": "งานซ่อม", "globalSearch.group_audit": "รอบตรวจนับ", "globalSearch.group_disposal": "ตัดจำหน่าย", "globalSearch.group_employee": "พนักงาน", "globalSearch.group_location": "ที่ตั้ง", "globalSearch.group_supplier": "ผู้ขาย", "globalSearch.group_company": "บริษัท", "globalSearch.group_branch": "สาขา", "globalSearch.viewAllInRegister": "ดูทั้งหมดในทะเบียน ({count})", "globalSearch.emptyHint": "ค้นหาด้วยรหัสทรัพย์สิน Serial ชื่อ เลขที่เอกสาร หรือชื่อพนักงาน", "globalSearch.keyboardFocus": "ค้นหาจากทุกหน้า", "globalSearch.recentTitle": "เปิดล่าสุด", "globalSearch.recentClear": "ล้าง", "globalSearch.recentClearLabel": "ล้างรายการที่เปิดล่าสุด", "globalSearch.notFound": "ไม่พบ \"{query}\"", "globalSearch.notFoundHint": "ลองพิมพ์ให้สั้นลง หรือตรวจตัวสะกด", "globalSearch.actionScan": "สแกน / ค้นหาทรัพย์สิน", "globalSearch.actionRegister": "หาในทะเบียนด้วยตัวกรอง", "globalSearch.actionCreateAsset": "เพิ่มทรัพย์สิน", "globalSearch.failed": "ค้นหาไม่สำเร็จ ลองอีกครั้ง" },
-  "en": { "globalSearch.group_asset": "Assets", "globalSearch.group_maintenance": "Repairs", "globalSearch.group_audit": "Audit rounds", "globalSearch.group_disposal": "Disposals", "globalSearch.group_employee": "Employees", "globalSearch.group_location": "Locations", "globalSearch.group_supplier": "Suppliers", "globalSearch.group_company": "Companies", "globalSearch.group_branch": "Branches", "globalSearch.viewAllInRegister": "View all in the register ({count})", "globalSearch.emptyHint": "Search by asset tag, serial, name, document number or employee name", "globalSearch.keyboardFocus": "search from any page", "globalSearch.recentTitle": "Recently opened", "globalSearch.recentClear": "Clear", "globalSearch.recentClearLabel": "Clear recently opened", "globalSearch.notFound": "No results for \"{query}\"", "globalSearch.notFoundHint": "Try a shorter term or check the spelling", "globalSearch.actionScan": "Scan or look up an asset", "globalSearch.actionRegister": "Find it in the register with filters", "globalSearch.actionCreateAsset": "Add an asset", "globalSearch.failed": "Search failed. Try again." } } }
+  "th": { "globalSearch.group_asset": "ทรัพย์สิน", "globalSearch.group_maintenance": "งานซ่อม", "globalSearch.group_audit": "รอบตรวจนับ", "globalSearch.group_disposal": "ตัดจำหน่าย", "globalSearch.group_employee": "พนักงาน", "globalSearch.group_location": "ที่ตั้ง", "globalSearch.group_supplier": "ผู้ขาย", "globalSearch.group_company": "บริษัท", "globalSearch.group_branch": "สาขา", "globalSearch.viewAllInRegister": "ดูทั้งหมดในทะเบียน ({count})", "globalSearch.emptyHint": "ค้นหาด้วยรหัสทรัพย์สิน Serial ชื่อ เลขที่เอกสาร หรือชื่อพนักงาน", "globalSearch.keyboardFocus": "ค้นหาจากทุกหน้า", "globalSearch.recentTitle": "เปิดล่าสุด", "globalSearch.recentClear": "ล้าง", "globalSearch.recentClearLabel": "ล้างรายการที่เปิดล่าสุด", "globalSearch.notFound": "ไม่พบ \"{query}\"", "globalSearch.notFoundHint": "ลองพิมพ์ให้สั้นลง หรือตรวจตัวสะกด", "globalSearch.actionScan": "สแกน / ค้นหาทรัพย์สิน", "globalSearch.actionRegister": "หาในทะเบียนด้วยตัวกรอง", "globalSearch.actionCreateAsset": "เพิ่มทรัพย์สิน", "globalSearch.failed": "ค้นหาไม่สำเร็จ ลองอีกครั้ง", "asset.searchPlaceholder": "ค้นหา รหัส · ชื่อ · Serial · ยี่ห้อ/รุ่น · ผู้ถือครอง · ที่ตั้ง" },
+  "en": { "globalSearch.group_asset": "Assets", "globalSearch.group_maintenance": "Repairs", "globalSearch.group_audit": "Audit rounds", "globalSearch.group_disposal": "Disposals", "globalSearch.group_employee": "Employees", "globalSearch.group_location": "Locations", "globalSearch.group_supplier": "Suppliers", "globalSearch.group_company": "Companies", "globalSearch.group_branch": "Branches", "globalSearch.viewAllInRegister": "View all in the register ({count})", "globalSearch.emptyHint": "Search by asset tag, serial, name, document number or employee name", "globalSearch.keyboardFocus": "search from any page", "globalSearch.recentTitle": "Recently opened", "globalSearch.recentClear": "Clear", "globalSearch.recentClearLabel": "Clear recently opened", "globalSearch.notFound": "No results for \"{query}\"", "globalSearch.notFoundHint": "Try a shorter term or check the spelling", "globalSearch.actionScan": "Scan or look up an asset", "globalSearch.actionRegister": "Find it in the register with filters", "globalSearch.actionCreateAsset": "Add an asset", "globalSearch.failed": "Search failed. Try again.", "asset.searchPlaceholder": "Search tag, name, serial, brand or model, custodian or location" } } }
 ```
 
 - [ ] **Step 4: Update existing pins.**
+  - `tests/asset-list-query.test.ts:43-55`: the 11 literal `contains: "printer"` conditions become `OR: assetSearchConditions("printer")`. Grep `tests/` for `searchPlaceholder` and for any other pin on the 11-field list, and update each to the new placeholder or to the 19 fields.
   - `tests/global-search-ui.test.ts:8`: `/<PopoverContent[\s\S]*?id="global-search-results"/` → `/<PopoverContent[\s\S]*?id=\{panelId\}/`; lines 7, 9-14 and 21-25 stay.
   - `tests/shell-sweep-ui.test.ts` (the two `search` asserts) → `/<div ref=\{anchorRef\} className=\{cn\(variant === "bar" \? "relative hidden w-\[min\(28rem,36vw\)\] min-w-0 max-w-full lg:block" : "relative w-full"\)\}>/` and `/className=\{cn\("h-9 w-full min-w-0 rounded-md [^"]*", variant === "sheet" && "h-11 text-base"\)\}/`.
   - `tests/ui-overlay-guards.test.ts:71-73`: `// the / shortcut opens the search and closes nothing (menu B shell task 8)` + `const GLOBAL_KEY_LISTENERS = ['src/components/layout/global-search.tsx: window.addEventListener("keydown"']`; the test expects `GLOBAL_KEY_LISTENERS` instead of `[]`.
@@ -1535,7 +1564,7 @@ test("search messages (menu B shell task 8)", () => {
 
 ```
 git add src/lib/global-search.ts src/lib/global-search-panel.ts src/lib/global-search-recent.ts src/lib/search-highlight.ts src/lib/audit-scan-session.ts src/lib/asset-list-query.ts src/app/api/search/route.ts src/components/layout/global-search.tsx src/components/layout/mobile-search-sheet.tsx src/components/layout/topbar.tsx messages/th.json messages/en.json tests/global-search-panel.test.ts tests/global-search-recent.test.ts tests/global-search.test.ts tests/global-search-ui.test.ts tests/asset-list-query.test.ts tests/shell-sweep-ui.test.ts tests/ui-overlay-guards.test.ts
-git commit -m "feat(shell): search groups by type, highlights the match, opens on / and on the phone, and shows the register total (menu B shell task 8)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(shell): search groups by type, highlights the match, opens on / and on the phone, and shows the register total; the register finds brand, model, company, branch and location names (menu B shell task 8)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1853,12 +1882,12 @@ git commit -m "feat(shell): the phone's More opens a bottom sheet with the perso
   - The bar's guard `if (queue.length === 0 || (!online && failed.length === 0)) return null`, which Task 12b extends.
 
 **Decisions:**
-- Priority (spec §6.7): offline → the offline line with the page line under it; online → the session message; a page line never shows alone online; otherwise empty.
+- Priority (spec §6.7): offline → the offline message (with the page's line as its second clause when a page set one); online → the session message; a page line never shows alone online; otherwise empty.
 - The region is always mounted (empty when nothing shows), `role="status"`, `data-shell-banner`, directly after `<Topbar>` and outside `<main>` (E2E `roles-ui.ts:29-30` scans `main button`).
 - Its height goes into `--shell-banner` via `ResizeObserver` (skipped when undefined), removed on unmount; no `scroll-padding-top` (Task 6).
 - Two contexts, stable setters apart from state, so a page calling a slot hook never re-renders on banner changes (a `ReactNode` slot would loop).
 - `useShellBannerSession` callers pass a memoized element; ticking digits `aria-hidden`; the screen-reader sentence changes at most once a minute.
-- The page line shows only with 1+ queued items; the general offline line stays as the spec words it, on the scan page too.
+- The scan page's line replaces the general second clause (user decision 2026-10-25). Offline, the banner reads `common.offlineBannerWith` "ออฟไลน์อยู่ · {detail}", with the page line as `detail`. The scan page always sets a line: "การตรวจนับ N รายการรอส่ง จะส่งเองเมื่อออนไลน์" when 1+ items are queued, else `auditScan.bannerOfflineSaves` "ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์". Every other page shows `common.offlineBanner` as the spec words it.
 - Only the scan page's status line moves: the bar keeps "รอส่ง N รายการ" with the busy "ส่งตอนนี้" online, and the failed list with "ลบออกจากคิว" online or offline (`role="status"`, `data-audit-scan-offline`, `className="mb-2"` kept).
 - `useOnlineStatus` stays in `src/lib/` (contract name), `"use client"`, imports only `react` (the Node test imports it), the `use-media-query.ts` pattern; online/offline listeners are outside the `ui-overlay-guards` listener guard (no allow-list entry).
 - This task owns the audit E2E edit and the pin `tests/e2e-audit.test.ts:160`, because it deletes `auditScan.offlineBarOffline`; Task 13A does not repeat it.
@@ -1901,6 +1930,7 @@ test("the shell has one banner region between the top bar and main: a polite sta
   assert.match(banner, /const online = useOnlineStatus\(\)/)
   assert.match(banner, /pickShellBanner\(\{ online, session, pageLine \}\)/)
   assert.match(banner, /tCommon\("offlineBanner"\)/)
+  assert.match(banner, /view\.pageLine \? tCommon\("offlineBannerWith", \{ detail: view\.pageLine \}\) : tCommon\("offlineBanner"\)/)
   assert.match(banner, /<WifiOff aria-hidden="true"/)
   assert.match(banner, /new ResizeObserver\(/)
   assert.match(banner, /setProperty\("--shell-banner", /)
@@ -1915,7 +1945,7 @@ test("the shell has one banner region between the top bar and main: a polite sta
 test("the audit scan page's offline line moves into the region; its queue tools stay on the page (§6.7 ruling)", () => {
   const workspace = read("src/components/audit/audit-scan-workspace.tsx")
   assert.match(workspace, /const online = useOnlineStatus\(\)/)
-  assert.match(workspace, /useShellBannerSlot\(queue\.length > 0 \? t\("bannerQueued", \{ count: queue\.length \}\) : null\)/)
+  assert.match(workspace, /useShellBannerSlot\(queue\.length > 0 \? t\("bannerQueued", \{ count: queue\.length \}\) : t\("bannerOfflineSaves"\)\)/)
   assert.doesNotMatch(workspace, /setOnline|addEventListener\("offline"/)
   assert.match(workspace, /window\.addEventListener\("online", handleOnline\)/)
   const bar = read("src/components/audit/audit-scan-offline-bar.tsx")
@@ -1923,13 +1953,15 @@ test("the audit scan page's offline line moves into the region; its queue tools 
   assert.match(bar, /title=\{t\("offlineBarPending", \{ count: queue\.length \}\)\}/)
   assert.doesNotMatch(bar, /offlineBarOffline/)
   const copy = {
-    th: ["ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์", "การตรวจนับ {count} รายการรอส่ง จะส่งเองเมื่อออนไลน์"],
-    en: ["You're offline · Nothing can be saved until you're back online", "{count} audit checks waiting to send · they send by themselves once you're online"],
+    th: ["ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์", "การตรวจนับ {count} รายการรอส่ง จะส่งเองเมื่อออนไลน์", "ออฟไลน์อยู่ · {detail}", "ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์"],
+    en: ["You're offline · Nothing can be saved until you're back online", "{count} audit checks waiting to send · they send by themselves once you're online", "You're offline · {detail}", "Checks are kept on this device and send by themselves once you're online"],
   }
-  for (const [locale, [offline, queued]] of Object.entries(copy)) {
+  for (const [locale, [offline, queued, offlineWith, offlineSaves]] of Object.entries(copy)) {
     const messages = JSON.parse(read(`messages/${locale}.json`))
     assert.equal(messages.common.offlineBanner, offline, locale)
     assert.equal(messages.auditScan.bannerQueued, queued, locale)
+    assert.equal(messages.common.offlineBannerWith, offlineWith, locale)
+    assert.equal(messages.auditScan.bannerOfflineSaves, offlineSaves, locale)
     assert.equal(messages.auditScan.offlineBarOffline, undefined, locale)
   }
 })
@@ -1947,24 +1979,24 @@ test("the audit scan page's offline line moves into the region; its queue tools 
     // Provider: two useState; setters memoized once; state memoized on [pageLine, session].
     // useShellBannerSlot(line): useEffect(() => { setPageLine(line); return () => setPageLine(null) }, [line, setPageLine]); useShellBannerSession: the same with setSession.
     ```
-    `ShellBanner`: `<div ref={regionRef} role="status" data-shell-banner className={cn("shrink-0", view && "<the pinned class>")}>`. Offline: `<WifiOff aria-hidden="true" className="mt-0.5 size-4 shrink-0" />` and `<p className="min-w-0">` with `tCommon("offlineBanner")` plus `<span className="block">{view.pageLine}</span>` when set. Session: `view.session` as given. A mount-only effect observes the region and writes `document.documentElement.style.setProperty("--shell-banner", `${region.offsetHeight}px`)`; cleanup `disconnect()` and `removeProperty("--shell-banner")`.
+    `ShellBanner`: `<div ref={regionRef} role="status" data-shell-banner className={cn("shrink-0", view && "<the pinned class>")}>`. Offline: `<WifiOff aria-hidden="true" className="mt-0.5 size-4 shrink-0" />` and `<p className="min-w-0">` with the pinned `view.pageLine ? tCommon("offlineBannerWith", { detail: view.pageLine }) : tCommon("offlineBanner")`. Session: `view.session` as given. A mount-only effect observes the region and writes `document.documentElement.style.setProperty("--shell-banner", `${region.offsetHeight}px`)`; cleanup `disconnect()` and `removeProperty("--shell-banner")`.
   - `dashboard-shell.tsx`: `<ShellBannerProvider>` is the outermost element of the return, around `<ConfirmProvider>`. Leave `<ConfirmProvider>`, `<ShellNotificationsProvider>` and `<div ref={shellRef}>` nested as they are (Task 3's provider pin in `tests/shell-notifications.test.ts` reads them in that order). Task 12a later puts `<SessionKeeper … />` first inside `<ShellBannerProvider>`. Put `<ShellBanner />` directly after `<Topbar … />`.
   - `audit-scan-workspace.tsx`: `const online = useOnlineStatus()` replaces the state; drop `setOnline(navigator.onLine)` and `handleOffline` with its listeners; `handleOnline` keeps `void sendQueue()`; add the pinned `useShellBannerSlot(…)` call.
   - `audit-scan-offline-bar.tsx`: `failed` first, then the pinned guard; title always `offlineBarPending`; the send `Button` stays `online && queue.length > 0`.
   - Messages (change file in the scratchpad, `node scripts/messages-edit.mjs <file>`):
     ```json
     { "set": {
-        "th": { "common.offlineBanner": "ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์", "auditScan.bannerQueued": "การตรวจนับ {count} รายการรอส่ง จะส่งเองเมื่อออนไลน์" },
-        "en": { "common.offlineBanner": "You're offline · Nothing can be saved until you're back online", "auditScan.bannerQueued": "{count} audit checks waiting to send · they send by themselves once you're online" } },
+        "th": { "common.offlineBanner": "ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์", "auditScan.bannerQueued": "การตรวจนับ {count} รายการรอส่ง จะส่งเองเมื่อออนไลน์", "common.offlineBannerWith": "ออฟไลน์อยู่ · {detail}", "auditScan.bannerOfflineSaves": "ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์" },
+        "en": { "common.offlineBanner": "You're offline · Nothing can be saved until you're back online", "auditScan.bannerQueued": "{count} audit checks waiting to send · they send by themselves once you're online", "common.offlineBannerWith": "You're offline · {detail}", "auditScan.bannerOfflineSaves": "Checks are kept on this device and send by themselves once you're online" } },
       "delete": ["auditScan.offlineBarOffline"] }
     ```
   - E2E (the run is Task 13B):
     - `e2e/audit/scan-steps.ts`, after `offlineBar`: `export const shellBanner = (page: Page): Locator => page.locator("[data-shell-banner]")`.
-    - `field-audit.spec.ts:263` → `await expect(scan.shellBanner(page)).toContainText("ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์")`.
-    - `field-audit.spec.ts:268` → `await expect(scan.shellBanner(page)).toContainText("การตรวจนับ 1 รายการรอส่ง จะส่งเองเมื่อออนไลน์")`.
+    - `field-audit.spec.ts:263` → `await expect(scan.shellBanner(page)).toContainText("ออฟไลน์อยู่ · ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์")` (nothing queued yet; if the spec has queued an item by then, expect the `bannerQueued` form instead).
+    - `field-audit.spec.ts:268` → `await expect(scan.shellBanner(page)).toContainText("ออฟไลน์อยู่ · การตรวจนับ 1 รายการรอส่ง จะส่งเองเมื่อออนไลน์")`.
     - After `:276` (kept): `await expect(scan.shellBanner(page)).not.toContainText("ออฟไลน์อยู่")`.
-  - `DESIGN.md` **Offline:** bullet: saves queue on the device and rows show "รอส่ง"; offline, the shell's banner region (The One Banner Rule) shows the offline line with "การตรวจนับ N รายการรอส่ง จะส่งเองเมื่อออนไลน์"; online, the page's warning `Notice` shows "รอส่ง N รายการ" with a busy "ส่งตอนนี้"; failed saves stay listed with "ลบออกจากคิว"; the queue sends itself when the connection returns.
-  - `docs/18_AUDIT_SCAN_GUIDE_TH.md:49`: "มีแถบ **ออฟไลน์ · รอส่ง N รายการ**" → "แถบใต้แถบบนขึ้น **ออฟไลน์อยู่** และ **การตรวจนับ N รายการรอส่ง จะส่งเองเมื่อออนไลน์**"; keep the "ส่งตอนนี้" / "ลบออกจากคิว" sentence.
+  - `DESIGN.md` **Offline:** bullet: saves queue on the device and rows show "รอส่ง"; offline, the shell's banner region (The One Banner Rule) shows "ออฟไลน์อยู่ · การตรวจนับ N รายการรอส่ง จะส่งเองเมื่อออนไลน์" (or "ออฟไลน์อยู่ · ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์" with nothing queued); online, the page's warning `Notice` shows "รอส่ง N รายการ" with a busy "ส่งตอนนี้"; failed saves stay listed with "ลบออกจากคิว"; the queue sends itself when the connection returns.
+  - `docs/18_AUDIT_SCAN_GUIDE_TH.md:49`: "มีแถบ **ออฟไลน์ · รอส่ง N รายการ**" → "แถบใต้แถบบนขึ้น **ออฟไลน์อยู่ · การตรวจนับ N รายการรอส่ง จะส่งเองเมื่อออนไลน์** (ถ้ายังไม่มีรายการรอส่ง จะขึ้น **ออฟไลน์อยู่ · ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์**)"; keep the "ส่งตอนนี้" / "ลบออกจากคิว" sentence.
   - E2E impact: the empty, always-mounted status region leaves `e2e/transactions/cancel.spec.ts:70` and `e2e/audit/scan-steps.ts:39` unaffected.
 
 - [ ] **Step 4: Update existing pins**
@@ -1972,7 +2004,7 @@ test("the audit scan page's offline line moves into the region; its queue tools 
   - `tests/audit-scan-offline-ux.test.ts:32`, `tests/audit-scan-workspace-ui.test.ts:119`: in the key lists `"offlineBarOffline"` → `"bannerQueued"`.
   - `tests/audit-scan-feedback-transition.test.ts:26` → `/if \(queue\.length === 0 \|\| \(!online && failed\.length === 0\)\) return null/`.
   - `tests/audit-scan-sweep-ui.test.ts:156`: the title part → `title=\{t\("offlineBarPending", \{ count: queue\.length \}\)\}`.
-  - `tests/e2e-audit.test.ts:160` → `assert.ok(room.includes(thai("common").offlineBanner) && room.includes(words.bannerQueued.replace("{count}", "1")) && room.includes(words.pendingLink))`.
+  - `tests/e2e-audit.test.ts:160` → `assert.ok(room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerQueued.replace("{count}", "1"))) && room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerOfflineSaves)) && room.includes(words.pendingLink))`.
   - Still pass unchanged: `audit-scan-workspace-ui.test.ts:40`, `audit-scan-offline-ux.test.ts:10,11,15,19-24`, `list-frame-guards.test.ts:171`.
 
 - [ ] **Step 5: Verify.** `node --test tests/menu-b-shell-banner.test.ts tests/audit-scan-offline-ux.test.ts tests/audit-scan-workspace-ui.test.ts tests/audit-scan-feedback-transition.test.ts tests/audit-scan-sweep-ui.test.ts tests/e2e-audit.test.ts tests/list-frame-guards.test.ts tests/ui-overlay-guards.test.ts tests/visual-foundation-guards.test.ts tests/messages-parity.test.ts tests/thai-glossary.test.ts`, then `npm test`, `npx tsc --noEmit -p .`, `npm run lint`: all pass, 0 lint errors.
@@ -2571,7 +2603,7 @@ test("the queue sends only the signed-in person's checks; a 401 keeps the item a
   - `audit-scan-workspace.tsx`:
     - Add the prop `currentUser` and `const locale = useLocale()`.
     - Memos: `sendableQueue` (filtered with `canSendQueuedAuditScan`) and `heldQueue` (`summarizeHeldAuditScans(queue, currentUser.id)`).
-    - The slot line becomes `useShellBannerSlot(sendableQueue.length > 0 ? t("bannerQueued", { count: sendableQueue.length }) : null)`.
+    - The slot line becomes `useShellBannerSlot(sendableQueue.length > 0 ? t("bannerQueued", { count: sendableQueue.length }) : t("bannerOfflineSaves"))`.
     - `sendQueue`:
       1. Declare `let sessionLost = false`.
       2. Put `releaseRedirect` just before `sendingRef.current = true`.
@@ -2599,7 +2631,7 @@ test("the queue sends only the signed-in person's checks; a 401 keeps the item a
   - `tests/menu-b-shell-banner.test.ts` (Task 10):
     - In the bar guard pin, the second line becomes `if \(\(queue\.length === 0 \|\| \(!online && failed\.length === 0\)\) && held\.length === 0\) return null`.
     - `title=\{t\("offlineBarPending", \{ count: queue\.length \}\)\}` becomes `title=\{queue\.length > 0 \? t\("offlineBarPending", \{ count: queue\.length \}\) : undefined\}`.
-    - The slot pin becomes `/useShellBannerSlot\(sendableQueue\.length > 0 \? t\("bannerQueued", \{ count: sendableQueue\.length \}\) : null\)/`.
+    - The slot pin becomes `/useShellBannerSlot\(sendableQueue\.length > 0 \? t\("bannerQueued", \{ count: sendableQueue\.length \}\) : t\("bannerOfflineSaves"\)\)/`.
   - `tests/audit-scan-sweep-ui.test.ts:156`: the title part of the `<Notice` regex becomes the same conditional title.
   - These stay green unchanged:
     - `tests/audit-scan-offline-ux.test.ts:13,15,21-24` and `tests/audit-scan-workspace-ui.test.ts:39-41`.
@@ -2625,6 +2657,7 @@ git commit -m "feat(shell): a queued audit check waits for the person who scanne
 **Files:**
 - Create: `e2e/shell/shell-words.ts` (plain data, no imports), `e2e/shell/shell-steps.ts`, `e2e/shell/shell.spec.ts`, `e2e/shell/session.spec.ts`, `tests/e2e-shell.test.ts`
 - Modify: `e2e/support/allow-list.ts` (the entry `topbar-notifications-cancelled-by-redirect`; Task 3 edited its reason)
+- Modify: `e2e/support/run-plan.ts:22` (the IT head's permissions), `tests/e2e-suite.test.ts:153` (its pin), `docs/superpowers/specs/2026-10-19-e2e-workflow-suite-design.md:198` (the §7 users table)
 - Modify: `tests/e2e-cross-cutting.test.ts` (the block from "// The reviewed allow-list entry for the top bar's fetch" to the `unexpectedFailures` assert; Task 3 already replaced the `topbar.tsx` pin after it), `tests/e2e-review.test.ts` (the no-hazard list, `:41-48`)
 
 **Interfaces:**
@@ -2646,7 +2679,7 @@ git commit -m "feat(shell): a queued audit check waits for the person who scanne
 - Bell names: unread > 0 "การแจ้งเตือน N รายการ" (N may hold a comma); rows, none unread "การแจ้งเตือน"; empty "ไม่มีงานค้าง". The rise sentence is title first: "งานรออนุมัติ เพิ่ม 1 รายการ".
 - `standInStatus` unroutes, then answers **every** status request (never `times`: the keeper re-reads at a `warnAt` already past) until replaced or `page.unroute("**/api/session/status")`. Deadlines are fixed at the call; per answer `serverNow` = now, `loginAt` = `ceilingDeadline − 43_200_000`, `activeAt` = the call time, `idleDeadline` = call + min(idle, ceiling), `ceilingDeadline` = call + (`ceilingInMs` ?? 43_200_000); 200 before `idleDeadline`, then 401 `{ error: "Unauthorized" }` as the server answers. Before a 401: `measure.expectRefusal({ method: "GET", url: /\/api\/session\/status$/, status: 401, reason: "the stand-in status answers 401 after its deadline, as the server does" })`.
 - The keep-alive is never stood in for. No real-time idle in E2E (a fresh sign-in is a hazard); 13B checks it by hand.
-- The work-center dot stays UAT (no E2E role holds `dashboard:view`); no role is added.
+- The IT head gains `dashboard:view` (user decision 2026-10-25), so the work center's dot is checked in E2E. In `run-plan.ts` it is appended after `"disposal:export"`, with the comment `// and the work center (dashboard:view) for the menu B shell's work-center dot (user decision 2026-10-25)`. The `tests/e2e-suite.test.ts` pin and the §7 row ("…; the work center (`dashboard:view`) for the menu dot, user decision 2026-10-25") follow. The landing page stays `/th/dashboard`. Grep `e2e/` for any check that the IT head lacks the work center link (dashboard, my-assets, notifications, access-denied, the bell's foot) and flip it in this task.
 - Anchor names (`exact: true` or `^…$`): "เพิ่มเติม" is inside "การดำเนินการเพิ่มเติม", "อ่านแล้ว" inside "อ่านแล้วทั้งหมด".
 - Every `SHELL_WORDS` value must be in `messages/th.json`; where a task shipped other copy, take th.json's.
 - The bell check writes through the app (two pending disposal requests per project per run, the IT head's read states); nothing is deleted.
@@ -2749,11 +2782,11 @@ git commit -m "feat(shell): a queued audit check waits for the person who scanne
 - [ ] **Step 6: `e2e/shell/shell.spec.ts`** (5 tests in `describe` blocks with `asUser("itHead")` / `asUser("itStaff")`; `displayName` = `readRunData().users[key]!.displayName`; pages through `measure.visit`).
   1. **"the bell names its count, groups the work, reads all without hiding it, and a rise brings the row back"** (itHead, four projects).
      - Setup: `readAssetChoices(page, measure)`; `prefix = recordPrefix(testInfo, "BELL")`; `createRoom(\`${prefix}-ROOM\`, \`${prefix} ห้องทดสอบกระดิ่ง\`)`; `createPendingDisposal(staff, …, \`${prefix}-1\`)` with `staff = await itStaffApi()` (disposed after).
-     - `/th/dashboard`: `bell` name matches `/^การแจ้งเตือน [1-9][\d,]* รายการ$/`. In `bellBox` the `groupDecide` heading holds the link `/^งานรออนุมัติ/`; a `groupFollow` heading, if shown, comes after. `measure.recordPage("IT head: the bell box")`.
-     - Click `markAllRead`: `allRead` shows; the approval row stays and contains "อ่านแล้ว"; `bell` is named "การแจ้งเตือน".
+     - `/th/dashboard`: `bell` name matches `/^การแจ้งเตือน [1-9][\d,]* รายการ$/`. The work center's dot: the link `/^ศูนย์งานค้าง/` (desktop: in `menu`; phone: in `moreSheet`, opened by `moreTab` and closed with "ปิด" `exact`) contains text matching `/มีงานรอคุณ [1-9][\d,]* รายการ/` (`SHELL_WORDS` takes `nav.workCenterWaiting`). In `bellBox` the `groupDecide` heading holds the link `/^งานรออนุมัติ/`; a `groupFollow` heading, if shown, comes after. `measure.recordPage("IT head: the bell box")`.
+     - Click `markAllRead`: `allRead` shows; the approval row stays and contains "อ่านแล้ว"; `bell` is named "การแจ้งเตือน"; the work center link no longer contains "มีงานรอคุณ" (one count: the dot follows the unread decisions).
      - `page.reload()`: the same name; `page.getByRole("status").filter({ hasText: /เพิ่ม [\d,]+ รายการ/ })` count 0.
-     - `createPendingDisposal(…, \`${prefix}-2\`)`, then `page.evaluate(() => window.dispatchEvent(new Event("asset-system:notification-summary-changed")))`: the count name returns, the approval row has no "อ่านแล้ว", and `page.getByRole("status").filter({ hasText: /^งานรออนุมัติ เพิ่ม [1-9]\d* รายการ$/ })` count 1.
-     - `bellBox` has no link "เปิดศูนย์งานค้าง". Phone only: on `/th/assets/new`, `bell(page)` count 0.
+     - `createPendingDisposal(…, \`${prefix}-2\`)`, then `page.evaluate(() => window.dispatchEvent(new Event("asset-system:notification-summary-changed")))`: the count name returns, the approval row has no "อ่านแล้ว", the work center link contains "มีงานรอคุณ" again, and `page.getByRole("status").filter({ hasText: /^งานรออนุมัติ เพิ่ม [1-9]\d* รายการ$/ })` count 1.
+     - `bellBox` has the link "เปิดศูนย์งานค้าง" (the IT head now holds `dashboard:view`). Phone only: on `/th/assets/new`, `bell(page)` count 0.
   2. **The desktop menu** (itStaff; `test.skip(e2eDevice !== "desktop", …)`), `/th/dashboard`:
      - `topBar` has one button `/^เปลี่ยนภาษา/` and none `/^เมนูผู้ใช้:/`.
      - Click `menuToggle`: name "ย่อเมนู" → "ขยายเมนู", `aria-expanded` "true" → "false"; `menu` box width 64; cookie `sidebar` = `"collapsed"`; `(await page.request.get("/th/dashboard")).text()` contains "ขยายเมนู"; after `page.reload()` the width is 64.
@@ -2807,13 +2840,14 @@ git commit -m "feat(shell): a queued audit check waits for the person who scanne
     ```
     After Task 3's pins: `const keeper = read("src/components/layout/session-keeper.tsx")`; `assert.ok(keeper.includes(\`"/api/session/status"\`) && keeper.includes(\`"/api/session/keep-alive"\`))`; `assert.match(read("src/components/layout/global-search.tsx"), /fetch\(`\/api\/search\?q=\$\{encodeURIComponent\([^)]*\)\}&locale=\$\{locale\}`/)`.
   - `tests/e2e-review.test.ts:41-48` (no hazard): add `["GET", "/api/session/status"]`, `["POST", "/api/session/keep-alive"]`, `["PATCH", "/api/notifications"]`, `["POST", "/api/auth/signout"]`.
+  - `tests/e2e-suite.test.ts:153`: the IT head's `deepEqual` list ends `…, "disposal:export", "dashboard:view"]`; the comment above it adds "and the work center (user decision 2026-10-25)".
   - Green unedited: `tests/e2e-suite.test.ts:268` (`ALLOW_LIST.length <= 5`), `tests/e2e-review.test.ts:105` (`signInOnce(` callers).
 
 - [ ] **Step 9: Verify.** `node --test tests/e2e-shell.test.ts tests/e2e-cross-cutting.test.ts tests/e2e-review.test.ts tests/e2e-suite.test.ts`: all pass. `npm test`: +4 tests, 0 fail, 1 skipped. `npx tsc --noEmit -p .`: no output. `npm run lint`: 0 errors. `npx playwright test --list`: 7 new tests × 4 projects in 2 more files (314 in 26, from 286 in 24).
 
 - [ ] **Step 10: Commit.**
   ```
-  git add e2e/shell/shell-words.ts e2e/shell/shell-steps.ts e2e/shell/shell.spec.ts e2e/shell/session.spec.ts e2e/support/allow-list.ts tests/e2e-shell.test.ts tests/e2e-cross-cutting.test.ts tests/e2e-review.test.ts
+  git add e2e/shell/shell-words.ts e2e/shell/shell-steps.ts e2e/shell/shell.spec.ts e2e/shell/session.spec.ts e2e/support/allow-list.ts e2e/support/run-plan.ts docs/superpowers/specs/2026-10-19-e2e-workflow-suite-design.md tests/e2e-shell.test.ts tests/e2e-cross-cutting.test.ts tests/e2e-review.test.ts tests/e2e-suite.test.ts
   git commit -m "test(shell): E2E checks for the bell, the menu, search, the phone sheet, the skip link and the session; one allow-list entry for the shell's requests (menu B shell task 13A)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   ```
 
@@ -2859,7 +2893,16 @@ git commit -m "feat(shell): a queued audit check waits for the person who scanne
 - docs/14's Navigation row keeps Task 1's first cell verbatim (Task 1 pins it); only the phone cell changes; no "light only" or `STALE_2D` phrase.
 - The changelog's older "8 hours" lines are history and stay.
 - `<plan file>` = the saved plan's file name in `docs/superpowers/plans/`; every marker is filled from the findings file.
-- Wiki open questions: the work-center dot in E2E, another person's held scans (nobody gets "ลบออกจากคิว"), register search coverage ("(N)" can be lower than the dropdown), two departures from the spec's words for the user to confirm (no `scroll-padding-top`: only `<main>` scrolls, under the top bar and the banner, so `--shell-top` places only what the viewport frames, spec §6.3, §6.7, §6.9, Task 6; activity is the person's own input only, so the bell's 2-minute poll and other background requests never extend a session, spec §6.8, Tasks 11 and 12a), and the spec §8 calls if unconfirmed. `ams-index.md` unchanged.
+- Wiki open questions:
+  - Still open: another person's held scans. Nobody gets "ลบออกจากคิว"; the user said to leave it for now (2026-10-25).
+  - Answered by the user on 2026-10-25. Record each as decided, not open:
+    - The E2E IT head holds `dashboard:view`, and the work center's dot is in E2E.
+    - The register search matches the global search's 19 fields, so "(N)" agrees with the rows.
+    - There is no `scroll-padding-top`. Only `<main>` scrolls, below the top bar and the banner (spec §6.3, §6.7 and §6.9; Task 6).
+    - Activity is the person's own input only; background requests never extend a session (spec §6.8; Tasks 11 and 12a).
+    - On the audit scan page, the offline banner reads "ออฟไลน์อยู่ · <the page's line>".
+  - Also record the spec §8 calls, if they are still unconfirmed.
+  - `ams-index.md` is unchanged.
 
 - [ ] **Step 1: Write the failing test.** `tests/shell-docs.test.ts` (reads strip `\r`):
   ```ts
@@ -2919,7 +2962,7 @@ git commit -m "feat(shell): a queued audit check waits for the person who scanne
   - The session: `SESSION_IDLE_SECONDS` (default 3600) and `SESSION_CEILING_SECONDS` (default 43200; blank or invalid values fall back) on the JWT claims `loginAt` and `activeAt`; `POST /api/session/keep-alive` (a route handler, not a server action: spike `5c5aba21`); `GET /api/session/status`; `SessionKeeper` on the client; `reason=session-expired` from the client, with the stale-cookie fallback in `redirectToLogin`. A token without `loginAt` counts as expired, so everyone signs in once after the deploy. No migration.
   - E2E: `e2e/shell/` (the bell, search, the menu, the phone sheet, the skip link, the session, with stand-in status answers); the app under test runs with `SESSION_IDLE_SECONDS: "10800"` because the run's saved sessions sign in once at setup; the allow-list entry `shell-requests-cancelled-by-navigation` (was `topbar-notifications-cancelled-by-redirect`). The spike's real-time check (60 s idle, 180 s ceiling) repeated on this build: <from task-13-findings>.
   - Whole run: (Task 13B) `<run id>` on `<commit>`, <N> minutes: setup <N> passed; desktop-light <N> passed, <N> skipped; desktop-dark <N> / <N>; phone-light <N> / <N>; phone-dark <N> / <N>; 0 failed, 0 flaky. <N> pages measured, axe 0, 0 console errors, 0 hazard stops, secret scan 0 hits.
-  - Not covered by E2E: the work center's dot (the E2E roles hold no `dashboard:view`), the 60-minute default in real time, a 401 from `useApiError`, the offline queue under another person. These are in the UAT list.
+  - Not covered by E2E: the 60-minute default in real time, a 401 from `useApiError`, the offline queue under another person. These are in the UAT list.
   - Left before the deploy: `docs/07_UAT_CHECKLIST.md` "Menu B Shell UAT", the canvas page groups, E2E again, UAT and the one deploy (wiki 27).
   ```
 - [ ] **Step 5: `docs/07_UAT_CHECKLIST.md`.** Under `## Shell Presentation UAT` and `## Mobile Field Navigation UAT`: "Superseded by the menu B shell (see Menu B Shell UAT); kept as history." Before `## Sign-Off`:
