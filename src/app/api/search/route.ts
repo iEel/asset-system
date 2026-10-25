@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { hasPermission, requireAuth } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import {
+  globalSearchMinChars,
   normalizeGlobalSearchScope,
   sortGlobalSearchResults,
   type GlobalSearchMetadata,
@@ -11,6 +12,7 @@ import {
 import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { getTranslations } from "next-intl/server"
 import { formatLocationType, getLocationTypeLabels, matchLocationTypesByLabel } from "@/lib/location-types"
+import { assetSearchConditions, buildAssetSearchWhere } from "@/lib/asset-list-query"
 
 type SearchResult = {
   id: string
@@ -45,23 +47,29 @@ export async function GET(request: NextRequest) {
     const query = (request.nextUrl.searchParams.get("q") ?? "").trim()
     const locale = request.nextUrl.searchParams.get("locale") === "en" ? "en" : "th"
     const scope = normalizeGlobalSearchScope(request.nextUrl.searchParams.get("scope"))
-    if (query.length < 2) return NextResponse.json({ results: [] })
+    if (query.length < globalSearchMinChars) return NextResponse.json({ results: [], scope, assetTotal: null })
 
-    const results = await Promise.all([
-      hasPermission(user, "asset", "view") ? searchAssets(query, locale) : [],
-      scope === "all" && hasPermission(user, "employee", "view") ? searchEmployees(query, locale) : [],
-      scope === "all" && hasPermission(user, "supplier", "view") ? searchSuppliers(query, locale) : [],
-      scope === "all" && hasPermission(user, "company", "view") ? searchCompanies(query, locale) : [],
-      scope === "all" && hasPermission(user, "branch", "view") ? searchBranches(query, locale) : [],
-      scope === "all" && hasPermission(user, "location", "view") ? searchLocations(query, locale) : [],
-      scope === "all" && hasPermission(user, "maintenance", "view") ? searchMaintenanceTickets(query, locale) : [],
-      scope === "all" && hasPermission(user, "audit", "view") ? searchAuditRounds(query, locale) : [],
-      scope === "all" && hasPermission(user, "disposal", "view") ? searchDisposalRequests(query, locale) : [],
+    const canSearchAssets = hasPermission(user, "asset", "view")
+    // "View all in the register (N)" counts with the register's own search, so N is what the register then lists.
+    const [results, assetTotal] = await Promise.all([
+      Promise.all([
+        canSearchAssets ? searchAssets(query, locale) : [],
+        scope === "all" && hasPermission(user, "employee", "view") ? searchEmployees(query, locale) : [],
+        scope === "all" && hasPermission(user, "supplier", "view") ? searchSuppliers(query, locale) : [],
+        scope === "all" && hasPermission(user, "company", "view") ? searchCompanies(query, locale) : [],
+        scope === "all" && hasPermission(user, "branch", "view") ? searchBranches(query, locale) : [],
+        scope === "all" && hasPermission(user, "location", "view") ? searchLocations(query, locale) : [],
+        scope === "all" && hasPermission(user, "maintenance", "view") ? searchMaintenanceTickets(query, locale) : [],
+        scope === "all" && hasPermission(user, "audit", "view") ? searchAuditRounds(query, locale) : [],
+        scope === "all" && hasPermission(user, "disposal", "view") ? searchDisposalRequests(query, locale) : [],
+      ]),
+      scope === "all" && canSearchAssets ? prisma.asset.count({ where: buildAssetSearchWhere(query) }) : Promise.resolve(null),
     ])
 
     return NextResponse.json({
       results: sortGlobalSearchResults(results.flat(), query, scope === "asset" ? 8 : 14),
       scope,
+      assetTotal,
     })
   } catch (error) {
     return errorResponse(error)
@@ -72,27 +80,7 @@ async function searchAssets(query: string, locale: string): Promise<SearchResult
   const assets = await prisma.asset.findMany({
     where: {
       isActive: true,
-      OR: [
-        { assetTag: { contains: query } },
-        { name: { contains: query } },
-        { serialNumber: { contains: query } },
-        { fixedAssetCode: { contains: query } },
-        { category: { code: { contains: query } } },
-        { category: { name: { contains: query } } },
-        { brand: { name: { contains: query } } },
-        { model: { name: { contains: query } } },
-        { company: { code: { contains: query } } },
-        { company: { nameTh: { contains: query } } },
-        { company: { nameEn: { contains: query } } },
-        { branch: { code: { contains: query } } },
-        { branch: { name: { contains: query } } },
-        { custodian: { code: { contains: query } } },
-        { custodian: { fullNameTh: { contains: query } } },
-        { custodian: { fullNameEn: { contains: query } } },
-        { custodian: { email: { contains: query } } },
-        { currentLocation: { code: { contains: query } } },
-        { currentLocation: { name: { contains: query } } },
-      ],
+      OR: assetSearchConditions(query),
     },
     select: {
       id: true,
@@ -437,7 +425,7 @@ function label(type: GlobalSearchResultType, locale: string) {
     branch: "สาขา",
     location: "ที่ตั้ง",
     maintenance: "งานซ่อม",
-    audit: "ตรวจนับ",
+    audit: "รอบตรวจนับ",
     disposal: "ตัดจำหน่าย",
   }
   const en: Record<GlobalSearchResultType, string> = {

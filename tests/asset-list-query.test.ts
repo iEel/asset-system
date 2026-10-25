@@ -2,7 +2,9 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  assetSearchConditions,
   buildAssetQueryString,
+  buildAssetSearchWhere,
   buildAssetWhere,
   parseAssetListParams,
 } from "../src/lib/asset-list-query.ts"
@@ -40,19 +42,7 @@ test("builds exact asset filters and preserves them in query strings", () => {
     supplierId: "supplier-1",
     brandId: "brand-1",
     modelId: "model-1",
-    OR: [
-      { assetTag: { contains: "printer" } },
-      { name: { contains: "printer" } },
-      { serialNumber: { contains: "printer" } },
-      { fixedAssetCode: { contains: "printer" } },
-      { category: { code: { contains: "printer" } } },
-      { category: { name: { contains: "printer" } } },
-      { company: { code: { contains: "printer" } } },
-      { branch: { code: { contains: "printer" } } },
-      { custodian: { code: { contains: "printer" } } },
-      { custodian: { fullNameTh: { contains: "printer" } } },
-      { currentLocation: { code: { contains: "printer" } } },
-    ],
+    OR: assetSearchConditions("printer"),
   })
   assert.equal(
     buildAssetQueryString(filters, { page: 3 }),
@@ -131,4 +121,21 @@ test("builds warranty data quality drilldown for assets expiring within 30 days"
   assert.ok(warrantyEndDate.lte instanceof Date)
   assert.ok(warrantyEndDate.lte.getTime() > warrantyEndDate.gte.getTime())
   assert.ok(warrantyEndDate.lte.getTime() - warrantyEndDate.gte.getTime() <= 31 * 24 * 60 * 60 * 1000)
+})
+
+test("the global search counts assets with the register's own search (menu B shell task 8)", () => {
+  const where = buildAssetSearchWhere("  NB-01 ")
+  assert.deepEqual(where, buildAssetWhere(parseAssetListParams({ search: "NB-01" })))
+  assert.deepEqual(Object.keys(where).sort(), ["OR", "isActive"]); assert.equal((where.OR as unknown[]).length, 19)
+})
+test("the register finds brand, model, company, branch, custodian e-mail and location names (user decision 2026-10-25)", () => {
+  const conditions = assetSearchConditions("Dell")
+  assert.equal(conditions.length, 19)
+  for (const expected of [
+    { brand: { name: { contains: "Dell" } } }, { model: { name: { contains: "Dell" } } },
+    { company: { nameTh: { contains: "Dell" } } }, { company: { nameEn: { contains: "Dell" } } },
+    { branch: { name: { contains: "Dell" } } }, { custodian: { fullNameEn: { contains: "Dell" } } },
+    { custodian: { email: { contains: "Dell" } } }, { currentLocation: { name: { contains: "Dell" } } },
+  ]) assert.ok(conditions.some((condition) => JSON.stringify(condition) === JSON.stringify(expected)), JSON.stringify(expected))
+  assert.deepEqual(buildAssetWhere(parseAssetListParams({ search: "Dell" })).OR, conditions)
 })

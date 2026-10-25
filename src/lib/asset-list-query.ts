@@ -78,19 +78,7 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
     ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
     ...(filters.search
       ? {
-          OR: [
-            { assetTag: { contains: filters.search } },
-            { name: { contains: filters.search } },
-            { serialNumber: { contains: filters.search } },
-            { fixedAssetCode: { contains: filters.search } },
-            { category: { code: { contains: filters.search } } },
-            { category: { name: { contains: filters.search } } },
-            { company: { code: { contains: filters.search } } },
-            { branch: { code: { contains: filters.search } } },
-            { custodian: { code: { contains: filters.search } } },
-            { custodian: { fullNameTh: { contains: filters.search } } },
-            { currentLocation: { code: { contains: filters.search } } },
-          ],
+          OR: assetSearchConditions(filters.search),
         }
       : {}),
   }
@@ -106,6 +94,39 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
   }
 
   return where
+}
+
+/**
+ * The one list of fields an asset search matches, in the global search route's order. The register, its export,
+ * the reports that read buildAssetWhere and the global search all find the same assets (user decision 2026-10-25).
+ */
+export function assetSearchConditions(search: string): Prisma.AssetWhereInput[] {
+  return [
+    { assetTag: { contains: search } },
+    { name: { contains: search } },
+    { serialNumber: { contains: search } },
+    { fixedAssetCode: { contains: search } },
+    { category: { code: { contains: search } } },
+    { category: { name: { contains: search } } },
+    { brand: { name: { contains: search } } },
+    { model: { name: { contains: search } } },
+    { company: { code: { contains: search } } },
+    { company: { nameTh: { contains: search } } },
+    { company: { nameEn: { contains: search } } },
+    { branch: { code: { contains: search } } },
+    { branch: { name: { contains: search } } },
+    { custodian: { code: { contains: search } } },
+    { custodian: { fullNameTh: { contains: search } } },
+    { custodian: { fullNameEn: { contains: search } } },
+    { custodian: { email: { contains: search } } },
+    { currentLocation: { code: { contains: search } } },
+    { currentLocation: { name: { contains: search } } },
+  ]
+}
+
+/** What the global search's "view all in the register (N)" counts: the register's own search and nothing else. */
+export function buildAssetSearchWhere(search: string): Prisma.AssetWhereInput {
+  return buildAssetWhere(parseAssetListParams({ search }))
 }
 
 export type AssetListFilters = ReturnType<typeof parseAssetListParams>

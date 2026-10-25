@@ -199,13 +199,7 @@ export function searchAuditItems(
     .slice(0, limit)
 }
 
-export function splitSearchHighlight(value: string, term: string): [string, string, string] | null {
-  const needle = normalizeSearchText(term)
-  if (!needle) return null
-  const index = value.toLocaleLowerCase().indexOf(needle)
-  if (index < 0) return null
-  return [value.slice(0, index), value.slice(index, index + needle.length), value.slice(index + needle.length)]
-}
+export { splitSearchHighlight } from "./search-highlight.ts"
 
 export type AuditCheckMode = "scan" | "edit" | "out_of_scope"
 export type AuditCheckField = "location" | "custodian" | "department" | "condition"

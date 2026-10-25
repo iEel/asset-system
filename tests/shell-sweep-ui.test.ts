@@ -17,8 +17,8 @@ test("the topbar uses Button for its icon buttons and menu triggers, and its rig
   assert.match(source, /<div className="flex shrink-0 items-center gap-1 sm:gap-2">/)
   assert.match(source, /<span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">/)
   const search = read(`${C}layout/global-search.tsx`)
-  assert.match(search, /<div ref=\{anchorRef\} className="relative hidden w-\[min\(28rem,36vw\)\] min-w-0 max-w-full lg:block">/)
-  assert.match(search, /className="h-9 w-full min-w-0 rounded-md /)
+  assert.match(search, /<div ref=\{anchorRef\} className=\{cn\(variant === "bar" \? "relative hidden w-\[min\(28rem,36vw\)\] min-w-0 max-w-full lg:block" : "relative w-full"\)\}>/)
+  assert.match(search, /className=\{cn\("h-9 w-full min-w-0 rounded-md [^"]*", variant === "sheet" && "h-11 text-base"\)\}/)
 })
 
 test("the sidebar drawer's close button is a ghost icon Button; the group row stays the sidebar's own button (spec 2D M29)", () => {

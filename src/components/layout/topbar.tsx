@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { GlobalSearch } from "@/components/layout/global-search"
+import { MobileSearchSheet } from "@/components/layout/mobile-search-sheet"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
+import { hasNavigationPermission } from "@/lib/navigation-permissions"
 import type { SessionUser } from "@/lib/auth-utils"
 
 export function Topbar({
@@ -54,6 +56,8 @@ export function Topbar({
   const userDisplayLabel = getUserDisplayLabel(user)
   const userSecondaryLabel = getUserSecondaryLabel(user)
   const localeCode = locale === "th" ? "TH" : "EN"
+  const canViewAssets = hasNavigationPermission(user, { module: "asset", action: "view" })
+  const canCreateAssets = hasNavigationPermission(user, { module: "asset", action: "create" })
   // The toggle names what a press does, and aria-expanded says whether the menu is open (spec §6.2).
   const sidebarToggleLabel = tNav(sidebarCollapsed ? "expandSidebar" : "collapseSidebar")
 
@@ -91,11 +95,13 @@ export function Topbar({
           {sidebarCollapsed ? <PanelLeftOpen aria-hidden="true" className="size-5" /> : <PanelLeftClose aria-hidden="true" className="size-5" />}
         </Button>
 
-        <GlobalSearch />
+        <GlobalSearch canViewAssets={canViewAssets} canCreateAssets={canCreateAssets} />
       </div>
 
       {/* Right side: it keeps its width, so at 200% zoom the search narrows instead of running under the bell (D18). */}
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <MobileSearchSheet canViewAssets={canViewAssets} canCreateAssets={canCreateAssets} />
+
         <Link
           href={`/${locale}/asset-management/scan`}
           className={cn(buttonVariants({ variant: "outline", size: "icon" }), "hidden lg:inline-flex")}

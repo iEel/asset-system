@@ -12,6 +12,23 @@ export type GlobalSearchResultType =
   | "audit"
   | "disposal"
 
+/** A query shorter than this is not sent; the box says how many characters it needs. */
+export const globalSearchMinChars = 2
+
+/** The order the shell lists result groups in (spec §6.5); results keep their rank inside a group. */
+export const globalSearchGroupOrder = ["asset", "maintenance", "audit", "disposal", "employee", "location", "supplier", "company", "branch"] as const satisfies readonly GlobalSearchResultType[]
+
+export type GlobalSearchResponse<T> = { results: T[]; scope: GlobalSearchScope; assetTotal: number | null }
+
+export function groupGlobalSearchResults<T extends { type: GlobalSearchResultType }>(
+  results: T[]
+): Array<{ type: GlobalSearchResultType; results: T[] }> {
+  return globalSearchGroupOrder.flatMap((type) => {
+    const inGroup = results.filter((result) => result.type === type)
+    return inGroup.length > 0 ? [{ type, results: inGroup }] : []
+  })
+}
+
 export type GlobalSearchMetadata = {
   label: string
   value: string
