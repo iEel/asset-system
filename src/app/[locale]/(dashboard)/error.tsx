@@ -20,7 +20,7 @@ export default function DashboardError({
   }, [error])
 
   return (
-    <div className="flex min-h-[calc(100dvh-8rem)] items-center justify-center">
+    <div className="flex min-h-[calc(100dvh_-_var(--shell-top)_-_4rem)] items-center justify-center">
       <div className="w-full max-w-xl">
         <ActionEmptyState
           tone="error"

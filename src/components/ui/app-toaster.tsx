@@ -21,9 +21,12 @@ const toastIcons = {
 // sonner writes --width (356px) inline on its list, so the wider width that Thai text needs must come through style.
 const toasterStyle = { "--width": "380px" } as CSSProperties
 
+/** 8px under the shell's top edge (--shell-top). sonner 2 passes string offsets through as CSS. */
+const toasterTop = "calc(var(--shell-top) + 8px)"
+
 /**
  * The app's one toast region, rendered by src/app/[locale]/layout.tsx. No call site changes: toast.success / error /
- * warning keep working. Toasts sit 8px under the 64px topbar, stay 6 seconds (Thai sentences run longer; sonner pauses
+ * warning keep working. Toasts sit 8px under the shell's top edge (--shell-top), stay 6 seconds (Thai sentences run longer; sonner pauses
  * on hover, focus and hidden tabs) and have a close button, because Escape only collapses the stack. The region and
  * the close button take their names from messages (notifications.title, common.close).
  */
@@ -34,8 +37,8 @@ export function AppToaster() {
   return (
     <Toaster
       position="top-right"
-      offset={{ top: 72, right: 16 }}
-      mobileOffset={{ top: 72 }}
+      offset={{ top: toasterTop, right: 16 }}
+      mobileOffset={{ top: toasterTop }}
       duration={6000}
       closeButton
       containerAriaLabel={tNotifications("title")}

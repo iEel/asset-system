@@ -769,3 +769,10 @@ body {
     display: none;
   }
 }
+
+/* The shell's top edge (menu B): the 56px top bar plus the banner region (ShellBanner writes --shell-banner). */
+:root {
+  --shell-topbar: 3.5rem;
+  --shell-banner: 0px;
+  --shell-top: calc(var(--shell-topbar) + var(--shell-banner));
+}

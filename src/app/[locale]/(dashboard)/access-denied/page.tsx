@@ -25,7 +25,7 @@ export default async function AccessDeniedPage({ params, searchParams }: AccessD
   const canOpenWorkCenter = user ? hasPermission(user, "dashboard", "view") : false
 
   return (
-    <div className="flex min-h-[calc(100dvh-8rem)] items-center justify-center">
+    <div className="flex min-h-[calc(100dvh_-_var(--shell-top)_-_4rem)] items-center justify-center">
       <section className="w-full max-w-xl">
         <ActionEmptyState
           tone="permission"

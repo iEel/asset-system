@@ -204,7 +204,8 @@
     "userMenu": "User menu: {name}",
     "workCenterWaiting": "{count, plural, one {# item waits for you} other {# items wait for you}}",
     "collapseSidebar": "Collapse menu",
-    "expandSidebar": "Expand menu"
+    "expandSidebar": "Expand menu",
+    "skipToContent": "Skip to main content"
   },
   "myAssets": {
     "title": "My Assets",

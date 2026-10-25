@@ -98,7 +98,7 @@ export function Topbar({
   }
 
   return (
-    <header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-chrome-border bg-chrome px-3 sm:gap-2 sm:px-4">
+    <header className="flex h-14 max-w-full shrink-0 items-center justify-between gap-1 border-b border-chrome-border bg-chrome px-3 sm:gap-2 sm:px-4">
       {/* Left side */}
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {/* Mobile menu button */}
@@ -133,12 +133,11 @@ export function Topbar({
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <Link
           href={`/${locale}/asset-management/scan`}
-          className={cn(buttonVariants({ variant: "outline", size: "md" }), "hidden lg:inline-flex")}
+          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "hidden lg:inline-flex")}
           title={tAssetTools("globalScanShortcut")}
           aria-label={tAssetTools("globalScanShortcut")}
         >
-          <ScanLine aria-hidden="true" />
-          <span className="hidden xl:inline">{tAssetTools("globalScanShortcut")}</span>
+          <ScanLine aria-hidden="true" className="size-5" />
         </Link>
 
         {/* Notifications */}
@@ -234,7 +233,7 @@ export function Topbar({
         <ThemeToggle />
 
         {/* User Menu */}
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 lg:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="md" className="gap-2 text-foreground" aria-label={tNav("userMenu", { name: userDisplayLabel })}>

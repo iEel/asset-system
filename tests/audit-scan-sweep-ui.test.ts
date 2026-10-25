@@ -78,7 +78,7 @@ test("component panel: the checked count and each row's name · role · slot are
 
 test("check panel and workspace: the side panel on the panel classes, its empty state an EmptyNote, the serial a tag and the closed round a danger Notice (spec 2D D7, D9, M21, M25, M33)", () => {
   const panel = read(`${A}audit-scan-check-panel.tsx`)
-  assert.match(panel, /<aside\s+data-audit-check-panel\s+aria-label=\{title\}\s+className=\{cn\(getPanelClasses\(\), "sticky top-4 flex max-h-\[calc\(100dvh-7rem\)\] flex-col self-start"\)\}\s*>/)
+  assert.match(panel, /<aside\s+data-audit-check-panel\s+aria-label=\{title\}\s+className=\{cn\(getPanelClasses\(\), "sticky top-4 flex max-h-\[calc\(100dvh_-_var\(--shell-top\)_-_3rem\)\] flex-col self-start"\)\}\s*>/)
   assert.match(panel, /<aside className=\{cn\(getPanelClasses\(\), "sticky top-4 self-start"\)\}>\s*<EmptyNote padded className="justify-center">\{t\("checkPanelEmpty"\)\}<\/EmptyNote>/)
   assert.match(panel, /description: ReactNode/)
   assert.doesNotMatch(panel, /border-dashed|rounded-lg border border-border bg-surface/)

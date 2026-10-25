@@ -38,9 +38,9 @@ export function AuditScanCheckPanel({
 
   if (isWide) {
     return open ? (
-      // Capped under the visible height of the dashboard main area (top bar 4rem + sticky gap 1rem + bottom padding
-      // 1.5rem = 6.5rem, rounded up), so the form's own action bar stays at the bottom of the panel while its fields scroll (D1).
-      <aside data-audit-check-panel aria-label={title} className={cn(getPanelClasses(), "sticky top-4 flex max-h-[calc(100dvh-7rem)] flex-col self-start")}>
+      // Capped under the visible height of the dashboard main area (--shell-top + sticky gap 1rem + bottom padding 1.5rem,
+      // rounded up to 3rem), so the form's own action bar stays at the bottom of the panel while its fields scroll (D1).
+      <aside data-audit-check-panel aria-label={title} className={cn(getPanelClasses(), "sticky top-4 flex max-h-[calc(100dvh_-_var(--shell-top)_-_3rem)] flex-col self-start")}>
         <div className="shrink-0 border-b border-border px-4 py-3">
           <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold text-foreground outline-none">{title}</h2>
           <p className="truncate text-sm text-muted-foreground">{description}</p>

@@ -119,7 +119,7 @@ test("the theme toggle sits beside the language button and shows the moon while 
 
 test("the topbar and the phone bottom bar take the chrome color, the same white as today in light (menu B §6.1)", () => {
   const topbar = read(`${C}layout/topbar.tsx`)
-  assert.match(topbar, /<header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-chrome-border bg-chrome px-3 sm:gap-2 sm:px-4">/)
+  assert.match(topbar, /<header className="flex h-14 max-w-full shrink-0 items-center justify-between gap-1 border-b border-chrome-border bg-chrome px-3 sm:gap-2 sm:px-4">/)
   const nav = read(`${C}layout/mobile-field-navigation.tsx`)
   assert.match(nav, /className="fixed inset-x-0 bottom-0 z-20 border-t border-chrome-border bg-chrome px-2 pb-\[max\(0\.5rem,env\(safe-area-inset-bottom\)\)\] pt-1 lg:hidden"/)
   for (const source of [topbar, nav]) assert.doesNotMatch(source, /\bbg-surface\b|\bbg-sidebar\b/)

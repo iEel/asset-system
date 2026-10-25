@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { MobileFieldNavigation } from "@/components/layout/mobile-field-navigation"
 import { Sidebar } from "@/components/layout/sidebar"
 import { ShellNotificationsProvider } from "@/components/layout/shell-notifications"
@@ -27,6 +28,7 @@ export function DashboardShell({
   const shellRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const pathname = usePathname()
+  const tNav = useTranslations("nav")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebar === "collapsed")
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [mobileKeyboardVisible, setMobileKeyboardVisible] = useState(false)
@@ -50,6 +52,12 @@ export function DashboardShell({
 
   const expandSidebar = useCallback(() => changeSidebarCollapsed(false), [changeSidebarCollapsed])
 
+  // The skip link moves focus itself: a native hash jump would fire hashchange, scroll main 96px and leave #main in the URL (spec §6.9).
+  const skipToMain = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    mainRef.current?.focus({ preventScroll: true })
+  }
+
   const closeMobileSidebar = useCallback(() => {
     setMobileSidebarOpen(false)
   }, [])
@@ -70,7 +78,7 @@ export function DashboardShell({
 
     const target = document.getElementById(targetId)
 
-    if (!target || !main.contains(target)) return
+    if (!target || target === main || !main.contains(target)) return
 
     const anchorOffset = 96
     const mainRect = main.getBoundingClientRect()
@@ -121,6 +129,14 @@ export function DashboardShell({
     <ConfirmProvider>
       <ShellNotificationsProvider>
         <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-canvas">
+          <a
+            href="#main"
+            onClick={skipToMain}
+            className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-2 focus:z-50 focus:rounded-md focus:border focus:border-border focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-overlay"
+          >
+            {tNav("skipToContent")}
+          </a>
+
           <Sidebar
             collapsed={sidebarCollapsed}
             mobileOpen={mobileSidebarOpen}
@@ -140,7 +156,7 @@ export function DashboardShell({
               mobileNavigationMode={isNavigationMode}
             />
 
-            <main ref={mainRef} data-dashboard-main className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+            <main ref={mainRef} id="main" tabIndex={-1} data-dashboard-main className={cn("min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 outline-none sm:px-6 sm:py-6", mobileFieldNavigationVisible && "scroll-pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:scroll-pb-0")}>
               <div
                 className={cn(
                   "min-w-0 max-w-full",

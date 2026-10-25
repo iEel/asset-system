@@ -204,7 +204,8 @@
     "userMenu": "เมนูผู้ใช้: {name}",
     "workCenterWaiting": "มีงานรอคุณ {count} รายการ",
     "collapseSidebar": "ย่อเมนู",
-    "expandSidebar": "ขยายเมนู"
+    "expandSidebar": "ขยายเมนู",
+    "skipToContent": "ข้ามไปเนื้อหาหลัก"
   },
   "myAssets": {
     "title": "ทรัพย์สินของฉัน",
