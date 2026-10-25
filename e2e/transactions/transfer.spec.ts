@@ -14,6 +14,7 @@ import {
   record,
   visit,
   visitAssetPage,
+  TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
 
 asUser("itStaff")
@@ -32,7 +33,7 @@ test.describe("transfer", () => {
     await visitAssetPage(measure, asset.id, "asset before the transfer", testInfo)
     await page.getByRole("link", { name: "โอนย้าย", exact: true }).first().click()
     await expect(page).toHaveURL(new RegExp(`/th/asset-management/transfer\\?assetId=${asset.id}`))
-    await expect(page.getByRole("heading", { level: 1, name: "โอนย้ายทรัพย์สิน" })).toBeVisible()
+    await expect(page.getByRole("heading", { level: 1, name: "โอนย้ายทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
     await expect(page.locator("#transfer-asset")).toContainText(asset.assetTag)
     await record(measure, "transfer form", testInfo)
 

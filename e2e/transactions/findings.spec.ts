@@ -3,7 +3,7 @@
 // reports it ("expected to fail, but passed"): the fix task removes the test.fail line and the known entry together.
 import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData } from "../support/state.ts"
-import { createTxAsset, ensureSecondLocation, handoverByApi, pickSearchable, readAssetMasters, settle } from "./tx-support.ts"
+import { createTxAsset, ensureSecondLocation, handoverByApi, pickSearchable, readAssetMasters, settle, TRANSACTION_PAGE_ARRIVAL_MS } from "./tx-support.ts"
 
 asUser("itStaff")
 
@@ -32,6 +32,7 @@ test("a review dialog that scrolls on the phone takes keyboard focus (finding TX
   const masters = await readAssetMasters(page)
   const asset = await createTxAsset(page, masters, testInfo.project.name, "SC1", "โน้ตบุ๊กตรวจหน้าตรวจสอบ")
   await page.goto(`/th/asset-management/transfer?assetId=${asset.id}`)
+  await expect(page.getByRole("heading", { level: 1, name: "โอนย้ายทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await pickSearchable(page, "transfer-to-location", room.code, `${room.code} - ${room.name}`)
   await pickSearchable(page, page.getByRole("button", { name: /^ผู้ถือครองปลายทาง/ }), receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
   await page.locator("#transfer-reason").fill(`${asset.assetTag} ตรวจหน้าตรวจสอบบนมือถือ`)

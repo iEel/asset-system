@@ -18,6 +18,7 @@ import {
   record,
   signOnPad,
   visitAssetPage,
+  TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
 
 asUser("itStaff")
@@ -31,6 +32,7 @@ test("the desk delivery on the phone: the handover with the keyboard open and a 
   await visitAssetPage(measure, asset.id, "asset on the phone", testInfo)
   await page.getByRole("link", { name: "ส่งมอบ", exact: true }).first().tap()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkout\\?assetId=${asset.id}`))
+  await expect(page.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await record(measure, "handover form on the phone", testInfo)
 
   await pickSearchable(page, "checkout-destination", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)

@@ -10,9 +10,12 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
     kind: "requestfailed",
     url: /[?&]_rsc=/,
     errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
+    // WebKit's page error for the same cancelled prefetch, as Playwright reports it (E2E-1025H, phone-light and
+    // phone-dark): "Fetch API cannot load http: /localhost:3100/th/assets/<id>?_rsc=<key> due to access control checks."
+    pageerrorText: /^Fetch API cannot load https?:\s?\/{1,2}\S*[?&]_rsc=\S* due to access control checks\.?$/,
     reason:
-      "Next.js prefetches the routes of the links on screen (RSC payloads, ?_rsc=) and cancels the prefetches it no longer needs; Chromium reports each cancelled one as net::ERR_ABORTED. A cancelled prefetch is the router's choice, not a failed request; a prefetch answered with an error status is still a failure (a response record).",
-    reviewed: "2026-10-19",
+      "Next.js prefetches the routes of the links on screen (RSC payloads, ?_rsc=) and cancels the prefetches it no longer needs; Chromium reports each cancelled one as net::ERR_ABORTED. WebKit also raises a page error for it, \"Fetch API cannot load <url>?_rsc=<key> due to access control checks.\", which this entry allows for an _rsc URL only. A cancelled prefetch is the router's choice, not a failed request; a prefetch answered with an error status is still a failure (a response record).",
+    reviewed: "2026-10-25",
   },
   {
     id: "foreign-attachment-thumbnail",

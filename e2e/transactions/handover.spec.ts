@@ -17,6 +17,7 @@ import {
   signOnPad,
   visit,
   visitAssetPage,
+  TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
 
 asUser("itStaff")
@@ -30,7 +31,7 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
   await visitAssetPage(measure, asset.id, "asset before the handover", testInfo)
   await page.getByRole("link", { name: "ส่งมอบ", exact: true }).first().click()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkout\\?assetId=${asset.id}`))
-  await expect(page.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible()
+  await expect(page.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await expect(page.locator("#checkout-asset")).toContainText(asset.assetTag)
   await record(measure, "handover form", testInfo)
 
@@ -159,6 +160,7 @@ test.describe("no double checkout", () => {
     await visit(measure, `/th/asset-management/checkout?assetId=${asset.id}`, "the second desk's handover form", testInfo)
     const otherDesk = await page.context().newPage()
     await otherDesk.goto(`/th/asset-management/checkout?assetId=${asset.id}`)
+    await expect(otherDesk.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
     await fillHandover(otherDesk, first.code, `${first.code} - ${first.fullNameTh}`)
     const firstSaved = otherDesk.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkout`) && response.request().method() === "POST")
     await otherDesk.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" }).getByRole("button", { name: "ยืนยันส่งมอบ" }).click()

@@ -104,6 +104,25 @@ test("an asset registered on the form with a photo and a purchase document, a wr
     const at = masters.indexOf(wait)
     assert.ok(goto >= 0 && at > goto && at < read0, wait)
   }
+  // The four transaction pages load every asset and checkout for their pickers (getAssetOperationOptions), so the first
+  // arrival check after a navigation into one waits TRANSACTION_PAGE_ARRIVAL_MS; nothing else waits longer (13B loop 7).
+  assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationOptions\(/)
+  for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.match(read(`src/app/[locale]/(dashboard)/asset-management/${page}/page.tsx`), /getAssetOperationOptions\(/, page)
+  assert.match(support, /export const TRANSACTION_PAGE_ARRIVAL_MS = 30_000\n/)
+  assert.match(support, /const TRANSACTION_PAGE_PATH = \/\^\\\/th\\\/asset-management\\\/\(\?:checkout\|checkin\|transfer\|bulk-move\)\(\?:\[\?#\]\|\$\)\//)
+  assert.match(support, /await measure\.page\.goto\(path, \{ waitUntil: "load" \}\)\n\s*if \(TRANSACTION_PAGE_PATH\.test\(path\)\) await expect\(measure\.page\.getByRole\("heading", \{ level: 1 \}\)\)\.toBeVisible\(\{ timeout: TRANSACTION_PAGE_ARRIVAL_MS \}\)\n\s*return record\(measure, label, testInfo\)/)
+  const arrival = "{ timeout: TRANSACTION_PAGE_ARRIVAL_MS }"
+  const arrivals: [string, string, number][] = [
+    ["e2e/transactions/handover.spec.ts", `toBeVisible(${arrival})`, 2],
+    ["e2e/transactions/return.spec.ts", `toBeVisible(${arrival})`, 1],
+    ["e2e/transactions/transfer.spec.ts", `toBeVisible(${arrival})`, 1],
+    ["e2e/transactions/desk-delivery.spec.ts", `toBeVisible(${arrival})`, 1],
+    ["e2e/transactions/findings.spec.ts", `toBeVisible(${arrival})`, 1],
+    ["e2e/cross-cutting/field-errors.spec.ts", `toContainText(asset.assetTag, ${arrival})`, 4],
+  ]
+  for (const [file, check, count] of arrivals) assert.equal(read(file).split(check).length - 1, count, file)
+  // The global expect timeout stays 10 s.
+  assert.match(read("playwright.config.ts"), /expect: \{ timeout: 10_000 \},/)
 })
 
 test("a handover signed with the device's own pointer and printed, a due date before the handover refused under the field, and no double checkout (e2e transactions task 2, TX2)", async () => {

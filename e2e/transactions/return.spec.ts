@@ -18,6 +18,7 @@ import {
   signOnPad,
   visit,
   visitAssetPage,
+  TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
 
 asUser("itStaff")
@@ -35,7 +36,7 @@ test("a return: the RT- document prints, and the asset is Ready in the room it w
   await visitAssetPage(measure, asset.id, "asset handed over", testInfo)
   await page.getByRole("link", { name: "รับคืน", exact: true }).first().click()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkin\\?checkoutId=${handover.id}`))
-  await expect(page.getByRole("heading", { level: 1, name: "รับคืนทรัพย์สิน" })).toBeVisible()
+  await expect(page.getByRole("heading", { level: 1, name: "รับคืนทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await expect(page.getByRole("main")).toContainText(handover.documentNo)
   await record(measure, "return form", testInfo)
 

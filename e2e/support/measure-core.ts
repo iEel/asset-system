@@ -20,6 +20,9 @@ export type AllowEntry = {
   status?: readonly number[]
   errorText?: RegExp
   resourceType?: readonly string[]
+  // The page error a browser also raises for the same cause, when it raises one (WebKit, for a cancelled fetch): a
+  // pageerror record whose text matches is allowed under this entry too. Only pageerror records, never console lines.
+  pageerrorText?: RegExp
   reason: string
   reviewed: string
 }
@@ -96,6 +99,11 @@ export function classify(
     // The console line of a refused or allowed response goes with that response.
     const status = message.text.match(RESOURCE_ERROR)?.[1]
     if (status && message.url && (refusedUrls.has(`${status} ${message.url}`) || allowedUrls.has(`${status} ${message.url}`))) continue
+    const pageerrorEntry = message.kind === "pageerror" ? allowList.find((candidate) => candidate.pageerrorText?.test(message.text)) : undefined
+    if (pageerrorEntry) {
+      result.allowed.push({ id: pageerrorEntry.id, kind: "console", text: message.text })
+      continue
+    }
     const entry = allowFor(allowList, "console", { text: message.text, url: message.url })
     if (entry) result.allowed.push({ id: entry.id, kind: "console", text: message.text })
     else result.unexpectedConsole.push(message)

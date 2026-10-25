@@ -245,6 +245,27 @@ test("every test is measured: console errors, failed requests, axe serious and c
   ])
   assert.deepEqual(classified.allowed, [{ id: "next-prefetch-cancelled", kind: "requestfailed", url: "http://localhost:3100/th/assets?_rsc=abc" }])
   assert.deepEqual(classified.unmetRefusals.map((item) => item.reason), [unmet.reason])
+  // WebKit's page error for a cancelled prefetch (E2E-1025H) goes with the prefetch entry, as Playwright reports it and
+  // in its plain form; the same words for a URL without _rsc, another page error, or a console line with these words
+  // stay problems (menu B shell task 13B loop 7).
+  const webkitPrefetch = (text: string, kind: "pageerror" | "console" = "pageerror") => ({ kind, text, pageUrl: page })
+  const prefetchErrors = [
+    "Fetch API cannot load http: /localhost:3100/th/assets/eca9cbdc-86c1-4e81-9cb9-1ebf0f01d903?_rsc=ZSCQ1ksDViEVUo6r due to access control checks.",
+    "Fetch API cannot load http://localhost:3100/th/audit/rounds/r1/pending?pageSize=50&returnTo=%2Fth&_rsc=s3l73oQudknrSL4F due to access control checks.",
+  ]
+  const others = [
+    "Fetch API cannot load http: /localhost:3100/api/notifications?locale=th due to access control checks.",
+    "TypeError: Load failed",
+  ]
+  const webkit = core.classify(
+    { console: [...prefetchErrors.map((text) => webkitPrefetch(text)), ...others.map((text) => webkitPrefetch(text)), webkitPrefetch(prefetchErrors[0], "console")], responses: [], failures: [] },
+    ALLOW_LIST,
+    [],
+  )
+  assert.deepEqual(webkit.allowed, prefetchErrors.map((text) => ({ id: "next-prefetch-cancelled", kind: "console", text })))
+  assert.deepEqual(webkit.unexpectedConsole.map((message) => `${message.kind} ${message.text}`), [...others.map((text) => `pageerror ${text}`), `console ${prefetchErrors[0]}`])
+  assert.deepEqual(ALLOW_LIST.filter((entry) => entry.pageerrorText).map((entry) => entry.id), ["next-prefetch-cancelled"])
+  assert.ok(ALLOW_LIST.length <= 5, "the allow-list stays at five entries")
 
   // axe: serious and critical fail the test, moderate and minor are counted only.
   const node = (target: string) => ({ target: [target] })

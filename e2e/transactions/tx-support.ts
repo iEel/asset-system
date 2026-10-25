@@ -233,9 +233,18 @@ export async function record(measure: Measure, label: string, testInfo: TestInfo
   await settle(measure.page)
   return dropKnownAxe(await measure.recordPage(label), KNOWN_AXE, testInfo)
 }
-// Measure.visit's steps (the page loaded, then recorded), with the settle and the known findings.
+// The four transaction pages (checkout, checkin, transfer, bulk-move) load every active asset, every active checkout
+// and every employee, department and location for their pickers (getAssetOperationOptions in
+// src/lib/asset-operation-options.ts), so their first render can be slow on the growing dev data. The first arrival
+// check after a navigation into one of them waits this long; server search is a separate task (13B loop 7).
+export const TRANSACTION_PAGE_ARRIVAL_MS = 30_000
+const TRANSACTION_PAGE_PATH = /^\/th\/asset-management\/(?:checkout|checkin|transfer|bulk-move)(?:[?#]|$)/
+
+// Measure.visit's steps (the page loaded, then recorded), with the settle and the known findings. A transaction page
+// is recorded once its h1 is there (the dashboard's loading skeleton has none).
 export async function visit(measure: Measure, path: string, label: string, testInfo: TestInfo) {
   await measure.page.goto(path, { waitUntil: "load" })
+  if (TRANSACTION_PAGE_PATH.test(path)) await expect(measure.page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   return record(measure, label, testInfo)
 }
 export async function visitAssetPage(measure: Measure, assetId: string, label: string, testInfo: TestInfo, view?: "custody" | "operations" | "audit") {
