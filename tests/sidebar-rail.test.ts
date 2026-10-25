@@ -18,7 +18,7 @@ test("the server reads the cookie, so the first paint is right, and the shell wr
   assert.match(layout, /^import \{ cookies \} from "next\/headers"$/m)
   assert.match(layout, /\nasync function readSidebarPreference\(\) \{\n  return parseSidebarPreference\(\(await cookies\(\)\)\.get\(SIDEBAR_COOKIE\)\?\.value\)\n\}\n/)
   assert.match(layout, /const \[account, initialSidebar\] = await Promise\.all\(\[getShellAccount\(user, locale\), readSidebarPreference\(\)\]\)/)
-  assert.match(layout, /<DashboardShell user=\{user\} account=\{account\} initialSidebar=\{initialSidebar\}>/)
+  assert.match(layout, /<DashboardShell user=\{user\} account=\{account\} initialSidebar=\{initialSidebar\} sessionClock=\{shell\.clock\}>/)
   const shell = read("src/components/layout/dashboard-shell.tsx")
   assert.match(shell, /const \[sidebarCollapsed, setSidebarCollapsed\] = useState\(initialSidebar === "collapsed"\)/)
   assert.match(shell, /document\.cookie = sidebarCookieString\(next \? "collapsed" : "expanded"\)/)

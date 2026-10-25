@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
-import { getSessionUser } from "@/lib/auth-utils"
+import { getShellSession } from "@/lib/auth-utils"
 import { redirectToLogin } from "@/lib/page-auth"
 import { getShellAccount } from "@/lib/shell-account"
 import { SIDEBAR_COOKIE, parseSidebarPreference } from "@/lib/sidebar-preference"
@@ -28,13 +28,11 @@ async function DashboardLayoutContent({
   params: Promise<{ locale: string }>
 }) {
   const { locale } = await params
-  const user = await getSessionUser()
-
-  if (!user) {
-    return redirectToLogin(locale)
-  }
+  const shell = await getShellSession()
+  if (!shell) return redirectToLogin(locale)
+  const { user } = shell
 
   const [account, initialSidebar] = await Promise.all([getShellAccount(user, locale), readSidebarPreference()])
 
-  return <DashboardShell user={user} account={account} initialSidebar={initialSidebar}>{children}</DashboardShell>
+  return <DashboardShell user={user} account={account} initialSidebar={initialSidebar} sessionClock={shell.clock}>{children}</DashboardShell>
 }

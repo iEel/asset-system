@@ -66,8 +66,8 @@ test("a long Thai name and role stay on one line each, cut short, the full text 
 
 test("the dashboard layout reads the role and department once and hands them to the shell", () => {
   const layout = read("src/app/[locale]/(dashboard)/layout.tsx")
-  assert.match(layout, /getShellAccount\(user, locale\)/)
-  assert.match(layout, /<DashboardShell user=\{user\} account=\{account\}[ >]/)
+  assert.match(layout, /const \[account, initialSidebar\] = await Promise\.all\(\[getShellAccount\(user, locale\), readSidebarPreference\(\)\]\)/)
+  assert.match(layout, /<DashboardShell user=\{user\} account=\{account\} initialSidebar=\{initialSidebar\} sessionClock=\{shell\.clock\}>/)
   const server = read("src/lib/shell-account.ts")
   assert.match(server, /displayNameTh: true/)
   assert.match(server, /isActive: true/)

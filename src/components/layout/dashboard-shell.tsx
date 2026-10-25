@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { MobileFieldNavigation } from "@/components/layout/mobile-field-navigation"
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet"
+import { SessionKeeper } from "@/components/layout/session-keeper"
 import { ShellBanner, ShellBannerProvider } from "@/components/layout/shell-banner"
 import { Sidebar } from "@/components/layout/sidebar"
 import { ShellNotificationsProvider } from "@/components/layout/shell-notifications"
 import { Topbar } from "@/components/layout/topbar"
 import { ConfirmProvider } from "@/components/ui/confirm-dialog"
 import type { SessionUser } from "@/lib/auth-utils"
+import type { SessionClock } from "@/lib/session-deadline"
 import type { ShellAccount } from "@/lib/user-display"
 import { sidebarCookieString, type SidebarPreference } from "@/lib/sidebar-preference"
 import { getMobileShellMode, isMobileVirtualKeyboardVisible } from "@/lib/mobile-field-navigation"
@@ -21,11 +23,13 @@ export function DashboardShell({
   user,
   account,
   initialSidebar,
+  sessionClock,
 }: {
   children: React.ReactNode
   user: SessionUser
   account: ShellAccount
   initialSidebar: SidebarPreference
+  sessionClock: SessionClock | null
 }) {
   const shellRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -133,6 +137,7 @@ export function DashboardShell({
 
   return (
     <ShellBannerProvider>
+      <SessionKeeper initialClock={sessionClock} />
       <ConfirmProvider>
         <ShellNotificationsProvider>
           <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-canvas">

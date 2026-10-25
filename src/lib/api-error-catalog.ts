@@ -285,6 +285,12 @@ export function getApiErrorKey(raw: string): string | null {
   return apiErrorKeyByMessage[raw.trim().replace(/ · ref [0-9a-f]{8}$/, "")] ?? null
 }
 
+/** A 401's text ("Unauthorized"), from an Error or a string: the session has ended (menu B shell spec §6.8). */
+export function isUnauthorizedError(error: unknown): boolean {
+  const raw = error instanceof Error ? error.message : typeof error === "string" ? error : null
+  return raw !== null && getApiErrorKey(raw) === "unauthorized"
+}
+
 export function describeApiError(
   raw: string | null | undefined,
   labels: { lookup: (key: string) => string; unknown: string; empty: string },

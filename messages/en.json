@@ -4450,5 +4450,12 @@
     "statusBlocksMaintenance": "Asset status does not allow a repair record. Reload the page to see its current status.",
     "employeeActiveFromAd": "This status comes from AD: disable or enable the account in AD, then wait for the sync",
     "crossSiteRequest": "This request did not come from the app's own pages, so it was refused"
+  },
+  "session": {
+    "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",
+    "idleWarningSr": "You will be signed out in {minutes, plural, one {# minute} other {# minutes}} for inactivity. Anything you have typed is not saved yet.",
+    "ceilingWarning": "Signing you out at {time} · {hours} hours since you signed in. Save your work, then sign in again",
+    "stay": "Stay signed in",
+    "stayFailed": "Could not keep you signed in. Try again"
   }
 }

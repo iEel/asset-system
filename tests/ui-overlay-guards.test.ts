@@ -68,11 +68,16 @@ test("no hand-rolled overlay backdrops outside shared ui components", () => {
   )
 })
 
-// the / shortcut opens the search and closes nothing (menu B shell task 8)
-const GLOBAL_KEY_LISTENERS = ['src/components/layout/global-search.tsx: window.addEventListener("keydown"']
+const GLOBAL_KEY_LISTENERS = [
+  // the / shortcut opens the search and closes nothing (menu B shell task 8)
+  'src/components/layout/global-search.tsx: window.addEventListener("keydown"',
+  // the session's activity listeners extend the session and close nothing (menu B shell task 12a)
+  "src/components/layout/session-keeper.tsx: window.addEventListener(type,",
+]
 
 test("no global listeners for closing overlays", () => {
-  assert.deepEqual(findMatches(/(?:document|window)\.addEventListener\("(?:keydown|mousedown|pointerdown)"/g), GLOBAL_KEY_LISTENERS)
+  // A listener in a loop (`type`) cannot be read by event name, so every one is listed here.
+  assert.deepEqual(findMatches(/(?:document|window)\.addEventListener\((?:"(?:keydown|mousedown|pointerdown)"|type,)/g), GLOBAL_KEY_LISTENERS)
 })
 
 test("no portals or manual positioning for menus", () => {

@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import test from "node:test"
 
-import { apiErrorKeyByMessage, describeApiError, getApiErrorKey } from "../src/lib/api-error-catalog.ts"
+import { apiErrorKeyByMessage, describeApiError, getApiErrorKey, isUnauthorizedError } from "../src/lib/api-error-catalog.ts"
 
 const thai = { lookup: (key: string) => `TH:${key}`, unknown: "เกิดข้อผิดพลาด", empty: "เกิดข้อผิดพลาด" }
 
@@ -93,4 +93,9 @@ test("internal-file exceptions still exist", () => {
 
 test("a cross-site keep-alive has its own message", () => {
   assert.equal(getApiErrorKey("Forbidden: cross-site request"), "crossSiteRequest")
+})
+
+test("a 401's text is recognised wherever it reaches the screen", () => {
+  assert.equal(isUnauthorizedError(new Error("Unauthorized")), true); assert.equal(isUnauthorizedError("Unauthorized"), true)
+  for (const other of [new Error("Forbidden: insufficient permissions"), "กรุณาเข้าสู่ระบบใหม่", null, undefined]) assert.equal(isUnauthorizedError(other), false)
 })
