@@ -21,8 +21,9 @@ export function AuditScanOfflineBar({
   onRemove: (queuedId: string) => void
 }) {
   const t = useTranslations("auditScan")
-  if (online && queue.length === 0) return null
+  // Offline with nothing failed, the shell's banner says it all (menu B shell §6.7); failed saves stay listed either way.
   const failed = queue.filter((entry) => entry.syncStatus === "failed")
+  if (queue.length === 0 || (!online && failed.length === 0)) return null
 
   // Saves waiting on the device are something to deal with: a warning box; the send runs busy (focus kept, never faded).
   return (
@@ -31,7 +32,7 @@ export function AuditScanOfflineBar({
       role="status"
       data-audit-scan-offline
       className="mb-2"
-      title={online ? t("offlineBarPending", { count: queue.length }) : t("offlineBarOffline", { count: queue.length })}
+      title={t("offlineBarPending", { count: queue.length })}
       action={
         online && queue.length > 0 ? (
           <Button variant="outline" size="md" busy={sending} onClick={onSendNow}>

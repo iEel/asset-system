@@ -18,6 +18,7 @@ import { AuditScanSavedBanner, type AuditSavedNotice } from "@/components/audit/
 import { AuditScanSearchField, AuditScanSearchResults } from "@/components/audit/audit-scan-search"
 import type { AuditLookupAsset, AuditScanComponent, AuditScanLookupResponse, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import { useAuditScanRoom } from "@/components/audit/use-audit-scan-room"
+import { useShellBannerSlot } from "@/components/layout/shell-banner"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { Notice } from "@/components/ui/notice"
 import { useMediaQuery } from "@/components/ui/use-media-query"
@@ -50,6 +51,7 @@ import {
   type AuditScanOptions,
   type AuditScanRoom,
 } from "@/lib/audit-scan-session"
+import { useOnlineStatus } from "@/lib/use-online-status"
 import { useApiError } from "@/components/ui/use-api-error"
 
 const emptyComponents: AuditCheckComponentsState = { status: "ready", components: [], installedIn: [] }
@@ -115,7 +117,7 @@ export function AuditScanWorkspace({
   const [photoRetry, setPhotoRetry] = useState<{ assetId: string; photos: QueuedAuditPhoto[] } | null>(null)
   const [roundClosed, setRoundClosed] = useState(false)
   const [queue, setQueue] = useState<QueuedAuditScan[]>([])
-  const [online, setOnline] = useState(true)
+  const online = useOnlineStatus()
   const [sendingQueue, setSendingQueue] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
@@ -277,7 +279,6 @@ export function AuditScanWorkspace({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setOnline(navigator.onLine)
       void refreshQueue()
       if (initialTarget?.kind === "item") void loadComponents(initialTarget.item.assetId)
     }, 0)
@@ -302,19 +303,14 @@ export function AuditScanWorkspace({
 
   useEffect(() => {
     function handleOnline() {
-      setOnline(true)
       void sendQueue()
     }
-    function handleOffline() {
-      setOnline(false)
-    }
     window.addEventListener("online", handleOnline)
-    window.addEventListener("offline", handleOffline)
-    return () => {
-      window.removeEventListener("online", handleOnline)
-      window.removeEventListener("offline", handleOffline)
-    }
+    return () => window.removeEventListener("online", handleOnline)
   }, [sendQueue])
+
+  // Offline, the shell's banner carries this page's line as its second clause (menu B shell §6.7).
+  useShellBannerSlot(queue.length > 0 ? t("bannerQueued", { count: queue.length }) : t("bannerOfflineSaves"))
 
   // Runs after every commit (no dependency list): applies wide-screen focus once the close/save has rendered.
   useEffect(() => {

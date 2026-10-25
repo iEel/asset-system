@@ -8,6 +8,7 @@ import { expect } from "../support/fixtures.ts"
 export const checkForm = (page: Page): Locator => page.locator("[data-audit-check-form]")
 export const savedBanner = (page: Page): Locator => page.locator("[data-audit-scan-saved]")
 export const offlineBar = (page: Page): Locator => page.locator("[data-audit-scan-offline]")
+export const shellBanner = (page: Page): Locator => page.locator("[data-shell-banner]")
 export const searchBox = (page: Page): Locator => page.getByLabel("ค้นหาทรัพย์สินในรอบนี้", { exact: true })
 
 // The room sheet: opened by itself on the first visit of a round with several rooms, or from the room button. A room

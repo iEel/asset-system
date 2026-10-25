@@ -157,7 +157,7 @@ test("offline the check waits on the device and is sent when the phone is back; 
   assert.ok(room.includes("await measure.whileOffline(async () => {"))
   assert.ok(!room.includes("setOffline("), "the window is the measurement's")
   assert.ok(room.includes(words.savedQueued.replace("{assetTag}", "${assets.offline.tag}")), "kept on the device")
-  assert.ok(room.includes(words.offlineBarOffline.replace("{count}", "1")) && room.includes(words.pendingLink))
+  assert.ok(room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerQueued.replace("{count}", "1"))) && room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerOfflineSaves)) && room.includes(words.pendingLink))
   assert.ok(room.includes("pending.markNotFound(page, e2eDevice, assets.notFound.tag"))
   const pendingSteps = read("e2e/audit/pending-steps.ts")
   for (const key of ["markNotFound", "notFoundDialogTitle", "notFoundConfirm", "notFoundSuccess"]) assert.ok(pendingSteps.includes(thai("auditPending")[key]), key)

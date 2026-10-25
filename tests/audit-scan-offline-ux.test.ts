@@ -9,7 +9,7 @@ test("audit scan tracks the connection and queues offline saves per asset", () =
 
   assert.match(workspace, /navigator\.onLine/)
   assert.match(workspace, /addEventListener\("online"/)
-  assert.match(workspace, /addEventListener\("offline"/)
+  assert.match(workspace, /const online = useOnlineStatus\(\)/)
   assert.match(workspace, /upsertQueuedAuditScanAsync\(getStorage\(\), roundId, payload/)
   assert.match(workspace, /markQueuedAuditScanSyncFailed\(/)
   assert.match(workspace, /<AuditScanOfflineBar[\s\S]*?sending=\{sendingQueue\}/)
@@ -29,7 +29,7 @@ test("audit scan offline UX copy is translated", () => {
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   for (const messages of [th, en]) {
-    for (const key of ["offlineBarOffline", "offlineBarPending", "sendNow", "removeFromQueue", "queueFailed", "offlineQueued", "offlineQueuedWithPhotos"]) {
+    for (const key of ["bannerQueued", "offlineBarPending", "sendNow", "removeFromQueue", "queueFailed", "offlineQueued", "offlineQueuedWithPhotos"]) {
       assert.equal(typeof messages.auditScan[key], "string", key)
     }
   }

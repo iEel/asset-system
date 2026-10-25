@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { MobileFieldNavigation } from "@/components/layout/mobile-field-navigation"
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet"
+import { ShellBanner, ShellBannerProvider } from "@/components/layout/shell-banner"
 import { Sidebar } from "@/components/layout/sidebar"
 import { ShellNotificationsProvider } from "@/components/layout/shell-notifications"
 import { Topbar } from "@/components/layout/topbar"
@@ -131,58 +132,62 @@ export function DashboardShell({
   }, [])
 
   return (
-    <ConfirmProvider>
-      <ShellNotificationsProvider>
-        <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-canvas">
-          <a
-            href="#main"
-            onClick={skipToMain}
-            className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-2 focus:z-50 focus:rounded-md focus:border focus:border-border focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-overlay"
-          >
-            {tNav("skipToContent")}
-          </a>
+    <ShellBannerProvider>
+      <ConfirmProvider>
+        <ShellNotificationsProvider>
+          <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-canvas">
+            <a
+              href="#main"
+              onClick={skipToMain}
+              className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-2 focus:z-50 focus:rounded-md focus:border focus:border-border focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-overlay"
+            >
+              {tNav("skipToContent")}
+            </a>
 
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            user={user}
-            account={account}
-            onExpand={expandSidebar}
-          />
-
-          <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-            <Topbar
+            <Sidebar
+              collapsed={sidebarCollapsed}
               user={user}
-              sidebarCollapsed={sidebarCollapsed}
-              onToggleSidebar={() => changeSidebarCollapsed(!sidebarCollapsed)}
-              onOpenMoreSheet={openMoreSheet}
-              moreSheetOpen={moreSheetOpen}
-              mobileNavigationMode={isNavigationMode}
+              account={account}
+              onExpand={expandSidebar}
             />
 
-            <main ref={mainRef} id="main" tabIndex={-1} data-dashboard-main className={cn("min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 outline-none sm:px-6 sm:py-6", mobileFieldNavigationVisible && "scroll-pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:scroll-pb-0")}>
-              <div
-                className={cn(
-                  "min-w-0 max-w-full",
-                  mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-0",
-                )}
-              >
-                {children}
-              </div>
-            </main>
+            <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+              <Topbar
+                user={user}
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebar={() => changeSidebarCollapsed(!sidebarCollapsed)}
+                onOpenMoreSheet={openMoreSheet}
+                moreSheetOpen={moreSheetOpen}
+                mobileNavigationMode={isNavigationMode}
+              />
+
+              <ShellBanner />
+
+              <main ref={mainRef} id="main" tabIndex={-1} data-dashboard-main className={cn("min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 outline-none sm:px-6 sm:py-6", mobileFieldNavigationVisible && "scroll-pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:scroll-pb-0")}>
+                <div
+                  className={cn(
+                    "min-w-0 max-w-full",
+                    mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-0",
+                  )}
+                >
+                  {children}
+                </div>
+              </main>
+            </div>
+
+            {mobileFieldNavigationVisible ? (
+              <MobileFieldNavigation
+                pathname={pathname}
+                user={user}
+                moreOpen={moreSheetOpen}
+                onOpenMore={openMoreSheet}
+              />
+            ) : null}
+
+            <MobileMoreSheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen} user={user} account={account} returnFocusRef={moreTriggerRef} />
           </div>
-
-          {mobileFieldNavigationVisible ? (
-            <MobileFieldNavigation
-              pathname={pathname}
-              user={user}
-              moreOpen={moreSheetOpen}
-              onOpenMore={openMoreSheet}
-            />
-          ) : null}
-
-          <MobileMoreSheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen} user={user} account={account} returnFocusRef={moreTriggerRef} />
-        </div>
-      </ShellNotificationsProvider>
-    </ConfirmProvider>
+        </ShellNotificationsProvider>
+      </ConfirmProvider>
+    </ShellBannerProvider>
   )
 }

@@ -260,12 +260,12 @@ test.describe("IT staff in room B, offline, and not found", () => {
     // offline window (20 s on the slow WebKit phone in the rehearsal, more than the 15 s action timeout).
     const sent = page.waitForResponse((response) => response.url().endsWith(`/api/audit-rounds/${chain.roundId}/scan`) && response.request().method() === "POST", { timeout: 90_000 })
     await measure.whileOffline(async () => {
-      await expect(scan.offlineBar(page)).toContainText("ออฟไลน์ · รอส่ง 0 รายการ")
+      await expect(scan.shellBanner(page)).toContainText("ออฟไลน์อยู่ · ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์")
       await offlineRow.click()
       await expect(scan.checkHeading(page, assets.offline.tag)).toBeVisible()
       await scan.saveButton(page).click()
       await expect(scan.savedBanner(page)).toContainText(`${assets.offline.tag} เก็บไว้ในเครื่อง · จะส่งเมื่อมีสัญญาณ`)
-      await expect(scan.offlineBar(page)).toContainText("ออฟไลน์ · รอส่ง 1 รายการ")
+      await expect(scan.shellBanner(page)).toContainText("ออฟไลน์อยู่ · การตรวจนับ 1 รายการรอส่ง จะส่งเองเมื่อออนไลน์")
       await expect(offlineRow).toContainText("รอส่ง")
       await recordSettled(page, measure, "offline with one check in the queue")
     })
@@ -274,6 +274,7 @@ test.describe("IT staff in room B, offline, and not found", () => {
     await measure.timed("back online: the queue is sent", async () => {
       expect((await sent).status(), "the queued check is sent").toBe(200)
       await expect(scan.offlineBar(page)).toHaveCount(0)
+      await expect(scan.shellBanner(page)).not.toContainText("ออฟไลน์อยู่")
     })
     await list.getByRole("button", { name: /^ตรวจแล้ว/ }).click()
     await expect(list.getByRole("button", { name: scan.tagPattern(assets.offline.tag) })).toContainText("ตรวจแล้ว")

@@ -82,7 +82,9 @@
       "invalid": "This value is not valid",
       "tooManyDecimals": "Use no more than 2 decimal places",
       "notWholeNumber": "Enter a whole number"
-    }
+    },
+    "offlineBanner": "You're offline · Nothing can be saved until you're back online",
+    "offlineBannerWith": "You're offline · {detail}"
   },
   "globalSearch": {
     "label": "Search globally",
@@ -2192,7 +2194,6 @@
     "editAgain": "Edit",
     "photoRetryMessage": "The result was saved, but the photos did not upload",
     "retryPhotos": "Upload photos again",
-    "offlineBarOffline": "Offline · {count} waiting to send",
     "offlineBarPending": "{count} waiting to send",
     "sendNow": "Send now",
     "removeFromQueue": "Remove from queue",
@@ -2209,7 +2210,9 @@
     "componentsPendingSaveDescription": "Only the parent asset is saved. The unchecked components stay “Pending” and can be checked later.",
     "componentsPendingSaveAction": "Save parent",
     "photoRequiredPlacement": "The department or location changed, so add a photo before saving",
-    "photoRequiredMismatch": "The data does not match, so add a photo before saving"
+    "photoRequiredMismatch": "The data does not match, so add a photo before saving",
+    "bannerQueued": "{count} audit checks waiting to send · they send by themselves once you're online",
+    "bannerOfflineSaves": "Checks are kept on this device and send by themselves once you're online"
   },
   "auditFinding": {
     "title": "Audit Findings",

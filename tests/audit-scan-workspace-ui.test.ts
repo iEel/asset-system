@@ -116,7 +116,7 @@ test("an out-of-scope register lookup shows the asset tag in the search box inst
 })
 
 test("workspace copy exists in Thai and English", () => {
-  const keys = ["savedAllMatch", "savedMismatch", "savedOutOfScope", "savedQueued", "editAgain", "photoRetryMessage", "retryPhotos", "offlineBarOffline", "offlineBarPending", "sendNow", "removeFromQueue", "queueFailed", "roundClosedError", "backToRound"]
+  const keys = ["savedAllMatch", "savedMismatch", "savedOutOfScope", "savedQueued", "editAgain", "photoRetryMessage", "retryPhotos", "bannerQueued", "offlineBarPending", "sendNow", "removeFromQueue", "queueFailed", "roundClosedError", "backToRound"]
   for (const locale of ["th", "en"] as const) {
     assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
   }

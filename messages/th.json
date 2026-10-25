@@ -82,7 +82,9 @@
       "invalid": "ข้อมูลไม่ถูกต้อง",
       "tooManyDecimals": "กรอกทศนิยมได้ไม่เกิน 2 ตำแหน่ง",
       "notWholeNumber": "กรุณากรอกเป็นจำนวนเต็ม"
-    }
+    },
+    "offlineBanner": "ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์",
+    "offlineBannerWith": "ออฟไลน์อยู่ · {detail}"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",
@@ -2192,7 +2194,6 @@
     "editAgain": "แก้",
     "photoRetryMessage": "บันทึกผลแล้ว แต่ส่งรูปไม่สำเร็จ",
     "retryPhotos": "ส่งรูปอีกครั้ง",
-    "offlineBarOffline": "ออฟไลน์ · รอส่ง {count} รายการ",
     "offlineBarPending": "รอส่ง {count} รายการ",
     "sendNow": "ส่งตอนนี้",
     "removeFromQueue": "ลบออกจากคิว",
@@ -2209,7 +2210,9 @@
     "componentsPendingSaveDescription": "ระบบจะบันทึกเฉพาะตัวหลัก ส่วนควบที่ยังไม่ได้ตรวจจะยังเป็น “ยังไม่ตรวจ” และตรวจต่อภายหลังได้",
     "componentsPendingSaveAction": "บันทึกตัวหลัก",
     "photoRequiredPlacement": "แผนกหรือที่ตั้งไม่ตรง ต้องแนบรูปก่อนบันทึก",
-    "photoRequiredMismatch": "ข้อมูลไม่ตรง ต้องแนบรูปก่อนบันทึก"
+    "photoRequiredMismatch": "ข้อมูลไม่ตรง ต้องแนบรูปก่อนบันทึก",
+    "bannerQueued": "การตรวจนับ {count} รายการรอส่ง จะส่งเองเมื่อออนไลน์",
+    "bannerOfflineSaves": "ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์"
   },
   "auditFinding": {
     "title": "รายการไม่ตรงจากการตรวจนับ",
