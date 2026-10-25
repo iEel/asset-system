@@ -131,7 +131,7 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
             </div>
             <div className="login-glass absolute left-[140px] top-[74px] w-[290px] rounded-[14px] px-4 py-3.5">
               <p className="text-meta font-semibold">{tAuth("heroAuditTitle")}</p>
-              <div className="mt-2.5 h-1.5 overflow-hidden rounded-[3px] bg-sidebar-foreground/15">
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-[3px] bg-sidebar-hover">
                 <div className="h-full w-2/3 rounded-[3px] bg-sidebar-active-icon" />
               </div>
               <p className="mt-2 text-xs">{tAuth("heroAuditDetail")}</p>
