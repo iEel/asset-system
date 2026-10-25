@@ -21,7 +21,7 @@ test("global search rows highlight like menu items and the footer shows the keys
   // onMouseEnter moves the selection, so a separate hover fill would light up two rows.
   assert.doesNotMatch(source, /bg-accent\/60|hover:bg-row-hover/)
   assert.match(source, /"flex w-full min-w-0 cursor-pointer items-start gap-2\.5 rounded-control px-2\.5 py-1\.5 text-left",\s*selected && "bg-primary-soft",/)
-  assert.match(source, /className="grid max-h-100 gap-px overflow-y-auto p-1\.5"/)
+  assert.match(source, /"grid max-h-100 gap-px overflow-y-auto p-1\.5"/) // the bar's list (task 8 fix 1 pins the variants)
   assert.match(source, /<Kbd>↑↓<\/Kbd>\s*\{t\("keyboardSelect"\)\}/)
   assert.match(source, /<Kbd>Enter<\/Kbd>\s*\{t\("keyboardOpen"\)\}/)
   assert.match(source, /<Kbd>Esc<\/Kbd>\s*\{t\("keyboardClose"\)\}/)
@@ -46,6 +46,17 @@ test("one search component: grouped options, highlight, / shortcut, recents, the
   assert.match(source, /readRecentSearches\(\(\) => window\.localStorage, locale\)/); assert.match(source, /writeRecentSearches\(\(\) => window\.localStorage, locale,/)
   assert.match(source, /getGlobalSearchPanelState\(\{/); assert.match(source, /\}, 220\)/)
   assert.equal(source.match(/<input\b/g)?.length, 1); assert.equal(source.match(/<Loader2\b/g)?.length, 2)
+})
+test("one clear button in the field; the phone sheet's list fills the sheet and shows no keyboard hints (menu B shell task 8 fix 1)", () => {
+  const source = read("src/components/layout/global-search.tsx")
+  // type="search" draws a native cancel X beside our own clear button; hide it as SearchField does.
+  assert.match(source, /className=\{cn\("h-9 w-full min-w-0 rounded-md [^"]*\[&::-webkit-search-cancel-button\]:appearance-none[^"]*", variant === "sheet" && "h-11 text-base"\)\}/)
+  // The bar keeps its capped list; the sheet's list has no cap and scrolls in the sheet body.
+  assert.match(source, /className=\{variant === "bar" \? "grid max-h-100 gap-px overflow-y-auto p-1\.5" : "grid gap-px p-1\.5"\}/)
+  assert.match(source, /<div className="min-h-0 flex-1 overflow-y-auto">\{panel\}<\/div>/)
+  assert.equal(source.match(/max-h-100/g)?.length, 1)
+  // The Kbd footer is for a keyboard: the bar only.
+  assert.match(source, /\{variant === "bar" && options\.length > 0 \? \(\s*<div className="flex flex-wrap items-center gap-x-3 [^"]*border-t/)
 })
 test("the phone opens the same search in a full-height sheet from the top bar (menu B shell task 8)", () => {
   const sheet = read("src/components/layout/mobile-search-sheet.tsx")

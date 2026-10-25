@@ -243,7 +243,7 @@ export function GlobalSearch({
         }}
         onKeyDown={handleKeyDown}
         placeholder={t("placeholder")}
-        className={cn("h-9 w-full min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring", variant === "sheet" && "h-11 text-base")}
+        className={cn("h-9 w-full min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring [&::-webkit-search-cancel-button]:appearance-none", variant === "sheet" && "h-11 text-base")}
         role="combobox"
         aria-label={t("label")}
         aria-expanded={showPanel}
@@ -378,8 +378,9 @@ function GlobalSearchPanel({
           <p className="text-meta text-muted-foreground">{t("notFoundHint")}</p>
         </div>
       ) : null}
+      {/* The bar caps the list; in the phone sheet the body around the panel scrolls, so the list takes the rest of the height. */}
       {sections.length > 0 ? (
-        <ul role="listbox" aria-label={t("label")} className="grid max-h-100 gap-px overflow-y-auto p-1.5">
+        <ul role="listbox" aria-label={t("label")} className={variant === "bar" ? "grid max-h-100 gap-px overflow-y-auto p-1.5" : "grid gap-px p-1.5"}>
           {sections.map((section) => (
             <li key={section.id} role="presentation">
               {section.id === "notFound" ? null : (
@@ -415,7 +416,8 @@ function GlobalSearchPanel({
           ))}
         </ul>
       ) : null}
-      {options.length > 0 ? (
+      {/* Keyboard hints only beside a keyboard: the phone sheet leaves them out. */}
+      {variant === "bar" && options.length > 0 ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border bg-background px-3.5 py-2 text-meta text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Kbd>↑↓</Kbd>
