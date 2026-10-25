@@ -139,6 +139,8 @@ test("the guard stops on any database but asset_management_dev, on an upload fol
   assert.match(config, /globalSetup: "\.\/e2e\/global-setup\.ts"/)
   assert.match(config, /reuseExistingServer: false/)
   assert.match(read("e2e/global-setup.ts"), /guardAppEnv\(root\)/)
+  // The app under test keeps idle connections for 75 s, so a reused socket is never reset mid-request (13B loop 4).
+  assert.match(config, /command: `node node_modules\/next\/dist\/bin\/next start -p \$\{e2ePort\(\)\} --keepAliveTimeout 75000`,/)
 })
 
 test("the setup creates the spec's users with exactly the spec's permissions, marked with the run id, and the fixtures are small (e2e foundation task 3, EF3)", async () => {

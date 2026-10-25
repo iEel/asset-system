@@ -38,7 +38,9 @@ export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
   // A production build (spec §5): `npm run build` first; the suite starts next start on its own port and stops it after.
   // The app's base URL is this server's, so a sign-in stays on it.
   webServer: {
-    command: `node node_modules/next/dist/bin/next start -p ${e2ePort()}`,
+    // A 75 s idle keep-alive: with Node's default 5 s, a request on a reused idle socket can meet the server closing it
+    // (ECONNRESET, seen in the 2026-10-21 run and E2E-1025D).
+    command: `node node_modules/next/dist/bin/next start -p ${e2ePort()} --keepAliveTimeout 75000`,
     url: `${baseURL}/th/login`,
     reuseExistingServer: false,
     timeout: 120_000,
