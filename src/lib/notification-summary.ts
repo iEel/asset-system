@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
-import { buildNotificationSummaryItems } from "@/lib/notification-summary-items"
-import { buildActiveNotificationSummary, mergeNotificationItemsWithStates } from "@/lib/notification-center"
+import { buildNotificationSummaryItems, type NotificationSummaryCounts } from "@/lib/notification-summary-items"
+import {
+  buildActiveNotificationSummary,
+  getNotificationCountDrops,
+  mergeNotificationItemsWithStates,
+} from "@/lib/notification-center"
 import { getApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import { buildDuePmPlanWhere } from "@/lib/preventive-maintenance"
@@ -31,7 +35,11 @@ export async function getNotificationSummary(user: SessionUser, locale: string) 
   }
 }
 
-export async function getNotificationCenter(user: SessionUser, locale: string) {
+export async function getNotificationCenter(
+  user: SessionUser,
+  locale: string,
+  options?: { recordCountDrops?: boolean },
+) {
   const today = startOfToday(new Date())
   const [rules, approvalInboxCounts] = await Promise.all([
     getNotificationRuleSettings(),
@@ -116,7 +124,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
       : Promise.resolve(0),
   ])
 
-  const items = buildNotificationSummaryItems(locale, {
+  const counts: NotificationSummaryCounts = {
     approvalInbox: approvalInboxCounts.total,
     duePm,
     pendingAuditFindings,
@@ -127,22 +135,39 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
     returnsDueSoon,
     warrantyExpiringSoon,
     licenseExpiringSoon,
+  }
+  const items = buildNotificationSummaryItems(locale, counts)
+  // Every counted key's state is read, even when nothing is listed: a read row whose count fell to 0 records the drop.
+  const states = await prisma.notificationUserState.findMany({
+    where: {
+      userId: user.id,
+      key: { in: Object.keys(counts) },
+    },
+    select: {
+      key: true,
+      isRead: true,
+      lastCount: true,
+      snoozedUntil: true,
+      assignedToUserId: true,
+    },
   })
-  const states = items.length > 0
-    ? await prisma.notificationUserState.findMany({
-        where: {
-          userId: user.id,
-          key: { in: items.map((item) => item.key) },
-        },
-        select: {
-          key: true,
-          isRead: true,
-          lastCount: true,
-          snoozedUntil: true,
-          assignedToUserId: true,
-        },
-      })
-    : []
+  if (options?.recordCountDrops !== false) {
+    const drops = getNotificationCountDrops(
+      Object.entries(counts).map(([key, count]) => ({ key, count })),
+      states,
+    )
+    if (drops.length > 0) {
+      // Guarded by lastCount > count, so two summaries computed at once write each drop only once.
+      await prisma.$transaction(
+        drops.map((drop) =>
+          prisma.notificationUserState.updateMany({
+            where: { userId: user.id, key: drop.key, lastCount: { gt: drop.count } },
+            data: { lastCount: drop.count },
+          })
+        )
+      )
+    }
+  }
   const centerItems = mergeNotificationItemsWithStates(items, states)
 
   return {

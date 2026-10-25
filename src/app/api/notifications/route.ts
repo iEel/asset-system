@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { fieldErrorResponse } from "@/lib/field-error-response"
-import { getNotificationSummary } from "@/lib/notification-summary"
+import { getNotificationCenter, getNotificationSummary } from "@/lib/notification-summary"
 import { prisma } from "@/lib/db"
 import { buildNotificationStateUpdate, type NotificationStateAction } from "@/lib/notification-center"
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
-    const locale = request.nextUrl.searchParams.get("locale") === "en" ? "en" : "th"
+    const locale = notificationLocale(request)
     const summary = await getNotificationSummary(user, locale)
     return NextResponse.json(summary)
   } catch (error) {
@@ -27,6 +27,27 @@ export async function PATCH(request: NextRequest) {
       snoozeHours?: unknown
       assignedToUserId?: unknown
     } | null
+
+    if (body?.action === "read_all") {
+      // The locale is read here only: the single-key actions never touch nextUrl.
+      const locale = notificationLocale(request)
+      // The server's own counts decide what is marked read; any key or count in the body is ignored.
+      const center = await getNotificationCenter(user, locale)
+      const unread = center.items.filter((item) => !item.isRead)
+      if (unread.length > 0) {
+        await prisma.$transaction(
+          unread.map((item) => {
+            const update = buildNotificationStateUpdate({ action: "read", count: item.count })
+            return prisma.notificationUserState.upsert({
+              where: { userId_key: { userId: user.id, key: item.key } },
+              create: { userId: user.id, key: item.key, ...update },
+              update,
+            })
+          })
+        )
+      }
+      return NextResponse.json({ ok: true, summary: await getNotificationSummary(user, locale) })
+    }
 
     const key = typeof body?.key === "string" ? body.key.trim() : ""
     const action = typeof body?.action === "string" ? body.action : ""
@@ -62,6 +83,10 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     return errorResponse(error)
   }
+}
+
+function notificationLocale(request: NextRequest) {
+  return request.nextUrl.searchParams.get("locale") === "en" ? "en" : "th"
 }
 
 function isNotificationStateAction(value: string): value is NotificationStateAction {

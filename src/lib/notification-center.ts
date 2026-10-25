@@ -34,10 +34,10 @@ export function mergeNotificationItemsWithStates(
 
   return items.map((item) => {
     const state = stateByKey.get(item.key)
-    const sameCount = state?.lastCount === item.count
+    const notRisen = state !== undefined && item.count <= state.lastCount
     const snoozedUntil = parseDate(state?.snoozedUntil)
-    const isRead = Boolean(sameCount && state?.isRead)
-    const isSnoozed = Boolean(sameCount && snoozedUntil && snoozedUntil > now)
+    const isRead = Boolean(notRisen && state?.isRead)
+    const isSnoozed = Boolean(notRisen && snoozedUntil && snoozedUntil > now)
 
     return {
       ...item,
@@ -48,6 +48,24 @@ export function mergeNotificationItemsWithStates(
       assignedToUserId: state?.assignedToUserId ?? null,
     }
   })
+}
+
+// A read or snoozed row stays suppressed while its count has not risen above lastCount. When the count drops, the
+// lower count is recorded, so a later rise back to the old number counts as new work and returns the row.
+export function getNotificationCountDrops(
+  items: { key: string; count: number }[],
+  states: NotificationStateRecord[],
+  now = new Date(),
+): { key: string; count: number }[] {
+  const stateByKey = new Map(states.map((state) => [state.key, state]))
+  const drops: { key: string; count: number }[] = []
+  for (const item of items) {
+    const state = stateByKey.get(item.key)
+    if (!state || item.count >= state.lastCount) continue
+    const snoozedUntil = parseDate(state.snoozedUntil)
+    if (state.isRead || (snoozedUntil && snoozedUntil > now)) drops.push({ key: item.key, count: item.count })
+  }
+  return drops
 }
 
 export function buildActiveNotificationSummary(items: NotificationCenterItem[]) {

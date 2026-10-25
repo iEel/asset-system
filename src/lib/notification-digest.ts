@@ -86,7 +86,7 @@ export async function deliverDailyNotificationDigest({
 
   for (const dbUser of users) {
     const user = toSessionUser(dbUser)
-    const center = await getNotificationCenter(user, locale)
+    const center = await getNotificationCenter(user, locale, { recordCountDrops: !dryRun })
     const activeItems = center.items.filter((item) => !item.isSuppressed)
     if (activeItems.length === 0) {
       skippedEmpty += 1
