@@ -25,6 +25,9 @@ export type QueuedAuditScan = AuditOfflineScanPayload & {
   syncStatus?: "pending" | "syncing" | "failed"
   lastSyncError?: string | null
   photos?: AuditOfflinePhoto[]
+  /** Who scanned it; only that person's session sends it. Empty on entries queued before the binding. */
+  userId?: string | null
+  userName?: string | null
 }
 
 export type AuditOfflineStorage = {
@@ -107,7 +110,10 @@ export async function addQueuedAuditScanAsync(
   return queued
 }
 
-/** One pending save per asset: a newer save replaces the older result (instead of queueing twice) and keeps its photos. */
+/**
+ * One pending save per asset: a newer save replaces the older result (instead of queueing twice) and keeps its photos.
+ * With `queuedBy`, it replaces only an entry of the same person (or one with no person), and stamps who scanned it.
+ */
 export async function upsertQueuedAuditScanAsync(
   storage: AuditOfflineQueueStorage,
   roundId: string,
@@ -115,20 +121,25 @@ export async function upsertQueuedAuditScanAsync(
   options: {
     photos?: AuditOfflinePhoto[]
     now?: Date
+    queuedBy?: { id: string; name: string }
   } = {}
 ) {
   const now = options.now ?? new Date()
+  const queuedBy = options.queuedBy
   const queue = await loadQueuedAuditScansAsync(storage, roundId)
-  const previous = queue.find((entry) => entry.assetId === payload.assetId)
+  const replaces = (entry: QueuedAuditScan) =>
+    entry.assetId === payload.assetId && (!queuedBy || !entry.userId || entry.userId === queuedBy.id)
+  const previous = queue.find(replaces)
   const queued: QueuedAuditScan = {
     ...payload,
-    id: `${now.getTime()}-${payload.assetId}`,
+    id: queuedBy ? `${now.getTime()}-${queuedBy.id}-${payload.assetId}` : `${now.getTime()}-${payload.assetId}`,
     queuedAt: now.toISOString(),
     syncStatus: "pending",
     lastSyncError: null,
     photos: [...(previous?.photos ?? []), ...(options.photos ?? [])],
+    ...(queuedBy ? { userId: queuedBy.id, userName: queuedBy.name } : {}),
   }
-  const others = queue.filter((entry) => entry.assetId !== payload.assetId)
+  const others = queue.filter((entry) => !replaces(entry))
   await storage.setQueue(createAuditOfflineQueueKey(roundId), [...others, queued])
   return queued
 }
@@ -160,6 +171,23 @@ export async function markQueuedAuditScanSyncFailed(
   )
   await storage.setQueue(createAuditOfflineQueueKey(roundId), nextQueue)
   return nextQueue
+}
+
+/** A queued check sends only under the session of the person who scanned it; entries from before the binding send under anyone. */
+export function canSendQueuedAuditScan(entry: Pick<QueuedAuditScan, "userId">, userId: string) {
+  return !entry.userId || entry.userId === userId
+}
+
+/** The checks waiting for someone else, counted per person in first-seen order; a missing name shows the user id. */
+export function summarizeHeldAuditScans(queue: QueuedAuditScan[], userId: string) {
+  const held = new Map<string, { userId: string; name: string; count: number }>()
+  for (const entry of queue) {
+    if (canSendQueuedAuditScan(entry, userId) || !entry.userId) continue
+    const current = held.get(entry.userId)
+    if (current) current.count += 1
+    else held.set(entry.userId, { userId: entry.userId, name: entry.userName || entry.userId, count: 1 })
+  }
+  return [...held.values()]
 }
 
 export function createAuditOfflineIndexedDbStorage(fallback: AuditOfflineStorage): AuditOfflineQueueStorage {

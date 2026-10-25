@@ -34,3 +34,20 @@ test("audit scan offline UX copy is translated", () => {
     }
   }
 })
+
+test("the queue sends only the signed-in person's checks; a 401 keeps the item and signs out once the send stops", () => {
+  const w = read("src/components/audit/audit-scan-workspace.tsx")
+  assert.match(w, /if \(!canSendQueuedAuditScan\(queued, currentUser\.id\)\) continue/)
+  assert.match(w, /if \(response\.status === 401\) \{\n\s+sessionLost = true\n\s+break\n\s+\}\n\s+const result = await response\.json\(\)/)
+  assert.match(w, /const releaseRedirect = holdSessionExpiryRedirect\(\)/)
+  assert.match(w, /releaseRedirect\(\)\n\s+if \(sessionLost\) redirectToSessionExpiredLogin\(locale\)/)
+  assert.match(w, /upsertQueuedAuditScanAsync\(getStorage\(\), roundId, payload, \{ photos: photos\.map\(toAuditOfflinePhoto\), queuedBy: currentUser \}\)/)
+  assert.match(w, /if \(response\.status === 401\) \{\n\s+await queueOffline\(payload, submission\.photos\)\n\s+finishSave\(\{ \.\.\.notice, queued: true \}, false\)\n\s+setSaving\(false\)\n\s+redirectToSessionExpiredLogin\(locale\)\n\s+return\n\s+\}/)
+  assert.match(w, /queue=\{sendableQueue\}/); assert.match(w, /held=\{heldQueue\}/)
+  assert.match(read("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx"), /currentUser=\{\{ id: user\.id, name: user\.name \}\}/)
+  const bar = read("src/components/audit/audit-scan-offline-bar.tsx")
+  assert.match(bar, /t\("queueHeldForUser", \{ name: entry\.name, count: entry\.count \}\)/)
+  assert.doesNotMatch(bar, /onRemove\(entry\.userId\)/)
+  for (const [locale, text] of [["th", "ผลตรวจของ {name} {count} รายการ จะส่งเมื่อ {name} เข้าสู่ระบบในเครื่องนี้"], ["en", "{count, plural, one {# check} other {# checks}} by {name} will be sent when {name} signs in on this device"]])
+    assert.equal(JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).auditScan.queueHeldForUser, text, locale)
+})

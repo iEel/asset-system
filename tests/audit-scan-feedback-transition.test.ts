@@ -23,5 +23,5 @@ test("the saved result and the offline queue are announced without relying on co
 
   assert.match(banner, /role="status"/)
   assert.match(offlineBar, /role="status"/)
-  assert.match(offlineBar, /if \(queue\.length === 0 \|\| \(!online && failed\.length === 0\)\) return null/)
+  assert.match(offlineBar, /if \(\(queue\.length === 0 \|\| \(!online && failed\.length === 0\)\) && held\.length === 0\) return null/)
 })

@@ -8,6 +8,7 @@ import type { QueuedAuditScan } from "@/lib/audit-offline-queue"
 export function AuditScanOfflineBar({
   online,
   queue,
+  held,
   assetTagFor,
   sending,
   onSendNow,
@@ -15,6 +16,8 @@ export function AuditScanOfflineBar({
 }: {
   online: boolean
   queue: QueuedAuditScan[]
+  /** Checks queued on this device by someone else, waiting for that person to sign in here (never sent or removed from here). */
+  held: { userId: string; name: string; count: number }[]
   assetTagFor: (assetId: string) => string
   sending: boolean
   onSendNow: () => void
@@ -23,7 +26,7 @@ export function AuditScanOfflineBar({
   const t = useTranslations("auditScan")
   // Offline with nothing failed, the shell's banner says it all (menu B shell §6.7); failed saves stay listed either way.
   const failed = queue.filter((entry) => entry.syncStatus === "failed")
-  if (queue.length === 0 || (!online && failed.length === 0)) return null
+  if ((queue.length === 0 || (!online && failed.length === 0)) && held.length === 0) return null
 
   // Saves waiting on the device are something to deal with: a warning box; the send runs busy (focus kept, never faded).
   return (
@@ -32,7 +35,7 @@ export function AuditScanOfflineBar({
       role="status"
       data-audit-scan-offline
       className="mb-2"
-      title={t("offlineBarPending", { count: queue.length })}
+      title={queue.length > 0 ? t("offlineBarPending", { count: queue.length }) : undefined}
       action={
         online && queue.length > 0 ? (
           <Button variant="outline" size="md" busy={sending} onClick={onSendNow}>
@@ -53,6 +56,7 @@ export function AuditScanOfflineBar({
           ))}
         </ul>
       ) : null}
+      {held.length > 0 ? <ul className="space-y-1">{held.map((entry) => <li key={entry.userId}>{t("queueHeldForUser", { name: entry.name, count: entry.count })}</li>)}</ul> : null}
     </Notice>
   )
 }

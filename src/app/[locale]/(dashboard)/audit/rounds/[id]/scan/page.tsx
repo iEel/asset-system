@@ -86,6 +86,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
       photoChecklistByCategory={photoChecklistByCategory}
       canApplyCorrections={canApplyCorrections}
       initialAssetId={resolveFirstSearchParam(rawSearchParams.assetId)}
+      currentUser={{ id: user.id, name: user.name }}
     />
   )
 }

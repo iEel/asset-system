@@ -4,11 +4,14 @@ import test from "node:test"
 import {
   addQueuedAuditScan,
   addQueuedAuditScanAsync,
+  canSendQueuedAuditScan,
   createAuditOfflineQueueKey,
   loadQueuedAuditScans,
   loadQueuedAuditScansAsync,
   removeQueuedAuditScan,
   removeQueuedAuditScanAsync,
+  summarizeHeldAuditScans,
+  upsertQueuedAuditScanAsync,
 } from "../src/lib/audit-offline-queue.ts"
 
 class MemoryStorage {
@@ -110,4 +113,32 @@ test("stores queued audit scans with photo evidence and sync status in async sto
 
   await removeQueuedAuditScanAsync(storage, roundId, queued.id)
   assert.deepEqual(await loadQueuedAuditScansAsync(storage, roundId), [])
+})
+
+const payload = (assetId: string) => ({ assetId, actualLocationId: null, actualCustodianId: null, actualDepartmentId: null, actualConditionId: null, scanSource: "manual" as const, applyCorrections: false, resultCorrection: false, remark: null })
+const photo = (id: string) => ({ id, label: id, fileName: `${id}.jpg`, fileType: "image/jpeg", fileSize: 1, blob: new Blob([id]) })
+const somchai = { id: "user-1", name: "สมชาย" }, somying = { id: "user-2", name: "สมหญิง" }
+test("a queued check records who scanned it, and only that person's session sends it", async () => {
+  const storage = new AsyncMemoryQueueStorage()
+  const queued = await upsertQueuedAuditScanAsync(storage, "round-3", payload("asset-1"), { queuedBy: somchai, now: new Date("2026-10-21T01:00:00.000Z") })
+  assert.equal(queued.userId, "user-1"); assert.equal(queued.userName, "สมชาย")
+  assert.equal(canSendQueuedAuditScan(queued, "user-1"), true); assert.equal(canSendQueuedAuditScan(queued, "user-2"), false)
+  assert.equal(canSendQueuedAuditScan({ userId: undefined }, "user-2"), true) // queued before the binding
+  assert.equal(canSendQueuedAuditScan({ userId: null }, "user-2"), true)
+})
+test("a newer save replaces only the same person's entry for that asset", async () => {
+  const storage = new AsyncMemoryQueueStorage(); const now = new Date("2026-10-21T01:00:00.000Z")
+  await upsertQueuedAuditScanAsync(storage, "round-4", payload("asset-1"), { queuedBy: somchai, photos: [photo("p1")], now })
+  await upsertQueuedAuditScanAsync(storage, "round-4", payload("asset-1"), { queuedBy: somying, photos: [photo("p2")], now })
+  await upsertQueuedAuditScanAsync(storage, "round-4", payload("asset-1"), { queuedBy: somchai, photos: [photo("p3")], now })
+  const queue = await loadQueuedAuditScansAsync(storage, "round-4")
+  assert.deepEqual(queue.map((entry) => [entry.userId, entry.photos?.map((p) => p.id)]), [["user-2", ["p2"]], ["user-1", ["p1", "p3"]]])
+  assert.equal(new Set(queue.map((entry) => entry.id)).size, 2)
+})
+test("held checks are counted per person who scanned them, in first-seen order", () => {
+  const entry = (assetId: string, userId?: string, userName?: string) => ({ ...payload(assetId), id: assetId, queuedAt: "2026-10-21T01:00:00.000Z", userId, userName })
+  const queue = [entry("a1", "user-1", "สมชาย"), entry("a2", "user-2", "สมหญิง"), entry("a3"), entry("a4", "user-3", "มานี"), entry("a5", "user-2", "สมหญิง")]
+  assert.deepEqual(summarizeHeldAuditScans(queue, "user-1"), [{ userId: "user-2", name: "สมหญิง", count: 2 }, { userId: "user-3", name: "มานี", count: 1 }])
+  assert.deepEqual(summarizeHeldAuditScans(queue, "user-2"), [{ userId: "user-1", name: "สมชาย", count: 1 }, { userId: "user-3", name: "มานี", count: 1 }])
+  assert.deepEqual(summarizeHeldAuditScans([entry("a6", "user-9")], "user-1"), [{ userId: "user-9", name: "user-9", count: 1 }])
 })

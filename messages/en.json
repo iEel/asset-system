@@ -2212,7 +2212,8 @@
     "photoRequiredPlacement": "The department or location changed, so add a photo before saving",
     "photoRequiredMismatch": "The data does not match, so add a photo before saving",
     "bannerQueued": "{count} audit checks waiting to send · they send by themselves once you're online",
-    "bannerOfflineSaves": "Checks are kept on this device and send by themselves once you're online"
+    "bannerOfflineSaves": "Checks are kept on this device and send by themselves once you're online",
+    "queueHeldForUser": "{count, plural, one {# check} other {# checks}} by {name} will be sent when {name} signs in on this device"
   },
   "auditFinding": {
     "title": "Audit Findings",

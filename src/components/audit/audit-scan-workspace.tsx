@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { AuditScanCamera } from "@/components/audit/audit-scan-camera"
 import { AuditScanCheckForm, type AuditCheckComponentsState, type AuditCheckSubmission, type AuditCheckTarget } from "@/components/audit/audit-scan-check-form"
@@ -24,10 +24,12 @@ import { Notice } from "@/components/ui/notice"
 import { useMediaQuery } from "@/components/ui/use-media-query"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import {
+  canSendQueuedAuditScan,
   createAuditOfflineIndexedDbStorage,
   loadQueuedAuditScansAsync,
   markQueuedAuditScanSyncFailed,
   removeQueuedAuditScanAsync,
+  summarizeHeldAuditScans,
   upsertQueuedAuditScanAsync,
   type AuditOfflineQueueStorage,
   type AuditOfflineScanPayload,
@@ -51,6 +53,7 @@ import {
   type AuditScanOptions,
   type AuditScanRoom,
 } from "@/lib/audit-scan-session"
+import { holdSessionExpiryRedirect, redirectToSessionExpiredLogin } from "@/lib/session-expiry"
 import { useOnlineStatus } from "@/lib/use-online-status"
 import { useApiError } from "@/components/ui/use-api-error"
 
@@ -74,6 +77,7 @@ export function AuditScanWorkspace({
   photoChecklistByCategory,
   canApplyCorrections,
   initialAssetId,
+  currentUser,
 }: {
   roundId: string
   roundName: string
@@ -86,8 +90,11 @@ export function AuditScanWorkspace({
   photoChecklistByCategory: Record<string, string[]>
   canApplyCorrections: boolean
   initialAssetId?: string
+  /** The signed-in person: queued checks are stamped with them, and only theirs send from this session. */
+  currentUser: { id: string; name: string }
 }) {
   const t = useTranslations("auditScan")
+  const locale = useLocale()
   const apiError = useApiError()
   const tCommon = useTranslations("common")
   const isWide = useMediaQuery("(min-width: 64rem)")
@@ -143,6 +150,8 @@ export function AuditScanWorkspace({
   const list = useMemo(() => buildRoomList({ items, room, tab, limit, locationLabels }), [items, room, tab, limit, locationLabels])
   const matches = useMemo(() => searchAuditItems(items, term, custodianLabels), [items, term, custodianLabels])
   const queuedAssetIds = useMemo(() => new Set(queue.map((entry) => entry.assetId)), [queue])
+  const sendableQueue = useMemo(() => queue.filter((entry) => canSendQueuedAuditScan(entry, currentUser.id)), [queue, currentUser.id])
+  const heldQueue = useMemo(() => summarizeHeldAuditScans(queue, currentUser.id), [queue, currentUser.id])
   const liveItem = target?.kind === "item" ? items.find((row) => row.itemId === target.item.itemId) ?? null : null
   const roomPendingHref = useMemo(() => {
     if (!room.locationId) return pendingHref
@@ -229,10 +238,14 @@ export function AuditScanWorkspace({
     if (sendingRef.current || !navigator.onLine) return
     const pending = await loadQueuedAuditScansAsync(getStorage(), roundId)
     if (pending.length === 0) return
+    let sessionLost = false
+    // A 401 from another request waits until this send stops, so nothing is cut off mid-send.
+    const releaseRedirect = holdSessionExpiryRedirect()
     sendingRef.current = true
     setSendingQueue(true)
     try {
       for (const queued of pending) {
+        if (!canSendQueuedAuditScan(queued, currentUser.id)) continue
         if (queued.syncStatus === "failed" && !includeFailed) continue
         let response: Response
         try {
@@ -252,6 +265,11 @@ export function AuditScanWorkspace({
             }),
           })
         } catch {
+          break
+        }
+        // The session ended: the check stays queued as it was (not failed) and sends after the person signs in again.
+        if (response.status === 401) {
+          sessionLost = true
           break
         }
         const result = await response.json().catch(() => null)
@@ -274,8 +292,10 @@ export function AuditScanWorkspace({
       sendingRef.current = false
       setSendingQueue(false)
       await refreshQueue()
+      releaseRedirect()
+      if (sessionLost) redirectToSessionExpiredLogin(locale)
     }
-  }, [getStorage, refreshQueue, roundId, t, tCommon, uploadPhotoFile])
+  }, [currentUser.id, getStorage, locale, refreshQueue, roundId, t, tCommon, uploadPhotoFile])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -310,7 +330,7 @@ export function AuditScanWorkspace({
   }, [sendQueue])
 
   // Offline, the shell's banner carries this page's line as its second clause (menu B shell §6.7).
-  useShellBannerSlot(queue.length > 0 ? t("bannerQueued", { count: queue.length }) : t("bannerOfflineSaves"))
+  useShellBannerSlot(sendableQueue.length > 0 ? t("bannerQueued", { count: sendableQueue.length }) : t("bannerOfflineSaves"))
 
   // Runs after every commit (no dependency list): applies wide-screen focus once the close/save has rendered.
   useEffect(() => {
@@ -490,7 +510,7 @@ export function AuditScanWorkspace({
   }
 
   async function queueOffline(payload: AuditOfflineScanPayload, photos: QueuedAuditPhoto[]) {
-    await upsertQueuedAuditScanAsync(getStorage(), roundId, payload, { photos: photos.map(toAuditOfflinePhoto) })
+    await upsertQueuedAuditScanAsync(getStorage(), roundId, payload, { photos: photos.map(toAuditOfflinePhoto), queuedBy: currentUser })
     await refreshQueue()
     toast.warning(photos.length > 0 ? t("offlineQueuedWithPhotos") : t("offlineQueued"))
   }
@@ -524,6 +544,14 @@ export function AuditScanWorkspace({
       await queueOffline(payload, submission.photos)
       finishSave({ ...notice, queued: true }, false)
       setSaving(false)
+      return
+    }
+    // The session ended: keep the check on the device first, so the work is not lost, then go to the login.
+    if (response.status === 401) {
+      await queueOffline(payload, submission.photos)
+      finishSave({ ...notice, queued: true }, false)
+      setSaving(false)
+      redirectToSessionExpiredLogin(locale)
       return
     }
     const result = await response.json().catch(() => null)
@@ -681,7 +709,8 @@ export function AuditScanWorkspace({
         {cameraOpen ? <AuditScanCamera onDecoded={handleDecoded} onClose={() => setCameraOpen(false)} /> : null}
         <AuditScanOfflineBar
           online={online}
-          queue={queue}
+          queue={sendableQueue}
+          held={heldQueue}
           assetTagFor={(assetId) => items.find((row) => row.assetId === assetId)?.assetTag ?? assetId}
           sending={sendingQueue}
           onSendNow={() => void sendQueue(true)}

@@ -48,12 +48,12 @@ test("the shell has one banner region between the top bar and main: a polite sta
 test("the audit scan page's offline line moves into the region; its queue tools stay on the page (§6.7 ruling)", () => {
   const workspace = read("src/components/audit/audit-scan-workspace.tsx")
   assert.match(workspace, /const online = useOnlineStatus\(\)/)
-  assert.match(workspace, /useShellBannerSlot\(queue\.length > 0 \? t\("bannerQueued", \{ count: queue\.length \}\) : t\("bannerOfflineSaves"\)\)/)
+  assert.match(workspace, /useShellBannerSlot\(sendableQueue\.length > 0 \? t\("bannerQueued", \{ count: sendableQueue\.length \}\) : t\("bannerOfflineSaves"\)\)/)
   assert.doesNotMatch(workspace, /setOnline|addEventListener\("offline"/)
   assert.match(workspace, /window\.addEventListener\("online", handleOnline\)/)
   const bar = read("src/components/audit/audit-scan-offline-bar.tsx")
-  assert.match(bar, /const failed = queue\.filter\(\(entry\) => entry\.syncStatus === "failed"\)\n\s+if \(queue\.length === 0 \|\| \(!online && failed\.length === 0\)\) return null/)
-  assert.match(bar, /title=\{t\("offlineBarPending", \{ count: queue\.length \}\)\}/)
+  assert.match(bar, /const failed = queue\.filter\(\(entry\) => entry\.syncStatus === "failed"\)\n\s+if \(\(queue\.length === 0 \|\| \(!online && failed\.length === 0\)\) && held\.length === 0\) return null/)
+  assert.match(bar, /title=\{queue\.length > 0 \? t\("offlineBarPending", \{ count: queue\.length \}\) : undefined\}/)
   assert.doesNotMatch(bar, /offlineBarOffline/)
   const copy = {
     th: ["ออฟไลน์อยู่ · บันทึกไม่ได้จนกว่าจะกลับมาออนไลน์", "การตรวจนับ {count} รายการรอส่ง จะส่งเองเมื่อออนไลน์", "ออฟไลน์อยู่ · {detail}", "ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์"],
