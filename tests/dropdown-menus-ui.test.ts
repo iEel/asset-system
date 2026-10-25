@@ -45,6 +45,9 @@ test("register row menus are Radix overlays and delete through the shared action
 test("topbar language menu is a Radix dropdown", () => {
   const source = read("src/components/layout/topbar.tsx")
   assert.ok((source.match(/<DropdownMenu\b/g)?.length ?? 0) >= 1)
+  // Non-modal, so Radix never sets aria-hidden on the shell while it holds focusable controls (axe aria-hidden-focus).
+  assert.match(source, /<DropdownMenu modal=\{false\}>\s*<DropdownMenuTrigger asChild>\s*<Button variant="ghost" size="md" aria-label=\{tNav\("languageMenu"/)
+  assert.doesNotMatch(source, /<DropdownMenu>/)
   assert.doesNotMatch(source, /langMenuOpen|userMenuOpen/)
   // The language menu is a radio group; each language is named in its own language, with no flag.
   assert.match(source, /<DropdownMenuRadioGroup value=\{locale\}/)

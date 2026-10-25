@@ -119,7 +119,7 @@ export function Topbar({
 
         {/* Language Switcher: on the phone it lives in the เพิ่มเติม sheet. */}
         <div className="relative hidden shrink-0 lg:block">
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="md" aria-label={tNav("languageMenu", { code: localeCode })}>
                 <Globe aria-hidden="true" />

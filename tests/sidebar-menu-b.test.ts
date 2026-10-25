@@ -43,6 +43,9 @@ test("the person sits pinned at the foot of the desktop menu and opens the accou
   assert.match(sidebar, /<SidebarAccount user=\{user\} account=\{account\} collapsed=\{collapsed\} \/>/)
   const account = read("src/components/layout/sidebar-account.tsx")
   assert.match(account, /export function SidebarAccount\(\{ user, account, collapsed \}: \{ user: SessionUser; account: ShellAccount; collapsed: boolean \}\)/)
+  // Non-modal, so Radix never sets aria-hidden on the shell while it holds focusable controls (axe aria-hidden-focus).
+  assert.match(account, /<DropdownMenu modal=\{false\}>/)
+  assert.doesNotMatch(account, /<DropdownMenu>/)
   assert.match(account, /<DropdownMenuTrigger asChild>\s*<Button\s+variant="ghost"/)
   assert.doesNotMatch(account, /<button\b|text-white|bg-white|(?:aria-label|title)="[A-Z]/)
   assert.match(account, /<div className="flex shrink-0 justify-center border-t border-sidebar-border p-2">/)

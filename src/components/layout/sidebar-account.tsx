@@ -28,7 +28,7 @@ export function SidebarAccount({ user, account, collapsed }: { user: SessionUser
 
   return (
     <div className="flex shrink-0 justify-center border-t border-sidebar-border p-2">
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <LabelTooltip label={displayName} enabled={collapsed}>
           <DropdownMenuTrigger asChild>
             <Button

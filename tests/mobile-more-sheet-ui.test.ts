@@ -57,7 +57,7 @@ test("the phone top bar: the page title and, with the bottom menu, the bell; lan
   const top = read("src/components/layout/topbar.tsx")
   has(top, /onClick=\{\(event\) => onOpenMoreSheet\(event\.currentTarget\)\}/, /aria-expanded=\{moreSheetOpen\}/, /aria-controls="mobile-more-sheet"/,
     /mobileNavigationMode && "hidden"/, /<div className=\{cn\("relative shrink-0", !mobileNavigationMode && "hidden lg:block"\)\}>\s*<NotificationBell user=\{user\} \/>/,
-    /<div className="relative hidden shrink-0 lg:block">\n\s+<DropdownMenu>/, /<div className="hidden lg:block">\n\s+<ThemeToggle \/>/,
+    /<div className="relative hidden shrink-0 lg:block">\n\s+<DropdownMenu modal=\{false\}>/, /<div className="hidden lg:block">\n\s+<ThemeToggle \/>/,
     /switchLocalePath\(pathname, locale, newLocale\)/, /const \{ activeLabel \} = useNavigationMenu\(user\)/,
     /<p className=\{cn\("min-w-0 truncate text-base font-semibold text-foreground lg:hidden", !mobileNavigationMode && "hidden"\)\}>\{activeLabel \?\? tNav\("brandName"\)\}<\/p>/)
   assert.doesNotMatch(top, /tNav\("userMenu"|getUserInitial|signOut|onMobileMenuToggle|<h[1-6]\b/)
