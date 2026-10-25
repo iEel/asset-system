@@ -7,6 +7,7 @@
 //   round), so the asset rules and the install checks run.
 // The category, status and condition ids come from the round form's own scope selects, the lists a person picks from.
 import type { APIRequestContext, Page } from "@playwright/test"
+import { expect } from "../support/fixtures.ts"
 import { auditRecords, type AuditAssetKey, type AuditRecords } from "./audit-plan.ts"
 import type { RunData } from "../support/state.ts"
 
@@ -28,8 +29,10 @@ async function created<T>(request: APIRequestContext, url: string, data: unknown
 
 // The options of one scope select of the round form (/th/audit/rounds/new), by its label.
 async function selectOptions(page: Page, label: string): Promise<{ value: string; label: string }[]> {
-  return page
-    .getByLabel(label, { exact: true })
+  const select = page.getByLabel(label, { exact: true })
+  // The dashboard's loading.tsx streams the form, so its selects may still be empty here (13B loop 5).
+  await expect(select.locator('option:not([value=""])').first()).toBeAttached()
+  return select
     .locator("option")
     .evaluateAll((options) => options.map((option) => ({ value: (option as HTMLOptionElement).value, label: option.textContent?.trim() ?? "" })))
 }

@@ -67,6 +67,20 @@ test("reports and exports: each export's route permission, the reports page's ga
   const records = read("e2e/cross-cutting/support/records.ts")
   for (const key of ["licenseTotalSeats: null", "licenseUsedSeats: null", "warrantyStartDate: null", "warrantyEndDate: null"]) assert.ok(records.includes(key), key)
   assert.ok(records.includes(`handoverMode: "permanent_assignment"`), "the handover mode the checkout schema takes")
+  // The streamed form's options are waited for before readAssetChoices reads them (menu B shell task 13B loop 5).
+  {
+    const choices = records.slice(records.indexOf("export async function readAssetChoices("), records.indexOf("async function created<T>("))
+    const read0 = choices.indexOf(`const categories = (await options("asset-category"))`)
+    for (const wait of [
+      `await expect(page.locator('#asset-category option:not([value=""])').first()).toBeAttached()`,
+      `await expect(page.locator("#asset-status option", { hasText: /^พร้อมใช้งาน$/ })).toHaveCount(1)`,
+      `await expect(page.locator("#asset-status option", { hasText: /^ร่าง$/ })).toHaveCount(1)`,
+      `await expect(page.locator("#asset-condition option", { hasText: /^ดี$/ })).toHaveCount(1)`,
+    ]) {
+      const at = choices.indexOf(wait)
+      assert.ok(at > choices.indexOf(`await page.goto("/th/assets/new")`) && at < read0, wait)
+    }
+  }
   // The spec: every test imports the suite's fixtures; finding M1 and M2 stay expected to fail until fixed.
   const spec = read("e2e/cross-cutting/reports.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))

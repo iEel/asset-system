@@ -24,6 +24,15 @@ test("one disposal is requested, approved alone and executed with evidence by th
   assert.ok(support.includes(`storageState: fromRoot(ADMIN_STATE_FILE)`), "the seed admin's saved session")
   assert.ok(support.includes(`locationType: "Room"`), "a room")
   assert.ok(support.includes(`page.request.post("/api/assets"`), "assets through the asset API")
+  // The streamed form's options are waited for before readAssetChoices reads them (menu B shell task 13B loop 5).
+  {
+    const choices = support.slice(support.indexOf("export async function readAssetChoices("), support.indexOf("export type DisposalAsset"))
+    const read0 = choices.indexOf(`const categoryId = await firstValue(page.locator("#asset-category"))`)
+    for (const id of ["asset-category", "asset-condition"]) {
+      const at = choices.indexOf(`await expect(page.locator('#${id} option:not([value=""])').first()).toBeAttached()`)
+      assert.ok(at > choices.indexOf(`await measure.visit("/th/assets/new"`) && at < read0, id)
+    }
+  }
   for (const key of ["licenseTotalSeats", "licenseUsedSeats", "purchaseDate", "purchasePrice", "warrantyStartDate", "warrantyEndDate"]) {
     assert.ok(support.includes(`${key}: null,`), `${key} is sent`)
   }

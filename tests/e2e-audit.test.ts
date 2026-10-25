@@ -60,6 +60,8 @@ test("the walk's records carry the run id and the project within the schemas' li
   const data = read("e2e/audit/audit-data.ts")
   for (const route of [`"/api/departments"`, `"/api/locations"`, `"/api/assets"`, "/components`"]) assert.ok(data.includes(route), route)
   assert.ok(!/prisma|mssql/i.test(data.replace(/^\/\/.*$/gm, "")), "no direct database access")
+  // The round form streams in: each scope select's options are waited for before they are read (13B loop 5).
+  assert.match(data, /const select = page\.getByLabel\(label, \{ exact: true \}\)\n(?:\s*\/\/[^\n]*\n)*\s*await expect\(select\.locator\('option:not\(\[value=""\]\)'\)\.first\(\)\)\.toBeAttached\(\)\n\s*return select\n\s*\.locator\("option"\)\n\s*\.evaluateAll\(/)
 
   // The spec: WebKit on the phone, one serial chain, IT staff open the round on the form; the errors under the fields.
   const spec = read(SPEC)

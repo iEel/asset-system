@@ -4,6 +4,7 @@
 // IT staff open, so no lookup needs a permission they do not have. Every tag and name carries the run id and the
 // project, so the four projects never share a record (spec §11 "Run order").
 import type { APIRequestContext, Browser, Page, TestInfo } from "@playwright/test"
+import { expect } from "../../support/fixtures.ts"
 import type { Measure } from "../../support/measure.ts"
 import { authStateFile, fromRoot } from "../../support/paths.ts"
 import { readRunData, readRunState, type RunData } from "../../support/state.ts"
@@ -33,6 +34,12 @@ export function projectMarker(testInfo: TestInfo): string {
 export async function readAssetChoices(page: Page, measure?: Measure): Promise<AssetChoices> {
   if (measure) await measure.visit("/th/assets/new", "asset form (its choices)")
   else await page.goto("/th/assets/new")
+  // The dashboard's loading.tsx streams the form, so its selects may still be empty here (13B loop 5): wait for the
+  // options this helper needs before reading them.
+  await expect(page.locator('#asset-category option:not([value=""])').first()).toBeAttached()
+  await expect(page.locator("#asset-status option", { hasText: /^พร้อมใช้งาน$/ })).toHaveCount(1)
+  await expect(page.locator("#asset-status option", { hasText: /^ร่าง$/ })).toHaveCount(1)
+  await expect(page.locator("#asset-condition option", { hasText: /^ดี$/ })).toHaveCount(1)
   const options = async (id: string) =>
     page.locator(`#${id} option`).evaluateAll((nodes) => nodes.map((node) => ({ value: (node as HTMLOptionElement).value, label: (node.textContent ?? "").trim() })))
   const categories = (await options("asset-category")).filter((option) => option.value)

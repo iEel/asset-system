@@ -70,6 +70,9 @@ export type AssetChoices = { categoryId: string; statusId: string; conditionId: 
 // category, the Ready status ("พร้อมใช้งาน") and the first condition. These are the ids the form itself would send.
 export async function readAssetChoices(page: Page, measure: Measure): Promise<AssetChoices> {
   await measure.visit("/th/assets/new", "asset form (choices for the disposal assets)")
+  // The dashboard's loading.tsx streams the form, so its selects may still be empty here (13B loop 5).
+  await expect(page.locator('#asset-category option:not([value=""])').first()).toBeAttached()
+  await expect(page.locator('#asset-condition option:not([value=""])').first()).toBeAttached()
   const firstValue = async (select: Locator) =>
     select.locator("option").evaluateAll((options) => (options as HTMLOptionElement[]).map((option) => option.value).find(Boolean) ?? "")
   const categoryId = await firstValue(page.locator("#asset-category"))
