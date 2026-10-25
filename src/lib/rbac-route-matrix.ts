@@ -33,6 +33,9 @@ export const customAuthApiRouteSnippets = [
   "hasPermission(",
 ] as const
 
+// A route that calls one of these needs a signed-in session and nothing more.
+export const sessionAuthApiRouteSnippets = ["requireAuth(", "requireSessionClock(", "extendSession("] as const
+
 export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
   {
     filePath: "src/app/api/admin/settings/route.ts",
@@ -285,7 +288,7 @@ export function classifyApiRouteProtection(
     return { filePath: normalizedPath, status: "custom_auth" as const, reason: "Uses custom permission or scheduler authorization" }
   }
 
-  if (source.includes("requireAuth(")) {
+  if (sessionAuthApiRouteSnippets.some((snippet) => source.includes(snippet))) {
     return { filePath: normalizedPath, status: "protected" as const, reason: "Requires authenticated session" }
   }
 

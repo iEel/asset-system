@@ -76,7 +76,7 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   assert.match(fixtures, /if \(request\.method\(\)\.toUpperCase\(\) === "DELETE" && !isHazardPath\(request\.url\(\)\)\)/)
   assert.match(fixtures, /if \(hazards\.length > 0\) throw new Error\(`E2E hazard stopped/)
   // The app under test: the only sender the code has (src/lib/notification-delivery.ts, the digest webhook) is blank.
-  assert.match(read("playwright.config.ts"), /env: \{ AUTH_URL: baseURL, NEXTAUTH_URL: baseURL, NOTIFICATION_DIGEST_WEBHOOK_URL: "" \}/)
+  assert.match(read("playwright.config.ts"), /env: \{ AUTH_URL: baseURL, NEXTAUTH_URL: baseURL, NOTIFICATION_DIGEST_WEBHOOK_URL: "", SESSION_IDLE_SECONDS: "10800" \}/)
   assert.match(read("src/lib/notification-delivery.ts"), /if \(!webhookUrl\) \{\n\s*return \{ enabled: false, webhookUrl: null \}/)
 
   // The source: no file of the suite names a hazard (the API calls of page.request and request.newContext are not

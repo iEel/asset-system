@@ -4448,6 +4448,7 @@
     "statusBlocksCreate": "This status cannot be used for a new asset",
     "statusBlocksEdit": "Asset status does not allow editing",
     "statusBlocksMaintenance": "Asset status does not allow a repair record. Reload the page to see its current status.",
-    "employeeActiveFromAd": "This status comes from AD: disable or enable the account in AD, then wait for the sync"
+    "employeeActiveFromAd": "This status comes from AD: disable or enable the account in AD, then wait for the sync",
+    "crossSiteRequest": "This request did not come from the app's own pages, so it was refused"
   }
 }

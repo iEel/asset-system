@@ -48,3 +48,8 @@ test("the login link keeps the page asked for, and only a safe one", () => {
   assert.equal(buildRequestPath(new URL("http://x/th/assets?_rsc=1&search=a")), "/th/assets?search=a")
   assert.equal(buildRequestPath(new URL("http://x/th/assets/a1")), "/th/assets/a1")
 })
+
+test("an expired session's login link carries the reason before the page", () => {
+  assert.equal(buildLoginHref("th", "/th/assets?view=a", { reason: "session-expired" }), "/th/login?reason=session-expired&callbackUrl=%2Fth%2Fassets%3Fview%3Da")
+  for (const path of ["/th", null, "//evil.test/th/a"]) assert.equal(buildLoginHref("th", path, { reason: "session-expired" }), "/th/login?reason=session-expired", String(path))
+})

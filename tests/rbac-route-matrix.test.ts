@@ -82,3 +82,8 @@ function collectApiRouteFiles(directory: string): string[] {
   }
   return files.sort((left, right) => left.localeCompare(right))
 }
+
+test("the session endpoints count as session-protected routes", () => {
+  for (const file of ["src/app/api/session/status/route.ts", "src/app/api/session/keep-alive/route.ts"])
+    assert.equal(classifyApiRouteProtection(file, readFileSync(file, "utf8")).status, "protected", file)
+})

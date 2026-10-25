@@ -12,6 +12,13 @@ import { ldapSettingKeys } from "@/lib/system-setting-defaults"
 import { buildAccessSnapshot, refreshSessionToken } from "@/lib/session-access"
 import { getUserAccessSnapshot } from "@/lib/session-access-cache"
 import { createLoginRateLimiter, getClientIp, guardLoginAttempt } from "@/lib/login-rate-limit"
+import {
+  continueSessionToken,
+  DEFAULT_SESSION_CEILING_SECONDS,
+  DEFAULT_SESSION_IDLE_SECONDS,
+  readSessionSeconds,
+  sessionClock,
+} from "@/lib/session-deadline"
 import bcrypt from "bcryptjs"
 import { randomUUID } from "node:crypto"
 
@@ -47,7 +54,12 @@ const loginRateLimiter =
   })
 globalForLoginRateLimit.loginRateLimiter = loginRateLimiter
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+// A session ends after this many seconds without a keep-alive, or this many seconds after sign-in (menu B shell §6.8).
+// A blank or bad env value falls back to the default (src/lib/session-deadline.ts).
+const sessionIdleSeconds = readSessionSeconds(process.env.SESSION_IDLE_SECONDS, DEFAULT_SESSION_IDLE_SECONDS)
+const sessionCeilingSeconds = readSessionSeconds(process.env.SESSION_CEILING_SECONDS, DEFAULT_SESSION_CEILING_SECONDS)
+
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   providers: [
     Credentials({
       credentials: {
@@ -76,18 +88,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "jwt",
-    maxAge: 8 * 60 * 60, // 8 hours
+    maxAge: sessionCeilingSeconds, // the cookie lives up to the ceiling; the idle and ceiling rules are the claims
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      const now = Math.floor(Date.now() / 1000)
       if (user) {
         token.id = user.id
         token.roles = user.roles
         token.permissions = user.permissions
         token.employeeId = user.employeeId
+        token.loginAt = now
+        token.activeAt = now
         return token
       }
-      return refreshSessionToken(token, getUserAccessSnapshot)
+      // Only the keep-alive's update moves activeAt; an expired or claimless token ends before the access re-read.
+      return continueSessionToken(token, {
+        trigger,
+        now,
+        idleSeconds: sessionIdleSeconds,
+        ceilingSeconds: sessionCeilingSeconds,
+        refresh: (current) => refreshSessionToken(current, getUserAccessSnapshot),
+      })
     },
     async session({ session, token }) {
       if (session.user) {
@@ -96,6 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.permissions = token.permissions as string[]
         session.user.employeeId = token.employeeId as string | null | undefined
       }
+      session.clock = sessionClock(token, sessionIdleSeconds, sessionCeilingSeconds) ?? undefined
       return session
     },
   },

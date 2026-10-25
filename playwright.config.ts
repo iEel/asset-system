@@ -44,7 +44,8 @@ export default defineConfig<E2eTestOptions, E2eWorkerOptions>({
     timeout: 120_000,
     // The app's only sender is the notification digest's webhook (src/lib/notification-delivery.ts): blank for the app
     // under test, so nothing it does reaches outside (spec §5). The process environment wins over the env files.
-    env: { AUTH_URL: baseURL, NEXTAUTH_URL: baseURL, NOTIFICATION_DIGEST_WEBHOOK_URL: "" },
+    // The suite reuses one sign-in for up to 90 minutes, so the idle limit sits above `globalTimeout`.
+    env: { AUTH_URL: baseURL, NEXTAUTH_URL: baseURL, NOTIFICATION_DIGEST_WEBHOOK_URL: "", SESSION_IDLE_SECONDS: "10800" },
     stdout: "ignore",
     stderr: "pipe",
   },

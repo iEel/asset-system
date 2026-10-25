@@ -132,6 +132,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "File type is not allowed": "fileTypeNotAllowed",
   "Finish or cancel the unfinished repair record before creating a legacy return": "legacyReturnRepairOpen",
   "Forbidden: cannot modify a user who has access you do not hold": "userHasMoreAccess",
+  "Forbidden: cross-site request": "crossSiteRequest",
   "Forbidden: insufficient permissions": "forbidden",
   "Forbidden: only system_admin can apply LDAP sync": "ldapSyncAdminOnly",
   "Forbidden: only system_admin can grant the system_admin role": "grantSystemAdminForbidden",

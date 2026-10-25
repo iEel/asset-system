@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth"
+import { auth, unstable_update } from "@/lib/auth"
+import type { SessionClock } from "@/lib/session-deadline"
 
 export type SessionUser = {
   id: string
@@ -21,6 +22,27 @@ export async function requireAuth(): Promise<SessionUser> {
     throw new Error("Unauthorized")
   }
   return user
+}
+
+/** The person and the session's deadlines from one auth() call, for the dashboard shell. */
+export async function getShellSession(): Promise<{ user: SessionUser; clock: SessionClock | null } | null> {
+  const session = await auth()
+  if (!session?.user) return null
+  return { user: session.user as unknown as SessionUser, clock: session.clock ?? null }
+}
+
+/** The session's deadlines without extending it: a read never moves activeAt (src/lib/session-deadline.ts). */
+export async function requireSessionClock(): Promise<SessionClock> {
+  const session = await auth()
+  if (!session?.user || !session.clock) throw new Error("Unauthorized")
+  return session.clock
+}
+
+/** Moves activeAt to now through the jwt callback's update trigger and returns the new deadlines. */
+export async function extendSession(): Promise<SessionClock> {
+  const session = await unstable_update({})
+  if (!session?.user || !session.clock) throw new Error("Unauthorized")
+  return session.clock
 }
 
 export function hasRole(user: SessionUser, role: string): boolean {

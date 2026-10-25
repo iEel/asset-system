@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { buildAccessSnapshot, createAccessSnapshotCache } from "@/lib/session-access"
 
-// Sessions are JWTs that live for 8 hours; re-reading access at most once a minute per
+// Sessions end after SESSION_IDLE_SECONDS without use or SESSION_CEILING_SECONDS after sign-in (src/lib/session-deadline.ts); re-reading access at most once a minute per
 // user lets deactivation and role changes reach live sessions without a DB hit per request.
 const accessRefreshTtlMs = 60_000
 

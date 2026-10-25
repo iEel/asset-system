@@ -46,14 +46,18 @@ export function buildRequestPath(url: URL): string {
   return `${copy.pathname}${copy.search}`
 }
 
-export function buildLoginHref(locale: string, requestPath: string | null | undefined): string {
+export function buildLoginHref(
+  locale: string,
+  requestPath: string | null | undefined,
+  options: { reason?: "session-expired" } = {}
+): string {
   const login = `/${locale}/login`
+  const { reason } = options
   // The same check the login page applies to callbackUrl: same locale, relative only.
   const target = normalizeLoginCallbackUrl(locale, requestPath ?? undefined)
-  if (target === `/${locale}` || target === login || target.startsWith(`${login}?`) || target.startsWith(`${login}#`)) {
-    return login
-  }
-  return `${login}?${new URLSearchParams({ callbackUrl: target }).toString()}`
+  const callback = !(target === `/${locale}` || target === login || target.startsWith(`${login}?`) || target.startsWith(`${login}#`))
+  const query = new URLSearchParams({ ...(reason ? { reason } : {}), ...(callback ? { callbackUrl: target } : {}) }).toString()
+  return query ? `${login}?${query}` : login
 }
 
 export function isSessionExpiredLogin(

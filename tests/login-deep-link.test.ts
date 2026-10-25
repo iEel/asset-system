@@ -29,5 +29,6 @@ test("redirectToLogin builds the login link from the proxy's header", () => {
   const source = read("src/lib/page-auth.ts")
 
   assert.match(source, /export async function redirectToLogin\(locale: string\): Promise<never>/)
-  assert.match(source, /buildLoginHref\(locale, \(await headers\(\)\)\.get\(requestPathHeader\)\)/)
+  assert.match(source, /const expired = jar\.getAll\(\)\.some\(\(cookie\) => isSessionCookieName\(cookie\.name\)\)/)
+  assert.match(source, /buildLoginHref\(locale, headerList\.get\(requestPathHeader\), expired \? \{ reason: "session-expired" \} : undefined\)/)
 })

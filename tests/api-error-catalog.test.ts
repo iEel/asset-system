@@ -90,3 +90,7 @@ test("every catalog key has Thai and English text", () => {
 test("internal-file exceptions still exist", () => {
   for (const file of [...Object.keys(internalErrorFiles), ...Object.keys(nonErrorMessageFiles)]) assert.ok(readFileSync(file, "utf8").length > 0, file)
 })
+
+test("a cross-site keep-alive has its own message", () => {
+  assert.equal(getApiErrorKey("Forbidden: cross-site request"), "crossSiteRequest")
+})
