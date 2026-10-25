@@ -122,4 +122,12 @@ test("the PM plan: created with a wrong entry first, recorded done on 31 Jan wit
   for (const text of [th.maintenancePage.pmCreateTitle, th.repairRecord.pmRecordDone, th.repairRecord.pmOverdue, th.maintenancePage.pmPlanStates.paused, th.maintenancePage.pmPlanStates.ended]) {
     assert.ok(spec.includes(text), text)
   }
+  // The ended plan is looked for from the list's last page back (menu B shell task 13B loop 1): the list sorts active,
+  // paused, then ended plans across every page, and an ended plan has no page of its own (the edit page 404s).
+  const listPage = read("src/app/[locale]/(dashboard)/maintenance/pm/page.tsx")
+  assert.ok(listPage.includes("// Active plans first, then paused, then ended, each by next due date, across every page"))
+  assert.match(read("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx"), /where: \{ id, planState: \{ not: "ended" \} \}/)
+  assert.ok(th.common.showingRange.includes("จาก {total} รายการ"))
+  assert.match(spec, /for \(let listPage = Math\.ceil\(total \/ 100\); listPage >= 1; listPage -= 1\) \{\n\s*await measure\.visit\(`\$\{PM_LIST\}&page=\$\{listPage\}`/)
+  assert.match(spec, /if \(\(await row\(\)\.count\(\)\) > 0\) break\n\s*\}\n\s*await expect\(row\(\)\.locator\('\[data-slot="status-badge"\]'\)\.last\(\)\)\.toHaveText\("จบแผน"\)/)
 })

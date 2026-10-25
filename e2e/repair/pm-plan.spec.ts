@@ -99,6 +99,16 @@ test("a monthly PM plan is created, recorded done on 31 Jan with its next due da
   // End: for good. No record, no edit, no pause or resume.
   await measure.visit(PM_LIST, "PM plans to end")
   await planAction(page, row(), "จบแผน", "จบแผน PM นี้ถาวรหรือไม่", "จบแผน PM แล้ว")
+  // The list sorts active plans first, then paused, then ended, across every page (src/app/[locale]/(dashboard)/
+  // maintenance/pm/page.tsx), and the dev database gains plans every run: once ended, the plan leaves page 1 for a page
+  // near the end (13B loop 1). There is no plan page of its own (the edit page answers 404 for an ended plan), so the
+  // list is read from its last page back until the row shows.
+  const total = Number(/จาก ([\d,]+) รายการ/.exec((await page.getByRole("main").innerText()) ?? "")?.[1]?.replaceAll(",", ""))
+  expect(total, "the PM list's total").toBeGreaterThan(0)
+  for (let listPage = Math.ceil(total / 100); listPage >= 1; listPage -= 1) {
+    await measure.visit(`${PM_LIST}&page=${listPage}`, `PM plans, page ${listPage}, looking for the ended plan`)
+    if ((await row().count()) > 0) break
+  }
   await expect(row().locator('[data-slot="status-badge"]').last()).toHaveText("จบแผน")
   for (const name of ["บันทึกว่าทำแล้ว", "แก้ไข"]) await expect(row().getByRole("link", { name })).toHaveCount(0)
   for (const name of ["พักแผน", "เปิดใช้งานต่อ", "จบแผน"]) await expect(row().getByRole("button", { name })).toHaveCount(0)

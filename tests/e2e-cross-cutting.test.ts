@@ -138,6 +138,11 @@ test("roles and permissions: each refused page and request needs a permission th
   // The screens a refusal ends on (their titles are plain text: findings, note N13).
   assert.equal((thai.accessDeniedPage as Record<string, string>).title, "ไม่มีสิทธิ์เข้าหน้านี้")
   assert.equal((thai.common as Record<string, string>).pageNotFoundTitle, "ไม่พบหน้าที่ต้องการ")
+  // The refusal's permission line is read inside main: while the access-denied page streams in, a second copy can sit
+  // outside #main for a moment (a strict-mode violation on phone-dark, menu B shell task 13B loop 1).
+  const ui = read("e2e/cross-cutting/support/ui.ts")
+  assert.ok(ui.includes("await expect(page.getByRole(\"main\").getByText(`สิทธิ์ที่ต้องใช้: ${permission}`)).toBeVisible()"))
+  assert.ok(!ui.includes("await expect(page.getByText(`สิทธิ์ที่ต้องใช้:"), "never the whole page")
   // The reviewed allow-list entry for the shell's background requests that a navigation or the search's own abort
   // cancels: each cancelled one passes, the same fetch answered 500 still fails, any other cancelled request still fails.
   const page = "http://localhost:3100/th/assets/new"

@@ -21,7 +21,7 @@ export async function expectAccessDenied(page: Page, permission: string) {
   await expect(page).toHaveURL(new RegExp(`/th/access-denied\\?(?=.*module=${moduleName})(?=.*action=${action})`))
   // The screen's title is plain text, not a heading (findings, note N13).
   await expect(page.getByRole("main").getByText("ไม่มีสิทธิ์เข้าหน้านี้", { exact: true })).toBeVisible()
-  await expect(page.getByText(`สิทธิ์ที่ต้องใช้: ${permission}`)).toBeVisible()
+  await expect(page.getByRole("main").getByText(`สิทธิ์ที่ต้องใช้: ${permission}`)).toBeVisible()
 }
 
 // Open a page the person may not use. The dashboard's loading.tsx streams every page, so requirePagePermission's
