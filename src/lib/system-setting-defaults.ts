@@ -3,6 +3,7 @@ import { defaultDepreciationPolicy, depreciationPolicySettingKey } from "@/lib/a
 import { assetQrPublicBaseUrlKey } from "@/lib/asset-qr"
 import { assetDataQualityRulesKey, defaultAssetDataQualityRules } from "@/lib/data-quality-rules"
 import { defaultLdapSyncMaxScheduledDeactivations, ldapSyncMaxScheduledDeactivationsKey } from "@/lib/ldap-sync-safety"
+import { seedCompanyName } from "@/lib/seed-company-name"
 import {
   retentionAttachmentDaysKey,
   retentionAuditLogDaysKey,
@@ -113,7 +114,7 @@ export const systemSettingDefaults = [
     value: "4",
     description: "จำนวนหลักเลขลำดับสำหรับเอกสารส่งมอบ/รับคืน",
   },
-  { key: "company_name", value: "บริษัท ตัวอย่าง จำกัด", description: "ชื่อบริษัทหลัก" },
+  { key: "company_name", value: seedCompanyName, description: "ชื่อบริษัทหลัก" },
   { key: "default_currency", value: "THB", description: "สกุลเงินเริ่มต้น" },
   {
     key: depreciationPolicySettingKey,
