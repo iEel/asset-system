@@ -136,7 +136,8 @@ setup("the run's department, location, employees, roles and users, and a session
   for (const key of E2E_USER_KEYS) {
     const user = data.users[key]
     if (!user) throw new Error(`the ${key} user was not created`)
-    const context = await browser.newContext({ baseURL, locale: "th-TH", timezoneId: "Asia/Bangkok" })
+    // Signed out: the setup.use storage state would sign this context in as the seed admin, and the login sends a signed-in visitor on.
+    const context = await browser.newContext({ baseURL, locale: "th-TH", timezoneId: "Asia/Bangkok", storageState: { cookies: [], origins: [] } })
     const userPage = await context.newPage()
     await signInOnce(userPage, user.username, user.password)
     await userPage.goto("/th")
