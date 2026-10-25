@@ -1,17 +1,10 @@
 import { prisma } from "@/lib/db"
 
+// The disposal request page needs only the executors and the statuses an
+// approver or executor can pick. It never shows the asset register, so this
+// loader must not read every asset.
 export async function getDisposalOptions() {
-  const [assets, employees, statuses] = await Promise.all([
-    prisma.asset.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        assetTag: true,
-        name: true,
-        status: { select: { nameTh: true } },
-      },
-      orderBy: { assetTag: "asc" },
-    }),
+  const [employees, statuses] = await Promise.all([
     prisma.employee.findMany({
       where: { isActive: true },
       select: { id: true, code: true, fullNameTh: true },
@@ -25,10 +18,6 @@ export async function getDisposalOptions() {
   ])
 
   return {
-    assets: assets.map((asset) => ({
-      id: asset.id,
-      label: `${asset.assetTag} - ${asset.name} (${asset.status.nameTh})`,
-    })),
     employees: employees.map((employee) => ({
       id: employee.id,
       label: `${employee.code} - ${employee.fullNameTh}`,
