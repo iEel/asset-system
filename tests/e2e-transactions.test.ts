@@ -92,6 +92,18 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   const support = read("e2e/transactions/tx-support.ts")
   assert.match(support, /return dropKnownAxe\(await measure\.recordPage\(label\), KNOWN_AXE, testInfo\)/)
   assert.doesNotMatch(spec, /measure\.(visit|recordPage)\(/)
+  // The streamed form's options are waited for before readAssetMasters reads them (menu B shell task 13B loop 3).
+  const masters = support.slice(support.indexOf("export async function readAssetMasters("), support.indexOf("export type CreatedAsset"))
+  const goto = masters.indexOf(`await page.goto("/th/assets/new")`)
+  const read0 = masters.indexOf(`const categories = await options("asset-category")`)
+  for (const wait of [
+    `await expect(page.locator("#asset-category option").filter({ hasText: /คอมพิวเตอร์พกพา/ }).first()).toBeAttached()`,
+    `await expect(page.locator("#asset-status option", { hasText: /^พร้อมใช้งาน$/ })).toHaveCount(1)`,
+    `await expect(page.locator("#asset-condition option", { hasText: /^ดี$/ })).toHaveCount(1)`,
+  ]) {
+    const at = masters.indexOf(wait)
+    assert.ok(goto >= 0 && at > goto && at < read0, wait)
+  }
 })
 
 test("a handover signed with the device's own pointer and printed, a due date before the handover refused under the field, and no double checkout (e2e transactions task 2, TX2)", async () => {

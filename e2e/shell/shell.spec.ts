@@ -7,6 +7,8 @@ import { asUser, expect, test } from "../support/fixtures.ts"
 import type { E2eDevice } from "../support/matrix.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createRoom, escapeRegExp, readAssetChoices, recordPrefix } from "../disposal/disposal-support.ts"
+// Overlays fade in: axe runs once no finite animation is left (the audit walk's settle, 13B loop 3).
+import { recordSettled } from "../audit/settle.ts"
 import { SEARCH_GROUP_ORDER, SHELL_WORDS, fillTemplate, templatePattern } from "./shell-words.ts"
 import {
   accountButton,
@@ -95,7 +97,7 @@ test.describe("the bell", () => {
       const headings = await box.getByRole("heading", { level: 3 }).allTextContents()
       expect(headings[0]).toBe(SHELL_WORDS.groupDecide)
       if (headings.includes(SHELL_WORDS.groupFollow)) expect(headings.indexOf(SHELL_WORDS.groupFollow)).toBeGreaterThan(0)
-      await measure.recordPage("IT head: the bell box")
+      await recordSettled(page, measure, "IT head: the bell box")
 
       // Read all: every row stays listed with its read pill, the bell drops its count and the menu's dot goes.
       await box.getByRole("button", { name: SHELL_WORDS.markAllRead, exact: true }).click()
@@ -169,7 +171,7 @@ test.describe("the menu and the top bar", () => {
     await expect(tooltip).toBeHidden()
     await register.focus()
     await expect(tooltip).toBeVisible()
-    await measure.recordPage("IT staff: the rail with a row's name")
+    await recordSettled(page, measure, "IT staff: the rail with a row's name")
 
     // A rail group opens the menu at that group.
     await menu(page).getByRole("button", { name: SHELL_WORDS.assetManagement, exact: true }).click()
@@ -181,7 +183,7 @@ test.describe("the menu and the top bar", () => {
     await accountButton(page, displayName).click()
     const accountMenu = page.getByRole("menu")
     await expect(accountMenu).toContainText(displayName)
-    await measure.recordPage("IT staff: the account menu")
+    await recordSettled(page, measure, "IT staff: the account menu")
     await accountMenu.getByRole("menuitem", { name: SHELL_WORDS.logout }).click()
     await page.waitForURL((url) => url.pathname === "/th/login")
     await page.goto("/th/dashboard")
@@ -205,7 +207,7 @@ test.describe("the menu and the top bar", () => {
     expect(present).toEqual(SEARCH_GROUP_ORDER.filter((label) => present.includes(label)))
     expect(present).toContain("ทรัพย์สิน")
     await expect(searchPanel(page).getByRole("option").first().locator("mark").first()).toHaveText(new RegExp(escapeRegExp(runId), "i"))
-    await measure.recordPage("IT staff: search results")
+    await recordSettled(page, measure, "IT staff: search results")
 
     // "ดูทั้งหมดในทะเบียน (N)" opens the register on the same search, which counts the same N.
     const total = /\(([\d,]+)\)$/.exec((await registerAll.textContent())?.trim() ?? "")?.[1]
@@ -272,7 +274,7 @@ test.describe("the menu and the top bar", () => {
     await expect(sheet).toContainText(displayName)
     await expect(sheet.getByRole("link", { name: SHELL_WORDS.assetRegister, exact: true })).toBeVisible()
     await expect(sheet.getByRole("button", { name: SHELL_WORDS.assetManagement, exact: true })).toBeVisible()
-    await measure.recordPage("IT staff: the phone's เพิ่มเติม sheet")
+    await recordSettled(page, measure, "IT staff: the phone's เพิ่มเติม sheet")
 
     // The theme: the other theme's button switches the page and the cookie.
     const other = e2eTheme === "light" ? "dark" : "light"

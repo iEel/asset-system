@@ -23,6 +23,12 @@ test("the shell specs use the suite's fixtures and users, run the phone on Chrom
   }
   const shell = read("e2e/shell/shell.spec.ts")
   assert.ok(shell.includes(`asUser("itHead")`) && shell.includes(`asUser("itStaff")`))
+  // Overlays fade in: each one is measured once no finite animation runs (e2e/audit/settle.ts; 13B loop 3).
+  assert.ok(shell.includes(`import { recordSettled } from "../audit/settle.ts"`))
+  for (const label of ["IT head: the bell box", "IT staff: the rail with a row's name", "IT staff: the account menu", "IT staff: search results", "IT staff: the phone's เพิ่มเติม sheet"]) {
+    assert.ok(shell.includes(`await recordSettled(page, measure, "${label}")`), label)
+    assert.ok(!shell.includes(`measure.recordPage("${label}")`), label)
+  }
 })
 
 test("the run's saved sessions outlive the run: the app under test idles after more than the run's 90 minutes, the ceiling keeps its default (menu B shell task 13A)", () => {

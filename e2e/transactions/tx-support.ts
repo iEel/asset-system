@@ -20,6 +20,11 @@ export type AssetMasters = { categoryId: string; readyStatusId: string; goodCond
 
 export async function readAssetMasters(page: Page): Promise<AssetMasters> {
   await page.goto("/th/assets/new")
+  // The dashboard's loading.tsx streams the form, so its selects may still be empty at the load event (a phone-light
+  // race in 13B loop 3): wait for the three options this helper needs before reading them.
+  await expect(page.locator("#asset-category option").filter({ hasText: /คอมพิวเตอร์พกพา/ }).first()).toBeAttached()
+  await expect(page.locator("#asset-status option", { hasText: /^พร้อมใช้งาน$/ })).toHaveCount(1)
+  await expect(page.locator("#asset-condition option", { hasText: /^ดี$/ })).toHaveCount(1)
   const options = async (id: string) =>
     page.locator(`#${id} option`).evaluateAll((elements) => elements.map((element) => ({ value: (element as HTMLOptionElement).value, label: element.textContent?.trim() ?? "" })))
   const categories = await options("asset-category")
