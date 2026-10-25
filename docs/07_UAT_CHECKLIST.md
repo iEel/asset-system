@@ -246,6 +246,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 ## Shell Presentation UAT
 
+Superseded by the menu B shell (see Menu B Shell UAT); kept as history.
+
 - [x] At 375x812, the mobile sidebar was closed off-canvas by default; its drawer opened and closed correctly, long Thai labels fit, and the body did not overflow.
 - [x] At 768x1024, the mobile/tablet shell fit with the sidebar off-canvas and no body overflow.
 - [x] At 1280x800 and 1440x900, the desktop sidebar measured 256px and aligned with the topbar/main; when collapsed it measured 64px, the topbar/main shifted correctly, the nested Asset menu expanded, and the body did not overflow.
@@ -269,6 +271,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 Controller evidence on 2026-07-15 used the authenticated Chrome `system_admin` session against 1,748 local assets. All 24 view/width combinations had one `HTML` scroll owner, no nested vertical scroller, no body/main/card horizontal overflow, one active view, and an active tab with both `aria-current` and a visible icon. The first Overview breakdown began at 5.9 viewport heights on 375x812 after mobile cards were compacted without hiding fields. Mobile actions measured at least 44px; `md+` showed only semantic tables. A direct 375px load of `view=catalog` scrolled the mandatory snap strip to the active Catalog tab. Company, Branch, Status, and Data Quality filters survived every tab URL, removing Company also removed Branch, and the Apply form retained supported URL-only Data Quality/Cross-scope/Activity scopes; automated tests cover the corresponding Brand/Model/Custodian/Supplier fields. Active Data Quality and Cross-scope chips rendered localized Thai values. A temporary Catalog preset stored `view=catalog` plus the Company filter and was deleted after inspection; blocked-storage write handling is regression-tested without inspecting browser storage. Generated Operations quality/idle hrefs preserved compatible filters and used exact `dataQuality` or `activity=idle_180d` values, but automated destination navigation was blocked by the browser safety policy, so the end-to-end drilldown/export reconciliation item above remains open. Timing logs showed `reports.shared-data` plus exactly one matching view label for each request; the flag was disabled and the dev server restarted afterward. No console error or warning was recorded after the QA start time.
 
 ## Mobile Field Navigation UAT
+
+Superseded by the menu B shell (see Menu B Shell UAT); kept as history.
 
 - [x] At 375x812 and 390x844, Asset Register showed one Mobile Field Navigation dock, no contextual Audit action bar, no body overflow, and all five visible targets measured at least 44px high.
 - [x] At 768x1024 the field dock remained visible while the desktop Sidebar was still off-canvas; at 1024x800 the field dock was hidden and the 256px desktop Sidebar was visible. Confirm there is no navigation gap across the `lg` breakpoint.
@@ -322,6 +326,19 @@ The automated suite (`npm run test:e2e`, plan `docs/superpowers/plans/2026-10-20
 - [ ] Field use: low light, one hand, a weak network.
 - [ ] HO-, RT- and TR- documents print on one A4 page each.
 - [ ] An English pass of the new messages, and the standalone server on the production build.
+
+## Menu B Shell UAT (2026-10-25)
+
+The automated suite covers the shell in all four projects (`e2e/shell/`). A person still checks:
+
+- [ ] NVDA: the bell reads "การแจ้งเตือน N รายการ"; new work is read once ("งานรออนุมัติ เพิ่ม 1 รายการ"), never on the first load; each collapsed menu icon is read on focus; the skip link is the first stop.
+- [ ] VoiceOver (iOS) and TalkBack (Android): "เพิ่มเติม" opens the sheet, focus stays inside, a swipe down closes it and focus returns to the tab; its motion stops with reduced motion.
+- [ ] The work center's orange dot and "มีงานรอคุณ N รายการ" for a person with `dashboard:view` and approval work; it goes after "อ่านแล้วทั้งหมด".
+- [ ] In real time: a person filling a long form for more than 60 minutes is not signed out; 60 minutes without use warns 5 minutes ahead and lands on the login with "เซสชันหมดอายุ", then returns to the page; near 12 hours the warning has no "อยู่ในระบบต่อ".
+- [ ] The field audit offline for over an hour: the scan page stays; after reconnecting a lapsed session goes to the login, the queue waits in IndexedDB and is sent after the same person signs in; another person's sign-in does not send it, the scan page says whose it is, and nobody can remove it (open question).
+- [ ] Two tabs: activity in one keeps the other open.
+- [ ] The navy menu and the light top bar on a real monitor in both themes; the phone's white bars in bright light.
+- [ ] An English pass of the new messages.
 
 ## Sign-Off
 

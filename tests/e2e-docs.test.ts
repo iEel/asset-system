@@ -21,7 +21,7 @@ test("the handoff, the changelog and the UAT checklist record the E2E workflow s
   const newest = changelog.indexOf("\n## ")
   const entry = changelog.indexOf("\n### ชุดทดสอบ E2E ตามขั้นตอนงานจริง (งาน E2E)\n")
   assert.ok(newest !== -1 && entry !== -1, "the newest date and the suite's entry")
-  assert.equal(changelog.indexOf("\n### ", newest), entry, "the suite's entry is the first one under the newest date")
+  assert.equal(changelog.lastIndexOf("\n## ", entry), changelog.indexOf("\n## 2026-10-21\n"), "the entry sits under 2026-10-21 (the menu B shell entry went above it later, menu B shell task 13C)")
   assert.match(changelog.slice(entry, changelog.indexOf("\n### ", entry + 1)), /\n- \*\*ผลรอบสุดท้าย:\*\* \(Task 51\) \S/, "the green run's bullet")
 
   const uat = read("docs/07_UAT_CHECKLIST.md")

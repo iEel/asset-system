@@ -147,6 +147,10 @@ PDF_THAI_FONT_BOLD=
 NOTIFICATION_DIGEST_TOKEN=<CHANGE_ME>
 NOTIFICATION_DIGEST_WEBHOOK_URL=
 
+# Optional session limits in seconds (defaults: 3600 idle, 43200 ceiling). Leave commented to keep the defaults.
+# SESSION_IDLE_SECONDS=3600
+# SESSION_CEILING_SECONDS=43200
+
 BACKUP_STATUS=unknown
 BACKUP_LAST_RUN_AT=
 BACKUP_LAST_RESTORE_TEST_AT=
@@ -537,6 +541,8 @@ location: https://asset.company.com/th
 ```nginx
 proxy_set_header X-Forwarded-Port 443;
 ```
+
+ต้องตั้ง `proxy_set_header X-Forwarded-Host asset.company.com;` เป็นค่าคงที่ (เขียนทับค่าที่ client ส่งมา ห้ามต่อท้าย) เพราะการตรวจ origin ของ `POST /api/session/keep-alive` เชื่อค่าแรกของ `X-Forwarded-Host`
 
 ถ้า login แล้วเจอ 502 และ `/var/log/nginx/error.log` มีข้อความ `upstream sent too big header while reading response header from upstream` ให้ตรวจว่า config มี buffer settings นี้ครบ:
 
