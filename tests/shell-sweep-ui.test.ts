@@ -12,18 +12,16 @@ test("the topbar uses Button for its icon buttons and menu triggers, and its rig
   const source = read(`${C}layout/topbar.tsx`)
   assert.doesNotMatch(source, /<button\b|border-dashed|rounded-full px-2 py-0\.5|sm:h-9|sm:min-h-0|size=\{\d+\}|bg-primary text-sm font-medium text-white/)
   assert.equal(source.match(/<Button\s+variant="ghost"\s+size="icon"/g)?.length, 2, "menu and sidebar toggle")
-  assert.equal(source.match(/<Button variant="ghost" size="md"/g)?.length, 2, "the language and user menu triggers")
+  assert.equal(source.match(/<Button variant="ghost" size="md"/g)?.length, 1, "the language menu trigger")
   assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline", size: "icon" \}\), "hidden lg:inline-flex"\)\}/)
   assert.match(source, /<div className="flex shrink-0 items-center gap-1 sm:gap-2">/)
-  assert.match(source, /<span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">/)
   const search = read(`${C}layout/global-search.tsx`)
   assert.match(search, /<div ref=\{anchorRef\} className=\{cn\(variant === "bar" \? "relative hidden w-\[min\(28rem,36vw\)\] min-w-0 max-w-full lg:block" : "relative w-full"\)\}>/)
   assert.match(search, /className=\{cn\("h-9 w-full min-w-0 rounded-md [^"]*", variant === "sheet" && "h-11 text-base"\)\}/)
 })
 
-test("the sidebar drawer's close button is a ghost icon Button; the group row stays the sidebar's own button (spec 2D M29)", () => {
+test("the sidebar has no drawer; its one raw button is the group row (spec 2D M29, menu B shell task 9)", () => {
   const source = read(`${C}layout/sidebar.tsx`)
-  assert.match(source, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
-  assert.match(source, /<Button variant="ghost" size="icon" onClick=\{onMobileClose\} className="ml-auto text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-active-foreground focus-visible:ring-sidebar-ring focus-visible:ring-offset-sidebar" aria-label=\{t\("closeMenu"\)\}>\n\s+<X aria-hidden="true" \/>\n\s+<\/Button>/)
+  assert.doesNotMatch(source, /<Sheet\b|onMobileClose/)
   assert.equal(source.match(/<button\b/g)?.length, 1, "only the group disclosure row, a nav row of its own")
 })

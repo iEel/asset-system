@@ -5,21 +5,23 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { THEME_COLORS, nextThemeChoice, themeCookieString } from "@/lib/theme"
 
+// A press switches the page at once, and the cookie keeps the choice for the next visit. The phone's เพิ่มเติม sheet
+// calls it too, so it lives at module level and never needs to know the theme beforehand (dark mode G6).
+export function switchTheme() {
+  const root = document.documentElement
+  const next = nextThemeChoice(root.dataset.theme, window.matchMedia("(prefers-color-scheme: dark)").matches)
+  root.dataset.theme = next
+  document.cookie = themeCookieString(next)
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    meta.content = THEME_COLORS[next]
+    meta.removeAttribute("media")
+  }
+}
+
 // Both faces render and globals.css shows the one for the theme on screen, so the first paint is right and nothing
-// changes after hydration. A press switches the page at once, and the cookie keeps the choice for the next visit.
+// changes after hydration.
 export function ThemeToggle() {
   const t = useTranslations("common")
-
-  const switchTheme = () => {
-    const root = document.documentElement
-    const next = nextThemeChoice(root.dataset.theme, window.matchMedia("(prefers-color-scheme: dark)").matches)
-    root.dataset.theme = next
-    document.cookie = themeCookieString(next)
-    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
-      meta.content = THEME_COLORS[next]
-      meta.removeAttribute("media")
-    }
-  }
 
   return (
     <Button variant="ghost" size="icon" onClick={switchTheme}>

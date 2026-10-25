@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { MobileFieldNavigation } from "@/components/layout/mobile-field-navigation"
+import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet"
 import { Sidebar } from "@/components/layout/sidebar"
 import { ShellNotificationsProvider } from "@/components/layout/shell-notifications"
 import { Topbar } from "@/components/layout/topbar"
@@ -30,10 +31,12 @@ export function DashboardShell({
   const pathname = usePathname()
   const tNav = useTranslations("nav")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebar === "collapsed")
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false)
+  const moreTriggerRef = useRef<HTMLElement | null>(null)
   const [mobileKeyboardVisible, setMobileKeyboardVisible] = useState(false)
   const isNavigationMode = getMobileShellMode(pathname) === "navigation"
-  const mobileFieldNavigationVisible = isNavigationMode && !mobileKeyboardVisible && !mobileSidebarOpen
+  // The bottom bar stays mounted under the เพิ่มเติม sheet's scrim, so focus can return to its tab (spec §6.6).
+  const mobileFieldNavigationVisible = isNavigationMode && !mobileKeyboardVisible
 
   const resetShellScroll = useCallback(() => {
     const shell = shellRef.current
@@ -58,8 +61,10 @@ export function DashboardShell({
     mainRef.current?.focus({ preventScroll: true })
   }
 
-  const closeMobileSidebar = useCallback(() => {
-    setMobileSidebarOpen(false)
+  // The bottom bar's เพิ่มเติม and the focus pages' hamburger open the same sheet; it returns focus to whichever opened it.
+  const openMoreSheet = useCallback((trigger: HTMLButtonElement) => {
+    moreTriggerRef.current = trigger
+    setMoreSheetOpen(true)
   }, [])
 
   const scrollMainToHash = useCallback(() => {
@@ -139,11 +144,8 @@ export function DashboardShell({
 
           <Sidebar
             collapsed={sidebarCollapsed}
-            mobileOpen={mobileSidebarOpen}
             user={user}
             account={account}
-            onMobileClose={closeMobileSidebar}
-            onMobileNavigate={closeMobileSidebar}
             onExpand={expandSidebar}
           />
 
@@ -152,7 +154,8 @@ export function DashboardShell({
               user={user}
               sidebarCollapsed={sidebarCollapsed}
               onToggleSidebar={() => changeSidebarCollapsed(!sidebarCollapsed)}
-              onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              onOpenMoreSheet={openMoreSheet}
+              moreSheetOpen={moreSheetOpen}
               mobileNavigationMode={isNavigationMode}
             />
 
@@ -172,10 +175,12 @@ export function DashboardShell({
             <MobileFieldNavigation
               pathname={pathname}
               user={user}
-              sidebarOpen={mobileSidebarOpen}
-              onOpenMore={() => setMobileSidebarOpen(true)}
+              moreOpen={moreSheetOpen}
+              onOpenMore={openMoreSheet}
             />
           ) : null}
+
+          <MobileMoreSheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen} user={user} account={account} returnFocusRef={moreTriggerRef} />
         </div>
       </ShellNotificationsProvider>
     </ConfirmProvider>

@@ -3,13 +3,10 @@
 import Link from "next/link"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, usePathname } from "next/navigation"
-import { signOut } from "next-auth/react"
 import {
   Menu,
   Globe,
-  LogOut,
   ScanLine,
-  ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react"
@@ -17,20 +14,18 @@ import { cn } from "@/lib/utils"
 import { GlobalSearch } from "@/components/layout/global-search"
 import { MobileSearchSheet } from "@/components/layout/mobile-search-sheet"
 import { NotificationBell } from "@/components/layout/notification-bell"
+import { useNavigationMenu } from "@/components/layout/sidebar"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button-variants"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
+import { switchLocalePath } from "@/lib/locale-path"
 import { hasNavigationPermission } from "@/lib/navigation-permissions"
 import type { SessionUser } from "@/lib/auth-utils"
 
@@ -38,23 +33,24 @@ export function Topbar({
   user,
   sidebarCollapsed,
   onToggleSidebar,
-  onMobileMenuToggle,
+  onOpenMoreSheet,
+  moreSheetOpen,
   mobileNavigationMode,
 }: {
   user: SessionUser
   sidebarCollapsed: boolean
   onToggleSidebar: () => void
-  onMobileMenuToggle: () => void
+  onOpenMoreSheet: (trigger: HTMLButtonElement) => void
+  moreSheetOpen: boolean
   mobileNavigationMode: boolean
 }) {
-  const tAuth = useTranslations("auth")
   const tAssetTools = useTranslations("assetTools")
   const tNav = useTranslations("nav")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
-  const userDisplayLabel = getUserDisplayLabel(user)
-  const userSecondaryLabel = getUserSecondaryLabel(user)
+  // The phone's title is the open menu row's label, else the brand name (spec §6.6).
+  const { activeLabel } = useNavigationMenu(user)
   const localeCode = locale === "th" ? "TH" : "EN"
   const canViewAssets = hasNavigationPermission(user, { module: "asset", action: "view" })
   const canCreateAssets = hasNavigationPermission(user, { module: "asset", action: "create" })
@@ -62,21 +58,23 @@ export function Topbar({
   const sidebarToggleLabel = tNav(sidebarCollapsed ? "expandSidebar" : "collapseSidebar")
 
   const switchLocale = (newLocale: string) => {
-    const newPath = pathname.replace(`/${locale}`, `/${newLocale}`)
-    router.push(newPath)
+    router.push(switchLocalePath(pathname, locale, newLocale))
   }
 
   return (
     <header className="flex h-14 max-w-full shrink-0 items-center justify-between gap-1 border-b border-chrome-border bg-chrome px-3 sm:gap-2 sm:px-4">
       {/* Left side */}
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-        {/* Mobile menu button */}
+        {/* Focus pages' menu button: it opens the เพิ่มเติม sheet, as the bottom bar's เพิ่มเติม does on other pages. */}
         <Button
           variant="ghost"
           size="icon"
-          onClick={onMobileMenuToggle}
+          onClick={(event) => onOpenMoreSheet(event.currentTarget)}
           className={cn("lg:hidden", mobileNavigationMode && "hidden")}
           aria-label={tNav("openMenu")}
+          aria-haspopup="dialog"
+          aria-expanded={moreSheetOpen}
+          aria-controls="mobile-more-sheet"
         >
           <Menu aria-hidden="true" className="size-5" />
         </Button>
@@ -95,6 +93,9 @@ export function Topbar({
           {sidebarCollapsed ? <PanelLeftOpen aria-hidden="true" className="size-5" /> : <PanelLeftClose aria-hidden="true" className="size-5" />}
         </Button>
 
+        {/* The phone's title shows only with the bottom menu; focus task pages keep their own task header (spec §6.6). */}
+        <p className={cn("min-w-0 truncate text-base font-semibold text-foreground lg:hidden", !mobileNavigationMode && "hidden")}>{activeLabel ?? tNav("brandName")}</p>
+
         <GlobalSearch canViewAssets={canViewAssets} canCreateAssets={canCreateAssets} />
       </div>
 
@@ -111,12 +112,13 @@ export function Topbar({
           <ScanLine aria-hidden="true" className="size-5" />
         </Link>
 
-        <div className="relative shrink-0">
+        {/* On the phone the bell shows only with the bottom menu (spec §6.6). */}
+        <div className={cn("relative shrink-0", !mobileNavigationMode && "hidden lg:block")}>
           <NotificationBell user={user} />
         </div>
 
-        {/* Language Switcher */}
-        <div className="relative shrink-0">
+        {/* Language Switcher: on the phone it lives in the เพิ่มเติม sheet. */}
+        <div className="relative hidden shrink-0 lg:block">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="md" aria-label={tNav("languageMenu", { code: localeCode })}>
@@ -139,32 +141,8 @@ export function Topbar({
           </DropdownMenu>
         </div>
 
-        <ThemeToggle />
-
-        {/* User Menu */}
-        <div className="relative shrink-0 lg:hidden">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="md" className="gap-2 text-foreground" aria-label={tNav("userMenu", { name: userDisplayLabel })}>
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                  {getUserInitial(user)}
-                </span>
-                <span className="hidden max-w-36 truncate sm:inline">{userDisplayLabel}</span>
-                <ChevronDown aria-hidden="true" className="hidden sm:block" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-[16rem]">
-              <DropdownMenuLabel className="py-1.5 text-sm font-normal text-foreground">
-                <span className="block truncate font-medium">{userDisplayLabel}</span>
-                {userSecondaryLabel ? <span className="block truncate text-meta text-faint-foreground">{userSecondaryLabel}</span> : null}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={() => void signOut({ callbackUrl: `/${locale}/login` })}>
-                <LogOut aria-hidden="true" />
-                {tAuth("logout")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="hidden lg:block">
+          <ThemeToggle />
         </div>
       </div>
     </header>

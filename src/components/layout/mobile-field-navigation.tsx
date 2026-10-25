@@ -28,17 +28,19 @@ const destinationPresentation: Record<MobileFieldDestination["id"], Omit<MobileF
 export function MobileFieldNavigation({
   pathname,
   user,
-  sidebarOpen,
+  moreOpen,
   onOpenMore,
 }: {
   pathname: string
   user: SessionUser
-  sidebarOpen: boolean
+  moreOpen: boolean
   onOpenMore: (trigger: HTMLButtonElement) => void
 }) {
   const locale = useLocale()
   const t = useTranslations("nav")
   const activeItem = getMobileFieldNavigationActiveItem(pathname)
+  // More looks open while its sheet is up; aria-current stays with the route.
+  const moreActive = activeItem === "more" || moreOpen
   const destinations = getMobileFieldDestinations(locale, user).map((destination) => ({
     ...destination,
     ...destinationPresentation[destination.id],
@@ -86,14 +88,15 @@ export function MobileFieldNavigation({
           type="button"
           onClick={(event) => onOpenMore(event.currentTarget)}
           aria-current={activeItem === "more" ? "page" : undefined}
-          aria-expanded={sidebarOpen}
-          aria-controls="mobile-primary-navigation-drawer"
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+          aria-controls="mobile-more-sheet"
           className={cn(
             "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            activeItem === "more" && "text-primary",
+            moreActive && "text-primary",
           )}
         >
-          <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md", activeItem === "more" && "bg-primary-soft")}>
+          <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md", moreActive && "bg-primary-soft")}>
             <Ellipsis className="h-5 w-5" aria-hidden="true" />
           </span>
           <span className="max-w-full truncate">{t("mobileMore")}</span>

@@ -44,19 +44,19 @@ test("evidence drawer keeps its wide panel", () => {
   assert.match(read("src/components/assets/asset-evidence-drawer.tsx"), /sm:max-w-2xl/)
 })
 
-test("mobile navigation drawer is a left sheet; desktop sidebar stays static", () => {
+test("phone navigation is the เพิ่มเติม bottom sheet; desktop sidebar stays static", () => {
   const sidebar = read("src/components/layout/sidebar.tsx")
+  const sheet = read("src/components/layout/mobile-more-sheet.tsx")
   const shell = read("src/components/layout/dashboard-shell.tsx")
-  assert.match(sidebar, /<SheetContent[\s\S]*?side="left"[\s\S]*?id="mobile-primary-navigation-drawer"/)
-  assert.match(sidebar, /<SheetTitle className="sr-only">/)
+  assert.match(sheet, /<SheetContent[\s\S]*?side="bottom"[\s\S]*?id="mobile-more-sheet"/)
+  assert.match(sheet, /<SheetTitle className="sr-only">/)
   assert.match(sidebar, /hidden[^"]*lg:flex/)
   assert.doesNotMatch(shell, /fixed inset-0 z-30 bg-black\/50|addEventListener\("keydown"/)
 })
 
 test("mobile navigation sheet returns focus to whatever opened it", () => {
-  const sidebar = read("src/components/layout/sidebar.tsx")
-  assert.match(sidebar, /onOpenAutoFocus=\{\(\) => \{\s*mobileRestoreFocusRef\.current = document\.activeElement instanceof HTMLElement \? document\.activeElement : null/)
-  assert.match(sidebar, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*?isConnected[\s\S]*?event\.preventDefault\(\)[\s\S]*?\.focus\(\)/)
+  const sheet = read("src/components/layout/mobile-more-sheet.tsx")
+  assert.match(sheet, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*?returnFocusRef\.current[\s\S]*?isConnected[\s\S]*?\[aria-controls="mobile-more-sheet"\][\s\S]*?event\.preventDefault\(\)[\s\S]*?\.focus\(\)/)
 })
 
 // Phase 2C batch 4 (spec 2C §5.8 row asset-evidence-drawer.tsx, O14, §5.11 table B row I): the drawer takes the

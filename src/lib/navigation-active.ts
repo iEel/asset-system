@@ -33,3 +33,20 @@ export function containsNavigationHref(item: NavigationHrefNode, href: string | 
   if (item.href === href) return true
   return (item.children ?? []).some((child) => containsNavigationHref(child, href))
 }
+
+export type LabeledNavigationNode = {
+  labelKey: string
+  href?: string
+  children?: LabeledNavigationNode[]
+}
+
+// The label key of the open menu row, looked up inside groups too: the phone top bar's title (spec §6.6).
+export function getActiveNavigationLabelKey(items: readonly LabeledNavigationNode[], activeHref: string | null): string | null {
+  if (activeHref === null) return null
+  for (const item of items) {
+    if (item.href === activeHref) return item.labelKey
+    const child = getActiveNavigationLabelKey(item.children ?? [], activeHref)
+    if (child !== null) return child
+  }
+  return null
+}

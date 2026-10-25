@@ -227,13 +227,16 @@
     "sectionAssets": "Assets",
     "sectionSystem": "Reports and system",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu",
     "languageMenu": "Change language ({code})",
     "userMenu": "User menu: {name}",
     "workCenterWaiting": "{count, plural, one {# item waits for you} other {# items wait for you}}",
     "collapseSidebar": "Collapse menu",
     "expandSidebar": "Expand menu",
-    "skipToContent": "Skip to main content"
+    "skipToContent": "Skip to main content",
+    "moreLanguage": "Language",
+    "moreTheme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "myAssets": {
     "title": "My Assets",

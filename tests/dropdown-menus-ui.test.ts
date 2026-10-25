@@ -42,9 +42,9 @@ test("register row menus are Radix overlays and delete through the shared action
   assert.doesNotMatch(wrapper, /<DropdownMenu|<Sheet|triggerRef|AssetDeleteButton/, "the wrapper renders no menu of its own")
 })
 
-test("topbar language and user menus are Radix dropdowns", () => {
+test("topbar language menu is a Radix dropdown", () => {
   const source = read("src/components/layout/topbar.tsx")
-  assert.ok((source.match(/<DropdownMenu\b/g)?.length ?? 0) >= 2)
+  assert.ok((source.match(/<DropdownMenu\b/g)?.length ?? 0) >= 1)
   assert.doesNotMatch(source, /langMenuOpen|userMenuOpen/)
   // The language menu is a radio group; each language is named in its own language, with no flag.
   assert.match(source, /<DropdownMenuRadioGroup value=\{locale\}/)
@@ -52,13 +52,12 @@ test("topbar language and user menus are Radix dropdowns", () => {
   assert.match(source, /<span lang="en">English<\/span>/)
   // Accessible names come from messages and contain the text shown on the button (WCAG 2.5.3).
   assert.match(source, /aria-label=\{tNav\("languageMenu", \{ code: localeCode \}\)\}/)
-  assert.match(source, /aria-label=\{tNav\("userMenu", \{ name: userDisplayLabel \}\)\}/)
-  for (const path of ["src/components/layout/topbar.tsx", "src/components/layout/sidebar.tsx"]) {
+  for (const path of ["src/components/layout/topbar.tsx", "src/components/layout/sidebar.tsx", "src/components/layout/mobile-more-sheet.tsx"]) {
     assert.doesNotMatch(read(path), /(?:aria-label|title)="[A-Z]/, path)
   }
   for (const locale of ["th", "en"] as const) {
     const nav = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav
-    for (const key of ["openMenu", "closeMenu", "collapseSidebar", "expandSidebar", "languageMenu", "userMenu"]) {
+    for (const key of ["openMenu", "collapseSidebar", "expandSidebar", "languageMenu", "userMenu"]) {
       assert.equal(typeof nav[key], "string", `${locale} nav.${key}`)
     }
     assert.match(nav.languageMenu, /\{code\}/, locale)

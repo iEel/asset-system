@@ -40,7 +40,7 @@ test("dashboard shell renders exactly one route-owned mobile bottom surface", ()
   const source = shellSource()
 
   assert.match(source, /const isNavigationMode = getMobileShellMode\(pathname\) === "navigation"/)
-  assert.match(source, /const mobileFieldNavigationVisible = isNavigationMode && !mobileKeyboardVisible && !mobileSidebarOpen/)
+  assert.match(source, /const mobileFieldNavigationVisible = isNavigationMode && !mobileKeyboardVisible/)
   assert.match(source, /mobileNavigationMode=\{isNavigationMode\}/)
   assert.match(source, /<MobileFieldNavigation/)
   assert.match(source, /pb-\[calc\(5\.25rem\+env\(safe-area-inset-bottom\)\)\]/)
@@ -56,28 +56,28 @@ test("topbar removes duplicate mobile menu and scan controls in navigation mode"
   assert.match(source, /hidden[^"\n]*lg:inline-flex/)
 })
 
-test("More exposes the existing sidebar state to assistive technology", () => {
+test("More exposes the เพิ่มเติม sheet's state to assistive technology", () => {
   const navigation = navigationSource()
   const shell = shellSource()
-  const sidebar = readFileSync("src/components/layout/sidebar.tsx", "utf8")
+  const sheet = readFileSync("src/components/layout/mobile-more-sheet.tsx", "utf8")
 
-  assert.match(navigation, /sidebarOpen: boolean/)
-  assert.match(navigation, /aria-expanded=\{sidebarOpen\}/)
-  assert.match(navigation, /aria-controls="mobile-primary-navigation-drawer"/)
-  assert.match(shell, /sidebarOpen=\{mobileSidebarOpen\}/)
-  assert.match(sidebar, /id="mobile-primary-navigation-drawer"/)
+  assert.match(navigation, /moreOpen: boolean/)
+  assert.match(navigation, /aria-expanded=\{moreOpen\}/)
+  assert.match(navigation, /aria-controls="mobile-more-sheet"/)
+  assert.match(shell, /moreOpen=\{moreSheetOpen\}/)
+  assert.match(sheet, /id="mobile-more-sheet"/)
 })
 
-test("More moves focus into the drawer and restores it after dismissal", () => {
+test("More moves focus into the เพิ่มเติม sheet and restores it after dismissal", () => {
   const navigation = navigationSource()
   const shell = shellSource()
-  const sidebar = readFileSync("src/components/layout/sidebar.tsx", "utf8")
+  const sheet = readFileSync("src/components/layout/mobile-more-sheet.tsx", "utf8")
 
   assert.match(navigation, /onOpenMore: \(trigger: HTMLButtonElement\) => void/)
   assert.match(navigation, /onClick=\{\(event\) => onOpenMore\(event\.currentTarget\)\}/)
-  assert.match(shell, /onMobileNavigate=\{closeMobileSidebar\}/)
-  // Radix Sheet traps focus inside the drawer and the sheet restores focus to the opener on close.
-  assert.match(sidebar, /<Sheet\b/)
+  assert.match(shell, /returnFocusRef=\{moreTriggerRef\}/)
+  // Radix Sheet traps focus inside the sheet and the sheet restores focus to the opener on close.
+  assert.match(sheet, /<Sheet\b/)
 })
 
 test("mobile field navigation labels exist in Thai and English", () => {

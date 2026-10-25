@@ -227,13 +227,16 @@
     "sectionAssets": "ทรัพย์สิน",
     "sectionSystem": "ภาพรวมและระบบ",
     "openMenu": "เปิดเมนู",
-    "closeMenu": "ปิดเมนู",
     "languageMenu": "เปลี่ยนภาษา ({code})",
     "userMenu": "เมนูผู้ใช้: {name}",
     "workCenterWaiting": "มีงานรอคุณ {count} รายการ",
     "collapseSidebar": "ย่อเมนู",
     "expandSidebar": "ขยายเมนู",
-    "skipToContent": "ข้ามไปเนื้อหาหลัก"
+    "skipToContent": "ข้ามไปเนื้อหาหลัก",
+    "moreLanguage": "ภาษา",
+    "moreTheme": "ธีม",
+    "themeLight": "สว่าง",
+    "themeDark": "มืด"
   },
   "myAssets": {
     "title": "ทรัพย์สินของฉัน",

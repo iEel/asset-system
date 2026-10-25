@@ -46,25 +46,28 @@ import {
   LockKeyhole,
   HardDrive,
   SlidersHorizontal,
-  X,
 } from "lucide-react"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { LabelTooltip, TooltipProvider } from "@/components/ui/tooltip"
 import {
   filterNavigationSectionsByPermission,
   type NavigationPermission,
 } from "@/lib/navigation-permissions"
-import { collectNavigationHrefs, containsNavigationHref, getActiveNavigationHref, isExactNavigationMatch } from "@/lib/navigation-active"
+import {
+  collectNavigationHrefs,
+  containsNavigationHref,
+  getActiveNavigationHref,
+  getActiveNavigationLabelKey,
+  isExactNavigationMatch,
+} from "@/lib/navigation-active"
 import type { SessionUser } from "@/lib/auth-utils"
 import { countUnreadDecisions } from "@/lib/notification-groups"
 import type { ShellAccount } from "@/lib/user-display"
 import { SidebarAccount } from "@/components/layout/sidebar-account"
 import { useShellNotifications } from "@/components/layout/shell-notifications"
 
-type MenuItem = {
+export type MenuItem = {
   labelKey: string
   href?: string
   permission?: NavigationPermission
@@ -75,7 +78,7 @@ type MenuItem = {
   attention?: string
 }
 
-type MenuSection = {
+export type MenuSection = {
   labelKey: "sectionDaily" | "sectionAssets" | "sectionSystem"
   items: MenuItem[]
 }
@@ -92,27 +95,12 @@ const activeRowClasses =
 // A rail row: a 40px square centred in the 64px rail, holding only its icon (spec §6.2).
 const railRowClasses = "lg:mx-auto lg:size-10 lg:justify-center lg:px-0"
 
-export function Sidebar({
-  collapsed,
-  mobileOpen,
-  user,
-  account,
-  onMobileClose,
-  onMobileNavigate,
-  onExpand,
-}: {
-  collapsed: boolean
-  mobileOpen: boolean
-  user: SessionUser
-  account: ShellAccount
-  onMobileClose: () => void
-  onMobileNavigate: () => void
-  onExpand: () => void
-}) {
+// The permission-filtered menu and its open row. The desktop menu, the phone's เพิ่มเติม sheet and the phone top bar's
+// title all read it, so the three never disagree (menu B shell, spec §6.6).
+export function useNavigationMenu(user: SessionUser): { sections: MenuSection[]; activeHref: string | null; activeLabel: string | null } {
   const t = useTranslations("nav")
   const locale = useLocale()
   const pathname = usePathname()
-  const mobileRestoreFocusRef = useRef<HTMLElement | null>(null)
   const { summary } = useShellNotifications()
   const waitingDecisions = countUnreadDecisions(summary?.items ?? [])
 
@@ -249,12 +237,36 @@ export function Sidebar({
     pathname,
     visibleSections.flatMap((section) => collectNavigationHrefs(section.items)),
   )
+  const activeLabelKey = getActiveNavigationLabelKey(visibleSections.flatMap((section) => section.items), activeHref)
 
-  const renderBody = (mobile: boolean) => {
-    const bodyCollapsed = mobile ? false : collapsed
+  return { sections: visibleSections, activeHref, activeLabel: activeLabelKey === null ? null : t(activeLabelKey) }
+}
 
-    return (
-      <>
+export function Sidebar({
+  collapsed,
+  user,
+  account,
+  onExpand,
+}: {
+  collapsed: boolean
+  user: SessionUser
+  account: ShellAccount
+  onExpand: () => void
+}) {
+  const t = useTranslations("nav")
+  const pathname = usePathname()
+  const { sections: visibleSections, activeHref } = useNavigationMenu(user)
+
+  return (
+    <aside
+      id="desktop-primary-navigation"
+      className={cn(
+        "relative hidden max-h-dvh flex-col bg-sidebar text-sidebar-foreground scheme-dark transition-all duration-300 motion-reduce:transition-none lg:flex",
+        collapsed ? "lg:w-16" : "lg:w-64"
+      )}
+    >
+      {/* Radix tooltips need a provider; in the rail a row names itself after 300 ms of hover, at once on focus. */}
+      <TooltipProvider delayDuration={300}>
         {/* Brand */}
         <div className="flex h-14 min-w-0 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4">
           <Image
@@ -266,27 +278,21 @@ export function Sidebar({
             loading="eager"
             className="h-8 w-8 shrink-0 rounded-md ring-1 ring-app-icon-frame"
           />
-          <span className={cn("min-w-0 truncate text-sm font-semibold text-sidebar-foreground", bodyCollapsed && "lg:sr-only")}>
+          <span className={cn("min-w-0 truncate text-sm font-semibold text-sidebar-foreground", collapsed && "lg:sr-only")}>
             {t("brandName")}
           </span>
-          {mobile ? (
-            <Button variant="ghost" size="icon" onClick={onMobileClose} className="ml-auto text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-active-foreground focus-visible:ring-sidebar-ring focus-visible:ring-offset-sidebar" aria-label={t("closeMenu")}>
-              <X aria-hidden="true" />
-            </Button>
-          ) : null}
         </div>
 
         {/* Menu */}
         <nav aria-label={t("mainNavigation")} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3">
           {visibleSections.map((section, index) => {
-            // The body renders twice (desktop aside and mobile drawer), so heading ids must differ.
-            const headingId = `${mobile ? "mobile-" : ""}nav-section-${section.labelKey}`
+            const headingId = `nav-section-${section.labelKey}`
             return (
               <div key={section.labelKey} role="group" aria-labelledby={headingId} className={cn(index > 0 && "mt-4")}>
-                {bodyCollapsed && index > 0 ? (
+                {collapsed && index > 0 ? (
                   <div aria-hidden="true" className="mx-2 mb-3 hidden h-px bg-sidebar-border lg:block" />
                 ) : null}
-                <p id={headingId} className={cn("flex h-6 items-center px-2.5 text-xs font-medium text-sidebar-muted", bodyCollapsed && "lg:sr-only")}>
+                <p id={headingId} className={cn("flex h-6 items-center px-2.5 text-xs font-medium text-sidebar-muted", collapsed && "lg:sr-only")}>
                   {t(section.labelKey)}
                 </p>
                 <div className="space-y-0.5">
@@ -294,11 +300,10 @@ export function Sidebar({
                     <SidebarItem
                       key={item.labelKey}
                       item={item}
-                      collapsed={bodyCollapsed}
+                      collapsed={collapsed}
                       activeHref={activeHref}
                       pathname={pathname}
                       t={t}
-                      onNavigate={onMobileNavigate}
                       onExpand={onExpand}
                     />
                   ))}
@@ -307,61 +312,9 @@ export function Sidebar({
             )
           })}
         </nav>
-        {mobile ? null : <SidebarAccount user={user} account={account} collapsed={bodyCollapsed} />}
-      </>
-    )
-  }
-
-  return (
-    <>
-      <aside
-        id="desktop-primary-navigation"
-        className={cn(
-          "relative hidden max-h-dvh flex-col bg-sidebar text-sidebar-foreground scheme-dark transition-all duration-300 motion-reduce:transition-none lg:flex",
-          collapsed ? "lg:w-16" : "lg:w-64"
-        )}
-      >
-        {/* Radix tooltips need a provider; in the rail a row names itself after 300 ms of hover, at once on focus. */}
-        <TooltipProvider delayDuration={300}>
-          {renderBody(false)}
-        </TooltipProvider>
-      </aside>
-
-      <Sheet
-        open={mobileOpen}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) onMobileClose()
-        }}
-      >
-        <SheetContent
-          side="left"
-          id="mobile-primary-navigation-drawer"
-          showCloseButton={false}
-          aria-describedby={undefined}
-          onOpenAutoFocus={() => {
-            mobileRestoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-          }}
-          onCloseAutoFocus={(event) => {
-            // The bottom "More" button unmounts while the drawer is open, so fall back to its re-rendered copy.
-            const opener = mobileRestoreFocusRef.current
-            const target =
-              opener?.isConnected && opener !== document.body
-                ? opener
-                : document.querySelector<HTMLElement>('[aria-controls="mobile-primary-navigation-drawer"]')
-            if (!target?.isConnected) return
-            event.preventDefault()
-            target.focus()
-          }}
-          className="w-[min(18rem,85vw)] gap-0 border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground scheme-dark lg:hidden"
-        >
-          <SheetTitle className="sr-only">{t("mainNavigation")}</SheetTitle>
-          {/* The rows' tooltips stay off in the drawer, but a Radix Tooltip Root throws without a provider. */}
-          <TooltipProvider delayDuration={300}>
-            {renderBody(true)}
-          </TooltipProvider>
-        </SheetContent>
-      </Sheet>
-    </>
+        <SidebarAccount user={user} account={account} collapsed={collapsed} />
+      </TooltipProvider>
+    </aside>
   )
 }
 
@@ -371,7 +324,6 @@ type SidebarItemProps = {
   activeHref: string | null
   pathname: string
   t: (key: string) => string
-  onNavigate: () => void
   onExpand: () => void
 }
 
@@ -381,7 +333,7 @@ function SidebarItem(props: SidebarItemProps) {
 
 // The menu is at most two levels deep (spec 2B B1), so a group's rows always sit 20px in.
 // The rail never shows a group's children: a click on a rail group expands the menu and opens that group (spec §6.2).
-function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, onExpand }: SidebarItemProps) {
+function SidebarGroup({ item, collapsed, activeHref, pathname, t, onExpand }: SidebarItemProps) {
   const containsActive = containsNavigationHref(item, activeHref)
   const [open, setOpen] = useState(containsActive)
   const [seenActiveHref, setSeenActiveHref] = useState(activeHref)
@@ -430,7 +382,6 @@ function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, on
               activeHref={activeHref}
               pathname={pathname}
               t={t}
-              onNavigate={onNavigate}
               onExpand={onExpand}
             />
           ))}
@@ -440,7 +391,7 @@ function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, on
   )
 }
 
-function SidebarLink({ item, collapsed, activeHref, pathname, t, onNavigate }: SidebarItemProps) {
+function SidebarLink({ item, collapsed, activeHref, pathname, t }: SidebarItemProps) {
   const isActive = item.href !== undefined && item.href === activeHref
   const ariaCurrent = isActive && item.href !== undefined ? (isExactNavigationMatch(pathname, item.href) ? "page" : "true") : undefined
 
@@ -448,7 +399,6 @@ function SidebarLink({ item, collapsed, activeHref, pathname, t, onNavigate }: S
     <LabelTooltip label={t(item.labelKey)} enabled={collapsed}>
       <Link
         href={item.href || "#"}
-        onClick={onNavigate}
         aria-current={ariaCurrent}
         className={cn(
           rowClasses,

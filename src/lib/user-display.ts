@@ -33,3 +33,11 @@ export function getUserRoleLabel(
     .filter((name) => name.length > 0)
   return names.length > 0 ? names.join(", ") : null
 }
+
+// The person's second line in the phone sheet: role and department joined with " · ". CSS cuts it, never the code (F5).
+export function getAccountDetailLine(parts: ReadonlyArray<string | null | undefined>): string {
+  return parts
+    .map((part) => part?.trim() ?? "")
+    .filter((part) => part.length > 0)
+    .join(" · ")
+}

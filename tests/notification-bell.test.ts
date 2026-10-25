@@ -33,7 +33,7 @@ test("the bell reads the shell context, names its count, lists every row in two 
   assert.match(bell, /if \(getNotificationRowState\(item\) === "unread" && !\(await markRead\(item\.key\)\)\) toast\.error\(tNotifications\("saveFailed"\)\)/)
   assert.match(bell, /finally\s*\{[\s\S]*router\.push\(item\.href\)/)
   const topbar = read("src/components/layout/topbar.tsx")
-  assert.match(topbar, /<div className="relative shrink-0">\s*<NotificationBell user=\{user\} \/>\s*<\/div>/)
+  assert.match(topbar, /<div className=\{cn\("relative shrink-0", !mobileNavigationMode && "hidden lg:block"\)\}>\s*<NotificationBell user=\{user\} \/>\s*<\/div>/)
   assert.doesNotMatch(topbar, /useTranslations\("notifications"\)|PopoverContent|useShellNotifications|\/work-center|\{\/\* Notifications \*\/\}/)
 })
 

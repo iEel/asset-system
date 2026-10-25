@@ -40,7 +40,7 @@ test("the work center shows a dot and a hidden sentence, never a number (spec §
 test("the person sits pinned at the foot of the desktop menu and opens the account menu (spec §6.2)", () => {
   const sidebar = read("src/components/layout/sidebar.tsx")
   assert.match(sidebar, /<nav aria-label=\{t\("mainNavigation"\)\} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3">/)
-  assert.match(sidebar, /\{mobile \? null : <SidebarAccount user=\{user\} account=\{account\} collapsed=\{bodyCollapsed\} \/>\}/)
+  assert.match(sidebar, /<SidebarAccount user=\{user\} account=\{account\} collapsed=\{collapsed\} \/>/)
   const account = read("src/components/layout/sidebar-account.tsx")
   assert.match(account, /export function SidebarAccount\(\{ user, account, collapsed \}: \{ user: SessionUser; account: ShellAccount; collapsed: boolean \}\)/)
   assert.match(account, /<DropdownMenuTrigger asChild>\s*<Button\s+variant="ghost"/)

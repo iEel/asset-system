@@ -117,7 +117,7 @@ const TITLES: Record<string, string> = {
 // ---- Owners (spec 2D §5.2): the shared parts that draw what their rule forbids everywhere else. An owner may count
 // anything and is never an EXEMPT row. A rule without an entry has no owner.
 const HEADER_OWNER = `${C}ui/page-header.tsx`
-const NAV_PRIMITIVES = ["ui/tab-nav.tsx", "ui/breadcrumbs.tsx", "ui/pagination.tsx", "ui/steps.tsx", "ui/stat-strip.tsx", "layout/sidebar.tsx", "layout/mobile-field-navigation.tsx"].map((path) => C + path)
+const NAV_PRIMITIVES = ["ui/tab-nav.tsx", "ui/breadcrumbs.tsx", "ui/pagination.tsx", "ui/steps.tsx", "ui/stat-strip.tsx", "layout/sidebar.tsx", "layout/mobile-field-navigation.tsx", "layout/mobile-more-sheet.tsx"].map((path) => C + path)
 const OWNERS: Readonly<Record<string, readonly string[]>> = {
   LH1: [HEADER_OWNER], // PageHeader's title
   LH2: [HEADER_OWNER], // function PageHeader itself

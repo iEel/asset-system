@@ -96,7 +96,7 @@ test("the theme toggle sits beside the language button and shows the moon while 
   // In the topbar, directly after the language menu and before the user menu (the mockup's "TH" then the toggle).
   const topbar = read(`${C}layout/topbar.tsx`)
   assert.match(topbar, /^import \{ ThemeToggle \} from "@\/components\/layout\/theme-toggle"$/m)
-  assert.match(topbar, /<span lang="en">English<\/span>[\s\S]*?<\/DropdownMenu>\n {8}<\/div>\n\n {8}<ThemeToggle \/>\n\n {8}\{\/\* User Menu \*\/\}/)
+  assert.match(topbar, /<span lang="en">English<\/span>[\s\S]*?<\/DropdownMenu>\n {8}<\/div>\n\n {8}<div className="hidden lg:block">\n {10}<ThemeToggle \/>\n {8}<\/div>\n/)
   assert.equal(topbar.match(/<ThemeToggle \/>/g)?.length, 1)
   // The login page has no topbar and no toggle: it follows the cookie or the OS.
   assert.doesNotMatch(read("src/app/[locale]/(auth)/login/page.tsx"), /ThemeToggle/)

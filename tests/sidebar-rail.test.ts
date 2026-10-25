@@ -41,7 +41,7 @@ test("the toggle says what it does and whether the menu is open (spec §6.2)", (
 test("rail icons name themselves on hover and focus; a group icon expands the menu and opens its group (spec §6.2)", () => {
   const sidebar = read("src/components/layout/sidebar.tsx")
   assert.match(sidebar, /id="desktop-primary-navigation"/)
-  assert.match(sidebar, /<TooltipProvider delayDuration=\{300\}>\s*\{renderBody\(false\)\}\s*<\/TooltipProvider>/)
+  assert.match(sidebar, /<TooltipProvider delayDuration=\{300\}>\s*\{\/\* Brand \*\/\}/)
   assert.equal(sidebar.match(/<LabelTooltip label=\{t\(item\.labelKey\)\} enabled=\{collapsed\}>/g)?.length, 2, "the link and the group row")
   assert.match(sidebar, /if \(collapsed\) \{\s*setOpen\(true\)\s*onExpand\(\)\s*\} else setOpen\(!open\)/)
   assert.match(sidebar, /aria-expanded=\{expanded\}/)
