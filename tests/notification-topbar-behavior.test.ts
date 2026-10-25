@@ -5,14 +5,12 @@ import test from "node:test"
 const topbarSource = () => readFileSync("src/components/layout/topbar.tsx", "utf8")
 const centerActionsSource = () => readFileSync("src/components/notifications/notification-center-actions.tsx", "utf8")
 
-test("topbar refetches its client summary when notification state changes", () => {
+test("the bell reads the shell's summary and fetches nothing itself (menu B shell task 3)", () => {
   const source = topbarSource()
 
-  assert.match(source, /window\.addEventListener\(notificationSummaryChangedEvent,\s*loadNotificationSummary\)/)
-  assert.match(source, /window\.removeEventListener\(notificationSummaryChangedEvent,\s*loadNotificationSummary\)/)
-  assert.match(source, /notificationRequestGuard\.begin\(\)/)
-  assert.match(source, /notificationRequestGuard\.isLatest\(requestId\)/)
-  assert.doesNotMatch(source, /\.catch\(\(\)\s*=>\s*\{\s*if \(!cancelled\) setNotificationSummary\(\{ total: 0, items: \[\] \}\)/)
+  assert.match(source, /const \{ summary: notificationSummary, markRead \} = useShellNotifications\(\)/)
+  assert.match(source, /\{notificationTotal > 99 \? "99\+" : notificationTotal\}/)
+  assert.doesNotMatch(source, /fetch\(|notificationSummaryChangedEvent|createLatestNotificationRequestGuard/)
 })
 
 test("plain notification clicks mark the item read before navigating", () => {
@@ -20,9 +18,7 @@ test("plain notification clicks mark the item read before navigating", () => {
 
   assert.match(source, /isPlainPrimaryClick\(event\)/)
   assert.match(source, /event\.preventDefault\(\)/)
-  assert.match(source, /markNotificationRead\(item\)/)
-  assert.match(source, /removeNotificationSummaryItem/)
-  assert.match(source, /notifyNotificationSummaryChanged\(\)/)
+  assert.match(source, /await markRead\(item\.key\)/)
   assert.match(source, /finally\s*\{[\s\S]*router\.push\(item\.href\)/)
 })
 

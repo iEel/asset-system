@@ -144,7 +144,8 @@
     "type_info": "ทั่วไป",
     "type_warning": "ควรติดตาม",
     "type_danger": "เร่งด่วน",
-    "type_success": "เรียบร้อย"
+    "type_success": "เรียบร้อย",
+    "increaseAnnouncement": "{title} เพิ่ม {count} รายการ"
   },
   "nav": {
     "mainNavigation": "เมนูหลัก",

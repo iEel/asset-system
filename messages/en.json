@@ -144,7 +144,8 @@
     "type_info": "General",
     "type_warning": "Needs attention",
     "type_danger": "Urgent",
-    "type_success": "Done"
+    "type_success": "Done",
+    "increaseAnnouncement": "{title}: {count} more"
   },
   "nav": {
     "mainNavigation": "Main navigation",

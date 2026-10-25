@@ -157,7 +157,8 @@ test("roles and permissions: each refused page and request needs a permission th
   assert.deepEqual(classified.allowed, [{ id: "topbar-notifications-cancelled-by-redirect", kind: "requestfailed", url: notifications }])
   assert.deepEqual(classified.unexpectedResponses.map((response) => response.status), [500])
   assert.deepEqual(classified.unexpectedFailures.map((failure) => failure.url), ["http://localhost:3100/api/notifications/summary"])
-  assert.match(read("src/components/layout/topbar.tsx"), /fetch\(`\/api\/notifications\?locale=\$\{locale\}`\)/)
+  assert.match(read("src/lib/notification-client-sync.ts"), /request\(`\/api\/notifications\?locale=\$\{locale\}`\)/)
+  assert.match(read("src/components/layout/shell-notifications.tsx"), /fetchNotificationSummary\(locale\)/)
   // The spec: the suite's fixtures; findings M5 and M6 are fixed and M4 is decided (DX3 (ก)), none expected to fail.
   const spec = read("e2e/cross-cutting/roles.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))

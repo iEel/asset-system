@@ -2,10 +2,20 @@ import type { NotificationSummaryItem } from "./notification-summary-items.ts"
 
 export const notificationSummaryChangedEvent = "asset-system:notification-summary-changed"
 
+// Every listed row, read ones included, with its read state; total counts the unread rows only (menu B shell task 3).
+export type NotificationClientItem = NotificationSummaryItem & {
+  isRead: boolean
+  isSnoozed: boolean
+  isSuppressed: boolean
+}
+
 export type NotificationClientSummary = {
   total: number
-  items: NotificationSummaryItem[]
+  items: NotificationClientItem[]
+  generatedAt: string
 }
+
+export const NOTIFICATION_POLL_MS = 120_000
 
 export function createLatestNotificationRequestGuard() {
   let latestRequestId = 0
@@ -31,16 +41,27 @@ type PrimaryClick = {
 
 type NotificationFetch = (input: string, init?: RequestInit) => Promise<{ ok: boolean }>
 
-export function removeNotificationSummaryItem(
+export type NotificationJsonFetch = (
+  input: string,
+  init?: RequestInit,
+) => Promise<{ ok: boolean; json(): Promise<unknown> }>
+
+// A read row stays listed and stops counting; reading also clears its snooze.
+export function markNotificationSummaryItemRead(
   summary: NotificationClientSummary,
   key: string,
 ): NotificationClientSummary {
-  const items = summary.items.filter((item) => item.key !== key)
-  if (items.length === summary.items.length) return summary
+  const current = summary.items.find((item) => item.key === key)
+  if (!current || current.isRead) return summary
+
+  const items = summary.items.map((item) => item.key === key
+    ? { ...item, isRead: true, isSnoozed: false, isSuppressed: true }
+    : item)
 
   return {
-    total: items.reduce((sum, item) => sum + item.count, 0),
+    total: items.reduce((sum, item) => sum + (item.isSuppressed ? 0 : item.count), 0),
     items,
+    generatedAt: summary.generatedAt,
   }
 }
 
@@ -70,6 +91,38 @@ export async function markNotificationRead(
     return response.ok
   } catch {
     return false
+  }
+}
+
+export async function fetchNotificationSummary(
+  locale: string,
+  request: NotificationJsonFetch = fetch,
+): Promise<NotificationClientSummary | null> {
+  try {
+    const response = await request(`/api/notifications?locale=${locale}`)
+    if (!response.ok) return null
+    return await response.json() as NotificationClientSummary
+  } catch {
+    return null
+  }
+}
+
+// Read-all sends the action only: the server marks each row at its own count and answers the recomputed summary.
+export async function markAllNotificationsRead(
+  locale: string,
+  request: NotificationJsonFetch = fetch,
+): Promise<NotificationClientSummary | null> {
+  try {
+    const response = await request(`/api/notifications?locale=${locale}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "read_all" }),
+    })
+    if (!response.ok) return null
+    const body = await response.json() as { summary?: NotificationClientSummary }
+    return body.summary ?? null
+  } catch {
+    return null
   }
 }
 

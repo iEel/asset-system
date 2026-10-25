@@ -13,10 +13,11 @@ import {
   ChevronDown,
   PanelLeftClose,
 } from "lucide-react"
-import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react"
+import { useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
 import { formatCount } from "@/lib/display-format"
 import { GlobalSearch } from "@/components/layout/global-search"
+import { useShellNotifications } from "@/components/layout/shell-notifications"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button-variants"
@@ -35,27 +36,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
 import type { SessionUser } from "@/lib/auth-utils"
-import {
-  createLatestNotificationRequestGuard,
-  isPlainPrimaryClick,
-  markNotificationRead,
-  notificationSummaryChangedEvent,
-  notifyNotificationSummaryChanged,
-  removeNotificationSummaryItem,
-  type NotificationClientSummary,
-} from "@/lib/notification-client-sync"
-import type { NotificationSummaryItem } from "@/lib/notification-summary-items"
+import { isPlainPrimaryClick, type NotificationClientItem } from "@/lib/notification-client-sync"
 import { hasNavigationPermission } from "@/lib/navigation-permissions"
-
-async function fetchNotificationSummary(locale: string) {
-  try {
-    const response = await fetch(`/api/notifications?locale=${locale}`)
-    if (!response.ok) return null
-    return await response.json() as NotificationClientSummary
-  } catch {
-    return null
-  }
-}
 
 export function Topbar({
   user,
@@ -76,36 +58,20 @@ export function Topbar({
   const router = useRouter()
   const pathname = usePathname()
   const [notificationOpen, setNotificationOpen] = useState(false)
-  const [notificationSummary, setNotificationSummary] = useState<NotificationClientSummary>({ total: 0, items: [] })
-  const [notificationRequestGuard] = useState(createLatestNotificationRequestGuard)
+  // The shell's provider owns the fetch and the polling (menu B shell task 3); the bell only reads its summary.
+  const { summary: notificationSummary, markRead } = useShellNotifications()
+  const notificationTotal = notificationSummary?.total ?? 0
   const userDisplayLabel = getUserDisplayLabel(user)
   const userSecondaryLabel = getUserSecondaryLabel(user)
   // C2: the work center needs dashboard:view, so the bell offers it only to people who can open it.
   const canOpenWorkCenter = hasNavigationPermission(user, { module: "dashboard", action: "view" })
   const localeCode = locale === "th" ? "TH" : "EN"
-
-  const loadNotificationSummary = useCallback(async () => {
-    const requestId = notificationRequestGuard.begin()
-    const data = await fetchNotificationSummary(locale)
-    if (data && notificationRequestGuard.isLatest(requestId)) setNotificationSummary(data)
-  }, [locale, notificationRequestGuard])
-
-  useEffect(() => {
-    let cancelled = false
-    const requestId = notificationRequestGuard.begin()
-    void fetchNotificationSummary(locale).then((data) => {
-      if (!cancelled && data && notificationRequestGuard.isLatest(requestId)) setNotificationSummary(data)
-    })
-    window.addEventListener(notificationSummaryChangedEvent, loadNotificationSummary)
-    return () => {
-      cancelled = true
-      window.removeEventListener(notificationSummaryChangedEvent, loadNotificationSummary)
-    }
-  }, [loadNotificationSummary, locale, notificationRequestGuard])
+  // Read and snoozed rows stay out of the bell for now; Task 7 lists them as read.
+  const notificationItems = notificationSummary?.items.filter((item) => !item.isSuppressed) ?? []
 
   const handleNotificationClick = async (
     event: ReactMouseEvent<HTMLAnchorElement>,
-    item: NotificationSummaryItem,
+    item: NotificationClientItem,
   ) => {
     if (!isPlainPrimaryClick(event)) {
       setNotificationOpen(false)
@@ -114,10 +80,7 @@ export function Topbar({
 
     event.preventDefault()
     try {
-      if (await markNotificationRead(item)) {
-        setNotificationSummary((current) => removeNotificationSummaryItem(current, item.key))
-        notifyNotificationSummaryChanged()
-      }
+      await markRead(item.key)
     } finally {
       setNotificationOpen(false)
       router.push(item.href)
@@ -183,9 +146,9 @@ export function Topbar({
                 title={tNotifications("title")}
               >
                 <Bell aria-hidden="true" className="size-5" />
-                {notificationSummary.total > 0 ? (
+                {notificationTotal > 0 ? (
                   <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold leading-none text-danger-foreground">
-                    {notificationSummary.total > 99 ? "99+" : notificationSummary.total}
+                    {notificationTotal > 99 ? "99+" : notificationTotal}
                   </span>
                 ) : null}
               </Button>
@@ -196,10 +159,10 @@ export function Topbar({
                 <p className="mt-1 text-xs text-muted-foreground">{tNotifications("subtitle")}</p>
               </div>
               <div className="max-h-80 overflow-y-auto p-2">
-                {notificationSummary.items.length === 0 ? (
+                {notificationItems.length === 0 ? (
                   <EmptyNote className="px-3 py-3">{tNotifications("empty")}</EmptyNote>
                 ) : (
-                  notificationSummary.items.map((item) => (
+                  notificationItems.map((item) => (
                     <Link
                       key={item.key}
                       href={item.href}

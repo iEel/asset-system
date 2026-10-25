@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
 import { buildNotificationSummaryItems, type NotificationSummaryCounts } from "@/lib/notification-summary-items"
+import type { NotificationClientSummary } from "@/lib/notification-client-sync"
 import {
   buildActiveNotificationSummary,
   getNotificationCountDrops,
@@ -25,12 +26,12 @@ const defaultNotificationRuleDays = {
   [notificationLicenseExpiryDaysKey]: 30,
 } as const
 
-export async function getNotificationSummary(user: SessionUser, locale: string) {
+// Every listed row with its read state (menu B shell task 3); snoozedUntil and assignedToUserId stay on the server.
+export async function getNotificationSummary(user: SessionUser, locale: string): Promise<NotificationClientSummary> {
   const center = await getNotificationCenter(user, locale)
-  const active = buildActiveNotificationSummary(center.items)
   return {
-    total: active.total,
-    items: active.items,
+    total: center.activeTotal,
+    items: center.items.map(({ key, count, href, tone, isRead, isSnoozed, isSuppressed }) => ({ key, count, href, tone, isRead, isSnoozed, isSuppressed })),
     generatedAt: center.generatedAt,
   }
 }

@@ -38,8 +38,8 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
     url: /\/api\/notifications\?locale=[a-z]{2}$/,
     errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
     reason:
-      "The top bar fetches the notifications as soon as a dashboard page hydrates (src/components/layout/topbar.tsx). The dashboard's loading.tsx streams every page, so requirePagePermission's redirect to the access-denied page arrives after that, as a client navigation, and the browser cancels the fetch of the page it leaves. A cancelled fetch is the navigation's doing; the notifications answered with an error status are still a failure (a response record).",
-    reviewed: "2026-10-19",
+      "The shell's notification provider (src/components/layout/shell-notifications.tsx) fetches the notifications as soon as a dashboard page hydrates, every 2 minutes while the page is visible, and when the tab becomes visible again; the dashboard's loading.tsx streams every page, so requirePagePermission's redirect to the access-denied page arrives after that, as a client navigation, and the browser cancels the fetch of the page it leaves. A cancelled fetch is the navigation's doing; the notifications answered with an error status are still a failure (a response record).",
+    reviewed: "2026-10-21",
   },
   {
     id: "static-file-cancelled-on-leave",

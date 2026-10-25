@@ -111,7 +111,10 @@ test("the summary reads every counted key's state and records each drop once, gu
   state.states = [stateRow("approvalInbox", true, 3), stateRow("duePm", true, 1), stateRow("licenseExpiringSoon", true, 0)]
   const response = await getSummary()
   assert.equal(response.status, 200)
-  assert.equal((await response.json()).total, 0)
+  const body = await response.json()
+  assert.equal(body.total, 0)
+  assert.deepEqual(body.items, [{ key: "approvalInbox", count: 2, href: "/th/admin/approvals", tone: "danger", isRead: true, isSnoozed: false, isSuppressed: true }])
+  assert.equal(typeof body.generatedAt, "string")
   assert.deepEqual(calls("notificationUserState.findMany")[0].where, { userId: "user-1", key: { in: TEN_KEYS } })
   assert.deepEqual(calls("notificationUserState.updateMany"), [
     { where: { userId: "user-1", key: "approvalInbox", lastCount: { gt: 2 } }, data: { lastCount: 2 } },
@@ -162,6 +165,7 @@ test("read_all marks every row not yet read at the server's own count and answer
   const body = await response.json()
   assert.equal(body.ok, true)
   assert.equal(body.summary.total, 0)
+  assert.ok(body.summary.items.every((item: { isRead: boolean }) => item.isRead))
 
   state.calls = []
   const again = await patch()
