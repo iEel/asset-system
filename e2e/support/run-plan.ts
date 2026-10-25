@@ -7,8 +7,8 @@ import { runSuffix } from "./env-guard.ts"
 export type E2eUserKey = "itStaff" | "itHead" | "viewer" | "employee"
 
 // Spec §7, the users table. IT staff: no approve; the IT head: the IT staff set plus audit and disposal approve and the
-// audit, maintenance and disposal exports (decision DX6 (ก)); the viewer: view only, on the modules the IT staff work
-// in; the employee: no permission (lands on My Assets).
+// audit, maintenance and disposal exports (decision DX6 (ก)) and the work center (user decision 2026-10-25); the
+// viewer: view only, on the modules the IT staff work in; the employee: no permission (lands on My Assets).
 const IT_STAFF_PERMISSIONS = [
   "asset:view", "asset:create", "asset:edit",
   "audit:view", "audit:create", "audit:edit",
@@ -19,7 +19,11 @@ const IT_STAFF_PERMISSIONS = [
 
 export const E2E_ROLE_PERMISSIONS: Record<E2eUserKey, readonly string[]> = {
   itStaff: IT_STAFF_PERMISSIONS,
-  itHead: [...IT_STAFF_PERMISSIONS, "audit:approve", "disposal:approve", "audit:export", "maintenance:export", "disposal:export"],
+  itHead: [
+    ...IT_STAFF_PERMISSIONS, "audit:approve", "disposal:approve", "audit:export", "maintenance:export", "disposal:export",
+    // and the work center (dashboard:view) for the menu B shell's work-center dot (user decision 2026-10-25)
+    "dashboard:view",
+  ],
   viewer: ["asset:view", "audit:view", "maintenance:view", "disposal:view", "report:view"],
   employee: [],
 }

@@ -138,27 +138,25 @@ test("roles and permissions: each refused page and request needs a permission th
   // The screens a refusal ends on (their titles are plain text: findings, note N13).
   assert.equal((thai.accessDeniedPage as Record<string, string>).title, "ไม่มีสิทธิ์เข้าหน้านี้")
   assert.equal((thai.common as Record<string, string>).pageNotFoundTitle, "ไม่พบหน้าที่ต้องการ")
-  // The reviewed allow-list entry for the top bar's fetch that a client redirect cancels: a cancelled fetch passes,
-  // the same fetch answered 500 still fails, and any other cancelled request still fails.
+  // The reviewed allow-list entry for the shell's background requests that a navigation or the search's own abort
+  // cancels: each cancelled one passes, the same fetch answered 500 still fails, any other cancelled request still fails.
   const page = "http://localhost:3100/th/assets/new"
-  const notifications = "http://localhost:3100/api/notifications?locale=th"
+  const at = (path: string) => `http://localhost:3100${path}`
+  const aborted = (method: string, url: string) => ({ method, url, errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page })
+  const shellRequests = [["GET", at("/api/notifications?locale=th")], ["GET", at("/api/session/status")], ["POST", at("/api/session/keep-alive")], ["GET", at("/api/search?q=E2E&locale=th")]]
   const classified = classify(
-    {
-      console: [],
-      responses: [{ method: "GET", url: notifications, status: 500, resourceType: "fetch", pageUrl: page }],
-      failures: [
-        { method: "GET", url: notifications, errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page },
-        { method: "GET", url: "http://localhost:3100/api/notifications/summary", errorText: "net::ERR_ABORTED", resourceType: "fetch", pageUrl: page },
-      ],
-    },
-    ALLOW_LIST,
-    [],
+    { console: [], responses: [{ method: "GET", url: at("/api/notifications?locale=th"), status: 500, resourceType: "fetch", pageUrl: page }],
+      failures: [...shellRequests.map(([method, url]) => aborted(method, url)), aborted("GET", at("/api/notifications/summary")), aborted("GET", at("/api/session/other"))] },
+    ALLOW_LIST, [],
   )
-  assert.deepEqual(classified.allowed, [{ id: "topbar-notifications-cancelled-by-redirect", kind: "requestfailed", url: notifications }])
+  assert.deepEqual(classified.allowed, shellRequests.map(([, url]) => ({ id: "shell-requests-cancelled-by-navigation", kind: "requestfailed", url })))
   assert.deepEqual(classified.unexpectedResponses.map((response) => response.status), [500])
-  assert.deepEqual(classified.unexpectedFailures.map((failure) => failure.url), ["http://localhost:3100/api/notifications/summary"])
+  assert.deepEqual(classified.unexpectedFailures.map((failure) => failure.url), [at("/api/notifications/summary"), at("/api/session/other")])
   assert.match(read("src/lib/notification-client-sync.ts"), /request\(`\/api\/notifications\?locale=\$\{locale\}`\)/)
   assert.match(read("src/components/layout/shell-notifications.tsx"), /fetchNotificationSummary\(locale\)/)
+  const keeper = read("src/components/layout/session-keeper.tsx")
+  assert.ok(keeper.includes(`"/api/session/status"`) && keeper.includes(`"/api/session/keep-alive"`))
+  assert.match(read("src/components/layout/global-search.tsx"), /fetch\(`\/api\/search\?q=\$\{encodeURIComponent\([^)]*\)\}&locale=\$\{locale\}`/)
   // The spec: the suite's fixtures; findings M5 and M6 are fixed and M4 is decided (DX3 (ก)), none expected to fail.
   const spec = read("e2e/cross-cutting/roles.spec.ts")
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))

@@ -195,7 +195,7 @@ The users and the data are created by a setup step **through the app's own admin
 | User | Linked to an employee | Role(s) | Permissions |
 |---|---|---|---|
 | `e2e.it-staff-<run>` | yes | IT staff | assets: view, create, edit; audit: view, create, edit; maintenance: view, create, edit; disposal: view, create, edit; reports: view, export (no approve) |
-| `e2e.it-head-<run>` | yes | IT head | the IT staff set, plus audit approve and disposal approve; audit, maintenance and disposal export (decision DX6, 2026-10-20) |
+| `e2e.it-head-<run>` | yes | IT head | the IT staff set, plus audit approve and disposal approve; audit, maintenance and disposal export (decision DX6, 2026-10-20); the work center (`dashboard:view`) for the menu dot, user decision 2026-10-25 |
 | `e2e.viewer-<run>` | no | viewer | view only |
 | `e2e.employee-<run>` | yes | employee | |
 

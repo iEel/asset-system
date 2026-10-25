@@ -45,6 +45,11 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
     ["PUT", "/api/assets/00000000-0000-0000-0000-000000000000"],
     ["PATCH", "/api/audit-rounds/00000000-0000-0000-0000-000000000000"],
     ["POST", "/api/admin/users"],
+    // The shell's own requests (menu B shell task 13A): the session status and keep-alive, read state, and sign-out.
+    ["GET", "/api/session/status"],
+    ["POST", "/api/session/keep-alive"],
+    ["PATCH", "/api/notifications"],
+    ["POST", "/api/auth/signout"],
   ]) {
     assert.equal(hazardOf(method, at(pathname)), undefined, `${method} ${pathname}`)
   }

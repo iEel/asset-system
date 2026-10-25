@@ -33,13 +33,13 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
     reviewed: "2026-10-19",
   },
   {
-    id: "topbar-notifications-cancelled-by-redirect",
+    id: "shell-requests-cancelled-by-navigation",
     kind: "requestfailed",
-    url: /\/api\/notifications\?locale=[a-z]{2}$/,
+    url: /\/api\/(?:notifications\?locale=[a-z]{2}|session\/(?:status|keep-alive)|search\?q=[^&]*&locale=[a-z]{2})$/,
     errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
     reason:
-      "The shell's notification provider (src/components/layout/shell-notifications.tsx) fetches the notifications as soon as a dashboard page hydrates, every 2 minutes while the page is visible, and when the tab becomes visible again; the dashboard's loading.tsx streams every page, so requirePagePermission's redirect to the access-denied page arrives after that, as a client navigation, and the browser cancels the fetch of the page it leaves. A cancelled fetch is the navigation's doing; the notifications answered with an error status are still a failure (a response record).",
-    reviewed: "2026-10-21",
+      "The shell makes its own background requests on every dashboard page: the notification summary as the page hydrates, every 2 minutes and when the tab shows again (src/components/layout/shell-notifications.tsx), the session status as the page hydrates and a keep-alive after input (src/components/layout/session-keeper.tsx), and the search, which aborts its own request when the words change (src/components/layout/global-search.tsx). A redirect that arrives as a client navigation, a page.goto or the search's own abort cancels them (Chromium net::ERR_ABORTED). A cancelled request is the navigation's or the component's doing; any of them answered with an error status is still a failure (a response record).",
+    reviewed: "2026-10-25",
   },
   {
     id: "static-file-cancelled-on-leave",
