@@ -1,6 +1,6 @@
 # Developer Handoff
 
-> Last updated: 2026-10-25
+> Last updated: 2026-10-26
 > Scope: Developer onboarding, production readiness, and operational handoff for the Asset Management System.
 
 ## Start Here
@@ -1194,6 +1194,7 @@ npm run build
 - Deploy notes: no database migration; everyone signs in once after the deploy; `SESSION_IDLE_SECONDS` and `SESSION_CEILING_SECONDS` are optional (a blank or invalid value falls back to 3600 / 43200; see `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`); Nginx must overwrite `X-Forwarded-Host` (`proxy_set_header X-Forwarded-Host asset.company.com;`), because the keep-alive's origin check trusts its first entry.
 - Not covered by E2E: the 60-minute default in real time, a 401 from `useApiError`, the offline queue under another person. These are in the UAT list.
 - Left before the deploy: `docs/07_UAT_CHECKLIST.md` "Menu B Shell UAT", the canvas page groups, E2E again, UAT and the one deploy (wiki 27).
+- Page group 1, the login (2026-10-26, branch `feat/group1-login`, not deployed, no migration; plan `docs/superpowers/plans/2026-10-25-group1-login.md`): canvas B (navy backdrop in both themes, brand header, desktop hero, one card), the hint, Caps Lock, the destination line from a fixed table, the language links, the test-system pill when the database is not `asset_management`, no IT Helpdesk block; fixes: the form posts, and a signed-in visitor goes on to the normalized `callbackUrl` unless `reason=session-expired`. UAT lines are in `docs/07_UAT_CHECKLIST.md` under system_admin.
 
 ## Open Go-Live Decisions
 

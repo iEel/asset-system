@@ -11,7 +11,12 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] At 390px and desktop width, confirm the review queue uses mobile cards/desktop table, has no body-level horizontal overflow, keeps controls at least 44px on mobile, traps/restores dialog focus, and exposes Thai/English labels without relying on color alone.
 
 - [ ] Login successfully.
-- [ ] On Login at 390px and desktop, confirm the real application icon, Light Slate background, Navy headings, Surface White form, navy primary submit button (#1E4F94) and teal focus ring (#10858D) match the authenticated shell without horizontal overflow.
+- [ ] On Login at 390px and desktop, in both themes, confirm the navy backdrop (navy in light and dark alike), the card on the surface tokens with its accent line on top and no shadow, and the real application icon in the brand header, with no horizontal overflow at 390px or on desktop.
+- [ ] Confirm the hint under the title reads "ใช้ชื่อผู้ใช้และรหัสผ่านเดียวกับที่เข้าเครื่องคอมพิวเตอร์ของบริษัท" and that the page has no IT Helpdesk block.
+- [ ] On desktop, turn Caps Lock on while the password has focus and confirm "Caps Lock เปิดอยู่" shows under the password; it goes when Caps Lock is off or the password loses focus.
+- [ ] Let a session expire on a page (or open Login with `?reason=session-expired&callbackUrl=/th/assets`) and confirm the line "เข้าแล้วจะไปที่ …" names that page; sign in and confirm you land there.
+- [ ] Use the language links (ภาษาไทย / English): the page switches language, keeps the destination, and the current language is not a link.
+- [ ] Confirm the "ระบบทดสอบ" pill shows on UAT/dev (a database other than `asset_management`) and that Production shows none.
 - [ ] Confirm Username and Password have associated accessible labels, password-manager autocomplete values (`username` / `current-password`), 44px mobile targets, and 16px mobile input text. Toggle Eye/EyeOff and confirm the password remains focused and the value does not change.
 - [ ] Submit invalid credentials and confirm the username remains, password clears, focus returns to Password, the generic error is announced, and editing either field clears the stale error. Confirm loading copy and `aria-busy` are present while authentication is pending.
 - [ ] Open Login with `?reason=session-expired` and confirm the localized session-expired status appears. After a valid login with a same-locale `callbackUrl`, confirm navigation returns there; external, protocol-relative, backslash, cross-locale, and malformed callback values must fall back to the role-aware locale home.

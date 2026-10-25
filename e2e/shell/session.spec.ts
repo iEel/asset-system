@@ -106,3 +106,9 @@ test("offline holds the deadline; the deadline and a stale cookie both land on t
   await page.waitForURL((url) => url.pathname === "/th/login")
   expect(new URL(page.url()).searchParams.get("reason")).toBe("session-expired")
 })
+
+test("a signed-in visitor of the login goes on to the page it names (group 1 login, spec §8)", async ({ page, measure }) => {
+  await page.goto("/th/login?callbackUrl=%2Fth%2Fassets")
+  await page.waitForURL((url) => url.pathname === "/th/assets")
+  await measure.recordPage("IT staff: the login sends a signed-in visitor on")
+})
