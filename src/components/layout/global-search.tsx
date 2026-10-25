@@ -67,6 +67,8 @@ export function GlobalSearch({
   const router = useRouter()
   const t = useTranslations("globalSearch")
   const panelId = useId()
+  // The listbox is the combobox's popup: aria-controls names it, and it is the element that scrolls (axe scrollable-region-focusable).
+  const listboxId = `${panelId}-listbox`
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<GlobalSearchResult[]>([])
   const [assetTotal, setAssetTotal] = useState<number | null>(null)
@@ -248,7 +250,7 @@ export function GlobalSearch({
         aria-label={t("label")}
         aria-expanded={showPanel}
         aria-autocomplete="list"
-        aria-controls={panelId}
+        aria-controls={listboxId}
         aria-activedescendant={showPanel && activeIndex >= 0 ? `${panelId}-option-${activeIndex}` : undefined}
         aria-keyshortcuts="/"
       />
@@ -282,6 +284,7 @@ export function GlobalSearch({
   const panel = (
     <GlobalSearchPanel
       panelId={panelId}
+      listboxId={listboxId}
       variant={variant}
       state={state}
       query={trimmedQuery}
@@ -297,7 +300,7 @@ export function GlobalSearch({
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3">
         {field}
-        <div className="min-h-0 flex-1 overflow-y-auto">{panel}</div>
+        <div className="flex min-h-0 flex-1 flex-col">{panel}</div>
       </div>
     )
   }
@@ -328,6 +331,7 @@ export function GlobalSearch({
 
 function GlobalSearchPanel({
   panelId,
+  listboxId,
   variant,
   state,
   query,
@@ -338,6 +342,7 @@ function GlobalSearchPanel({
   onChoose,
 }: {
   panelId: string
+  listboxId: string
   variant: "bar" | "sheet"
   state: GlobalSearchPanelState
   query: string
@@ -351,7 +356,7 @@ function GlobalSearchPanel({
   const indexByKey = new Map(options.map((option, index) => [option.key, index]))
 
   return (
-    <div id={panelId}>
+    <div id={panelId} className={cn(variant === "sheet" && "flex min-h-0 flex-1 flex-col")}>
       {state === "hint" ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm text-muted-foreground">
           <span>{t("emptyHint")}</span>
@@ -378,9 +383,14 @@ function GlobalSearchPanel({
           <p className="text-meta text-muted-foreground">{t("notFoundHint")}</p>
         </div>
       ) : null}
-      {/* The bar caps the list; in the phone sheet the body around the panel scrolls, so the list takes the rest of the height. */}
+      {/* The listbox scrolls itself: capped in the bar, and in the phone sheet it takes the rest of the height. */}
       {sections.length > 0 ? (
-        <ul role="listbox" aria-label={t("label")} className={variant === "bar" ? "grid max-h-100 gap-px overflow-y-auto p-1.5" : "grid gap-px p-1.5"}>
+        <ul
+          role="listbox"
+          id={listboxId}
+          aria-label={t("label")}
+          className={variant === "bar" ? "grid max-h-100 gap-px overflow-y-auto p-1.5" : "grid min-h-0 flex-1 content-start gap-px overflow-y-auto p-1.5"}
+        >
           {sections.map((section) => (
             <li key={section.id} role="presentation">
               {section.id === "notFound" ? null : (

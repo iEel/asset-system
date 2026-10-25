@@ -52,8 +52,8 @@ test("one clear button in the field; the phone sheet's list fills the sheet and 
   // type="search" draws a native cancel X beside our own clear button; hide it as SearchField does.
   assert.match(source, /className=\{cn\("h-9 w-full min-w-0 rounded-md [^"]*\[&::-webkit-search-cancel-button\]:appearance-none[^"]*", variant === "sheet" && "h-11 text-base"\)\}/)
   // The bar keeps its capped list; the sheet's list has no cap and scrolls in the sheet body.
-  assert.match(source, /className=\{variant === "bar" \? "grid max-h-100 gap-px overflow-y-auto p-1\.5" : "grid gap-px p-1\.5"\}/)
-  assert.match(source, /<div className="min-h-0 flex-1 overflow-y-auto">\{panel\}<\/div>/)
+  assert.match(source, /className=\{variant === "bar" \? "grid max-h-100 gap-px overflow-y-auto p-1\.5" : "grid min-h-0 flex-1 content-start gap-px overflow-y-auto p-1\.5"\}/)
+  assert.match(source, /<div className="flex min-h-0 flex-1 flex-col">\{panel\}<\/div>/)
   assert.equal(source.match(/max-h-100/g)?.length, 1)
   // The Kbd footer is for a keyboard: the bar only.
   assert.match(source, /\{variant === "bar" && options\.length > 0 \? \(\s*<div className="flex flex-wrap items-center gap-x-3 [^"]*border-t/)
@@ -83,4 +83,15 @@ test("search messages (menu B shell task 8)", () => {
     for (const [key, value] of Object.entries(SET[locale])) assert.equal(key.split(".").reduce((node, part) => node?.[part], all), value, `${locale} ${key}`)
     for (const [key, value] of Object.entries(kept[locale])) assert.equal(m[key], value, `${locale} ${key} unchanged`)
   }
+})
+test("the listbox is the combobox's popup and scrolls itself, so axe's scrollable-region rule exempts it (menu B shell task 13B loop 2)", () => {
+  const source = read("src/components/layout/global-search.tsx")
+  assert.match(source, /const listboxId = `\$\{panelId\}-listbox`/)
+  assert.match(source, /aria-controls=\{listboxId\}/); assert.doesNotMatch(source, /aria-controls=\{panelId\}/)
+  assert.match(source, /<ul\s+role="listbox"\s+id=\{listboxId\}/)
+  assert.match(source, /<div id=\{panelId\} className=\{cn\(variant === "sheet" && "flex min-h-0 flex-1 flex-col"\)\}>/)
+  // In the sheet only the listbox scrolls: the wrappers are flex columns without overflow.
+  assert.match(source, /"grid min-h-0 flex-1 content-start gap-px overflow-y-auto p-1\.5"/)
+  assert.doesNotMatch(source, /<div className="[^"]*overflow-y-auto[^"]*">\{panel\}<\/div>/)
+  assert.equal(source.match(/overflow-y-auto/g)?.length, 2, "only the two listbox variants scroll")
 })
