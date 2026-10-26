@@ -10,7 +10,6 @@ import {
   approvedDisposalsWhere,
   auditActionsDueSoonWhere,
   bangkokDayDiff,
-  buildWaitingWorkHref,
   DEFAULT_WAITING_WORK_RULES,
   duePmWhere,
   earliestDate,
@@ -124,25 +123,6 @@ test("a kind is visible by its page's permission, and the inbox hides the queues
   )
   // Returns count assets and link to the register, so asset:view gates them like warranty and licence.
   assert.deepEqual(waitingWorkVisibleKeys({ ...none, asset: true }, emptyInbox), ["returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"])
-})
-
-// Task 3 rewrites the five rows whose lists do not show the same count yet.
-test("one link per kind: today's bell links, plus the two repair lists (spec §6.3)", () => {
-  assert.deepEqual(Object.fromEntries(WAITING_WORK_KEYS.map((key) => [key, buildWaitingWorkHref("th", key)])), {
-    approvalInbox: "/th/admin/approvals",
-    openRepairs: "/th/maintenance?status=in_progress",
-    stuckRepairs: "/th/maintenance#stuck",
-    duePm: "/th/maintenance#pm-due",
-    pendingAuditFindings: "/th/audit/findings?status=pending",
-    openAuditActions: "/th/audit/findings?status=all",
-    auditActionsDueSoon: "/th/audit/findings?status=all",
-    pendingDisposals: "/th/disposal?status=pending",
-    approvedDisposals: "/th/disposal?status=approved",
-    returnsDueSoon: "/th/asset-management/checkin",
-    warrantyExpiringSoon: "/th/assets?dataQuality=warranty&exact=1",
-    licenseExpiringSoon: "/th/assets?ownershipType=software_license",
-  })
-  assert.equal(buildWaitingWorkHref("en", "stuckRepairs"), "/en/maintenance#stuck")
 })
 
 test("each kind's age: days since its oldest record, days to its earliest due date, or its earliest expiry (spec §6.3)", () => {

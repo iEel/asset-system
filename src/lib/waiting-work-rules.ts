@@ -169,13 +169,13 @@ const waitingWorkHrefs: Record<WaitingWorkKey, (locale: string) => string> = {
   stuckRepairs: (locale) => `/${locale}/maintenance#stuck`,
   duePm: (locale) => `/${locale}/maintenance#pm-due`,
   pendingAuditFindings: (locale) => `/${locale}/audit/findings?status=pending`,
-  openAuditActions: (locale) => `/${locale}/audit/findings?status=all`,
-  auditActionsDueSoon: (locale) => `/${locale}/audit/findings?status=all`,
+  openAuditActions: (locale) => `/${locale}/audit/findings?status=action_not_due`,
+  auditActionsDueSoon: (locale) => `/${locale}/audit/findings?status=action_due_soon`,
   pendingDisposals: (locale) => `/${locale}/disposal?status=pending`,
   approvedDisposals: (locale) => `/${locale}/disposal?status=approved`,
-  returnsDueSoon: (locale) => `/${locale}/asset-management/checkin`,
+  returnsDueSoon: (locale) => buildExactAssetRegisterHref(locale, { dataQuality: "returnDue" }),
   warrantyExpiringSoon: (locale) => buildExactAssetRegisterHref(locale, { dataQuality: "warranty" }),
-  licenseExpiringSoon: (locale) => `/${locale}/assets?ownershipType=software_license`,
+  licenseExpiringSoon: (locale) => buildExactAssetRegisterHref(locale, { dataQuality: "licenseExpiry" }),
 }
 
 export function buildWaitingWorkHref(locale: string, key: WaitingWorkKey): string {

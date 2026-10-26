@@ -88,9 +88,10 @@ test("dashboard, work-center and notification links open the register exactly", 
     assert.doesNotMatch(source, /`\/\$\{locale\}\/assets(\?|`)/)
     assert.match(source, /buildExactAssetRegisterHref\(/)
   }
-  assert.doesNotMatch(notifications, /`\/\$\{locale\}\/assets`/)
-  assert.doesNotMatch(notifications, /\/assets\?dataQuality=/)
-  assert.match(notifications, /buildExactAssetRegisterHref\(locale, \{ dataQuality: "warranty" \}\)/)
+  assert.doesNotMatch(notifications, /`\/\$\{locale\}\/assets(\?|`)|\/assets\?dataQuality=|asset-management\/checkin|ownershipType=software_license/)
+  for (const value of ["warranty", "licenseExpiry", "returnDue"]) {
+    assert.match(notifications, new RegExp(`buildExactAssetRegisterHref\\(locale, \\{ dataQuality: "${value}" \\}\\)`), value)
+  }
   assert.match(dashboard, /buildExactAssetRegisterHref\(locale, \{ dataQuality: "warranty" \}\)/)
   assert.match(dashboard, /buildExactAssetRegisterHref\(locale, \{ sort: "createdAt", direction: "desc" \}\)/)
 })
