@@ -90,9 +90,15 @@ test("reports and exports: each export's route permission, the reports page's ga
   assert.ok(!spec.includes("ADMIN_STATE_FILE") && !spec.includes("playwright.request.newContext"), "no seed admin session")
   const itHead = spec.slice(spec.indexOf(`test.describe("the IT head"`))
   assert.ok(itHead.includes(`asUser("itHead")`))
-  for (const route of ["/api/maintenance-tickets/export", "/api/disposal-requests/export", "/api/audit-findings/export?status=all", "/api/audit-findings/export-pdf?status=all"]) {
+  for (const route of ["/api/maintenance-tickets/export", "/api/disposal-requests/export"]) {
     assert.ok(itHead.includes(`"${route}"`), route)
   }
+  // E2E fix 1B: the findings exports narrow to the run's own records (the dev data grows run by run; an export of
+  // every finding outgrew the request timeout), keeping status=all.
+  for (const route of ["/api/audit-findings/export?status=all&search=${runId}", "/api/audit-findings/export-pdf?status=all&search=${runId}"]) {
+    assert.ok(itHead.includes("`" + route + "`"), route)
+  }
+  assert.ok(itHead.includes("const runId = readRunState().runId"), "the run id comes from the run state")
   assert.ok(!itHead.includes("toBe(403)"), "the IT head is refused none of them")
   const itStaff = spec.slice(spec.indexOf(`test.describe("IT staff"`), spec.indexOf(`test.describe("the viewer"`))
   assert.ok(itStaff.includes("(finding M1)") && !itHead.includes("(finding M1)"), "M1's check runs as IT staff")

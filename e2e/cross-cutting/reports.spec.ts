@@ -124,10 +124,13 @@ test.describe("the IT head", () => {
   // open. A GET of each, no page: it runs in one project, since no device or theme takes part.
   test("the IT head's repair, disposal and findings exports download files that open", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop-light", "a GET of each file: no device or theme takes part")
+    // The findings exports narrow to the run's own asset tags: the dev data grows run by run, and the export of
+    // everything is not what this step checks (it proves the files open).
+    const runId = readRunState().runId
     for (const [route, sheet] of [
       ["/api/maintenance-tickets/export", null],
       ["/api/disposal-requests/export", null],
-      ["/api/audit-findings/export?status=all", "Audit Findings"],
+      [`/api/audit-findings/export?status=all&search=${runId}`, "Audit Findings"],
     ] as const) {
       const response = await page.request.get(route)
       expect(response.status(), route).toBe(200)
@@ -138,7 +141,7 @@ test.describe("the IT head", () => {
       if (sheet) expect(names, route).toContain(sheet)
       expect(sheets[names[0]][0]?.length ?? 0, `${route}: a header row`).toBeGreaterThan(1)
     }
-    const pdf = await page.request.get("/api/audit-findings/export-pdf?status=all")
+    const pdf = await page.request.get(`/api/audit-findings/export-pdf?status=all&search=${runId}`)
     expect(pdf.status()).toBe(200)
     expect(isPdf(await pdf.body()), "the findings PDF opens").toBe(true)
   })
