@@ -24,6 +24,9 @@ export function getAttachmentPermissionModule(module: string) {
 }
 
 export function hasAttachmentPermission(user: AttachmentUser, module: string, action: "view" | "edit") {
+  // A model photo stands in for the asset's photo on asset pages, so viewing it also opens with asset:view.
+  // Uploading or deleting one stays brand:edit.
+  if (module === "asset_model" && action === "view" && hasPermission(user, "asset", "view")) return true
   return hasPermission(user, getAttachmentPermissionModule(module), action)
 }
 
