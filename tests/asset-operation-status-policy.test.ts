@@ -99,8 +99,9 @@ test("asset detail exposes controlled status correction action", () => {
   const pageSource = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
   const componentSource = readFileSync("src/components/assets/asset-status-correction-dialog.tsx", "utf8")
 
-  assert.match(pageSource, /AssetStatusCorrectionDialog/)
-  assert.match(pageSource, /canCorrectAssetStatus/)
+  assert.match(pageSource, /canCorrectAssetStatus\(asset\.status\)/)
+  assert.match(pageSource, /statusCorrection=\{statusCorrection\}/)
+  assert.match(readFileSync("src/components/assets/detail/asset-detail-actions.tsx", "utf8"), /<AssetStatusCorrectionDialog ref=\{correctionDialogRef\} hideTrigger returnFocusRef=\{returnFocusRef\}/)
   assert.match(componentSource, /\/api\/assets\/\$\{assetId\}\/status-correction/)
   // v-track plan 2 A5: the 5-character rule is checked on submit (validate), not by a disabled button.
   assert.match(componentSource, /minLength\(values\.reason, 5\)/)

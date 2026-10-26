@@ -12,8 +12,8 @@ type SkeletonBlockProps = {
 type PageHeaderSkeletonProps = {
   // The breadcrumb trail of a record page, 4px above the title.
   crumbs?: boolean
-  // "text": the description line · "badges": two status badges (the asset page) · "none": no meta row.
-  meta?: "text" | "badges" | "none"
+  // "text": the description line · "identity": the code, one status badge and the S/N (the asset page) · "none": no meta row.
+  meta?: "text" | "identity" | "none"
   // The button row.
   actions?: boolean
   // The asset register (PageHeader compactOnMobile): below md the title and its button share one row, no meta row.
@@ -40,10 +40,11 @@ function PageHeaderSkeleton({ crumbs = false, meta = "text", actions = true, com
         <div className="min-w-0">
           <SkeletonBlock className="h-8 w-56 max-w-full" />
           {meta === "text" ? <SkeletonBlock className={cn("mt-1 h-5 w-72 max-w-full", compactOnMobile && "max-md:hidden")} /> : null}
-          {meta === "badges" ? (
+          {meta === "identity" ? (
             <div className="mt-1 flex gap-3">
+              <SkeletonBlock className="h-5 w-28" />
               <SkeletonBlock className="h-5.5 w-20 rounded-control" />
-              <SkeletonBlock className="h-5.5 w-20 rounded-control" />
+              <SkeletonBlock className="h-5 w-24" />
             </div>
           ) : null}
         </div>
@@ -194,31 +195,19 @@ export function AssetRegisterPageSkeleton() {
   )
 }
 
-// The asset page: the identity moved into the header (crumbs, then the name, then the status badges), so there is no
-// identity card; then the view tabs, the numbers and the content beside its 280px side column.
+// The asset page: the trail and the identity line, the five tabs, the four facts with their sub-lines, then the overview
+// on 12 columns from lg (photo 4 beside details 8, then recent 8 and components 4); the photo comes first below lg.
 export function AssetDetailPageSkeleton() {
   return (
     <div aria-busy="true" className="flex w-full flex-col gap-6">
-      <PageHeaderSkeleton crumbs meta="badges" />
+      <PageHeaderSkeleton crumbs meta="identity" />
       <TabNavSkeleton count={5} />
-      <MetricGridSkeleton count={6} />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <SkeletonBlock className="h-5 w-44" />
-          <div className="mt-4 space-y-3">
-            <SkeletonBlock className="h-16" />
-            <SkeletonBlock className="h-16" />
-            <SkeletonBlock className="h-16" />
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <SkeletonBlock className="h-5 w-36" />
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <SkeletonBlock className="h-20" />
-            <SkeletonBlock className="h-20" />
-            <SkeletonBlock className="h-20" />
-          </div>
-        </div>
+      <MetricGridSkeleton count={4} foot />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <DividedPanelSkeleton rows={2} className="lg:col-span-4 lg:col-start-9 lg:row-start-1" />
+        <DividedPanelSkeleton rows={6} className="lg:col-span-8 lg:col-start-1 lg:row-start-1" />
+        <DividedPanelSkeleton rows={3} className="lg:col-span-8" />
+        <DividedPanelSkeleton rows={3} className="lg:col-span-4" />
       </div>
     </div>
   )

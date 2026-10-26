@@ -21,20 +21,14 @@ test("ActionBar: a short screen keeps the 44px links, halves the padding and put
 
 const D = "src/app/[locale]/(dashboard)/"
 
-test("asset page: a link to a section that the current view hides opens the view that shows it (wiki 43, spec 2D §3.4)", () => {
+test("asset page: a link to a section another tab shows opens that tab (wiki 43, spec 2D §3.4; group 1 asset detail task 8)", () => {
   const source = read(`${D}assets/[id]/page.tsx`)
   assert.match(source, /import \{ buildAssetDetailSectionHref, buildAssetDetailViewHref, isAssetDetailSectionVisible, resolveAssetDetailView, type AssetDetailSectionId \} from "@\/lib\/asset-detail-view"/)
   assert.match(source, /const sectionHref = \(sectionId: AssetDetailSectionId\) => buildAssetDetailSectionHref\(locale, asset\.id, assetDetailView, sectionId, returnToHref\)/)
-  assert.equal(source.match(/createHealthItem\(hasAssetResponsibility\(asset\), responsibilityHealthLabel, sectionHref\("ownership"\), /g)?.length, 2)
-  assert.match(source, /href: sectionHref\("maintenance"\),\n\s+actionLabel: t\("quickMaintenance"\),/)
-  assert.match(source, /href: sectionHref\("audit"\),\n\s+actionLabel: t\("detailSections\.audit"\),/)
-  assert.match(source, /purchaseHref: sectionHref\("purchase"\),\n\s+auditHref: sectionHref\("audit"\),\n\s+componentsHref: sectionHref\("components"\),/)
-  assert.match(source, /const renewAction = \{ href: purchaseHref, /, "the phone ActionBar shows it in every view")
-  assert.match(source, /const auditAction = \{ href: auditHref, /)
-  assert.match(source, /const componentAction = \{ href: componentsHref, /, "the phone ActionBar shows it in every view")
-  assert.equal(source.match(/\{ href: auditHref, icon: <ScanLine className="h-4 w-4" \/>, label: t\("quickAudit"\) \}/g)?.length, 4)
-  // Only sections of the overview tab stay plain "#id" links: they render on the overview only; photos is on the files tab since group 1.
-  assert.doesNotMatch(source, /["`]#(?:ownership|components|handover|movement|maintenance|audit|photos)["`]|\bstatusHref\b/)
+  assert.match(source, /const photosHref = sectionHref\("photos"\)/)
+  assert.match(source, /uploadHref: photosHref,/, "the overview's upload link opens the files tab (R26)")
+  assert.match(source, /documentsHref: sectionHref\("purchase-documents"\)/)
+  assert.doesNotMatch(source, /["`]#(?:ownership|components|handover|movement|maintenance|audit|photos|purchase-documents)["`]|\bstatusHref\b/)
 })
 
 test("transaction cancel dialog: the error is the first thing in the body, the blockers a warning Notice, the count formatCount (spec 2D D7, plan 2D-3 R2)", () => {

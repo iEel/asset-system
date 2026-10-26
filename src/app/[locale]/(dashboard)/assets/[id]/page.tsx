@@ -2,7 +2,6 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import {
-  AlertTriangle,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
@@ -10,17 +9,10 @@ import {
   CheckCircle2,
   ChevronDown,
   Cpu,
-  Edit,
-  FileText,
-  GitBranch,
   Info as InfoIcon,
-  MapPin,
   PackageCheck,
   Puzzle,
-  RotateCcw,
   ScanLine,
-  ShieldCheck,
-  Truck,
   Wrench,
 } from "lucide-react"
 import { prisma } from "@/lib/db"
@@ -29,40 +21,50 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
-import { getAssetRegisterTransactionActions } from "@/lib/asset-operation-policy"
-import { statusMarkerVariants } from "@/components/ui/badge-variants"
-import { Button } from "@/components/ui/button"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
-import { Nil, orNil } from "@/components/ui/nil"
+import { Nil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
-import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
-import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
-import { AssetStatusCorrectionDialog } from "@/components/assets/asset-status-correction-dialog"
-import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getAssetStateTone, getPanelClasses } from "@/lib/design-system"
+import { getPanelClasses } from "@/lib/design-system"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
-import { AssetComponentContextBanner } from "@/components/assets/asset-component-context-banner"
 import { AssetComponentsSummary } from "@/components/assets/asset-components-summary"
-import { AssetDetailActionMenu } from "@/components/assets/asset-detail-action-menu"
 import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
+import { AssetDetailActions } from "@/components/assets/detail/asset-detail-actions"
+import { AssetDetailFactStrip } from "@/components/assets/detail/asset-detail-fact-strip"
+import { AssetDetailHeader } from "@/components/assets/detail/asset-detail-header"
+import { AssetOverview } from "@/components/assets/detail/asset-overview"
 import { parseModelSpecs } from "@/lib/model-specs"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetMovementTimeline, type AssetMovementTimelineItem } from "@/components/assets/asset-movement-timeline"
-import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
+import { actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { getAssetActions, getAssetRecordRepairAction, type AssetActionInput } from "@/lib/asset-actions"
+import {
+  buildAssetDetailMoreGroups,
+  describeAssetAudit,
+  describeAssetHolder,
+  describeAssetWarranty,
+  getDisposalRequestOffer,
+  listAssetDataGaps,
+  type AssetDataGap,
+} from "@/lib/asset-detail-frame-rules"
+import { getAssetDetailFrame } from "@/lib/asset-detail-frame"
+import { getLatestAssetHistory } from "@/lib/asset-history"
+import { ASSET_MOVEMENT_DOCUMENT_PERMISSION, type AssetMovementDocumentKind } from "@/lib/asset-movement-labels"
+import { getAssetNeighbours } from "@/lib/asset-neighbours"
+import { buildRegisterCrumbLabel, parseRegisterReturnTo } from "@/lib/asset-neighbours-rules"
+import { isThumbnailable } from "@/lib/attachment-thumbnail"
 import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
-import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { buildAssetDetailSectionHref, buildAssetDetailViewHref, isAssetDetailSectionVisible, resolveAssetDetailView, type AssetDetailSectionId } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
@@ -76,11 +78,8 @@ import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { getRepairRecordStatusTone, toRepairRecordStatus } from "@/lib/repair-record-policy"
 import {
   compactMovementDetails,
-  createHealthItem,
   formatMovementType,
   getMissingPhotoChecklistLabels,
-  getWarrantyState,
-  maskLicenseKey,
 } from "@/lib/asset-detail-format"
 
 type AssetDetailPageProps = {
@@ -109,14 +108,6 @@ type MovementTimelineItem = {
 
 type MovementTone = "neutral" | "success" | "info" | "warning" | "danger"
 
-type ActivitySummaryItem = {
-  label: string
-  value: string
-  href: string
-  tone: MovementTone
-  actionLabel?: string
-}
-
 type RelationshipLink = { id: string; href: string; label: string; role: string }
 
 export default async function AssetDetailPage({ params, searchParams }: AssetDetailPageProps) {
@@ -125,20 +116,32 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const user = await requirePagePermission(locale, "asset", "view")
   const canEditAsset = hasPermission(user, "asset", "edit")
   const canCreateAsset = hasPermission(user, "asset", "create")
+  const canCreateMaintenance = hasPermission(user, "maintenance", "create")
+  const canViewMaintenance = hasPermission(user, "maintenance", "view")
+  const canCreateDisposal = hasPermission(user, "disposal", "create")
+  const canViewDisposal = hasPermission(user, "disposal", "view")
+  const canViewEmployee = hasPermission(user, "employee", "view")
+  const canViewAudit = hasPermission(user, "audit", "view")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
   const { view: assetDetailView } = resolveAssetDetailView(rawSearchParams.view)
+  // The raw returnTo tells "opened directly" from "the plain register" (spec §7.2).
+  const registerParams = parseRegisterReturnTo(rawSearchParams.returnTo, locale)
   const loadPolicy = getAssetDetailLoadPolicy(assetDetailView)
   const scanReturnHref = `/${locale}/asset-management/scan`
   const isAssetScanReturn = returnToHref === scanReturnHref
+  const now = new Date()
 
   const t = await getTranslations("asset")
-  const tBrandModel = await getTranslations("brandModel")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
   const tAudit = await getTranslations("auditRound")
   const tFinding = await getTranslations("auditFinding")
   const tCancellation = await getTranslations("transactionCancellation")
-  const [rawAsset, qrBaseUrlSetting, readyStatus, detailCounts] = await withPerformanceTiming(
+  const tDetail = await getTranslations("assetDetail")
+  const tDisposal = await getTranslations("disposalPage")
+  // The shared action rule's and the history's full message keys (R2).
+  const tAll = await getTranslations()
+  const [rawAsset, readyStatus, detailCounts] = await withPerformanceTiming(
     "asset-detail.initial-data",
     () => Promise.all([
       prisma.asset.findFirst({
@@ -150,9 +153,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           company: { select: { code: true, nameTh: true } },
           branch: { select: { code: true, name: true } },
           department: { select: { code: true, name: true } },
-          custodian: { select: { code: true, fullNameTh: true, email: true } },
+          custodian: { select: { code: true, fullNameTh: true, email: true, department: { select: { code: true, name: true } } } },
           homeLocation: { select: { code: true, name: true } },
-          currentLocation: { select: { code: true, name: true } },
+          currentLocation: { select: { id: true, code: true, name: true, branch: { select: { name: true } }, parent: { select: { name: true } } } },
           status: { select: { name: true, nameTh: true, colorCode: true } },
           condition: { select: { name: true, nameTh: true, colorCode: true } },
           supplier: { select: { code: true, name: true } },
@@ -251,10 +254,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           },
         },
       }),
-      prisma.systemSetting.findUnique({
-        where: { key: assetQrPublicBaseUrlKey },
-        select: { value: true },
-      }),
       prisma.assetStatus.findFirst({
         where: { isActive: true, OR: [{ name: "Ready" }, { nameTh: "พร้อมใช้งาน" }] },
         select: { id: true },
@@ -275,6 +274,18 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     : null
 
   if (!asset) notFound()
+
+  // The frame: the open records the action rule and the strip need, the neighbours in the register's list and, on the
+  // overview only, the latest three events (spec §5 Performance, §7; R50).
+  const [frame, neighbours, recentHistory] = await withPerformanceTiming(
+    "asset-detail.frame-data",
+    () => Promise.all([
+      getAssetDetailFrame(asset.id),
+      registerParams ? getAssetNeighbours(registerParams, asset.id) : Promise.resolve(null),
+      assetDetailView === "overview" ? getLatestAssetHistory(asset.id, locale, 3) : Promise.resolve(null),
+    ]),
+    { route: "/assets/[id]", locale },
+  )
 
   const latestTransactionSelect = {
     id: true,
@@ -326,33 +337,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     cancellationAfterSnapshot?.currentLocationId,
   ])
 
-  const [evidenceCheckoutReferences, evidenceMaintenanceReferences, evidenceAuditFindingReferences, evidenceDisposalReferences] = await withPerformanceTiming(
+  const evidenceCheckoutReferences = await withPerformanceTiming(
     "asset-detail.evidence-references",
-    () => Promise.all([
-      prisma.assetCheckout.findMany({
-        where: { assetId: asset.id },
-        select: { id: true, checkins: { select: { id: true } } },
-      }),
-      prisma.maintenanceTicket.findMany({
-        where: { assetId: asset.id, isActive: true },
-        select: { id: true },
-      }),
-      prisma.auditFinding.findMany({
-        where: { assetId: asset.id },
-        select: { id: true },
-      }),
-      prisma.disposalRequest.findMany({
-        where: { assetId: asset.id, isActive: true },
-        select: { id: true },
-      }),
-    ]),
+    () => prisma.assetCheckout.findMany({
+      where: { assetId: asset.id },
+      select: { id: true, checkins: { select: { id: true } } },
+    }),
     { route: "/assets/[id]", locale },
   )
   const evidenceCheckoutIds = evidenceCheckoutReferences.map((checkout) => checkout.id)
   const evidenceCheckinIds = evidenceCheckoutReferences.flatMap((checkout) => checkout.checkins.map((checkin) => checkin.id))
-  const evidenceMaintenanceTicketIds = evidenceMaintenanceReferences.map((ticket) => ticket.id)
-  const evidenceAuditFindingIds = evidenceAuditFindingReferences.map((finding) => finding.id)
-  const evidenceDisposalRequestIds = evidenceDisposalReferences.map((request) => request.id)
 
   const currentAssetDetailHref = buildAssetDetailViewHref(locale, asset.id, assetDetailView, returnToHref)
 
@@ -400,7 +394,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const componentLinkIds = componentLinks.map((component) => component.id)
   const componentUserIds = uniqueTruthy(componentLinks.flatMap((component) => [component.createdBy, component.updatedBy]))
   const purchaseDocumentIds = asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)
-  const [purchaseDocumentAttachments, componentAttachments, componentUsers, maintenanceAttachments, auditFindingAttachments, disposalAttachments] = await withPerformanceTiming(
+  const [purchaseDocumentAttachments, componentAttachments, componentUsers] = await withPerformanceTiming(
     "asset-detail.evidence-data",
     () => Promise.all([
       purchaseDocumentIds.length > 0
@@ -427,33 +421,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             },
           })
         : [],
-      evidenceMaintenanceTicketIds.length > 0
-        ? prisma.attachment.findMany({
-            where: { module: "maintenance", referenceId: { in: evidenceMaintenanceTicketIds }, isActive: true },
-            orderBy: { uploadedAt: "desc" },
-          })
-        : [],
-      evidenceAuditFindingIds.length > 0
-        ? prisma.attachment.findMany({
-            where: { module: "audit_finding", referenceId: { in: evidenceAuditFindingIds }, isActive: true },
-            orderBy: { uploadedAt: "desc" },
-          })
-        : [],
-      evidenceDisposalRequestIds.length > 0
-        ? prisma.attachment.findMany({
-            where: { module: "disposal", referenceId: { in: evidenceDisposalRequestIds }, isActive: true },
-            orderBy: { uploadedAt: "desc" },
-          })
-        : [],
     ]),
     {
       route: "/assets/[id]",
       locale,
       purchaseDocuments: purchaseDocumentIds.length,
       components: componentLinkIds.length,
-      maintenanceTickets: evidenceMaintenanceTicketIds.length,
-      auditFindings: evidenceAuditFindingIds.length,
-      disposalRequests: evidenceDisposalRequestIds.length,
     }
   )
   const componentUserLabels = new Map(componentUsers.map((user) => [user.id, formatUserLabel(user)]))
@@ -506,8 +479,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   }))
   const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
   const assetAttachments = asset.attachments.filter((attachment) => attachment.module === "asset")
-  const primaryAssetPhoto = assetAttachments.find((attachment) => isPreviewableImage(attachment.fileType))
-  const primaryModelPhoto = modelPhotos.find((attachment) => isPreviewableImage(attachment.fileType))
+  const primaryAssetPhoto = assetAttachments.find((attachment) => isThumbnailable(attachment.fileType))
+  const primaryModelPhoto = modelPhotos.find((attachment) => isThumbnailable(attachment.fileType))
   const checkoutIds = asset.checkouts.map((checkout) => checkout.id)
   const checkinIds = asset.checkouts.map((checkout) => checkout.checkin?.id).filter((checkinId): checkinId is string => Boolean(checkinId))
   const movementActorIds = uniqueTruthy([
@@ -691,28 +664,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const currentLocationLabel = asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : null
   const currentCustodianLabel = asset.custodian ? formatEmployeeLabel(asset.custodian) : null
   const ownershipType = normalizeAssetOwnershipType(asset.ownershipType)
-  const responsibilityHealthLabel =
-    ownershipType === "personal"
-      ? t("dataHealthResponsiblePerson")
-      : ownershipType === "component"
-        ? t("dataHealthInstalledParent")
-        : ownershipType === "software_license"
-          ? t("dataHealthLicenseResponsibility")
-          : t("dataHealthResponsibleDepartment")
   const modelSpecs = parseModelSpecs(asset.model?.specs)
-  const activeCheckout = asset.checkouts.find((checkout) => checkout.transactionStatus === "active" && !checkout.isReturned)
-  const latestCheckout = asset.checkouts[0]
-  const warrantyState = getWarrantyState(asset.warrantyEndDate)
-  const licenseTotalSeats = asset.licenseTotalSeats ?? null
-  const licenseUsedSeats = asset.licenseUsedSeats ?? 0
-  const licenseRemainingSeats = licenseTotalSeats == null ? null : Math.max(licenseTotalSeats - licenseUsedSeats, 0)
-  const licenseSeatSummary = licenseTotalSeats == null
-    ? null
-    : t("licenseSeatSummary", {
-        used: formatCount(licenseUsedSeats),
-        total: formatCount(licenseTotalSeats),
-        remaining: formatCount(licenseRemainingSeats ?? 0),
-      })
   const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => !["closed", "cancelled"].includes(ticket.repairStatus)).length
   const latestMaintenanceTicket = asset.maintenanceTickets[0]
   const totalMaintenanceCost = asset.maintenanceTickets.reduce((total, ticket) => total + Number(ticket.repairCost ?? 0), 0)
@@ -720,45 +672,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     asset.maintenanceTickets.length >= 3 ||
     (asset.purchasePrice && totalMaintenanceCost >= Number(asset.purchasePrice) * 0.5)
   const latestAuditItem = asset.auditItems[0]
-  const checklistMissingLabels = getMissingPhotoChecklistLabels(photoChecklist, assetAttachments)
-  const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
   const encodedAssetId = encodeURIComponent(asset.id)
   const editHref = appendReturnTo(`/${locale}/assets/${asset.id}/edit`, returnToHref)
-  // A data-health item's fix opens the edit page for a person who may edit; for anyone else it opens the section
-  // that shows the item, never a page they are refused (the E2E suite's M5).
-  const healthFixHref = (section: string) => (canEditAsset ? editHref : section)
+  // The edit form's purchase section (asset-form.tsx): the strip's "บันทึกข้อมูลการซื้อ" and the overview's "เพิ่มข้อมูล".
+  const purchaseEditHref = `${editHref}#purchase`
+  const printLabelHref = `/${locale}/assets/${asset.id}/label`
   const cloneHref = appendReturnTo(`/${locale}/assets/new?cloneFrom=${encodedAssetId}`, returnToHref)
   const componentsManagerHref = appendReturnTo(`/${locale}/assets/${asset.id}/components`, buildAssetDetailViewHref(locale, asset.id, "components", returnToHref))
   // A link to a section of another view opens that view (wiki open question 43).
   const sectionHref = (sectionId: AssetDetailSectionId) => buildAssetDetailSectionHref(locale, asset.id, assetDetailView, sectionId, returnToHref)
   const photosHref = sectionHref("photos")
-  const dataHealthItems = ownershipType === "software_license"
-    ? [
-        createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), healthFixHref("#overview")),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), healthFixHref(sectionHref("ownership"))),
-        createHealthItem(asset.licenseTotalSeats != null, t("dataHealthLicenseSeats"), "#overview", t("dataHealthFixLicenseSeats"), healthFixHref("#overview")),
-        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
-        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase", t("dataHealthFixExpiry"), healthFixHref("#purchase")),
-      ]
-    : [
-        createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview", t("dataHealthFixIdentity"), healthFixHref("#overview")),
-        createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), photosHref, t("dataHealthFixPhoto"), photosHref),
-        createHealthItem(
-          checklistMissingLabels.length === 0,
-          checklistMissingLabels.length === 0
-            ? t("dataHealthChecklistComplete")
-            : t("dataHealthChecklistMissing", { count: checklistMissingLabels.length }),
-          photosHref,
-          t("dataHealthFixPhoto"),
-          photosHref
-        ),
-        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), healthFixHref(sectionHref("ownership"))),
-        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase", t("dataHealthFixExpiry"), healthFixHref("#purchase")),
-      ]
-  const dataHealthDone = dataHealthItems.filter((item) => item.done).length
-  const dataHealthTone = dataHealthDone === dataHealthItems.length ? "success" : dataHealthDone >= dataHealthItems.length - 2 ? "warning" : "danger"
-  const firstMissingHealthItem = dataHealthItems.find((item) => !item.done)
   const maintenanceSummary = openMaintenanceCount > 0
     ? t("openMaintenanceCount", { count: openMaintenanceCount })
     : latestMaintenanceTicket
@@ -770,255 +693,162 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         result: formatAuditState(latestAuditItem.auditStatus, latestAuditItem.auditResult),
       })
     : tCommon("noData")
-  // The register's rule decides "ส่งมอบ", "รับคืน" and "โอนย้าย" here too, so both pages offer what the server accepts.
-  const [checkoutTransaction, checkinTransaction, transferTransaction] = getAssetRegisterTransactionActions({
-    statusName: asset.status.name,
-    custodianId: asset.custodianId,
-    openCheckoutId: activeCheckout?.id ?? null,
-    openCheckoutHandoverMode: activeCheckout?.handoverMode ?? null,
-    hasActiveMaintenance: openMaintenanceCount > 0,
-    canEdit: canEditAsset,
-  })
-  const checkoutHref = `/${locale}/asset-management/checkout?assetId=${encodedAssetId}`
-  const checkinHref = checkinTransaction.enabled && checkinTransaction.mode === "legacy_return"
-    ? `/${locale}/asset-management/checkin?assetId=${encodedAssetId}`
-    : activeCheckout && checkinTransaction.mode === "open_checkout"
-      ? `/${locale}/asset-management/checkin?checkoutId=${encodeURIComponent(activeCheckout.id)}`
-      : sectionHref("handover")
-  const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
   const maintenanceHref = `/${locale}/maintenance/new?assetId=${encodedAssetId}`
-  const assignedAssetHref = licenseAssignedAsset ? `/${locale}/assets/${licenseAssignedAsset.id}` : "#overview"
-  const latestDocumentHref = latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : sectionHref("handover")
-  const lifecycle = getOwnershipLifecycle({
-    ownershipType,
-    activeCheckout: Boolean(activeCheckout),
-    // The checkout and transfer APIs also refuse an asset with an open checkout.
-    checkoutEnabled: checkoutTransaction.enabled && !activeCheckout,
-    checkinEnabled: checkinTransaction.enabled,
-    transferEnabled: transferTransaction.enabled && !activeCheckout,
-    latestCheckout: Boolean(latestCheckout),
-    checkoutHref,
-    checkinHref,
-    transferHref,
-    maintenanceHref,
-    editHref,
-    assignedAssetHref,
-    latestDocumentHref,
-    purchaseHref: sectionHref("purchase"),
-    auditHref: sectionHref("audit"),
-    componentsHref: sectionHref("components"),
-    hasAssignedAsset: Boolean(licenseAssignedAsset),
-    licenseSeatSummary,
-    t,
-  })
-  const mobileActionCandidates = canEditAsset
-    ? [
-        isAssetScanReturn
-          ? { href: scanReturnHref, label: t("scanNext"), icon: <ScanLine className="h-4 w-4" />, primary: true }
-          : lifecycle.mobilePrimary,
-        lifecycle.mobileSecondary,
-      ]
-    : []
-  const mobileActions = mobileActionCandidates.slice(0, 3)
-  const activeCheckoutDestination = activeCheckout
-    ? getCheckoutDestination(activeCheckout, {
-        departments: checkoutDepartmentLabels,
-        locations: checkoutLocationLabels,
-        parentAssets: checkoutParentAssetLabels,
-      })
-    : null
-  const latestActivityItem: ActivitySummaryItem = {
-    label: t("activityLatestEvent"),
-    value: latestMovement
-      ? latestMovement.summary.startsWith(latestMovement.title)
-        ? latestMovement.summary
-        : `${latestMovement.title} · ${latestMovement.summary}`
-      : tCommon("noData"),
-    href: sectionHref("movement"),
-    tone: latestMovement ? latestMovement.tone : "neutral" as const,
-  }
-  const activityFollowUpCandidates: (ActivitySummaryItem | null)[] = [
-    activeCheckout
-      ? {
-          label: t("activityOpenHandover"),
-          value: activeCheckoutDestination ?? t("handoverActive"),
-          href: checkinHref,
-          actionLabel: t("quickCheckin"),
-          tone: "warning" as const,
-        }
-      : null,
-    openMaintenanceCount > 0
-      ? {
-          label: t("activityOpenMaintenance"),
-          value: maintenanceSummary,
-          href: sectionHref("maintenance"),
-          actionLabel: t("quickMaintenance"),
-          tone: "warning" as const,
-        }
-      : null,
-    warrantyState.tone === "danger" || warrantyState.tone === "warning"
-      ? {
-          label: t("activityWarranty"),
-          value: getWarrantyStatusLabel(warrantyState, t),
-          href: "#purchase",
-          actionLabel: t("detailSections.purchase"),
-          tone: warrantyState.tone,
-        }
-      : null,
-    dataHealthDone < dataHealthItems.length
-      ? {
-          label: t("activityDataHealth"),
-          value: t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length }),
-          href: firstMissingHealthItem?.fixHref ?? firstMissingHealthItem?.href ?? "#overview",
-          actionLabel: firstMissingHealthItem?.actionLabel ?? t("dataHealthNeedsReview"),
-          tone: dataHealthTone === "danger" ? "danger" as const : "warning" as const,
-        }
-      : null,
-    latestAuditItem?.findingRequired
-      ? {
-          label: t("activityAuditFinding"),
-          value: auditSummary,
-          href: sectionHref("audit"),
-          actionLabel: t("detailSections.audit"),
-          tone: "warning" as const,
-        }
-      : null,
-  ]
-  const activityFollowUpItems = activityFollowUpCandidates.filter((item): item is ActivitySummaryItem => item !== null)
   const movementTimelineItemsForClient: AssetMovementTimelineItem[] = unifiedTimelineItems.map((movement) => ({
     ...movement,
     performedAt: movement.performedAt.toISOString(),
     from: movement.from ?? null,
     to: movement.to ?? null,
   }))
-  const qrValue = buildAssetQrValue({
+
+  // The shared action rule of the register's rows and this page (group 1 spec §7.1; R1-R4): the same primary and the
+  // same transaction items in both places.
+  const actionInput: AssetActionInput = {
+    locale,
     assetId: asset.id,
-    publicBaseUrl: qrBaseUrlSetting?.value,
-    fallbackBaseUrl: process.env.AUTH_URL,
-  })
-  const allEvidenceItems = [
-    ...buildEvidenceItems(assetAttachments, t("evidenceGroupAsset"), asset.assetTag),
-    ...buildEvidenceItems(modelPhotos, t("evidenceGroupModel"), asset.model?.name ?? asset.name),
-    ...buildEvidenceItems(purchaseDocumentAttachments, t("evidenceGroupPurchase"), t("detailSections.purchase")),
-    ...buildEvidenceItems(legacyPurchaseDocuments, t("evidenceGroupPurchase"), t("detailSections.purchase")),
-    ...buildEvidenceItems(componentAttachments, t("evidenceGroupComponent"), t("detailSections.components")),
-    ...buildEvidenceItems(operationAttachments, t("evidenceGroupHandover"), t("detailSections.handover")),
-    ...buildEvidenceItems(maintenanceAttachments, t("evidenceGroupMaintenance"), t("detailSections.maintenance")),
-    ...buildEvidenceItems(auditFindingAttachments, t("evidenceGroupAudit"), t("detailSections.audit")),
-    ...buildEvidenceItems(disposalAttachments, t("evidenceGroupDisposal"), t("movementFilters.disposal")),
-  ].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
-  const evidenceDrawerItems = allEvidenceItems.map((item) => ({
-    ...item,
-    uploadedAt: item.uploadedAt.toISOString(),
-    displayDate: formatDate(item.uploadedAt),
-  }))
-  const activityDrawerItems = [
-    latestActivityItem,
-    ...activityFollowUpItems,
-    ...unifiedTimelineItems.slice(0, 8).map((movement) => ({
-      label: movement.title,
-      value: movement.summary,
-      meta: formatDateTime(movement.performedAt),
-      tone: movement.tone,
+    statusName: asset.status.name,
+    ownership: ownershipType,
+    custodianId: asset.custodianId,
+    openCheckoutId: frame.openCheckout?.id ?? null,
+    openCheckoutHandoverMode: frame.openCheckout?.handoverMode ?? null,
+    openRepairId: frame.openRepairId,
+    openDisposalId: frame.openDisposalId,
+    returnTo: currentAssetDetailHref,
+    can: { assetEdit: canEditAsset, maintenanceCreate: canCreateMaintenance, maintenanceView: canViewMaintenance, disposalView: canViewDisposal },
+  }
+  const assetActions = getAssetActions(actionInput)
+  const recordRepairAction = assetActions.primary?.key === "recordRepair" ? null : getAssetRecordRepairAction(actionInput)
+  const primary = assetActions.primary ? { key: assetActions.primary.key, label: tAll(assetActions.primary.labelKey), href: assetActions.primary.href } : null
+  const recordRepair = recordRepairAction ? { key: "recordRepair", label: tAll(recordRepairAction.labelKey), href: recordRepairAction.href } : null
+
+  // ข้อมูลยังไม่ครบ (R59): today's data-health checks as one line for a person who may fix them.
+  const dataGaps = canEditAsset
+    ? listAssetDataGaps({
+        ownership: ownershipType,
+        hasSerial: Boolean(asset.serialNumber),
+        hasResponsibility: hasAssetResponsibility(asset),
+        hasPrimaryPhoto: Boolean(primaryAssetPhoto),
+        missingChecklistCount: getMissingPhotoChecklistLabels(photoChecklist, assetAttachments).length,
+        hasPurchaseDocument: purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0,
+        hasWarrantyEnd: Boolean(asset.warrantyEndDate),
+        hasLicenseSeats: asset.licenseTotalSeats != null,
+      })
+    : []
+  // The hash goes after editHref's query, as purchaseEditHref's does.
+  const dataGapHref = (gap: AssetDataGap) =>
+    gap.target === "files" ? photosHref : gap.target === "purchaseDocuments" ? sectionHref("purchase-documents") : `${editHref}${gap.anchor ? `#${gap.anchor}` : ""}`
+
+  const disposalOffer = getDisposalRequestOffer({ canCreate: canCreateDisposal, status: asset.status, openDisposalId: frame.openDisposalId, blockers: frame.disposalBlockers })
+  const cancelTransaction =
+    canEditAsset && latestAssetTransaction?.transactionStatus === "active"
+      ? {
+          type: latestAssetTransaction.type,
+          transactionId: latestAssetTransaction.id,
+          expectedUpdatedAt: latestAssetTransaction.updatedAt.toISOString(),
+          originalOperator: latestTransactionOperator,
+          currentState: formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels),
+          restoreState: formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels),
+          componentCount: cancellationBeforeSnapshot?.components.length ?? 0,
+          labels: buildCancellationLabels(tCancellation),
+        }
+      : undefined
+  const statusCorrection =
+    canEditAsset && readyStatus && canCorrectAssetStatus(asset.status)
+      ? {
+          assetId: asset.id,
+          readyStatusId: readyStatus.id,
+          labels: {
+            button: t("statusCorrectionButton"),
+            title: t("statusCorrectionTitle"),
+            description: t("statusCorrectionDescription"),
+            reason: t("statusCorrectionReason"),
+            reasonPlaceholder: t("statusCorrectionReasonPlaceholder"),
+            cancel: tCommon("cancel"),
+            submit: t("statusCorrectionSubmit"),
+            errorFallback: t("statusCorrectionError"),
+          },
+        }
+      : null
+  // อื่น ๆ and the phone sheet (spec §7.1, §7.8; R3, R5, R21, R57).
+  const moreGroups = buildAssetDetailMoreGroups({
+    primaryKey: assetActions.primary?.key ?? null,
+    transactions: assetActions.transactions.map((action) => ({
+      key: action.key,
+      label: tAll(action.labelKey),
+      href: action.href,
+      enabled: action.enabled,
+      reason: action.reasonKey ? tAll(action.reasonKey) : null,
     })),
-  ]
+    recordRepair: isAssetScanReturn && recordRepair ? { label: recordRepair.label, href: recordRepair.href } : null,
+    disposal: disposalOffer
+      ? {
+          label: tDetail("requestDisposal"),
+          href: `/${locale}/disposal/new?assetId=${encodedAssetId}`,
+          reason: disposalOffer.blocker ? tDisposal(`readinessBlockers.${disposalOffer.blocker}`) : null,
+        }
+      : null,
+    correctStatus: statusCorrection ? t("statusCorrectionButton") : null,
+    cancelLatest: cancelTransaction ? tDetail("cancelLatest") : null,
+    manageComponents: canEditAsset ? { label: t("manageComponents"), href: componentsManagerHref } : null,
+    clone: canCreateAsset ? { label: t("cloneAsset"), href: cloneHref } : null,
+    edit: canEditAsset ? { label: tCommon("edit"), href: editHref } : null,
+    printLabel: { label: t("printLabel"), href: printLabelHref },
+  })
+
+  // The trail's middle crumb and previous / next in the register's list (spec §7.2; R8, R10).
+  const crumb = registerParams ? buildRegisterCrumbLabel(registerParams) : null
+  const neighbourNav = neighbours
+    ? {
+        position: neighbours.index,
+        total: neighbours.total,
+        previousHref: neighbours.previousId ? appendReturnTo(`/${locale}/assets/${encodeURIComponent(neighbours.previousId)}`, returnToHref) : null,
+        nextHref: neighbours.nextId ? appendReturnTo(`/${locale}/assets/${encodeURIComponent(neighbours.nextId)}`, returnToHref) : null,
+      }
+    : null
+
+  // A document shows, linked, only to a person whose permission opens it (R12).
+  const canOpenDocument = (kind: AssetMovementDocumentKind) => hasPermission(user, ASSET_MOVEMENT_DOCUMENT_PERMISSION[kind].module, "view")
+  const documentAccess: Record<AssetMovementDocumentKind, boolean> = {
+    checkout: canOpenDocument("checkout"),
+    checkin: canOpenDocument("checkin"),
+    transfer: canOpenDocument("transfer"),
+    repair: canOpenDocument("repair"),
+    disposal: canOpenDocument("disposal"),
+    auditRound: canOpenDocument("auditRound"),
+  }
+  const componentsTabHref = buildAssetDetailViewHref(locale, asset.id, "components", returnToHref)
+  const recent = recentHistory
+    ? { events: recentHistory, total: detailCounts.history, historyHref: buildAssetDetailViewHref(locale, asset.id, "history", returnToHref) }
+    : null
 
   return (
     <div className={`space-y-6 ${actionBarPagePadding.single}`}>
-      <PageHeader
-        breadcrumbs={[
-          { label: t("title"), href: returnToHref },
-          { label: asset.assetTag, code: true },
-        ]}
-        title={asset.name}
-        meta={
-          <>
-            <span className="tag">{asset.assetTag}</span>
-            <span data-testid="asset-identity-summary" className="contents">
-              <span className="inline-flex items-center gap-1.5">
-                <StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
-                <AssetStateHelpPopover {...assetStatusHelp} />
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <StatusBadge label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
-                <AssetStateHelpPopover {...assetConditionHelp} />
-              </span>
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <MapPin className="h-4 w-4 shrink-0 text-faint-foreground" aria-hidden="true" />
-              <span className="truncate">{orNil(currentLocationLabel)}</span>
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <PackageCheck className="h-4 w-4 shrink-0 text-faint-foreground" aria-hidden="true" />
-              <span className="truncate">{orNil(lifecycle.responsibilityValue ?? currentCustodianLabel)}</span>
-            </span>
-          </>
-        }
-        back={<PageBackLink href={returnToHref} label={isAssetScanReturn ? t("backToScan") : tCommon("back")} />}
-        actions={
-          <>
-            <AssetDetailActionMenu
-              label={t("detailMoreActions")}
-              cancelTransaction={
-                canEditAsset && latestAssetTransaction?.transactionStatus === "active"
-                  ? {
-                      type: latestAssetTransaction.type,
-                      transactionId: latestAssetTransaction.id,
-                      expectedUpdatedAt: latestAssetTransaction.updatedAt.toISOString(),
-                      originalOperator: latestTransactionOperator,
-                      currentState: formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels),
-                      restoreState: formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels),
-                      componentCount: cancellationBeforeSnapshot?.components.length ?? 0,
-                      labels: buildCancellationLabels(tCancellation),
-                    }
-                  : undefined
-              }
-              activity={{
-                title: t("activityDrawerTitle"),
-                triggerLabel: t("activityDrawerOpen"),
-                emptyLabel: tCommon("noData"),
-                items: activityDrawerItems,
-              }}
-              evidence={{
-                items: evidenceDrawerItems,
-                labels: {
-                  title: t("evidenceCenter"),
-                  triggerLabel: t("detailSections.evidence"),
-                  emptyLabel: t("noEvidenceHelp"),
-                  total: t("evidenceTotal"),
-                  images: t("evidenceImages"),
-                  documents: t("evidenceDocuments"),
-                  all: t("movementFilters.all"),
-                  filterLabel: tCommon("filter"),
-                  openFile: t("openEvidenceFile"),
-                },
-              }}
-              links={[
-                { key: "print", href: `/${locale}/assets/${asset.id}/label`, label: t("printLabel") },
-                ...(canEditAsset ? [{ key: "components" as const, href: componentsManagerHref, label: t("manageComponents") }] : []),
-                ...(canCreateAsset ? [{ key: "clone" as const, href: cloneHref, label: t("cloneAsset") }] : []),
-                ...(canEditAsset ? [{ key: "edit" as const, href: editHref, label: tCommon("edit"), mobileOnly: true }] : []),
-              ]}
-            />
-            {canEditAsset ? (
-              <Link href={editHref} className={cn(buttonVariants({ size: "md" }), "hidden md:inline-flex")}>
-                <Edit aria-hidden="true" />
-                {tCommon("edit")}
-              </Link>
-            ) : null}
-          </>
-        }
-      />
-      <AssetComponentContextBanner
-        installedInLinks={installedInLinksForPanel}
-        labels={{
-          title: t("componentContextTitle"),
-          openParent: t("componentContextOpenParent"),
-          roleLabel: t("componentRole"),
-          slotLabel: t("slotNo"),
+      <AssetDetailHeader
+        asset={{
+          assetTag: asset.assetTag,
+          name: asset.name,
+          // No licence key in the meta row (R35).
+          serialNumber: ownershipType === "software_license" ? null : asset.serialNumber,
+          status: asset.status,
         }}
+        returnToHref={returnToHref}
+        backLabel={isAssetScanReturn ? t("backToScan") : registerParams ? tDetail("backToResults") : tCommon("back")}
+        crumbLabel={crumb ? (crumb.kind === "search" ? t("registerCrumbSearch", { search: crumb.text }) : t("registerCrumbFilters")) : null}
+        neighbours={neighbourNav}
+        statusHelp={assetStatusHelp}
+        actions={
+          <AssetDetailActions
+            asset={{ assetTag: asset.assetTag, name: asset.name }}
+            primary={primary}
+            printLabel={{ key: "printLabel", label: t("printLabel"), href: printLabelHref }}
+            recordRepair={recordRepair}
+            scanNext={isAssetScanReturn ? { key: "scanNext", label: t("scanNext"), href: scanReturnHref } : null}
+            groups={moreGroups}
+            cancelTransaction={cancelTransaction}
+            statusCorrection={statusCorrection}
+          />
+        }
       />
-      {mobileActions.length > 0 ? <ActionBar label={tCommon("actions")} actions={mobileActions} /> : null}
 
       <AssetDetailTabs
         locale={locale}
@@ -1042,827 +872,505 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         warningLabel={t("componentMissingSerial")}
       />
 
-      {assetDetailView === "overview" && activityFollowUpItems.length > 0 ? (
-        <ActivitySummaryPanel
-          title={t("activitySummaryTitle")}
-          subtitle={t("activitySummaryHelp")}
-          followUpTitle={t("activityFollowUp")}
-          followUpItems={activityFollowUpItems}
-          details={dataHealthDone < dataHealthItems.length ? (
-            <details data-testid="asset-data-health-details" className="rounded-md border border-border bg-background">
-              <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                <span>{t("dataHealthTitle")}</span>
-                <StatusBadge label={t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length })} tone={dataHealthTone} />
-              </summary>
-              <div className="grid gap-2 border-t border-border p-2 sm:grid-cols-2">
-                {dataHealthItems.map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.done ? item.href : item.fixHref}
-                    className="flex min-h-11 items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-sm transition-colors hover:bg-row-hover"
-                  >
-                    {item.done ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                    )}
-                    <span className={item.done ? "text-muted-foreground" : "font-medium text-foreground"}>{item.label}</span>
-                    {!item.done ? <span className="ml-auto text-meta font-medium text-primary">{item.actionLabel}</span> : null}
-                  </a>
-                ))}
-              </div>
-            </details>
-          ) : null}
+      <AssetDetailFactStrip
+        locale={locale}
+        holder={describeAssetHolder({
+          ownership: ownershipType,
+          custodian: asset.custodian
+            ? {
+                id: asset.custodianId ?? "",
+                code: asset.custodian.code,
+                fullNameTh: asset.custodian.fullNameTh,
+                department: asset.custodian.department ? `${asset.custodian.department.code} - ${asset.custodian.department.name}` : null,
+              }
+            : null,
+          department: asset.department ? `${asset.department.code} - ${asset.department.name}` : null,
+          parent: installedInLinksForPanel[0]?.parentAsset ?? null,
+          seats: { used: asset.licenseUsedSeats, total: asset.licenseTotalSeats },
+          openCheckoutDate: frame.openCheckout?.checkoutDate ?? null,
+          now,
+        })}
+        location={{
+          id: asset.currentLocation.id,
+          name: asset.currentLocation.name,
+          branchName: asset.currentLocation.branch?.name ?? null,
+          parentName: asset.currentLocation.parent?.name ?? null,
+        }}
+        audit={describeAssetAudit(frame.latestAuditResult, frame.pendingAudit)}
+        warranty={describeAssetWarranty(asset.warrantyEndDate, now)}
+        parentHref={installedInLinksForPanel[0]?.parentHref ?? null}
+        canViewEmployee={canViewEmployee}
+        canViewAudit={canViewAudit}
+        purchaseEditHref={canEditAsset ? purchaseEditHref : null}
+        className={assetDetailView === "overview" ? undefined : "max-md:hidden"}
+      />
+
+      {assetDetailView === "overview" ? (
+        <AssetOverview
+          locale={locale}
+          canEdit={canEditAsset}
+          editHref={editHref}
+          purchaseEditHref={purchaseEditHref}
+          details={{
+            category: asset.category,
+            company: asset.company,
+            branch: asset.branch,
+            brandModel: [asset.brand?.name, asset.model?.name].filter(Boolean).join(" / ") || null,
+            serial: { isLicenseKey: ownershipType === "software_license", value: asset.serialNumber },
+            condition: asset.condition,
+            ownershipType,
+            department: asset.department,
+            homeLocation: asset.homeLocation,
+            licenseDevice: licenseAssignedAsset
+              ? { assetTag: licenseAssignedAsset.assetTag, name: licenseAssignedAsset.name, href: `/${locale}/assets/${encodeURIComponent(licenseAssignedAsset.id)}` }
+              : null,
+            registeredAt: asset.createdAt,
+            latestHandover: frame.latestHandover
+              ? { code: frame.latestHandover.documentNo ?? frame.latestHandover.id, href: `/${locale}/asset-management/checkouts/${frame.latestHandover.id}` }
+              : null,
+            remark: asset.remark,
+            specs: { items: modelSpecs.items, notes: modelSpecs.notes || null },
+            purchase: {
+              price: asset.purchasePrice == null ? null : Number(asset.purchasePrice),
+              date: asset.purchaseDate,
+              supplier: asset.supplier,
+              warrantyStart: asset.warrantyStartDate,
+              warrantyEnd: asset.warrantyEndDate,
+              poNumber: asset.poNumber,
+              invoiceNumber: asset.invoiceNumber,
+              fixedAssetCode: asset.fixedAssetCode,
+              documents: purchaseDocuments.map((document) => ({ id: document.id, documentNo: document.documentNo ?? document.id })),
+              documentsHref: sectionHref("purchase-documents"),
+            },
+          }}
+          conditionHelp={assetConditionHelp}
+          photo={{
+            attachmentId: primaryAssetPhoto?.id ?? primaryModelPhoto?.id ?? null,
+            isModelPhoto: !primaryAssetPhoto && Boolean(primaryModelPhoto),
+            alt: asset.name,
+            uploadHref: photosHref,
+          }}
+          recent={recent}
+          documentAccess={documentAccess}
+          components={{
+            children: currentComponentsForPanel.map((component) => ({
+              id: component.id,
+              assetTag: component.componentAsset.assetTag,
+              name: component.componentAsset.name,
+              href: `/${locale}/assets/${encodeURIComponent(component.componentAsset.id)}`,
+            })),
+            parent: installedInLinksForPanel[0]
+              ? { assetTag: installedInLinksForPanel[0].parentAsset.assetTag, name: installedInLinksForPanel[0].parentAsset.name, href: installedInLinksForPanel[0].parentHref }
+              : null,
+            manageHref: canEditAsset ? componentsTabHref : null,
+            allHref: componentsTabHref,
+          }}
+          dataGaps={dataGaps.map((gap) => ({
+            key: gap.key,
+            label: tAll(gap.labelKey, gap.count === undefined ? undefined : { count: formatCount(gap.count) }),
+            href: dataGapHref(gap),
+          }))}
         />
       ) : null}
 
-      {assetDetailView === "overview" && canEditAsset ? (
-        // Spec 2D D9, D7: a ContentPanel; how this ownership type works is information, an inline info Notice.
-        <ContentPanel title={t("quickActions")} description={lifecycle.help}>
-          <Notice tone="info" title={lifecycle.title} className="mb-3">
-            {lifecycle.description}
-          </Notice>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-            {lifecycle.actions.map((action) => (
-              <QuickAction key={action.label} {...action} />
-            ))}
+      <div className="space-y-6">
+        {isAssetDetailSectionVisible(assetDetailView, "components") ? (
+          <div id="components" className="scroll-mt-24 space-y-4">
+            <AssetComponentsSummary
+              locale={locale}
+              currentComponents={currentComponentsForPanel}
+              installedInLinks={installedInLinksForPanel}
+              canManage={canEditAsset}
+              manageHref={componentsManagerHref}
+              labels={{
+                title: t("assetComponents"),
+                help: t("componentSummaryHelp"),
+                installedIn: t("installedInParent"),
+                roleLabel: t("componentRole"),
+                slotLabel: t("slotNo"),
+                current: t("currentComponents"),
+                noCurrent: t("noCurrentComponents"),
+                missingSerial: t("componentMissingSerial"),
+                manage: t("manageComponents"),
+              }}
+            />
+            {currentComponentsForPanel.length > 0 || installedInLinksForPanel.length > 0 ? (
+              <AssetRelationshipMap
+            title={t("relationshipMap")}
+            subtitle={t("relationshipMapHelp")}
+            parentLaneTitle={t("relationshipParentLane")}
+            currentTitle={t("relationshipCurrentViewing")}
+            componentsTitle={t("relationshipComponentsLane")}
+            componentsCountLabel={t("relationshipComponentsCount", { count: currentComponentsForPanel.length })}
+            moreItemsLabel={t("relationshipMoreItems", { count: Math.max(currentComponentsForPanel.length - 5, 0) })}
+            licenseAssignedTitle={t("relationshipLicenseAssignedAsset")}
+            assignedLicensesTitle={t("relationshipAssignedLicenses")}
+            assetTag={asset.assetTag}
+            assetName={asset.name}
+            currentMetaLabel={t("category")}
+            currentMetaValue={`${asset.category.code} - ${asset.category.name}`}
+            parentLinks={installedInLinksForPanel.map((link) => ({
+              id: link.id,
+              href: link.parentHref,
+              label: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
+              role: link.componentRole,
+            }))}
+            childLinks={currentComponentsForPanel.map((component) => ({
+              id: component.id,
+              href: `/${locale}/assets/${component.componentAsset.id}`,
+              label: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
+              role: component.componentRole,
+            }))}
+            licenseAssignedLinks={licenseAssignedAsset ? [{
+              id: licenseAssignedAsset.id,
+              href: `/${locale}/assets/${licenseAssignedAsset.id}`,
+              label: `${licenseAssignedAsset.assetTag} - ${licenseAssignedAsset.name}`,
+              role: t("relationshipLicenseDeviceRole"),
+            }] : []}
+            assignedLicenseLinks={asset.assignedLicenses.map((license) => ({
+              id: license.id,
+              href: `/${locale}/assets/${license.id}`,
+              label: `${license.assetTag} - ${license.name}`,
+              role: formatLicenseRelationshipRole(license.licenseUsedSeats, license.licenseTotalSeats, t),
+            }))}
+            emptyLabel={t("relationshipMapEmpty")}
+            summaryParent={t("relationshipSummaryParent", { count: currentComponentsForPanel.length })}
+            summaryComponent={t("relationshipSummaryComponent", { parent: installedInLinksForPanel[0]?.parentAsset.assetTag ?? "-" })}
+            summaryParentAndComponent={t("relationshipSummaryParentAndComponent", {
+              parent: installedInLinksForPanel[0]?.parentAsset.assetTag ?? "-",
+              count: currentComponentsForPanel.length,
+            })}
+            summaryStandalone={t("relationshipSummaryStandalone")}
+            roleParentLabel={t("relationshipRoleParent")}
+            roleComponentLabel={t("relationshipRoleComponent")}
+            roleParentAndComponentLabel={t("relationshipRoleParentAndComponent")}
+            roleStandaloneLabel={t("relationshipRoleStandalone")}
+            parentEmptyTitle={t("relationshipNoParent")}
+            parentEmptyHelp={t("relationshipNoParentHelp")}
+            componentsEmptyTitle={t("relationshipNoComponents")}
+            componentsEmptyHelp={t("relationshipNoComponentsHelp")}
+            noteLabel={t("relationshipNote")}
+              />
+            ) : null}
           </div>
-          {readyStatus && canCorrectAssetStatus(asset.status) ? (
-            <div className="mt-3">
-              <AssetStatusCorrectionDialog
-                assetId={asset.id}
-                readyStatusId={readyStatus.id}
-                labels={{
-                  button: t("statusCorrectionButton"),
-                  title: t("statusCorrectionTitle"),
-                  description: t("statusCorrectionDescription"),
-                  reason: t("statusCorrectionReason"),
-                  reasonPlaceholder: t("statusCorrectionReasonPlaceholder"),
-                  cancel: tCommon("cancel"),
-                  submit: t("statusCorrectionSubmit"),
-                  errorFallback: t("statusCorrectionError"),
-                }}
-              />
-            </div>
-          ) : null}
-        </ContentPanel>
-      ) : null}
+        ) : null}
 
-      <div className={`grid grid-cols-1 gap-6 ${assetDetailView === "overview" ? "xl:grid-cols-[1fr_280px]" : ""}`}>
-        <div className="space-y-6">
-          {isAssetDetailSectionVisible(assetDetailView, "overview") ? (
-            <section id="overview" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
-            <KeyValueList
-              items={[
-                { key: "category", label: t("category"), value: <><span className="tag">{asset.category.code}</span> - {asset.category.name}</> },
-                { key: "brand", label: t("brand"), value: asset.brand?.name },
-                { key: "model", label: t("model"), value: asset.model?.name },
-                {
-                  key: "serialNumber",
-                  label: ownershipType === "software_license" ? t("licenseKey") : t("serialNumber"),
-                  value: ownershipType === "software_license" ? maskLicenseKey(asset.serialNumber) : asset.serialNumber,
-                },
-                ...(ownershipType === "software_license"
-                  ? [
-                      { key: "licenseSeatUsage", label: t("licenseSeatUsage"), value: licenseSeatSummary },
-                      {
-                        key: "licenseAssignedAsset",
-                        label: t("licenseAssignedAsset"),
-                        value: licenseAssignedAsset ? <><span className="tag">{licenseAssignedAsset.assetTag}</span> - {licenseAssignedAsset.name}</> : null,
-                      },
-                    ]
-                  : []),
-                { key: "fixedAssetCode", label: t("fixedAssetCode"), value: asset.fixedAssetCode },
-                {
-                  key: "purchasePrice",
-                  label: t("purchasePrice"),
-                  value: asset.purchasePrice == null ? null : <span className="num">{formatMoney(Number(asset.purchasePrice), { unit: tCommon("baht") })}</span>,
-                },
-              ]}
-            />
-            </section>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "specs") && asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes) ? (
-            <section id="specs" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-              <SectionHeading title={tBrandModel("structuredSpecs")} subtitle={t("detailSections.specsSubtitle")} />
-              {modelSpecs.items.length > 0 ? (
-                <KeyValueList items={modelSpecs.items.map((item) => ({ key: item.id, label: item.label, value: item.value }))} />
-              ) : null}
-              {modelSpecs.notes ? (
-                <p className="mt-4 whitespace-pre-wrap rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-                  {modelSpecs.notes}
-                </p>
-              ) : null}
-            </section>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "ownership") ? (
-            <section id="ownership" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <SectionHeading title={t("ownership")} subtitle={t("detailSections.ownershipSubtitle")} />
-            <KeyValueList
-              items={[
-                { key: "company", label: t("company"), value: <><span className="tag">{asset.company.code}</span> - {asset.company.nameTh}</> },
-                { key: "branch", label: t("branch"), value: <><span className="tag">{asset.branch.code}</span> - {asset.branch.name}</> },
-                { key: "ownershipType", label: t("ownershipType"), value: t(`ownershipType_${ownershipType}`) },
-                { key: "department", label: t("department"), value: asset.department ? <><span className="tag">{asset.department.code}</span> - {asset.department.name}</> : null },
-                {
-                  key: "custodian",
-                  label: t("custodian"),
-                  value: asset.custodian ? <><span className="tag">{asset.custodian.code}</span> - {asset.custodian.fullNameTh}</> : null,
-                  nilLabel: t("noCustodian"),
-                },
-                { key: "homeLocation", label: t("homeLocation"), value: asset.homeLocation ? <><span className="tag">{asset.homeLocation.code}</span> - {asset.homeLocation.name}</> : null },
-                { key: "currentLocation", label: t("currentLocation"), value: <><span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}</> },
-              ]}
-            />
-            </section>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "components") ? (
-            <div id="components" className="scroll-mt-24 space-y-4">
-              <AssetComponentsSummary
-                locale={locale}
-                currentComponents={currentComponentsForPanel}
-                installedInLinks={installedInLinksForPanel}
-                canManage={canEditAsset}
-                manageHref={componentsManagerHref}
-                labels={{
-                  title: t("assetComponents"),
-                  help: t("componentSummaryHelp"),
-                  installedIn: t("installedInParent"),
-                  roleLabel: t("componentRole"),
-                  slotLabel: t("slotNo"),
-                  current: t("currentComponents"),
-                  noCurrent: t("noCurrentComponents"),
-                  missingSerial: t("componentMissingSerial"),
-                  manage: t("manageComponents"),
-                }}
-              />
-              {currentComponentsForPanel.length > 0 || installedInLinksForPanel.length > 0 ? (
-                <AssetRelationshipMap
-              title={t("relationshipMap")}
-              subtitle={t("relationshipMapHelp")}
-              parentLaneTitle={t("relationshipParentLane")}
-              currentTitle={t("relationshipCurrentViewing")}
-              componentsTitle={t("relationshipComponentsLane")}
-              componentsCountLabel={t("relationshipComponentsCount", { count: currentComponentsForPanel.length })}
-              moreItemsLabel={t("relationshipMoreItems", { count: Math.max(currentComponentsForPanel.length - 5, 0) })}
-              licenseAssignedTitle={t("relationshipLicenseAssignedAsset")}
-              assignedLicensesTitle={t("relationshipAssignedLicenses")}
-              assetTag={asset.assetTag}
-              assetName={asset.name}
-              currentMetaLabel={t("category")}
-              currentMetaValue={`${asset.category.code} - ${asset.category.name}`}
-              parentLinks={installedInLinksForPanel.map((link) => ({
-                id: link.id,
-                href: link.parentHref,
-                label: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
-                role: link.componentRole,
-              }))}
-              childLinks={currentComponentsForPanel.map((component) => ({
-                id: component.id,
-                href: `/${locale}/assets/${component.componentAsset.id}`,
-                label: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
-                role: component.componentRole,
-              }))}
-              licenseAssignedLinks={licenseAssignedAsset ? [{
-                id: licenseAssignedAsset.id,
-                href: `/${locale}/assets/${licenseAssignedAsset.id}`,
-                label: `${licenseAssignedAsset.assetTag} - ${licenseAssignedAsset.name}`,
-                role: t("relationshipLicenseDeviceRole"),
-              }] : []}
-              assignedLicenseLinks={asset.assignedLicenses.map((license) => ({
-                id: license.id,
-                href: `/${locale}/assets/${license.id}`,
-                label: `${license.assetTag} - ${license.name}`,
-                role: formatLicenseRelationshipRole(license.licenseUsedSeats, license.licenseTotalSeats, t),
-              }))}
-              emptyLabel={t("relationshipMapEmpty")}
-              summaryParent={t("relationshipSummaryParent", { count: currentComponentsForPanel.length })}
-              summaryComponent={t("relationshipSummaryComponent", { parent: installedInLinksForPanel[0]?.parentAsset.assetTag ?? "-" })}
-              summaryParentAndComponent={t("relationshipSummaryParentAndComponent", {
-                parent: installedInLinksForPanel[0]?.parentAsset.assetTag ?? "-",
-                count: currentComponentsForPanel.length,
-              })}
-              summaryStandalone={t("relationshipSummaryStandalone")}
-              roleParentLabel={t("relationshipRoleParent")}
-              roleComponentLabel={t("relationshipRoleComponent")}
-              roleParentAndComponentLabel={t("relationshipRoleParentAndComponent")}
-              roleStandaloneLabel={t("relationshipRoleStandalone")}
-              parentEmptyTitle={t("relationshipNoParent")}
-              parentEmptyHelp={t("relationshipNoParentHelp")}
-              componentsEmptyTitle={t("relationshipNoComponents")}
-              componentsEmptyHelp={t("relationshipNoComponentsHelp")}
-              noteLabel={t("relationshipNote")}
-                />
-              ) : null}
-            </div>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "purchase") ? (
-            <section id="purchase" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <SectionHeading title={t("purchaseWarranty")} subtitle={t("detailSections.purchaseSubtitle")} />
-            {/* The warranty state is a state, so it is the first fact as a StatusBadge, not a tinted box (spec 2D M22). */}
-            <KeyValueList
-              items={[
-                { key: "warrantyStatus", label: t("warrantyStatus"), value: <StatusBadge label={getWarrantyStatusLabel(warrantyState, t)} tone={warrantyState.tone} /> },
-                { key: "supplier", label: t("supplier"), value: asset.supplier ? <><span className="tag">{asset.supplier.code}</span> - {asset.supplier.name}</> : null },
-                { key: "purchaseDate", label: t("purchaseDate"), value: asset.purchaseDate ? formatDate(asset.purchaseDate) : null },
-                { key: "warrantyStart", label: t("warrantyStart"), value: asset.warrantyStartDate ? formatDate(asset.warrantyStartDate) : null },
-                { key: "warrantyEnd", label: t("warrantyEnd"), value: asset.warrantyEndDate ? formatDate(asset.warrantyEndDate) : null },
-                { key: "poNumber", label: t("poNumber"), value: asset.poNumber },
-                { key: "invoiceNumber", label: t("invoiceNumber"), value: asset.invoiceNumber },
-              ]}
-            />
+        {/* The files tab's purchase documents, under the anchor ข้อมูลทรัพย์สิน links, until Task 11 (R23, R31). */}
+        {isAssetDetailSectionVisible(assetDetailView, "purchase-documents") ? (
+          <section id="purchase-documents" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
             <AssetPurchaseDocuments documents={purchaseDocuments} legacyAttachments={legacyPurchaseDocuments} />
-            </section>
-          ) : null}
+          </section>
+        ) : null}
 
-          {isAssetDetailSectionVisible(assetDetailView, "photos") ? (
-            <div id="photos" className="scroll-mt-24">
-              <AssetAttachments
-                assetId={asset.id}
-                attachments={assetAttachments}
-                modelPhotos={modelPhotos}
-                photoChecklist={photoChecklist}
-              />
-            </div>
-          ) : null}
+        {isAssetDetailSectionVisible(assetDetailView, "photos") ? (
+          <div id="photos" className="scroll-mt-24">
+            <AssetAttachments
+              assetId={asset.id}
+              attachments={assetAttachments}
+              modelPhotos={modelPhotos}
+              photoChecklist={photoChecklist}
+            />
+          </div>
+        ) : null}
 
-          {isAssetDetailSectionVisible(assetDetailView, "handover") ? (
-            <section id="handover" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} />
-            {asset.checkouts.length === 0 ? (
-              <EmptyNote>{tCommon("noData")}</EmptyNote>
-            ) : (
-              <div className="space-y-3">
-                {asset.checkouts.map((checkout, index) => {
-                  const checkoutAttachments = operationAttachmentsByReference.get(checkout.id) ?? []
-                  const checkinAttachments = checkout.checkin ? operationAttachmentsByReference.get(checkout.checkin.id) ?? [] : []
-                  const destination = getCheckoutDestination(checkout, {
-                    departments: checkoutDepartmentLabels,
-                    locations: checkoutLocationLabels,
-                    parentAssets: checkoutParentAssetLabels,
-                  })
-                  const returnLabel = checkout.checkin ? `${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}` : null
-                  const handoverModeLabel = getAssetHandoverModeLabel(checkout.handoverMode, {
-                    permanent: t("handoverPermanentAssignment"),
-                    temporary: t("handoverTemporaryLoan"),
-                    legacy: t("handoverModeLegacy"),
-                  })
-                  const evidenceGrid = (
-                    <HandoverEvidenceGrid
-                      checkoutAttachments={checkoutAttachments}
-                      checkinAttachments={checkinAttachments}
-                      labels={{
-                        checkoutPhotoBefore: t("checkoutPhotoBefore"),
-                        receiverSignature: t("receiverSignature"),
-                        checkinPhotoAfter: t("checkinPhotoAfter"),
-                        returnSignature: t("returnSignature"),
-                        receiveSignature: t("receiveSignature"),
-                        noEvidence: t("noEvidence"),
-                      }}
-                    />
-                  )
+        {isAssetDetailSectionVisible(assetDetailView, "handover") ? (
+          <section id="handover" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+          <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} />
+          {asset.checkouts.length === 0 ? (
+            <EmptyNote>{tCommon("noData")}</EmptyNote>
+          ) : (
+            <div className="space-y-3">
+              {asset.checkouts.map((checkout, index) => {
+                const checkoutAttachments = operationAttachmentsByReference.get(checkout.id) ?? []
+                const checkinAttachments = checkout.checkin ? operationAttachmentsByReference.get(checkout.checkin.id) ?? [] : []
+                const destination = getCheckoutDestination(checkout, {
+                  departments: checkoutDepartmentLabels,
+                  locations: checkoutLocationLabels,
+                  parentAssets: checkoutParentAssetLabels,
+                })
+                const returnLabel = checkout.checkin ? `${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}` : null
+                const handoverModeLabel = getAssetHandoverModeLabel(checkout.handoverMode, {
+                  permanent: t("handoverPermanentAssignment"),
+                  temporary: t("handoverTemporaryLoan"),
+                  legacy: t("handoverModeLegacy"),
+                })
+                const evidenceGrid = (
+                  <HandoverEvidenceGrid
+                    checkoutAttachments={checkoutAttachments}
+                    checkinAttachments={checkinAttachments}
+                    labels={{
+                      checkoutPhotoBefore: t("checkoutPhotoBefore"),
+                      receiverSignature: t("receiverSignature"),
+                      checkinPhotoAfter: t("checkinPhotoAfter"),
+                      returnSignature: t("returnSignature"),
+                      receiveSignature: t("receiveSignature"),
+                      noEvidence: t("noEvidence"),
+                    }}
+                  />
+                )
 
-                  return index === 0 ? (
-                    <div key={checkout.id} className="rounded-md border border-border bg-background p-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Chip>{t("latestTransaction")}</Chip>
-                            <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                            <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
-                          </div>
-                          <KeyValueList
-                            className="mt-2"
-                            items={[
-                              { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
-                              { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
-                              { key: "handoverTo", label: t("handoverTo"), value: destination },
-                              ...(checkout.handoverMode === "temporary_loan"
-                                ? [{ key: "expectedReturnDate", label: t("expectedReturnDate"), value: checkout.expectedReturnDate ? formatDate(checkout.expectedReturnDate) : null }]
-                                : []),
-                              { key: "returnDate", label: t("returnDate"), value: returnLabel },
-                              { key: "remark", label: t("remark"), value: checkout.remark },
-                            ]}
-                          />
+                return index === 0 ? (
+                  <div key={checkout.id} className="rounded-md border border-border bg-background p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip>{t("latestTransaction")}</Chip>
+                          <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
+                          <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                            {t("openHandoverDocument")}
+                        <KeyValueList
+                          className="mt-2"
+                          items={[
+                            { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
+                            { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
+                            { key: "handoverTo", label: t("handoverTo"), value: destination },
+                            ...(checkout.handoverMode === "temporary_loan"
+                              ? [{ key: "expectedReturnDate", label: t("expectedReturnDate"), value: checkout.expectedReturnDate ? formatDate(checkout.expectedReturnDate) : null }]
+                              : []),
+                            { key: "returnDate", label: t("returnDate"), value: returnLabel },
+                            { key: "remark", label: t("remark"), value: checkout.remark },
+                          ]}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                          {t("openHandoverDocument")}
+                        </Link>
+                        {checkout.checkin ? (
+                          <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                            {t("openReturnDocument")}
                           </Link>
-                          {checkout.checkin ? (
-                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                              {t("openReturnDocument")}
-                            </Link>
-                          ) : null}
+                        ) : null}
+                      </div>
+                    </div>
+                    {evidenceGrid}
+                  </div>
+                ) : (
+                  <details key={checkout.id} className="group rounded-md border border-border bg-background">
+                    <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 marker:hidden md:flex-row md:items-center md:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
+                          <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                         </div>
+                        <KeyValueList
+                          className="mt-2"
+                          items={[
+                            { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
+                            { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
+                            { key: "handoverTo", label: t("handoverTo"), value: destination },
+                            { key: "returnDate", label: t("returnDate"), value: returnLabel },
+                            { key: "remark", label: t("remark"), value: checkout.remark },
+                          ]}
+                        />
+                      </div>
+                      {/* The summary is the control: its cue reads as a text link with a turning chevron, not as a second button. */}
+                      <span className={cn(linkVariants(), "inline-flex shrink-0 items-center gap-1")}>
+                        {t("viewEvidence")}
+                        <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                      </span>
+                    </summary>
+                    <div className="border-t border-border px-4 pb-4 pt-3">
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                          {t("openHandoverDocument")}
+                        </Link>
+                        {checkout.checkin ? (
+                          <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                            {t("openReturnDocument")}
+                          </Link>
+                        ) : null}
                       </div>
                       {evidenceGrid}
                     </div>
-                  ) : (
-                    <details key={checkout.id} className="group rounded-md border border-border bg-background">
-                      <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 marker:hidden md:flex-row md:items-center md:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                            <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
-                          </div>
-                          <KeyValueList
-                            className="mt-2"
-                            items={[
-                              { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
-                              { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
-                              { key: "handoverTo", label: t("handoverTo"), value: destination },
-                              { key: "returnDate", label: t("returnDate"), value: returnLabel },
-                              { key: "remark", label: t("remark"), value: checkout.remark },
-                            ]}
-                          />
-                        </div>
-                        {/* The summary is the control: its cue reads as a text link with a turning chevron, not as a second button. */}
-                        <span className={cn(linkVariants(), "inline-flex shrink-0 items-center gap-1")}>
-                          {t("viewEvidence")}
-                          <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-                        </span>
-                      </summary>
-                      <div className="border-t border-border px-4 pb-4 pt-3">
-                        <div className="mb-3 flex flex-wrap gap-2">
-                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                            {t("openHandoverDocument")}
-                          </Link>
-                          {checkout.checkin ? (
-                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                              {t("openReturnDocument")}
-                            </Link>
-                          ) : null}
-                        </div>
-                        {evidenceGrid}
-                      </div>
-                    </details>
-                  )
-                })}
-              </div>
-            )}
-            </section>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "movement") ? (
-            <section id="movement" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} />
-            <div className="mb-5 rounded-md border border-border bg-background p-4">
-              <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
-              <KeyValueList
-                items={[
-                  { key: "currentLocation", label: t("currentLocation"), value: currentLocationLabel },
-                  { key: "custodian", label: t("custodian"), value: currentCustodianLabel, nilLabel: t("noCustodian") },
-                  { key: "status", label: t("status"), value: asset.status?.nameTh ?? asset.status?.name },
-                  { key: "latestMovement", label: t("latestMovement"), value: latestMovement ? `${latestMovement.title} · ${formatDateTime(latestMovement.performedAt)}` : null },
-                ]}
-              />
-              {latestMovement ? (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{t("movementSummary")}: </span>
-                  {latestMovement.summary}
-                </p>
-              ) : null}
+                  </details>
+                )
+              })}
             </div>
-            <AssetMovementTimeline
-              items={movementTimelineItemsForClient}
-              labels={{
-                all: t("movementFilters.all"),
-                filterLabel: tCommon("filter"),
-                fromValue: t("fromValue"),
-                toValue: t("toValue"),
-                noData: tCommon("noData"),
-                filters: {
-                  handover: t("movementFilters.handover"),
-                  transfer: t("movementFilters.transfer"),
-                  purchase: t("movementFilters.purchase"),
-                  maintenance: t("movementFilters.maintenance"),
-                  audit: t("movementFilters.audit"),
-                  component: t("movementFilters.component"),
-                  disposal: t("movementFilters.disposal"),
-                  other: t("movementFilters.other"),
-                },
-              }}
-            />
-            </section>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "notes") ? (
-            <section id="notes" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-              <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{orNil(asset.remark)}</p>
-            </section>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
-            <section id="maintenance" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} />
-            <StatStrip
-              className="mb-4"
-              items={[
-                {
-                  key: "open",
-                  label: t("openMaintenance"),
-                  value: formatCount(openMaintenanceCount),
-                  ...(openMaintenanceCount > 0 ? { foot: maintenanceSummary, attention: true } : {}),
-                },
-                {
-                  key: "total",
-                  label: t("totalMaintenance"),
-                  value: formatCount(asset.maintenanceTickets.length),
-                  foot: latestMaintenanceTicket ? t("latestMaintenanceSummary", { repairNo: latestMaintenanceTicket.repairNo }) : undefined,
-                },
-                { key: "cost", label: t("maintenanceTotalCost"), value: formatMoney(totalMaintenanceCost), unit: tCommon("baht") },
-              ]}
-            />
-            {maintenanceReplacementWarning ? (
-              <Notice tone="warning" className="mb-4">
-                {t("maintenanceReplacementWarning")}
-              </Notice>
-            ) : null}
-            {asset.maintenanceTickets.length === 0 ? (
-              <ActionEmptyState
-                icon={<Wrench className="h-6 w-6" />}
-                title={t("noMaintenanceTitle")}
-                description={t("noMaintenanceHelp")}
-                actionHref={maintenanceHref}
-                actionLabel={t("quickMaintenance")}
-              />
-            ) : (
-              <DataTable framed={false} caption={tMaintenance("maintenanceHistory")} scrollHint={tCommon("tableScrollHint")}>
-                <DataTableHeader>
-                  <tr>
-                    <DataTableHead>{tMaintenance("repairNo")}</DataTableHead>
-                    <DataTableHead>{tMaintenance("problem")}</DataTableHead>
-                    <DataTableHead>{tMaintenance("reportedBy")}</DataTableHead>
-                    <DataTableHead>{tCommon("status")}</DataTableHead>
-                    <DataTableHead>{tMaintenance("reportedDate")}</DataTableHead>
-                  </tr>
-                </DataTableHeader>
-                <DataTableBody>
-                  {asset.maintenanceTickets.map((ticket) => (
-                    <ClickableTableRow
-                      key={ticket.id}
-                      href={`/${locale}/maintenance/${ticket.id}`}
-                      label={`${tCommon("view")}: ${ticket.repairNo}`}
-                    >
-                      <DataTableCell className="whitespace-nowrap">
-                        <Link href={`/${locale}/maintenance/${ticket.id}`} className={linkVariants({ size: "inherit" })}>
-                          <span className="tag">{ticket.repairNo}</span>
-                        </Link>
-                      </DataTableCell>
-                      <DataTableCell className="min-w-72 text-muted-foreground">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {Boolean(ticket.maintenancePlanId) ? <Chip>{t("maintenancePmBadge")}</Chip> : null}
-                          <span>{ticket.problem}</span>
-                        </div>
-                      </DataTableCell>
-                      <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                        <span className="tag">{ticket.reportedBy.code}</span> - {ticket.reportedBy.fullNameTh}
-                      </DataTableCell>
-                      <DataTableCell className="whitespace-nowrap">
-                        <StatusBadge label={tMaintenance(`statuses.${toRepairRecordStatus(ticket.repairStatus)}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
-                      </DataTableCell>
-                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(ticket.reportedDate)}</DataTableCell>
-                    </ClickableTableRow>
-                  ))}
-                </DataTableBody>
-              </DataTable>
-            )}
-            </section>
-          ) : null}
-
-          {isAssetDetailSectionVisible(assetDetailView, "audit") ? (
-            <section id="audit" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} />
-            <StatStrip
-              className="mb-4"
-              items={[
-                { key: "scanCount", label: t("scanCount"), value: formatCount(latestAuditItem?.scanCount ?? 0), foot: auditSummary, footTitle: auditSummary },
-                {
-                  key: "findingRequired",
-                  label: t("auditFindingRequired"),
-                  value: latestAuditItem?.findingRequired ? tCommon("yes") : tCommon("no"),
-                  ...(latestAuditItem?.findingRequired ? { foot: t("activityAuditFinding"), attention: true } : {}),
-                },
-              ]}
-            />
-            {asset.auditItems.length === 0 ? (
-              <ActionEmptyState
-                icon={<ScanLine className="h-6 w-6" />}
-                title={t("noAuditTitle")}
-                description={t("noAuditHelp")}
-                actionHref={`/${locale}/audit/rounds`}
-                actionLabel={t("quickAudit")}
-              />
-            ) : (
-              <DataTable framed={false} caption={t("auditHistory")} scrollHint={tCommon("tableScrollHint")}>
-                <DataTableHeader>
-                  <tr>
-                    <DataTableHead>{t("auditRound")}</DataTableHead>
-                    <DataTableHead>{t("status")}</DataTableHead>
-                    <DataTableHead>{t("result")}</DataTableHead>
-                    <DataTableHead>{t("lastAuditDate")}</DataTableHead>
-                    <DataTableHead align="right">{t("scanCount")}</DataTableHead>
-                  </tr>
-                </DataTableHeader>
-                <DataTableBody>
-                  {asset.auditItems.map((item) => (
-                    <ClickableTableRow
-                      key={item.id}
-                      href={`/${locale}/audit/rounds/${item.auditRound.id}`}
-                      label={`${tCommon("view")}: ${item.auditRound.auditNo}`}
-                    >
-                      <DataTableCell className="min-w-64">
-                        <div className="font-medium text-foreground"><span className="tag font-medium">{item.auditRound.auditNo}</span></div>
-                        <div className="mt-1 text-meta text-muted-foreground">{item.auditRound.name}</div>
-                      </DataTableCell>
-                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditState(item.auditStatus)}</DataTableCell>
-                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{item.auditResult ? formatAuditState(item.auditStatus, item.auditResult) : <Nil />}</DataTableCell>
-                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(item.lastScanAt ?? item.scannedAt)}</DataTableCell>
-                      <DataTableCell numeric className="text-muted-foreground">{formatCount(item.scanCount)}</DataTableCell>
-                    </ClickableTableRow>
-                  ))}
-                </DataTableBody>
-              </DataTable>
-            )}
-            </section>
-          ) : null}
-
-        </div>
-
-        {assetDetailView === "overview" ? (
-          <aside className="space-y-6">
-          <ContentPanel title={t("qrCode")}>
-            <div className="flex justify-center">
-              <AssetQrCode value={qrValue} label={asset.assetTag} />
-            </div>
-          </ContentPanel>
-          <SidebarPhotoCard
-            title={t("modelPhoto")}
-            caption={asset.model?.name ?? t("modelPhoto")}
-            attachment={primaryModelPhoto}
-            emptyLabel={tCommon("noData")}
-            viewLabel={t("viewPhotoGallery")}
-            galleryHref={photosHref}
-          />
-          <SidebarPhotoCard
-            title={t("assetPhotos")}
-            caption={t("primaryAssetPhoto")}
-            attachment={primaryAssetPhoto}
-            emptyLabel={tCommon("noData")}
-            viewLabel={t("viewPhotoGallery")}
-            galleryHref={photosHref}
-          />
-          </aside>
+          )}
+          </section>
         ) : null}
+
+        {isAssetDetailSectionVisible(assetDetailView, "movement") ? (
+          <section id="movement" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+          <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} />
+          <div className="mb-5 rounded-md border border-border bg-background p-4">
+            <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
+            <KeyValueList
+              items={[
+                { key: "currentLocation", label: t("currentLocation"), value: currentLocationLabel },
+                { key: "custodian", label: t("custodian"), value: currentCustodianLabel, nilLabel: t("noCustodian") },
+                { key: "status", label: t("status"), value: asset.status?.nameTh ?? asset.status?.name },
+                { key: "latestMovement", label: t("latestMovement"), value: latestMovement ? `${latestMovement.title} · ${formatDateTime(latestMovement.performedAt)}` : null },
+              ]}
+            />
+            {latestMovement ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{t("movementSummary")}: </span>
+                {latestMovement.summary}
+              </p>
+            ) : null}
+          </div>
+          <AssetMovementTimeline
+            items={movementTimelineItemsForClient}
+            labels={{
+              all: t("movementFilters.all"),
+              filterLabel: tCommon("filter"),
+              fromValue: t("fromValue"),
+              toValue: t("toValue"),
+              noData: tCommon("noData"),
+              filters: {
+                handover: t("movementFilters.handover"),
+                transfer: t("movementFilters.transfer"),
+                purchase: t("movementFilters.purchase"),
+                maintenance: t("movementFilters.maintenance"),
+                audit: t("movementFilters.audit"),
+                component: t("movementFilters.component"),
+                disposal: t("movementFilters.disposal"),
+                other: t("movementFilters.other"),
+              },
+            }}
+          />
+          </section>
+        ) : null}
+
+        {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
+          <section id="maintenance" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+          <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} />
+          <StatStrip
+            className="mb-4"
+            items={[
+              {
+                key: "open",
+                label: t("openMaintenance"),
+                value: formatCount(openMaintenanceCount),
+                ...(openMaintenanceCount > 0 ? { foot: maintenanceSummary, attention: true } : {}),
+              },
+              {
+                key: "total",
+                label: t("totalMaintenance"),
+                value: formatCount(asset.maintenanceTickets.length),
+                foot: latestMaintenanceTicket ? t("latestMaintenanceSummary", { repairNo: latestMaintenanceTicket.repairNo }) : undefined,
+              },
+              { key: "cost", label: t("maintenanceTotalCost"), value: formatMoney(totalMaintenanceCost), unit: tCommon("baht") },
+            ]}
+          />
+          {maintenanceReplacementWarning ? (
+            <Notice tone="warning" className="mb-4">
+              {t("maintenanceReplacementWarning")}
+            </Notice>
+          ) : null}
+          {asset.maintenanceTickets.length === 0 ? (
+            <ActionEmptyState
+              icon={<Wrench className="h-6 w-6" />}
+              title={t("noMaintenanceTitle")}
+              description={t("noMaintenanceHelp")}
+              actionHref={maintenanceHref}
+              actionLabel={t("quickMaintenance")}
+            />
+          ) : (
+            <DataTable framed={false} caption={tMaintenance("maintenanceHistory")} scrollHint={tCommon("tableScrollHint")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{tMaintenance("repairNo")}</DataTableHead>
+                  <DataTableHead>{tMaintenance("problem")}</DataTableHead>
+                  <DataTableHead>{tMaintenance("reportedBy")}</DataTableHead>
+                  <DataTableHead>{tCommon("status")}</DataTableHead>
+                  <DataTableHead>{tMaintenance("reportedDate")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {asset.maintenanceTickets.map((ticket) => (
+                  <ClickableTableRow
+                    key={ticket.id}
+                    href={`/${locale}/maintenance/${ticket.id}`}
+                    label={`${tCommon("view")}: ${ticket.repairNo}`}
+                  >
+                    <DataTableCell className="whitespace-nowrap">
+                      <Link href={`/${locale}/maintenance/${ticket.id}`} className={linkVariants({ size: "inherit" })}>
+                        <span className="tag">{ticket.repairNo}</span>
+                      </Link>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-72 text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {Boolean(ticket.maintenancePlanId) ? <Chip>{t("maintenancePmBadge")}</Chip> : null}
+                        <span>{ticket.problem}</span>
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                      <span className="tag">{ticket.reportedBy.code}</span> - {ticket.reportedBy.fullNameTh}
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">
+                      <StatusBadge label={tMaintenance(`statuses.${toRepairRecordStatus(ticket.repairStatus)}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(ticket.reportedDate)}</DataTableCell>
+                  </ClickableTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          )}
+          </section>
+        ) : null}
+
+        {isAssetDetailSectionVisible(assetDetailView, "audit") ? (
+          <section id="audit" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
+          <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} />
+          <StatStrip
+            className="mb-4"
+            items={[
+              { key: "scanCount", label: t("scanCount"), value: formatCount(latestAuditItem?.scanCount ?? 0), foot: auditSummary, footTitle: auditSummary },
+              {
+                key: "findingRequired",
+                label: t("auditFindingRequired"),
+                value: latestAuditItem?.findingRequired ? tCommon("yes") : tCommon("no"),
+                ...(latestAuditItem?.findingRequired ? { foot: t("activityAuditFinding"), attention: true } : {}),
+              },
+            ]}
+          />
+          {asset.auditItems.length === 0 ? (
+            <ActionEmptyState
+              icon={<ScanLine className="h-6 w-6" />}
+              title={t("noAuditTitle")}
+              description={t("noAuditHelp")}
+              actionHref={`/${locale}/audit/rounds`}
+              actionLabel={t("auditRound")}
+            />
+          ) : (
+            <DataTable framed={false} caption={t("auditHistory")} scrollHint={tCommon("tableScrollHint")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{t("auditRound")}</DataTableHead>
+                  <DataTableHead>{t("status")}</DataTableHead>
+                  <DataTableHead>{t("result")}</DataTableHead>
+                  <DataTableHead>{t("lastAuditDate")}</DataTableHead>
+                  <DataTableHead align="right">{t("scanCount")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {asset.auditItems.map((item) => (
+                  <ClickableTableRow
+                    key={item.id}
+                    href={`/${locale}/audit/rounds/${item.auditRound.id}`}
+                    label={`${tCommon("view")}: ${item.auditRound.auditNo}`}
+                  >
+                    <DataTableCell className="min-w-64">
+                      <div className="font-medium text-foreground"><span className="tag font-medium">{item.auditRound.auditNo}</span></div>
+                      <div className="mt-1 text-meta text-muted-foreground">{item.auditRound.name}</div>
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditState(item.auditStatus)}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{item.auditResult ? formatAuditState(item.auditStatus, item.auditResult) : <Nil />}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(item.lastScanAt ?? item.scannedAt)}</DataTableCell>
+                    <DataTableCell numeric className="text-muted-foreground">{formatCount(item.scanCount)}</DataTableCell>
+                  </ClickableTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          )}
+          </section>
+        ) : null}
+
       </div>
     </div>
-  )
-}
-
-type LifecycleAction = {
-  href: string
-  icon: React.ReactNode
-  label: string
-  disabled?: boolean
-}
-
-function getOwnershipLifecycle({
-  ownershipType,
-  activeCheckout,
-  checkoutEnabled,
-  checkinEnabled,
-  transferEnabled,
-  latestCheckout,
-  checkoutHref,
-  checkinHref,
-  transferHref,
-  maintenanceHref,
-  editHref,
-  assignedAssetHref,
-  latestDocumentHref,
-  purchaseHref,
-  auditHref,
-  componentsHref,
-  hasAssignedAsset,
-  licenseSeatSummary,
-  t,
-}: {
-  ownershipType: string
-  activeCheckout: boolean
-  checkoutEnabled: boolean
-  checkinEnabled: boolean
-  transferEnabled: boolean
-  latestCheckout: boolean
-  checkoutHref: string
-  checkinHref: string
-  transferHref: string
-  maintenanceHref: string
-  editHref: string
-  assignedAssetHref: string
-  latestDocumentHref: string
-  purchaseHref: string
-  auditHref: string
-  componentsHref: string
-  hasAssignedAsset: boolean
-  licenseSeatSummary: string | null
-  t: (key: string) => string
-}) {
-  const latestDocumentAction: LifecycleAction = {
-    href: latestDocumentHref,
-    icon: <FileText className="h-4 w-4" />,
-    label: t("quickLatestDocument"),
-    disabled: !latestCheckout,
-  }
-
-  if (ownershipType === "software_license") {
-    const assignAction = { href: editHref, icon: <Edit className="h-4 w-4" />, label: t("quickAssignLicense") }
-    const deviceAction = {
-      href: assignedAssetHref,
-      icon: <PackageCheck className="h-4 w-4" />,
-      label: t("quickAssignedDevice"),
-      disabled: !hasAssignedAsset,
-    }
-    const renewAction = { href: purchaseHref, icon: <ShieldCheck className="h-4 w-4" />, label: t("quickRenewLicense") }
-    const auditAction = { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAuditLicense") }
-
-    return {
-      title: t("lifecycleSoftwareTitle"),
-      description: t("lifecycleSoftwareDescription"),
-      help: t("quickActionsSoftwareHelp"),
-      responsibilityLabel: t("licenseAssignee"),
-      responsibilityValue: null,
-      statusLabel: t("licenseSeatUsage"),
-      statusValue: licenseSeatSummary ?? t("licensePool"),
-      mobilePrimary: assignAction,
-      mobileSecondary: renewAction,
-      actions: [assignAction, deviceAction, renewAction, auditAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickLicenseIssue") }],
-    }
-  }
-
-  if (ownershipType === "stock") {
-    const issueAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickIssueFromStock"), disabled: !checkoutEnabled }
-    const relocateAction = { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickMoveStock"), disabled: activeCheckout }
-
-    return {
-      title: t("lifecycleStockTitle"),
-      description: t("lifecycleStockDescription"),
-      help: t("quickActionsStockHelp"),
-      responsibilityLabel: t("department"),
-      responsibilityValue: null,
-      statusLabel: t("stockStatus"),
-      statusValue: activeCheckout ? t("handoverActive") : t("stockAvailable"),
-      mobilePrimary: issueAction,
-      mobileSecondary: relocateAction,
-      actions: [issueAction, relocateAction, { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, latestDocumentAction],
-    }
-  }
-
-  if (ownershipType === "shared") {
-    const relocateAction = { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickRelocateShared"), disabled: activeCheckout }
-    const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickTemporaryHandover"), disabled: !checkoutEnabled }
-
-    return {
-      title: t("lifecycleSharedTitle"),
-      description: t("lifecycleSharedDescription"),
-      help: t("quickActionsSharedHelp"),
-      responsibilityLabel: t("department"),
-      responsibilityValue: null,
-      statusLabel: t("sharedStatus"),
-      statusValue: activeCheckout ? t("handoverActive") : t("sharedInstalled"),
-      mobilePrimary: relocateAction,
-      mobileSecondary: checkoutAction,
-      actions: [relocateAction, checkoutAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, latestDocumentAction],
-    }
-  }
-
-  if (ownershipType === "component") {
-    const componentAction = { href: componentsHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickManageComponent") }
-    const transferAction = { href: transferHref, icon: <Truck className="h-4 w-4" />, label: t("quickMoveComponent"), disabled: activeCheckout }
-
-    return {
-      title: t("lifecycleComponentTitle"),
-      description: t("lifecycleComponentDescription"),
-      help: t("quickActionsComponentHelp"),
-      responsibilityLabel: t("parentAsset"),
-      responsibilityValue: null,
-      statusLabel: t("componentStatus"),
-      statusValue: t("componentInstalled"),
-      mobilePrimary: componentAction,
-      mobileSecondary: transferAction,
-      actions: [componentAction, transferAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }],
-    }
-  }
-
-  const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickCheckout"), disabled: !checkoutEnabled }
-  const checkinAction = { href: checkinHref, icon: <RotateCcw className="h-4 w-4" />, label: t("quickCheckin"), disabled: !checkinEnabled }
-
-  return {
-    title: t("lifecyclePersonalTitle"),
-    description: t("lifecyclePersonalDescription"),
-    help: t("quickActionsHelp"),
-    responsibilityLabel: t("custodian"),
-    responsibilityValue: null,
-    statusLabel: t("handoverStatus"),
-    statusValue: activeCheckout ? t("handoverActive") : t("assetAvailable"),
-    mobilePrimary: checkoutAction,
-    mobileSecondary: checkinAction,
-    actions: [
-      checkoutAction,
-      checkinAction,
-      { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickTransfer"), disabled: !transferEnabled },
-      { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") },
-      { href: auditHref, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") },
-      latestDocumentAction,
-    ],
-  }
-}
-
-function ActivitySummaryPanel({
-  title,
-  subtitle,
-  followUpTitle,
-  followUpItems,
-  details,
-}: {
-  title: string
-  subtitle: string
-  followUpTitle: string
-  followUpItems: ActivitySummaryItem[]
-  details?: React.ReactNode
-}) {
-  return (
-    <ContentPanel title={title} description={subtitle}>
-      <h3 className="mb-2 text-meta font-medium text-muted-foreground">{followUpTitle}</h3>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {followUpItems.map((item) => (
-          <ActivitySummaryLink key={item.label} item={item} showAction />
-        ))}
-      </div>
-      {details ? <div className="mt-3">{details}</div> : null}
-    </ContentPanel>
-  )
-}
-
-// The work center's follow-up row (plan 2D-2): no tone fill; the tone is a status shape and the label says the rest.
-function ActivitySummaryLink({
-  item,
-  showAction,
-}: {
-  item: ActivitySummaryItem
-  showAction?: boolean
-}) {
-  return (
-    <Link href={item.href} className="block rounded-md border border-border bg-background px-3 py-2 transition-colors hover:bg-row-hover">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2">
-          <span aria-hidden="true" className={cn(statusMarkerVariants({ tone: item.tone }), "mt-1.5")} />
-          <div className="min-w-0">
-            <div className="text-meta text-muted-foreground">{item.label}</div>
-            <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{orNil(item.value)}</div>
-          </div>
-        </div>
-        {showAction && item.actionLabel ? <span className="shrink-0 text-meta font-medium text-primary">{item.actionLabel}</span> : null}
-      </div>
-    </Link>
-  )
-}
-
-// Spec 2D M12: a step that cannot run now is a real disabled button, so a screen reader says it is unavailable. A long
-// Thai label may wrap in the 2/3/6-column grid, so the button grows instead of clipping (the settings presets' rule).
-const quickActionClasses = "h-auto w-full whitespace-normal py-2 text-center md:h-auto md:min-h-9"
-
-function QuickAction({
-  href,
-  icon,
-  label,
-  disabled,
-}: {
-  href: string
-  icon: React.ReactNode
-  label: string
-  disabled?: boolean
-}) {
-  if (disabled) {
-    return (
-      <Button variant="outline" disabled className={quickActionClasses}>
-        {icon}
-        {label}
-      </Button>
-    )
-  }
-
-  return (
-    <Link href={href} className={cn(buttonVariants({ variant: "outline" }), quickActionClasses)}>
-      {icon}
-      {label}
-    </Link>
   )
 }
 
@@ -2243,60 +1751,6 @@ function getRelationshipCardClass(current: boolean) {
   return current ? "border-primary-border bg-surface" : "border-border bg-surface hover:bg-row-hover"
 }
 
-function SidebarPhotoCard({
-  title,
-  caption,
-  attachment,
-  emptyLabel,
-  viewLabel,
-  galleryHref,
-}: {
-  title: string
-  caption: string
-  attachment?: { id: string; originalName: string } | null
-  emptyLabel: string
-  viewLabel: string
-  galleryHref: string
-}) {
-  return (
-    <ContentPanel title={title}>
-      {attachment ? (
-        <a
-          href={galleryHref}
-          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <div className="flex h-32 w-full items-center justify-center bg-background p-2">
-            {/* Authenticated attachment URLs render more reliably as browser-native images. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/attachments/${attachment.id}?inline=1`}
-              alt={attachment.originalName}
-              width={320}
-              height={240}
-              loading="eager"
-              fetchPriority="high"
-              className="max-h-full w-full object-contain bg-image-stage"
-            />
-          </div>
-          <div className="border-t border-border p-3 text-left">
-            <div className="line-clamp-2 text-sm font-medium text-foreground">{caption}</div>
-            <div className="mt-1 truncate text-meta text-muted-foreground">{attachment.originalName}</div>
-            <div className="mt-2 text-meta font-medium text-primary">{viewLabel}</div>
-          </div>
-        </a>
-      ) : (
-        // No dashed box (spec 2D M21): one empty line, and the gallery link as a text link.
-        <div className="flex h-32 flex-col items-center justify-center gap-1">
-          <EmptyNote>{emptyLabel}</EmptyNote>
-          <a href={galleryHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
-            {viewLabel}
-          </a>
-        </div>
-      )}
-    </ContentPanel>
-  )
-}
-
 function EvidenceLinks({
   title,
   attachments,
@@ -2344,22 +1798,6 @@ function EvidenceLinks({
   )
 }
 
-function buildEvidenceItems(
-  attachments: Array<{ id: string; originalName: string; fileType: string; uploadedAt: Date }>,
-  group: string,
-  detail: string
-) {
-  return attachments.map((attachment) => ({
-    id: attachment.id,
-    title: attachment.originalName,
-    group,
-    detail,
-    uploadedAt: attachment.uploadedAt,
-    fileType: attachment.fileType,
-    href: `/api/attachments/${attachment.id}`,
-  }))
-}
-
 function HandoverEvidenceGrid({
   checkoutAttachments,
   checkinAttachments,
@@ -2385,10 +1823,6 @@ function HandoverEvidenceGrid({
       <EvidenceLinks title={labels.receiveSignature} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_receive_signature")} emptyLabel={labels.noEvidence} />
     </div>
   )
-}
-
-function isPreviewableImage(fileType: string) {
-  return fileType.startsWith("image/")
 }
 
 function uniqueTruthy(values: Array<string | null | undefined>) {
@@ -2709,16 +2143,6 @@ function formatLicenseRelationshipRole(usedSeats: number | null, totalSeats: num
     used: usedSeats ?? 0,
     total: totalSeats,
   })
-}
-
-function getWarrantyStatusLabel(
-  warrantyState: ReturnType<typeof getWarrantyState>,
-  t: (key: string, values?: Record<string, string | number | Date>) => string
-) {
-  if (warrantyState.tone === "neutral") return t("warrantyUnknown")
-  if (warrantyState.tone === "danger") return t("warrantyExpired", { days: Math.abs(warrantyState.daysLeft ?? 0) })
-  if (warrantyState.tone === "warning") return t("warrantyExpiringSoon", { days: warrantyState.daysLeft ?? 0 })
-  return t("warrantyActive", { days: warrantyState.daysLeft ?? 0 })
 }
 
 function formatUserLabel(user: {

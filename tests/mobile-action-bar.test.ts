@@ -88,7 +88,8 @@ test("DESIGN.md, docs/14 and design.json describe ActionBar's more slot and the 
 // tCommon("actions") ("การดำเนินการ"), and pad their root with actionBarPagePadding, so the bar and its room change in
 // one place. The disposal request's first link is the primary button only when no next-step button sits above it.
 // The repair page's bar drops its back item, because the header's PageBackLink shows at every width; the audit round
-// keeps it, because its header has no back link (2B spec §4.6.4). The two old bars are gone.
+// keeps it, because its header has no back link (2B spec §4.6.4). The two old bars are gone. The asset page's bar lives
+// in its client part, asset-detail-actions.tsx, beside "อื่น ๆ" and the dialogs it opens (group 1 asset detail task 8).
 test("the four detail pages use ActionBar with its page padding, and the two old bars are gone (K23, O11)", () => {
   assert.equal(existsSync("src/components/ui/mobile-action-bar.tsx"), false)
   assert.equal(existsSync("src/components/disposal/disposal-mobile-action-bar.tsx"), false)
@@ -100,11 +101,18 @@ test("the four detail pages use ActionBar with its page padding, and the two old
     "audit/rounds/[id]": [page("audit/rounds/[id]"), /<div className=\{actionBarPagePadding\.single\}>/],
   }
   for (const [route, [source, root]] of Object.entries(pages)) {
-    assert.match(source, /^import \{ ActionBar, actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m, route)
     assert.match(source, root, route)
+    if (route === "assets/[id]") continue
+    assert.match(source, /^import \{ ActionBar, actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m, route)
     assert.match(source, /<ActionBar\s+label=\{tCommon\("actions"\)\}/, route)
     assert.doesNotMatch(source, /MobileActionBar|\bpb-(?:24|36)\b/, route)
   }
+  const asset = pages["assets/[id]"][0]
+  assert.match(asset, /^import \{ actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m)
+  const assetActions = readFileSync("src/components/assets/detail/asset-detail-actions.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(assetActions, /^import \{ ActionBar, type ActionBarLink \} from "@\/components\/ui\/action-bar"$/m)
+  assert.match(assetActions, /<ActionBar\s+label=\{tCommon\("actions"\)\}/)
+  assert.doesNotMatch(asset + assetActions, /MobileActionBar|\bpb-(?:24|36)\b/)
   const [disposal] = pages["disposal/[id]"]
   assert.match(disposal, /<ActionBar\n\s+label=\{tCommon\("actions"\)\}\n\s+primaryAction=\{nextActionControl\}\n/)
   assert.match(disposal, /label: t\("openAsset"\), icon: <FileText className="h-4 w-4" \/>, primary: !nextActionControl \}/)

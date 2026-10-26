@@ -93,7 +93,7 @@ test("each component is one compact row: tag, StatusBadge, name · role · slot,
   assert.match(panel, /<DropdownMenuTrigger asChild>\s*<Button variant="ghost" size="icon-sm" aria-label=\{tCommon\("moreActionsFor", \{ code: component\.assetTag \}\)\}/)
   assert.match(panel, /<DropdownMenuItem disabled=\{saving \|\| confirmingAll\} onSelect=\{\(\) => onScanComponent\(component\)\}>[\s\S]*?t\("componentScanQr"\)/)
   assert.match(panel, /<DropdownMenuItem disabled=\{rowDisabled\} onSelect=\{\(\) => openMissing\(component\)\}>[\s\S]*?t\("componentMarkMissing"\)/)
-  // The missing dialog takes focus, so the closing menu must not pull it back to ⋯ (as asset-detail-action-menu).
+  // The missing dialog takes focus, so the closing menu must not pull it back to ⋯ (as asset-detail-actions).
   assert.match(panel, /onCloseAutoFocus=\{\(event\) => \{\s*if \(!openingDialogRef\.current\) return\s*openingDialogRef\.current = false\s*event\.preventDefault\(\)/)
   // Status pills are StatusBadge tones, not hand-written fills.
   const meta = sliceFrom(panels, "function getAuditComponentStatusMeta", "export function AuditQrScannerOverlay")

@@ -4,17 +4,16 @@ import test from "node:test"
 
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
-test("asset detail menu owns its dialogs outside the menu and returns focus to the trigger", () => {
-  const menu = read("src/components/assets/asset-detail-action-menu.tsx")
+test("asset detail's อื่น ๆ owns its dialogs outside the menu and returns focus to whatever opened them", () => {
+  const menu = read("src/components/assets/detail/asset-detail-actions.tsx")
   assert.match(menu, /<DropdownMenu modal=\{false\}>/)
   assert.match(menu, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*?openingDialogRef\.current/)
-  assert.equal(menu.match(/returnFocusRef=\{triggerRef\}/g)?.length, 3)
-  assert.match(menu, /<\/DropdownMenu>\s*\{cancelTransaction/)
+  assert.equal(menu.match(/returnFocusRef=\{returnFocusRef\}/g)?.length, 2)
+  assert.match(menu, /<\/DropdownMenu>[\s\S]*<ActionBar\b[\s\S]*\{cancelTransaction \? \(?\s*<TransactionCancelDialog/)
   assert.doesNotMatch(menu, /fixed inset-0|children/)
-
   const page = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
-  assert.match(page, /<AssetDetailActionMenu\b[\s\S]*?\/>/)
-  assert.doesNotMatch(page, /<\/AssetDetailActionMenu>/)
+  assert.match(page, /<AssetDetailActions\b[\s\S]*?\/>/)
+  assert.doesNotMatch(page, /<\/AssetDetailActions>/)
 })
 
 test("transaction cancel dialog can be opened by its owner without its own trigger", () => {

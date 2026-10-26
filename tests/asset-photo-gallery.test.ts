@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
+
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
 import { assetPhotoGalleryPreviewLimit, getAssetPhotoGalleryState } from "../src/lib/asset-photo-gallery.ts"
 
@@ -20,23 +22,17 @@ test("asset photo gallery shows a compact preview before expanding", () => {
   assert.equal(expanded.hasOverflow, true)
 })
 
-test("asset detail sidebar photo preview stays compact", () => {
-  const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
-
-  assert.match(source, /function SidebarPhotoCard/)
-  assert.match(source, /h-32/)
-  assert.doesNotMatch(source, /flex aspect-\[4\/3\] w-full items-center/)
+test("the overview's photo is the card-size frame of the newest image the thumbnail route renders: no sidebar card (spec §7.5, R27)", () => {
+  const source = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  assert.doesNotMatch(source, /function SidebarPhotoCard|fetchPriority="high"|isPreviewableImage/)
+  assert.match(source, /const primaryAssetPhoto = assetAttachments\.find\(\(attachment\) => isThumbnailable\(attachment\.fileType\)\)/, "รูปหลัก: the newest thumbnailable module asset image (Task 11's tiles use the same rule)")
+  assert.match(source, /const primaryModelPhoto = modelPhotos\.find\(\(attachment\) => isThumbnailable\(attachment\.fileType\)\)/, "HEIC and SVG are documents, never the frame's image")
+  assert.match(source, /attachmentId: primaryAssetPhoto\?\.id \?\? primaryModelPhoto\?\.id \?\? null,/)
+  assert.match(source, /isModelPhoto: !primaryAssetPhoto && Boolean\(primaryModelPhoto\),/)
 })
 
-test("asset detail evidence is a drawer, not a duplicate gallery section", () => {
-  const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
-
-  const menuSource = readFileSync("src/components/assets/asset-detail-action-menu.tsx", "utf8")
-
-  assert.match(menuSource, /<AssetEvidenceDrawer/)
-  assert.match(source, /evidence=\{\{\s*items: evidenceDrawerItems,/)
-  assert.match(source, /const evidenceDrawerItems = allEvidenceItems\.map/)
-  assert.doesNotMatch(source, /id: "evidence"/)
-  assert.doesNotMatch(source, /<section id="evidence"/)
-  assert.doesNotMatch(source, /<SummaryPill/)
+test("no evidence drawer: the files tab shows the evidence (spec §7.7, §7.9)", () => {
+  const source = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  assert.equal(existsSync("src/components/assets/asset-evidence-drawer.tsx"), false)
+  assert.doesNotMatch(source, /evidenceDrawerItems|allEvidenceItems|<section id="evidence"|<SummaryPill/)
 })

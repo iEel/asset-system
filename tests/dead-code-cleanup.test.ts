@@ -101,3 +101,8 @@ test("the old budget check is gone, and the three guard files use the shared EXE
     assert.match(source, /import \{[^}]*\bexemptProblems\b[^}]*\} from "\.\/helpers\/guard-exempt\.ts"/, path)
   }
 })
+
+test("the asset page's drawers, QR panel, parent banner, old ⋯ menu and data-health helpers are gone (group 1 asset detail task 8)", () => {
+  for (const path of [`${C}ui/activity-drawer.tsx`, `${C}assets/asset-evidence-drawer.tsx`, `${C}assets/asset-qr-code.tsx`, `${C}assets/asset-component-context-banner.tsx`, `${C}assets/asset-detail-action-menu.tsx`]) assert.equal(existsSync(path), false, path)
+  for (const name of ["createHealthItem", "getWarrantyState"]) assert.equal(name in assetDetailFormat, false, name)
+})

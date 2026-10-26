@@ -6,19 +6,6 @@ import { filterLegacyReturnEligibleAssets, isLegacyReturnEligible } from "../src
 import * as operationPolicy from "../src/lib/asset-operation-policy.ts"
 
 type TransactionPolicyModule = typeof operationPolicy & {
-  getAssetRegisterTransactionActions?: (input: {
-    statusName: string
-    custodianId: string | null
-    openCheckoutId: string | null
-    openCheckoutHandoverMode: string | null
-    hasActiveMaintenance: boolean
-    canEdit: boolean
-  }) => Array<{
-    action: "checkout" | "checkin" | "transfer"
-    enabled: boolean
-    mode?: "open_checkout" | "legacy_return"
-    reason?: string
-  }>
   buildAssetRegisterTransactionHref?: (
     locale: string,
     assetId: string,
@@ -29,90 +16,6 @@ type TransactionPolicyModule = typeof operationPolicy & {
 }
 
 const policy = operationPolicy as TransactionPolicyModule
-
-test("register transactions expose the approved contextual actions and reasons", () => {
-  assert.equal(typeof policy.getAssetRegisterTransactionActions, "function")
-  const getActions = policy.getAssetRegisterTransactionActions!
-
-  assert.deepEqual(getActions({
-    statusName: "Ready",
-    custodianId: null,
-    openCheckoutId: null,
-    openCheckoutHandoverMode: null,
-    hasActiveMaintenance: false,
-    canEdit: true,
-  }), [
-    { action: "checkout", enabled: true },
-    { action: "checkin", enabled: false, reason: "no_return_record" },
-    { action: "transfer", enabled: true },
-  ])
-
-  assert.deepEqual(getActions({
-    statusName: "In Use",
-    custodianId: "employee-1",
-    openCheckoutId: null,
-    openCheckoutHandoverMode: null,
-    hasActiveMaintenance: false,
-    canEdit: true,
-  }), [
-    { action: "checkout", enabled: false, reason: "status_not_ready" },
-    { action: "checkin", enabled: true, mode: "legacy_return" },
-    { action: "transfer", enabled: true },
-  ])
-
-  assert.deepEqual(getActions({
-    statusName: "Checked Out",
-    custodianId: "employee-1",
-    openCheckoutId: "checkout-1",
-    openCheckoutHandoverMode: "temporary_loan",
-    hasActiveMaintenance: false,
-    canEdit: true,
-  }), [
-    { action: "checkout", enabled: false, reason: "status_not_ready" },
-    { action: "checkin", enabled: true, mode: "open_checkout" },
-    { action: "transfer", enabled: false, reason: "status_not_transferable" },
-  ])
-
-  assert.deepEqual(getActions({
-    statusName: "Pending Repair",
-    custodianId: "employee-1",
-    openCheckoutId: null,
-    openCheckoutHandoverMode: null,
-    hasActiveMaintenance: true,
-    canEdit: true,
-  }), [
-    { action: "checkout", enabled: false, reason: "status_not_ready" },
-    { action: "checkin", enabled: false, reason: "active_maintenance" },
-    { action: "transfer", enabled: false, reason: "status_not_transferable" },
-  ])
-
-  assert.deepEqual(getActions({
-    statusName: "Pending Repair",
-    custodianId: "employee-1",
-    openCheckoutId: "stale-checkout",
-    openCheckoutHandoverMode: "temporary_loan",
-    hasActiveMaintenance: true,
-    canEdit: true,
-  })[1], { action: "checkin", enabled: false, reason: "active_maintenance" })
-})
-
-test("register transactions are visible but disabled without edit permission", () => {
-  assert.equal(typeof policy.getAssetRegisterTransactionActions, "function")
-  const actions = policy.getAssetRegisterTransactionActions!({
-    statusName: "Ready",
-    custodianId: "employee-1",
-    openCheckoutId: null,
-    openCheckoutHandoverMode: null,
-    hasActiveMaintenance: false,
-    canEdit: false,
-  })
-
-  assert.deepEqual(actions, [
-    { action: "checkout", enabled: false, reason: "permission_required" },
-    { action: "checkin", enabled: false, reason: "permission_required" },
-    { action: "transfer", enabled: false, reason: "permission_required" },
-  ])
-})
 
 test("register transaction links preselect the asset or checkout and preserve returnTo", () => {
   assert.equal(typeof policy.buildAssetRegisterTransactionHref, "function")
@@ -135,21 +38,6 @@ test("register transaction links preselect the asset or checkout and preserve re
     buildHref("th", "asset-1", "transfer", returnTo),
     "/th/asset-management/transfer?assetId=asset-1&returnTo=%2Fth%2Fassets%3FstatusId%3Dready%26page%3D2",
   )
-})
-
-test("In Use with a permanent handover offers รับคืน against it", () => {
-  const getActions = policy.getAssetRegisterTransactionActions!
-  const input = {
-    statusName: "In Use",
-    custodianId: "e1",
-    openCheckoutId: "c1",
-    openCheckoutHandoverMode: "permanent_assignment",
-    hasActiveMaintenance: false,
-    canEdit: true,
-  }
-
-  assert.deepEqual(getActions(input)[1], { action: "checkin", enabled: true, mode: "open_checkout" })
-  assert.equal(getActions({ ...input, openCheckoutHandoverMode: "temporary_loan" })[1].enabled, false)
 })
 
 test("isLegacyReturnEligible agrees with the check-in picker", () => {
@@ -176,28 +64,15 @@ test("isLegacyReturnEligible agrees with the check-in picker", () => {
   }
 })
 
-test("the asset page asks the register's rule", () => {
+test("the asset page asks the shared action rule, and the register's old helper is gone (spec §7.1)", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8").replace(/\r/g, "")
 
-  assert.match(source, /getAssetRegisterTransactionActions\(/)
-  assert.doesNotMatch(source, /disabled: !activeCheckout/)
+  assert.match(source, /getAssetActions\(actionInput\)/)
+  assert.doesNotMatch(source, /getAssetRegisterTransactionActions|getOwnershipLifecycle|disabled: !activeCheckout/)
+  assert.equal("getAssetRegisterTransactionActions" in operationPolicy, false)
 })
 
-test("the register does not offer โอนย้าย while a handover is open, and says why (user decision 2026-10-21 Y2)", () => {
-  const getActions = policy.getAssetRegisterTransactionActions!
-  const input = {
-    statusName: "In Use",
-    custodianId: "e1",
-    openCheckoutId: "c1",
-    openCheckoutHandoverMode: "permanent_assignment",
-    hasActiveMaintenance: false,
-    canEdit: true,
-  }
-
-  assert.deepEqual(getActions(input)[2], { action: "transfer", enabled: false, reason: "open_checkout" })
-  assert.deepEqual(getActions({ ...input, openCheckoutId: null, openCheckoutHandoverMode: null })[2], { action: "transfer", enabled: true })
-  assert.deepEqual(getActions({ ...input, statusName: "Ready" })[2], { action: "transfer", enabled: false, reason: "open_checkout" })
-
+test("the open handover's transfer reason lives in the shared rule and keeps its words (user decision 2026-10-21 Y2)", () => {
   const rule = readFileSync("src/lib/asset-actions.ts", "utf8").replace(/\r/g, "")
   assert.match(rule, /"asset\.transactionReasonOpenCheckout"/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8")).asset

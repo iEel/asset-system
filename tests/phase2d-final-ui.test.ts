@@ -20,12 +20,14 @@ test("the asset state help trigger stays a 24px circle and gets a 44px hit area 
   }
   assert.doesNotMatch(source, /\b(?:min-h-11|min-w-11|size-11|h-11|w-11)\b|-m-2\.5|-mx-2\.5|-my-2\.5/, "the circle itself does not grow or shift")
   assert.equal(source.match(/<button\b/g)?.length, 1, "still one raw button (plan 2D-3 R5)")
-  // Every caller stays as it is: two field labels each in the asset form and the register filter sheet, the asset page
-  // header and the register table head (shown from md only, where the hit area is off).
+  // Every caller stays as it is: two field labels each in the asset form and the register filter sheet, the asset page's
+  // header and its ข้อมูลทรัพย์สิน (group 1 asset detail task 8), and the register table head (shown from md only, where
+  // the hit area is off).
   const callers: Array<[string, number]> = [
     [`${C}assets/asset-form.tsx`, 2],
     [`${C}assets/asset-register-filter-sheet.tsx`, 2],
-    [`${D}assets/[id]/page.tsx`, 2],
+    [`${C}assets/detail/asset-detail-header.tsx`, 1],
+    [`${C}assets/detail/asset-overview.tsx`, 1],
     [`${C}assets/asset-register-table.tsx`, 1],
   ]
   for (const [path, count] of callers) assert.equal(read(path).match(/<AssetStateHelpPopover \{\.\.\.\w+\} \/>/g)?.length, count, path)

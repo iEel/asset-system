@@ -10,20 +10,6 @@ import test from "node:test"
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const C = "src/components/"
 
-test("activity drawer: each item's marker is a status shape and its label has no capitals (spec 2D M22)", () => {
-  const source = read(`${C}ui/activity-drawer.tsx`)
-  assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone: item\.tone \?\? "neutral" \}\), "mt-2"\)\} \/>/)
-  assert.match(source, /<div className="text-meta font-medium text-muted-foreground">\{item\.label\}<\/div>/)
-  assert.doesNotMatch(source, /uppercase|tracking-normal|rounded-full|getToneDotClass|\bbg-info\b|\btext-xs\b/)
-})
-
-test("QR code: no frame of its own inside the QR panel, and the asset tag under it is a tag (spec 2D D9, M33)", () => {
-  const source = read(`${C}assets/asset-qr-code.tsx`)
-  assert.match(source, /<div className="inline-flex flex-col items-center gap-3">/)
-  assert.match(source, /<div className="max-w-44 text-center text-sm text-foreground">\n\s+<span className="tag font-medium">\{label\}<\/span>\n\s+<\/div>/)
-  assert.doesNotMatch(source, /bg-white|rounded-lg|border|text-xs/)
-})
-
 test("status correction: a dialog with the dialog parts, the description in the dialog head, no panel of its own (group 1 asset detail task 8A)", () => {
   const source = read(`${C}assets/asset-status-correction-dialog.tsx`)
   assert.match(source, /import \{ AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter, accessibleDialogFormClasses \} from "@\/components\/ui\/accessible-dialog"/)
@@ -64,7 +50,7 @@ test("asset photos: a ContentPanel with a plain count, StatusBadge states, the s
   assert.doesNotMatch(source, /rounded-full|border-dashed|hover:bg-accent|focus:outline-none|focus:ring|text-primary|text-success|CheckCircle2|\bh-8\b|\bh-9\b|text-xs|rounded-lg|bg-surface/)
 })
 
-test("components summary and context banner: a ContentPanel and an info Notice, codes as tag, text links, a warning StatusBadge and EmptyNote (spec 2D D7, D9, M33)", () => {
+test("components summary: a ContentPanel, codes as tag, text links, a warning StatusBadge and EmptyNote (spec 2D D7, D9, M33)", () => {
   const summary = read(`${C}assets/asset-components-summary.tsx`)
   assert.match(summary, /<ContentPanel\n\s+title=\{labels\.title\}\n\s+description=\{labels\.help\}\n\s+actions=\{/)
   assert.match(summary, /<Link href=\{manageHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
@@ -73,11 +59,6 @@ test("components summary and context banner: a ContentPanel and an info Notice, 
   assert.match(summary, /<span className="tag font-medium">\{component\.componentAsset\.assetTag\}<\/span>/)
   assert.match(summary, /<span className="tag font-medium">\{link\.parentAsset\.assetTag\}<\/span>/)
   assert.doesNotMatch(summary, /font-mono|uppercase|rounded-full|border-dashed|bg-primary|text-white|primary-soft|hover:bg-accent|sm:h-10|text-xs|text-primary/)
-  const banner = read(`${C}assets/asset-component-context-banner.tsx`)
-  assert.match(banner, /<section aria-label=\{labels\.title\}>\n\s+<Notice tone="info" title=\{labels\.title\}>/)
-  assert.match(banner, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center gap-1\.5 md:min-h-0"\)\}/)
-  assert.match(banner, /<span className="tag font-medium">\{link\.parentAsset\.assetTag\}<\/span>/)
-  assert.doesNotMatch(banner, /font-mono|primary-soft|primary-border|bg-primary|text-white|translate-x|text-xs/)
 })
 
 test("movement timeline: ChoiceChip filters, EmptyNote, StatusBadge and shape markers, KeyValueLists with text links, and the shared date format (spec 2D M21, M22, D19)", () => {
@@ -93,40 +74,25 @@ test("movement timeline: ChoiceChip filters, EmptyNote, StatusBadge and shape ma
   assert.doesNotMatch(source, /<button\b|function (?:Info|MovementInfo|formatDateTime|getMovementDotClass|getMovementBadgeClass)\b|"-"|uppercase|border-dashed|rounded-full|text-white|bg-surface\/\d|hover:underline|\btext-xs\b/)
 })
 
-test("evidence drawer: a StatStrip for the counts, ChoiceChip filters, the group as a Chip and focus-visible cards (spec 2D M22, M27, D19)", () => {
-  const source = read(`${C}assets/asset-evidence-drawer.tsx`)
-  assert.match(source, /<StatStrip\n\s+items=\{\[/)
-  assert.match(source, /<fieldset className="mt-4 min-w-0">\n\s+<legend className="sr-only">\{labels\.filterLabel\}<\/legend>/)
-  assert.equal(source.match(/<ChoiceChip\b/g)?.length, 2)
-  assert.match(source, /<Chip>\{item\.group\}<\/Chip>/)
-  assert.match(source, /focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/)
-  assert.doesNotMatch(source, /<button\b|function (?:EvidenceStat|FilterButton)\b|text-white|rounded-full|scale-\[|focus:outline-none|text-xl font-bold|\btext-xs\b/)
-})
-
 const D = "src/app/[locale]/(dashboard)/"
 
-test("asset page: panels, notices, chips, text links, the disabled QuickAction (M12) and no typed dash (M32 b) on the shared parts (spec 2D §3.3, D7, D9, M33)", () => {
+test("asset page: the sections the later tabs replace keep the panel classes; the overview's panels are ContentPanels in the detail parts (spec 2D §3.3; group 1 asset detail task 8)", () => {
   const source = read(`${D}assets/[id]/page.tsx`)
-  // The nine sections with an id keep it, so they take the panel classes (2D-2 R4); the other panels are ContentPanel.
-  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 9)
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 5, "quick actions, follow-up, relationship map, QR, sidebar photo")
-  assert.match(source, /<Notice tone="info" title=\{lifecycle\.title\} className="mb-3">\n\s+\{lifecycle\.description\}\n\s+<\/Notice>/)
+  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 5, "handover, movement, maintenance, audit and the files tab's purchase documents")
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 1, "the relationship map")
   assert.match(source, /<Notice tone="warning" className="mb-4">\n\s+\{t\("maintenanceReplacementWarning"\)\}\n\s+<\/Notice>/)
   assert.match(source, /<Notice tone="neutral" className="mt-4">\{noteLabel\}<\/Notice>/)
-  assert.match(source, /<StatusBadge label=\{t\("dataHealthProgress", \{ done: dataHealthDone, total: dataHealthItems\.length \}\)\} tone=\{dataHealthTone\} \/>/)
-  assert.match(source, /\{ key: "warrantyStatus", label: t\("warrantyStatus"\), value: <StatusBadge label=\{getWarrantyStatusLabel\(warrantyState, t\)\} tone=\{warrantyState\.tone\} \/> \}/)
   assert.match(source, /<Chip>\{t\("latestTransaction"\)\}<\/Chip>/)
   assert.match(source, /<Chip>\{t\("maintenancePmBadge"\)\}<\/Chip>/)
   assert.match(source, /<Chip>\{roleLabel\}<\/Chip>/)
   assert.equal(source.match(/className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/g)?.length, 4)
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
-  assert.match(source, /<Button variant="outline" disabled className=\{quickActionClasses\}>/)
   assert.match(source, /return labels\.parentAssets\.get\(checkout\.parentAssetId\) \?\? checkout\.parentAssetId\n\s+return null\n\}/)
   assert.match(source, /if \(!snapshot\) return null\n/)
-  assert.equal(source.match(/filterLabel: tCommon\("filter"\),/g)?.length, 2)
-  assert.match(source, /<div className="font-mono text-sm font-medium leading-5 text-foreground \[overflow-wrap:anywhere\]">\{relationshipAsset\.assetTag\}<\/div>/, "a tag that must wrap keeps font-mono at 500 (2D-2 R3)")
-  assert.doesNotMatch(source, /toLocaleString/)
-  assert.doesNotMatch(source, /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|getHealthBadgeClass|getWarrantyPanelClass|getWarrantyIconClass|getActivityToneClass|getRelationship(?:Summary|Badge|Icon)Class|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b/)
+  assert.equal(source.match(/filterLabel: tCommon\("filter"\),/g)?.length, 1, "the movement timeline's; the evidence drawer's went")
+  assert.match(source, /<div className="font-mono text-sm font-medium leading-5 text-foreground \[overflow-wrap:anywhere\]">\{relationshipAsset\.assetTag\}<\/div>/)
+  const banned = /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b|toLocaleString/
+  for (const file of [source, ...["asset-detail-header", "asset-detail-actions", "asset-detail-fact-strip", "asset-overview"].map((name) => read(`${C}assets/detail/${name}.tsx`))]) assert.doesNotMatch(file, banned)
 })
 
 test("asset form: sections are ContentPanels, notes are Notice by meaning, empty lists EmptyNote, documents ChoiceCards with Nil, and no box in a box (spec 2D D7, D9, M21)", () => {

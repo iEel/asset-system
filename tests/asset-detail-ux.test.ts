@@ -2,56 +2,89 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const assetDetailSource = () => readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const page = "src/app/[locale]/(dashboard)/assets/[id]/page.tsx"
+const assetDetailSource = () => read(page)
+const DETAIL = "src/components/assets/detail/"
 
-test("asset detail uses one tab navigation and view guards for grouped content", () => {
+test("asset detail renders one tab navigation; the overview tab is canvas B and the other tabs keep their sections until their tasks (group 1 asset detail task 8)", () => {
   const source = assetDetailSource()
-
-  assert.match(source, /AssetDetailTabs/)
-  assert.match(source, /isAssetDetailSectionVisible\(assetDetailView, "overview"\)/)
+  assert.match(source, /<AssetDetailTabs\b/)
+  assert.match(source, /\{assetDetailView === "overview" \? \(\s*<AssetOverview\b/)
   assert.match(source, /isAssetDetailSectionVisible\(assetDetailView, "components"\)/)
-  assert.doesNotMatch(source, /sectionLinks\.map/)
+  assert.doesNotMatch(source, /isAssetDetailSectionVisible\(assetDetailView, "(?:overview|specs|ownership|purchase|notes)"\)|sectionLinks\.map/)
 })
 
-test("asset detail keeps secondary actions in the More menu and caps mobile actions", () => {
+test("asset detail asks the shared action rule and builds อื่น ๆ from it (spec §7.1)", () => {
   const source = assetDetailSource()
-
-  assert.match(source, /AssetDetailActionMenu/)
-  assert.match(source, /mobileActionCandidates\.slice\(0, 3\)/)
   assert.match(source, /hasPermission\(user, "asset", "edit"\)/)
+  assert.match(source, /const actionInput: AssetActionInput = \{/)
+  assert.match(source, /returnTo: currentAssetDetailHref,/)
+  assert.match(source, /const assetActions = getAssetActions\(actionInput\)/)
+  assert.match(source, /const moreGroups = buildAssetDetailMoreGroups\(\{/)
+  assert.match(source, /label: tAll\(action\.labelKey\)/, "full message keys through the root translator (R2)")
+  assert.doesNotMatch(source, /mobileActionCandidates|getAssetRegisterTransactionActions/)
 })
 
-test("asset detail keeps an accessible name on the icon-only mobile back link", () => {
-  const source = assetDetailSource()
-
-  assert.match(source, /label=\{isAssetScanReturn \? t\("backToScan"\) : tCommon\("back"\)\}/)
+test("asset detail's back link says where it returns (spec §7.2)", () => {
+  assert.match(assetDetailSource(), /backLabel=\{isAssetScanReturn \? t\("backToScan"\) : registerParams \? tDetail\("backToResults"\) : tCommon\("back"\)\}/)
 })
 
-test("asset detail answers identity and responsibility in one compact first-viewport summary", () => {
-  const source = assetDetailSource()
-  const identityIndex = source.indexOf('data-testid="asset-identity-summary"')
-  const componentContextIndex = source.indexOf("<AssetComponentContextBanner")
-
-  assert.notEqual(identityIndex, -1)
-  assert.ok(identityIndex < componentContextIndex)
-  assert.match(source, /<StatusBadge label=\{asset\.status\.nameTh\}/)
-  assert.match(source, /<StatusBadge label=\{asset\.condition\.nameTh\}/)
-  assert.match(source, /orNil\(currentLocationLabel\)/)
-  assert.match(source, /orNil\(lifecycle\.responsibilityValue \?\? currentCustodianLabel\)/)
-  assert.doesNotMatch(source, /<SummaryCard/)
+test("asset detail's meta row is the code, the status badge with its help and the S/N, with the identity test id; location and custodian are facts of the strip (spec §7.2, §7.4)", () => {
+  const header = read(`${DETAIL}asset-detail-header.tsx`)
+  assert.match(header, /<span data-testid="asset-identity-summary" className="contents">\s*<span className="tag">\{asset\.assetTag\}<\/span>/)
+  assert.match(header, /<StatusBadge label=\{asset\.status\.nameTh\} tone=\{getAssetStateTone\(asset\.status\.name\)\} \/>/)
+  assert.match(header, /\{t\("serialPrefix"\)\} <span className="tag">\{asset\.serialNumber\}<\/span>/)
+  assert.doesNotMatch(header, /condition|MapPin|PackageCheck|<SummaryCard/)
 })
 
-test("asset detail keeps one actionable follow-up surface with expandable data quality", () => {
+test("asset detail has no follow-up panel, data health, quick actions or QR panel: their places are the primary, the tab counts, the strip and the empty prompts (spec §7.9)", () => {
   const source = assetDetailSource()
-  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.doesNotMatch(source, /activityFollowUpItems|asset-data-health-details|dataHealthItems|t\("quickActions"\)|lifecycle\.|qrValue/)
+})
 
-  assert.match(source, /activityFollowUpItems\.length > 0/)
-  assert.match(source, /data-testid="asset-data-health-details"/)
-  assert.doesNotMatch(source, /latestItem=\{latestActivityItem\}/)
-  assert.doesNotMatch(source, /latestTitle=\{t\("activityLatest"\)\}/)
-  assert.equal(thaiMessages.asset.activitySummaryTitle, "สิ่งที่ต้องติดตาม")
-  assert.equal(englishMessages.asset.activitySummaryTitle, "Follow-up")
+test("asset detail reaches component management from the components tab and อื่น ๆ (spec §7.1, §7.7)", () => {
+  const source = assetDetailSource()
+  const thaiMessages = JSON.parse(read("messages/th.json"))
+  const englishMessages = JSON.parse(read("messages/en.json"))
+  assert.match(source, /manageHref=\{componentsManagerHref\}/)
+  assert.match(source, /manageComponents: canEditAsset \? \{ label: t\("manageComponents"\), href: componentsManagerHref \} : null,/)
+  // componentsManagerHref is Task 7's (the manager returns to ?view=components with the detail's own returnTo, R22), pinned in tests/asset-detail-view.test.ts.
+  assert.deepEqual(thaiMessages.asset.detailViews, { label: "ส่วนของทรัพย์สิน", overview: "ภาพรวม", history: "ประวัติ", components: "ส่วนควบ", files: "ไฟล์", maintenance: "ซ่อม / PM" })
+  assert.deepEqual(englishMessages.asset.detailViews, { label: "Asset sections", overview: "Overview", history: "History", components: "Components", files: "Files", maintenance: "Repair / PM" })
+})
+
+test("a component names its parent in the strip's first fact, not in a banner (spec §7.4, §7.9)", () => {
+  const source = assetDetailSource()
+  assert.doesNotMatch(source, /AssetComponentContextBanner/)
+  assert.match(source, /parent: installedInLinksForPanel\[0\]\?\.parentAsset \?\? null,/)
+  assert.match(source, /parentHref=\{installedInLinksForPanel\[0\]\?\.parentHref \?\? null\}/)
+  assert.match(read(`${DETAIL}asset-detail-fact-strip.tsx`), /t\("componentOf"\)/)
+})
+
+test("asset component parent links preserve context", () => {
+  const source = assetDetailSource()
+  const summarySource = read("src/components/assets/asset-components-summary.tsx")
+  assert.match(source, /const currentAssetDetailHref = buildAssetDetailViewHref\(locale, asset\.id, assetDetailView, returnToHref\)/)
+  assert.match(source, /parentHref: appendReturnTo\(`\/\$\{locale\}\/assets\/\$\{component\.parentAsset\.id\}`, currentAssetDetailHref\)/)
+  assert.match(source, /href: link\.parentHref/)
+  assert.match(summarySource, /parentHref: string/)
+  assert.match(summarySource, /roleLabel: string/)
+  assert.match(summarySource, /slotLabel: string/)
+})
+
+test("asset detail header is PageHeader with the trail, the name, the back link and the actions; the old sections keep their shared parts (spec §7.2; spec 2B §4.4.5)", () => {
+  const source = assetDetailSource()
+  const header = read(`${DETAIL}asset-detail-header.tsx`)
+  assert.match(header, /import \{ PageBackLink, PageHeader \} from "@\/components\/ui\/page-header"/)
+  assert.match(header, /breadcrumbs=\{\[\s*\{ label: tAsset\("title"\), href: returnToHref \},\s*\.\.\.\(crumbLabel \? \[\{ label: crumbLabel \}\] : \[\]\),\s*\{ label: asset\.assetTag, code: true \},\s*\]\}\s*title=\{asset\.name\}/)
+  assert.match(header, /back=\{<PageBackLink href=\{returnToHref\} label=\{backLabel\} \/>\}/)
+  assert.doesNotMatch(source + header, /<h1\b|<thead\b|<Breadcrumbs\b|<ArrowLeft\b|formatCurrency|function (?:Info|SummaryStrip)\b|opacity-70|hidden md:inline-flex/)
+  assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
+  assert.equal(source.match(/<DataTable framed=\{false\} caption=/g)?.length, 2, "the repair and audit tables, until Tasks 9 and 12")
+  assert.match(source, /tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\}/)
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 2)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 3, "the two handover cards and the movement snapshot, until Tasks 9-11")
 })
 
 test("asset detail localizes audit activity and avoids duplicated activity titles", () => {
@@ -64,19 +97,6 @@ test("asset detail localizes audit activity and avoids duplicated activity title
   assert.doesNotMatch(source, /`\$\{latestMovement\.title\}: \$\{latestMovement\.summary\}`/)
 })
 
-test("asset detail makes component management discoverable from the components tab and More", () => {
-  const source = assetDetailSource()
-  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
-  const menuSource = readFileSync("src/components/assets/asset-detail-action-menu.tsx", "utf8")
-
-  assert.match(source, /manageHref=\{componentsManagerHref\}/)
-  assert.match(source, /\{ key: "components" as const, href: componentsManagerHref, label: t\("manageComponents"\) \}/)
-  assert.match(menuSource, /<Link href=\{link\.href\}>/)
-  assert.deepEqual(thaiMessages.asset.detailViews, { label: "ส่วนของทรัพย์สิน", overview: "ภาพรวม", history: "ประวัติ", components: "ส่วนควบ", files: "ไฟล์", maintenance: "ซ่อม / PM" })
-  assert.deepEqual(englishMessages.asset.detailViews, { label: "Asset sections", overview: "Overview", history: "History", components: "Components", files: "Files", maintenance: "Repair / PM" })
-})
-
 test("asset detail exposes a read-only component summary and manager link", () => {
   const source = assetDetailSource()
 
@@ -85,22 +105,9 @@ test("asset detail exposes a read-only component summary and manager link", () =
   assert.doesNotMatch(source, /<AssetComponentsPanel/)
 })
 
-test("asset detail keeps a persistent context for assets installed under a parent", () => {
-  const source = assetDetailSource()
-  const contextBannerSource = readFileSync("src/components/assets/asset-component-context-banner.tsx", "utf8")
-
-  assert.match(source, /AssetComponentContextBanner/)
-  assert.match(source, /installedInLinks=\{installedInLinksForPanel\}/)
-  assert.ok(source.indexOf("<AssetComponentContextBanner") < source.indexOf("<AssetDetailTabs"))
-  assert.match(source, /title: t\("componentContextTitle"\)/)
-  assert.match(source, /openParent: t\("componentContextOpenParent"\)/)
-  assert.match(contextBannerSource, /if \(installedInLinks\.length === 0\) return null/)
-  assert.match(contextBannerSource, /ArrowRight/)
-})
-
 test("asset detail tabs count history, components, files and repairs, and warn on a missing component serial", () => {
   const source = assetDetailSource()
-  const tabsSource = readFileSync("src/components/assets/asset-detail-tabs.tsx", "utf8")
+  const tabsSource = read("src/components/assets/asset-detail-tabs.tsx")
 
   assert.match(source, /const componentMissingSerialCount = currentComponentsForPanel\.filter\(\(component\) => !component\.componentAsset\.serialNumber\)\.length/)
   assert.match(source, /indicators=\{\{\s*history: \{ count: detailCounts\.history \},\s*components: \{ count: detailCounts\.components, hasWarning: componentMissingSerialCount > 0 \},\s*files: \{ count: detailCounts\.files \},\s*maintenance: \{ count: detailCounts\.repairs \},?\s*\}\}/)
@@ -110,24 +117,8 @@ test("asset detail tabs count history, components, files and repairs, and warn o
   assert.match(tabsSource, /warningLabel/)
 })
 
-test("asset component parent links preserve context and label role metadata", () => {
-  const source = assetDetailSource()
-  const bannerSource = readFileSync("src/components/assets/asset-component-context-banner.tsx", "utf8")
-  const summarySource = readFileSync("src/components/assets/asset-components-summary.tsx", "utf8")
-
-  assert.match(source, /const currentAssetDetailHref = buildAssetDetailViewHref\(locale, asset\.id, assetDetailView, returnToHref\)/)
-  assert.match(source, /parentHref: appendReturnTo\(`\/\$\{locale\}\/assets\/\$\{component\.parentAsset\.id\}`, currentAssetDetailHref\)/)
-  assert.match(source, /href: link\.parentHref/)
-  assert.match(bannerSource, /parentHref: string/)
-  assert.match(bannerSource, /roleLabel: string/)
-  assert.match(bannerSource, /slotLabel: string/)
-  assert.match(summarySource, /parentHref: string/)
-  assert.match(summarySource, /roleLabel: string/)
-  assert.match(summarySource, /slotLabel: string/)
-})
-
 test("asset edit does not mount another component installation editor", () => {
-  const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx", "utf8")
+  const source = read("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx")
 
   assert.doesNotMatch(source, /AssetComponentsPanel/)
   assert.doesNotMatch(source, /availableComponentAssets/)
@@ -141,38 +132,4 @@ test("asset detail avoids eager component inventory and bounds preview relations
   assert.doesNotMatch(source, /take: 300/)
   assert.match(source, /checkouts:\s*\{[\s\S]*?take: loadPolicy\.checkoutLimit/)
   assert.match(source, /attachments:\s*\{[\s\S]*?take: 20/)
-})
-
-test("asset detail header links share the Button look of the More menu trigger", () => {
-  const source = assetDetailSource()
-
-  assert.match(source, /import \{ buttonVariants, linkVariants \} from "@\/components\/ui\/button-variants"/)
-  assert.match(source, /<PageBackLink href=\{returnToHref\}/)
-  assert.match(source, /cn\(buttonVariants\(\{ size: "md" \}\), "hidden md:inline-flex"\)/)
-  assert.doesNotMatch(source, /rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground/)
-  assert.doesNotMatch(source, /rounded-md bg-primary px-4 text-sm font-medium text-white/)
-})
-
-// Plan 2B-4 Task 1 (spec 2B §4.4.5, §5.5, §8.8 row 1, I1, R-h): the asset name is the h1 under the trail that ends on
-// the code; the code, the badges, the location and the custodian are the meta row; ⋯ comes before the primary edit link.
-// The two history tables are DataTables, the facts KeyValueLists and the number tiles one StatStrip per tab. The O11
-// bottom padding is actionBarPagePadding and the phone bar is the shared ActionBar (2C batch 5, K23). This file reads the page raw (CRLF): no line breaks here.
-test("asset detail header is PageHeader with the asset name, and its facts, tiles and tables use the shared parts (spec 2B §4.4.5)", () => {
-  const source = assetDetailSource()
-
-  assert.match(source, /import \{ PageBackLink, PageHeader \} from "@\/components\/ui\/page-header"/)
-  assert.match(source, /breadcrumbs=\{\[\s*\{ label: t\("title"\), href: returnToHref \},\s*\{ label: asset\.assetTag, code: true \},\s*\]\}\s*title=\{asset\.name\}/)
-  assert.match(source, /<span className="tag">\{asset\.assetTag\}<\/span>\s*<span data-testid="asset-identity-summary" className="contents">/)
-  assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{isAssetScanReturn \? t\("backToScan"\) : tCommon\("back"\)\} \/>\}/)
-  assert.doesNotMatch(source, /aria-label=\{isAssetScanReturn/)
-  const menuAt = source.indexOf("<AssetDetailActionMenu")
-  const editAt = source.indexOf('cn(buttonVariants({ size: "md" }), "hidden md:inline-flex")')
-  assert.ok(menuAt > -1 && editAt > menuAt, "⋯ comes before the primary edit link (spec 2B §4.3.3 rule 5)")
-  assert.equal(source.match(/<DataTable framed=\{false\} caption=/g)?.length, 2)
-  assert.match(source, /tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\}/)
-  assert.equal(source.match(/<StatStrip\b/g)?.length, 2)
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 7)
-  assert.doesNotMatch(source, /<h1\b|<thead\b|<Breadcrumbs\b|<ArrowLeft\b|formatCurrency|function (?:Info|SummaryStrip)\b|opacity-70/)
-  assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
-  assert.match(source, /\{mobileActions\.length > 0 \? <ActionBar label=\{tCommon\("actions"\)\} actions=\{mobileActions\} \/> : null\}/)
 })

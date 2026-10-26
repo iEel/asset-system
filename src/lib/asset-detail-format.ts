@@ -3,28 +3,11 @@ export type MovementDetailLike = {
   value?: string | null
 }
 
-export function createHealthItem(done: boolean, label: string, href: string, actionLabel: string, fixHref: string) {
-  return { done, label, href, actionLabel, fixHref }
-}
-
 export function maskLicenseKey(value?: string | null) {
   if (!value) return null
   const compact = value.replace(/\s+/g, "")
   if (compact.length <= 8) return "••••"
   return `${compact.slice(0, 4)}••••${compact.slice(-4)}`
-}
-
-export function getWarrantyState(warrantyEndDate: Date | null, now = new Date()) {
-  if (!warrantyEndDate) return { tone: "neutral" as const, daysLeft: null }
-  const today = new Date(now)
-  today.setHours(0, 0, 0, 0)
-  const warrantyEnd = new Date(warrantyEndDate)
-  warrantyEnd.setHours(0, 0, 0, 0)
-  const daysLeft = Math.ceil((warrantyEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-
-  if (daysLeft < 0) return { tone: "danger" as const, daysLeft }
-  if (daysLeft <= 30) return { tone: "warning" as const, daysLeft }
-  return { tone: "success" as const, daysLeft }
 }
 
 export function getMissingPhotoChecklistLabels(

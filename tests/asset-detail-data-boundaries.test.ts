@@ -36,17 +36,11 @@ test("asset detail page applies the active-view load policy to bounded relations
   assert.match(source, /take: loadPolicy\.assignedLicenseLimit/)
 })
 
-test("view-aware history limits keep the complete evidence reference index", () => {
+test("the handover evidence keeps its complete checkout index; the drawer's repair, finding and disposal evidence queries are gone (group 1 asset detail task 8)", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
 
   assert.match(source, /asset-detail\.evidence-references/)
   assert.match(source, /prisma\.assetCheckout\.findMany\([\s\S]*?select: \{ id: true, checkins: \{ select: \{ id: true \} \} \}/)
   assert.match(source, /evidenceCheckoutReferences\.flatMap\(\(checkout\) => checkout\.checkins\.map/)
-  assert.match(source, /prisma\.maintenanceTicket\.findMany\([\s\S]*?select: \{ id: true \}/)
-  assert.match(source, /prisma\.auditFinding\.findMany\([\s\S]*?select: \{ id: true \}/)
-  assert.match(source, /prisma\.disposalRequest\.findMany\([\s\S]*?select: \{ id: true \}/)
-  assert.match(source, /evidenceCheckoutIds/)
-  assert.match(source, /evidenceMaintenanceTicketIds/)
-  assert.match(source, /evidenceAuditFindingIds/)
-  assert.match(source, /evidenceDisposalRequestIds/)
+  assert.doesNotMatch(source, /evidenceMaintenanceTicketIds|evidenceAuditFindingIds|evidenceDisposalRequestIds|module: "maintenance"|module: "audit_finding"|module: "disposal"/)
 })

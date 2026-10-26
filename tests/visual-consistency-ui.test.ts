@@ -22,16 +22,22 @@ test("app shell uses the menu B visual tokens", async () => {
 })
 
 test("one shared status badge replaces the old status pill", () => {
-  const assetDetail = readSource("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
+  const header = readSource("src/components/assets/detail/asset-detail-header.tsx")
+  const overview = readSource("src/components/assets/detail/asset-overview.tsx")
   const myAssets = readSource("src/app/[locale]/(dashboard)/my-assets/page.tsx")
   const myAssetDetail = readSource("src/app/[locale]/(dashboard)/my-assets/[id]/page.tsx")
 
-  for (const source of [assetDetail, myAssets, myAssetDetail]) {
+  for (const source of [myAssets, myAssetDetail]) {
     assert.match(source, /import \{ StatusBadge \} from "@\/components\/ui\/status-badge"/)
     assert.doesNotMatch(source, /status-pill|function StatusPill|function StatusBadge/)
     assert.match(source, /tone=\{getAssetStateTone\(asset\.status\.name\)\}/)
     assert.match(source, /tone=\{getAssetStateTone\(asset\.condition\.name\)\}/)
   }
+  // The asset page: the status in its header, the condition in its ข้อมูลทรัพย์สิน (group 1 asset detail task 8).
+  assert.match(header, /import \{ StatusBadge \} from "@\/components\/ui\/status-badge"/)
+  assert.match(header, /tone=\{getAssetStateTone\(asset\.status\.name\)\}/)
+  assert.match(overview, /tone=\{getAssetStateTone\(details\.condition\.name\)\}/)
+  assert.doesNotMatch(header + overview, /status-pill|function StatusPill|function StatusBadge/)
 })
 
 test("empty-state link actions remain thumb-friendly on mobile", () => {

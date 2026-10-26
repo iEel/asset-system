@@ -18,7 +18,7 @@ test("asset scan carries its route into direct QR and search-result detail navig
 test("asset detail exposes a scan-next action only for scanner-origin return navigation", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
 
-  assert.match(source, /isAssetScanReturn/)
-  assert.match(source, /scanNext/)
-  assert.match(source, /ScanLine/)
+  assert.match(source, /const isAssetScanReturn = returnToHref === scanReturnHref/)
+  assert.match(source, /scanNext=\{isAssetScanReturn \? \{ key: "scanNext", label: t\("scanNext"\), href: scanReturnHref \} : null\}/)
+  assert.match(readFileSync("src/components/assets/detail/asset-detail-actions.tsx", "utf8"), /<ScanLine className="h-4 w-4" \/>/)
 })

@@ -6,23 +6,22 @@ export type AssetDetailView = (typeof assetDetailViews)[number]
 
 export type AssetDetailSectionId =
   | "overview"
-  | "specs"
   | "purchase"
   | "photos"
-  | "notes"
-  | "ownership"
+  | "purchase-documents"
   | "components"
   | "handover"
   | "movement"
   | "maintenance"
   | "audit"
 
-// Group 1 asset detail task 7: today's sections under the new tabs until Tasks 8-12 replace them.
+// Group 1 asset detail task 8 (R23): "ข้อมูลทรัพย์สิน" holds the overview and purchase anchors; the files tab holds the
+// interim purchase documents. The other tabs keep today's sections until Tasks 9-12 replace them.
 const sectionIdsByAssetDetailView: Record<AssetDetailView, AssetDetailSectionId[]> = {
-  overview: ["overview", "specs", "purchase", "notes"],
+  overview: ["overview", "purchase"],
   history: ["movement", "audit"],
-  components: ["ownership", "components", "handover"],
-  files: ["photos"],
+  components: ["components", "handover"],
+  files: ["photos", "purchase-documents"],
   maintenance: ["maintenance"],
 }
 

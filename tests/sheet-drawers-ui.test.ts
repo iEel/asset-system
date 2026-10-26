@@ -29,21 +29,6 @@ test("sheets are white, pad the iOS home bar and share one header", () => {
   assert.match(source, /data-slot="sheet-footer"\s*className=\{cn\("mt-auto flex flex-col gap-2 p-4", className\)\}/)
 })
 
-test("activity and evidence drawers are Radix sheets that can be opened from outside", () => {
-  for (const path of ["src/components/ui/activity-drawer.tsx", "src/components/assets/asset-evidence-drawer.tsx"]) {
-    const source = read(path)
-    assert.match(source, /<SheetContent[\s\S]*?side="right"/, path)
-    assert.match(source, /controlledOpen \?\? uncontrolledOpen/, path)
-    assert.match(source, /hideTrigger/, path)
-    assert.match(source, /returnFocusRef\?\.current/, path)
-    assert.doesNotMatch(source, /fixed inset-0|aria-label="Close"/, path)
-  }
-})
-
-test("evidence drawer keeps its wide panel", () => {
-  assert.match(read("src/components/assets/asset-evidence-drawer.tsx"), /sm:max-w-2xl/)
-})
-
 test("phone navigation is the เพิ่มเติม bottom sheet; desktop sidebar stays static", () => {
   const sidebar = read("src/components/layout/sidebar.tsx")
   const sheet = read("src/components/layout/mobile-more-sheet.tsx")
@@ -57,26 +42,4 @@ test("phone navigation is the เพิ่มเติม bottom sheet; desktop 
 test("mobile navigation sheet returns focus to whatever opened it", () => {
   const sheet = read("src/components/layout/mobile-more-sheet.tsx")
   assert.match(sheet, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*?returnFocusRef\.current[\s\S]*?isConnected[\s\S]*?\[aria-controls="mobile-more-sheet"\][\s\S]*?event\.preventDefault\(\)[\s\S]*?\.focus\(\)/)
-})
-
-// Phase 2C batch 4 (spec 2C §5.8 row asset-evidence-drawer.tsx, O14, §5.11 table B row I): the drawer takes the
-// sheet's own header, X name and white fill; its sub-line is the sheet's description, and an empty filter shows the
-// shared one-line EmptyNote instead of a dashed box.
-test("the evidence drawer uses the sheet header, its description and EmptyNote when a filter is empty (2C batch 4)", () => {
-  const source = read("src/components/assets/asset-evidence-drawer.tsx")
-  assert.match(source, /<SheetHeader>\n\s+<SheetTitle>\{labels\.title\}<\/SheetTitle>\n\s+<SheetDescription>\{labels\.triggerLabel\}<\/SheetDescription>\n\s+<\/SheetHeader>/)
-  assert.match(source, /className="w-full gap-0 p-0 sm:max-w-2xl"/)
-  assert.match(source, /<EmptyNote className="mt-4">\{labels\.emptyLabel\}<\/EmptyNote>/)
-  assert.doesNotMatch(source, /closeLabel=|aria-describedby=|border-dashed|bg-surface|useTranslations/)
-})
-
-// Phase 2C batch 4 (spec 2C §5.8 row ui/activity-drawer.tsx, O14, §5.11 table B row I): the same sheet chrome. The
-// drawer has no description, so it keeps aria-describedby={undefined}; an empty list is the shared EmptyNote.
-test("the activity drawer uses the sheet header and X, and EmptyNote for an empty list (2C batch 4)", () => {
-  const source = read("src/components/ui/activity-drawer.tsx")
-  assert.match(source, /side="right"\n\s+aria-describedby=\{undefined\}\n\s+onCloseAutoFocus=/)
-  assert.match(source, /<SheetHeader>\n\s+<SheetTitle>\{title\}<\/SheetTitle>\n\s+<\/SheetHeader>/)
-  assert.match(source, /className="w-full gap-0 p-0 sm:max-w-md"/)
-  assert.match(source, /\{items\.length === 0 \? \(\n\s+<EmptyNote>\{emptyLabel\}<\/EmptyNote>\n\s+\) : \(/)
-  assert.doesNotMatch(source, /closeLabel=|border-dashed|bg-surface|useTranslations/)
 })

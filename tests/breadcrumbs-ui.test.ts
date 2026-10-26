@@ -47,7 +47,7 @@ test("every record page ends its breadcrumb trail on a code; the create and list
 
   const base = "src/app/[locale]/(dashboard)/"
   const lastCode: Record<string, string> = {
-    "assets/[id]/page.tsx": "asset.assetTag",
+    "src/components/assets/detail/asset-detail-header.tsx": "asset.assetTag",
     "audit/rounds/[id]/page.tsx": "round.auditNo",
     "disposal/[id]/page.tsx": "disposalRequest.disposalNo",
     "disposal/batches/[id]/page.tsx": "batch.batchNo",
@@ -57,7 +57,7 @@ test("every record page ends its breadcrumb trail on a code; the create and list
     "master-data/suppliers/[id]/page.tsx": "supplier.code",
   }
   for (const [file, expression] of Object.entries(lastCode)) {
-    const site = sites.find((candidate) => candidate.path === base + file)
+    const site = sites.find((candidate) => candidate.path === (file.startsWith("src/") ? file : base + file))
     assert.ok(site, `no Breadcrumbs in ${file}`)
     assert.match(site.element, new RegExp(`\\{ label: ${escapeRegExp(expression)}, code: true \\},? ?\\]\\}`), file)
     assert.equal(site.element.match(/code: true/g)?.length, 1, `${file}: only the last item is a code`)

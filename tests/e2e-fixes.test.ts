@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import test from "node:test"
 
@@ -37,12 +37,11 @@ test("the A4 documents' fields are a description list (e2e fix task FX1: TX-A3, 
   assert.ok(!read("e2e/cross-cutting/field-errors.spec.ts").includes(`test.fail(true, "M8: `))
 })
 
-test("the asset page's QR code has a name a screen reader reads (e2e fix task FX2: TX-A2, AR2, M6)", () => {
-  const qr = read("src/components/assets/asset-qr-code.tsx")
-  assert.match(qr, /const t = useTranslations\("asset"\)/)
-  assert.match(qr, /<QRCodeSVG value=\{value\} size=\{160\} level="M" includeMargin title=\{t\("qrCodeTitle", \{ label \}\)\} \/>/)
-  assert.equal(messages("th").asset.qrCodeTitle, "QR Code ของ {label}")
-  assert.equal(messages("en").asset.qrCodeTitle, "QR code of {label}")
+test("the asset page's QR code left the overview: พิมพ์ป้าย opens the label page that holds it (e2e fix task FX2: TX-A2, AR2, M6; group 1 asset detail task 8)", () => {
+  assert.equal(existsSync("src/components/assets/asset-qr-code.tsx"), false)
+  assert.doesNotMatch(read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx"), /AssetQrCode|buildAssetQrValue/)
+  assert.equal(messages("th").asset.qrCodeTitle, undefined)
+  assert.match(read("src/components/assets/detail/asset-detail-actions.tsx"), /<Link href=\{printLabel\.href\}/)
   assert.ok(!read("e2e/transactions/findings.spec.ts").includes(`test.fail(true, "TX-A2: `))
   assert.ok(!read("e2e/repair/repair-record.spec.ts").includes(`test.fail(true, "AR2: `))
   assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M6: `))
@@ -85,8 +84,8 @@ test("a view-only role is offered no create, edit or scan link (e2e fix task FX6
   const register = read("src/app/[locale]/(dashboard)/assets/page.tsx")
   assert.match(register, /actions=\{canCreateAssets \? \(\n\s*<Link href=\{`\/\$\{locale\}\/assets\/new`\}/)
   const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
-  assert.match(detail, /const healthFixHref = \(section: string\) => \(canEditAsset \? editHref : section\)/)
-  assert.doesNotMatch(detail, /createHealthItem\([^\n]*, editHref\)/)
+  assert.doesNotMatch(detail, /healthFixHref|createHealthItem/)
+  assert.match(read("src/components/assets/detail/asset-overview.tsx"), /actions=\{canEdit \? \(\s*<Link href=\{editHref\}/)
   const rounds = read("src/app/[locale]/(dashboard)/audit/rounds/page.tsx")
   assert.match(rounds, /const canCreateRound = hasPermission\(user, "audit", "create"\)/)
   assert.match(rounds, /const canScan = hasPermission\(user, "audit", "edit"\)/)

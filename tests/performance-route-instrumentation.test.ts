@@ -15,6 +15,7 @@ const routeFiles = [
     file: "src/app/[locale]/(dashboard)/assets/[id]/page.tsx",
     labels: [
       "asset-detail.initial-data",
+      "asset-detail.frame-data",
       "asset-detail.evidence-data",
       "asset-detail.operation-data",
     ],

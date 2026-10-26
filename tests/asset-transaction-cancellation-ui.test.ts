@@ -37,7 +37,7 @@ test("checkout, checkin, transfer, and asset detail surfaces expose cancellation
     assert.match(source, /transactionStatus === "active"/, path)
   }
   assert.match(
-    readFileSync("src/components/assets/asset-detail-action-menu.tsx", "utf8"),
+    readFileSync("src/components/assets/detail/asset-detail-actions.tsx", "utf8"),
     /<TransactionCancelDialog ref=\{cancelDialogRef\}/,
   )
 })

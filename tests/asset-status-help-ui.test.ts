@@ -30,7 +30,8 @@ test("asset form, detail, and register expose status and condition help", () => 
   assert.match(assetFormSource(), /statusHelpTitle/)
   assert.match(assetFormSource(), /conditionHelpTitle/)
 
-  assert.match(assetDetailSource(), /AssetStateHelpPopover/)
+  assert.match(readFileSync("src/components/assets/detail/asset-detail-header.tsx", "utf8"), /<AssetStateHelpPopover \{\.\.\.statusHelp\} \/>/)
+  assert.match(readFileSync("src/components/assets/detail/asset-overview.tsx", "utf8"), /<AssetStateHelpPopover \{\.\.\.conditionHelp\} \/>/)
   assert.match(assetDetailSource(), /assetStatusHelp/)
   assert.match(assetDetailSource(), /assetConditionHelp/)
 
