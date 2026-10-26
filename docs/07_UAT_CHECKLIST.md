@@ -59,7 +59,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Export asset register.
 - [ ] On Asset Register, confirm quick filters are grouped by data quality, ownership/custody scope, and lifecycle status; the lifecycle group includes Ready, In Use, Checked Out, Pending Repair, and Under Maintenance, and each filter updates the list while preserving existing search/company/branch/category context.
 - [ ] On Asset Register, apply cross-scope quick filters for all cross-scope, custodian different company, custodian different branch, and current location different branch; confirm the list and Asset Register export show matching cross-scope flags and owner/custodian/location branch context.
-- [ ] On Dashboard, confirm the cross-scope KPI, urgent-work card, and review panel show active assets held or located outside the owner/tag scope, and confirm each drilldown opens Asset Register with the expected `crossScope` filter.
+- [ ] On Dashboard, confirm the number of assets outside the owner's scope appears once, under the status table ("นอกขอบเขตเจ้าของรหัส N รายการ"), and opens Asset Register with `crossScope=all` and the same count; the four cross-scope quick filters stay on Asset Register.
 - [ ] On Asset Register desktop width, confirm search/company/branch/category remain visible as primary filters and status/condition/ownership/rows are hidden under the advanced filter section by default, reopening automatically when active.
 - [ ] On Asset Register mobile width, confirm quick-filter groups scroll horizontally without page overflow, advanced filters stay collapsed by default, desktop column/export/template utility buttons are hidden, and the first asset cards appear before the import helper.
 - [x] Controller `system_admin` QA at 375, 390, and 414 pixels: mobile card list only with 25 sample cards; no body/list/card horizontal overflow; readable text status and field-lookup hierarchy; company/branch and purchase price omitted; secondary disclosure opens with a full-width 44px summary; filtered-empty state shows `ไม่พบข้อมูล` without overflow.
@@ -343,6 +343,21 @@ The automated suite covers the shell in all four projects (`e2e/shell/`). A pers
 - [ ] The field audit offline for over an hour: the scan page stays; after reconnecting a lapsed session goes to the login, the queue waits in IndexedDB and is sent after the same person signs in; another person's sign-in does not send it, the scan page says whose it is, and nobody can remove it (open question).
 - [ ] Two tabs: activity in one keeps the other open.
 - [ ] The navy menu and the light top bar on a real monitor in both themes; the phone's white bars in bright light.
+- [ ] An English pass of the new messages.
+
+## Dashboard B UAT (2026-10-26)
+
+The automated suite covers the dashboard in all four projects (`e2e/dashboard/`). A person still checks:
+
+- [ ] An approver sees "งานรออนุมัติ" first, IT staff their repair, PM and discrepancy rows first, and a view-only person ทรัพย์สินทั้งหมด and ตามสถานะ first.
+- [ ] Each row of งานที่รอคุณ equals the bell's row and opens a list with the same count; ค้างนานสุด turns warning ink with an icon when overdue; the zero line names the kinds at zero; "เปิดศูนย์งานค้าง" shows only with `dashboard:view`.
+- [ ] NVDA reads each KPI's filter note as its description, and skips the status bar: the table under it reads every status, count and link (the bar's segments are links for the mouse only).
+- [ ] On the desktop, a click on a status bar segment opens the register for that status with the same count as its table row, and hovering it names the status, its count and the filter.
+- [ ] Choosing a company changes the totals, ตามสถานะ, the cross-scope line and the round; งานที่รอคุณ and ล่าสุด say "ทุกบริษัท"; the register opened from a number shows the company chip on desktop and the same count.
+- [ ] The "ควรถึงวันนี้" mark sits at the share of the round's days gone; a branch behind it says "ช้ากว่าที่ควร"; a branch row opens the round's item list filtered to that branch with the same count; with a company chosen, the round KPI opens the round's item list filtered to that company, its count equal to the KPI's "ตรวจแล้ว … / N"; with no round due, the KPI and the section say "ไม่มีรอบตรวจนับที่ถึงกำหนดช่วงนี้" and "ดูรอบที่กำลังตรวจทั้งหมด" opens the rounds list's "กำลังตรวจ" tab.
+- [ ] ล่าสุด shows a document number only to a person who may open that document (a repair, disposal or round page needs its own view permission).
+- [ ] The bar fills and swatches are told apart in both themes on a real monitor.
+- [ ] On the phone: the KPIs in 2×2, rows of งานที่รอคุณ at least 56px tall, no ล่าสุด.
 - [ ] An English pass of the new messages.
 
 ## Sign-Off
