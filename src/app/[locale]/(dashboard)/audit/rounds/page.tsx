@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Fragment, type ReactNode } from "react"
 import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
+import { AlertTriangle, ChevronDown, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
@@ -45,6 +45,7 @@ import {
   buildAuditRoundDueLine,
   buildAuditRoundInsights,
   buildAuditRoundNextStep,
+  canCloseAuditRoundFromList,
   buildAuditRoundProgress,
   buildAuditRoundScopeParts,
   buildAuditRoundSearchWhere,
@@ -121,7 +122,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   // A view-only role is offered no create or scan link (their pages need audit:create and audit:edit; the E2E suite's M5).
   const canCreateRound = hasPermission(user, "audit", "create")
   const canScan = hasPermission(user, "audit", "edit")
-  // The close action's permission (`api/audit-rounds/[id]/route.ts`).
+  // The close action's permission (`api/audit-rounds/[id]/route.ts`); the creator rule is per round (describeRound).
   const canClose = hasPermission(user, "audit", "approve")
 
   const t = await getTranslations("auditRound")
@@ -265,8 +266,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       label: t("actionCloseReadyRounds"),
       help: t("actionCloseReadyRoundsHelp"),
       count: readyRounds.length,
-      // No link at 0: the cell is plain (R8).
-      href: readyRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${readyRounds[0].id}`, auditRoundsReturnHref) : undefined,
+      // The work view of every ready round, so the number is the rows it opens (spec §6); no link at 0, the cell is plain (R8).
+      href: readyRounds.length > 0 ? buildAuditRoundsHref(locale, "readyToClose", "", { pageSize: listPage.pageSize }) : undefined,
       tone: "success",
     },
   ]
@@ -320,7 +321,14 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const describeRound = (round: (typeof rounds)[number]) => {
     const insight = insightOf(round)
     const detailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
-    const step = buildAuditRoundNextStep({ locale, roundId: round.id, insight, canScan, canClose, returnTo: auditRoundsReturnHref })
+    const step = buildAuditRoundNextStep({
+      locale,
+      roundId: round.id,
+      insight,
+      canScan,
+      canClose: canCloseAuditRoundFromList({ canApprove: canClose, userId: user.id, createdBy: round.createdBy }),
+      returnTo: auditRoundsReturnHref,
+    })
     const more = step.more.map((link) => ({ key: link.key, label: stepLabel(link), href: link.href }))
     return {
       insight,
@@ -497,13 +505,17 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       </div>
 
       {/* A <details> cannot be ContentPanel: the panel classes (2D-2 R4). Folded to one line (group 2 spec §6). */}
-      <details className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+      <details className={cn(getPanelClasses(), "group/coverage p-4 sm:p-5")}>
         <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 md:min-h-0">
           <h2 className="text-base font-semibold text-foreground">{t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}</h2>
-          <span className="block w-full sm:w-48"><PaceBar value={coverageShare} pace={null} label={coverageLine} behind={false} /></span>
-          <span className="num text-sm font-semibold text-foreground">{formatPercent(coverageShare)}</span>
+          {/* The bar's name is the percent, which is not read again; the sentence follows once (group 2 final review M4). */}
+          <span className="block w-full sm:w-48"><PaceBar value={coverageShare} pace={null} label={formatPercent(coverageShare)} behind={false} /></span>
+          <span className="num text-sm font-semibold text-foreground" aria-hidden="true">{formatPercent(coverageShare)}</span>
           <span className="num text-sm text-muted-foreground">{coverageLine}</span>
-          <span className={cn(linkVariants({ size: "inherit" }), "text-sm sm:ms-auto")}>{t("coverageBreakdown")}</span>
+          <span className={cn(linkVariants({ size: "inherit" }), "inline-flex items-center gap-1 text-sm sm:ms-auto")}>
+            {t("coverageBreakdown")}
+            <ChevronDown className="size-4 shrink-0 motion-safe:transition-transform group-open/coverage:rotate-180" aria-hidden="true" />
+          </span>
         </summary>
         <div className="mt-4 space-y-4 border-t border-border-soft pt-4">
           <p className="text-sm text-muted-foreground">{t("coverageHelp")}</p>

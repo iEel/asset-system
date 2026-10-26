@@ -80,7 +80,8 @@ test("the rounds list counts with the one round count: the strip round-wide, the
   assert.match(page, /: buildAuditRoundsHref\(locale, "pending", "", \{ pageSize: listPage\.pageSize \}\)/)
   assert.match(page, /count: openWork\.pendingReview,/)
   assert.match(page, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/findings\?status=action_open`, auditRoundsReturnHref\)/)
-  assert.match(page, /href: readyRounds\[0\] \? appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{readyRounds\[0\]\.id\}`, auditRoundsReturnHref\) : undefined/)
+  assert.match(page, /href: readyRounds\.length > 0 \? buildAuditRoundsHref\(locale, "readyToClose", "", \{ pageSize: listPage\.pageSize \}\) : undefined,/)
+  assert.doesNotMatch(page, /readyRounds\[0\]/, "the cell opens every ready round, not the newest one (final review I1)")
   assert.doesNotMatch(page, /_count: \{ select|round\._count|auditItem\.groupBy|openFollowUpCount|followUps|hasMismatch|"mismatch"|getFullYear\(\)/)
   assert.doesNotMatch(read("src/lib/audit-rounds-list-rules.ts"), /from "@\/|\bprisma\./, "the rules stay pure")
 })
@@ -100,7 +101,7 @@ test("the rounds list in the spec's order: strip, status tabs and the work view'
     '<FilterChipList chips={workViewChips} label={t("activeFilters")} removeLabel={t("clearFilter")} />',
     '<div className={cn(getPanelClasses(), "overflow-hidden")}>',
     'placeholder={t("searchRounds")}',
-    '<details className={cn(getPanelClasses(), "p-4 sm:p-5")}>',
+    '<details className={cn(getPanelClasses(), "group/coverage p-4 sm:p-5")}>',
   ].map(at)
   assert.deepEqual(order, [...order].sort((a, b) => a - b))
   // The work view (รอตรวจ / รอพิจารณา / ปิดรอบได้) is a chip under the กำลังดำเนินการ tab; removing it keeps the search.
@@ -112,7 +113,8 @@ test("the rounds list in the spec's order: strip, status tabs and the work view'
 test("the strip: เดินตรวจต่อ says how many open rounds it covers, รอบที่ปิดได้แล้ว has no link at 0 (group 2 spec §6, R8)", () => {
   const page = read(PAGE)
   assert.match(page, /help: t\("actionContinueScanHelp", \{ count: formatCount\(pendingRounds\.length\) \}\),/)
-  assert.match(page, /href: readyRounds\[0\] \? appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{readyRounds\[0\]\.id\}`, auditRoundsReturnHref\) : undefined/)
+  assert.match(page, /href: readyRounds\.length > 0 \? buildAuditRoundsHref\(locale, "readyToClose", "", \{ pageSize: listPage\.pageSize \}\) : undefined,/)
+  assert.doesNotMatch(page, /readyRounds\[0\]/, "the cell opens every ready round, not the newest one (final review I1)")
   assert.match(page, /href\?: string/)
 })
 
@@ -129,7 +131,8 @@ test("the table: รอบ with the name as the link and the number under it, �
     assert.equal(page.match(new RegExp(`<${part}\\b`, "g"))?.length, 2, `${part}: the phone card and the table`)
   }
   // One place builds a row: the next step with canScan, so a viewer never gets a scan link (E2E M5).
-  assert.equal(page.match(/buildAuditRoundNextStep\(\{ locale, roundId: round\.id, insight, canScan, canClose, returnTo: auditRoundsReturnHref \}\)/g)?.length, 1)
+  assert.equal(page.match(/buildAuditRoundNextStep\(\{/g)?.length, 1)
+  assert.match(page, /buildAuditRoundNextStep\(\{\n\s+locale,\n\s+roundId: round\.id,\n\s+insight,\n\s+canScan,\n\s+canClose: canCloseAuditRoundFromList\(\{ canApprove: canClose, userId: user\.id, createdBy: round\.createdBy \}\),\n\s+returnTo: auditRoundsReturnHref,\n\s+\}\)/)
   assert.match(page, /const detailHref = appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}`, auditRoundsReturnHref\)/)
   assert.doesNotMatch(page, /AuditProgressBar|buildRoundRowActions|buildAuditRoundWorkflowLinks|ReadyToCloseBadge|roundActionReview|blockedPendingItems|round\._count/)
 })
@@ -161,11 +164,15 @@ test("one status badge: the round's status, or รอพิจารณา when 
 
 test("the coverage folds to one line (bar, percent, sentence) and opens the five numbers and the gap lists (group 2 spec §6, §13 bug 5, R6)", () => {
   const page = read(PAGE)
-  const details = page.slice(page.indexOf('<details className={cn(getPanelClasses(), "p-4 sm:p-5")}>'), page.indexOf("</details>"))
+  const details = page.slice(page.indexOf('<details className={cn(getPanelClasses(), "group/coverage p-4 sm:p-5")}>'), page.indexOf("</details>"))
   const summary = details.slice(0, details.indexOf("</summary>"))
   assert.match(summary, /<h2 className="text-base font-semibold text-foreground">\{t\("coverageTitle", \{ year: toDisplayYear\(currentYear, locale\) \}\)\}<\/h2>/)
-  assert.match(summary, /<PaceBar value=\{coverageShare\} pace=\{null\} label=\{coverageLine\} behind=\{false\} \/>/)
-  assert.match(summary, /\{formatPercent\(coverageShare\)\}/)
+  // The bar is named by the percent, and the visible percent is not read again, so the line is read once (final review M4).
+  assert.match(summary, /<PaceBar value=\{coverageShare\} pace=\{null\} label=\{formatPercent\(coverageShare\)\} behind=\{false\} \/>/)
+  assert.match(summary, /<span className="num text-sm font-semibold text-foreground" aria-hidden="true">\{formatPercent\(coverageShare\)\}<\/span>/)
+  assert.doesNotMatch(summary, /label=\{coverageLine\}/)
+  // The open/closed cue: a chevron that turns when the panel is open.
+  assert.match(summary, /<ChevronDown className="size-4 shrink-0 motion-safe:transition-transform group-open\/coverage:rotate-180" aria-hidden="true" \/>/)
   assert.match(summary, /\{coverageLine\}/)
   assert.match(summary, /\{t\("coverageBreakdown"\)\}/)
   assert.match(page, /const coverageLine = t\("coverageLine", \{ covered: formatCount\(coveredAssetCount\), total: formatCount\(activeAssets\.length\), missing: formatCount\(uncoveredAssetCount\) \}\)/)

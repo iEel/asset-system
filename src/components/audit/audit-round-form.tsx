@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { Plus, Save, X } from "lucide-react"
 import { toast } from "sonner"
 import { foldTopCategories } from "@/lib/audit-round-counts-rules"
-import { addMonthsToDateKey, auditRoundDailyLoad } from "@/lib/audit-round-preview-rules"
+import { addMonthsToDateKey, auditRoundDailyLoad, auditRoundEndAfterStartChange, parseAuditSampleRate } from "@/lib/audit-round-preview-rules"
 import { filterAuditStatusOptions } from "@/lib/audit-round-scope"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
@@ -167,10 +167,17 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const [previewKey, setPreviewKey] = useState<string | null>(null)
   const [pendingScope, setPendingScope] = useState<ScopeField["key"] | null>(null)
   const advancedRef = useRef<HTMLDetailsElement>(null)
+  // "+ เพิ่มเงื่อนไข": focus returns here after a condition is chosen or a chip removed.
+  const addConditionRef = useRef<HTMLButtonElement>(null)
   const focusPickerRef = useRef(false)
   const fieldErrors = useFieldErrors<AuditRoundField>()
   const validationMessage = useValidationMessage()
   const [values, setValues] = useState(() => initialValues(locale))
+  // The end follows the start (a month later) until the person sets the end themselves (group 2 spec §7).
+  const [endTouched, setEndTouched] = useState(false)
+  // The folded advanced line shows the last rate that parses, never "สุ่มตรวจ %" while the field is half typed.
+  const [lastSampleRate, setLastSampleRate] = useState(100)
+  const shownSampleRate = parseAuditSampleRate(values.sampleRate) ?? lastSampleRate
   const scopeRequest = JSON.stringify(scopeBody(values))
   // Only the answer for the current scope counts: until it lands, the panel and the bar say it is counting.
   const settled = previewKey === scopeRequest
@@ -183,6 +190,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const chosenScopes = SCOPE_FIELDS.filter((field) => values[field.key])
   const availableScopes = SCOPE_FIELDS.filter((field) => !values[field.key])
   const pendingField = SCOPE_FIELDS.find((field) => field.key === pendingScope)
+  const counting = !preview && !previewFailed
   const footerStatus = preview
     ? preview.sampledAssets > 0
       ? t("willCreate", { count: formatCount(preview.sampledAssets) })
@@ -254,7 +262,16 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   }
 
   function setField(field: string, value: string | boolean) {
-    setValues((current) => ({ ...current, [field]: value }))
+    if (field === "startDate" && typeof value === "string") {
+      setValues((current) => ({ ...current, startDate: value, endDate: auditRoundEndAfterStartChange(value, current.endDate, endTouched) }))
+    } else {
+      setValues((current) => ({ ...current, [field]: value }))
+    }
+    if (field === "endDate") setEndTouched(true)
+    if (field === "sampleRate" && typeof value === "string") {
+      const rate = parseAuditSampleRate(value)
+      if (rate !== null) setLastSampleRate(rate)
+    }
     // The date pair clears together: either date can fix "end before start" (spec §4.3).
     if (field === "startDate" || field === "endDate") fieldErrors.clear("startDate", "endDate")
     else if (field in FIELD_IDS) fieldErrors.clear(field as AuditRoundField)
@@ -276,6 +293,22 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   function chooseCondition(key: ScopeField["key"], value: string) {
     setField(key, value)
     setPendingScope(null)
+    focusAfterConditionChange(key)
+  }
+
+  function removeCondition(key: ScopeField["key"]) {
+    setField(key, "")
+    focusAfterConditionChange(key)
+  }
+
+  // The picker unmounts after a choice and a chip removes itself on click: focus goes to "+ เพิ่มเงื่อนไข", or to the
+  // new chip when every condition is chosen and the button is disabled, never to <body>.
+  function focusAfterConditionChange(key: ScopeField["key"]) {
+    window.requestAnimationFrame(() => {
+      const add = addConditionRef.current
+      if (add && !add.disabled) add.focus()
+      else document.getElementById(chipId(key))?.focus()
+    })
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -295,7 +328,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
         if (fieldErrors.applyServer(payload) && focusFirstError()) return
         throw new Error(payload?.error ?? tCommon("error"))
       }
-      toast.success(t("createSuccess", { count: payload.generatedItems ?? 0 }))
+      toast.success(t("createSuccess", { count: formatCount(payload.generatedItems ?? 0) }))
       router.push(`/${locale}/audit/rounds/${payload.id}`)
       router.refresh()
     } catch (error) {
@@ -328,9 +361,10 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                 >
                   <Input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={yearRange.min} max={yearRange.max} />
                 </Field>
-                {/* The pair limits each other's picker (spec §7.4), as the disposal list's date filter does. */}
+                {/* The start picks any day (the end follows it until set); the end's picker starts at the start (spec §7.4).
+                    An end before the start is still refused by validate and the server. */}
                 <Field label={t("startDate")} id="audit-round-start-date" required error={fieldErrors.message("startDate")}>
-                  <Input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required max={values.endDate} />
+                  <Input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required />
                 </Field>
                 <Field label={t("endDate")} id="audit-round-end-date" required hint={t("endDateHint")} error={fieldErrors.message("endDate")}>
                   <Input type="date" value={values.endDate} onChange={(event) => setField("endDate", event.target.value)} required min={values.startDate} />
@@ -349,11 +383,12 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                     return (
                       <Button
                         key={field.key}
+                        id={chipId(field.key)}
                         type="button"
                         variant="outline"
                         size="sm"
                         className="max-w-full"
-                        onClick={() => setField(field.key, "")}
+                        onClick={() => removeCondition(field.key)}
                         aria-label={t("removeCondition", { condition: `${t(field.label)}: ${label}` })}
                       >
                         <span className="min-w-0 truncate">
@@ -366,7 +401,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" disabled={availableScopes.length === 0}>
+                    <Button ref={addConditionRef} type="button" variant="outline" size="sm" disabled={availableScopes.length === 0}>
                       <Plus aria-hidden="true" />
                       {t("addCondition")}
                     </Button>
@@ -418,7 +453,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
           <FormSection number={3} title={t("sectionAdvanced")}>
             <details ref={advancedRef}>
               <summary className={cn(linkVariants({ size: "inherit" }), "list-item cursor-pointer text-sm")}>
-                {t("advancedNow", { risk: t(`riskPreset_${values.riskPreset}`), rate: values.sampleRate })}
+                {t("advancedNow", { risk: t(`riskPreset_${values.riskPreset}`), rate: formatCount(shownSampleRate) })}
               </summary>
               <p className="mt-3 text-meta text-muted-foreground">{t("riskSamplingHelp")}</p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -466,7 +501,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                   </p>
                 ) : null}
               </div>
-              {componentItems > 0 ? <Notice tone="info">{t("previewComponentHelp", { count: componentItems })}</Notice> : null}
+              {componentItems > 0 ? <Notice tone="info">{t("previewComponentHelp", { count: formatCount(componentItems) })}</Notice> : null}
               <div>
                 <h3 className="text-sm font-semibold text-foreground">{t("summaryByCategory")}</h3>
                 <ul className="mt-2 grid gap-1.5">
@@ -493,8 +528,6 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                       <Link
                         key={round.id}
                         href={`/${locale}/audit/rounds/${round.id}`}
-                        target="_blank"
-                        rel="noreferrer"
                         className={linkVariants({ size: "inherit" })}
                       >
                         <span className="tag">{round.auditNo}</span>
@@ -523,7 +556,16 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             </>
           )}
         </div>
-        <StickyFormFooter className="lg:col-span-2" status={<span role="status">{footerStatus}</span>}>
+        {/* The live region carries settled answers only; "กำลังนับรายการ…" shows beside it, unannounced, on each change. */}
+        <StickyFormFooter
+          className="lg:col-span-2"
+          status={
+            <>
+              {counting ? <span>{footerStatus}</span> : null}
+              <span role="status">{counting ? null : footerStatus}</span>
+            </>
+          }
+        >
           <Link href={`/${locale}/audit/rounds`} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
@@ -535,6 +577,10 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       </form>
     </div>
   )
+}
+
+function chipId(key: ScopeField["key"]) {
+  return `${SCOPE_FIELDS.find((field) => field.key === key)?.id ?? key}-chip`
 }
 
 function isClosedStatusId(statuses: Option[], statusId: string) {

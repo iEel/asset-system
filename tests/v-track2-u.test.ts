@@ -80,8 +80,9 @@ test("audit round: the date pair limits its pickers, validate() restates every r
   assert.match(source, /^import \{ maxLength, notBefore, range, required, wholeNumber \} from "@\/lib\/validation-rules"$/m)
   assert.doesNotMatch(source, /function wholeNumber\(/)
   assert.match(source, /fieldErrors\.setErrors\(validate\(values, yearRange\)\)/)
-  // The date pair (spec §7.4): each picker is limited by the other date, and changing either clears both errors.
-  assert.match(source, /onChange=\{\(event\) => setField\("startDate", event\.target\.value\)\} required max=\{values\.endDate\} \/>/)
+  // The date pair (spec §7.4): the end's picker starts at the start; the start picks any day, since the end follows it
+  // until set (group 2 final review M1). Changing either clears both errors.
+  assert.match(source, /onChange=\{\(event\) => setField\("startDate", event\.target\.value\)\} required \/>/)
   assert.match(source, /onChange=\{\(event\) => setField\("endDate", event\.target\.value\)\} required min=\{values\.startDate\} \/>/)
   assert.match(source, /if \(field === "startDate" \|\| field === "endDate"\) fieldErrors\.clear\("startDate", "endDate"\)\n\s+else if \(field in FIELD_IDS\) fieldErrors\.clear\(field as AuditRoundField\)/)
   // The year and the sample rate say their limits (the year in the reader's calendar).

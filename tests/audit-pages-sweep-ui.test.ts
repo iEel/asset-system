@@ -50,7 +50,7 @@ test("audit round form: the sections in one panel and the summary in another, co
   assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "grid min-w-0 content-start gap-8 p-4 sm:p-5"\)\}>/)
   assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "grid content-start gap-4 p-4 sm:p-5 lg:sticky lg:top-4 lg:self-start"\)\}>/)
   assert.match(source, /<p className="text-metric num text-foreground">\{formatCount\(preview\.sampledAssets\)\}<\/p>/)
-  assert.match(source, /<Notice tone="info">\{t\("previewComponentHelp", \{ count: componentItems \}\)\}<\/Notice>/)
+  assert.match(source, /<Notice tone="info">\{t\("previewComponentHelp", \{ count: formatCount\(componentItems\) \}\)\}<\/Notice>/)
   assert.match(source, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
   assert.match(source, /<EmptyNote className="mt-2">\{t\("previewEmpty"\)\}<\/EmptyNote>/)
   assert.match(source, /<ChoiceCard\s+type="checkbox"\s+className="md:col-span-2"\s+label=\{t\("includeClosedAssets"\)\}\s+description=\{t\("includeClosedAssetsHelp"\)\}/)
@@ -98,7 +98,7 @@ test("findings page: the list frame on the panel classes, StatusBadge without lo
 
 test("audit rounds list: the coverage a folded `<details>` on the panel classes with frameless gap lists, the next actions a StatStrip, the list frame on the panel classes, one StatusBadge state, KeyValueList facts, outline sm workflow links, text links and tag scopes (spec 2D §3.4, D7, D9, D19, M21, M22, M29, M33; group 2 spec §6)", () => {
   const source = read(`${D}audit/rounds/page.tsx`)
-  assert.match(source, /\{\/\* A <details> cannot be ContentPanel: the panel classes \(2D-2 R4\)\.[^*]*\*\/\}\n\s+<details className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
+  assert.match(source, /\{\/\* A <details> cannot be ContentPanel: the panel classes \(2D-2 R4\)\.[^*]*\*\/\}\n\s+<details className=\{cn\(getPanelClasses\(\), "group\/coverage p-4 sm:p-5"\)\}>/)
   assert.match(source, /\{t\("coverageRoundCount"\)\}: <span className="num font-semibold text-foreground">\{formatCount\(currentYearRoundCount\)\}<\/span>/)
   assert.match(source, /<section aria-labelledby="audit-round-next-actions-title" className="space-y-3">/)
   assert.match(source, /attention: action\.tone === "warning" && action\.count > 0/)

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { foldTopCategories } from "../src/lib/audit-round-counts-rules.ts"
-import { addMonthsToDateKey, auditRoundDailyLoad, countAuditPreviewCategories, foldAuditRoundOverlap } from "../src/lib/audit-round-preview-rules.ts"
+import { addMonthsToDateKey, auditRoundDailyLoad, auditRoundEndAfterStartChange, countAuditPreviewCategories, foldAuditRoundOverlap, parseAuditSampleRate } from "../src/lib/audit-round-preview-rules.ts"
 import { selectAuditSample } from "../src/lib/audit-round-scope.ts"
 import { auditRoundPreviewSchema, auditRoundSchema } from "../src/lib/validations/audit.ts"
 
@@ -135,4 +135,18 @@ test("the daily load is the items over the round's days, both ends counted, roun
   assert.equal(auditRoundDailyLoad(0, "2026-11-01", "2026-11-30"), null)
   assert.equal(auditRoundDailyLoad(10, "2026-11-30", "2026-11-01"), null)
   assert.equal(auditRoundDailyLoad(10, "", "2026-11-01"), null)
+})
+
+test("the end follows a new start a month later until the person sets the end; then it stays (group 2 final review M1)", () => {
+  assert.equal(auditRoundEndAfterStartChange("2026-12-01", "2026-11-26", false), "2027-01-01", "a start past the old end moves the end with it")
+  assert.equal(auditRoundEndAfterStartChange("2026-01-31", "2026-02-26", false), "2026-02-28")
+  assert.equal(auditRoundEndAfterStartChange("2026-12-01", "2026-11-26", true), "2026-11-26", "a set end is kept; validate refuses the pair")
+  assert.equal(auditRoundEndAfterStartChange("", "2026-11-26", false), "2026-11-26", "a cleared start leaves the end")
+})
+
+test("the shown sample rate is a whole number from 1 to 100, else none (group 2 final review M7)", () => {
+  assert.equal(parseAuditSampleRate("100"), 100)
+  assert.equal(parseAuditSampleRate(" 25 "), 25)
+  assert.equal(parseAuditSampleRate("1"), 1)
+  for (const raw of ["", "0", "101", "2.5", "-5", "abc"]) assert.equal(parseAuditSampleRate(raw), null, raw)
 })

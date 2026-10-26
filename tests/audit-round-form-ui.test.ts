@@ -38,7 +38,7 @@ test("the round form: a trail, three numbered sections, conditions as chips with
   for (const picker of ["company", "branch", "department", "location", "category", "custodian", "status", "condition"]) {
     assert.ok(source.includes(`id: "audit-round-scope-${picker}"`), picker)
   }
-  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button type="button" variant="outline" size="sm" disabled=\{availableScopes\.length === 0\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{t\("addCondition"\)\}/)
+  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button ref=\{addConditionRef\} type="button" variant="outline" size="sm" disabled=\{availableScopes\.length === 0\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{t\("addCondition"\)\}/)
   assert.match(source, /<DropdownMenuItem key=\{field\.key\} onSelect=\{\(\) => openScopePicker\(field\.key\)\}>/)
   assert.match(source, /<SearchableSelect\n\s+id=\{pendingField\.id\}\n\s+label=\{t\(pendingField\.label\)\}\n\s+value=""/)
   assert.match(source, /aria-label=\{t\("removeCondition", \{ condition: `\$\{t\(field\.label\)\}: \$\{label\}` \}\)\}/)
@@ -47,7 +47,9 @@ test("the round form: a trail, three numbered sections, conditions as chips with
   assert.match(source, /scopeStatusId: checked \|\| !isClosedStatusId\(options\.statuses, current\.scopeStatusId\) \? current\.scopeStatusId : "",/)
   // Section 3 folded, its line saying what is in use; an error inside opens it before focus moves.
   assert.match(source, /<details ref=\{advancedRef\}>/)
-  assert.match(source, /\{t\("advancedNow", \{ risk: t\(`riskPreset_\$\{values\.riskPreset\}`\), rate: values\.sampleRate \}\)\}/)
+  // The last rate that parses, never "สุ่มตรวจ %" while the field is empty or out of 1-100 (final review M7).
+  assert.match(source, /\{t\("advancedNow", \{ risk: t\(`riskPreset_\$\{values\.riskPreset\}`\), rate: formatCount\(shownSampleRate\) \}\)\}/)
+  assert.match(source, /const shownSampleRate = parseAuditSampleRate\(values\.sampleRate\) \?\? lastSampleRate/)
   assert.match(source, /reveal: \(key\) => \{\n\s+if \(ADVANCED_FIELDS\.has\(key\) && advancedRef\.current\) advancedRef\.current\.open = true/)
   // The live count: the scope alone, 450ms after the last change, the earlier request aborted, and a refusal never
   // moves focus or shows under a field (R10). Only the save applies the server's fieldErrors.
@@ -66,7 +68,21 @@ test("the round form: a trail, three numbered sections, conditions as chips with
   assert.match(source, /const dailyLoad = preview \? auditRoundDailyLoad\(preview\.sampledAssets, values\.startDate, values\.endDate\) : null/)
   assert.match(source, /<summary className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "list-item cursor-pointer text-sm"\)\}>\{t\("showSample"\)\}<\/summary>/)
   // The save bar: what it creates, then ยกเลิก and สร้างรอบ.
-  assert.match(source, /<StickyFormFooter className="lg:col-span-2" status=\{<span role="status">\{footerStatus\}<\/span>\}>\n\s+<Link href=\{`\/\$\{locale\}\/audit\/rounds`\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>/)
+  // The live region announces settled answers only; "กำลังนับรายการ…" shows beside it, outside the region (final review M3).
+  assert.match(source, /const counting = !preview && !previewFailed/)
+  assert.match(source, /<StickyFormFooter\n\s+className="lg:col-span-2"\n\s+status=\{\n\s+<>\n\s+\{counting \? <span>\{footerStatus\}<\/span> : null\}\n\s+<span role="status">\{counting \? null : footerStatus\}<\/span>\n\s+<\/>\n\s+\}\n\s+>\n\s+<Link href=\{`\/\$\{locale\}\/audit\/rounds`\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>/)
+  // The overlap rounds open in the same tab, so no unannounced new tab.
+  assert.doesNotMatch(source, /target="_blank"/)
+  // Counts are grouped (final review M6).
+  assert.match(source, /t\("createSuccess", \{ count: formatCount\(payload\.generatedItems \?\? 0\) \}\)/)
+  // Focus after a condition is chosen or removed goes to "+ เพิ่มเงื่อนไข" (final review M2).
+  assert.match(source, /<Button ref=\{addConditionRef\} type="button" variant="outline" size="sm" disabled=\{availableScopes\.length === 0\}>/)
+  assert.match(source, /function chooseCondition\(key: ScopeField\["key"\], value: string\) \{\n\s+setField\(key, value\)\n\s+setPendingScope\(null\)\n\s+focusAfterConditionChange\(key\)/)
+  assert.match(source, /onClick=\{\(\) => removeCondition\(field\.key\)\}/)
+  assert.match(source, /window\.requestAnimationFrame\(\(\) => \{\n\s+const add = addConditionRef\.current\n\s+if \(add && !add\.disabled\) add\.focus\(\)/)
+  // The end follows the start until the person sets it (final review M1).
+  assert.match(source, /endDate: auditRoundEndAfterStartChange\(value, current\.endDate, endTouched\)/)
+  assert.match(source, /if \(field === "endDate"\) setEndTouched\(true\)/)
   assert.match(source, /t\("willCreate", \{ count: formatCount\(preview\.sampledAssets\) \}\)/)
   assert.match(source, /t\("willCreateNone"\)/)
   assert.match(source, /<\/StickyFormFooter>\n\s*<\/form>/, "the save bar is the form's last child")

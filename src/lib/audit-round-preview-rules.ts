@@ -60,3 +60,17 @@ export function auditRoundDailyLoad(items: number, startDate: string, endDate: s
   if (days < 1) return null
   return Math.ceil(items / days)
 }
+
+// A new start date's end: a month later while the person has not set the end themselves; once they have, the end stays
+// (group 2 spec §7, bug §13.7). A start that is not a date key leaves the end as it was.
+export function auditRoundEndAfterStartChange(startDate: string, endDate: string, endTouched: boolean): string {
+  if (endTouched) return endDate
+  return addMonthsToDateKey(startDate, 1) || endDate
+}
+
+// The sample rate the form can show: a whole number from 1 to 100, else null (the field is empty or half typed).
+export function parseAuditSampleRate(raw: string): number | null {
+  if (!/^\d+$/.test(raw.trim())) return null
+  const rate = Number(raw.trim())
+  return rate >= 1 && rate <= 100 ? rate : null
+}

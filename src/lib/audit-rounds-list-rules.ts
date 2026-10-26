@@ -11,6 +11,7 @@ import { bangkokDayDiff } from "./waiting-work-rules.ts"
 import { getBangkokDateKey } from "./preventive-maintenance.ts"
 import { openAuditFindingActionStatuses } from "./audit-finding-filters.ts"
 import { auditPercent } from "./dashboard-overview-rules.ts"
+import { isSameAuditActor } from "./audit-segregation.ts"
 
 export const auditRoundTabs = ["open", "closed", "cancelled", "all"] as const
 export type AuditRoundTab = (typeof auditRoundTabs)[number]
@@ -224,6 +225,12 @@ export type AuditRoundNextStep = {
   second: { key: "review" | "actions"; count: number } | null
   outOfScope: AuditRoundStepLink | null
   more: AuditRoundStepLink[]
+}
+
+// The list offers "ปิดรอบตรวจ" only to someone who may close this round: audit:approve, and not its creator, as the
+// close API refuses the creator (`api/audit-rounds/[id]/route.ts`, closeOwnRound).
+export function canCloseAuditRoundFromList({ canApprove, userId, createdBy }: { canApprove: boolean; userId: string; createdBy: string | null }): boolean {
+  return canApprove && !isSameAuditActor(userId, createdBy)
 }
 
 export function buildAuditRoundNextStep({ locale, roundId, insight, canScan, canClose, returnTo }: { locale: string; roundId: string; insight: AuditRoundListInsight; canScan: boolean; canClose: boolean; returnTo: string }): AuditRoundNextStep {

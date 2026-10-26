@@ -12,6 +12,7 @@ import {
   buildAuditRoundScopeParts,
   buildAuditRoundSearchWhere,
   buildAuditRoundsHref,
+  canCloseAuditRoundFromList,
   emptyAuditRoundListInsight,
   filterRoundsByView,
   foldAuditRoundFindingWork,
@@ -227,4 +228,16 @@ test("after the walk the next step is the decision, then the action plans, then 
   assert.deepEqual(buildAuditRoundNextStep({ ...base, insight: ready }).main, { key: "close", count: null, href: `/th/audit/rounds/r1?${back}` })
   assert.equal(buildAuditRoundNextStep({ ...base, canClose: false, insight: ready }).main, null, "only audit:approve closes a round")
   assert.deepEqual(buildAuditRoundNextStep({ ...base, insight: { ...scanned, operational: false, outOfScope: 2 } }), { main: null, second: null, outOfScope: null, more: [] })
+})
+
+test("the list offers ปิดรอบตรวจ only with audit:approve and not to the round's creator, as the close API refuses them (group 2 final review M5)", () => {
+  assert.equal(canCloseAuditRoundFromList({ canApprove: true, userId: "u1", createdBy: "u2" }), true)
+  assert.equal(canCloseAuditRoundFromList({ canApprove: true, userId: "u1", createdBy: "u1" }), false, "the creator")
+  assert.equal(canCloseAuditRoundFromList({ canApprove: false, userId: "u1", createdBy: "u2" }), false, "no audit:approve")
+  assert.equal(canCloseAuditRoundFromList({ canApprove: true, userId: "u1", createdBy: null }), true, "an unknown creator, as the API")
+  const ready = { ...emptyAuditRoundListInsight, operational: true, total: 3, checked: 3, readyToClose: true }
+  const step = (createdBy: string) =>
+    buildAuditRoundNextStep({ locale: "th", roundId: "r1", insight: ready, canScan: true, canClose: canCloseAuditRoundFromList({ canApprove: true, userId: "u1", createdBy }), returnTo: "/th/audit/rounds" }).main
+  assert.equal(step("u1"), null, "the creator is offered no close")
+  assert.equal(step("u2")?.key, "close")
 })
