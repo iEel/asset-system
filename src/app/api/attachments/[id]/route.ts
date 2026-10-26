@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { assertSafeUploadPath } from "@/lib/uploads"
+import { assertSafeUploadPath, isMissingFileError, isOutsideUploadRootError } from "@/lib/uploads"
 import { assertCanViewAttachment, requireAttachmentPermission } from "@/lib/attachment-access"
 
 export const runtime = "nodejs"
@@ -27,8 +27,15 @@ export async function GET(request: NextRequest, context: AttachmentRouteContext)
     }
     await assertCanViewAttachment(user, attachment)
 
-    const safePath = assertSafeUploadPath(attachment.filePath)
-    const file = await readFile(safePath)
+    let file: Buffer
+    try {
+      file = await readFile(assertSafeUploadPath(attachment.filePath))
+    } catch (error) {
+      if (isMissingFileError(error) || isOutsideUploadRootError(error)) {
+        return NextResponse.json({ error: "Attachment file not found" }, { status: 404 })
+      }
+      throw error
+    }
     const encodedName = encodeURIComponent(attachment.originalName)
     const disposition = request.nextUrl.searchParams.get("inline") === "1" ? "inline" : "attachment"
 

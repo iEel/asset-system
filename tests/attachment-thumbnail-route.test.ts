@@ -37,6 +37,7 @@ const mockedModuleSources = new Map<string, string>([
   ["@/lib/uploads", `
     export function assertSafeUploadPath(filePath) { return filePath }
     export function isOutsideUploadRootError() { return false }
+    export function isMissingFileError(error) { return Boolean(error && error.code === "ENOENT") }
   `],
   ["@/lib/db", `
     const state = () => globalThis.__thumbnailRouteState
@@ -81,9 +82,9 @@ function attachment(overrides: Partial<ThumbnailAttachment> = {}): ThumbnailAtta
   return { id: "att-1", module: "asset_model", assetId: null, referenceId: "model-1", filePath: pngPath, fileType: "image/png", ...overrides }
 }
 
-function get(headers: Record<string, string> = {}) {
+function get(headers: Record<string, string> = {}, query = "") {
   return route.GET(
-    new Request("http://localhost/api/attachments/att-1/thumbnail", { headers }),
+    new Request(`http://localhost/api/attachments/att-1/thumbnail${query}`, { headers }),
     { params: Promise.resolve({ id: "att-1" }) },
   )
 }
@@ -149,4 +150,24 @@ test("a matching ETag returns 304 without reading the file", async () => {
 
   assert.equal(response.status, 304)
   assert.equal(response.headers.get("etag"), '"att-1-96"')
+})
+
+test("?size=card gives a WebP that fits 480px, under its own tag (spec §7.5)", async () => {
+  const response = await get({}, "?size=card")
+
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get("content-type"), "image/webp")
+  assert.equal(response.headers.get("cache-control"), "private, max-age=604800, immutable")
+  assert.equal(response.headers.get("etag"), '"att-1-480"')
+  const metadata = await sharp(Buffer.from(await response.arrayBuffer())).metadata()
+  assert.equal(metadata.format, "webp")
+  assert.equal(metadata.width, 480)
+  assert.equal(metadata.height, 360)
+})
+
+test("each size answers only its own tag, and an unknown size is the 96px thumbnail", async () => {
+  state.attachment = attachment({ filePath: join(dir, "gone.png") })
+  assert.equal((await get({ "If-None-Match": '"att-1-480"' }, "?size=card")).status, 304)
+  assert.equal((await get({ "If-None-Match": '"att-1-96"' }, "?size=card")).status, 404, "the 96px tag does not stand for the card, so the file is read, and it is gone")
+  assert.equal((await get({ "If-None-Match": '"att-1-96"' }, "?size=huge")).status, 304)
 })

@@ -114,7 +114,8 @@ test("a thumbnail whose file is outside this server's upload folder is not found
   const route = read("src/app/api/attachments/[id]/thumbnail/route.ts")
   assert.match(route, /if \(isMissingFileError\(error\) \|\| isOutsideUploadRootError\(error\)\) \{\n\s*return NextResponse\.json\(\{ error: "Attachment file not found" \}, \{ status: 404 \}\)/)
   const allow = read("e2e/support/allow-list.ts")
-  assert.match(allow, /id: "foreign-attachment-thumbnail",\n\s*kind: "response",\n\s*url: \/\\\/api\\\/attachments\\\/\[0-9a-f-\]\{36\}\\\/thumbnail\$\/,\n\s*status: \[404\],/)
+  // The asset page's photo card loads the same route with ?size=card (group 1 asset detail task 4): the one query the entry accepts, still five entries.
+  assert.match(allow, /id: "foreign-attachment-thumbnail",\n\s*kind: "response",\n\s*url: \/\\\/api\\\/attachments\\\/\[0-9a-f-\]\{36\}\\\/thumbnail\(\?:\\\?size=card\)\?\$\/,\n\s*status: \[404\],/)
 })
 
 test("every asset lifecycle refusal has its Thai sentence, and the handover form shows it (e2e fix task FX9: TX-A1)", async () => {

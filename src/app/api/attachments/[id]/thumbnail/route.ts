@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
-import { assertSafeUploadPath, isOutsideUploadRootError } from "@/lib/uploads"
+import { assertSafeUploadPath, isMissingFileError, isOutsideUploadRootError } from "@/lib/uploads"
 import { assertCanViewAttachment } from "@/lib/attachment-access"
 import {
-  attachmentThumbnailSize,
+  attachmentThumbnailSizeFor,
   buildThumbnailETag,
   isThumbnailable,
   matchesIfNoneMatch,
@@ -39,7 +39,8 @@ export async function GET(request: NextRequest, context: ThumbnailRouteContext) 
       return NextResponse.json({ error: "Attachment is not an image" }, { status: 415 })
     }
 
-    const etag = buildThumbnailETag(attachment.id)
+    const size = attachmentThumbnailSizeFor(new URL(request.url).searchParams.get("size"))
+    const etag = buildThumbnailETag(attachment.id, size)
     if (matchesIfNoneMatch(request.headers.get("if-none-match"), etag)) {
       return new NextResponse(null, { status: 304, headers: thumbnailNotModifiedHeaders(etag) })
     }
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest, context: ThumbnailRouteContext) 
     try {
       thumbnail = await sharp(file)
         .rotate()
-        .resize(attachmentThumbnailSize, attachmentThumbnailSize, { fit: "inside", withoutEnlargement: true })
+        .resize(size, size, { fit: "inside", withoutEnlargement: true })
         .webp({ quality: 75 })
         .toBuffer()
     } catch {
@@ -71,8 +72,4 @@ export async function GET(request: NextRequest, context: ThumbnailRouteContext) 
   } catch (error) {
     return errorResponse(error)
   }
-}
-
-function isMissingFileError(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT"
 }

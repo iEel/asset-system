@@ -59,26 +59,33 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   const findings = readTxSpec("e2e/transactions/findings.spec.ts")
   for (const entry of known.KNOWN_AXE) assert.ok(expectedFailures(findings).includes(entry.finding), entry.finding)
 
-  // The register's thumbnails (the shared allow-list, ruling TX-R9): a 404 (a file outside this server's upload folder,
-  // FX8) or a cancelled image of /api/attachments/<id>/thumbnail passes; the same answer of the attachment itself does not.
+  // The thumbnails (the shared allow-list, ruling TX-R9): the register's 96px ones and the asset page's photo card
+  // (?size=card, group 1 asset detail task 4). A 404 (a file outside this server's upload folder, FX8) or a cancelled
+  // image of /api/attachments/<id>/thumbnail passes; another size, or the same answer of the attachment itself, does not.
   const core = await import("../e2e/support/measure-core.ts")
   const { ALLOW_LIST } = await import("../e2e/support/allow-list.ts")
   const register = "http://localhost:3100/th/assets"
+  const detail = "http://localhost:3100/th/assets/23f49e63-83eb-44fb-ba55-4f77bef5b552"
   const attachment = "http://localhost:3100/api/attachments/23f49e63-83eb-44fb-ba55-4f77bef5b552"
   const classified = core.classify(
     {
       console: [],
       responses: [
         { method: "GET", url: `${attachment}/thumbnail`, status: 404, resourceType: "image", pageUrl: register },
+        { method: "GET", url: `${attachment}/thumbnail?size=card`, status: 404, resourceType: "image", pageUrl: detail },
+        { method: "GET", url: `${attachment}/thumbnail?size=huge`, status: 404, resourceType: "image", pageUrl: detail },
         { method: "GET", url: attachment, status: 404, resourceType: "image", pageUrl: register },
       ],
-      failures: [{ method: "GET", url: `${attachment}/thumbnail`, errorText: "net::ERR_ABORTED", resourceType: "image", pageUrl: register }],
+      failures: [
+        { method: "GET", url: `${attachment}/thumbnail`, errorText: "net::ERR_ABORTED", resourceType: "image", pageUrl: register },
+        { method: "GET", url: `${attachment}/thumbnail?size=card`, errorText: "net::ERR_ABORTED", resourceType: "image", pageUrl: detail },
+      ],
     },
     ALLOW_LIST,
     [],
   )
-  assert.deepEqual(classified.allowed.map((item) => item.id), ["foreign-attachment-thumbnail", "thumbnail-cancelled-on-leave"])
-  assert.deepEqual(classified.unexpectedResponses.map((response) => response.url), [attachment])
+  assert.deepEqual(classified.allowed.map((item) => item.id), ["foreign-attachment-thumbnail", "foreign-attachment-thumbnail", "thumbnail-cancelled-on-leave", "thumbnail-cancelled-on-leave"])
+  assert.deepEqual(classified.unexpectedResponses.map((response) => response.url), [`${attachment}/thumbnail?size=huge`, attachment])
 
   // The register spec: the wrong entry first (no room), the photo and the PDF, the save bar with the keyboard open.
   const spec = readTxSpec("e2e/transactions/register-asset.spec.ts")

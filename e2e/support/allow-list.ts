@@ -20,20 +20,20 @@ export const ALLOW_LIST: readonly AllowEntry[] = [
   {
     id: "foreign-attachment-thumbnail",
     kind: "response",
-    url: /\/api\/attachments\/[0-9a-f-]{36}\/thumbnail$/,
+    url: /\/api\/attachments\/[0-9a-f-]{36}\/thumbnail(?:\?size=card)?$/,
     status: [404],
     reason:
-      "An attachment row stores the absolute path of the upload folder that wrote it. The dev database is a copy of Production, so many rows hold Production paths (wiki #15, #25, #43), and rows written by another checkout of the app hold that checkout's folder; the thumbnail route answers 404 Attachment file not found for a path outside this app's UPLOAD_DIR (FX8; it answered 500 before) as for a file that is gone. The asset register shows the newest assets' thumbnails, so a workflow that the app sends there meets them. A test's own photo is checked on its own asset page, not through these thumbnails; a thumbnail that answers 500 is still a failure.",
-    reviewed: "2026-10-20",
+      "An attachment row stores the absolute path of the upload folder that wrote it. The dev database is a copy of Production, so many rows hold Production paths (wiki #15, #25, #43), and rows written by another checkout of the app hold that checkout's folder; the thumbnail route answers 404 Attachment file not found for a path outside this app's UPLOAD_DIR (FX8; it answered 500 before) as for a file that is gone. The asset register shows the newest assets' thumbnails, so a workflow that the app sends there meets them. A test's own photo is checked on its own asset page, not through these thumbnails; a thumbnail that answers 500 is still a failure. The asset page's photo card loads the same route with ?size=card (group 1 asset detail task 4), the only query the entry accepts, so a foreign photo there is the same 404.",
+    reviewed: "2026-10-26",
   },
   {
     id: "thumbnail-cancelled-on-leave",
     kind: "requestfailed",
-    url: /\/api\/attachments\/[0-9a-f-]{36}\/thumbnail$/,
+    url: /\/api\/attachments\/[0-9a-f-]{36}\/thumbnail(?:\?size=card)?$/,
     errorText: /^(?:net::ERR_ABORTED|cancelled|Load request cancelled)$/,
     reason:
-      "A list page loads its thumbnails as images; when the workflow moves on to the next page, the browser cancels the images still loading (Chromium net::ERR_ABORTED). A cancelled image is the browser leaving the page, not a failed request; a thumbnail answered with an error status is still a response record.",
-    reviewed: "2026-10-19",
+      "A list page loads its thumbnails as images; when the workflow moves on to the next page, the browser cancels the images still loading (Chromium net::ERR_ABORTED). A cancelled image is the browser leaving the page, not a failed request; a thumbnail answered with an error status is still a response record. The asset page's photo card (?size=card) is the same kind of image.",
+    reviewed: "2026-10-26",
   },
   {
     id: "shell-requests-cancelled-by-navigation",

@@ -1333,6 +1333,14 @@
         "document": "Document"
       },
       "exportSheet": "History"
+    },
+    "photoFrame": {
+      "emptyTitle": "No photo yet",
+      "emptyHelp": "A photo helps people find it during an audit count",
+      "loadFailed": "The photo could not be loaded",
+      "upload": "Upload a photo",
+      "takePhoto": "Take a photo",
+      "open": "Open the full-size photo of {name}"
     }
   },
   "company": {

@@ -1333,6 +1333,14 @@
         "document": "เอกสาร"
       },
       "exportSheet": "ประวัติ"
+    },
+    "photoFrame": {
+      "emptyTitle": "ยังไม่มีรูป",
+      "emptyHelp": "รูปช่วยให้หาเจอตอนเดินตรวจนับ",
+      "loadFailed": "โหลดรูปไม่ได้",
+      "upload": "อัปโหลดรูป",
+      "takePhoto": "ถ่ายรูป",
+      "open": "เปิดรูป {name} ขนาดเต็ม"
     }
   },
   "company": {

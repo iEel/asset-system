@@ -41,8 +41,9 @@ export function getUploadRoot() {
 }
 
 // A stored path outside this server's upload folder (a row another server wrote, or a Production path in a copy of its
-// database) is refused, as a path traversal is, with an error of its own: a thumbnail answers "not found" for it rather
-// than 500 (the E2E suite's M7). The download route still refuses it through the API's error answer.
+// database) is refused, as a path traversal is, with an error of its own: both file routes, the thumbnail (the E2E
+// suite's M7) and the original (group 1 asset detail task 4), answer "not found" for it rather than 500, through
+// isOutsideUploadRootError and isMissingFileError.
 export class OutsideUploadRootError extends Error {
   constructor() {
     super("Invalid attachment path")
@@ -52,6 +53,10 @@ export class OutsideUploadRootError extends Error {
 
 export function isOutsideUploadRootError(error: unknown): error is OutsideUploadRootError {
   return error instanceof OutsideUploadRootError
+}
+
+export function isMissingFileError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT"
 }
 
 export function assertSafeUploadPath(filePath: string) {
