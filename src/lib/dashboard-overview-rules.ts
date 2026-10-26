@@ -14,9 +14,9 @@ const workActions = ["create", "edit"] as const
 export function getDashboardProfile(user: Pick<SessionUser, "permissions" | "roles">, canAnyApproval: boolean): DashboardProfile {
   if (user.roles.includes("system_admin")) return "work"
   if (canAnyApproval) return "work"
-  for (const module of workModules) {
+  for (const workModule of workModules) {
     for (const action of workActions) {
-      if (user.permissions.includes(`${module}:${action}`)) return "work"
+      if (user.permissions.includes(`${workModule}:${action}`)) return "work"
     }
   }
   return "overview"
