@@ -285,6 +285,12 @@ test("out_of_scope results map to the existing outOfScope label", () => {
   assert.equal(getAuditRoundItemResultLabelKey("mismatch"), "mismatch")
 })
 
+test("the results the scan stores for a mismatch read รายการไม่ตรง, never the code (group 1 look step)", () => {
+  for (const result of ["wrong_location", "wrong_custodian", "wrong_department", "wrong_condition", "need_review"]) {
+    assert.equal(getAuditRoundItemResultLabelKey(result), "mismatch", result)
+  }
+})
+
 const roundPage = () => readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8").replace(/\r\n/g, "\n")
 
 test("the round's item list narrows to the expected company and branch, alone or with a bucket and a search (spec §6.7, R13)", () => {
