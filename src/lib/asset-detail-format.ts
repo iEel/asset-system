@@ -10,15 +10,18 @@ export function getMissingPhotoChecklistLabels(
   attachments: { id: string; originalName: string; fileType: string }[]
 ) {
   const imageAttachments = attachments.filter((attachment) => attachment.fileType.startsWith("image/"))
-  const legacyLabelCounts = photoChecklist.reduce<Record<string, number>>((counts, item) => {
-    const legacyLabel = legacySanitizedPhotoLabel(item)
-    counts[legacyLabel] = (counts[legacyLabel] ?? 0) + 1
-    return counts
-  }, {})
+  const legacyLabelCounts = legacyPhotoLabelCounts(photoChecklist)
 
   return photoChecklist.filter(
     (item) => !imageAttachments.some((attachment) => attachmentMatchesPhotoLabel(attachment, item, legacyLabelCounts))
   )
+}
+
+// The first checklist label a file's name starts with ("<label> - ", the upload route's naming), with the same legacy
+// fallback getMissingPhotoChecklistLabels uses; null when none does.
+export function matchPhotoChecklistLabel(photoChecklist: readonly string[], attachment: { originalName: string }): string | null {
+  const legacyLabelCounts = legacyPhotoLabelCounts(photoChecklist)
+  return photoChecklist.find((label) => attachmentMatchesPhotoLabel(attachment, label, legacyLabelCounts)) ?? null
 }
 
 export function formatMovementType(movementType: string) {
@@ -39,6 +42,15 @@ function attachmentMatchesPhotoLabel(
   return [label, normalizedLabel, legacyLabelIsSafeFallback ? legacyLabel : ""]
     .filter(Boolean)
     .some((candidate) => attachment.originalName.startsWith(`${candidate} - `))
+}
+
+// A legacy label is a safe fallback only when one checklist item gives it.
+function legacyPhotoLabelCounts(photoChecklist: readonly string[]) {
+  return photoChecklist.reduce<Record<string, number>>((counts, item) => {
+    const legacyLabel = legacySanitizedPhotoLabel(item)
+    counts[legacyLabel] = (counts[legacyLabel] ?? 0) + 1
+    return counts
+  }, {})
 }
 
 function normalizePhotoLabel(label: string) {

@@ -133,9 +133,8 @@ test("the edit form holds the purchase anchor the strip and the prompt open (spe
   assert.match(page(), /const purchaseEditHref = `\$\{editHref\}#purchase`/)
 })
 
-test("the files tab keeps today's purchase documents under the anchor ข้อมูลทรัพย์สิน links, until Task 11", () => {
+test("ข้อมูลทรัพย์สิน links the files tab's เอกสารจัดซื้อ (group 1 asset detail task 11)", () => {
   const source = page()
-  assert.match(source, /\{isAssetDetailSectionVisible\(assetDetailView, "purchase-documents"\) \? \(\s*<section id="purchase-documents" className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}>\s*<AssetPurchaseDocuments documents=\{purchaseDocuments\} legacyAttachments=\{legacyPurchaseDocuments\} \/>/)
   assert.match(source, /documentsHref: sectionHref\("purchase-documents"\)/)
 })
 

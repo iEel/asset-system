@@ -33,11 +33,10 @@ test("asset detail page applies the active-view load policy to bounded relations
   assert.match(source, /take: loadPolicy\.assignedLicenseLimit/)
 })
 
-test("the handover evidence keeps its complete checkout index; the drawer's repair, finding and disposal evidence queries are gone (group 1 asset detail task 8)", () => {
-  const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
-
-  assert.match(source, /asset-detail\.evidence-references/)
-  assert.match(source, /prisma\.assetCheckout\.findMany\([\s\S]*?select: \{ id: true, checkins: \{ select: \{ id: true \} \} \}/)
-  assert.match(source, /evidenceCheckoutReferences\.flatMap\(\(checkout\) => checkout\.checkins\.map/)
-  assert.doesNotMatch(source, /evidenceMaintenanceTicketIds|evidenceAuditFindingIds|evidenceDisposalRequestIds|module: "maintenance"|module: "audit_finding"|module: "disposal"/)
+test("the files loader keeps the complete checkout and check-in index; the page reads no evidence references (group 1 asset detail task 11)", () => {
+  const loader = readFileSync("src/lib/asset-files-data.ts", "utf8")
+  const page = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
+  assert.match(loader, /prisma\.assetCheckout\.findMany\(\{\s*where: \{ assetId: asset\.id \},\s*select: \{ id: true, documentNo: true, checkins: \{ select: \{ id: true, documentNo: true \} \} \}/)
+  assert.match(loader, /checkouts\.flatMap\(\(checkout\) => checkout\.checkins\.map/)
+  assert.doesNotMatch(page, /asset-detail\.evidence-references|evidenceCheckoutReferences/)
 })

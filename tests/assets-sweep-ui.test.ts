@@ -23,30 +23,30 @@ test("transaction cancel dialog: a missing state snapshot is null and shows Nil 
   assert.match(source, /<dd className="break-words text-right font-medium text-foreground">\{orNil\(value\)\}<\/dd>/)
 })
 
-test("asset purchase documents: EmptyNote, the number as a tag, Nil for an empty line, no box in a box, and the shared buttons (spec 2D M21, M29, M33)", () => {
+test("asset purchase documents: a ContentPanel, EmptyNote, the number as a tag, Nil for an empty line, the shared buttons, and delete only for an editor (spec 2D M21, M29, M33; group 1 §7.7)", () => {
   const source = read(`${C}assets/asset-purchase-documents.tsx`)
-  assert.match(source, /<h3 className="mb-3 text-sm font-semibold text-foreground">\{t\("purchaseDocuments"\)\}<\/h3>/)
+  assert.match(source, /<ContentPanel title=\{t\("purchaseDocuments"\)\}>/)
   assert.match(source, /<EmptyNote>\{tCommon\("noData"\)\}<\/EmptyNote>/)
   assert.match(source, / · <span className="tag">\{document\.documentNo\}<\/span>/)
   assert.match(source, /\{orNil\(\n\s+\[document\.supplierName,/)
   assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline", size: "sm" \}\), "flex-1"\)\}/)
-  assert.match(source, /<Button\n\s+variant="danger"\n\s+size="icon-sm"\n\s+onClick=\{\(\) => onDelete\(attachment\.id\)\}\n\s+busy=\{deletingId === attachment\.id\}/)
-  assert.doesNotMatch(source, /<button\b|Loader2|disabled:opacity|border-dashed|"-"|text-primary|bg-surface|hover:bg-accent|\bh-8\b/)
+  assert.match(source, /onDelete=\{canEdit \? handleDelete : undefined\}/)
+  assert.match(source, /\{onDelete \? \(\n\s+<Button\n\s+variant="danger"\n\s+size="icon-sm"\n\s+onClick=\{\(\) => onDelete\(attachment\.id\)\}\n\s+busy=\{deletingId === attachment\.id\}/)
+  assert.doesNotMatch(source, /legacyAttachments|<h3\b|<button\b|Loader2|disabled:opacity|border-dashed|"-"|text-primary|bg-surface|hover:bg-accent|\bh-8\b/)
 })
 
-test("asset photos: a ContentPanel with a plain count, StatusBadge states, the shared buttons and EmptyNote, and no box in a box (spec 2D D9, M21, M22, M29)", () => {
+test("asset files: one divided panel, a muted badge on a missing checklist photo, the main photo's Chip, the shared buttons and EmptyNote, no box in a box (spec 2D D9, M21, M22, M29; group 1 §7.7)", () => {
   const source = read(`${C}assets/asset-attachments.tsx`)
-  assert.match(source, /<ContentPanel\n\s+title=\{t\("assetPhotos"\)\}\n\s+description=\{t\("photoGalleryPreviewHelp"\)\}\n\s+actions=\{/)
-  assert.match(source, /<span className="text-meta text-muted-foreground">\{t\("photoFileCount", \{ count: attachments\.length \}\)\}<\/span>/)
-  assert.match(source, /<h3 className="text-sm font-semibold text-foreground">\{t\("photoChecklist"\)\}<\/h3>/)
-  assert.match(source, /<StatusBadge label=\{t\("photoChecklistDone"\)\} tone="success" \/>/)
+  assert.match(source, /<ContentPanel divided title=\{t\("filesTab\.title"\)\}>/)
+  assert.match(source, /<EmptyNote>\{t\("filesTab\.empty"\)\}<\/EmptyNote>/)
+  assert.match(source, /<h3 className="mb-3 text-sm font-semibold text-foreground">\{t\("filesTab\.photos", \{ count: formatCount\(photos\.length\) \}\)\}<\/h3>/)
+  assert.match(source, /<h3 className="mb-3 text-sm font-semibold text-foreground">\{t\("filesTab\.documents", \{ count: formatCount\(documents\.length\) \}\)\}<\/h3>/)
   assert.match(source, /<StatusBadge label=\{t\("photoChecklistPending"\)\} tone="muted" \/>/)
-  assert.equal(source.match(/className=\{cn\(buttonVariants\(\{ variant: "outline", size: "sm" \}\), "flex-1"\)\}/g)?.length, 2)
+  assert.match(source, /<Chip>\{t\("filesTab\.primaryPhoto"\)\}<\/Chip>/)
   assert.match(source, /<Button variant="outline" aria-expanded=\{expanded\} className="mt-3 w-full sm:w-auto" onClick=\{onClick\}>/)
-  assert.match(source, /<EmptyNote>\{tCommon\("noData"\)\}<\/EmptyNote>/)
-  // The three photos that open the preview stay raw buttons: an image is the control (plan 2D-3 R5, for 2D-5's EXEMPT list).
-  assert.equal(source.match(/<button\b/g)?.length, 3)
-  assert.equal(source.match(/focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/g)?.length, 3)
+  // The photo that opens its preview stays a raw button: an image is the control (plan 2D-3 R5, the N3 EXEMPT row).
+  assert.equal(source.match(/<button\b/g)?.length, 1)
+  assert.equal(source.match(/focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/g)?.length, 1)
   assert.doesNotMatch(source, /rounded-full|border-dashed|hover:bg-accent|focus:outline-none|focus:ring|text-primary|text-success|CheckCircle2|\bh-8\b|\bh-9\b|text-xs|rounded-lg|bg-surface/)
 })
 
@@ -54,14 +54,12 @@ const D = "src/app/[locale]/(dashboard)/"
 
 test("asset page: the sections the later tabs replace keep the panel classes; the overview's panels are ContentPanels in the detail parts (spec 2D §3.3; group 1 asset detail task 8)", () => {
   const source = read(`${D}assets/[id]/page.tsx`)
-  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 3, "handover, maintenance and the files tab's purchase documents")
+  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 1, "maintenance")
   assert.doesNotMatch(source, /<ContentPanel\b/)
   assert.match(source, /<Notice tone="warning" className="mb-4">\n\s+\{t\("maintenanceReplacementWarning"\)\}\n\s+<\/Notice>/)
-  assert.match(source, /<Chip>\{t\("latestTransaction"\)\}<\/Chip>/)
   assert.match(source, /<Chip>\{t\("maintenancePmBadge"\)\}<\/Chip>/)
-  assert.equal(source.match(/className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/g)?.length, 4)
+  assert.doesNotMatch(source, /className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/)
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
-  assert.match(source, /return labels\.parentAssets\.get\(checkout\.parentAssetId\) \?\? checkout\.parentAssetId\n\s+return null\n\}/)
   assert.match(source, /if \(!snapshot\) return null\n/)
   assert.doesNotMatch(source, /filterLabel: tCommon\("filter"\)/)
   const banned = /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b|toLocaleString/

@@ -1,133 +1,96 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { Download, Trash2 } from "lucide-react"
+import { Download, FileText, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
+import { AssetPhotoFrame } from "@/components/assets/asset-photo-frame"
 import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
-import { NativeSelect } from "@/components/ui/native-select"
+import { FileQueueList } from "@/components/ui/file-queue-list"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
-import { formatFileSize } from "@/lib/uploads"
-import { cn } from "@/lib/utils"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { useApiError } from "@/components/ui/use-api-error"
+import { isUnauthorizedError } from "@/lib/api-error-catalog"
+import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
+import type { AssetFilePhoto, AssetFileRecord } from "@/lib/asset-files-rules"
+import { formatCount } from "@/lib/display-format"
+import { formatFileSize, MAX_UPLOAD_BYTES } from "@/lib/uploads"
+import { cn, formatDate } from "@/lib/utils"
 
-type Attachment = {
-  id: string
-  originalName: string
-  fileType: string
-  fileSize: number
-  uploadedAt: Date | string
+// One file per request: the route takes one file and, for a checklist photo, its label as the photoLabel field.
+async function postAssetAttachment(assetId: string, file: File, label: string, fallbackError: string): Promise<void> {
+  const formData = new FormData()
+  formData.append("file", file)
+  if (label) formData.append("photoLabel", label)
+
+  const response = await fetch(`/api/assets/${assetId}/attachments`, {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const result = await response.json().catch(() => null)
+    throw new Error(result?.error ?? fallbackError)
+  }
 }
 
-type PhotoPreviewState = {
-  title: string
-  attachment: Attachment
-}
-
+// The files tab's "รูปและไฟล์แนบ" (group 1 spec §7.7): the asset's photos as card-size tiles, its other files as rows,
+// and for an editor the uploads, the missing checklist photos and the deletes.
 export function AssetAttachments({
   assetId,
-  attachments,
-  modelPhotos = [],
-  photoChecklist = [],
+  photos,
+  documents,
+  missingChecklistLabels,
+  canEdit,
 }: {
   assetId: string
-  attachments: Attachment[]
-  modelPhotos?: Attachment[]
-  photoChecklist?: string[]
+  photos: readonly AssetFilePhoto[]
+  documents: readonly AssetFileRecord[]
+  missingChecklistLabels: readonly string[]
+  canEdit: boolean
 }) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const confirm = useConfirm()
-  const [uploading, setUploading] = useState(false)
-  const [uploadingPhotoLabel, setUploadingPhotoLabel] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [photoLabel, setPhotoLabel] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewPhoto, setPreviewPhoto] = useState<PhotoPreviewState | null>(null)
-  const [showAllChecklistPhotos, setShowAllChecklistPhotos] = useState(false)
-  const [showAllOtherAttachments, setShowAllOtherAttachments] = useState(false)
-  const imageAttachments = attachments.filter(isImage)
-  const primaryModelPhoto = modelPhotos.find(isImage)
-  const legacyLabelCounts = photoChecklist.reduce<Record<string, number>>((counts, item) => {
-    const legacyLabel = legacySanitizedLabel(item)
-    counts[legacyLabel] = (counts[legacyLabel] ?? 0) + 1
-    return counts
-  }, {})
-  const checklistItems = photoChecklist.map((item) => ({
-    label: item,
-    attachment: imageAttachments.find((attachment) => attachmentMatchesPhotoLabel(attachment, item, legacyLabelCounts)) ?? null,
-  }))
-  const checklistAttachmentIds = new Set(checklistItems.map((item) => item.attachment?.id).filter(Boolean))
-  const otherAttachments = attachments.filter((attachment) => !checklistAttachmentIds.has(attachment.id))
-  const checklistGallery = getAssetPhotoGalleryState(checklistItems, showAllChecklistPhotos)
-  const otherAttachmentGallery = getAssetPhotoGalleryState(otherAttachments, showAllOtherAttachments)
-
-  async function handleAutoUpload(file: File | null, label: string) {
-    if (!file) return
-    setSelectedFile(file)
-    setUploading(true)
-    try {
-      await uploadAttachment(file, label)
-      setSelectedFile(null)
-      if (label === photoLabel) setPhotoLabel("")
-      toast.success(t("uploadSuccess"))
-      router.refresh()
-    } catch (error) {
-      setSelectedFile(null)
-      apiError.toast(error)
-    } finally {
-      setUploading(false)
-    }
-  }
+  const [preview, setPreview] = useState<AssetFilePhoto | null>(null)
+  const [showAllPhotos, setShowAllPhotos] = useState(false)
+  const [uploadingLabel, setUploadingLabel] = useState<string | null>(null)
+  const gallery = getAssetPhotoGalleryState(photos, showAllPhotos)
+  const showPhotos = photos.length > 0 || (canEdit && missingChecklistLabels.length > 0)
+  const showDocuments = documents.length > 0
+  const split = showPhotos && showDocuments
 
   async function handleChecklistUpload(label: string, file: File | null) {
     if (!file) return
-    setUploadingPhotoLabel(label)
+    setUploadingLabel(label)
     try {
-      await uploadAttachment(file, label)
+      await postAssetAttachment(assetId, file, label, tCommon("error"))
       toast.success(t("uploadSuccess"))
       router.refresh()
     } catch (error) {
       apiError.toast(error)
     } finally {
-      setUploadingPhotoLabel(null)
+      setUploadingLabel(null)
     }
   }
 
-  async function uploadAttachment(file: File, label: string) {
-    const formData = new FormData()
-    formData.append("file", file)
-    if (label) formData.append("photoLabel", label)
-
-    const response = await fetch(`/api/assets/${assetId}/attachments`, {
-      method: "POST",
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const result = await response.json().catch(() => null)
-      throw new Error(result?.error ?? tCommon("error"))
-    }
-  }
-
-  async function handleDelete(id: string) {
-    if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
-    setDeletingId(id)
+  async function handleDelete(file: { id: string; originalName: string }) {
+    if (!(await confirm({ title: tCommon("deleteConfirm"), description: file.originalName, confirmLabel: tCommon("delete"), tone: "destructive" }))) return
+    setDeletingId(file.id)
 
     try {
-      const response = await fetch(`/api/attachments/${id}`, {
+      const response = await fetch(`/api/attachments/${file.id}`, {
         method: "DELETE",
       })
 
@@ -146,265 +109,297 @@ export function AssetAttachments({
   }
 
   return (
-    // The page wraps this panel in <div id="photos">, so it can be a ContentPanel (spec 2D D9). A count is plain text.
-    <ContentPanel
-      title={t("assetPhotos")}
-      description={t("photoGalleryPreviewHelp")}
-      actions={
-        attachments.length > 0 ? (
-          <span className="text-meta text-muted-foreground">{t("photoFileCount", { count: attachments.length })}</span>
-        ) : undefined
-      }
-    >
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {primaryModelPhoto && (
-          <PhotoPreview title={t("modelPhoto")} attachment={primaryModelPhoto} onPreview={setPreviewPhoto} />
-        )}
-      </div>
+    // The tab wraps this panel in <div id="photos">, so it can be a ContentPanel (spec 2D D9).
+    <ContentPanel divided title={t("filesTab.title")}>
+      <div className="space-y-6">
+        {canEdit ? <AssetFileUpload assetId={assetId} /> : null}
 
-      {/* The checklist is a block of the panel, not a box: its cards are the quiet groupings (no box in a box). */}
-      {photoChecklist.length > 0 && (
-        <div className="mb-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-foreground">{t("photoChecklist")}</h3>
-            <span className="text-meta num text-muted-foreground">
-              {checklistItems.filter((item) => item.attachment).length}/{checklistItems.length}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {checklistGallery.visibleItems.map((item) => {
-              const attachment = item.attachment
+        {photos.length === 0 && documents.length === 0 ? <EmptyNote>{t("filesTab.empty")}</EmptyNote> : null}
 
-              return (
-              <div key={item.label} className="overflow-hidden rounded-md border border-border bg-background">
-                {attachment ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewPhoto({ title: item.label, attachment })}
-                      className="relative block aspect-video w-full bg-background text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <Image
-                        src={`/api/attachments/${attachment.id}?inline=1`}
-                        alt={attachment.originalName}
-                        fill
-                        unoptimized
-                        className="object-contain p-2 bg-image-stage"
-                      />
-                    </button>
-                    <div className="p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-foreground">{item.label}</div>
-                          <div className="mt-1 truncate text-meta text-muted-foreground">{attachment.originalName}</div>
-                        </div>
-                        <StatusBadge label={t("photoChecklistDone")} tone="success" />
+        {showPhotos || showDocuments ? (
+          <div className={cn("grid gap-6", split && "lg:grid-cols-12")}>
+            {showPhotos ? (
+              <div className={cn("min-w-0", split && "lg:col-span-7")}>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">{t("filesTab.photos", { count: formatCount(photos.length) })}</h3>
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {gallery.visibleItems.map((photo) => (
+                    <PhotoTile
+                      key={photo.id}
+                      photo={photo}
+                      onOpen={() => setPreview(photo)}
+                      onDelete={canEdit ? () => handleDelete(photo) : undefined}
+                      deleting={deletingId === photo.id}
+                    />
+                  ))}
+                  {canEdit ? missingChecklistLabels.map((label) => (
+                    <li key={`missing:${label}`} className="col-span-2 min-w-0 sm:col-span-1">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="min-w-0 truncate text-sm font-medium text-foreground">{label}</span>
+                        <StatusBadge label={t("photoChecklistPending")} tone="muted" />
                       </div>
-                      <div className="mt-3 flex gap-2">
-                        <a href={`/api/attachments/${attachment.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
-                          <Download aria-hidden="true" />
-                          {t("download")}
-                        </a>
-                        <Button
-                          variant="danger"
-                          size="icon-sm"
-                          onClick={() => handleDelete(attachment.id)}
-                          busy={deletingId === attachment.id}
-                          aria-label={tCommon("delete")}
-                          title={tCommon("delete")}
-                        >
-                          <Trash2 aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="p-3">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <div className="text-sm font-medium text-foreground">{item.label}</div>
-                      <StatusBadge label={t("photoChecklistPending")} tone="muted" />
-                    </div>
-                    <Field label={item.label} hideLabel>
-                      <FileDropzone
-                        file={null}
-                        onFileChange={(file) => handleChecklistUpload(item.label, file)}
-                        disabled={uploadingPhotoLabel === item.label}
-                        accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
-                        capture="environment"
-                        title={t("dropAssetPhotoTitle")}
-                        description={uploadingPhotoLabel === item.label ? t("uploading") : t("checklistPhotoDescription")}
-                        browseLabel={t("dropAssetPhotoHint")}
-                      />
-                    </Field>
-                  </div>
-                )}
+                      <Field label={label} hideLabel>
+                        <FileDropzone
+                          file={null}
+                          onFileChange={(file) => handleChecklistUpload(label, file)}
+                          disabled={uploadingLabel === label}
+                          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
+                          capture="environment"
+                          title={t("dropAssetPhotoTitle")}
+                          description={uploadingLabel === label ? t("uploading") : t("checklistPhotoDescription")}
+                          browseLabel={t("dropAssetPhotoHint")}
+                        />
+                      </Field>
+                    </li>
+                  )) : null}
+                </ul>
+                {gallery.hasOverflow ? (
+                  <GalleryToggle
+                    expanded={showAllPhotos}
+                    hiddenCount={gallery.hiddenCount}
+                    showMoreLabel={(count) => t("showMorePhotos", { count })}
+                    hideLabel={t("hideExtraPhotos")}
+                    onClick={() => setShowAllPhotos((current) => !current)}
+                  />
+                ) : null}
               </div>
-              )
-            })}
-          </div>
-          {checklistGallery.hasOverflow ? (
-            <GalleryToggle
-              expanded={showAllChecklistPhotos}
-              hiddenCount={checklistGallery.hiddenCount}
-              showMoreLabel={(count) => t("showMorePhotos", { count })}
-              hideLabel={t("hideExtraPhotos")}
-              onClick={() => setShowAllChecklistPhotos((current) => !current)}
-            />
-          ) : null}
-        </div>
-      )}
+            ) : null}
 
-      {/* The drop zone draws its own dashed frame, so no box goes around it. */}
-      <div className="mb-4">
-        {photoChecklist.length > 0 && (
-          <Field label={t("photoType")} className="mb-3">
-            <NativeSelect value={photoLabel} onChange={(event) => setPhotoLabel(event.target.value)}>
-              <option value="">{t("selectPhotoType")}</option>
-              {photoChecklist.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </NativeSelect>
-          </Field>
-        )}
-        <FileDropzone
-          file={selectedFile}
-          onFileChange={(file) => handleAutoUpload(file, photoLabel)}
-          disabled={uploading}
-          title={t("dropFileTitle")}
-          hint={uploading ? t("uploading") : t("dropFileSelected")}
-          browseLabel={t("dropFileHint")}
-        />
+            {showDocuments ? (
+              <div className={cn("min-w-0", split && "lg:col-span-5")}>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">{t("filesTab.documents", { count: formatCount(documents.length) })}</h3>
+                <ul className="divide-y divide-border-soft">
+                  {documents.map((document) => (
+                    <DocumentRow
+                      key={document.id}
+                      document={document}
+                      onDelete={canEdit ? () => handleDelete(document) : undefined}
+                      deleting={deletingId === document.id}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{t("otherAttachments")}</h3>
-
-      {otherAttachments.length === 0 ? (
-        <EmptyNote>{tCommon("noData")}</EmptyNote>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {otherAttachmentGallery.visibleItems.map((attachment) => (
-              <AttachmentCard
-                key={attachment.id}
-                attachment={attachment}
-                downloadLabel={t("download")}
-                deleteLabel={tCommon("delete")}
-                deleting={deletingId === attachment.id}
-                onDelete={() => handleDelete(attachment.id)}
-                onPreview={isImage(attachment) ? () => setPreviewPhoto({ title: attachment.originalName, attachment }) : undefined}
-              />
-            ))}
-          </div>
-          {otherAttachmentGallery.hasOverflow ? (
-            <GalleryToggle
-              expanded={showAllOtherAttachments}
-              hiddenCount={otherAttachmentGallery.hiddenCount}
-              showMoreLabel={(count) => t("showMorePhotos", { count })}
-              hideLabel={t("hideExtraPhotos")}
-              onClick={() => setShowAllOtherAttachments((current) => !current)}
-            />
-          ) : null}
-        </>
-      )}
-
+      {/* The original, only when a person opens it. */}
       <AttachmentPreviewDialog
-        open={previewPhoto !== null}
+        open={preview !== null}
         onOpenChange={(open) => {
-          if (!open) setPreviewPhoto(null)
+          if (!open) setPreview(null)
         }}
-        title={previewPhoto?.title ?? ""}
-        subtitle={previewPhoto?.attachment.originalName}
+        title={preview?.label ?? preview?.originalName ?? ""}
+        subtitle={preview?.originalName}
         kind="image"
-        src={previewPhoto ? `/api/attachments/${previewPhoto.attachment.id}?inline=1` : ""}
-        alt={previewPhoto?.attachment.originalName}
-        downloadHref={previewPhoto ? `/api/attachments/${previewPhoto.attachment.id}` : undefined}
+        src={preview ? `/api/attachments/${preview.id}?inline=1` : ""}
+        alt={preview?.originalName}
+        downloadHref={preview ? `/api/attachments/${preview.id}` : undefined}
         downloadLabel={t("download")}
       />
     </ContentPanel>
   )
 }
 
-function PhotoPreview({
-  title,
-  attachment,
-  onPreview,
+function PhotoTile({
+  photo,
+  onOpen,
+  onDelete,
+  deleting,
 }: {
-  title: string
-  attachment: Attachment
-  onPreview: (preview: PhotoPreviewState) => void
+  photo: AssetFilePhoto
+  onOpen: () => void
+  onDelete?: () => void
+  deleting: boolean
 }) {
+  const t = useTranslations("asset")
+  const name = photo.label ?? photo.originalName
+
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-background">
+    <li className="min-w-0">
+      {/* The photo is the control that opens the original (plan 2D-3 R5, the N3 EXEMPT row). */}
       <button
         type="button"
-        onClick={() => onPreview({ title, attachment })}
-        className="relative block h-32 w-full bg-background text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onOpen}
+        aria-label={t("filesTab.openPhoto", { name })}
+        className="relative block aspect-[4/3] w-full overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Image
-          src={`/api/attachments/${attachment.id}?inline=1`}
-          alt={attachment.originalName}
-          fill
-          unoptimized
-          className="object-contain p-2 bg-image-stage"
-        />
+        <AssetPhotoFrame attachmentId={photo.id} alt={photo.originalName} canUpload={false} previewable={false} />
       </button>
-      <div className="p-3">
-        <div className="text-sm font-medium text-foreground">{title}</div>
-        <div className="mt-1 text-meta text-muted-foreground">{attachment.originalName}</div>
+      <div className="mt-2 flex min-w-0 items-center gap-2">
+        {photo.primary ? <Chip>{t("filesTab.primaryPhoto")}</Chip> : null}
+        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{name}</span>
+        {onDelete ? (
+          <Button
+            variant="danger"
+            size="icon-sm"
+            onClick={onDelete}
+            busy={deleting}
+            aria-label={t("filesTab.deleteNamed", { name })}
+            title={t("filesTab.deleteNamed", { name })}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
+        ) : null}
       </div>
-    </div>
+    </li>
   )
 }
 
-function AttachmentCard({
-  attachment,
-  downloadLabel,
-  deleteLabel,
-  deleting,
+function DocumentRow({
+  document,
   onDelete,
-  onPreview,
+  deleting,
 }: {
-  attachment: Attachment
-  downloadLabel: string
-  deleteLabel: string
+  document: AssetFileRecord
+  onDelete?: () => void
   deleting: boolean
-  onDelete: () => void
-  onPreview?: () => void
 }) {
+  const t = useTranslations("asset")
+  const name = document.originalName
+
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-background">
-      {onPreview ? (
-        <button
-          type="button"
-          onClick={onPreview}
-          className="relative block h-28 w-full bg-background text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Image
-            src={`/api/attachments/${attachment.id}?inline=1`}
-            alt={attachment.originalName}
-            fill
-            unoptimized
-            className="object-contain p-2 bg-image-stage"
-          />
-        </button>
-      ) : (
-        <div className="flex h-28 items-center justify-center bg-background p-3 text-center text-meta font-medium text-muted-foreground">
-          {attachment.fileType}
-        </div>
-      )}
-      <div className="p-3">
-        <div className="truncate text-sm font-medium text-foreground">{attachment.originalName}</div>
-        <div className="mt-1 text-meta text-muted-foreground">{formatFileSize(attachment.fileSize)}</div>
-        <div className="mt-3 flex gap-2">
-          <a href={`/api/attachments/${attachment.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
-            <Download aria-hidden="true" />
-            {downloadLabel}
-          </a>
-          <Button variant="danger" size="icon-sm" onClick={onDelete} busy={deleting} aria-label={deleteLabel} title={deleteLabel}>
-            <Trash2 aria-hidden="true" />
-          </Button>
+    <li className="flex min-h-11 items-center gap-3 py-2">
+      <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm text-foreground">{document.originalName}</div>
+        <div className="text-meta text-muted-foreground">
+          {formatFileSize(document.fileSize)} · {formatDate(document.uploadedAt)}
         </div>
       </div>
+      <a
+        href={`/api/attachments/${document.id}`}
+        aria-label={t("filesTab.downloadNamed", { name: document.originalName })}
+        title={t("filesTab.downloadNamed", { name: document.originalName })}
+        className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+      >
+        <Download aria-hidden="true" />
+      </a>
+      {onDelete ? (
+        <Button
+          variant="danger"
+          size="icon-sm"
+          onClick={onDelete}
+          busy={deleting}
+          aria-label={t("filesTab.deleteNamed", { name })}
+          title={t("filesTab.deleteNamed", { name })}
+        >
+          <Trash2 aria-hidden="true" />
+        </Button>
+      ) : null}
+    </li>
+  )
+}
+
+type QueuedFile = { key: string; file: File; error: string | null }
+
+// An editor's uploads: the phone's camera, and a free zone that queues several files for one button.
+function AssetFileUpload({ assetId }: { assetId: string }) {
+  const router = useRouter()
+  const apiError = useApiError()
+  const t = useTranslations("asset")
+  const tCommon = useTranslations("common")
+  const [queue, setQueue] = useState<QueuedFile[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const nextKey = useRef(0)
+
+  function addFiles(next: File[]) {
+    if (next.length === 0) return
+    setQueue((current) => [
+      ...current,
+      ...next.map((file) => {
+        nextKey.current += 1
+        return { key: `file-${nextKey.current}`, file, error: null }
+      }),
+    ])
+  }
+
+  function removeQueued(key: string) {
+    setQueue((current) => current.filter((item) => item.key !== key))
+  }
+
+  async function uploadQueued() {
+    const items = queue
+    if (items.length === 0) return
+    setUploading(true)
+    setProgress({ done: 0, total: items.length })
+    let uploaded = 0
+    try {
+      for (const [index, item] of items.entries()) {
+        try {
+          await postAssetAttachment(assetId, item.file, "", tCommon("error"))
+          uploaded += 1
+          setQueue((current) => current.filter((entry) => entry.key !== item.key))
+        } catch (error) {
+          // A lapsed session goes to the login (useApiError), and the rest wait in the queue.
+          if (isUnauthorizedError(error)) {
+            apiError.toast(error)
+            break
+          }
+          const message = apiError.describe(error).message
+          setQueue((current) => current.map((entry) => (entry.key === item.key ? { ...entry, error: message } : entry)))
+        }
+        setProgress({ done: index + 1, total: items.length })
+      }
+    } finally {
+      setUploading(false)
+      setProgress(null)
+    }
+    const remaining = items.length - uploaded
+    if (uploaded > 0) {
+      toast.success(t("filesTab.uploadDone", { count: formatCount(uploaded) }))
+      router.refresh()
+    }
+    if (remaining > 0) toast.error(t("filesTab.uploadFailed", { count: formatCount(remaining) }))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="md:hidden">
+        <FileDropzone
+          file={null}
+          onFileChange={(file) => {
+            if (file) addFiles([file])
+          }}
+          disabled={uploading}
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          capture="environment"
+          title={t("photoFrame.takePhoto")}
+          browseLabel={t("filesTab.takePhotoHint")}
+        />
+      </div>
+      {/* No accept list: the server's list decides, as before. */}
+      <FileDropzone
+        file={null}
+        onFileChange={(file) => {
+          if (file) addFiles([file])
+        }}
+        onFilesChange={addFiles}
+        disabled={uploading}
+        multiple
+        title={t("dropFileTitle")}
+        description={t("filesTab.dropDescription", { size: formatCount(MAX_UPLOAD_BYTES / (1024 * 1024)) })}
+        browseLabel={t("dropFileHint")}
+      />
+      <FileQueueList
+        items={queue.map((item) => ({ id: item.key, name: item.file.name, detail: item.error ?? formatFileSize(item.file.size) }))}
+        disabled={uploading}
+        onRemove={removeQueued}
+      />
+      {queue.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {progress ? (
+            <span role="status" className="text-meta text-muted-foreground">
+              {t("filesTab.uploadProgress", { done: formatCount(progress.done), total: formatCount(progress.total) })}
+            </span>
+          ) : null}
+          <Button busy={uploading} onClick={uploadQueued}>
+            <Upload aria-hidden="true" />
+            {t("filesTab.upload", { count: formatCount(queue.length) })}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -427,27 +422,4 @@ function GalleryToggle({
       {expanded ? hideLabel : showMoreLabel(hiddenCount)}
     </Button>
   )
-}
-
-function isImage(attachment: Attachment) {
-  return attachment.fileType.startsWith("image/")
-}
-
-function attachmentMatchesPhotoLabel(attachment: Attachment, label: string, legacyLabelCounts: Record<string, number>) {
-  const normalizedLabel = normalizeAttachmentLabel(label)
-  const legacyLabel = legacySanitizedLabel(label)
-  const legacyLabelIsSafeFallback = Boolean(legacyLabel) && legacyLabelCounts[legacyLabel] === 1
-
-  return [label, normalizedLabel, legacyLabelIsSafeFallback ? legacyLabel : ""]
-    .filter(Boolean)
-    .some((candidate) => attachment.originalName.startsWith(`${candidate} - `))
-}
-
-function normalizeAttachmentLabel(label: string) {
-  return label.replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim()
-}
-
-function legacySanitizedLabel(label: string) {
-  const normalized = label.normalize("NFKD")
-  return normalized.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, " ").trim()
 }

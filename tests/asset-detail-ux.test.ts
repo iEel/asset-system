@@ -80,7 +80,7 @@ test("asset detail header is PageHeader with the trail, the name, the back link 
   assert.equal(source.match(/<DataTable framed=\{false\} caption=/g)?.length, 1, "the repair table, until Task 12")
   assert.match(source, /tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\}/)
   assert.equal(source.match(/<StatStrip\b/g)?.length, 1, "the repair strip, until Task 12")
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the two handover cards, until Task 11")
+  assert.doesNotMatch(source, /<KeyValueList\b/)
 })
 
 test("asset detail localizes audit activity and avoids duplicated activity titles", () => {

@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { orNil } from "@/components/ui/nil"
 import { formatFileSize } from "@/lib/uploads"
@@ -36,10 +37,10 @@ type PurchaseDocumentAttachment = {
 
 export function AssetPurchaseDocuments({
   documents,
-  legacyAttachments = [],
+  canEdit,
 }: {
   documents: PurchaseDocument[]
-  legacyAttachments?: PurchaseDocumentAttachment[]
+  canEdit: boolean
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -47,7 +48,7 @@ export function AssetPurchaseDocuments({
   const tCommon = useTranslations("common")
   const confirm = useConfirm()
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const hasDocuments = documents.length > 0 || legacyAttachments.length > 0
+  const hasDocuments = documents.length > 0
 
   async function handleDelete(id: string) {
     if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
@@ -70,8 +71,7 @@ export function AssetPurchaseDocuments({
   }
 
   return (
-    <div className="mt-5 border-t border-border pt-5">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{t("purchaseDocuments")}</h3>
+    <ContentPanel title={t("purchaseDocuments")}>
       {!hasDocuments ? (
         <EmptyNote>{tCommon("noData")}</EmptyNote>
       ) : (
@@ -91,21 +91,15 @@ export function AssetPurchaseDocuments({
               {(document.attachments ?? []).length > 0 && (
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                   {(document.attachments ?? []).map((attachment) => (
-                    <AttachmentCard key={attachment.id} attachment={attachment} deletingId={deletingId} onDelete={handleDelete} />
+                    <AttachmentCard key={attachment.id} attachment={attachment} deletingId={deletingId} onDelete={canEdit ? handleDelete : undefined} />
                   ))}
                 </div>
               )}
             </div>
           ))}
-          {/* A file without a document gets the document card's quiet grouping; inside a card a file has no box of its own. */}
-          {legacyAttachments.map((attachment) => (
-            <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
-              <AttachmentCard attachment={attachment} deletingId={deletingId} onDelete={handleDelete} />
-            </div>
-          ))}
         </div>
       )}
-    </div>
+    </ContentPanel>
   )
 }
 
@@ -116,7 +110,7 @@ function AttachmentCard({
 }: {
   attachment: PurchaseDocumentAttachment
   deletingId: string | null
-  onDelete: (id: string) => void
+  onDelete?: (id: string) => void
 }) {
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
@@ -127,22 +121,24 @@ function AttachmentCard({
       <div className="mt-1 text-meta text-muted-foreground">
         {attachment.fileType} · {formatFileSize(attachment.fileSize)}
       </div>
-      {/* The same pair as the asset photos (asset-attachments.tsx): an outline sm download link and a danger icon-sm delete. */}
+      {/* An outline sm download link and, for an editor, a danger icon-sm delete. */}
       <div className="mt-3 flex gap-2">
         <a href={`/api/attachments/${attachment.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
           <Download aria-hidden="true" />
           {t("download")}
         </a>
-        <Button
-          variant="danger"
-          size="icon-sm"
-          onClick={() => onDelete(attachment.id)}
-          busy={deletingId === attachment.id}
-          aria-label={tCommon("delete")}
-          title={tCommon("delete")}
-        >
-          <Trash2 aria-hidden="true" />
-        </Button>
+        {onDelete ? (
+          <Button
+            variant="danger"
+            size="icon-sm"
+            onClick={() => onDelete(attachment.id)}
+            busy={deletingId === attachment.id}
+            aria-label={tCommon("delete")}
+            title={tCommon("delete")}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
+        ) : null}
       </div>
     </div>
   )

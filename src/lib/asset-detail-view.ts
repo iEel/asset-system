@@ -10,16 +10,15 @@ export type AssetDetailSectionId =
   | "photos"
   | "purchase-documents"
   | "components"
-  | "handover"
   | "maintenance"
 
-// Group 1 asset detail task 8 (R23): "ข้อมูลทรัพย์สิน" holds the overview and purchase anchors; the files tab holds the
-// interim purchase documents. The history tab (Task 9) has no section: a tab link carries no anchor (R22). The other
-// tabs keep today's sections until Tasks 10-12 replace them.
+// Group 1 asset detail task 8 (R23): "ข้อมูลทรัพย์สิน" holds the overview and purchase anchors; the files tab (Task 11)
+// holds the photos and its เอกสารจัดซื้อ. The history tab (Task 9) has no section: a tab link carries no anchor (R22).
+// The maintenance tab keeps today's section until Task 12 replaces it.
 const sectionIdsByAssetDetailView: Record<AssetDetailView, AssetDetailSectionId[]> = {
   overview: ["overview", "purchase"],
   history: [],
-  components: ["components", "handover"],
+  components: ["components"],
   files: ["photos", "purchase-documents"],
   maintenance: ["maintenance"],
 }

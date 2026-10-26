@@ -126,17 +126,16 @@ test("component removal dialog uses the shared parts, a code tag in its descript
   assert.doesNotMatch(manager, /closeLabel=/)
 })
 
-test("asset photos: the photo-type select has a visible label and the delete icons are busy buttons (K20)", () => {
+test("asset files: the delete icons are busy danger buttons, and only an editor gets them (K20, group 1 asset detail task 11)", () => {
   const source = read("src/components/assets/asset-attachments.tsx")
-  assert.match(source, /<Field label=\{t\("photoType"\)\} className="mb-3">\n\s*<NativeSelect value=\{photoLabel\}/)
   assert.equal(source.match(/variant="danger"\s+size="icon-sm"/g)?.length, 2)
-  assert.match(source, /busy=\{deletingId === attachment\.id\}/)
-  assert.match(source, /busy=\{deleting\}/)
-  assert.doesNotMatch(source, /Loader2|<select\b/)
+  assert.equal(source.match(/busy=\{deleting\}/g)?.length, 2)
+  assert.match(source, /deleting=\{deletingId === photo\.id\}/)
+  assert.match(source, /deleting=\{deletingId === document\.id\}/)
+  // The photo-type select and its state go; the checklist label still reaches the route as the photoLabel field.
+  assert.doesNotMatch(source, /Loader2|<select\b|<NativeSelect\b|\bsetPhotoLabel\b|value=\{photoLabel\}/)
+  assert.match(source, /formData\.append\("photoLabel", label\)/)
   assert.doesNotMatch(source, /closeLabel=/, "the preview dialog's X already reads ปิด by default")
-
-  assert.equal(assetMessages("th").photoType, "ประเภทรูป")
-  assert.equal(assetMessages("en").photoType, "Photo type")
 })
 
 test("asset form: the location section is named for what it holds, and the photo section speaks to edit mode (critique 2026-10-20 B3)", () => {

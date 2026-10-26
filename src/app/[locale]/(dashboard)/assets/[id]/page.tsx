@@ -1,30 +1,27 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ChevronDown, Wrench } from "lucide-react"
+import { Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { getTransactionOperatorLabel } from "@/lib/transaction-operator-label"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
-import { cn, formatDate, formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
-import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
-import { EmptyNote } from "@/components/ui/empty-note"
-import { KeyValueList } from "@/components/ui/key-value-list"
 import { Notice } from "@/components/ui/notice"
 import { StatStrip } from "@/components/ui/stat-strip"
-import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getPanelClasses } from "@/lib/design-system"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
-import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
 import { AssetComponentsTab } from "@/components/assets/detail/asset-components-tab"
 import { AssetDetailActions } from "@/components/assets/detail/asset-detail-actions"
 import { AssetDetailFactStrip } from "@/components/assets/detail/asset-detail-fact-strip"
 import { AssetDetailHeader } from "@/components/assets/detail/asset-detail-header"
+import { AssetFilesTab } from "@/components/assets/detail/asset-files-tab"
 import { AssetHistoryTab } from "@/components/assets/detail/asset-history-tab"
 import { AssetOverview } from "@/components/assets/detail/asset-overview"
 import { parseModelSpecs } from "@/lib/model-specs"
@@ -43,6 +40,7 @@ import {
 } from "@/lib/asset-detail-frame-rules"
 import { getAssetDetailFrame } from "@/lib/asset-detail-frame"
 import { getAssetComponentHistory } from "@/lib/asset-component-history"
+import { getAssetFilesTabData } from "@/lib/asset-files-data"
 import { getAssetHistory, getLatestAssetHistory } from "@/lib/asset-history"
 import { assetDocumentAccess, parseAssetHistoryType } from "@/lib/asset-history-view"
 import { getAssetNeighbours } from "@/lib/asset-neighbours"
@@ -228,6 +226,22 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const componentHistory = assetDetailView === "components"
     ? await withPerformanceTiming("asset-detail.components-tab", () => getAssetComponentHistory(asset.id), { route: "/assets/[id]", locale })
     : null
+  // The files tab's own loader (R24): the asset's files, its purchase documents and the evidence, only on its tab.
+  const filesData = assetDetailView === "files"
+    ? await withPerformanceTiming(
+        "asset-detail.files-tab",
+        () =>
+          getAssetFilesTabData(
+            { id: asset.id, categoryId: asset.categoryId },
+            {
+              locale,
+              componentsHref: buildAssetDetailViewHref(locale, asset.id, "components", returnToHref),
+              can: { maintenanceView: canViewMaintenance, auditView: canViewAudit, disposalView: canViewDisposal },
+            },
+          ),
+        { route: "/assets/[id]", locale },
+      )
+    : null
 
   const latestTransactionSelect = {
     id: true,
@@ -279,17 +293,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     cancellationAfterSnapshot?.currentLocationId,
   ])
 
-  const evidenceCheckoutReferences = await withPerformanceTiming(
-    "asset-detail.evidence-references",
-    () => prisma.assetCheckout.findMany({
-      where: { assetId: asset.id },
-      select: { id: true, checkins: { select: { id: true } } },
-    }),
-    { route: "/assets/[id]", locale },
-  )
-  const evidenceCheckoutIds = evidenceCheckoutReferences.map((checkout) => checkout.id)
-  const evidenceCheckinIds = evidenceCheckoutReferences.flatMap((checkout) => checkout.checkins.map((checkin) => checkin.id))
-
   const currentAssetDetailHref = buildAssetDetailViewHref(locale, asset.id, assetDetailView, returnToHref)
 
   const assetStatusHelp = {
@@ -315,8 +318,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ],
   }
 
+  // R59: the checklist only for the overview's ข้อมูลยังไม่ครบ line; the files tab reads its own through its loader.
   const [photoChecklist, modelPhotos, licenseAssignedAsset] = await Promise.all([
-    getCategoryPhotoChecklist(asset.categoryId),
+    canEditAsset && assetDetailView === "overview" ? getCategoryPhotoChecklist(asset.categoryId) : Promise.resolve([]),
     asset.model?.id
       ? prisma.attachment.findMany({
           where: { module: "asset_model", referenceId: asset.model.id, isActive: true },
@@ -331,120 +335,18 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       : null,
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
-  const componentLinks = [...asset.parentComponents, ...asset.installedInLinks]
-  const componentLinkIds = componentLinks.map((component) => component.id)
-  const purchaseDocumentIds = asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)
-  const [purchaseDocumentAttachments, componentAttachments] = await withPerformanceTiming(
-    "asset-detail.evidence-data",
-    () => Promise.all([
-      purchaseDocumentIds.length > 0
-        ? prisma.attachment.findMany({
-            where: { module: "purchase_document", referenceId: { in: purchaseDocumentIds }, isActive: true },
-            orderBy: { uploadedAt: "desc" },
-          })
-        : [],
-      componentLinkIds.length > 0
-        ? prisma.attachment.findMany({
-            where: { module: { in: ["asset_component_install", "asset_component_remove"] }, referenceId: { in: componentLinkIds }, isActive: true },
-            orderBy: { uploadedAt: "asc" },
-          })
-        : [],
-    ]),
-    {
-      route: "/assets/[id]",
-      locale,
-      purchaseDocuments: purchaseDocumentIds.length,
-      components: componentLinkIds.length,
-    }
-  )
-  const componentAttachmentsByReference = new Map<string, typeof componentAttachments>()
-  for (const attachment of componentAttachments) {
-    componentAttachmentsByReference.set(attachment.referenceId, [
-      ...(componentAttachmentsByReference.get(attachment.referenceId) ?? []),
-      attachment,
-    ])
-  }
-  const currentComponentsForPanel = currentComponents.map((component) => ({
-    ...component,
-    attachments: componentAttachmentsByReference.get(component.id) ?? [],
-  }))
+  const currentComponentsForPanel = currentComponents
   const installedInLinksForPanel = asset.installedInLinks.map((component) => ({
     ...component,
     parentHref: appendReturnTo(`/${locale}/assets/${component.parentAsset.id}`, currentAssetDetailHref),
-    attachments: componentAttachmentsByReference.get(component.id) ?? [],
   }))
   const componentMissingSerialCount = currentComponentsForPanel.filter((component) => !component.componentAsset.serialNumber).length
-  const purchaseDocumentAttachmentsByReferenceId = new Map<string, typeof purchaseDocumentAttachments>()
-  for (const attachment of purchaseDocumentAttachments) {
-    purchaseDocumentAttachmentsByReferenceId.set(attachment.referenceId, [
-      ...(purchaseDocumentAttachmentsByReferenceId.get(attachment.referenceId) ?? []),
-      attachment,
-    ])
-  }
-  const purchaseDocuments = asset.purchaseDocumentLinks.map((link) => ({
-    id: link.purchaseDocument.id,
-    documentType: link.purchaseDocument.documentType,
-    documentNo: link.purchaseDocument.documentNo,
-    poNumber: link.purchaseDocument.poNumber,
-    invoiceNumber: link.purchaseDocument.invoiceNumber,
-    documentDate: link.purchaseDocument.documentDate,
-    linkedAt: link.linkedAt,
-    supplierName: link.purchaseDocument.supplier ? `${link.purchaseDocument.supplier.code} - ${link.purchaseDocument.supplier.name}` : null,
-    totalAmount: link.purchaseDocument.totalAmount ? Number(link.purchaseDocument.totalAmount) : null,
-    currency: link.purchaseDocument.currency,
-    attachments: purchaseDocumentAttachmentsByReferenceId.get(link.purchaseDocument.id) ?? [],
-  }))
+  // The overview's เอกสารจัดซื้อ row (R31); the files tab's loader builds the full documents with their files.
+  const purchaseDocuments = asset.purchaseDocumentLinks.map((link) => ({ id: link.purchaseDocument.id, documentNo: link.purchaseDocument.documentNo }))
   const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
   const assetAttachments = asset.attachments.filter((attachment) => attachment.module === "asset")
   const primaryAssetPhoto = assetAttachments.find((attachment) => isThumbnailable(attachment.fileType))
   const primaryModelPhoto = modelPhotos.find((attachment) => isThumbnailable(attachment.fileType))
-  const checkoutIds = asset.checkouts.map((checkout) => checkout.id)
-  const checkinIds = asset.checkouts.map((checkout) => checkout.checkin?.id).filter((checkinId): checkinId is string => Boolean(checkinId))
-  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets] = await withPerformanceTiming(
-    "asset-detail.operation-data",
-    () => Promise.all([
-      evidenceCheckoutIds.length > 0 || evidenceCheckinIds.length > 0
-        ? prisma.attachment.findMany({
-            where: {
-              isActive: true,
-              OR: [
-                { module: { in: ["checkout_photo_before", "checkout_receiver_signature"] }, referenceId: { in: evidenceCheckoutIds } },
-                { module: { in: ["checkin_photo_after", "checkin_return_signature", "checkin_receive_signature"] }, referenceId: { in: evidenceCheckinIds } },
-              ],
-            },
-            orderBy: { uploadedAt: "asc" },
-          })
-        : [],
-      prisma.department.findMany({
-        where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.departmentId)) } },
-        select: { id: true, code: true, name: true },
-      }),
-      prisma.location.findMany({
-        where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.locationId)) } },
-        select: { id: true, code: true, name: true },
-      }),
-      prisma.asset.findMany({
-        where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.parentAssetId)) } },
-        select: { id: true, assetTag: true, name: true },
-      }),
-    ]),
-    {
-      route: "/assets/[id]",
-      locale,
-      checkouts: checkoutIds.length,
-      checkins: checkinIds.length,
-    }
-  )
-  const operationAttachmentsByReference = new Map<string, typeof operationAttachments>()
-  for (const attachment of operationAttachments) {
-    operationAttachmentsByReference.set(attachment.referenceId, [
-      ...(operationAttachmentsByReference.get(attachment.referenceId) ?? []),
-      attachment,
-    ])
-  }
-  const checkoutDepartmentLabels = new Map(checkoutDepartments.map((department) => [department.id, `${department.code} - ${department.name}`]))
-  const checkoutLocationLabels = new Map(checkoutLocations.map((location) => [location.id, `${location.code} - ${location.name}`]))
-  const checkoutParentAssetLabels = new Map(checkoutParentAssets.map((parentAsset) => [parentAsset.id, `${parentAsset.assetTag} - ${parentAsset.name}`]))
   const ownershipType = normalizeAssetOwnershipType(asset.ownershipType)
   const modelSpecs = parseModelSpecs(asset.model?.specs)
   const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => !["closed", "cancelled"].includes(ticket.repairStatus)).length
@@ -765,141 +667,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           />
         ) : null}
 
-        {/* The files tab's purchase documents, under the anchor ข้อมูลทรัพย์สิน links, until Task 11 (R23, R31). */}
-        {isAssetDetailSectionVisible(assetDetailView, "purchase-documents") ? (
-          <section id="purchase-documents" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-            <AssetPurchaseDocuments documents={purchaseDocuments} legacyAttachments={legacyPurchaseDocuments} />
-          </section>
-        ) : null}
-
-        {isAssetDetailSectionVisible(assetDetailView, "photos") ? (
-          <div id="photos" className="scroll-mt-24">
-            <AssetAttachments
-              assetId={asset.id}
-              attachments={assetAttachments}
-              modelPhotos={modelPhotos}
-              photoChecklist={photoChecklist}
-            />
-          </div>
-        ) : null}
-
-        {isAssetDetailSectionVisible(assetDetailView, "handover") ? (
-          <section id="handover" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-          <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} />
-          {asset.checkouts.length === 0 ? (
-            <EmptyNote>{tCommon("noData")}</EmptyNote>
-          ) : (
-            <div className="space-y-3">
-              {asset.checkouts.map((checkout, index) => {
-                const checkoutAttachments = operationAttachmentsByReference.get(checkout.id) ?? []
-                const checkinAttachments = checkout.checkin ? operationAttachmentsByReference.get(checkout.checkin.id) ?? [] : []
-                const destination = getCheckoutDestination(checkout, {
-                  departments: checkoutDepartmentLabels,
-                  locations: checkoutLocationLabels,
-                  parentAssets: checkoutParentAssetLabels,
-                })
-                const returnLabel = checkout.checkin ? `${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}` : null
-                const handoverModeLabel = getAssetHandoverModeLabel(checkout.handoverMode, {
-                  permanent: t("handoverPermanentAssignment"),
-                  temporary: t("handoverTemporaryLoan"),
-                  legacy: t("handoverModeLegacy"),
-                })
-                const evidenceGrid = (
-                  <HandoverEvidenceGrid
-                    checkoutAttachments={checkoutAttachments}
-                    checkinAttachments={checkinAttachments}
-                    labels={{
-                      checkoutPhotoBefore: t("checkoutPhotoBefore"),
-                      receiverSignature: t("receiverSignature"),
-                      checkinPhotoAfter: t("checkinPhotoAfter"),
-                      returnSignature: t("returnSignature"),
-                      receiveSignature: t("receiveSignature"),
-                      noEvidence: t("noEvidence"),
-                    }}
-                  />
-                )
-
-                return index === 0 ? (
-                  <div key={checkout.id} className="rounded-md border border-border bg-background p-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Chip>{t("latestTransaction")}</Chip>
-                          <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                          <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
-                        </div>
-                        <KeyValueList
-                          className="mt-2"
-                          items={[
-                            { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
-                            { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
-                            { key: "handoverTo", label: t("handoverTo"), value: destination },
-                            ...(checkout.handoverMode === "temporary_loan"
-                              ? [{ key: "expectedReturnDate", label: t("expectedReturnDate"), value: checkout.expectedReturnDate ? formatDate(checkout.expectedReturnDate) : null }]
-                              : []),
-                            { key: "returnDate", label: t("returnDate"), value: returnLabel },
-                            { key: "remark", label: t("remark"), value: checkout.remark },
-                          ]}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                          {t("openHandoverDocument")}
-                        </Link>
-                        {checkout.checkin ? (
-                          <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                            {t("openReturnDocument")}
-                          </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                    {evidenceGrid}
-                  </div>
-                ) : (
-                  <details key={checkout.id} className="group rounded-md border border-border bg-background">
-                    <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 marker:hidden md:flex-row md:items-center md:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                          <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
-                        </div>
-                        <KeyValueList
-                          className="mt-2"
-                          items={[
-                            { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
-                            { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
-                            { key: "handoverTo", label: t("handoverTo"), value: destination },
-                            { key: "returnDate", label: t("returnDate"), value: returnLabel },
-                            { key: "remark", label: t("remark"), value: checkout.remark },
-                          ]}
-                        />
-                      </div>
-                      {/* The summary is the control: its cue reads as a text link with a turning chevron, not as a second button. */}
-                      <span className={cn(linkVariants(), "inline-flex shrink-0 items-center gap-1")}>
-                        {t("viewEvidence")}
-                        <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-                      </span>
-                    </summary>
-                    <div className="border-t border-border px-4 pb-4 pt-3">
-                      <div className="mb-3 flex flex-wrap gap-2">
-                        <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                          {t("openHandoverDocument")}
-                        </Link>
-                        {checkout.checkin ? (
-                          <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                            {t("openReturnDocument")}
-                          </Link>
-                        ) : null}
-                      </div>
-                      {evidenceGrid}
-                    </div>
-                  </details>
-                )
-              })}
-            </div>
-          )}
-          </section>
-        ) : null}
+        {filesData ? <AssetFilesTab locale={locale} assetId={asset.id} data={filesData} canEdit={canEditAsset} /> : null}
 
         {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
           <section id="maintenance" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
@@ -984,105 +752,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   )
 }
 
-function EvidenceLinks({
-  title,
-  attachments,
-  emptyLabel,
-}: {
-  title: string
-  attachments: { id: string; originalName: string; fileType: string }[]
-  emptyLabel: string
-}) {
-  // A column of the handover card, not a box of its own (no box in a box, 2D-2 R4); the files keep their link cards.
-  return (
-    <div className="min-w-0">
-      <h3 className="text-meta font-medium text-muted-foreground">{title}</h3>
-      {attachments.length === 0 ? (
-        <EmptyNote className="mt-2">{emptyLabel}</EmptyNote>
-      ) : (
-        <div className="mt-2 grid gap-2">
-          {attachments.map((attachment) => (
-            <a
-              key={attachment.id}
-              href={`/api/attachments/${attachment.id}?inline=1`}
-              target="_blank"
-              rel="noreferrer"
-              className="block overflow-hidden rounded-md border border-border bg-surface transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              title={attachment.originalName}
-            >
-              {attachment.fileType.startsWith("image/") ? (
-                <div className="flex aspect-video w-full items-center justify-center p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/attachments/${attachment.id}?inline=1`} alt={attachment.originalName} loading="lazy" className="max-h-full w-full object-contain bg-image-stage" />
-                </div>
-              ) : (
-                <div className="flex aspect-video w-full items-center justify-center p-3 text-sm font-medium text-muted-foreground">
-                  {attachment.fileType}
-                </div>
-              )}
-              <div className="truncate border-t border-border px-2 py-1.5 text-meta font-medium text-foreground">
-                {attachment.originalName}
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function HandoverEvidenceGrid({
-  checkoutAttachments,
-  checkinAttachments,
-  labels,
-}: {
-  checkoutAttachments: { id: string; originalName: string; fileType: string; module: string }[]
-  checkinAttachments: { id: string; originalName: string; fileType: string; module: string }[]
-  labels: {
-    checkoutPhotoBefore: string
-    receiverSignature: string
-    checkinPhotoAfter: string
-    returnSignature: string
-    receiveSignature: string
-    noEvidence: string
-  }
-}) {
-  return (
-    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-      <EvidenceLinks title={labels.checkoutPhotoBefore} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_photo_before")} emptyLabel={labels.noEvidence} />
-      <EvidenceLinks title={labels.receiverSignature} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_receiver_signature")} emptyLabel={labels.noEvidence} />
-      <EvidenceLinks title={labels.checkinPhotoAfter} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_photo_after")} emptyLabel={labels.noEvidence} />
-      <EvidenceLinks title={labels.returnSignature} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_return_signature")} emptyLabel={labels.noEvidence} />
-      <EvidenceLinks title={labels.receiveSignature} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_receive_signature")} emptyLabel={labels.noEvidence} />
-    </div>
-  )
-}
-
-function uniqueTruthy(values: Array<string | null | undefined>) {
-  return Array.from(new Set(values.filter((value): value is string => Boolean(value))))
-}
-
-function getCheckoutDestination(
-  checkout: {
-    checkoutType: string
-    custodian: { code: string; fullNameTh: string } | null
-    departmentId: string | null
-    locationId: string | null
-    parentAssetId: string | null
-  },
-  labels: {
-    departments: Map<string, string>
-    locations: Map<string, string>
-    parentAssets: Map<string, string>
-  }
-) {
-  if (checkout.checkoutType === "user" && checkout.custodian) return `${checkout.custodian.code} - ${checkout.custodian.fullNameTh}`
-  if (checkout.checkoutType === "department" && checkout.departmentId) return labels.departments.get(checkout.departmentId) ?? checkout.departmentId
-  if (checkout.checkoutType === "location" && checkout.locationId) return labels.locations.get(checkout.locationId) ?? checkout.locationId
-  if (checkout.checkoutType === "asset" && checkout.parentAssetId) return labels.parentAssets.get(checkout.parentAssetId) ?? checkout.parentAssetId
-  return null
-}
-
 // The head of a section that needs an id (it cannot be ContentPanel): the same 16px title and line as ContentPanel's.
 function SectionHeading({
   title,
@@ -1097,15 +766,6 @@ function SectionHeading({
       {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
     </div>
   )
-}
-
-function getAssetHandoverModeLabel(
-  handoverMode: string | null | undefined,
-  labels: { permanent: string; temporary: string; legacy: string },
-) {
-  if (handoverMode === "permanent_assignment") return labels.permanent
-  if (handoverMode === "temporary_loan") return labels.temporary
-  return labels.legacy
 }
 
 function formatCancellationSnapshot(

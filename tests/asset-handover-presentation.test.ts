@@ -2,16 +2,8 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const detailSource = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
 const checkoutPrint = readFileSync("src/app/[locale]/(print)/asset-management/checkouts/[id]/page.tsx", "utf8")
 const checkinPrint = readFileSync("src/app/[locale]/(print)/asset-management/checkins/[id]/page.tsx", "utf8")
-
-test("asset detail and timeline present handover mode with legacy fallback", () => {
-  assert.match(detailSource, /getAssetHandoverModeLabel/)
-  assert.match(detailSource, /handoverModeLegacy/)
-  assert.match(detailSource, /checkout\.handoverMode === "temporary_loan"/)
-  assert.match(detailSource, /label: t\("handoverMode"\)/)
-})
 
 test("checkout and checkin print documents include their custody mode", () => {
   assert.match(checkoutPrint, /checkout\.handoverMode/)

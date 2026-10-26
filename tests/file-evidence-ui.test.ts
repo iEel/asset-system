@@ -181,14 +181,15 @@ test("the asset form's evidence boxes lose their tinted icon squares and the rep
   assert.match(source, /<FileDropzone\n\s*file=\{selectedAssetPhotoFile\}/)
 })
 
-test("each checklist photo box is named by its checklist item and says up front when the photo uploads (call site 3)", () => {
+test("each missing checklist photo is a camera drop zone named by its checklist item that says up front when the photo uploads; the free zone queues several files (call sites 3 and 4)", () => {
   const source = readFileSync("src/components/assets/asset-attachments.tsx", "utf8").replace(/\r\n/g, "\n")
-  const box = source.match(/<Field label=\{item\.label\} hideLabel>\n\s*<FileDropzone[\s\S]*?\/>\n\s*<\/Field>/)?.[0]
-  assert.ok(box, "the checklist FileDropzone sits in <Field label={item.label} hideLabel>")
-  assert.match(box, /description=\{uploadingPhotoLabel === item\.label \? t\("uploading"\) : t\("checklistPhotoDescription"\)\}/)
+  const box = source.match(/<Field label=\{label\} hideLabel>\n\s*<FileDropzone[\s\S]*?\/>\n\s*<\/Field>/)?.[0]
+  assert.ok(box, "a missing checklist item's FileDropzone sits in <Field label={label} hideLabel>")
+  assert.match(box, /capture="environment"/)
+  assert.match(box, /description=\{uploadingLabel === label \? t\("uploading"\) : t\("checklistPhotoDescription"\)\}/)
   assert.doesNotMatch(box, /\shint=/)
-  // The free upload box (call site 4) keeps its hint.
-  assert.match(source, /hint=\{uploading \? t\("uploading"\) : t\("dropFileSelected"\)\}/)
+  // The free zone (call site 4) is multiple: the queue shows what was chosen, so it has no single-file hint.
+  assert.doesNotMatch(source, /t\("dropFileSelected"\)/)
   for (const [locale, text] of [["th", "รูปจะอัปโหลดทันทีที่เลือก"], ["en", "The photo uploads as soon as you choose it."]]) {
     const asset = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, unknown> }).asset
     assert.equal(asset.checklistPhotoDescription, text, locale)
