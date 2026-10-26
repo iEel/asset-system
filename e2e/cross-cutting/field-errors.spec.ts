@@ -228,7 +228,22 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-PM", name: "ฟอร์มแผน PM" })
   await measure.visit("/th/maintenance/pm/new", "PM plan form")
-  await choose(page, "maintenance-plan-asset", asset.assetTag)
+  // The asset select (src/components/maintenance/maintenance-option-select.tsx) asks /api/maintenance-options 250 ms
+  // after its search or its value changes. Choosing the asset changes its value while the search still holds the tag,
+  // so it asks again, with the same q, after the choice; on the phone that answer was still on its way when the second
+  // save navigated away (net::ERR_ABORTED, E2E-1026E). The wait is set once the search's own answer has shown the
+  // option, so it is the answer to the choice's request; the second save waits for it (e2e fix 2E).
+  const assetSearch = (response: { url(): string }) => {
+    const url = new URL(response.url())
+    return url.pathname === "/api/maintenance-options" && url.searchParams.get("type") === "asset" && url.searchParams.get("q") === asset.assetTag
+  }
+  await page.locator("#maintenance-plan-asset").click()
+  await page.getByRole("dialog").getByRole("combobox").fill(asset.assetTag)
+  const option = page.getByRole("option", { name: asset.assetTag }).first()
+  await expect(option).toBeVisible()
+  const afterChoice = page.waitForResponse(assetSearch)
+  await option.click()
+  await expect(page.locator("#maintenance-plan-asset")).toContainText(asset.assetTag)
   await save(page)
   await expectFieldError(page, "maintenance-plan-title", REQUIRED)
 
@@ -237,8 +252,7 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   await expectNoFieldError(page, "maintenance-plan-title")
   let planId = ""
   await measure.timed("PM plan save", async () => {
-    // After the refused save the asset select fetches its options again; the save navigates away, so let it finish first.
-    await page.waitForLoadState("networkidle")
+    expect((await afterChoice).status(), "the asset select's answer to the choice").toBe(200)
     const created = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/maintenance-plans")
     await save(page)
     const response = await created
@@ -252,6 +266,12 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   await expect(page.locator("#maintenance-plan-title")).toHaveValue(title)
   // The asset select loads its label after the page opens; the test ends once it has (e2e fix loop 2).
   await page.waitForLoadState("networkidle")
+  // End the plan, as the PM list's "จบแผน" does (PATCH { action: "end" }, src/components/maintenance/
+  // maintenance-plan-state-actions.tsx): each run used to leave an active plan behind, and the PM list pages by 100
+  // with active plans first, so they pushed other tests' plans off page 1 (e2e fix 2E). A state change, not a delete.
+  const ended = await page.request.patch(`/api/maintenance-plans/${planId}`, { data: { action: "end" } })
+  expect(ended.status(), "the plan is ended").toBe(200)
+  expect(((await ended.json()) as { planState: string }).planState).toBe("ended")
 })
 
 test("disposal request: an empty reason shows its error, and the corrected request saves", async ({ page, measure }, testInfo) => {

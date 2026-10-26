@@ -374,3 +374,24 @@ test("the open asset search is measured once its opening animation has ended (e2
   assert.match(spec, /import \{ recordSettled \} from "\.\.\/audit\/settle\.ts"/)
   assert.match(spec, /await recordSettled\(page, measure, "repair form with the asset search open"\)/)
 })
+
+test("the PM form test waits for the asset select's answer to the choice and ends its plan (group 1 dashboard e2e fix 2E: E2E-1026E's aborted maintenance-options request on the phone, and the plans each run left active)", () => {
+  // The select asks again 250 ms after its value changes, with the search it still holds (q wins over id).
+  const select = read("src/components/maintenance/maintenance-option-select.tsx")
+  assert.match(select, /\}, 250\)/)
+  assert.match(select, /if \(query\.trim\(\)\.length >= 2\) params\.set\("q", query\.trim\(\)\)\n\s*else if \(value\) params\.set\("id", value\)/)
+  assert.match(select, /\}, \[initialOption, query, type, value\]\)/)
+  const spec = read("e2e/cross-cutting/field-errors.spec.ts")
+  const pm = spec.slice(spec.indexOf(`test("PM plan: `), spec.indexOf(`test("disposal request: `))
+  // The wait is set after the search's answer shows the option and before the choice, and the second save awaits it.
+  assert.match(pm, /await expect\(option\)\.toBeVisible\(\)\n\s*const afterChoice = page\.waitForResponse\(assetSearch\)\n\s*await option\.click\(\)/)
+  assert.match(pm, /url\.pathname === "\/api\/maintenance-options" && url\.searchParams\.get\("type"\) === "asset" && url\.searchParams\.get\("q"\) === asset\.assetTag/)
+  assert.match(pm, /await measure\.timed\("PM plan save", async \(\) => \{\n\s*expect\(\(await afterChoice\)\.status\(\), "the asset select's answer to the choice"\)\.toBe\(200\)/)
+  // networkidle once the page has settled resolves at once (the state was reached on load), so it no longer guards the save.
+  assert.ok(!pm.includes("After the refused save the asset select fetches its options again"))
+  // The plan is ended as the list's own action ends it: a PATCH of its state, not a DELETE.
+  const actions = read("src/components/maintenance/maintenance-plan-state-actions.tsx")
+  assert.match(actions, /method: "PATCH",\n\s*headers: \{ "Content-Type": "application\/json" \},\n\s*body: JSON\.stringify\(\{ action: pendingAction \}\)/)
+  assert.ok(pm.includes("const ended = await page.request.patch(`/api/maintenance-plans/${planId}`, { data: { action: \"end\" } })"))
+  assert.ok(pm.includes(`expect(ended.status(), "the plan is ended").toBe(200)`))
+})
