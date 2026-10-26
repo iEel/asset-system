@@ -29,3 +29,34 @@ export function foldAuditRoundOverlap(rows: readonly AuditRoundOverlapRow[]): Au
     rounds: [...rounds.values()].sort((left, right) => left.auditNo.localeCompare(right.auditNo)),
   }
 }
+
+const DATE_KEY = /^(\d{4})-(\d{2})-(\d{2})$/
+const DAY_MS = 86_400_000
+
+function parseDateKey(dateKey: string): { year: number; month: number; day: number } | null {
+  const match = DATE_KEY.exec(dateKey)
+  if (!match) return null
+  return { year: Number(match[1]), month: Number(match[2]) - 1, day: Number(match[3]) }
+}
+
+// One month after a yyyy-mm-dd key, on the month's last day when the day is missing (31 Jan → 28 or 29 Feb); "" for
+// anything else (group 2 spec §7, bug §13.7: the end defaults to a month after the start).
+export function addMonthsToDateKey(dateKey: string, months: number): string {
+  const parts = parseDateKey(dateKey)
+  if (!parts) return ""
+  const first = new Date(Date.UTC(parts.year, parts.month + months, 1))
+  const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
+  first.setUTCDate(Math.min(parts.day, lastDay))
+  return first.toISOString().slice(0, 10)
+}
+
+// The items a day over the round's dates, both ends counted, rounded up; null for no items, a bad key or an end before
+// the start (group 2 spec §7: "ต้องตรวจเฉลี่ยวันละ X รายการ").
+export function auditRoundDailyLoad(items: number, startDate: string, endDate: string): number | null {
+  const start = parseDateKey(startDate)
+  const end = parseDateKey(endDate)
+  if (items <= 0 || !start || !end) return null
+  const days = (Date.UTC(end.year, end.month, end.day) - Date.UTC(start.year, start.month, start.day)) / DAY_MS + 1
+  if (days < 1) return null
+  return Math.ceil(items / days)
+}

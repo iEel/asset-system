@@ -52,7 +52,7 @@ function assertMigratedForm(
   assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/, "no validation toast (the catch keeps apiError.toast)")
 }
 
-test("audit round: the date pair limits its pickers, validate() restates every rule, and save and preview show the server's refusal under the field (v-track U1)", () => {
+test("audit round: the date pair limits its pickers, validate() restates every rule, and the save shows the server's refusal under the field (v-track U1; group 2 spec §7)", () => {
   const source = read(`${C}audit-round-form.tsx`)
   assertMigratedForm(source, {
     ids: {
@@ -60,22 +60,21 @@ test("audit round: the date pair limits its pickers, validate() restates every r
       auditYear: "audit-round-year",
       startDate: "audit-round-start-date",
       endDate: "audit-round-end-date",
-      status: "audit-round-status",
       riskPreset: "audit-round-risk-preset",
       sampleRate: "audit-round-sample-rate",
     },
-    messages: ["name", "startDate", "endDate", "status", "riskPreset"],
+    messages: ["name", "startDate", "endDate", "riskPreset"],
   })
-  assert.match(source, /^function validate\(\n\s+values: \{ name: string; auditYear: string; startDate: string; endDate: string; status: string; sampleRate: string \},\n\s+yearRange: \{ min: number; max: number \},\n\): Partial<Record<AuditRoundField, string>> \{$/m)
+  assert.match(source, /^function validate\(\n\s+values: \{ name: string; auditYear: string; startDate: string; endDate: string; sampleRate: string \},\n\s+yearRange: \{ min: number; max: number \},\n\): Partial<Record<AuditRoundField, string>> \{$/m)
   const rules = validateBody(source)
   for (const rule of [
     'check("name", required(values.name) ?? maxLength(values.name, 200))',
     'check("auditYear", required(values.auditYear) ?? range(values.auditYear, yearRange.min, yearRange.max) ?? wholeNumber(values.auditYear))',
     'check("startDate", required(values.startDate))',
     'check("endDate", required(values.endDate) ?? notBefore(values.endDate, values.startDate))',
-    'check("status", required(values.status))',
     'check("sampleRate", required(values.sampleRate) ?? range(values.sampleRate, 1, 100) ?? wholeNumber(values.sampleRate))',
   ]) assert.ok(rules.includes(rule), rule)
+  assert.ok(!rules.includes('check("status"'), "no status rule")
   // The number fields' step of 1, which the browser checked before noValidate (U-R3): the shared whole-number rule, not a
   // helper of the form's own (v-track final task 1).
   assert.match(source, /^import \{ maxLength, notBefore, range, required, wholeNumber \} from "@\/lib\/validation-rules"$/m)
@@ -88,12 +87,13 @@ test("audit round: the date pair limits its pickers, validate() restates every r
   // The year and the sample rate say their limits (the year in the reader's calendar).
   assert.ok(source.includes("error={fieldErrors.errors.auditYear ? validationMessage(fieldErrors.errors.auditYear, yearRange) : undefined}"))
   assert.ok(source.includes("error={fieldErrors.errors.sampleRate ? validationMessage(fieldErrors.errors.sampleRate, { min: 1, max: 100 }) : undefined}"))
-  // The status and risk selects pass their id and error through the form's Select (U-R4).
+  // The risk select passes its id and error through the form's Select (U-R4).
   assert.match(source, /<Field label=\{label\} id=\{id\} required=\{required\} error=\{error\}>\n\s+<NativeSelect value=\{value\} required=\{required\}/)
-  // Save and preview both put the server's fieldErrors under the fields (the server's endBeforeStart lands on endDate).
-  assert.equal(source.match(/if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/g)?.length, 2)
-  // The save still waits while the preview runs (that is the busy state of another action, not a gate).
-  assert.match(source, /<Button type="submit" busy=\{saving\} disabled=\{previewing\}>/)
+  // The save puts the server's fieldErrors under the fields (the server's endBeforeStart lands on endDate). The live
+  // count never does: a refusal there leaves focus and the fields alone (group 2 spec §7, R10).
+  assert.equal(source.match(/if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/g)?.length, 1)
+  // Nothing gates the save while the live count runs.
+  assert.match(source, /<Button type="submit" busy=\{saving\}>/)
 })
 
 test("round cancel: the empty reason is an error under the field with its own message, not a toast, and the server's limit is restated (v-track U2)", () => {

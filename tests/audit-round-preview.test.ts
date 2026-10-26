@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { foldTopCategories } from "../src/lib/audit-round-counts-rules.ts"
-import { countAuditPreviewCategories, foldAuditRoundOverlap } from "../src/lib/audit-round-preview-rules.ts"
+import { addMonthsToDateKey, auditRoundDailyLoad, countAuditPreviewCategories, foldAuditRoundOverlap } from "../src/lib/audit-round-preview-rules.ts"
 import { selectAuditSample } from "../src/lib/audit-round-scope.ts"
 import { auditRoundPreviewSchema, auditRoundSchema } from "../src/lib/validations/audit.ts"
 
@@ -117,4 +117,22 @@ test("the sample keeps the scope's order and is the same on every call (group 2 
   assert.deepEqual(positions, [...positions].sort((left, right) => left - right))
   assert.equal(selectAuditSample(assets, 100), assets)
   assert.equal(selectAuditSample(assets.slice(0, 3), 1).length, 1)
+})
+
+test("the end date defaults to one month after the start, on the month's last day when the day is missing (group 2 spec §7, bug §13.7)", () => {
+  assert.equal(addMonthsToDateKey("2026-10-26", 1), "2026-11-26")
+  assert.equal(addMonthsToDateKey("2026-01-31", 1), "2026-02-28")
+  assert.equal(addMonthsToDateKey("2028-01-31", 1), "2028-02-29")
+  assert.equal(addMonthsToDateKey("2026-12-15", 1), "2027-01-15")
+  assert.equal(addMonthsToDateKey("", 1), "")
+  assert.equal(addMonthsToDateKey("26/10/2026", 1), "")
+})
+
+test("the daily load is the items over the round's days, both ends counted, rounded up (group 2 spec §7)", () => {
+  assert.equal(auditRoundDailyLoad(342, "2026-11-01", "2026-11-30"), 12)
+  assert.equal(auditRoundDailyLoad(342, "2026-11-01", "2026-11-01"), 342)
+  assert.equal(auditRoundDailyLoad(7, "2026-10-26", "2026-11-25"), 1)
+  assert.equal(auditRoundDailyLoad(0, "2026-11-01", "2026-11-30"), null)
+  assert.equal(auditRoundDailyLoad(10, "2026-11-30", "2026-11-01"), null)
+  assert.equal(auditRoundDailyLoad(10, "", "2026-11-01"), null)
 })

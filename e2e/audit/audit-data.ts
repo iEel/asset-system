@@ -5,7 +5,9 @@
 // - the assets through POST /api/assets and the two components through the component install
 //   (POST /api/assets/<parent>/components), as the person who registers them (IT staff, or the IT head for their own
 //   round), so the asset rules and the install checks run.
-// The category, status and condition ids come from the round form's own scope selects, the lists a person picks from.
+// The category, status and condition ids come from the asset form (/th/assets/new), the lists IT staff pick from when
+// they register an asset. It is read on a page of its own, so the round form the person has open stays as it is: its
+// conditions are chips with a searchable picker and hold no select to read (group 2 plan 1 task 4).
 import type { APIRequestContext, Page } from "@playwright/test"
 import { expect } from "../support/fixtures.ts"
 import { auditRecords, type AuditAssetKey, type AuditRecords } from "./audit-plan.ts"
@@ -27,9 +29,9 @@ async function created<T>(request: APIRequestContext, url: string, data: unknown
   return (await response.json()) as T
 }
 
-// The options of one scope select of the round form (/th/audit/rounds/new), by its label.
-async function selectOptions(page: Page, label: string): Promise<{ value: string; label: string }[]> {
-  const select = page.getByLabel(label, { exact: true })
+// The options of one select of the asset form, by its id.
+async function selectOptions(form: Page, id: string): Promise<{ value: string; label: string }[]> {
+  const select = form.locator(`#${id}`)
   // The dashboard's loading.tsx streams the form, so its selects may still be empty here (13B loop 5).
   await expect(select.locator('option:not([value=""])').first()).toBeAttached()
   return select
@@ -39,21 +41,27 @@ async function selectOptions(page: Page, label: string): Promise<{ value: string
 
 function optionId(options: { value: string; label: string }[], match: (label: string) => boolean, what: string): string {
   const option = options.find((candidate) => candidate.value && match(candidate.label))
-  if (!option) throw new Error(`the round form lists no ${what}`)
+  if (!option) throw new Error(`the asset form lists no ${what}`)
   return option.value
 }
 
-// Read on the round form, which the person opening the round has on screen.
+// Read on the asset form, in a page of its own beside the round form (as readAssetMasters in e2e/repair/repair-data.ts).
 export async function readAuditMasters(page: Page): Promise<AuditMasterIds> {
-  const categories = await selectOptions(page, "หมวดหมู่ทรัพย์สิน")
-  const statuses = await selectOptions(page, "สถานะทรัพย์สิน")
-  const conditions = await selectOptions(page, "สภาพทรัพย์สิน")
-  return {
-    categoryDesktop: optionId(categories, (label) => label.startsWith("Desktop Computer - "), "Desktop Computer category"),
-    categoryComponent: optionId(categories, (label) => label.startsWith("Computer Component - "), "Computer Component category"),
-    statusReady: optionId(statuses, (label) => label === "พร้อมใช้งาน", "Ready status"),
-    conditionGood: optionId(conditions, (label) => label === "ดี", "Good condition"),
-    conditionFair: optionId(conditions, (label) => label === "พอใช้", "Fair condition"),
+  const form = await page.context().newPage()
+  try {
+    await form.goto("/th/assets/new")
+    const categories = await selectOptions(form, "asset-category")
+    const statuses = await selectOptions(form, "asset-status")
+    const conditions = await selectOptions(form, "asset-condition")
+    return {
+      categoryDesktop: optionId(categories, (label) => label.startsWith("Desktop Computer - "), "Desktop Computer category"),
+      categoryComponent: optionId(categories, (label) => label.startsWith("Computer Component - "), "Computer Component category"),
+      statusReady: optionId(statuses, (label) => label === "พร้อมใช้งาน", "Ready status"),
+      conditionGood: optionId(conditions, (label) => label === "ดี", "Good condition"),
+      conditionFair: optionId(conditions, (label) => label === "พอใช้", "Fair condition"),
+    }
+  } finally {
+    await form.close()
   }
 }
 

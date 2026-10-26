@@ -115,10 +115,10 @@ test("the bulk move form shows the selected count as the header's meta (2B-1 tas
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
 
-test("the new audit round form draws its title with PageHeader (2B-1 task 23, I13)", () => {
+test("the new audit round form draws its title and trail with PageHeader (2B-1 task 23, I13; group 2 spec §7)", () => {
   const source = read(`${C}audit/audit-round-form.tsx`)
   assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "audit-round-form.tsx imports PageHeader")
-  assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("createTitle"\)\} className="mb-6" \/>\n/)
+  assert.match(source, /<div className="mx-auto max-w-6xl">\n\s+<PageHeader\n\s+title=\{t\("createTitle"\)\}\n\s+breadcrumbs=\{\[\{ label: t\("title"\), href: `\/\$\{locale\}\/audit\/rounds` \}, \{ label: t\("createRound"\) \}\]\}\n\s+className="mb-6"\n\s+\/>\n/)
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
 

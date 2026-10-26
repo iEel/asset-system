@@ -44,19 +44,18 @@ test("audit round cancel dialog: the impact counts are a KeyValueList through fo
   assert.doesNotMatch(source, /function ImpactItem\b|<ImpactItem\b|border-warning-border|bg-warning-soft|text-xl font-bold|\btext-xs\b/)
 })
 
-test("audit round form: the form is the panel, the sampling box a quiet grouping, the preview a StatStrip with an info Notice, codes as tag, an EmptyNote and the include-closed choice a ChoiceCard (spec 2D D7, D9, D19, M22, M33)", () => {
+test("audit round form: the sections in one panel and the summary in another, codes as tag, an EmptyNote, the components Notice and the include-closed choice a ChoiceCard (spec 2D D7, D9, D19, M22, M33; group 2 spec §7)", () => {
   const source = read(`${C}audit/audit-round-form.tsx`)
-  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className=\{cn\(getPanelClasses\(\), "grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2"\)\}>/)
-  assert.match(source, /<div className="md:col-span-2 rounded-md border border-border bg-background p-4">/)
-  assert.match(source, /<StatStrip\b/)
-  for (const value of ["formatCount\\(preview\\.matchedAssets\\)", "formatCount\\(preview\\.sampledAssets\\)", "formatCount\\(componentItems\\)", "`\\$\\{formatCount\\(preview\\.sampleRate\\)\\}%`"]) {
-    assert.match(source, new RegExp(`value: ${value}`), value)
-  }
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate className="grid grid-cols-1 gap-6 lg:grid-cols-\[minmax\(0,1fr\)_20rem\]">/)
+  assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "grid min-w-0 content-start gap-8 p-4 sm:p-5"\)\}>/)
+  assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "grid content-start gap-4 p-4 sm:p-5 lg:sticky lg:top-4 lg:self-start"\)\}>/)
+  assert.match(source, /<p className="text-metric num text-foreground">\{formatCount\(preview\.sampledAssets\)\}<\/p>/)
   assert.match(source, /<Notice tone="info">\{t\("previewComponentHelp", \{ count: componentItems \}\)\}<\/Notice>/)
   assert.match(source, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
   assert.match(source, /<EmptyNote className="mt-2">\{t\("previewEmpty"\)\}<\/EmptyNote>/)
   assert.match(source, /<ChoiceCard\s+type="checkbox"\s+className="md:col-span-2"\s+label=\{t\("includeClosedAssets"\)\}\s+description=\{t\("includeClosedAssetsHelp"\)\}/)
-  assert.doesNotMatch(source, /<section\b|function PreviewMetric\b|uppercase|tracking-|primary-soft|primary-border|info-soft|info-border|text-info|warning-soft|warning-border|rounded-lg|\btext-xs\b|<input\b|checkboxVariants/)
+  // The summary is a panel, not a landmark: an <aside> inside <main> fails axe's landmark-complementary-is-top-level.
+  assert.doesNotMatch(source, /<StatStrip\b|<aside\b|<section\b|function PreviewMetric\b|uppercase|tracking-|primary-soft|primary-border|info-soft|info-border|text-info|warning-soft|warning-border|rounded-lg|\btext-xs\b|<input\b|checkboxVariants/)
 })
 
 test("finding review actions: a warning Notice on the phone card, KeyValueLists with Nil in the dialog, the impact and the conflict as Notices by meaning, no typed dash (spec 2D D7, D19, LV2)", () => {

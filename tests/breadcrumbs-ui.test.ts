@@ -42,7 +42,7 @@ test("every record page ends its breadcrumb trail on a code; the create and list
     .flatMap((file) =>
       [...file.source.matchAll(/<Breadcrumbs\b[\s\S]*?\/>|\bbreadcrumbs=\{\[[\s\S]*?\]\}/g)].map((match) => ({ path: file.path, element: match[0].replace(/\s+/g, " ") })),
     )
-  assert.equal(sites.length, 11, "Breadcrumbs call sites")
+  assert.equal(sites.length, 12, "Breadcrumbs call sites")
   assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 8, "call sites that mark a code")
 
   const base = "src/app/[locale]/(dashboard)/"
@@ -67,6 +67,9 @@ test("every record page ends its breadcrumb trail on a code; the create and list
     assert.ok(site, `no Breadcrumbs in ${file}`)
     assert.doesNotMatch(site.element, /code:/, `${file} ends on a page title, not a code`)
   }
+  const roundForm = sites.find((candidate) => candidate.path === "src/components/audit/audit-round-form.tsx")
+  assert.ok(roundForm, "no Breadcrumbs in the audit round form")
+  assert.doesNotMatch(roundForm.element, /code:/, "the create round trail ends on a page title, not a code (group 2 spec §7)")
 })
 
 test("breadcrumb, empty-value and baht words exist in Thai and English", () => {

@@ -56,6 +56,7 @@ const STAR_ONLY = new Set<string>([])
 const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}assets/asset-form.tsx`]: ["/th/assets/new", "/th/assets/sample-1/edit"],
   [`${C}admin/system-settings-form.tsx`]: ["/th/admin/settings"],
+  [`${C}audit/audit-round-form.tsx`]: ["/th/audit/rounds/new"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling
@@ -106,7 +107,7 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}master-data/supplier-form.tsx`]: [2, 6, 0],
   [`${C}disposal/disposal-bulk-approval.tsx`]: [0, 1, 0],
   [`${C}disposal/disposal-bulk-execution.tsx`]: [5, 2, 1],
-  [`${C}audit/audit-round-form.tsx`]: [7, 1, 0],
+  [`${C}audit/audit-round-form.tsx`]: [6, 1, 0],
   [`${C}audit/audit-round-cancel-button.tsx`]: [1, 0, 0],
   [`${C}admin/admin-user-form.tsx`]: [3, 4, 1],
   [`${C}admin/role-permission-form.tsx`]: [2, 3, 0],

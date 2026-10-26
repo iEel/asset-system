@@ -60,8 +60,11 @@ test("the walk's records carry the run id and the project within the schemas' li
   const data = read("e2e/audit/audit-data.ts")
   for (const route of [`"/api/departments"`, `"/api/locations"`, `"/api/assets"`, "/components`"]) assert.ok(data.includes(route), route)
   assert.ok(!/prisma|mssql/i.test(data.replace(/^\/\/.*$/gm, "")), "no direct database access")
-  // The round form streams in: each scope select's options are waited for before they are read (13B loop 5).
-  assert.match(data, /const select = page\.getByLabel\(label, \{ exact: true \}\)\n(?:\s*\/\/[^\n]*\n)*\s*await expect\(select\.locator\('option:not\(\[value=""\]\)'\)\.first\(\)\)\.toBeAttached\(\)\n\s*return select\n\s*\.locator\("option"\)\n\s*\.evaluateAll\(/)
+  // The master ids come from the asset form, on a page of its own beside the round form (group 2 plan 1 task 4: the
+  // round form's conditions are chips with no select to read). Each select's options are waited for (13B loop 5).
+  assert.match(data, /const form = await page\.context\(\)\.newPage\(\)\n\s*try \{\n\s*await form\.goto\("\/th\/assets\/new"\)/)
+  assert.match(data, /const select = form\.locator\(`#\$\{id\}`\)\n(?:\s*\/\/[^\n]*\n)*\s*await expect\(select\.locator\('option:not\(\[value=""\]\)'\)\.first\(\)\)\.toBeAttached\(\)\n\s*return select\n\s*\.locator\("option"\)\n\s*\.evaluateAll\(/)
+  assert.match(data, /\} finally \{\n\s*await form\.close\(\)\n\s*\}/)
 
   // The spec: WebKit on the phone, one serial chain, IT staff open the round on the form; the errors under the fields.
   const spec = read(SPEC)
