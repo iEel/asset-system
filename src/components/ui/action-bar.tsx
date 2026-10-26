@@ -1,6 +1,7 @@
 import Link from "next/link"
 import type React from "react"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { RowActions, type RowActionGroup } from "@/components/ui/row-actions"
 import { getMobileActionGridClass } from "@/lib/mobile-action-layout"
 import { cn } from "@/lib/utils"
 
@@ -10,6 +11,17 @@ export type ActionBarLink = {
   icon?: React.ReactNode
   primary?: boolean
   disabled?: boolean
+}
+
+// The ⋯ of the bar (group 1 asset detail, spec 2026-10-25 §7.8): it opens RowActions' bottom sheet, titled with code
+// and name as on the register's phone rows. kind: "action" items and openerRef come only from a client caller, whose
+// dialog then returns focus to ⋯.
+export type ActionBarMore = {
+  label: string
+  code: string
+  name?: string
+  groups: readonly RowActionGroup[]
+  openerRef?: React.RefObject<HTMLElement | null>
 }
 
 // The room a page leaves under its content for the bar, the iPhone home indicator included (spec 2C section 6.10,
@@ -26,16 +38,24 @@ export const actionBarPagePadding = {
 // and takes the shared aria-disabled look. A short screen (max-height 32rem: 720×450 at 200% zoom of 1440×900, a phone
 // on its side) keeps the 44px targets, gets 6px instead of 12px above and below them, and puts the next step beside the
 // links, so the bar is one row there (spec 2D D18).
+// With more (and a group that holds an item) the row is a flex row that ends in ⋯, which takes one link's place, and a
+// primary link grows twice as much as an outline one, so the next step stays the widest button (canvas
+// B-AssetDetail-Phone: the wide "รับคืน", then "บันทึกซ่อม", then ⋯). With no link, ⋯ stands alone at the row's end (a
+// person who may only read). Nothing returns early: an empty actions with more still draws the bar (R21).
 export function ActionBar({
   label,
   actions,
   primaryAction,
+  more,
 }: {
   label: string
   actions: readonly ActionBarLink[]
   primaryAction?: React.ReactNode
+  more?: ActionBarMore
 }) {
-  const visibleActions = actions.slice(0, primaryAction ? 3 : 4)
+  // An empty sheet is never offered.
+  const moreSlot = more?.groups.some((group) => group.items.length > 0) ? more : null
+  const visibleActions = actions.slice(0, (primaryAction ? 3 : 4) - (moreSlot ? 1 : 0))
 
   return (
     <div
@@ -46,9 +66,9 @@ export function ActionBar({
     >
       <div className={cn("mx-auto grid min-w-0 max-w-lg gap-2", primaryAction && "[@media(max-height:32rem)]:max-w-3xl [@media(max-height:32rem)]:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]")}>
         {primaryAction ? <div className="min-w-0 [&>button]:w-full">{primaryAction}</div> : null}
-        <div className={cn("grid min-w-0 gap-2", getMobileActionGridClass(visibleActions.length))}>
+        <div className={moreSlot ? "flex min-w-0 justify-end gap-2" : cn("grid min-w-0 gap-2", getMobileActionGridClass(visibleActions.length))}>
           {visibleActions.map((action) => {
-            const className = cn(buttonVariants({ variant: action.primary ? "default" : "outline", size: "sm" }), "min-w-0 px-2")
+            const className = cn(buttonVariants({ variant: action.primary ? "default" : "outline", size: "sm" }), "min-w-0 px-2", moreSlot && (action.primary ? "flex-2" : "flex-1"))
             return action.disabled ? (
               <a key={action.label} role="link" aria-disabled="true" className={className}>
                 {action.icon}
@@ -61,6 +81,9 @@ export function ActionBar({
               </Link>
             )
           })}
+          {moreSlot ? (
+            <RowActions code={moreSlot.code} name={moreSlot.name} menuLabel={moreSlot.label} groups={moreSlot.groups} openerRef={moreSlot.openerRef} menu="sheet" triggerVariant="outline" className="shrink-0" />
+          ) : null}
         </div>
       </div>
     </div>

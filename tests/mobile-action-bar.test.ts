@@ -31,12 +31,57 @@ test("ActionBar is one server-safe bar of shared button links, with the page pad
   assert.match(source, /export const actionBarPagePadding = \{\n  single: "pb-\[calc\(6rem\+env\(safe-area-inset-bottom\)\)\] md:pb-0",\n  withPrimary: "pb-\[calc\(9rem\+env\(safe-area-inset-bottom\)\)\] md:pb-0",\n\} as const/)
   assert.match(source, /role="group"\n\s+aria-label=\{label\}\n\s+data-slot="action-bar"\n\s+className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface px-3 pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\] pt-3 md:hidden /)
   assert.match(source, /<div className=\{cn\("mx-auto grid min-w-0 max-w-lg gap-2", primaryAction && "[^"]+"\)\}>\n\s+\{primaryAction \? <div className="min-w-0 \[&>button\]:w-full">\{primaryAction\}<\/div> : null\}/)
-  assert.match(source, /const visibleActions = actions\.slice\(0, primaryAction \? 3 : 4\)/)
-  assert.match(source, /const className = cn\(buttonVariants\(\{ variant: action\.primary \? "default" : "outline", size: "sm" \}\), "min-w-0 px-2"\)/)
+  assert.match(source, /const visibleActions = actions\.slice\(0, \(primaryAction \? 3 : 4\) - \(moreSlot \? 1 : 0\)\)/)
+  assert.match(source, /const className = cn\(buttonVariants\(\{ variant: action\.primary \? "default" : "outline", size: "sm" \}\), "min-w-0 px-2", moreSlot && \(action\.primary \? "flex-2" : "flex-1"\)\)/)
   assert.match(source, /<a key=\{action\.label\} role="link" aria-disabled="true" className=\{className\}>/)
   assert.match(source, /<Link key=\{action\.label\} href=\{action\.href\} className=\{className\}>/)
   assert.equal(source.match(/<span className="min-w-0 truncate">\{action\.label\}<\/span>/g)?.length, 2)
   assert.doesNotMatch(source, /<a\b[^>]*\bhref=|<span[^>]*aria-disabled|leading-tight|text-xs|bg-muted|text-white|shadow-|backdrop-blur/)
+})
+
+// Group 1 asset detail task 6 (spec 2026-10-25 §7.8): ActionBar's more slot, which DESIGN.md left to phase 3. With a
+// group that holds an item, the row is one line: the links, a primary one twice as wide as an outline one, then the ⋯ of
+// RowActions as an outline button named by more.label, which always opens RowActions' bottom sheet (the record's code
+// as its title), where an unavailable item reads its reason. ⋯ takes one link's place, and stands alone when there is no
+// link (a viewer's bar). The bar stays server-safe: it renders the client RowActions and holds no hook of its own.
+test("ActionBar: an optional more slot, the last button of its row, opens RowActions' bottom sheet (spec §7.8)", () => {
+  const source = readFileSync("src/components/ui/action-bar.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /^import \{ RowActions, type RowActionGroup \} from "@\/components\/ui\/row-actions"$/m)
+  assert.match(source, /export type ActionBarMore = \{\n  label: string\n  code: string\n  name\?: string\n  groups: readonly RowActionGroup\[\]\n  openerRef\?: React\.RefObject<HTMLElement \| null>\n\}/)
+  assert.match(source, /\n  primaryAction\?: React\.ReactNode\n  more\?: ActionBarMore\n\}\) \{/)
+  assert.match(source, /const moreSlot = more\?\.groups\.some\(\(group\) => group\.items\.length > 0\) \? more : null/)
+  assert.match(source, /<div className=\{moreSlot \? "flex min-w-0 justify-end gap-2" : cn\("grid min-w-0 gap-2", getMobileActionGridClass\(visibleActions\.length\)\)\}>/)
+  assert.match(
+    source,
+    /\{moreSlot \? (?:\(\n\s+)?<RowActions code=\{moreSlot\.code\} name=\{moreSlot\.name\} menuLabel=\{moreSlot\.label\} groups=\{moreSlot\.groups\} openerRef=\{moreSlot\.openerRef\} menu="sheet" triggerVariant="outline" className="shrink-0" \/>(?:\n\s+\))? : null\}/,
+  )
+  assert.ok(source.indexOf("<RowActions ") > source.indexOf("visibleActions.map("), "⋯ is the last control of the row")
+  assert.equal(source.match(/<RowActions /g)?.length, 1)
+  assert.doesNotMatch(source, /\breturn null\b/, "no early return: a bar of ⋯ alone (the viewer's) still draws")
+})
+
+test("DESIGN.md, docs/14 and design.json describe ActionBar's more slot and the outline ⋯ (group 1 asset detail task 6)", () => {
+  const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  const design = read("DESIGN.md")
+  const bar = design.slice(design.indexOf("\n- **`ActionBar`**"), design.indexOf("\n- **Bottom space:**"))
+  assert.ok(!bar.includes("waits for phase 3"), "the ⋯ no longer waits for phase 3")
+  for (const phrase of [
+    "A bar may end in ⋯ through `more`",
+    "an `outline` `icon-sm` button (44px) named by `more.label`",
+    "always opens the `RowActions` bottom sheet",
+    "each unavailable one with its reason",
+    "`more.openerRef`",
+    "at most three links and ⋯ (two links under a `primaryAction`)",
+    "twice the width of an outline one",
+    "A bar may hold ⋯ alone",
+  ]) assert.ok(bar.includes(phrase), phrase)
+  assert.ok(design.includes("⋯ is a `ghost` `icon-sm` button (`triggerVariant=\"outline\"` for the ⋯ of an `ActionBar`, beside the bar's outline links) named"), "RowActions")
+  const index = read("docs/14_UI_UX_DESIGN_SYSTEM.md")
+  const row = (start: string) => index.slice(index.indexOf(start), index.indexOf("\n", index.indexOf(start) + 1))
+  assert.ok(row("\n| A phone action bar on a detail page | `ActionBar`").includes("`more` ends the row with ⋯"))
+  assert.ok(row("\n| A next step and more actions in a table row | `RowActions`").includes("`triggerVariant=\"outline\"` only for the ⋯ of an `ActionBar`'s `more`"))
+  const json = JSON.parse(read(".impeccable/design.json")) as { components: Array<{ name: string; description: string }> }
+  assert.match(json.components.find((entry) => entry.name === "Row Actions")?.description ?? "", /In a phone ActionBar the same ⋯ is an outline icon button that always opens the bottom sheet\.$/)
 })
 
 // Phase 2C batch 5 (spec 2C §6.10, §6.11 table B, O11, K23): the four detail pages render ActionBar, named by

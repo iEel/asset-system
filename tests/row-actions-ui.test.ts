@@ -15,8 +15,9 @@ test("RowActions is a client component with one data-only API: no children, no o
   assert.ok(props, "export type RowActionsProps not found")
   assert.deepEqual(
     props.split("\n").map((line) => line.trim().split(":")[0]),
-    ["code", "name?", "menuLabel", "next?", "groups", "deleteAction?", "openerRef?", "menu?", "className?"],
+    ["code", "name?", "menuLabel", "next?", "groups", "deleteAction?", "openerRef?", "menu?", "triggerVariant?", "className?"],
   )
+  assert.match(props, /triggerVariant\?: "ghost" \| "outline"/)
   assert.match(props, /next\?: RowNextAction \| null/)
   assert.match(props, /deleteAction\?: \{ endpoint: string; label\?: string \}/)
   assert.match(props, /openerRef\?: RefObject<HTMLElement \| null>/)
@@ -54,9 +55,10 @@ test("the next button sits in a fixed 120px slot and reads its label with the ro
   assert.match(source, /next === undefined \? null : next === null \? <span aria-hidden="true" className="w-30 shrink-0" \/> : renderNext\(next\)/)
 })
 
-test("⋯ is a ghost icon-sm button, a menu from md and a bottom sheet below, and leaves its place empty when there is nothing to show", () => {
+test("⋯ is an icon-sm button (ghost, or outline in an ActionBar), a menu from md and a bottom sheet below, and leaves its place empty when there is nothing to show", () => {
   const source = rowActions()
-  assert.match(source, /<Button ref=\{triggerRef\} variant="ghost" size="icon-sm" aria-label=\{menuLabel\} title=\{menuLabel\}>\s*<MoreHorizontal aria-hidden="true" \/>\s*<\/Button>/)
+  assert.match(source, /<Button ref=\{triggerRef\} variant=\{triggerVariant\} size="icon-sm" aria-label=\{menuLabel\} title=\{menuLabel\}>\s*<MoreHorizontal aria-hidden="true" \/>\s*<\/Button>/)
+  assert.match(source, /\n  menu = "auto",\n  triggerVariant = "ghost",\n/, "ghost unless the caller asks")
   assert.equal(source.match(/ref=\{triggerRef\}/g)?.length, 1)
   assert.match(source, /<DropdownMenuTrigger asChild>\{trigger\}<\/DropdownMenuTrigger>/)
   assert.match(source, /<SheetTrigger asChild>\{trigger\}<\/SheetTrigger>/)

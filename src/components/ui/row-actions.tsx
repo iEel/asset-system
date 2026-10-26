@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 // action of the row. The props are data only, so a server page renders RowActions directly; onSelect and onNavigate
 // can only come from a client caller. A menu never holds a dialog: an "action" item calls onSelect, and the caller
 // opens its own dialog, rendered outside with hideTrigger and returnFocusRef={openerRef}, through its handle (R-m).
+// The ⋯ is ghost in a row and outline (triggerVariant) in an ActionBar, through its more slot, beside the bar's outline links.
 
 // Next step: a link (a server page can pass it) or, from a client caller only, a button that opens a dialog.
 export type RowNextAction =
@@ -48,6 +49,7 @@ export type RowActionsProps = {
   deleteAction?: { endpoint: string; label?: string }
   openerRef?: RefObject<HTMLElement | null>
   menu?: "auto" | "dropdown" | "sheet"
+  triggerVariant?: "ghost" | "outline"
   className?: string
 }
 
@@ -75,6 +77,7 @@ export function RowActions({
   deleteAction,
   openerRef,
   menu = "auto",
+  triggerVariant = "ghost",
   className,
 }: RowActionsProps) {
   const tCommon = useTranslations("common")
@@ -208,7 +211,7 @@ export function RowActions({
   }
 
   const trigger = (
-    <Button ref={triggerRef} variant="ghost" size="icon-sm" aria-label={menuLabel} title={menuLabel}>
+    <Button ref={triggerRef} variant={triggerVariant} size="icon-sm" aria-label={menuLabel} title={menuLabel}>
       <MoreHorizontal aria-hidden="true" />
     </Button>
   )
