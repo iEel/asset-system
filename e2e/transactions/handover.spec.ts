@@ -74,7 +74,7 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
   expect(checkout.photoBefore, "the photo is stored with the handover").toBeTruthy()
 
   // The HO- document opens on its own and prints.
-  await page.waitForURL(`**/th/asset-management/checkouts/${checkout.id}`)
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkouts/${checkout.id}`)
   await expect(page.getByRole("heading", { level: 1, name: "ใบส่งมอบทรัพย์สิน" })).toBeVisible()
   await expect(page.getByText(checkout.documentNo, { exact: true }).first()).toBeVisible()
   const signature = page.getByRole("img", { name: "ผู้รับทรัพย์สิน" })
@@ -130,7 +130,7 @@ test("a temporary loan: a due date before the handover date shows its error unde
   expect(checkout.handoverMode).toBe("temporary_loan")
   expect(checkout.expectedReturnDate?.slice(0, 10)).toBe(dueDate)
 
-  await page.waitForURL(`**/th/asset-management/checkouts/${checkout.id}`)
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkouts/${checkout.id}`)
   await expect(page.getByText(checkout.documentNo, { exact: true }).first()).toBeVisible()
   await expect(page.getByRole("main")).toContainText("กำหนดคืน")
   await record(measure, "HO- document of the loan", testInfo)

@@ -73,7 +73,7 @@ test("the desk delivery on the phone: the handover with the keyboard open and a 
   const checkout = (await (await saved).json()) as { id: string; documentNo: string; receiverSignature: string | null }
   expect(checkout.receiverSignature, "the finger signature is stored").toBeTruthy()
 
-  await page.waitForURL(`**/th/asset-management/checkouts/${checkout.id}`)
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkouts/${checkout.id}`)
   await expect(page.getByText(checkout.documentNo, { exact: true }).first()).toBeVisible()
   await expect(page.getByRole("img", { name: "ผู้รับทรัพย์สิน" })).toBeVisible()
   await record(measure, "HO- document on the phone", testInfo)

@@ -76,7 +76,7 @@ test("a return: the RT- document prints, and the asset is Ready in the room it w
   const checkin = (await (await saved).json()) as { id: string; documentNo: string }
   expect(checkin.documentNo).toMatch(/^RT-/)
 
-  await page.waitForURL(`**/th/asset-management/checkins/${checkin.id}`)
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkins/${checkin.id}`)
   await expect(page.getByRole("heading", { level: 1, name: "ใบรับคืนทรัพย์สิน" })).toBeVisible()
   await expect(page.getByText(checkin.documentNo, { exact: true }).first()).toBeVisible()
   await record(measure, "RT- document", testInfo)
@@ -117,7 +117,7 @@ test("a return sent to repair opens an unfinished repair record, and the asset i
   const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkin`) && response.request().method() === "POST")
   await review.getByRole("button", { name: "ยืนยันรับคืน" }).click()
   const checkin = (await (await saved).json()) as { id: string; documentNo: string }
-  await page.waitForURL(`**/th/asset-management/checkins/${checkin.id}`)
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkins/${checkin.id}`)
   await record(measure, "RT- document (sent to repair)", testInfo)
 
   const after = await readAsset(page, asset.id)
