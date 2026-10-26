@@ -20,6 +20,7 @@ import {
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { primaryAction } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
 
@@ -32,9 +33,11 @@ test("a return: the RT- document prints, and the asset is Ready in the room it w
   const asset = await createTxAsset(page, masters, testInfo.project.name, "RT1", "โน้ตบุ๊กรับคืน")
   const handover = await handoverByApi(page, asset.id, receiver.id, masters.goodConditionId)
 
-  // From the asset page's quick action.
+  // From the asset page's primary action (spec §7.1: an open handover's is รับคืน).
   await visitAssetPage(measure, asset.id, "asset handed over", testInfo)
-  await page.getByRole("link", { name: "รับคืน", exact: true }).first().click()
+  const primary = primaryAction(page, e2eDevice)
+  await expect(primary).toHaveAccessibleName("รับคืน")
+  await primary.click()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkin\\?checkoutId=${handover.id}`))
   await expect(page.getByRole("heading", { level: 1, name: "รับคืนทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await expect(page.getByRole("main")).toContainText(handover.documentNo)

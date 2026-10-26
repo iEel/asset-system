@@ -20,6 +20,7 @@ import {
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { primaryAction } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
 
@@ -30,7 +31,10 @@ test("the desk delivery on the phone: the handover with the keyboard open and a 
   const asset = await createTxAsset(page, masters, testInfo.project.name, "DSK", "โน้ตบุ๊กส่งถึงโต๊ะ")
 
   await visitAssetPage(measure, asset.id, "asset on the phone", testInfo)
-  await page.getByRole("link", { name: "ส่งมอบ", exact: true }).first().tap()
+  // The primary sits in the bottom bar: a link named ส่งมอบ (spec §7.8).
+  const primary = primaryAction(page, "phone")
+  await expect(primary).toHaveAccessibleName("ส่งมอบ")
+  await primary.tap()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkout\\?assetId=${asset.id}`))
   await expect(page.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await record(measure, "handover form on the phone", testInfo)

@@ -135,7 +135,7 @@ test("IT staff register a software licence on the asset form, a wrong entry firs
   assert.match(spec, /#asset-ownership-type"\)\.selectOption\("software_license"\)/)
   assert.match(spec, /fill\("5"\)[\s\S]*fill\("7"\)[\s\S]*expectFieldError\(page, "asset-license-used-seats", "จำนวนสิทธิ์ที่ใช้ต้องไม่เกินจำนวนสิทธิ์ทั้งหมด"\)[\s\S]*toBeFocused\(\)[\s\S]*expect\(posted, "the wrong entry posts nothing"\)\.toBe\(0\)/)
   assert.match(spec, /toEqual\(\["software_license", 5, 2, data\.departmentId, null\]\)/)
-  assert.match(spec, /await expect\(page\.locator\("#overview"\)\)\.toContainText\("ใช้แล้ว 2\/5 คงเหลือ 3"\)/)
+  assert.match(spec, /await expect\(factCell\(page, DETAIL_WORDS\.seatsCell\)\)\.toContainText\("ใช้แล้ว 2\/5 คงเหลือ 3"\)/)
   // Measured through the transactions area's helpers (TX-R5, TX-R6): the known findings and the settle before axe.
   assert.match(spec, /import \{ expectFieldError, readAssetMasters, record, visit, visitAssetPage \} from "\.\.\/transactions\/tx-support\.ts"/)
   // The sentences the test reads are the app's own.

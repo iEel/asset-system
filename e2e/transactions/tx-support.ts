@@ -80,9 +80,9 @@ export async function createTxAsset(page: Page, masters: AssetMasters, projectNa
   return createAsset(page, masters, txAssetTag(runId, projectName, key), txAssetName(runId, projectName, label))
 }
 
-// A permanent handover through the checkout API (the form's own route, JSON body), for the workflows that start from
-// an asset already handed over (return, cancel).
-export async function handoverByApi(page: Page, assetId: string, custodianId: string, conditionId: string) {
+// A permanent handover through the checkout API (the form's own route, JSON body), on the date given (today by default),
+// for the workflows that start from an asset already handed over (return, cancel, the asset detail's fact strip).
+export async function handoverByApi(page: Page, assetId: string, custodianId: string, conditionId: string, checkoutDate: string = bangkokDate()) {
   const response = await page.request.post(`/api/assets/${assetId}/checkout`, {
     data: {
       // Every key of the form's body (N3): the schema reads a missing optional key as missing.
@@ -92,7 +92,7 @@ export async function handoverByApi(page: Page, assetId: string, custodianId: st
       departmentId: "",
       locationId: "",
       parentAssetId: "",
-      checkoutDate: bangkokDate(),
+      checkoutDate,
       expectedReturnDate: "",
       conditionBefore: conditionId,
       remark: "E2E setup handover",
@@ -247,6 +247,6 @@ export async function visit(measure: Measure, path: string, label: string, testI
   if (TRANSACTION_PAGE_PATH.test(path)) await expect(measure.page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   return record(measure, label, testInfo)
 }
-export async function visitAssetPage(measure: Measure, assetId: string, label: string, testInfo: TestInfo, view?: "custody" | "operations" | "audit") {
+export async function visitAssetPage(measure: Measure, assetId: string, label: string, testInfo: TestInfo, view?: "history" | "components" | "files" | "maintenance") {
   return visit(measure, `/th/assets/${assetId}${view ? `?view=${view}` : ""}`, label, testInfo)
 }

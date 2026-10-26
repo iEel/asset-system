@@ -19,6 +19,7 @@ import {
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { openMoreActions, primaryAction, readMenuEntries } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
 
@@ -27,9 +28,11 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
   const masters = await readAssetMasters(page)
   const asset = await createTxAsset(page, masters, testInfo.project.name, "HO1", "โน้ตบุ๊กส่งมอบประจำ")
 
-  // From the asset page's quick action, as IT staff start a handover.
+  // From the asset page's primary action (spec §7.1: a Ready personal asset's is ส่งมอบ), as IT staff start a handover.
   await visitAssetPage(measure, asset.id, "asset before the handover", testInfo)
-  await page.getByRole("link", { name: "ส่งมอบ", exact: true }).first().click()
+  const primary = primaryAction(page, e2eDevice)
+  await expect(primary).toHaveAccessibleName("ส่งมอบ")
+  await primary.click()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkout\\?assetId=${asset.id}`))
   await expect(page.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await expect(page.locator("#checkout-asset")).toContainText(asset.assetTag)
@@ -87,8 +90,10 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
   await visitAssetPage(measure, asset.id, "asset after the handover", testInfo)
   await expect(page.getByTestId("asset-identity-summary")).toContainText("ใช้งานอยู่")
   await expect(page.getByRole("main")).toContainText(receiver.fullNameTh)
-  // The handover action waits for the return now.
-  await expect(page.getByRole("button", { name: "ส่งมอบ", exact: true }).first()).toBeDisabled()
+  // The handover waits for the return now: รับคืน is the primary, and ส่งมอบ sits in "อื่น ๆ" with its reason (spec §7.1).
+  await expect(primaryAction(page, e2eDevice)).toHaveAccessibleName("รับคืน")
+  expect(await readMenuEntries(await openMoreActions(page, e2eDevice))).toContainEqual({ label: "ส่งมอบ", reason: "ส่งมอบได้เมื่อสถานะเป็น พร้อมใช้งาน เท่านั้น", available: false })
+  await record(measure, "asset after the handover, อื่น ๆ open", testInfo)
 })
 
 test("a temporary loan: a due date before the handover date shows its error under the field; corrected, the asset is Checked Out with its due date", async ({ page, measure, e2eDevice, browserName }, testInfo) => {
@@ -143,7 +148,7 @@ const refusalToasts = new Map<string, string>()
 test.describe("no double checkout", () => {
   test.describe.configure({ mode: "serial" })
 
-  test("a second handover of an asset already handed over is refused, and the asset stays with the first receiver", async ({ page, measure }, testInfo) => {
+  test("a second handover of an asset already handed over is refused, and the asset stays with the first receiver", async ({ page, measure, e2eDevice }, testInfo) => {
     const data = readRunData()
     const masters = await readAssetMasters(page)
     const asset = await createTxAsset(page, masters, testInfo.project.name, "HO3", "โน้ตบุ๊กส่งมอบซ้ำ")
@@ -184,14 +189,15 @@ test.describe("no double checkout", () => {
     expect(after.status.name).toBe("In Use")
     expect(after.custodianId).toBe(first.id)
 
-    // A fresh form no longer offers the asset, and its page's handover action waits for the return.
+    // A fresh form no longer offers the asset, and its page offers the handover only as an unavailable item with its reason.
     await visit(measure, `/th/asset-management/checkout?assetId=${asset.id}`, "a fresh handover form", testInfo)
     await page.locator("#checkout-asset").click()
     await page.getByRole("dialog").last().getByRole("combobox").fill(asset.assetTag)
     await expect(page.getByRole("dialog").last()).toContainText("ไม่พบรายการ")
     await page.keyboard.press("Escape")
     await visitAssetPage(measure, asset.id, "asset handed over", testInfo)
-    await expect(page.getByRole("button", { name: "ส่งมอบ", exact: true }).first()).toBeDisabled()
+    await expect(primaryAction(page, e2eDevice)).toHaveAccessibleName("รับคืน")
+    expect(await readMenuEntries(await openMoreActions(page, e2eDevice))).toContainEqual({ label: "ส่งมอบ", reason: "ส่งมอบได้เมื่อสถานะเป็น พร้อมใช้งาน เท่านั้น", available: false })
   })
 
   test("the refusal says why: the asset is already handed over (finding TX-A1)", async ({ e2eTheme }, testInfo) => {

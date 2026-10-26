@@ -14,6 +14,7 @@ import {
   visit,
   visitAssetPage,
 } from "./tx-support.ts"
+import { menuItem, openMoreActions } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
 
@@ -22,7 +23,7 @@ const cancelled = new Map<string, { history: string; operator: string; staffName
 test.describe("cancel the latest transaction", () => {
   test.describe.configure({ mode: "serial" })
 
-  test("a mistaken handover is cancelled: the asset is Ready again with no custodian, the HO- document prints as VOID with the reason, and the history keeps the cancel", async ({ page, measure }, testInfo) => {
+  test("a mistaken handover is cancelled: the asset is Ready again with no custodian, the HO- document prints as VOID with the reason, and the history keeps the cancel", async ({ page, measure, e2eDevice }, testInfo) => {
     const receiver = readRunData().employees.receiver1
     const masters = await readAssetMasters(page)
     const asset = await createTxAsset(page, masters, testInfo.project.name, "CX1", "โน้ตบุ๊กยกเลิกรายการ")
@@ -30,8 +31,8 @@ test.describe("cancel the latest transaction", () => {
     const reason = `${asset.assetTag} ส่งมอบผิดคน`
 
     await visitAssetPage(measure, asset.id, "asset handed over by mistake", testInfo)
-    await page.getByRole("button", { name: "การดำเนินการเพิ่มเติม" }).click()
-    await page.getByRole("menuitem", { name: "ยกเลิกรายการ" }).click()
+    // "อื่น ๆ" (on the phone, "การดำเนินการอื่น" in the bottom bar) holds the cancel of the latest transaction (spec §7.1).
+    await menuItem(await openMoreActions(page, e2eDevice), /^ยกเลิกรายการ/).click()
     const dialog = page.getByRole("dialog", { name: "ยืนยันการยกเลิกรายการ" })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByText("กำลังตรวจสอบว่าสามารถยกเลิกได้หรือไม่")).toHaveCount(0)
@@ -73,11 +74,11 @@ test.describe("cancel the latest transaction", () => {
     await expect(page.getByText(handover.documentNo, { exact: true }).first()).toBeVisible()
     await expectPrints(page, "พิมพ์ใบส่งมอบ")
 
-    // The history keeps the handover and the cancel that undid it.
-    await visitAssetPage(measure, asset.id, "asset history after the cancel", testInfo, "operations")
+    // The history tab keeps the handover, by its HO- document, and the cancel that undid it.
+    await visitAssetPage(measure, asset.id, "asset history after the cancel", testInfo, "history")
     const history = page.getByRole("main")
-    await expect(history).toContainText("ส่งมอบทรัพย์สิน")
-    const cancelEntry = history.getByText(/Checkout Cancel|ยกเลิก.*ส่งมอบ/).first()
+    await expect(history.getByRole("link", { name: handover.documentNo }).filter({ visible: true }).first()).toBeVisible()
+    const cancelEntry = history.getByText(/Checkout Cancel|ยกเลิก.*ส่งมอบ/).filter({ visible: true }).first()
     await expect(cancelEntry).toBeVisible()
     const staffName = readRunData().users.itStaff?.displayName ?? ""
     cancelled.set(testInfo.project.name, { history: (await cancelEntry.innerText()).trim(), operator, staffName })

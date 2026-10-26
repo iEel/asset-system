@@ -16,6 +16,7 @@ import {
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { menuItem, openMoreActions, primaryAction } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
 
@@ -24,14 +25,16 @@ const transfers = new Map<string, { assetId: string; transferId: string; documen
 test.describe("transfer", () => {
   test.describe.configure({ mode: "serial" })
 
-  test("a transfer to the second room and a new custodian: the asset's room and custodian change, and the TR- document opens and prints", async ({ page, measure }, testInfo) => {
+  test("a transfer to the second room and a new custodian: the asset's room and custodian change, and the TR- document opens and prints", async ({ page, measure, e2eDevice }, testInfo) => {
     const receiver = readRunData().employees.receiver2
     const room = await ensureSecondLocation()
     const masters = await readAssetMasters(page)
     const asset = await createTxAsset(page, masters, testInfo.project.name, "TR1", "โน้ตบุ๊กโอนย้าย")
 
     await visitAssetPage(measure, asset.id, "asset before the transfer", testInfo)
-    await page.getByRole("link", { name: "โอนย้าย", exact: true }).first().click()
+    // A Ready asset's primary is ส่งมอบ; its transfer is in "อื่น ๆ" (spec §7.1).
+    await expect(primaryAction(page, e2eDevice)).toHaveAccessibleName("ส่งมอบ")
+    await menuItem(await openMoreActions(page, e2eDevice), "โอนย้าย").click()
     await expect(page).toHaveURL(new RegExp(`/th/asset-management/transfer\\?assetId=${asset.id}`))
     await expect(page.getByRole("heading", { level: 1, name: "โอนย้ายทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
     await expect(page.locator("#transfer-asset")).toContainText(asset.assetTag)
@@ -83,20 +86,18 @@ test.describe("transfer", () => {
     await expectPrints(page, "พิมพ์เอกสารโอนย้าย")
   })
 
-  // Finding TX-A4: no page links to /asset-management/transfers/<id> (the asset page's timeline links the HO- and RT-
-  // documents only), so a person cannot open the TR- document they just made.
+  // Finding TX-A4: no page linked to /asset-management/transfers/<id>, so a person could not open the TR- document they
+  // had just made.
   test("the TR- document opens from the asset page (finding TX-A4)", async ({ page, measure }, testInfo) => {
-    // TX-A4 fixed (FX10): this test now keeps the TR- document linked from the asset's history.
+    // TX-A4 fixed (FX10): this test keeps the TR- document linked from the asset's history.
     const transfer = transfers.get(testInfo.project.name)
     expect(transfer, "the transfer test ran first").toBeTruthy()
     if (!transfer) return
-    // Any of the asset page's views would do: the overview and the operations timeline.
-    let links = 0
-    for (const view of [undefined, "operations"] as const) {
+    // The overview's ความเคลื่อนไหวล่าสุด and the history tab both link it (spec §7.5, §7.6).
+    for (const view of [undefined, "history"] as const) {
       await visitAssetPage(measure, transfer.assetId, `asset after the transfer (${view ?? "overview"})`, testInfo, view)
-      links += await page.locator(`a[href*="/asset-management/transfers/${transfer.transferId}"]`).count()
+      expect(await page.locator(`a[href*="/asset-management/transfers/${transfer.transferId}"]`).count(), `links to the TR- document (${view ?? "overview"})`).toBeGreaterThan(0)
     }
-    expect(links, "links to the TR- document").toBeGreaterThan(0)
   })
 
   // Finding TX-A6: the TR- document prints the status, room and department before and after, but not the custodian, so

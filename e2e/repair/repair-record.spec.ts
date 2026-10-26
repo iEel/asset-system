@@ -96,11 +96,12 @@ test("repaired brings a Ready asset back to Ready, and a second record found bey
   const tag = areaTag(testInfo, "R2")
   const asset = await createAsset(page.request, masters, { tag, name: `${tag} เครื่องส่วนกลางส่งซ่อม`, ownershipType: "shared" })
 
-  // From the asset's own page: its "บันทึกซ่อม" opens the form with the asset chosen. The page is opened without its
-  // axe check here (finding AR2 has its own test below); its console and requests are still measured.
+  // From the asset's own page: its "บันทึกซ่อม" (beside the primary: the header on the desktop, the bottom bar on the
+  // phone) opens the form with the asset chosen. The page is opened without its axe check here (finding AR2 has its own
+  // test below); its console and requests are still measured.
   await page.goto(`/th/assets/${asset.id}`)
-  await page.getByRole("main").getByRole("link", { name: "บันทึกซ่อม", exact: true }).first().click()
-  await page.waitForURL(/\/th\/maintenance\/new\?assetId=/)
+  await page.getByRole("main").getByRole("link", { name: "บันทึกซ่อม", exact: true }).filter({ visible: true }).first().click()
+  await page.waitForURL((url) => url.pathname === "/th/maintenance/new" && url.searchParams.get("assetId") === asset.id)
   await expect(page.locator("#repair-record-asset-value")).toContainText(tag)
   await measure.recordPage("repair form from the asset")
   await page.locator("#repair-record-problem").fill(`${tag} พัดลมดัง ส่งช่างภายใน`)

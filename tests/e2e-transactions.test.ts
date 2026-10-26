@@ -205,7 +205,7 @@ test("the latest transaction cancelled: the state before it, the VOID document w
   assert.match(spec, /await expectFieldError\(page, "transaction-cancel-reason", "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร"\)/)
   assert.match(spec, /page\.getByRole\("status"\)\.filter\(\{ hasText: "VOID \/ ยกเลิกแล้ว" \}\)/)
   assert.match(spec, /expect\(after\.custodianId\)\.toBeNull\(\)/)
-  assert.match(spec, /await visitAssetPage\(measure, asset\.id, "asset history after the cancel", testInfo, "operations"\)/)
+  assert.match(spec, /await visitAssetPage\(measure, asset\.id, "asset history after the cancel", testInfo, "history"\)/)
   assert.deepEqual(expectedFailures(spec), [], "TX-A5 (FX11) and TX-A7 (FX12) are fixed")
 })
 

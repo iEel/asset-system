@@ -93,8 +93,17 @@ test("a new asset with a photo and a purchase document: no room first shows its 
   await visitAssetPage(measure, asset.id, "the new asset", testInfo)
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible()
   await expect(page.getByTestId("asset-identity-summary")).toContainText("พร้อมใช้งาน")
-  await expect(page.getByRole("main")).toContainText(documentNo)
-  const photo = page.locator('main img[src*="/api/attachments/"]').first()
+  // The photo card loads the card size from the thumbnail route, never the original file (spec §7.5).
+  const photo = page.locator('main img[src*="/api/attachments/"][src*="/thumbnail?size=card"]').first()
   await expect(photo).toBeVisible()
   expect(await photo.evaluate((image) => (image as HTMLImageElement).naturalWidth), "the photo loads").toBeGreaterThan(0)
+  // ข้อมูลทรัพย์สิน's "เอกสารจัดซื้อ" row names the purchase document, which opens the files tab's เอกสารจัดซื้อ
+  // (spec §7.5, §7.7; the app's one word for it, R31).
+  const purchaseDocument = page.locator("#overview").getByRole("link", { name: documentNo })
+  await expect(purchaseDocument).toBeVisible()
+  await purchaseDocument.click()
+  await page.waitForURL((url) => url.pathname === `/th/assets/${asset.id}` && url.searchParams.get("view") === "files")
+  await record(measure, "the new asset's files", testInfo)
+  await expect(page.getByRole("main").getByRole("heading", { name: "เอกสารจัดซื้อ", exact: true })).toBeVisible()
+  await expect(page.getByRole("main")).toContainText(documentNo)
 })

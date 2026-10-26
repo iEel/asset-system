@@ -4,9 +4,11 @@
 import { expect, test, asUser } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createAsset, handOver, projectMarker, readAssetChoices, registerAssetsAsItStaff } from "./support/records.ts"
-import { APPROVE_API_REFUSALS, lacks, READ_ONLY_LISTS, REVIEW_BUTTON_NAMES, VIEWER_API_REFUSALS, VIEWER_PAGE_REFUSALS } from "./support/refusals.ts"
+import { APPROVE_API_REFUSALS, isWriteLink, lacks, READ_ONLY_LISTS, REVIEW_BUTTON_NAMES, VIEWER_API_REFUSALS, VIEWER_PAGE_REFUSALS } from "./support/refusals.ts"
 import { expectApprovalInboxNotFound, expectRefused, readOnlyUrl, writeControls } from "./support/roles-ui.ts"
 import { expectNotFound, visitRefused } from "./support/ui.ts"
+import { controlNames, detailWriteControls, openMoreActionsIfShown, readMenuEntries } from "../asset-detail/detail-steps.ts"
+import { DETAIL_VIEWS, DETAIL_WORDS } from "../asset-detail/detail-words.ts"
 
 test.describe("the viewer", () => {
   asUser("viewer")
@@ -54,6 +56,36 @@ test.describe("the viewer", () => {
     await desk.close()
     await measure.visit(`/th/assets/${desk.assets[0].id}`, "asset page (viewer)")
     await expect(page.getByRole("main").getByText(desk.assets[0].assetTag).first()).toBeVisible()
+  })
+
+  // Page group 1 (spec §7.1, §10): no tab of an asset's page offers the viewer a write control: no create, edit or
+  // transaction link, none of the page's write words ("จัดการ" included, R35), no file to upload. Everyone gets the
+  // phone's bar, and the viewer's holds only "การดำเนินการอื่น", whose sheet holds only "พิมพ์ป้าย" (R21); the
+  // desktop draws no empty "อื่น ๆ". An action the person may not take is left out, never shown as unavailable. The
+  // overview's "ข้อมูลยังไม่ครบ" line is for asset:edit only (R59), so the viewer never sees it.
+  test("the viewer's asset page offers no write control on any tab (group 1 asset detail)", async ({ page, measure, browser, e2eDevice }, testInfo) => {
+    const desk = await registerAssetsAsItStaff(browser, testInfo, [{ slug: "ROLE5", name: "แท็บอ่านอย่างเดียว", ownershipType: "personal" }])
+    await desk.close()
+    const asset = desk.assets[0]
+    const offered: string[] = []
+    for (const view of DETAIL_VIEWS) {
+      await measure.visit(`/th/assets/${asset.id}${view === "overview" ? "" : `?view=${view}`}`, `asset page, ${view} (viewer)`)
+      for (const control of [...(await writeControls(page)), ...(await detailWriteControls(page))]) offered.push(`${view}: ${control}`)
+      if ((await page.getByRole("main").locator('input[type="file"]').count()) > 0) offered.push(`${view}: a file input`)
+      if ((await page.getByRole("main").locator('[data-slot="asset-data-gaps"]').count()) > 0) offered.push(`${view}: the data gaps line`)
+      if (e2eDevice === "phone") expect(await controlNames(page.locator('[data-slot="action-bar"]')), `${view}: the viewer's bar`).toEqual([DETAIL_WORDS.moreActions])
+      const more = await openMoreActionsIfShown(page, e2eDevice)
+      if (!more) continue
+      for (const entry of await readMenuEntries(more)) {
+        if (!entry.available) offered.push(`${view}: ${entry.label}, unavailable`)
+        else if (entry.label !== DETAIL_WORDS.printLabel) offered.push(`${view}: ${entry.label}`)
+      }
+      for (const href of await more.locator("a[href]").evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""))) {
+        if (isWriteLink(href)) offered.push(`${view}: link ${href.split("?")[0]}`)
+      }
+      await page.keyboard.press("Escape")
+    }
+    expect(offered).toEqual([])
   })
 })
 

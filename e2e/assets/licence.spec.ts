@@ -7,6 +7,8 @@ import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { txAssetName, txAssetTag } from "../transactions/tx-plan.ts"
 import { expectFieldError, readAssetMasters, record, visit, visitAssetPage } from "../transactions/tx-support.ts"
+import { factCell } from "../asset-detail/detail-steps.ts"
+import { DETAIL_WORDS } from "../asset-detail/detail-words.ts"
 
 asUser("itStaff")
 
@@ -70,5 +72,6 @@ test("a software licence: more seats used than bought shows its error under the 
   expect([saved.ownershipType, saved.licenseTotalSeats, saved.licenseUsedSeats, saved.departmentId, saved.custodianId]).toEqual(["software_license", 5, 2, data.departmentId, null])
   await visitAssetPage(measure, asset.id, "the new software licence", testInfo)
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible()
-  await expect(page.locator("#overview")).toContainText("ใช้แล้ว 2/5 คงเหลือ 3")
+  // The seats are the fact strip's first cell (spec §7.4, §7.9).
+  await expect(factCell(page, DETAIL_WORDS.seatsCell)).toContainText("ใช้แล้ว 2/5 คงเหลือ 3")
 })
