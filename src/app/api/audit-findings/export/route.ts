@@ -4,7 +4,9 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { auditFindingColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
-import { buildAuditFindingWhere, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
+import { buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
+import { getWaitingWorkRules } from "@/lib/waiting-work"
+import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +17,9 @@ export async function GET(request: NextRequest) {
     const roundId = request.nextUrl.searchParams.get("roundId")?.trim()
     const findingType = request.nextUrl.searchParams.get("findingType")?.trim()
     const status = resolveAuditFindingStatus(request.nextUrl.searchParams.get("status")?.trim())
+    const rules = isAuditFindingWaitingStatus(status) ? await getWaitingWorkRules() : DEFAULT_WAITING_WORK_RULES
     const findings = await prisma.auditFinding.findMany({
-      where: buildAuditFindingWhere({ status, search, roundId, findingType }),
+      where: buildAuditFindingWhere({ status, search, roundId, findingType, rules }),
       include: {
         auditRound: { select: { auditNo: true, name: true } },
         asset: { select: { assetTag: true, name: true } },

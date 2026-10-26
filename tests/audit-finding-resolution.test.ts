@@ -2,7 +2,19 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-import { buildAuditFindingWhere } from "../src/lib/audit-finding-filters.ts"
+import {
+  auditFindingResolutionStatuses,
+  buildAuditFindingWhere,
+  isAuditFindingWaitingStatus,
+  resolveAuditFindingStatus,
+} from "../src/lib/audit-finding-filters.ts"
+import {
+  DEFAULT_WAITING_WORK_RULES,
+  auditActionsDueSoonWhere,
+  openAuditActionsWhere,
+  startOfBangkokDay,
+  type WaitingWorkRules,
+} from "../src/lib/waiting-work-rules.ts"
 
 test("audit findings page exposes the findings workflow", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
@@ -130,6 +142,54 @@ test("audit findings page and exports preserve round drilldown filters", () => {
   for (const route of [excelRoute, pdfRoute]) {
     assert.match(route, /const roundId = request\.nextUrl\.searchParams\.get\("roundId"\)/)
     assert.match(route, /const findingType = request\.nextUrl\.searchParams\.get\("findingType"\)/)
-    assert.match(route, /buildAuditFindingWhere\(\{ status, search, roundId, findingType \}\)/)
+    assert.match(route, /const rules = isAuditFindingWaitingStatus\(status\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
+    assert.match(route, /buildAuditFindingWhere\(\{ status, search, roundId, findingType, rules \}\)/)
   }
+})
+
+const now = new Date("2026-10-26T03:00:00.000Z") // 10:00 in Bangkok
+const waitingRules: WaitingWorkRules = { ...DEFAULT_WAITING_WORK_RULES, auditActionDueSoonDays: 14 }
+
+test("the two action filters are the bell's two kinds, with the rules they are given (group 1 spec §6.3)", () => {
+  const today = startOfBangkokDay(now)
+  assert.deepEqual(buildAuditFindingWhere({ status: "action_not_due", now, rules: waitingRules }), openAuditActionsWhere(today, waitingRules))
+  assert.deepEqual(buildAuditFindingWhere({ status: "action_due_soon", now, rules: waitingRules }), auditActionsDueSoonWhere(today, waitingRules))
+  assert.deepEqual(buildAuditFindingWhere({ status: "action_due_soon", now }), auditActionsDueSoonWhere(today, DEFAULT_WAITING_WORK_RULES), "no rules: today's defaults")
+  for (const status of ["action_not_due", "action_due_soon"]) {
+    assert.equal(resolveAuditFindingStatus(status), status)
+    assert.equal(isAuditFindingWaitingStatus(status), true)
+  }
+  assert.equal(isAuditFindingWaitingStatus("action_open"), false)
+  assert.deepEqual([...auditFindingResolutionStatuses], ["pending", "action_open", "overdue", "closed", "approved", "rejected", "exception", "all"], "the tabs stay as they are")
+})
+
+test("a search, round or type narrows an action filter without replacing its own conditions", () => {
+  const base = openAuditActionsWhere(startOfBangkokDay(now), DEFAULT_WAITING_WORK_RULES)
+  assert.deepEqual(buildAuditFindingWhere({ status: "action_not_due", search: " SNI ", roundId: "round-1", findingType: "wrong_location", now }), {
+    AND: [
+      base,
+      { auditRoundId: "round-1" },
+      { findingType: "wrong_location" },
+      {
+        OR: [
+          { findingType: { contains: "SNI" } },
+          { auditRound: { auditNo: { contains: "SNI" } } },
+          { auditRound: { name: { contains: "SNI" } } },
+          { asset: { assetTag: { contains: "SNI" } } },
+          { asset: { name: { contains: "SNI" } } },
+        ],
+      },
+    ],
+  })
+})
+
+test("the findings page reads the bell's rules for the action filters and shows the filter as a chip (group 1 spec §6.5)", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(page, /const waitingRules = isAuditFindingWaitingStatus\(status\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
+  assert.match(page, /const where = buildAuditFindingWhere\(\{ status, search: searchText, roundId, findingType, now: pageLoadedAt, rules: waitingRules \}\)/)
+  assert.doesNotMatch(page, /now: today/)
+  assert.match(page, /const tNotifications = await getTranslations\("notifications"\)/)
+  assert.match(page, /action_not_due: tNotifications\("openAuditActions"\),\n\s+action_due_soon: tNotifications\("auditActionsDueSoon"\),/)
+  assert.match(page, /\.\.\.\(isAuditFindingWaitingStatus\(status\) \? \[\{ key: "status", label: resolutionFilterLabels\[status\], href: filterHref\("all"\) \}\] : \[\]\),/)
+  assert.match(page, /const resolutionFilters = auditFindingResolutionStatuses\.map\(/, "the tabs come from the 8 tab statuses only")
 })

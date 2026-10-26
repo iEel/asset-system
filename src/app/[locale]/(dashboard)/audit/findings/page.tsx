@@ -30,10 +30,13 @@ import {
   auditFindingResolutionStatuses,
   buildAuditFindingWhere,
   getAuditFindingToday,
+  isAuditFindingWaitingStatus,
   isOpenAuditFindingActionStatus,
   resolveAuditFindingStatus,
   type AuditFindingResolutionStatus,
 } from "@/lib/audit-finding-filters"
+import { getWaitingWorkRules } from "@/lib/waiting-work"
+import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
@@ -67,6 +70,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const t = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
   const tAsset = await getTranslations("asset")
+  const tNotifications = await getTranslations("notifications")
   const formatAuditItemStatus = (status: string) => {
     const key = getAuditItemStatusLabelKey(status)
     return key ? t(key) : status
@@ -80,6 +84,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const roundId = roundIdParam.trim()
   const findingType = findingTypeParam.trim()
   const status = resolveAuditFindingStatus(statusParam)
+  // The bell's two action kinds read its own day count; other statuses read no setting.
+  const waitingRules = isAuditFindingWaitingStatus(status) ? await getWaitingWorkRules() : DEFAULT_WAITING_WORK_RULES
   const today = getAuditFindingToday()
   const listPage = parseListPage({ page, pageSize })
   const auditFindingsReturnHref = buildAuditFindingsHref(locale, status, searchText, { roundId, findingType }, listPage)
@@ -93,7 +99,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   if (roundId) exportParams.set("roundId", roundId)
   if (findingType) exportParams.set("findingType", findingType)
   exportParams.set("status", status)
-  const where = buildAuditFindingWhere({ status, search: searchText, roundId, findingType, now: today })
+  const where = buildAuditFindingWhere({ status, search: searchText, roundId, findingType, now: pageLoadedAt, rules: waitingRules })
   const { skip, take } = listPageWindow(listPage)
   const [findings, employees, pendingReviewCount, openActionCount, overdueCount, closedCount, otherStatusTotal, filterRound] = await Promise.all([
     prisma.auditFinding.findMany({
@@ -114,10 +120,10 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           orderBy: { code: "asc" },
         })
       : Promise.resolve([]),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending", search: searchText, roundId, findingType, now: today }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "action_open", search: searchText, roundId, findingType, now: today }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "overdue", search: searchText, roundId, findingType, now: today }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "closed", search: searchText, roundId, findingType, now: today }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "action_open", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "overdue", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "closed", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
     // The four counts above already cover the whole list of their status; any other status needs one count of its own.
     SUMMARY_STATUSES.has(status) ? Promise.resolve(null) : prisma.auditFinding.count({ where }),
     // The round chip names the round (spec 2B I24). Read-only, one row.
@@ -185,6 +191,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     rejected: t("status_rejected"),
     exception: t("status_exception"),
     all: t("status_all"),
+    action_not_due: tNotifications("openAuditActions"),
+    action_due_soon: tNotifications("auditActionsDueSoon"),
   }
   const resolutionStateLabels: Record<ResolutionState, string> = {
     pending_review: t("resolutionStatePendingReview"),
@@ -232,6 +240,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   // removes only itself (spec 2B I24, DESIGN.md "chips for every active filter that is not visible on screen").
   const findingTypeKey = `type_${findingType}`
   const filterChips: FilterChipItem[] = [
+    // A bell link's action filter has no tab, so it shows as a chip; removing it keeps the round and type.
+    ...(isAuditFindingWaitingStatus(status) ? [{ key: "status", label: resolutionFilterLabels[status], href: filterHref("all") }] : []),
     ...(roundId ? [{ key: "roundId", label: `${t("auditRound")}: ${filterRound?.auditNo ?? roundId}`, href: filterHref(status, { findingType }) }] : []),
     ...(findingType ? [{ key: "findingType", label: `${t("findingType")}: ${t.has(findingTypeKey) ? t(findingTypeKey) : findingType}`, href: filterHref(status, { roundId }) }] : []),
   ]
