@@ -44,7 +44,7 @@ export function AssetPhotoFrame({ attachmentId, alt, label, canUpload, uploadHre
         height={360}
         decoding="async"
         onError={() => setFailed(true)}
-        className="max-h-full w-full object-contain bg-image-stage"
+        className="max-h-full w-full object-contain bg-image-stage max-lg:max-h-72"
       />
     )
 
