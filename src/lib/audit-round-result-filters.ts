@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { successfulAuditResults } from "./audit-result-summary.ts"
+import { withAuditRoundOwnItems } from "./audit-round-counts-rules.ts"
 
 export const auditRoundResultFilterValues = [
   "all",
@@ -152,7 +153,11 @@ export function buildAuditRoundItemWhere({
     where.OR = buildAssetSearchWhere(searchText)
   }
 
-  return where
+  // The round's own items (group 2 spec §5): every result list leaves the out-of-scope finds out, so the dashboard's KPI
+  // equals the list it opens. Two lists keep them: the out-of-scope list (it reads the scan history; plan 2 moves it onto
+  // items with auditRoundOutOfScopeItemWhere) and the pending-review list, which follows the pending findings as its
+  // count does (page.tsx pendingReviewCount, the close checklist, R3); an out-of-scope find waits for review too.
+  return result === "out_of_scope" || result === "pending_review" ? where : withAuditRoundOwnItems(where)
 }
 
 export function buildAuditRoundScanHistoryWhere({

@@ -34,6 +34,8 @@ import { lastListPage } from "@/lib/list-pagination"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
 import { auditRoundStatusLabelKey, effectiveAuditRoundStatus, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
+import { getAuditRoundCounts } from "@/lib/audit-round-counts"
+import { emptyAuditRoundCounts } from "@/lib/audit-round-counts-rules"
 import { buildAuditCorrectionHistoryByItemId, type AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { paginationRange } from "@/lib/master-data-query"
 import {
@@ -75,7 +77,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
 
   const [
     round,
-    statusCounts,
+    roundCountsById,
     resultCounts,
     findingTypeCounts,
     pendingReviewCount,
@@ -131,14 +133,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             },
           },
         },
-        _count: { select: { items: true, findings: true } },
       },
     }),
-    prisma.auditItem.groupBy({
-      by: ["auditStatus"],
-      where: { auditRoundId: id },
-      _count: { _all: true },
-    }),
+    getAuditRoundCounts([id]),
     prisma.auditItem.groupBy({
       by: ["auditResult"],
       where: { auditRoundId: id },
@@ -279,11 +276,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       ? cancelledByUser.username
       : `${cancelledByUser.displayName} (${cancelledByUser.username})`
     : round.cancelledBy
-  const pendingCount = statusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
-  const processedCount = Math.max(round._count.items - pendingCount, 0)
-  const scannedCount = statusCounts
-    .filter((row) => row.auditStatus !== "pending")
-    .reduce((sum, row) => sum + row._count._all, 0)
+  const roundCounts = roundCountsById.get(round.id) ?? emptyAuditRoundCounts
+  const pendingCount = roundCounts.pending
+  const processedCount = roundCounts.checked
   const foundCount = countSuccessfulAuditResultRows(resultCounts)
   const notFoundCount = resultCounts.find((row) => row.auditResult === "not_found")?._count._all ?? 0
   const wrongLocationCount = findingTypeCounts.find((row) => row.findingType === "wrong_location")?._count._all ?? 0
@@ -292,7 +287,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const mismatchCount = resultCounts
     .filter((row) => isVarianceAuditResult(row.auditResult))
     .reduce((sum, row) => sum + row._count._all, 0)
-  const progress = round._count.items > 0 ? Math.round(((round._count.items - pendingCount) / round._count.items) * 100) : 0
+  const progress = roundCounts.total > 0 ? Math.round((roundCounts.checked / roundCounts.total) * 100) : 0
 
   const evidenceSummary = await getEvidenceSummary({
     auditStartDate: round.startDate,
@@ -402,7 +397,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const canCloseRound = !isRoundReadOnly && closeChecklist.every((item) => item.ok)
   const cancelImpact = {
     pendingItems: pendingCount,
-    processedItems: processedCount,
+    processedItems: roundCounts.checked + roundCounts.outOfScope,
     pendingFindings: pendingReviewCount,
     approvedFindings: approvedFindingCount,
     openActions: openActionCount,
@@ -552,16 +547,16 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       <StatStrip
         className="mb-6"
         items={[
-          { key: "totalExpected", label: t("totalExpected"), value: formatCount(round._count.items) },
+          { key: "totalExpected", label: t("totalExpected"), value: formatCount(roundCounts.total) },
           { key: "pending", label: t("pending"), value: formatCount(pendingCount) },
-          { key: "scanned", label: t("scanned"), value: formatCount(scannedCount) },
+          { key: "scanned", label: t("scanned"), value: formatCount(processedCount) },
           { key: "progress", label: t("progress"), value: `${formatCount(progress)}%` },
         ]}
       />
 
       <ContentPanel className="mb-6">
         <AuditProgressBar
-          total={round._count.items}
+          total={roundCounts.total}
           processed={processedCount}
           pending={pendingCount}
           label={t("progress")}

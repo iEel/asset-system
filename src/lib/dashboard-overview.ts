@@ -5,6 +5,7 @@ import { countDashboardAssetCrossScope } from "@/lib/asset-cross-scope"
 import { assetNotClosedStatusWhere } from "@/lib/asset-custodian-state-filter"
 import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { withAuditRoundOwnItems } from "@/lib/audit-round-counts-rules"
 import {
   buildDashboardAudit,
   buildDashboardStatusRows,
@@ -49,9 +50,11 @@ export async function getDashboardOverview({ companyId, now }: { companyId: stri
       where: { isActive: true, status: auditRoundOperationalWhere },
       select: { id: true, auditNo: true, name: true, status: true, startDate: true, endDate: true },
     }),
+    // The round's own items (group 2 spec §5): an out-of-scope find is counted apart, so the KPI and each branch row equal
+    // the round page's list they open.
     prisma.auditItem.groupBy({
       by: ["auditRoundId", "expectedBranchId", "auditStatus"],
-      where: { auditRound: { isActive: true, status: auditRoundOperationalWhere }, ...(companyId ? { expectedCompanyId: companyId } : {}) },
+      where: withAuditRoundOwnItems({ auditRound: { isActive: true, status: auditRoundOperationalWhere }, ...(companyId ? { expectedCompanyId: companyId } : {}) }),
       _count: { _all: true },
     }),
     // Every branch: expectedBranchId is not a relation.

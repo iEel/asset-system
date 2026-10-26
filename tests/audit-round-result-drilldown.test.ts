@@ -17,37 +17,46 @@ import {
   resolveAuditRoundResultFilter,
 } from "../src/lib/audit-round-result-filters.ts"
 
+// The round's own items (group 2 spec §5): every list but the out-of-scope and pending-review ones leaves the out-of-scope finds out,
+// null-safe because a pending item has no result.
+const own = (where: object) => ({ AND: [where, { OR: [{ auditResult: null }, { auditResult: { not: "out_of_scope" } }] }] })
+
 test("audit round result filters map dashboard buckets to scoped item queries", () => {
   assert.equal(resolveAuditRoundResultFilter("missing"), "all")
   assert.equal(resolveAuditRoundResultFilter("wrong_location"), "wrong_location")
 
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "found", search: "" }), {
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "found", search: "" }), own({
     auditRoundId: "round-1",
     auditResult: { in: ["found", "confirmed_with_parent"] },
-  })
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "" }), {
+  }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "" }), own({
     auditRoundId: "round-1",
     auditResult: "not_found",
-  })
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "wrong_location", search: "" }), {
+  }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "wrong_location", search: "" }), own({
     auditRoundId: "round-1",
     findings: { some: { findingType: "wrong_location" } },
-  })
+  }))
   assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "pending_review", search: "" }), {
     auditRoundId: "round-1",
     findings: { some: { reviewStatus: "pending" } },
   })
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "" }), own({ auditRoundId: "round-1" }))
+  // The out-of-scope list still reads the scan history (buildAuditRoundScanHistoryWhere); plan 2 moves it onto items.
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "out_of_scope", search: "" }), { auditRoundId: "round-1" })
+  // The pending-review list follows the pending findings, out-of-scope finds included, as its count does (R3, the close checklist).
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "pending_review", search: "" }), { auditRoundId: "round-1", findings: { some: { reviewStatus: "pending" } } })
 })
 
 test("audit round result searches stay scoped to the selected bucket", () => {
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "wrong_custodian", search: "SNI-EQU" }), {
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "wrong_custodian", search: "SNI-EQU" }), own({
     auditRoundId: "round-1",
     findings: { some: { findingType: "wrong_custodian" } },
     OR: [
       { asset: { assetTag: { contains: "SNI-EQU" } } },
       { asset: { name: { contains: "SNI-EQU" } } },
     ],
-  })
+  }))
 
   assert.deepEqual(buildAuditRoundScanHistoryWhere({ roundId: "round-1", search: "GRL" }), {
     auditRoundId: "round-1",
@@ -294,15 +303,15 @@ test("the results the scan stores for a mismatch read รายการไม�
 const roundPage = () => readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8").replace(/\r\n/g, "\n")
 
 test("the round's item list narrows to the expected company and branch, alone or with a bucket and a search (spec §6.7, R13)", () => {
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", branchId: "branch-1" }), {
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", branchId: "branch-1" }), own({
     auditRoundId: "round-1",
     expectedBranchId: "branch-1",
-  })
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: "company-1" }), {
+  }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: "company-1" }), own({
     auditRoundId: "round-1",
     expectedCompanyId: "company-1",
-  })
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "SNI", companyId: "company-1", branchId: "branch-1" }), {
+  }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "SNI", companyId: "company-1", branchId: "branch-1" }), own({
     auditRoundId: "round-1",
     expectedCompanyId: "company-1",
     expectedBranchId: "branch-1",
@@ -311,8 +320,8 @@ test("the round's item list narrows to the expected company and branch, alone or
       { asset: { assetTag: { contains: "SNI" } } },
       { asset: { name: { contains: "SNI" } } },
     ],
-  })
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: null, branchId: null }), { auditRoundId: "round-1" })
+  }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: null, branchId: null }), own({ auditRoundId: "round-1" }))
 })
 
 test("the company and branch params are read once and trimmed, and an empty one is no filter", () => {
