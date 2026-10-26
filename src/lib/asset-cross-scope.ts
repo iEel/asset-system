@@ -173,6 +173,26 @@ export async function buildDashboardAssetCrossScopeSummary(limit = 5) {
   }
 }
 
+// The register's crossScope=all rule as one SQL count, narrowed by company (group 1 spec §6.6). Every joined column
+// is NOT NULL, so SQL <> is the same test as getAssetCrossScopeFlags' !==.
+export async function countDashboardAssetCrossScope(companyId: string | null): Promise<number> {
+  const rows = await prisma.$queryRaw<Array<{ all: number | bigint | null }>>`
+    SELECT COUNT(*) AS [all]
+    FROM [assets] a
+    LEFT JOIN [employees] e ON e.[id] = a.[custodianId]
+    LEFT JOIN [locations] hl ON hl.[id] = a.[homeLocationId]
+    INNER JOIN [locations] cl ON cl.[id] = a.[currentLocationId]
+    WHERE a.[isActive] = 1
+      ${companyId ? Prisma.sql`AND a.[companyId] = ${companyId}` : Prisma.empty}
+      AND (
+        (e.[id] IS NOT NULL AND (e.[companyId] <> a.[companyId] OR e.[branchId] <> a.[branchId]))
+        OR (hl.[id] IS NOT NULL AND hl.[branchId] <> a.[branchId])
+        OR cl.[branchId] <> a.[branchId]
+      )
+  `
+  return normalizeCrossScopeCount(rows[0]?.all)
+}
+
 export function getAssetCrossScopeRecordFlags(asset: AssetCrossScopeRecord) {
   return getAssetCrossScopeFlags(asset)
 }
