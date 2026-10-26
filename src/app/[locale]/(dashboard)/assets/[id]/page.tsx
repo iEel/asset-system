@@ -103,21 +103,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           status: { select: { name: true, nameTh: true, colorCode: true } },
           condition: { select: { name: true, nameTh: true, colorCode: true } },
           supplier: { select: { code: true, name: true } },
-          checkouts: {
-            orderBy: { checkoutDate: "desc" },
-            take: loadPolicy.checkoutLimit,
-            include: {
-              custodian: { select: { code: true, fullNameTh: true } },
-              checkins: {
-                orderBy: { createdAt: "desc" },
-                take: 1,
-                include: {
-                  returnByEmployee: { select: { code: true, fullNameTh: true } },
-                  receiveByEmployee: { select: { code: true, fullNameTh: true } },
-                },
-              },
-            },
-          },
           attachments: {
             where: { isActive: true },
             orderBy: { uploadedAt: "desc" },
@@ -177,14 +162,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   )
 
   const asset = rawAsset
-    ? {
-        ...rawAsset,
-        checkouts: rawAsset.checkouts.map((checkout) => ({
-          ...checkout,
-          checkin: checkout.checkins[0] ?? null,
-        })),
-      }
-    : null
 
   if (!asset) notFound()
 

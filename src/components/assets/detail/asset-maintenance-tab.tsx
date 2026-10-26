@@ -175,7 +175,7 @@ export async function AssetMaintenanceTab({
                 return (
                   <li key={repair.id}>
                     {canViewRepairs ? (
-                      <Link href={repairHref(repair)} aria-label={`${tCommon("view")}: ${repair.repairNo}`} className="block min-w-0">
+                      <Link href={repairHref(repair)} className="block min-w-0">
                         {body}
                       </Link>
                     ) : (

@@ -2,12 +2,10 @@ import type { Prisma } from "@prisma/client"
 import type { AssetDetailView } from "./asset-detail-view.ts"
 
 export type AssetDetailLoadPolicy = {
-  checkoutLimit: number
   assignedLicenseLimit: number
 }
 
 const previewPolicy: AssetDetailLoadPolicy = {
-  checkoutLimit: 1,
   assignedLicenseLimit: 1,
 }
 
@@ -16,7 +14,7 @@ const previewPolicy: AssetDetailLoadPolicy = {
 // load the preview.
 export function getAssetDetailLoadPolicy(view: AssetDetailView): AssetDetailLoadPolicy {
   if (view === "components") {
-    return { ...previewPolicy, checkoutLimit: 10, assignedLicenseLimit: 50 }
+    return { ...previewPolicy, assignedLicenseLimit: 50 }
   }
   return { ...previewPolicy }
 }

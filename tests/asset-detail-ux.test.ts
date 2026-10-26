@@ -130,6 +130,6 @@ test("asset detail avoids eager component inventory and bounds preview relations
   assert.doesNotMatch(source, /installedComponentAssetIds/)
   assert.doesNotMatch(source, /availableComponentAssets/)
   assert.doesNotMatch(source, /take: 300/)
-  assert.match(source, /checkouts:\s*\{[\s\S]*?take: loadPolicy\.checkoutLimit/)
+  assert.doesNotMatch(source, /checkouts:\s*\{/, "no handover rows on the page: the frame and the files loader read what they need")
   assert.match(source, /attachments:\s*\{[\s\S]*?take: 20/)
 })
