@@ -7,7 +7,7 @@ test("component manager accepts a return path to its own asset detail or to the 
 
   assert.match(source, /normalizeAssetComponentManagerReturnTo/)
   assert.match(source, /const allowedPath = `\/\$\{locale\}\/assets\/\$\{encodeURIComponent\(assetId\)\}`/)
-  assert.match(source, /\?view=custody/)
+  assert.match(source, /const fallback = `\$\{allowedPath\}\?view=components`/)
 })
 
 test("component candidate route avoids database lookup below two characters", () => {

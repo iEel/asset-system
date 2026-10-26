@@ -29,6 +29,6 @@ test("asset detail tabs wrap the shared TabNav and keep their own scrolling (spe
 
   assert.match(source, /import \{ TabNav \} from "@\/components\/ui\/tab-nav"/)
   assert.match(source, /<TabNav\s+ref=\{navRef\}\s+aria-label=\{label\}\s+current=\{view\}\s+onScroll=\{handleScroll\}\s+style=\{\{ scrollSnapType: "x mandatory" \}\}\s+linkClassName="snap-start"/)
-  assert.match(source, /count: indicator\?\.count \? formatCount\(indicator\.count\) : undefined/)
+  assert.match(source, /count: indicator\?\.count === undefined \? undefined : formatCount\(indicator\.count\)/)
   assert.doesNotMatch(source, /aria-current=\{|<Link\b|bg-white\/|text-white|scrollSnapAlign/)
 })

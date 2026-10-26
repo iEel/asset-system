@@ -24,7 +24,7 @@ export function normalizeAssetReturnTo(locale: string, value: ReturnToParam) {
 
 export function normalizeAssetComponentManagerReturnTo(locale: string, assetId: string, value: ReturnToParam) {
   const allowedPath = `/${locale}/assets/${encodeURIComponent(assetId)}`
-  const fallback = `${allowedPath}?view=custody`
+  const fallback = `${allowedPath}?view=components`
   const registerPath = `/${locale}/assets`
   const raw = Array.isArray(value) ? value[0] : value
   if (!raw) return fallback

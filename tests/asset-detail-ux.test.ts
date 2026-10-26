@@ -64,18 +64,17 @@ test("asset detail localizes audit activity and avoids duplicated activity title
   assert.doesNotMatch(source, /`\$\{latestMovement\.title\}: \$\{latestMovement\.summary\}`/)
 })
 
-test("asset detail makes component management discoverable from custody and More", () => {
+test("asset detail makes component management discoverable from the components tab and More", () => {
   const source = assetDetailSource()
-  const thaiMessages = readFileSync("messages/th.json", "utf8")
-  const englishMessages = readFileSync("messages/en.json", "utf8")
-
+  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
   const menuSource = readFileSync("src/components/assets/asset-detail-action-menu.tsx", "utf8")
 
   assert.match(source, /manageHref=\{componentsManagerHref\}/)
   assert.match(source, /\{ key: "components" as const, href: componentsManagerHref, label: t\("manageComponents"\) \}/)
   assert.match(menuSource, /<Link href=\{link\.href\}>/)
-  assert.match(thaiMessages, /"custody": "การถือครอง \/ ส่วนควบ"/)
-  assert.match(englishMessages, /"custody": "Custody & Components"/)
+  assert.deepEqual(thaiMessages.asset.detailViews, { label: "ส่วนของทรัพย์สิน", overview: "ภาพรวม", history: "ประวัติ", components: "ส่วนควบ", files: "ไฟล์", maintenance: "ซ่อม / PM" })
+  assert.deepEqual(englishMessages.asset.detailViews, { label: "Asset sections", overview: "Overview", history: "History", components: "Components", files: "Files", maintenance: "Repair / PM" })
 })
 
 test("asset detail exposes a read-only component summary and manager link", () => {
@@ -99,13 +98,13 @@ test("asset detail keeps a persistent context for assets installed under a paren
   assert.match(contextBannerSource, /ArrowRight/)
 })
 
-test("asset detail marks the custody tab with component count and missing serial warning", () => {
+test("asset detail tabs count history, components, files and repairs, and warn on a missing component serial", () => {
   const source = assetDetailSource()
   const tabsSource = readFileSync("src/components/assets/asset-detail-tabs.tsx", "utf8")
 
-  assert.match(source, /const componentRelationshipCount = currentComponentsForPanel\.length \+ installedInLinksForPanel\.length/)
   assert.match(source, /const componentMissingSerialCount = currentComponentsForPanel\.filter\(\(component\) => !component\.componentAsset\.serialNumber\)\.length/)
-  assert.match(source, /indicators=\{\{ custody: \{ count: componentRelationshipCount, hasWarning: componentMissingSerialCount > 0 \} \}\}/)
+  assert.match(source, /indicators=\{\{\s*history: \{ count: detailCounts\.history \},\s*components: \{ count: detailCounts\.components, hasWarning: componentMissingSerialCount > 0 \},\s*files: \{ count: detailCounts\.files \},\s*maintenance: \{ count: detailCounts\.repairs \},?\s*\}\}/)
+  assert.doesNotMatch(source, /componentRelationshipCount/)
   assert.match(tabsSource, /AlertTriangle/)
   assert.match(tabsSource, /indicator\?\.count/)
   assert.match(tabsSource, /warningLabel/)

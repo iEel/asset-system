@@ -12,6 +12,7 @@ import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { startOfBangkokDay, warrantyExpiringSoonWhere } from "@/lib/waiting-work-rules"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { buildAssetDetailSectionHref } from "@/lib/asset-detail-view"
 import { buildCostInsights } from "@/lib/cost-insights"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 import { buttonVariants } from "@/components/ui/button-variants"
@@ -806,15 +807,14 @@ function getDataQualityIssues(
   locale: string
 ) {
   const editHref = "/" + locale + "/assets/" + asset.id + "/edit"
-  const detailHref = "/" + locale + "/assets/" + asset.id
   const issues: Array<{ label: string; href: string }> = []
   if (!hasAssetResponsibility(asset)) issues.push({ label: t("missingCustodian"), href: editHref })
   if (!asset.serialNumber) issues.push({ label: t("missingSerial"), href: editHref })
   if (asset.ownershipType !== "software_license" && asset.attachments.length === 0) {
-    issues.push({ label: t("missingPhoto"), href: detailHref + "#photos" })
+    issues.push({ label: t("missingPhoto"), href: buildAssetDetailSectionHref(locale, asset.id, null, "photos") })
   }
   if (asset.ownershipType !== "software_license" && asset.warrantyEndDate && asset.warrantyEndDate >= warrantyWindow.gte && asset.warrantyEndDate <= warrantyWindow.lte) {
-    issues.push({ label: t("warrantyExpiring"), href: detailHref + "#purchase" })
+    issues.push({ label: t("warrantyExpiring"), href: buildAssetDetailSectionHref(locale, asset.id, null, "purchase") })
   }
   return issues
 }

@@ -200,7 +200,7 @@ export function AssetDetailPageSkeleton() {
   return (
     <div aria-busy="true" className="flex w-full flex-col gap-6">
       <PageHeaderSkeleton crumbs meta="badges" />
-      <TabNavSkeleton count={4} />
+      <TabNavSkeleton count={5} />
       <MetricGridSkeleton count={6} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="rounded-lg border border-border bg-surface p-5">

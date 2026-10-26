@@ -61,16 +61,16 @@ test("asset edit form saves back to the sanitized return target", () => {
 
 test("component manager returns to the asset detail that opened it, never to another asset or site", () => {
   assert.equal(
-    normalizeAssetComponentManagerReturnTo("th", "asset id/1", "/th/assets/asset%20id%2F1?view=custody"),
-    "/th/assets/asset%20id%2F1?view=custody",
+    normalizeAssetComponentManagerReturnTo("th", "asset id/1", "/th/assets/asset%20id%2F1?view=components"),
+    "/th/assets/asset%20id%2F1?view=components",
   )
   assert.equal(
     normalizeAssetComponentManagerReturnTo("th", "asset id/1", "/th/assets/other?view=custody"),
-    "/th/assets/asset%20id%2F1?view=custody",
+    "/th/assets/asset%20id%2F1?view=components",
   )
   assert.equal(
     normalizeAssetComponentManagerReturnTo("th", "asset id/1", "https://example.com"),
-    "/th/assets/asset%20id%2F1?view=custody",
+    "/th/assets/asset%20id%2F1?view=components",
   )
 })
 

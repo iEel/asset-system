@@ -64,12 +64,13 @@ import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
-import { buildAssetDetailSectionHref, buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetailView, type AssetDetailSectionId } from "@/lib/asset-detail-view"
+import { buildAssetDetailSectionHref, buildAssetDetailViewHref, isAssetDetailSectionVisible, resolveAssetDetailView, type AssetDetailSectionId } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
 import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "@/lib/audit-round-result-filters"
 import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
+import { getAssetDetailCounts } from "@/lib/asset-detail-counts"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { getRepairRecordStatusTone, toRepairRecordStatus } from "@/lib/repair-record-policy"
@@ -125,7 +126,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const canEditAsset = hasPermission(user, "asset", "edit")
   const canCreateAsset = hasPermission(user, "asset", "create")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
-  const assetDetailView = parseAssetDetailView(rawSearchParams.view)
+  const { view: assetDetailView } = resolveAssetDetailView(rawSearchParams.view)
   const loadPolicy = getAssetDetailLoadPolicy(assetDetailView)
   const scanReturnHref = `/${locale}/asset-management/scan`
   const isAssetScanReturn = returnToHref === scanReturnHref
@@ -137,7 +138,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const tAudit = await getTranslations("auditRound")
   const tFinding = await getTranslations("auditFinding")
   const tCancellation = await getTranslations("transactionCancellation")
-  const [rawAsset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
+  const [rawAsset, qrBaseUrlSetting, readyStatus, detailCounts] = await withPerformanceTiming(
     "asset-detail.initial-data",
     () => Promise.all([
       prisma.asset.findFirst({
@@ -258,6 +259,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         where: { isActive: true, OR: [{ name: "Ready" }, { nameTh: "พร้อมใช้งาน" }] },
         select: { id: true },
       }),
+      getAssetDetailCounts(id),
     ]),
     { route: "/assets/[id]", locale }
   )
@@ -481,7 +483,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
     attachments: componentAttachmentsByReference.get(component.id) ?? [],
   }))
-  const componentRelationshipCount = currentComponentsForPanel.length + installedInLinksForPanel.length
   const componentMissingSerialCount = currentComponentsForPanel.filter((component) => !component.componentAsset.serialNumber).length
   const purchaseDocumentAttachmentsByReferenceId = new Map<string, typeof purchaseDocumentAttachments>()
   for (const attachment of purchaseDocumentAttachments) {
@@ -727,12 +728,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   // that shows the item, never a page they are refused (the E2E suite's M5).
   const healthFixHref = (section: string) => (canEditAsset ? editHref : section)
   const cloneHref = appendReturnTo(`/${locale}/assets/new?cloneFrom=${encodedAssetId}`, returnToHref)
-  const componentsManagerHref = appendReturnTo(
-    `/${locale}/assets/${asset.id}/components`,
-    `/${locale}/assets/${asset.id}?view=custody`,
-  )
+  const componentsManagerHref = appendReturnTo(`/${locale}/assets/${asset.id}/components`, buildAssetDetailViewHref(locale, asset.id, "components", returnToHref))
   // A link to a section of another view opens that view (wiki open question 43).
   const sectionHref = (sectionId: AssetDetailSectionId) => buildAssetDetailSectionHref(locale, asset.id, assetDetailView, sectionId, returnToHref)
+  const photosHref = sectionHref("photos")
   const dataHealthItems = ownershipType === "software_license"
     ? [
         createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), healthFixHref("#overview")),
@@ -743,15 +742,15 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       ]
     : [
         createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview", t("dataHealthFixIdentity"), healthFixHref("#overview")),
-        createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), "#photos", t("dataHealthFixPhoto"), "#photos"),
+        createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), photosHref, t("dataHealthFixPhoto"), photosHref),
         createHealthItem(
           checklistMissingLabels.length === 0,
           checklistMissingLabels.length === 0
             ? t("dataHealthChecklistComplete")
             : t("dataHealthChecklistMissing", { count: checklistMissingLabels.length }),
-          "#photos",
+          photosHref,
           t("dataHealthFixPhoto"),
-          "#photos"
+          photosHref
         ),
         createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
         createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, sectionHref("ownership"), t("dataHealthFixResponsibility"), healthFixHref(sectionHref("ownership"))),
@@ -1029,11 +1028,17 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         label={t("detailViews.label")}
         labels={{
           overview: t("detailViews.overview"),
-          custody: t("detailViews.custody"),
-          operations: t("detailViews.operations"),
-          audit: t("detailViews.audit"),
+          history: t("detailViews.history"),
+          components: t("detailViews.components"),
+          files: t("detailViews.files"),
+          maintenance: t("detailViews.maintenance"),
         }}
-        indicators={{ custody: { count: componentRelationshipCount, hasWarning: componentMissingSerialCount > 0 } }}
+        indicators={{
+          history: { count: detailCounts.history },
+          components: { count: detailCounts.components, hasWarning: componentMissingSerialCount > 0 },
+          files: { count: detailCounts.files },
+          maintenance: { count: detailCounts.repairs },
+        }}
         warningLabel={t("componentMissingSerial")}
       />
 
@@ -1604,6 +1609,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             attachment={primaryModelPhoto}
             emptyLabel={tCommon("noData")}
             viewLabel={t("viewPhotoGallery")}
+            galleryHref={photosHref}
           />
           <SidebarPhotoCard
             title={t("assetPhotos")}
@@ -1611,6 +1617,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             attachment={primaryAssetPhoto}
             emptyLabel={tCommon("noData")}
             viewLabel={t("viewPhotoGallery")}
+            galleryHref={photosHref}
           />
           </aside>
         ) : null}
@@ -2242,18 +2249,20 @@ function SidebarPhotoCard({
   attachment,
   emptyLabel,
   viewLabel,
+  galleryHref,
 }: {
   title: string
   caption: string
   attachment?: { id: string; originalName: string } | null
   emptyLabel: string
   viewLabel: string
+  galleryHref: string
 }) {
   return (
     <ContentPanel title={title}>
       {attachment ? (
         <a
-          href="#photos"
+          href={galleryHref}
           className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <div className="flex h-32 w-full items-center justify-center bg-background p-2">
@@ -2279,7 +2288,7 @@ function SidebarPhotoCard({
         // No dashed box (spec 2D M21): one empty line, and the gallery link as a text link.
         <div className="flex h-32 flex-col items-center justify-center gap-1">
           <EmptyNote>{emptyLabel}</EmptyNote>
-          <a href="#photos" className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+          <a href={galleryHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
             {viewLabel}
           </a>
         </div>

@@ -66,7 +66,7 @@ export function AssetDetailTabs({
             key: item,
             label: labels[item],
             href: buildAssetDetailViewHref(locale, assetId, item, returnTo),
-            count: indicator?.count ? formatCount(indicator.count) : undefined,
+            count: indicator?.count === undefined ? undefined : formatCount(indicator.count),
             icon: indicator?.hasWarning ? (
               <span className="inline-flex text-warning">
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />

@@ -1152,11 +1152,12 @@
     "lastAuditDate": "ตรวจล่าสุด",
     "scanCount": "จำนวนครั้งที่สแกน",
     "detailViews": {
-      "label": "เลือกมุมมองรายละเอียดทรัพย์สิน",
-      "overview": "ข้อมูลหลัก",
-      "custody": "การถือครอง / ส่วนควบ",
-      "operations": "การดำเนินงาน",
-      "audit": "ตรวจนับ"
+      "label": "ส่วนของทรัพย์สิน",
+      "overview": "ภาพรวม",
+      "history": "ประวัติ",
+      "components": "ส่วนควบ",
+      "files": "ไฟล์",
+      "maintenance": "ซ่อม / PM"
     },
     "detailMoreActions": "การดำเนินการเพิ่มเติม",
     "manageComponents": "จัดการส่วนควบ",

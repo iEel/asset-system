@@ -1152,11 +1152,12 @@
     "lastAuditDate": "Last Audit",
     "scanCount": "Scan Count",
     "detailViews": {
-      "label": "Choose an asset detail view",
+      "label": "Asset sections",
       "overview": "Overview",
-      "custody": "Custody & Components",
-      "operations": "Operations",
-      "audit": "Audit"
+      "history": "History",
+      "components": "Components",
+      "files": "Files",
+      "maintenance": "Repair / PM"
     },
     "detailMoreActions": "More actions",
     "manageComponents": "Manage components",
