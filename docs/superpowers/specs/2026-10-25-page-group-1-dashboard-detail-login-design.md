@@ -93,10 +93,10 @@ Desktop (canvas B-Dashboard): the page header, a row of four KPI cells, then a 1
 
 **The KPI cell:** "งานที่รอคุณ", value = the sum of the rows, unit "รายการ" (*my call*: the canvas's "4 เรื่อง" counts kinds, which no list can show), foot "ค้างนานสุด N วัน" with `attention` when any row is overdue. No amber card fill: the StatStrip attention foot carries it (DESIGN.md:285).
 
-**Counts that do not match their lists today must match after this work** (*builder-check rulings, my calls*: the list follows the bell's definition, never the other way round):
+**Counts that do not match their lists today must match after this work** (*builder-check rulings, my calls*: the list follows the bell's definition, never the other way round, with the one exception under returns):
 - warranty: the register's `dataQuality=warranty` uses 30 days and includes licences, the bell uses the setting's days and excludes them → the register filter follows the bell;
 - licence expiry: the bell's row links to `ownershipType=software_license` with no date and no `exact` → a licence-expiry filter value on the register;
-- returns due soon: the row links to the check-in form, which needs `asset:edit` and is not a list → a register filter for open loans due back within the bell's window (chip "ใกล้/เลยกำหนดคืน"), readable with `asset:view`;
+- returns due soon: the row links to the check-in form, which needs `asset:edit` and is not a list → a register filter for open loans due back within the bell's window (chip "ใกล้/เลยกำหนดคืน"), readable with `asset:view`. The exception (*dashboard plan ruling R5, my call*): the register can list only assets, so the bell's row counts the active assets that have such a loan instead of the loan rows (the same number unless an asset holds two open loans or an inactive asset holds one), and it shows with `asset:view` instead of `checkout:view || asset:view`, so nobody sees a row that opens a page refusing them;
 - open audit actions and audit actions due soon: both link to `/audit/findings?status=all`, whose open-actions filter also counts finished actions and whose overdue filter has no due-soon window → the findings page's action filters follow the bell's two definitions, one value each.
 
 The builder checks every kind's link against its count in a unit test and in E2E.
