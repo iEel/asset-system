@@ -1,8 +1,17 @@
 import type { Prisma } from "@prisma/client"
 import { getAssetActivityWhere, normalizeAssetActivityFilter } from "./asset-activity-filter.ts"
 import { normalizeAssetCrossScopeFilter } from "./asset-cross-scope-filter.ts"
+import { getAssetCustodianStateWhere, normalizeAssetCustodianStateFilter } from "./asset-custodian-state-filter.ts"
 import { normalizeAssetDataQualityFilter } from "./asset-data-quality-filter.ts"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes } from "./asset-ownership.ts"
+import {
+  DEFAULT_WAITING_WORK_RULES,
+  licenseExpiringSoonWhere,
+  returnsDueSoonAssetWhere,
+  startOfBangkokDay,
+  warrantyExpiringSoonWhere,
+  type WaitingWorkRules,
+} from "./waiting-work-rules.ts"
 
 export type AssetListParams = {
   search?: string
@@ -15,6 +24,7 @@ export type AssetListParams = {
   conditionId?: string
   ownershipType?: string
   custodianId?: string
+  custodianState?: string
   supplierId?: string
   dataQuality?: string
   crossScope?: string
@@ -52,6 +62,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     conditionId: String(getValue("conditionId") ?? "").trim(),
     ownershipType: assetOwnershipTypes.includes(ownershipType as (typeof assetOwnershipTypes)[number]) ? ownershipType : "",
     custodianId: String(getValue("custodianId") ?? "").trim(),
+    custodianState: normalizeAssetCustodianStateFilter(getValue("custodianState")),
     supplierId: String(getValue("supplierId") ?? "").trim(),
     dataQuality,
     crossScope,
@@ -63,7 +74,13 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
   }
 }
 
-export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetWhereInput {
+// The day and the notification windows the warranty, licence and return filters read (group 1 spec §6.3).
+export type AssetWhereOptions = { today: Date; rules: WaitingWorkRules }
+
+export function buildAssetWhere(
+  filters: ReturnType<typeof parseAssetListParams>,
+  options: AssetWhereOptions = { today: startOfBangkokDay(new Date()), rules: DEFAULT_WAITING_WORK_RULES },
+): Prisma.AssetWhereInput {
   const where: Prisma.AssetWhereInput = {
     isActive: true,
     ...(filters.companyId ? { companyId: filters.companyId } : {}),
@@ -83,17 +100,20 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
       : {}),
   }
 
-  const dataQualityWhere = buildAssetDataQualityWhere(filters.dataQuality)
-  if (dataQualityWhere) {
-    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), dataQualityWhere]
-  }
-
-  const activityWhere = getAssetActivityWhere(filters.activity)
-  if (activityWhere) {
-    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), activityWhere]
-  }
+  // In order: the data-quality rule, the custodian state, the activity rule, each only when present.
+  const parts = [
+    buildAssetDataQualityWhere(filters.dataQuality, options),
+    getAssetCustodianStateWhere(filters.custodianState),
+    getAssetActivityWhere(filters.activity),
+  ].filter((part): part is Prisma.AssetWhereInput => part !== null)
+  if (parts.length > 0) where.AND = parts
 
   return where
+}
+
+/** True when the filters hold a windowed value, so the caller must read the notification rules. */
+export function assetFiltersUseWaitingWorkRules(filters: Pick<AssetListFilters, "dataQuality">): boolean {
+  return filters.dataQuality === "warranty" || filters.dataQuality === "licenseExpiry" || filters.dataQuality === "returnDue"
 }
 
 /**
@@ -132,8 +152,8 @@ export function buildAssetSearchWhere(search: string): Prisma.AssetWhereInput {
 export type AssetListFilters = ReturnType<typeof parseAssetListParams>
 
 /** The register's status tabs count with every filter except the status itself. */
-export function buildAssetStatusCountWhere(filters: AssetListFilters): Prisma.AssetWhereInput {
-  return buildAssetWhere({ ...filters, statusId: "" })
+export function buildAssetStatusCountWhere(filters: AssetListFilters, options?: AssetWhereOptions): Prisma.AssetWhereInput {
+  return buildAssetWhere({ ...filters, statusId: "" }, options)
 }
 
 export function buildAssetOrderBy(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetOrderByWithRelationInput {
@@ -147,7 +167,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "custodianState", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 
@@ -156,7 +176,10 @@ export function buildAssetQueryString(
   return params.toString()
 }
 
-function buildAssetDataQualityWhere(dataQuality: ReturnType<typeof normalizeAssetDataQualityFilter>): Prisma.AssetWhereInput | null {
+function buildAssetDataQualityWhere(
+  dataQuality: ReturnType<typeof normalizeAssetDataQualityFilter>,
+  options: AssetWhereOptions,
+): Prisma.AssetWhereInput | null {
   if (dataQuality === "responsibility") return assetMissingResponsibilityWhere
   if (dataQuality === "serial") return { OR: [{ serialNumber: null }, { serialNumber: "" }] }
   if (dataQuality === "photo") {
@@ -179,11 +202,9 @@ function buildAssetDataQualityWhere(dataQuality: ReturnType<typeof normalizeAsse
       ],
     }
   }
-  if (dataQuality === "warranty") {
-    const now = new Date()
-    const warrantyThreshold = new Date(now)
-    warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
-    return { warrantyEndDate: { gte: now, lte: warrantyThreshold } }
-  }
+  // The bell's own rules with the days the settings give (group 1 spec §6.3).
+  if (dataQuality === "warranty") return warrantyExpiringSoonWhere(options.today, options.rules)
+  if (dataQuality === "licenseExpiry") return licenseExpiringSoonWhere(options.today, options.rules)
+  if (dataQuality === "returnDue") return returnsDueSoonAssetWhere(options.today, options.rules)
   return null
 }

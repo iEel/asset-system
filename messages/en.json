@@ -1253,7 +1253,10 @@
     "qrCodeTitle": "QR code of {label}",
     "locationStatus": "Location & Status",
     "assetPhotosEditHelp": "Capture or attach checklist photos, such as the asset tag, serial number, or condition. Photos are saved when you press Save.",
-    "transactionReasonOpenCheckout": "A handover is open: return the asset before transferring it"
+    "transactionReasonOpenCheckout": "A handover is open: return the asset before transferring it",
+    "dataQualityLicenseExpiry": "License expiring soon",
+    "dataQualityReturnDue": "Returns due soon",
+    "custodianStateAssigned": "Has a custodian"
   },
   "company": {
     "title": "Companies",

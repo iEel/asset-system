@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { applyAssetCrossScopeFilter, formatAssetCrossScopeFlags } from "@/lib/asset-cross-scope"
 import { assetExportColumns, createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const filters = parseAssetListParams(request.nextUrl.searchParams)
     const assets = await prisma.asset.findMany({
-      where: await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope),
+      where: await applyAssetCrossScopeFilter(buildAssetWhere(filters, await getAssetWhereOptions(filters)), filters.crossScope),
       include: {
         category: { select: { code: true, name: true } },
         company: { select: { code: true, nameTh: true } },

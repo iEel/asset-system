@@ -2,12 +2,22 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  assetFiltersUseWaitingWorkRules,
   assetSearchConditions,
   buildAssetQueryString,
   buildAssetSearchWhere,
   buildAssetWhere,
   parseAssetListParams,
 } from "../src/lib/asset-list-query.ts"
+import { assetCustodianAssignedWhere, assetNotClosedStatusWhere } from "../src/lib/asset-custodian-state-filter.ts"
+import {
+  DEFAULT_WAITING_WORK_RULES,
+  licenseExpiringSoonWhere,
+  returnsDueSoonAssetWhere,
+  startOfBangkokDay,
+  warrantyExpiringSoonWhere,
+  type WaitingWorkRules,
+} from "../src/lib/waiting-work-rules.ts"
 
 test("parses asset custodian and supplier filters for master-data drilldowns", () => {
   const filters = parseAssetListParams({
@@ -108,19 +118,48 @@ test("builds data quality drilldown filters for department and purchase gaps", (
   })
 })
 
-test("builds warranty data quality drilldown for assets expiring within 30 days", () => {
-  const filters = parseAssetListParams({ dataQuality: "warranty" })
-  const where = buildAssetWhere(filters)
-  const [warrantyRule] = Array.isArray(where.AND) ? where.AND : []
+// 26 Oct 2026, 00:00 in Bangkok. The days are not today's defaults, so a filter that ignored them would fail.
+const today = new Date("2026-10-25T17:00:00.000Z")
+const waitingRules: WaitingWorkRules = { returnDueSoonDays: 5, auditActionDueSoonDays: 14, warrantyExpiryDays: 45, licenseExpiryDays: 60 }
 
-  assert.equal(where.isActive, true)
-  assert.ok(warrantyRule && "warrantyEndDate" in warrantyRule)
+test("the register's warranty, licence and return filters are the bell's own rules with the days they are given (group 1 spec §6.3)", () => {
+  const where = (dataQuality: string) => buildAssetWhere(parseAssetListParams({ dataQuality }), { today, rules: waitingRules })
+  const warranty = warrantyExpiringSoonWhere(today, waitingRules)
+  const licence = licenseExpiringSoonWhere(today, waitingRules)
+  const returns = returnsDueSoonAssetWhere(today, waitingRules)
+  // Each rule holds isActive: true, so the register's { isActive: true, AND: [rule] } lists exactly the rule's assets.
+  for (const rule of [warranty, licence, returns]) assert.equal(rule.isActive, true)
+  assert.deepEqual(where("warranty"), { isActive: true, AND: [warranty] })
+  assert.deepEqual(where("licenseExpiry"), { isActive: true, AND: [licence] })
+  assert.deepEqual(where("returnDue"), { isActive: true, AND: [returns] })
+  assert.deepEqual(where("serial"), buildAssetWhere(parseAssetListParams({ dataQuality: "serial" })), "a value without a window reads no rules")
+  // Without options: the Bangkok day of the call and today's default days.
+  assert.deepEqual(
+    buildAssetWhere(parseAssetListParams({ dataQuality: "warranty" })),
+    { isActive: true, AND: [warrantyExpiringSoonWhere(startOfBangkokDay(new Date()), DEFAULT_WAITING_WORK_RULES)] },
+  )
+})
 
-  const warrantyEndDate = warrantyRule.warrantyEndDate as { gte: Date; lte: Date }
-  assert.ok(warrantyEndDate.gte instanceof Date)
-  assert.ok(warrantyEndDate.lte instanceof Date)
-  assert.ok(warrantyEndDate.lte.getTime() > warrantyEndDate.gte.getTime())
-  assert.ok(warrantyEndDate.lte.getTime() - warrantyEndDate.gte.getTime() <= 31 * 24 * 60 * 60 * 1000)
+test("only the three waiting-work values make the register read the notification rules", () => {
+  for (const value of ["warranty", "licenseExpiry", "returnDue"]) {
+    assert.equal(assetFiltersUseWaitingWorkRules(parseAssetListParams({ dataQuality: value })), true, value)
+  }
+  for (const value of ["", "serial", "photo", "responsibility", "department", "purchase"]) {
+    assert.equal(assetFiltersUseWaitingWorkRules(parseAssetListParams({ dataQuality: value })), false, value)
+  }
+})
+
+test("custodianState=assigned lists assets with a custodian that are not Disposed or Retired (group 1 spec §6.4)", () => {
+  assert.deepEqual(assetNotClosedStatusWhere, { status: { name: { notIn: ["Disposed", "Retired"] } } })
+  assert.deepEqual(assetCustodianAssignedWhere, { custodianId: { not: null }, status: { name: { notIn: ["Disposed", "Retired"] } } })
+  assert.equal(parseAssetListParams({ custodianState: "nobody" }).custodianState, "")
+  const filters = parseAssetListParams({ custodianState: "assigned", dataQuality: "serial", activity: "idle_180d" })
+  assert.equal(filters.custodianState, "assigned")
+  const parts = buildAssetWhere(filters).AND as object[]
+  assert.deepEqual(parts.slice(0, 2), [{ OR: [{ serialNumber: null }, { serialNumber: "" }] }, assetCustodianAssignedWhere])
+  assert.ok("movements" in parts[2], "the activity rule stays last")
+  assert.match(buildAssetQueryString(filters), /custodianState=assigned/)
+  assert.doesNotMatch(buildAssetQueryString(parseAssetListParams({})), /custodianState/)
 })
 
 test("the global search counts assets with the register's own search (menu B shell task 8)", () => {

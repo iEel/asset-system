@@ -57,9 +57,10 @@ const chipLabels = {
   supplier: "ผู้ขาย",
   rowsPerPage: "จำนวนต่อหน้า",
   ownershipTypes: { shared: "ใช้ร่วมกัน" },
-  dataQuality: { serial: "ไม่มี Serial", department: "แผนกไม่ครบ" },
+  dataQuality: { serial: "ไม่มี Serial", department: "แผนกไม่ครบ", licenseExpiry: "License ใกล้หมดอายุ", returnDue: "ใกล้/เลยกำหนดคืน" },
   crossScope: { all: "ต่างบริษัท/ต่างสาขา" },
   activity: { idle_180d: "ไม่มีความเคลื่อนไหวใน 180 วันล่าสุด" },
+  custodianState: { assigned: "มีผู้ถือครอง" },
 }
 
 function chipsFor(query: string) {
@@ -76,7 +77,7 @@ function paramsOf(href: string) {
   return new URLSearchParams(href.slice(href.indexOf("?") + 1))
 }
 
-test("chips show hidden filters, hide tab statuses and search, and mark scope chips mobile-only", () => {
+test("chips show hidden filters and hide tab statuses and search; the company chip shows at every width (group 1 spec §6.5)", () => {
   const chips = chipsFor("search=dell&companyId=c-1&statusId=s-ready&dataQuality=department&pageSize=50&brandId=br-1&custodianId=e-1&supplierId=sp-1&activity=idle_180d")
 
   assert.deepEqual(chips.map((chip) => chip.key), ["company", "dataQuality", "pageSize", "brand", "custodian", "supplier", "activity"])
@@ -89,7 +90,23 @@ test("chips show hidden filters, hide tab statuses and search, and mark scope ch
     "ผู้ขาย: SUP1 - ร้านเอ",
     "ไม่มีความเคลื่อนไหวใน 180 วันล่าสุด",
   ])
-  assert.deepEqual(chips.filter((chip) => chip.mobileOnly).map((chip) => chip.key), ["company"])
+  assert.deepEqual(chips.filter((chip) => chip.mobileOnly).map((chip) => chip.key), [])
+})
+
+test("the waiting-work values and the custodian state get chips; branch and category stay phone-only (group 1 spec §6.5)", () => {
+  const chips = chipsFor("companyId=c-1&branchId=b-1&categoryId=cat-1&dataQuality=returnDue&custodianState=assigned")
+  assert.deepEqual(chips.map((chip) => [chip.key, chip.label, chip.mobileOnly]), [
+    ["company", "บริษัท: SNI - สยาม", false],
+    ["branch", "สาขา: b-1", true],
+    ["category", "หมวดหมู่: cat-1", true],
+    ["dataQuality", "ใกล้/เลยกำหนดคืน", false],
+    ["custodianState", "มีผู้ถือครอง", false],
+  ])
+  const withoutCustodianState = paramsOf(chips.find((chip) => chip.key === "custodianState")!.href)
+  assert.equal(withoutCustodianState.get("custodianState"), null)
+  assert.equal(withoutCustodianState.get("dataQuality"), "returnDue")
+  assert.equal(chipsFor("dataQuality=licenseExpiry")[0].label, "License ใกล้หมดอายุ")
+  assert.equal(paramsOf(buildAssetRegisterClearAllHref("/th/assets", filters("custodianState=assigned&dataQuality=returnDue"))).get("custodianState"), null)
 })
 
 test("a status without a tab becomes a removable chip", () => {

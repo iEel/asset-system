@@ -27,6 +27,7 @@ export type AssetRegisterChipInput = {
     dataQuality: Record<string, string>
     crossScope: Record<string, string>
     activity: Record<string, string>
+    custodianState: Record<string, string>
   }
 }
 
@@ -37,7 +38,8 @@ export function buildAssetRegisterChips({ basePath, filters, tabStatusIds, names
   }
   const named = (prefix: string, name: string | undefined, raw: string) => `${prefix}: ${name ?? raw}`
 
-  if (filters.companyId) add("company", named(labels.company, names.company, filters.companyId), { companyId: "", branchId: "" }, true)
+  // The company chip shows at every width: a dashboard link that carries companyId names its company there (group 1 spec §6.5).
+  if (filters.companyId) add("company", named(labels.company, names.company, filters.companyId), { companyId: "", branchId: "" })
   if (filters.branchId) add("branch", named(labels.branch, names.branch, filters.branchId), { branchId: "" }, true)
   if (filters.categoryId) add("category", named(labels.category, names.category, filters.categoryId), { categoryId: "" }, true)
   if (filters.statusId && !tabStatusIds.includes(filters.statusId)) {
@@ -55,6 +57,7 @@ export function buildAssetRegisterChips({ basePath, filters, tabStatusIds, names
   if (filters.brandId) add("brand", named(labels.brand, names.brand, filters.brandId), { brandId: "" })
   if (filters.modelId) add("model", named(labels.model, names.model, filters.modelId), { modelId: "" })
   if (filters.custodianId) add("custodian", named(labels.custodian, names.custodian, filters.custodianId), { custodianId: "" })
+  if (filters.custodianState) add("custodianState", labels.custodianState[filters.custodianState] ?? filters.custodianState, { custodianState: "" })
   if (filters.supplierId) add("supplier", named(labels.supplier, names.supplier, filters.supplierId), { supplierId: "" })
   if (filters.activity) add("activity", labels.activity[filters.activity] ?? filters.activity, { activity: "" })
 
@@ -73,6 +76,7 @@ export function buildAssetRegisterClearAllHref(basePath: string, filters: AssetL
     conditionId: "",
     ownershipType: "",
     custodianId: "",
+    custodianState: "",
     supplierId: "",
     dataQuality: "",
     crossScope: "",

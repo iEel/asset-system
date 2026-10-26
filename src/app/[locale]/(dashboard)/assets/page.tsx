@@ -11,6 +11,7 @@ import {
   parseAssetListParams,
   type AssetListParams,
 } from "@/lib/asset-list-query"
+import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { buildStatusTabs } from "@/lib/asset-register-status-tabs"
 import { buildAssetRegisterChips, buildAssetRegisterClearAllHref } from "@/lib/asset-register-chips"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
@@ -57,7 +58,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
   const registerReturnHref = `/${locale}/assets?${buildAssetQueryString(filters)}`
-  const statusCountWhere = await applyAssetCrossScopeFilter(buildAssetStatusCountWhere(filters), filters.crossScope)
+  const whereOptions = await getAssetWhereOptions(filters)
+  const statusCountWhere = await applyAssetCrossScopeFilter(buildAssetStatusCountWhere(filters, whereOptions), filters.crossScope)
   const where: Prisma.AssetWhereInput = filters.statusId ? { AND: [statusCountWhere, { statusId: filters.statusId }] } : statusCountWhere
   const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel, statusCounts, selectedSupplier] = await withPerformanceTiming(
     "assets.initial-data",
@@ -264,6 +266,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         photo: t("dataQualityPhoto"),
         purchase: t("dataQualityPurchase"),
         warranty: t("dataQualityWarranty"),
+        licenseExpiry: t("dataQualityLicenseExpiry"),
+        returnDue: t("dataQualityReturnDue"),
         responsibility: t("dataQualityResponsibility"),
         department: t("dataQualityDepartment"),
       },
@@ -274,6 +278,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         location_branch: t("quickFilterLocationCrossBranch"),
       },
       activity: { idle_180d: t("activityIdle180d") },
+      custodianState: { assigned: t("custodianStateAssigned") },
     },
   })
   const tableAssets: AssetRegisterRow[] = assets.map((asset) => {

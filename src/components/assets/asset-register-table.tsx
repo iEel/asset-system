@@ -13,6 +13,7 @@ import { toLocalDateInputValue } from "@/lib/local-date"
 import { rememberAssetRegisterScrollPosition } from "@/lib/asset-register-view-memory"
 import type { AssetActivityFilter } from "@/lib/asset-activity-filter"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
+import type { AssetCustodianStateFilter } from "@/lib/asset-custodian-state-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { Button } from "@/components/ui/button"
 import { Chip } from "@/components/ui/chip"
@@ -113,6 +114,7 @@ type AssetRegisterTableProps = {
     conditionId: string
     ownershipType: string
     custodianId: string
+    custodianState: AssetCustodianStateFilter
     supplierId: string
     dataQuality: "" | AssetDataQualityFilter
     crossScope: "" | AssetCrossScopeFilter
@@ -482,6 +484,7 @@ export function AssetRegisterTable({
       filters.conditionId ||
       filters.ownershipType ||
       filters.custodianId ||
+      filters.custodianState ||
       filters.supplierId ||
       filters.dataQuality ||
       filters.crossScope ||

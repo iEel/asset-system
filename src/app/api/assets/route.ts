@@ -7,6 +7,7 @@ import { FieldRefusalError } from "@/lib/field-errors"
 import { assetSchema } from "@/lib/validations/asset"
 import { generateAssetTag } from "@/lib/asset-tag"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import { buildCustodianScopeAudit } from "@/lib/asset-custodian-scope"
 import { getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     requirePermission(user, "asset", "view")
 
     const filters = parseAssetListParams(request.nextUrl.searchParams)
-    const where = await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope)
+    const where = await applyAssetCrossScopeFilter(buildAssetWhere(filters, await getAssetWhereOptions(filters)), filters.crossScope)
     const [assets, total] = await Promise.all([
       prisma.asset.findMany({
         where,

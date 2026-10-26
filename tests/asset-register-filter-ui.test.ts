@@ -13,7 +13,7 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 test("the page counts statuses with the list's own filters and renders the new filter parts", () => {
   const source = page()
 
-  assert.match(source, /applyAssetCrossScopeFilter\(buildAssetStatusCountWhere\(filters\), filters\.crossScope\)/)
+  assert.match(source, /const whereOptions = await getAssetWhereOptions\(filters\)\n\s+const statusCountWhere = await applyAssetCrossScopeFilter\(buildAssetStatusCountWhere\(filters, whereOptions\), filters\.crossScope\)/)
   assert.match(source, /filters\.statusId \? \{ AND: \[statusCountWhere, \{ statusId: filters\.statusId \}\] \} : statusCountWhere/)
   assert.match(source, /prisma\.asset\.groupBy\(\{\s*by: \["statusId"\],\s*where: statusCountWhere,\s*_count: \{ _all: true \},?\s*\}\)/)
   assert.match(source, /<AssetRegisterNavigationProvider filters=\{filters\}>/)
@@ -29,6 +29,8 @@ test("every hidden filter gets a readable chip, including activity, department a
   assert.match(source, /buildAssetRegisterChips\(\{/)
   assert.match(source, /department: t\("dataQualityDepartment"\)/)
   assert.match(source, /activity: \{ idle_180d: t\("activityIdle180d"\) \}/)
+  assert.match(source, /warranty: t\("dataQualityWarranty"\),\n\s+licenseExpiry: t\("dataQualityLicenseExpiry"\),\n\s+returnDue: t\("dataQualityReturnDue"\),/)
+  assert.match(source, /custodianState: \{ assigned: t\("custodianStateAssigned"\) \}/)
   assert.match(source, /prisma\.supplier\.findUnique\(/)
   assert.match(source, /buildAssetRegisterClearAllHref\(`\/\$\{locale\}\/assets`, filters\)/)
 })
@@ -169,4 +171,14 @@ test("the register page header is PageHeader with its create link, and the tab c
   assert.match(source, /<div>\n\s+<PageHeader\n\s+compactOnMobile\n\s+className="mb-4 md:mb-6"\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{canCreateAssets \? \(\n\s+<Link href=\{`\/\$\{locale\}\/assets\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{tCommon\("create"\)\}\n\s+<\/Link>\n\s+\) : undefined\}\n\s+\/>/)
   assert.match(source, /count: formatCount\(tab\.count\)/)
   assert.doesNotMatch(source, /toLocaleString\(|MasterDataHeader|numberLocale/)
+})
+
+test("the register's routes build the same where as the page, and only the windowed values read the settings (group 1 spec §6.3)", () => {
+  for (const path of ["src/app/api/assets/route.ts", "src/app/api/assets/export/route.ts"]) {
+    assert.match(read(path), /buildAssetWhere\(filters, await getAssetWhereOptions\(filters\)\)/, path)
+  }
+  const options = read("src/lib/asset-list-where-options.ts")
+  assert.match(options, /today: startOfBangkokDay\(now\)/)
+  assert.match(options, /rules: assetFiltersUseWaitingWorkRules\(filters\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
+  assert.doesNotMatch(sheet(), /licenseExpiry|returnDue|custodianState/, "link-only values: the filter sheet offers no chip for them")
 })

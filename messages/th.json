@@ -1253,7 +1253,10 @@
     "qrCodeTitle": "QR Code ของ {label}",
     "locationStatus": "ที่ตั้งและสถานะ",
     "assetPhotosEditHelp": "ถ่ายหรือแนบรูปตามรายการรูปที่ต้องถ่าย เช่น ป้ายรหัสทรัพย์สิน, Serial Number หรือสภาพเครื่อง รูปจะถูกบันทึกเมื่อกดบันทึก",
-    "transactionReasonOpenCheckout": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้"
+    "transactionReasonOpenCheckout": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้",
+    "dataQualityLicenseExpiry": "License ใกล้หมดอายุ",
+    "dataQualityReturnDue": "ใกล้/เลยกำหนดคืน",
+    "custodianStateAssigned": "มีผู้ถือครอง"
   },
   "company": {
     "title": "บริษัท",
