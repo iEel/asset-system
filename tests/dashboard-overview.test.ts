@@ -54,9 +54,19 @@ test("the recent feed reads asset movements only, without the mirror rows (spec 
   assert.match(source, /movementType: \{ notIn: \[\.\.\.ASSET_MOVEMENT_MIRROR_TYPES\] \}/)
   assert.match(source, /asset: \{ isActive: true \}/)
   assert.match(source, /orderBy: \[\{ performedAt: "desc" \}, \{ id: "desc" \}\]/)
+  assert.match(source, /const documentOf = await resolveAssetMovementDocuments\(movements\)/)
+  assert.doesNotMatch(source, /prisma\.(?:assetCheckout|assetCheckin|assetTransfer|maintenanceTicket|disposalRequest|auditFinding|auditItem)\./)
+  assert.doesNotMatch(source, /systemLog|\.(create|update|upsert|delete)(Many)?\(/)
+})
+
+test("a movement's documents are read once per kind present, never per row (group 1 asset detail task 3)", () => {
+  const source = read("src/lib/asset-movement-documents.ts")
+  assert.match(source, /export async function resolveAssetMovementDocuments\(references: readonly AssetMovementReference\[\]\): Promise<\(reference: AssetMovementReference\) => AssetMovementDocument \| null>/)
   assert.match(source, /assetMovementReferenceLookup\(/)
   for (const model of ["assetCheckout", "assetCheckin", "assetTransfer", "maintenanceTicket", "disposalRequest", "auditFinding", "auditItem"]) {
     assert.equal(source.match(new RegExp(`prisma\\.${model}\\.findMany\\(`, "g"))?.length, 1, model)
   }
-  assert.doesNotMatch(source, /systemLog|\.(create|update|upsert|delete)(Many)?\(/)
+  assert.equal(source.match(/await Promise\.all\(\[/g)?.length, 1, "one round of reads")
+  assert.doesNotMatch(source, /\.(create|update|upsert|delete)(Many)?\(/)
+  assert.match(read("src/lib/asset-movement-labels.ts"), /export type AssetMovementReference = \{ referenceType: string \| null; referenceId: string \| null \}/)
 })

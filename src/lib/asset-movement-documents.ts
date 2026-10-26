@@ -1,0 +1,74 @@
+// Each asset movement's document (number, id, kind), read once per kind present: the dashboard's recent feed, the asset's
+// history and its install/remove table share it (group 1 asset detail, R13). It never writes.
+import { prisma } from "@/lib/db"
+import {
+  assetMovementReferenceLookup,
+  type AssetMovementDocument,
+  type AssetMovementReference,
+  type AssetMovementReferenceLookup,
+} from "@/lib/asset-movement-labels"
+
+export async function resolveAssetMovementDocuments(references: readonly AssetMovementReference[]): Promise<(reference: AssetMovementReference) => AssetMovementDocument | null> {
+  const idsByLookup = new Map<AssetMovementReferenceLookup, Set<string>>()
+  for (const reference of references) {
+    const lookup = assetMovementReferenceLookup(reference.referenceType)
+    if (!lookup || !reference.referenceId) continue
+    const ids = idsByLookup.get(lookup) ?? new Set<string>()
+    ids.add(reference.referenceId)
+    idsByLookup.set(lookup, ids)
+  }
+  const documents = new Map<AssetMovementReferenceLookup, Map<string, AssetMovementDocument>>()
+  const documentOf = (reference: AssetMovementReference) => {
+    const lookup = assetMovementReferenceLookup(reference.referenceType)
+    return lookup && reference.referenceId ? documents.get(lookup)?.get(reference.referenceId) ?? null : null
+  }
+  // An empty list, or one with no known reference, reads nothing.
+  if (idsByLookup.size === 0) return documentOf
+
+  const idsOf = (lookup: AssetMovementReferenceLookup) => [...(idsByLookup.get(lookup) ?? [])]
+  const has = (lookup: AssetMovementReferenceLookup) => idsByLookup.has(lookup)
+  const auditRoundSelect = { id: true, auditRound: { select: { id: true, auditNo: true } } } as const
+
+  // Only the kinds present are read, all at once.
+  const [checkouts, checkins, transfers, repairs, disposals, findings, items] = await Promise.all([
+    has("checkout")
+      ? prisma.assetCheckout.findMany({ where: { id: { in: idsOf("checkout") } }, select: { id: true, documentNo: true } })
+      : [],
+    has("checkin")
+      ? prisma.assetCheckin.findMany({ where: { id: { in: idsOf("checkin") } }, select: { id: true, documentNo: true } })
+      : [],
+    has("transfer")
+      ? prisma.assetTransfer.findMany({ where: { id: { in: idsOf("transfer") } }, select: { id: true, documentNo: true } })
+      : [],
+    has("repair")
+      ? prisma.maintenanceTicket.findMany({ where: { id: { in: idsOf("repair") } }, select: { id: true, repairNo: true } })
+      : [],
+    has("disposal")
+      ? prisma.disposalRequest.findMany({ where: { id: { in: idsOf("disposal") } }, select: { id: true, disposalNo: true } })
+      : [],
+    has("auditFinding")
+      ? prisma.auditFinding.findMany({ where: { id: { in: idsOf("auditFinding") } }, select: auditRoundSelect })
+      : [],
+    has("auditItem")
+      ? prisma.auditItem.findMany({ where: { id: { in: idsOf("auditItem") } }, select: auditRoundSelect })
+      : [],
+  ])
+
+  const put = (lookup: AssetMovementReferenceLookup, id: string, document: AssetMovementDocument | null) => {
+    if (!document) return
+    const byId = documents.get(lookup) ?? new Map<string, AssetMovementDocument>()
+    byId.set(id, document)
+    documents.set(lookup, byId)
+  }
+  // A checkout or check-in without a document number (legacy backfills) has no document to show.
+  for (const row of checkouts) put("checkout", row.id, row.documentNo ? { kind: "checkout", id: row.id, code: row.documentNo } : null)
+  for (const row of checkins) put("checkin", row.id, row.documentNo ? { kind: "checkin", id: row.id, code: row.documentNo } : null)
+  for (const row of transfers) put("transfer", row.id, { kind: "transfer", id: row.id, code: row.documentNo })
+  for (const row of repairs) put("repair", row.id, { kind: "repair", id: row.id, code: row.repairNo })
+  for (const row of disposals) put("disposal", row.id, { kind: "disposal", id: row.id, code: row.disposalNo })
+  // A finding or an audit item belongs to its round.
+  for (const row of findings) put("auditFinding", row.id, { kind: "auditRound", id: row.auditRound.id, code: row.auditRound.auditNo })
+  for (const row of items) put("auditItem", row.id, { kind: "auditRound", id: row.auditRound.id, code: row.auditRound.auditNo })
+
+  return documentOf
+}

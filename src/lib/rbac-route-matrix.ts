@@ -81,6 +81,11 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     checks: [{ module: "asset", action: "edit" }],
   },
   {
+    filePath: "src/app/api/assets/[id]/history/export/route.ts",
+    label: "Asset history export",
+    checks: [{ module: "asset", action: "view" }],
+  },
+  {
     filePath: "src/app/api/assets/import-confirm/route.ts",
     label: "Asset import confirm",
     checks: [{ module: "asset", action: "create" }],

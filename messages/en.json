@@ -1295,7 +1295,45 @@
     "actionViewDisposal": "View disposal request",
     "transactionReasonWrittenOff": "A disposed or retired asset cannot be moved",
     "transactionReasonOpenCheckoutHandover": "A handover is open: return the asset before handing it over again",
-    "location": "Location"
+    "location": "Location",
+    "history": {
+      "types": {
+        "checkout": "Handover",
+        "checkin": "Return",
+        "transfer": "Transfer",
+        "audit": "Audit",
+        "repair": "Repair",
+        "disposal": "Disposal",
+        "component": "Component",
+        "edit": "Record edit"
+      },
+      "auditScan": "Audit count",
+      "fields": {
+        "location": "Location",
+        "custodian": "Custodian",
+        "department": "Department",
+        "status": "Status",
+        "condition": "Condition",
+        "branch": "Branch",
+        "component": "Component",
+        "parent": "Parent asset",
+        "role": "Role",
+        "slot": "Slot"
+      },
+      "none": "None",
+      "unknownRecord": "Record not found",
+      "returnedFrom": "From {name}",
+      "repairDays": "Took {days} days",
+      "columns": {
+        "at": "Date and time",
+        "type": "Type",
+        "event": "Event",
+        "detail": "Details",
+        "actor": "Recorded by",
+        "document": "Document"
+      },
+      "exportSheet": "History"
+    }
   },
   "company": {
     "title": "Companies",

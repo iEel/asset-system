@@ -60,6 +60,12 @@ export async function getMovementDisplayLabels(movements: MovementValue[]) {
   )
 }
 
+// The id lookup on its own (locations, statuses, conditions, departments, employees, assets, companies, branches),
+// keyed by lower-case id: the asset history reads its changes through it (group 1 asset detail task 3).
+export async function getMovementValueLookup(ids: string[]): Promise<Map<string, string>> {
+  return buildMovementLookup(ids.map((id) => id.toLowerCase()))
+}
+
 function collectMovementIds(movements: MovementValue[]) {
   const ids = new Set<string>()
   for (const movement of movements) {

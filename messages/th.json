@@ -1295,7 +1295,45 @@
     "actionViewDisposal": "ดูคำขอตัดจำหน่าย",
     "transactionReasonWrittenOff": "ย้ายไม่ได้เมื่อสถานะเป็น ตัดจำหน่ายแล้ว หรือ ปลดระวาง",
     "transactionReasonOpenCheckoutHandover": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงส่งมอบใหม่ได้",
-    "location": "ที่ตั้ง"
+    "location": "ที่ตั้ง",
+    "history": {
+      "types": {
+        "checkout": "ส่งมอบ",
+        "checkin": "รับคืน",
+        "transfer": "โอนย้าย",
+        "audit": "ตรวจนับ",
+        "repair": "ซ่อม",
+        "disposal": "ตัดจำหน่าย",
+        "component": "ส่วนควบ",
+        "edit": "แก้ไขข้อมูล"
+      },
+      "auditScan": "ตรวจนับ",
+      "fields": {
+        "location": "ที่ตั้ง",
+        "custodian": "ผู้ถือครอง",
+        "department": "แผนก",
+        "status": "สถานะ",
+        "condition": "สภาพ",
+        "branch": "สาขา",
+        "component": "ส่วนควบ",
+        "parent": "ทรัพย์สินหลัก",
+        "role": "บทบาท",
+        "slot": "ช่อง/ตำแหน่ง"
+      },
+      "none": "ไม่มี",
+      "unknownRecord": "ไม่พบรายการอ้างอิง",
+      "returnedFrom": "จาก {name}",
+      "repairDays": "ใช้เวลา {days} วัน",
+      "columns": {
+        "at": "วันที่ เวลา",
+        "type": "ประเภท",
+        "event": "รายการ",
+        "detail": "รายละเอียด",
+        "actor": "ผู้บันทึก",
+        "document": "เอกสาร"
+      },
+      "exportSheet": "ประวัติ"
+    }
   },
   "company": {
     "title": "บริษัท",

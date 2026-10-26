@@ -82,6 +82,8 @@ export type AssetMovementDocument = { kind: AssetMovementDocumentKind; id: strin
 
 export type AssetMovementReferenceLookup = "checkout" | "checkin" | "transfer" | "repair" | "disposal" | "auditFinding" | "auditItem"
 
+export type AssetMovementReference = { referenceType: string | null; referenceId: string | null }
+
 const referenceLookups: Record<string, AssetMovementReferenceLookup> = {
   checkout: "checkout",
   checkin: "checkin",
