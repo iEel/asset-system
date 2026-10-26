@@ -7,6 +7,9 @@ import { hasPermission } from "@/lib/auth-utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 import { getAssetActivityWhere } from "@/lib/asset-activity-filter"
+import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
+import { getWaitingWorkRules } from "@/lib/waiting-work"
+import { startOfBangkokDay, warrantyExpiringSoonWhere } from "@/lib/waiting-work-rules"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildCostInsights } from "@/lib/cost-insights"
@@ -61,7 +64,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const assetSearchParams = { ...rawSearchParams }
   delete assetSearchParams.view
   const filters = parseAssetListParams(assetSearchParams)
-  const baseAssetWhere = buildAssetWhere(filters)
+  const baseAssetWhere = buildAssetWhere(filters, await getAssetWhereOptions(filters))
   const assetWhere = await applyAssetCrossScopeFilter(baseAssetWhere, filters.crossScope)
   const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
   const timingContext = {
@@ -146,6 +149,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     department: t("department"),
     purchase: tAsset("dataQualityPurchase"),
     warranty: t("warrantyExpiring"),
+    licenseExpiry: tAsset("dataQualityLicenseExpiry"),
+    returnDue: tAsset("dataQualityReturnDue"),
   }
   const crossScopeFilterLabels: Record<string, string> = {
     all: t("crossScopeAll"),
@@ -404,8 +409,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     }
     case "operations": {
       async function loadOperationsView(): Promise<React.ReactNode> {
-        const warrantyThreshold = new Date()
-        warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
+        const warrantyWhere = warrantyExpiringSoonWhere(startOfBangkokDay(new Date()), await getWaitingWorkRules())
+        const warrantyWindow = warrantyWhere.warrantyEndDate as { gte: Date; lte: Date }
         const operationsQualityFilters = parseAssetListParams({ ...filters, dataQuality: "", activity: "", page: 1 })
         const operationsQualityWhere = await applyAssetCrossScopeFilter(buildAssetWhere(operationsQualityFilters), operationsQualityFilters.crossScope)
         const crossScopeFilters = parseAssetListParams({ ...filters, dataQuality: "", statusId: "", page: 1 })
@@ -433,7 +438,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               ],
             },
           }),
-          prisma.asset.count({ where: { AND: [operationsQualityWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
+          prisma.asset.count({ where: { AND: [operationsQualityWhere, warrantyWhere] } }),
           prisma.asset.findMany({
             where: {
               AND: [
@@ -449,7 +454,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                         { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
                       ],
                     },
-                    { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } },
+                    warrantyWhere,
                   ],
                 },
               ],
@@ -515,7 +520,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           },
         ]
         const dataQualityRows: ReportDataQualityRow[] = dataQualityAssets.map((asset) => {
-          const issues = getDataQualityIssues(asset, warrantyThreshold, t, locale)
+          const issues = getDataQualityIssues(asset, warrantyWindow, t, locale)
           return {
             id: asset.id,
             assetTag: asset.assetTag,
@@ -796,7 +801,7 @@ function getDataQualityIssues(
     warrantyEndDate: Date | null
     attachments: Array<{ id: string }>
   },
-  warrantyThreshold: Date,
+  warrantyWindow: { gte: Date; lte: Date },
   t: (key: string) => string,
   locale: string
 ) {
@@ -808,7 +813,7 @@ function getDataQualityIssues(
   if (asset.ownershipType !== "software_license" && asset.attachments.length === 0) {
     issues.push({ label: t("missingPhoto"), href: detailHref + "#photos" })
   }
-  if (asset.warrantyEndDate && asset.warrantyEndDate >= new Date() && asset.warrantyEndDate <= warrantyThreshold) {
+  if (asset.ownershipType !== "software_license" && asset.warrantyEndDate && asset.warrantyEndDate >= warrantyWindow.gte && asset.warrantyEndDate <= warrantyWindow.lte) {
     issues.push({ label: t("warrantyExpiring"), href: detailHref + "#purchase" })
   }
   return issues

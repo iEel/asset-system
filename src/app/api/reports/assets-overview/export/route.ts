@@ -4,6 +4,9 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
+import { getWaitingWorkRules } from "@/lib/waiting-work"
+import { startOfBangkokDay, warrantyExpiringSoonWhere } from "@/lib/waiting-work-rules"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
 import { assetMissingResponsibilityWhere, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
@@ -13,7 +16,7 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth()
     requirePermission(user, "report", "export")
     const filters = parseAssetListParams(request.nextUrl.searchParams)
-    const assetWhere = await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope)
+    const assetWhere = await applyAssetCrossScopeFilter(buildAssetWhere(filters, await getAssetWhereOptions(filters)), filters.crossScope)
 
     const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, byOwnership, licenseSummary, dataQuality, depreciationAssets, depreciationPolicySetting, crossScopeSummary] = await Promise.all([
       prisma.asset.count({ where: assetWhere }),
@@ -93,7 +96,7 @@ export async function GET(request: NextRequest) {
       { metric: "Missing Responsibility", value: dataQuality.missingCustodian },
       { metric: "Missing Serial Number", value: dataQuality.missingSerial },
       { metric: "Missing Asset Photo", value: dataQuality.missingPhoto },
-      { metric: "Warranty Expiring in 30 Days", value: dataQuality.warrantyExpiring },
+      { metric: "Warranty Expiring Soon", value: dataQuality.warrantyExpiring },
       { metric: "Cross Scope Assets", value: crossScopeSummary.all },
       { metric: "Custodian Different Company", value: crossScopeSummary.custodianCompany },
       { metric: "Custodian Different Branch", value: crossScopeSummary.custodianBranch },
@@ -157,8 +160,7 @@ function addCrossScopeSheet(workbook: ReturnType<typeof createWorkbook>, rows: A
 }
 
 async function getAssetDataQualityCounts(assetWhere: ReturnType<typeof buildAssetWhere>) {
-  const warrantyThreshold = new Date()
-  warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
+  const warrantyWhere = warrantyExpiringSoonWhere(startOfBangkokDay(new Date()), await getWaitingWorkRules())
   const [missingCustodian, missingSerial, missingPhoto, warrantyExpiring] = await Promise.all([
     prisma.asset.count({ where: { AND: [assetWhere, assetMissingResponsibilityWhere] } }),
     prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
@@ -171,7 +173,7 @@ async function getAssetDataQualityCounts(assetWhere: ReturnType<typeof buildAsse
         ],
       },
     }),
-    prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
+    prisma.asset.count({ where: { AND: [assetWhere, warrantyWhere] } }),
   ])
   return { missingCustodian, missingSerial, missingPhoto, warrantyExpiring }
 }

@@ -3859,7 +3859,7 @@
       },
       "warrantyExpiring": {
         "label": "Warranty expiring",
-        "description": "Find assets whose warranty expires within 30 days."
+        "description": "Find assets whose warranty ends within the notification rule, licenses excluded."
       }
     }
   },

@@ -8,6 +8,8 @@ import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
 import { assetDataQualityRulesKey, parseAssetDataQualityRules, type AssetDataQualityRule } from "@/lib/data-quality-rules"
 import { buildDataQualityRuleHref } from "@/lib/data-quality-drilldown"
 import { getPanelClasses } from "@/lib/design-system"
+import { getWaitingWorkRules } from "@/lib/waiting-work"
+import { startOfBangkokDay, warrantyExpiringSoonWhere } from "@/lib/waiting-work-rules"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { DataQualityRuleForm } from "@/components/admin/data-quality-rule-form"
@@ -26,12 +28,10 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
   const user = await requirePagePermission(locale, "setting", "view")
   const t = await getTranslations("dataQualityPage")
   const tCommon = await getTranslations("common")
-  const warrantyThreshold = new Date()
-  warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
 
   const [setting, counts, reviewResult] = await Promise.all([
     prisma.systemSetting.findUnique({ where: { key: assetDataQualityRulesKey }, select: { value: true } }),
-    getRuleCounts(warrantyThreshold),
+    getRuleCounts(),
     listAssetStateReviews(prisma, { page: 1, pageSize: 25, reviewStatus: "pending" }),
   ])
   const rules = parseAssetDataQualityRules(setting?.value)
@@ -166,7 +166,8 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
   )
 }
 
-async function getRuleCounts(warrantyThreshold: Date) {
+async function getRuleCounts() {
+  const warrantyWhere = warrantyExpiringSoonWhere(startOfBangkokDay(new Date()), await getWaitingWorkRules())
   const [missingCustodian, missingSerial, missingPhoto, missingDepartment, missingPurchaseInfo, warrantyExpiring] = await Promise.all([
     prisma.asset.count({ where: { AND: [{ isActive: true }, assetMissingResponsibilityWhere] } }),
     prisma.asset.count({ where: { isActive: true, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
@@ -192,7 +193,7 @@ async function getRuleCounts(warrantyThreshold: Date) {
         ],
       },
     }),
-    prisma.asset.count({ where: { isActive: true, warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } } }),
+    prisma.asset.count({ where: warrantyWhere }),
   ])
   return { missingCustodian, missingSerial, missingPhoto, missingDepartment, missingPurchaseInfo, warrantyExpiring }
 }
