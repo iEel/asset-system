@@ -38,7 +38,7 @@ test("register row menus are Radix overlays and delete through the shared action
   assert.match(source, /<DropdownMenuItemDescription>\{[\w.]*reason\}<\/DropdownMenuItemDescription>/)
   assert.doesNotMatch(source, /disabled className="items-start"|<DropdownMenuLabel className=/)
   const wrapper = read("src/components/assets/asset-register-row-actions.tsx")
-  assert.match(wrapper, /kind: "unavailable"[\s\S]*?reason: reasonOf\(transaction\)/)
+  assert.match(wrapper, /kind: "unavailable"[\s\S]*?reason: action\.reasonKey \? tAll\(action\.reasonKey\) : ""/)
   assert.doesNotMatch(wrapper, /<DropdownMenu|<Sheet|triggerRef|AssetDeleteButton/, "the wrapper renders no menu of its own")
 })
 

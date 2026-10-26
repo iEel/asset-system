@@ -43,7 +43,7 @@ import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
-import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
+import type { AssetActionSet } from "@/lib/asset-actions"
 import { getAssetStateTone, getDesktopTableOnlyClasses, getPanelClasses } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
@@ -73,7 +73,7 @@ export type AssetRegisterRow = {
   condition: { value: string; label: string }
   purchasePrice: number | null
   photo: { id: string; alt: string; fileType: string } | null
-  transactions: Array<AssetRegisterTransaction & { href: string }>
+  actions: AssetActionSet
 }
 
 // The bulk update's fields in visual order, keyed like the server's fieldErrors (validations/asset-operations.ts), with
@@ -714,7 +714,7 @@ export function AssetRegisterTable({
                       assetId={asset.id}
                       assetTag={asset.assetTag}
                       assetName={asset.name}
-                      transactions={asset.transactions}
+                      actions={asset.actions}
                       editHref={buildAssetEditHref(asset.id)}
                       cloneHref={buildAssetCloneHref(asset.id)}
                       permissions={permissions}

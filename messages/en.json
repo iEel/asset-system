@@ -536,7 +536,6 @@
     "detailTitle": "Asset Detail",
     "cloneAsset": "Clone as new asset",
     "transactionMenu": "Transactions",
-    "transactionReasonPermission": "This account does not have permission to edit assets.",
     "transactionReasonStatusNotReady": "Handover is available only when the asset is Ready.",
     "transactionReasonNoReturnRecord": "There is no custodian or open handover to return.",
     "transactionReasonActiveMaintenance": "Close or cancel the active repair ticket before returning this asset.",
@@ -1291,7 +1290,11 @@
     "transactionReasonOpenCheckout": "A handover is open: return the asset before transferring it",
     "dataQualityLicenseExpiry": "License expiring soon",
     "dataQualityReturnDue": "Returns due soon",
-    "custodianStateAssigned": "Has a custodian"
+    "custodianStateAssigned": "Has a custodian",
+    "actionViewRepair": "View repair",
+    "actionViewDisposal": "View disposal request",
+    "transactionReasonWrittenOff": "A disposed or retired asset cannot be moved",
+    "transactionReasonOpenCheckoutHandover": "A handover is open: return the asset before handing it over again"
   },
   "company": {
     "title": "Companies",

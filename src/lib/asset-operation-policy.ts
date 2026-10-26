@@ -41,6 +41,7 @@ export function getAssetOperationStatusError(operation: AssetOperation, status: 
     : "Asset status does not allow transfer"
 }
 
+// Only the asset page still asks this; group 1 detail plan Task 8 moves the page onto getAssetActions (asset-actions.ts) and deletes it.
 export function getAssetRegisterTransactionActions({
   statusName,
   custodianId,
@@ -121,13 +122,4 @@ export function buildAssetRegisterTransactionHref(
   const selectionValue = action === "checkin" && checkoutId ? checkoutId : assetId
   const params = new URLSearchParams({ [selectionKey]: selectionValue, returnTo })
   return `${basePath}?${params.toString()}`
-}
-
-/** The single row button: hand over when possible, otherwise return, otherwise none. */
-export function getRowNextAction(
-  transactions: ReadonlyArray<Pick<AssetRegisterTransaction, "action" | "enabled">>,
-): "checkout" | "checkin" | null {
-  if (transactions.some((transaction) => transaction.action === "checkout" && transaction.enabled)) return "checkout"
-  if (transactions.some((transaction) => transaction.action === "checkin" && transaction.enabled)) return "checkin"
-  return null
 }

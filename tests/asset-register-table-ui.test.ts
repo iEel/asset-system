@@ -7,14 +7,15 @@ const rowActions = () => read("src/components/assets/asset-register-row-actions.
 const table = () => read("src/components/assets/asset-register-table.tsx")
 const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).asset
 
-test("row actions show one next-step button and keep every action in the ⋯ menu", () => {
+test("row actions show the shared rule's primary as the next step and its other transactions in ⋯ (group 1 spec §7.1)", () => {
   const source = rowActions()
   // Plan 2B-3 Task 2 (spec 2B I5): the menu, the phone sheet and the delete confirm moved into the shared RowActions,
   // so their pins read ui/row-actions.tsx. The wrapper keeps the register's rules: next step, order, permissions, reasons.
   const shared = read("src/components/ui/row-actions.tsx")
 
-  assert.match(source, /const nextAction = getRowNextAction\(transactions\)/)
-  assert.match(source, /next \? \[next, \.\.\.transactions\.filter\(\(transaction\) => transaction !== next\)\] : transactions/)
+  assert.match(source, /const transactionItems: RowActionItem\[\] = \[\.\.\.\(variant === "mobile" && actions\.primary \? \[actions\.primary\] : \[\]\), \.\.\.actions\.transactions\]\.map\(toItem\)/, "a phone row has no next-step slot, so the primary leads its sheet")
+  assert.doesNotMatch(source, /getRowNextAction|asset-operation-policy|transactionLabelKeys|reasonLabelKeys/, "the words and the reasons come from the rule")
+  assert.match(source, /const tAll = useTranslations\(\)/, "the rule's keys are full keys, read through the root translator")
   assert.match(source, /<RowActions\b/)
   assert.match(shared, /<DropdownMenuTrigger asChild>/)
   assert.match(shared, /<DropdownMenuContent data-no-row-click/)
@@ -26,7 +27,7 @@ test("row actions show one next-step button and keep every action in the ⋯ men
   assert.match(source, /permissions\.canEdit \?/)
   assert.match(source, /permissions\.canCreate \?/)
   assert.match(source, /permissions\.canDelete \?/)
-  assert.match(source, /reasonLabelKeys\[transaction\.reason\]/)
+  assert.match(source, /reason: action\.reasonKey \? tAll\(action\.reasonKey\) : ""/)
   assert.match(shared, /size="icon-sm"/, "⋯ is 32px from md and 44px below")
   assert.doesNotMatch(source, /createPortal|getBoundingClientRect|addEventListener/)
 })
@@ -219,7 +220,7 @@ test("the floating bulk bar hides its heading on phones and the list reserves at
 test("the register row actions are a thin wrapper of RowActions: next step on desktop only, dropdown or sheet, delete by permission (spec 2B I5)", () => {
   const source = rowActions()
   assert.match(source, /<RowActions\b[\s\S]*?menuLabel=\{t\("rowActionsMenu", \{ assetTag \}\)\}[\s\S]*?menu=\{variant === "desktop" \? "dropdown" : "sheet"\}/)
-  assert.match(source, /next=\{variant === "desktop" \? \(next \? \{ label: t\(transactionLabelKeys\[next\.action\]\), href: next\.href, icon: icon\(next\.action\), onNavigate \} : null\) : undefined\}/, "a desktop row without a next step keeps the empty 120px slot, so ⋯ lines up")
+  assert.match(source, /next=\{variant === "desktop" \? \(primary \? \{ label: tAll\(primary\.labelKey\), href: primary\.href, icon: icon\(primary\.key\), onNavigate \} : null\) : undefined\}/,"a desktop row without a next step keeps the empty 120px slot, so ⋯ lines up")
   assert.match(source, /groups=\{\[/)
   assert.match(source, /label: t\("transactionMenu"\)/)
   assert.match(source, /code=\{assetTag\}\n\s+name=\{assetName\}/, "the phone sheet is headed by the tag and the name")

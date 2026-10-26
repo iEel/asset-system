@@ -28,10 +28,7 @@ import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { hasPermission } from "@/lib/auth-utils"
-import {
-  buildAssetRegisterTransactionHref,
-  getAssetRegisterTransactionActions,
-} from "@/lib/asset-operation-policy"
+import { firstIdByAssetId, getAssetActions, openDisposalRequestWhere } from "@/lib/asset-actions"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 
 type AssetsPageProps = {
@@ -168,7 +165,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     new Set(assets.map((asset) => asset.model?.id).filter((modelId): modelId is string => Boolean(modelId)))
   )
   const assetIds = assets.map((asset) => asset.id)
-  const [modelPhotos, openCheckouts, activeMaintenanceTickets] = await Promise.all([
+  const [modelPhotos, openCheckouts, openRepairRecords, openDisposalRequests] = await Promise.all([
     withPerformanceTiming<AssetModelPhotoPreview[]>(
       "assets.model-photos",
       () => modelIds.length
@@ -195,7 +192,15 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     assetIds.length
       ? prisma.maintenanceTicket.findMany({
           where: { ...openRepairRecordWhere, assetId: { in: assetIds } },
-          select: { assetId: true },
+          select: { id: true, assetId: true },
+          orderBy: { reportedDate: "desc" },
+        })
+      : Promise.resolve([]),
+    assetIds.length
+      ? prisma.disposalRequest.findMany({
+          where: { ...openDisposalRequestWhere, assetId: { in: assetIds } },
+          select: { id: true, assetId: true },
+          orderBy: { requestDate: "desc" },
         })
       : Promise.resolve([]),
   ])
@@ -211,7 +216,14 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       openCheckoutByAssetId.set(checkout.assetId, { id: checkout.id, handoverMode: checkout.handoverMode })
     }
   }
-  const activeMaintenanceAssetIds = new Set(activeMaintenanceTickets.map((ticket) => ticket.assetId))
+  const openRepairIdByAssetId = firstIdByAssetId(openRepairRecords)
+  const openDisposalIdByAssetId = firstIdByAssetId(openDisposalRequests)
+  const actionPermissions = {
+    assetEdit: canEditAssets,
+    maintenanceCreate: hasPermission(user, "maintenance", "create"),
+    maintenanceView: hasPermission(user, "maintenance", "view"),
+    disposalView: hasPermission(user, "disposal", "view"),
+  }
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
   const fromRow = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
   const toRow = Math.min(total, filters.page * filters.pageSize)
@@ -283,24 +295,19 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   })
   const tableAssets: AssetRegisterRow[] = assets.map((asset) => {
     const openCheckout = openCheckoutByAssetId.get(asset.id) ?? null
-    const openCheckoutId = openCheckout?.id ?? null
-    const transactions = getAssetRegisterTransactionActions({
+    const actions = getAssetActions({
+      locale,
+      assetId: asset.id,
       statusName: asset.status.name,
+      ownership: normalizeAssetOwnershipType(asset.ownershipType),
       custodianId: asset.custodianId,
-      openCheckoutId,
+      openCheckoutId: openCheckout?.id ?? null,
       openCheckoutHandoverMode: openCheckout?.handoverMode ?? null,
-      hasActiveMaintenance: activeMaintenanceAssetIds.has(asset.id),
-      canEdit: canEditAssets,
-    }).map((transaction) => ({
-      ...transaction,
-      href: buildAssetRegisterTransactionHref(
-        locale,
-        asset.id,
-        transaction.action,
-        registerReturnHref,
-        openCheckoutId,
-      ),
-    }))
+      openRepairId: openRepairIdByAssetId.get(asset.id) ?? null,
+      openDisposalId: openDisposalIdByAssetId.get(asset.id) ?? null,
+      returnTo: registerReturnHref,
+      can: actionPermissions,
+    })
 
     return ({
     id: asset.id,
@@ -331,7 +338,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
             fileType: asset.attachments[0].fileType,
           }
         : null,
-    transactions,
+    actions,
   })})
 
   return (

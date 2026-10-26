@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("component manager accepts only a return path to its parent asset detail", () => {
+test("component manager accepts a return path to its own asset detail or to the register", () => {
   const source = readFileSync("src/lib/asset-return-navigation.ts", "utf8")
 
   assert.match(source, /normalizeAssetComponentManagerReturnTo/)

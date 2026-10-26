@@ -536,7 +536,6 @@
     "detailTitle": "รายละเอียดทรัพย์สิน",
     "cloneAsset": "คัดลอกเป็นรายการใหม่",
     "transactionMenu": "ทำธุรกรรม",
-    "transactionReasonPermission": "บัญชีนี้ไม่มีสิทธิ์แก้ไขทรัพย์สิน",
     "transactionReasonStatusNotReady": "ส่งมอบได้เมื่อสถานะเป็น พร้อมใช้งาน เท่านั้น",
     "transactionReasonNoReturnRecord": "ไม่มีผู้ถือครองหรือรายการส่งมอบที่รอรับคืน",
     "transactionReasonActiveMaintenance": "มีงานซ่อมที่ยังไม่ปิด กรุณาปิดหรือยกเลิกงานซ่อมก่อน",
@@ -1291,7 +1290,11 @@
     "transactionReasonOpenCheckout": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้",
     "dataQualityLicenseExpiry": "License ใกล้หมดอายุ",
     "dataQualityReturnDue": "ใกล้/เลยกำหนดคืน",
-    "custodianStateAssigned": "มีผู้ถือครอง"
+    "custodianStateAssigned": "มีผู้ถือครอง",
+    "actionViewRepair": "ดูงานซ่อม",
+    "actionViewDisposal": "ดูคำขอตัดจำหน่าย",
+    "transactionReasonWrittenOff": "ย้ายไม่ได้เมื่อสถานะเป็น ตัดจำหน่ายแล้ว หรือ ปลดระวาง",
+    "transactionReasonOpenCheckoutHandover": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงส่งมอบใหม่ได้"
   },
   "company": {
     "title": "บริษัท",

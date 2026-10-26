@@ -59,7 +59,7 @@ test("asset edit form saves back to the sanitized return target", () => {
   assert.match(formSource, /router\.push\(backHref\)/)
 })
 
-test("component manager only returns to the asset detail that opened it", () => {
+test("component manager returns to the asset detail that opened it, never to another asset or site", () => {
   assert.equal(
     normalizeAssetComponentManagerReturnTo("th", "asset id/1", "/th/assets/asset%20id%2F1?view=custody"),
     "/th/assets/asset%20id%2F1?view=custody",
@@ -72,4 +72,14 @@ test("component manager only returns to the asset detail that opened it", () => 
     normalizeAssetComponentManagerReturnTo("th", "asset id/1", "https://example.com"),
     "/th/assets/asset%20id%2F1?view=custody",
   )
+})
+
+test("the component manager also returns to the register that opened it, with its query (group 1 spec §7.1)", () => {
+  // Compared with the fallback itself, so the fallback's view name is not this test's concern.
+  const fallback = normalizeAssetComponentManagerReturnTo("th", "a-1", undefined)
+  assert.match(fallback, /^\/th\/assets\/a-1\?view=/)
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/th/assets?search=nb&page=2&pageSize=25"), "/th/assets?search=nb&page=2&pageSize=25")
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/th/assets/other-id"), fallback)
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/en/assets?search=nb"), fallback)
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "https://evil.example/th/assets?search=nb"), fallback)
 })

@@ -25,12 +25,13 @@ export function normalizeAssetReturnTo(locale: string, value: ReturnToParam) {
 export function normalizeAssetComponentManagerReturnTo(locale: string, assetId: string, value: ReturnToParam) {
   const allowedPath = `/${locale}/assets/${encodeURIComponent(assetId)}`
   const fallback = `${allowedPath}?view=custody`
+  const registerPath = `/${locale}/assets`
   const raw = Array.isArray(value) ? value[0] : value
   if (!raw) return fallback
 
   try {
     const url = new URL(raw, "http://asset.local")
-    if (url.origin !== "http://asset.local" || url.pathname !== allowedPath) return fallback
+    if (url.origin !== "http://asset.local" || (url.pathname !== allowedPath && url.pathname !== registerPath)) return fallback
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
     return fallback

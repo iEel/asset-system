@@ -198,10 +198,25 @@ test("the register does not offer โอนย้าย while a handover is open
   assert.deepEqual(getActions({ ...input, openCheckoutId: null, openCheckoutHandoverMode: null })[2], { action: "transfer", enabled: true })
   assert.deepEqual(getActions({ ...input, statusName: "Ready" })[2], { action: "transfer", enabled: false, reason: "open_checkout" })
 
-  const rowActions = readFileSync("src/components/assets/asset-register-row-actions.tsx", "utf8").replace(/\r/g, "")
-  assert.match(rowActions, /open_checkout: "transactionReasonOpenCheckout",/)
+  const rule = readFileSync("src/lib/asset-actions.ts", "utf8").replace(/\r/g, "")
+  assert.match(rule, /"asset\.transactionReasonOpenCheckout"/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8")).asset
   const en = JSON.parse(readFileSync("messages/en.json", "utf8")).asset
   assert.equal(th.transactionReasonOpenCheckout, "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้")
   assert.equal(en.transactionReasonOpenCheckout, "A handover is open: return the asset before transferring it")
+})
+
+test("the register's rows ask the shared action rule, with the open repair and disposal of the rows shown (group 1 spec §7.1)", () => {
+  const register = readFileSync("src/app/[locale]/(dashboard)/assets/page.tsx", "utf8").replace(/\r/g, "")
+  assert.match(register, /const actions = getAssetActions\(\{/)
+  assert.match(register, /returnTo: registerReturnHref,\n\s+can: actionPermissions,/)
+  assert.match(register, /prisma\.maintenanceTicket\.findMany\(\{\s*where: \{ \.\.\.openRepairRecordWhere, assetId: \{ in: assetIds \} \},\s*select: \{ id: true, assetId: true \},\s*orderBy: \{ reportedDate: "desc" \},?\s*\}\)/)
+  assert.match(register, /prisma\.disposalRequest\.findMany\(\{\s*where: \{ \.\.\.openDisposalRequestWhere, assetId: \{ in: assetIds \} \},\s*select: \{ id: true, assetId: true \},\s*orderBy: \{ requestDate: "desc" \},?\s*\}\)/)
+  assert.match(register, /maintenanceView: hasPermission\(user, "maintenance", "view"\)/)
+  assert.match(register, /disposalView: hasPermission\(user, "disposal", "view"\)/)
+  assert.doesNotMatch(register, /getAssetRegisterTransactionActions|getRowNextAction|buildAssetRegisterTransactionHref/)
+  const policy = readFileSync("src/lib/asset-operation-policy.ts", "utf8")
+  assert.doesNotMatch(policy, /export function getRowNextAction/)
+  const rule = readFileSync("src/lib/asset-actions.ts", "utf8")
+  assert.doesNotMatch(rule, /from "@\/|from "@prisma\/client"|\bprisma\./, "the rule stays pure: relative imports, no database")
 })

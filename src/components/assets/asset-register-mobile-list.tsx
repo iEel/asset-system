@@ -78,7 +78,7 @@ function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, o
         assetId={asset.id}
         assetTag={asset.assetTag}
         assetName={asset.name}
-        transactions={asset.transactions}
+        actions={asset.actions}
         editHref={editHref(asset.id)}
         cloneHref={cloneHref(asset.id)}
         permissions={permissions}

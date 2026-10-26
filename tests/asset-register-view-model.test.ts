@@ -5,7 +5,6 @@ import { parseAssetListParams } from "../src/lib/asset-list-query.ts"
 import { buildStatusTabs } from "../src/lib/asset-register-status-tabs.ts"
 import { buildAssetRegisterChips, buildAssetRegisterClearAllHref } from "../src/lib/asset-register-chips.ts"
 import { assetRegisterSortOptions, getActiveSortKey } from "../src/lib/asset-register-sort.ts"
-import { getRowNextAction } from "../src/lib/asset-operation-policy.ts"
 import {
   assetRegisterColumnPresets,
   assetRegisterColumnWidths,
@@ -156,24 +155,6 @@ test("sort options map to the existing sort parameters", () => {
   assert.equal(getActiveSortKey("createdAt", "desc"), "newest")
   assert.equal(getActiveSortKey("purchasePrice", "desc"), "priceDesc")
   assert.equal(getActiveSortKey("name", "desc"), null)
-})
-
-test("the next-step button prefers handover, then return, else nothing", () => {
-  assert.equal(getRowNextAction([
-    { action: "checkout", enabled: true },
-    { action: "checkin", enabled: true },
-  ]), "checkout")
-  assert.equal(getRowNextAction([
-    { action: "checkout", enabled: false },
-    { action: "checkin", enabled: true },
-    { action: "transfer", enabled: true },
-  ]), "checkin")
-  assert.equal(getRowNextAction([
-    { action: "checkout", enabled: false },
-    { action: "checkin", enabled: false },
-    { action: "transfer", enabled: true },
-  ]), null)
-  assert.equal(getRowNextAction([]), null)
 })
 
 test("default columns fit a 1440px screen without horizontal scroll", () => {
