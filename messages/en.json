@@ -454,7 +454,8 @@
     "allOpenRounds": "All rounds in progress",
     "recentTitle": "Recent",
     "recentYesterday": "Yesterday",
-    "recentEmpty": "No asset activity yet"
+    "recentEmpty": "No asset activity yet",
+    "branchesEmpty": "This round has no items with a branch yet"
   },
   "workCenter": {
     "title": "Follow-up Work Center",

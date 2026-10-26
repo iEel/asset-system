@@ -207,6 +207,8 @@ test("ตรวจนับแยกสาขา: a pace bar per branch, the leg
   assert.match(source, /\{t\("allOpenRounds"\)\}/)
   assert.doesNotMatch(source, /formatCount\(overview\.audit\.otherOpen\)|otherOpenRounds|viewRounds/, "the other rounds are never a number")
   assert.equal(source.match(/t\(overview\.audit\.otherOpen > 0 \? "noDueRound" : "noRound"\)/g)?.length, 2, "the KPI and the section")
+  assert.match(source, /\{round && branchRows\.rows\.length > 0 \? \(/, "the legend and the rows only when there are rows")
+  assert.match(source, /\) : round \? \([\s\S]{0,200}<EmptyNote padded>\{t\("branchesEmpty"\)\}<\/EmptyNote>/, "a round with no branch rows says so")
 })
 
 test("ล่าสุด: five asset events for asset:view, on the desktop only, the document linked only for those who may open it, with no link to every movement (spec §6.8)", () => {

@@ -284,7 +284,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           </Link>
         ) : undefined}
       >
-        {round ? (
+        {round && branchRows.rows.length > 0 ? (
           <>
             <p className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border-soft px-4 py-3 text-meta text-muted-foreground md:px-5">
               <span className="inline-flex items-center gap-1.5">
@@ -343,6 +343,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               </p>
             ) : null}
           </>
+        ) : round ? (
+          // A round whose items carry no branch (or none of the chosen company's) says so, with no legend over nothing.
+          <EmptyNote padded>{t("branchesEmpty")}</EmptyNote>
         ) : (
           <EmptyNote padded>{t(overview.audit.otherOpen > 0 ? "noDueRound" : "noRound")}</EmptyNote>
         )}
