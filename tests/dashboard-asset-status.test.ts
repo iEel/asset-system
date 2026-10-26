@@ -32,3 +32,11 @@ test("the dashboard counts statuses by id from the overview, never by a name tha
   assert.doesNotMatch(src, /contains: "(In Use|Ready|ใช้งาน|พร้อม)"/)
   assert.match(src, /buildDashboardStatusTable\(overview\.statusRows, locale, companyId\)/)
 })
+
+test("the status table's count and share sit on the status name's line: the phone's 44px link is centred, so they are too (look step fix 1)", () => {
+  const src = readFileSync("src/app/[locale]/(dashboard)/dashboard/page.tsx", "utf8").replace(/\r/g, "")
+  assert.match(src, /<DataTableCell numeric className="align-middle">\{formatCount\(row\.count\)\}<\/DataTableCell>/)
+  assert.match(src, /<DataTableCell numeric className="hidden align-middle text-muted-foreground md:table-cell">\{formatPercent\(row\.share, 1\)\}<\/DataTableCell>/)
+  // The status name's cell stays as it is; the shared DataTableCell keeps align-top for every other table.
+  assert.match(readFileSync("src/components/ui/data-table.tsx", "utf8"), /align-top/)
+})

@@ -99,7 +99,8 @@ export function AssetOverview({
       </>
     ) : null
 
-  const factRows: KeyValueItem[] = [
+  // Two lists side by side from xl (look step fix 1): what the asset is, then where it sits and when it moved.
+  const identityRows: KeyValueItem[] = [
     { key: "category", label: tAsset("category"), value: coded(details.category) },
     { key: "company", label: t("ownerCompany"), value: coded({ code: details.company.code, name: details.company.nameTh }) },
     { key: "branch", label: tAsset("assetOwnerBranch"), value: coded(details.branch) },
@@ -120,6 +121,8 @@ export function AssetOverview({
       ),
     },
     { key: "ownershipType", label: tAsset("ownershipType"), value: tAsset(`ownershipType_${details.ownershipType}`) },
+  ]
+  const placeRows: KeyValueItem[] = [
     ...(details.department ? [{ key: "department", label: tAsset("department"), value: coded(details.department) }] : []),
     ...(details.homeLocation ? [{ key: "homeLocation", label: tAsset("homeLocation"), value: coded(details.homeLocation) }] : []),
     ...(details.licenseDevice
@@ -224,7 +227,7 @@ export function AssetOverview({
               label={photo.isModelPhoto ? tAsset("modelPhoto") : undefined}
               canUpload={canEdit}
               uploadHref={photo.uploadHref}
-              className="aspect-[4/3] w-full"
+              className="w-full max-lg:max-h-80 lg:aspect-[4/3]"
             />
           </ContentPanel>
         </div>
@@ -236,7 +239,10 @@ export function AssetOverview({
             ) : undefined}
           >
             <div className="space-y-6">
-              <KeyValueList items={factRows} />
+              <div className="grid gap-x-8 gap-y-2 xl:grid-cols-2">
+                <KeyValueList items={identityRows} />
+                <KeyValueList items={placeRows} />
+              </div>
               {specRows.length > 0 ? (
                 <div>
                   <h3 className={groupTitleClasses}>{tBrandModel("structuredSpecs")}</h3>

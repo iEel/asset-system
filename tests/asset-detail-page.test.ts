@@ -83,7 +83,7 @@ test("the overview: the photo first on the phone, ข้อมูลทรัพ
   assert.match(overview, /<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">\s*<div className="min-w-0 lg:col-span-4 lg:col-start-9 lg:row-start-1">/)
   assert.match(overview, /<div id="overview" className="min-w-0 scroll-mt-24 lg:col-span-8 lg:col-start-1 lg:row-start-1">/)
   // R26, R27, R47: Task 4's frame (previewable by default) in the board's 4:3 box, the model photo captioned with the app's one word.
-  assert.match(overview, /<AssetPhotoFrame\s+attachmentId=\{photo\.attachmentId\}\s+alt=\{photo\.alt\}\s+label=\{photo\.isModelPhoto \? tAsset\("modelPhoto"\) : undefined\}\s+canUpload=\{canEdit\}\s+uploadHref=\{photo\.uploadHref\}\s+className="aspect-\[4\/3\] w-full"\s*\/>/)
+  assert.match(overview, /<AssetPhotoFrame\s+attachmentId=\{photo\.attachmentId\}\s+alt=\{photo\.alt\}\s+label=\{photo\.isModelPhoto \? tAsset\("modelPhoto"\) : undefined\}\s+canUpload=\{canEdit\}\s+uploadHref=\{photo\.uploadHref\}\s+className="w-full max-lg:max-h-80 lg:aspect-\[4\/3\]"\s*\/>/, "below lg the natural height capped at 20rem; from lg the board's 4:3 box (look step fix 1)")
   assert.doesNotMatch(overview, /\/api\/attachments|<img\b|inline=1/, "the photo loads through the card-size thumbnail (§7.5)")
   assert.match(overview, /<StatusBadge label=\{details\.condition\.nameTh\} tone=\{getAssetStateTone\(details\.condition\.name\)\} \/>\s*<AssetStateHelpPopover \{\.\.\.conditionHelp\} \/>/)
   assert.match(overview, /\{ key: "remark", label: tAsset\("remark"\), value: details\.remark \}/)
@@ -106,7 +106,10 @@ test("the overview: the photo first on the phone, ข้อมูลทรัพ
   for (const key of ["purchasePrice", "purchaseDate", "supplier", "warrantyEnd"]) assert.match(overview, new RegExp(`\\{ key: "${key}", label: tAsset\\("${key}"\\), value: <Nil \\/> \\}`), key)
   assert.match(overview, /components\.manageHref \? \(/)
   assert.equal(overview.match(/<ContentPanel divided\b/g)?.length, 4)
-  assert.equal(overview.match(/<KeyValueList\b/g)?.length, 3, "the facts, the specs and the purchase rows: one list per group")
+  assert.equal(overview.match(/<KeyValueList\b/g)?.length, 4, "the facts in two lists (identity, then where and when), the specs and the purchase rows")
+  // Look step fix 1: the facts sit in two lists side by side from xl, identity first.
+  assert.match(overview, /<div className="grid gap-x-8 gap-y-2 xl:grid-cols-2">\s*<KeyValueList items=\{identityRows\} \/>\s*<KeyValueList items=\{placeRows\} \/>\s*<\/div>/)
+  assert.match(overview, /const identityRows: KeyValueItem\[\] = \[\s*\{ key: "category"[\s\S]*?\{ key: "ownershipType"[^\n]*\n\s*\]\s*const placeRows: KeyValueItem\[\] = \[\s*\.\.\.\(details\.department/, "identity rows end at ประเภทการถือครอง; the place rows start at แผนก")
   assert.doesNotMatch(overview, /"-"|toLocaleString|text-(?:success|warning|danger)\b|border-dashed|bg-\w+-soft/)
 })
 

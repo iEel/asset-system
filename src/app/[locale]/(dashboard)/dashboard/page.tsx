@@ -375,8 +375,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                         {row.name}
                       </Link>
                     </DataTableCell>
-                    <DataTableCell numeric>{formatCount(row.count)}</DataTableCell>
-                    <DataTableCell numeric className="hidden text-muted-foreground md:table-cell">{formatPercent(row.share, 1)}</DataTableCell>
+                    <DataTableCell numeric className="align-middle">{formatCount(row.count)}</DataTableCell>
+                    <DataTableCell numeric className="hidden align-middle text-muted-foreground md:table-cell">{formatPercent(row.share, 1)}</DataTableCell>
                   </DataTableRow>
                 ))}
               </DataTableBody>

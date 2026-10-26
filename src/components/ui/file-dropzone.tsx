@@ -21,6 +21,7 @@ export function FileDropzone({
   description,
   browseLabel,
   optimizeImages = true,
+  compact = false,
   id,
   "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
@@ -39,6 +40,8 @@ export function FileDropzone({
   description?: React.ReactNode
   browseLabel: string
   optimizeImages?: boolean
+  // A tile that already names what it takes: less padding and no image hint line.
+  compact?: boolean
   // id, aria-describedby and aria-invalid come from a wrapping Field. aria-required is accepted so Field's control
   // props type-check, but it is not passed on: a file input has no role that supports it. Field still shows the asterisk.
   id?: string
@@ -52,7 +55,7 @@ export function FileDropzone({
   const [dragging, setDragging] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
   const isDisabled = disabled || optimizing
-  const showImageOptimizationHint = optimizeImages && (accept?.includes("image") ?? true)
+  const showImageOptimizationHint = !compact && optimizeImages && (accept?.includes("image") ?? true)
   const invalid = ariaInvalid === true || ariaInvalid === "true"
   // The title is the field's name. The three sub-lines are aria-hidden inside the <label> and reach screen readers
   // through aria-describedby, which still reads hidden text (spec 2C I13).
@@ -120,7 +123,8 @@ export function FileDropzone({
       }}
       onDrop={handleDrop}
       className={[
-        "block cursor-pointer rounded-md border border-dashed p-4 text-center transition-colors motion-reduce:transition-none has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring",
+        "block cursor-pointer rounded-md border border-dashed text-center transition-colors motion-reduce:transition-none has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring",
+        compact ? "p-3" : "p-4",
         isDisabled ? "pointer-events-none border-border bg-background" : dragging ? "border-primary bg-primary-soft" : invalid ? "border-danger bg-surface hover:bg-background" : "border-input bg-surface hover:bg-background",
       ].join(" ")}
     >

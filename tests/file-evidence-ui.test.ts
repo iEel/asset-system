@@ -37,6 +37,15 @@ test("FileDropzone is named by its title only; the three sub-lines are its descr
   assert.ok(source.indexOf("id={descriptionId}") < source.indexOf("id={optimizeId}"))
 })
 
+test("a compact FileDropzone pads p-3 and drops the image hint; the description shows only when given (look step fix 1)", () => {
+  const source = read("src/components/ui/file-dropzone.tsx")
+  assert.match(source, /\n {2}compact\?: boolean\n/)
+  assert.match(source, /\n {2}compact = false,\n/)
+  assert.match(source, /const showImageOptimizationHint = !compact && optimizeImages && \(accept\?\.includes\("image"\) \?\? true\)/)
+  assert.match(source, /compact \? "p-3" : "p-4"/)
+  assert.match(source, /\{description \? \(\n\s+<span id=\{descriptionId\}/)
+})
+
 test("an invalid FileDropzone gets a red dashed border, after the disabled and drag states", () => {
   const source = read("src/components/ui/file-dropzone.tsx")
   assert.match(source, /const invalid = ariaInvalid === true \|\| ariaInvalid === "true"/)
@@ -181,17 +190,19 @@ test("the asset form's evidence boxes lose their tinted icon squares and the rep
   assert.match(source, /<FileDropzone\n\s*file=\{selectedAssetPhotoFile\}/)
 })
 
-test("each missing checklist photo is a camera drop zone named by its checklist item that says up front when the photo uploads; the free zone queues several files (call sites 3 and 4)", () => {
+test("each missing checklist photo is a compact camera drop zone named by its checklist item that says ถ่ายรูป, and อัปโหลด only while it uploads; the free zone queues several files (call sites 3 and 4)", () => {
   const source = readFileSync("src/components/assets/asset-attachments.tsx", "utf8").replace(/\r\n/g, "\n")
   const box = source.match(/<Field label=\{label\} hideLabel>\n\s*<FileDropzone[\s\S]*?\/>\n\s*<\/Field>/)?.[0]
   assert.ok(box, "a missing checklist item's FileDropzone sits in <Field label={label} hideLabel>")
   assert.match(box, /capture="environment"/)
-  assert.match(box, /description=\{uploadingLabel === label \? t\("uploading"\) : t\("checklistPhotoDescription"\)\}/)
-  assert.doesNotMatch(box, /\shint=/)
+  // Look step fix 1: the tile already names the photo and says ยังไม่มีรูป, so the box is compact and says only ถ่ายรูป (R48).
+  assert.match(box, /\n\s+compact\n/)
+  assert.match(box, /title=\{t\("photoFrame\.takePhoto"\)\}/)
+  assert.match(box, /browseLabel=\{t\("dropAssetPhotoHint"\)\}/)
+  assert.match(box, /description=\{uploadingLabel === label \? t\("uploading"\) : undefined\}/)
+  assert.match(box, /disabled=\{uploadingLabel === label\}/)
+  assert.match(box, /accept="image\/jpeg,/)
+  assert.doesNotMatch(box, /\shint=|checklistPhotoDescription|dropAssetPhotoTitle/)
   // The free zone (call site 4) is multiple: the queue shows what was chosen, so it has no single-file hint.
   assert.doesNotMatch(source, /t\("dropFileSelected"\)/)
-  for (const [locale, text] of [["th", "รูปจะอัปโหลดทันทีที่เลือก"], ["en", "The photo uploads as soon as you choose it."]]) {
-    const asset = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, unknown> }).asset
-    assert.equal(asset.checklistPhotoDescription, text, locale)
-  }
 })

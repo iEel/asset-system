@@ -144,8 +144,9 @@ export function AssetAttachments({
                           disabled={uploadingLabel === label}
                           accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
                           capture="environment"
-                          title={t("dropAssetPhotoTitle")}
-                          description={uploadingLabel === label ? t("uploading") : t("checklistPhotoDescription")}
+                          compact
+                          title={t("photoFrame.takePhoto")}
+                          description={uploadingLabel === label ? t("uploading") : undefined}
                           browseLabel={t("dropAssetPhotoHint")}
                         />
                       </Field>
