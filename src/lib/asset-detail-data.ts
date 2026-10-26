@@ -2,31 +2,21 @@ import type { Prisma } from "@prisma/client"
 import type { AssetDetailView } from "./asset-detail-view.ts"
 
 export type AssetDetailLoadPolicy = {
-  movementLimit: number
   checkoutLimit: number
   maintenanceLimit: number
-  auditItemLimit: number
-  auditFindingLimit: number
-  disposalLimit: number
   assignedLicenseLimit: number
 }
 
 const previewPolicy: AssetDetailLoadPolicy = {
-  movementLimit: 1,
   checkoutLimit: 1,
   maintenanceLimit: 1,
-  auditItemLimit: 1,
-  auditFindingLimit: 1,
-  disposalLimit: 1,
   assignedLicenseLimit: 1,
 }
 
-// Interim (R24): each of Tasks 9-12 replaces its tab's load with its own loader. The history and maintenance limits
-// are the old operations and audit views'; nothing renders the disposal requests or the findings, so they stay at one.
+// Interim (R24): each of Tasks 9-12 replaces its tab's load with its own loader. The history tab has its own since
+// Task 9 (getAssetHistory under asset-detail.history-tab), so its view loads the preview; the maintenance limit is the
+// old audit view's.
 export function getAssetDetailLoadPolicy(view: AssetDetailView): AssetDetailLoadPolicy {
-  if (view === "history") {
-    return { ...previewPolicy, movementLimit: 20, checkoutLimit: 10, maintenanceLimit: 10, auditItemLimit: 10 }
-  }
   if (view === "components") {
     return { ...previewPolicy, checkoutLimit: 10, assignedLicenseLimit: 50 }
   }

@@ -61,24 +61,11 @@ test("components summary: a ContentPanel, codes as tag, text links, a warning St
   assert.doesNotMatch(summary, /font-mono|uppercase|rounded-full|border-dashed|bg-primary|text-white|primary-soft|hover:bg-accent|sm:h-10|text-xs|text-primary/)
 })
 
-test("movement timeline: ChoiceChip filters, EmptyNote, StatusBadge and shape markers, KeyValueLists with text links, and the shared date format (spec 2D M21, M22, D19)", () => {
-  const source = read(`${C}assets/asset-movement-timeline.tsx`)
-  assert.match(source, /<fieldset className="min-w-0">\n\s+<legend className="sr-only">\{labels\.filterLabel\}<\/legend>/)
-  assert.match(source, /<ChoiceChip\n\s+key=\{filter\}\n\s+type="radio"\n\s+name=\{filterName\}/)
-  assert.match(source, /<EmptyNote>\{labels\.noData\}<\/EmptyNote>/)
-  assert.match(source, /<StatusBadge label=\{movement\.title\} tone=\{movement\.tone\} \/>/)
-  assert.match(source, /statusMarkerVariants\(\{ tone: movement\.tone \}\)/)
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2)
-  assert.match(source, /<a href=\{detail\.href\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
-  assert.match(source, /import \{ cn, formatDateTime \} from "@\/lib\/utils"/)
-  assert.doesNotMatch(source, /<button\b|function (?:Info|MovementInfo|formatDateTime|getMovementDotClass|getMovementBadgeClass)\b|"-"|uppercase|border-dashed|rounded-full|text-white|bg-surface\/\d|hover:underline|\btext-xs\b/)
-})
-
 const D = "src/app/[locale]/(dashboard)/"
 
 test("asset page: the sections the later tabs replace keep the panel classes; the overview's panels are ContentPanels in the detail parts (spec 2D §3.3; group 1 asset detail task 8)", () => {
   const source = read(`${D}assets/[id]/page.tsx`)
-  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 5, "handover, movement, maintenance, audit and the files tab's purchase documents")
+  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 3, "handover, maintenance and the files tab's purchase documents")
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 1, "the relationship map")
   assert.match(source, /<Notice tone="warning" className="mb-4">\n\s+\{t\("maintenanceReplacementWarning"\)\}\n\s+<\/Notice>/)
   assert.match(source, /<Notice tone="neutral" className="mt-4">\{noteLabel\}<\/Notice>/)
@@ -89,7 +76,7 @@ test("asset page: the sections the later tabs replace keep the panel classes; th
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
   assert.match(source, /return labels\.parentAssets\.get\(checkout\.parentAssetId\) \?\? checkout\.parentAssetId\n\s+return null\n\}/)
   assert.match(source, /if \(!snapshot\) return null\n/)
-  assert.equal(source.match(/filterLabel: tCommon\("filter"\),/g)?.length, 1, "the movement timeline's; the evidence drawer's went")
+  assert.doesNotMatch(source, /filterLabel: tCommon\("filter"\)/)
   assert.match(source, /<div className="font-mono text-sm font-medium leading-5 text-foreground \[overflow-wrap:anywhere\]">\{relationshipAsset\.assetTag\}<\/div>/)
   const banned = /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b|toLocaleString/
   for (const file of [source, ...["asset-detail-header", "asset-detail-actions", "asset-detail-fact-strip", "asset-overview"].map((name) => read(`${C}assets/detail/${name}.tsx`))]) assert.doesNotMatch(file, banned)

@@ -40,16 +40,14 @@ test("a tab link keeps returnTo and carries no anchor, so the header, the tabs a
 
 test("each section belongs to exactly one tab: ข้อมูลทรัพย์สิน keeps the overview and purchase anchors, the files tab holds the interim purchase documents (group 1 asset detail task 8)", () => {
   assert.deepEqual(getAssetDetailViewSectionIds("overview"), ["overview", "purchase"])
-  assert.deepEqual(getAssetDetailViewSectionIds("history"), ["movement", "audit"])
+  assert.deepEqual(getAssetDetailViewSectionIds("history"), [])
   assert.deepEqual(getAssetDetailViewSectionIds("components"), ["components", "handover"])
   assert.deepEqual(getAssetDetailViewSectionIds("files"), ["photos", "purchase-documents"])
   assert.deepEqual(getAssetDetailViewSectionIds("maintenance"), ["maintenance"])
   const all = assetDetailViews.flatMap((view) => getAssetDetailViewSectionIds(view))
-  assert.deepEqual([...all].sort(), ["audit", "components", "handover", "maintenance", "movement", "overview", "photos", "purchase", "purchase-documents"])
+  assert.deepEqual([...all].sort(), ["components", "handover", "maintenance", "overview", "photos", "purchase", "purchase-documents"])
   assert.equal(isAssetDetailSectionVisible("components", "components"), true)
   assert.equal(isAssetDetailSectionVisible("overview", "photos"), false)
-  assert.equal(isAssetDetailSectionVisible("history", "audit"), true)
-  assert.equal(isAssetDetailSectionVisible("maintenance", "movement"), false)
 })
 
 // Wiki open question 43 (plan 2D-4), on the new tabs: "#id" in the tab that renders the section, else that tab's URL
@@ -61,7 +59,6 @@ test("a section link stays in place on its tab and otherwise opens the tab that 
   assert.equal(buildAssetDetailSectionHref("th", "asset id/1", "overview", "handover", "/th/assets?status=ready"), "/th/assets/asset%20id%2F1?view=components&returnTo=%2Fth%2Fassets%3Fstatus%3Dready#handover")
   assert.equal(buildAssetDetailSectionHref("th", "a1", "files", "purchase-documents"), "#purchase-documents")
   assert.equal(buildAssetDetailSectionHref("th", "a1", "overview", "purchase-documents", "/th/assets"), "/th/assets/a1?view=files&returnTo=%2Fth%2Fassets#purchase-documents")
-  assert.equal(buildAssetDetailSectionHref("th", "a1", "overview", "audit"), "/th/assets/a1?view=history#audit")
   assert.equal(buildAssetDetailSectionHref("th", "a1", "overview", "maintenance", ""), "/th/assets/a1?view=maintenance#maintenance")
   assert.equal(buildAssetDetailSectionHref("th", "a1", "overview", "photos", "/th/assets"), "/th/assets/a1?view=files&returnTo=%2Fth%2Fassets#photos")
   assert.equal(buildAssetDetailSectionHref("th", "a1", "history", "purchase", "/th/assets"), "/th/assets/a1?view=overview&returnTo=%2Fth%2Fassets#purchase")
@@ -81,7 +78,7 @@ test("the asset page resolves its tab, counts its tabs in the first round of rea
   const page = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
   assert.match(page, /^import \{ buildAssetDetailSectionHref, buildAssetDetailViewHref, isAssetDetailSectionVisible, resolveAssetDetailView, type AssetDetailSectionId \} from "@\/lib\/asset-detail-view"$/m)
   assert.match(page, /^import \{ getAssetDetailCounts \} from "@\/lib\/asset-detail-counts"$/m)
-  assert.match(page, /const \{ view: assetDetailView \} = resolveAssetDetailView\(rawSearchParams\.view\)/)
+  assert.match(page, /const \{ view: assetDetailView, historyType \} = resolveAssetDetailView\(rawSearchParams\.view\)/)
   assert.match(page, /const \[rawAsset, readyStatus, detailCounts\] = await withPerformanceTiming\(\n\s+"asset-detail\.initial-data",/)
   assert.match(page, /\n\s+getAssetDetailCounts\(id\),\n\s+\]\),\n\s+\{ route: "\/assets\/\[id\]", locale \}/)
   assert.match(page, /labels=\{\{\n\s+overview: t\("detailViews\.overview"\),\n\s+history: t\("detailViews\.history"\),\n\s+components: t\("detailViews\.components"\),\n\s+files: t\("detailViews\.files"\),\n\s+maintenance: t\("detailViews\.maintenance"\),\n\s+\}\}/)

@@ -160,7 +160,7 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
   LV2: {
     // Pages and components: print pages, label data and translated sentences.
     [`${D}asset-management/labels/page.tsx`]: { count: 4, kind: "permanent", why: "label data: the category, state and location the label prints", ruling: "2B R-n" },
-    [`${D}assets/[id]/page.tsx`]: { count: 4, kind: "permanent", why: "translated-sentence arguments: the parent's tag in the two relationship summaries and the from and to values of the history sentence", ruling: "2B R-n" },
+    [`${D}assets/[id]/page.tsx`]: { count: 2, kind: "permanent", why: "translated-sentence arguments: the parent's tag in the two relationship summaries", ruling: "2B R-n" },
     [`${P}asset-management/checkins/[id]/page.tsx`]: { count: 2, kind: "permanent", why: "print page: the A4 check-in document", ruling: "2B R-n" },
     [`${P}asset-management/checkouts/[id]/page.tsx`]: { count: 4, kind: "permanent", why: "print page: the A4 check-out document", ruling: "2B R-n" },
     [`${C}admin/system-settings-form.tsx`]: { count: 1, kind: "permanent", why: "the default separator of the asset tag preview, not an empty value", ruling: "2B R-n" },

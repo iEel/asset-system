@@ -81,18 +81,22 @@ test("asset detail header is PageHeader with the trail, the name, the back link 
   assert.match(header, /back=\{<PageBackLink href=\{returnToHref\} label=\{backLabel\} \/>\}/)
   assert.doesNotMatch(source + header, /<h1\b|<thead\b|<Breadcrumbs\b|<ArrowLeft\b|formatCurrency|function (?:Info|SummaryStrip)\b|opacity-70|hidden md:inline-flex/)
   assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
-  assert.equal(source.match(/<DataTable framed=\{false\} caption=/g)?.length, 2, "the repair and audit tables, until Tasks 9 and 12")
+  assert.equal(source.match(/<DataTable framed=\{false\} caption=/g)?.length, 1, "the repair table, until Task 12")
   assert.match(source, /tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\}/)
-  assert.equal(source.match(/<StatStrip\b/g)?.length, 2)
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 3, "the two handover cards and the movement snapshot, until Tasks 9-11")
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 1, "the repair strip, until Task 12")
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the two handover cards, until Task 11")
 })
 
 test("asset detail localizes audit activity and avoids duplicated activity titles", () => {
   const source = assetDetailSource()
 
-  assert.match(source, /getAuditRoundItemStatusLabelKey/)
-  assert.match(source, /getAuditRoundItemResultLabelKey/)
-  assert.match(source, /getTranslations\("auditRound"\)/)
+  // Group 1 asset detail task 9: the history's audit words are Task 3's (auditItemResultKey), and the last audit's are
+  // the fact strip's; the page keeps no audit labels of its own.
+  const historyRules = read("src/lib/asset-history-rules.ts")
+  assert.match(historyRules, /getAuditRoundItemStatusLabelKey/)
+  assert.match(historyRules, /getAuditRoundItemResultLabelKey/)
+  assert.match(read(`${DETAIL}asset-detail-fact-strip.tsx`), /Translations\("auditRound"\)/)
+  assert.doesNotMatch(source, /formatAuditState|tFinding\b/)
   assert.doesNotMatch(source, /getTranslations\("audit"\)/)
   assert.doesNotMatch(source, /`\$\{latestMovement\.title\}: \$\{latestMovement\.summary\}`/)
 })

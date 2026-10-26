@@ -12,7 +12,6 @@ import {
   Info as InfoIcon,
   PackageCheck,
   Puzzle,
-  ScanLine,
   Wrench,
 } from "lucide-react"
 import { prisma } from "@/lib/db"
@@ -40,11 +39,10 @@ import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-docum
 import { AssetDetailActions } from "@/components/assets/detail/asset-detail-actions"
 import { AssetDetailFactStrip } from "@/components/assets/detail/asset-detail-fact-strip"
 import { AssetDetailHeader } from "@/components/assets/detail/asset-detail-header"
+import { AssetHistoryTab } from "@/components/assets/detail/asset-history-tab"
 import { AssetOverview } from "@/components/assets/detail/asset-overview"
 import { parseModelSpecs } from "@/lib/model-specs"
-import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { AssetMovementTimeline, type AssetMovementTimelineItem } from "@/components/assets/asset-movement-timeline"
 import { actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { getAssetActions, getAssetRecordRepairAction, type AssetActionInput } from "@/lib/asset-actions"
@@ -58,8 +56,8 @@ import {
   type AssetDataGap,
 } from "@/lib/asset-detail-frame-rules"
 import { getAssetDetailFrame } from "@/lib/asset-detail-frame"
-import { getLatestAssetHistory } from "@/lib/asset-history"
-import { ASSET_MOVEMENT_DOCUMENT_PERMISSION, type AssetMovementDocumentKind } from "@/lib/asset-movement-labels"
+import { getAssetHistory, getLatestAssetHistory } from "@/lib/asset-history"
+import { assetDocumentAccess, parseAssetHistoryType } from "@/lib/asset-history-view"
 import { getAssetNeighbours } from "@/lib/asset-neighbours"
 import { buildRegisterCrumbLabel, parseRegisterReturnTo } from "@/lib/asset-neighbours-rules"
 import { isThumbnailable } from "@/lib/attachment-thumbnail"
@@ -69,44 +67,17 @@ import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navig
 import { buildAssetDetailSectionHref, buildAssetDetailViewHref, isAssetDetailSectionVisible, resolveAssetDetailView, type AssetDetailSectionId } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
-import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "@/lib/audit-round-result-filters"
-import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
 import { getAssetDetailCounts } from "@/lib/asset-detail-counts"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { getRepairRecordStatusTone, toRepairRecordStatus } from "@/lib/repair-record-policy"
-import {
-  compactMovementDetails,
-  formatMovementType,
-  getMissingPhotoChecklistLabels,
-} from "@/lib/asset-detail-format"
+import { getMissingPhotoChecklistLabels } from "@/lib/asset-detail-format"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
-  searchParams: Promise<{ returnTo?: string | string[]; view?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; view?: string | string[]; type?: string | string[] }>
 }
-
-type MovementCustodyDetail = {
-  label: string
-  value?: string | null
-  href?: string
-}
-
-type MovementTimelineItem = {
-  id: string
-  title: string
-  summary: string
-  category: string
-  tone: MovementTone
-  performedAt: Date
-  from: string | null | undefined
-  to: string | null | undefined
-  reason: string | null
-  details: MovementCustodyDetail[]
-}
-
-type MovementTone = "neutral" | "success" | "info" | "warning" | "danger"
 
 type RelationshipLink = { id: string; href: string; label: string; role: string }
 
@@ -122,8 +93,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const canViewDisposal = hasPermission(user, "disposal", "view")
   const canViewEmployee = hasPermission(user, "employee", "view")
   const canViewAudit = hasPermission(user, "audit", "view")
+  // The one document access record of the overview and the tabs (R12): each document page's own permission.
+  const documentAccess = assetDocumentAccess((module, action) => hasPermission(user, module, action))
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
-  const { view: assetDetailView } = resolveAssetDetailView(rawSearchParams.view)
+  const { view: assetDetailView, historyType } = resolveAssetDetailView(rawSearchParams.view)
+  // The history's first chip: an explicit ?type= wins over the old view=audit (R17).
+  const initialHistoryType = parseAssetHistoryType(rawSearchParams.type) ?? historyType
   // The raw returnTo tells "opened directly" from "the plain register" (spec §7.2).
   const registerParams = parseRegisterReturnTo(rawSearchParams.returnTo, locale)
   const loadPolicy = getAssetDetailLoadPolicy(assetDetailView)
@@ -134,8 +109,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const t = await getTranslations("asset")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const tAudit = await getTranslations("auditRound")
-  const tFinding = await getTranslations("auditFinding")
   const tCancellation = await getTranslations("transactionCancellation")
   const tDetail = await getTranslations("assetDetail")
   const tDisposal = await getTranslations("disposalPage")
@@ -159,10 +132,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           status: { select: { name: true, nameTh: true, colorCode: true } },
           condition: { select: { name: true, nameTh: true, colorCode: true } },
           supplier: { select: { code: true, name: true } },
-          movements: {
-            orderBy: { performedAt: "desc" },
-            take: loadPolicy.movementLimit,
-          },
           checkouts: {
             orderBy: { checkoutDate: "desc" },
             take: loadPolicy.checkoutLimit,
@@ -221,25 +190,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               reportedBy: { select: { code: true, fullNameTh: true } },
             },
           },
-          auditItems: {
-            orderBy: [{ lastScanAt: "desc" }, { createdAt: "desc" }],
-            take: loadPolicy.auditItemLimit,
-            include: {
-              auditRound: { select: { id: true, auditNo: true, name: true } },
-            },
-          },
-          auditFindings: {
-            orderBy: { reportedAt: "desc" },
-            take: loadPolicy.auditFindingLimit,
-            include: {
-              auditRound: { select: { auditNo: true, name: true } },
-            },
-          },
-          disposalRequests: {
-            where: { isActive: true },
-            orderBy: { requestDate: "desc" },
-            take: loadPolicy.disposalLimit,
-          },
           assignedLicenses: {
             where: { isActive: true },
             orderBy: { assetTag: "asc" },
@@ -286,6 +236,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ]),
     { route: "/assets/[id]", locale },
   )
+  // The history tab's own loader (R24): every event, newest first, at most 500, only on its tab.
+  const history = assetDetailView === "history"
+    ? await withPerformanceTiming("asset-detail.history-tab", () => getAssetHistory(asset.id, locale), { route: "/assets/[id]", locale })
+    : null
 
   const latestTransactionSelect = {
     id: true,
@@ -389,12 +343,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       : null,
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
-  const componentHistory = asset.parentComponents.filter((component) => component.status !== "installed" || component.removedAt)
   const componentLinks = [...asset.parentComponents, ...asset.installedInLinks]
   const componentLinkIds = componentLinks.map((component) => component.id)
-  const componentUserIds = uniqueTruthy(componentLinks.flatMap((component) => [component.createdBy, component.updatedBy]))
   const purchaseDocumentIds = asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)
-  const [purchaseDocumentAttachments, componentAttachments, componentUsers] = await withPerformanceTiming(
+  const [purchaseDocumentAttachments, componentAttachments] = await withPerformanceTiming(
     "asset-detail.evidence-data",
     () => Promise.all([
       purchaseDocumentIds.length > 0
@@ -409,18 +361,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             orderBy: { uploadedAt: "asc" },
           })
         : [],
-      componentUserIds.length > 0
-        ? prisma.user.findMany({
-            where: { id: { in: componentUserIds } },
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              email: true,
-              employee: { select: { code: true, fullNameTh: true } },
-            },
-          })
-        : [],
     ]),
     {
       route: "/assets/[id]",
@@ -429,7 +369,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       components: componentLinkIds.length,
     }
   )
-  const componentUserLabels = new Map(componentUsers.map((user) => [user.id, formatUserLabel(user)]))
   const componentAttachmentsByReference = new Map<string, typeof componentAttachments>()
   for (const attachment of componentAttachments) {
     componentAttachmentsByReference.set(attachment.referenceId, [
@@ -439,21 +378,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   }
   const currentComponentsForPanel = currentComponents.map((component) => ({
     ...component,
-    installedByLabel: component.createdBy ? componentUserLabels.get(component.createdBy) ?? component.createdBy : null,
-    removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
-    attachments: componentAttachmentsByReference.get(component.id) ?? [],
-  }))
-  const componentHistoryForPanel = componentHistory.map((component) => ({
-    ...component,
-    installedByLabel: component.createdBy ? componentUserLabels.get(component.createdBy) ?? component.createdBy : null,
-    removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
     attachments: componentAttachmentsByReference.get(component.id) ?? [],
   }))
   const installedInLinksForPanel = asset.installedInLinks.map((component) => ({
     ...component,
     parentHref: appendReturnTo(`/${locale}/assets/${component.parentAsset.id}`, currentAssetDetailHref),
-    installedByLabel: component.createdBy ? componentUserLabels.get(component.createdBy) ?? component.createdBy : null,
-    removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
     attachments: componentAttachmentsByReference.get(component.id) ?? [],
   }))
   const componentMissingSerialCount = currentComponentsForPanel.filter((component) => !component.componentAsset.serialNumber).length
@@ -483,15 +412,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const primaryModelPhoto = modelPhotos.find((attachment) => isThumbnailable(attachment.fileType))
   const checkoutIds = asset.checkouts.map((checkout) => checkout.id)
   const checkinIds = asset.checkouts.map((checkout) => checkout.checkin?.id).filter((checkinId): checkinId is string => Boolean(checkinId))
-  const movementActorIds = uniqueTruthy([
-    ...asset.movements.map((movement) => movement.performedBy),
-    ...asset.checkouts.map((checkout) => checkout.checkedOutBy),
-  ])
-  const movementEmployeeIds = uniqueTruthy([
-    ...asset.checkouts.map((checkout) => checkout.checkin?.returnByEmployeeId),
-    ...asset.checkouts.map((checkout) => checkout.checkin?.receiveByEmployeeId),
-  ])
-  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets, movementUsers, movementEmployees] = await withPerformanceTiming(
+  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets] = await withPerformanceTiming(
     "asset-detail.operation-data",
     () => Promise.all([
       evidenceCheckoutIds.length > 0 || evidenceCheckinIds.length > 0
@@ -518,32 +439,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.parentAssetId)) } },
         select: { id: true, assetTag: true, name: true },
       }),
-      movementActorIds.length > 0
-        ? prisma.user.findMany({
-            where: { id: { in: movementActorIds } },
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              email: true,
-              employee: { select: { code: true, fullNameTh: true } },
-            },
-          })
-        : [],
-      movementEmployeeIds.length > 0
-        ? prisma.employee.findMany({
-            where: { id: { in: movementEmployeeIds } },
-            select: { id: true, code: true, fullNameTh: true },
-          })
-        : [],
     ]),
     {
       route: "/assets/[id]",
       locale,
       checkouts: checkoutIds.length,
       checkins: checkinIds.length,
-      movementActors: movementActorIds.length,
-      movementEmployees: movementEmployeeIds.length,
     }
   )
   const operationAttachmentsByReference = new Map<string, typeof operationAttachments>()
@@ -556,113 +457,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const checkoutDepartmentLabels = new Map(checkoutDepartments.map((department) => [department.id, `${department.code} - ${department.name}`]))
   const checkoutLocationLabels = new Map(checkoutLocations.map((location) => [location.id, `${location.code} - ${location.name}`]))
   const checkoutParentAssetLabels = new Map(checkoutParentAssets.map((parentAsset) => [parentAsset.id, `${parentAsset.assetTag} - ${parentAsset.name}`]))
-  const movementUserLabels = new Map(movementUsers.map((user) => [user.id, formatUserLabel(user)]))
-  const movementEmployeeLabels = new Map(movementEmployees.map((employee) => [employee.id, formatEmployeeLabel(employee)]))
-  const checkoutsById = new Map(asset.checkouts.map((checkout) => [checkout.id, checkout]))
-  const checkinsById = new Map(asset.checkouts.flatMap((checkout) => checkout.checkin ? [[checkout.checkin.id, { ...checkout.checkin, checkout }]] : []))
-  // The transfers' TR- documents, so each transfer in the history links its paper as a handover and a return do (the
-  // E2E suite's TX-A4: nothing linked the TR- document before).
-  const transferIds = [...new Set(asset.movements.flatMap((movement) => (movement.referenceType === "transfer" && movement.referenceId ? [movement.referenceId] : [])))]
-  const transfersById = new Map(
-    (transferIds.length > 0 ? await prisma.assetTransfer.findMany({ where: { id: { in: transferIds } }, select: { id: true, documentNo: true } }) : []).map((transfer) => [transfer.id, transfer]),
-  )
-  const movementLabels = await getMovementDisplayLabels(asset.movements)
-  const movementTimelineItems: MovementTimelineItem[] = asset.movements.map((movement) => {
-    const details: MovementCustodyDetail[] = []
-    let summary: string | null = null
-
-    if (movement.referenceType === "checkout" && movement.referenceId) {
-      const checkout = checkoutsById.get(movement.referenceId)
-      const destination = checkout
-        ? getCheckoutDestination(checkout, {
-            departments: checkoutDepartmentLabels,
-            locations: checkoutLocationLabels,
-            parentAssets: checkoutParentAssetLabels,
-          })
-        : null
-      if (checkout) {
-        const handoverBy = movementUserLabels.get(checkout.checkedOutBy) ?? checkout.checkedOutBy
-        summary = destination ? `${t("movementTypes.checkout")}: ${destination}` : t("movementTypes.checkout")
-        details.push(
-          { label: t("documentNo"), value: checkout.documentNo ?? checkout.id, href: `/${locale}/asset-management/checkouts/${checkout.id}` },
-          { label: t("handoverMode"), value: getAssetHandoverModeLabel(checkout.handoverMode, {
-            permanent: t("handoverPermanentAssignment"), temporary: t("handoverTemporaryLoan"), legacy: t("handoverModeLegacy"),
-          }) },
-          { label: t("handoverTo"), value: destination },
-          { label: t("handoverBy"), value: handoverBy }
-        )
-      }
-    }
-
-    if (movement.referenceType === "checkin" && movement.referenceId) {
-      const checkin = checkinsById.get(movement.referenceId)
-      if (checkin) {
-        const returnedFrom = getCheckoutDestination(checkin.checkout, {
-          departments: checkoutDepartmentLabels,
-          locations: checkoutLocationLabels,
-          parentAssets: checkoutParentAssetLabels,
-        })
-        const returnBy = checkin.returnByEmployeeId
-          ? movementEmployeeLabels.get(checkin.returnByEmployeeId) ?? checkin.returnBy
-          : checkin.returnBy
-        const receiveBy = checkin.receiveByEmployeeId
-          ? movementEmployeeLabels.get(checkin.receiveByEmployeeId) ?? checkin.receiveBy
-          : checkin.receiveBy
-        summary = `${t("movementTypes.checkin")}: ${returnBy}`
-        details.push(
-          { label: t("documentNo"), value: checkin.documentNo ?? checkin.id, href: `/${locale}/asset-management/checkins/${checkin.id}` },
-          { label: t("handoverMode"), value: getAssetHandoverModeLabel(checkin.checkout.handoverMode, {
-            permanent: t("handoverPermanentAssignment"), temporary: t("handoverTemporaryLoan"), legacy: t("handoverModeLegacy"),
-          }) },
-          { label: t("returnedFrom"), value: returnedFrom },
-          { label: t("returnBy"), value: returnBy },
-          { label: t("receiveBy"), value: receiveBy }
-        )
-      }
-    }
-
-    if (movement.referenceType === "transfer" && movement.referenceId) {
-      const transfer = transfersById.get(movement.referenceId)
-      if (transfer) {
-        details.push({ label: t("documentNo"), value: transfer.documentNo, href: `/${locale}/asset-management/transfers/${movement.referenceId}` })
-      }
-    }
-
-    details.push({ label: t("performedBy"), value: movementUserLabels.get(movement.performedBy) ?? movement.performedBy })
-    const from = movementLabels.get(movement.id)?.from
-    const to = movementLabels.get(movement.id)?.to
-    return {
-      id: movement.id,
-      title: getMovementTitle(movement.movementType, t),
-      summary: summary ?? getMovementSummary(movement.movementType, from, to, t),
-      category: getMovementCategory(movement.movementType),
-      tone: getMovementTone(movement.movementType),
-      performedAt: movement.performedAt,
-      from,
-      to,
-      reason: movement.reason,
-      details: compactMovementDetails(details),
-    }
-  })
-  const formatAuditState = (status: string, result?: string | null) => {
-    const resultLabelKey = getAuditRoundItemResultLabelKey(result)
-    if (resultLabelKey) return tAudit(resultLabelKey)
-    const statusLabelKey = getAuditRoundItemStatusLabelKey(status)
-    if (statusLabelKey) return tAudit(statusLabelKey)
-    if (result) return result
-    const itemStatusLabelKey = getAuditItemStatusLabelKey(status)
-    return itemStatusLabelKey ? tFinding(itemStatusLabelKey) : status
-  }
-  const unifiedTimelineItems = [
-    ...movementTimelineItems,
-    ...buildPurchaseTimelineItems(purchaseDocuments, legacyPurchaseDocuments, t, tCommon("baht")),
-    ...buildComponentTimelineItems(currentComponentsForPanel, componentHistoryForPanel, installedInLinksForPanel, locale, t),
-    ...buildMaintenanceTimelineItems(asset.maintenanceTickets, locale, t, (status) => tMaintenance(`statuses.${toRepairRecordStatus(status)}`)),
-    ...buildAuditTimelineItems(asset.auditItems, locale, t, formatAuditState),
-  ].sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime())
-  const latestMovement = unifiedTimelineItems[0]
-  const currentLocationLabel = asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : null
-  const currentCustodianLabel = asset.custodian ? formatEmployeeLabel(asset.custodian) : null
   const ownershipType = normalizeAssetOwnershipType(asset.ownershipType)
   const modelSpecs = parseModelSpecs(asset.model?.specs)
   const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => !["closed", "cancelled"].includes(ticket.repairStatus)).length
@@ -671,7 +465,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const maintenanceReplacementWarning =
     asset.maintenanceTickets.length >= 3 ||
     (asset.purchasePrice && totalMaintenanceCost >= Number(asset.purchasePrice) * 0.5)
-  const latestAuditItem = asset.auditItems[0]
   const encodedAssetId = encodeURIComponent(asset.id)
   const editHref = appendReturnTo(`/${locale}/assets/${asset.id}/edit`, returnToHref)
   // The edit form's purchase section (asset-form.tsx): the strip's "บันทึกข้อมูลการซื้อ" and the overview's "เพิ่มข้อมูล".
@@ -687,19 +480,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     : latestMaintenanceTicket
       ? t("latestMaintenanceSummary", { repairNo: latestMaintenanceTicket.repairNo })
       : tCommon("noData")
-  const auditSummary = latestAuditItem
-    ? t("latestAuditSummary", {
-        auditNo: latestAuditItem.auditRound.auditNo,
-        result: formatAuditState(latestAuditItem.auditStatus, latestAuditItem.auditResult),
-      })
-    : tCommon("noData")
   const maintenanceHref = `/${locale}/maintenance/new?assetId=${encodedAssetId}`
-  const movementTimelineItemsForClient: AssetMovementTimelineItem[] = unifiedTimelineItems.map((movement) => ({
-    ...movement,
-    performedAt: movement.performedAt.toISOString(),
-    from: movement.from ?? null,
-    to: movement.to ?? null,
-  }))
 
   // The shared action rule of the register's rows and this page (group 1 spec §7.1; R1-R4): the same primary and the
   // same transaction items in both places.
@@ -806,16 +587,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       }
     : null
 
-  // A document shows, linked, only to a person whose permission opens it (R12).
-  const canOpenDocument = (kind: AssetMovementDocumentKind) => hasPermission(user, ASSET_MOVEMENT_DOCUMENT_PERMISSION[kind].module, "view")
-  const documentAccess: Record<AssetMovementDocumentKind, boolean> = {
-    checkout: canOpenDocument("checkout"),
-    checkin: canOpenDocument("checkin"),
-    transfer: canOpenDocument("transfer"),
-    repair: canOpenDocument("repair"),
-    disposal: canOpenDocument("disposal"),
-    auditRound: canOpenDocument("auditRound"),
-  }
   const componentsTabHref = buildAssetDetailViewHref(locale, asset.id, "components", returnToHref)
   const recent = recentHistory
     ? { events: recentHistory, total: detailCounts.history, historyHref: buildAssetDetailViewHref(locale, asset.id, "history", returnToHref) }
@@ -971,6 +742,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             href: dataGapHref(gap),
           }))}
         />
+      ) : null}
+
+      {history ? (
+        <AssetHistoryTab assetId={asset.id} locale={locale} history={history} initialType={initialHistoryType} documentAccess={documentAccess} />
       ) : null}
 
       <div className="space-y-6">
@@ -1191,49 +966,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           </section>
         ) : null}
 
-        {isAssetDetailSectionVisible(assetDetailView, "movement") ? (
-          <section id="movement" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-          <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} />
-          <div className="mb-5 rounded-md border border-border bg-background p-4">
-            <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
-            <KeyValueList
-              items={[
-                { key: "currentLocation", label: t("currentLocation"), value: currentLocationLabel },
-                { key: "custodian", label: t("custodian"), value: currentCustodianLabel, nilLabel: t("noCustodian") },
-                { key: "status", label: t("status"), value: asset.status?.nameTh ?? asset.status?.name },
-                { key: "latestMovement", label: t("latestMovement"), value: latestMovement ? `${latestMovement.title} · ${formatDateTime(latestMovement.performedAt)}` : null },
-              ]}
-            />
-            {latestMovement ? (
-              <p className="mt-3 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{t("movementSummary")}: </span>
-                {latestMovement.summary}
-              </p>
-            ) : null}
-          </div>
-          <AssetMovementTimeline
-            items={movementTimelineItemsForClient}
-            labels={{
-              all: t("movementFilters.all"),
-              filterLabel: tCommon("filter"),
-              fromValue: t("fromValue"),
-              toValue: t("toValue"),
-              noData: tCommon("noData"),
-              filters: {
-                handover: t("movementFilters.handover"),
-                transfer: t("movementFilters.transfer"),
-                purchase: t("movementFilters.purchase"),
-                maintenance: t("movementFilters.maintenance"),
-                audit: t("movementFilters.audit"),
-                component: t("movementFilters.component"),
-                disposal: t("movementFilters.disposal"),
-                other: t("movementFilters.other"),
-              },
-            }}
-          />
-          </section>
-        ) : null}
-
         {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
           <section id="maintenance" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
           <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} />
@@ -1304,63 +1036,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                       <StatusBadge label={tMaintenance(`statuses.${toRepairRecordStatus(ticket.repairStatus)}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
                     </DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(ticket.reportedDate)}</DataTableCell>
-                  </ClickableTableRow>
-                ))}
-              </DataTableBody>
-            </DataTable>
-          )}
-          </section>
-        ) : null}
-
-        {isAssetDetailSectionVisible(assetDetailView, "audit") ? (
-          <section id="audit" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-          <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} />
-          <StatStrip
-            className="mb-4"
-            items={[
-              { key: "scanCount", label: t("scanCount"), value: formatCount(latestAuditItem?.scanCount ?? 0), foot: auditSummary, footTitle: auditSummary },
-              {
-                key: "findingRequired",
-                label: t("auditFindingRequired"),
-                value: latestAuditItem?.findingRequired ? tCommon("yes") : tCommon("no"),
-                ...(latestAuditItem?.findingRequired ? { foot: t("activityAuditFinding"), attention: true } : {}),
-              },
-            ]}
-          />
-          {asset.auditItems.length === 0 ? (
-            <ActionEmptyState
-              icon={<ScanLine className="h-6 w-6" />}
-              title={t("noAuditTitle")}
-              description={t("noAuditHelp")}
-              actionHref={`/${locale}/audit/rounds`}
-              actionLabel={t("auditRound")}
-            />
-          ) : (
-            <DataTable framed={false} caption={t("auditHistory")} scrollHint={tCommon("tableScrollHint")}>
-              <DataTableHeader>
-                <tr>
-                  <DataTableHead>{t("auditRound")}</DataTableHead>
-                  <DataTableHead>{t("status")}</DataTableHead>
-                  <DataTableHead>{t("result")}</DataTableHead>
-                  <DataTableHead>{t("lastAuditDate")}</DataTableHead>
-                  <DataTableHead align="right">{t("scanCount")}</DataTableHead>
-                </tr>
-              </DataTableHeader>
-              <DataTableBody>
-                {asset.auditItems.map((item) => (
-                  <ClickableTableRow
-                    key={item.id}
-                    href={`/${locale}/audit/rounds/${item.auditRound.id}`}
-                    label={`${tCommon("view")}: ${item.auditRound.auditNo}`}
-                  >
-                    <DataTableCell className="min-w-64">
-                      <div className="font-medium text-foreground"><span className="tag font-medium">{item.auditRound.auditNo}</span></div>
-                      <div className="mt-1 text-meta text-muted-foreground">{item.auditRound.name}</div>
-                    </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditState(item.auditStatus)}</DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{item.auditResult ? formatAuditState(item.auditStatus, item.auditResult) : <Nil />}</DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(item.lastScanAt ?? item.scannedAt)}</DataTableCell>
-                    <DataTableCell numeric className="text-muted-foreground">{formatCount(item.scanCount)}</DataTableCell>
                   </ClickableTableRow>
                 ))}
               </DataTableBody>
@@ -1866,25 +1541,6 @@ function SectionHeading({
   )
 }
 
-function getMovementTitle(movementType: string, t: (key: string) => string) {
-  if (knownMovementTypeKeys.has(movementType)) return t(`movementTypes.${movementType}`)
-  return formatMovementType(movementType)
-}
-
-function getMovementSummary(movementType: string, from: string | null | undefined, to: string | null | undefined, t: (key: string) => string) {
-  const title = getMovementTitle(movementType, t)
-  if (from || to) return `${title}: ${t("fromValue")} ${from ?? "-"} ${t("toValue")} ${to ?? "-"}`
-  return title
-}
-
-function getMovementTone(movementType: string): MovementTone {
-  if (movementType === "checkin") return "success"
-  if (movementType === "checkout" || movementType === "transfer") return "info"
-  if (movementType.includes("audit") || movementType.includes("maintenance")) return "warning"
-  if (movementType.includes("remove") || movementType.includes("disposal")) return "danger"
-  return "neutral"
-}
-
 function getAssetHandoverModeLabel(
   handoverMode: string | null | undefined,
   labels: { permanent: string; temporary: string; legacy: string },
@@ -1915,228 +1571,6 @@ function buildCancellationLabels(t: Awaited<ReturnType<typeof getTranslations>>)
   }
 }
 
-function getMovementCategory(movementType: string) {
-  if (movementType === "checkout" || movementType === "checkin") return "handover"
-  if (movementType === "transfer" || movementType.includes("location") || movementType.includes("custodian")) return "transfer"
-  if (movementType.includes("maintenance")) return "maintenance"
-  if (movementType.includes("audit")) return "audit"
-  if (movementType.includes("component")) return "component"
-  if (movementType.includes("disposal")) return "disposal"
-  return "other"
-}
-
-function buildPurchaseTimelineItems(
-  documents: {
-    id: string
-    documentType: string
-    documentNo: string | null
-    poNumber: string | null
-    invoiceNumber: string | null
-    documentDate: Date | null
-    linkedAt: Date
-    supplierName: string | null
-    totalAmount: number | null
-    currency: string | null
-  }[],
-  legacyAttachments: { id: string; originalName: string; uploadedAt: Date }[],
-  t: (key: string, values?: Record<string, string | number | Date>) => string,
-  bahtLabel: string,
-): MovementTimelineItem[] {
-  const documentItems = documents.map((document) => ({
-    id: `purchase-${document.id}`,
-    title: t("timelinePurchaseDocument"),
-    summary: document.documentNo || document.poNumber || document.invoiceNumber || document.documentType,
-    category: "purchase",
-    tone: "neutral" as const,
-    performedAt: document.documentDate ?? document.linkedAt,
-    from: null,
-    to: null,
-    reason: null,
-    details: compactMovementDetails([
-      { label: t("documentType"), value: document.documentType },
-      { label: t("documentNo"), value: document.documentNo },
-      { label: t("poNumber"), value: document.poNumber },
-      { label: t("invoiceNumber"), value: document.invoiceNumber },
-      { label: t("supplier"), value: document.supplierName },
-      { label: t("purchasePrice"), value: document.totalAmount == null ? null : formatMoney(document.totalAmount, { unit: document.currency ?? bahtLabel }) },
-    ]),
-  }))
-
-  const legacyItems = legacyAttachments.map((attachment) => ({
-    id: `purchase-legacy-${attachment.id}`,
-    title: t("timelinePurchaseAttachment"),
-    summary: attachment.originalName,
-    category: "purchase",
-    tone: "neutral" as const,
-    performedAt: attachment.uploadedAt,
-    from: null,
-    to: null,
-    reason: null,
-    details: [{ label: t("documentNo"), value: attachment.originalName, href: `/api/attachments/${attachment.id}` }],
-  }))
-
-  return [...documentItems, ...legacyItems]
-}
-
-function buildComponentTimelineItems(
-  currentComponents: {
-    id: string
-    componentRole: string
-    slotNo: string | null
-    installedAt: Date
-    removedAt: Date | null
-    componentAsset: { id: string; assetTag: string; name: string }
-    installedByLabel?: string | null
-    removedByLabel?: string | null
-  }[],
-  componentHistory: {
-    id: string
-    componentRole: string
-    slotNo: string | null
-    installedAt: Date
-    removedAt: Date | null
-    componentAsset: { id: string; assetTag: string; name: string }
-    installedByLabel?: string | null
-    removedByLabel?: string | null
-  }[],
-  installedInLinks: {
-    id: string
-    componentRole: string
-    slotNo: string | null
-    installedAt: Date
-    removedAt: Date | null
-    parentAsset: { id: string; assetTag: string; name: string }
-    installedByLabel?: string | null
-    removedByLabel?: string | null
-  }[],
-  locale: string,
-  t: (key: string, values?: Record<string, string | number | Date>) => string
-): MovementTimelineItem[] {
-  const childInstallItems = [...currentComponents, ...componentHistory].map((component) => ({
-    id: `component-install-${component.id}`,
-    title: t("timelineComponentInstalled"),
-    summary: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
-    category: "component",
-    tone: "info" as const,
-    performedAt: component.installedAt,
-    from: null,
-    to: t("relationshipCurrent"),
-    reason: null,
-    details: compactMovementDetails([
-      { label: t("componentAsset"), value: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`, href: `/${locale}/assets/${component.componentAsset.id}` },
-      { label: t("componentRole"), value: component.componentRole },
-      { label: t("slotNo"), value: component.slotNo },
-      { label: t("installedBy"), value: component.installedByLabel },
-    ]),
-  }))
-
-  const childRemoveItems = componentHistory
-    .filter((component) => component.removedAt)
-    .map((component) => ({
-      id: `component-remove-${component.id}`,
-      title: t("timelineComponentRemoved"),
-      summary: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
-      category: "component",
-      tone: "danger" as const,
-      performedAt: component.removedAt as Date,
-      from: t("relationshipCurrent"),
-      to: null,
-      reason: null,
-      details: compactMovementDetails([
-        { label: t("componentAsset"), value: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`, href: `/${locale}/assets/${component.componentAsset.id}` },
-        { label: t("componentRole"), value: component.componentRole },
-        { label: t("slotNo"), value: component.slotNo },
-        { label: t("removedBy"), value: component.removedByLabel },
-      ]),
-    }))
-
-  const parentInstallItems = installedInLinks.map((link) => ({
-    id: `installed-in-parent-${link.id}`,
-    title: t("timelineInstalledInParent"),
-    summary: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
-    category: "component",
-    tone: "info" as const,
-    performedAt: link.installedAt,
-    from: null,
-    to: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
-    reason: null,
-    details: compactMovementDetails([
-      { label: t("relationshipParent"), value: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`, href: `/${locale}/assets/${link.parentAsset.id}` },
-      { label: t("componentRole"), value: link.componentRole },
-      { label: t("slotNo"), value: link.slotNo },
-      { label: t("installedBy"), value: link.installedByLabel },
-    ]),
-  }))
-
-  return [...childInstallItems, ...childRemoveItems, ...parentInstallItems]
-}
-
-function buildMaintenanceTimelineItems(
-  tickets: {
-    id: string
-    repairNo: string
-    problem: string
-    repairStatus: string
-    maintenancePlanId: string | null
-    reportedDate: Date
-    reportedBy: { code: string; fullNameTh: string }
-  }[],
-  locale: string,
-  t: (key: string, values?: Record<string, string | number | Date>) => string,
-  statusLabel: (status: string) => string
-): MovementTimelineItem[] {
-  return tickets.map((ticket) => ({
-    id: `maintenance-${ticket.id}`,
-    title: ticket.maintenancePlanId ? t("timelinePmTicket") : t("timelineMaintenanceTicket"),
-    summary: `${ticket.repairNo}: ${ticket.problem}`,
-    category: "maintenance",
-    tone: (ticket.repairStatus === "closed" ? "success" : ticket.repairStatus === "cancelled" ? "info" : "warning") as MovementTone,
-    performedAt: ticket.reportedDate,
-    from: null,
-    to: null,
-    reason: null,
-    details: compactMovementDetails([
-      { label: t("repairNo"), value: ticket.repairNo, href: `/${locale}/maintenance/${ticket.id}` },
-      { label: t("reportedBy"), value: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}` },
-      { label: t("repairStatus"), value: statusLabel(ticket.repairStatus) },
-    ]),
-  }))
-}
-
-function buildAuditTimelineItems(
-  auditItems: {
-    id: string
-    auditStatus: string
-    auditResult: string | null
-    findingRequired: boolean
-    lastScanAt: Date | null
-    scanCount: number
-    createdAt: Date
-    auditRound: { id: string; auditNo: string; name: string }
-  }[],
-  locale: string,
-  t: (key: string, values?: Record<string, string | number | Date>) => string,
-  formatAuditState: (status: string, result?: string | null) => string,
-): MovementTimelineItem[] {
-  return auditItems.map((item) => ({
-    id: `audit-${item.id}`,
-    title: t("timelineAuditRound"),
-    summary: `${item.auditRound.auditNo} · ${formatAuditState(item.auditStatus, item.auditResult)}`,
-    category: "audit",
-    tone: (item.findingRequired ? "warning" : "success") as MovementTone,
-    performedAt: item.lastScanAt ?? item.createdAt,
-    from: null,
-    to: null,
-    reason: null,
-    details: compactMovementDetails([
-      { label: t("auditRound"), value: `${item.auditRound.auditNo} - ${item.auditRound.name}`, href: `/${locale}/audit/rounds/${item.auditRound.id}` },
-      { label: t("result"), value: formatAuditState(item.auditStatus, item.auditResult) },
-      { label: t("scanCount"), value: String(item.scanCount) },
-      { label: t("auditFindingRequired"), value: item.findingRequired ? t("timelineYes") : t("timelineNo") },
-    ]),
-  }))
-}
-
 function formatLicenseRelationshipRole(usedSeats: number | null, totalSeats: number | null, t: (key: string, values?: Record<string, string | number>) => string) {
   if (totalSeats == null) return t("relationshipLicenseRole")
   return t("relationshipLicenseSeatRole", {
@@ -2145,48 +1579,3 @@ function formatLicenseRelationshipRole(usedSeats: number | null, totalSeats: num
   })
 }
 
-function formatUserLabel(user: {
-  username: string
-  displayName: string
-  email: string | null
-  employee: { code: string; fullNameTh: string } | null
-}) {
-  if (user.employee) return `${user.employee.code} - ${user.employee.fullNameTh}`
-  if (user.displayName) return `${user.displayName} (${user.username})`
-  return user.email ?? user.username
-}
-
-function formatEmployeeLabel(employee: { code: string; fullNameTh: string }) {
-  return `${employee.code} - ${employee.fullNameTh}`
-}
-
-const knownMovementTypeKeys = new Set([
-  "create",
-  "import",
-  "checkout",
-  "checkin",
-  "transfer",
-  "location_change",
-  "custodian_change",
-  "status_change",
-  "condition_change",
-  "department_change",
-  "ownership_type_change",
-  "license_total_seats_change",
-  "license_used_seats_change",
-  "license_assigned_asset_change",
-  "bulk_location_move",
-  "bulk_location_update",
-  "bulk_custodian_update",
-  "component_install",
-  "component_remove",
-  "installed_in_parent",
-  "removed_from_parent",
-  "maintenance_create",
-  "maintenance_pm_create",
-  "audit_correction",
-  // The cancels of the latest transaction (asset-transaction-cancellation-service.ts; the E2E suite's TX-A5).
-  "checkout_cancel",
-  "checkin_cancel",
-  "transfer_cancel",
-])

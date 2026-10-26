@@ -125,6 +125,21 @@ export function DataTableRow({ className, ...props }: React.ComponentProps<"tr">
   return <tr data-slot="data-table-row" className={cn(dataTableRowClasses, className)} {...props} />
 }
 
+// The head of a group of rows (the asset history's months): 13/20 semibold ink in sentence case on the panel color,
+// with no fill and no capitals, a soft line under it and the first column's gutters. No hover fill: it is a heading.
+const dataTableGroupHeadClasses = "border-b border-border-soft px-3 pt-4 pb-2 text-left align-bottom text-meta font-semibold text-foreground first:pl-4 last:pr-4 md:first:pl-5 md:last:pr-5"
+
+// Put it first in each group's own DataTableBody.
+export function DataTableGroupRow({ colSpan, className, children }: { colSpan: number; className?: string; children: React.ReactNode }) {
+  return (
+    <tr data-slot="data-table-group-row">
+      <th scope="rowgroup" colSpan={colSpan} className={cn(dataTableGroupHeadClasses, className)}>
+        {children}
+      </th>
+    </tr>
+  )
+}
+
 export type DataTableCellProps = React.ComponentProps<"td"> & {
   align?: "left" | "right"
   /** Right-aligned, on one line, with tabular figures (num). */

@@ -10,7 +10,7 @@ const part = (name: string) => read(`${DETAIL}${name}.tsx`)
 test("the page composes the parts and reads the frame in one round of parallel queries (spec §5 Performance, §7)", () => {
   const source = page()
   assert.match(source, /const registerParams = parseRegisterReturnTo\(rawSearchParams\.returnTo, locale\)/)
-  assert.match(source, /const \{ view: assetDetailView \} = resolveAssetDetailView\(rawSearchParams\.view\)/)
+  assert.match(source, /const \{ view: assetDetailView, historyType \} = resolveAssetDetailView\(rawSearchParams\.view\)/)
   // Task 7 counts the tabs in the first round (detailCounts); the QR setting read is gone.
   assert.match(source, /const \[rawAsset, readyStatus, detailCounts\] = await withPerformanceTiming\(\s*"asset-detail\.initial-data",/)
   assert.match(source, /"asset-detail\.frame-data",\s*\(\) => Promise\.all\(\[\s*getAssetDetailFrame\(asset\.id\),\s*registerParams \? getAssetNeighbours\(registerParams, asset\.id\) : Promise\.resolve\(null\),\s*assetDetailView === "overview" \? getLatestAssetHistory\(asset\.id, locale, 3\) : Promise\.resolve\(null\),\s*\]\)/)

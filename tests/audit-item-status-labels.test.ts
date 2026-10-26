@@ -75,6 +75,8 @@ test("audit round page falls back to item status labels and labels out_of_scope 
 
 test("asset page audit history labels reviewed and reconciled items instead of printing codes", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
-  assert.match(page, /getAuditItemStatusLabelKey\(status\)/)
+  // Group 1 asset detail task 9: the history labels an audit item through Task 3's rules (a reconciled item reads
+  // auditFinding.itemStatus_reconciled there, tested in tests/asset-history-rules.test.ts).
+  assert.match(readFileSync("src/lib/asset-history-rules.ts", "utf8"), /getAuditItemStatusLabelKey\(/)
   assert.doesNotMatch(page, /statusLabelKey \? tAudit\(statusLabelKey\) : result \?\? status/)
 })

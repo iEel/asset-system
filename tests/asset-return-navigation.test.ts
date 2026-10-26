@@ -42,7 +42,7 @@ test("asset detail page exposes a back button and forwards returnTo to edit", ()
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
   const header = readFileSync("src/components/assets/detail/asset-detail-header.tsx", "utf8")
 
-  assert.match(source, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; view\?: string \| string\[\] \}>/)
+  assert.match(source, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; view\?: string \| string\[\]; type\?: string \| string\[\] \}>/)
   assert.match(source, /normalizeAssetReturnTo\(locale, rawSearchParams\.returnTo\)/)
   assert.match(source, /parseRegisterReturnTo\(rawSearchParams\.returnTo, locale\)/, "the raw returnTo tells 'opened directly' from 'the plain register' (§7.2)")
   assert.match(header, /<PageBackLink href=\{returnToHref\}/)

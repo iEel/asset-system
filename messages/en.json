@@ -1259,7 +1259,17 @@
         "document": "Document",
         "date": "Date"
       },
-      "exportSheet": "History"
+      "exportSheet": "History",
+      "title": "All history",
+      "typeLegend": "Event type",
+      "period": "Period",
+      "periodYear": "Last 12 months",
+      "export": "Export to Excel",
+      "range": "Showing {shown} of {total}",
+      "showMore": "Show more ({count} left)",
+      "empty": "This asset has no history yet",
+      "emptyFiltered": "No events of this type in this period",
+      "capped": "Showing the latest {shown} of {total} events. Export to Excel to see older ones."
     },
     "photoFrame": {
       "emptyTitle": "No photo yet",
@@ -1274,8 +1284,7 @@
     "factStripLabel": "Key facts",
     "dataGapsTitle": "Missing details ({count}):",
     "dataGapWarranty": "Warranty end date",
-    "dataGapLicenseExpiry": "License expiry date",
-    "activityAuditFinding": "Audit Finding Needs Review"
+    "dataGapLicenseExpiry": "License expiry date"
   },
   "company": {
     "title": "Companies",

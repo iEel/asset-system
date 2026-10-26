@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import test from "node:test"
+import { assetMovementLabelKey, buildAssetMovementDocumentHref } from "../src/lib/asset-movement-labels.ts"
+import { assetHistoryCategory } from "../src/lib/asset-history-rules.ts"
 
 // The fix round of the E2E workflow suite (spec docs/superpowers/specs/2026-10-19-e2e-workflow-suite-design.md §9):
 // one test per app finding the suite found, appended by its fix task. Each pins the fix in the source (or runs the
@@ -159,10 +161,10 @@ test("an operation refused for the asset's status says to reload the page (user 
 })
 
 test("a transfer's TR- document is reached from the asset's history (e2e fix task FX10: TX-A4)", () => {
-  const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
-  assert.match(detail, /await prisma\.assetTransfer\.findMany\(\{ where: \{ id: \{ in: transferIds \} \}, select: \{ id: true, documentNo: true \} \}\)/)
-  assert.match(detail, /if \(movement\.referenceType === "transfer" && movement\.referenceId\) \{\n\s*const transfer = transfersById\.get\(movement\.referenceId\)/)
-  assert.match(detail, /\{ label: t\("documentNo"\), value: transfer\.documentNo, href: `\/\$\{locale\}\/asset-management\/transfers\/\$\{movement\.referenceId\}` \}/)
+  // Group 1 asset detail task 9: getAssetHistory (task 3) gives a transfer its TR- document, and the history tab links it.
+  assert.equal(buildAssetMovementDocumentHref("th", { kind: "transfer", id: "t1", code: "TR-2026-0001" }), "/th/asset-management/transfers/t1")
+  assert.match(read("src/lib/asset-history.ts"), /buildAssetMovementDocumentHref\(/)
+  assert.equal(read("src/components/assets/asset-history-panel.tsx").match(/<Link href=\{row\.document\.href\}/g)?.length, 2)
   assert.ok(!read("e2e/transactions/transfer.spec.ts").includes(`test.fail(true, "TX-A4: `))
 })
 
@@ -186,12 +188,13 @@ test("saving a transfer opens its TR- document, as a handover and a return open 
 })
 
 test("a cancel in the asset's history reads in Thai (e2e fix task FX11: TX-A5)", () => {
-  const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
-  const known = detail.slice(detail.indexOf("const knownMovementTypeKeys = new Set(["))
+  // Group 1 asset detail task 9: every movement type is labelled through assetMovementLabelKey, and a cancel counts with
+  // its own transaction's type (spec §7.6).
   const th = messages("th").asset.movementTypes as Record<string, string>
   const en = messages("en").asset.movementTypes as Record<string, string>
-  for (const type of ["checkout_cancel", "checkin_cancel", "transfer_cancel"]) {
-    assert.ok(known.slice(0, known.indexOf("])")).includes(`"${type}",`), type)
+  for (const [type, category] of [["checkout_cancel", "checkout"], ["checkin_cancel", "checkin"], ["transfer_cancel", "transfer"]] as const) {
+    assert.equal(assetMovementLabelKey(type), `asset.movementTypes.${type}`, type)
+    assert.equal(assetHistoryCategory(type), category, type)
     assert.ok(th[type] && en[type], type)
   }
   assert.equal(th.checkout_cancel, "ยกเลิกการส่งมอบ")

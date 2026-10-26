@@ -1,8 +1,3 @@
-export type MovementDetailLike = {
-  label: string
-  value?: string | null
-}
-
 export function maskLicenseKey(value?: string | null) {
   if (!value) return null
   const compact = value.replace(/\s+/g, "")
@@ -30,20 +25,6 @@ export function formatMovementType(movementType: string) {
   return movementType
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
-export function compactMovementDetails<T extends MovementDetailLike>(details: T[]) {
-  const seen = new Set<string>()
-
-  return details.filter((detail) => {
-    const value = detail.value?.trim()
-    if (!value) return false
-
-    const key = `${detail.label}:${value}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
 }
 
 function attachmentMatchesPhotoLabel(

@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
-  compactMovementDetails,
   getMissingPhotoChecklistLabels,
   maskLicenseKey,
 } from "../src/lib/asset-detail-format.ts"
@@ -24,18 +23,4 @@ test("detects missing photo checklist labels using normalized and legacy names",
   )
 
   assert.deepEqual(missing, ["ด้านหลัง"])
-})
-
-test("removes empty and duplicate movement details while preserving order", () => {
-  const details = compactMovementDetails([
-    { label: "From", value: "A" },
-    { label: "To", value: "" },
-    { label: "From", value: "A" },
-    { label: "To", value: "B", href: "/b" },
-  ])
-
-  assert.deepEqual(details, [
-    { label: "From", value: "A" },
-    { label: "To", value: "B", href: "/b" },
-  ])
 })

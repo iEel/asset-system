@@ -1259,7 +1259,17 @@
         "document": "เอกสาร",
         "date": "วันที่"
       },
-      "exportSheet": "ประวัติ"
+      "exportSheet": "ประวัติ",
+      "title": "ประวัติทั้งหมด",
+      "typeLegend": "ประเภทเหตุการณ์",
+      "period": "ช่วงเวลา",
+      "periodYear": "12 เดือนล่าสุด",
+      "export": "ส่งออก Excel",
+      "range": "แสดง {shown} จาก {total} รายการ",
+      "showMore": "แสดงเพิ่ม (เหลือ {count} รายการ)",
+      "empty": "ยังไม่มีประวัติของทรัพย์สินนี้",
+      "emptyFiltered": "ไม่มีรายการในประเภทและช่วงเวลาที่เลือก",
+      "capped": "แสดง {shown} รายการล่าสุดจาก {total} รายการ ส่งออก Excel เพื่อดูรายการที่เก่ากว่า"
     },
     "photoFrame": {
       "emptyTitle": "ยังไม่มีรูป",
@@ -1274,8 +1284,7 @@
     "factStripLabel": "ข้อมูลสำคัญของทรัพย์สิน",
     "dataGapsTitle": "ข้อมูลยังไม่ครบ {count} รายการ:",
     "dataGapWarranty": "วันหมดประกัน",
-    "dataGapLicenseExpiry": "วันหมดอายุ License",
-    "activityAuditFinding": "ผลตรวจนับต้องติดตาม"
+    "dataGapLicenseExpiry": "วันหมดอายุ License"
   },
   "company": {
     "title": "บริษัท",
