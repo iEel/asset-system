@@ -2,11 +2,11 @@
 
 import { RotateCcw } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useId, useState } from "react"
+import { useImperativeHandle, useRef, useState, type Ref, type RefObject } from "react"
+import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter, accessibleDialogFormClasses } from "@/components/ui/accessible-dialog"
 import { ApiErrorText } from "@/components/ui/api-error-text"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
-import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { maxLength, minLength, required } from "@/lib/validation-rules"
@@ -30,24 +30,38 @@ function validate(values: { reason: string }): Partial<Record<CorrectionField, s
   return errors
 }
 
-type AssetStatusCorrectionButtonProps = {
-  assetId: string
-  readyStatusId: string
-  labels: {
-    button: string
-    title: string
-    description: string
-    reason: string
-    reasonPlaceholder: string
-    cancel: string
-    submit: string
-    errorFallback: string
-  }
+export type AssetStatusCorrectionLabels = {
+  button: string
+  title: string
+  description: string
+  reason: string
+  reasonPlaceholder: string
+  cancel: string
+  submit: string
+  errorFallback: string
 }
 
-export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: AssetStatusCorrectionButtonProps) {
+export type AssetStatusCorrectionDialogHandle = { open: () => void }
+
+// Group 1 asset detail task 8A: a dialog its owner opens through the handle (the page's "อื่น ๆ" menu, the phone sheet),
+// with no trigger of its own when hideTrigger is set; focus returns to returnFocusRef, as TransactionCancelDialog does.
+export function AssetStatusCorrectionDialog({
+  assetId,
+  readyStatusId,
+  labels,
+  ref,
+  hideTrigger = false,
+  returnFocusRef,
+}: {
+  assetId: string
+  readyStatusId: string
+  labels: AssetStatusCorrectionLabels
+  ref?: Ref<AssetStatusCorrectionDialogHandle>
+  hideTrigger?: boolean
+  returnFocusRef?: RefObject<HTMLElement | null>
+}) {
   const router = useRouter()
-  const panelId = useId()
+  const reasonRef = useRef<HTMLTextAreaElement | null>(null)
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -55,6 +69,20 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
   const fieldErrors = useFieldErrors<CorrectionField>()
   const validationMessage = useValidationMessage()
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
+  function openDialog() {
+    setError(null)
+    fieldErrors.setErrors({})
+    setOpen(true)
+  }
+
+  function closeDialog() {
+    setOpen(false)
+    setError(null)
+    fieldErrors.setErrors({})
+  }
+
+  useImperativeHandle(ref, () => ({ open: openDialog }))
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -85,57 +113,51 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
   }
 
   return (
-    <div className="space-y-2">
-      {/* Spec 2D M27: the trigger says whether the panel is open; aria-controls only points at a panel that exists. */}
-      <Button
-        variant="outline"
-        aria-expanded={open}
-        aria-controls={open ? panelId : undefined}
-        onClick={() => setOpen((value) => !value)}
+    <>
+      {hideTrigger ? null : (
+        <Button variant="outline" onClick={openDialog}>
+          <RotateCcw className="text-warning" aria-hidden="true" />
+          {labels.button}
+        </Button>
+      )}
+      <AccessibleDialog
+        open={open}
+        title={labels.title}
+        description={labels.description}
+        busy={isSubmitting}
+        initialFocusRef={reasonRef}
+        returnFocusRef={returnFocusRef}
+        onClose={closeDialog}
       >
-        <RotateCcw className="text-warning" aria-hidden="true" />
-        {labels.button}
-      </Button>
-      {open ? (
-        // A quiet grouping inside the lifecycle panel: controls never sit in a warning box (spec 2D D7).
-        <form onSubmit={handleSubmit} noValidate id={panelId} className="rounded-md border border-border bg-background p-4">
-          <h3 className="text-sm font-semibold text-foreground">{labels.title}</h3>
-          <Notice tone="neutral" className="mt-1">{labels.description}</Notice>
-          <Field
-            label={labels.reason}
-            required
-            className="mt-3"
-            error={fieldErrors.errors.reason ? validationMessage(fieldErrors.errors.reason, { min: 5, max: 500 }) : undefined}
-          >
-            <Textarea
-              id="asset-status-correction-reason"
-              value={reason}
-              onChange={(event) => {
-                setReason(event.target.value)
-                fieldErrors.clear("reason")
-              }}
-              placeholder={labels.reasonPlaceholder}
-              className="min-h-24"
-            />
-          </Field>
-          {error ? <p className="mt-2 text-sm text-danger"><ApiErrorText error={error} /></p> : null}
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setOpen(false)
-                setError(null)
-                fieldErrors.setErrors({})
-              }}
+        <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
+          <AccessibleDialogBody>
+            <Field
+              label={labels.reason}
+              required
+              error={fieldErrors.errors.reason ? validationMessage(fieldErrors.errors.reason, { min: 5, max: 500 }) : undefined}
             >
-              {labels.cancel}
-            </Button>
+              <Textarea
+                ref={reasonRef}
+                id="asset-status-correction-reason"
+                value={reason}
+                onChange={(event) => {
+                  setReason(event.target.value)
+                  fieldErrors.clear("reason")
+                }}
+                placeholder={labels.reasonPlaceholder}
+                className="min-h-24"
+              />
+            </Field>
+            {error ? <p className="mt-2 text-sm text-danger"><ApiErrorText error={error} /></p> : null}
+          </AccessibleDialogBody>
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
             <Button type="submit" busy={isSubmitting}>
               {labels.submit}
             </Button>
-          </div>
+          </AccessibleDialogFooter>
         </form>
-      ) : null}
-    </div>
+      </AccessibleDialog>
+    </>
   )
 }

@@ -97,9 +97,9 @@ test("lifecycle mutation layers call exception policy helpers", () => {
 
 test("asset detail exposes controlled status correction action", () => {
   const pageSource = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
-  const componentSource = readFileSync("src/components/assets/asset-status-correction-button.tsx", "utf8")
+  const componentSource = readFileSync("src/components/assets/asset-status-correction-dialog.tsx", "utf8")
 
-  assert.match(pageSource, /AssetStatusCorrectionButton/)
+  assert.match(pageSource, /AssetStatusCorrectionDialog/)
   assert.match(pageSource, /canCorrectAssetStatus/)
   assert.match(componentSource, /\/api\/assets\/\$\{assetId\}\/status-correction/)
   // v-track plan 2 A5: the 5-character rule is checked on submit (validate), not by a disabled button.

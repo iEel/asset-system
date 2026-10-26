@@ -52,7 +52,7 @@ test("the old panel helpers of the asset detail page are gone (spec 2D M9, D12)"
 test("the busy labels nobody reads are gone from the props and the pages (spec 2D M8)", () => {
   const gone: Array<[string, RegExp]> = [
     [`${C}assets/asset-component-manager.tsx`, /^\s+(?:installing|removing): string$/m],
-    [`${C}assets/asset-status-correction-button.tsx`, /^\s+submitting: string$/m],
+    [`${C}assets/asset-status-correction-dialog.tsx`, /^\s+submitting: string$/m],
     [`${C}assets/asset-import-preview-panel.tsx`, /^\s+importing: string$/m],
     [`${C}assets/asset-label-print.tsx`, /^\s+recordingPrint: string$/m],
     [`${D}assets/[id]/components/page.tsx`, /componentInstalling|componentRemoving/],

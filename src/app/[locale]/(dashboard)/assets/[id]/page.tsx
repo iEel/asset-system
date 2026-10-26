@@ -44,7 +44,7 @@ import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
-import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
+import { AssetStatusCorrectionDialog } from "@/components/assets/asset-status-correction-dialog"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getAssetStateTone, getPanelClasses } from "@/lib/design-system"
@@ -1089,7 +1089,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           </div>
           {readyStatus && canCorrectAssetStatus(asset.status) ? (
             <div className="mt-3">
-              <AssetStatusCorrectionButton
+              <AssetStatusCorrectionDialog
                 assetId={asset.id}
                 readyStatusId={readyStatus.id}
                 labels={{

@@ -24,14 +24,11 @@ test("QR code: no frame of its own inside the QR panel, and the asset tag under 
   assert.doesNotMatch(source, /bg-white|rounded-lg|border|text-xs/)
 })
 
-test("status correction: the trigger says whether its panel is open, and the panel is a quiet grouping with a neutral Notice (spec 2D M27, D7)", () => {
-  const source = read(`${C}assets/asset-status-correction-button.tsx`)
-  assert.match(source, /const panelId = useId\(\)/)
-  assert.match(source, /aria-expanded=\{open\}\n\s+aria-controls=\{open \? panelId : undefined\}/, "aria-controls only while the panel exists (axe aria-valid-attr-value)")
-  // v-track plan 2 A5: the quiet grouping is the correction's form.
-  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate id=\{panelId\} className="rounded-md border border-border bg-background p-4">/)
-  assert.match(source, /<Notice tone="neutral" className="mt-1">\{labels\.description\}<\/Notice>/)
-  assert.doesNotMatch(source, /border-warning-border|<p className="mt-1 text-sm text-muted-foreground">/)
+test("status correction: a dialog with the dialog parts, the description in the dialog head, no panel of its own (group 1 asset detail task 8A)", () => {
+  const source = read(`${C}assets/asset-status-correction-dialog.tsx`)
+  assert.match(source, /import \{ AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter, accessibleDialogFormClasses \} from "@\/components\/ui\/accessible-dialog"/)
+  assert.match(source, /description=\{labels\.description\}/)
+  assert.doesNotMatch(source, /rounded-md border border-border bg-background p-4|border-warning-border|<Notice tone="neutral"/)
 })
 
 test("transaction cancel dialog: a missing state snapshot is null and shows Nil (spec 2D M32 b; the type the asset page needs, plan 2D-3 R2)", () => {
