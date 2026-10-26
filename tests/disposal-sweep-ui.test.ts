@@ -192,7 +192,7 @@ test("the batch list names its first column the batch number (critique 2026-10-2
 
 test("queue names use the disposal status words (critique 2026-10-20 D3)", () => {
   const th = JSON.parse(read("messages/th.json")), en = JSON.parse(read("messages/en.json"))
-  for (const ns of ["dashboard", "notifications"]) {
+  for (const ns of ["notifications"]) {
     assert.match(th[ns].pendingDisposals, /รอพิจารณา/, `th.${ns}.pendingDisposals`)
     assert.doesNotMatch(th[ns].pendingDisposals, /รออนุมัติ/, `th.${ns}.pendingDisposals`)
     assert.equal(th[ns].approvedDisposals, "อนุมัติแล้ว รอตัดจำหน่าย", `th.${ns}.approvedDisposals`)
@@ -202,6 +202,7 @@ test("queue names use the disposal status words (critique 2026-10-20 D3)", () =>
   for (const m of [th, en]) {
     for (const key of ["pendingDisposals", "approvedDisposals"]) {
       assert.equal(m.workCenter[key], undefined, `workCenter.${key}: the work center reads notifications.${key} (group 1 dashboard task 4)`)
+      assert.equal(m.dashboard[key], undefined, `dashboard.${key}: the dashboard reads notifications.${key} (group 1 dashboard task 9)`)
     }
   }
   assert.doesNotMatch(th.workCenter.disposalSubtitle, /รออนุมัติ|รอดำเนินการ/)

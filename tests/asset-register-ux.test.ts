@@ -79,12 +79,13 @@ test("an exact register link neither restores nor overwrites the saved view", ()
 
 test("dashboard, work-center and notification links open the register exactly", () => {
   const read = (path: string) => readFileSync(path, "utf8").replace(/\r/g, "")
-  const dashboard = read("src/app/[locale]/(dashboard)/dashboard/page.tsx")
+  // The dashboard's register links are built in src/lib/dashboard-page.ts; the page only calls it (group 1 dashboard task 9).
+  const dashboard = read("src/lib/dashboard-page.ts")
+  const page = read("src/app/[locale]/(dashboard)/dashboard/page.tsx")
   const workCenter = read("src/app/[locale]/(dashboard)/work-center/page.tsx")
   const notifications = read("src/lib/waiting-work-rules.ts")
-  const dashboardCards = read("src/lib/dashboard-action-cards.ts")
 
-  for (const source of [dashboard, workCenter, dashboardCards]) {
+  for (const source of [dashboard, workCenter]) {
     assert.doesNotMatch(source, /`\/\$\{locale\}\/assets(\?|`)/)
     assert.match(source, /buildExactAssetRegisterHref\(/)
   }
@@ -92,8 +93,8 @@ test("dashboard, work-center and notification links open the register exactly", 
   for (const value of ["warranty", "licenseExpiry", "returnDue"]) {
     assert.match(notifications, new RegExp(`buildExactAssetRegisterHref\\(locale, \\{ dataQuality: "${value}" \\}\\)`), value)
   }
-  assert.match(dashboard, /buildExactAssetRegisterHref\(locale, \{ dataQuality: "warranty" \}\)/)
-  assert.match(dashboard, /buildExactAssetRegisterHref\(locale, \{ sort: "createdAt", direction: "desc" \}\)/)
+  assert.doesNotMatch(page, /`\/\$\{locale\}\/assets(\?|`)|buildExactAssetRegisterHref\(/)
+  assert.match(page, /buildDashboardRegisterHref\(locale, "total", companyId\)/)
 })
 
 test("asset register and dashboard state routes reuse the standard state surface", () => {

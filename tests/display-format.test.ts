@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { formatCount, formatMoney, isBlankValue } from "../src/lib/display-format.ts"
+import { formatCount, formatMoney, formatPercent, isBlankValue } from "../src/lib/display-format.ts"
 
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const NBSP = " "
@@ -41,10 +41,19 @@ test("isBlankValue treats only null, undefined and blank strings as empty", () =
   }
 })
 
-test("display-format is import-free TypeScript with two fixed th-TH formatters", () => {
+test("formatPercent: a share in Thai digits, whole or with one decimal", () => {
+  assert.equal(formatPercent(0.788), "79%")
+  assert.equal(formatPercent(0.788, 1), "78.8%")
+  assert.equal(formatPercent(0.006, 1), "0.6%")
+  assert.equal(formatPercent(1), "100%")
+  assert.equal(formatPercent(null), null)
+  assert.equal(formatPercent(undefined), null)
+})
+
+test("display-format is import-free TypeScript with four fixed th-TH formatters (count, money, two percent)", () => {
   const source = read("src/lib/display-format.ts")
   assert.doesNotMatch(source, /^import /m, "tests import this file directly")
-  assert.equal(source.match(/new Intl\.NumberFormat\("th-TH"/g)?.length, 2)
+  assert.equal(source.match(/new Intl\.NumberFormat\("th-TH"/g)?.length, 4)
   assert.doesNotMatch(source, /toLocaleString\(/)
   assert.doesNotMatch(source, /style: "currency"|฿/)
 })

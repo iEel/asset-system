@@ -831,17 +831,15 @@ test("my assets: the shared PageHeader, real pages with a full-total summary, on
   assert.doesNotMatch(source, /function (?:PageHeader|Metric|Head)\b|<thead\b|<th\b|getEmptyStateClasses|getResponsiveTableScrollClasses|getSafeActionLinkClasses|toLocaleString\(|"-"|<h1\b/)
 })
 
-// Plan 2B-5 Task 14 (spec 2B §4.4.6, §4.6.1 rule 1, §5.6): the dashboard title is PageHeader with no meta and no buttons,
-// the root spaces the blocks 24px apart (the top-level mb-6 and mb-8 are gone) and every count reads through formatCount.
-// The employee-home redirect (permission-aware-navigation) and the cancelled-round filter (audit-round-cancellation) stay.
-test("the dashboard: PageHeader, blocks 24px apart and every count through formatCount (spec 2B §4.4.6, §4.6.1, §5.6)", () => {
+// Group 1 dashboard task 9 (spec 2026-10-25 §6.2): the dashboard title is PageHeader with the as-of line and no buttons,
+// the root spaces the blocks 24px apart and the numbers read through the formatters (tests/dashboard-page.test.ts pins
+// every KPI value). The counts live in the shared sources; the round rule is pinned on src/lib/dashboard-overview.ts
+// (audit-round-cancellation). The employee-home redirect (permission-aware-navigation) stays.
+test("the dashboard: PageHeader with the as-of line, blocks 24px apart, numbers through the formatters (spec 2026-10-25 §6.2)", () => {
   const source = read(`${D}dashboard/page.tsx`)
-  assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader title=\{t\("title"\)\} \/>\n/)
-  assert.equal(source.match(/\bformatCount\(/g)?.length, 12, "seven KPI cards, the action cards, the cross-scope cards, the status overview and the trend's two numbers")
-  assert.match(source, /meta: formatDateTime\(log\.createdAt\),/)
-  assert.doesNotMatch(source, /<h1\b|toLocaleString\(|className="mb-[68] /)
+  assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader title=\{t\("title"\)\} meta=\{t\("asOf", \{ time: formatAsOf\(now, locale\) \}\)\} \/>\n/)
+  assert.doesNotMatch(source, /<h1\b|toLocaleString\(|Intl\.NumberFormat|className="mb-[68] /)
   assert.match(source, /if \(user && shouldUseEmployeeHome\(user\)\) \{\n\s+redirect\(`\/\$\{locale\}\/my-assets`\)/)
-  assert.match(source, /auditRound: \{ isActive: true, status: auditRoundOperationalWhere \}/)
 })
 
 // Plan 2B-5 Task 15 (spec 2B I10, §4.4.6, §5.6): the work center on the shared frame. "งานทั้งหมด / งานของฉัน" changes

@@ -48,7 +48,7 @@ test("loading skeletons take the shape of their pages at full width (spec 2B §4
   assert.match(source, /className="divide-y divide-border-soft"/)
   assert.match(source, /className="flex gap-4 overflow-hidden border-b border-border pb-2"/, "underline tabs, not boxes")
   assert.match(source, /<PageHeaderSkeleton crumbs meta="badges" \/>/, "the asset page: crumbs, then the status badges in the meta row")
-  assert.match(source, /<PageHeaderSkeleton meta="none" actions=\{false\} \/>/, "the dashboard: a title only")
+  assert.match(source, /<PageHeaderSkeleton actions=\{false\} \/>/, "the dashboard: the title and its as-of line")
   assert.match(source, /<PageHeaderSkeleton compactOnMobile \/>/, "the register: title and button share a row on phones")
   assert.match(source, /<TableSkeleton dense rows=\{8\} columns=\{6\} \/>/, "the register keeps its dense rows")
   assert.match(source, /<MetricGridSkeleton count=\{6\} \/>/)

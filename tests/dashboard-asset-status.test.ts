@@ -1,55 +1,34 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { buildDashboardStatusTable } from "../src/lib/dashboard-page.ts"
 
-import { assetRegisterStatusTabs } from "../src/lib/asset-register-status-tabs.ts"
-import { buildDashboardAssetStatusMetrics, dashboardAssetStatusNames } from "../src/lib/dashboard-action-cards.ts"
+// The shape of Task 8's overview.statusRows (buildDashboardStatusRows): one row per status, in sortOrder.
+const rows = [
+  { statusId: "ready", name: "Ready", nameTh: "พร้อมใช้งาน", count: 120 },
+  { statusId: "in-use", name: "In Use", nameTh: "ใช้งานอยู่", count: 760 },
+  { statusId: "draft", name: "Draft", nameTh: "ร่าง", count: 0 },
+  { statusId: "maint id", name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม", count: 80 },
+  { statusId: "pending/repair", name: "Pending Repair", nameTh: "รอซ่อม", count: 40 },
+]
 
-test("dashboard separates Pending Repair assets from Under Maintenance assets", () => {
-  const metrics = buildDashboardAssetStatusMetrics("th", [
-    { id: "pending/id", name: "Pending Repair", count: 8 },
-    { id: "maintenance id", name: "Under Maintenance", count: 2 },
-    { id: "legacy", name: "Pending Repair Legacy", count: 99 },
+test("ตามสถานะ: every status with a count, in the overview's order, Pending Repair apart from Under Maintenance, each opening its own status exactly (spec §6.6)", () => {
+  assert.deepEqual(buildDashboardStatusTable(rows, "th", null).map((row) => [row.key, row.name, row.count, row.share, row.href, row.tone]), [
+    ["ready", "พร้อมใช้งาน", 120, 0.12, "/th/assets?statusId=ready&exact=1", "success"],
+    ["in-use", "ใช้งานอยู่", 760, 0.76, "/th/assets?statusId=in-use&exact=1", "success"],
+    ["maint id", "อยู่ระหว่างซ่อม", 80, 0.08, "/th/assets?statusId=maint+id&exact=1", "warning"],
+    ["pending/repair", "รอซ่อม", 40, 0.04, "/th/assets?statusId=pending%2Frepair&exact=1", "warning"],
   ])
-
-  assert.deepEqual(metrics, {
-    ready: { count: 0, href: "/th/assets?exact=1" },
-    inUse: { count: 0, href: "/th/assets?exact=1" },
-    pendingRepair: { count: 8, href: "/th/assets?statusId=pending%2Fid&exact=1" },
-    underMaintenance: { count: 2, href: "/th/assets?statusId=maintenance+id&exact=1" },
-  })
 })
 
-test("dashboard status metrics remain safe when a configured status is missing", () => {
-  assert.deepEqual(buildDashboardAssetStatusMetrics("en", []), {
-    ready: { count: 0, href: "/en/assets?exact=1" },
-    inUse: { count: 0, href: "/en/assets?exact=1" },
-    pendingRepair: { count: 0, href: "/en/assets?exact=1" },
-    underMaintenance: { count: 0, href: "/en/assets?exact=1" },
-  })
+test("In Use is In Use only: Ready never leaks in, and a company rides on every link", () => {
+  const [inUse] = buildDashboardStatusTable([{ statusId: "in-use", name: "In Use", nameTh: "ใช้งานอยู่", count: 5 }], "en", "c1")
+  assert.deepEqual([inUse.name, inUse.count, inUse.share, inUse.href], ["In Use", 5, 1, "/en/assets?companyId=c1&statusId=in-use&exact=1"])
+  assert.deepEqual(buildDashboardStatusTable([], "th", null), [])
 })
 
-test("the dashboard In Use count is In Use only; Ready (พร้อมใช้งาน) never leaks in", () => {
-  const metrics = buildDashboardAssetStatusMetrics("th", [
-    { id: "r", name: "Ready", count: 5 },
-    { id: "u", name: "In Use", count: 7 },
-  ])
-  assert.equal(metrics.inUse.count, 7)
-  assert.equal(metrics.ready.count, 5)
-})
-
-test("dashboard status names are the register's tab names", () => {
-  for (const name of dashboardAssetStatusNames) {
-    assert.ok(assetRegisterStatusTabs.some((tab) => tab.statusName === name), name)
-  }
-})
-
-test("a missing status counts 0", () => {
-  const metrics = buildDashboardAssetStatusMetrics("th", [])
-  for (const metric of Object.values(metrics)) assert.equal(metric.count, 0)
-})
-
-test("the dashboard counts statuses by exact name, never contains", () => {
+test("the dashboard counts statuses by id from the overview, never by a name that contains", () => {
   const src = readFileSync("src/app/[locale]/(dashboard)/dashboard/page.tsx", "utf8").replace(/\r/g, "")
   assert.doesNotMatch(src, /contains: "(In Use|Ready|ใช้งาน|พร้อม)"/)
+  assert.match(src, /buildDashboardStatusTable\(overview\.statusRows, locale, companyId\)/)
 })

@@ -43,20 +43,19 @@ test("a StatStrip foot wraps to two lines before its ellipsis, and the label, va
   assert.match(source, /lg:grid-rows-\[repeat\(3,auto\)\]/)
 })
 
-test("the dashboard skeleton has the page's shape: totals as 4 + 3, three panels of numbers, then status beside activity (plan 2D-2 R14)", () => {
+test("the dashboard skeleton has the page's shape: the title and its as-of line, the company links from md, four KPIs with feet, then the sections at 7 + 5 (group 1 dashboard task 9)", () => {
   const source = read(`${C}ui/page-skeleton.tsx`)
   const dashboard = source.slice(source.indexOf("export function DashboardPageSkeleton()"), source.indexOf("export function AssetRegisterPageSkeleton()"))
-  // In page order: the seven totals (4 + 3), the action counts with their foot lines (3 + 3), the four cross-scope
-  // counts over their preview, the four monthly trends with their foot lines.
   const strips = [...dashboard.matchAll(/<MetricGridSkeleton count=\{(\d+)\}( foot)? \/>/g)].map((match) => `${match[1]}${match[2] ?? ""}`)
-  assert.deepEqual(strips, ["4", "3", "3 foot", "3 foot", "4", "4 foot"])
-  assert.equal(dashboard.match(/<PanelSkeleton description>/g)?.length, 3, "the action, cross-scope and trend panels have a description")
-  assert.equal(dashboard.match(/<PanelSkeleton>/g)?.length, 2, "the status overview and the recent activity")
-  assert.match(dashboard, /<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">/, "status beside activity from lg, as on the page")
-  assert.match(source, /function PanelSkeleton\(\{ description = false, children \}: \{ description\?: boolean; children: ReactNode \}\)/)
-  assert.match(source, /<div className="rounded-lg border border-border bg-surface p-4 sm:p-5">\s*<SkeletonBlock className="h-6 w-48 max-w-full" \/>/, "a ContentPanel frame and its title")
+  assert.deepEqual(strips, ["4 foot"])
+  assert.match(dashboard, /<PageHeaderSkeleton actions=\{false\} \/>/)
+  assert.match(dashboard, /<div className="hidden md:block">\s*<TabNavSkeleton count=\{4\} \/>\s*<\/div>/)
+  assert.match(dashboard, /<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">/)
+  assert.deepEqual([...dashboard.matchAll(/<DividedPanelSkeleton rows=\{(\d+)\} className="([^"]+)" \/>/g)].map((match) => `${match[1]} ${match[2]}`), ["4 lg:col-span-7", "5 lg:col-span-5"])
+  assert.match(source, /function DividedPanelSkeleton\(\{ rows, className \}: \{ rows: number; className\?: string \}\)/)
+  assert.match(source, /<div className="flex min-h-14 items-center border-b border-border px-4 md:px-5">/, "the divided ContentPanel head")
   assert.match(source, /\{foot \? <SkeletonBlock className="h-4 w-32 max-w-full" \/> : null\}/, "a StatStrip foot line")
-  assert.doesNotMatch(dashboard, /count=\{5\}|md:grid-cols-4|p-5"/, "the old five-tile grid and its box of four cards are gone")
+  assert.doesNotMatch(source, /function PanelSkeleton\b|<PanelSkeleton\b/, "the undivided panel skeleton went with the old dashboard")
 })
 
 const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))

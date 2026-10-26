@@ -128,7 +128,7 @@ test("operational audit queues exclude cancelled rounds by default", () => {
     "src/lib/approval-inbox-query.ts",
     "src/lib/waiting-work-rules.ts",
     "src/app/[locale]/(dashboard)/work-center/page.tsx",
-    "src/app/[locale]/(dashboard)/dashboard/page.tsx",
+    "src/lib/dashboard-overview.ts",
   ]
 
   for (const filePath of files) {

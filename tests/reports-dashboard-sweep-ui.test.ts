@@ -74,17 +74,19 @@ test("report accounting: an empty ratio is Nil through StatStrip, and the asset 
   assert.doesNotMatch(source, /"—"|hover:underline/)
 })
 
-test("the dashboard: StatStrips in rows of at most four, ContentPanels, StatusBadge rows and no tone fills (spec 2D D9, M30; 2B R-d)", () => {
+test("the dashboard: one KPI StatStrip at the top level, divided ContentPanels on a 7 + 5 grid, the data bar and no tone fills (spec 2026-10-25 §6.1, §6.6; 2B R-d)", () => {
   const source = read(`${D}dashboard/page.tsx`)
-  assert.match(source, /^import \{ splitStatRows \} from "@\/lib\/stat-strip-rows"$/m)
-  assert.equal(source.match(/splitStatRows\((?:kpiItems|actionItems)\)\.map\(\(row\) => \(\n\s+<StatStrip key=\{row\[0\]\.key\} items=\{row\} \/>/g)?.length, 2)
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 5)
-  assert.match(source, /attention: card\.value > 0 && \(card\.tone === "warning" \|\| card\.tone === "danger"\),/)
-  assert.match(source, /<StatusBadge label=\{item\.label\} tone=\{item\.tone\} \/>/)
-  assert.match(source, /function formatTrendDelta\(current: number, previous: number\) \{/)
-  assert.match(source, /<EmptyNote>\{t\("noRecentActivity"\)\}<\/EmptyNote>/)
-  assert.match(source, /<div className="font-medium text-foreground"><span className="tag">\{row\.assetTag\}<\/span><\/div>/)
-  assert.doesNotMatch(source, /bg-(?:primary|success|warning|danger|info)-soft|rounded-full|rounded-lg border|text-3xl|text-2xl|function TrendCard\b|actionCardToneClass|actionCardIconClass|hover:underline/)
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 1)
+  assert.match(source, /<StatStrip items=\{kpiItems\} \/>/)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 2, "งานที่รอคุณ and ตามสถานะ")
+  assert.equal(source.match(/<ContentPanel\n?\s*divided\n?\s*flush\b/g)?.length, 2)
+  // Each segment links to its status's list with the row's own exact href and names it on hover (spec §2 decision 3, R17).
+  assert.match(source, /<DistributionBar segments=\{statusRows\.map\(\(row\) => \(\{ key: row\.key, count: row\.count, tone: row\.tone, href: row\.href, title: t\("statusSegmentTitle", \{ status: row\.name, count: formatCount\(row\.count\), note: withCompany\(t\("noteStatus", \{ status: row\.name \}\)\) \}\) \}\)\)\} \/>/)
+  assert.match(source, /<Link href=\{row\.href\} title=\{withCompany\(t\("noteStatus", \{ status: row\.name \}\)\)\}/, "the table row opens the same list, for everyone")
+  assert.doesNotMatch(source, /<DistributionBar label=/, "the bar is aria-hidden: no name")
+  assert.match(source, /className=\{cn\("size-2\.5 shrink-0 rounded-xs", statusFillVariants\(\{ tone: row\.tone \}\)\)\}/, "the row's swatch is its segment's fill (Task 7, R20)")
+  assert.doesNotMatch(source, /splitStatRows|formatTrendDelta|StatusBadge|statusMarkerVariants|DashboardCrossScopePreview|style=\{/)
+  assert.doesNotMatch(source, /bg-(?:primary|success|warning|danger|info)-soft|rounded-full|rounded-lg border|text-3xl|text-2xl|hover:underline|dark:/)
 })
 
 test("the work center: follow-up panels are ContentPanels with text links (D19), empty queues are EmptyNote, and the dots are shape markers (spec 2D D9, D19, M21)", () => {

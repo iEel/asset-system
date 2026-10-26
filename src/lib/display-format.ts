@@ -3,6 +3,9 @@
 // signDisplay negative: an amount that rounds to zero prints 0, never -0.
 const countFormat = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0, signDisplay: "negative" })
 const moneyFormat = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "negative" })
+// A share from 0 to 1 as a percent: whole ("79%"), or with one decimal where small parts must not read 0% ("0.6%").
+const percentFormat = new Intl.NumberFormat("th-TH", { style: "percent", maximumFractionDigits: 0, signDisplay: "negative" })
+const percentFormatOneDecimal = new Intl.NumberFormat("th-TH", { style: "percent", maximumFractionDigits: 1, signDisplay: "negative" })
 
 // Blank means nothing to show: null, undefined, or a string with only spaces. 0 and false are values.
 export function isBlankValue(value: unknown): boolean {
@@ -24,4 +27,12 @@ export function formatMoney(value: number | null | undefined, options?: FormatMo
   if (value == null) return null
   const text = moneyFormat.format(value)
   return options?.unit ? `${text} ${options.unit}` : text
+}
+
+// A share (0.788) as a percent: "79%", or "78.8%" with one decimal. null and undefined come back as null for Nil.
+export function formatPercent(value: number, fractionDigits?: 0 | 1): string
+export function formatPercent(value: number | null | undefined, fractionDigits?: 0 | 1): string | null
+export function formatPercent(value: number | null | undefined, fractionDigits: 0 | 1 = 0): string | null {
+  if (value == null) return null
+  return (fractionDigits === 1 ? percentFormatOneDecimal : percentFormat).format(value)
 }

@@ -1,52 +1,65 @@
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { getMessages, getTranslations } from "next-intl/server"
+import { getTranslations } from "next-intl/server"
 import { ArrowRight } from "lucide-react"
 import { getSessionUser, hasPermission } from "@/lib/auth-utils"
-import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
-import {
-  buildDashboardActionCardKeys,
-  buildDashboardAssetStatusMetrics,
-  dashboardAssetStatusNames,
-  type DashboardActionCardKey,
-} from "@/lib/dashboard-action-cards"
-import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
+import { getApprovalInboxAccess } from "@/lib/approval-inbox-query"
+import { buildAuditRoundItemsHref } from "@/lib/audit-round-result-filters"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
-import { openRepairRecordWhere } from "@/lib/repair-record-policy"
-import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "@/lib/audit-round-status"
-import { buildDashboardAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
-import { getAssetCrossScopeFlagLabels, type AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
-import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
-import { buildSystemLogPresentation, type SystemLogPresentation } from "@/lib/system-log-presenter"
-import { cn, formatDateTime } from "@/lib/utils"
-import { formatCount } from "@/lib/display-format"
+import { getDashboardOverview } from "@/lib/dashboard-overview"
+import {
+  auditPercent,
+  DASHBOARD_KPI_ORDER,
+  DASHBOARD_SECTION_ORDER,
+  formatAsOf,
+  getDashboardProfile,
+  isBehindPace,
+  type DashboardKpiKey,
+  type DashboardSectionKey,
+} from "@/lib/dashboard-overview-rules"
+import {
+  buildDashboardHref,
+  buildDashboardRegisterHref,
+  buildDashboardStatusTable,
+  buildDashboardWaiting,
+  DASHBOARD_COMPANY_TAB_LIMIT,
+  describeWaitingAge,
+  normalizeDashboardCompanyId,
+} from "@/lib/dashboard-page"
+import { getWaitingWork, getWaitingWorkAges } from "@/lib/waiting-work"
+import { buildWaitingWorkHref, type WaitingWorkAge, type WaitingWorkCounts, type WaitingWorkKey } from "@/lib/waiting-work-rules"
+import { cn } from "@/lib/utils"
+import { formatCount, formatPercent } from "@/lib/display-format"
 import { withPerformanceTiming } from "@/lib/performance-timing"
-import { splitStatRows } from "@/lib/stat-strip-rows"
+import { statusFillVariants } from "@/components/ui/badge-variants"
 import { linkVariants } from "@/components/ui/button-variants"
-import { ContentPanel } from "@/components/ui/content-panel"
+import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { DistributionBar } from "@/components/ui/distribution-bar"
 import { EmptyNote } from "@/components/ui/empty-note"
+import { FilterChipList } from "@/components/ui/filter-chips"
+import { FilterFormActions } from "@/components/ui/filter-panel"
+import { FilterSelect } from "@/components/ui/filter-select"
+import { PaceBar } from "@/components/ui/pace-bar"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { TabNav } from "@/components/ui/tab-nav"
+import { toneIcons } from "@/components/ui/tone-icons"
 
 type DashboardPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ companyId?: string | string[] }>
 }
 
-type DashboardActionTone = "primary" | "warning" | "danger"
+const OverdueIcon = toneIcons.warning
 
-// tone says whether a count above 0 needs action (warning, danger); it is never a fill (R-d).
-type DashboardActionCard = {
-  label: string
-  value: number
-  detail: string
-  href: string
-  tone: DashboardActionTone
-}
-
-export default async function DashboardPage({ params }: DashboardPageProps) {
+// Canvas B (group 1 spec §6): the header with its as-of line, the company links, four KPIs in the profile's order, then
+// the sections on 12 columns from lg. Every number opens a list that shows the same count. It reads, never writes.
+export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const { locale } = await params
+  const now = new Date()
   const user = await getSessionUser()
 
   if (user && shouldUseEmployeeHome(user)) {
@@ -55,276 +68,116 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
   // C2: the work center needs dashboard:view, so its link shows only to people who can open it.
   const canOpenWorkCenter = user ? hasPermission(user, "dashboard", "view") : false
-  const [t, messages] = await Promise.all([getTranslations("dashboard"), getMessages()])
-  const systemLogMessages = messages.systemLogPage && typeof messages.systemLogPage === "object"
-    ? messages.systemLogPage as Record<string, string>
-    : {}
-  const translateSystemLog = (key: string) => systemLogMessages[key.replaceAll(".", "_")] ?? key
-  const warrantyThreshold = new Date()
-  warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
-  const monthRange = getMonthRange(new Date())
-  const approvalInboxAccess = user ? getApprovalInboxAccess(user) : null
-  const emptyApprovalInboxCounts: ApprovalInboxCounts = { total: 0, disposal: 0, audit: 0 }
-  const dashboardTimingMeta = { route: "/dashboard", locale, approvalInbox: Boolean(approvalInboxAccess?.canAnyApproval) }
+  // Each part needs the view permission of the lists it opens (R25).
+  const canViewAssets = user ? hasPermission(user, "asset", "view") : false
+  const canViewAudit = user ? hasPermission(user, "audit", "view") : false
+  const profile = user ? getDashboardProfile(user, getApprovalInboxAccess(user).canAnyApproval) : "overview"
+  const meta = { route: "/dashboard", locale, profile }
 
-  const [
-    [totalAssets, assetStatusRows, warrantyExpiring],
-    recentLogs,
-    [openRepairs, pendingAuditFindings, pendingDisposals, approvedDisposals],
-    approvalInboxCounts,
-    crossScopeSummary,
-    [
-      currentMonthAssets,
-      previousMonthAssets,
-      currentMonthMaintenance,
-      previousMonthMaintenance,
-      currentMonthAuditFindings,
-      previousMonthAuditFindings,
-      currentMonthDisposals,
-      previousMonthDisposals,
-    ],
-  ] = await withPerformanceTiming(
+  // Round 1: the companies, the words and the waiting counts (the read-only source, which records nothing: R10).
+  const [companies, t, tNotifications, waitingWork] = await withPerformanceTiming(
     "dashboard.initial-data",
     () => Promise.all([
-      withPerformanceTiming(
-        "dashboard.kpi-counts",
-        () => Promise.all([
-          prisma.asset.count({ where: { isActive: true } }),
-          prisma.assetStatus.findMany({
-            where: { isActive: true, name: { in: [...dashboardAssetStatusNames] } },
-            select: {
-              id: true,
-              name: true,
-              _count: { select: { assets: { where: { isActive: true } } } },
-            },
-          }),
-          prisma.asset.count({
-            where: {
-              isActive: true,
-              warrantyEndDate: { gte: new Date(), lte: warrantyThreshold },
-            },
-          }),
-        ]),
-        dashboardTimingMeta
-      ),
-      withPerformanceTiming(
-        "dashboard.recent-activity",
-        () => prisma.systemLog.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 8,
-          include: { user: { select: { displayName: true, username: true } } },
-        }),
-        { ...dashboardTimingMeta, limit: 8 }
-      ),
-      withPerformanceTiming(
-        "dashboard.urgent-work",
-        () => Promise.all([
-          prisma.maintenanceTicket.count({ where: openRepairRecordWhere }),
-          prisma.auditFinding.count({ where: { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } } }),
-          prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
-          prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
-        ]),
-        dashboardTimingMeta
-      ),
-      withPerformanceTiming(
-        "dashboard.approval-inbox",
-        () => user && approvalInboxAccess?.canAnyApproval ? getApprovalInboxCounts(user) : Promise.resolve(emptyApprovalInboxCounts),
-        dashboardTimingMeta
-      ),
-      withPerformanceTiming(
-        "dashboard.cross-scope",
-        () => buildDashboardAssetCrossScopeSummary(),
-        { ...dashboardTimingMeta, limit: 5 }
-      ),
-      withPerformanceTiming(
-        "dashboard.monthly-trends",
-        () => Promise.all([
-          prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-          prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-          prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-          prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.currentStart, lt: monthRange.nextStart }, auditRound: { isActive: true, status: auditRoundCoverageWhere } } }),
-          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.previousStart, lt: monthRange.currentStart }, auditRound: { isActive: true, status: auditRoundCoverageWhere } } }),
-          prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-          prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-        ]),
-        dashboardTimingMeta
-      ),
+      prisma.company.findMany({ where: { isActive: true }, select: { id: true, code: true, nameTh: true }, orderBy: { code: "asc" } }),
+      getTranslations("dashboard"),
+      getTranslations("notifications"),
+      user ? withPerformanceTiming("dashboard.waiting-work", () => getWaitingWork(user, now), meta) : null,
     ]),
-    dashboardTimingMeta
+    meta
   )
 
-  const crossScopeTotal = crossScopeSummary.all
-  const crossScopeAssetsHref = buildDashboardCrossScopeHref(locale, "all")
-  const assetStatusMetrics = buildDashboardAssetStatusMetrics(
-    locale,
-    assetStatusRows.map((row) => ({ id: row.id, name: row.name, count: row._count.assets })),
-  )
-  const inUse = assetStatusMetrics.inUse.count
-  const ready = assetStatusMetrics.ready.count
-  const pendingRepair = assetStatusMetrics.pendingRepair.count
-  const underMaintenance = assetStatusMetrics.underMaintenance.count
-  // The seven totals are StatStrip cells, each opening its list (no icons and no tone colors).
-  const kpiItems: StatStripItem[] = [
-    { key: "totalAssets", label: t("totalAssets"), value: formatCount(totalAssets), href: buildExactAssetRegisterHref(locale) },
-    { key: "inUse", label: t("inUse"), value: formatCount(inUse), href: assetStatusMetrics.inUse.href },
-    { key: "readyToDeploy", label: t("readyToDeploy"), value: formatCount(ready), href: assetStatusMetrics.ready.href },
-    { key: "pendingRepair", label: t("pendingRepair"), value: formatCount(pendingRepair), href: assetStatusMetrics.pendingRepair.href },
-    { key: "underMaintenance", label: t("underMaintenance"), value: formatCount(underMaintenance), href: assetStatusMetrics.underMaintenance.href },
-    { key: "warrantyExpiring", label: t("warrantyExpiring"), value: formatCount(warrantyExpiring), href: buildExactAssetRegisterHref(locale, { dataQuality: "warranty" }) },
-    { key: "crossScopeAssets", label: t("crossScopeAssets"), value: formatCount(crossScopeTotal), href: crossScopeAssetsHref },
-  ]
+  const companyId = normalizeDashboardCompanyId((await searchParams).companyId, companies)
+  const companyName = companyId ? companies.find((company) => company.id === companyId)?.nameTh ?? null : null
+  const waitingKeysWithCount = waitingWork ? waitingWork.visibleKeys.filter((key) => waitingWork.counts[key] > 0) : []
 
-  const actionCardMap: Record<DashboardActionCardKey, DashboardActionCard> = {
-    approvalInbox: {
-      label: t("approvalInbox"),
-      value: approvalInboxCounts.total,
-      detail: t("approvalInboxDetail"),
-      href: `/${locale}/admin/approvals`,
-      tone: approvalInboxCounts.total > 0 ? "danger" : "primary",
-    },
-    openRepairs: {
-      label: t("openRepairs"),
-      value: openRepairs,
-      detail: t("openRepairsDetail"),
-      href: `/${locale}/maintenance?status=in_progress`,
-      tone: openRepairs > 0 ? "warning" : "primary",
-    },
-    pendingAuditFindings: {
-      label: t("pendingAuditFindings"),
-      value: pendingAuditFindings,
-      detail: t("pendingAuditFindingsDetail"),
-      href: `/${locale}/audit/findings?status=pending`,
-      tone: "warning",
-    },
-    pendingDisposals: {
-      label: t("pendingDisposals"),
-      value: pendingDisposals,
-      detail: t("pendingDisposalsDetail"),
-      href: `/${locale}/disposal?status=pending`,
-      tone: "danger",
-    },
-    approvedDisposals: {
-      label: t("approvedDisposals"),
-      value: approvedDisposals,
-      detail: t("approvedDisposalsDetail"),
-      href: `/${locale}/disposal?status=approved`,
-      tone: "warning",
-    },
+  // Round 2: the overview for the chosen company, and the ages of the kinds that have a count (R11).
+  const [overview, ages] = await Promise.all([
+    withPerformanceTiming("dashboard.overview", () => getDashboardOverview({ companyId, now }), meta),
+    withPerformanceTiming(
+      "dashboard.waiting-ages",
+      (): Promise<Partial<Record<WaitingWorkKey, WaitingWorkAge>>> =>
+        user && waitingWork && waitingKeysWithCount.length > 0 ? getWaitingWorkAges(user, waitingKeysWithCount, waitingWork.rules, now) : Promise.resolve({}),
+      meta
+    ),
+  ])
+
+  // With no visible key nothing reads a count.
+  const waiting = buildDashboardWaiting(waitingWork ?? { counts: {} as WaitingWorkCounts, visibleKeys: [] }, ages)
+  const showWaiting = (waitingWork?.visibleKeys.length ?? 0) > 0
+  const statusRows = buildDashboardStatusTable(overview.statusRows, locale, companyId)
+  const round = overview.audit.round
+  const auditValue = round && overview.audit.expected > 0 ? auditPercent(overview.audit.processed, overview.audit.expected) / 100 : null
+  const withCompany = (note: string) => (companyName ? t("noteCompany", { company: companyName, note }) : note)
+  const footLinkClassName = cn(linkVariants({ size: "inherit" }), "relative z-10")
+  const idleFoot = t("idleFoot", { count: formatCount(overview.idle180) })
+  const responsibilityFoot = t("responsibilityFoot", { count: formatCount(overview.responsibilityMissing) })
+
+  const kpiCells: Record<DashboardKpiKey, StatStripItem | null> = {
+    total: canViewAssets
+      ? {
+          key: "total",
+          label: t("totalAssets"),
+          value: formatCount(overview.total),
+          href: buildDashboardRegisterHref(locale, "total", companyId),
+          filterNote: withCompany(t("noteTotal")),
+          foot: <Link href={buildDashboardRegisterHref(locale, "idle180", companyId)} className={footLinkClassName}>{idleFoot}</Link>,
+          footTitle: idleFoot,
+        }
+      : null,
+    custodian: canViewAssets
+      ? {
+          key: "custodian",
+          label: t("custodianAssigned"),
+          value: formatCount(overview.custodianAssigned),
+          unit: overview.custodianShare === null ? undefined : formatPercent(overview.custodianShare),
+          href: buildDashboardRegisterHref(locale, "custodianAssigned", companyId),
+          filterNote: withCompany(t("noteCustodian")),
+          foot: <Link href={buildDashboardRegisterHref(locale, "responsibilityMissing", companyId)} className={footLinkClassName}>{responsibilityFoot}</Link>,
+          footTitle: responsibilityFoot,
+        }
+      : null,
+    // The sum of the table below, in-page (R24); the source has no company, so the note names none.
+    waiting: showWaiting
+      ? {
+          key: "waiting",
+          label: t("waitingTitle"),
+          value: formatCount(waiting.total),
+          unit: t("unitItems"),
+          href: "#dashboard-waiting",
+          filterNote: t("noteWaiting"),
+          foot: waiting.oldest ? t("oldestFoot", { days: formatCount(waiting.oldest.days) }) : undefined,
+          attention: Boolean(waiting.oldest?.overdue),
+        }
+      : null,
+    // The round page's own percent and behind rule (R21); the item list narrows to the chosen company (R13); the
+    // other open rounds are never a number (R15).
+    audit: canViewAudit
+      ? {
+          key: "audit",
+          label: round ? t("auditRoundKpi", { code: round.code }) : t("auditRoundNone"),
+          value: auditValue === null ? null : formatPercent(auditValue),
+          href: round ? buildAuditRoundItemsHref(locale, round.id, { companyId: companyId ?? undefined }) : `/${locale}/audit/rounds${overview.audit.otherOpen > 0 ? "?view=open" : ""}`,
+          filterNote: withCompany(t("noteAudit")),
+          meter: round ? <PaceBar value={auditValue ?? 0} pace={overview.audit.pace} label={t("auditBarLabel", { percent: formatPercent(auditValue ?? 0), pace: formatPercent(overview.audit.pace ?? 0) })} behind={isBehindPace(overview.audit.processed, overview.audit.expected, overview.audit.pace)} /> : undefined,
+          foot: round ? t("auditFoot", { processed: formatCount(overview.audit.processed), expected: formatCount(overview.audit.expected), pace: formatPercent(overview.audit.pace ?? 0) }) : t(overview.audit.otherOpen > 0 ? "noDueRound" : "noRound"),
+        }
+      : null,
   }
-  const crossScopeActionCard: DashboardActionCard = {
-    label: t("crossScopeActionTitle"),
-    value: crossScopeSummary.custodianCompany,
-    detail: t("crossScopeActionDetail"),
-    href: buildDashboardCrossScopeHref(locale, "custodian_company"),
-    tone: "warning",
+  const kpiItems = DASHBOARD_KPI_ORDER[profile].map((key) => kpiCells[key]).filter((item): item is StatStripItem => item !== null)
+
+  const zeroLineClassName = waiting.rows.length > 0 ? "border-t border-border-soft" : undefined
+  const waitingAge = (age: WaitingWorkAge) => {
+    const described = describeWaitingAge(age, locale, now)
+    return { text: t(described.key, described.values), overdue: described.overdue }
   }
-  const actionCards = [
-    ...buildDashboardActionCardKeys({
-    approvalInbox: {
-      visible: Boolean(approvalInboxAccess?.canAnyApproval),
-      ...approvalInboxCounts,
-    },
-    openRepairs,
-    pendingAuditFindings,
-    pendingDisposals,
-    approvedDisposals,
-    }).map((key) => actionCardMap[key]),
-    ...(crossScopeTotal > 0 ? [crossScopeActionCard] : []),
-  ]
-  const crossScopeCards = [
-    {
-      key: "all",
-      label: t("crossScopeAll"),
-      value: crossScopeSummary.all,
-      crossScope: "all" as const,
-    },
-    {
-      key: "custodian_company",
-      label: t("crossScopeCustodianCompany"),
-      value: crossScopeSummary.custodianCompany,
-      crossScope: "custodian_company" as const,
-    },
-    {
-      key: "custodian_branch",
-      label: t("crossScopeCustodianBranch"),
-      value: crossScopeSummary.custodianBranch,
-      crossScope: "custodian_branch" as const,
-    },
-    {
-      key: "location_branch",
-      label: t("crossScopeLocationBranch"),
-      value: crossScopeSummary.locationBranch,
-      crossScope: "location_branch" as const,
-    },
-  ]
-  const crossScopePreviewRows = crossScopeSummary.rows
-  const trendCards = [
-    {
-      label: t("trendAssetsCreated"),
-      href: buildExactAssetRegisterHref(locale, { sort: "createdAt", direction: "desc" }),
-      current: currentMonthAssets,
-      previous: previousMonthAssets,
-    },
-    {
-      label: t("trendMaintenanceOpened"),
-      href: `/${locale}/maintenance`,
-      current: currentMonthMaintenance,
-      previous: previousMonthMaintenance,
-    },
-    {
-      label: t("trendAuditFindings"),
-      href: `/${locale}/audit/findings?status=all`,
-      current: currentMonthAuditFindings,
-      previous: previousMonthAuditFindings,
-    },
-    {
-      label: t("trendDisposalsRequested"),
-      href: `/${locale}/disposal`,
-      current: currentMonthDisposals,
-      previous: previousMonthDisposals,
-    },
-  ]
-  // Like the work center (2B R-d): no tone fill; a count that needs action and is above 0 gets the warning foot line.
-  const actionItems = actionCards.map((card): StatStripItem => ({
-    key: card.label,
-    label: card.label,
-    value: formatCount(card.value),
-    href: card.href,
-    foot: card.detail,
-    footTitle: card.detail,
-    attention: card.value > 0 && (card.tone === "warning" || card.tone === "danger"),
-  }))
-  // This month's count, with last month and the change in the foot line (it was a colored arrow pill).
-  const trendItems = trendCards.map((card): StatStripItem => ({
-    key: card.label,
-    label: card.label,
-    value: formatCount(card.current),
-    href: card.href,
-    foot: `${t("thisMonth")} · ${t("previousMonth")}: ${formatCount(card.previous)} · ${formatTrendDelta(card.current, card.previous)}`,
-  }))
-  const statusItems = [
-    { key: "inUse", label: t("inUse"), value: inUse, href: assetStatusMetrics.inUse.href, tone: "success" as const },
-    { key: "readyToDeploy", label: t("readyToDeploy"), value: ready, href: assetStatusMetrics.ready.href, tone: "info" as const },
-    { key: "pendingRepair", label: t("pendingRepair"), value: pendingRepair, href: assetStatusMetrics.pendingRepair.href, tone: "warning" as const },
-    { key: "underMaintenance", label: t("underMaintenance"), value: underMaintenance, href: assetStatusMetrics.underMaintenance.href, tone: "danger" as const },
-  ]
-  const recentLogLabels = await buildSystemLogRecordLabels(recentLogs)
-  const readableLogs = recentLogs.map((log) => formatDashboardLog(buildSystemLogPresentation(log, recentLogLabels, locale, translateSystemLog), t))
 
-  return (
-    <div className="space-y-6">
-      <PageHeader title={t("title")} />
-
-      <div className="space-y-3">
-        {splitStatRows(kpiItems).map((row) => (
-          <StatStrip key={row[0].key} items={row} />
-        ))}
-      </div>
-
+  const sections: Partial<Record<DashboardSectionKey, ReactNode>> = {
+    waiting: showWaiting ? (
       <ContentPanel
-        title={t("actionableTitle")}
-        description={t("actionableSubtitle")}
+        divided
+        flush
+        title={t("waitingTitle")}
+        description={companyId ? t("allCompanies") : undefined}
         actions={canOpenWorkCenter ? (
           <Link href={`/${locale}/work-center?panel=overview`} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
             {t("openWorkCenter")}
@@ -332,186 +185,169 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           </Link>
         ) : undefined}
       >
-        <div className="space-y-3">
-          {splitStatRows(actionItems).map((row) => (
-            <StatStrip key={row[0].key} items={row} />
-          ))}
-        </div>
+        {waiting.rows.length > 0 ? (
+          <>
+            <DataTable framed={false} className="hidden md:block" caption={t("waitingTitle")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{t("waitingColumnKind")}</DataTableHead>
+                  <DataTableHead align="right">{t("columnCount")}</DataTableHead>
+                  <DataTableHead>{t("waitingColumnAge")}</DataTableHead>
+                  <DataTableHead hideLabel>{t("waitingColumnNext")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {waiting.rows.map((row) => {
+                  const href = buildWaitingWorkHref(locale, row.key)
+                  const age = row.age ? waitingAge(row.age) : null
+                  return (
+                    <DataTableRow key={row.key} data-waiting-key={row.key}>
+                      <DataTableCell className="text-foreground">{tNotifications(row.key)}</DataTableCell>
+                      <DataTableCell numeric>
+                        <Link href={href} title={tNotifications(`${row.key}Detail`)} className={cn(linkVariants({ size: "inherit" }), "num font-semibold")}>
+                          {formatCount(row.count)}
+                        </Link>
+                      </DataTableCell>
+                      <DataTableCell className={cn("whitespace-nowrap", age?.overdue ? "text-warning" : "text-muted-foreground")}>
+                        {age ? (
+                          <span className="inline-flex items-center gap-1">
+                            {age.overdue ? <OverdueIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
+                            {age.text}
+                          </span>
+                        ) : null}
+                      </DataTableCell>
+                      <DataTableCell className="text-right">
+                        <Link href={href} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                          {t(`waitingNext.${row.key}`)}
+                          <span className="sr-only"> {tNotifications(row.key)}</span>
+                        </Link>
+                      </DataTableCell>
+                    </DataTableRow>
+                  )
+                })}
+              </DataTableBody>
+            </DataTable>
+            <ContentPanelRows className="md:hidden">
+              {waiting.rows.map((row) => {
+                const age = row.age ? waitingAge(row.age) : null
+                return (
+                  <li key={row.key}>
+                    <Link
+                      href={buildWaitingWorkHref(locale, row.key)}
+                      data-waiting-key={row.key}
+                      className="-mx-4 -my-3 flex min-h-14 items-center gap-3 px-4 py-3 hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:outline-none"
+                    >
+                      <span className="num min-w-12 text-xl font-semibold text-foreground">{formatCount(row.count)}</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm text-foreground">{tNotifications(row.key)}</span>
+                        {age && row.age ? (
+                          <span className={cn("flex items-center gap-1 text-meta", age.overdue ? "text-warning" : "text-muted-foreground")}>
+                            {age.overdue ? <OverdueIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
+                            {row.age.kind === "age" ? t("waitingAgeRow", { age: age.text }) : age.text}
+                          </span>
+                        ) : null}
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ContentPanelRows>
+          </>
+        ) : null}
+        {waiting.zeroKeys.length > 0 ? (
+          <EmptyNote tone="clear" padded className={zeroLineClassName}>{t("waitingZero", { kinds: waiting.zeroKeys.map((key) => tNotifications(key)).join(" · ") })}</EmptyNote>
+        ) : null}
       </ContentPanel>
-
-      <ContentPanel
-        title={t("crossScopePanelTitle")}
-        description={t("crossScopePanelSubtitle")}
-        actions={
-          <Link href={crossScopeAssetsHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
-            {t("crossScopeViewAll")}
-            <ArrowRight aria-hidden="true" className="size-4" />
-          </Link>
-        }
-      >
-        <StatStrip
-          items={crossScopeCards.map((card) => ({ key: card.key, label: card.label, value: formatCount(card.value), href: buildDashboardCrossScopeHref(locale, card.crossScope) }))}
-        />
-        <DashboardCrossScopePreview
-          rows={crossScopePreviewRows}
-          locale={locale}
-          labels={{
-            title: t("crossScopePreviewTitle"),
-            empty: t("crossScopePreviewEmpty"),
-            custodianCompany: t("crossScopeCustodianCompany"),
-            custodianBranch: t("crossScopeCustodianBranch"),
-            locationBranch: t("crossScopeLocationBranch"),
-          }}
-        />
-      </ContentPanel>
-
-      <ContentPanel title={t("monthlyTrendTitle")} description={t("monthlyTrendSubtitle")}>
-        <StatStrip items={trendItems} />
-      </ContentPanel>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ContentPanel title={t("statusOverview")}>
-          <div className="grid gap-1">
-            {statusItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                className="flex min-h-11 items-center justify-between gap-3 rounded-md px-2 text-sm transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0 md:py-1.5"
-              >
-                <StatusBadge label={item.label} tone={item.tone} />
-                <span className="num font-semibold text-foreground">{formatCount(item.value)}</span>
-              </Link>
-            ))}
-          </div>
-        </ContentPanel>
-        <ContentPanel title={t("recentActivity")}>
-          {recentLogs.length === 0 ? (
-            <EmptyNote>{t("noRecentActivity")}</EmptyNote>
-          ) : (
-            <div className="space-y-3">
-              {readableLogs.map((log) =>
-                log.href ? (
-                  <Link key={log.id} href={log.href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:bg-row-hover">
-                    <ActivityLogContent log={log} />
-                  </Link>
-                ) : (
-                  <div key={log.id} className="rounded-md border border-border bg-background p-3 text-sm">
-                    <ActivityLogContent log={log} />
-                  </div>
-                ),
-              )}
+    ) : null,
+    status: canViewAssets ? (
+      <ContentPanel divided flush title={t("statusTitle")}>
+        {statusRows.length > 0 ? (
+          <>
+            <div className="px-4 pt-4 md:px-5">
+              <DistributionBar segments={statusRows.map((row) => ({ key: row.key, count: row.count, tone: row.tone, href: row.href, title: t("statusSegmentTitle", { status: row.name, count: formatCount(row.count), note: withCompany(t("noteStatus", { status: row.name })) }) }))} />
             </div>
-          )}
-        </ContentPanel>
+            <DataTable framed={false} caption={t("statusTitle")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{t("statusColumn")}</DataTableHead>
+                  <DataTableHead align="right">{t("columnCount")}</DataTableHead>
+                  <DataTableHead align="right" className="hidden md:table-cell">{t("shareColumn")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {statusRows.map((row) => (
+                  <DataTableRow key={row.key}>
+                    <DataTableCell>
+                      <Link href={row.href} title={withCompany(t("noteStatus", { status: row.name }))} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center gap-2 md:min-h-0")}>
+                        <span aria-hidden="true" className={cn("size-2.5 shrink-0 rounded-xs", statusFillVariants({ tone: row.tone }))} />
+                        {row.name}
+                      </Link>
+                    </DataTableCell>
+                    <DataTableCell numeric>{formatCount(row.count)}</DataTableCell>
+                    <DataTableCell numeric className="hidden text-muted-foreground md:table-cell">{formatPercent(row.share, 1)}</DataTableCell>
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          </>
+        ) : (
+          <EmptyNote padded>{t("statusEmpty")}</EmptyNote>
+        )}
+        <p className="border-t border-border-soft px-4 py-3 md:px-5">
+          <Link href={buildDashboardRegisterHref(locale, "crossScope", companyId)} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+            {t("crossScopeLine", { count: formatCount(overview.crossScopeTotal) })}
+          </Link>
+        </p>
+      </ContentPanel>
+    ) : null,
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t("title")} meta={t("asOf", { time: formatAsOf(now, locale) })} />
+
+      {companies.length > DASHBOARD_COMPANY_TAB_LIMIT ? (
+        <form role="search" action={`/${locale}/dashboard`} className="hidden items-end gap-2 md:flex">
+          <FilterSelect
+            label={t("scopeNavigation")}
+            hideLabel
+            fieldSize="md"
+            name="companyId"
+            defaultValue={companyId ?? ""}
+            allLabel={t("allCompanies")}
+            options={companies.map((company) => ({ value: company.id, label: company.nameTh }))}
+            className="w-64"
+          />
+          <FilterFormActions submitLabel={t("showScope")} />
+        </form>
+      ) : (
+        <TabNav
+          aria-label={t("scopeNavigation")}
+          current={companyId ?? "all"}
+          items={[
+            { key: "all", label: t("allCompanies"), href: buildDashboardHref(locale, null) },
+            ...companies.map((company) => ({ key: company.id, label: company.nameTh, href: buildDashboardHref(locale, company.id) })),
+          ]}
+          className="hidden md:block"
+        />
+      )}
+      {companyName ? (
+        <FilterChipList
+          label={t("scopeNavigation")}
+          removeLabel={t("removeFilter")}
+          chips={[{ key: "company", label: t("companyChip", { name: companyName }), href: buildDashboardHref(locale, null), mobileOnly: true }]}
+        />
+      ) : null}
+
+      {kpiItems.length > 0 ? <StatStrip items={kpiItems} /> : null}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {DASHBOARD_SECTION_ORDER[profile].filter((key) => sections[key]).map((key, index) => (
+          <div key={key} id={`dashboard-${key}`} data-dashboard-section={key} className={cn("min-w-0", index % 2 === 0 ? "lg:col-span-7" : "lg:col-span-5")}>
+            {sections[key]}
+          </div>
+        ))}
       </div>
     </div>
   )
-}
-
-type ReadableDashboardLog = {
-  id: string
-  title: string
-  detail: string
-  meta: string
-  href: string | null
-}
-
-type DashboardTranslator = {
-  (key: string): string
-  (key: string, values: Record<string, string | number | Date>): string
-}
-
-// The change against last month in whole percent, as the old trend pill showed it: "+20%", "-5%" or "0%"; with no
-// previous month, any count is "+100%".
-function formatTrendDelta(current: number, previous: number) {
-  const delta = current - previous
-  if (delta === 0) return "0%"
-  const percent = previous > 0 ? Math.round((delta / previous) * 100) : 100
-  return `${delta > 0 ? "+" : ""}${percent}%`
-}
-
-function ActivityLogContent({ log }: { log: ReadableDashboardLog }) {
-  return (
-    <div>
-      <div className="font-medium text-foreground">{log.title}</div>
-      <div className="mt-1 text-sm text-muted-foreground">{log.detail}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{log.meta}</div>
-    </div>
-  )
-}
-
-function DashboardCrossScopePreview({
-  rows,
-  locale,
-  labels,
-}: {
-  rows: AssetCrossScopeSummaryRow[]
-  locale: string
-  labels: {
-    title: string
-    empty: string
-    custodianCompany: string
-    custodianBranch: string
-    locationBranch: string
-  }
-}) {
-  return (
-    <div className="mt-4 rounded-md border border-border bg-background">
-      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{labels.title}</div>
-      {rows.length === 0 ? (
-        <EmptyNote padded>{labels.empty}</EmptyNote>
-      ) : (
-        <div className="divide-y divide-border">
-          {rows.map((row) => {
-            const flagLabels = getAssetCrossScopeFlagLabels(row.flags, {
-              custodianCompany: labels.custodianCompany,
-              custodianBranch: labels.custodianBranch,
-              locationBranch: labels.locationBranch,
-            })
-
-            return (
-              <Link key={row.id} href={`/${locale}/assets/${row.id}`} className="block px-4 py-3 transition-colors hover:bg-accent">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0">
-                    <div className="font-medium text-foreground"><span className="tag">{row.assetTag}</span></div>
-                    <div className="mt-1 text-sm text-muted-foreground">{row.name}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{row.ownerBranch}</div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 md:max-w-md md:justify-end">
-                    {flagLabels.map((label) => (
-                      <StatusBadge key={label} label={label} tone="warning" />
-                    ))}
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function buildDashboardCrossScopeHref(locale: string, crossScope: AssetCrossScopeFilter) {
-  return buildExactAssetRegisterHref(locale, { crossScope, page: "1" })
-}
-
-function getMonthRange(now: Date) {
-  const currentStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const nextStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  return { previousStart, currentStart, nextStart }
-}
-
-function formatDashboardLog(log: SystemLogPresentation, t: DashboardTranslator): ReadableDashboardLog {
-  const userLabel = log.userLabel === "-" ? t("systemUser") : log.userLabel
-  const recordLabel = log.recordLabel !== "-" ? log.recordLabel : null
-
-  return {
-    id: log.id,
-    title: recordLabel ? t("activityTitleWithRecord", { action: log.actionLabel, module: log.moduleLabel, record: recordLabel }) : t("activityTitle", { action: log.actionLabel, module: log.moduleLabel }),
-    detail: log.remark || t("activityDetail", { user: userLabel }),
-    meta: formatDateTime(log.createdAt),
-    href: log.href,
-  }
 }
