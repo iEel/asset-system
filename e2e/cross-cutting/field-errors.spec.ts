@@ -237,6 +237,8 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   await expectNoFieldError(page, "maintenance-plan-title")
   let planId = ""
   await measure.timed("PM plan save", async () => {
+    // After the refused save the asset select fetches its options again; the save navigates away, so let it finish first.
+    await page.waitForLoadState("networkidle")
     const created = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/maintenance-plans")
     await save(page)
     const response = await created
