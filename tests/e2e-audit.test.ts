@@ -184,6 +184,7 @@ test("IT staff are refused the review and the close; the IT head reviews every f
   assert.equal((head.match(/action: "reject", remark/g) ?? []).length, 1)
   assert.ok(head.includes(`expect(mismatch.department?.code, "the approved department").toBe(runDepartment)`))
   assert.ok(head.includes(thai("auditRound").closeConfirm) && head.includes(thai("auditRound").closeSuccess))
+  assert.ok(head.includes(`getByRole("main").getByText("${thai("auditRound").statusClosed}", { exact: true })`), "the closed badge, in the app's own word")
   const review = read("e2e/audit/review-steps.ts")
   assert.ok(review.includes("export function findingEntry(") && review.includes("export async function browserFetch("))
 })

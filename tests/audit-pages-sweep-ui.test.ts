@@ -104,7 +104,7 @@ test("audit rounds list: the coverage a ContentPanel with frameless gap lists, t
   assert.match(source, /<section aria-labelledby="audit-round-next-actions-title" className="space-y-3">/)
   assert.match(source, /attention: action\.tone === "warning" && action\.count > 0/)
   assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
-  assert.equal(source.match(/<StatusBadge label=\{getAuditRoundStatusLabel\(round\.status, t\)\} status=\{round\.status\} \/>/g)?.length, 2, "the phone card and the table")
+  assert.equal(source.match(/<StatusBadge label=\{getAuditRoundStatusLabel\(round\.status, t\)\} status=\{effectiveAuditRoundStatus\(round\.status\)\} \/>/g)?.length, 2, "the phone card and the table")
   for (const [label, tone] of [["ready", "success"], ["pending", "warning"], ["review", "danger"]]) {
     assert.match(source, new RegExp(`<StatusBadge label=\\{labels\\.${label}\\} tone="${tone}" \\/>`), label)
   }

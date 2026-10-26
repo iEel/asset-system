@@ -51,7 +51,7 @@ export async function getDashboardOverview({ companyId, now }: { companyId: stri
     }),
     prisma.auditItem.groupBy({
       by: ["auditRoundId", "expectedBranchId", "auditStatus"],
-      where: { auditRound: { isActive: true, status: "open" }, ...(companyId ? { expectedCompanyId: companyId } : {}) },
+      where: { auditRound: { isActive: true, status: auditRoundOperationalWhere }, ...(companyId ? { expectedCompanyId: companyId } : {}) },
       _count: { _all: true },
     }),
     // Every branch: expectedBranchId is not a relation.

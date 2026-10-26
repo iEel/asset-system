@@ -92,15 +92,16 @@ function byLatestStartThenCode(a: PickableAuditRound, b: PickableAuditRound): nu
 }
 
 /**
- * The current round (spec §6.4, R15): an open round in its dates with the nearest due date, else the open round past
- * due most recently; ties go to the latest start, then the code. `otherOpen` counts every other operational round.
+ * The current round (spec §6.4, R15): an operational round (open, or an old draft read as open, group 2 spec §14) in
+ * its dates with the nearest due date, else the one past due most recently; ties go to the latest start, then the code.
+ * `otherOpen` counts every other operational round.
  */
 export function pickCurrentAuditRound<T extends PickableAuditRound>(
   rounds: T[],
   today: Date,
   eligible?: (round: T) => boolean,
 ): { current: T | null; otherOpen: number } {
-  const candidates = rounds.filter((round) => round.status === "open" && (eligible ? eligible(round) : true))
+  const candidates = rounds.filter((round) => isAuditRoundOperationalStatus(round.status) && (eligible ? eligible(round) : true))
   const inDates = candidates
     .filter((round) => bangkokDayDiff(round.startDate, today) >= 0 && bangkokDayDiff(today, round.endDate) >= 0)
     .sort((a, b) => a.endDate.getTime() - b.endDate.getTime() || byLatestStartThenCode(a, b))

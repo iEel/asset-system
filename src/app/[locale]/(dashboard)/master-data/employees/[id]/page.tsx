@@ -12,6 +12,8 @@ import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuse
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 import { getAuditRoundItemResultLabelKey } from "@/lib/audit-round-result-filters"
+import { auditRoundStatusLabelKey, effectiveAuditRoundStatus } from "@/lib/audit-round-status"
+import { getStatusTone } from "@/lib/status-tone"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
@@ -488,8 +490,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                   title: round.auditNo,
                   href: `/${locale}/audit/rounds/${round.id}`,
                   meta: `${round.name} / ${formatDate(round.startDate)} - ${formatDate(round.endDate)}`,
-                  badge: getAuditRoundStatusLabel(round.status, t),
-                  tone: round.status === "closed" ? "success" : "info",
+                  badge: getAuditRoundStatusLabel(round.status, tAuditRound),
+                  tone: getStatusTone(effectiveAuditRoundStatus(round.status)),
                 }))}
               />
             </div>
@@ -566,9 +568,6 @@ function formatRoleLabels(roles: string[], t: (key: string) => string) {
   return roles.map((role) => t(`maintenanceRole_${role}`)).join(" / ")
 }
 
-function getAuditRoundStatusLabel(status: string, t: (key: string) => string) {
-  if (status === "draft") return t("auditRoundStatusDraft")
-  if (status === "open") return t("auditRoundStatusOpen")
-  if (status === "closed") return t("auditRoundStatusClosed")
-  return status
+function getAuditRoundStatusLabel(status: string, tAuditRound: (key: string) => string) {
+  return tAuditRound(auditRoundStatusLabelKey(status) ?? "statusOpen")
 }

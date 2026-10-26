@@ -382,7 +382,7 @@ test.describe("The IT head reviews and closes", () => {
       await expect(page.getByText("ปิดรอบตรวจนับสำเร็จ")).toBeVisible()
       await expect(close).toHaveCount(0)
     })
-    await expect(page.getByRole("main").getByText("ปิดรอบ", { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole("main").getByText("ปิดรอบแล้ว", { exact: true }).first()).toBeVisible()
     await recordSettled(page, measure, "round page, closed")
   })
 })

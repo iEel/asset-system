@@ -92,7 +92,7 @@ test("progress is a whole percent, as the round page shows it; behind means belo
   assert.equal(isBehindPace(0, 0, 0.5), false)
 })
 
-test("the current round: in its dates with the nearest due date, else the one past due most recently (spec §6.4)", () => {
+test("the current round: an open round (an old draft reads as open) in its dates with the nearest due date, else the one past due most recently (spec §6.4, group 2 spec §14)", () => {
   const round = (auditNo: string, status: string, start: string, end: string) => ({ auditNo, status, startDate: day(start), endDate: day(end) })
   const today = new Date("2026-10-25T03:00:00Z")
   const a = round("A", "open", "2026-10-01", "2026-10-31")
@@ -101,9 +101,13 @@ test("the current round: in its dates with the nearest due date, else the one pa
   const draft = round("D", "draft", "2026-10-01", "2026-10-26")
   const late = round("E", "open", "2026-09-01", "2026-09-30")
   const later = round("F", "open", "2026-08-01", "2026-10-10")
-  assert.deepEqual(pickCurrentAuditRound([a, b, future, draft, late, later], today), { current: b, otherOpen: 5 })
-  assert.deepEqual(pickCurrentAuditRound([future, draft, late, later], today), { current: later, otherOpen: 3 })
-  assert.deepEqual(pickCurrentAuditRound([future, draft], today), { current: null, otherOpen: 2 })
+  assert.deepEqual(pickCurrentAuditRound([a, b, future, draft, late, later], today), { current: draft, otherOpen: 5 })
+  assert.deepEqual(pickCurrentAuditRound([future, draft, late, later], today), { current: draft, otherOpen: 3 })
+  assert.deepEqual(pickCurrentAuditRound([future, draft], today), { current: draft, otherOpen: 1 })
+  // A draft ties as an open round with the same dates would (group 2 spec §14).
+  const openTwin = { ...draft, status: "open" }
+  assert.equal(pickCurrentAuditRound([a, b, draft], today).current, draft)
+  assert.equal(pickCurrentAuditRound([a, b, openTwin], today).current, openTwin)
   assert.deepEqual(pickCurrentAuditRound([], today), { current: null, otherOpen: 0 })
   const closed = [round("X", "closed", "2026-10-01", "2026-10-31"), round("Y", "cancelled", "2026-10-01", "2026-10-31")]
   assert.deepEqual(pickCurrentAuditRound(closed, today), { current: null, otherOpen: 0 })

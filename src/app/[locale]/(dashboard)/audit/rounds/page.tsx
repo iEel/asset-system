@@ -26,7 +26,13 @@ import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { auditRoundCoverageWhere, auditRoundOperationalWhere, isAuditRoundOperationalStatus } from "@/lib/audit-round-status"
+import {
+  auditRoundCoverageWhere,
+  auditRoundOperationalWhere,
+  auditRoundStatusLabelKey,
+  effectiveAuditRoundStatus,
+  isAuditRoundOperationalStatus,
+} from "@/lib/audit-round-status"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AuditRoundsPageProps = {
@@ -403,7 +409,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
+                      <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={effectiveAuditRoundStatus(round.status)} />
                       <ReadyToCloseBadge
                         status={round.status}
                         insight={insight}
@@ -509,7 +515,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                     </DataTableCell>
                     <DataTableCell className="whitespace-nowrap">
                       <div className="flex flex-col items-start gap-1">
-                        <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
+                        <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={effectiveAuditRoundStatus(round.status)} />
                         <ReadyToCloseBadge
                           status={round.status}
                           insight={insight}
@@ -873,11 +879,7 @@ function filterRoundsByView<T extends AuditRoundListItem>(
 }
 
 function getAuditRoundStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {
-  if (status === "draft") return t("statusDraft")
-  if (status === "open") return t("statusOpen")
-  if (status === "closed") return t("statusClosed")
-  if (status === "cancelled") return t("statusCancelled")
-  return status
+  return t(auditRoundStatusLabelKey(status) ?? "statusOpen")
 }
 
 // The list URL. appendListPage writes page only above 1 and pageSize only when it is not 25, so every default link

@@ -13,6 +13,7 @@ import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { getTranslations } from "next-intl/server"
 import { formatLocationType, getLocationTypeLabels, matchLocationTypesByLabel } from "@/lib/location-types"
 import { assetSearchConditions, buildAssetSearchWhere } from "@/lib/asset-list-query"
+import { auditRoundStatusLabelKey } from "@/lib/audit-round-status"
 
 type SearchResult = {
   id: string
@@ -345,6 +346,7 @@ async function searchMaintenanceTickets(query: string, locale: string): Promise<
 }
 
 async function searchAuditRounds(query: string, locale: string): Promise<SearchResult[]> {
+  const t = await getTranslations({ locale, namespace: "auditRound" })
   const rounds = await prisma.auditRound.findMany({
     where: {
       isActive: true,
@@ -369,7 +371,7 @@ async function searchAuditRounds(query: string, locale: string): Promise<SearchR
     title: `${round.auditNo} - ${round.name}`,
     subtitle: `${label("audit", locale)} ${round.auditYear}`,
     href: `/${locale}/audit/rounds/${round.id}`,
-    badge: { label: round.status, colorCode: null },
+    badge: { label: t(auditRoundStatusLabelKey(round.status) ?? "statusOpen"), colorCode: null },
     metadata: [],
   }))
 }

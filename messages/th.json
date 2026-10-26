@@ -1525,9 +1525,6 @@
     "emptyAuditItems": "ไม่มีรายการตรวจที่เกี่ยวข้อง",
     "emptyAuditRounds": "ไม่มีรอบตรวจที่มีคนนี้ในขอบเขต",
     "auditItemHasFinding": "มีรายการไม่ตรง",
-    "auditRoundStatusDraft": "แบบร่าง",
-    "auditRoundStatusOpen": "เปิดรอบ",
-    "auditRoundStatusClosed": "ปิดรอบ",
     "disposalRelatedTitle": "ตัดจำหน่ายที่เกี่ยวข้อง",
     "disposalRelatedHelp": "รวมคำขอที่เป็นผู้ขอ ผู้อนุมัติ หรือผู้ดำเนินการ",
     "emptyDisposals": "ไม่มีคำขอตัดจำหน่ายที่เกี่ยวข้อง",
@@ -2033,7 +2030,7 @@
     "status": "สถานะ",
     "statusDraft": "ร่าง",
     "statusOpen": "เปิดตรวจ",
-    "statusClosed": "ปิดรอบ",
+    "statusClosed": "ปิดรอบแล้ว",
     "statusCancelled": "ยกเลิก",
     "items": "รายการตรวจ",
     "totalExpected": "ทั้งหมด",
@@ -3742,7 +3739,7 @@
     "value_ownershipType_software_license": "ซอฟต์แวร์/License",
     "value_auditRound_status_draft": "ร่าง",
     "value_auditRound_status_open": "เปิดตรวจ",
-    "value_auditRound_status_closed": "ปิดรอบ",
+    "value_auditRound_status_closed": "ปิดรอบแล้ว",
     "value_auditRound_status_cancelled": "ยกเลิก"
   },
   "adminUsersPage": {

@@ -33,7 +33,7 @@ import { formatCount } from "@/lib/display-format"
 import { lastListPage } from "@/lib/list-pagination"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
-import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
+import { auditRoundStatusLabelKey, effectiveAuditRoundStatus, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { buildAuditCorrectionHistoryByItemId, type AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { paginationRange } from "@/lib/master-data-query"
 import {
@@ -482,7 +482,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         meta={
           <>
             <span className="tag">{round.auditNo}</span>
-            <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
+            <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={effectiveAuditRoundStatus(round.status)} />
             <span>
               {formatDate(round.startDate)} – {formatDate(round.endDate)}
             </span>
@@ -863,11 +863,7 @@ function formatAuditCorrectionFields(correction: AuditCorrectionHistoryItem, t: 
 }
 
 function getAuditRoundStatusLabel(status: string, t: AuditRoundTranslator) {
-  if (status === "draft") return t("statusDraft")
-  if (status === "open") return t("statusOpen")
-  if (status === "closed") return t("statusClosed")
-  if (status === "cancelled") return t("statusCancelled")
-  return status
+  return t(auditRoundStatusLabelKey(status) ?? "statusOpen")
 }
 
 function buildAuditRoundScanEditHref({

@@ -18,7 +18,7 @@ test("the overview counts with the register's own filters, in one round of reads
   assert.match(source, /countDashboardAssetCrossScope\(companyId\)/)
   assert.match(source, /status: auditRoundOperationalWhere/)
   assert.match(source, /by: \["auditRoundId", "expectedBranchId", "auditStatus"\]/)
-  assert.match(source, /auditRound: \{ isActive: true, status: "open" \}, \.\.\.\(companyId \? \{ expectedCompanyId: companyId \} : \{\}\)/)
+  assert.match(source, /auditRound: \{ isActive: true, status: auditRoundOperationalWhere \}, \.\.\.\(companyId \? \{ expectedCompanyId: companyId \} : \{\}\)/)
   assert.match(source, /buildDashboardAudit\(\{/)
   assert.match(source, /today: startOfBangkokDay\(now\)/)
   assert.match(source, /narrowedToCompany: companyId !== null/)
