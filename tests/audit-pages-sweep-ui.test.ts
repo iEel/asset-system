@@ -96,15 +96,16 @@ test("findings page: the list frame on the panel classes, StatusBadge without lo
   assert.doesNotMatch(source, /function (?:FindingComparison|ResolutionStateBadge|ReviewStatusBadge|ActionStatusBadge)\b|info-soft|info-border|text-info|hover:underline|hover:bg-accent|text-primary|\btext-xs\b|rounded-lg border/)
 })
 
-test("audit rounds list: the coverage a ContentPanel with frameless gap lists, the next actions a StatStrip, the list frame on the panel classes, StatusBadge states, KeyValueList facts, outline sm workflow links, text links and tag scopes (spec 2D §3.4, D7, D9, D19, M21, M22, M29, M33)", () => {
+test("audit rounds list: the coverage a folded `<details>` on the panel classes with frameless gap lists, the next actions a StatStrip, the list frame on the panel classes, one StatusBadge state, KeyValueList facts, outline sm workflow links, text links and tag scopes (spec 2D §3.4, D7, D9, D19, M21, M22, M29, M33; group 2 spec §6)", () => {
   const source = read(`${D}audit/rounds/page.tsx`)
-  assert.match(source, /<ContentPanel\s+title=\{t\("coverageTitle", \{ year: toDisplayYear\(currentYear, locale\) \}\)\}\s+description=\{t\("coverageHelp"\)\}/)
+  assert.match(source, /\{\/\* A <details> cannot be ContentPanel: the panel classes \(2D-2 R4\)\.[^*]*\*\/\}\n\s+<details className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5"\)\}>/)
   assert.match(source, /\{t\("coverageRoundCount"\)\}: <span className="num font-semibold text-foreground">\{formatCount\(currentYearRoundCount\)\}<\/span>/)
   assert.match(source, /<section aria-labelledby="audit-round-next-actions-title" className="space-y-3">/)
   assert.match(source, /attention: action\.tone === "warning" && action\.count > 0/)
   assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
-  assert.equal(source.match(/<StatusBadge label=\{getAuditRoundStatusLabel\(round\.status, t\)\} status=\{effectiveAuditRoundStatus\(round\.status\)\} \/>/g)?.length, 2, "the phone card and the table")
-  for (const [label, tone] of [["ready", "success"], ["pending", "warning"], ["review", "danger"]]) {
+  assert.match(source, /<StatusBadge label=\{labels\.status\} status=\{effectiveAuditRoundStatus\(status\)\} \/>/)
+  assert.equal(source.match(/<RoundStatusBadges\b/g)?.length, 2, "the phone card and the table")
+  for (const [label, tone] of [["ready", "success"], ["pendingReview", "warning"]]) {
     assert.match(source, new RegExp(`<StatusBadge label=\\{labels\\.${label}\\} tone="${tone}" \\/>`), label)
   }
   assert.match(source, /<KeyValueList\s+className="mt-3"/)

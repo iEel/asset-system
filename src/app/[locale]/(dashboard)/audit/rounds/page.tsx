@@ -10,20 +10,22 @@ import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { cn, formatDate } from "@/lib/utils"
 import { toDisplayYear } from "@/lib/display-year"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
-import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, DataTableRow, TableEmptyRow } from "@/components/ui/data-table"
 import { EmptyNote } from "@/components/ui/empty-note"
+import { FilterChipList } from "@/components/ui/filter-chips"
 import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil } from "@/components/ui/nil"
+import { PaceBar } from "@/components/ui/pace-bar"
 import { PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
-import { RowActions, type RowActionGroup, type RowNextAction } from "@/components/ui/row-actions"
+import { RowActions, type RowActionGroup } from "@/components/ui/row-actions"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
+import { toneIcons } from "@/components/ui/tone-icons"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
-import { formatCount } from "@/lib/display-format"
+import { formatCount, formatPercent } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
@@ -40,22 +42,34 @@ import {
   auditRoundTabOf,
   auditRoundTabs,
   bangkokYear,
+  buildAuditRoundDueLine,
   buildAuditRoundInsights,
+  buildAuditRoundNextStep,
+  buildAuditRoundProgress,
   buildAuditRoundScopeParts,
   buildAuditRoundSearchWhere,
   buildAuditRoundsHref,
   emptyAuditRoundListInsight,
   filterRoundsByView,
   foldAuditRoundFindingWork,
+  isAuditRoundAwaitingDecision,
+  isAuditRoundWorkView,
   parseAuditRoundView,
   sumAuditRoundWork,
+  type AuditRoundDueLine,
   type AuditRoundListInsight,
+  type AuditRoundProgress,
   type AuditRoundScopeKey,
   type AuditRoundScopeSource,
+  type AuditRoundStepKey,
+  type AuditRoundStepLink,
   type AuditRoundTab,
   type AuditRoundView,
 } from "@/lib/audit-rounds-list-rules"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { startOfBangkokDay } from "@/lib/waiting-work-rules"
+
+const WarningIcon = toneIcons.warning
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
@@ -80,12 +94,6 @@ type CoverageGap = {
   percent: number
 }
 
-type RoundWorkflowLink = {
-  key: "pending" | "review" | "out_of_scope"
-  label: string
-  count: number
-  href: string
-}
 type ActionPanelItem = {
   label: string
   help: string
@@ -113,6 +121,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   // A view-only role is offered no create or scan link (their pages need audit:create and audit:edit; the E2E suite's M5).
   const canCreateRound = hasPermission(user, "audit", "create")
   const canScan = hasPermission(user, "audit", "edit")
+  // The close action's permission (`api/audit-rounds/[id]/route.ts`).
+  const canClose = hasPermission(user, "audit", "approve")
 
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
@@ -124,6 +134,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   // The coverage year is the Bangkok year (spec §5 Dates), whatever the server's time zone.
   const now = new Date()
   const currentYear = bangkokYear(now)
+  const today = startOfBangkokDay(now)
   const [allRounds, matchedRounds, activeAssets, coveredItems, currentYearRoundCount] = await withPerformanceTiming(
     "audit-rounds.initial-data",
     () => Promise.all([
@@ -229,7 +240,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const actionItems: ActionPanelItem[] = [
     {
       label: t("actionContinueScan"),
-      help: t("actionContinueScanHelp"),
+      help: t("actionContinueScanHelp", { count: formatCount(pendingRounds.length) }),
       count: openWork.pending,
       // The work view carries no search: the strip is round-wide (R1, R31).
       href: canScan && pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", "", { pageSize: listPage.pageSize }),
@@ -280,11 +291,65 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     }),
   )
 
+  const coverageShare = activeAssets.length > 0 ? coveredAssetCount / activeAssets.length : 0
+  const coverageLine = t("coverageLine", { covered: formatCount(coveredAssetCount), total: formatCount(activeAssets.length), missing: formatCount(uncoveredAssetCount) })
+  // A work view from a strip cell (รอตรวจ / รอพิจารณา / ปิดรอบได้) shows as a removable chip under the
+  // กำลังดำเนินการ tab; removing it keeps the search (group 2 spec §6).
+  const workViewChips = isAuditRoundWorkView(activeView)
+    ? [{ key: activeView, label: viewLabels[activeView], href: buildAuditRoundsHref(locale, "open", searchText, { pageSize: listPage.pageSize }) }]
+    : []
+  // The label holds the count, so the link's name is whole (group 2 spec §6).
+  const stepLabel = (link: AuditRoundStepLink): string => {
+    const count = formatCount(link.count ?? 0)
+    switch (link.key) {
+      case "walk":
+        return t("nextStepContinueScan", { count })
+      case "pendingList":
+        return `${t("roundActionPending")} ${count}`
+      case "review":
+        return t("nextStepReview", { count })
+      case "actions":
+        return t("nextStepActions", { count })
+      case "close":
+        return t("closeRound")
+      case "outOfScope":
+        return `${t("roundActionOutOfScope")} ${count}`
+    }
+  }
+  // A row of the list, for the phone card and the table alike (group 2 spec §6).
+  const describeRound = (round: (typeof rounds)[number]) => {
+    const insight = insightOf(round)
+    const detailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+    const step = buildAuditRoundNextStep({ locale, roundId: round.id, insight, canScan, canClose, returnTo: auditRoundsReturnHref })
+    const more = step.more.map((link) => ({ key: link.key, label: stepLabel(link), href: link.href }))
+    return {
+      insight,
+      detailHref,
+      due: buildAuditRoundDueLine(round.status, round.endDate, today),
+      progress: buildAuditRoundProgress(insight),
+      nextStep: {
+        main: step.main ? { label: stepLabel(step.main), href: step.main.href } : null,
+        second: step.second ? (step.second.key === "review" ? t("blockedPendingReview", { count: formatCount(step.second.count) }) : t("openActionsCount", { count: formatCount(step.second.count) })) : null,
+        outOfScope: step.outOfScope ? { label: stepLabel(step.outOfScope), href: step.outOfScope.href } : null,
+      },
+      more,
+      groups: [{ key: "round", items: [
+        ...more.map((link) => ({ kind: "link" as const, key: link.key, label: link.label, href: link.href, icon: roundStepIcons[link.key] })),
+        { kind: "link" as const, key: "view", label: tCommon("view"), href: detailHref, icon: <Eye aria-hidden="true" /> },
+      ] }] satisfies RowActionGroup[],
+    }
+  }
+  const badgeLabels = (status: string) => ({ status: getAuditRoundStatusLabel(status, t), pendingReview: t("pendingReview"), ready: t("readyToClose") })
+  const dueLabels = { left: (days: number) => t("daysLeft", { days: formatCount(days) }), overdue: (days: number) => t("daysOverdue", { days: formatCount(days) }) }
+  const progressText = (insight: AuditRoundListInsight, progress: AuditRoundProgress) =>
+    t("progressLine", { checked: formatCount(insight.checked), total: formatCount(insight.total), percent: formatPercent(progress.percent / 100) })
+  const progressBarText = (insight: AuditRoundListInsight) => t("progressBarLabel", { checked: formatCount(insight.checked), total: formatCount(insight.total) })
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("title")}
-        meta={t("subtitle")}
+        meta={t("roundCount", { count: formatCount(filteredRounds.length) })}
         actions={canCreateRound ? (
           <Link href={`/${locale}/audit/rounds/new`} className={buttonVariants({ size: "md" })}>
             <Plus aria-hidden="true" />
@@ -293,39 +358,165 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         ) : undefined}
       />
 
-      <ContentPanel
-        title={t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}
-        description={t("coverageHelp")}
-        actions={
+      <ActionPanel title={t("nextActionsTitle")} help={t("nextActionsHelp")} actions={actionItems} />
+
+      <div className="space-y-3">
+        <QuickFilterBar title={t("quickFiltersTitle")} current={activeTab} filters={statusTabs} />
+        <FilterChipList chips={workViewChips} label={t("activeFilters")} removeLabel={t("clearFilter")} />
+      </div>
+
+      <div className={cn(getPanelClasses(), "overflow-hidden")}>
+        {/* The table's top bar (group 2 spec §6): the search. MasterDataSearch's mb-4 is the bar's bottom space. */}
+        <div className="border-b border-border-soft px-4 pt-4">
+          <MasterDataSearch
+            action={`/${locale}/audit/rounds`}
+            defaultValue={searchText}
+            placeholder={t("searchRounds")}
+            submitLabel={tCommon("search")}
+            hiddenInputs={{ ...(activeView === "open" ? {} : { view: activeView }), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
+          />
+        </div>
+        <div className={`${getMobileCardListClasses()} p-3`}>
+          {pageRounds.length === 0 ? (
+            <EmptyNote padded>{tCommon("noData")}</EmptyNote>
+          ) : (
+            pageRounds.map((round) => {
+              const row = describeRound(round)
+
+              return (
+                <article key={round.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={row.detailHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
+                        <span className="tag font-medium">{round.auditNo}</span>
+                      </Link>
+                      <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
+                    </div>
+                    <RoundStatusBadges status={round.status} insight={row.insight} labels={badgeLabels(round.status)} />
+                  </div>
+                  <KeyValueList
+                    className="mt-3"
+                    items={[
+                      { key: "scope", label: t("scope"), value: <>{formatScope(round, t("all"), scopeLabels)}{" · "}{t("itemCount", { count: formatCount(row.insight.total) })}</> },
+                      { key: "dateRange", label: t("dateRange"), value: <RoundDates start={round.startDate} end={round.endDate} due={row.due} labels={dueLabels} /> },
+                      { key: "progress", label: t("progress"), value: <RoundProgress progress={row.progress} text={progressText(row.insight, row.progress)} barLabel={progressBarText(row.insight)} notStarted={t("notStarted")} /> },
+                    ]}
+                  />
+                  <div className="mt-3"><RoundNextStep {...row.nextStep} /></div>
+                  <RoundWorkflowLinks links={row.more} />
+                  <Link href={row.detailHref} className={cn(buttonVariants({ variant: "outline" }), "mt-3 w-full")}>
+                    <Eye aria-hidden="true" />
+                    {tCommon("view")}
+                  </Link>
+                </article>
+              )
+            })
+          )}
+        </div>
+        <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>{t("round")}</DataTableHead>
+              <DataTableHead>{t("scope")}</DataTableHead>
+              <DataTableHead>{t("dateRange")}</DataTableHead>
+              <DataTableHead>{t("progress")}</DataTableHead>
+              <DataTableHead>{t("status")}</DataTableHead>
+              <DataTableHead>{t("nextStep")}</DataTableHead>
+              <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {pageRounds.length === 0 ? (
+              searchText ? (
+                <TableEmptyRow
+                  colSpan={7}
+                  emptyState={{ title: tCommon("noData"), actionHref: clearSearchHref, actionLabel: tPending("clearSearch"), actionVariant: "secondary" }}
+                />
+              ) : (
+                <TableEmptyRow colSpan={7}>{tCommon("noData")}</TableEmptyRow>
+              )
+            ) : (
+              pageRounds.map((round) => {
+                const row = describeRound(round)
+
+                return (
+                  <ClickableTableRow
+                    key={round.id}
+                    href={row.detailHref}
+                    label={`${tCommon("view")}: ${round.auditNo}`}
+                  >
+                    <DataTableCell className="min-w-56">
+                      <Link href={row.detailHref} className={cn(linkVariants({ size: "inherit" }), "font-semibold")}>{round.name}</Link>
+                      <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag">{round.auditNo}</span></div>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-64 text-muted-foreground">
+                      {formatScope(round, t("all"), scopeLabels)}{" · "}{t("itemCount", { count: formatCount(row.insight.total) })}
+                    </DataTableCell>
+                    <DataTableCell className="text-muted-foreground"><RoundDates start={round.startDate} end={round.endDate} due={row.due} labels={dueLabels} /></DataTableCell>
+                    <DataTableCell className="min-w-44"><RoundProgress progress={row.progress} text={progressText(row.insight, row.progress)} barLabel={progressBarText(row.insight)} notStarted={t("notStarted")} /></DataTableCell>
+                    <DataTableCell className="whitespace-nowrap"><RoundStatusBadges status={round.status} insight={row.insight} labels={badgeLabels(round.status)} /></DataTableCell>
+                    <DataTableCell className="min-w-44">
+                      <RoundNextStep {...row.nextStep} />
+                    </DataTableCell>
+                    <DataTableCell align="right" sticky="right">
+                      <RowActions
+                        code={round.auditNo}
+                        name={round.name}
+                        menuLabel={tCommon("moreActionsFor", { code: round.auditNo })}
+                        next={undefined}
+                        groups={row.groups}
+                      />
+                    </DataTableCell>
+                  </ClickableTableRow>
+                )
+              })
+            )}
+          </DataTableBody>
+        </DataTable>
+        {filteredRounds.length > 0 ? (
+          <DataTableFoot>
+            <Pagination
+              page={roundPage.page}
+              totalPages={totalPages}
+              previousHref={buildAuditRoundsHref(locale, activeView, searchText, { page: roundPage.page - 1, pageSize: roundPage.pageSize })}
+              nextHref={buildAuditRoundsHref(locale, activeView, searchText, { page: roundPage.page + 1, pageSize: roundPage.pageSize })}
+              pageSize={roundPage.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: buildAuditRoundsHref(locale, activeView, searchText, { pageSize: value }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: roundPage.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(filteredRounds.length) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          </DataTableFoot>
+        ) : null}
+      </div>
+
+      {/* A <details> cannot be ContentPanel: the panel classes (2D-2 R4). Folded to one line (group 2 spec §6). */}
+      <details className={cn(getPanelClasses(), "p-4 sm:p-5")}>
+        <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 md:min-h-0">
+          <h2 className="text-base font-semibold text-foreground">{t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}</h2>
+          <span className="block w-full sm:w-48"><PaceBar value={coverageShare} pace={null} label={coverageLine} behind={false} /></span>
+          <span className="num text-sm font-semibold text-foreground">{formatPercent(coverageShare)}</span>
+          <span className="num text-sm text-muted-foreground">{coverageLine}</span>
+          <span className={cn(linkVariants({ size: "inherit" }), "text-sm sm:ms-auto")}>{t("coverageBreakdown")}</span>
+        </summary>
+        <div className="mt-4 space-y-4 border-t border-border-soft pt-4">
+          <p className="text-sm text-muted-foreground">{t("coverageHelp")}</p>
           <p className="text-sm text-muted-foreground">
             {t("coverageRoundCount")}: <span className="num font-semibold text-foreground">{formatCount(currentYearRoundCount)}</span>
           </p>
-        }
-      >
-        <StatStrip
-          className="mb-4"
-          items={[
-            { key: "activeAssets", label: t("coverageActiveAssets"), value: formatCount(activeAssets.length) },
-            { key: "covered", label: t("coverageCoveredThisYear"), value: formatCount(coveredAssetCount) },
-            { key: "uncovered", label: t("coverageUncoveredThisYear"), value: formatCount(uncoveredAssetCount) },
-            { key: "openPendingItems", label: t("coverageOpenPendingItems"), value: formatCount(openWork.pending) },
-            { key: "openPendingReview", label: t("coverageOpenPendingReview"), value: formatCount(openWork.pendingReview) },
-          ]}
-        />
-
-        <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-          <AuditProgressBar
-            total={activeAssets.length}
-            processed={coveredAssetCount}
-            pending={uncoveredAssetCount}
-            label={t("coverageProgress")}
-            processedLabel={t("coverageCoveredLabel")}
-            pendingLabel={t("coverageMissingLabel")}
-            breakdown={[
-              { label: t("coverageCoveredLabel"), value: coveredAssetCount, tone: "success" },
-              { label: t("coverageMissingLabel"), value: uncoveredAssetCount, tone: "warning" },
-              { label: t("scanned"), value: openWork.checked, tone: "info" },
-              { label: t("pendingReview"), value: openWork.pendingReview, tone: "danger" },
+          <StatStrip
+            items={[
+              { key: "activeAssets", label: t("coverageActiveAssets"), value: formatCount(activeAssets.length) },
+              { key: "covered", label: t("coverageCoveredThisYear"), value: formatCount(coveredAssetCount) },
+              { key: "uncovered", label: t("coverageUncoveredThisYear"), value: formatCount(uncoveredAssetCount) },
+              { key: "openPendingItems", label: t("coverageOpenPendingItems"), value: formatCount(openWork.pending), foot: t("coverageOpenChecked", { count: formatCount(openWork.checked) }) },
+              { key: "openPendingReview", label: t("coverageOpenPendingReview"), value: formatCount(openWork.pendingReview) },
             ]}
           />
           <div className="grid gap-6 lg:grid-cols-2">
@@ -357,210 +548,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             />
           </div>
         </div>
-      </ContentPanel>
-
-      <ActionPanel title={t("nextActionsTitle")} help={t("nextActionsHelp")} actions={actionItems} />
-
-      <QuickFilterBar title={t("quickFiltersTitle")} current={activeTab} filters={statusTabs} />
-
-      <MasterDataSearch
-        action={`/${locale}/audit/rounds`}
-        defaultValue={searchText}
-        placeholder={tCommon("search")}
-        submitLabel={tCommon("search")}
-        hiddenInputs={{ ...(activeView === "open" ? {} : { view: activeView }), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
-      />
-
-      <div className={cn(getPanelClasses(), "overflow-hidden")}>
-        <div className={`${getMobileCardListClasses()} p-3`}>
-          {pageRounds.length === 0 ? (
-            <EmptyNote padded>{tCommon("noData")}</EmptyNote>
-          ) : (
-            pageRounds.map((round) => {
-              const insight = insightOf(round)
-              const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
-              const workflowLinks = buildAuditRoundWorkflowLinks({
-                locale,
-                roundId: round.id,
-                status: round.status,
-                returnTo: auditRoundsReturnHref,
-                insight,
-                labels: {
-                  pending: t("roundActionPending"),
-                  review: t("roundActionReview"),
-                  outOfScope: t("roundActionOutOfScope"),
-                },
-              })
-
-              return (
-                <article key={round.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <Link href={roundDetailHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
-                        <span className="tag font-medium">{round.auditNo}</span>
-                      </Link>
-                      <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={effectiveAuditRoundStatus(round.status)} />
-                      <ReadyToCloseBadge
-                        status={round.status}
-                        insight={insight}
-                        labels={{
-                          ready: t("readyToClose"),
-                          pending: t("blockedPendingItems", { count: insight.pending }),
-                          review: t("blockedPendingReview", { count: insight.pendingReview }),
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <KeyValueList
-                    className="mt-3"
-                    items={[
-                      { key: "scope", label: t("scope"), value: formatScope(round, t("all"), scopeLabels) },
-                      { key: "dateRange", label: t("dateRange"), value: `${formatDate(round.startDate)} - ${formatDate(round.endDate)}` },
-                      { key: "items", label: t("items"), value: formatCount(insight.total) },
-                    ]}
-                  />
-                  <div className="mt-3">
-                    <AuditProgressBar
-                      compact
-                      total={insight.total}
-                      processed={insight.checked}
-                      pending={insight.pending}
-                      label={t("progress")}
-                      processedLabel={t("scanned")}
-                      pendingLabel={t("pending")}
-                    />
-                  </div>
-                  <RoundWorkflowLinks links={workflowLinks} />
-                  <Link href={roundDetailHref} className={cn(buttonVariants({ variant: "outline" }), "mt-3 w-full")}>
-                    <Eye aria-hidden="true" />
-                    {tCommon("view")}
-                  </Link>
-                </article>
-              )
-            })
-          )}
-        </div>
-        <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
-          <DataTableHeader>
-            <tr>
-              <DataTableHead>{t("auditNo")}</DataTableHead>
-              <DataTableHead>{t("name")}</DataTableHead>
-              <DataTableHead>{t("scope")}</DataTableHead>
-              <DataTableHead>{t("dateRange")}</DataTableHead>
-              <DataTableHead>{t("status")}</DataTableHead>
-              <DataTableHead align="right">{t("items")}</DataTableHead>
-              <DataTableHead>{t("progress")}</DataTableHead>
-              <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
-            </tr>
-          </DataTableHeader>
-          <DataTableBody>
-            {pageRounds.length === 0 ? (
-              searchText ? (
-                <TableEmptyRow
-                  colSpan={8}
-                  emptyState={{ title: tCommon("noData"), actionHref: clearSearchHref, actionLabel: tPending("clearSearch"), actionVariant: "secondary" }}
-                />
-              ) : (
-                <TableEmptyRow colSpan={8}>{tCommon("noData")}</TableEmptyRow>
-              )
-            ) : (
-              pageRounds.map((round) => {
-                const insight = insightOf(round)
-                const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
-                const workflowLinks = buildAuditRoundWorkflowLinks({
-                  locale,
-                  roundId: round.id,
-                  status: round.status,
-                  returnTo: auditRoundsReturnHref,
-                  insight,
-                  labels: {
-                    pending: t("roundActionPending"),
-                    review: t("roundActionReview"),
-                    outOfScope: t("roundActionOutOfScope"),
-                  },
-                })
-                const rowActions = buildRoundRowActions({ links: workflowLinks, viewHref: roundDetailHref, viewLabel: tCommon("view") })
-
-                return (
-                  <ClickableTableRow
-                    key={round.id}
-                    href={roundDetailHref}
-                    label={`${tCommon("view")}: ${round.auditNo}`}
-                  >
-                    <DataTableCell className="whitespace-nowrap">
-                      <span className="tag font-medium text-foreground">{round.auditNo}</span>
-                    </DataTableCell>
-                    <DataTableCell className="min-w-56 text-foreground">{round.name}</DataTableCell>
-                    <DataTableCell className="min-w-64 text-muted-foreground">{formatScope(round, t("all"), scopeLabels)}</DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                      {formatDate(round.startDate)} - {formatDate(round.endDate)}
-                    </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap">
-                      <div className="flex flex-col items-start gap-1">
-                        <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={effectiveAuditRoundStatus(round.status)} />
-                        <ReadyToCloseBadge
-                          status={round.status}
-                          insight={insight}
-                          labels={{
-                            ready: t("readyToClose"),
-                            pending: t("blockedPendingItems", { count: insight.pending }),
-                            review: t("blockedPendingReview", { count: insight.pendingReview }),
-                          }}
-                        />
-                      </div>
-                    </DataTableCell>
-                    <DataTableCell numeric className="text-muted-foreground">{formatCount(insight.total)}</DataTableCell>
-                    <DataTableCell className="min-w-52">
-                      <AuditProgressBar
-                        compact
-                        total={insight.total}
-                        processed={insight.checked}
-                        pending={insight.pending}
-                        label={t("progress")}
-                        processedLabel={t("scanned")}
-                        pendingLabel={t("pending")}
-                      />
-                    </DataTableCell>
-                    <DataTableCell align="right" sticky="right">
-                      <RowActions
-                        code={round.auditNo}
-                        name={round.name}
-                        menuLabel={tCommon("moreActionsFor", { code: round.auditNo })}
-                        next={rowActions.next}
-                        groups={rowActions.groups}
-                      />
-                    </DataTableCell>
-                  </ClickableTableRow>
-                )
-              })
-            )}
-          </DataTableBody>
-        </DataTable>
-        {filteredRounds.length > 0 ? (
-          <DataTableFoot>
-            <Pagination
-              page={roundPage.page}
-              totalPages={totalPages}
-              previousHref={buildAuditRoundsHref(locale, activeView, searchText, { page: roundPage.page - 1, pageSize: roundPage.pageSize })}
-              nextHref={buildAuditRoundsHref(locale, activeView, searchText, { page: roundPage.page + 1, pageSize: roundPage.pageSize })}
-              pageSize={roundPage.pageSize}
-              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: buildAuditRoundsHref(locale, activeView, searchText, { pageSize: value }) }))}
-              labels={{
-                navigation: tCommon("pagination"),
-                previous: tCommon("previous"),
-                next: tCommon("next"),
-                pageOf: tCommon("pageOf", { page: roundPage.page, total: totalPages }),
-                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(filteredRounds.length) }),
-                pageSizeGroup: tCommon("pageSizeLabel"),
-                rowsPerPage: tCommon("rowsPerPage"),
-              }}
-            />
-          </DataTableFoot>
-        ) : null}
-      </div>
+      </details>
     </div>
   )
 }
@@ -609,42 +597,79 @@ function QuickFilterBar({
   )
 }
 
-// The workflow links of a phone card. On desktop the same links sit in RowActions (buildRoundRowActions).
-function RoundWorkflowLinks({ links }: { links: RoundWorkflowLink[] }) {
+// The phone card's extra next-step links (row.more, outline sm buttons). On desktop the same links sit in the row's ⋯ (RowActions groups).
+function RoundWorkflowLinks({ links }: { links: Array<{ key: AuditRoundStepKey; label: string; href: string }> }) {
   if (links.length === 0) return null
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {links.map((link) => (
         <Link key={link.key} href={link.href} className={buttonVariants({ variant: "outline", size: "sm" })}>
-          {roundWorkflowIcons[link.key]}
+          {roundStepIcons[link.key]}
           <span>{link.label}</span>
-          <span className="num">{formatCount(link.count)}</span>
         </Link>
       ))}
     </div>
   )
 }
-function ReadyToCloseBadge({
-  status,
-  insight,
-  labels,
-}: {
-  status: string
-  insight: AuditRoundListInsight
-  labels: { ready: string; pending: string; review: string }
-}) {
-  if (!isAuditRoundOperationalStatus(status)) return null
-  if (insight.readyToClose) {
-    return <StatusBadge label={labels.ready} tone="success" />
-  }
-  if (insight.pending > 0) {
-    return <StatusBadge label={labels.pending} tone="warning" />
-  }
-  if (insight.pendingReview > 0) {
-    return <StatusBadge label={labels.review} tone="danger" />
-  }
-  return null
+
+// One status badge (group 2 spec §6, §14): a leftover draft reads เปิดตรวจ; a fully scanned round with decisions
+// pending reads รอพิจารณา (computed, never stored); พร้อมปิดรอบ stays as a second badge.
+function RoundStatusBadges({ status, insight, labels }: { status: string; insight: AuditRoundListInsight; labels: { status: string; pendingReview: string; ready: string } }) {
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {isAuditRoundAwaitingDecision(insight) ? (
+        <StatusBadge label={labels.pendingReview} tone="warning" />
+      ) : (
+        <StatusBadge label={labels.status} status={effectiveAuditRoundStatus(status)} />
+      )}
+      {insight.readyToClose ? <StatusBadge label={labels.ready} tone="success" /> : null}
+    </div>
+  )
+}
+
+// The dates, then days left (warning) or overdue (danger) on an open round, drawn with the page (group 2 spec §6).
+function RoundDates({ start, end, due, labels }: { start: Date; end: Date; due: AuditRoundDueLine; labels: { left: (days: number) => string; overdue: (days: number) => string } }) {
+  return (
+    <>
+      <span className="block whitespace-nowrap">{formatDate(start)} - {formatDate(end)}</span>
+      {due ? <span className={cn("block text-meta", due.kind === "overdue" ? "text-danger" : "text-warning")}>{due.kind === "overdue" ? labels.overdue(due.days) : labels.left(due.days)}</span> : null}
+    </>
+  )
+}
+
+// Progress (group 2 spec §6): a PaceBar of the round's own items with "x / y · z%", or ยังไม่เริ่ม. No pace mark on
+// the list, so the bar is never "behind" without the words DESIGN.md asks for.
+function RoundProgress({ progress, text, barLabel, notStarted }: { progress: AuditRoundProgress; text: string; barLabel: string; notStarted: string }) {
+  if (!progress.started) return <span className="text-muted-foreground">{notStarted}</span>
+  return (
+    <span className="block min-w-40 space-y-1">
+      <PaceBar value={progress.value} pace={null} label={barLabel} behind={false} />
+      <span className="block text-meta num text-muted-foreground">{text}</span>
+    </span>
+  )
+}
+
+// ขั้นถัดไป (group 2 spec §6, §13 bug 1): the main task as a link on line 1, wrapping, never cut; line 2 the second
+// task in warning text with its icon (its link is in ⋯) and the out-of-scope link. Nothing to do: Nil.
+function RoundNextStep({ main, second, outOfScope }: { main: { label: string; href: string } | null; second: string | null; outOfScope: { label: string; href: string } | null }) {
+  if (!main && !second && !outOfScope) return <Nil />
+  return (
+    <div className="min-w-0 space-y-1">
+      {main ? <Link href={main.href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-start font-medium md:min-h-0")}>{main.label}</Link> : null}
+      {second || outOfScope ? (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
+          {second ? (
+            <span className="inline-flex items-center gap-1 text-warning">
+              <WarningIcon aria-hidden="true" className="size-3.5 shrink-0" />
+              {second}
+            </span>
+          ) : null}
+          {outOfScope ? <Link href={outOfScope.href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-meta md:min-h-0")}>{outOfScope.label}</Link> : null}
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 function CoverageGapList({
@@ -734,87 +759,13 @@ function CoverageGapList({
   )
 }
 
-function buildAuditRoundWorkflowLinks({
-  locale,
-  roundId,
-  returnTo,
-  insight,
-  labels,
-}: {
-  locale: string
-  roundId: string
-  status: string
-  returnTo: string
-  insight: AuditRoundListInsight
-  labels: { pending: string; review: string; outOfScope: string }
-}): RoundWorkflowLink[] {
-  if (!insight.operational) return []
-
-  const links: RoundWorkflowLink[] = []
-
-  if (insight.pending > 0) {
-    links.push({
-      key: "pending",
-      label: labels.pending,
-      count: insight.pending,
-      href: appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, returnTo),
-    })
-  }
-
-  if (insight.pendingReview > 0) {
-    links.push({
-      key: "review",
-      label: labels.review,
-      count: insight.pendingReview,
-      href: appendOperationalReturnTo(`/${locale}/audit/findings?status=pending&roundId=${roundId}`, returnTo),
-    })
-  }
-
-  if (insight.outOfScope > 0) {
-    links.push({
-      key: "out_of_scope",
-      label: labels.outOfScope,
-      count: insight.outOfScope,
-      href: `/${locale}/audit/rounds/${roundId}?result=out_of_scope&returnTo=${encodeURIComponent(returnTo)}#audit-result-list`,
-    })
-  }
-
-  return links
-}
-
-const roundWorkflowIcons: Record<RoundWorkflowLink["key"], ReactNode> = {
-  pending: <ListChecks aria-hidden="true" />,
+const roundStepIcons: Record<AuditRoundStepKey, ReactNode> = {
+  walk: <ScanLine aria-hidden="true" />,
+  pendingList: <ListChecks aria-hidden="true" />,
   review: <AlertTriangle aria-hidden="true" />,
-  out_of_scope: <ScanLine aria-hidden="true" />,
-}
-
-// Row actions of a round (pattern ช1, spec 2B §5.4 row rounds): the first workflow link is the next step, and ⋯ holds
-// the other links and "ดู". A round with no open work has "ดู" as its next step and no ⋯. Each label keeps its count.
-function buildRoundRowActions({
-  links,
-  viewHref,
-  viewLabel,
-}: {
-  links: RoundWorkflowLink[]
-  viewHref: string
-  viewLabel: string
-}): { next: RowNextAction; groups: RowActionGroup[] } {
-  const view = { label: viewLabel, href: viewHref, icon: <Eye aria-hidden="true" /> }
-  const [first, ...rest] = links
-  if (!first) return { next: view, groups: [] }
-
-  return {
-    next: { label: `${first.label} ${formatCount(first.count)}`, href: first.href, icon: roundWorkflowIcons[first.key] },
-    groups: [
-      {
-        key: "round",
-        items: [
-          ...rest.map((link) => ({ kind: "link" as const, key: link.key, label: `${link.label} ${formatCount(link.count)}`, href: link.href, icon: roundWorkflowIcons[link.key] })),
-          { kind: "link" as const, key: "view", ...view },
-        ],
-      },
-    ],
-  }
+  actions: <AlertTriangle aria-hidden="true" />,
+  close: <Eye aria-hidden="true" />,
+  outOfScope: <ScanLine aria-hidden="true" />,
 }
 
 function getAuditRoundStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {

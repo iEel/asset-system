@@ -326,7 +326,7 @@ test("findings page on the server, count the whole list once and keep the page i
 // tab counts need the insight of every round, so the query stays whole: the list pages in memory and clamps the page.
 test("audit rounds: PageHeader, StatStrip, the quick filters on TabNav, and the list on DataTable with RowActions and Pagination (spec 2B §5.4)", () => {
   const source = read(`${D}audit/rounds/page.tsx`)
-  for (const part of ["<PageHeader", "<StatStrip", "<TabNav", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<RowActions", "<DataTableFoot>", "<Pagination"]) {
+  for (const part of ["<PageHeader", "<StatStrip", "<TabNav", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<RowActions", "<DataTableFoot>", "<Pagination", "<FilterChipList", "<PaceBar"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.match(source, /<div className="space-y-6">/, "the page root spaces its blocks 24px apart (spec 2B §4.6.1)")
