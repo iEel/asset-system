@@ -90,7 +90,7 @@ Use these helpers consistently:
 - `requireAuth()` for authenticated endpoints.
 - `requirePermission(user, module, action)` for module/action authorization.
 - `hasPermission(user, module, action)` when a route supports multiple permitted branches.
-- Attachment download and preview must check the attachment module permission before serving content.
+- Attachment download and preview must check the attachment module permission before serving content. One rule serves the file and thumbnail routes (`src/lib/attachment-access.ts`): a model photo (`asset_model`) opens with `brand:view` or `asset:view`, because it stands in for the asset's photo on asset pages (user decision 2026-10-26); uploading or deleting one still needs `brand:edit`.
 - Scheduler endpoints must use scheduler authorization tokens.
 - Read-only external integration endpoints live under `/api/integrations/v1` and must use `requireIntegrationClient()` or `requireIntegrationScope()`. Integration clients authenticate with `Authorization: Bearer <token>` where the server stores only SHA-256 token hashes in `integration_api_clients`. Supported scopes start with `asset:read`, `reference:read`, and `integration:read`; do not reuse normal user sessions or scheduler tokens for partner/system API access.
 - Integration API client lifecycle management lives in `Admin > Integration API` and `/api/admin/integration-clients`. Viewing clients requires `setting:view`; create, edit display name/scopes, rotate, disable, and enable require `setting:edit`. Plain tokens are returned once on create/rotate, while admin lists expose only `tokenPreview`. Scope expansion on an existing client requires confirmation because the current token can use the newly allowed endpoint immediately.
