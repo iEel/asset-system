@@ -453,17 +453,17 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                     href={row.detailHref}
                     label={`${tCommon("view")}: ${round.auditNo}`}
                   >
-                    <DataTableCell className="min-w-56">
+                    <DataTableCell className="min-w-48">
                       <Link href={row.detailHref} className={cn(linkVariants({ size: "inherit" }), "font-semibold")}>{round.name}</Link>
                       <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag">{round.auditNo}</span></div>
                     </DataTableCell>
-                    <DataTableCell className="min-w-64 text-muted-foreground">
+                    <DataTableCell className="min-w-48 text-muted-foreground">
                       {formatScope(round, t("all"), scopeLabels)}{" · "}{t("itemCount", { count: formatCount(row.insight.total) })}
                     </DataTableCell>
                     <DataTableCell className="text-muted-foreground"><RoundDates start={round.startDate} end={round.endDate} due={row.due} labels={dueLabels} /></DataTableCell>
-                    <DataTableCell className="min-w-44"><RoundProgress progress={row.progress} text={progressText(row.insight, row.progress)} barLabel={progressBarText(row.insight)} notStarted={t("notStarted")} /></DataTableCell>
+                    <DataTableCell className="min-w-36"><RoundProgress progress={row.progress} text={progressText(row.insight, row.progress)} barLabel={progressBarText(row.insight)} notStarted={t("notStarted")} /></DataTableCell>
                     <DataTableCell className="whitespace-nowrap"><RoundStatusBadges status={round.status} insight={row.insight} labels={badgeLabels(round.status)} /></DataTableCell>
-                    <DataTableCell className="min-w-44">
+                    <DataTableCell className="min-w-36">
                       <RoundNextStep {...row.nextStep} />
                     </DataTableCell>
                     <DataTableCell align="right" sticky="right">
@@ -655,7 +655,7 @@ function RoundDates({ start, end, due, labels }: { start: Date; end: Date; due: 
 function RoundProgress({ progress, text, barLabel, notStarted }: { progress: AuditRoundProgress; text: string; barLabel: string; notStarted: string }) {
   if (!progress.started) return <span className="text-muted-foreground">{notStarted}</span>
   return (
-    <span className="block min-w-40 space-y-1">
+    <span className="block min-w-32 space-y-1">
       <PaceBar value={progress.value} pace={null} label={barLabel} behind={false} />
       <span className="block text-meta num text-muted-foreground">{text}</span>
     </span>

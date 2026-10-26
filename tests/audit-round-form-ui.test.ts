@@ -61,6 +61,8 @@ test("the round form: a trail, three numbered sections, conditions as chips with
   // the daily load and the sample behind "ดูตัวอย่างรายการ".
   assert.match(source, /\{t\("summaryTitle"\)\}/)
   assert.match(source, /preview\.sampleRate < 100 \?/)
+  // The count follows the conditions (AU-New board).
+  assert.match(source, /<p className="text-meta text-muted-foreground">\{t\("summaryItems"\)\}<\/p>\n\s+<p className="text-meta text-muted-foreground">\{t\("summaryLiveHint"\)\}<\/p>/)
   assert.match(source, /t\("summaryMatchedSampled", \{ matched: formatCount\(preview\.matchedAssets\), sampled: formatCount\(preview\.directSampled\) \}\)/)
   assert.match(source, /const categories = foldTopCategories\(preview\?\.categories \?\? \[\]\)/)
   assert.match(source, /<Notice tone="warning" title=\{t\("overlapWarning", \{ count: formatCount\(preview\.overlap\.count\) \}\)\}>/)
@@ -100,6 +102,7 @@ test("the create form's words (group 2 spec §7)", () => {
     advancedNow: "ตอนนี้: {risk} · สุ่มตรวจ {rate}%",
     summaryTitle: "ขอบเขตนี้ได้",
     summaryMatchedSampled: "ตรงเงื่อนไข {matched} · สุ่มได้ {sampled}",
+    summaryLiveHint: "อัปเดตทุกครั้งที่เปลี่ยนเงื่อนไข",
     overlapWarning: "{count} รายการอยู่ในรอบอื่นที่เปิดอยู่แล้ว",
     dailyLoad: "ต้องตรวจเฉลี่ยวันละ {count} รายการ ตามช่วงวันที่ตั้งไว้",
     showSample: "ดูตัวอย่างรายการ",

@@ -125,7 +125,7 @@ test("the table: รอบ with the name as the link and the number under it, �
   assert.equal(page.match(/<TableEmptyRow\s+colSpan=\{7\}/g)?.length, 2)
   assert.match(page, /<Link href=\{row\.detailHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "font-semibold"\)\}>\{round\.name\}<\/Link>/)
   assert.equal(page.match(/t\("itemCount", \{ count: formatCount\(row\.insight\.total\) \}\)/g)?.length, 2, "the scope's items, card and table")
-  assert.match(page, /<DataTableCell className="min-w-44">\s*<RoundNextStep \{\.\.\.row\.nextStep\} \/>/)
+  assert.match(page, /<DataTableCell className="min-w-36">\s*<RoundNextStep \{\.\.\.row\.nextStep\} \/>/)
   assert.match(page, /<RowActions\s+code=\{round\.auditNo\}\s+name=\{round\.name\}\s+menuLabel=\{tCommon\("moreActionsFor", \{ code: round\.auditNo \}\)\}\s+next=\{undefined\}\s+groups=\{row\.groups\}\s*\/>/)
   for (const part of ["RoundStatusBadges", "RoundNextStep", "RoundDates", "RoundProgress"]) {
     assert.equal(page.match(new RegExp(`<${part}\\b`, "g"))?.length, 2, `${part}: the phone card and the table`)

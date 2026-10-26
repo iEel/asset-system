@@ -495,6 +495,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
               <div>
                 <p className="text-metric num text-foreground">{formatCount(preview.sampledAssets)}</p>
                 <p className="text-meta text-muted-foreground">{t("summaryItems")}</p>
+                <p className="text-meta text-muted-foreground">{t("summaryLiveHint")}</p>
                 {preview.sampleRate < 100 ? (
                   <p className="mt-1 text-sm text-muted-foreground">
                     {t("summaryMatchedSampled", { matched: formatCount(preview.matchedAssets), sampled: formatCount(preview.directSampled) })}

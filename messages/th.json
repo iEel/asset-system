@@ -2188,7 +2188,8 @@
     "openActionsCount": "แผนแก้ไขค้าง {count}",
     "coverageLine": "ครอบคลุม {covered} จาก {total} · ยังไม่อยู่ในรอบใด {missing}",
     "coverageBreakdown": "ดูแยกตามหมวดหมู่และแผนก",
-    "coverageOpenChecked": "ตรวจแล้ว {count}"
+    "coverageOpenChecked": "ตรวจแล้ว {count}",
+    "summaryLiveHint": "อัปเดตทุกครั้งที่เปลี่ยนเงื่อนไข"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",

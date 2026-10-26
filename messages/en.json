@@ -2188,7 +2188,8 @@
     "openActionsCount": "{count} open action plans",
     "coverageLine": "Covered {covered} of {total} · in no round {missing}",
     "coverageBreakdown": "By category and department",
-    "coverageOpenChecked": "{count} checked"
+    "coverageOpenChecked": "{count} checked",
+    "summaryLiveHint": "Updates whenever the conditions change"
   },
   "auditScan": {
     "title": "Audit Scan",
