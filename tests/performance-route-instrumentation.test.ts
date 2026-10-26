@@ -5,7 +5,7 @@ import test from "node:test"
 const routeFiles = [
   {
     file: "src/app/[locale]/(dashboard)/dashboard/page.tsx",
-    labels: ["dashboard.initial-data", "dashboard.overview", "dashboard.waiting-work", "dashboard.waiting-ages"],
+    labels: ["dashboard.initial-data", "dashboard.overview", "dashboard.waiting-work", "dashboard.waiting-ages", "dashboard.recent-activity"],
   },
   {
     file: "src/app/[locale]/(dashboard)/assets/page.tsx",

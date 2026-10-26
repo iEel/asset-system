@@ -442,7 +442,19 @@
     "shareColumn": "Share",
     "statusSegmentTitle": "{status}: {count} · {note}",
     "statusEmpty": "No assets yet",
-    "crossScopeLine": "{count} outside the owner's scope"
+    "crossScopeLine": "{count} outside the owner's scope",
+    "branchesTitle": "Audit by branch",
+    "branchesRound": "Round {code}",
+    "legendCounted": "Counted",
+    "legendPace": "Expected by today",
+    "branchBehind": "Behind",
+    "branchNumbers": "{percent} · {processed}/{expected}",
+    "branchBarLabel": "{branch}: counted {percent}, expected by today {pace}",
+    "allBranches": "All branches",
+    "allOpenRounds": "All rounds in progress",
+    "recentTitle": "Recent",
+    "recentYesterday": "Yesterday",
+    "recentEmpty": "No asset activity yet"
   },
   "workCenter": {
     "title": "Follow-up Work Center",

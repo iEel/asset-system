@@ -1,10 +1,10 @@
-// The dashboard page's pure helpers (group 1 spec §6.2, §6.3, §6.6): the company in the URL, the dashboard and register
-// links, งานที่รอคุณ's rows and ages, and ตามสถานะ's table. Relative `.ts` imports only, so node --test imports it.
+// The dashboard page's pure helpers (group 1 spec §6.2, §6.3, §6.6–§6.8): the company in the URL, the dashboard and register
+// links, งานที่รอคุณ's rows and ages, ตามสถานะ's table, ตรวจนับแยกสาขา's rows and ล่าสุด's times. Relative `.ts` imports only, so node --test imports it.
 import { buildExactAssetRegisterHref } from "./asset-register-view-memory.ts"
 import { dashboardRegisterParams, type DashboardOverview, type DashboardRegisterCount } from "./dashboard-overview-rules.ts"
 import { getAssetStateTone, type UiTone } from "./design-system.ts"
 import { formatCount } from "./display-format.ts"
-import type { WaitingWorkAge, WaitingWorkCounts, WaitingWorkKey } from "./waiting-work-rules.ts"
+import { bangkokDayDiff, type WaitingWorkAge, type WaitingWorkCounts, type WaitingWorkKey } from "./waiting-work-rules.ts"
 
 /** Up to this many companies the switcher is a row of links; past it, a select in a GET form. */
 export const DASHBOARD_COMPANY_TAB_LIMIT = 4
@@ -102,4 +102,31 @@ export function buildDashboardStatusTable(rows: DashboardOverview["statusRows"],
     // The English name, as the register's badge reads it.
     tone: getAssetStateTone(row.name),
   }))
+}
+
+/** ตรวจนับแยกสาขา shows this many branches: eight from md, three on the phone (spec §6.7). */
+export const DASHBOARD_BRANCH_ROW_LIMIT = { desktop: 8, phone: 3 } as const
+
+/** The branches the section draws (already sorted by gap) and whether ดูทุกสาขา is needed on each width. */
+export function pickDashboardBranchRows<T>(branches: readonly T[]): { rows: T[]; moreOnPhone: boolean; moreOnDesktop: boolean } {
+  return {
+    rows: branches.slice(0, DASHBOARD_BRANCH_ROW_LIMIT.desktop),
+    moreOnPhone: branches.length > DASHBOARD_BRANCH_ROW_LIMIT.phone,
+    moreOnDesktop: branches.length > DASHBOARD_BRANCH_ROW_LIMIT.desktop,
+  }
+}
+
+export type DashboardRecentTime = { kind: "time"; text: string } | { kind: "yesterday" } | { kind: "date"; text: string }
+
+/** ล่าสุด's time: "21:40" today, เมื่อวาน the Bangkok day before, else the day and month (spec §6.8, R1). */
+export function formatRecentTime(at: Date, now: Date, locale: string): DashboardRecentTime {
+  const days = bangkokDayDiff(at, now)
+  if (days <= 0) {
+    return {
+      kind: "time",
+      text: new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at),
+    }
+  }
+  if (days === 1) return { kind: "yesterday" }
+  return { kind: "date", text: formatDayMonth(at, locale, now) }
 }

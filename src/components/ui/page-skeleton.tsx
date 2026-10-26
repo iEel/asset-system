@@ -153,7 +153,8 @@ export function PageSkeleton() {
 }
 
 // The dashboard (group 1 dashboard task 9): the title and its as-of line, the company links from md, the four KPIs with
-// their feet, then the sections on 12 columns from lg (7 + 5).
+// their feet, then the four sections on 12 columns from lg (7 + 5) in the work order: งานที่รอคุณ, ตรวจนับแยกสาขา,
+// ตามสถานะ and ล่าสุด, which the phone does not show.
 export function DashboardPageSkeleton() {
   return (
     <div aria-busy="true" className="flex w-full flex-col gap-6">
@@ -164,7 +165,9 @@ export function DashboardPageSkeleton() {
       <MetricGridSkeleton count={4} foot />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <DividedPanelSkeleton rows={4} className="lg:col-span-7" />
-        <DividedPanelSkeleton rows={5} className="lg:col-span-5" />
+        <DividedPanelSkeleton rows={4} className="lg:col-span-5" />
+        <DividedPanelSkeleton rows={5} className="lg:col-span-7" />
+        <DividedPanelSkeleton rows={5} className="hidden md:block lg:col-span-5" />
       </div>
     </div>
   )

@@ -51,7 +51,7 @@ test("the dashboard skeleton has the page's shape: the title and its as-of line,
   assert.match(dashboard, /<PageHeaderSkeleton actions=\{false\} \/>/)
   assert.match(dashboard, /<div className="hidden md:block">\s*<TabNavSkeleton count=\{4\} \/>\s*<\/div>/)
   assert.match(dashboard, /<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">/)
-  assert.deepEqual([...dashboard.matchAll(/<DividedPanelSkeleton rows=\{(\d+)\} className="([^"]+)" \/>/g)].map((match) => `${match[1]} ${match[2]}`), ["4 lg:col-span-7", "5 lg:col-span-5"])
+  assert.deepEqual([...dashboard.matchAll(/<DividedPanelSkeleton rows=\{(\d+)\} className="([^"]+)" \/>/g)].map((match) => `${match[1]} ${match[2]}`), ["4 lg:col-span-7", "4 lg:col-span-5", "5 lg:col-span-7", "5 hidden md:block lg:col-span-5"])
   assert.match(source, /function DividedPanelSkeleton\(\{ rows, className \}: \{ rows: number; className\?: string \}\)/)
   assert.match(source, /<div className="flex min-h-14 items-center border-b border-border px-4 md:px-5">/, "the divided ContentPanel head")
   assert.match(source, /\{foot \? <SkeletonBlock className="h-4 w-32 max-w-full" \/> : null\}/, "a StatStrip foot line")

@@ -5,10 +5,12 @@ import { getTranslations } from "next-intl/server"
 import { ArrowRight } from "lucide-react"
 import { getSessionUser, hasPermission } from "@/lib/auth-utils"
 import { getApprovalInboxAccess } from "@/lib/approval-inbox-query"
+import { ASSET_MOVEMENT_DOCUMENT_PERMISSION, assetMovementLabelKey, buildAssetMovementDocumentHref } from "@/lib/asset-movement-labels"
 import { buildAuditRoundItemsHref } from "@/lib/audit-round-result-filters"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
 import { getDashboardOverview } from "@/lib/dashboard-overview"
+import { getRecentAssetEvents, type RecentAssetEvent } from "@/lib/dashboard-recent"
 import {
   auditPercent,
   DASHBOARD_KPI_ORDER,
@@ -24,9 +26,12 @@ import {
   buildDashboardRegisterHref,
   buildDashboardStatusTable,
   buildDashboardWaiting,
+  DASHBOARD_BRANCH_ROW_LIMIT,
   DASHBOARD_COMPANY_TAB_LIMIT,
   describeWaitingAge,
+  formatRecentTime,
   normalizeDashboardCompanyId,
+  pickDashboardBranchRows,
 } from "@/lib/dashboard-page"
 import { getWaitingWork, getWaitingWorkAges } from "@/lib/waiting-work"
 import { buildWaitingWorkHref, type WaitingWorkAge, type WaitingWorkCounts, type WaitingWorkKey } from "@/lib/waiting-work-rules"
@@ -74,14 +79,18 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const profile = user ? getDashboardProfile(user, getApprovalInboxAccess(user).canAnyApproval) : "overview"
   const meta = { route: "/dashboard", locale, profile }
 
-  // Round 1: the companies, the words and the waiting counts (the read-only source, which records nothing: R10).
-  const [companies, t, tNotifications, waitingWork] = await withPerformanceTiming(
+  // Round 1: the companies, the words, the waiting counts (the read-only source, which records nothing: R10) and the
+  // recent asset events, which no company narrows.
+  const [companies, t, tNotifications, tAll, waitingWork, recentEvents] = await withPerformanceTiming(
     "dashboard.initial-data",
     () => Promise.all([
       prisma.company.findMany({ where: { isActive: true }, select: { id: true, code: true, nameTh: true }, orderBy: { code: "asc" } }),
       getTranslations("dashboard"),
       getTranslations("notifications"),
+      // The movement labels live in the asset namespace.
+      getTranslations(),
       user ? withPerformanceTiming("dashboard.waiting-work", () => getWaitingWork(user, now), meta) : null,
+      withPerformanceTiming("dashboard.recent-activity", (): Promise<RecentAssetEvent[]> => canViewAssets ? getRecentAssetEvents(5) : Promise.resolve([]), meta),
     ]),
     meta
   )
@@ -111,6 +120,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const footLinkClassName = cn(linkVariants({ size: "inherit" }), "relative z-10")
   const idleFoot = t("idleFoot", { count: formatCount(overview.idle180) })
   const responsibilityFoot = t("responsibilityFoot", { count: formatCount(overview.responsibilityMissing) })
+  const branchRows = pickDashboardBranchRows(overview.audit.branches)
+  const rowLinkClassName = cn(linkVariants({ size: "inherit" }), "tag")
 
   const kpiCells: Record<DashboardKpiKey, StatStripItem | null> = {
     total: canViewAssets
@@ -259,6 +270,84 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         ) : null}
       </ContentPanel>
     ) : null,
+    // The round page's percent per branch against the round's pace (R21); each name opens the round's items for that
+    // branch and the chosen company (R13); the other rounds in progress are a link, never a number (R15).
+    branches: canViewAudit ? (
+      <ContentPanel
+        divided
+        flush
+        title={t("branchesTitle")}
+        description={round ? t("branchesRound", { code: round.code }) : undefined}
+        actions={overview.audit.otherOpen > 0 ? (
+          <Link href={`/${locale}/audit/rounds?view=open`} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+            {t("allOpenRounds")}
+          </Link>
+        ) : undefined}
+      >
+        {round ? (
+          <>
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border-soft px-4 py-3 text-meta text-muted-foreground md:px-5">
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden="true" className={cn("h-2 w-3 rounded-xs", statusFillVariants({ tone: "primary" }))} />
+                {t("legendCounted")}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden="true" className="h-3 w-0.5 bg-foreground forced-color-adjust-none forced-colors:bg-[CanvasText]" />
+                {t("legendPace")}
+              </span>
+            </p>
+            <ContentPanelRows>
+              {branchRows.rows.map((branch, index) => {
+                const branchValue = auditPercent(branch.processed, branch.expected) / 100
+                return (
+                  <li
+                    key={branch.branchId}
+                    className={cn("md:grid md:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto] md:items-center md:gap-4", index >= DASHBOARD_BRANCH_ROW_LIMIT.phone && "max-md:hidden")}
+                  >
+                    <div className="flex items-center justify-between gap-3 md:contents">
+                      <Link
+                        href={buildAuditRoundItemsHref(locale, round.id, { branchId: branch.branchId, companyId: companyId ?? undefined })}
+                        className={cn(linkVariants({ size: "inherit" }), "flex min-h-11 min-w-0 items-center text-sm md:min-h-0")}
+                      >
+                        <span className="truncate">{branch.name}</span>
+                      </Link>
+                      <span className="flex shrink-0 items-center gap-3 md:order-3">
+                        <span className="num text-sm text-foreground">
+                          {t("branchNumbers", { percent: formatPercent(branchValue), processed: formatCount(branch.processed), expected: formatCount(branch.expected) })}
+                        </span>
+                        {branch.behind ? (
+                          <span className="inline-flex items-center gap-1 text-meta text-warning">
+                            <OverdueIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                            {t("branchBehind")}
+                          </span>
+                        ) : null}
+                      </span>
+                    </div>
+                    <div className="mt-2 md:order-2 md:mt-0">
+                      <PaceBar
+                        value={branchValue}
+                        pace={overview.audit.pace}
+                        label={t("branchBarLabel", { branch: branch.name, percent: formatPercent(branchValue), pace: formatPercent(overview.audit.pace ?? 0) })}
+                        behind={branch.behind}
+                      />
+                    </div>
+                  </li>
+                )
+              })}
+            </ContentPanelRows>
+            {branchRows.moreOnDesktop || branchRows.moreOnPhone ? (
+              <p className={cn("border-t border-border-soft px-4 py-3 md:px-5", !branchRows.moreOnDesktop && "md:hidden")}>
+                <Link href={buildAuditRoundItemsHref(locale, round.id, { companyId: companyId ?? undefined })} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
+                  {t("allBranches")}
+                </Link>
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <EmptyNote padded>{t(overview.audit.otherOpen > 0 ? "noDueRound" : "noRound")}</EmptyNote>
+        )}
+      </ContentPanel>
+    ) : null,
     status: canViewAssets ? (
       <ContentPanel divided flush title={t("statusTitle")}>
         {statusRows.length > 0 ? (
@@ -298,6 +387,37 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             {t("crossScopeLine", { count: formatCount(overview.crossScopeTotal) })}
           </Link>
         </p>
+      </ContentPanel>
+    ) : null,
+    // Asset movements across every company (R26), each document linked only for those who may open its page.
+    recent: canViewAssets ? (
+      <ContentPanel divided flush title={t("recentTitle")} description={companyId ? t("allCompanies") : undefined}>
+        {recentEvents.length > 0 ? (
+          <ContentPanelRows>
+            {recentEvents.map((event) => {
+              const time = formatRecentTime(event.performedAt, now, locale)
+              return (
+                <li key={event.id} className="flex items-baseline gap-3">
+                  <time dateTime={event.performedAt.toISOString()} className="num w-16 shrink-0 text-meta text-muted-foreground">
+                    {time.kind === "yesterday" ? t("recentYesterday") : time.text}
+                  </time>
+                  <p className="min-w-0 text-sm text-foreground">
+                    {tAll(assetMovementLabelKey(event.movementType))}{" "}
+                    <Link href={`/${locale}/assets/${event.asset.id}`} className={rowLinkClassName}>{event.asset.assetTag}</Link>
+                    {event.document && user && hasPermission(user, ASSET_MOVEMENT_DOCUMENT_PERMISSION[event.document.kind].module, "view") ? (
+                      <>
+                        {" · "}
+                        <Link href={buildAssetMovementDocumentHref(locale, event.document)} className={rowLinkClassName}>{event.document.code}</Link>
+                      </>
+                    ) : null}
+                  </p>
+                </li>
+              )
+            })}
+          </ContentPanelRows>
+        ) : (
+          <EmptyNote padded>{t("recentEmpty")}</EmptyNote>
+        )}
       </ContentPanel>
     ) : null,
   }
@@ -343,7 +463,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {DASHBOARD_SECTION_ORDER[profile].filter((key) => sections[key]).map((key, index) => (
-          <div key={key} id={`dashboard-${key}`} data-dashboard-section={key} className={cn("min-w-0", index % 2 === 0 ? "lg:col-span-7" : "lg:col-span-5")}>
+          <div key={key} id={`dashboard-${key}`} data-dashboard-section={key} className={cn("min-w-0", index % 2 === 0 ? "lg:col-span-7" : "lg:col-span-5", key === "recent" && "max-md:hidden")}>
             {sections[key]}
           </div>
         ))}

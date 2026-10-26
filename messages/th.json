@@ -442,7 +442,19 @@
     "shareColumn": "สัดส่วน",
     "statusSegmentTitle": "{status} {count} รายการ · {note}",
     "statusEmpty": "ยังไม่มีทรัพย์สิน",
-    "crossScopeLine": "นอกขอบเขตเจ้าของรหัส {count} รายการ"
+    "crossScopeLine": "นอกขอบเขตเจ้าของรหัส {count} รายการ",
+    "branchesTitle": "ตรวจนับแยกสาขา",
+    "branchesRound": "รอบ {code}",
+    "legendCounted": "ตรวจแล้ว",
+    "legendPace": "ควรถึงวันนี้",
+    "branchBehind": "ช้ากว่าที่ควร",
+    "branchNumbers": "{percent} · {processed}/{expected}",
+    "branchBarLabel": "{branch} ตรวจแล้ว {percent} ควรถึงวันนี้ {pace}",
+    "allBranches": "ดูทุกสาขา",
+    "allOpenRounds": "ดูรอบที่กำลังตรวจทั้งหมด",
+    "recentTitle": "ล่าสุด",
+    "recentYesterday": "เมื่อวาน",
+    "recentEmpty": "ยังไม่มีความเคลื่อนไหวของทรัพย์สิน"
   },
   "workCenter": {
     "title": "ศูนย์แจ้งเตือนงานค้าง",

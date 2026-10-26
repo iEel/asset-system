@@ -78,8 +78,8 @@ test("the dashboard: one KPI StatStrip at the top level, divided ContentPanels o
   const source = read(`${D}dashboard/page.tsx`)
   assert.equal(source.match(/<StatStrip\b/g)?.length, 1)
   assert.match(source, /<StatStrip items=\{kpiItems\} \/>/)
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 2, "งานที่รอคุณ and ตามสถานะ")
-  assert.equal(source.match(/<ContentPanel\n?\s*divided\n?\s*flush\b/g)?.length, 2)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 4, "งานที่รอคุณ, ตรวจนับแยกสาขา, ตามสถานะ, ล่าสุด")
+  assert.equal(source.match(/<ContentPanel\n?\s*divided\n?\s*flush\b/g)?.length, 4)
   // Each segment links to its status's list with the row's own exact href and names it on hover (spec §2 decision 3, R17).
   assert.match(source, /<DistributionBar segments=\{statusRows\.map\(\(row\) => \(\{ key: row\.key, count: row\.count, tone: row\.tone, href: row\.href, title: t\("statusSegmentTitle", \{ status: row\.name, count: formatCount\(row\.count\), note: withCompany\(t\("noteStatus", \{ status: row\.name \}\)\) \}\) \}\)\)\} \/>/)
   assert.match(source, /<Link href=\{row\.href\} title=\{withCompany\(t\("noteStatus", \{ status: row\.name \}\)\)\}/, "the table row opens the same list, for everyone")

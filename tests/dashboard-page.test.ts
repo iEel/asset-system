@@ -5,10 +5,13 @@ import {
   buildDashboardHref,
   buildDashboardRegisterHref,
   buildDashboardWaiting,
+  DASHBOARD_BRANCH_ROW_LIMIT,
   DASHBOARD_COMPANY_TAB_LIMIT,
   describeWaitingAge,
   formatDayMonth,
+  formatRecentTime,
   normalizeDashboardCompanyId,
+  pickDashboardBranchRows,
 } from "../src/lib/dashboard-page.ts"
 import { buildExactAssetRegisterHref } from "../src/lib/asset-register-view-memory.ts"
 import { dashboardRegisterParams, type DashboardRegisterCount } from "../src/lib/dashboard-overview-rules.ts"
@@ -149,7 +152,6 @@ test("งานที่รอคุณ: the bell's titles, links and order, one
   assert.match(source, /min-h-14/)
   assert.match(source, /const zeroLineClassName = waiting\.rows\.length > 0/)
   assert.match(source, /<EmptyNote tone="clear" padded[^>]*>\{t\("waitingZero", /)
-  assert.equal(source.match(/description=\{companyId \? t\("allCompanies"\) : undefined\}/g)?.length, 1, "งานที่รอคุณ says ทุกบริษัท when a company is chosen")
 })
 
 test("the dashboard's words (spec §6, docs/19_THAI_GLOSSARY.md)", () => {
@@ -168,4 +170,54 @@ test("the dashboard's words (spec §6, docs/19_THAI_GLOSSARY.md)", () => {
   }
   assert.equal(th.waitingNext.stuckRepairs, "บันทึกซ่อม")
   for (const key of ["inUse", "warrantyExpiring", "monthlyTrendTitle", "actionableTitle", "recentActivity", "pendingDisposals"]) assert.equal(th[key], undefined, `dashboard.${key} is gone`)
+})
+
+test("ตรวจนับแยกสาขา: eight rows on the desktop, three on the phone, and ดูทุกสาขา while more are left (spec §6.7)", () => {
+  const branches = (count: number) => Array.from({ length: count }, (_, index) => ({ branchId: `b${index}`, name: `สาขา ${index}`, processed: 0, expected: 10, behind: true }))
+  assert.deepEqual(DASHBOARD_BRANCH_ROW_LIMIT, { desktop: 8, phone: 3 })
+  assert.deepEqual(pickDashboardBranchRows(branches(2)), { rows: branches(2), moreOnPhone: false, moreOnDesktop: false })
+  assert.deepEqual(pickDashboardBranchRows(branches(5)), { rows: branches(5), moreOnPhone: true, moreOnDesktop: false })
+  const nine = pickDashboardBranchRows(branches(9))
+  assert.deepEqual([nine.rows.length, nine.moreOnPhone, nine.moreOnDesktop], [8, true, true])
+})
+
+test("ล่าสุด: the time today, เมื่อวาน, else the date, in Bangkok days (spec §6.8; bangkokDayDiff, R1)", () => {
+  const now = new Date("2026-10-25T15:00:00Z") // 22:00 in Bangkok
+  assert.deepEqual(formatRecentTime(new Date("2026-10-25T14:40:00Z"), now, "th"), { kind: "time", text: "21:40" })
+  assert.deepEqual(formatRecentTime(new Date("2026-10-24T20:00:00Z"), now, "th"), { kind: "time", text: "03:00" }, "03:00 on the 25th in Bangkok")
+  assert.deepEqual(formatRecentTime(new Date("2026-10-24T16:59:00Z"), now, "en"), { kind: "yesterday" }, "23:59 on the 24th in Bangkok")
+  assert.deepEqual(formatRecentTime(new Date("2026-10-24T10:00:00Z"), now, "th"), { kind: "yesterday" })
+  assert.deepEqual(formatRecentTime(new Date("2026-10-23T10:00:00Z"), now, "th"), { kind: "date", text: "23 ต.ค." })
+  assert.deepEqual(formatRecentTime(new Date("2025-12-30T10:00:00Z"), now, "en"), { kind: "date", text: "30 Dec 2025" })
+})
+
+test("ตรวจนับแยกสาขา: a pace bar per branch, the legend, the behind text with its icon, the branch links narrowed to the chosen company, the rounds in progress as a link without a number, and the no-round state (spec §6.7; R13, R15, R16)", () => {
+  const source = page()
+  assert.match(source, /pickDashboardBranchRows\(overview\.audit\.branches\)/)
+  assert.match(source, /buildAuditRoundItemsHref\(locale, round\.id, \{ branchId: branch\.branchId, companyId: companyId \?\? undefined \}\)/)
+  assert.match(source, /const branchValue = auditPercent\(branch\.processed, branch\.expected\) \/ 100/)
+  assert.match(source, /pace=\{overview\.audit\.pace\}/)
+  assert.match(source, /behind=\{branch\.behind\}/)
+  assert.match(source, /t\("branchBarLabel", \{ branch: branch\.name, /, "the overview names the branch (company code / branch under ทุกบริษัท)")
+  assert.match(source, /\{t\("legendPace"\)\}/)
+  assert.match(source, /\{t\("branchBehind"\)\}/)
+  assert.match(source, /toneIcons\.warning/)
+  assert.match(source, /index >= DASHBOARD_BRANCH_ROW_LIMIT\.phone && "max-md:hidden"/)
+  assert.match(source, /overview\.audit\.otherOpen > 0 \? \(\s*<Link href=\{`\/\$\{locale\}\/audit\/rounds\?view=open`\}/)
+  assert.match(source, /\{t\("allOpenRounds"\)\}/)
+  assert.doesNotMatch(source, /formatCount\(overview\.audit\.otherOpen\)|otherOpenRounds|viewRounds/, "the other rounds are never a number")
+  assert.equal(source.match(/t\(overview\.audit\.otherOpen > 0 \? "noDueRound" : "noRound"\)/g)?.length, 2, "the KPI and the section")
+})
+
+test("ล่าสุด: five asset events for asset:view, on the desktop only, the document linked only for those who may open it, with no link to every movement (spec §6.8)", () => {
+  const source = page()
+  assert.match(source, /canViewAssets \? getRecentAssetEvents\(5\) : Promise\.resolve\(\[\]\)/)
+  assert.match(source, /tAll\(assetMovementLabelKey\(event\.movementType\)\)/)
+  assert.match(source, /formatRecentTime\(event\.performedAt, now, locale\)/)
+  assert.match(source, /<time dateTime=\{event\.performedAt\.toISOString\(\)\}/)
+  assert.match(source, /hasPermission\(user, ASSET_MOVEMENT_DOCUMENT_PERMISSION\[event\.document\.kind\]\.module, "view"\)/)
+  assert.match(source, /buildAssetMovementDocumentHref\(locale, event\.document\)/)
+  assert.match(source, /key === "recent" && "max-md:hidden"/)
+  assert.doesNotMatch(source, /\/admin\/logs|systemLog|crossScopeViewAll/)
+  assert.equal(source.match(/description=\{companyId \? t\("allCompanies"\) : undefined\}/g)?.length, 2, "งานที่รอคุณ and ล่าสุด say ทุกบริษัท while a company is chosen (R26)")
 })
