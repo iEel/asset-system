@@ -26,7 +26,7 @@ test("open checkout queries exclude void transaction documents", () => {
     "src/lib/asset-operation-options.ts",
     "src/lib/asset-state-review-service.ts",
     "src/lib/disposal-readiness.ts",
-    "src/lib/notification-summary.ts",
+    "src/lib/waiting-work-rules.ts",
   ]
 
   for (const path of paths) {

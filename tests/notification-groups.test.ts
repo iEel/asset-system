@@ -2,14 +2,18 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { DECIDE_NOTIFICATION_KEYS, countUnreadDecisions, groupNotificationItems } from "../src/lib/notification-groups.ts"
+import { WAITING_WORK_KEYS } from "../src/lib/waiting-work-rules.ts"
 
-test("the decide group holds the approval inbox only; every other item follows in today's order (menu B shell task 2)", () => {
+test("the decide group holds the approval inbox only; the two repair kinds lead the follow group (menu B shell task 2, group 1 dashboard task 1)", () => {
   assert.deepEqual([...DECIDE_NOTIFICATION_KEYS], ["approvalInbox"])
-  const items = ["duePm", "approvalInbox", "pendingAuditFindings", "pendingDisposals", "returnsDueSoon"].map((key) => ({ key }))
+  const items = WAITING_WORK_KEYS.map((key) => ({ key }))
   const groups = groupNotificationItems(items)
   assert.deepEqual(groups.decide.map((item) => item.key), ["approvalInbox"])
-  assert.deepEqual(groups.follow.map((item) => item.key), ["duePm", "pendingAuditFindings", "pendingDisposals", "returnsDueSoon"])
-  assert.equal(groups.decide[0], items[1]) // the same objects, not copies
+  assert.deepEqual(groups.follow.map((item) => item.key), [
+    "openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "openAuditActions", "auditActionsDueSoon",
+    "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon",
+  ])
+  assert.equal(groups.decide[0], items[0]) // the same objects, not copies
   assert.deepEqual(groupNotificationItems([]), { decide: [], follow: [] })
 })
 

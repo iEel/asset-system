@@ -30,6 +30,8 @@ function digestLabel(locale: NotificationDigestLocale, key: string) {
   const labels: Record<NotificationDigestLocale, Record<string, string>> = {
     th: {
       approvalInbox: "งานรออนุมัติ",
+      openRepairs: "ซ่อมยังไม่เสร็จ",
+      stuckRepairs: "รอซ่อมแต่ยังไม่มีบันทึกซ่อม",
       duePm: "PM ถึงกำหนด",
       pendingAuditFindings: "รายการไม่ตรงรอพิจารณา",
       openAuditActions: "แผนแก้ไขจากการตรวจนับที่ยังเปิด",
@@ -42,6 +44,8 @@ function digestLabel(locale: NotificationDigestLocale, key: string) {
     },
     en: {
       approvalInbox: "Approval work",
+      openRepairs: "Repairs in progress",
+      stuckRepairs: "Awaiting repair without a repair record",
       duePm: "PM due",
       pendingAuditFindings: "Audit discrepancies pending decision",
       openAuditActions: "Open audit action plans",

@@ -15,7 +15,8 @@ import {
 import { buildMaintenancePagination } from "@/lib/maintenance-list"
 import { buildMaintenancePageHref } from "@/lib/maintenance-view"
 import { buildDuePmPlanWhere, getBangkokDateKey } from "@/lib/preventive-maintenance"
-import { getRepairRecordStatusTone, openRepairRecordWhere, toRepairRecordStatus } from "@/lib/repair-record-policy"
+import { getRepairRecordStatusTone, toRepairRecordStatus } from "@/lib/repair-record-policy"
+import { stuckRepairsWhere } from "@/lib/waiting-work-rules"
 import { cn, formatDate } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
@@ -41,12 +42,6 @@ import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
   searchParams: Promise<{ search?: string; status?: string; assetId?: string; dateFrom?: string; dateTo?: string; page?: string; pageSize?: string }>
-}
-
-const stuckAssetWhere = {
-  isActive: true,
-  status: { name: { in: ["Pending Repair", "Under Maintenance"] } },
-  maintenanceTickets: { none: openRepairRecordWhere },
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
@@ -93,12 +88,12 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
     }),
     prisma.maintenancePlan.count({ where: duePmWhere }),
     prisma.asset.findMany({
-      where: stuckAssetWhere,
+      where: stuckRepairsWhere,
       select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } },
       orderBy: { assetTag: "asc" },
       take: 20,
     }),
-    prisma.asset.count({ where: stuckAssetWhere }),
+    prisma.asset.count({ where: stuckRepairsWhere }),
   ])
   // A page past the last one (an old link, or a narrower filter) shows the last page, not an empty table (spec 2B I21).
   const lastPage = lastListPage(total, filters.pageSize)

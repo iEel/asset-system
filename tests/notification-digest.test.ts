@@ -23,6 +23,15 @@ test("builds localized digest message from notification items", () => {
   assert.match(message, /รายการยืมใช้ชั่วคราวใกล้ครบกำหนดคืน: 3/)
 })
 
+test("the digest names the two repair kinds (group 1 dashboard task 1)", () => {
+  const items = [
+    { key: "openRepairs", count: 2, href: "/th/maintenance?status=in_progress", tone: "warning" as const },
+    { key: "stuckRepairs", count: 1, href: "/th/maintenance#stuck", tone: "warning" as const },
+  ]
+  assert.match(buildDailyDigestMessage("th", items), /- ซ่อมยังไม่เสร็จ: 2\n- รอซ่อมแต่ยังไม่มีบันทึกซ่อม: 1/)
+  assert.match(buildDailyDigestMessage("en", items), /- Repairs in progress: 2\n- Awaiting repair without a repair record: 1/)
+})
+
 test("uses highest severity tone in digest", () => {
   assert.equal(resolveDigestTone([{ key: "returnsDueSoon", count: 1, href: "/th", tone: "warning" }]), "warning")
   assert.equal(

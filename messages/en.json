@@ -175,7 +175,11 @@
     "groupFollow": "Follow up",
     "markAllRead": "Mark all read",
     "allRead": "All read",
-    "updatedAt": "Updated {time}"
+    "updatedAt": "Updated {time}",
+    "openRepairs": "Repairs in progress",
+    "openRepairsDetail": "Repair records waiting to be marked finished",
+    "stuckRepairs": "Awaiting repair without a repair record",
+    "stuckRepairsDetail": "In Pending Repair or Under Maintenance with no open repair record. Record the repair so status and history match"
   },
   "nav": {
     "mainNavigation": "Main navigation",

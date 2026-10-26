@@ -18,7 +18,9 @@ test("the maintenance page lists records with PM due and stuck assets", () => {
   assert.match(source, /buildDuePmPlanWhere\(/)
   assert.match(source, /id="pm-due"/)
   assert.match(source, /id="stuck"/)
-  assert.match(source, /maintenanceTickets: \{ none: openRepairRecordWhere \}/)
+  assert.match(source, /^import \{[^}]*\bstuckRepairsWhere\b[^}]*\} from "@\/lib\/waiting-work-rules"$/m)
+  assert.equal(source.match(/where: stuckRepairsWhere/g)?.length, 2, "the stuck list and its count use the bell's where (group 1 dashboard task 1)")
+  assert.match(readFileSync("src/lib/waiting-work-rules.ts", "utf8"), /maintenanceTickets: \{ none: openRepairRecordWhere \}/)
   assert.match(source, /planId=/)
 })
 

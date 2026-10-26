@@ -1,4 +1,4 @@
-import { buildExactAssetRegisterHref } from "./asset-register-view-memory.ts"
+import { buildWaitingWorkHref, WAITING_WORK_KEYS, type WaitingWorkCounts, type WaitingWorkKey } from "./waiting-work-rules.ts"
 
 export type NotificationSummaryItem = {
   key: string
@@ -7,85 +7,28 @@ export type NotificationSummaryItem = {
   tone: "danger" | "warning" | "primary"
 }
 
-export type NotificationSummaryCounts = {
-  approvalInbox: number
-  duePm: number
-  pendingAuditFindings: number
-  openAuditActions: number
-  auditActionsDueSoon: number
-  pendingDisposals: number
-  approvedDisposals: number
-  returnsDueSoon: number
-  warrantyExpiringSoon: number
-  licenseExpiringSoon: number
+export type NotificationSummaryCounts = WaitingWorkCounts
+
+const notificationTones: Record<WaitingWorkKey, NotificationSummaryItem["tone"]> = {
+  approvalInbox: "danger",
+  openRepairs: "warning",
+  stuckRepairs: "warning",
+  duePm: "warning",
+  pendingAuditFindings: "warning",
+  openAuditActions: "warning",
+  auditActionsDueSoon: "danger",
+  pendingDisposals: "danger",
+  approvedDisposals: "warning",
+  returnsDueSoon: "primary",
+  warrantyExpiringSoon: "warning",
+  licenseExpiringSoon: "warning",
 }
 
-export function buildNotificationSummaryItems(
-  locale: string,
-  counts: NotificationSummaryCounts
-): NotificationSummaryItem[] {
-  const notificationItems = [
-    {
-      key: "approvalInbox",
-      count: counts.approvalInbox,
-      href: `/${locale}/admin/approvals`,
-      tone: "danger",
-    },
-    {
-      key: "duePm",
-      count: counts.duePm,
-      href: `/${locale}/maintenance#pm-due`,
-      tone: "warning",
-    },
-    {
-      key: "pendingAuditFindings",
-      count: counts.pendingAuditFindings,
-      href: `/${locale}/audit/findings?status=pending`,
-      tone: "warning",
-    },
-    {
-      key: "openAuditActions",
-      count: counts.openAuditActions,
-      href: `/${locale}/audit/findings?status=all`,
-      tone: "warning",
-    },
-    {
-      key: "auditActionsDueSoon",
-      count: counts.auditActionsDueSoon,
-      href: `/${locale}/audit/findings?status=all`,
-      tone: "danger",
-    },
-    {
-      key: "pendingDisposals",
-      count: counts.pendingDisposals,
-      href: `/${locale}/disposal?status=pending`,
-      tone: "danger",
-    },
-    {
-      key: "approvedDisposals",
-      count: counts.approvedDisposals,
-      href: `/${locale}/disposal?status=approved`,
-      tone: "warning",
-    },
-    {
-      key: "returnsDueSoon",
-      count: counts.returnsDueSoon,
-      href: `/${locale}/asset-management/checkin`,
-      tone: "primary",
-    },
-    {
-      key: "warrantyExpiringSoon",
-      count: counts.warrantyExpiringSoon,
-      href: buildExactAssetRegisterHref(locale, { dataQuality: "warranty" }),
-      tone: "warning",
-    },
-    {
-      key: "licenseExpiringSoon",
-      count: counts.licenseExpiringSoon,
-      href: `/${locale}/assets?ownershipType=software_license`,
-      tone: "warning",
-    },
-  ] satisfies NotificationSummaryItem[]
-
-  return notificationItems.filter((item) => item.count > 0)
+export function buildNotificationSummaryItems(locale: string, counts: WaitingWorkCounts): NotificationSummaryItem[] {
+  return WAITING_WORK_KEYS.map((key) => ({
+    key,
+    count: counts[key],
+    href: buildWaitingWorkHref(locale, key),
+    tone: notificationTones[key],
+  })).filter((item) => item.count > 0)
 }

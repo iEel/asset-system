@@ -81,7 +81,7 @@ test("dashboard, work-center and notification links open the register exactly", 
   const read = (path: string) => readFileSync(path, "utf8").replace(/\r/g, "")
   const dashboard = read("src/app/[locale]/(dashboard)/dashboard/page.tsx")
   const workCenter = read("src/app/[locale]/(dashboard)/work-center/page.tsx")
-  const notifications = read("src/lib/notification-summary-items.ts")
+  const notifications = read("src/lib/waiting-work-rules.ts")
   const dashboardCards = read("src/lib/dashboard-action-cards.ts")
 
   for (const source of [dashboard, workCenter, dashboardCards]) {

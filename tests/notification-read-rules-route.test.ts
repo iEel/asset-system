@@ -24,6 +24,7 @@ const mockedModuleSources = new Map<string, string>([
   `],
   ["@/lib/approval-inbox-query", `
     export async function getApprovalInboxCounts() { return globalThis.__notificationRoute.inbox }
+    export function getApprovalInboxAccess() { return { canApproveDisposal: true, canApproveAudit: true, canAnyApproval: true } }
   `],
   ["@/lib/db", `
     const state = () => globalThis.__notificationRoute
@@ -32,7 +33,7 @@ const mockedModuleSources = new Map<string, string>([
         get(_target, method) {
           return async (args) => {
             state().calls.push({ call: name + "." + String(method), args })
-            if (method === "count") return state().counts[name] ?? 0
+            if (method === "count") return name === "asset" && args?.where?.checkouts ? state().counts.assetReturns ?? 0 : state().counts[name] ?? 0
             if (name === "systemSetting" && method === "findMany") return []
             if (name === "notificationUserState" && method === "findMany") {
               const keys = args?.where?.key?.in ?? []
@@ -95,7 +96,7 @@ const summaryModule = await load<{
 const { NextRequest } = await import("next/server") as unknown as { NextRequest: typeof Request }
 
 const calls = (name: string) => state.calls.filter((c) => c.call === name).map((c) => c.args)
-const TEN_KEYS = ["approvalInbox", "duePm", "pendingAuditFindings", "openAuditActions", "auditActionsDueSoon", "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"]
+const WAITING_KEYS = ["approvalInbox", "openRepairs", "stuckRepairs", "duePm", "pendingAuditFindings", "openAuditActions", "auditActionsDueSoon", "pendingDisposals", "approvedDisposals", "returnsDueSoon", "warrantyExpiringSoon", "licenseExpiringSoon"]
 const stateRow = (key: string, isRead: boolean, lastCount: number, snoozedUntil: string | null = null) =>
   ({ key, isRead, lastCount, snoozedUntil, assignedToUserId: null })
 const getSummary = () => route.GET(new NextRequest("http://localhost/api/notifications?locale=th"))
@@ -115,7 +116,7 @@ test("the summary reads every counted key's state and records each drop once, gu
   assert.equal(body.total, 0)
   assert.deepEqual(body.items, [{ key: "approvalInbox", count: 2, href: "/th/admin/approvals", tone: "danger", isRead: true, isSnoozed: false, isSuppressed: true }])
   assert.equal(typeof body.generatedAt, "string")
-  assert.deepEqual(calls("notificationUserState.findMany")[0].where, { userId: "user-1", key: { in: TEN_KEYS } })
+  assert.deepEqual(calls("notificationUserState.findMany")[0].where, { userId: "user-1", key: { in: WAITING_KEYS } })
   assert.deepEqual(calls("notificationUserState.updateMany"), [
     { where: { userId: "user-1", key: "approvalInbox", lastCount: { gt: 2 } }, data: { lastCount: 2 } },
     { where: { userId: "user-1", key: "duePm", lastCount: { gt: 0 } }, data: { lastCount: 0 } },
@@ -141,7 +142,7 @@ test("getNotificationCenter records no drop when asked not to, and the digest's 
 })
 
 test("read_all marks every row not yet read at the server's own count and answers the recomputed summary (menu B shell task 2)", async () => {
-  state.counts = { maintenancePlan: 1, assetCheckout: 1 }
+  state.counts = { maintenancePlan: 1, assetReturns: 1 }
   state.states = [stateRow("duePm", true, 1), stateRow("returnsDueSoon", false, 1, "2099-01-01T00:00:00.000Z")]
   const patch = () => route.PATCH(new NextRequest("http://localhost/api/notifications?locale=th", {
     method: "PATCH",
