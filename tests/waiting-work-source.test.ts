@@ -15,6 +15,7 @@ import {
   pendingAuditFindingsWhere,
   pendingDisposalsWhere,
   returnsDueSoonAssetWhere,
+  returnsDueSoonLoanWhere,
   startOfBangkokDay,
   stuckRepairsWhere,
   WAITING_WORK_KEYS,
@@ -29,6 +30,9 @@ const state = {
   settings: [] as Array<{ key: string; value: string }>,
   counts: {} as Record<string, number>,
   calls: [] as Call[],
+  oldestApproval: { oldest: null as Date | null, slaDays: 3 },
+  mins: {} as Record<string, Date | null>,
+  rows: {} as Record<string, unknown[]>,
 }
 Object.assign(globalThis, { __waitingWork: state })
 
@@ -46,6 +50,7 @@ const mockedModuleSources = new Map<string, string>([
       return { canApproveDisposal, canApproveAudit, canAnyApproval: canApproveDisposal || canApproveAudit }
     }
     export async function getApprovalInboxCounts() { return globalThis.__waitingWork.inbox }
+    export async function getApprovalInboxOldest() { return globalThis.__waitingWork.oldestApproval }
   `],
   ["@/lib/db", `
     const state = () => globalThis.__waitingWork
@@ -56,6 +61,9 @@ const mockedModuleSources = new Map<string, string>([
             state().calls.push({ call: name + "." + String(method), args })
             if (method === "count") return state().counts[name] ?? 0
             if (name === "systemSetting" && method === "findMany") return state().settings
+            if (method === "aggregate") return { _min: Object.fromEntries(Object.keys(args._min).map((field) => [field, state().mins[name + "." + field] ?? null])) }
+            if (method === "groupBy") return state().rows[name + ".groupBy"] ?? []
+            if (method === "findMany") return state().rows[name] ?? []
             return null
           }
         },
@@ -97,6 +105,9 @@ beforeEach(() => {
   state.settings = []
   state.counts = {}
   state.calls = []
+  state.oldestApproval = { oldest: null, slaDays: 3 }
+  state.mins = {}
+  state.rows = {}
 })
 
 test("every count uses its kind's where, with the days the settings hold, and nothing is written (group 1 dashboard task 1)", async () => {
@@ -159,4 +170,63 @@ test("permissions decide what a person sees, and the inbox hides the queues it a
   work = await source.getWaitingWork(user([]), now)
   assert.deepEqual(work.visibleKeys, [])
   assert.ok(Object.values(work.counts).every((count) => count === 0))
+})
+
+test("each kind's age is one _min aggregate over its count's own where; returns read only loans of active assets (group 1 dashboard task 2)", async () => {
+  const rules = DEFAULT_WAITING_WORK_RULES
+  state.mins = {
+    "maintenanceTicket.reportedDate": new Date("2026-10-14T05:00:00Z"),
+    "maintenancePlan.nextDueDate": new Date("2026-10-23T00:00:00Z"),
+    "assetCheckout.expectedReturnDate": new Date("2026-10-28T03:00:00Z"),
+    "asset.warrantyEndDate": new Date("2026-11-12T00:00:00Z"),
+  }
+  const keys = ["openRepairs", "duePm", "returnsDueSoon", "warrantyExpiringSoon"] as const
+  const ages = await source.getWaitingWorkAges(user(["maintenance:view", "asset:view"]), keys, rules, now)
+  assert.deepEqual(state.calls.map((entry) => entry.call), [
+    "maintenanceTicket.aggregate", "maintenancePlan.aggregate", "assetCheckout.aggregate", "asset.aggregate",
+  ])
+  assert.deepEqual(state.calls.map((entry) => entry.args), [
+    { where: openRepairsWhere, _min: { reportedDate: true } },
+    { where: duePmWhere(today), _min: { nextDueDate: true } },
+    { where: { ...returnsDueSoonLoanWhere(today, rules), asset: { isActive: true } }, _min: { expectedReturnDate: true } },
+    { where: warrantyExpiringSoonWhere(today, rules), _min: { warrantyEndDate: true } },
+  ])
+  assert.deepEqual(ages, {
+    openRepairs: { kind: "age", days: 12, overdue: false },
+    duePm: { kind: "due", days: -3, overdue: true },
+    returnsDueSoon: { kind: "due", days: 2, overdue: false },
+    warrantyExpiringSoon: { kind: "expires", date: new Date("2026-11-12T00:00:00Z"), days: 17 },
+  })
+})
+
+test("approvals take the inbox's oldest and its SLA, stuck repairs date from the move into their status, and an empty aggregate gives no age (group 1 dashboard task 2)", async () => {
+  state.oldestApproval = { oldest: new Date("2026-10-22T05:00:00Z"), slaDays: 3 }
+  state.rows = {
+    asset: [
+      { id: "a1", statusId: "s-pending", updatedAt: new Date("2026-10-20T05:00:00Z") },
+      { id: "a2", statusId: "s-under", updatedAt: new Date("2026-10-24T05:00:00Z") },
+    ],
+    "assetMovement.groupBy": [{ assetId: "a1", toValue: "s-pending", _max: { performedAt: new Date("2026-10-16T05:00:00Z") } }],
+  }
+  const ages = await source.getWaitingWorkAges(user([]), ["approvalInbox", "stuckRepairs", "pendingDisposals", "approvedDisposals"], DEFAULT_WAITING_WORK_RULES, now)
+  const argsOf = (call: string) => state.calls.filter((entry) => entry.call === call).map((entry) => entry.args)
+  assert.deepEqual(argsOf("asset.findMany"), [{ where: stuckRepairsWhere, select: { id: true, statusId: true, updatedAt: true } }])
+  assert.deepEqual(argsOf("assetMovement.groupBy"), [{
+    by: ["assetId", "toValue"],
+    where: { assetId: { in: ["a1", "a2"] }, toValue: { in: ["s-pending", "s-under"] } },
+    _max: { performedAt: true },
+  }])
+  assert.deepEqual(argsOf("disposalRequest.aggregate"), [
+    { where: pendingDisposalsWhere, _min: { requestDate: true } },
+    { where: approvedDisposalsWhere, _min: { approvedAt: true } },
+  ])
+  assert.deepEqual(ages, {
+    approvalInbox: { kind: "age", days: 4, overdue: true },
+    stuckRepairs: { kind: "age", days: 10, overdue: false },
+  })
+
+  state.calls = []
+  state.rows = {}
+  assert.deepEqual(await source.getWaitingWorkAges(user([]), ["stuckRepairs"], DEFAULT_WAITING_WORK_RULES, now), {})
+  assert.deepEqual(state.calls.map((entry) => entry.call), ["asset.findMany"], "no stuck asset, so no movement read")
 })

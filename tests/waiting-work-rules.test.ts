@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { getApprovalAgeStatus } from "../src/lib/approval-aging.ts"
 import { auditRoundOperationalWhere } from "../src/lib/audit-round-status.ts"
 import { buildDuePmPlanWhere } from "../src/lib/preventive-maintenance.ts"
 import { openRepairRecordWhere } from "../src/lib/repair-record-policy.ts"
@@ -12,6 +13,7 @@ import {
   buildWaitingWorkHref,
   DEFAULT_WAITING_WORK_RULES,
   duePmWhere,
+  earliestDate,
   licenseExpiringSoonWhere,
   openAuditActionsWhere,
   openRepairsWhere,
@@ -20,8 +22,10 @@ import {
   returnsDueSoonAssetWhere,
   returnsDueSoonLoanWhere,
   startOfBangkokDay,
+  stuckRepairsOldestSince,
   stuckRepairsWhere,
   WAITING_WORK_KEYS,
+  waitingWorkAgeFrom,
   waitingWorkVisibleKeys,
   warrantyExpiringSoonWhere,
   type WaitingWorkAccess,
@@ -139,4 +143,49 @@ test("one link per kind: today's bell links, plus the two repair lists (spec §6
     licenseExpiringSoon: "/th/assets?ownershipType=software_license",
   })
   assert.equal(buildWaitingWorkHref("en", "stuckRepairs"), "/en/maintenance#stuck")
+})
+
+test("each kind's age: days since its oldest record, days to its earliest due date, or its earliest expiry (spec §6.3)", () => {
+  const kinds = Object.fromEntries(WAITING_WORK_KEYS.map((key) => [key, waitingWorkAgeFrom(key, at("2026-10-20T05:00:00Z"), today, 3)?.kind]))
+  assert.deepEqual(kinds, {
+    approvalInbox: "age", openRepairs: "age", stuckRepairs: "age", duePm: "due",
+    pendingAuditFindings: "age", openAuditActions: "due", auditActionsDueSoon: "due",
+    pendingDisposals: "age", approvedDisposals: "age", returnsDueSoon: "due",
+    warrantyExpiringSoon: "expires", licenseExpiringSoon: "expires",
+  })
+  assert.equal(waitingWorkAgeFrom("duePm", null, today, 3), null)
+  // Bangkok days: 23:30 on 25 Oct is one day old today, 00:30 on 26 Oct is none.
+  assert.deepEqual(waitingWorkAgeFrom("openRepairs", at("2026-10-25T16:30:00Z"), today, 3), { kind: "age", days: 1, overdue: false })
+  assert.deepEqual(waitingWorkAgeFrom("openRepairs", at("2026-10-25T17:30:00Z"), today, 3), { kind: "age", days: 0, overdue: false })
+  // Only approvals carry the SLA: a pending disposal 12 days old is old, not overdue.
+  assert.deepEqual(waitingWorkAgeFrom("pendingDisposals", at("2026-10-14T05:00:00Z"), today, 3), { kind: "age", days: 12, overdue: false })
+  assert.deepEqual(waitingWorkAgeFrom("duePm", at("2026-10-23T00:00:00Z"), today, 3), { kind: "due", days: -3, overdue: true })
+  assert.deepEqual(waitingWorkAgeFrom("auditActionsDueSoon", at("2026-10-26T10:00:00Z"), today, 3), { kind: "due", days: 0, overdue: false })
+  assert.deepEqual(waitingWorkAgeFrom("returnsDueSoon", at("2026-10-28T03:00:00Z"), today, 3), { kind: "due", days: 2, overdue: false })
+  assert.deepEqual(waitingWorkAgeFrom("licenseExpiringSoon", at("2026-11-12T00:00:00Z"), today, 3), { kind: "expires", date: at("2026-11-12T00:00:00Z"), days: 17 })
+})
+
+// Counted on Bangkok days directly; at Bangkok noon getApprovalAgeStatus (server-local days) gives the same answer.
+test("approvals are overdue once their Bangkok age passes the SLA, as getApprovalAgeStatus says at Bangkok noon (spec §6.3)", () => {
+  for (const [requested, days, overdue] of [["2026-10-14T05:00:00Z", 12, true], ["2026-10-23T05:00:00Z", 3, false], ["2026-10-22T05:00:00Z", 4, true]] as const) {
+    assert.deepEqual(waitingWorkAgeFrom("approvalInbox", at(requested), today, 3), { kind: "age", days, overdue })
+    assert.equal(getApprovalAgeStatus(at(requested), now, 3).isOverdue, overdue, requested)
+  }
+})
+
+test("the earliest of several dates, and a stuck asset dates from its move into its current status (spec §6.3)", () => {
+  assert.equal(earliestDate([]), null)
+  assert.deepEqual(earliestDate([null, at("2026-10-20T00:00:00Z"), undefined, at("2026-10-18T00:00:00Z")]), at("2026-10-18T00:00:00Z"))
+  const assets = [
+    { id: "a1", statusId: "s-pending", updatedAt: at("2026-10-20T05:00:00Z") },
+    { id: "a2", statusId: "s-under", updatedAt: at("2026-10-24T05:00:00Z") },
+  ]
+  // a2 once moved into s-pending, but it sits in s-under now with no movement into it, so its last edit counts.
+  const movements = [
+    { assetId: "a1", toValue: "s-pending", _max: { performedAt: at("2026-10-16T05:00:00Z") } },
+    { assetId: "a2", toValue: "s-pending", _max: { performedAt: at("2026-10-10T05:00:00Z") } },
+  ]
+  assert.deepEqual(stuckRepairsOldestSince(assets, movements), at("2026-10-16T05:00:00Z"))
+  assert.deepEqual(stuckRepairsOldestSince([assets[1]], movements), at("2026-10-24T05:00:00Z"))
+  assert.equal(stuckRepairsOldestSince([], movements), null)
 })

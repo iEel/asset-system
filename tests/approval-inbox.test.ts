@@ -114,6 +114,19 @@ test("the snapshot's summary and the counts share one database count (critique C
   assert.match(src, /return buildApprovalInboxCounts\(\{ disposal, auditFindings, auditRoundsReady \}\)/)
 })
 
+test("the inbox's oldest request reads the same queues, gates and wheres as its count (group 1 dashboard task 2)", () => {
+  const src = readFileSync("src/lib/approval-inbox-query.ts", "utf8").replace(/\r/g, "")
+  assert.match(src, /export async function getApprovalInboxOldest\(user: SessionUser\): Promise<\{ oldest: Date \| null; slaDays: number \}>/)
+  assert.equal(src.match(/where: pendingDisposalApprovalWhere\b/g)?.length, 3, "the snapshot list, the count and the oldest")
+  assert.equal(src.match(/where: pendingFindingApprovalWhere\(user\.id\)/g)?.length, 3, "the snapshot list, the count and the oldest")
+  assert.equal(src.match(/getReadyAuditRoundsForClose\(user\.id\)/g)?.length, 2, "the count and the oldest")
+  assert.equal(src.match(/access\.canApproveDisposal && policy\.disposalRequired/g)?.length, 3)
+  assert.equal(src.match(/access\.canApproveAudit && policy\.auditCloseRequired/g)?.length, 3)
+  assert.match(src, /_min: \{ requestDate: true \}/)
+  assert.match(src, /_min: \{ reportedAt: true \}/)
+  assert.doesNotMatch(src, /getReadyAuditRoundCloseCount/)
+})
+
 test("the approval inbox sentence names only the queues it counts (critique C3)", () => {
   for (const locale of ["th", "en"]) {
     const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))

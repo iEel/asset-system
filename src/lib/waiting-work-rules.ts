@@ -181,3 +181,60 @@ const waitingWorkHrefs: Record<WaitingWorkKey, (locale: string) => string> = {
 export function buildWaitingWorkHref(locale: string, key: WaitingWorkKey): string {
   return waitingWorkHrefs[key](locale)
 }
+
+// How long a kind has waited (spec §6.3): days since its oldest record, days to its earliest due date, or its earliest expiry.
+export type WaitingWorkAge =
+  | { kind: "age"; days: number; overdue: boolean }
+  | { kind: "due"; days: number; overdue: boolean }
+  | { kind: "expires"; date: Date; days: number }
+
+const waitingWorkAgeKinds: Record<WaitingWorkKey, WaitingWorkAge["kind"]> = {
+  approvalInbox: "age",
+  openRepairs: "age",
+  stuckRepairs: "age",
+  duePm: "due",
+  pendingAuditFindings: "age",
+  openAuditActions: "due",
+  auditActionsDueSoon: "due",
+  pendingDisposals: "age",
+  approvedDisposals: "age",
+  returnsDueSoon: "due",
+  warrantyExpiringSoon: "expires",
+  licenseExpiringSoon: "expires",
+}
+
+// Bangkok days throughout. Only approvals carry the SLA (the rule of getApprovalAgeStatus: overdue once age passes it);
+// a due kind is overdue only once its date has passed.
+export function waitingWorkAgeFrom(key: WaitingWorkKey, oldest: Date | null, today: Date, slaDays: number): WaitingWorkAge | null {
+  if (oldest === null) return null
+  const kind = waitingWorkAgeKinds[key]
+  if (kind === "age") {
+    const days = Math.max(0, bangkokDayDiff(oldest, today))
+    return { kind, days, overdue: key === "approvalInbox" ? days > slaDays : false }
+  }
+  const days = bangkokDayDiff(today, oldest)
+  if (kind === "due") return { kind, days, overdue: days < 0 }
+  return { kind, date: oldest, days }
+}
+
+export function earliestDate(dates: readonly (Date | null | undefined)[]): Date | null {
+  let earliest: Date | null = null
+  for (const date of dates) {
+    if (date && (earliest === null || date.getTime() < earliest.getTime())) earliest = date
+  }
+  return earliest
+}
+
+// A stuck asset waits from its latest move into its current status (status corrections, repair records, state
+// reviews and disposals write the new status id into toValue), else from its last edit.
+export function stuckRepairsOldestSince(
+  assets: readonly { id: string; statusId: string; updatedAt: Date }[],
+  movements: readonly { assetId: string; toValue: string | null; _max: { performedAt: Date | null } }[],
+): Date | null {
+  return earliestDate(
+    assets.map((asset) => {
+      const movedIn = movements.find((movement) => movement.assetId === asset.id && movement.toValue === asset.statusId)
+      return movedIn?._max.performedAt ?? asset.updatedAt
+    }),
+  )
+}

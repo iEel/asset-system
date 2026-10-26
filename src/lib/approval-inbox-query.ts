@@ -1,8 +1,15 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
 import { buildApprovalInboxCounts, buildApprovalInboxItems } from "@/lib/approval-inbox"
-import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys, type WorkflowApprovalPolicy } from "@/lib/workflow-approval"
+import {
+  parseWorkflowApprovalPolicy,
+  workflowApprovalDefaults,
+  workflowApprovalSettingKeys,
+  type WorkflowApprovalPolicy,
+} from "@/lib/workflow-approval"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { earliestDate } from "@/lib/waiting-work-rules"
 
 export type ApprovalInboxAccess = {
   canApproveDisposal: boolean
@@ -16,6 +23,13 @@ export type ApprovalInboxCounts = {
   audit: number
 }
 
+// The queues the inbox holds: the snapshot list, the count and the oldest all read these.
+const pendingDisposalApprovalWhere: Prisma.DisposalRequestWhereInput = { isActive: true, requestStatus: "pending" }
+
+function pendingFindingApprovalWhere(userId: string): Prisma.AuditFindingWhereInput {
+  return { reviewStatus: "pending", reportedBy: { not: userId }, auditRound: { isActive: true, status: auditRoundOperationalWhere } }
+}
+
 export async function getApprovalInboxSnapshot(user: SessionUser, locale: string) {
   const access = getApprovalInboxAccess(user)
   const policy = await getWorkflowApprovalPolicy()
@@ -23,7 +37,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
   const [disposalRequests, auditFindings, auditRoundsReadyToClose, summary] = await Promise.all([
     access.canApproveDisposal && policy.disposalRequired
       ? prisma.disposalRequest.findMany({
-          where: { isActive: true, requestStatus: "pending" },
+          where: pendingDisposalApprovalWhere,
           omit: { batchId: true },
           include: {
             asset: { select: { assetTag: true, name: true } },
@@ -35,7 +49,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
       : Promise.resolve([]),
     access.canApproveAudit
       ? prisma.auditFinding.findMany({
-          where: { reviewStatus: "pending", reportedBy: { not: user.id }, auditRound: { isActive: true, status: auditRoundOperationalWhere } },
+          where: pendingFindingApprovalWhere(user.id),
           include: {
             auditRound: { select: { auditNo: true } },
             asset: { select: { assetTag: true } },
@@ -88,17 +102,41 @@ export async function getApprovalInboxCounts(user: SessionUser): Promise<Approva
   return countApprovalInbox(user, access, policy)
 }
 
+// When the oldest request the inbox counts arrived, behind the same gates and wheres as the count (group 1 dashboard task 2).
+export async function getApprovalInboxOldest(user: SessionUser): Promise<{ oldest: Date | null; slaDays: number }> {
+  const access = getApprovalInboxAccess(user)
+  if (!access.canAnyApproval) return { oldest: null, slaDays: workflowApprovalDefaults.slaDays }
+
+  const policy = await getWorkflowApprovalPolicy()
+  const [disposal, auditFindings, rounds] = await Promise.all([
+    access.canApproveDisposal && policy.disposalRequired
+      ? prisma.disposalRequest.aggregate({ where: pendingDisposalApprovalWhere, _min: { requestDate: true } })
+      : Promise.resolve(null),
+    access.canApproveAudit
+      ? prisma.auditFinding.aggregate({ where: pendingFindingApprovalWhere(user.id), _min: { reportedAt: true } })
+      : Promise.resolve(null),
+    access.canApproveAudit && policy.auditCloseRequired
+      ? getReadyAuditRoundsForClose(user.id)
+      : Promise.resolve([]),
+  ])
+
+  return {
+    oldest: earliestDate([disposal?._min.requestDate, auditFindings?._min.reportedAt, ...rounds.map((round) => round.updatedAt)]),
+    slaDays: policy.slaDays,
+  }
+}
+
 // The real database counts. The lists in the snapshot are capped (take: 50 / 100), so counting their rows stops at the cap.
 async function countApprovalInbox(user: SessionUser, access: ApprovalInboxAccess, policy: WorkflowApprovalPolicy): Promise<ApprovalInboxCounts> {
   const [disposal, auditFindings, auditRoundsReady] = await Promise.all([
     access.canApproveDisposal && policy.disposalRequired
-      ? prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } })
+      ? prisma.disposalRequest.count({ where: pendingDisposalApprovalWhere })
       : Promise.resolve(0),
     access.canApproveAudit
-      ? prisma.auditFinding.count({ where: { reviewStatus: "pending", reportedBy: { not: user.id }, auditRound: { isActive: true, status: auditRoundOperationalWhere } } })
+      ? prisma.auditFinding.count({ where: pendingFindingApprovalWhere(user.id) })
       : Promise.resolve(0),
     access.canApproveAudit && policy.auditCloseRequired
-      ? getReadyAuditRoundCloseCount(user.id)
+      ? getReadyAuditRoundsForClose(user.id).then((rounds) => rounds.length)
       : Promise.resolve(0),
   ])
 
@@ -136,13 +174,14 @@ async function getAuditRoundsReadyToClose(currentUserId: string) {
   return rounds.filter((round) => readyRoundIds.has(round.id))
 }
 
-async function getReadyAuditRoundCloseCount(currentUserId: string) {
+// Every round ready to close, uncapped, with the time it last changed.
+async function getReadyAuditRoundsForClose(currentUserId: string): Promise<{ id: string; updatedAt: Date }[]> {
   const rounds = await prisma.auditRound.findMany({
     where: { isActive: true, status: auditRoundOperationalWhere, createdBy: { not: currentUserId } },
-    select: { id: true },
+    select: { id: true, updatedAt: true },
   })
   const readyRoundIds = await getReadyAuditRoundIds(rounds.map((round) => round.id))
-  return readyRoundIds.size
+  return rounds.filter((round) => readyRoundIds.has(round.id))
 }
 
 async function getReadyAuditRoundIds(roundIds: string[]) {

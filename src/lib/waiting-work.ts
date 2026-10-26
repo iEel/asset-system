@@ -1,7 +1,12 @@
 // The one read of the waiting work (group 1 dashboard task 1). It never writes: the bell records count drops itself.
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
-import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
+import {
+  getApprovalInboxAccess,
+  getApprovalInboxCounts,
+  getApprovalInboxOldest,
+  type ApprovalInboxCounts,
+} from "@/lib/approval-inbox-query"
 import {
   notificationAuditActionDueSoonDaysKey,
   notificationLicenseExpiryDaysKey,
@@ -9,6 +14,7 @@ import {
   notificationRuleSettingKeys,
   notificationWarrantyExpiryDaysKey,
 } from "@/lib/system-setting-defaults"
+import { workflowApprovalDefaults } from "@/lib/workflow-approval"
 import {
   approvedDisposalsWhere,
   auditActionsDueSoonWhere,
@@ -20,11 +26,15 @@ import {
   pendingAuditFindingsWhere,
   pendingDisposalsWhere,
   returnsDueSoonAssetWhere,
+  returnsDueSoonLoanWhere,
   startOfBangkokDay,
+  stuckRepairsOldestSince,
   stuckRepairsWhere,
   WAITING_WORK_KEYS,
+  waitingWorkAgeFrom,
   waitingWorkVisibleKeys,
   warrantyExpiringSoonWhere,
+  type WaitingWorkAge,
   type WaitingWorkCounts,
   type WaitingWorkKey,
   type WaitingWorkRules,
@@ -102,4 +112,72 @@ export async function getWaitingWork(user: SessionUser, now: Date = new Date()):
   const counts = Object.fromEntries(WAITING_WORK_KEYS.map((key, index) => [key, values[index]])) as WaitingWorkCounts
 
   return { counts, visibleKeys, rules, approvalInbox }
+}
+
+// How long each kind has waited, from columns that already exist (group 1 dashboard task 2). Each age reads its count's
+// own where; it reads every key it is given, so the caller asks only for the kinds with a count above 0.
+export async function getWaitingWorkAges(
+  user: SessionUser,
+  visibleKeys: readonly WaitingWorkKey[],
+  rules: WaitingWorkRules,
+  now: Date = new Date(),
+): Promise<Partial<Record<WaitingWorkKey, WaitingWorkAge>>> {
+  const today = startOfBangkokDay(now)
+  const defaultSlaDays = workflowApprovalDefaults.slaDays
+  type Oldest = { oldest: Date | null; slaDays: number }
+  const plain = (oldest: Date | null | undefined): Oldest => ({ oldest: oldest ?? null, slaDays: defaultSlaDays })
+
+  const readers: Record<WaitingWorkKey, () => Promise<Oldest>> = {
+    approvalInbox: () => getApprovalInboxOldest(user),
+    openRepairs: async () =>
+      plain((await prisma.maintenanceTicket.aggregate({ where: openRepairsWhere, _min: { reportedDate: true } }))._min.reportedDate),
+    stuckRepairs: async () => plain(await getStuckRepairsOldest()),
+    duePm: async () =>
+      plain((await prisma.maintenancePlan.aggregate({ where: duePmWhere(today), _min: { nextDueDate: true } }))._min.nextDueDate),
+    pendingAuditFindings: async () =>
+      plain((await prisma.auditFinding.aggregate({ where: pendingAuditFindingsWhere, _min: { reportedAt: true } }))._min.reportedAt),
+    openAuditActions: async () =>
+      plain((await prisma.auditFinding.aggregate({ where: openAuditActionsWhere(today, rules), _min: { actionDueDate: true } }))._min.actionDueDate),
+    auditActionsDueSoon: async () =>
+      plain((await prisma.auditFinding.aggregate({ where: auditActionsDueSoonWhere(today, rules), _min: { actionDueDate: true } }))._min.actionDueDate),
+    pendingDisposals: async () =>
+      plain((await prisma.disposalRequest.aggregate({ where: pendingDisposalsWhere, _min: { requestDate: true } }))._min.requestDate),
+    approvedDisposals: async () =>
+      plain((await prisma.disposalRequest.aggregate({ where: approvedDisposalsWhere, _min: { approvedAt: true } }))._min.approvedAt),
+    // The loans of the active assets returnsDueSoonAssetWhere counts.
+    returnsDueSoon: async () =>
+      plain(
+        (
+          await prisma.assetCheckout.aggregate({
+            where: { ...returnsDueSoonLoanWhere(today, rules), asset: { isActive: true } },
+            _min: { expectedReturnDate: true },
+          })
+        )._min.expectedReturnDate,
+      ),
+    warrantyExpiringSoon: async () =>
+      plain((await prisma.asset.aggregate({ where: warrantyExpiringSoonWhere(today, rules), _min: { warrantyEndDate: true } }))._min.warrantyEndDate),
+    licenseExpiringSoon: async () =>
+      plain((await prisma.asset.aggregate({ where: licenseExpiringSoonWhere(today, rules), _min: { warrantyEndDate: true } }))._min.warrantyEndDate),
+  }
+
+  // Every read starts in the order of visibleKeys, inside one Promise.all.
+  const oldests = await Promise.all(visibleKeys.map((key) => readers[key]()))
+  const ages: Partial<Record<WaitingWorkKey, WaitingWorkAge>> = {}
+  visibleKeys.forEach((key, index) => {
+    const age = waitingWorkAgeFrom(key, oldests[index].oldest, today, oldests[index].slaDays)
+    if (age !== null) ages[key] = age
+  })
+  return ages
+}
+
+// A stuck asset waits from its latest move into its current status, else from its last edit.
+async function getStuckRepairsOldest(): Promise<Date | null> {
+  const assets = await prisma.asset.findMany({ where: stuckRepairsWhere, select: { id: true, statusId: true, updatedAt: true } })
+  if (assets.length === 0) return null
+  const movements = await prisma.assetMovement.groupBy({
+    by: ["assetId", "toValue"],
+    where: { assetId: { in: assets.map((asset) => asset.id) }, toValue: { in: [...new Set(assets.map((asset) => asset.statusId))] } },
+    _max: { performedAt: true },
+  })
+  return stuckRepairsOldestSince(assets, movements)
 }

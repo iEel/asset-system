@@ -25,6 +25,7 @@ const mockedModuleSources = new Map<string, string>([
   ["@/lib/approval-inbox-query", `
     export async function getApprovalInboxCounts() { return globalThis.__notificationRoute.inbox }
     export function getApprovalInboxAccess() { return { canApproveDisposal: true, canApproveAudit: true, canAnyApproval: true } }
+    export async function getApprovalInboxOldest() { return { oldest: null, slaDays: 3 } }
   `],
   ["@/lib/db", `
     const state = () => globalThis.__notificationRoute
