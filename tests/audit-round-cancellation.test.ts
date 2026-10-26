@@ -101,7 +101,7 @@ test("audit rounds UI exposes cancellation and cancelled read-only state", () =>
   assert.match(detail, /t\("cancelledBy"\)/)
   assert.match(detail, /cancelledReadOnlyNotice/)
   assert.match(detail, /!isRoundReadOnly/)
-  assert.match(list, /"cancelled"/)
+  assert.match(readFileSync("src/lib/audit-rounds-list-rules.ts", "utf8"), /if \(view === "cancelled"\) return round\.status === "cancelled"/)
   assert.match(list, /viewCancelled/)
   assert.match(list, /isAuditRoundOperationalStatus/)
   assert.match(cancelButton, /<AccessibleDialog/)

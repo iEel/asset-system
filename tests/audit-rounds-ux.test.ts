@@ -2,6 +2,9 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+const PAGE = "src/app/[locale]/(dashboard)/audit/rounds/page.tsx"
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+
 test("audit rounds page exposes action-first workflow controls", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8")
 
@@ -54,7 +57,7 @@ test("audit rounds UX copy is translated", () => {
     assert.equal(typeof messages.auditRound.viewOpen, "string")
     assert.equal(typeof messages.auditRound.viewPending, "string")
     assert.equal(typeof messages.auditRound.viewReview, "string")
-    assert.equal(typeof messages.auditRound.viewMismatch, "string")
+    assert.equal(typeof messages.auditRound.viewClosed, "string")
     assert.equal(typeof messages.auditRound.viewReadyToClose, "string")
     assert.equal(typeof messages.auditRound.readyToClose, "string")
     assert.equal(typeof messages.auditRound.blockedPendingItems, "string")
@@ -63,4 +66,35 @@ test("audit rounds UX copy is translated", () => {
     assert.equal(typeof messages.auditRound.roundActionReview, "string")
     assert.equal(typeof messages.auditRound.roundActionOutOfScope, "string")
   }
+})
+
+test("the rounds list counts with the one round count: the strip round-wide, the search on the tabs and table only, coverage on own items (group 2 plan 1 task 5, R1, R4, R6)", () => {
+  const page = read(PAGE)
+  // Every round once, unsearched; the search gives ids only.
+  assert.match(page, /prisma\.auditRound\.findMany\(\{\n\s+where: \{ isActive: true \},\n\s+include: auditRoundListInclude,\n\s+orderBy: \[\{ createdAt: "desc" \}, \{ id: "asc" \}\],\n\s+\}\)/)
+  assert.match(page, /searchText \? prisma\.auditRound\.findMany\(\{ where: \{ isActive: true, \.\.\.buildAuditRoundSearchWhere\(searchText\) \}, select: \{ id: true \} \}\) : null/)
+  assert.match(page, /const rounds = matchedRounds \? allRounds\.filter\(\(round\) => matchedRoundIds\.has\(round\.id\)\) : allRounds/)
+  // One round count for own items; decisions and action plans apart; out-of-scope finds from scan history (R4).
+  assert.match(page, /getAuditRoundCounts\(roundIds\)/)
+  assert.match(page, /by: \["auditRoundId", "reviewStatus", "actionStatus"\]/)
+  assert.match(page, /OR: \[\{ reviewStatus: "pending" \}, \{ actionStatus: \{ in: \[\.\.\.openAuditFindingActionStatuses\] \} \}\]/)
+  assert.match(page, /prisma\.auditScanHistory\.groupBy/)
+  // Coverage: own items, the Bangkok year.
+  assert.match(page, /where: withAuditRoundOwnItems\(\{ auditRound: \{ isActive: true, auditYear: currentYear, status: auditRoundCoverageWhere \} \}\)/)
+  assert.match(page, /const currentYear = bangkokYear\(now\)/)
+  // The strip and the coverage's open work: every operational round, unsearched (R1).
+  assert.match(page, /const operationalRounds = allRounds\.filter\(\(round\) => isAuditRoundOperationalStatus\(round\.status\)\)/)
+  assert.match(page, /const openWork = sumAuditRoundWork\(operationalRounds\.map\(insightOf\)\)/)
+  assert.match(page, /const pendingRounds = filterRoundsByView\(allRounds, insightsByRoundId, "pending"\)/)
+  assert.match(page, /const readyRounds = filterRoundsByView\(allRounds, insightsByRoundId, "readyToClose"\)/)
+  // The table and the tab counts follow the search.
+  assert.match(page, /const filteredRounds = filterRoundsByView\(rounds, insightsByRoundId, activeView\)/)
+  assert.match(page, /count: filterRoundsByView\(rounds, insightsByRoundId, value\)\.length/)
+  // The strip's links: the work view without the search, the action plans apart, no link to a ready round at 0 (R3, R8).
+  assert.match(page, /: buildAuditRoundsHref\(locale, "pending", "", \{ pageSize: listPage\.pageSize \}\)/)
+  assert.match(page, /count: openWork\.pendingReview,/)
+  assert.match(page, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/findings\?status=action_open`, auditRoundsReturnHref\)/)
+  assert.match(page, /href: readyRounds\[0\] \? appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{readyRounds\[0\]\.id\}`, auditRoundsReturnHref\) : undefined/)
+  assert.doesNotMatch(page, /_count: \{ select|round\._count|auditItem\.groupBy|openFollowUpCount|followUps|hasMismatch|"mismatch"|getFullYear\(\)/)
+  assert.doesNotMatch(read("src/lib/audit-rounds-list-rules.ts"), /from "@\/|\bprisma\./, "the rules stay pure")
 })

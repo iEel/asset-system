@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Fragment, type ReactNode } from "react"
+import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
 import { AlertTriangle, Eye, ListChecks, Plus, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
@@ -28,11 +29,32 @@ import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import {
   auditRoundCoverageWhere,
-  auditRoundOperationalWhere,
   auditRoundStatusLabelKey,
   effectiveAuditRoundStatus,
   isAuditRoundOperationalStatus,
 } from "@/lib/audit-round-status"
+import { getAuditRoundCounts } from "@/lib/audit-round-counts"
+import { type AuditRoundCounts, withAuditRoundOwnItems } from "@/lib/audit-round-counts-rules"
+import { openAuditFindingActionStatuses } from "@/lib/audit-finding-filters"
+import {
+  auditRoundTabOf,
+  auditRoundTabs,
+  bangkokYear,
+  buildAuditRoundInsights,
+  buildAuditRoundScopeParts,
+  buildAuditRoundSearchWhere,
+  buildAuditRoundsHref,
+  emptyAuditRoundListInsight,
+  filterRoundsByView,
+  foldAuditRoundFindingWork,
+  parseAuditRoundView,
+  sumAuditRoundWork,
+  type AuditRoundListInsight,
+  type AuditRoundScopeKey,
+  type AuditRoundScopeSource,
+  type AuditRoundTab,
+  type AuditRoundView,
+} from "@/lib/audit-rounds-list-rules"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AuditRoundsPageProps = {
@@ -58,25 +80,6 @@ type CoverageGap = {
   percent: number
 }
 
-const auditRoundViewValues = ["all", "open", "pending", "review", "mismatch", "readyToClose", "cancelled"] as const
-type AuditRoundView = (typeof auditRoundViewValues)[number]
-
-type AuditRoundListItem = {
-  id: string
-  auditNo: string
-  status: string
-  _count: { items: number; findings: number }
-}
-
-type AuditRoundInsight = {
-  pending: number
-  processed: number
-  followUps: number
-  outOfScope: number
-  hasMismatch: boolean
-  readyToClose: boolean
-}
-
 type RoundWorkflowLink = {
   key: "pending" | "review" | "out_of_scope"
   label: string
@@ -87,13 +90,25 @@ type ActionPanelItem = {
   label: string
   help: string
   count: number
-  href: string
+  href?: string
   tone: "primary" | "warning" | "success"
 }
 
+// Every scope condition of a round (group 2 spec §6, §13 bug 3), as AuditRoundScopeSource needs them.
+const auditRoundListInclude = {
+  scopeCompany: { select: { code: true, nameTh: true } },
+  scopeBranch: { select: { code: true, name: true } },
+  scopeDepartment: { select: { code: true, name: true } },
+  scopeLocation: { select: { code: true, name: true } },
+  scopeCategory: { select: { code: true, name: true } },
+  scopeCustodian: { select: { code: true, fullNameTh: true } },
+  scopeStatus: { select: { name: true, nameTh: true } },
+  scopeCondition: { select: { name: true, nameTh: true } },
+} satisfies Prisma.AuditRoundInclude
+
 export default async function AuditRoundsPage({ params, searchParams }: AuditRoundsPageProps) {
   const { locale } = await params
-  const { search = "", view = "all", page, pageSize } = await searchParams
+  const { search = "", view, page, pageSize } = await searchParams
   const user = await requirePagePermission(locale, "audit", "view")
   // A view-only role is offered no create or scan link (their pages need audit:create and audit:edit; the E2E suite's M5).
   const canCreateRound = hasPermission(user, "audit", "create")
@@ -103,35 +118,23 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const tCommon = await getTranslations("common")
   const tPending = await getTranslations("auditPending")
   const searchText = search.trim()
-  const activeView: AuditRoundView = auditRoundViewValues.includes(view as AuditRoundView) ? (view as AuditRoundView) : "all"
+  const activeView = parseAuditRoundView(view)
+  const activeTab = auditRoundTabOf(activeView)
   const listPage = parseListPage({ page, pageSize })
-  const currentYear = new Date().getFullYear()
-  const [rounds, activeAssets, coveredItems, currentYearRoundCount, openItemStatusCounts, openFollowUpCount] = await withPerformanceTiming(
+  // The coverage year is the Bangkok year (spec §5 Dates), whatever the server's time zone.
+  const now = new Date()
+  const currentYear = bangkokYear(now)
+  const [allRounds, matchedRounds, activeAssets, coveredItems, currentYearRoundCount] = await withPerformanceTiming(
     "audit-rounds.initial-data",
     () => Promise.all([
+      // Every round, unsearched: the strip "งานที่ต้องทำต่อ" and the coverage's open work are round-wide (group 2 R1).
       prisma.auditRound.findMany({
-        where: {
-          isActive: true,
-          ...(searchText
-            ? {
-                OR: [
-                  { auditNo: { contains: searchText } },
-                  { name: { contains: searchText } },
-                  { scopeCompany: { code: { contains: searchText } } },
-                  { scopeBranch: { code: { contains: searchText } } },
-                  { scopeLocation: { code: { contains: searchText } } },
-                ],
-              }
-            : {}),
-        },
-        include: {
-          scopeCompany: { select: { code: true, nameTh: true } },
-          scopeBranch: { select: { code: true, name: true } },
-          scopeLocation: { select: { code: true, name: true } },
-          _count: { select: { items: true, findings: true } },
-        },
+        where: { isActive: true },
+        include: auditRoundListInclude,
         orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       }),
+      // The search narrows the tabs and the table only, so it reads ids.
+      searchText ? prisma.auditRound.findMany({ where: { isActive: true, ...buildAuditRoundSearchWhere(searchText) }, select: { id: true } }) : null,
       prisma.asset.findMany({
         where: { isActive: true },
         select: {
@@ -142,44 +145,35 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
           department: { select: { code: true, name: true } },
         },
       }),
+      // Coverage counts own items only (group 2 R6): an out-of-scope find never covers an asset.
       prisma.auditItem.findMany({
-        where: { auditRound: { isActive: true, auditYear: currentYear, status: auditRoundCoverageWhere } },
+        where: withAuditRoundOwnItems({ auditRound: { isActive: true, auditYear: currentYear, status: auditRoundCoverageWhere } }),
         distinct: ["assetId"],
         select: { assetId: true },
       }),
       prisma.auditRound.count({ where: { isActive: true, auditYear: currentYear, status: auditRoundCoverageWhere } }),
-      prisma.auditItem.groupBy({
-        by: ["auditStatus"],
-        where: { auditRound: { isActive: true, status: auditRoundOperationalWhere } },
-        _count: { _all: true },
-      }),
-      prisma.auditFinding.count({
-        where: {
-          auditRound: { isActive: true, status: auditRoundOperationalWhere },
-          OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
-        },
-      }),
     ]),
     { route: "/audit/rounds", locale, view: activeView, hasSearch: Boolean(searchText) }
   )
-  const roundIds = rounds.map((round) => round.id)
-  const [statusCounts, findingWorkCounts, outOfScopeWorkCounts] = roundIds.length
+  const matchedRoundIds = new Set(matchedRounds?.map((round) => round.id))
+  const rounds = matchedRounds ? allRounds.filter((round) => matchedRoundIds.has(round.id)) : allRounds
+  const roundIds = allRounds.map((round) => round.id)
+  const [countsByRoundId, findingWorkRows, outOfScopeWorkCounts] = roundIds.length
     ? await withPerformanceTiming(
         "audit-rounds.progress-data",
         () => Promise.all([
-          prisma.auditItem.groupBy({
-            by: ["auditRoundId", "auditStatus"],
-            where: { auditRoundId: { in: roundIds } },
-            _count: { _all: true },
-          }),
+          // The round's own items, out-of-scope finds apart (group 2 spec §5 "What a round counts").
+          getAuditRoundCounts(roundIds),
+          // Pending decisions and open action plans (done included), as the close API counts them (R2, R3).
           prisma.auditFinding.groupBy({
-            by: ["auditRoundId"],
+            by: ["auditRoundId", "reviewStatus", "actionStatus"],
             where: {
               auditRoundId: { in: roundIds },
-              OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
+              OR: [{ reviewStatus: "pending" }, { actionStatus: { in: [...openAuditFindingActionStatuses] } }],
             },
             _count: { _all: true },
           }),
+          // Out-of-scope finds stay from scan history in plan 1, like the round page's list they open (R4).
           prisma.auditScanHistory.groupBy({
             by: ["auditRoundId"],
             where: { auditRoundId: { in: roundIds }, auditItemId: null },
@@ -188,20 +182,13 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         ]),
         { route: "/audit/rounds", locale, roundCount: roundIds.length }
       )
-    : [[], [], []]
-  const progressByRoundId = new Map<string, { pending: number; processed: number }>()
-  for (const row of statusCounts) {
-    const current = progressByRoundId.get(row.auditRoundId) ?? { pending: 0, processed: 0 }
-    if (row.auditStatus === "pending") {
-      current.pending += row._count._all
-    } else {
-      current.processed += row._count._all
-    }
-    progressByRoundId.set(row.auditRoundId, current)
-  }
-  const followUpsByRoundId = new Map(findingWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
+    : ([new Map<string, AuditRoundCounts>(), [], []] as const)
+  const findingWorkByRoundId = foldAuditRoundFindingWork(
+    findingWorkRows.map((row) => ({ auditRoundId: row.auditRoundId, reviewStatus: row.reviewStatus, actionStatus: row.actionStatus, count: row._count._all })),
+  )
   const outOfScopeByRoundId = new Map(outOfScopeWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
-  const insightsByRoundId = buildAuditRoundInsights(rounds, progressByRoundId, followUpsByRoundId, outOfScopeByRoundId)
+  const insightsByRoundId = buildAuditRoundInsights(allRounds, countsByRoundId, findingWorkByRoundId, outOfScopeByRoundId)
+  const insightOf = (round: { id: string }): AuditRoundListInsight => insightsByRoundId.get(round.id) ?? emptyAuditRoundListInsight
   const filteredRounds = filterRoundsByView(rounds, insightsByRoundId, activeView)
   // Real pages (spec 2B B4, §5.9.2 row 7, I21): the view filters and the tab counts need the insight of every round,
   // so the query stays whole and the page is a slice of filteredRounds. The total is known before the cut, so a page
@@ -210,22 +197,29 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const { skip, take } = listPageWindow(roundPage)
   const pageRounds = filteredRounds.slice(skip, skip + take)
   const { start, end, totalPages } = paginationRange(roundPage.page, roundPage.pageSize, filteredRounds.length)
-  const pendingRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.pending ?? 0) > 0 && isAuditRoundOperationalStatus(round.status))
-  const reviewRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.followUps ?? 0) > 0 && isAuditRoundOperationalStatus(round.status))
-  const readyRounds = rounds.filter((round) => insightsByRoundId.get(round.id)?.readyToClose)
+  // The strip and the coverage's open work: every open round, unsearched (R1). Each strip count is the list it opens.
+  const operationalRounds = allRounds.filter((round) => isAuditRoundOperationalStatus(round.status))
+  const openWork = sumAuditRoundWork(operationalRounds.map(insightOf))
+  const pendingRounds = filterRoundsByView(allRounds, insightsByRoundId, "pending")
+  const readyRounds = filterRoundsByView(allRounds, insightsByRoundId, "readyToClose")
   const viewLabels: Record<AuditRoundView, string> = {
-    all: t("viewAll"),
     open: t("viewOpen"),
+    closed: t("viewClosed"),
+    cancelled: t("viewCancelled"),
+    all: t("viewAll"),
     pending: t("viewPending"),
     review: t("viewReview"),
-    mismatch: t("viewMismatch"),
     readyToClose: t("viewReadyToClose"),
-    cancelled: t("viewCancelled"),
+  }
+  const scopeLabels: Record<AuditRoundScopeKey, string> = {
+    company: t("scopeCompany"), branch: t("scopeBranch"), department: t("scopeDepartment"), location: t("scopeLocation"),
+    category: t("scopeCategory"), custodian: t("scopeCustodian"), status: t("scopeStatus"), condition: t("scopeCondition"),
   }
   // The round detail and scan pages bring the user back to this page and page size (B4 returnTo).
   const auditRoundsReturnHref = buildAuditRoundsHref(locale, activeView, searchText, roundPage)
+  // The status tabs (group 2 spec §6): their counts follow the search, like the table (R1).
   // A filter link goes back to page 1 and keeps the page size (spec 2B §5.9.1).
-  const quickFilters = auditRoundViewValues.map((value) => ({
+  const statusTabs = auditRoundTabs.map((value) => ({
     value,
     label: viewLabels[value],
     count: filterRoundsByView(rounds, insightsByRoundId, value).length,
@@ -236,32 +230,38 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     {
       label: t("actionContinueScan"),
       help: t("actionContinueScanHelp"),
-      count: pendingRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.pending ?? 0), 0),
-      href: canScan && pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", searchText, { pageSize: listPage.pageSize }),
+      count: openWork.pending,
+      // The work view carries no search: the strip is round-wide (R1, R31).
+      href: canScan && pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", "", { pageSize: listPage.pageSize }),
       tone: "primary",
     },
     {
       label: t("actionReviewFindings"),
       help: t("actionReviewFindingsHelp"),
-      count: reviewRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.followUps ?? 0), 0),
+      count: openWork.pendingReview,
       href: appendOperationalReturnTo(`/${locale}/audit/findings?status=pending`, auditRoundsReturnHref),
       tone: "warning",
+    },
+    {
+      // Open action plans apart from the decisions (R3, R28): the reason a reviewed round cannot close yet.
+      label: t("actionOpenActions"),
+      help: t("actionOpenActionsHelp"),
+      count: openWork.openActions,
+      href: appendOperationalReturnTo(`/${locale}/audit/findings?status=action_open`, auditRoundsReturnHref),
+      tone: "primary",
     },
     {
       label: t("actionCloseReadyRounds"),
       help: t("actionCloseReadyRoundsHelp"),
       count: readyRounds.length,
-      href: readyRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${readyRounds[0].id}`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "readyToClose", searchText, { pageSize: listPage.pageSize }),
+      // No link at 0: the cell is plain (R8).
+      href: readyRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${readyRounds[0].id}`, auditRoundsReturnHref) : undefined,
       tone: "success",
     },
   ]
   const coveredAssetIds = new Set(coveredItems.map((item) => item.assetId))
   const coveredAssetCount = activeAssets.filter((asset) => coveredAssetIds.has(asset.id)).length
   const uncoveredAssetCount = Math.max(activeAssets.length - coveredAssetCount, 0)
-  const openPendingItems = openItemStatusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
-  const openProcessedItems = openItemStatusCounts
-    .filter((row) => row.auditStatus !== "pending")
-    .reduce((sum, row) => sum + row._count._all, 0)
   const categoryGaps = buildCoverageGaps(
     activeAssets,
     coveredAssetIds,
@@ -308,7 +308,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             { key: "activeAssets", label: t("coverageActiveAssets"), value: formatCount(activeAssets.length) },
             { key: "covered", label: t("coverageCoveredThisYear"), value: formatCount(coveredAssetCount) },
             { key: "uncovered", label: t("coverageUncoveredThisYear"), value: formatCount(uncoveredAssetCount) },
-            { key: "openPending", label: t("coverageOpenPending"), value: formatCount(openPendingItems + openFollowUpCount) },
+            { key: "openPendingItems", label: t("coverageOpenPendingItems"), value: formatCount(openWork.pending) },
+            { key: "openPendingReview", label: t("coverageOpenPendingReview"), value: formatCount(openWork.pendingReview) },
           ]}
         />
 
@@ -323,8 +324,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             breakdown={[
               { label: t("coverageCoveredLabel"), value: coveredAssetCount, tone: "success" },
               { label: t("coverageMissingLabel"), value: uncoveredAssetCount, tone: "warning" },
-              { label: t("scanned"), value: openProcessedItems, tone: "info" },
-              { label: t("pendingReview"), value: openFollowUpCount, tone: "danger" },
+              { label: t("scanned"), value: openWork.checked, tone: "info" },
+              { label: t("pendingReview"), value: openWork.pendingReview, tone: "danger" },
             ]}
           />
           <div className="grid gap-6 lg:grid-cols-2">
@@ -360,14 +361,14 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
 
       <ActionPanel title={t("nextActionsTitle")} help={t("nextActionsHelp")} actions={actionItems} />
 
-      <QuickFilterBar title={t("quickFiltersTitle")} activeView={activeView} filters={quickFilters} />
+      <QuickFilterBar title={t("quickFiltersTitle")} current={activeTab} filters={statusTabs} />
 
       <MasterDataSearch
         action={`/${locale}/audit/rounds`}
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
-        hiddenInputs={{ ...(activeView === "all" ? {} : { view: activeView }), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
+        hiddenInputs={{ ...(activeView === "open" ? {} : { view: activeView }), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
       />
 
       <div className={cn(getPanelClasses(), "overflow-hidden")}>
@@ -376,15 +377,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             <EmptyNote padded>{tCommon("noData")}</EmptyNote>
           ) : (
             pageRounds.map((round) => {
-              const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
-              const insight = insightsByRoundId.get(round.id) ?? {
-                pending: progress.pending,
-                processed: progress.processed,
-                followUps: 0,
-                outOfScope: 0,
-                hasMismatch: round._count.findings > 0,
-                readyToClose: false,
-              }
+              const insight = insightOf(round)
               const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
               const workflowLinks = buildAuditRoundWorkflowLinks({
                 locale,
@@ -416,7 +409,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                         labels={{
                           ready: t("readyToClose"),
                           pending: t("blockedPendingItems", { count: insight.pending }),
-                          review: t("blockedPendingReview", { count: insight.followUps }),
+                          review: t("blockedPendingReview", { count: insight.pendingReview }),
                         }}
                       />
                     </div>
@@ -424,17 +417,17 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                   <KeyValueList
                     className="mt-3"
                     items={[
-                      { key: "scope", label: t("scope"), value: formatScope(round, t("all")) },
+                      { key: "scope", label: t("scope"), value: formatScope(round, t("all"), scopeLabels) },
                       { key: "dateRange", label: t("dateRange"), value: `${formatDate(round.startDate)} - ${formatDate(round.endDate)}` },
-                      { key: "items", label: t("items"), value: formatCount(round._count.items) },
+                      { key: "items", label: t("items"), value: formatCount(insight.total) },
                     ]}
                   />
                   <div className="mt-3">
                     <AuditProgressBar
                       compact
-                      total={round._count.items}
-                      processed={progress.processed}
-                      pending={progress.pending}
+                      total={insight.total}
+                      processed={insight.checked}
+                      pending={insight.pending}
                       label={t("progress")}
                       processedLabel={t("scanned")}
                       pendingLabel={t("pending")}
@@ -475,15 +468,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
               )
             ) : (
               pageRounds.map((round) => {
-                const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
-                const insight = insightsByRoundId.get(round.id) ?? {
-                  pending: progress.pending,
-                  processed: progress.processed,
-                  followUps: 0,
-                  outOfScope: 0,
-                  hasMismatch: round._count.findings > 0,
-                  readyToClose: false,
-                }
+                const insight = insightOf(round)
                 const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
                 const workflowLinks = buildAuditRoundWorkflowLinks({
                   locale,
@@ -509,7 +494,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       <span className="tag font-medium text-foreground">{round.auditNo}</span>
                     </DataTableCell>
                     <DataTableCell className="min-w-56 text-foreground">{round.name}</DataTableCell>
-                    <DataTableCell className="min-w-64 text-muted-foreground">{formatScope(round, t("all"))}</DataTableCell>
+                    <DataTableCell className="min-w-64 text-muted-foreground">{formatScope(round, t("all"), scopeLabels)}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">
                       {formatDate(round.startDate)} - {formatDate(round.endDate)}
                     </DataTableCell>
@@ -522,18 +507,18 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                           labels={{
                             ready: t("readyToClose"),
                             pending: t("blockedPendingItems", { count: insight.pending }),
-                            review: t("blockedPendingReview", { count: insight.followUps }),
+                            review: t("blockedPendingReview", { count: insight.pendingReview }),
                           }}
                         />
                       </div>
                     </DataTableCell>
-                    <DataTableCell numeric className="text-muted-foreground">{formatCount(round._count.items)}</DataTableCell>
+                    <DataTableCell numeric className="text-muted-foreground">{formatCount(insight.total)}</DataTableCell>
                     <DataTableCell className="min-w-52">
                       <AuditProgressBar
                         compact
-                        total={round._count.items}
-                        processed={progress.processed}
-                        pending={progress.pending}
+                        total={insight.total}
+                        processed={insight.checked}
+                        pending={insight.pending}
                         label={t("progress")}
                         processedLabel={t("scanned")}
                         pendingLabel={t("pending")}
@@ -606,18 +591,19 @@ function ActionPanel({ title, help, actions }: { title: string; help: string; ac
 // sets aria-current on the selected tab and passes scroll={false} to Link, so the page stays where it is.
 function QuickFilterBar({
   title,
-  activeView,
+  current,
   filters,
 }: {
   title: string
-  activeView: AuditRoundView
-  filters: Array<{ value: AuditRoundView; label: string; count: number; href: string }>
+  current: AuditRoundTab
+  filters: Array<{ value: AuditRoundTab; label: string; count: number; href: string }>
 }) {
+  // A work view keeps the กำลังดำเนินการ tab current (R31).
   return (
     <TabNav
       aria-label={title}
       items={filters.map((filter) => ({ key: filter.value, label: filter.label, count: formatCount(filter.count), href: filter.href }))}
-      current={activeView}
+      current={current}
       scroll={false}
     />
   )
@@ -645,7 +631,7 @@ function ReadyToCloseBadge({
   labels,
 }: {
   status: string
-  insight: AuditRoundInsight
+  insight: AuditRoundListInsight
   labels: { ready: string; pending: string; review: string }
 }) {
   if (!isAuditRoundOperationalStatus(status)) return null
@@ -655,7 +641,7 @@ function ReadyToCloseBadge({
   if (insight.pending > 0) {
     return <StatusBadge label={labels.pending} tone="warning" />
   }
-  if (insight.followUps > 0) {
+  if (insight.pendingReview > 0) {
     return <StatusBadge label={labels.review} tone="danger" />
   }
   return null
@@ -748,37 +734,10 @@ function CoverageGapList({
   )
 }
 
-function buildAuditRoundInsights(
-  rounds: AuditRoundListItem[],
-  progressByRoundId: Map<string, { pending: number; processed: number }>,
-  followUpsByRoundId: Map<string, number>,
-  outOfScopeByRoundId: Map<string, number>,
-) {
-  const insights = new Map<string, AuditRoundInsight>()
-
-  for (const round of rounds) {
-    const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
-    const followUps = followUpsByRoundId.get(round.id) ?? 0
-    const outOfScope = outOfScopeByRoundId.get(round.id) ?? 0
-    const hasMismatch = round._count.findings > 0
-    insights.set(round.id, {
-      pending: progress.pending,
-      processed: progress.processed,
-      followUps,
-      outOfScope,
-      hasMismatch,
-      readyToClose: isAuditRoundOperationalStatus(round.status) && progress.pending === 0 && followUps === 0,
-    })
-  }
-
-  return insights
-}
-
 function buildAuditRoundWorkflowLinks({
   locale,
   roundId,
   returnTo,
-  status,
   insight,
   labels,
 }: {
@@ -786,10 +745,10 @@ function buildAuditRoundWorkflowLinks({
   roundId: string
   status: string
   returnTo: string
-  insight: AuditRoundInsight
+  insight: AuditRoundListInsight
   labels: { pending: string; review: string; outOfScope: string }
 }): RoundWorkflowLink[] {
-  if (!isAuditRoundOperationalStatus(status)) return []
+  if (!insight.operational) return []
 
   const links: RoundWorkflowLink[] = []
 
@@ -802,11 +761,11 @@ function buildAuditRoundWorkflowLinks({
     })
   }
 
-  if (insight.followUps > 0) {
+  if (insight.pendingReview > 0) {
     links.push({
       key: "review",
       label: labels.review,
-      count: insight.followUps,
+      count: insight.pendingReview,
       href: appendOperationalReturnTo(`/${locale}/audit/findings?status=pending&roundId=${roundId}`, returnTo),
     })
   }
@@ -858,55 +817,18 @@ function buildRoundRowActions({
   }
 }
 
-function filterRoundsByView<T extends AuditRoundListItem>(
-  rounds: T[],
-  insightsByRoundId: Map<string, AuditRoundInsight>,
-  activeView: AuditRoundView,
-) {
-  return rounds.filter((round) => {
-    const insight = insightsByRoundId.get(round.id)
-    if (activeView === "all") return true
-    if (activeView === "cancelled") return round.status === "cancelled"
-    if (activeView === "open") return isAuditRoundOperationalStatus(round.status)
-    if (!isAuditRoundOperationalStatus(round.status)) return false
-    if (activeView === "pending") return (insight?.pending ?? 0) > 0
-    if (activeView === "review") return (insight?.followUps ?? 0) > 0
-    if (activeView === "mismatch") return insight?.hasMismatch ?? (round._count.findings > 0)
-    if (activeView === "readyToClose") return insight?.readyToClose ?? false
-
-    return true
-  })
-}
-
 function getAuditRoundStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {
   return t(auditRoundStatusLabelKey(status) ?? "statusOpen")
 }
 
-// The list URL. appendListPage writes page only above 1 and pageSize only when it is not 25, so every default link
-// (for example /th/audit/rounds?view=open) stays as it was (spec 2B §5.9.1).
-function buildAuditRoundsHref(locale: string, view: AuditRoundView, searchText: string, listPage: { page?: number; pageSize?: number } = {}) {
-  const params = new URLSearchParams()
-  if (searchText) params.set("search", searchText)
-  if (view !== "all") params.set("view", view)
-  const query = appendListPage(params, listPage).toString()
-  return `/${locale}/audit/rounds${query ? `?${query}` : ""}`
-}
-
-function formatScope(round: {
-  scopeCompany: { code: string; nameTh: string } | null
-  scopeBranch: { code: string; name: string } | null
-  scopeLocation: { code: string; name: string } | null
-}, allLabel: string): ReactNode {
-  const parts: Array<{ kind: string; code: string; name: string }> = []
-  if (round.scopeCompany) parts.push({ kind: "company", code: round.scopeCompany.code, name: round.scopeCompany.nameTh })
-  if (round.scopeBranch) parts.push({ kind: "branch", code: round.scopeBranch.code, name: round.scopeBranch.name })
-  if (round.scopeLocation) parts.push({ kind: "location", code: round.scopeLocation.code, name: round.scopeLocation.name })
+// Every scope condition the round has (group 2 spec §6, §13 bug 3): "<condition>: <code> - <name>", codes as tags.
+function formatScope(round: AuditRoundScopeSource, allLabel: string, labels: Record<AuditRoundScopeKey, string>): ReactNode {
+  const parts = buildAuditRoundScopeParts(round)
   if (parts.length === 0) return allLabel
-
   return parts.map((part, index) => (
-    <Fragment key={part.kind}>
+    <Fragment key={part.key}>
       {index > 0 ? " / " : null}
-      <span className="tag">{part.code}</span> - {part.name}
+      {labels[part.key]}: {part.code ? <><span className="tag">{part.code}</span> - </> : null}{part.name}
     </Fragment>
   ))
 }

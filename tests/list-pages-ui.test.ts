@@ -346,9 +346,9 @@ test("audit rounds page in memory: page and pageSize from the URL, a slice of th
   assert.doesNotMatch(source, /\bfilteredRounds\.map\(/, "never every round at once")
   assert.doesNotMatch(source, /\bredirect\(/, "the total is known before the cut, so the page is clamped, not redirected (I21)")
   assert.match(source, /orderBy: \[\{ createdAt: "desc" \}, \{ id: "asc" \}\]/, "the old order plus id, so no round shows on two pages")
-  assert.match(source, /const query = appendListPage\(params, listPage\)\.toString\(\)/, "default links stay as they were")
+  assert.match(read("src/lib/audit-rounds-list-rules.ts"), /const query = appendListPage\(params, listPage\)\.toString\(\)/, "default links stay as they were")
   assert.match(source, /href: buildAuditRoundsHref\(locale, value, searchText, \{ pageSize: listPage\.pageSize \}\)/, "a quick filter goes back to page 1 and keeps the page size")
-  assert.match(source, /hiddenInputs=\{\{ \.\.\.\(activeView === "all" \? \{\} : \{ view: activeView \}\), \.\.\.Object\.fromEntries\(appendListPage\(new URLSearchParams\(\), \{ pageSize: listPage\.pageSize \}\)\) \}\}/)
+  assert.match(source, /hiddenInputs=\{\{ \.\.\.\(activeView === "open" \? \{\} : \{ view: activeView \}\), \.\.\.Object\.fromEntries\(appendListPage\(new URLSearchParams\(\), \{ pageSize: listPage\.pageSize \}\)\) \}\}/)
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: buildAuditRoundsHref\(locale, activeView, searchText, \{ pageSize: value \}\) \}\)\)\}/)
 })
 

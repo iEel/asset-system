@@ -112,7 +112,7 @@ test("audit rounds list: the coverage a ContentPanel with frameless gap lists, t
   assert.equal(source.match(/className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/g)?.length, 3, "the round code of the phone card and the two gap-list links")
   assert.match(source, /<EmptyNote tone="clear">\{emptyLabel\}<\/EmptyNote>/)
   assert.match(source, /<dl className="mt-2 grid grid-cols-3 gap-x-3">/)
-  assert.match(source, /formatScope\(round, t\("all"\)\)/)
+  assert.match(source, /formatScope\(round, t\("all"\), scopeLabels\)/)
   assert.match(source, /<span className="tag">\{/)
   assert.doesNotMatch(source, /function (?:AuditStatusBadge|MobileAuditField)\b|"All assets"|rounded-full|rounded-lg|\b(?:bg|border)-(?:success|warning|danger|info)-(?:soft|border)\b|\btext-info\b|hover:underline|hover:text-primary|text-2xl font-bold|\btext-xs\b|CheckCircle2|ClipboardCheck/)
 })
