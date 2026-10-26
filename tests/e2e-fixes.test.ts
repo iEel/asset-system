@@ -236,7 +236,7 @@ test("an audit page is measured once every finite animation has ended, so a butt
 })
 
 test("the PM plan's edit page is left only once its asset select has loaded its label, so nothing is cancelled on the phone (e2e fix loop 2: the dry run's aborted maintenance-options request)", () => {
-  assert.match(read("e2e/repair/pm-plan.spec.ts"), /toHaveValue\("2026-02-28"\)\n(?:\s*\/\/[^\n]*\n)*\s*await page\.waitForLoadState\("networkidle"\)\n\s*await measure\.visit\(PM_LIST, "PM plans after done"\)/)
+  assert.match(read("e2e/repair/pm-plan.spec.ts"), /toHaveValue\("2026-02-28"\)\n(?:\s*\/\/[^\n]*\n)*\s*await page\.waitForLoadState\("networkidle"\)\n(?:\s*\/\/[^\n]*\n)*\s*let row = await visitPlanRow\(page, measure, title, "PM plans after done"\)/)
 })
 
 test("the findings page offers the review controls only to a role with audit:approve (e2e decision DX3 (ก): M4)", () => {

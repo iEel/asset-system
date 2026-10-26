@@ -109,7 +109,9 @@ test("the PM plan: created with a wrong entry first, recorded done on 31 Jan wit
   // The list page size is one the PM list offers (src/lib/list-pagination.ts).
   const { LIST_PAGE_SIZES } = await import("../src/lib/list-pagination.ts")
   assert.ok((LIST_PAGE_SIZES as readonly number[]).includes(100))
-  assert.ok(spec.includes(`const PM_LIST = "/th/maintenance/pm?pageSize=100"`))
+  // The list's path moved to repair-data.ts with visitPlanRow, which looks for the plan page by page (e2e fix 2D).
+  assert.ok(data.includes(`export const PM_LIST = "/th/maintenance/pm?pageSize=100"`))
+  assert.match(spec, /^import \{ PM_LIST, [^}]*\bvisitPlanRow \} from "\.\/repair-data\.ts"$/m)
   // Every state change and its Thai copy, from messages/th.json.
   const actions = th.maintenancePage.pmActions
   for (const [action, title, toast] of [
@@ -117,17 +119,27 @@ test("the PM plan: created with a wrong entry first, recorded done on 31 Jan wit
     [actions.resume, actions.resumeTitle, actions.resumeSuccess],
     [actions.end, actions.endTitle, actions.endSuccess],
   ]) {
-    assert.ok(spec.includes(`await planAction(page, row(), "${action}", "${title}", "${toast}")`), action)
+    assert.ok(spec.includes(`await planAction(page, row, "${action}", "${title}", "${toast}")`), action)
   }
   for (const text of [th.maintenancePage.pmCreateTitle, th.repairRecord.pmRecordDone, th.repairRecord.pmOverdue, th.maintenancePage.pmPlanStates.paused, th.maintenancePage.pmPlanStates.ended]) {
     assert.ok(spec.includes(text), text)
   }
-  // The ended plan is looked for from the list's last page back (menu B shell task 13B loop 1): the list sorts active,
-  // paused, then ended plans across every page, and an ended plan has no page of its own (the edit page 404s).
+  // The plan is looked for on whichever list page holds it (menu B shell task 13B loop 1 for the ended plan; e2e fix 2D
+  // for every look, after E2E-1026E's 103 active plans pushed the paused plan to page 2): the list sorts active, paused,
+  // then ended plans across every page, and an ended plan has no page of its own (the edit page 404s).
   const listPage = read("src/app/[locale]/(dashboard)/maintenance/pm/page.tsx")
   assert.ok(listPage.includes("// Active plans first, then paused, then ended, each by next due date, across every page"))
   assert.match(read("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx"), /where: \{ id, planState: \{ not: "ended" \} \}/)
-  assert.ok(th.common.showingRange.includes("จาก {total} รายการ"))
-  assert.match(spec, /for \(let listPage = Math\.ceil\(total \/ 100\); listPage >= 1; listPage -= 1\) \{\n\s*await measure\.visit\(`\$\{PM_LIST\}&page=\$\{listPage\}`/)
-  assert.match(spec, /if \(\(await row\(\)\.count\(\)\) > 0\) break\n\s*\}\n\s*await expect\(row\(\)\.locator\('\[data-slot="status-badge"\]'\)\.last\(\)\)\.toHaveText\("จบแผน"\)/)
+  // The helper walks forward from page 1 and stops where the plan's row shows, or on the page with no "next" link
+  // (src/components/ui/pagination.tsx renders an enabled next as a link with rel="next").
+  assert.ok(data.includes("export async function visitPlanRow(page: Page, measure: Measure, title: string, label: string): Promise<Locator>"))
+  assert.ok(data.includes("await measure.visit(listPage === 1 ? PM_LIST : `${PM_LIST}&page=${listPage}`"))
+  assert.ok(data.includes(`page.getByRole("main").locator('a[rel="next"]')`))
+  assert.match(read("src/components/ui/pagination.tsx"), /<PaginationControl href=\{nextHref\} enabled=\{page < totalPages\} rel="next"/)
+  assert.match(read("src/components/ui/pagination.tsx"), /<Link href=\{href\} rel=\{rel\}/)
+  for (const label of ["PM plans after done", "PM plans, plan paused", "PM plans to resume", "PM plans, plan resumed", "PM plans to end", "PM plans, plan ended"]) {
+    assert.ok(spec.includes(`row = await visitPlanRow(page, measure, title, "${label}")`), label)
+  }
+  assert.ok(!spec.includes("row()"), "no look at the plan assumes the page on screen")
+  assert.match(spec, /row = await visitPlanRow\(page, measure, title, "PM plans, plan ended"\)\n\s*await expect\(row\.locator\('\[data-slot="status-badge"\]'\)\.last\(\)\)\.toHaveText\("จบแผน"\)/)
 })

@@ -168,6 +168,23 @@ export async function planAction(page: Page, row: Locator, action: string, dialo
   await expect(dialog).toBeHidden()
 }
 
+// The PM list holds every plan of the database: active plans first, then paused, then ended, each by next due date,
+// across every page (src/app/[locale]/(dashboard)/maintenance/pm/page.tsx). A page of 100 keeps the run's active plan
+// near the top, but the dev database gains plans run by run.
+export const PM_LIST = "/th/maintenance/pm?pageSize=100"
+
+// A plan's row on the PM list, on whichever page holds it: the dev database held 103 active plans on 2026-10-26
+// (E2E-1026E), so a paused or ended plan sits on page 2 or later. Visits page 1, then 2, 3 and so on (each measured)
+// until a row names the plan, and stops with an error on the last page (no "next" link).
+export async function visitPlanRow(page: Page, measure: Measure, title: string, label: string): Promise<Locator> {
+  const row = page.getByRole("main").locator("li").filter({ hasText: title })
+  for (let listPage = 1; ; listPage += 1) {
+    await measure.visit(listPage === 1 ? PM_LIST : `${PM_LIST}&page=${listPage}`, listPage === 1 ? label : `${label}, page ${listPage}`)
+    if (await row.first().isVisible()) return row
+    if ((await page.getByRole("main").locator('a[rel="next"]').count()) === 0) throw new Error(`no page of the PM list holds the plan ${title} (last page ${listPage})`)
+  }
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
