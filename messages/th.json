@@ -2079,7 +2079,11 @@
     "coverageMissing": "ยังไม่ครอบคลุม",
     "coverageTotal": "ทั้งหมด",
     "coverageRate": "ครอบคลุม",
-    "coverageUnassigned": "ยังไม่ระบุแผนก"
+    "coverageUnassigned": "ยังไม่ระบุแผนก",
+    "companyFilterChip": "บริษัท: {company}",
+    "branchFilterChip": "สาขา: {branch}",
+    "activeFilters": "ตัวกรองที่ใช้อยู่",
+    "clearFilter": "ล้างตัวกรองนี้"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",

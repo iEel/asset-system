@@ -3,12 +3,17 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
+  auditRoundBranchFilterName,
+  buildAuditExportFilename,
+  buildAuditExportFilterLabel,
   buildAuditRoundResultSummaryGroups,
   buildAuditRoundItemWhere,
+  buildAuditRoundItemsHref,
   buildAuditRoundResultListHref,
   buildAuditRoundScanHistoryWhere,
   getAuditRoundItemResultLabelKey,
   getAuditRoundItemStatusLabelKey,
+  parseAuditRoundResultListParams,
   resolveAuditRoundResultFilter,
 } from "../src/lib/audit-round-result-filters.ts"
 
@@ -166,6 +171,9 @@ test("audit round result exports use the same filters as the on-screen result li
     assert.match(route, /auditScanHistory\.findMany/)
     assert.match(route, /auditItem\.findMany/)
     assert.match(route, /out_of_scope/)
+    assert.match(route, /request\.nextUrl\.searchParams\.get\("companyId"\)/)
+    assert.match(route, /request\.nextUrl\.searchParams\.get\("branchId"\)/)
+    assert.match(route, /buildAuditRoundItemWhere\(\{ roundId, result, search, \.\.\.filters \}\)/)
   }
 })
 
@@ -275,4 +283,102 @@ test("audit round result rows surface scan correction history", () => {
 test("out_of_scope results map to the existing outOfScope label", () => {
   assert.equal(getAuditRoundItemResultLabelKey("out_of_scope"), "outOfScope")
   assert.equal(getAuditRoundItemResultLabelKey("mismatch"), "mismatch")
+})
+
+const roundPage = () => readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8").replace(/\r\n/g, "\n")
+
+test("the round's item list narrows to the expected company and branch, alone or with a bucket and a search (spec §6.7, R13)", () => {
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", branchId: "branch-1" }), {
+    auditRoundId: "round-1",
+    expectedBranchId: "branch-1",
+  })
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: "company-1" }), {
+    auditRoundId: "round-1",
+    expectedCompanyId: "company-1",
+  })
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "SNI", companyId: "company-1", branchId: "branch-1" }), {
+    auditRoundId: "round-1",
+    expectedCompanyId: "company-1",
+    expectedBranchId: "branch-1",
+    auditResult: "not_found",
+    OR: [
+      { asset: { assetTag: { contains: "SNI" } } },
+      { asset: { name: { contains: "SNI" } } },
+    ],
+  })
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: null, branchId: null }), { auditRoundId: "round-1" })
+})
+
+test("the company and branch params are read once and trimmed, and an empty one is no filter", () => {
+  const state = parseAuditRoundResultListParams({ companyId: [" company-1 ", "company-2"], branchId: " branch-1 " })
+  assert.equal(state.companyId, "company-1")
+  assert.equal(state.branchId, "branch-1")
+  assert.equal(parseAuditRoundResultListParams({ companyId: "   " }).companyId, null)
+  assert.equal(parseAuditRoundResultListParams({ branchId: "   " }).branchId, null)
+  assert.deepEqual(parseAuditRoundResultListParams({}), { result: "all", search: "", companyId: null, branchId: null, page: 1, pageSize: 25 })
+})
+
+test("the dashboard's links open the round's whole item list for a company, a branch or both, and the list's own links keep them (spec §6.7, R13)", () => {
+  assert.equal(buildAuditRoundItemsHref("th", "round-1", { branchId: "branch-1" }), "/th/audit/rounds/round-1?branchId=branch-1&page=1&pageSize=25#audit-result-list")
+  assert.equal(buildAuditRoundItemsHref("th", "round-1", { companyId: "company-1" }), "/th/audit/rounds/round-1?companyId=company-1&page=1&pageSize=25#audit-result-list")
+  assert.equal(
+    buildAuditRoundItemsHref("th", "round-1", { companyId: "company-1", branchId: "branch-1" }),
+    "/th/audit/rounds/round-1?companyId=company-1&branchId=branch-1&page=1&pageSize=25#audit-result-list",
+  )
+  assert.equal(buildAuditRoundItemsHref("th", "round-1", {}), "/th/audit/rounds/round-1?page=1&pageSize=25#audit-result-list")
+  assert.equal(
+    buildAuditRoundResultListHref({ locale: "th", roundId: "round-1", result: "found", search: "SNI", companyId: "company-1", branchId: "branch-1", page: 2, pageSize: 50, returnTo: "/th/audit/rounds" }),
+    "/th/audit/rounds/round-1?result=found&search=SNI&companyId=company-1&branchId=branch-1&page=2&pageSize=50&returnTo=%2Fth%2Faudit%2Frounds#audit-result-list",
+  )
+})
+
+test("a branch is named with its company's code until a company is chosen (R16)", () => {
+  const headOffice = { name: "สำนักงานใหญ่", companyCode: "SNI" }
+  assert.equal(auditRoundBranchFilterName(headOffice, false), "SNI / สำนักงานใหญ่")
+  assert.equal(auditRoundBranchFilterName(headOffice, true), "สำนักงานใหญ่")
+})
+
+test("an export of a narrowed list says so in its label and file name, naming the branch as the chip does (R13, R16)", () => {
+  const sni = { code: "SNI" }
+  const hq = { code: "HQ", company: sni }
+  assert.equal(buildAuditExportFilterLabel({ result: "all", search: "", branch: hq }), "branch-SNI-HQ")
+  assert.equal(buildAuditExportFilterLabel({ result: "all", search: "", company: sni }), "company-SNI")
+  assert.equal(buildAuditExportFilterLabel({ result: "found", search: "PC", company: sni, branch: hq }), "found-company-SNI-branch-HQ-search-PC")
+  assert.equal(buildAuditExportFilterLabel({ result: "all", search: "" }), "all")
+  assert.equal(
+    buildAuditExportFilename({ prefix: "audit-result", auditNo: "AUD-2026-0003", result: "all", search: "", company: sni, branch: hq, extension: "xlsx", date: new Date("2026-10-26T03:00:00Z") }),
+    "audit-result-AUD-2026-0003-company-SNI-branch-HQ-2026-10-26.xlsx",
+  )
+})
+
+test("the round page narrows its item list by company and branch, names each in a removable chip, and counts the filtered list (spec §6.7, R13)", () => {
+  const page = roundPage()
+  assert.match(page, /searchParams: Promise<\{[^}]*pageSize\?: string \| string\[\]; companyId\?: string \| string\[\]; branchId\?: string \| string\[\] \}>/)
+  assert.match(page, /const itemFilters = \{ companyId: resultListState\.companyId, branchId: resultListState\.branchId \}/)
+  assert.match(page, /const resultItemWhere = buildAuditRoundItemWhere\(\{ roundId: id, result: resultListState\.result, search: resultListState\.search, \.\.\.itemFilters \}\)/)
+  assert.match(page, /prisma\.auditItem\.count\(\{ where: resultItemWhere \}\)/, "the number above the list counts the filtered list")
+  assert.match(page, /prisma\.company\.findUnique\(\{ where: \{ id: resultListState\.companyId \}, select: \{ code: true, nameTh: true \} \}\)/)
+  assert.match(page, /prisma\.branch\.findUnique\(\{ where: \{ id: resultListState\.branchId \}, select: \{ name: true, company: \{ select: \{ code: true \} \} \} \}\)/)
+  assert.match(page, /if \(\(resultListState\.companyId && !filterCompany\) \|\| \(resultListState\.branchId && !filterBranch\)\) \{\n\s+redirect\(buildAuditRoundResultListHref\(/, "an unknown company or branch drops its filter")
+  assert.match(page, /label: t\("companyFilterChip", \{ company: `\$\{filterCompany\.code\} - \$\{filterCompany\.nameTh\}` \}\)/)
+  assert.match(page, /label: t\("branchFilterChip", \{ branch: auditRoundBranchFilterName\(\{ name: filterBranch\.name, companyCode: filterBranch\.company\.code \}, Boolean\(filterCompany\)\) \}\)/, "R16")
+  assert.match(page, /<FilterChipList className="mb-3" chips=\{resultFilterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{t\("clearFilter"\)\} \/>/)
+  assert.match(page, /\.\.\.\(resultListState\.companyId \? \{ companyId: resultListState\.companyId \} : \{\}\)/, "the search keeps the company")
+  assert.match(page, /\.\.\.\(resultListState\.branchId \? \{ branchId: resultListState\.branchId \} : \{\}\)/, "the search keeps the branch")
+  assert.match(page, /previousHref=\{buildAuditRoundResultListHref\(\{ [^}]*\.\.\.itemFilters, page: resultListState\.page - 1/)
+  assert.match(page, /state: Pick<AuditRoundResultListState, "result" \| "search" \| "companyId" \| "branchId">/)
+  assert.doesNotMatch(page, /const \w+ResultHref = buildAuditRoundResultListHref\(\{[^}]*(?:itemFilters|companyId|branchId)/, "the round-wide buckets open round-wide lists")
+})
+
+test("the company and branch chips' words (spec §6.7)", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.auditRound.companyFilterChip, "บริษัท: {company}")
+  assert.equal(en.auditRound.companyFilterChip, "Company: {company}")
+  assert.equal(th.auditRound.branchFilterChip, "สาขา: {branch}")
+  assert.equal(en.auditRound.branchFilterChip, "Branch: {branch}")
+  assert.equal(th.auditRound.activeFilters, "ตัวกรองที่ใช้อยู่")
+  assert.equal(en.auditRound.activeFilters, "Active filters")
+  assert.equal(th.auditRound.clearFilter, "ล้างตัวกรองนี้")
+  assert.equal(en.auditRound.clearFilter, "Clear this filter")
 })

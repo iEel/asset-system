@@ -17,6 +17,8 @@ export type AuditRoundResultFilter = (typeof auditRoundResultFilterValues)[numbe
 export type AuditRoundResultListState = {
   result: AuditRoundResultFilter
   search: string
+  companyId: string | null
+  branchId: string | null
   page: number
   pageSize: number
 }
@@ -24,6 +26,8 @@ export type AuditRoundResultListState = {
 type AuditRoundResultListParams = {
   result?: string | string[]
   search?: string | string[]
+  companyId?: string | string[]
+  branchId?: string | string[]
   page?: string | string[] | number
   pageSize?: string | string[] | number
 }
@@ -102,6 +106,8 @@ export function parseAuditRoundResultListParams(input: AuditRoundResultListParam
   return {
     result: resolveAuditRoundResultFilter(input.result),
     search: String(firstValue(input.search) ?? "").trim(),
+    companyId: String(firstValue(input.companyId) ?? "").trim() || null,
+    branchId: String(firstValue(input.branchId) ?? "").trim() || null,
     page: Math.max(1, pageValue),
     pageSize: Math.min(100, Math.max(10, pageSizeValue)),
   }
@@ -111,12 +117,18 @@ export function buildAuditRoundItemWhere({
   roundId,
   result,
   search,
+  companyId,
+  branchId,
 }: {
   roundId: string
   result: AuditRoundResultFilter
   search?: string | null
+  companyId?: string | null
+  branchId?: string | null
 }): Prisma.AuditItemWhereInput {
   const where: Prisma.AuditItemWhereInput = { auditRoundId: roundId }
+  if (companyId) where.expectedCompanyId = companyId
+  if (branchId) where.expectedBranchId = branchId
 
   if (result === "found") {
     where.auditResult = { in: Array.from(successfulAuditResults) }
@@ -160,15 +172,24 @@ export function isAuditRoundScanHistoryResultFilter(result: AuditRoundResultFilt
   return result === "out_of_scope"
 }
 
+type AuditExportCompany = { code: string }
+type AuditExportBranch = { code: string; company: { code: string } }
+
 export function buildAuditExportFilterLabel({
   result,
   search,
+  company,
+  branch,
 }: {
   result: AuditRoundResultFilter
   search?: string | null
+  company?: AuditExportCompany | null
+  branch?: AuditExportBranch | null
 }) {
   const parts: string[] = []
   if (result !== "all") parts.push(result)
+  if (company) parts.push(`company-${company.code}`)
+  if (branch) parts.push(company ? `branch-${branch.code}` : `branch-${branch.company.code}-${branch.code}`)
   const searchText = search ? search.trim() : ""
   if (searchText) parts.push(`search-${searchText}`)
   return parts.length > 0 ? parts.join("-") : "all"
@@ -188,6 +209,8 @@ export function buildAuditExportFilename({
   auditNo,
   result,
   search,
+  company,
+  branch,
   extension,
   date = new Date(),
 }: {
@@ -195,10 +218,12 @@ export function buildAuditExportFilename({
   auditNo: string
   result: AuditRoundResultFilter
   search?: string | null
+  company?: AuditExportCompany | null
+  branch?: AuditExportBranch | null
   extension: string
   date?: Date
 }) {
-  const filterLabel = buildAuditExportFilterLabel({ result, search })
+  const filterLabel = buildAuditExportFilterLabel({ result, search, company, branch })
   const filterSuffix = filterLabel === "all" ? "" : `-${sanitizeAuditExportFilenamePart(filterLabel)}`
   const cleanExtension = extension.replace(/^\./, "")
   return `${prefix}-${auditNo}${filterSuffix}-${date.toISOString().slice(0, 10)}.${cleanExtension}`
@@ -215,6 +240,8 @@ export function buildAuditRoundResultListHref({
   result,
   returnTo,
   search = "",
+  companyId,
+  branchId,
   page = 1,
   pageSize = 25,
 }: {
@@ -223,16 +250,30 @@ export function buildAuditRoundResultListHref({
   result: AuditRoundResultFilter
   returnTo?: string
   search?: string
+  companyId?: string | null
+  branchId?: string | null
   page?: number
   pageSize?: number
 }) {
   const params = new URLSearchParams()
   if (result !== "all") params.set("result", result)
   if (search.trim()) params.set("search", search.trim())
+  if (companyId) params.set("companyId", companyId)
+  if (branchId) params.set("branchId", branchId)
   params.set("page", String(page))
   params.set("pageSize", String(pageSize))
   if (returnTo) params.set("returnTo", returnTo)
   return `/${locale}/audit/rounds/${roundId}?${params.toString()}#audit-result-list`
+}
+
+/** The round's whole item list for a company, a branch or both (R13); no returnTo (R14). */
+export function buildAuditRoundItemsHref(locale: string, roundId: string, filters: { branchId?: string; companyId?: string }): string {
+  return buildAuditRoundResultListHref({ locale, roundId, result: "all", companyId: filters.companyId, branchId: filters.branchId })
+}
+
+/** R16: "<company code> / <branch name>" until a company is chosen, then the branch name alone. */
+export function auditRoundBranchFilterName(branch: { name: string; companyCode: string }, companyChosen: boolean): string {
+  return companyChosen ? branch.name : `${branch.companyCode} / ${branch.name}`
 }
 
 function isAuditFindingResultFilter(result: AuditRoundResultFilter) {

@@ -2079,7 +2079,11 @@
     "coverageMissing": "Missing",
     "coverageTotal": "Total",
     "coverageRate": "Covered",
-    "coverageUnassigned": "No department"
+    "coverageUnassigned": "No department",
+    "companyFilterChip": "Company: {company}",
+    "branchFilterChip": "Branch: {branch}",
+    "activeFilters": "Active filters",
+    "clearFilter": "Clear this filter"
   },
   "auditScan": {
     "title": "Audit Scan",

@@ -17,6 +17,7 @@ import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil } from "@/components/ui/nil"
@@ -36,6 +37,7 @@ import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { buildAuditCorrectionHistoryByItemId, type AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { paginationRange } from "@/lib/master-data-query"
 import {
+  auditRoundBranchFilterName,
   auditRoundResultPageSizeOptions,
   buildAuditRoundResultSummaryGroups,
   buildAuditRoundItemWhere,
@@ -52,7 +54,7 @@ import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ returnTo?: string | string[]; result?: string | string[]; search?: string | string[]; page?: string | string[]; pageSize?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; result?: string | string[]; search?: string | string[]; page?: string | string[]; pageSize?: string | string[]; companyId?: string | string[]; branchId?: string | string[] }>
 }
 
 export default async function AuditRoundDetailPage({ params, searchParams }: AuditRoundDetailPageProps) {
@@ -67,7 +69,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const resultListState = parseAuditRoundResultListParams(rawSearchParams)
   const resultListOffset = (resultListState.page - 1) * resultListState.pageSize
   const isOutOfScopeResultList = isAuditRoundScanHistoryResultFilter(resultListState.result)
-  const resultItemWhere = buildAuditRoundItemWhere({ roundId: id, result: resultListState.result, search: resultListState.search })
+  const itemFilters = { companyId: resultListState.companyId, branchId: resultListState.branchId }
+  const resultItemWhere = buildAuditRoundItemWhere({ roundId: id, result: resultListState.result, search: resultListState.search, ...itemFilters })
   const resultScanHistoryWhere = buildAuditRoundScanHistoryWhere({ roundId: id, search: resultListState.search })
 
   const [
@@ -85,6 +88,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     resultItemTotal,
     outOfScopeScanRows,
     outOfScopeScanTotal,
+    filterCompany,
+    filterBranch,
   ] = await Promise.all([
     prisma.auditRound.findFirst({
       where: { id, isActive: true },
@@ -233,6 +238,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         })
       : Promise.resolve([]),
     isOutOfScopeResultList ? prisma.auditScanHistory.count({ where: resultScanHistoryWhere }) : Promise.resolve(0),
+    // AuditItem.expectedCompanyId / expectedBranchId have no relation, so the chips' names need their own reads.
+    resultListState.companyId
+      ? prisma.company.findUnique({ where: { id: resultListState.companyId }, select: { code: true, nameTh: true } })
+      : Promise.resolve(null),
+    resultListState.branchId
+      ? prisma.branch.findUnique({ where: { id: resultListState.branchId }, select: { name: true, company: { select: { code: true } } } })
+      : Promise.resolve(null),
   ])
   if (!round) notFound()
 
@@ -287,6 +299,10 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     items: evidenceItems,
   })
   const returnToHref = normalizeOperationalReturnTo(locale, "audit-rounds", rawSearchParams.returnTo)
+  // An unknown or stale company or branch drops only its own filter, so the list never sits under a chip it cannot name.
+  if ((resultListState.companyId && !filterCompany) || (resultListState.branchId && !filterBranch)) {
+    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, companyId: filterCompany ? resultListState.companyId : null, branchId: filterBranch ? resultListState.branchId : null, pageSize: resultListState.pageSize }))
+  }
   const roundDetailReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, returnToHref)
   const pendingHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundDetailReturnHref)
   const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
@@ -296,6 +312,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     result: resultListState.result,
     returnTo: returnToHref,
     search: resultListState.search,
+    ...itemFilters,
     page: resultListState.page,
     pageSize: resultListState.pageSize,
   })
@@ -315,7 +332,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const resultLastPage = lastListPage(resultListTotal, resultListState.pageSize)
   const resultPageRowCount = isOutOfScopeResultList ? outOfScopeScanRows.length : resultItems.length
   if (resultPageRowCount === 0 && resultListTotal > 0 && resultListState.page > resultLastPage) {
-    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: resultLastPage, pageSize: resultListState.pageSize }))
+    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: resultLastPage, pageSize: resultListState.pageSize }))
   }
   const { start: resultStart, end: resultEnd, totalPages: resultTotalPages } = paginationRange(resultListState.page, resultListState.pageSize, resultListTotal)
   const resultRows = isOutOfScopeResultList
@@ -358,6 +375,22 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const notFoundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "not_found", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  // The company and branch narrow only the item list (R13); out-of-scope rows are scan history and ignore both.
+  const resultFilterChips: FilterChipItem[] = []
+  if (!isOutOfScopeResultList && filterCompany) {
+    resultFilterChips.push({
+      key: "companyId",
+      label: t("companyFilterChip", { company: `${filterCompany.code} - ${filterCompany.nameTh}` }),
+      href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, companyId: null, pageSize: resultListState.pageSize }),
+    })
+  }
+  if (!isOutOfScopeResultList && filterBranch) {
+    resultFilterChips.push({
+      key: "branchId",
+      label: t("branchFilterChip", { branch: auditRoundBranchFilterName({ name: filterBranch.name, companyCode: filterBranch.company.code }, Boolean(filterCompany)) }),
+      href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, branchId: null, pageSize: resultListState.pageSize }),
+    })
+  }
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
   const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
   const closeChecklist = [
@@ -605,12 +638,20 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           </div>
         </div>
 
+        <FilterChipList className="mb-3" chips={resultFilterChips} label={t("activeFilters")} removeLabel={t("clearFilter")} />
         <MasterDataSearch
           action={`/${locale}/audit/rounds/${round.id}`}
           defaultValue={resultListState.search}
           placeholder={tCommon("search")}
           submitLabel={tCommon("search")}
-          hiddenInputs={{ result: resultListState.result, page: 1, pageSize: resultListState.pageSize, returnTo: returnToHref }}
+          hiddenInputs={{
+            result: resultListState.result,
+            ...(resultListState.companyId ? { companyId: resultListState.companyId } : {}),
+            ...(resultListState.branchId ? { branchId: resultListState.branchId } : {}),
+            page: 1,
+            pageSize: resultListState.pageSize,
+            returnTo: returnToHref,
+          }}
         />
         <div className={cn(getPanelClasses(), "overflow-hidden")}>
           <div className={`${getMobileCardListClasses()} p-3`}>
@@ -777,10 +818,10 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
               <Pagination
                 page={resultListState.page}
                 totalPages={resultTotalPages}
-                previousHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: resultListState.page - 1, pageSize: resultListState.pageSize })}
-                nextHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: resultListState.page + 1, pageSize: resultListState.pageSize })}
+                previousHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: resultListState.page - 1, pageSize: resultListState.pageSize })}
+                nextHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: resultListState.page + 1, pageSize: resultListState.pageSize })}
                 pageSize={resultListState.pageSize}
-                pageSizes={auditRoundResultPageSizeOptions.map((value) => ({ value, href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: 1, pageSize: value }) }))}
+                pageSizes={auditRoundResultPageSizeOptions.map((value) => ({ value, href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: 1, pageSize: value }) }))}
                 labels={{
                   navigation: tCommon("pagination"),
                   previous: tCommon("previous"),
@@ -854,11 +895,13 @@ function buildAuditRoundExportHref({
 }: {
   roundId: string
   endpoint: "export" | "export-pdf"
-  state: Pick<AuditRoundResultListState, "result" | "search">
+  state: Pick<AuditRoundResultListState, "result" | "search" | "companyId" | "branchId">
 }) {
   const params = new URLSearchParams()
   if (state.result !== "all") params.set("result", state.result)
   if (state.search.trim()) params.set("search", state.search.trim())
+  if (state.companyId) params.set("companyId", state.companyId)
+  if (state.branchId) params.set("branchId", state.branchId)
   const query = params.toString()
   return `/api/audit-rounds/${roundId}/${endpoint}${query ? `?${query}` : ""}`
 }

@@ -41,20 +41,31 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
     const { id } = await context.params
     const result = resolveAuditRoundResultFilter(request.nextUrl.searchParams.get("result"))
     const search = request.nextUrl.searchParams.get("search") ?? ""
+    const companyId = request.nextUrl.searchParams.get("companyId")?.trim() || null
+    const branchId = request.nextUrl.searchParams.get("branchId")?.trim() || null
     const isOutOfScopeExport = isAuditRoundScanHistoryResultFilter(result)
-    const filterLabel = buildAuditExportFilterLabel({ result, search })
 
-    const round = await prisma.auditRound.findFirst({
-      where: { id, isActive: true },
-      select: { id: true, auditNo: true, name: true, startDate: true, endDate: true, status: true },
-    })
+    const [round, company, branch] = await Promise.all([
+      prisma.auditRound.findFirst({
+        where: { id, isActive: true },
+        select: { id: true, auditNo: true, name: true, startDate: true, endDate: true, status: true },
+      }),
+      companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { code: true } }) : Promise.resolve(null),
+      branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { code: true, company: { select: { code: true } } } }) : Promise.resolve(null),
+    ])
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
     if (round.status === "cancelled") {
       return NextResponse.json({ error: "Audit round is cancelled" }, { status: 400 })
     }
+    // The export follows the page's company and branch chips (R13). The out-of-scope list ignores both, as the page
+    // does, and an unknown id exports as if absent, as the page's redirect shows.
+    const exportCompany = isOutOfScopeExport ? null : company
+    const exportBranch = isOutOfScopeExport ? null : branch
+    const filters = { companyId: exportCompany ? companyId : null, branchId: exportBranch ? branchId : null }
+    const filterLabel = buildAuditExportFilterLabel({ result, search, company: exportCompany, branch: exportBranch })
     const rows = isOutOfScopeExport
       ? await buildOutOfScopeExportRows(id, search)
-      : await buildAuditItemExportRows(id, result, search)
+      : await buildAuditItemExportRows(id, result, search, filters)
     const labels = await buildAuditReferenceLabels(rows.flatMap((row) => [row.expectedLocationId, row.actualLocationId]))
     const pendingCount = rows.filter((row) => row.auditStatus === "pending").length
     const scannedCount = rows.filter((row) => row.auditStatus === "scanned" || row.auditStatus === "reconciled" || row.auditStatus === "out_of_scope").length
@@ -82,15 +93,20 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
       })),
     })
 
-    return pdfResponse(buffer, buildAuditExportFilename({ prefix: "audit-result", auditNo: round.auditNo, result, search, extension: "pdf" }))
+    return pdfResponse(buffer, buildAuditExportFilename({ prefix: "audit-result", auditNo: round.auditNo, result, search, company: exportCompany, branch: exportBranch, extension: "pdf" }))
   } catch (error) {
     return errorResponse(error)
   }
 }
 
-async function buildAuditItemExportRows(roundId: string, result: AuditRoundResultFilter, search: string): Promise<AuditPdfExportRow[]> {
+async function buildAuditItemExportRows(
+  roundId: string,
+  result: AuditRoundResultFilter,
+  search: string,
+  filters: { companyId: string | null; branchId: string | null },
+): Promise<AuditPdfExportRow[]> {
   const items = await prisma.auditItem.findMany({
-    where: buildAuditRoundItemWhere({ roundId, result, search }),
+    where: buildAuditRoundItemWhere({ roundId, result, search, ...filters }),
     orderBy: [{ auditStatus: "asc" }, { createdAt: "asc" }],
     include: {
       asset: {
