@@ -54,12 +54,9 @@ const D = "src/app/[locale]/(dashboard)/"
 
 test("asset page: the sections the later tabs replace keep the panel classes; the overview's panels are ContentPanels in the detail parts (spec 2D §3.3; group 1 asset detail task 8)", () => {
   const source = read(`${D}assets/[id]/page.tsx`)
-  assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 1, "maintenance")
+  assert.doesNotMatch(source, /getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"/)
   assert.doesNotMatch(source, /<ContentPanel\b/)
-  assert.match(source, /<Notice tone="warning" className="mb-4">\n\s+\{t\("maintenanceReplacementWarning"\)\}\n\s+<\/Notice>/)
-  assert.match(source, /<Chip>\{t\("maintenancePmBadge"\)\}<\/Chip>/)
   assert.doesNotMatch(source, /className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/)
-  assert.match(source, /<Link href=\{`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
   assert.match(source, /if \(!snapshot\) return null\n/)
   assert.doesNotMatch(source, /filterLabel: tCommon\("filter"\)/)
   const banned = /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b|toLocaleString/

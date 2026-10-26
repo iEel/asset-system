@@ -77,9 +77,8 @@ test("asset detail header is PageHeader with the trail, the name, the back link 
   assert.match(header, /back=\{<PageBackLink href=\{returnToHref\} label=\{backLabel\} \/>\}/)
   assert.doesNotMatch(source + header, /<h1\b|<thead\b|<Breadcrumbs\b|<ArrowLeft\b|formatCurrency|function (?:Info|SummaryStrip)\b|opacity-70|hidden md:inline-flex/)
   assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
-  assert.equal(source.match(/<DataTable framed=\{false\} caption=/g)?.length, 1, "the repair table, until Task 12")
-  assert.match(source, /tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\}/)
-  assert.equal(source.match(/<StatStrip\b/g)?.length, 1, "the repair strip, until Task 12")
+  assert.doesNotMatch(source, /<DataTable framed=\{false\} caption=/)
+  assert.doesNotMatch(source, /<StatStrip\b/)
   assert.doesNotMatch(source, /<KeyValueList\b/)
 })
 

@@ -94,7 +94,7 @@ export function summarizeMaintenancePlans(plans: MaintenancePlanSummaryInput[], 
 
 // The order of the PM plan list: active plans first, then paused, then ended, then any other state by name. The
 // database allows only these three (the planState CHECK of 2026-07-14), so "any other" is a guard, not a case.
-const maintenancePlanStateOrder = ["active", "paused", "ended"] as const
+export const maintenancePlanStateOrder = ["active", "paused", "ended"] as const
 
 export type MaintenancePlanStateCount = { planState: string; count: number }
 export type MaintenancePlanStatePageSlice = { planState: string; skip: number; take: number }

@@ -3,25 +3,20 @@ import type { AssetDetailView } from "./asset-detail-view.ts"
 
 export type AssetDetailLoadPolicy = {
   checkoutLimit: number
-  maintenanceLimit: number
   assignedLicenseLimit: number
 }
 
 const previewPolicy: AssetDetailLoadPolicy = {
   checkoutLimit: 1,
-  maintenanceLimit: 1,
   assignedLicenseLimit: 1,
 }
 
-// Interim (R24): each of Tasks 9-12 replaces its tab's load with its own loader. The history tab has its own since
-// Task 9 (getAssetHistory under asset-detail.history-tab), so its view loads the preview; the maintenance limit is the
-// old audit view's.
+// Interim (R24): each of Tasks 9-12 replaces its tab's load with its own loader. The history, files and repair / PM
+// tabs have theirs (asset-detail.history-tab, asset-detail.files-tab, asset-detail.maintenance-tab), so their views
+// load the preview.
 export function getAssetDetailLoadPolicy(view: AssetDetailView): AssetDetailLoadPolicy {
   if (view === "components") {
     return { ...previewPolicy, checkoutLimit: 10, assignedLicenseLimit: 50 }
-  }
-  if (view === "maintenance") {
-    return { ...previewPolicy, maintenanceLimit: 10 }
   }
   return { ...previewPolicy }
 }

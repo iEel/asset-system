@@ -19,9 +19,10 @@ test("open repair checks use the shared filter and ignore the old [PM] prefix", 
 
 test("asset pages send people to the repair form", () => {
   const detail = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
-  assert.match(detail, /const maintenanceHref = `\/\$\{locale\}\/maintenance\/new\?assetId=\$\{encodedAssetId\}`/)
+  assert.doesNotMatch(detail, /const maintenanceHref\b/)
+  assert.match(readFileSync("src/lib/asset-actions.ts", "utf8"), /maintenance\/new\?assetId=/)
   assert.doesNotMatch(detail, /function isPreventiveMaintenanceTicket/)
-  assert.match(detail, /maintenancePlanId/)
+  assert.match(readFileSync("src/components/assets/detail/asset-maintenance-tab.tsx", "utf8"), /maintenancePlanId/)
 })
 
 test("search shows repair record statuses instead of raw workflow codes", () => {

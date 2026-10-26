@@ -10,12 +10,12 @@ import { assetDetailComponentLinkWhere, assetDetailFileWhere, assetRepairRecordW
 // asset-detail.history-tab, so its view loads the preview, and the movement, audit item, finding and disposal
 // relations left the main read with their limits.
 test("asset detail load policy: one row per relation on the overview and the files tab, more only where a tab lists them", () => {
-  const preview = { checkoutLimit: 1, maintenanceLimit: 1, assignedLicenseLimit: 1 }
+  const preview = { checkoutLimit: 1, assignedLicenseLimit: 1 }
   assert.deepEqual(getAssetDetailLoadPolicy("overview"), preview)
   assert.deepEqual(getAssetDetailLoadPolicy("files"), preview)
   assert.deepEqual(getAssetDetailLoadPolicy("history"), preview)
   assert.deepEqual(getAssetDetailLoadPolicy("components"), { ...preview, checkoutLimit: 10, assignedLicenseLimit: 50 })
-  assert.deepEqual(getAssetDetailLoadPolicy("maintenance"), { ...preview, maintenanceLimit: 10 })
+  assert.deepEqual(getAssetDetailLoadPolicy("maintenance"), preview)
 })
 
 test("a tab's count and the records the tab lists share one where: the asset's files, its current component links both ways, its repair records (spec §7.3)", () => {
@@ -29,7 +29,6 @@ test("asset detail page applies the active-view load policy to bounded relations
 
   assert.match(source, /const loadPolicy = getAssetDetailLoadPolicy\(assetDetailView\)/)
   assert.match(source, /take: loadPolicy\.checkoutLimit/)
-  assert.match(source, /take: loadPolicy\.maintenanceLimit/)
   assert.match(source, /take: loadPolicy\.assignedLicenseLimit/)
 })
 

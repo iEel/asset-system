@@ -1,20 +1,10 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { getTransactionOperatorLabel } from "@/lib/transaction-operator-label"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
-import { cn, formatDateTime } from "@/lib/utils"
-import { formatCount, formatMoney } from "@/lib/display-format"
-import { linkVariants } from "@/components/ui/button-variants"
-import { Chip } from "@/components/ui/chip"
-import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
-import { Notice } from "@/components/ui/notice"
-import { StatStrip } from "@/components/ui/stat-strip"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { getPanelClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
 import { AssetComponentsTab } from "@/components/assets/detail/asset-components-tab"
@@ -23,11 +13,10 @@ import { AssetDetailFactStrip } from "@/components/assets/detail/asset-detail-fa
 import { AssetDetailHeader } from "@/components/assets/detail/asset-detail-header"
 import { AssetFilesTab } from "@/components/assets/detail/asset-files-tab"
 import { AssetHistoryTab } from "@/components/assets/detail/asset-history-tab"
+import { AssetMaintenanceTab } from "@/components/assets/detail/asset-maintenance-tab"
 import { AssetOverview } from "@/components/assets/detail/asset-overview"
 import { parseModelSpecs } from "@/lib/model-specs"
-import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { actionBarPagePadding } from "@/components/ui/action-bar"
-import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { getAssetActions, getAssetRecordRepairAction, type AssetActionInput } from "@/lib/asset-actions"
 import {
   buildAssetDetailMoreGroups,
@@ -42,6 +31,8 @@ import { getAssetDetailFrame } from "@/lib/asset-detail-frame"
 import { getAssetComponentHistory } from "@/lib/asset-component-history"
 import { getAssetFilesTabData } from "@/lib/asset-files-data"
 import { getAssetHistory, getLatestAssetHistory } from "@/lib/asset-history"
+import { getAssetMaintenanceTabData } from "@/lib/asset-maintenance-data"
+import { canSetUpPm } from "@/lib/asset-repair-rules"
 import { assetDocumentAccess, parseAssetHistoryType } from "@/lib/asset-history-view"
 import { getAssetNeighbours } from "@/lib/asset-neighbours"
 import { buildRegisterCrumbLabel, parseRegisterReturnTo } from "@/lib/asset-neighbours-rules"
@@ -55,7 +46,6 @@ import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
 import { getAssetDetailCounts } from "@/lib/asset-detail-counts"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
-import { getRepairRecordStatusTone, toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { getMissingPhotoChecklistLabels } from "@/lib/asset-detail-format"
 
 type AssetDetailPageProps = {
@@ -89,7 +79,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const now = new Date()
 
   const t = await getTranslations("asset")
-  const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
   const tCancellation = await getTranslations("transactionCancellation")
   const tDetail = await getTranslations("assetDetail")
@@ -164,14 +153,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               },
             },
           },
-          maintenanceTickets: {
-            where: { isActive: true },
-            orderBy: { reportedDate: "desc" },
-            take: loadPolicy.maintenanceLimit,
-            include: {
-              reportedBy: { select: { code: true, fullNameTh: true } },
-            },
-          },
           assignedLicenses: {
             where: { isActive: true },
             orderBy: { assetTag: "asc" },
@@ -241,6 +222,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ),
         { route: "/assets/[id]", locale },
       )
+    : null
+  // The repair / PM tab's own loader (R24): every active repair record and every PM plan, only on its tab.
+  const maintenanceData = assetDetailView === "maintenance"
+    ? await withPerformanceTiming("asset-detail.maintenance-tab", () => getAssetMaintenanceTabData(asset.id), { route: "/assets/[id]", locale })
     : null
 
   const latestTransactionSelect = {
@@ -349,12 +334,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const primaryModelPhoto = modelPhotos.find((attachment) => isThumbnailable(attachment.fileType))
   const ownershipType = normalizeAssetOwnershipType(asset.ownershipType)
   const modelSpecs = parseModelSpecs(asset.model?.specs)
-  const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => !["closed", "cancelled"].includes(ticket.repairStatus)).length
-  const latestMaintenanceTicket = asset.maintenanceTickets[0]
-  const totalMaintenanceCost = asset.maintenanceTickets.reduce((total, ticket) => total + Number(ticket.repairCost ?? 0), 0)
-  const maintenanceReplacementWarning =
-    asset.maintenanceTickets.length >= 3 ||
-    (asset.purchasePrice && totalMaintenanceCost >= Number(asset.purchasePrice) * 0.5)
   const encodedAssetId = encodeURIComponent(asset.id)
   const editHref = appendReturnTo(`/${locale}/assets/${asset.id}/edit`, returnToHref)
   // The edit form's purchase section (asset-form.tsx): the strip's "บันทึกข้อมูลการซื้อ" and the overview's "เพิ่มข้อมูล".
@@ -365,12 +344,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   // A link to a section of another view opens that view (wiki open question 43).
   const sectionHref = (sectionId: AssetDetailSectionId) => buildAssetDetailSectionHref(locale, asset.id, assetDetailView, sectionId, returnToHref)
   const photosHref = sectionHref("photos")
-  const maintenanceSummary = openMaintenanceCount > 0
-    ? t("openMaintenanceCount", { count: openMaintenanceCount })
-    : latestMaintenanceTicket
-      ? t("latestMaintenanceSummary", { repairNo: latestMaintenanceTicket.repairNo })
-      : tCommon("noData")
-  const maintenanceHref = `/${locale}/maintenance/new?assetId=${encodedAssetId}`
 
   // The shared action rule of the register's rows and this page (group 1 spec §7.1; R1-R4): the same primary and the
   // same transaction items in both places.
@@ -669,101 +642,21 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
         {filesData ? <AssetFilesTab locale={locale} assetId={asset.id} data={filesData} canEdit={canEditAsset} /> : null}
 
-        {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
-          <section id="maintenance" className={cn(getPanelClasses(), "scroll-mt-24 p-4 sm:p-5")}>
-          <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} />
-          <StatStrip
-            className="mb-4"
-            items={[
-              {
-                key: "open",
-                label: t("openMaintenance"),
-                value: formatCount(openMaintenanceCount),
-                ...(openMaintenanceCount > 0 ? { foot: maintenanceSummary, attention: true } : {}),
-              },
-              {
-                key: "total",
-                label: t("totalMaintenance"),
-                value: formatCount(asset.maintenanceTickets.length),
-                foot: latestMaintenanceTicket ? t("latestMaintenanceSummary", { repairNo: latestMaintenanceTicket.repairNo }) : undefined,
-              },
-              { key: "cost", label: t("maintenanceTotalCost"), value: formatMoney(totalMaintenanceCost), unit: tCommon("baht") },
-            ]}
+        {maintenanceData ? (
+          <AssetMaintenanceTab
+            locale={locale}
+            assetId={asset.id}
+            repairs={maintenanceData.repairs}
+            plans={maintenanceData.plans}
+            purchasePrice={asset.purchasePrice == null ? null : Number(asset.purchasePrice)}
+            now={now}
+            recordRepair={getAssetRecordRepairAction(actionInput)}
+            canViewRepairs={canViewMaintenance}
+            canCreatePlan={canSetUpPm(asset.status.name, canCreateMaintenance)}
           />
-          {maintenanceReplacementWarning ? (
-            <Notice tone="warning" className="mb-4">
-              {t("maintenanceReplacementWarning")}
-            </Notice>
-          ) : null}
-          {asset.maintenanceTickets.length === 0 ? (
-            <ActionEmptyState
-              icon={<Wrench className="h-6 w-6" />}
-              title={t("noMaintenanceTitle")}
-              description={t("noMaintenanceHelp")}
-              actionHref={maintenanceHref}
-              actionLabel={t("quickMaintenance")}
-            />
-          ) : (
-            <DataTable framed={false} caption={tMaintenance("maintenanceHistory")} scrollHint={tCommon("tableScrollHint")}>
-              <DataTableHeader>
-                <tr>
-                  <DataTableHead>{tMaintenance("repairNo")}</DataTableHead>
-                  <DataTableHead>{tMaintenance("problem")}</DataTableHead>
-                  <DataTableHead>{tMaintenance("reportedBy")}</DataTableHead>
-                  <DataTableHead>{tCommon("status")}</DataTableHead>
-                  <DataTableHead>{tMaintenance("reportedDate")}</DataTableHead>
-                </tr>
-              </DataTableHeader>
-              <DataTableBody>
-                {asset.maintenanceTickets.map((ticket) => (
-                  <ClickableTableRow
-                    key={ticket.id}
-                    href={`/${locale}/maintenance/${ticket.id}`}
-                    label={`${tCommon("view")}: ${ticket.repairNo}`}
-                  >
-                    <DataTableCell className="whitespace-nowrap">
-                      <Link href={`/${locale}/maintenance/${ticket.id}`} className={linkVariants({ size: "inherit" })}>
-                        <span className="tag">{ticket.repairNo}</span>
-                      </Link>
-                    </DataTableCell>
-                    <DataTableCell className="min-w-72 text-muted-foreground">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {Boolean(ticket.maintenancePlanId) ? <Chip>{t("maintenancePmBadge")}</Chip> : null}
-                        <span>{ticket.problem}</span>
-                      </div>
-                    </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                      <span className="tag">{ticket.reportedBy.code}</span> - {ticket.reportedBy.fullNameTh}
-                    </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap">
-                      <StatusBadge label={tMaintenance(`statuses.${toRepairRecordStatus(ticket.repairStatus)}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
-                    </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(ticket.reportedDate)}</DataTableCell>
-                  </ClickableTableRow>
-                ))}
-              </DataTableBody>
-            </DataTable>
-          )}
-          </section>
         ) : null}
 
       </div>
-    </div>
-  )
-}
-
-// The head of a section that needs an id (it cannot be ContentPanel): the same 16px title and line as ContentPanel's.
-function SectionHeading({
-  title,
-  subtitle,
-}: {
-  title: string
-  subtitle?: string
-}) {
-  return (
-    <div className="mb-4">
-      <h2 className="break-words text-base font-semibold text-foreground">{title}</h2>
-      {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
     </div>
   )
 }
