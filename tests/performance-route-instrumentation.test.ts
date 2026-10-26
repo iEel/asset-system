@@ -19,6 +19,7 @@ const routeFiles = [
       "asset-detail.evidence-data",
       "asset-detail.operation-data",
       "asset-detail.history-tab",
+      "asset-detail.components-tab",
     ],
   },
   {

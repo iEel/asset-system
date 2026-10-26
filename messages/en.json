@@ -1284,7 +1284,18 @@
     "factStripLabel": "Key facts",
     "dataGapsTitle": "Missing details ({count}):",
     "dataGapWarranty": "Warranty end date",
-    "dataGapLicenseExpiry": "License expiry date"
+    "dataGapLicenseExpiry": "License expiry date",
+    "componentsTab": {
+      "historyTitle": "Install and remove history",
+      "columnDate": "Date",
+      "columnEvent": "Event",
+      "columnComponent": "Component",
+      "columnParent": "Parent asset",
+      "columnRelated": "Related asset",
+      "columnNote": "Note",
+      "historyEmpty": "No component has been installed or removed yet",
+      "roleWithSlot": "{role} · slot {slot}"
+    }
   },
   "company": {
     "title": "Companies",

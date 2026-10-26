@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -47,7 +47,7 @@ test("asset detail reaches component management from the components tab and อ�
   const source = assetDetailSource()
   const thaiMessages = JSON.parse(read("messages/th.json"))
   const englishMessages = JSON.parse(read("messages/en.json"))
-  assert.match(source, /manageHref=\{componentsManagerHref\}/)
+  assert.match(source, /manageHref=\{canEditAsset \? componentsManagerHref : null\}/)
   assert.match(source, /manageComponents: canEditAsset \? \{ label: t\("manageComponents"\), href: componentsManagerHref \} : null,/)
   // componentsManagerHref is Task 7's (the manager returns to ?view=components with the detail's own returnTo, R22), pinned in tests/asset-detail-view.test.ts.
   assert.deepEqual(thaiMessages.asset.detailViews, { label: "ส่วนของทรัพย์สิน", overview: "ภาพรวม", history: "ประวัติ", components: "ส่วนควบ", files: "ไฟล์", maintenance: "ซ่อม / PM" })
@@ -64,13 +64,9 @@ test("a component names its parent in the strip's first fact, not in a banner (s
 
 test("asset component parent links preserve context", () => {
   const source = assetDetailSource()
-  const summarySource = read("src/components/assets/asset-components-summary.tsx")
   assert.match(source, /const currentAssetDetailHref = buildAssetDetailViewHref\(locale, asset\.id, assetDetailView, returnToHref\)/)
   assert.match(source, /parentHref: appendReturnTo\(`\/\$\{locale\}\/assets\/\$\{component\.parentAsset\.id\}`, currentAssetDetailHref\)/)
   assert.match(source, /href: link\.parentHref/)
-  assert.match(summarySource, /parentHref: string/)
-  assert.match(summarySource, /roleLabel: string/)
-  assert.match(summarySource, /slotLabel: string/)
 })
 
 test("asset detail header is PageHeader with the trail, the name, the back link and the actions; the old sections keep their shared parts (spec §7.2; spec 2B §4.4.5)", () => {
@@ -101,12 +97,13 @@ test("asset detail localizes audit activity and avoids duplicated activity title
   assert.doesNotMatch(source, /`\$\{latestMovement\.title\}: \$\{latestMovement\.summary\}`/)
 })
 
-test("asset detail exposes a read-only component summary and manager link", () => {
+test("asset detail's components tab is the relationship map with the manager link, without the summary panel", () => {
   const source = assetDetailSource()
 
-  assert.match(source, /AssetComponentsSummary/)
+  assert.match(source, /<AssetComponentsTab\b/)
   assert.match(source, /assets\/\$\{asset\.id\}\/components/)
-  assert.doesNotMatch(source, /<AssetComponentsPanel/)
+  assert.doesNotMatch(source, /AssetComponentsSummary|<AssetComponentsPanel/)
+  assert.equal(existsSync("src/components/assets/asset-components-summary.tsx"), false)
 })
 
 test("asset detail tabs count history, components, files and repairs, and warn on a missing component serial", () => {

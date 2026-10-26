@@ -50,34 +50,20 @@ test("asset photos: a ContentPanel with a plain count, StatusBadge states, the s
   assert.doesNotMatch(source, /rounded-full|border-dashed|hover:bg-accent|focus:outline-none|focus:ring|text-primary|text-success|CheckCircle2|\bh-8\b|\bh-9\b|text-xs|rounded-lg|bg-surface/)
 })
 
-test("components summary: a ContentPanel, codes as tag, text links, a warning StatusBadge and EmptyNote (spec 2D D7, D9, M33)", () => {
-  const summary = read(`${C}assets/asset-components-summary.tsx`)
-  assert.match(summary, /<ContentPanel\n\s+title=\{labels\.title\}\n\s+description=\{labels\.help\}\n\s+actions=\{/)
-  assert.match(summary, /<Link href=\{manageHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
-  assert.match(summary, /<StatusBadge tone="warning" label=\{`\$\{labels\.missingSerial\}: \$\{formatCount\(missingSerialCount\)\}`\} \/>/)
-  assert.match(summary, /<EmptyNote>\{labels\.noCurrent\}<\/EmptyNote>/)
-  assert.match(summary, /<span className="tag font-medium">\{component\.componentAsset\.assetTag\}<\/span>/)
-  assert.match(summary, /<span className="tag font-medium">\{link\.parentAsset\.assetTag\}<\/span>/)
-  assert.doesNotMatch(summary, /font-mono|uppercase|rounded-full|border-dashed|bg-primary|text-white|primary-soft|hover:bg-accent|sm:h-10|text-xs|text-primary/)
-})
-
 const D = "src/app/[locale]/(dashboard)/"
 
 test("asset page: the sections the later tabs replace keep the panel classes; the overview's panels are ContentPanels in the detail parts (spec 2D §3.3; group 1 asset detail task 8)", () => {
   const source = read(`${D}assets/[id]/page.tsx`)
   assert.equal(source.match(/className=\{cn\(getPanelClasses\(\), "scroll-mt-24 p-4 sm:p-5"\)\}/g)?.length, 3, "handover, maintenance and the files tab's purchase documents")
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 1, "the relationship map")
+  assert.doesNotMatch(source, /<ContentPanel\b/)
   assert.match(source, /<Notice tone="warning" className="mb-4">\n\s+\{t\("maintenanceReplacementWarning"\)\}\n\s+<\/Notice>/)
-  assert.match(source, /<Notice tone="neutral" className="mt-4">\{noteLabel\}<\/Notice>/)
   assert.match(source, /<Chip>\{t\("latestTransaction"\)\}<\/Chip>/)
   assert.match(source, /<Chip>\{t\("maintenancePmBadge"\)\}<\/Chip>/)
-  assert.match(source, /<Chip>\{roleLabel\}<\/Chip>/)
   assert.equal(source.match(/className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/g)?.length, 4)
   assert.match(source, /<Link href=\{`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
   assert.match(source, /return labels\.parentAssets\.get\(checkout\.parentAssetId\) \?\? checkout\.parentAssetId\n\s+return null\n\}/)
   assert.match(source, /if \(!snapshot\) return null\n/)
   assert.doesNotMatch(source, /filterLabel: tCommon\("filter"\)/)
-  assert.match(source, /<div className="font-mono text-sm font-medium leading-5 text-foreground \[overflow-wrap:anywhere\]">\{relationshipAsset\.assetTag\}<\/div>/)
   const banned = /\b(?:bg|text|border)-(?:amber|emerald)-\d|border-dashed|uppercase|rounded-full (?:bg|px)-|bg-surface\/\d|primary-soft|info-soft|warning-soft|hover:underline|hover:bg-accent|font-semibold leading-5|focus:outline-none|scale-\[|return "-"|\bh-8\b|md:h-10|text-lg|text-info|\btext-xs\b|toLocaleString/
   for (const file of [source, ...["asset-detail-header", "asset-detail-actions", "asset-detail-fact-strip", "asset-overview"].map((name) => read(`${C}assets/detail/${name}.tsx`))]) assert.doesNotMatch(file, banned)
 })
@@ -222,13 +208,6 @@ test("my assets: the phone card facts are a KeyValueList (D19), the card is a qu
   assert.match(source, /\{ key: "serialNumber", label: labels\.serialNumber, value: asset\.serialNumber \? <span className="tag">\{asset\.serialNumber\}<\/span> : null \}/)
   assert.match(source, /\{ key: "status", label: labels\.status, value: <StatusBadge label=\{asset\.status\.nameTh\} tone=\{getAssetStateTone\(asset\.status\.name\)\} \/> \}/)
   assert.doesNotMatch(source, /function MobileField\b|import type React|\btext-xs\b/)
-})
-
-test("components summary: on a phone the serial goes under the component instead of squeezing its name (plan 2D-3 Task 20 fix)", () => {
-  const source = read(`${C}assets/asset-components-summary.tsx`)
-  assert.match(source, /className="flex min-w-0 flex-col gap-1 px-3 py-3 transition-colors hover:bg-row-hover sm:flex-row sm:items-center sm:justify-between sm:gap-3"/)
-  assert.match(source, /<span className="text-meta text-muted-foreground \[overflow-wrap:anywhere\] sm:shrink-0">SN: \{component\.componentAsset\.serialNumber\}<\/span>/)
-  assert.doesNotMatch(source, /"shrink-0 text-meta text-muted-foreground">SN:/)
 })
 
 test("import-export: the unfiltered export is named export all; the register link names the filter step (critique 2026-10-20 B1)", () => {

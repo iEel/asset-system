@@ -1284,7 +1284,18 @@
     "factStripLabel": "ข้อมูลสำคัญของทรัพย์สิน",
     "dataGapsTitle": "ข้อมูลยังไม่ครบ {count} รายการ:",
     "dataGapWarranty": "วันหมดประกัน",
-    "dataGapLicenseExpiry": "วันหมดอายุ License"
+    "dataGapLicenseExpiry": "วันหมดอายุ License",
+    "componentsTab": {
+      "historyTitle": "ประวัติการติดตั้ง / ถอด",
+      "columnDate": "วันที่",
+      "columnEvent": "เหตุการณ์",
+      "columnComponent": "ส่วนควบ",
+      "columnParent": "ทรัพย์สินหลัก",
+      "columnRelated": "ทรัพย์สินที่เกี่ยวข้อง",
+      "columnNote": "หมายเหตุ",
+      "historyEmpty": "ยังไม่เคยติดตั้งหรือถอดส่วนควบ",
+      "roleWithSlot": "{role} · ช่อง {slot}"
+    }
   },
   "company": {
     "title": "บริษัท",
