@@ -38,3 +38,21 @@ export const statusMarkerVariants = cva("shrink-0 forced-color-adjust-none", {
   },
   defaultVariants: { tone: "muted" },
 })
+
+// The Data Bars Rule (DESIGN.md §2): a status tone as an area, the segment of a DistributionBar or the fill of a PaceBar.
+// The marker's color of the same tone; the info ring becomes a solid info fill. Windows contrast themes draw it in the
+// text color, and the 2px gaps between segments still part them.
+export const statusFillVariants = cva("forced-color-adjust-none forced-colors:bg-[CanvasText]", {
+  variants: {
+    tone: {
+      success: "bg-success",
+      info: "bg-info",
+      primary: "bg-primary",
+      neutral: "bg-neutral-ink",
+      muted: "bg-neutral-ink",
+      warning: "bg-warning",
+      danger: "bg-danger",
+    },
+  },
+  defaultVariants: { tone: "muted" },
+})

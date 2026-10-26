@@ -46,7 +46,7 @@ Both presentations reuse the same URL, API, business records, workflow records, 
 
 ## Shared Visual and Interaction Reminders
 
-Follow the canonical [`Colors`](../DESIGN.md#2-colors), [`Typography`](../DESIGN.md#3-typography), and [`Components`](../DESIGN.md#5-components) sections of [`DESIGN.md`](../DESIGN.md); do not copy mutable token values into route documentation. Both themes come from the same tokens (The Two-Theme Rule in [`DESIGN.md` §2](../DESIGN.md#2-colors)): never write a `dark:` class or a color for one theme, and check a change in light and dark. Use semantic statuses with readable text plus icons, shapes, or clear workflow context where useful. Reuse Lucide icons and existing component helpers, favor borders and tonal hierarchy, and avoid decorative gradients, glass effects, and heavy motion. Implement consistent loading, empty, error, and denied states.
+Follow the canonical [`Colors`](../DESIGN.md#2-colors), [`Typography`](../DESIGN.md#3-typography), and [`Components`](../DESIGN.md#5-components) sections of [`DESIGN.md`](../DESIGN.md); do not copy mutable token values into route documentation. Both themes come from the same tokens (The Two-Theme Rule in [`DESIGN.md` §2](../DESIGN.md#2-colors)): never write a `dark:` class or a color for one theme, and check a change in light and dark. Use semantic statuses with readable text plus icons, shapes, or clear workflow context where useful. A status color fills an area only in a data bar (The Data Bars Rule in [`DESIGN.md` §2](../DESIGN.md#2-colors)). Reuse Lucide icons and existing component helpers, favor borders and tonal hierarchy, and avoid decorative gradients, glass effects, and heavy motion. Implement consistent loading, empty, error, and denied states.
 
 ## Shared Components
 
@@ -67,6 +67,8 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | An action menu | `DropdownMenu` | an item that cannot run now uses `unavailable` with `DropdownMenuItemDescription` for the reason |
 | A keyboard hint | `Kbd` | Latin keys and symbols only |
 | A status | `StatusBadge` | one size; there is no `size` prop; an asset state takes its tone from `status.name` (`getAssetStateTone`), never a database color; an active record is `tone="success"` |
+| A share of a whole by status (a stacked bar) | `DistributionBar` | hidden from assistive technology (`aria-hidden`) and holds no word of its own; one segment per part above zero, in its status tone (`getAssetStateTone` for an asset state); its segments may link to their lists for pointer users (`href`, a `title` with the filter, `tabIndex={-1}`); the table beside it carries the counts, the shares and the same links for everyone, with a `statusFillVariants` swatch per row |
+| Progress toward a total, with the pace it should have | `PaceBar` | `value` and `pace` from 0 to 1 (`pace` `null` draws no mark); `behind` gives the warning fill, and the words beside it say so too; `label` is the sentence; a block `span`, so a `StatStrip` cell takes it as `meter` |
 | A name: a role, a scope, an approver, a module | `Chip` | neutral, no tone and no marker; a state is a `StatusBadge`; a code inside is a `tag` |
 | A breadcrumb trail | `Breadcrumbs` | `code: true` for an asset tag or document number |
 | A page title, its facts and its buttons | `PageHeader` | the only `h1`; a status badge only in `meta`; `md` buttons, back first and primary last; no outer margin (a `space-y-6` root, or `className="mb-6"` in a form) |

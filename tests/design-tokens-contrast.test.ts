@@ -10,6 +10,7 @@ import {
   resolveToken,
   type Rgb,
 } from "../src/lib/color-contrast.ts"
+import { statusFillVariants } from "../src/components/ui/badge-variants.ts"
 
 const css = readFileSync("src/app/globals.css", "utf8")
 const tokens = readRootTokens(css)
@@ -17,6 +18,9 @@ const white = parseHexColor("#FFFFFF")
 const AA = 4.5
 // WCAG 1.4.11: focus rings, field borders and meaningful icons need 3:1 against what they sit on.
 const NON_TEXT = 3
+// The Data Bars Rule (group 1 dashboard task 7): the fills of the data bars, read from statusFillVariants, so a new tone fill cannot skip the check.
+const DATA_BAR_TONES = ["success", "info", "primary", "neutral", "muted", "warning", "danger"] as const
+const DATA_BAR_FILLS = [...new Set(DATA_BAR_TONES.map((tone) => statusFillVariants({ tone }).match(/(?:^| )bg-([a-z-]+)(?= |$)/)?.[1] ?? `none for ${tone}`))]
 
 test("contrast helpers match WCAG reference values", () => {
   assert.equal(contrastRatio(parseHexColor("#000000"), white).toFixed(2), "21.00")
@@ -132,6 +136,14 @@ function contrastRules(prefix: "" | "dark: ", set: Record<string, string>) {
   test(`${prefix}the chrome (topbar, phone bottom bar) keeps the page inks AA and the ring and field border at 3:1 (menu B §6.1)`, () => {
     for (const ink of ["foreground", "muted-foreground", "faint-foreground", "primary"]) assertAA(ink, "chrome", `${ink} on chrome`)
     for (const line of ["ring", "input"]) assertContrast(line, "chrome", NON_TEXT, `${line} on chrome`)
+  })
+
+  test(`${prefix}data bar fills reach 3:1 on the panel, the page background, the muted track and a hovered row; the pace mark on the panel (The Data Bars Rule)`, () => {
+    assert.deepEqual([...DATA_BAR_FILLS].sort(), ["danger", "info", "neutral-ink", "primary", "success", "warning"])
+    for (const fill of DATA_BAR_FILLS) {
+      for (const surface of ["card", "background", "muted", "row-hover"]) assertContrast(fill, surface, NON_TEXT, `${fill} on ${surface}`)
+    }
+    for (const surface of ["card", "background"]) assertContrast("foreground", surface, NON_TEXT, `the pace mark (foreground) on ${surface}`)
   })
 
   test(`${prefix}focus ring and field borders reach 3:1 on the surfaces they sit on`, () => {

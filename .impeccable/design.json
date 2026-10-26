@@ -524,7 +524,12 @@
     "rules": [
       {
         "name": "The Where Color Lives Rule",
-        "body": "Navy #083161 lives only in the logo and the pressed primary fill; the menu has its own navy (--sidebar #082A54, #0E2445 in dark) with color only on its open row. Actions and links use Primary #1E4F94, also the open row's fill. Teal is for info status, the focus ring (#10858D; #5FD6DD inside the menu) and the open row's icon and bar. Green, orange and red appear only inside status badges, as the icon of a toast, a Notice or an ActionEmptyState, on destructive buttons and menu items, as the bell's count (red) and as the menu's work dot (orange); only warning and danger toasts and Notice boxes get a soft fill. Names are the neutral Chip, states StatusBadge and notes Notice by meaning, so outside the shared parts (the info status ring and the info Notice icon) no screen uses the info tokens (phase 2D).",
+        "body": "Navy #083161 lives only in the logo and the pressed primary fill; the menu has its own navy (--sidebar #082A54, #0E2445 in dark) with color only on its open row. Actions and links use Primary #1E4F94, also the open row's fill. Teal is for info status, the focus ring (#10858D; #5FD6DD inside the menu) and the open row's icon and bar. Green, orange and red appear only inside status badges, as the icon of a toast, a Notice or an ActionEmptyState, on destructive buttons and menu items, as the bell's count (red), as the menu's work dot (orange) and as the segments of a data bar (The Data Bars Rule); only warning and danger toasts and Notice boxes get a soft fill. Names are the neutral Chip, states StatusBadge and notes Notice by meaning, so outside the shared parts (the info status ring, the info Notice icon and a data bar's info segment) no screen uses the info tokens (phase 2D).",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Bars Rule",
+        "body": "A distribution bar (DistributionBar) and a progress bar (PaceBar) are the only places outside The Where Color Lives Rule's list where a status color fills an area. Each segment takes the fill of its status's own badge tone through statusFillVariants (the marker's color; info as a solid fill, neutral and muted as neutral-ink), never a database color, a soft fill or a /NN tint. Segments are 2px apart with 2px corners. Every fill reaches 3:1 against the panel, the page background, the muted track and a hovered row in both themes. A bar never carries its meaning alone: the table or the words beside it say the same. A distribution bar holds no word of its own and is hidden from assistive technology (aria-hidden), always paired with a table that carries every number; its segments may link to their lists for pointer users (out of the tab order, the filter as a title), and the table carries the same links for everyone. A PaceBar is role=img named by the sentence beside it. A PaceBar's pace mark is a 2px ink line with a 2px panel gap; a bar behind its pace takes the warning fill and the words \"ช้ากว่าที่ควร\".",
         "section": "colors"
       },
       {
@@ -587,7 +592,7 @@
     "donts": [
       "Don't use consumer-app styling, bright playful colors, heavy animation, marketing-style hero layouts, gamified UI, casual startup dashboards, decorative gradients, or anything that makes the system feel like a landing page instead of an enterprise operations tool.",
       "Don't use glassmorphism, heavy shadows, decorative gradients, floating marketing cards, or playful surfaces.",
-      "Don't bring back the old slate sidebar (Tailwind #0F172A, which competed with the content) or color the menu beyond its open row and the work dot; no focus color beyond --ring and, inside the navy menu, --sidebar-ring; no green, orange or red outside status badges, the bell's count and the menu's work dot.",
+      "Don't bring back the old slate sidebar (Tailwind #0F172A, which competed with the content) or color the menu beyond its open row and the work dot; no focus color beyond --ring and, inside the navy menu, --sidebar-ring; no green, orange or red outside status badges, the bell's count, the menu's work dot and the data bars.",
       "Don't write a dark: class, a color for one theme or a component that reads the theme; paper that must stay light takes data-theme=\"light\".",
       "Don't show database status colors on badges, or use teal brand-accent as text.",
       "Don't redesign business workflows for visual effect.",
