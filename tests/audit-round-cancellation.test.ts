@@ -20,10 +20,10 @@ test("audit round cancellation status is first-class but read-only", () => {
   assert.deepEqual(auditRoundOperationalWhere, { notIn: ["closed", "cancelled"] })
 })
 
-test("audit validation accepts cancelled status and requires cancel reason", () => {
+test("audit validation takes no round status at create and requires a cancel reason (group 2 spec §14)", () => {
   const source = readFileSync("src/lib/validations/audit.ts", "utf8")
 
-  assert.match(source, /const auditStatuses = \["draft", "open", "closed", "cancelled"\] as const/)
+  assert.doesNotMatch(source, /auditStatuses|status: z\.enum/, "a new round always opens: the create input has no status (group 2 spec §14)")
   assert.match(source, /export const auditRoundCancelSchema = z\.object/)
   assert.match(source, /reason: z\.string\(\)\.trim\(\)\.min\(1\)\.max\(4000\)/)
   assert.match(source, /export type AuditRoundCancelInput = z\.infer<typeof auditRoundCancelSchema>/)

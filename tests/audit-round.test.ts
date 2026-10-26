@@ -20,7 +20,6 @@ const baseInput: AuditRoundInput = {
   sampleRate: 100,
   startDate: new Date("2026-05-01T00:00:00.000Z"),
   endDate: new Date("2026-05-31T00:00:00.000Z"),
-  status: "draft",
 }
 
 test("audit round all-status scope excludes disposed and retired assets by default", () => {

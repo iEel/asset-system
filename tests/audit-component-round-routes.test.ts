@@ -13,7 +13,7 @@ test("audit round helper loads installed components and exposes component-aware 
   assert.match(source, /selectAuditComponentCandidates/)
   assert.match(source, /export async function getAuditRoundSelection/)
   assert.match(source, /prisma\.assetComponent\.findMany/)
-  assert.match(source, /parentAssetId:\s*\{\s*in:\s*candidateAssets\.map/)
+  assert.match(source, /parentAsset:\s*buildAuditAssetWhere\(input\)/)
   assert.match(source, /status:\s*"installed"/)
   assert.match(source, /removedAt:\s*null/)
   assert.match(source, /componentAsset:\s*\{\s*isActive:\s*true/)

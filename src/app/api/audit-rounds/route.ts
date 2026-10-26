@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     const round = await withPrismaUniqueRetry(async () => {
       const auditNo = await generateAuditNo(input.auditYear)
       return prisma.$transaction(async (tx) => {
+        // A new round is always open (group 2 spec §14): the schema takes no status.
         const record = await tx.auditRound.create({
           data: {
             auditNo,
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
             scopeConditionId: input.scopeConditionId,
             startDate: input.startDate,
             endDate: input.endDate,
-            status: input.status,
+            status: "open",
             createdBy: user.id,
             updatedBy: user.id,
           },
@@ -110,6 +111,7 @@ export async function POST(request: NextRequest) {
       recordId: round.id,
       newValue: {
         ...input,
+        status: "open",
         auditNo: round.auditNo,
         matchedAssets: selection.matchedAssets,
         generatedItems: assets.length,

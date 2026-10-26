@@ -60,3 +60,14 @@ export function chunkAuditIds<T>(ids: readonly T[], size: number = AUDIT_ID_CHUN
   for (let start = 0; start < ids.length; start += size) chunks.push(ids.slice(start, start + size))
   return chunks
 }
+
+// The largest rows first, then the rest folded into one "อื่น ๆ" (group 2 spec §2 decision 2: six). The create form's
+// categories (plan 1) and the round page's category chips (plan 2) fold the same way. Equal counts keep their order.
+export function foldTopCategories<T extends { count: number }>(rows: readonly T[], top = 6): { top: T[]; other: { categories: number; count: number } } {
+  const sorted = [...rows].sort((left, right) => right.count - left.count)
+  const rest = sorted.slice(top)
+  return {
+    top: sorted.slice(0, top),
+    other: { categories: rest.length, count: rest.reduce((sum, row) => sum + row.count, 0) },
+  }
+}

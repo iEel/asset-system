@@ -1,7 +1,6 @@
 import { z } from "zod"
-import { optionalText } from "@/lib/validations/shared"
+import { optionalText } from "./shared.ts"
 
-const auditStatuses = ["draft", "open", "closed", "cancelled"] as const
 export const auditRiskPresets = [
   "all",
   "data_quality",
@@ -11,24 +10,30 @@ export const auditRiskPresets = [
   "license_expiring",
 ] as const
 
-export const auditRoundSchema = z
-  .object({
+// The scope of a round: what it audits and how it samples. The create form's live count parses this alone, so a
+// half-typed name, year or date never fails a count (group 2 spec §7, R10).
+export const auditRoundPreviewSchema = z.object({
+  scopeCompanyId: optionalText,
+  scopeBranchId: optionalText,
+  scopeDepartmentId: optionalText,
+  scopeLocationId: optionalText,
+  scopeCategoryId: optionalText,
+  scopeCustodianId: optionalText,
+  scopeStatusId: optionalText,
+  scopeConditionId: optionalText,
+  includeClosedAssets: z.coerce.boolean().default(false),
+  riskPreset: z.enum(auditRiskPresets).default("all"),
+  sampleRate: z.coerce.number().int().min(1).max(100).default(100),
+})
+
+// A new round has no status: it opens at once (group 2 spec §14, bug §13.6). The object is not strict, so a client
+// that still sends status has it dropped, never refused.
+export const auditRoundSchema = auditRoundPreviewSchema
+  .extend({
     name: z.string().trim().min(1).max(200),
     auditYear: z.coerce.number().int().min(2000).max(2100),
-    scopeCompanyId: optionalText,
-    scopeBranchId: optionalText,
-    scopeDepartmentId: optionalText,
-    scopeLocationId: optionalText,
-    scopeCategoryId: optionalText,
-    scopeCustodianId: optionalText,
-    scopeStatusId: optionalText,
-    scopeConditionId: optionalText,
-    includeClosedAssets: z.coerce.boolean().default(false),
-    riskPreset: z.enum(auditRiskPresets).default("all"),
-    sampleRate: z.coerce.number().int().min(1).max(100).default(100),
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
-    status: z.enum(auditStatuses).default("draft"),
   })
   .superRefine((input, context) => {
     if (input.endDate < input.startDate) {
@@ -90,6 +95,7 @@ export const auditMarkNotFoundSchema = z.object({
   remark: optionalText,
 })
 
+export type AuditRoundScopeInput = z.infer<typeof auditRoundPreviewSchema>
 export type AuditRoundInput = z.infer<typeof auditRoundSchema>
 export type AuditRoundCancelInput = z.infer<typeof auditRoundCancelSchema>
 export type AuditScanInput = z.infer<typeof auditScanSchema>

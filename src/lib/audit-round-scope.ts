@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client"
-import type { AuditRoundInput } from "./validations/audit.ts"
+import type { AuditRoundScopeInput } from "./validations/audit.ts"
 
 export const CLOSED_AUDIT_STATUS_NAMES = ["Disposed", "Retired"] as const
 export const CLOSED_AUDIT_STATUS_NAMES_TH = ["ตัดจำหน่ายแล้ว", "ปลดระวาง"] as const
@@ -18,7 +18,7 @@ export function filterAuditStatusOptions<T extends AuditStatusOption>(statuses: 
   return includeClosedAssets ? statuses : statuses.filter((status) => !status.isClosed)
 }
 
-export function buildAuditAssetWhere(input: AuditRoundInput): Prisma.AssetWhereInput {
+export function buildAuditAssetWhere(input: AuditRoundScopeInput): Prisma.AssetWhereInput {
   const riskWhere = buildAuditRiskWhere(input.riskPreset)
   const statusWhere = buildAuditStatusWhere(input)
 
@@ -37,7 +37,7 @@ export function buildAuditAssetWhere(input: AuditRoundInput): Prisma.AssetWhereI
   }
 }
 
-function buildAuditStatusWhere(input: AuditRoundInput): Prisma.AssetWhereInput {
+function buildAuditStatusWhere(input: AuditRoundScopeInput): Prisma.AssetWhereInput {
   if (input.scopeStatusId || input.includeClosedAssets) return {}
 
   return {
@@ -52,13 +52,15 @@ export function selectAuditSample<T extends { id: string }>(assets: T[], sampleR
   if (sampleRate >= 100) return assets
 
   const sampleSize = Math.max(1, Math.ceil((assets.length * sampleRate) / 100))
+  // an index map, not a search of the scope per comparison: the live count samples on every change (group 2 spec §7)
+  const position = new Map(assets.map((asset, index) => [asset.id, index] as const))
   return [...assets]
     .sort((left, right) => stableHash(left.id) - stableHash(right.id))
     .slice(0, sampleSize)
-    .sort((left, right) => assets.findIndex((asset) => asset.id === left.id) - assets.findIndex((asset) => asset.id === right.id))
+    .sort((left, right) => (position.get(left.id) ?? 0) - (position.get(right.id) ?? 0))
 }
 
-function buildAuditRiskWhere(riskPreset: AuditRoundInput["riskPreset"]): Prisma.AssetWhereInput {
+function buildAuditRiskWhere(riskPreset: AuditRoundScopeInput["riskPreset"]): Prisma.AssetWhereInput {
   const today = startOfToday(new Date())
   const staleSince = addDays(today, -180)
   const expiringSoon = addDays(today, 60)
