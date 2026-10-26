@@ -101,6 +101,7 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 - [ ] Log locations are documented.
 - [ ] Backup path is documented.
 - [ ] Rollback plan is documented and tested.
+- [ ] Before or on deploy day, an IT head cancels the old draft audit round `AUD-2026-0002 "Test"` (1,509 items; finding E6 in `docs/audits/2026-10-07-full-review.md`) in Production through the round page ("ยกเลิกรอบตรวจ" with a reason). The user agreed on 2026-10-26. From page group 2 a draft round reads as open, so left alone it counts on the dashboard and in the rounds list. No SQL is run for it.
 
 ## Deployment Documentation Coverage
 

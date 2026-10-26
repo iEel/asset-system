@@ -28,7 +28,7 @@
 | E3 | `cleanup-test-data` ตัดสิน Production จาก `NODE_ENV` อย่างเดียว | `scripts/cleanup-test-data.mjs` | **แก้แล้ว** `5f83e24` — ตัดสินจากชื่อ DB |
 | E4 | ไฟล์แนบเก็บเป็น absolute path · ไฟล์ Prod เปิดในเครื่อง dev ได้ `500 Invalid attachment path` | `src/lib/uploads.ts:39` | เปิด |
 | E5 | `ldap-sync.mjs` ค่าเริ่มต้นเป็น apply | `scripts/ldap-sync.mjs` | **แก้แล้ว** `5f83e24` — preview เป็นค่าเริ่มต้น |
-| E6 | รอบตรวจนับ `AUD-2026-0002 "Test"` (Draft, 1,509 รายการ) ค้างใน Prod · coverage นับรอบ Draft · readiness ของการจำหน่ายบล็อกทรัพย์สินที่อยู่ในรอบที่ยังไม่ปิด จึงจำหน่ายแทบทุกชิ้นไม่ได้ | `src/lib/audit-round-status.ts:5` | เปิด — รอผู้ใช้ยกเลิกผ่าน UI |
+| E6 | รอบตรวจนับ `AUD-2026-0002 "Test"` (Draft, 1,509 รายการ) ค้างใน Prod · coverage นับรอบ Draft · readiness ของการจำหน่ายบล็อกทรัพย์สินที่อยู่ในรอบที่ยังไม่ปิด จึงจำหน่ายแทบทุกชิ้นไม่ได้ | `src/lib/audit-round-status.ts:5` | เปิด — ผู้ใช้ตกลงให้ยกเลิก (2026-10-26): หัวหน้า IT ยกเลิกผ่านหน้ารอบในแอป ก่อนหรือในวัน deploy · ตั้งแต่กลุ่มหน้า 2 แผน 1 รอบร่างอ่านเป็นเปิดตรวจ |
 | E7 | `asset_management` ไม่มี backup ตั้งแต่ 2026-08-31 · FULL recovery ไม่มี log backup (log 3,144 MB) | `msdb.dbo.backupset` | เปิด — ผู้ดูแลเซิร์ฟเวอร์ |
 
 ## S — ความปลอดภัยและสิทธิ์

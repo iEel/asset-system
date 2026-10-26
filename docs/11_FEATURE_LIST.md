@@ -178,10 +178,10 @@ Implemented status lifecycle and enforcement from docs/code:
 
 | Feature | Details |
 |---|---|
-| Audit rounds | Create rounds from scoped asset filters |
-| Audit rounds action hub | Action-first list with next-action cards, URL-backed quick filter tabs with counts, and ready-to-close/blocker badges for high-volume audit operations; 25/50/100 rounds per page, cut in memory after the view filter so the tab counts still cover every round, and a page past the end shows the last page |
+| Audit rounds | Create rounds from scope conditions added as chips; a round opens at once (no draft step) |
+| Audit rounds action hub | Round-wide next-action strip, status tabs (in progress / closed / cancelled / all) with counts that follow the search, work views as a removable chip, one computed status badge plus ready-to-close, a wrapping next-step column (scan for editors, the pending list for others); 25/50/100 rounds per page, cut in memory after the view filter so the tab counts still cover every round, and a page past the end shows the last page |
 | Audit return navigation | Round detail, pending, and scan links preserve the originating rounds view/search through sanitized internal `returnTo` targets; scan/pending return to the round detail and round detail returns to the filtered rounds list; the rounds list's own `returnTo` also carries its page and page size, so the round detail and the scan screen bring a person back to the same page, and the pending list keeps the round's `returnTo` on its page links |
-| Candidate preview | Preview audit candidates before creating a round |
+| Candidate preview | A live item count while the conditions change, with matched and sampled numbers, components, top categories, an overlap warning and an eight-row sample |
 | Expected list | Audit items generated from scope and start as pending |
 | Component asset audit | Audit round preview/create automatically includes active installed component assets for selected parents; Audit Scan shows component status under the parent and supports explicit confirmed-with-parent component verification |
 | Audit detail | Progress metrics and expected item list |

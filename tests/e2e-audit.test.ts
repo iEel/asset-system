@@ -77,6 +77,16 @@ test("the walk's records carry the run id and the project within the schemas' li
   assert.ok(open.includes(`toHaveText("${JSON.parse(read("messages/th.json")).common.validation.required}")`), "the required error under the name")
   assert.ok(open.includes(`toHaveText("${JSON.parse(read("messages/th.json")).common.validation.endBeforeStart}")`), "the date pair error under the end date")
   assert.ok(open.includes(thai("auditRound").createTitle) && open.includes(thai("auditRound").statusOpen))
+  // Group 2 plan 1 (spec §7, §14, §16): no status choice, the department as a condition chip, the live count is the
+  // round's items, and the round opens at once.
+  assert.ok(open.includes(`await expect(page.locator("#audit-round-status")).toHaveCount(0)`))
+  assert.ok(!open.includes(".selectOption(") && !open.includes(`{ name: "ดูตัวอย่าง" }`), "no status or scope select, no preview button")
+  assert.ok(open.includes("const save = rounds.createButton(page)"))
+  assert.ok(open.includes("await rounds.addCondition(page, \"แผนก\", records.department.code, `${records.department.code} - ${records.department.name}`)"))
+  assert.ok(open.includes("await expect(rounds.willCreate(page, inRound.length)).toBeVisible()"))
+  assert.ok(open.includes("const liveCount = await rounds.readWillCreate(page)"))
+  assert.ok(open.includes(`expect(round.generatedItems, "the live count is the round's items (group 2 spec §16)").toBe(liveCount)`))
+  assert.ok(open.includes(`expect(saved.status, "open at once, never a draft (group 2 spec §14)").toBe("open")`))
 })
 
 test("IT staff walk room A by typing on the phone, on a slow network: matched, mismatch with its photo, a parent with components, unknown and out of scope (e2e audit task 2, EA2)", async () => {

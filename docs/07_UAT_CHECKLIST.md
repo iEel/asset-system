@@ -106,8 +106,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## auditor
 
 - [ ] Create or open an assigned audit round.
-- [ ] Preview audit-round candidates before creation.
-- [ ] Create an audit round where a selected parent asset has installed components; confirm preview shows the component count and the created round has separate audit items for the parent and components.
+- [ ] On `/th/audit/rounds/new`, add conditions as chips through "+ เพิ่มเงื่อนไข" and confirm the summary panel "ขอบเขตนี้ได้" counts by itself (no "ดูตัวอย่าง" button), with "ตรงเงื่อนไข X · สุ่มได้ Y" below 100%, the components note, the largest categories, the overlap warning and "ดูตัวอย่างรายการ", before "สร้างรอบ".
+- [ ] Create an audit round where a selected parent asset has installed components; confirm the summary panel shows the components pulled in and the created round has separate audit items for the parent and components.
 - [ ] Scan the parent asset and confirm the scan page shows installed components with their own statuses. Confirming a component with parent should save immediately without requiring a note, update only the component audit item, and show `ยืนยันกับทรัพย์สินหลัก`. For a component that cannot be scanned, tap `ไม่พบ` and confirm an in-app dialog opens, allows saving without a remark, optionally accepts an evidence photo, and creates/updates the component not-found finding for review.
 - [ ] Move or transfer a parent asset with installed components and confirm active installed components receive supported field updates plus component movement rows.
 - [ ] Scan an expected asset.
@@ -156,7 +156,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Approve or resolve a finding.
 - [ ] Confirm segregation-of-duties guard blocks self-review where applicable.
 - [ ] Review round progress.
-- [ ] From `/th/audit/rounds`, apply a quick filter/search, open round detail, open Scan and Pending from that round, then use Back and confirm the browser returns to the same round detail and filtered rounds list context.
+- [ ] From `/th/audit/rounds`, choose a status tab or a work-view chip and search, open round detail, open Scan and Pending from that round, then use Back and confirm the browser returns to the same round detail and filtered rounds list context.
 - [ ] Close an audit round.
 - [ ] Cancel a test audit round from the round detail page, enter a reason, and confirm the round shows `ยกเลิก`/read-only state. Confirm cancellation time/user/reason are visible, scan, pending, edit result, review/close actions, operational queues, and active exports no longer include that cancelled round, while historical audit items, scan history, findings, evidence, and already-applied corrections are preserved and not rolled back.
 
@@ -374,6 +374,19 @@ The automated suite covers the asset detail in all four projects (`e2e/asset-det
 - [ ] The ซ่อม / PM tab: the three numbers against the asset's repair records ("ซ่อมมาแล้ว N ครั้ง" leaves out cancelled and PM records and its foot says so; the tab's count holds every active record), the replacement notice at 3 repairs or half the price, the repair number a link only with `maintenance:view`, the asset's PM plans in every state, "ตั้งรอบ PM" only with `maintenance:create` and never on a Disposed or Retired asset.
 - [ ] NVDA and VoiceOver: each "อื่น ๆ" item reads its reason; the phone sheet keeps focus inside and returns it to "การดำเนินการอื่น"; the tabs read their counts; the fact strip reads as terms and values.
 - [ ] Both themes on a real monitor and phone; the bottom bar clears the home indicator.
+- [ ] An English pass of the new messages.
+
+## Audit Rounds B UAT (2026-10-26)
+
+The automated suite covers the rounds list and the create form in all four projects (`e2e/audit/`, `e2e/cross-cutting/field-errors.spec.ts`). A person still checks:
+
+- [ ] On a copy of Production data: the tab counts follow the search, "งานที่ต้องทำต่อ" stays round-wide while searching, the scope column names every condition, a search by a scope's category or department name finds the round, and "เหลือ / เลยกำหนด N วัน" shows on open rounds only.
+- [ ] A fully scanned round with pending findings reads "รอพิจารณา"; "พร้อมปิดรอบ" shows only where the close goes through (no action plan planned, in progress or done); "พิจารณา" opens a list of the same count, and "แผนแก้ไขค้าง" opens the open action plans.
+- [ ] The coverage line folded and open: bar, %, "ครอบคลุม X จาก Y · ยังไม่อยู่ในรอบใด Z", the four numbers, pending items and pending review apart, the breakdown by category and department, the year in Buddhist years.
+- [ ] The create form: the end date a month after the start, every condition type through "+ เพิ่มเงื่อนไข", custodian search, a disposed status only with "รวมที่ตัดจำหน่ายแล้ว" ticked and gone when it is unticked, the advanced options' folded line, the live count while typing fast (no focus jump, no error under a half-typed date), the daily load, the overlap warning with its link, and 0 items said before "สร้างรอบ".
+- [ ] An old draft round (on a copy of Production, `AUD-2026-0002` before it is cancelled) reads "เปิดตรวจ" on the list, the round page, the dashboard, the employee page and the global search, with no "ร่าง" anywhere.
+- [ ] NVDA: the tabs read their counts, the chip reads "ล้างตัวกรองนี้: …", the next step reads in full.
+- [ ] Both themes on a real monitor and phone; on the phone the summary panel sits under the form and the round cards show the next step.
 - [ ] An English pass of the new messages.
 
 ## Sign-Off

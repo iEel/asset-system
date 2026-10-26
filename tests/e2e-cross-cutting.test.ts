@@ -257,6 +257,13 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   // The audit round's scope is the run's room and the Draft status: the scope where reads both.
   const scope = read("src/lib/audit-round-scope.ts")
   assert.ok(scope.includes("...(input.scopeLocationId ? { currentLocationId: input.scopeLocationId } : {}),") && scope.includes("...(input.scopeStatusId ? { statusId: input.scopeStatusId } : {}),"))
+  // The audit round (group 2 plan 1 task 7): its conditions as chips, its own "สร้างรอบ", the live count instead of
+  // "ดูตัวอย่าง", and the round cancelled by the IT head whatever happens (each run used to leave one behind).
+  const auditRound = spec.slice(spec.indexOf(`test("audit round: `))
+  assert.ok(auditRound.includes(`await addCondition(page, "ที่ตั้ง", location.code, `) && auditRound.includes(`await addCondition(page, "สถานะทรัพย์สิน", "ร่าง", "ร่าง")`))
+  assert.ok(auditRound.includes("await createButton(page).click()") && !auditRound.includes("await save(page)"))
+  assert.ok(auditRound.includes("await expect(willCreate(page)).toBeVisible()") && !auditRound.includes(`{ name: "ดูตัวอย่าง" }`))
+  assert.match(auditRound, /\} finally \{\n\s+if \(saved\.id\) await cancelAsItHead\(playwright\.request, baseURL, saved\.id, /)
   // The spec: the suite's fixtures, and findings M3, M8 and M9 expected to fail until fixed (M9 on the phone only).
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
   assert.ok(!spec.includes(`test.fail(true, "M3: `) && !spec.includes(`test.fail(true, "M8: `) && !spec.includes(`"M9: `))

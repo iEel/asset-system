@@ -2,12 +2,15 @@
 // entry first (an empty required field, or a date pair reversed), the error shows under that field with focus on it,
 // and the corrected entry then saves for real. One test per form; each registers its own E2E asset.
 import { expect, test, asUser } from "../support/fixtures.ts"
-import { readRunData } from "../support/state.ts"
+import { readRunData, readRunState } from "../support/state.ts"
+import { runRecords } from "../support/run-plan.ts"
 import { fillReturn, isoDay, save } from "./support/forms.ts"
 import { createAsset, handOver, projectMarker, readAsset, readAssetChoices, returnAsset } from "./support/records.ts"
 // The transaction pages' longer first arrival (13B loop 7): they load every asset and checkout for their pickers.
 import { TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
 import { choose, expectFieldError, expectNoFieldError } from "./support/ui.ts"
+// The round form's steps (group 2 spec §7): its conditions as chips, its own submit, the live count and the sample.
+import { addCondition, cancelAsItHead, createButton, showSample, waitForFirstCount, willCreate } from "../audit/round-steps.ts"
 
 asUser("itStaff")
 
@@ -293,29 +296,43 @@ test("disposal request: an empty reason shows its error, and the corrected reque
   expect((await readAsset(page.request, asset.id)).status.name).toBe("Pending Disposal")
 })
 
-test("audit round: an end date before the start shows its error, and the corrected round saves", async ({ page, measure }, testInfo) => {
-  const run = readRunData()
+test("audit round: an end date before the start shows its error, and the corrected round saves", async ({ page, measure, playwright, baseURL }, testInfo) => {
+  const location = runRecords(readRunState().runId).location
   const choices = await readAssetChoices(page, measure)
   // The round's scope is the run's room and the Draft status: only this run's Draft assets, never another area's.
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-AUD", name: "ฟอร์มรอบตรวจนับ", status: "draft" })
   await measure.visit("/th/audit/rounds/new", "audit round form")
   const name = `${projectMarker(testInfo)} รอบตรวจฟอร์ม`
   await page.locator("#audit-round-name").fill(name)
-  await page.getByLabel("ที่ตั้ง", { exact: true }).selectOption(run.locationId)
-  await page.getByLabel("สถานะทรัพย์สิน", { exact: true }).selectOption(choices.draftStatusId)
+  await waitForFirstCount(page)
+  // The conditions as chips (group 2 spec §7): the room by its code, the asset status by its Thai name.
+  await addCondition(page, "ที่ตั้ง", location.code, `${location.code} - ${location.name}`)
+  await addCondition(page, "สถานะทรัพย์สิน", "ร่าง", "ร่าง")
   await page.locator("#audit-round-start-date").fill(isoDay(1))
   await page.locator("#audit-round-end-date").fill(isoDay(0))
-  await save(page)
+  await createButton(page).click()
   await expectFieldError(page, "audit-round-end-date", END_BEFORE_START)
 
   await page.locator("#audit-round-end-date").fill(isoDay(11))
   await expectNoFieldError(page, "audit-round-end-date")
-  await page.getByRole("button", { name: "ดูตัวอย่าง" }).click()
+  // The live count settles on this run's Draft assets in the room (the test's own among them), and the sample lists it.
+  await expect(willCreate(page)).toBeVisible()
+  await showSample(page)
   await expect(page.getByText(asset.assetTag).first()).toBeVisible()
-  await measure.timed("audit round save", async () => {
-    await save(page)
-    await expect(page).toHaveURL(/\/th\/audit\/rounds\/[0-9a-f-]{36}(?:[?#]|$)/)
-  })
-  await measure.recordPage("after the audit round save")
-  await expect(page.getByRole("main").getByText(name).first()).toBeVisible()
+  // The round is the test's own: the IT head cancels it whatever happens, so no run leaves an open round behind.
+  const created = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/audit-rounds")
+  const saved: { id?: string } = {}
+  try {
+    await measure.timed("audit round save", async () => {
+      await createButton(page).click()
+      const response = await created
+      expect(response.status(), "the round is saved").toBe(201)
+      saved.id = ((await response.json()) as { id: string }).id
+      await expect(page).toHaveURL(new RegExp(`/th/audit/rounds/${saved.id}(?:[?#]|$)`))
+    })
+    await measure.recordPage("after the audit round save")
+    await expect(page.getByRole("main").getByText(name).first()).toBeVisible()
+  } finally {
+    if (saved.id) await cancelAsItHead(playwright.request, baseURL, saved.id, `${projectMarker(testInfo)} รอบของฟอร์มทดสอบ ยกเลิกหลังตรวจ`)
+  }
 })

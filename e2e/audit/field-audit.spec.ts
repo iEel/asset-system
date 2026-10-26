@@ -2,7 +2,8 @@
 // (spec §8). One serial chain per project, on that project's own records (e2e/audit/audit-plan.ts); each block is one
 // person's part:
 // 1. IT staff open the round of the project's department on the round form, after it shows its errors under the
-//    fields (spec §6.2.1, §6.7);
+//    fields (spec §6.2.1, §6.7): no status choice, the department as a condition chip, the live count equal to the
+//    round's items, the round open at once (group 2 spec §7, §14, §16);
 // 2. IT staff walk room A by typing names and tags: one matched, one mismatch (another department and the condition,
 //    with the photo the condition asks for), a parent whose components are not all checked, an unknown and an
 //    out-of-scope search (spec §6.2.2);
@@ -21,6 +22,7 @@ import { ADMIN_STATE_FILE, fromRoot, runDir } from "../support/paths.ts"
 import { runRecords } from "../support/run-plan.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { createAuditAssets, createAuditPlaces, readAuditMasters, type AuditWalkData } from "./audit-data.ts"
+import * as rounds from "./round-steps.ts"
 import * as pending from "./pending-steps.ts"
 import * as review from "./review-steps.ts"
 import * as scan from "./scan-steps.ts"
@@ -61,10 +63,12 @@ test.describe("IT staff open the round", () => {
 
     await measure.visit("/th/audit/rounds/new", "round form")
     await expect(page.getByRole("heading", { level: 1, name: "สร้างรอบตรวจนับ" })).toBeVisible()
+    // Group 2 spec §7, §14: the form offers no status; every round opens at once.
+    await expect(page.locator("#audit-round-status")).toHaveCount(0)
     const masters = await readAuditMasters(page)
     const walk = await measure.timed("the walk's assets and components (IT staff)", () => createAuditAssets(page, run, places, masters))
 
-    const save = page.getByRole("button", { name: "บันทึก", exact: true })
+    const save = rounds.createButton(page)
     const name = page.locator("#audit-round-name")
     // Spec §6.7: an empty required field first; the error shows under it and focus goes there.
     await save.click()
@@ -82,15 +86,17 @@ test.describe("IT staff open the round", () => {
     await page.locator("#audit-round-end-date").fill(bangkokDate(30))
     await expect(page.locator("#audit-round-end-date-error")).toHaveCount(0)
 
-    // Open now, scoped to the project's department; the preview lists every asset of it and not the outsider.
-    await page.locator("#audit-round-status").selectOption({ label: "เปิดตรวจ" })
-    await page.getByLabel("แผนก", { exact: true }).selectOption({ label: `${records.department.code} - ${records.department.name}` })
-    await page.getByRole("button", { name: "ดูตัวอย่าง" }).click()
-    await expect(page.getByText("ตัวอย่างรายการที่จะเข้ารอบตรวจนับ")).toBeVisible()
-    await measure.recordPage("round form with its preview")
+    // Scoped to the project's department by its condition chip: the live count settles on the department's assets (no
+    // "ดูตัวอย่าง" button), and the sample lists each of them and not the outsider.
     const inRound = records.assets.filter((asset) => asset.department === "round")
-    for (const asset of inRound) await expect(page.locator("form").getByText(asset.tag, { exact: true })).toBeVisible()
-    await expect(page.locator("form").getByText(walk.assets.outOfScope.tag, { exact: true })).toHaveCount(0)
+    await rounds.waitForFirstCount(page)
+    await rounds.addCondition(page, "แผนก", records.department.code, `${records.department.code} - ${records.department.name}`)
+    await expect(rounds.willCreate(page, inRound.length)).toBeVisible()
+    const liveCount = await rounds.readWillCreate(page)
+    await rounds.showSample(page)
+    await recordSettled(page, measure, "round form with its live count and sample")
+    for (const asset of inRound) await expect(page.getByRole("main").getByText(asset.tag, { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole("main").getByText(walk.assets.outOfScope.tag, { exact: true })).toHaveCount(0)
 
     const created = page.waitForResponse((response) => response.url().endsWith("/api/audit-rounds") && response.request().method() === "POST")
     const round = await measure.timed("save the round", async () => {
@@ -101,9 +107,14 @@ test.describe("IT staff open the round", () => {
       return (await response.json()) as { id: string; auditNo: string; generatedItems: number }
     })
     expect(round.generatedItems, "one item per asset of the department, the components included").toBe(inRound.length)
+    expect(round.generatedItems, "the live count is the round's items (group 2 spec §16)").toBe(liveCount)
     await expect(page.getByText(`สร้างรอบตรวจนับสำเร็จ และสร้างรายการตรวจ ${inRound.length} รายการ`)).toBeVisible()
     await expect(page).toHaveURL(new RegExp(`/th/audit/rounds/${round.id}$`))
     await expect(page.getByRole("heading", { level: 1, name: records.round.name })).toBeVisible()
+    // Open at once (group 2 spec §14): the badge reads เปิดตรวจ and the route says open.
+    await expect(page.getByRole("main").getByText("เปิดตรวจ", { exact: true }).first()).toBeVisible()
+    const saved = (await (await page.request.get(`/api/audit-rounds/${round.id}`)).json()) as { status: string }
+    expect(saved.status, "open at once, never a draft (group 2 spec §14)").toBe("open")
     await recordSettled(page, measure, "round page after the save")
     saveChain(project, { ...walk, roundId: round.id, auditNo: round.auditNo })
     expect(readChain(project).roundId, "the chain's state is saved for the next blocks").toBe(round.id)
@@ -395,7 +406,8 @@ test.describe("The IT head's own round", () => {
     const chain = readChain(testInfo.project.name)
     const { records, assets } = chain
 
-    // A round of room B that the IT head opens themselves, through the round route with the body the form sends.
+    // A round of room B that the IT head opens themselves, through the round route with the body the form sends and a
+    // status the route ignores (group 2 spec §7: the create API always opens the round).
     const opened = await page.request.post("/api/audit-rounds", {
       data: {
         name: records.ownRound.name,
@@ -407,12 +419,14 @@ test.describe("The IT head's own round", () => {
         sampleRate: 100,
         startDate: bangkokDate(),
         endDate: bangkokDate(7),
-        status: "open",
+        status: "draft",
       },
     })
     expect(opened.status(), "the IT head's round is saved").toBe(201)
     const own = (await opened.json()) as { id: string; auditNo: string; generatedItems: number }
     expect(own.generatedItems, "room B's two assets").toBe(2)
+    const ownSaved = (await (await page.request.get(`/api/audit-rounds/${own.id}`)).json()) as { status: string }
+    expect(ownSaved.status, "a client's status is ignored: the round opens").toBe("open")
 
     // They mark one asset not found: the finding is theirs.
     await measure.visit(`/th/audit/rounds/${own.id}/pending`, "pending list of the IT head's round")
