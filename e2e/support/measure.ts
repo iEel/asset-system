@@ -103,6 +103,9 @@ export class Measure {
       return { loadMs: Math.round(navigation.loadEventEnd - navigation.startTime), domContentLoadedMs: Math.round(navigation.domContentLoadedEventEnd - navigation.startTime) }
     })
     const record: PageRecord = { label, url: this.page.url(), loadMs: timing?.loadMs ?? null, domContentLoadedMs: timing?.domContentLoadedMs ?? null, axe: null }
+    // Next streams a dynamic page's metadata after its body, so axe waits for the <title> to land (up to 10 s); a page
+    // that never gets one still fails axe's document-title (E2E-1026D and E2E-1026G, the register after a status row).
+    await this.page.waitForFunction(() => document.title.trim().length > 0, null, { timeout: 10_000 }).catch(() => undefined)
     const results = await new AxeBuilder({ page: this.page }).withTags([...AXE_TAGS]).analyze()
     record.axe = axeCounts(results.violations)
     this.pages.push(record)

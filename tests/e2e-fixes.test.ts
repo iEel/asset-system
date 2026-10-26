@@ -22,6 +22,11 @@ test("a page reached by a client-side navigation records no load time of its own
   assert.match(measure, /if \(!navigation \|\| navigation\.loadEventEnd === 0 \|\| new URL\(navigation\.name\)\.pathname !== location\.pathname\) return null/)
 })
 
+test("axe waits for a streamed page's <title> before it runs (group 1 asset detail E2E-1026G)", () => {
+  const measure = read("e2e/support/measure.ts")
+  assert.match(measure, /await this\.page\.waitForFunction\(\(\) => document\.title\.trim\(\)\.length > 0, null, \{ timeout: 10_000 \}\)\.catch\(\(\) => undefined\)\n\s*const results = await new AxeBuilder/)
+})
+
 test("the A4 documents' fields are a description list (e2e fix task FX1: TX-A3, AR1, D1, M8)", () => {
   const print = read("src/components/asset-operations/operation-document-print.tsx")
   assert.match(print, /<dl className="grid grid-cols-1 border border-slate-300 sm:grid-cols-2">\n\s*\{section\.fields\.map\(\(field, index\) => \(\n[\s\S]*?<\/dt>\n[\s\S]*?<\/dd>\n\s*<\/div>\n\s*\)\)\}\n\s*<\/dl>/)
