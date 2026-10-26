@@ -53,6 +53,7 @@ const chipLabels = {
   brand: "ยี่ห้อ",
   model: "รุ่น",
   custodian: "ผู้ถือครอง",
+  location: "ที่ตั้ง",
   supplier: "ผู้ขาย",
   rowsPerPage: "จำนวนต่อหน้า",
   ownershipTypes: { shared: "ใช้ร่วมกัน" },
@@ -67,7 +68,7 @@ function chipsFor(query: string) {
     basePath: "/th/assets",
     filters: filters(query),
     tabStatusIds: ["s-ready"],
-    names: { company: "SNI - สยาม", status: "สูญหาย", brand: "Dell", custodian: "E001 - สมชาย", supplier: "SUP1 - ร้านเอ" },
+    names: { company: "SNI - สยาม", status: "สูญหาย", brand: "Dell", custodian: "E001 - สมชาย", location: "L-01 - ห้อง IT ชั้น 3", supplier: "SUP1 - ร้านเอ" },
     labels: chipLabels,
   })
 }
@@ -134,6 +135,20 @@ test("removing a chip drops only its own parameter and returns to page 1", () =>
 test("raw values are shown when a lookup name is missing", () => {
   const [model] = chipsFor("modelId=m-404")
   assert.equal(model.label, "รุ่น: m-404")
+})
+
+test("locationId gets the chip ที่ตั้ง: <name> at every width, and removing it or clearing all drops it (group 1 spec §7.4)", () => {
+  const chips = chipsFor("locationId=loc-1&custodianState=assigned")
+  assert.deepEqual(chips.map((chip) => [chip.key, chip.label, chip.mobileOnly]), [
+    ["custodianState", "มีผู้ถือครอง", false],
+    ["location", "ที่ตั้ง: L-01 - ห้อง IT ชั้น 3", false],
+  ])
+  const withoutLocation = paramsOf(chips[1].href)
+  assert.equal(withoutLocation.get("locationId"), null)
+  assert.equal(withoutLocation.get("custodianState"), "assigned")
+  const [raw] = buildAssetRegisterChips({ basePath: "/th/assets", filters: filters("locationId=loc-404"), tabStatusIds: [], names: {}, labels: chipLabels })
+  assert.equal(raw.label, "ที่ตั้ง: loc-404")
+  assert.equal(paramsOf(buildAssetRegisterClearAllHref("/th/assets", filters("locationId=loc-1"))).get("locationId"), null)
 })
 
 test("clear all keeps only the sort order", () => {

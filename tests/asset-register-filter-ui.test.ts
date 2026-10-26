@@ -13,8 +13,10 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 test("the page counts statuses with the list's own filters and renders the new filter parts", () => {
   const source = page()
 
-  assert.match(source, /const whereOptions = await getAssetWhereOptions\(filters\)\n\s+const statusCountWhere = await applyAssetCrossScopeFilter\(buildAssetStatusCountWhere\(filters, whereOptions\), filters\.crossScope\)/)
-  assert.match(source, /filters\.statusId \? \{ AND: \[statusCountWhere, \{ statusId: filters\.statusId \}\] \} : statusCountWhere/)
+  assert.match(source, /const \{ statusCountWhere, where \} = await buildAssetRegisterWhere\(filters\)/)
+  const registerWhere = read("src/lib/asset-list-where-options.ts")
+  assert.match(registerWhere, /const whereOptions = await getAssetWhereOptions\(filters\)\n\s+const statusCountWhere = await applyAssetCrossScopeFilter\(buildAssetStatusCountWhere\(filters, whereOptions\), filters\.crossScope\)/)
+  assert.match(registerWhere, /filters\.statusId \? \{ AND: \[statusCountWhere, \{ statusId: filters\.statusId \}\] \} : statusCountWhere/)
   assert.match(source, /prisma\.asset\.groupBy\(\{\s*by: \["statusId"\],\s*where: statusCountWhere,\s*_count: \{ _all: true \},?\s*\}\)/)
   assert.match(source, /<AssetRegisterNavigationProvider filters=\{filters\}>/)
   for (const component of ["AssetRegisterToolbar", "AssetRegisterStatusTabs", "AssetRegisterFilterChips", "AssetRegisterTable"]) {
@@ -31,6 +33,8 @@ test("every hidden filter gets a readable chip, including activity, department a
   assert.match(source, /activity: \{ idle_180d: t\("activityIdle180d"\) \}/)
   assert.match(source, /warranty: t\("dataQualityWarranty"\),\n\s+licenseExpiry: t\("dataQualityLicenseExpiry"\),\n\s+returnDue: t\("dataQualityReturnDue"\),/)
   assert.match(source, /custodianState: \{ assigned: t\("custodianStateAssigned"\) \}/)
+  assert.match(source, /location: selectedLocation \? `\$\{selectedLocation\.code\} - \$\{selectedLocation\.name\}` : undefined,/)
+  assert.match(source, /location: t\("location"\),/)
   assert.match(source, /prisma\.supplier\.findUnique\(/)
   assert.match(source, /buildAssetRegisterClearAllHref\(`\/\$\{locale\}\/assets`, filters\)/)
 })
@@ -180,5 +184,5 @@ test("the register's routes build the same where as the page, and only the windo
   const options = read("src/lib/asset-list-where-options.ts")
   assert.match(options, /today: startOfBangkokDay\(now\)/)
   assert.match(options, /rules: assetFiltersUseWaitingWorkRules\(filters\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
-  assert.doesNotMatch(sheet(), /licenseExpiry|returnDue|custodianState/, "link-only values: the filter sheet offers no chip for them")
+  assert.doesNotMatch(sheet(), /licenseExpiry|returnDue|custodianState|locationId/, "link-only values: the filter sheet offers no chip for them")
 })

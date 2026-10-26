@@ -40,3 +40,11 @@ test("an exact link is recognised and built with the flag", () => {
   assert.equal(buildExactAssetRegisterHref("th", { dataQuality: "warranty" }), "/th/assets?dataQuality=warranty&exact=1")
   assert.equal(getPersistedAssetRegisterView(new URLSearchParams("exact=1&search=a")).toString(), "search=a")
 })
+
+test("locationId arrives only on an exact link and is never saved as the view (group 1 spec §7.4)", () => {
+  const href = buildExactAssetRegisterHref("th", { locationId: "loc-1" })
+  assert.equal(href, "/th/assets?locationId=loc-1&exact=1")
+  assert.equal(isExactAssetRegisterLink(new URL(href, "http://asset.local").searchParams), true)
+  assert.equal(hasExplicitAssetRegisterView(new URLSearchParams("locationId=loc-1")), false)
+  assert.equal(getPersistedAssetRegisterView(new URLSearchParams("locationId=loc-1&search=a")).toString(), "search=a")
+})

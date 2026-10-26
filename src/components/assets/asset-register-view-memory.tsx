@@ -23,6 +23,7 @@ export function AssetRegisterViewMemory({ locale, returnHref }: { locale: string
     const current = new URLSearchParams(search)
 
     if (isExactAssetRegisterLink(current)) return
+    if (current.get("custodianState") || current.get("locationId")) return // link-only values: never saved as the view (R45)
 
     if (hasExplicitAssetRegisterView(current)) {
       window.localStorage.setItem(assetRegisterViewPreferenceKey(locale), getPersistedAssetRegisterView(current).toString())

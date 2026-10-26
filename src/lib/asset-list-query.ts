@@ -25,6 +25,7 @@ export type AssetListParams = {
   ownershipType?: string
   custodianId?: string
   custodianState?: string
+  locationId?: string
   supplierId?: string
   dataQuality?: string
   crossScope?: string
@@ -63,6 +64,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     ownershipType: assetOwnershipTypes.includes(ownershipType as (typeof assetOwnershipTypes)[number]) ? ownershipType : "",
     custodianId: String(getValue("custodianId") ?? "").trim(),
     custodianState: normalizeAssetCustodianStateFilter(getValue("custodianState")),
+    locationId: String(getValue("locationId") ?? "").trim(),
     supplierId: String(getValue("supplierId") ?? "").trim(),
     dataQuality,
     crossScope,
@@ -92,6 +94,7 @@ export function buildAssetWhere(
     ...(filters.conditionId ? { conditionId: filters.conditionId } : {}),
     ...(filters.ownershipType ? { ownershipType: filters.ownershipType } : {}),
     ...(filters.custodianId ? { custodianId: filters.custodianId } : {}),
+    ...(filters.locationId ? { currentLocationId: filters.locationId } : {}),
     ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
     ...(filters.search
       ? {
@@ -156,8 +159,10 @@ export function buildAssetStatusCountWhere(filters: AssetListFilters, options?: 
   return buildAssetWhere({ ...filters, statusId: "" }, options)
 }
 
-export function buildAssetOrderBy(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetOrderByWithRelationInput {
-  return { [filters.sort]: filters.direction }
+export function buildAssetOrderBy(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetOrderByWithRelationInput[] {
+  // `id` breaks ties, so the register and the asset page's previous / next read one order (group 1 spec §7.2).
+  const direction: Prisma.SortOrder = filters.direction === "asc" ? "asc" : "desc"
+  return [{ [filters.sort]: direction }, { id: direction }]
 }
 
 export function buildAssetQueryString(
@@ -167,7 +172,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "custodianState", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "custodianState", "locationId", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 

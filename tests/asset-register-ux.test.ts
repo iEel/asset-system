@@ -77,6 +77,13 @@ test("an exact register link neither restores nor overwrites the saved view", ()
   assert.match(source, /if \(isExactAssetRegisterLink\(current\)\) return[\s\S]*hasExplicitAssetRegisterView\(current\)/)
 })
 
+test("a link-only value (custodianState, locationId) never overwrites the saved view (group 1 spec §7.4)", () => {
+  const source = registerViewMemorySource()
+
+  // A row's returnTo drops exact=1, so the way back from an asset opened in a location list must not save that list as the view.
+  assert.match(source, /if \(isExactAssetRegisterLink\(current\)\) return\s+if \(current\.get\("custodianState"\) \|\| current\.get\("locationId"\)\) return/)
+})
+
 test("dashboard, work-center and notification links open the register exactly", () => {
   const read = (path: string) => readFileSync(path, "utf8").replace(/\r/g, "")
   // The dashboard's register links are built in src/lib/dashboard-page.ts; the page only calls it (group 1 dashboard task 9).

@@ -115,6 +115,7 @@ type AssetRegisterTableProps = {
     ownershipType: string
     custodianId: string
     custodianState: AssetCustodianStateFilter
+    locationId: string
     supplierId: string
     dataQuality: "" | AssetDataQualityFilter
     crossScope: "" | AssetCrossScopeFilter
@@ -485,6 +486,7 @@ export function AssetRegisterTable({
       filters.ownershipType ||
       filters.custodianId ||
       filters.custodianState ||
+      filters.locationId ||
       filters.supplierId ||
       filters.dataQuality ||
       filters.crossScope ||

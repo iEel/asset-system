@@ -1294,7 +1294,8 @@
     "actionViewRepair": "ดูงานซ่อม",
     "actionViewDisposal": "ดูคำขอตัดจำหน่าย",
     "transactionReasonWrittenOff": "ย้ายไม่ได้เมื่อสถานะเป็น ตัดจำหน่ายแล้ว หรือ ปลดระวาง",
-    "transactionReasonOpenCheckoutHandover": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงส่งมอบใหม่ได้"
+    "transactionReasonOpenCheckoutHandover": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงส่งมอบใหม่ได้",
+    "location": "ที่ตั้ง"
   },
   "company": {
     "title": "บริษัท",

@@ -8,7 +8,7 @@ export type AssetRegisterChipInput = {
   filters: AssetListFilters
   tabStatusIds: readonly string[]
   names: Partial<Record<
-    "company" | "branch" | "category" | "status" | "condition" | "brand" | "model" | "custodian" | "supplier",
+    "company" | "branch" | "category" | "status" | "condition" | "brand" | "model" | "custodian" | "location" | "supplier",
     string
   >>
   labels: {
@@ -21,6 +21,7 @@ export type AssetRegisterChipInput = {
     brand: string
     model: string
     custodian: string
+    location: string
     supplier: string
     rowsPerPage: string
     ownershipTypes: Record<string, string>
@@ -58,6 +59,8 @@ export function buildAssetRegisterChips({ basePath, filters, tabStatusIds, names
   if (filters.modelId) add("model", named(labels.model, names.model, filters.modelId), { modelId: "" })
   if (filters.custodianId) add("custodian", named(labels.custodian, names.custodian, filters.custodianId), { custodianId: "" })
   if (filters.custodianState) add("custodianState", labels.custodianState[filters.custodianState] ?? filters.custodianState, { custodianState: "" })
+  // Every width: the filter sheet has no location, so the chip is the only place that shows it (group 1 spec §7.4).
+  if (filters.locationId) add("location", named(labels.location, names.location, filters.locationId), { locationId: "" })
   if (filters.supplierId) add("supplier", named(labels.supplier, names.supplier, filters.supplierId), { supplierId: "" })
   if (filters.activity) add("activity", labels.activity[filters.activity] ?? filters.activity, { activity: "" })
 
@@ -77,6 +80,7 @@ export function buildAssetRegisterClearAllHref(basePath: string, filters: AssetL
     ownershipType: "",
     custodianId: "",
     custodianState: "",
+    locationId: "",
     supplierId: "",
     dataQuality: "",
     crossScope: "",

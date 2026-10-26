@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   assetFiltersUseWaitingWorkRules,
   assetSearchConditions,
+  buildAssetOrderBy,
   buildAssetQueryString,
   buildAssetSearchWhere,
   buildAssetWhere,
@@ -177,4 +178,20 @@ test("the register finds brand, model, company, branch, custodian e-mail and loc
     { custodian: { email: { contains: "Dell" } } }, { currentLocation: { name: { contains: "Dell" } } },
   ]) assert.ok(conditions.some((condition) => JSON.stringify(condition) === JSON.stringify(expected)), JSON.stringify(expected))
   assert.deepEqual(buildAssetWhere(parseAssetListParams({ search: "Dell" })).OR, conditions)
+})
+
+test("the register sorts by its column, then by id in the same direction, so previous and next are stable (group 1 spec §7.2)", () => {
+  assert.deepEqual(buildAssetOrderBy(parseAssetListParams({})), [{ createdAt: "desc" }, { id: "desc" }])
+  assert.deepEqual(buildAssetOrderBy(parseAssetListParams({ sort: "assetTag", direction: "asc" })), [{ assetTag: "asc" }, { id: "asc" }])
+  assert.deepEqual(buildAssetOrderBy(parseAssetListParams({ sort: "purchasePrice", direction: "desc" })), [{ purchasePrice: "desc" }, { id: "desc" }])
+  assert.deepEqual(buildAssetOrderBy(parseAssetListParams({ sort: "id; DROP", direction: "up" })), [{ createdAt: "desc" }, { id: "desc" }])
+})
+
+test("locationId lists the assets at that location and keeps its place in the query string (group 1 spec §7.4, §9)", () => {
+  const filters = parseAssetListParams({ locationId: " loc-1 ", custodianState: "assigned" })
+  assert.equal(filters.locationId, "loc-1")
+  assert.equal(buildAssetWhere(filters).currentLocationId, "loc-1")
+  assert.equal("currentLocationId" in buildAssetWhere(parseAssetListParams({})), false)
+  assert.equal(buildAssetQueryString(filters), "custodianState=assigned&locationId=loc-1&sort=createdAt&direction=desc&page=1&pageSize=25")
+  assert.equal(parseAssetListParams(new URLSearchParams(buildAssetQueryString(filters))).locationId, "loc-1")
 })

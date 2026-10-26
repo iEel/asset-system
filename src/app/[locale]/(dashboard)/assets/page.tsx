@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client"
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { Plus } from "lucide-react"
@@ -7,11 +6,10 @@ import { requirePagePermission } from "@/lib/page-auth"
 import {
   buildAssetOrderBy,
   buildAssetQueryString,
-  buildAssetStatusCountWhere,
   parseAssetListParams,
   type AssetListParams,
 } from "@/lib/asset-list-query"
-import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
+import { buildAssetRegisterWhere } from "@/lib/asset-list-where-options"
 import { buildStatusTabs } from "@/lib/asset-register-status-tabs"
 import { buildAssetRegisterChips, buildAssetRegisterClearAllHref } from "@/lib/asset-register-chips"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
@@ -24,7 +22,6 @@ import { AssetRegisterViewMemory } from "@/components/assets/asset-register-view
 import { buttonVariants } from "@/components/ui/button-variants"
 import { PageHeader } from "@/components/ui/page-header"
 import { formatCount } from "@/lib/display-format"
-import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { hasPermission } from "@/lib/auth-utils"
@@ -55,9 +52,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
   const registerReturnHref = `/${locale}/assets?${buildAssetQueryString(filters)}`
-  const whereOptions = await getAssetWhereOptions(filters)
-  const statusCountWhere = await applyAssetCrossScopeFilter(buildAssetStatusCountWhere(filters, whereOptions), filters.crossScope)
-  const where: Prisma.AssetWhereInput = filters.statusId ? { AND: [statusCountWhere, { statusId: filters.statusId }] } : statusCountWhere
+  const { statusCountWhere, where } = await buildAssetRegisterWhere(filters)
   const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel, statusCounts, selectedSupplier] = await withPerformanceTiming(
     "assets.initial-data",
     () => Promise.all([
@@ -245,6 +240,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const selectedBranch = branches.find((branch) => branch.id === filters.branchId)
   const selectedCategory = categories.find((category) => category.id === filters.categoryId)
   const selectedCustodian = employees.find((employee) => employee.id === filters.custodianId)
+  const selectedLocation = locations.find((location) => location.id === filters.locationId)
   const filterChips = buildAssetRegisterChips({
     basePath,
     filters,
@@ -258,6 +254,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       brand: selectedBrand?.name,
       model: selectedModel ? `${selectedModel.brand.name} / ${selectedModel.name}` : undefined,
       custodian: selectedCustodian ? `${selectedCustodian.code} - ${selectedCustodian.fullNameTh}` : undefined,
+      location: selectedLocation ? `${selectedLocation.code} - ${selectedLocation.name}` : undefined,
       supplier: selectedSupplier ? `${selectedSupplier.code} - ${selectedSupplier.name}` : undefined,
     },
     labels: {
@@ -270,6 +267,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       brand: t("brand"),
       model: t("model"),
       custodian: t("custodian"),
+      location: t("location"),
       supplier: t("supplier"),
       rowsPerPage: t("pageSizeLabel"),
       ownershipTypes: Object.fromEntries(assetOwnershipTypes.map((type) => [type, t(`ownershipType_${type}`)])) as Record<string, string>,

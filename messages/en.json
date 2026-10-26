@@ -1294,7 +1294,8 @@
     "actionViewRepair": "View repair",
     "actionViewDisposal": "View disposal request",
     "transactionReasonWrittenOff": "A disposed or retired asset cannot be moved",
-    "transactionReasonOpenCheckoutHandover": "A handover is open: return the asset before handing it over again"
+    "transactionReasonOpenCheckoutHandover": "A handover is open: return the asset before handing it over again",
+    "location": "Location"
   },
   "company": {
     "title": "Companies",
