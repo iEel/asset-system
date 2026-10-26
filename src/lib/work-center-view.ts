@@ -69,17 +69,19 @@ const metricKeysByFocusPanel: Record<WorkCenterPanel, readonly WorkCenterMetricK
   overview: [
     "approvalInbox",
     "openRepairs",
+    "stuckRepairs",
     "duePm",
     "pendingAuditFindings",
     "openAuditActions",
+    "auditActionsDueSoon",
     "pendingAuditItems",
     "pendingDisposals",
     "approvedDisposals",
   ],
   approvals: ["approvalInbox"],
   assets: ["missingCustodian", "missingSerial", "missingPhoto"],
-  maintenance: ["openRepairs", "duePm"],
-  audit: ["pendingAuditFindings", "openAuditActions", "pendingAuditItems"],
+  maintenance: ["openRepairs", "stuckRepairs", "duePm"],
+  audit: ["pendingAuditFindings", "openAuditActions", "auditActionsDueSoon", "pendingAuditItems"],
   disposal: ["pendingDisposals", "approvedDisposals"],
 }
 

@@ -19,7 +19,26 @@ import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/a
 import { buildExactAssetRegisterHref } from "@/lib/asset-register-view-memory"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalInboxAccess, getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
-import { buildWorkCenterMetricKeys, calculateWorkCenterUrgentCount, type WorkCenterMetricKey } from "@/lib/work-center-metrics"
+import { getWaitingWork } from "@/lib/waiting-work"
+import {
+  approvedDisposalsWhere,
+  auditActionsDueSoonWhere,
+  buildWaitingWorkHref,
+  duePmWhere,
+  openAuditActionsWhere,
+  openRepairsWhere,
+  pendingAuditFindingsWhere,
+  pendingDisposalsWhere,
+  startOfBangkokDay,
+  stuckRepairsWhere,
+} from "@/lib/waiting-work-rules"
+import {
+  buildWorkCenterMetricKeys,
+  calculateWorkCenterUrgentCount,
+  isWorkCenterSharedKey,
+  type WorkCenterMetricKey,
+  type WorkCenterSharedKey,
+} from "@/lib/work-center-metrics"
 import {
   buildDataQualityFixGroups,
   buildWorkCenterHref,
@@ -34,8 +53,6 @@ import {
 } from "@/lib/work-center-view"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
-import { openRepairRecordWhere } from "@/lib/repair-record-policy"
-import { buildDuePmPlanWhere } from "@/lib/preventive-maintenance"
 
 type WorkCenterPageProps = {
   params: Promise<{ locale: string }>
@@ -51,6 +68,19 @@ type WorkCenterMetric = {
   tone: "danger" | "warning" | "primary" | "success" | "muted"
 }
 
+// The shared kinds' tone: danger for a decision someone waits on or a due date about to pass, warning for the rest.
+const SHARED_TONES: Record<WorkCenterSharedKey, "danger" | "warning"> = {
+  approvalInbox: "danger",
+  openRepairs: "warning",
+  stuckRepairs: "warning",
+  duePm: "warning",
+  pendingAuditFindings: "danger",
+  openAuditActions: "warning",
+  auditActionsDueSoon: "danger",
+  pendingDisposals: "danger",
+  approvedDisposals: "warning",
+}
+
 export default async function WorkCenterPage({ params, searchParams }: WorkCenterPageProps) {
   const { locale } = await params
   const workCenterParams = parseWorkCenterParams(await searchParams)
@@ -59,15 +89,23 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
   const t = await getTranslations("workCenter")
   const tCommon = await getTranslations("common")
   const tDisposal = await getTranslations("disposalPage")
+  const tNotifications = await getTranslations("notifications")
   const approvalInboxAccess = getApprovalInboxAccess(user)
-  const employeeProfile = user.employeeId
-    ? await prisma.employee.findUnique({ where: { id: user.employeeId }, select: { departmentId: true } })
-    : null
+  const now = new Date()
+  // getWaitingWork only reads (R10): the work center never records count drops.
+  const [employeeProfile, waitingWork] = await Promise.all([
+    user.employeeId
+      ? prisma.employee.findUnique({ where: { id: user.employeeId }, select: { departmentId: true } })
+      : Promise.resolve(null),
+    getWaitingWork(user, now),
+  ])
+  const today = startOfBangkokDay(now)
   const userScope = buildWorkCenterUserScope({
     employeeId: user.employeeId,
     departmentId: employeeProfile?.departmentId,
   })
   const isMineView = workCenterParams.view === "mine"
+  const metricKeys = buildWorkCenterMetricKeys({ visibleKeys: waitingWork.visibleKeys })
   const focusPanels = getWorkCenterFocusPanels(workCenterParams.panel, approvalInboxAccess.canAnyApproval)
   const isPanelFocused = (panel: Exclude<WorkCenterPanel, "overview">) => focusPanels.includes(panel)
   const approvalItemLimit = getWorkCenterItemLimit("approvals", workCenterParams.panel)
@@ -112,18 +150,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     isMineView,
     userScope,
   )
-  const openRepairWhere = applyMaintenanceWorkCenterScope({ ...openRepairRecordWhere }, isMineView, userScope)
-  const duePmWhere = applyPlanWorkCenterScope(buildDuePmPlanWhere(new Date()), isMineView, userScope)
-  const pendingAuditFindingWhere = applyAuditFindingWorkCenterScope(
-    { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } },
-    isMineView,
-    userScope,
-  )
-  const openAuditActionWhere = applyAuditFindingWorkCenterScope(
-    { actionStatus: { in: ["planned", "in_progress"] }, auditRound: { isActive: true, status: auditRoundOperationalWhere } },
-    isMineView,
-    userScope,
-  )
+  const openRepairWhere = applyMaintenanceWorkCenterScope({ ...openRepairsWhere }, isMineView, userScope)
   const auditItemWhere = applyAuditFindingWorkCenterScope(
     { auditRound: { isActive: true, status: auditRoundOperationalWhere }, OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }] },
     isMineView,
@@ -134,33 +161,38 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     isMineView,
     userScope,
   )
-  const pendingDisposalWhere = applyDisposalWorkCenterScope(
-    { isActive: true, requestStatus: "pending" },
-    isMineView,
-    userScope,
-  )
-  const approvedDisposalWhere = applyDisposalWorkCenterScope(
-    { isActive: true, requestStatus: "approved" },
-    isMineView,
-    userScope,
-  )
   const disposalItemWhere = applyDisposalWorkCenterScope(
     { isActive: true, requestStatus: { in: ["pending", "approved"] } },
     isMineView,
     userScope,
   )
 
+  // "ของฉัน" narrows each shared kind's where with the work center's scope; "ทั้งหมด" shows the source's numbers.
+  const mineCounters: Record<Exclude<WorkCenterSharedKey, "approvalInbox">, () => Promise<number>> = {
+    openRepairs: () => prisma.maintenanceTicket.count({ where: applyMaintenanceWorkCenterScope({ ...openRepairsWhere }, true, userScope) }),
+    stuckRepairs: () => prisma.asset.count({ where: applyAssetWorkCenterScope(stuckRepairsWhere, true, userScope) }),
+    duePm: () => prisma.maintenancePlan.count({ where: applyPlanWorkCenterScope(duePmWhere(today), true, userScope) }),
+    pendingAuditFindings: () =>
+      prisma.auditFinding.count({ where: applyAuditFindingWorkCenterScope(pendingAuditFindingsWhere, true, userScope) }),
+    openAuditActions: () =>
+      prisma.auditFinding.count({ where: applyAuditFindingWorkCenterScope(openAuditActionsWhere(today, waitingWork.rules), true, userScope) }),
+    auditActionsDueSoon: () =>
+      prisma.auditFinding.count({ where: applyAuditFindingWorkCenterScope(auditActionsDueSoonWhere(today, waitingWork.rules), true, userScope) }),
+    pendingDisposals: () =>
+      prisma.disposalRequest.count({ where: applyDisposalWorkCenterScope(pendingDisposalsWhere, true, userScope) }),
+    approvedDisposals: () =>
+      prisma.disposalRequest.count({ where: applyDisposalWorkCenterScope(approvedDisposalsWhere, true, userScope) }),
+  }
+  const mineCountKeys = isMineView
+    ? metricKeys.filter((key): key is Exclude<WorkCenterSharedKey, "approvalInbox"> => isWorkCenterSharedKey(key) && key !== "approvalInbox")
+    : []
+
   const [
     missingCustodian,
     missingSerial,
     missingPhoto,
-    openRepairs,
-    duePm,
-    pendingAuditFindings,
-    openAuditActions,
     pendingAuditItems,
-    pendingDisposals,
-    approvedDisposals,
+    mineCountValues,
     approvalInboxSnapshot,
     assetIssues,
     maintenanceItems,
@@ -170,14 +202,9 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     prisma.asset.count({ where: missingResponsibilityWhere }),
     prisma.asset.count({ where: missingSerialWhere }),
     prisma.asset.count({ where: missingPhotoWhere }),
-    prisma.maintenanceTicket.count({ where: openRepairWhere }),
-    prisma.maintenancePlan.count({ where: duePmWhere }),
-    prisma.auditFinding.count({ where: pendingAuditFindingWhere }),
-    prisma.auditFinding.count({ where: openAuditActionWhere }),
     prisma.auditItem.count({ where: pendingAuditItemsWhere }),
-    prisma.disposalRequest.count({ where: pendingDisposalWhere }),
-    prisma.disposalRequest.count({ where: approvedDisposalWhere }),
-    approvalInboxAccess.canAnyApproval ? getApprovalInboxSnapshot(user, locale) : Promise.resolve(null),
+    Promise.all(mineCountKeys.map((key) => mineCounters[key]())),
+    approvalInboxAccess.canAnyApproval && isPanelFocused("approvals") ? getApprovalInboxSnapshot(user, locale) : Promise.resolve(null),
     isPanelFocused("assets") ? prisma.asset.findMany({
       where: assetIssueWhere,
       select: {
@@ -222,7 +249,15 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     }) : Promise.resolve([]),
   ])
 
-  const approvalInboxCounts = approvalInboxSnapshot?.summary ?? { total: 0, disposal: 0, audit: 0 }
+  const mineCounts: Partial<Record<WorkCenterSharedKey, number>> = Object.fromEntries(
+    mineCountKeys.map((key, index) => [key, mineCountValues[index]]),
+  )
+  // The approval inbox is the person's own in both views; every other shared kind shows the source's number in
+  // "ทั้งหมด" and the scoped count in "ของฉัน".
+  const countFor = (key: WorkCenterSharedKey): number =>
+    key === "approvalInbox" || !isMineView ? waitingWork.counts[key] : mineCounts[key] ?? 0
+
+  const approvalInboxCounts = waitingWork.approvalInbox
   const approvalInboxVisible = approvalInboxAccess.canAnyApproval
   const visibleAuditItems = approvalInboxVisible && approvalInboxCounts.audit > 0
     ? auditItems.filter((finding) => finding.reviewStatus !== "pending")
@@ -231,15 +266,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     ? disposalItems.filter((request) => request.requestStatus !== "pending")
     : disposalItems
 
-  const metricMap: Record<WorkCenterMetricKey, WorkCenterMetric> = {
-    approvalInbox: {
-      key: "approvalInbox",
-      label: t("approvalInbox"),
-      value: approvalInboxCounts.total,
-      detail: t("approvalInboxDetail"),
-      href: `/${locale}/admin/approvals`,
-      tone: approvalInboxCounts.total > 0 ? "danger" : "primary",
-    },
+  const ownMetrics: Record<Exclude<WorkCenterMetricKey, WorkCenterSharedKey>, WorkCenterMetric> = {
     missingCustodian: {
       key: "missingCustodian",
       label: t("missingCustodian"),
@@ -264,38 +291,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       href: buildExactAssetRegisterHref(locale, { dataQuality: "photo" }),
       tone: "muted",
     },
-    openRepairs: {
-      key: "openRepairs",
-      label: t("openRepairs"),
-      value: openRepairs,
-      detail: t("openRepairsDetail"),
-      href: `/${locale}/maintenance?status=in_progress`,
-      tone: openRepairs > 0 ? "warning" : "muted",
-    },
-    duePm: {
-      key: "duePm",
-      label: t("duePm"),
-      value: duePm,
-      detail: t("duePmDetail"),
-      href: `/${locale}/maintenance#pm-due`,
-      tone: duePm > 0 ? "warning" : "muted",
-    },
-    pendingAuditFindings: {
-      key: "pendingAuditFindings",
-      label: t("pendingAuditFindings"),
-      value: pendingAuditFindings,
-      detail: t("pendingAuditFindingsDetail"),
-      href: `/${locale}/audit/findings?status=pending`,
-      tone: "danger",
-    },
-    openAuditActions: {
-      key: "openAuditActions",
-      label: t("openAuditActions"),
-      value: openAuditActions,
-      detail: t("openAuditActionsDetail"),
-      href: `/${locale}/audit/findings?status=all`,
-      tone: "warning",
-    },
     pendingAuditItems: {
       key: "pendingAuditItems",
       label: t("pendingAuditItems"),
@@ -304,38 +299,27 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       href: `/${locale}/audit/rounds`,
       tone: "primary",
     },
-    pendingDisposals: {
-      key: "pendingDisposals",
-      label: t("pendingDisposals"),
-      value: pendingDisposals,
-      detail: t("pendingDisposalsDetail"),
-      href: `/${locale}/disposal?status=pending`,
-      tone: "danger",
-    },
-    approvedDisposals: {
-      key: "approvedDisposals",
-      label: t("approvedDisposals"),
-      value: approvedDisposals,
-      detail: t("approvedDisposalsDetail"),
-      href: `/${locale}/disposal?status=approved`,
-      tone: "warning",
-    },
   }
-  const metricKeys = buildWorkCenterMetricKeys({
-    approvalInbox: {
-      visible: approvalInboxVisible,
-      ...approvalInboxCounts,
-    },
-  })
-  const metrics = filterWorkCenterMetricKeys(metricKeys, workCenterParams.panel).map((key) => metricMap[key])
+  const metricFor = (key: WorkCenterMetricKey): WorkCenterMetric => {
+    if (!isWorkCenterSharedKey(key)) return ownMetrics[key]
+    return {
+      key,
+      label: tNotifications(key),
+      value: countFor(key),
+      detail: tNotifications(`${key}Detail`),
+      href: buildWaitingWorkHref(locale, key),
+      tone: SHARED_TONES[key],
+    }
+  }
+  const metrics = filterWorkCenterMetricKeys(metricKeys, workCenterParams.panel).map(metricFor)
   const urgentCount = calculateWorkCenterUrgentCount({
     approvalInbox: {
       visible: approvalInboxVisible,
       ...approvalInboxCounts,
     },
-    pendingAuditFindings,
-    pendingDisposals,
-    approvedDisposals,
+    pendingAuditFindings: countFor("pendingAuditFindings"),
+    pendingDisposals: countFor("pendingDisposals"),
+    approvedDisposals: countFor("approvedDisposals"),
   })
   const followUpCount = metrics.reduce((sum, metric) => sum + metric.value, 0)
   const dataQualityGroups = buildDataQualityFixGroups(locale, workCenterParams, {

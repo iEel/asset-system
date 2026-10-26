@@ -130,7 +130,7 @@ test("the inbox's oldest request reads the same queues, gates and wheres as its 
 test("the approval inbox sentence names only the queues it counts (critique C3)", () => {
   for (const locale of ["th", "en"]) {
     const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
-    assert.equal(m.notifications.approvalInboxDetail, m.workCenter.approvalInboxDetail)
+    assert.equal(m.workCenter.approvalInboxDetail, undefined, "the work center reads notifications.approvalInboxDetail (group 1 dashboard task 4)")
     assert.doesNotMatch(m.notifications.approvalInboxDetail, /ซ่อม|maintenance/i)
   }
 })

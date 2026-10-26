@@ -45,26 +45,16 @@ test("keeps the overview focused on time-sensitive queues", () => {
 
 test("shows only metrics that support the selected work center focus", () => {
   const metricKeys = [
-    "approvalInbox",
-    "missingCustodian",
-    "missingSerial",
-    "missingPhoto",
-    "openRepairs",
-    "duePm",
-    "openAuditActions",
-    "pendingAuditItems",
-    "approvedDisposals",
+    "approvalInbox", "missingCustodian", "missingSerial", "missingPhoto", "openRepairs", "stuckRepairs", "duePm",
+    "openAuditActions", "auditActionsDueSoon", "pendingAuditItems", "approvedDisposals",
   ] as const
 
   assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "overview"), [
-    "approvalInbox",
-    "openRepairs",
-    "duePm",
-    "openAuditActions",
-    "pendingAuditItems",
-    "approvedDisposals",
+    "approvalInbox", "openRepairs", "stuckRepairs", "duePm", "openAuditActions", "auditActionsDueSoon", "pendingAuditItems", "approvedDisposals",
   ])
   assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "assets"), ["missingCustodian", "missingSerial", "missingPhoto"])
+  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "maintenance"), ["openRepairs", "stuckRepairs", "duePm"])
+  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "audit"), ["openAuditActions", "auditActionsDueSoon", "pendingAuditItems"])
 })
 
 test("builds data quality fix groups from issue counts", () => {
