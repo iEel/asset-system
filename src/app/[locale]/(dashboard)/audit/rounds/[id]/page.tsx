@@ -130,24 +130,26 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const stepLabels: Record<AuditRoundPageStepKey, string> = { walk: t("stepWalk"), review: t("stepReview"), close: t("stepClose") }
   const stepItems = stepsState ? auditRoundPageStepKeys.map((key, index) => ({ id: key, label: stepLabels[key], state: stepsState.states[index] })) : []
   // The main step as a link (the close is a button, in the card only): the card's head and the phone bar's primary.
+  // Without audit:approve, step 2 is a neutral link to the same findings, never a call to review (final review M2).
   const mainLink =
     mainAction?.kind === "walk"
-      ? { href: mainAction.target === "scan" ? scanHref : pendingHref, label: t("nextStepContinueScan", { count: formatCount(mainAction.count) }), icon: mainAction.target === "scan" ? <ScanLine className="h-4 w-4" /> : <ListChecks className="h-4 w-4" /> }
+      ? { href: mainAction.target === "scan" ? scanHref : pendingHref, label: t("nextStepContinueScan", { count: formatCount(mainAction.count) }), icon: mainAction.target === "scan" ? <ScanLine className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />, primary: true }
       : mainAction?.kind === "review"
-        ? { href: pendingReviewFindingsHref, label: t("nextStepReviewItems", { count: formatCount(mainAction.count) }), icon: <FileText className="h-4 w-4" /> }
+        ? { href: pendingReviewFindingsHref, label: mainAction.decide ? t("nextStepReviewItems", { count: formatCount(mainAction.count) }) : t("nextStepViewPendingFindings", { count: formatCount(mainAction.count) }), icon: <FileText className="h-4 w-4" />, primary: mainAction.decide }
         : null
   // The four conditions the close API checks (audit-round-close.ts getAuditRoundCloseChecklist, and the route's
   // closeOwnRound), each linked to its rows while it blocks; the counts are the API's (findings, P2-R3). The opener is
-  // told they cannot close (spec §8).
+  // told they cannot close (spec §8). A closed round reads one met line, "รอบนี้ปิดแล้ว", and no opener's sentence
+  // (P2-R8, final review M1).
   const checklist = data.steps.close.checklist
-  const closeConditions = [
+  const closeConditions: Array<{ key: string; ok: boolean; label: string; href?: string }> = round.status === "closed" ? [{ key: "closed", ok: true, label: t("stepsClosedTitle") }] : [
     { key: "pendingItems", ok: checklist.pendingItems === 0, label: checklist.pendingItems === 0 ? t("closeNoPendingItems") : t("closePendingItemsCount", { count: formatCount(checklist.pendingItems) }), href: pendingHref },
     { key: "pendingFindings", ok: checklist.pendingFindings === 0, label: checklist.pendingFindings === 0 ? t("closeNoPendingFindings") : t("closePendingFindingsCount", { count: formatCount(checklist.pendingFindings) }), href: pendingReviewFindingsHref },
     { key: "openActions", ok: checklist.openActions === 0, label: checklist.openActions === 0 ? t("closeNoOpenActions") : t("openActionsCount", { count: formatCount(checklist.openActions) }), href: openActionFindingsHref },
     { key: "opener", ok: !data.steps.close.openedByViewer, label: data.steps.close.openedByViewer ? t("closeOwnRoundNotice") : t("closeSeparateApprover") },
   ]
   const barActions: ActionBarLink[] = [
-    ...(mainLink ? [{ ...mainLink, primary: true }] : []),
+    ...(mainLink ? [mainLink] : []),
     ...(mainLink?.href === pendingHref ? [] : [{ href: pendingHref, label: t("pendingAssets"), icon: <ListChecks className="h-4 w-4" /> }]),
     ...(mainAction?.kind === "review" ? [] : [{ href: pendingReviewFindingsHref, label: t("openFindingReview"), icon: <FileText className="h-4 w-4" /> }]),
     { href: returnToHref, label: tCommon("back"), icon: <ArrowLeft className="h-4 w-4" /> },
@@ -198,7 +200,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   ] as const).map(([result, label, count]) => ({ key: result, label, count: formatCount(count), href: pageHref(filters, { result, page: 1 }) }))
   // The category chips (spec decision 2): within the result in use and the other filters, the six largest then อื่น ๆ
   // (a real filter value, P2-R11), then a chosen category outside the six as its own chip; hidden at one category or
-  // none (P2-R24). Task 3's data.categoryChips holds each part.
+  // none in the round within the other filters, whatever the result tab (P2-R24, final review M4). Task 3's
+  // data.categoryChips holds each part.
   const categoryChipItems = [
     ...data.categoryChips.top,
     ...(data.categoryChips.other.categories > 0 || filters.categoryId === "other" ? [{ id: "other", name: t("categoryOther"), count: data.categoryChips.other.count }] : []),
@@ -305,7 +308,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   })
 
   return (
-    <div className={actionBarPagePadding.single}>
+    <div className={!isRoundReadOnly ? actionBarPagePadding.single : undefined}>
       <PageHeader
         className="mb-6"
         breadcrumbs={[
@@ -358,7 +361,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             mainAction?.kind === "close" ? (
               <AuditRoundCloseButton roundId={round.id} disabled={mainAction.disabled} />
             ) : mainLink ? (
-              <Link href={mainLink.href} className={buttonVariants({ size: "md" })}>
+              <Link href={mainLink.href} className={buttonVariants({ variant: mainLink.primary ? "default" : "outline", size: "md" })}>
                 {mainLink.icon}
                 {mainLink.label}
               </Link>
@@ -676,7 +679,7 @@ type AuditRoundComponentRelationshipAsset = {
 function buildAuditRoundComponentRelationshipLines(asset: AuditRoundComponentRelationshipAsset, t: AuditRoundTranslator) {
   const lines: string[] = []
   const componentCount = asset.parentComponents?.length ?? 0
-  if (componentCount > 0) lines.push(t("componentHasChildren", { count: componentCount }))
+  if (componentCount > 0) lines.push(t("componentHasChildren", { count: formatCount(componentCount) }))
   const installedInParent = asset.installedInLinks?.[0]
   if (installedInParent) {
     lines.push(t("componentInstalledInParent", { assetTag: installedInParent.parentAsset.assetTag, role: installedInParent.componentRole }))

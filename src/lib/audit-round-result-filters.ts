@@ -4,6 +4,7 @@
 import type { Prisma } from "@prisma/client"
 import { isSuccessfulAuditResult, successfulAuditResults } from "./audit-result-summary.ts"
 import { auditRoundOutOfScopeItemWhere, isAuditRoundOwnItem, withAuditRoundOwnItems } from "./audit-round-counts-rules.ts"
+import { auditPendingIdMatchWhere } from "./audit-pending-list-rules.ts"
 
 export const auditRoundResultFilterValues = ["all", "pending", "found", "mismatch", "not_found", "out_of_scope", "pending_review"] as const
 
@@ -38,6 +39,7 @@ export type AuditRoundListFilters = {
   branchId: string | null
   search: string
   expectedLocationIds?: readonly string[]
+  roundLocationIds?: readonly string[] // the round's own rooms: the room branch sends the smaller of in / notIn
 }
 
 export type AuditRoundListParams = Readonly<Record<string, string | string[] | undefined>>
@@ -122,6 +124,7 @@ export type AuditRoundItemWhereInput = {
   field?: AuditFindingField | null
   components?: "missing" | null
   expectedLocationIds?: readonly string[]
+  roundLocationIds?: readonly string[]
   shownCategoryIds?: readonly string[] // the six categories the chip row shows; categoryId "other" = none of them
 }
 
@@ -176,10 +179,21 @@ export function auditRoundComponentsMissingWhere(roundId: string): Prisma.AuditI
   }
 }
 
-// The caller passes the trimmed text; the expected rooms come from the page's or route's lookup (P2-R5).
-export function auditRoundSearchWhere(search: string, expectedLocationIds: readonly string[] = []): Prisma.AuditItemWhereInput {
+// The round's item list, on the page and in the Excel and PDF exports, in one order: by status, newest first, then id,
+// so an export lists the rows as the screen does and no row shows on two pages (final review M5).
+export const auditRoundItemListOrderBy: Prisma.AuditItemOrderByWithRelationInput[] = [{ auditStatus: "asc" }, { createdAt: "desc" }, { id: "asc" }]
+
+// The caller passes the trimmed text; the expected rooms come from the page's or route's lookup (P2-R5). With the
+// round's own rooms known, the room branch is the pending list's in / notIn choice (auditPendingIdMatchWhere), so a
+// broad term ("-", "0") never sends more than half of the round's rooms, however many rooms the round spans.
+export function auditRoundSearchWhere(search: string, expectedLocationIds: readonly string[] = [], roundLocationIds?: readonly string[]): Prisma.AuditItemWhereInput {
+  const room = roundLocationIds
+    ? auditPendingIdMatchWhere("expectedLocationId", roundLocationIds, expectedLocationIds)
+    : expectedLocationIds.length > 0
+      ? { expectedLocationId: { in: [...expectedLocationIds] } }
+      : null
   return {
-    OR: [...buildAssetSearchWhere(search), ...(expectedLocationIds.length > 0 ? [{ expectedLocationId: { in: [...expectedLocationIds] } }] : [])],
+    OR: [...buildAssetSearchWhere(search), ...(room ? [room] : [])],
   }
 }
 
@@ -191,7 +205,7 @@ function auditRoundFilterClauses(input: Omit<AuditRoundItemWhereInput, "result">
   if (input.field) clauses.push(auditRoundFieldFindingWhere(input.field))
   if (input.components === "missing") clauses.push(auditRoundComponentsMissingWhere(input.roundId))
   const searchText = input.search?.trim()
-  if (searchText) clauses.push(auditRoundSearchWhere(searchText, input.expectedLocationIds))
+  if (searchText) clauses.push(auditRoundSearchWhere(searchText, input.expectedLocationIds, input.roundLocationIds))
   return clauses
 }
 
@@ -310,7 +324,7 @@ export function buildAuditExportWorksheetName(filterLabel: string) {
   return `Results - ${filterLabel}`.slice(0, 31)
 }
 
-export type AuditRoundListHrefFilters = Omit<AuditRoundListFilters, "expectedLocationIds">
+export type AuditRoundListHrefFilters = Omit<AuditRoundListFilters, "expectedLocationIds" | "roundLocationIds">
 
 export type AuditRoundPageHrefOverrides = Partial<AuditRoundListHrefFilters> & { page?: number; pageSize?: number; returnTo?: string | null }
 

@@ -14,8 +14,14 @@ import {
 // categories the chip row shows (P2-R11). The page and the three exports call the same functions, so a list and its
 // export hold the same rows. It never writes.
 export async function findAuditRoundSearchLocationIds(roundId: string, search: string): Promise<string[]> {
+  return (await findAuditRoundSearchLocations(roundId, search)).matchedRoomIds
+}
+
+// The round's own rooms and those the search names (P2-R5, P2-R25): the round page and the exports pass both, so the
+// room branch sends the smaller of in / notIn (auditRoundSearchWhere, final review M3).
+export async function findAuditRoundSearchLocations(roundId: string, search: string): Promise<{ roomIds: string[]; matchedRoomIds: string[] }> {
   const text = search.trim()
-  if (!text) return []
+  if (!text) return { roomIds: [], matchedRoomIds: [] }
   // Only the round's own rooms, so the id list stays the size of the round's rooms, not the register's.
   const rooms = await prisma.auditItem.groupBy({
     by: ["expectedLocationId"],
@@ -27,7 +33,7 @@ export async function findAuditRoundSearchLocationIds(roundId: string, search: s
       prisma.location.findMany({ where: { id: { in: chunk }, OR: [{ code: { contains: text } }, { name: { contains: text } }] }, select: { id: true } }),
     ),
   )
-  return matches.flat().map((location) => location.id)
+  return { roomIds, matchedRoomIds: matches.flat().map((location) => location.id) }
 }
 
 // Exact: an asset has one item per round (@@unique([auditRoundId, assetId])) and every item where pins the round. No
@@ -45,8 +51,8 @@ export async function countAuditRoundItemCategories(itemWhere: Prisma.AuditItemW
 }
 
 export async function resolveAuditRoundListWhereInput(roundId: string, filters: AuditRoundListFilters): Promise<AuditRoundItemWhereInput> {
-  const expectedLocationIds = await findAuditRoundSearchLocationIds(roundId, filters.search)
-  const input: AuditRoundItemWhereInput = { ...filters, roundId, expectedLocationIds }
+  const rooms = await findAuditRoundSearchLocations(roundId, filters.search)
+  const input: AuditRoundItemWhereInput = { ...filters, roundId, expectedLocationIds: rooms.matchedRoomIds, roundLocationIds: rooms.roomIds }
   if (filters.categoryId !== AUDIT_ROUND_OTHER_CATEGORY) return input
   // Ranked over every result (P2-R11): the six stay put when the result tab changes, and every other filter counts.
   const base: AuditRoundItemWhereInput = { ...input, result: "all" }

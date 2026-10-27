@@ -181,6 +181,26 @@ test("อื่น ๆ under another result reuses the six ranked over every res
   assert.deepEqual(data.categoryChips.other, { categories: 2, count: 10 }, "c7 and c8, within ไม่พบ")
 })
 
+test("the category row stays when the result in use holds one category: its visibility reads the round's categories, its counts the result (final review M4)", async () => {
+  const overAll: Record<string, number> = { c1: 5, c2: 2 }
+  const notFound: Record<string, number> = { c1: 1 }
+  const rowsOf = (sizes: Record<string, number>) => Object.entries(sizes).map(([categoryId, count]) => ({ categoryId, _count: { _all: count } }))
+  state.respond = (call, args) => {
+    if (call === "auditRound.findFirst") return round
+    if (call === "asset.groupBy") {
+      const where = (args.where as { auditItems: { some: unknown } }).auditItems.some
+      return isDeepStrictEqual(where, itemWhere({ result: "not_found" }, { categoryId: null })) ? rowsOf(notFound) : rowsOf(overAll)
+    }
+    if (call === "assetCategory.findMany") return Object.keys(overAll).map((id) => ({ id, code: id.toUpperCase(), name: `หมวดหมู่ ${id}` }))
+    return undefined
+  }
+  const data = await loadPage({ result: "not_found" })
+  assert.ok(data)
+  assert.equal(data.categoryChips.visible, true)
+  assert.deepEqual(data.categoryChips.top.map((chip) => [chip.id, chip.count]), [["c1", 1], ["c2", 0]])
+  assert.equal(data.categoryChips.all, 1)
+})
+
 test("the list's where carries the rooms Task 2's lookup names: the item's expected room by code or name (bug 11, P2-R5, P2-R25)", async () => {
   state.respond = (call, args) => {
     if (call === "auditRound.findFirst") return round
@@ -192,7 +212,20 @@ test("the list's where carries the rooms Task 2's lookup names: the item's expec
   assert.ok(data)
   // One lookup, Task 2's; its chunks and its round-bound room list are pinned in tests/audit-round-list-lookups.test.ts.
   assert.equal(callsTo("location.findMany").length, 1)
-  assert.deepEqual(listCall()?.where, itemWhere({ search: "B-1" }, { expectedLocationIds: ["loc-7"] }))
+  assert.deepEqual(listCall()?.where, itemWhere({ search: "B-1" }, { expectedLocationIds: ["loc-7"], roundLocationIds: ["loc-1", "loc-7"] }))
+  // A broad term that names most of the round's rooms sends the rest as notIn (final review M3), in every query.
+  state.calls = []
+  state.respond = (call, args) => {
+    if (call === "auditRound.findFirst") return round
+    if (call === "auditItem.groupBy" && isDeepStrictEqual(args.by, ["expectedLocationId"])) return [{ expectedLocationId: "loc-1" }, { expectedLocationId: "loc-7" }, { expectedLocationId: "loc-8" }]
+    if (call === "location.findMany") return [{ id: "loc-7" }, { id: "loc-8" }]
+    return undefined
+  }
+  assert.ok(await loadPage({ search: "-" }))
+  const broad = listCall()?.where
+  assert.deepEqual(broad, itemWhere({ search: "-" }, { expectedLocationIds: ["loc-7", "loc-8"], roundLocationIds: ["loc-1", "loc-7", "loc-8"] }))
+  assert.match(JSON.stringify(broad), /"expectedLocationId":\{"notIn":\["loc-1"\]\}/)
+  assert.doesNotMatch(JSON.stringify(state.calls.filter((entry) => entry.call !== "location.findMany")), /"in":\["loc-7","loc-8"\]/, "no query sends the matched rooms as in")
 })
 
 test("no search reads no room; a search that names no room leaves the room ids out", async () => {
@@ -325,7 +358,7 @@ test("the close API and the round page read one checklist; the page reads its da
   assert.match(data, /export async function getAuditRoundPageData\(\{ roundId, filters, page, pageSize, user \}: AuditRoundPageDataInput\)/)
   assert.match(data, /getAuditRoundCloseChecklist\(roundId\)/)
   // One room lookup, Task 2's (P2-R25): no search file of this task's own.
-  assert.match(data, /^import \{ countAuditRoundItemCategories, findAuditRoundSearchLocationIds \} from "@\/lib\/audit-round-list-lookups"$/m)
+  assert.match(data, /^import \{ countAuditRoundItemCategories, findAuditRoundSearchLocations \} from "@\/lib\/audit-round-list-lookups"$/m)
   assert.equal(existsSync("src/lib/audit-round-search.ts"), false)
   assert.doesNotMatch(data, /prisma\.location\.findMany|prisma\.asset\.groupBy/)
   assert.match(data, /processedItems: walk\.checked \+ resultCard\.outOfScope,/)

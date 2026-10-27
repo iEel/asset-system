@@ -360,13 +360,13 @@ test.describe("IT staff read the round page after the walk", () => {
 
     // Step 2 of the next-step card counts findings (P2-R26): nothing is pending, and five findings wait (A2's department
     // and condition, C2, A4, X1), the rows of the findings page that "รอ 5" and the main button open; block 6 decides
-    // those five.
+    // those five. IT staff hold no audit:approve, so the main button is a neutral view link, not a call to review.
     await roundPage.settlePageRequests(page)
     await page.goto(roundHref)
     const findingsHref = new RegExp(`^/th/audit/findings\\?status=pending&roundId=${chain.roundId}(?:&|$)`)
     const nextStep = roundPage.nextStepCard(page)
     await expect(nextStep.getByRole("link", { name: fillTemplate(W.reviewWaiting, { count: 5 }), exact: true })).toHaveAttribute("href", findingsHref)
-    await expect(nextStep.getByRole("link", { name: fillTemplate(W.reviewItems, { count: 5 }), exact: true })).toHaveAttribute("href", findingsHref)
+    await expect(nextStep.getByRole("link", { name: fillTemplate(W.viewPendingFindings, { count: 5 }), exact: true })).toHaveAttribute("href", findingsHref)
 
     // "ไม่ตรงเรื่องอะไร" (spec §8, P2-R1, P2-R18): the mismatch is wrong in its department and its condition, both
     // waiting, so each bar holds it once and the card says one item is wrong in more than one way. Each bar's word is

@@ -6,6 +6,7 @@ import { auditResultColumns, createAuditWorkbook, finalizeAuditWorksheet, workbo
 import { buildAuditReferenceLabels } from "@/lib/audit-finding-labels"
 import { resolveAuditRoundExportFilters } from "@/lib/audit-round-list-lookups"
 import {
+  auditRoundItemListOrderBy,
   buildAuditExportFilterLabel,
   buildAuditExportFilename,
   buildAuditExportWorksheetName,
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest, context: AuditExportContext) {
 async function buildAuditItemExportRows(whereInput: AuditRoundItemWhereInput): Promise<AuditExportRow[]> {
   const items = await prisma.auditItem.findMany({
     where: buildAuditRoundItemWhere(whereInput),
-    orderBy: [{ auditStatus: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    orderBy: auditRoundItemListOrderBy,
     include: {
       asset: {
         select: {

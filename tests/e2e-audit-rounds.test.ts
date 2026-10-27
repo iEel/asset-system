@@ -97,7 +97,7 @@ test("the round page and pending list steps read the app's own words (group 2 pl
   assert.equal(ROUND_PAGE_WORDS.noCustodian, th.asset.noCustodian)
   // The words Tasks 4-5 put on the page, by key.
   assert.equal(ROUND_PAGE_WORDS.reviewWaiting, round.stepReviewWaiting)
-  assert.equal(ROUND_PAGE_WORDS.reviewItems, round.nextStepReviewItems)
+  assert.equal(ROUND_PAGE_WORDS.viewPendingFindings, round.nextStepViewPendingFindings)
   assert.equal(ROUND_PAGE_WORDS.componentsMissingChip, round.componentsMissingChip)
   assert.equal(ROUND_PAGE_WORDS.missingComponentPrefix, round.missingComponentPrefix)
   assert.equal(ROUND_PAGE_WORDS.fieldDepartment, th.auditFinding.type_wrong_department)

@@ -87,6 +87,15 @@ test("the category chips: the six largest, ties by id, then อื่น ๆ; th
   const inResult = buildAuditRoundCategoryChips({ rows: [{ id: "c7", count: 4 }, { id: "c2", count: 1 }], names, selectedCategoryId: null, topIds: ["c1", "c2", "c3", "c4", "c5", "c6"] })
   assert.deepEqual(inResult.top.map((chip) => [chip.id, chip.count]), [["c1", 0], ["c2", 1], ["c3", 0], ["c4", 0], ["c5", 0], ["c6", 0]])
   assert.deepEqual(inResult.other, { categories: 1, count: 4 })
+  // The row's visibility reads the ranking rows (the round's categories within the other filters, result ignored), so
+  // it stays put when the result tab changes; the counts stay within the result (final review M4).
+  const ranking = [{ id: "c1", count: 5 }, { id: "c2", count: 2 }]
+  const oneInResult = buildAuditRoundCategoryChips({ rows: [{ id: "c1", count: 1 }], rankingRows: ranking, names, selectedCategoryId: null, topIds: ["c1", "c2"] })
+  assert.equal(oneInResult.visible, true, "one category in the result, two in the round: the row stays")
+  assert.deepEqual(oneInResult.top.map((chip) => [chip.id, chip.count]), [["c1", 1], ["c2", 0]])
+  assert.equal(oneInResult.all, 1)
+  assert.equal(buildAuditRoundCategoryChips({ rows: [], rankingRows: ranking, names, selectedCategoryId: null, topIds: ["c1", "c2"] }).visible, true, "none in the result")
+  assert.equal(buildAuditRoundCategoryChips({ rows: [{ id: "c1", count: 5 }], rankingRows: [{ id: "c1", count: 5 }], names, selectedCategoryId: null, topIds: ["c1"] }).visible, false, "one category in the round")
 })
 
 test("รูปหลักฐาน counts the round's own checked items only: never a pending item, never an out-of-scope find (bug 10)", () => {
@@ -164,7 +173,9 @@ test("the main button follows the step: the scan for audit:edit or the pending l
   assert.deepEqual(buildAuditRoundPageMainAction({ ...base, steps: walk }), { kind: "walk", count: 12, target: "scan" })
   assert.deepEqual(buildAuditRoundPageMainAction({ ...base, steps: walk, canScan: false }), { kind: "walk", count: 12, target: "pending" })
   const review = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5 })
-  assert.deepEqual(buildAuditRoundPageMainAction({ ...base, pendingItems: 0, steps: review }), { kind: "review", count: 5 })
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...base, pendingItems: 0, steps: review }), { kind: "review", count: 5, decide: true })
+  // Without audit:approve no call to review (final review M2): a neutral link to the same findings.
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...base, pendingItems: 0, steps: review, canApprove: false }), { kind: "review", count: 5, decide: false })
   const close = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0 })
   const atClose = { ...base, pendingItems: 0, pendingFindings: 0, steps: close }
   assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: true }), { kind: "close", disabled: false })

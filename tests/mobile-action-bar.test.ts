@@ -98,7 +98,7 @@ test("the four detail pages use ActionBar with its page padding, and the two old
     "assets/[id]": [page("assets/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/],
     "maintenance/[id]": [page("maintenance/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/],
     "disposal/[id]": [page("disposal/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/],
-    "audit/rounds/[id]": [page("audit/rounds/[id]"), /<div className=\{actionBarPagePadding\.single\}>/],
+    "audit/rounds/[id]": [page("audit/rounds/[id]"), /<div className=\{!isRoundReadOnly \? actionBarPagePadding\.single : undefined\}>/], // the bar's room only where the bar renders (final review M7)
   }
   for (const [route, [source, root]] of Object.entries(pages)) {
     assert.match(source, root, route)

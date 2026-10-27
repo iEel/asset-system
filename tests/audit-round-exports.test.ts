@@ -79,7 +79,9 @@ test("the Excel and PDF exports read the page's whole filter state, the out-of-s
   for (const file of ["export/route.ts", "export-pdf/route.ts"]) {
     const route = read(`${API}${file}`)
     assert.match(route, /resolveAuditRoundExportFilters\(id, request\.nextUrl\.searchParams\)/, file)
-    assert.match(route, /prisma\.auditItem\.findMany\(\{\s*where: buildAuditRoundItemWhere\(whereInput\),\s*orderBy: \[\{ auditStatus: "asc" \}, \{ createdAt: "asc" \}, \{ id: "asc" \}\],/, file)
+    assert.match(route, /prisma\.auditItem\.findMany\(\{\s*where: buildAuditRoundItemWhere\(whereInput\),\s*orderBy: auditRoundItemListOrderBy,/, file)
+    // The screen's order, one constant (final review M5).
+    assert.match(route, /^import \{\n  auditRoundItemListOrderBy,\n/m, file)
     assert.match(route, /import \{ buildAuditReferenceLabels \} from "@\/lib\/audit-finding-labels"/, file)
     assert.match(route, /category, field: filters\.field, components: filters\.components/, file)
     assert.doesNotMatch(route, /auditScanHistory|buildOutOfScopeExportRows|isOutOfScopeExport|ScanHistory|async function buildAuditReferenceLabels|prisma\.location\.findMany/, file)
@@ -118,8 +120,8 @@ test("the round page lists the out-of-scope finds as items under every filter, c
   const page = read(`${D}audit/rounds/[id]/page.tsx`)
   const data = read("src/lib/audit-round-page-data.ts")
   assert.doesNotMatch(page, /auditScanHistory\.findMany|auditItemId: null|isOutOfScopeResultList|ScanHistoryWhere|ScanHistoryResultFilter|outOfScopeScan/)
-  assert.match(data, /findAuditRoundSearchLocationIds\(roundId, filters\.search\)/)
-  assert.match(data, /orderBy: \[\{ auditStatus: "asc" \}, \{ createdAt: "desc" \}, \{ id: "asc" \}\]/)
+  assert.match(data, /findAuditRoundSearchLocations\(roundId, filters\.search\)/)
+  assert.match(data, /orderBy: auditRoundItemListOrderBy,/)
   assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(/)
   assert.equal(page.match(/\{item\.editHref \? \(/g)?.length, 1, "the phone card's button; the table's is in ⋯ (item.groups)")
   assert.match(page, /if \(filterCompany\) \{\n\s+resultFilterChips\.push/, "the company chip shows on the out-of-scope list too")

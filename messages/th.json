@@ -2211,7 +2211,8 @@
     "photoAttached": "มีรูป",
     "photoMissing": "ไม่มีรูป",
     "componentMark": "ส่วนควบ",
-    "missingComponentPrefix": "ไม่พบ:"
+    "missingComponentPrefix": "ไม่พบ:",
+    "nextStepViewPendingFindings": "ดูรายการไม่ตรงรอพิจารณา ({count})"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",

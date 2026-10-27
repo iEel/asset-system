@@ -263,8 +263,10 @@ test("IT staff read the round page after the walk: each chip's count is its rows
   assert.ok(after.includes(`for (const field of ["department", "condition"] as const) {`) && after.includes("await expect(card.getByText(W.multipleFields, { exact: true })).toBeVisible()"))
   assert.ok(after.includes("await expect(roundPage.filterChip(page, fillTemplate(W.componentsMissingChip, { count: 1 }))).toBeVisible()"))
   assert.ok(after.includes("`${W.missingComponentPrefix} ${assets.component2.name} (${assets.component2.tag})`"))
-  // Step 2 counts findings, the rows of the findings page (P2-R26): the five the IT head decides in block 6.
-  assert.ok(after.includes("fillTemplate(W.reviewWaiting, { count: 5 })") && after.includes("fillTemplate(W.reviewItems, { count: 5 })"))
+  // Step 2 counts findings, the rows of the findings page (P2-R26): the five the IT head decides in block 6. IT staff
+  // read the main button as a view, not a call to review (final review M2).
+  assert.ok(after.includes("fillTemplate(W.reviewWaiting, { count: 5 })") && after.includes("fillTemplate(W.viewPendingFindings, { count: 5 })"))
+  assert.ok(!after.includes("W.reviewItems"))
   assert.ok(after.includes(`await parentRow.getByRole("link", { name: assets.component2.tag, exact: true }).click()`))
   // "ส่วนควบของ <parent>" on the findings page is plan 4's step (spec §16), not this block's.
 })

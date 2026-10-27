@@ -68,6 +68,18 @@ test("the room search reads the round's own rooms, then matches them by code or 
   assert.deepEqual(lookups[1], { where: { id: { in: ["loc-2000"] }, OR: [{ code: { contains: "B-1" } }, { name: { contains: "B-1" } }] }, select: { id: true } })
 })
 
+test("the exports' filters carry the round's rooms with the matches, so the room branch sends the smaller of in / notIn (final review M3)", async () => {
+  state.respond = (call) => {
+    if (call === "auditItem.groupBy") return [{ expectedLocationId: "loc-1" }, { expectedLocationId: "loc-2" }, { expectedLocationId: "loc-3" }]
+    if (call === "location.findMany") return [{ id: "loc-2" }, { id: "loc-3" }]
+    return undefined
+  }
+  const input = await resolveAuditRoundListWhereInput("round-1", parseAuditRoundListFilters({ search: "-" }))
+  assert.deepEqual(input.expectedLocationIds, ["loc-2", "loc-3"])
+  assert.deepEqual(input.roundLocationIds, ["loc-1", "loc-2", "loc-3"])
+  assert.match(JSON.stringify(buildAuditRoundItemWhere(input)), /"expectedLocationId":\{"notIn":\["loc-1"\]\}/)
+})
+
 test("an empty search reads nothing; a search that names no room gives no ids", async () => {
   assert.deepEqual(await findAuditRoundSearchLocationIds("round-1", "   "), [])
   assert.equal(state.calls.length, 0)

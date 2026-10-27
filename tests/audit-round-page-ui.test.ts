@@ -78,7 +78,9 @@ test("the next-step card: three Steps, each step's line under them, the main but
   const card = between(page, "{stepsState ? (", '<ContentPanel divided title={t("resultDashboard")}')
   assert.match(card, /<ContentPanel\s+divided\s+title=\{stepsState\.current \? t\("nextStepTitle", \{ step: stepLabels\[stepsState\.current\] \}\) : t\("stepsClosedTitle"\)\}/)
   assert.match(card, /mainAction\?\.kind === "close" \? \(\s*<AuditRoundCloseButton roundId=\{round\.id\} disabled=\{mainAction\.disabled\} \/>/)
-  assert.match(card, /<Link href=\{mainLink\.href\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
+  assert.match(card, /<Link href=\{mainLink\.href\} className=\{buttonVariants\(\{ variant: mainLink\.primary \? "default" : "outline", size: "md" \}\)\}>/)
+  // Step 2 without audit:approve: a neutral link to the same findings, no call to review (final review M2).
+  assert.match(page, /label: mainAction\.decide \? t\("nextStepReviewItems", \{ count: formatCount\(mainAction\.count\) \}\) : t\("nextStepViewPendingFindings", \{ count: formatCount\(mainAction\.count\) \}\), icon: <FileText className="h-4 w-4" \/>, primary: mainAction\.decide \}/)
   assert.match(card, /t\("stepWalkChecked", \{ checked: formatCount\(data\.steps\.walk\.checked\), total: formatCount\(data\.steps\.walk\.total\) \}\)/)
   // Step 2 counts findings (P2-R26): "รอ n" opens the findings page whose rows it counts, as "พิจารณา n รายการ" does.
   assert.match(card, /\{data\.steps\.review\.pendingFindings > 0 \? \(\s*<Link href=\{pendingReviewFindingsHref\}/)
@@ -88,6 +90,8 @@ test("the next-step card: three Steps, each step's line under them, the main but
   assert.match(card, /\{closeConditions\.map\(\(condition\) => \(/)
   assert.doesNotMatch(card, /truncate|whitespace-nowrap|w-30/, "nothing in the card is cut")
   assert.match(page, /\{ key: "opener", ok: !data\.steps\.close\.openedByViewer, label: data\.steps\.close\.openedByViewer \? t\("closeOwnRoundNotice"\) : t\("closeSeparateApprover"\) \}/)
+  // A closed round: one met line, "รอบนี้ปิดแล้ว", and no opener's row or warning (P2-R8, final review M1).
+  assert.match(page, /const closeConditions: Array<\{ key: string; ok: boolean; label: string; href\?: string \}> = round\.status === "closed" \? \[\{ key: "closed", ok: true, label: t\("stepsClosedTitle"\) \}\] : \[\n\s+\{ key: "pendingItems"/)
   const close = read("src/components/audit/audit-round-close-button.tsx")
   assert.match(close, /export function AuditRoundCloseButton\(\{ roundId, disabled \}: \{ roundId: string; disabled: boolean \}\)/)
   assert.match(close, /return \(\s*<Button onClick=\{closeRound\} busy=\{saving\} disabled=\{disabled\}>\s*<Lock aria-hidden="true" \/>\s*\{t\("closeRound"\)\}\s*<\/Button>\s*\)/)
@@ -96,7 +100,7 @@ test("the next-step card: three Steps, each step's line under them, the main but
 
 test("the phone bar: the main step first, the pending list, the findings to decide, back; no scan item without audit:edit (spec §8, P2-R7)", () => {
   const page = read(PAGE)
-  assert.match(page, /const barActions: ActionBarLink\[\] = \[\n\s+\.\.\.\(mainLink \? \[\{ \.\.\.mainLink, primary: true \}\] : \[\]\),\n\s+\.\.\.\(mainLink\?\.href === pendingHref \? \[\] : \[\{ href: pendingHref, label: t\("pendingAssets"\), icon: <ListChecks className="h-4 w-4" \/> \}\]\),\n\s+\.\.\.\(mainAction\?\.kind === "review" \? \[\] : \[\{ href: pendingReviewFindingsHref, label: t\("openFindingReview"\), icon: <FileText className="h-4 w-4" \/> \}\]\),\n\s+\{ href: returnToHref, label: tCommon\("back"\), icon: <ArrowLeft className="h-4 w-4" \/> \},\n\s+\]/)
+  assert.match(page, /const barActions: ActionBarLink\[\] = \[\n\s+\.\.\.\(mainLink \? \[mainLink\] : \[\]\),\n\s+\.\.\.\(mainLink\?\.href === pendingHref \? \[\] : \[\{ href: pendingHref, label: t\("pendingAssets"\), icon: <ListChecks className="h-4 w-4" \/> \}\]\),\n\s+\.\.\.\(mainAction\?\.kind === "review" \? \[\] : \[\{ href: pendingReviewFindingsHref, label: t\("openFindingReview"\), icon: <FileText className="h-4 w-4" \/> \}\]\),\n\s+\{ href: returnToHref, label: tCommon\("back"\), icon: <ArrowLeft className="h-4 w-4" \/> \},\n\s+\]/)
   assert.match(page, /\{!isRoundReadOnly \? <ActionBar label=\{tCommon\("actions"\)\} actions=\{barActions\} \/> : null\}/)
 })
 

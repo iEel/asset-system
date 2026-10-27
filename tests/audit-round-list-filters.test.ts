@@ -7,6 +7,7 @@ import {
   auditCountedFindingReviewStatuses,
   auditFindingFields,
   auditFindingTypeByField,
+  auditRoundItemListOrderBy,
   auditRoundResultFilterValues,
   buildAuditRoundExportHref,
   buildAuditRoundFilterWhere,
@@ -102,6 +103,18 @@ test("every filter goes into one AND list, so two findings filters and two asset
   // The search is code and name, plus the item's expected room when the lookup found one (P2-R5); no search, no room.
   assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: " SNI ", expectedLocationIds: [] }), own({ AND: [round, { OR: [{ asset: { assetTag: { contains: "SNI" } } }, { asset: { name: { contains: "SNI" } } }] }] }))
   assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "  ", expectedLocationIds: ["loc-1"] }), own({ AND: [round] }))
+  // With the round's rooms known, the room branch is the pending list's in / notIn choice (final review M3): the smaller
+  // list, so a broad term never sends more than half of the round's rooms.
+  const roundRooms = ["loc-1", "loc-2", "loc-3", "loc-4", "loc-5"]
+  const roomBranch = (matched: string[]) => buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "R", expectedLocationIds: matched, roundLocationIds: roundRooms })
+  const nameBranches = [{ asset: { assetTag: { contains: "R" } } }, { asset: { name: { contains: "R" } } }]
+  assert.deepEqual(roomBranch(["loc-1", "loc-2"]), own({ AND: [round, { OR: [...nameBranches, { expectedLocationId: { in: ["loc-1", "loc-2"] } }] }] }))
+  assert.deepEqual(roomBranch(["loc-1", "loc-2", "loc-3", "loc-4"]), own({ AND: [round, { OR: [...nameBranches, { expectedLocationId: { notIn: ["loc-5"] } }] }] }))
+  assert.deepEqual(roomBranch(roundRooms), own({ AND: [round, { OR: [...nameBranches, { expectedLocationId: { notIn: [] } }] }] }), "every room: notIn [] is every row")
+  assert.deepEqual(roomBranch([]), own({ AND: [round, { OR: nameBranches }] }))
+  const broad = Array.from({ length: 3000 }, (_, index) => `loc-${index}`)
+  const broadWhere = buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "-", expectedLocationIds: broad.slice(0, 2990), roundLocationIds: broad })
+  assert.deepEqual(broadWhere, own({ AND: [round, { OR: [{ asset: { assetTag: { contains: "-" } } }, { asset: { name: { contains: "-" } } }, { expectedLocationId: { notIn: broad.slice(2990) } }] }] }), "3,000 rooms, 2,990 matched: ten ids sent")
   // The chips' base: every filter but the result, not own-wrapped, so one fold counts the out-of-scope finds apart.
   assert.deepEqual(buildAuditRoundFilterWhere({ roundId: "round-1", companyId: "c-1", field: "condition" }), { AND: [
     round,
@@ -143,7 +156,7 @@ test("one link writer: the page's list, its exports and the dashboard carry ever
     "/th/audit/rounds/round-1?result=mismatch&search=PC+1&branchId=b-1&categoryId=other&field=location#audit-result-list",
   )
   // A variable, not a fresh literal: tsc runs no excess-property check against the Omit type (TS2353 otherwise).
-  const withRooms = { ...none, expectedLocationIds: ["loc-1"] }
+  const withRooms = { ...none, expectedLocationIds: ["loc-1"], roundLocationIds: ["loc-1", "loc-2"] }
   assert.equal(buildAuditRoundPageHref("th", "round-1", withRooms), "/th/audit/rounds/round-1#audit-result-list", "a lookup never reaches the URL")
   assert.equal(
     buildAuditRoundExportHref("round-1", "export", full),
@@ -163,3 +176,6 @@ test("the filter rules stay pure and client-safe (recon gotcha 3)", () => {
   assert.doesNotMatch(source, /isAuditFindingResultFilter|wrong_location: t\(|result === "wrong_/, "wrong_* is a field now")
 })
 
+test("the page and the Excel and PDF exports share one order: by status, newest first, then id (final review M5)", () => {
+  assert.deepEqual(auditRoundItemListOrderBy, [{ auditStatus: "asc" }, { createdAt: "desc" }, { id: "asc" }])
+})

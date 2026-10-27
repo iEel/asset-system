@@ -80,11 +80,15 @@ export function auditRoundTopCategoryIds(rows: readonly AuditRoundCategoryCount[
 
 export function buildAuditRoundCategoryChips({
   rows,
+  rankingRows,
   names,
   selectedCategoryId,
   topIds,
 }: {
   rows: readonly AuditRoundCategoryCount[]
+  // The round's categories within the other filters, the result ignored: the row's visibility reads them, so the row
+  // stays put when the result tab changes (final review M4); without them, the rows in use.
+  rankingRows?: readonly AuditRoundCategoryCount[]
   names: ReadonlyMap<string, { code: string; name: string }>
   selectedCategoryId: string | null
   topIds?: readonly string[]
@@ -109,7 +113,7 @@ export function buildAuditRoundCategoryChips({
       ? chip(selectedCategoryId, countById.get(selectedCategoryId) ?? 0)
       : null
   return {
-    visible: rows.length > 1,
+    visible: (rankingRows ?? rows).length > 1,
     all: rows.reduce((sum, row) => sum + row.count, 0),
     top,
     other,
@@ -191,13 +195,14 @@ export function buildAuditRoundPageSteps({ status, pendingItems, pendingFindings
 
 export type AuditRoundPageMainAction =
   | { kind: "walk"; count: number; target: "scan" | "pending" }
-  | { kind: "review"; count: number }
+  | { kind: "review"; count: number; decide: boolean }
   | { kind: "close"; disabled: boolean }
   | null
 
 // The card's main button follows the step (spec §8): "เดินตรวจต่อ (N)" opens the scan page for audit:edit and the
 // pending list for anyone else (spec §5, P2-R7); "พิจารณา N รายการ" counts the pending findings, the rows of the
-// findings page it opens; at step 3 "ปิดรอบตรวจ" for audit:approve, disabled while a plan is open or for the opener
+// findings page it opens, for audit:approve (decide); anyone else gets a neutral link to the same rows, no call to an
+// action the API refuses (final review M2); at step 3 "ปิดรอบตรวจ" for audit:approve, disabled while a plan is open or for the opener
 // (the API refuses both).
 export function buildAuditRoundPageMainAction({ steps, pendingItems, pendingFindings, canClose, openedByViewer, canScan, canApprove }: {
   steps: AuditRoundPageSteps | null
@@ -210,7 +215,7 @@ export function buildAuditRoundPageMainAction({ steps, pendingItems, pendingFind
 }): AuditRoundPageMainAction {
   if (!steps?.current) return null
   if (steps.current === "walk") return { kind: "walk", count: pendingItems, target: canScan ? "scan" : "pending" }
-  if (steps.current === "review") return { kind: "review", count: pendingFindings }
+  if (steps.current === "review") return { kind: "review", count: pendingFindings, decide: canApprove }
   return canApprove ? { kind: "close", disabled: !canClose || openedByViewer } : null
 }
 

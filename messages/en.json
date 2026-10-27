@@ -2211,7 +2211,8 @@
     "photoAttached": "Has a photo",
     "photoMissing": "No photo",
     "componentMark": "Component",
-    "missingComponentPrefix": "Not found:"
+    "missingComponentPrefix": "Not found:",
+    "nextStepViewPendingFindings": "View pending findings ({count})"
   },
   "auditScan": {
     "title": "Audit Scan",

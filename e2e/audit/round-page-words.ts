@@ -4,9 +4,9 @@ export const ROUND_PAGE_WORDS = {
   // The next-step card.
   nextStep: "ขั้นถัดไป",
   continueScan: "เดินตรวจต่อ ({count})",
-  // Step 2 counts findings (P2-R26).
+  // Step 2 counts findings (P2-R26); without audit:approve its main link reads as a view, not a call to review.
   reviewWaiting: "รอ {count}",
-  reviewItems: "พิจารณา {count} รายการ",
+  viewPendingFindings: "ดูรายการไม่ตรงรอพิจารณา ({count})",
   closeRound: "ปิดรอบตรวจ",
   openerCannotClose: "ผู้เปิดรอบปิดรอบเองไม่ได้ ให้หัวหน้าคนอื่นปิด",
   // The header's menus.

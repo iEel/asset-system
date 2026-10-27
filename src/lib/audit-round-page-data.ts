@@ -4,7 +4,7 @@ import { buildAuditCorrectionHistoryByItemId } from "@/lib/audit-correction-hist
 import { buildFindingValueLabels } from "@/lib/audit-finding-labels"
 import { getAuditRoundCloseChecklist } from "@/lib/audit-round-close"
 import { chunkAuditIds, withAuditRoundOwnItems } from "@/lib/audit-round-counts-rules"
-import { countAuditRoundItemCategories, findAuditRoundSearchLocationIds } from "@/lib/audit-round-list-lookups"
+import { countAuditRoundItemCategories, findAuditRoundSearchLocations } from "@/lib/audit-round-list-lookups"
 import {
   auditRoundAnyFieldFindingWhere,
   auditRoundPersonDecidedFindingWhere,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/audit-round-page-rules"
 import {
   auditFindingFields,
+  auditRoundItemListOrderBy,
   buildAuditRoundItemWhere,
   foldAuditRoundResultCounts,
   parseAuditRoundListFilters,
@@ -79,12 +80,13 @@ export type AuditRoundPageDataInput = { roundId: string; filters: AuditRoundList
 export async function getAuditRoundPageData({ roundId, filters, page, pageSize, user }: AuditRoundPageDataInput) {
   // A. The round, and the rooms the search names (the item's expected room, bug 11, P2-R5): Task 2's lookup, the one
   // the exports use (P2-R25).
-  const [round, expectedLocationIds] = await Promise.all([
+  const [round, searchRooms] = await Promise.all([
     prisma.auditRound.findFirst({ where: { id: roundId, isActive: true }, select: roundSelect }),
-    findAuditRoundSearchLocationIds(roundId, filters.search),
+    findAuditRoundSearchLocations(roundId, filters.search),
   ])
   if (!round) return null
-  const listFilters: AuditRoundListFilters = expectedLocationIds.length > 0 ? { ...filters, expectedLocationIds } : filters
+  // The round's own rooms go with the matches, so the room branch sends the smaller of in / notIn (final review M3).
+  const listFilters: AuditRoundListFilters = searchRooms.matchedRoomIds.length > 0 ? { ...filters, expectedLocationIds: searchRooms.matchedRoomIds, roundLocationIds: searchRooms.roomIds } : filters
   const roundWideFilters = parseAuditRoundListFilters({})
   const roundWideWhere = (overrides: Partial<ItemWhereInput>) => buildAuditRoundItemWhere({ ...roundWideFilters, ...overrides, roundId })
 
@@ -96,7 +98,8 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
   const rankingRows = await countAuditRoundItemCategories(buildAuditRoundItemWhere({ ...listFilters, categoryId: null, result: "all", roundId }))
   const categoryRows = filters.result === "all" ? rankingRows : await countAuditRoundItemCategories(buildAuditRoundItemWhere({ ...listFilters, categoryId: null, roundId }))
   const categoryCounts = categoryRows.map((row) => ({ id: row.categoryId, count: row.count }))
-  const topCategoryIds = auditRoundTopCategoryIds(rankingRows.map((row) => ({ id: row.categoryId, count: row.count })))
+  const categoryRanking = rankingRows.map((row) => ({ id: row.categoryId, count: row.count }))
+  const topCategoryIds = auditRoundTopCategoryIds(categoryRanking)
   const shownCategoryIds = filters.categoryId === "other" ? topCategoryIds : undefined
   const listWhere = (overrides: Partial<ItemWhereInput> = {}) => buildAuditRoundItemWhere({ ...listFilters, ...overrides, roundId, shownCategoryIds })
   const rowsWhere = listWhere()
@@ -117,7 +120,7 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
       prisma.auditItem.count({ where: listWhere({ components: "missing" }) }),
       prisma.auditItem.findMany({
         where: rowsWhere,
-        orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }, { id: "asc" }],
+        orderBy: auditRoundItemListOrderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: rowInclude(roundId),
@@ -195,7 +198,7 @@ export async function getAuditRoundPageData({ roundId, filters, page, pageSize, 
     round: { ...round, createdByLabel: userLabel(round.createdBy), cancelledByLabel: userLabel(round.cancelledBy) },
     resultCard,
     resultChips: { ...foldAuditRoundResultCounts(toCountRows(chipRows)), outOfScope: outOfScopeInFilters, pendingReview: pendingReviewInFilters },
-    categoryChips: buildAuditRoundCategoryChips({ rows: categoryCounts, names: categoryNames, selectedCategoryId, topIds: topCategoryIds }),
+    categoryChips: buildAuditRoundCategoryChips({ rows: categoryCounts, rankingRows: categoryRanking, names: categoryNames, selectedCategoryId, topIds: topCategoryIds }),
     fieldBars: { counts: fieldCounts, distinctItems: fieldItems, multipleFields: hasMultipleAuditFieldFindings(fieldCounts, fieldItems) },
     componentsMissing,
     componentsMissingInFilters,

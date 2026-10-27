@@ -7,6 +7,7 @@ import { formatDate, formatDateTime } from "@/lib/utils"
 import { buildAuditReferenceLabels } from "@/lib/audit-finding-labels"
 import { resolveAuditRoundExportFilters } from "@/lib/audit-round-list-lookups"
 import {
+  auditRoundItemListOrderBy,
   buildAuditExportFilterLabel,
   buildAuditExportFilename,
   buildAuditRoundExportSummary,
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
 async function buildAuditItemExportRows(whereInput: AuditRoundItemWhereInput): Promise<AuditPdfExportRow[]> {
   const items = await prisma.auditItem.findMany({
     where: buildAuditRoundItemWhere(whereInput),
-    orderBy: [{ auditStatus: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    orderBy: auditRoundItemListOrderBy,
     include: {
       asset: {
         select: {

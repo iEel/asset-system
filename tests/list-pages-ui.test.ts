@@ -359,7 +359,7 @@ test("audit round detail: PageHeader, the round-wide StatStrip, the result and c
   for (const part of ["<PageHeader", "<StatStrip", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<RowActions", "<KeyValueList", "<DataTableFoot>", "<Pagination", "<TabNav", "<FilterChipList"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
-  assert.match(source, /<div className=\{actionBarPagePadding\.single\}>\n\s+<PageHeader\n\s+className="mb-6"/, "the root leaves room for the ActionBar (2C plan 5, O11), so the header brings its own gap (spec 2B §4.6.1)")
+  assert.match(source, /<div className=\{!isRoundReadOnly \? actionBarPagePadding\.single : undefined\}>\n\s+<PageHeader\n\s+className="mb-6"/, "the root leaves room for the ActionBar (2C plan 5, O11), so the header brings its own gap (spec 2B §4.6.1)")
   assert.match(source, /\{ href: returnToHref, label: tCommon\("back"\), icon: <ArrowLeft className="h-4 w-4" \/> \}/, "the back item of the mobile action bar has a left arrow (B2)")
   assert.match(source, /<TabNav aria-label=\{t\("result"\)\} items=\{resultTabs\} current=\{filters\.result\} \/>/, "the result in view is the current tab")
   assert.match(source, /next=\{undefined\}\n\s+groups=\{item\.groups\}/, "แก้ไขผลตรวจ sits in ⋯ (group 2 spec §8, Appendix A §8)")
