@@ -1,7 +1,7 @@
 "use client"
 
-import { useId, useRef } from "react"
-import { AlertTriangle, CheckCircle2, MoreHorizontal, ScanLine } from "lucide-react"
+import { useId } from "react"
+import { CheckCircle2, MoreHorizontal, ScanLine } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -16,7 +16,7 @@ export type AuditScanTranslator = {
 
 // The components of the asset in the check sheet (D2, D3): a heading with the count and "พบครบทุกชิ้น", then one
 // compact row per component (about 64px): tag and status, then name · role · slot; on the right "พบ" (a check mark once
-// it is confirmed with the parent) and ⋯ with scan QR and mark missing.
+// it is confirmed with the parent), "ไม่พบ" (the missing dialog) and ⋯ with the QR scan (group 2 spec §12).
 export function AuditComponentPanel({
   components,
   saving,
@@ -40,16 +40,10 @@ export function AuditComponentPanel({
 }) {
   const tCommon = useTranslations("common")
   const headingId = useId()
-  const openingDialogRef = useRef(false)
   const checkedCount = components.filter(isAuditComponentChecked).length
   const pendingCount = components.filter(isAuditComponentPending).length
   // Not while it runs: the busy button keeps focus while each confirmation sets saving (GB4).
   const confirmAllDisabled = componentActionsDisabled || (saving && !confirmingAll)
-
-  function openMissing(component: AuditScanComponent) {
-    openingDialogRef.current = true
-    onMarkMissing(component)
-  }
 
   return (
     <section aria-labelledby={headingId} className="space-y-2">
@@ -100,27 +94,20 @@ export function AuditComponentPanel({
                   <span className="sr-only"> {component.assetTag}</span>
                 </Button>
               )}
+              <Button variant="outline" size="sm" className="min-w-16" disabled={rowDisabled} onClick={() => onMarkMissing(component)}>
+                {t("componentMarkMissing")}
+                <span className="sr-only"> {component.assetTag}</span>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon-sm" aria-label={tCommon("moreActionsFor", { code: component.assetTag })} title={tCommon("moreActionsFor", { code: component.assetTag })}>
                     <MoreHorizontal aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  onCloseAutoFocus={(event) => {
-                    if (!openingDialogRef.current) return
-                    openingDialogRef.current = false
-                    event.preventDefault()
-                  }}
-                >
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem disabled={saving || confirmingAll} onSelect={() => onScanComponent(component)}>
                     <ScanLine aria-hidden="true" />
                     {t("componentScanQr")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled={rowDisabled} onSelect={() => openMissing(component)}>
-                    <AlertTriangle aria-hidden="true" />
-                    {t("componentMarkMissing")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

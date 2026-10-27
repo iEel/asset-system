@@ -24,7 +24,7 @@ test("one save button names the result, and a missing photo blocks it with a rea
   // The photo gate keeps save focusable with its reason (v-track plan 2 U6); a closed round still disables it.
   assert.match(source, /aria-disabled=\{missingPhoto \|\| undefined\}\n\s+aria-describedby=\{missingPhoto \? "audit-check-photo-reason" : undefined\}\n\s+disabled=\{disabled\}\n/)
   assert.doesNotMatch(source, /disabled=\{saving \|\| disabled \|\| missingPhoto\}/)
-  assert.match(source, /variant=\{diff\.length === 0 \? "default" : "warning"\}/)
+  assert.match(source, /variant=\{marked\.length === 0 \? "default" : "warning"\}/)
   assert.doesNotMatch(source, /dataMatches|dataMismatch|quickMatched/)
 })
 
@@ -34,10 +34,12 @@ test("an item someone else checked while the sheet was open says so before savin
   assert.match(source, /t\("sheetStatusJustChecked", \{ name: liveItem\.scannedByName \?\? "-" \}\)/)
 })
 
-test("choosing a custodian fills that person's department unless the department was changed by hand", () => {
+test("choosing a custodian fills that person's department unless the department was set by hand; the rule is the record rules' (group 2 plan 3 P3-R11)", () => {
   const source = form()
-  assert.match(source, /departmentTouched \? null : suggestDepartmentForCustodian\(options\.employees, next\)/)
-  assert.match(source, /setDepartmentTouched\(true\)/)
+  assert.match(source, /chooseAuditCheckValue\(current, field, auditCheckValueFromFound\(id\), recordContext\)/)
+  const rules = read("src/lib/audit-check-record-rules.ts")
+  assert.match(rules, /const suggested = suggestDepartmentForCustodian\(context\.employees, value\)/)
+  assert.match(rules, /if \(field !== "custodian" \|\| !requiresCustodian\(context\.ownershipType\) \|\| record\.departmentTouched\) return next/)
 })
 
 test("the immediate-correction box only appears for approvers with a location or custodian mismatch, under the save button", () => {
@@ -79,12 +81,13 @@ test("a matching field has no box; only a mismatch keeps the warning box and the
   assert.doesNotMatch(source, /border-border bg-surface/)
 })
 
-test("a field shows the system value when it differs and the latest register value when it moved", () => {
+test("a field shows the expected value in its row, struck through on ไม่ตรง, and the latest register value when it moved (group 2 spec §12)", () => {
   const source = read("src/components/audit/audit-scan-check-field.tsx")
   assert.match(source, /<SearchableSelect/)
-  assert.match(source, /t\("inSystem", \{ value: labelFor\(expectedValue\) \}\)/)
+  assert.match(source, /\{labelFor\(expectedValue\)\}<\/p>/)
   assert.match(source, /t\("latestValue", \{ value: labelFor\(latestValue\) \}\)/)
   assert.match(source, /border-warning-border bg-warning-soft/)
+  assert.doesNotMatch(source, /t\("inSystem"/)
 })
 
 test("the panel is a bottom sheet on phones that returns focus, and an inline aside on wide screens", () => {
@@ -97,7 +100,7 @@ test("the panel is a bottom sheet on phones that returns focus, and an inline as
 
 test("the save button names mismatched fields with the same words as the field labels", () => {
   const source = form()
-  assert.match(source, /const fields = diff\.map\(\(field\) => t\(fieldLabelKey\[field\]\)\)\.join\(", "\)/)
+  assert.match(source, /const fields = marked\.map\(\(field\) => t\(fieldLabelKey\[field\]\)\)\.join\(", "\)/)
   assert.doesNotMatch(source, /mismatchShortKey/)
   assert.doesNotMatch(source, /wrongLocation/)
 })
@@ -111,7 +114,8 @@ test("the phone sheet falls back to a list target when its return target is gone
 test("the wide panel moves focus to its heading when an item opens", () => {
   const source = read("src/components/audit/audit-scan-check-panel.tsx")
   assert.match(source, /<h2 ref=\{headingRef\} tabIndex=\{-1\}/)
-  assert.match(source, /useEffect\(\(\) => \{\s*\n\s*if \(isWide && open\) headingRef\.current\?\.focus\(\)\s*\n\s*\}, \[isWide, open, title\]\)/)
+  assert.match(source, /useEffect\(\(\) => \{\s*\n\s*if \(isWide && open\) headingRef\.current\?\.focus\(\)\s*\n\s*\}, \[isWide, open, focusKey\]\)/)
+  assert.match(read("src/components/audit/audit-scan-workspace.tsx"), /focusKey=\{targetKey\}/)
 })
 
 test("components keep their three actions and the missing dialog keeps its shared dialog and dropzone", () => {
@@ -123,7 +127,7 @@ test("components keep their three actions and the missing dialog keeps its share
 })
 
 test("check sheet copy exists in Thai and English", () => {
-  const keys = ["sheetStatusPending", "sheetStatusEdit", "sheetStatusNotFound", "sheetStatusOutOfScope", "sheetStatusJustChecked", "inSystem", "latestValue", "noOptionMatch", "clearValue", "addNotePhoto", "photoType", "photoRequiredCondition", "photoRequiredPlacement", "photoRequiredMismatch", "componentsSection", "saveAllMatch", "saveMismatch", "saveEditAllMatch", "saveEditMismatch", "saveOutOfScope", "notThisOne", "checkPanelEmpty"]
+  const keys = ["sheetHintFirstScan", "sheetStatusEdit", "sheetStatusNotFound", "sheetStatusOutOfScope", "sheetStatusJustChecked", "fieldMatch", "fieldMismatch", "foundValue", "foundPlaceholder", "chooseFoundValue", "departmentFollowsCustodian", "valueNotInList", "latestValue", "noOptionMatch", "addNotePhoto", "photoType", "photoRequiredCondition", "photoRequiredPlacement", "photoRequiredMismatch", "componentsSection", "saveAllMatch", "saveMismatch", "saveEditAllMatch", "saveEditMismatch", "saveOutOfScope", "notThisOne", "checkPanelEmpty"]
   for (const locale of ["th", "en"] as const) {
     assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
   }
@@ -138,5 +142,5 @@ test("the phone check sheet takes its X name and header from Sheet (2C batch 3)"
   const source = read("src/components/audit/audit-scan-check-panel.tsx")
   assert.doesNotMatch(source, /closeLabel=|<SheetHeader className=|tCommon/)
   assert.match(source, /<SheetContent\n\s+side="bottom"\n\s+className="max-h-\[92dvh\] gap-0 rounded-t-xl"\n\s+onCloseAutoFocus=/)
-  assert.match(source, /<SheetHeader>\n\s+<SheetTitle>\{title\}<\/SheetTitle>\n\s+<SheetDescription className="truncate">\{description\}<\/SheetDescription>\n\s+<\/SheetHeader>/)
+  assert.match(source, /<SheetHeader>\n\s+<SheetTitle>\{title\}<\/SheetTitle>\n\s+<SheetDescription>\{description\}<\/SheetDescription>\n\s+<\/SheetHeader>/)
 })

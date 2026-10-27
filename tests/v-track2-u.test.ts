@@ -195,20 +195,20 @@ test("batch review: approve and reject stay focusable with nothing selected and 
   assert.equal(en.auditFinding.batchNeedsSelection, "Nothing selected yet. Select at least one discrepancy before you decide.")
 })
 
-test("scan check: the location's star has its rule and its error, focus stays inside the sheet, and a missing photo keeps save focusable with its reason (v-track U6)", () => {
+test("scan check: the location's rule and each ไม่ตรง row's ที่พบ have their errors, focus stays inside the sheet, and a missing photo keeps save focusable with its reason (v-track U6; group 2 spec §12)", () => {
   const source = read(`${C}audit-scan-check-form.tsx`)
   // No <form>: the check is a panel of rows, photos and component actions (U-R11); validate() is its only check.
   assert.doesNotMatch(source, /<form\b/)
   assert.match(source, /import \{ useFieldErrors \} from "@\/components\/ui\/use-field-errors"/)
-  assert.match(source, /const FIELD_IDS = \{\n  actualLocationId: "audit-check-location",\n\} as const/)
-  assert.ok(validateBody(source).includes('check("actualLocationId", required(values.location))'))
-  // The location select (AuditScanCheckField) gets the table's id and its error; the other three are optional.
-  assert.match(source, /\{\n\s+field: "location",\n\s+key: "actualLocationId",\n\s+required: true,/)
-  assert.match(source, /<AuditScanCheckField\n\s+key=\{config\.field\}\n\s+id=\{config\.key \? FIELD_IDS\[config\.key\] : undefined\}\n/)
-  assert.match(source, /\n\s+error=\{config\.key \? fieldErrors\.message\(config\.key\) : undefined\}\n/)
-  assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, location: value \}\)\)\n\s+fieldErrors\.clear\("actualLocationId"\)/)
+  assert.match(source, /const FIELD_IDS = \{\n  actualLocationId: "audit-check-location",\n  actualCustodianId: "audit-check-custodian",\n  actualDepartmentId: "audit-check-department",\n  actualConditionId: "audit-check-condition",\n\} as const/)
+  assert.ok(validateBody(source).includes('check("actualLocationId", required(values.location) ?? chosen("location"))'))
+  // Each row's "ที่พบ" picker gets the table's id and its error; a row marked ไม่ตรง with nothing chosen is one (group 2 spec §12).
+  assert.ok(validateBody(source).includes('check("actualDepartmentId", chosen("department"))'))
+  assert.match(source, /<AuditScanCheckField\n\s+key=\{field\}\n\s+id=\{FIELD_IDS\[FIELD_KEY\[field\]\]\}\n/)
+  assert.match(source, /\n\s+error=\{fieldError\(FIELD_KEY\[field\]\)\}\n/)
+  assert.match(source, /setRecord\(\(current\) => chooseAuditCheckValue\(current, field, auditCheckValueFromFound\(id\), recordContext\)\)\n\s+fieldErrors\.clear\(FIELD_KEY\[field\]\)/)
   // Save: the photo gate returns first, then the fields; focus is brought into the check's own scroll area (spec §4.2).
-  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) \{\n\s+setExtrasOpen\(true\)\n\s+return\n\s+\}\n\s+fieldErrors\.setErrors\(validate\(values\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
+  assert.match(source, /async function save\(\) \{\n\s+if \(missingPhoto\) \{\n\s+setExtrasOpen\(true\)\n\s+return\n\s+\}\n\s+fieldErrors\.setErrors\(validate\(values, auditCheckUnchosenFields\(record, ownershipType\)\)\)\n\s+if \(focusFirstError\(\)\) return\n/)
   assert.match(source, /reveal: \(key\) => revealFocusInScrollArea\(bodyRef\.current, document\.getElementById\(FIELD_IDS\[key\]\)\)/)
   // The photo is a prerequisite (spec §4.4): aria-disabled tied to the Notice that says why; a closed round still disables.
   assert.match(source, /<Notice id="audit-check-photo-reason" tone="neutral">/)

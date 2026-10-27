@@ -57,9 +57,9 @@ test("check form: the installed-in note is an info Notice, the note and photo to
   assert.doesNotMatch(source, /<button\b|<label\b|\btext-xs\b|\b(?:bg|border|text)-info\b|-info-|\btext-primary\b|\btext-warning\b|checkboxVariants/)
 })
 
-test("check field: the system value and the latest register value are meta lines under the field (DESIGN.md Typography: hints are text-meta)", () => {
+test("check field: the expected value is a line in the row, struck through on ไม่ตรง, and the latest register value a meta line (DESIGN.md Typography: hints are text-meta; group 2 spec §12)", () => {
   const source = read(`${A}audit-scan-check-field.tsx`)
-  assert.match(source, /<p className="mt-1 text-meta font-medium text-warning">\{t\("inSystem", \{ value: labelFor\(expectedValue\) \}\)\}<\/p>/)
+  assert.match(source, /<p className=\{cn\("break-words text-sm", mismatch \? "text-muted-foreground line-through" : "text-foreground"\)\}>\{labelFor\(expectedValue\)\}<\/p>/)
   assert.match(source, /<p className="mt-0\.5 text-meta text-muted-foreground">\{t\("latestValue", \{ value: labelFor\(latestValue\) \}\)\}<\/p>/)
   // Only a mismatch keeps its warning box (audit mobile fix D1).
   assert.match(source, /className=\{mismatch \? "rounded-md border border-warning-border bg-warning-soft p-2\.5" : undefined\}/)
@@ -83,8 +83,8 @@ test("check panel and workspace: the side panel on the panel classes, its empty 
   assert.match(panel, /description: ReactNode/)
   assert.doesNotMatch(panel, /border-dashed|rounded-lg border border-border bg-surface/)
   const workspace = read(`${A}audit-scan-workspace.tsx`)
-  assert.match(workspace, /const targetDescription: ReactNode = target\?\.kind === "item"/)
-  assert.match(workspace, /\{target\.item\.serialNumber \? <> · Serial <span className="tag">\{target\.item\.serialNumber\}<\/span><\/> : null\}/)
+  assert.match(workspace, /const targetDescription: ReactNode = target \? \(/)
+  assert.match(workspace, /\{targetSerial \? <> · Serial <span className="tag whitespace-normal break-all">\{targetSerial\}<\/span><\/> : null\}/)
   assert.match(workspace, /<Notice\s+tone="danger"\s+role="alert"\s+action=\{\s*<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\s*\{t\("backToRound"\)\}\s*<\/Link>\s*\}\s*>\s*\{t\("roundClosedError"\)\}\s*<\/Notice>/)
   assert.doesNotMatch(workspace, /bg-danger-soft|hover:underline|`Serial \$\{/)
 })

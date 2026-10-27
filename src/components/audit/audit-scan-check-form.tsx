@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { ChevronDown, ImagePlus, Loader2, X } from "lucide-react"
+import { Camera, ChevronDown, ImagePlus, Loader2, X } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { ChoiceCard } from "@/components/ui/choice-card"
@@ -25,7 +25,6 @@ import {
   isAuditItemChecked,
   masterCheckValues,
   requiresCheckPhoto,
-  suggestDepartmentForCustodian,
   type AuditCheckField,
   type AuditCheckMode,
   type AuditCheckValues,
@@ -34,6 +33,22 @@ import {
   type AuditScanOptions,
   type AuditScanRoom,
 } from "@/lib/audit-scan-session"
+import {
+  auditCheckCustodianOptions,
+  auditCheckFoundOptions,
+  auditCheckFoundValue,
+  auditCheckMarkedFields,
+  auditCheckShownFields,
+  auditCheckUnchosenFields,
+  auditCheckValueFromFound,
+  chooseAuditCheckValue,
+  pressAuditCheckMatch,
+  pressAuditCheckMismatch,
+  startAuditCheckRecord,
+  type AuditCheckFieldMode,
+  type AuditCheckRecord,
+  type AuditCheckRecordContext,
+} from "@/lib/audit-check-record-rules"
 import { auditOutOfScopeRescanEvidenceFields } from "@/lib/audit-out-of-scope-rescan"
 import { required } from "@/lib/validation-rules"
 
@@ -65,22 +80,37 @@ const fieldLabelKey = {
   condition: "expectedCondition",
 } as const
 
-// The fields in visual order, keyed like the scan body's actual… ids, with the id focus moves to (v-track M-R1). Only
-// the location has a rule; the other three are optional and the server never refuses them.
+// The fields in visual order, keyed like the scan body's actual… ids, with the id of each row's "ที่พบ" picker, where
+// focus moves (v-track M-R1). The location keeps its rule; any row marked ไม่ตรง must name what was found (spec §12).
 const FIELD_IDS = {
   actualLocationId: "audit-check-location",
+  actualCustodianId: "audit-check-custodian",
+  actualDepartmentId: "audit-check-department",
+  actualConditionId: "audit-check-condition",
 } as const
 type CheckField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckField[]
+const FIELD_KEY: Record<AuditCheckField, CheckField> = {
+  location: "actualLocationId",
+  custodian: "actualCustodianId",
+  department: "actualDepartmentId",
+  condition: "actualConditionId",
+}
+// The code validate() gives a ไม่ตรง row with nothing chosen; the form shows auditScan.chooseFoundValue for it.
+const CHOOSE_FOUND = "chooseFoundValue"
 
 // The check is not a form element (it is a panel of rows, photos and component actions), so nothing checks it but this:
-// the location keeps its star and its rule (v-track M-R2, U-R11).
-function validate(values: AuditCheckValues): Partial<Record<CheckField, string>> {
+// the location keeps its rule (v-track M-R2, U-R11), and a row marked ไม่ตรง needs its "ที่พบ" (spec §12).
+function validate(values: AuditCheckValues, unchosen: readonly AuditCheckField[]): Partial<Record<CheckField, string>> {
   const errors: Partial<Record<CheckField, string>> = {}
   const check = (key: CheckField, code: string | null) => {
     if (code) errors[key] = code
   }
-  check("actualLocationId", required(values.location))
+  const chosen = (field: AuditCheckField) => (unchosen.includes(field) ? CHOOSE_FOUND : null)
+  check("actualLocationId", required(values.location) ?? chosen("location"))
+  check("actualCustodianId", chosen("custodian"))
+  check("actualDepartmentId", chosen("department"))
+  check("actualConditionId", chosen("condition"))
   return errors
 }
 
@@ -133,14 +163,21 @@ export function AuditScanCheckForm({
     ? expectedCheckValues(target.item)
     : target.recorded ? expectedCheckValues(target.recorded) : masterCheckValues(lookupMasterValues(target.asset))
   const ownershipType = target.kind === "item" ? target.item.ownershipType : target.asset.ownershipType ?? null
-  const [values, setValues] = useState<AuditCheckValues>(() =>
-    target.kind === "item"
-      ? buildCheckDefaults({ mode: target.openedMode, item: target.item, room })
-      : target.recorded
-        ? buildCheckDefaults({ mode: "edit", item: target.recorded, room })
-        : buildCheckDefaults({ mode: "out_of_scope", master: lookupMasterValues(target.asset), room }),
+  const recordContext: AuditCheckRecordContext = { expected, ownershipType, employees: options.employees }
+  // One record: the values the save sends, and beside them each row's ตรง / ไม่ตรง and whether "ที่พบ" is chosen (P3-R8).
+  // An edit, or a recorded out-of-scope find, starts from the saved result: a saved difference opens ไม่ตรง with
+  // that value chosen, the rest ตรง (P3-R21).
+  const [record, setRecord] = useState<AuditCheckRecord>(() =>
+    startAuditCheckRecord(
+      target.kind === "item"
+        ? buildCheckDefaults({ mode: target.openedMode, item: target.item, room })
+        : target.recorded
+          ? buildCheckDefaults({ mode: "edit", item: target.recorded, room })
+          : buildCheckDefaults({ mode: "out_of_scope", master: lookupMasterValues(target.asset), room }),
+      recordContext,
+    ),
   )
-  const [departmentTouched, setDepartmentTouched] = useState(false)
+  const values = record.values
   const [remark, setRemark] = useState("")
   const [photos, setPhotos] = useState<QueuedAuditPhoto[]>([])
   const [photoLabel, setPhotoLabel] = useState("")
@@ -159,6 +196,9 @@ export function AuditScanCheckForm({
       idFor: (key) => FIELD_IDS[key],
       reveal: (key) => revealFocusInScrollArea(bodyRef.current, document.getElementById(FIELD_IDS[key])),
     })
+  // "เลือกค่าที่พบ" is the record sheet's own sentence (auditScan), not a common.validation code.
+  const fieldError = (key: CheckField) => (fieldErrors.errors[key] === CHOOSE_FOUND ? t("chooseFoundValue") : fieldErrors.message(key))
+  const shown = auditCheckShownFields(ownershipType)
   const diff = diffCheckValues(values, expected, ownershipType)
   // A recorded find (P3-R18): a photo only for a field that differs from the snapshot and that this save changes from
   // what was recorded, the scan route's own rule, so a remark-only edit needs none. A first record and an own item keep
@@ -166,6 +206,7 @@ export function AuditScanCheckForm({
   const recordedValues = target.kind === "out_of_scope" && target.recorded ? buildCheckDefaults({ mode: "edit", item: target.recorded, room }) : null
   const photoDiff = recordedValues ? auditOutOfScopeRescanEvidenceFields(diff, values, recordedValues) : diff
   const photoRequired = requiresCheckPhoto(mode, photoDiff)
+  const marked = auditCheckMarkedFields(record, ownershipType)
   const missingPhoto = photoRequired && photos.length === 0
   const notes = target.kind === "item" ? getLatestValueNotes(target.item) : {}
   const pendingComponents = target.kind === "item" ? components.components.filter(isAuditComponentPending) : []
@@ -207,19 +248,28 @@ export function AuditScanCheckForm({
   }), [options])
 
   function labelFor(field: AuditCheckField) {
-    return (id: string) => (id ? labels[field].get(id) ?? id : t("none"))
+    return (id: string) => (id ? labels[field].get(id) ?? t("valueNotInList") : t("none"))
   }
 
-  function changeCustodian(next: string) {
-    setValues((current) => {
-      const suggested = departmentTouched ? null : suggestDepartmentForCustodian(options.employees, next)
-      return { ...current, custodian: next, department: suggested ?? current.department }
-    })
+  // "ที่พบ" lists: ไม่มี / ไม่ระบุ first except for the location (P3-R9, P3-R20); a custodian reads "code - name · department" (P3-R10).
+  const foundOptions = useMemo(() => ({
+    location: auditCheckFoundOptions("location", options.locations, t("none")),
+    custodian: auditCheckFoundOptions("custodian", auditCheckCustodianOptions(options.employees, options.departments), t("none")),
+    department: auditCheckFoundOptions("department", options.departments, t("none")),
+    condition: auditCheckFoundOptions("condition", options.conditions, t("none")),
+  }), [options, t])
+
+  // ตรง resets the value (and a department that followed a found custodian); ไม่ตรง opens "ที่พบ" with nothing chosen.
+  function changeMode(field: AuditCheckField, mode: AuditCheckFieldMode) {
+    setRecord((current) => (mode === "match" ? pressAuditCheckMatch(current, field, recordContext) : pressAuditCheckMismatch(current, field)))
+    fieldErrors.clear(FIELD_KEY[field])
   }
 
-  function changeDepartment(next: string) {
-    setDepartmentTouched(true)
-    setValues((current) => ({ ...current, department: next }))
+  // Choosing the expected value turns the row back to ตรง; a new custodian brings that person's department (N-AU1)
+  // unless the person set the department (spec §12, P3-R11).
+  function chooseFound(field: AuditCheckField, id: string) {
+    setRecord((current) => chooseAuditCheckValue(current, field, auditCheckValueFromFound(id), recordContext))
+    fieldErrors.clear(FIELD_KEY[field])
   }
 
   function addPhotos(files: File[]) {
@@ -269,7 +319,7 @@ export function AuditScanCheckForm({
       setExtrasOpen(true)
       return
     }
-    fieldErrors.setErrors(validate(values))
+    fieldErrors.setErrors(validate(values, auditCheckUnchosenFields(record, ownershipType)))
     if (focusFirstError()) return
     if (pendingComponents.length > 0) {
       const proceed = await confirm({
@@ -288,7 +338,7 @@ export function AuditScanCheckForm({
       return t("sheetStatusJustChecked", { name: liveItem.scannedByName ?? "-" })
     }
     if (target.openedMode === "scan") {
-      return target.item.auditResult === "not_found" ? t("sheetStatusNotFound") : t("sheetStatusPending")
+      return target.item.auditResult === "not_found" ? t("sheetStatusNotFound") : t("sheetHintFirstScan")
     }
     const time = target.item.lastScanAt
       ? new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date(target.item.lastScanAt))
@@ -296,28 +346,13 @@ export function AuditScanCheckForm({
     return t("sheetStatusEdit", { time, name: target.item.scannedByName ?? "-" })
   })()
 
-  const fields = diff.map((field) => t(fieldLabelKey[field])).join(", ")
+  // The rows marked ไม่ตรง, in field order: the diff, plus a row still waiting for its "ที่พบ" (P3-R8).
+  const fields = marked.map((field) => t(fieldLabelKey[field])).join(", ")
   const saveLabel = mode === "out_of_scope"
     ? t("saveOutOfScope")
     : mode === "edit"
-      ? diff.length === 0 ? t("saveEditAllMatch") : t("saveEditMismatch", { count: diff.length, fields })
-      : diff.length === 0 ? t("saveAllMatch") : t("saveMismatch", { count: diff.length, fields })
-
-  const fieldConfig: Array<{ field: AuditCheckField; key?: CheckField; required?: boolean; options: Array<{ id: string; label: string }>; onChange: (value: string) => void }> = [
-    {
-      field: "location",
-      key: "actualLocationId",
-      required: true,
-      options: options.locations,
-      onChange: (value) => {
-        setValues((current) => ({ ...current, location: value }))
-        fieldErrors.clear("actualLocationId")
-      },
-    },
-    { field: "custodian", options: options.employees, onChange: changeCustodian },
-    { field: "department", options: options.departments, onChange: changeDepartment },
-    { field: "condition", options: options.conditions, onChange: (value) => setValues((current) => ({ ...current, condition: value })) },
-  ]
+      ? marked.length === 0 ? t("saveEditAllMatch") : t("saveEditMismatch", { count: marked.length, fields })
+      : marked.length === 0 ? t("saveAllMatch") : t("saveMismatch", { count: marked.length, fields })
 
   return (
     // A flex column inside the sheet or the wide panel: the fields scroll, the action bar under them never does (D1).
@@ -325,22 +360,25 @@ export function AuditScanCheckForm({
       <div ref={bodyRef} data-audit-check-body className="min-h-0 flex-1 scroll-py-3 space-y-3 overflow-y-auto px-4 py-3">
         <p className="text-sm text-muted-foreground">{statusLine}</p>
 
+        {/* Only the fields the server compares for this asset (bug 22, P3-R11); a hidden one sends the expected value. */}
         <div className="space-y-3">
-          {fieldConfig.map((config) => (
+          {shown.map((field) => (
             <AuditScanCheckField
-              key={config.field}
-              id={config.key ? FIELD_IDS[config.key] : undefined}
-              label={t(fieldLabelKey[config.field])}
-              value={values[config.field]}
-              options={config.options}
-              required={config.required}
-              expectedValue={expected[config.field]}
-              latestValue={config.field === "condition" ? undefined : notes[config.field]}
-              mismatch={diff.includes(config.field)}
+              key={field}
+              id={FIELD_IDS[FIELD_KEY[field]]}
+              field={field}
+              label={t(fieldLabelKey[field])}
+              state={record.fields[field]}
+              value={auditCheckFoundValue(record, field)}
+              options={foundOptions[field]}
+              expectedValue={expected[field]}
+              latestValue={field === "condition" ? undefined : notes[field]}
+              followsCustodian={field === "department" && record.departmentFollowsCustodian}
               disabled={saving || disabled}
-              labelFor={labelFor(config.field)}
-              error={config.key ? fieldErrors.message(config.key) : undefined}
-              onChange={config.onChange}
+              labelFor={labelFor(field)}
+              error={fieldError(FIELD_KEY[field])}
+              onModeChange={(next) => changeMode(field, next)}
+              onChange={(id) => chooseFound(field, id)}
             />
           ))}
         </div>
@@ -383,7 +421,10 @@ export function AuditScanCheckForm({
             onClick={() => setExtrasOpen((current) => !current)}
             className="w-full justify-between"
           >
-            {t("addNotePhoto")}
+            <span className="inline-flex items-center gap-1.5">
+              <Camera aria-hidden="true" />
+              {t("addNotePhoto")}
+            </span>
             <ChevronDown aria-hidden="true" />
           </Button>
           {extrasOpen ? (
@@ -465,7 +506,7 @@ export function AuditScanCheckForm({
         <div className="flex items-stretch gap-2">
           <Button
             type="button"
-            variant={diff.length === 0 ? "default" : "warning"}
+            variant={marked.length === 0 ? "default" : "warning"}
             className="min-h-12 min-w-0 flex-1 whitespace-normal py-2 text-base md:h-auto md:min-h-10 aria-disabled:pointer-events-auto"
             busy={saving}
             aria-disabled={missingPhoto || undefined}

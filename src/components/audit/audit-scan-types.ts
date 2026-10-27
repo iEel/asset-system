@@ -49,6 +49,7 @@ export type AuditLookupAsset = {
   assetTag: string
   title: string
   subtitle: string
+  serialNumber: string | null
   currentLocationId: string
   custodianId: string | null
   departmentId: string | null

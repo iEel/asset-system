@@ -11,6 +11,7 @@ export function AuditScanCheckPanel({
   isWide,
   open,
   title,
+  focusKey,
   description,
   onOpenChange,
   returnFocusRef,
@@ -20,7 +21,9 @@ export function AuditScanCheckPanel({
   isWide: boolean
   open: boolean
   title: string
-  /** The asset's name and serial; the serial is a tag. */
+  /** Changes each time an item opens (the workspace's targetKey), so the wide panel's heading takes focus even when two assets share a name. */
+  focusKey: number
+  /** The asset's code and serial, each a tag (group 2 spec §12). */
   description: ReactNode
   onOpenChange: (open: boolean) => void
   returnFocusRef: RefObject<HTMLElement | null>
@@ -34,7 +37,7 @@ export function AuditScanCheckPanel({
   // The inline panel sits beside the list; jump focus to it so keyboard users need not tab through every row.
   useEffect(() => {
     if (isWide && open) headingRef.current?.focus()
-  }, [isWide, open, title])
+  }, [isWide, open, focusKey])
 
   if (isWide) {
     return open ? (
@@ -43,7 +46,7 @@ export function AuditScanCheckPanel({
       <aside data-audit-check-panel aria-label={title} className={cn(getPanelClasses(), "sticky top-4 flex max-h-[calc(100dvh_-_var(--shell-top)_-_3rem)] flex-col self-start")}>
         <div className="shrink-0 border-b border-border px-4 py-3">
           <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold text-foreground outline-none">{title}</h2>
-          <p className="truncate text-sm text-muted-foreground">{description}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
         {children}
       </aside>
@@ -70,7 +73,7 @@ export function AuditScanCheckPanel({
       >
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription className="truncate">{description}</SheetDescription>
+          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
         {children}
       </SheetContent>

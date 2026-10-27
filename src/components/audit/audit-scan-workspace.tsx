@@ -760,11 +760,17 @@ export function AuditScanWorkspace({
   }
 
   const searching = isAuditSearchReady(term)
-  const targetTitle = target?.kind === "item" ? target.item.assetTag : target?.asset.assetTag ?? ""
-  // The serial is a code, so it shows as a tag; an out-of-scope subtitle is the asset's name.
-  const targetDescription: ReactNode = target?.kind === "item"
-    ? <>{target.item.name}{target.item.serialNumber ? <> · Serial <span className="tag">{target.item.serialNumber}</span></> : null}</>
-    : target?.asset.subtitle ?? ""
+  // The sheet's title is the asset's name, wrapping (bug 23); line 2 its code and serial, each a tag that may wrap inside
+  // the line (group 2 spec §12, P3-R12). An out-of-scope find's name is the lookup's subtitle.
+  const targetTitle = target?.kind === "item" ? target.item.name : target?.asset.subtitle ?? ""
+  const targetCode = target?.kind === "item" ? target.item.assetTag : target?.asset.assetTag ?? ""
+  const targetSerial = target?.kind === "item" ? target.item.serialNumber : target?.asset.serialNumber ?? null
+  const targetDescription: ReactNode = target ? (
+    <>
+      <span className="tag whitespace-normal break-all">{targetCode}</span>
+      {targetSerial ? <> · Serial <span className="tag whitespace-normal break-all">{targetSerial}</span></> : null}
+    </>
+  ) : ""
 
   return (
     <div data-audit-scan-workspace className="mx-auto max-w-6xl lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-6">
@@ -879,6 +885,7 @@ export function AuditScanWorkspace({
         isWide={isWide}
         open={target !== null}
         title={targetTitle}
+        focusKey={targetKey}
         description={targetDescription}
         onOpenChange={(open) => {
           if (!open) closeTarget()

@@ -276,7 +276,7 @@ test("a tap on the audit check's waiting save opens the note-and-photo section, 
   // The walk taps the waiting save instead of finding the section itself.
   const walk = read("e2e/audit/field-audit.spec.ts")
   // Task 51 loop 11 waits for the condition's list to close before the tap (the two lines it adds are allowed here).
-  assert.match(walk, /toHaveAttribute\("aria-disabled", "true"\)\n(?:[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*(?:\s*await expect\(page\.getByRole\("listbox"\)\)\.toHaveCount\(0\)\n\s*await settleToasts\(page\)\n)?\s*await scan\.saveButton\(page\)\.click\(\{ force: true \}\)\n\s*await expect\(scan\.checkForm\(page\)\.getByRole\("button", \{ name: "หมายเหตุ \/ รูป" \}\)\)\.toHaveAttribute\("aria-expanded", "true"\)\n\s*await scan\.addPhoto\(/)
+  assert.match(walk, /toHaveAttribute\("aria-disabled", "true"\)\n(?:[^\n]*\n)?(?:\s*\/\/[^\n]*\n)*(?:\s*await expect\(page\.getByRole\("listbox"\)\)\.toHaveCount\(0\)\n\s*await settleToasts\(page\)\n)?\s*await scan\.saveButton\(page\)\.click\(\{ force: true \}\)\n\s*await expect\(scan\.checkForm\(page\)\.getByRole\("button", \{ name: "ถ่ายรูป \/ เพิ่มหมายเหตุ" \}\)\)\.toHaveAttribute\("aria-expanded", "true"\)\n\s*await scan\.addPhoto\(/)
 })
 
 test("the bulk execution's dialog takes one shared reference document number for the rows that have none (e2e decision DX2 (ก): D2)", async () => {

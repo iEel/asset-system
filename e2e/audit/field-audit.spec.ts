@@ -152,7 +152,7 @@ test.describe("IT staff walk room A", () => {
     await measure.recordPage("check of the matched asset")
     if (e2eDevice === "phone") {
       // The keyboard opens over the sheet for the note: the note stays above the pinned save bar, and the bar on screen.
-      await scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" }).click()
+      await scan.checkForm(page).getByRole("button", { name: "ถ่ายรูป / เพิ่มหมายเหตุ" }).click()
       const note = scan.checkForm(page).getByLabel("หมายเหตุผู้ตรวจ")
       await note.click()
       await page.setViewportSize(scan.KEYBOARD_OPEN_VIEWPORT)
@@ -184,7 +184,7 @@ test.describe("IT staff walk room A", () => {
     await expect(page.getByRole("listbox")).toHaveCount(0)
     await settleToasts(page)
     await scan.saveButton(page).click({ force: true })
-    await expect(scan.checkForm(page).getByRole("button", { name: "หมายเหตุ / รูป" })).toHaveAttribute("aria-expanded", "true")
+    await expect(scan.checkForm(page).getByRole("button", { name: "ถ่ายรูป / เพิ่มหมายเหตุ" })).toHaveAttribute("aria-expanded", "true")
     await scan.addPhoto(page, fromRoot("e2e/fixtures/photo.png"))
     await expect(scan.saveButton(page)).not.toHaveAttribute("aria-disabled", "true")
     await recordSettled(page, measure, "check of the mismatch with its photo")

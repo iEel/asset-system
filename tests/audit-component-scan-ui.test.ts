@@ -76,7 +76,7 @@ test("audit scan component UI copy is translated", () => {
 
 const sliceFrom = (source: string, start: string, end: string) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)))
 
-test("each component is one compact row: tag, StatusBadge, name · role · slot, a พบ Button and a ⋯ menu (D2)", () => {
+test("each component is one compact row: tag, StatusBadge, name · role · slot, พบ and ไม่พบ Buttons and a ⋯ menu with the QR scan (D2; group 2 spec §12)", () => {
   const panels = read("src/components/audit/audit-scan-panels.tsx")
   const panel = sliceFrom(panels, "export function AuditComponentPanel", "export function AuditQrScannerOverlay")
   assert.doesNotMatch(panel, /<button\b|rounded-full|lg:min-w-\[28rem\]|Loader2/, "shared Button, StatusBadge and menu only")
@@ -89,12 +89,13 @@ test("each component is one compact row: tag, StatusBadge, name · role · slot,
   // A confirmed row shows a check mark where the พบ button was; an out-of-round row keeps a disabled พบ.
   assert.match(panel, /\{isConfirmedWithParent \? \([\s\S]*?<CheckCircle2[\s\S]*?\) : \([\s\S]*?<Button[\s\S]*?variant="outline"[\s\S]*?size="sm"[\s\S]*?disabled=\{rowDisabled\}[\s\S]*?t\("componentFound"\)/)
   assert.match(panel, /const rowDisabled = saving \|\| confirmingAll \|\| componentActionsDisabled \|\| !component\.auditItemId/)
-  // The ⋯ menu: the shared dropdown, a 44px icon button below md, scan QR and mark missing.
+  // ไม่พบ sits beside พบ and opens the missing dialog itself (group 2 spec §12); ⋯ keeps the QR scan only, so no menu
+  // closes into a dialog and the focus guard is gone.
+  assert.match(panel, /<Button variant="outline" size="sm" className="min-w-16" disabled=\{rowDisabled\} onClick=\{\(\) => onMarkMissing\(component\)\}>[\s\S]*?t\("componentMarkMissing"\)/)
   assert.match(panel, /<DropdownMenuTrigger asChild>\s*<Button variant="ghost" size="icon-sm" aria-label=\{tCommon\("moreActionsFor", \{ code: component\.assetTag \}\)\}/)
   assert.match(panel, /<DropdownMenuItem disabled=\{saving \|\| confirmingAll\} onSelect=\{\(\) => onScanComponent\(component\)\}>[\s\S]*?t\("componentScanQr"\)/)
-  assert.match(panel, /<DropdownMenuItem disabled=\{rowDisabled\} onSelect=\{\(\) => openMissing\(component\)\}>[\s\S]*?t\("componentMarkMissing"\)/)
-  // The missing dialog takes focus, so the closing menu must not pull it back to ⋯ (as asset-detail-actions).
-  assert.match(panel, /onCloseAutoFocus=\{\(event\) => \{\s*if \(!openingDialogRef\.current\) return\s*openingDialogRef\.current = false\s*event\.preventDefault\(\)/)
+  assert.equal(panel.match(/<DropdownMenuItem\b/g)?.length, 1)
+  assert.doesNotMatch(panel, /openingDialogRef|onCloseAutoFocus/)
   // Status pills are StatusBadge tones, not hand-written fills.
   const meta = sliceFrom(panels, "function getAuditComponentStatusMeta", "export function AuditQrScannerOverlay")
   assert.doesNotMatch(meta, /className:/)
@@ -166,7 +167,7 @@ test("component copy for D2-D4 exists in Thai and English with the agreed Thai w
   assert.equal(th.componentsCheckedCount, "ตรวจแล้ว {checked} / {total}")
   assert.equal(th.componentFound, "พบ")
   assert.equal(th.componentsConfirmAll, "พบครบทุกชิ้น")
-  assert.equal(th.componentMarkMissing, "ไม่พบส่วนควบนี้")
+  assert.equal(th.componentMarkMissing, "ไม่พบ")
   assert.equal(th.componentsSaveHint, "ส่วนควบตรวจแล้ว {checked} / {total}")
   assert.equal(th.componentsPendingSaveTitle, "ส่วนควบยังตรวจไม่ครบ {count} ชิ้น")
   assert.match(th.componentsPendingSaveDescription, /ยังไม่ตรวจ/)

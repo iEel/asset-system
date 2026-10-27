@@ -16,6 +16,8 @@ type SegmentedProps<T extends string> = {
   fill?: boolean
   // A check mark before the chosen option's label, so the choice is not shown by color alone.
   showCheck?: boolean
+  // Every option off (while a record saves, or on a closed round), in the Buttons disabled look: never opacity.
+  disabled?: boolean
   // On the frame, for layout only.
   className?: string
 }
@@ -28,6 +30,7 @@ const segmentedOptionClasses = "inline-flex min-h-11 items-center justify-center
 const segmentedSizeClasses = { sm: "md:min-h-8", md: "md:min-h-9" } as const
 const segmentedPressedClasses = "bg-primary-soft font-semibold text-primary-hover"
 const segmentedIdleClasses = "font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+const segmentedDisabledClasses = "disabled:cursor-not-allowed disabled:bg-background disabled:text-faint-foreground"
 
 // A row of toggle buttons where exactly one is on (aria-pressed), each reachable with Tab (no roving tabindex, like
 // the mockup). Server-safe: no directive and no hooks, like Button. onValueChange is a function, so only client
@@ -40,6 +43,7 @@ function Segmented<T extends string>({
   size = "sm",
   fill = false,
   showCheck = false,
+  disabled = false,
   className,
 }: SegmentedProps<T>) {
   return (
@@ -51,12 +55,14 @@ function Segmented<T extends string>({
             key={option.value}
             type="button"
             aria-pressed={pressed}
+            disabled={disabled}
             onClick={() => onValueChange(option.value)}
             className={cn(
               segmentedOptionClasses,
               segmentedSizeClasses[size],
               fill ? "min-w-0 flex-1 px-2" : "whitespace-nowrap px-3",
               pressed ? segmentedPressedClasses : segmentedIdleClasses,
+              segmentedDisabledClasses,
             )}
           >
             {showCheck && pressed ? <Check className="size-3.5" aria-hidden="true" /> : null}

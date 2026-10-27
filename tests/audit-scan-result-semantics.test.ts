@@ -35,7 +35,7 @@ test("the single save button uses field-audit wording instead of not-found langu
   const en = JSON.parse(readFileSync("messages/en.json", "utf8")).auditScan
 
   assert.match(form, /t\("saveAllMatch"\)/)
-  assert.match(form, /t\("saveMismatch", \{ count: diff\.length, fields \}\)/)
+  assert.match(form, /t\("saveMismatch", \{ count: marked\.length, fields \}\)/)
 
   assert.match(th.saveAllMatch, /บันทึก/)
   assert.match(th.saveAllMatch, /ตรง/)
