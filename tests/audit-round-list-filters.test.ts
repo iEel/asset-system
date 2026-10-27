@@ -13,7 +13,6 @@ import {
   buildAuditRoundItemWhere,
   buildAuditRoundItemsHref,
   buildAuditRoundPageHref,
-  buildAuditRoundResultListHref,
   emptyAuditRoundListFilters,
   emptyAuditRoundResultCounts,
   foldAuditRoundResultCounts,
@@ -154,11 +153,6 @@ test("one link writer: the page's list, its exports and the dashboard carry ever
   assert.equal(buildAuditRoundExportHref("round-1", "export-pdf", { ...none, field: "department" }), "/api/audit-rounds/round-1/export-pdf?field=department")
   // The dashboard's links (R13) go through the same writer.
   assert.equal(buildAuditRoundItemsHref("th", "round-1", { companyId: "company-1", branchId: "branch-1" }), "/th/audit/rounds/round-1?companyId=company-1&branchId=branch-1#audit-result-list")
-  // The page's old builder (until Task 5) writes the new filters after the branch and before the page, so its pinned strings hold.
-  assert.equal(
-    buildAuditRoundResultListHref({ locale: "th", roundId: "round-1", result: "all", field: "department", categoryId: "cat-1", components: "missing", pageSize: 50 }),
-    "/th/audit/rounds/round-1?categoryId=cat-1&field=department&components=missing&page=1&pageSize=50#audit-result-list",
-  )
 })
 
 test("the filter rules stay pure and client-safe (recon gotcha 3)", () => {
@@ -169,16 +163,3 @@ test("the filter rules stay pure and client-safe (recon gotcha 3)", () => {
   assert.doesNotMatch(source, /isAuditFindingResultFilter|wrong_location: t\(|result === "wrong_/, "wrong_* is a field now")
 })
 
-test("the round page keeps every parsed filter in its where and its links until Task 5 rebuilds them (P2-R22)", () => {
-  const page = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx")
-  assert.match(page, /branchId\?: string \| string\[\]; categoryId\?: string \| string\[\]; field\?: string \| string\[\]; components\?: string \| string\[\] \}>/)
-  assert.match(page, /const itemFilters = \{ companyId: resultListState\.companyId, branchId: resultListState\.branchId, categoryId: resultListState\.categoryId, field: resultListState\.field, components: resultListState\.components \}/)
-  assert.match(page, /&findingType=\$\{auditFindingTypeByField\[resultListState\.field\]\}/)
-  assert.match(page, /pending: t\("pending"\),/)
-  assert.match(page, /mismatch: t\("mismatch"\),/)
-  for (const key of ["categoryId", "field", "components"]) {
-    assert.match(page, new RegExp(`\\.\\.\\.\\(resultListState\\.${key} \\? \\{ ${key}: resultListState\\.${key} \\} : \\{\\}\\)`), `the search keeps ${key}`)
-  }
-  // No link writes result=wrong_* (the field bars write field=, Task 4).
-  assert.doesNotMatch(page, /findingReviewTypeByResult|buildAuditRoundResultListHref\(\{[^}]*result: "wrong_/)
-})

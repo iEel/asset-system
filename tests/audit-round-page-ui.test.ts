@@ -120,3 +120,64 @@ test("ไม่ตรงเรื่องอะไร: a bar per field that ope
   assert.match(card, /\{data\.componentsMissing > 0 \? \(/)
   assert.match(card, /pageHref\(roundWideFilters, \{ components: "missing" \}\)/)
 })
+
+test("the list's top: the result chips and the category chips as TabNav with counts, the filter row with clear-all, the search in the table's bar (group 2 spec §5, §8, P2-R11, P2-R24)", () => {
+  const page = read(PAGE)
+  const list = page.slice(at(page, '<section id="audit-result-list" className="scroll-mt-24">'))
+  const order = [
+    "{formatCount(resultListTotal)}</span> {t(\"items\")}",
+    '<TabNav aria-label={t("result")} items={resultTabs} current={filters.result} />',
+    '<TabNav aria-label={t("categoryChipsLabel")} items={categoryTabs} current={filters.categoryId ?? "all"} />',
+    '<FilterChipList chips={resultFilterChips} label={t("activeFilters")} removeLabel={t("clearFilter")} clearAll={{ href: allResultHref, label: t("clearAllFilters") }} />',
+    '<div className={cn(getPanelClasses(), "overflow-hidden")}>',
+    'placeholder={t("searchItems")}',
+  ].map((needle) => at(list, needle))
+  assert.deepEqual(order, [...order].sort((a, b) => a - b))
+  assert.match(list, /\{categoryTabs\.length > 0 \? <TabNav aria-label=\{t\("categoryChipsLabel"\)\}/)
+  assert.match(page, /\["all", t\("viewAll"\), data\.resultChips\.all\],\n\s+\["pending", t\("pending"\), data\.resultChips\.pending\],\n\s+\["found", t\("found"\), data\.resultChips\.found\],\n\s+\["mismatch", t\("mismatchShort"\), data\.resultChips\.mismatch\],\n\s+\["not_found", t\("notFound"\), data\.resultChips\.notFound\],\n\s+\["out_of_scope", t\("outOfScope"\), data\.resultChips\.outOfScope\],\n\s+\["pending_review", t\("pendingReview"\), data\.resultChips\.pendingReview\],/)
+  assert.match(page, /\.map\(\(\[result, label, count\]\) => \(\{ key: result, label, count: formatCount\(count\), href: pageHref\(filters, \{ result, page: 1 \}\) \}\)\)/)
+  // Task 3's chips: the six, then อื่น ๆ, then a chosen category outside the six; hidden at one category (P2-R11, P2-R24).
+  assert.match(page, /const categoryTabs = data\.categoryChips\.visible\n/)
+  assert.match(page, /\{ key: "all", label: t\("categoryAll"\), count: formatCount\(data\.categoryChips\.all\), href: pageHref\(filters, \{ categoryId: null, page: 1 \}\) \}/)
+  assert.match(page, /\{ id: "other", name: t\("categoryOther"\), count: data\.categoryChips\.other\.count \}/)
+  assert.match(page, /\.\.\.categoryChipItems\.map\(\(chip\) => \(\{ key: chip\.id, label: chip\.name, count: formatCount\(chip\.count\), href: pageHref\(filters, \{ categoryId: chip\.id, page: 1 \}\) \}\)\)/)
+  for (const [key, override] of [["companyId", "companyId: null"], ["branchId", "branchId: null"], ["categoryId", "categoryId: null"], ["field", "field: null"], ["components", "components: null"]]) {
+    assert.match(page, new RegExp(`key: "${key}",[\\s\\S]{0,300}?href: pageHref\\(filters, \\{ ${override}, page: 1 \\}\\)`), key)
+  }
+  assert.match(page, /label: t\("componentsMissingChip", \{ count: formatCount\(data\.componentsMissingInFilters\) \}\)/)
+  assert.match(list, /hiddenInputs=\{Object\.fromEntries\(auditRoundHrefQuery\(pageHref\(filters, \{ search: "", page: 1 \}\)\)\)\}/)
+  assert.doesNotMatch(list, /<StatusBadge label=\{resultFilterLabels|t\("viewAll"\)\}\s*<\/Link>/, "the bucket badge and the old ทั้งหมด button go: the tabs show the result in use")
+})
+
+test("ไปพิจารณารายการไม่ตรง follows the field in use, the department included, or the review and mismatch results (spec §8, Appendix A §8)", () => {
+  const page = read(PAGE)
+  assert.match(page, /const resultFindingReviewHref = filters\.field\n\s+\? `\/\$\{locale\}\/audit\/findings\?status=pending&roundId=\$\{round\.id\}&findingType=\$\{auditFindingTypeByField\[filters\.field\]\}`\n\s+: filters\.result === "pending_review" \|\| filters\.result === "mismatch"\n\s+\? pendingReviewFindingsHref\n\s+: null/)
+})
+
+test("the table: ผล / ทรัพย์สิน / สิ่งที่ต่าง / ตรวจโดย / รูป / พิจารณา, then ⋯ with แก้ไขผลตรวจ for audit:edit only and never on an out-of-scope row (spec §8, P2-R4, P2-R7, P2-R17)", () => {
+  const page = read(PAGE)
+  const heads = [...page.matchAll(/<DataTableHead(?: [^>]*)?>\{(?:t|tCommon)\("(\w+)"\)\}<\/DataTableHead>/g)].map((match) => match[1])
+  assert.deepEqual(heads, ["result", "assetColumn", "differenceColumn", "checkedByColumn", "photoColumn", "reviewColumn", "actions"])
+  assert.equal(page.match(/<TableEmptyRow\s+colSpan=\{7\}/g)?.length, 1)
+  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(\{ locale, roundId: round\.id, assetId: item\.asset\.id, returnTo: listHref \}\) : null/)
+  assert.match(page, /<RowActions\s+code=\{item\.asset\.assetTag\}\s+name=\{item\.asset\.name\}\s+menuLabel=\{tCommon\("moreActionsFor", \{ code: item\.asset\.assetTag \}\)\}\s+next=\{undefined\}\s+groups=\{item\.groups\}\s*\/>/)
+  assert.match(page, /\.\.\.\(editHref \? \[\{ kind: "link" as const, key: "edit", label: t\("editScanResult"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\] : \[\]\),/)
+  assert.match(page, /\{ kind: "link" as const, key: "view", label: tCommon\("view"\), href: assetHref, icon: <Eye aria-hidden="true" \/> \},/)
+  assert.match(page, /missingComponents: item\.missingComponents\.map\(\(component\) => \(\{ \.\.\.component, href: pageHref\(roundWideFilters, \{ search: component\.assetTag \}\) \}\)\)/)
+  assert.equal(page.match(/<RoundItemDifferences\b/g)?.length, 2, "the phone card and the table")
+  assert.equal(page.match(/<RoundItemMissingComponents\b/g)?.length, 2, "the phone card and the table")
+  assert.match(page, /\{item\.editHref \? \(\s*<div className="mt-3 flex justify-end">\s*<Link href=\{item\.editHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.doesNotMatch(page, /item\.asset\.currentLocation|item\.asset\.custodian|t\("expectedLocation"\)/, "the table shows what differed, not the asset's current values")
+})
+
+test("every list link comes from the one builder: paging, page size and the past-last-page redirect keep every filter (group 2 plan 2 global constraint)", () => {
+  const page = read(PAGE)
+  assert.match(page, /previousHref=\{pageHref\(filters, \{ page: page - 1 \}\)\}/)
+  assert.match(page, /nextHref=\{pageHref\(filters, \{ page: page \+ 1 \}\)\}/)
+  assert.match(page, /pageSizes=\{auditRoundResultPageSizeOptions\.map\(\(value\) => \(\{ value, href: pageHref\(filters, \{ page: 1, pageSize: value \}\) \}\)\)\}/)
+  assert.match(page, /redirect\(pageHref\(filters, \{ page: resultLastPage \}\)\)/)
+  // The row's way back is the list as it stands, page included.
+  assert.match(page, /const listHref = pageHref\(filters, \{ page \}\)/)
+  assert.match(page, /const \{ page, pageSize, \.\.\.filters \} = parseAuditRoundResultListParams\(rawSearchParams\)/)
+  assert.doesNotMatch(page, /buildAuditRoundResultListHref|resultListState\b|\bitemFilters\b/)
+})

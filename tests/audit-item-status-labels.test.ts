@@ -66,10 +66,11 @@ test("itemStatus_reviewed reads as plain checked in Thai (controller ruling)", (
   assert.equal(th.itemStatus_reviewed, "ตรวจแล้ว")
 })
 
-test("audit round page falls back to item status labels and labels out_of_scope results", () => {
+test("audit round page labels every row by its result through the round page rules, never a code (group 2 spec §8)", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
-  assert.match(page, /getAuditItemStatusLabelKey\(item\.auditStatus\)/)
-  assert.doesNotMatch(page, /statusLabelKey \? t\(statusLabelKey\) : item\.auditStatus,/)
+  assert.match(page, /const badge = auditRoundResultBadge\(item\.auditStatus, item\.auditResult\)/)
+  assert.match(page, /resultLabel: t\(badge\.labelKey\)/)
+  assert.doesNotMatch(page, /statusLabelKey \? t\(statusLabelKey\) : item\.auditStatus,|: item\.auditResult\)/)
   assert.match(page, /getTranslations\("auditFinding"\)/)
 })
 

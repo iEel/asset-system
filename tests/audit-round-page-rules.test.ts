@@ -7,6 +7,10 @@ import {
   AUDIT_STALE_FINDING_REVIEW_REMARK,
   auditPersonDecidedFindingWhere,
   auditRoundAnyFieldFindingWhere,
+  auditRoundDifferences,
+  auditRoundItemReviewState,
+  auditRoundResultBadge,
+  auditRoundReviewStateTone,
   auditRoundPersonDecidedFindingWhere,
   auditRoundTopCategoryIds,
   auditSystemFindingDecisionActions,
@@ -187,4 +191,38 @@ test("an export link carries the list's filters and nothing else: the page link'
   assert.equal(exported.searchParams.toString(), listQuery.toString())
   const parsed = parseAuditRoundListFilters(Object.fromEntries(exported.searchParams))
   for (const key of ["result", "categoryId", "field", "components", "companyId", "branchId", "search"] as const) assert.equal(parsed[key], filters[key], key)
+})
+
+test("the ผล badge: รอตรวจ while pending, success for a match or a part confirmed with its parent, danger for not found, info out of scope, warning for every variance and for a checked item with no result (spec §8, P2-R2)", () => {
+  assert.deepEqual(auditRoundResultBadge("pending", null), { labelKey: "pending", tone: "muted" })
+  assert.deepEqual(auditRoundResultBadge("scanned", "found"), { labelKey: "found", tone: "success" })
+  assert.deepEqual(auditRoundResultBadge("scanned", "confirmed_with_parent"), { labelKey: "confirmedWithParent", tone: "success" })
+  assert.deepEqual(auditRoundResultBadge("reviewed", "not_found"), { labelKey: "notFound", tone: "danger" })
+  assert.deepEqual(auditRoundResultBadge("reviewed", "out_of_scope"), { labelKey: "outOfScope", tone: "info" })
+  for (const result of ["wrong_location", "wrong_department", "need_review", "mismatch", null]) {
+    assert.deepEqual(auditRoundResultBadge("reviewed", result), { labelKey: "mismatch", tone: "warning" }, String(result))
+  }
+})
+
+test("พิจารณา: a pending finding first, then one that needs a special check, then approved, then rejected; none without findings", () => {
+  assert.equal(auditRoundItemReviewState([]), null)
+  assert.equal(auditRoundItemReviewState(["approved", "pending"]), "pending")
+  assert.equal(auditRoundItemReviewState(["rejected", "exception"]), "exception")
+  assert.equal(auditRoundItemReviewState(["rejected", "approved"]), "approved")
+  assert.equal(auditRoundItemReviewState(["rejected"]), "rejected")
+  assert.deepEqual(auditRoundReviewStateTone, { pending: "warning", exception: "warning", approved: "success", rejected: "muted" })
+})
+
+test("สิ่งที่ต่าง: the field findings that still stand, in the card's field order, a component's marked; not found, out of scope and rejected ones left out (spec §8, P2-R1)", () => {
+  const finding = (id: string, findingType: string, reviewStatus: string, actionTaken: string | null = null) => ({ id, findingType, reviewStatus, actionTaken, expectedValue: `${id}-was`, actualValue: `${id}-is` })
+  const rows = auditRoundDifferences([
+    finding("c", "wrong_condition", "pending"),
+    finding("n", "not_found", "pending"),
+    finding("l", "wrong_location", "rejected"),
+    finding("d", "wrong_department", "approved", "component_confirmed_with_parent_mismatch"),
+    finding("o", "out_of_scope", "pending"),
+    finding("u", "wrong_custodian", "exception"),
+  ])
+  assert.deepEqual(rows.map((row) => [row.id, row.field, row.component]), [["d", "department", true], ["u", "custodian", false], ["c", "condition", false]])
+  assert.equal(rows[0].expectedValue, "d-was", "the row's own finding passes through (Task 3's row findings)")
 })

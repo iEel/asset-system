@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, Check, ChevronRight, FileText, ListChecks, Pencil, ScanLine } from "lucide-react"
+import { ArrowLeft, Check, ChevronRight, Eye, FileText, ListChecks, Pencil, ScanLine } from "lucide-react"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
@@ -23,10 +23,11 @@ import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { PaceBar } from "@/components/ui/pace-bar"
 import { Pagination } from "@/components/ui/pagination"
-import { RowActions } from "@/components/ui/row-actions"
+import { RowActions, type RowActionGroup } from "@/components/ui/row-actions"
 import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Steps } from "@/components/ui/steps"
+import { TabNav } from "@/components/ui/tab-nav"
 import { toneIcons } from "@/components/ui/tone-icons"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { formatCount, formatPercent } from "@/lib/display-format"
@@ -35,7 +36,17 @@ import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/o
 import { auditRoundStatusLabelKey, effectiveAuditRoundStatus, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import type { AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { getAuditRoundPageData } from "@/lib/audit-round-page-data"
-import { auditRoundPageStepKeys, buildAuditRoundPageMainAction, buildAuditRoundPageSteps, type AuditRoundPageStepKey } from "@/lib/audit-round-page-rules"
+import { formatFindingValue } from "@/lib/audit-finding-labels"
+import {
+  auditRoundDifferences,
+  auditRoundItemReviewState,
+  auditRoundPageStepKeys,
+  auditRoundResultBadge,
+  auditRoundReviewStateTone,
+  buildAuditRoundPageMainAction,
+  buildAuditRoundPageSteps,
+  type AuditRoundPageStepKey,
+} from "@/lib/audit-round-page-rules"
 import { buildAuditRoundDueLine } from "@/lib/audit-rounds-list-rules"
 import { startOfBangkokDay } from "@/lib/waiting-work-rules"
 import { withPerformanceTiming } from "@/lib/performance-timing"
@@ -44,19 +55,16 @@ import {
   auditFindingFields,
   auditFindingTypeByField,
   auditRoundBranchFilterName,
+  auditRoundHrefQuery,
   auditRoundResultPageSizeOptions,
   buildAuditRoundExportHref,
   buildAuditRoundPageHref,
-  buildAuditRoundResultListHref,
-  getAuditRoundItemResultLabelKey,
-  getAuditRoundItemStatusLabelKey,
   parseAuditRoundListFilters,
   parseAuditRoundResultListParams,
   type AuditRoundListFilters,
   type AuditRoundPageHrefOverrides,
   type AuditRoundResultFilter,
 } from "@/lib/audit-round-result-filters"
-import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 const WarningIcon = toneIcons.warning
 
@@ -74,10 +82,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const tFinding = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
 
-  const resultListState = parseAuditRoundResultListParams(rawSearchParams)
-  const itemFilters = { companyId: resultListState.companyId, branchId: resultListState.branchId, categoryId: resultListState.categoryId, field: resultListState.field, components: resultListState.components }
-  // The page's names from here on (Tasks 4-5 read filters, page and pageSize; Task 5 folds this into the parse).
-  const { page, pageSize, ...filters } = resultListState
+  const { page, pageSize, ...filters } = parseAuditRoundResultListParams(rawSearchParams)
   const data = await withPerformanceTiming(
     "audit-round.page-data",
     () => getAuditRoundPageData({ roundId: id, filters, page, pageSize, user }),
@@ -85,8 +90,6 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   )
   if (!data) notFound()
   const { round } = data
-  const resultItems = data.rows
-  const resultItemTotal = data.total
   const filterCompany = data.filterNames.company
   const filterBranch = data.filterNames.branch
   const filterCategory = data.filterNames.category
@@ -120,71 +123,6 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const roundDetailReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, returnToHref)
   const pendingHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundDetailReturnHref)
   const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
-  const resultListReturnHref = buildAuditRoundResultListHref({
-    locale,
-    roundId: round.id,
-    result: resultListState.result,
-    returnTo: returnToHref,
-    search: resultListState.search,
-    ...itemFilters,
-    page: resultListState.page,
-    pageSize: resultListState.pageSize,
-  })
-  const resultFilterLabels: Record<AuditRoundResultFilter, string> = {
-    all: t("viewAll"),
-    pending: t("pending"),
-    found: t("found"),
-    mismatch: t("mismatch"),
-    not_found: t("notFound"),
-    out_of_scope: t("outOfScope"),
-    pending_review: t("pendingReview"),
-  }
-  const resultListTotal = resultItemTotal
-  // A result page past the last one (an old link, or results that moved to another bucket) shows the last page
-  // (spec 2B I21). The result list keeps its own page and pageSize params (spec 2B §5.4 row rounds/[id]).
-  const resultLastPage = lastListPage(resultListTotal, resultListState.pageSize)
-  const resultPageRowCount = resultItems.length
-  if (resultPageRowCount === 0 && resultListTotal > 0 && resultListState.page > resultLastPage) {
-    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: resultLastPage, pageSize: resultListState.pageSize }))
-  }
-  const { start: resultStart, end: resultEnd, totalPages: resultTotalPages } = paginationRange(resultListState.page, resultListState.pageSize, resultListTotal)
-  const resultRows = resultItems.map((item) => {
-    const statusLabelKey = getAuditRoundItemStatusLabelKey(item.auditStatus)
-    const itemStatusLabelKey = statusLabelKey ? null : getAuditItemStatusLabelKey(item.auditStatus)
-    const resultLabelKey = getAuditRoundItemResultLabelKey(item.auditResult)
-    const auditResult = item.auditResult ?? "pending"
-    const correctionHistory = item.correctionHistory
-    return {
-      id: item.id,
-      asset: item.asset,
-      auditStatus: item.auditStatus,
-      auditStatusLabel: statusLabelKey ? t(statusLabelKey) : itemStatusLabelKey ? tFinding(itemStatusLabelKey) : item.auditStatus,
-      auditResult,
-      auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : null,
-      auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : item.auditResult === "out_of_scope" ? ("info" as const) : ("muted" as const),
-      componentRelationshipLines: buildAuditRoundComponentRelationshipLines(item.asset, t),
-      latestCorrection: correctionHistory[0] ?? null,
-      // A re-scan from here would turn an out-of-scope find into an own item through the in-round scan path; plan 3
-      // fixes the walk's lookup (P2-R4), so its row offers no แก้ไขผลตรวจ until then.
-      editHref: item.auditResult === "out_of_scope" ? null : buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: resultListReturnHref }),
-    }
-  })
-  // The company and branch narrow every list, the out-of-scope one included (P2-R4).
-  const resultFilterChips: FilterChipItem[] = []
-  if (filterCompany) {
-    resultFilterChips.push({
-      key: "companyId",
-      label: t("companyFilterChip", { company: `${filterCompany.code} - ${filterCompany.nameTh}` }),
-      href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, companyId: null, pageSize: resultListState.pageSize }),
-    })
-  }
-  if (filterBranch) {
-    resultFilterChips.push({
-      key: "branchId",
-      label: t("branchFilterChip", { branch: auditRoundBranchFilterName({ name: filterBranch.name, companyCode: filterBranch.company.code }, Boolean(filterCompany)) }),
-      href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, branchId: null, pageSize: resultListState.pageSize }),
-    })
-  }
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
   const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
   const stepsState = buildAuditRoundPageSteps({ status: round.status, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings })
@@ -230,9 +168,95 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     href: pageHref(roundWideFilters, { field }),
   }))
   const cancelImpact = data.cancelImpact
-  const hasResultBucketFilter = resultListState.result !== "all"
-  const hasResultListSearch = Boolean(resultListState.search)
-  const selectedResultLabel = resultFilterLabels[resultListState.result]
+  // Each row's "แก้ไขผลตรวจ" comes back to the list as it stands, page included.
+  const listHref = pageHref(filters, { page })
+  const resultFilterLabels: Record<AuditRoundResultFilter, string> = {
+    all: t("viewAll"),
+    pending: t("pending"),
+    found: t("found"),
+    mismatch: t("mismatchShort"),
+    not_found: t("notFound"),
+    out_of_scope: t("outOfScope"),
+    pending_review: t("pendingReview"),
+  }
+  const resultListTotal = data.total
+  // A page past the last one (an old link, or rows that moved to another result) shows the last page (spec 2B I21).
+  const resultLastPage = lastListPage(resultListTotal, pageSize)
+  if (data.rows.length === 0 && resultListTotal > 0 && page > resultLastPage) {
+    redirect(pageHref(filters, { page: resultLastPage }))
+  }
+  const { start: resultStart, end: resultEnd, totalPages: resultTotalPages } = paginationRange(page, pageSize, resultListTotal)
+  // The result chips count within every other filter (spec §5); choosing one keeps them and goes back to page 1.
+  const resultTabs = ([
+    ["all", t("viewAll"), data.resultChips.all],
+    ["pending", t("pending"), data.resultChips.pending],
+    ["found", t("found"), data.resultChips.found],
+    ["mismatch", t("mismatchShort"), data.resultChips.mismatch],
+    ["not_found", t("notFound"), data.resultChips.notFound],
+    ["out_of_scope", t("outOfScope"), data.resultChips.outOfScope],
+    ["pending_review", t("pendingReview"), data.resultChips.pendingReview],
+  ] as const).map(([result, label, count]) => ({ key: result, label, count: formatCount(count), href: pageHref(filters, { result, page: 1 }) }))
+  // The category chips (spec decision 2): within the result in use and the other filters, the six largest then อื่น ๆ
+  // (a real filter value, P2-R11), then a chosen category outside the six as its own chip; hidden at one category or
+  // none (P2-R24). Task 3's data.categoryChips holds each part.
+  const categoryChipItems = [
+    ...data.categoryChips.top,
+    ...(data.categoryChips.other.categories > 0 || filters.categoryId === "other" ? [{ id: "other", name: t("categoryOther"), count: data.categoryChips.other.count }] : []),
+    ...(data.categoryChips.selected ? [data.categoryChips.selected] : []),
+  ]
+  const categoryTabs = data.categoryChips.visible
+    ? [
+        { key: "all", label: t("categoryAll"), count: formatCount(data.categoryChips.all), href: pageHref(filters, { categoryId: null, page: 1 }) },
+        ...categoryChipItems.map((chip) => ({ key: chip.id, label: chip.name, count: formatCount(chip.count), href: pageHref(filters, { categoryId: chip.id, page: 1 }) })),
+      ]
+    : []
+  // The filter row (spec §8): each chip removes only itself; the dashboard's company and branch sit beside the category.
+  // The company and branch narrow every list, the out-of-scope one included (P2-R4).
+  const resultFilterChips: FilterChipItem[] = []
+  if (filterCompany) {
+    resultFilterChips.push({
+      key: "companyId",
+      label: t("companyFilterChip", { company: `${filterCompany.code} - ${filterCompany.nameTh}` }),
+      href: pageHref(filters, { companyId: null, page: 1 }),
+    })
+  }
+  if (filterBranch) {
+    resultFilterChips.push({
+      key: "branchId",
+      label: t("branchFilterChip", { branch: auditRoundBranchFilterName({ name: filterBranch.name, companyCode: filterBranch.company.code }, Boolean(filterCompany)) }),
+      href: pageHref(filters, { branchId: null, page: 1 }),
+    })
+  }
+  if (filters.categoryId) {
+    resultFilterChips.push({
+      key: "categoryId",
+      label: t("categoryFilterChip", { category: filters.categoryId === "other" ? t("categoryOther") : (filterCategory?.name ?? t("categoryOther")) }),
+      href: pageHref(filters, { categoryId: null, page: 1 }),
+    })
+  }
+  if (filters.field) {
+    resultFilterChips.push({
+      key: "field",
+      label: tFinding(`type_${auditFindingTypeByField[filters.field]}`),
+      href: pageHref(filters, { field: null, page: 1 }),
+    })
+  }
+  if (filters.components) {
+    resultFilterChips.push({
+      key: "components",
+      label: t("componentsMissingChip", { count: formatCount(data.componentsMissingInFilters) }),
+      href: pageHref(filters, { components: null, page: 1 }),
+    })
+  }
+  // "ไปพิจารณารายการไม่ตรง" follows the field in use (wrong_department included) or the review and mismatch results.
+  const resultFindingReviewHref = filters.field
+    ? `/${locale}/audit/findings?status=pending&roundId=${round.id}&findingType=${auditFindingTypeByField[filters.field]}`
+    : filters.result === "pending_review" || filters.result === "mismatch"
+      ? pendingReviewFindingsHref
+      : null
+  const hasResultBucketFilter = filters.result !== "all"
+  const hasResultListSearch = Boolean(filters.search)
+  const selectedResultLabel = resultFilterLabels[filters.result]
   const resultListTitle = hasResultBucketFilter ? t("resultListFilteredTitle", { result: selectedResultLabel }) : t("expectedAssets")
   const resultListDescription = hasResultBucketFilter ? t("resultListFilteredHelp", { result: selectedResultLabel }) : t("resultListHelp")
   const emptyResultTitle = hasResultBucketFilter
@@ -245,12 +269,40 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     : hasResultListSearch
       ? t("emptyResultSearchHelp")
       : t("emptyAssetsHelp")
-  const resultFindingReviewHref =
-    resultListState.result === "pending_review"
-      ? pendingReviewFindingsHref
-      : resultListState.field
-        ? `/${locale}/audit/findings?status=pending&roundId=${round.id}&findingType=${auditFindingTypeByField[resultListState.field]}`
-        : null
+  const resultRows = data.rows.map((item) => {
+    const badge = auditRoundResultBadge(item.auditStatus, item.auditResult)
+    const review = auditRoundItemReviewState(item.findings.map((finding) => finding.reviewStatus))
+    const assetHref = `/${locale}/assets/${item.asset.id}`
+    const editHref = canScan && !isRoundReadOnly && item.auditResult !== "out_of_scope" ? buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: listHref }) : null
+    return {
+      id: item.id,
+      asset: item.asset,
+      assetHref,
+      resultLabel: t(badge.labelKey),
+      resultTone: badge.tone,
+      // A value as the findings page shows it (Task 3's labels); an empty one stays null, so the cell shows Nil, never "-".
+      differences: auditRoundDifferences(item.findings).map((difference) => ({
+        key: difference.id,
+        label: tFinding(`type_${difference.findingType}`),
+        expected: difference.expectedValue ? formatFindingValue(difference.findingType, difference.expectedValue, data.findingValueLabels) : null,
+        actual: difference.actualValue ? formatFindingValue(difference.findingType, difference.actualValue, data.findingValueLabels) : null,
+        component: difference.component,
+      })),
+      checkedBy: item.checkedBy?.label ?? null,
+      checkedAt: item.checkedBy?.at ?? null,
+      photo: item.hasPhoto === null ? null : item.hasPhoto ? t("photoAttached") : t("photoMissing"),
+      review: review ? { label: tFinding(`status_${review}`), tone: auditRoundReviewStateTone[review] } : null,
+      componentRelationshipLines: buildAuditRoundComponentRelationshipLines(item.asset, t),
+      missingComponents: item.missingComponents.map((component) => ({ ...component, href: pageHref(roundWideFilters, { search: component.assetTag }) })),
+      latestCorrection: item.correctionHistory[0] ?? null,
+      editHref,
+      // ⋯: "แก้ไขผลตรวจ" for audit:edit on an open round, never on an out-of-scope row until plan 3 (P2-R4, P2-R7); "ดู".
+      groups: [{ key: "row", items: [
+        ...(editHref ? [{ kind: "link" as const, key: "edit", label: t("editScanResult"), href: editHref, icon: <Pencil aria-hidden="true" /> }] : []),
+        { kind: "link" as const, key: "view", label: tCommon("view"), href: assetHref, icon: <Eye aria-hidden="true" /> },
+      ] }] satisfies RowActionGroup[],
+    }
+  })
 
   return (
     <div className={actionBarPagePadding.single}>
@@ -426,7 +478,6 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <p className="mt-1 text-sm text-muted-foreground">{resultListDescription}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge label={resultFilterLabels[resultListState.result]} status={resultListState.result} />
             <span className="text-sm text-muted-foreground">
               <span className="num font-medium text-foreground">{formatCount(resultListTotal)}</span> {t("items")}
             </span>
@@ -436,33 +487,27 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 {t("openFindingReview")}
               </Link>
             ) : null}
-            {resultListState.result !== "all" || resultListState.search || resultListState.categoryId || resultListState.field || resultListState.components ? (
-              <Link href={allResultHref} className={buttonVariants({ variant: "outline", size: "md" })}>
-                {t("viewAll")}
-              </Link>
-            ) : null}
           </div>
         </div>
 
-        <FilterChipList className="mb-3" chips={resultFilterChips} label={t("activeFilters")} removeLabel={t("clearFilter")} />
-        <MasterDataSearch
-          action={`/${locale}/audit/rounds/${round.id}`}
-          defaultValue={resultListState.search}
-          placeholder={tCommon("search")}
-          submitLabel={tCommon("search")}
-          hiddenInputs={{
-            result: resultListState.result,
-            ...(resultListState.companyId ? { companyId: resultListState.companyId } : {}),
-            ...(resultListState.branchId ? { branchId: resultListState.branchId } : {}),
-            ...(resultListState.categoryId ? { categoryId: resultListState.categoryId } : {}),
-            ...(resultListState.field ? { field: resultListState.field } : {}),
-            ...(resultListState.components ? { components: resultListState.components } : {}),
-            page: 1,
-            pageSize: resultListState.pageSize,
-            returnTo: returnToHref,
-          }}
-        />
+        <div className="mb-4 space-y-3">
+          <TabNav aria-label={t("result")} items={resultTabs} current={filters.result} />
+          {categoryTabs.length > 0 ? <TabNav aria-label={t("categoryChipsLabel")} items={categoryTabs} current={filters.categoryId ?? "all"} /> : null}
+          <FilterChipList chips={resultFilterChips} label={t("activeFilters")} removeLabel={t("clearFilter")} clearAll={{ href: allResultHref, label: t("clearAllFilters") }} />
+        </div>
+
         <div className={cn(getPanelClasses(), "overflow-hidden")}>
+          {/* The table's top bar (spec §8): the search, which finds code, name and the expected location (P2-R5) and keeps
+              every filter. MasterDataSearch's mb-4 is the bar's bottom space. */}
+          <div className="border-b border-border-soft px-4 pt-4">
+            <MasterDataSearch
+              action={`/${locale}/audit/rounds/${round.id}`}
+              defaultValue={filters.search}
+              placeholder={t("searchItems")}
+              submitLabel={tCommon("search")}
+              hiddenInputs={Object.fromEntries(auditRoundHrefQuery(pageHref(filters, { search: "", page: 1 })))}
+            />
+          </div>
           <div className={`${getMobileCardListClasses()} p-3`}>
             {resultRows.length === 0 ? (
               <ActionEmptyState
@@ -476,9 +521,12 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             ) : (
               resultRows.map((item) => (
                 <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-                  <Link href={`/${locale}/assets/${item.asset.id}`} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
-                    <span className="tag font-medium">{item.asset.assetTag}</span>
-                  </Link>
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={item.assetHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
+                      <span className="tag font-medium">{item.asset.assetTag}</span>
+                    </Link>
+                    <StatusBadge label={item.resultLabel} tone={item.resultTone} />
+                  </div>
                   <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
                   {item.componentRelationshipLines.length > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -487,6 +535,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                       ))}
                     </div>
                   ) : null}
+                  <RoundItemMissingComponents components={item.missingComponents} prefix={t("missingComponentPrefix")} />
                   {item.latestCorrection ? (
                     <Notice tone="info" className="mt-2">
                       <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
@@ -498,31 +547,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                   <KeyValueList
                     className="mt-3"
                     items={[
-                      {
-                        key: "location",
-                        label: t("expectedLocation"),
-                        value: (
-                          <>
-                            <span className="tag">{item.asset.currentLocation.code}</span> - {item.asset.currentLocation.name}
-                          </>
-                        ),
-                      },
-                      {
-                        key: "custodian",
-                        label: t("expectedCustodian"),
-                        value: item.asset.custodian ? (
-                          <>
-                            <span className="tag">{item.asset.custodian.code}</span> - {item.asset.custodian.fullNameTh}
-                          </>
-                        ) : null,
-                      },
+                      { key: "difference", label: t("differenceColumn"), value: item.differences.length > 0 ? <RoundItemDifferences lines={item.differences} componentLabel={t("componentMark")} /> : null },
+                      { key: "checkedBy", label: t("checkedByColumn"), value: item.checkedBy || item.checkedAt ? <RoundItemChecker name={item.checkedBy} at={item.checkedAt} /> : null },
+                      { key: "photo", label: t("photoColumn"), value: item.photo },
+                      { key: "review", label: t("reviewColumn"), value: item.review ? <StatusBadge label={item.review.label} tone={item.review.tone} /> : null },
                     ]}
                   />
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
-                    {item.auditResultLabel ? <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} /> : null}
-                  </div>
-                  {!isRoundReadOnly && item.editHref ? (
+                  {item.editHref ? (
                     <div className="mt-3 flex justify-end">
                       <Link href={item.editHref} className={buttonVariants({ variant: "outline", size: "md" })}>
                         {t("editScanResult")}
@@ -536,12 +567,12 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={resultListTitle} scrollHint={tCommon("tableScrollHint")}>
             <DataTableHeader>
               <tr>
-                <DataTableHead>{t("assetTag")}</DataTableHead>
-                <DataTableHead>{t("assetName")}</DataTableHead>
-                <DataTableHead>{t("expectedLocation")}</DataTableHead>
-                <DataTableHead>{t("expectedCustodian")}</DataTableHead>
-                <DataTableHead>{t("status")}</DataTableHead>
                 <DataTableHead>{t("result")}</DataTableHead>
+                <DataTableHead>{t("assetColumn")}</DataTableHead>
+                <DataTableHead>{t("differenceColumn")}</DataTableHead>
+                <DataTableHead>{t("checkedByColumn")}</DataTableHead>
+                <DataTableHead>{t("photoColumn")}</DataTableHead>
+                <DataTableHead>{t("reviewColumn")}</DataTableHead>
                 <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
               </tr>
             </DataTableHeader>
@@ -560,16 +591,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 />
               ) : (
                 resultRows.map((item) => (
-                  <ClickableTableRow
-                    key={item.id}
-                    href={`/${locale}/assets/${item.asset.id}`}
-                    label={`${tCommon("view")}: ${item.asset.assetTag}`}
-                  >
+                  <ClickableTableRow key={item.id} href={item.assetHref} label={`${tCommon("view")}: ${item.asset.assetTag}`}>
                     <DataTableCell className="whitespace-nowrap">
-                      <span className="tag font-medium text-foreground">{item.asset.assetTag}</span>
+                      <StatusBadge label={item.resultLabel} tone={item.resultTone} />
                     </DataTableCell>
                     <DataTableCell className="min-w-56 text-foreground">
-                      <div>{item.asset.name}</div>
+                      <div className="font-medium">{item.asset.name}</div>
+                      <div className="mt-0.5 text-meta text-muted-foreground"><span className="tag">{item.asset.assetTag}</span></div>
                       {item.componentRelationshipLines.length > 0 ? (
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {item.componentRelationshipLines.map((line) => (
@@ -577,6 +605,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                           ))}
                         </div>
                       ) : null}
+                      <RoundItemMissingComponents components={item.missingComponents} prefix={t("missingComponentPrefix")} />
                       {item.latestCorrection ? (
                         <Notice tone="info" className="mt-2">
                           <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
@@ -586,36 +615,24 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                         </Notice>
                       ) : null}
                     </DataTableCell>
-                    <DataTableCell className="min-w-56 text-muted-foreground">
-                      <span className="tag">{item.asset.currentLocation.code}</span> - {item.asset.currentLocation.name}
+                    <DataTableCell className="min-w-56 text-foreground">
+                      <RoundItemDifferences lines={item.differences} componentLabel={t("componentMark")} />
                     </DataTableCell>
-                    <DataTableCell className="min-w-56 text-muted-foreground">
-                      {item.asset.custodian ? (
-                        <>
-                          <span className="tag">{item.asset.custodian.code}</span> - {item.asset.custodian.fullNameTh}
-                        </>
-                      ) : (
-                        <Nil />
-                      )}
+                    <DataTableCell className="min-w-40 text-foreground">
+                      <RoundItemChecker name={item.checkedBy} at={item.checkedAt} />
                     </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                      <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
-                    </DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                      {item.auditResultLabel ? <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} /> : <Nil />}
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{item.photo ?? <Nil />}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">
+                      {item.review ? <StatusBadge label={item.review.label} tone={item.review.tone} /> : <Nil />}
                     </DataTableCell>
                     <DataTableCell align="right" sticky="right">
-                      {!isRoundReadOnly && item.editHref ? (
-                        <RowActions
-                          code={item.asset.assetTag}
-                          name={item.asset.name}
-                          menuLabel={tCommon("moreActionsFor", { code: item.asset.assetTag })}
-                          next={{ label: t("editScanResult"), href: item.editHref, icon: <Pencil aria-hidden="true" /> }}
-                          groups={[]}
-                        />
-                      ) : (
-                        <Nil />
-                      )}
+                      <RowActions
+                        code={item.asset.assetTag}
+                        name={item.asset.name}
+                        menuLabel={tCommon("moreActionsFor", { code: item.asset.assetTag })}
+                        next={undefined}
+                        groups={item.groups}
+                      />
                     </DataTableCell>
                   </ClickableTableRow>
                 ))
@@ -625,17 +642,17 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           {resultListTotal > 0 ? (
             <DataTableFoot>
               <Pagination
-                page={resultListState.page}
+                page={page}
                 totalPages={resultTotalPages}
-                previousHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: resultListState.page - 1, pageSize: resultListState.pageSize })}
-                nextHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: resultListState.page + 1, pageSize: resultListState.pageSize })}
-                pageSize={resultListState.pageSize}
-                pageSizes={auditRoundResultPageSizeOptions.map((value) => ({ value, href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: 1, pageSize: value }) }))}
+                previousHref={pageHref(filters, { page: page - 1 })}
+                nextHref={pageHref(filters, { page: page + 1 })}
+                pageSize={pageSize}
+                pageSizes={auditRoundResultPageSizeOptions.map((value) => ({ value, href: pageHref(filters, { page: 1, pageSize: value }) }))}
                 labels={{
                   navigation: tCommon("pagination"),
                   previous: tCommon("previous"),
                   next: tCommon("next"),
-                  pageOf: tCommon("pageOf", { page: resultListState.page, total: resultTotalPages }),
+                  pageOf: tCommon("pageOf", { page, total: resultTotalPages }),
                   range: tCommon("showingRange", { from: formatCount(resultStart), to: formatCount(resultEnd), total: formatCount(resultListTotal) }),
                   pageSizeGroup: tCommon("pageSizeLabel"),
                   rowsPerPage: tCommon("rowsPerPage"),
@@ -673,6 +690,50 @@ function formatAuditCorrectionFields(correction: AuditCorrectionHistoryItem, t: 
 
 function getAuditRoundStatusLabel(status: string, t: AuditRoundTranslator) {
   return t(auditRoundStatusLabelKey(status) ?? "statusOpen")
+}
+
+type RoundItemDifference = { key: string; label: string; expected: string | null; actual: string | null; component: boolean }
+
+// สิ่งที่ต่าง (spec §8): "ตามระบบ → ที่พบ" per field finding that still stands; a component's carries ส่วนควบ.
+function RoundItemDifferences({ lines, componentLabel }: { lines: RoundItemDifference[]; componentLabel: string }) {
+  if (lines.length === 0) return <Nil />
+  return (
+    <ul className="space-y-1">
+      {lines.map((line) => (
+        <li key={line.key} className="min-w-0 break-words">
+          <span className="text-muted-foreground">{line.label}: </span>
+          {line.expected ?? <Nil />} → {line.actual ?? <Nil />}
+          {line.component ? <Chip className="ms-1.5">{componentLabel}</Chip> : null}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// "ไม่พบ: <name> (<tag>)" for each installed component found missing in this round (spec §8, decision 6); the tag opens
+// this round page searched by it, where the component's own row is (P2-R17).
+function RoundItemMissingComponents({ components, prefix }: { components: Array<{ id: string; assetTag: string; name: string; href: string }>; prefix: string }) {
+  if (components.length === 0) return null
+  return (
+    <ul className="mt-1 space-y-0.5 text-meta text-muted-foreground">
+      {components.map((component) => (
+        <li key={component.id}>
+          {prefix} {component.name} (<Link href={component.href} className={cn(linkVariants({ size: "inherit" }), "tag inline-flex min-h-11 items-center md:min-h-0")}>{component.assetTag}</Link>)
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// ตรวจโดย + เวลา (spec §8): the scanner, or for a not-found the one who recorded it (Task 3's data).
+function RoundItemChecker({ name, at }: { name: string | null; at: Date | null }) {
+  if (!name && !at) return <Nil />
+  return (
+    <>
+      <span className="block">{name ?? <Nil />}</span>
+      {at ? <span className="block text-meta text-muted-foreground">{formatDateTime(at)}</span> : null}
+    </>
+  )
 }
 
 function buildAuditRoundScanEditHref({

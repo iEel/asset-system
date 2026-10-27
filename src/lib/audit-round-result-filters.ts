@@ -361,49 +361,6 @@ export function buildAuditRoundExportHref(roundId: string, endpoint: AuditRoundE
   return `/api/audit-rounds/${roundId}/${endpoint}${query ? `?${query}` : ""}`
 }
 
-/** The round page's old list links, page and page size always written (until plan 2 Task 5 moves the page onto buildAuditRoundPageHref). */
-export function buildAuditRoundResultListHref({
-  locale,
-  roundId,
-  result,
-  returnTo,
-  search = "",
-  companyId,
-  branchId,
-  categoryId,
-  field,
-  components,
-  page = 1,
-  pageSize = 25,
-}: {
-  locale: string
-  roundId: string
-  result: AuditRoundResultFilter
-  returnTo?: string
-  search?: string
-  companyId?: string | null
-  branchId?: string | null
-  categoryId?: string | null
-  field?: AuditFindingField | null
-  components?: "missing" | null
-  page?: number
-  pageSize?: number
-}) {
-  const params = writeAuditRoundListParams({
-    result,
-    search,
-    companyId: companyId ?? null,
-    branchId: branchId ?? null,
-    categoryId: categoryId ?? null,
-    field: field ?? null,
-    components: components ?? null,
-  })
-  params.set("page", String(page))
-  params.set("pageSize", String(pageSize))
-  if (returnTo) params.set("returnTo", returnTo)
-  return `/${locale}/audit/rounds/${roundId}?${params.toString()}#audit-result-list`
-}
-
 /** The round's whole item list for a company, a branch or both (R13); no returnTo (R14). */
 export function buildAuditRoundItemsHref(locale: string, roundId: string, filters: { branchId?: string; companyId?: string }): string {
   return buildAuditRoundPageHref(locale, roundId, emptyAuditRoundListFilters, { companyId: filters.companyId ?? null, branchId: filters.branchId ?? null })

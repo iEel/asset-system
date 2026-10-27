@@ -8,7 +8,8 @@ import {
   buildAuditExportFilterLabel,
   buildAuditRoundItemWhere,
   buildAuditRoundItemsHref,
-  buildAuditRoundResultListHref,
+  buildAuditRoundPageHref,
+  emptyAuditRoundListFilters,
   getAuditRoundItemResultLabelKey,
   getAuditRoundItemStatusLabelKey,
   parseAuditRoundResultListParams,
@@ -40,15 +41,7 @@ test("audit round result searches stay scoped to the selected bucket", () => {
 
 test("audit round result drilldown href preserves return context and anchors the result list", () => {
   assert.equal(
-    buildAuditRoundResultListHref({
-      locale: "th",
-      roundId: "round-1",
-      result: "found",
-      returnTo: "/th/audit/rounds?view=open",
-      page: 2,
-      pageSize: 50,
-      search: "SNI",
-    }),
+    buildAuditRoundPageHref("th", "round-1", { ...emptyAuditRoundListFilters, result: "found", search: "SNI" }, { returnTo: "/th/audit/rounds?view=open", page: 2, pageSize: 50 }),
     "/th/audit/rounds/round-1?result=found&search=SNI&page=2&pageSize=50&returnTo=%2Fth%2Faudit%2Frounds%3Fview%3Dopen#audit-result-list"
   )
 })
@@ -81,7 +74,7 @@ test("audit round detail page exposes clickable result dashboard and paginated r
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
 
   assert.match(page, /result\?: string \| string\[\]/)
-  assert.match(page, /buildAuditRoundResultListHref/)
+  assert.match(page, /buildAuditRoundPageHref/)
   assert.match(page, /href: pageHref\(roundWideFilters, \{ result \}\)/)
   assert.match(page, /href: cell\.count > 0 \? cell\.href : undefined/)
   assert.match(page, /openFindingReview/)
@@ -94,7 +87,7 @@ test("audit round detail page exposes clickable result dashboard and paginated r
   assert.match(page, /id="audit-result-list"/)
   assert.match(page, /<Pagination\b/)
   assert.doesNotMatch(page, /function AuditRoundResultPagination/)
-  assert.match(page, /resultItems\.map/)
+  assert.match(page, /data\.rows\.map/)
 })
 
 test("audit round exports follow every filter of the list (group 2 spec §8 ตามตัวกรองที่เลือก)", () => {
@@ -258,7 +251,7 @@ test("the dashboard's links open the round's whole item list for a company, a br
   )
   assert.equal(buildAuditRoundItemsHref("th", "round-1", {}), "/th/audit/rounds/round-1#audit-result-list")
   assert.equal(
-    buildAuditRoundResultListHref({ locale: "th", roundId: "round-1", result: "found", search: "SNI", companyId: "company-1", branchId: "branch-1", page: 2, pageSize: 50, returnTo: "/th/audit/rounds" }),
+    buildAuditRoundPageHref("th", "round-1", { ...emptyAuditRoundListFilters, result: "found", search: "SNI", companyId: "company-1", branchId: "branch-1" }, { page: 2, pageSize: 50, returnTo: "/th/audit/rounds" }),
     "/th/audit/rounds/round-1?result=found&search=SNI&companyId=company-1&branchId=branch-1&page=2&pageSize=50&returnTo=%2Fth%2Faudit%2Frounds#audit-result-list",
   )
 })
@@ -285,7 +278,7 @@ test("an export of a narrowed list says so in its label and file name, naming th
 test("the round page narrows its item list by company and branch, names each in a removable chip, and counts the filtered list (spec §6.7, R13)", () => {
   const page = roundPage()
   assert.match(page, /searchParams: Promise<\{[^}]*pageSize\?: string \| string\[\]; companyId\?: string \| string\[\]; branchId\?: string \| string\[\]; categoryId\?: string \| string\[\]; field\?: string \| string\[\]; components\?: string \| string\[\] \}>/)
-  assert.match(page, /const itemFilters = \{ companyId: resultListState\.companyId, branchId: resultListState\.branchId, categoryId: resultListState\.categoryId, field: resultListState\.field, components: resultListState\.components \}/)
+  assert.match(page, /const \{ page, pageSize, \.\.\.filters \} = parseAuditRoundResultListParams\(rawSearchParams\)/)
   const data = readFileSync("src/lib/audit-round-page-data.ts", "utf8").replace(/\r\n/g, "\n")
   assert.match(data, /const rowsWhere = listWhere\(\)/)
   assert.match(data, /prisma\.auditItem\.count\(\{ where: rowsWhere \}\)/, "the number above the list counts the filtered list")
@@ -294,10 +287,9 @@ test("the round page narrows its item list by company and branch, names each in 
   assert.match(page, /if \(\(\w+\.companyId && !filterCompany\) \|\| \(\w+\.branchId && !filterBranch\) \|\| staleCategory\) \{\n\s+redirect\(/, "an unknown company, branch or category drops its filter")
   assert.match(page, /label: t\("companyFilterChip", \{ company: `\$\{filterCompany\.code\} - \$\{filterCompany\.nameTh\}` \}\)/)
   assert.match(page, /label: t\("branchFilterChip", \{ branch: auditRoundBranchFilterName\(\{ name: filterBranch\.name, companyCode: filterBranch\.company\.code \}, Boolean\(filterCompany\)\) \}\)/, "R16")
-  assert.match(page, /<FilterChipList className="mb-3" chips=\{resultFilterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{t\("clearFilter"\)\} \/>/)
-  assert.match(page, /\.\.\.\(resultListState\.companyId \? \{ companyId: resultListState\.companyId \} : \{\}\)/, "the search keeps the company")
-  assert.match(page, /\.\.\.\(resultListState\.branchId \? \{ branchId: resultListState\.branchId \} : \{\}\)/, "the search keeps the branch")
-  assert.match(page, /previousHref=\{buildAuditRoundResultListHref\(\{ [^}]*\.\.\.itemFilters, page: resultListState\.page - 1/)
+  assert.match(page, /<FilterChipList chips=\{resultFilterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{t\("clearFilter"\)\} clearAll=\{\{ href: allResultHref, label: t\("clearAllFilters"\) \}\} \/>/)
+  assert.match(page, /hiddenInputs=\{Object\.fromEntries\(auditRoundHrefQuery\(pageHref\(filters, \{ search: "", page: 1 \}\)\)\)\}/, "the search keeps every filter")
+  assert.match(page, /previousHref=\{pageHref\(filters, \{ page: page - 1 \}\)\}/)
   assert.match(page, /const pageHref = \(target: AuditRoundListFilters, overrides: AuditRoundPageHrefOverrides = \{\}\) =>/)
   assert.doesNotMatch(page, /const \w+ResultHref = buildAuditRoundResultListHref\(\{[^}]*(?:itemFilters|companyId|branchId)/, "the round-wide buckets open round-wide lists")
 })

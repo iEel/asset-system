@@ -6,6 +6,7 @@ import type { Prisma } from "@prisma/client"
 import { foldTopCategories, isAuditRoundOwnItem } from "./audit-round-counts-rules.ts"
 import { auditCountedFindingReviewStatuses, auditFindingFields, auditFindingTypeByField, type AuditFindingField } from "./audit-round-result-filters.ts"
 import { getLinearStepStates, type StepState } from "./step-states.ts"
+import type { StatusTone } from "./status-tone.ts"
 
 // The scan closes a finding itself in four ways. A re-scan rejects stale findings with this remark (scan/route.ts:44,
 // :623-639). Three paths set these actionTaken values (scan/route.ts:346-357, :359-372, :466-479). None of them is a
@@ -211,4 +212,40 @@ export function buildAuditRoundPageMainAction({ steps, pendingItems, pendingFind
   if (steps.current === "walk") return { kind: "walk", count: pendingItems, target: canScan ? "scan" : "pending" }
   if (steps.current === "review") return { kind: "review", count: pendingFindings }
   return canApprove ? { kind: "close", disabled: !canClose || openedByViewer } : null
+}
+
+export type AuditRoundResultBadgeKey = "pending" | "found" | "confirmedWithParent" | "mismatch" | "notFound" | "outOfScope"
+
+// The ผล column (spec §8): one badge per row. A checked item with no result reads ไม่ตรง, as it counts (P2-R2).
+export function auditRoundResultBadge(auditStatus: string, auditResult: string | null): { labelKey: AuditRoundResultBadgeKey; tone: StatusTone } {
+  if (auditStatus === "pending") return { labelKey: "pending", tone: "muted" }
+  if (auditResult === "found") return { labelKey: "found", tone: "success" }
+  if (auditResult === "confirmed_with_parent") return { labelKey: "confirmedWithParent", tone: "success" }
+  if (auditResult === "not_found") return { labelKey: "notFound", tone: "danger" }
+  if (auditResult === "out_of_scope") return { labelKey: "outOfScope", tone: "info" }
+  return { labelKey: "mismatch", tone: "warning" }
+}
+
+export type AuditRoundReviewState = "pending" | "exception" | "approved" | "rejected"
+const auditRoundReviewStateOrder: readonly AuditRoundReviewState[] = ["pending", "exception", "approved", "rejected"]
+
+// The พิจารณา column (spec §8): what is left to do first, so one waiting finding reads รอพิจารณา however many were decided.
+export function auditRoundItemReviewState(reviewStatuses: readonly string[]): AuditRoundReviewState | null {
+  return auditRoundReviewStateOrder.find((state) => reviewStatuses.includes(state)) ?? null
+}
+
+export const auditRoundReviewStateTone: Record<AuditRoundReviewState, StatusTone> = { pending: "warning", exception: "warning", approved: "success", rejected: "muted" }
+
+type AuditRoundDifferenceFinding = { findingType: string; reviewStatus: string; actionTaken: string | null }
+const auditFindingFieldByType = new Map(auditFindingFields.map((field) => [auditFindingTypeByField[field], field]))
+
+// สิ่งที่ต่าง (spec §8): the item's field findings that still stand (a rejected one, the system's "ยกเลิกเพราะแก้ผลตรวจ"
+// included, is gone; P2-R1), in the card's field order; a component confirmed with its parent but different is marked.
+export function auditRoundDifferences<T extends AuditRoundDifferenceFinding>(findings: readonly T[]): Array<T & { field: AuditFindingField; component: boolean }> {
+  return findings
+    .flatMap((finding) => {
+      const field = auditFindingFieldByType.get(finding.findingType)
+      return field && finding.reviewStatus !== "rejected" ? [{ ...finding, field, component: finding.actionTaken === "component_confirmed_with_parent_mismatch" }] : []
+    })
+    .sort((left, right) => auditFindingFields.indexOf(left.field) - auditFindingFields.indexOf(right.field))
 }
