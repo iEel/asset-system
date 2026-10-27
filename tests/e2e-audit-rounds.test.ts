@@ -120,6 +120,15 @@ test("the round page and pending steps stand on the result list's chips, the car
   }
   // Spec §5: a chip row is checked against the rows each chip opens, never against a global count.
   assert.ok(steps.includes("await expect(rows, `${chip.text}: its count is its rows (spec §5)`).toHaveCount(Number(chip.count.replace(/,/g, \"\")))"))
+  // E2E-1027B: the app registers its service worker on load, so each navigation away first lets that registration
+  // settle (bounded); a goto right after a load cancels the sw.js fetch and the measurement records a failed request.
+  assert.match(steps, /^export async function settleServiceWorker\(page: Page\)/m)
+  assert.ok(steps.includes("navigator.serviceWorker?.ready"))
+  assert.ok(steps.includes("setTimeout(resolve, 5000)"))
+  const matchRows = steps.slice(steps.indexOf("export async function expectChipsMatchRows("))
+  assert.match(matchRows, /for \(const chip of chips\) \{[\s\S]*?await settleServiceWorker\(page\)\s*await page\.goto\(chip\.href\)/)
+  assert.match(matchRows, /await settleServiceWorker\(page\)\s*await page\.goto\(start\)/)
+  assert.equal((steps.match(/page\.goto\(/g) ?? []).length, 2, "every goto of the steps is behind the wait")
   // The markup the steps read (Tasks 4-6): the result list's anchor, TabNav's count span, and the pending list's
   // TabNav room chips with the whole row still opening the asset (P2-R28).
   const audit = ["src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", ...readdirSync("src/components/audit").map((file) => `src/components/audit/${file}`)]

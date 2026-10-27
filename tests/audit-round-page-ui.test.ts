@@ -57,6 +57,10 @@ test("ส่งออก ▾ holds Excel ผลตรวจ, PDF ผลตรว
   }
   assert.match(menus, /<Button variant="outline" size="md">\s*<Download aria-hidden="true" \/>\s*\{tCommon\("export"\)\}\s*<ChevronDown aria-hidden="true" \/>/)
   assert.match(menus, /<DropdownMenu modal=\{false\}>/)
+  // Both menus are non-modal, as every menu of the app: a modal one hides the page (aria-hidden) while the skip link
+  // and the navigation stay focusable (axe aria-hidden-focus, E2E-1027B).
+  assert.equal((menus.match(/<DropdownMenu\b[^>]*>/g) ?? []).length, 2)
+  assert.deepEqual(menus.match(/<DropdownMenu\b[^>]*>/g), ["<DropdownMenu modal={false}>", "<DropdownMenu modal={false}>"])
   assert.match(menus, /<Button ref=\{moreTriggerRef\} variant="outline" size="md">\s*\{t\("more"\)\}\s*<ChevronDown aria-hidden="true" \/>/)
   assert.match(menus, /onCloseAutoFocus=\{\(event\) => \{\s*if \(!openingDialogRef\.current\) return\s*openingDialogRef\.current = false\s*event\.preventDefault\(\)\s*\}\}/)
   assert.match(menus, /<DropdownMenuItem\s+variant="destructive"\s+onSelect=\{\(\) => \{\s*openingDialogRef\.current = true\s*cancelDialogRef\.current\?\.open\(\)\s*\}\}\s*>/)

@@ -59,6 +59,18 @@ export async function expectChip(row: Locator, hrefPart: string, count: number) 
   await expect(chipCount(chip)).toHaveText(formatted(count))
 }
 
+// The app registers its service worker on window load (src/components/pwa/pwa-service-worker-register.tsx); a goto
+// right after a load cancels that sw.js fetch and the measurement records a failed request (WebKit, E2E-1027B). Before
+// each navigation away, the registration is let settle, at most five seconds (no service worker: no wait).
+export async function settleServiceWorker(page: Page) {
+  await page.evaluate(() =>
+    Promise.race([
+      navigator.serviceWorker?.ready.then(() => undefined) ?? Promise.resolve(),
+      new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+    ]),
+  )
+}
+
 // Spec §5: each chip of the row opens rows of its own count. Every chip's link is opened in turn, then the page the
 // step started on. The rows are the run's own, so another run's data never counts.
 export async function expectChipsMatchRows(page: Page, row: Locator, rows: Locator) {
@@ -73,9 +85,11 @@ export async function expectChipsMatchRows(page: Page, row: Locator, rows: Locat
   expect(chips.length, "the row has chips").toBeGreaterThan(0)
   for (const chip of chips) {
     expect(chip.count, `${chip.text}: a count`).toMatch(/^[\d,]+$/)
+    await settleServiceWorker(page)
     await page.goto(chip.href)
     await expect(rows, `${chip.text}: its count is its rows (spec §5)`).toHaveCount(Number(chip.count.replace(/,/g, "")))
   }
+  await settleServiceWorker(page)
   await page.goto(start)
 }
 

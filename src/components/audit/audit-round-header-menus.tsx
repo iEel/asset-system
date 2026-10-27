@@ -30,7 +30,7 @@ export function AuditRoundHeaderMenus({ exports, cancel }: { exports: AuditRound
   return (
     <>
       {exports ? (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="md">
               <Download aria-hidden="true" />
