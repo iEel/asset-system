@@ -23,40 +23,21 @@ const own = (where: object) => ({ AND: [where, { OR: [{ auditResult: null }, { a
 
 test("audit round result filters map dashboard buckets to scoped item queries", () => {
   assert.equal(resolveAuditRoundResultFilter("missing"), "all")
-  assert.equal(resolveAuditRoundResultFilter("wrong_location"), "wrong_location")
+  assert.equal(resolveAuditRoundResultFilter("wrong_location"), "all")
 
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "found", search: "" }), own({
-    auditRoundId: "round-1",
-    auditResult: { in: ["found", "confirmed_with_parent"] },
-  }))
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "" }), own({
-    auditRoundId: "round-1",
-    auditResult: "not_found",
-  }))
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "wrong_location", search: "" }), own({
-    auditRoundId: "round-1",
-    findings: { some: { findingType: "wrong_location" } },
-  }))
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "pending_review", search: "" }), {
-    auditRoundId: "round-1",
-    findings: { some: { reviewStatus: "pending" } },
-  })
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "" }), own({ auditRoundId: "round-1" }))
-  // The out-of-scope list still reads the scan history (buildAuditRoundScanHistoryWhere); plan 2 moves it onto items.
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "out_of_scope", search: "" }), { auditRoundId: "round-1" })
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "found", search: "" }), own({ AND: [{ auditRoundId: "round-1" }, { auditResult: { in: ["found", "confirmed_with_parent"] } }] }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "" }), own({ AND: [{ auditRoundId: "round-1" }, { auditResult: "not_found" }] }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", field: "location", search: "" }), own({ AND: [{ auditRoundId: "round-1" }, { findings: { some: { findingType: "wrong_location", reviewStatus: { in: ["pending", "approved"] } } } }] }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "pending_review", search: "" }), { AND: [{ auditRoundId: "round-1" }, { findings: { some: { reviewStatus: "pending" } } }] })
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "" }), own({ AND: [{ auditRoundId: "round-1" }] }))
+  // The out-of-scope list is the out-of-scope items (plan 2, gotcha 1); Task 2 moves the page and the exports onto it.
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "out_of_scope", search: "" }), { AND: [{ auditRoundId: "round-1" }, { auditResult: "out_of_scope" }] })
   // The pending-review list follows the pending findings, out-of-scope finds included, as its count does (R3, the close checklist).
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "pending_review", search: "" }), { auditRoundId: "round-1", findings: { some: { reviewStatus: "pending" } } })
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "pending_review", search: "" }), { AND: [{ auditRoundId: "round-1" }, { findings: { some: { reviewStatus: "pending" } } }] })
 })
 
 test("audit round result searches stay scoped to the selected bucket", () => {
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "wrong_custodian", search: "SNI-EQU" }), own({
-    auditRoundId: "round-1",
-    findings: { some: { findingType: "wrong_custodian" } },
-    OR: [
-      { asset: { assetTag: { contains: "SNI-EQU" } } },
-      { asset: { name: { contains: "SNI-EQU" } } },
-    ],
-  }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", field: "custodian", search: "SNI-EQU" }), own({ AND: [{ auditRoundId: "round-1" }, { findings: { some: { findingType: "wrong_custodian", reviewStatus: { in: ["pending", "approved"] } } } }, { OR: [{ asset: { assetTag: { contains: "SNI-EQU" } } }, { asset: { name: { contains: "SNI-EQU" } } }] }] }))
 
   assert.deepEqual(buildAuditRoundScanHistoryWhere({ roundId: "round-1", search: "GRL" }), {
     auditRoundId: "round-1",
@@ -303,25 +284,10 @@ test("the results the scan stores for a mismatch read รายการไม�
 const roundPage = () => readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8").replace(/\r\n/g, "\n")
 
 test("the round's item list narrows to the expected company and branch, alone or with a bucket and a search (spec §6.7, R13)", () => {
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", branchId: "branch-1" }), own({
-    auditRoundId: "round-1",
-    expectedBranchId: "branch-1",
-  }))
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: "company-1" }), own({
-    auditRoundId: "round-1",
-    expectedCompanyId: "company-1",
-  }))
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "SNI", companyId: "company-1", branchId: "branch-1" }), own({
-    auditRoundId: "round-1",
-    expectedCompanyId: "company-1",
-    expectedBranchId: "branch-1",
-    auditResult: "not_found",
-    OR: [
-      { asset: { assetTag: { contains: "SNI" } } },
-      { asset: { name: { contains: "SNI" } } },
-    ],
-  }))
-  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: null, branchId: null }), own({ auditRoundId: "round-1" }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", branchId: "branch-1" }), own({ AND: [{ auditRoundId: "round-1" }, { expectedBranchId: "branch-1" }] }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: "company-1" }), own({ AND: [{ auditRoundId: "round-1" }, { expectedCompanyId: "company-1" }] }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "not_found", search: "SNI", companyId: "company-1", branchId: "branch-1" }), own({ AND: [{ auditRoundId: "round-1" }, { expectedCompanyId: "company-1" }, { expectedBranchId: "branch-1" }, { OR: [{ asset: { assetTag: { contains: "SNI" } } }, { asset: { name: { contains: "SNI" } } }] }, { auditResult: "not_found" }] }))
+  assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", search: "", companyId: null, branchId: null }), own({ AND: [{ auditRoundId: "round-1" }] }))
 })
 
 test("the company and branch params are read once and trimmed, and an empty one is no filter", () => {
@@ -330,17 +296,17 @@ test("the company and branch params are read once and trimmed, and an empty one 
   assert.equal(state.branchId, "branch-1")
   assert.equal(parseAuditRoundResultListParams({ companyId: "   " }).companyId, null)
   assert.equal(parseAuditRoundResultListParams({ branchId: "   " }).branchId, null)
-  assert.deepEqual(parseAuditRoundResultListParams({}), { result: "all", search: "", companyId: null, branchId: null, page: 1, pageSize: 25 })
+  assert.deepEqual(parseAuditRoundResultListParams({}), { result: "all", categoryId: null, field: null, components: null, companyId: null, branchId: null, search: "", page: 1, pageSize: 25 })
 })
 
 test("the dashboard's links open the round's whole item list for a company, a branch or both, and the list's own links keep them (spec §6.7, R13)", () => {
-  assert.equal(buildAuditRoundItemsHref("th", "round-1", { branchId: "branch-1" }), "/th/audit/rounds/round-1?branchId=branch-1&page=1&pageSize=25#audit-result-list")
-  assert.equal(buildAuditRoundItemsHref("th", "round-1", { companyId: "company-1" }), "/th/audit/rounds/round-1?companyId=company-1&page=1&pageSize=25#audit-result-list")
+  assert.equal(buildAuditRoundItemsHref("th", "round-1", { branchId: "branch-1" }), "/th/audit/rounds/round-1?branchId=branch-1#audit-result-list")
+  assert.equal(buildAuditRoundItemsHref("th", "round-1", { companyId: "company-1" }), "/th/audit/rounds/round-1?companyId=company-1#audit-result-list")
   assert.equal(
     buildAuditRoundItemsHref("th", "round-1", { companyId: "company-1", branchId: "branch-1" }),
-    "/th/audit/rounds/round-1?companyId=company-1&branchId=branch-1&page=1&pageSize=25#audit-result-list",
+    "/th/audit/rounds/round-1?companyId=company-1&branchId=branch-1#audit-result-list",
   )
-  assert.equal(buildAuditRoundItemsHref("th", "round-1", {}), "/th/audit/rounds/round-1?page=1&pageSize=25#audit-result-list")
+  assert.equal(buildAuditRoundItemsHref("th", "round-1", {}), "/th/audit/rounds/round-1#audit-result-list")
   assert.equal(
     buildAuditRoundResultListHref({ locale: "th", roundId: "round-1", result: "found", search: "SNI", companyId: "company-1", branchId: "branch-1", page: 2, pageSize: 50, returnTo: "/th/audit/rounds" }),
     "/th/audit/rounds/round-1?result=found&search=SNI&companyId=company-1&branchId=branch-1&page=2&pageSize=50&returnTo=%2Fth%2Faudit%2Frounds#audit-result-list",
@@ -368,8 +334,8 @@ test("an export of a narrowed list says so in its label and file name, naming th
 
 test("the round page narrows its item list by company and branch, names each in a removable chip, and counts the filtered list (spec §6.7, R13)", () => {
   const page = roundPage()
-  assert.match(page, /searchParams: Promise<\{[^}]*pageSize\?: string \| string\[\]; companyId\?: string \| string\[\]; branchId\?: string \| string\[\] \}>/)
-  assert.match(page, /const itemFilters = \{ companyId: resultListState\.companyId, branchId: resultListState\.branchId \}/)
+  assert.match(page, /searchParams: Promise<\{[^}]*pageSize\?: string \| string\[\]; companyId\?: string \| string\[\]; branchId\?: string \| string\[\]; categoryId\?: string \| string\[\]; field\?: string \| string\[\]; components\?: string \| string\[\] \}>/)
+  assert.match(page, /const itemFilters = \{ companyId: resultListState\.companyId, branchId: resultListState\.branchId, categoryId: resultListState\.categoryId, field: resultListState\.field, components: resultListState\.components \}/)
   assert.match(page, /const resultItemWhere = buildAuditRoundItemWhere\(\{ roundId: id, result: resultListState\.result, search: resultListState\.search, \.\.\.itemFilters \}\)/)
   assert.match(page, /prisma\.auditItem\.count\(\{ where: resultItemWhere \}\)/, "the number above the list counts the filtered list")
   assert.match(page, /prisma\.company\.findUnique\(\{ where: \{ id: resultListState\.companyId \}, select: \{ code: true, nameTh: true \} \}\)/)

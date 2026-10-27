@@ -86,7 +86,7 @@ test("the dashboard counts the round's own items, so its KPI equals the round pa
   assert.match(source, /import \{ withAuditRoundOwnItems \} from "@\/lib\/audit-round-counts-rules"/)
   assert.match(source, /where: withAuditRoundOwnItems\(\{ auditRound: \{ isActive: true, status: auditRoundOperationalWhere \}, \.\.\.\(companyId \? \{ expectedCompanyId: companyId \} : \{\}\) \}\),/)
   const filters = read("src/lib/audit-round-result-filters.ts")
-  assert.match(filters, /import \{ withAuditRoundOwnItems \} from "\.\/audit-round-counts-rules\.ts"/)
+  assert.match(filters, /import \{ [^}]*\bwithAuditRoundOwnItems\b[^}]* \} from "\.\/audit-round-counts-rules\.ts"/)
   assert.match(filters, /return result === "out_of_scope" \|\| result === "pending_review" \? where : withAuditRoundOwnItems\(where\)/)
 })
 

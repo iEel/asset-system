@@ -39,6 +39,7 @@ import { emptyAuditRoundCounts } from "@/lib/audit-round-counts-rules"
 import { buildAuditCorrectionHistoryByItemId, type AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { paginationRange } from "@/lib/master-data-query"
 import {
+  auditFindingTypeByField,
   auditRoundBranchFilterName,
   auditRoundResultPageSizeOptions,
   buildAuditRoundResultSummaryGroups,
@@ -56,7 +57,7 @@ import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ returnTo?: string | string[]; result?: string | string[]; search?: string | string[]; page?: string | string[]; pageSize?: string | string[]; companyId?: string | string[]; branchId?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; result?: string | string[]; search?: string | string[]; page?: string | string[]; pageSize?: string | string[]; companyId?: string | string[]; branchId?: string | string[]; categoryId?: string | string[]; field?: string | string[]; components?: string | string[] }>
 }
 
 export default async function AuditRoundDetailPage({ params, searchParams }: AuditRoundDetailPageProps) {
@@ -71,7 +72,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const resultListState = parseAuditRoundResultListParams(rawSearchParams)
   const resultListOffset = (resultListState.page - 1) * resultListState.pageSize
   const isOutOfScopeResultList = isAuditRoundScanHistoryResultFilter(resultListState.result)
-  const itemFilters = { companyId: resultListState.companyId, branchId: resultListState.branchId }
+  const itemFilters = { companyId: resultListState.companyId, branchId: resultListState.branchId, categoryId: resultListState.categoryId, field: resultListState.field, components: resultListState.components }
   const resultItemWhere = buildAuditRoundItemWhere({ roundId: id, result: resultListState.result, search: resultListState.search, ...itemFilters })
   const resultScanHistoryWhere = buildAuditRoundScanHistoryWhere({ roundId: id, search: resultListState.search })
 
@@ -296,7 +297,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const returnToHref = normalizeOperationalReturnTo(locale, "audit-rounds", rawSearchParams.returnTo)
   // An unknown or stale company or branch drops only its own filter, so the list never sits under a chip it cannot name.
   if ((resultListState.companyId && !filterCompany) || (resultListState.branchId && !filterBranch)) {
-    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, companyId: filterCompany ? resultListState.companyId : null, branchId: filterBranch ? resultListState.branchId : null, pageSize: resultListState.pageSize }))
+    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, companyId: filterCompany ? resultListState.companyId : null, branchId: filterBranch ? resultListState.branchId : null, pageSize: resultListState.pageSize }))
   }
   const roundDetailReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, returnToHref)
   const pendingHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundDetailReturnHref)
@@ -313,10 +314,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   })
   const resultFilterLabels: Record<AuditRoundResultFilter, string> = {
     all: t("viewAll"),
+    pending: t("pending"),
     found: t("found"),
-    wrong_location: t("wrongLocation"),
-    wrong_custodian: t("wrongCustodian"),
-    wrong_condition: t("wrongCondition"),
+    mismatch: t("mismatch"),
     not_found: t("notFound"),
     out_of_scope: t("outOfScope"),
     pending_review: t("pendingReview"),
@@ -364,9 +364,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       })
   const allResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const foundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "found", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const wrongLocationResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "wrong_location", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const wrongCustodianResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "wrong_custodian", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const wrongConditionResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "wrong_condition", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const wrongLocationResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", field: "location", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const wrongCustodianResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", field: "custodian", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const wrongConditionResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", field: "condition", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const notFoundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "not_found", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
@@ -420,17 +420,11 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     : hasResultListSearch
       ? t("emptyResultSearchHelp")
       : t("emptyAssetsHelp")
-  const findingReviewTypeByResult: Partial<Record<AuditRoundResultFilter, string>> = {
-    wrong_location: "wrong_location",
-    wrong_custodian: "wrong_custodian",
-    wrong_condition: "wrong_condition",
-  }
-  const resultFindingReviewType = findingReviewTypeByResult[resultListState.result]
   const resultFindingReviewHref =
     resultListState.result === "pending_review"
       ? pendingReviewFindingsHref
-      : resultFindingReviewType
-        ? `/${locale}/audit/findings?status=pending&roundId=${round.id}&findingType=${resultFindingReviewType}`
+      : resultListState.field
+        ? `/${locale}/audit/findings?status=pending&roundId=${round.id}&findingType=${auditFindingTypeByField[resultListState.field]}`
         : null
   const resultSummaryGroups = buildAuditRoundResultSummaryGroups([
     { result: "found", count: foundCount },
@@ -625,7 +619,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 {t("openFindingReview")}
               </Link>
             ) : null}
-            {resultListState.result !== "all" || resultListState.search ? (
+            {resultListState.result !== "all" || resultListState.search || resultListState.categoryId || resultListState.field || resultListState.components ? (
               <Link href={allResultHref} className={buttonVariants({ variant: "outline", size: "md" })}>
                 {t("viewAll")}
               </Link>
@@ -643,6 +637,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             result: resultListState.result,
             ...(resultListState.companyId ? { companyId: resultListState.companyId } : {}),
             ...(resultListState.branchId ? { branchId: resultListState.branchId } : {}),
+            ...(resultListState.categoryId ? { categoryId: resultListState.categoryId } : {}),
+            ...(resultListState.field ? { field: resultListState.field } : {}),
+            ...(resultListState.components ? { components: resultListState.components } : {}),
             page: 1,
             pageSize: resultListState.pageSize,
             returnTo: returnToHref,
