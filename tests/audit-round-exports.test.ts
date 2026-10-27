@@ -116,10 +116,11 @@ test("the variance report: the filters, the round's own items, the out-of-scope 
 
 test("the round page lists the out-of-scope finds as items under every filter, counts them from the items, and offers no แก้ไขผลตรวจ on them (P2-R4, P2-R5)", () => {
   const page = read(`${D}audit/rounds/[id]/page.tsx`)
+  const data = read("src/lib/audit-round-page-data.ts")
   assert.doesNotMatch(page, /auditScanHistory\.findMany|auditItemId: null|isOutOfScopeResultList|ScanHistoryWhere|ScanHistoryResultFilter|outOfScopeScan/)
-  assert.match(page, /const resultWhereInput = await resolveAuditRoundListWhereInput\(id, resultListState\)\n\s+const resultItemWhere = buildAuditRoundItemWhere\(resultWhereInput\)/)
-  assert.match(page, /orderBy: \[\{ auditStatus: "asc" \}, \{ createdAt: "desc" \}, \{ id: "asc" \}\]/)
-  assert.match(page, /\{ result: "out_of_scope", count: roundCounts\.outOfScope \}/)
+  assert.match(data, /findAuditRoundSearchLocationIds\(roundId, filters\.search\)/)
+  assert.match(data, /orderBy: \[\{ auditStatus: "asc" \}, \{ createdAt: "desc" \}, \{ id: "asc" \}\]/)
+  assert.match(page, /\{ result: "out_of_scope", count: data\.resultCard\.outOfScope \}/)
   assert.match(page, /editHref: item\.auditResult === "out_of_scope" \? null : buildAuditRoundScanEditHref\(/)
   assert.equal(page.match(/\{!isRoundReadOnly && item\.editHref \? \(/g)?.length, 2, "the phone card and the table row")
   assert.match(page, /if \(filterCompany\) \{\n\s+resultFilterChips\.push/, "the company chip shows on the out-of-scope list too")
@@ -128,7 +129,7 @@ test("the round page lists the out-of-scope finds as items under every filter, c
   assert.match(page, /const auditRoundVarianceHref = buildAuditRoundExportHref\(round\.id, "variance-export", resultListState\)/)
   assert.doesNotMatch(page, /function buildAuditRoundExportHref/)
   // The cancel dialog still counts every scan event (route.ts getCancellationImpact).
-  assert.match(page, /prisma\.auditScanHistory\.count\(\{ where: \{ auditRoundId: id \} \}\)/)
+  assert.match(data, /prisma\.auditScanHistory\.count\(\{ where: \{ auditRoundId: roundId \} \}\)/)
 })
 
 test("the rounds list counts the out-of-scope finds from the items, as the round page's list it opens (P2-R4, R4 closed)", () => {

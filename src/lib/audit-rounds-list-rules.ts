@@ -162,7 +162,7 @@ export function buildAuditRoundInsights(
       openActions: work.openActions,
       // From the out-of-scope items, as the round page's list it opens (P2-R4).
       outOfScope: counts.outOfScope,
-      // The close API's checklist (`api/audit-rounds/[id]/route.ts` `getCloseChecklist`, R2); the opener rule is the
+      // The close API's checklist (`src/lib/audit-round-close.ts` `getAuditRoundCloseChecklist`, R2); the opener rule is the
       // round page's (plan 2).
       readyToClose: operational && counts.pending === 0 && work.pendingReview === 0 && work.openActions === 0,
     })

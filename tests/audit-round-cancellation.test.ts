@@ -96,7 +96,7 @@ test("audit rounds UI exposes cancellation and cancelled read-only state", () =>
   assert.match(detail, /isAuditRoundReadOnlyStatus\(round\.status\)/)
   assert.match(detail, /cancelReason/)
   assert.match(detail, /cancelledAt/)
-  assert.match(detail, /cancelledByUser/)
+  assert.match(detail, /const cancelledByDisplayName = data\.round\.cancelledByLabel/)
   assert.match(detail, /cancelledByDisplayName/)
   assert.match(detail, /t\("cancelledBy"\)/)
   assert.match(detail, /cancelledReadOnlyNotice/)

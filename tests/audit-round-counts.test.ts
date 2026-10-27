@@ -90,17 +90,15 @@ test("the dashboard counts the round's own items, so its KPI equals the round pa
   assert.match(filters, /return result === "out_of_scope" \|\| result === "pending_review" \? where : withAuditRoundOwnItems\(where\)/)
 })
 
-test("the round page's total, checked and progress count the round's own items (group 2 spec §5; plan 1's minimal edit)", () => {
+test("the round page's total, checked and progress come from the page data's round-wide fold of its own items (group 2 spec §5, §8)", () => {
   const page = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx")
-  assert.match(page, /getAuditRoundCounts\(\[id\]\),/)
-  assert.match(page, /const roundCounts = roundCountsById\.get\(round\.id\) \?\? emptyAuditRoundCounts/)
-  assert.match(page, /const pendingCount = roundCounts\.pending\n\s+const processedCount = roundCounts\.checked/)
-  assert.match(page, /const progress = roundCounts\.total > 0 \? Math\.round\(\(roundCounts\.checked \/ roundCounts\.total\) \* 100\) : 0/)
-  assert.match(page, /\{ key: "totalExpected", label: t\("totalExpected"\), value: formatCount\(roundCounts\.total\) \}/)
+  assert.match(page, /const pendingCount = data\.steps\.walk\.left\n\s+const processedCount = data\.steps\.walk\.checked/)
+  assert.match(page, /const progress = data\.steps\.walk\.total > 0 \? Math\.round\(\(data\.steps\.walk\.checked \/ data\.steps\.walk\.total\) \* 100\) : 0/)
+  assert.match(page, /\{ key: "totalExpected", label: t\("totalExpected"\), value: formatCount\(data\.steps\.walk\.total\) \}/)
   assert.match(page, /\{ key: "scanned", label: t\("scanned"\), value: formatCount\(processedCount\) \}/)
-  assert.match(page, /<AuditProgressBar\s+total=\{roundCounts\.total\}\s+processed=\{processedCount\}\s+pending=\{pendingCount\}/)
+  assert.match(page, /<AuditProgressBar\s+total=\{data\.steps\.walk\.total\}\s+processed=\{processedCount\}\s+pending=\{pendingCount\}/)
+  assert.match(page, /const cancelImpact = data\.cancelImpact/)
   // The cancel dialog's "work done" stays the API's count (route.ts getCancellationImpact): every non-pending item.
-  assert.match(page, /processedItems: roundCounts\.checked \+ roundCounts\.outOfScope,/)
-  assert.doesNotMatch(page, /_count\.items|_count: \{ select: \{ items: true|by: \["auditStatus"\]|scannedCount/)
-  assert.doesNotMatch(page, /statusCounts|round\._count/, "the old pendingCount / processedCount lines are gone")
+  assert.match(read("src/lib/audit-round-page-data.ts"), /processedItems: walk\.checked \+ resultCard\.outOfScope,/)
+  assert.doesNotMatch(page, /getAuditRoundCounts|roundCountsById|emptyAuditRoundCounts|_count\.items|round\._count|scannedCount|statusCounts/)
 })

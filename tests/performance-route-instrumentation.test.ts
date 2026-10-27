@@ -37,6 +37,10 @@ const routeFiles = [
     labels: ["audit-rounds.initial-data", "audit-rounds.progress-data"],
   },
   {
+    file: "src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx",
+    labels: ["audit-round.page-data"],
+  },
+  {
     file: "src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx",
     labels: ["audit-scan.initial-data", "audit-scan.checklist-data"],
   },

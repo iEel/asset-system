@@ -2,7 +2,6 @@ import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { AlertTriangle, ArrowLeft, Download, FileText, Pencil, ScanLine } from "lucide-react"
-import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
@@ -11,7 +10,6 @@ import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { AuditRoundCancelButton } from "@/components/audit/audit-round-cancel-button"
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
 import { hasPermission } from "@/lib/auth-utils"
-import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
@@ -27,16 +25,14 @@ import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { isSameAuditActor } from "@/lib/audit-segregation"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
 import { lastListPage } from "@/lib/list-pagination"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
 import { auditRoundStatusLabelKey, effectiveAuditRoundStatus, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
-import { getAuditRoundCounts } from "@/lib/audit-round-counts"
-import { emptyAuditRoundCounts } from "@/lib/audit-round-counts-rules"
-import { buildAuditCorrectionHistoryByItemId, type AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
+import type { AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
+import { getAuditRoundPageData } from "@/lib/audit-round-page-data"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 import { paginationRange } from "@/lib/master-data-query"
 import {
   auditFindingTypeByField,
@@ -44,14 +40,13 @@ import {
   auditRoundResultPageSizeOptions,
   buildAuditRoundResultSummaryGroups,
   buildAuditRoundExportHref,
-  buildAuditRoundItemWhere,
+  buildAuditRoundPageHref,
   buildAuditRoundResultListHref,
   getAuditRoundItemResultLabelKey,
   getAuditRoundItemStatusLabelKey,
   parseAuditRoundResultListParams,
   type AuditRoundResultFilter,
 } from "@/lib/audit-round-result-filters"
-import { resolveAuditRoundListWhereInput } from "@/lib/audit-round-list-lookups"
 import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditRoundDetailPageProps = {
@@ -69,193 +64,38 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const tCommon = await getTranslations("common")
 
   const resultListState = parseAuditRoundResultListParams(rawSearchParams)
-  const resultListOffset = (resultListState.page - 1) * resultListState.pageSize
   const itemFilters = { companyId: resultListState.companyId, branchId: resultListState.branchId, categoryId: resultListState.categoryId, field: resultListState.field, components: resultListState.components }
-  // The search matches the item's expected room too, and "อื่น ๆ" leaves out the six categories the chip row shows
-  // (P2-R5, P2-R11); the exports resolve the same input (audit-round-list-lookups.ts).
-  const resultWhereInput = await resolveAuditRoundListWhereInput(id, resultListState)
-  const resultItemWhere = buildAuditRoundItemWhere(resultWhereInput)
-
-  const [
-    round,
-    roundCountsById,
-    resultCounts,
-    findingTypeCounts,
-    pendingReviewCount,
-    openActionCount,
-    approvedFindingCount,
-    scanHistoryCount,
-    evidenceItems,
-    resultItems,
-    resultItemTotal,
-    filterCompany,
-    filterBranch,
-  ] = await Promise.all([
-    prisma.auditRound.findFirst({
-      where: { id, isActive: true },
-      include: {
-        scopeCompany: { select: { code: true, nameTh: true } },
-        scopeBranch: { select: { code: true, name: true } },
-        scopeDepartment: { select: { code: true, name: true } },
-        scopeLocation: { select: { code: true, name: true } },
-        scopeCategory: { select: { code: true, name: true } },
-        items: {
-          take: 100,
-          orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
-          include: {
-            asset: {
-              select: {
-                id: true,
-                assetTag: true,
-                name: true,
-                currentLocation: { select: { code: true, name: true } },
-                custodian: { select: { code: true, fullNameTh: true } },
-                condition: { select: { nameTh: true } },
-                parentComponents: {
-                  where: { status: "installed", removedAt: null },
-                  select: {
-                    componentRole: true,
-                    slotNo: true,
-                    componentAsset: { select: { id: true, assetTag: true, name: true } },
-                  },
-                },
-                installedInLinks: {
-                  where: { status: "installed", removedAt: null },
-                  select: {
-                    componentRole: true,
-                    slotNo: true,
-                    parentAsset: { select: { id: true, assetTag: true, name: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    }),
-    getAuditRoundCounts([id]),
-    prisma.auditItem.groupBy({
-      by: ["auditResult"],
-      where: { auditRoundId: id },
-      _count: { _all: true },
-    }),
-    prisma.auditFinding.groupBy({
-      by: ["findingType"],
-      where: { auditRoundId: id },
-      _count: { _all: true },
-    }),
-    prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "pending" } }),
-    prisma.auditFinding.count({ where: { auditRoundId: id, actionStatus: { in: ["planned", "in_progress", "done"] } } }),
-    prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "approved" } }),
-    prisma.auditScanHistory.count({ where: { auditRoundId: id } }),
-    prisma.auditItem.findMany({
-      where: { auditRoundId: id },
-      select: {
-        assetId: true,
-        asset: {
-          select: {
-            categoryId: true,
-          },
-        },
-      },
-    }),
-    prisma.auditItem.findMany({
-      where: resultItemWhere,
-      skip: resultListOffset,
-      take: resultListState.pageSize,
-      orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }, { id: "asc" }],
-      include: {
-        asset: {
-          select: {
-            id: true,
-            assetTag: true,
-            name: true,
-            currentLocation: { select: { code: true, name: true } },
-            custodian: { select: { code: true, fullNameTh: true } },
-            condition: { select: { nameTh: true } },
-            parentComponents: {
-              where: { status: "installed", removedAt: null },
-              select: {
-                componentRole: true,
-                slotNo: true,
-                componentAsset: { select: { id: true, assetTag: true, name: true } },
-              },
-            },
-            installedInLinks: {
-              where: { status: "installed", removedAt: null },
-              select: {
-                componentRole: true,
-                slotNo: true,
-                parentAsset: { select: { id: true, assetTag: true, name: true } },
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.auditItem.count({ where: resultItemWhere }),
-    // AuditItem.expectedCompanyId / expectedBranchId have no relation, so the chips' names need their own reads.
-    resultListState.companyId
-      ? prisma.company.findUnique({ where: { id: resultListState.companyId }, select: { code: true, nameTh: true } })
-      : Promise.resolve(null),
-    resultListState.branchId
-      ? prisma.branch.findUnique({ where: { id: resultListState.branchId }, select: { name: true, company: { select: { code: true } } } })
-      : Promise.resolve(null),
-  ])
-  if (!round) notFound()
-
-  const cancelledByUser = round.cancelledBy
-    ? await prisma.user.findUnique({
-        where: { id: round.cancelledBy },
-        select: { username: true, displayName: true },
-      })
-    : null
-
-  const correctionHistoryByItemId = buildAuditCorrectionHistoryByItemId(
-    resultItems.length > 0
-      ? await prisma.systemLog.findMany({
-          where: {
-            module: "audit",
-            action: "scan_result_corrected",
-            recordId: { in: resultItems.map((item) => item.id) },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-          include: { user: { select: { username: true, displayName: true } } },
-        })
-      : []
+  // The page's names from here on (Tasks 4-5 read filters, page and pageSize; Task 5 folds this into the parse).
+  const { page, pageSize, ...filters } = resultListState
+  const data = await withPerformanceTiming(
+    "audit-round.page-data",
+    () => getAuditRoundPageData({ roundId: id, filters, page, pageSize, user }),
+    { route: "/audit/rounds/[id]", locale, result: filters.result, hasSearch: Boolean(filters.search) }
   )
-
-  const isRoundCreator = isSameAuditActor(user.id, round.createdBy)
+  if (!data) notFound()
+  const { round } = data
+  const resultItems = data.rows
+  const resultItemTotal = data.total
+  const filterCompany = data.filterNames.company
+  const filterBranch = data.filterNames.branch
+  const filterCategory = data.filterNames.category
+  const isRoundCreator = data.steps.close.openedByViewer
   const isRoundReadOnly = isAuditRoundReadOnlyStatus(round.status)
   // The round's exports need audit:export (their routes check it; the E2E suite's AU1, M1).
   const canExportRound = round.status !== "cancelled" && hasPermission(user, "audit", "export")
-  const cancelledByDisplayName = cancelledByUser
-    ? cancelledByUser.displayName === cancelledByUser.username
-      ? cancelledByUser.username
-      : `${cancelledByUser.displayName} (${cancelledByUser.username})`
-    : round.cancelledBy
-  const roundCounts = roundCountsById.get(round.id) ?? emptyAuditRoundCounts
-  const pendingCount = roundCounts.pending
-  const processedCount = roundCounts.checked
-  const foundCount = countSuccessfulAuditResultRows(resultCounts)
-  const notFoundCount = resultCounts.find((row) => row.auditResult === "not_found")?._count._all ?? 0
-  const wrongLocationCount = findingTypeCounts.find((row) => row.findingType === "wrong_location")?._count._all ?? 0
-  const wrongCustodianCount = findingTypeCounts.find((row) => row.findingType === "wrong_custodian")?._count._all ?? 0
-  const wrongConditionCount = findingTypeCounts.find((row) => row.findingType === "wrong_condition")?._count._all ?? 0
-  const mismatchCount = resultCounts
-    .filter((row) => isVarianceAuditResult(row.auditResult))
-    .reduce((sum, row) => sum + row._count._all, 0)
-  const progress = roundCounts.total > 0 ? Math.round((roundCounts.checked / roundCounts.total) * 100) : 0
+  const cancelledByDisplayName = data.round.cancelledByLabel
+  const pendingCount = data.steps.walk.left
+  const processedCount = data.steps.walk.checked
+  const foundCount = data.resultCard.found
+  const notFoundCount = data.resultCard.notFound
+  const mismatchCount = data.resultCard.mismatch
+  const progress = data.steps.walk.total > 0 ? Math.round((data.steps.walk.checked / data.steps.walk.total) * 100) : 0
 
-  const evidenceSummary = await getEvidenceSummary({
-    auditStartDate: round.startDate,
-    items: evidenceItems,
-  })
   const returnToHref = normalizeOperationalReturnTo(locale, "audit-rounds", rawSearchParams.returnTo)
-  // An unknown or stale company or branch drops only its own filter, so the list never sits under a chip it cannot name.
-  if ((resultListState.companyId && !filterCompany) || (resultListState.branchId && !filterBranch)) {
-    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, companyId: filterCompany ? resultListState.companyId : null, branchId: filterBranch ? resultListState.branchId : null, pageSize: resultListState.pageSize }))
+  // An unknown or stale company, branch or category drops only its own filter, so the list never sits under a chip it cannot name.
+  const staleCategory = Boolean(filters.categoryId && filters.categoryId !== "other" && !filterCategory)
+  if ((filters.companyId && !filterCompany) || (filters.branchId && !filterBranch) || staleCategory) {
+    redirect(buildAuditRoundPageHref(locale, round.id, filters, { companyId: filterCompany ? filters.companyId : null, branchId: filterBranch ? filters.branchId : null, categoryId: staleCategory ? null : filters.categoryId, pageSize, returnTo: returnToHref }))
   }
   const roundDetailReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, returnToHref)
   const pendingHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundDetailReturnHref)
@@ -293,7 +133,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     const itemStatusLabelKey = statusLabelKey ? null : getAuditItemStatusLabelKey(item.auditStatus)
     const resultLabelKey = getAuditRoundItemResultLabelKey(item.auditResult)
     const auditResult = item.auditResult ?? "pending"
-    const correctionHistory = correctionHistoryByItemId.get(item.id) ?? []
+    const correctionHistory = item.correctionHistory
     return {
       id: item.id,
       asset: item.asset,
@@ -336,20 +176,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
   const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
   const closeChecklist = [
-    { label: t("closePendingItems"), value: pendingCount, ok: pendingCount === 0, href: pendingHref, actionLabel: t("checklistDrilldown") },
-    { label: t("closePendingFindings"), value: pendingReviewCount, ok: pendingReviewCount === 0, href: pendingReviewFindingsHref, actionLabel: t("checklistDrilldown") },
-    { label: t("closeOpenActions"), value: openActionCount, ok: openActionCount === 0, href: openActionFindingsHref, actionLabel: t("checklistDrilldown") },
+    { label: t("closePendingItems"), value: data.steps.close.checklist.pendingItems, ok: data.steps.close.checklist.pendingItems === 0, href: pendingHref, actionLabel: t("checklistDrilldown") },
+    { label: t("closePendingFindings"), value: data.steps.close.checklist.pendingFindings, ok: data.steps.close.checklist.pendingFindings === 0, href: pendingReviewFindingsHref, actionLabel: t("checklistDrilldown") },
+    { label: t("closeOpenActions"), value: data.steps.close.checklist.openActions, ok: data.steps.close.checklist.openActions === 0, href: openActionFindingsHref, actionLabel: t("checklistDrilldown") },
     { label: t("closeSeparateApprover"), value: isRoundCreator ? 1 : 0, ok: !isRoundCreator },
   ]
-  const canCloseRound = !isRoundReadOnly && closeChecklist.every((item) => item.ok)
-  const cancelImpact = {
-    pendingItems: pendingCount,
-    processedItems: roundCounts.checked + roundCounts.outOfScope,
-    pendingFindings: pendingReviewCount,
-    approvedFindings: approvedFindingCount,
-    openActions: openActionCount,
-    scanHistoryRows: scanHistoryCount,
-  }
+  const canCloseRound = data.steps.close.canClose
+  const cancelImpact = data.cancelImpact
   const auditRoundExportHref = buildAuditRoundExportHref(round.id, "export", resultListState)
   const auditRoundExportPdfHref = buildAuditRoundExportHref(round.id, "export-pdf", resultListState)
   const auditRoundVarianceHref = buildAuditRoundExportHref(round.id, "variance-export", resultListState)
@@ -376,12 +209,12 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         : null
   const resultSummaryGroups = buildAuditRoundResultSummaryGroups([
     { result: "found", count: foundCount },
-    { result: "wrong_location", count: wrongLocationCount },
-    { result: "wrong_custodian", count: wrongCustodianCount },
-    { result: "wrong_condition", count: wrongConditionCount },
+    { result: "wrong_location", count: data.fieldBars.counts.location },
+    { result: "wrong_custodian", count: data.fieldBars.counts.custodian },
+    { result: "wrong_condition", count: data.fieldBars.counts.condition },
     { result: "not_found", count: notFoundCount },
-    { result: "out_of_scope", count: roundCounts.outOfScope },
-    { result: "pending_review", count: pendingReviewCount },
+    { result: "out_of_scope", count: data.resultCard.outOfScope },
+    { result: "pending_review", count: data.steps.review.pendingFindings },
   ])
   const resultSummaryItemConfig = {
     found: { label: t("found"), tone: "success" as const, href: foundResultHref, actionLabel: t("viewResultItems") },
@@ -489,7 +322,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       <StatStrip
         className="mb-6"
         items={[
-          { key: "totalExpected", label: t("totalExpected"), value: formatCount(roundCounts.total) },
+          { key: "totalExpected", label: t("totalExpected"), value: formatCount(data.steps.walk.total) },
           { key: "pending", label: t("pending"), value: formatCount(pendingCount) },
           { key: "scanned", label: t("scanned"), value: formatCount(processedCount) },
           { key: "progress", label: t("progress"), value: `${formatCount(progress)}%` },
@@ -498,7 +331,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
 
       <ContentPanel className="mb-6">
         <AuditProgressBar
-          total={roundCounts.total}
+          total={data.steps.walk.total}
           processed={processedCount}
           pending={pendingCount}
           label={t("progress")}
@@ -529,10 +362,10 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       <ContentPanel title={t("evidenceSummary")} description={t("evidenceSummaryHelp")} className="mb-6">
         <StatStrip
           items={[
-            { key: "evidenceAttached", label: t("evidenceAttached"), value: formatCount(evidenceSummary.withEvidence) },
-            { key: "evidenceMissing", label: t("evidenceMissing"), value: formatCount(evidenceSummary.missingEvidence) },
-            { key: "checklistComplete", label: t("checklistComplete"), value: formatCount(evidenceSummary.checklistComplete) },
-            { key: "checklistIncomplete", label: t("checklistIncomplete"), value: formatCount(evidenceSummary.checklistIncomplete) },
+            { key: "evidenceAttached", label: t("evidenceAttached"), value: formatCount(data.evidence.withPhoto) },
+            { key: "evidenceMissing", label: t("evidenceMissing"), value: formatCount(data.evidence.withoutPhoto) },
+            { key: "checklistComplete", label: t("checklistComplete"), value: formatCount(data.evidence.checklistComplete) },
+            { key: "checklistIncomplete", label: t("checklistIncomplete"), value: formatCount(data.evidence.checklistIncomplete) },
           ]}
         />
       </ContentPanel>
@@ -822,71 +655,4 @@ function buildAuditRoundScanEditHref({
   params.set("mode", "edit")
   params.set("returnTo", returnTo)
   return `/${locale}/audit/rounds/${roundId}/scan?${params.toString()}`
-}
-
-async function getEvidenceSummary({
-  auditStartDate,
-  items,
-}: {
-  auditStartDate: Date
-  items: Array<{ assetId: string; asset: { categoryId: string } }>
-}) {
-  const assetIds = Array.from(new Set(items.map((item) => item.assetId)))
-  const categoryIds = Array.from(new Set(items.map((item) => item.asset.categoryId).filter(Boolean)))
-  const [attachments, checklistSettings] = await Promise.all([
-    assetIds.length
-      ? prisma.attachment.findMany({
-          where: {
-            assetId: { in: assetIds },
-            module: "asset",
-            isActive: true,
-            uploadedAt: { gte: auditStartDate },
-          },
-          select: { assetId: true, originalName: true },
-        })
-      : Promise.resolve([]),
-    categoryIds.length
-      ? prisma.systemSetting.findMany({
-          where: { key: { in: categoryIds.map(categoryPhotoChecklistKey) } },
-          select: { key: true, value: true },
-        })
-      : Promise.resolve([]),
-  ])
-
-  const attachmentsByAssetId = new Map<string, string[]>()
-  for (const attachment of attachments) {
-    if (!attachment.assetId) continue
-    const current = attachmentsByAssetId.get(attachment.assetId) ?? []
-    current.push(attachment.originalName)
-    attachmentsByAssetId.set(attachment.assetId, current)
-  }
-
-  const checklistByCategoryId = new Map(
-    checklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
-  )
-
-  let withEvidence = 0
-  let checklistComplete = 0
-  let checklistIncomplete = 0
-  for (const item of items) {
-    const attachmentNames = attachmentsByAssetId.get(item.assetId) ?? []
-    if (attachmentNames.length > 0) withEvidence += 1
-
-    const checklist = checklistByCategoryId.get(item.asset.categoryId) ?? []
-    if (checklist.length === 0) continue
-
-    const complete = checklist.every((label) => attachmentNames.some((name) => name.startsWith(`${label} - `)))
-    if (complete) {
-      checklistComplete += 1
-    } else {
-      checklistIncomplete += 1
-    }
-  }
-
-  return {
-    withEvidence,
-    missingEvidence: Math.max(items.length - withEvidence, 0),
-    checklistComplete,
-    checklistIncomplete,
-  }
 }

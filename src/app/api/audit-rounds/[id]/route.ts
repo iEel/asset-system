@@ -6,6 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { getAuditRoundReadOnlyError, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
 import { auditRoundCancelSchema } from "@/lib/validations/audit"
+import { getAuditRoundCloseChecklist } from "@/lib/audit-round-close"
 
 type AuditRoundContext = {
   params: Promise<{ id: string }>
@@ -106,7 +107,7 @@ export async function PATCH(request: NextRequest, context: AuditRoundContext) {
       return NextResponse.json({ error: auditSegregationErrors.closeOwnRound }, { status: 403 })
     }
 
-    const checklist = await getCloseChecklist(id)
+    const checklist = await getAuditRoundCloseChecklist(id)
     if (!checklist.canClose) {
       return NextResponse.json({ error: "Audit round still has pending checklist items", checklist }, { status: 400 })
     }
@@ -159,26 +160,6 @@ export async function DELETE(_request: NextRequest, context: AuditRoundContext) 
     return NextResponse.json({ success: true })
   } catch (error) {
     return errorResponse(error, 400)
-  }
-}
-
-async function getCloseChecklist(auditRoundId: string) {
-  const [pendingItems, pendingFindings, openActions] = await Promise.all([
-    prisma.auditItem.count({ where: { auditRoundId, auditStatus: "pending" } }),
-    prisma.auditFinding.count({ where: { auditRoundId, reviewStatus: "pending" } }),
-    prisma.auditFinding.count({
-      where: {
-        auditRoundId,
-        actionStatus: { in: ["planned", "in_progress", "done"] },
-      },
-    }),
-  ])
-
-  return {
-    pendingItems,
-    pendingFindings,
-    openActions,
-    canClose: pendingItems === 0 && pendingFindings === 0 && openActions === 0,
   }
 }
 
