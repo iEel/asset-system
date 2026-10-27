@@ -182,7 +182,7 @@ test("the table: ผล / ทรัพย์สิน / สิ่งที่ต
   const messages = JSON.parse(read("messages/th.json"))
   assert.deepEqual(["location", "department", "custodian", "condition"].map((field) => messages.auditRound[`differenceField_${field}`]), ["ที่ตั้ง", "แผนก", "ผู้ถือครอง", "สภาพ"])
   // A long tag wraps inside the phone card; the ผล badge keeps its size beside it.
-  assert.match(page, /<div className="flex min-w-0 items-start justify-between gap-2">\s*<Link href=\{item\.assetHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 min-w-0 items-center md:min-h-0"\)\}>\s*<span className="tag min-w-0 break-all font-medium">\{item\.asset\.assetTag\}<\/span>\s*<\/Link>\s*<StatusBadge className="shrink-0" label=\{item\.resultLabel\} tone=\{item\.resultTone\} \/>/)
+  assert.match(page, /<div className="flex min-w-0 items-start justify-between gap-2">\s*<Link href=\{item\.assetHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 min-w-0 items-center md:min-h-0"\)\}>\s*<span className="tag min-w-0 whitespace-normal break-all font-medium">\{item\.asset\.assetTag\}<\/span>\s*<\/Link>\s*<StatusBadge className="shrink-0" label=\{item\.resultLabel\} tone=\{item\.resultTone\} \/>/)
 })
 
 test("every list link comes from the one builder: paging, page size and the past-last-page redirect keep every filter (group 2 plan 2 global constraint)", () => {

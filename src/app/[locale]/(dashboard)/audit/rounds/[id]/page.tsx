@@ -528,7 +528,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                   <div className="flex min-w-0 items-start justify-between gap-2">
                     <Link href={item.assetHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 min-w-0 items-center md:min-h-0")}>
-                      <span className="tag min-w-0 break-all font-medium">{item.asset.assetTag}</span>
+                      <span className="tag min-w-0 whitespace-normal break-all font-medium">{item.asset.assetTag}</span>
                     </Link>
                     <StatusBadge className="shrink-0" label={item.resultLabel} tone={item.resultTone} />
                   </div>
