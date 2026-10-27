@@ -122,7 +122,7 @@ test("the round page lists the out-of-scope finds as items under every filter, c
   assert.doesNotMatch(page, /auditScanHistory\.findMany|auditItemId: null|isOutOfScopeResultList|ScanHistoryWhere|ScanHistoryResultFilter|outOfScopeScan/)
   assert.match(data, /findAuditRoundSearchLocations\(roundId, filters\.search\)/)
   assert.match(data, /orderBy: auditRoundItemListOrderBy,/)
-  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(/)
+  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditStatus !== "pending" && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(/)
   assert.equal(page.match(/\{item\.editHref \? \(/g)?.length, 1, "the phone card's button; the table's is in ⋯ (item.groups)")
   assert.match(page, /if \(filterCompany\) \{\n\s+resultFilterChips\.push/, "the company chip shows on the out-of-scope list too")
   assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(round\.id, "export", filters\)/)

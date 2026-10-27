@@ -2212,7 +2212,11 @@
     "photoMissing": "ไม่มีรูป",
     "componentMark": "ส่วนควบ",
     "missingComponentPrefix": "ไม่พบ:",
-    "nextStepViewPendingFindings": "ดูรายการไม่ตรงรอพิจารณา ({count})"
+    "nextStepViewPendingFindings": "ดูรายการไม่ตรงรอพิจารณา ({count})",
+    "differenceField_location": "ที่ตั้ง",
+    "differenceField_department": "แผนก",
+    "differenceField_custodian": "ผู้ถือครอง",
+    "differenceField_condition": "สภาพ"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",

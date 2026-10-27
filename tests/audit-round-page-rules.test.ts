@@ -204,14 +204,14 @@ test("an export link carries the list's filters and nothing else: the page link'
   for (const key of ["result", "categoryId", "field", "components", "companyId", "branchId", "search"] as const) assert.equal(parsed[key], filters[key], key)
 })
 
-test("the ผล badge: รอตรวจ while pending, success for a match or a part confirmed with its parent, danger for not found, info out of scope, warning for every variance and for a checked item with no result (spec §8, P2-R2)", () => {
+test("the ผล badge: รอตรวจ while pending, success for a match or a part confirmed with its parent, danger for not found, info out of scope, warning ไม่ตรง (the short word of a chip) for every variance and for a checked item with no result (spec §5, §8, P2-R2)", () => {
   assert.deepEqual(auditRoundResultBadge("pending", null), { labelKey: "pending", tone: "muted" })
   assert.deepEqual(auditRoundResultBadge("scanned", "found"), { labelKey: "found", tone: "success" })
   assert.deepEqual(auditRoundResultBadge("scanned", "confirmed_with_parent"), { labelKey: "confirmedWithParent", tone: "success" })
   assert.deepEqual(auditRoundResultBadge("reviewed", "not_found"), { labelKey: "notFound", tone: "danger" })
   assert.deepEqual(auditRoundResultBadge("reviewed", "out_of_scope"), { labelKey: "outOfScope", tone: "info" })
   for (const result of ["wrong_location", "wrong_department", "need_review", "mismatch", null]) {
-    assert.deepEqual(auditRoundResultBadge("reviewed", result), { labelKey: "mismatch", tone: "warning" }, String(result))
+    assert.deepEqual(auditRoundResultBadge("reviewed", result), { labelKey: "mismatchShort", tone: "warning" }, String(result))
   }
 })
 

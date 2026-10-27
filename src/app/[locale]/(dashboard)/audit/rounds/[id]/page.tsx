@@ -276,7 +276,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     const badge = auditRoundResultBadge(item.auditStatus, item.auditResult)
     const review = auditRoundItemReviewState(item.findings.map((finding) => finding.reviewStatus))
     const assetHref = `/${locale}/assets/${item.asset.id}`
-    const editHref = canScan && !isRoundReadOnly && item.auditResult !== "out_of_scope" ? buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: listHref }) : null
+    const editHref = canScan && !isRoundReadOnly && item.auditStatus !== "pending" && item.auditResult !== "out_of_scope" ? buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: listHref }) : null
     return {
       id: item.id,
       asset: item.asset,
@@ -284,9 +284,10 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       resultLabel: t(badge.labelKey),
       resultTone: badge.tone,
       // A value as the findings page shows it (Task 3's labels); an empty one stays null, so the cell shows Nil, never "-".
+      // Each line names its field, "แผนก: ฝ่ายบัญชี → ฝ่ายขาย" (board AU-Round), not the finding's type.
       differences: auditRoundDifferences(item.findings).map((difference) => ({
         key: difference.id,
-        label: tFinding(`type_${difference.findingType}`),
+        label: t(`differenceField_${difference.field}`),
         expected: difference.expectedValue ? formatFindingValue(difference.findingType, difference.expectedValue, data.findingValueLabels) : null,
         actual: difference.actualValue ? formatFindingValue(difference.findingType, difference.actualValue, data.findingValueLabels) : null,
         component: difference.component,
@@ -299,7 +300,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       missingComponents: item.missingComponents.map((component) => ({ ...component, href: pageHref(roundWideFilters, { search: component.assetTag }) })),
       latestCorrection: item.correctionHistory[0] ?? null,
       editHref,
-      // ⋯: "แก้ไขผลตรวจ" for audit:edit on an open round, never on an out-of-scope row until plan 3 (P2-R4, P2-R7); "ดู".
+      // ⋯: "แก้ไขผลตรวจ" for audit:edit on an open round, on a checked item only (a pending one has no result to edit),
+      // never on an out-of-scope row until plan 3 (P2-R4, P2-R7); "ดู".
       groups: [{ key: "row", items: [
         ...(editHref ? [{ kind: "link" as const, key: "edit", label: t("editScanResult"), href: editHref, icon: <Pencil aria-hidden="true" /> }] : []),
         { kind: "link" as const, key: "view", label: tCommon("view"), href: assetHref, icon: <Eye aria-hidden="true" /> },
@@ -524,11 +526,11 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             ) : (
               resultRows.map((item) => (
                 <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <Link href={item.assetHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>
-                      <span className="tag font-medium">{item.asset.assetTag}</span>
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <Link href={item.assetHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 min-w-0 items-center md:min-h-0")}>
+                      <span className="tag min-w-0 break-all font-medium">{item.asset.assetTag}</span>
                     </Link>
-                    <StatusBadge label={item.resultLabel} tone={item.resultTone} />
+                    <StatusBadge className="shrink-0" label={item.resultLabel} tone={item.resultTone} />
                   </div>
                   <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
                   {item.componentRelationshipLines.length > 0 ? (

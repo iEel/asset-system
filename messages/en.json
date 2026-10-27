@@ -2212,7 +2212,11 @@
     "photoMissing": "No photo",
     "componentMark": "Component",
     "missingComponentPrefix": "Not found:",
-    "nextStepViewPendingFindings": "View pending findings ({count})"
+    "nextStepViewPendingFindings": "View pending findings ({count})",
+    "differenceField_location": "Location",
+    "differenceField_department": "Department",
+    "differenceField_custodian": "Custodian",
+    "differenceField_condition": "Condition"
   },
   "auditScan": {
     "title": "Audit Scan",

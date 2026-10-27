@@ -162,12 +162,12 @@ test("ไปพิจารณารายการไม่ตรง follows th
   assert.match(page, /const resultFindingReviewHref = filters\.field\n\s+\? `\/\$\{locale\}\/audit\/findings\?status=pending&roundId=\$\{round\.id\}&findingType=\$\{auditFindingTypeByField\[filters\.field\]\}`\n\s+: filters\.result === "pending_review" \|\| filters\.result === "mismatch"\n\s+\? pendingReviewFindingsHref\n\s+: null/)
 })
 
-test("the table: ผล / ทรัพย์สิน / สิ่งที่ต่าง / ตรวจโดย / รูป / พิจารณา, then ⋯ with แก้ไขผลตรวจ for audit:edit only and never on an out-of-scope row (spec §8, P2-R4, P2-R7, P2-R17)", () => {
+test("the table: ผล / ทรัพย์สิน / สิ่งที่ต่าง / ตรวจโดย / รูป / พิจารณา, then ⋯ with แก้ไขผลตรวจ for audit:edit only, on a checked item only, never on an out-of-scope row (spec §8, P2-R4, P2-R7, P2-R17)", () => {
   const page = read(PAGE)
   const heads = [...page.matchAll(/<DataTableHead(?: [^>]*)?>\{(?:t|tCommon)\("(\w+)"\)\}<\/DataTableHead>/g)].map((match) => match[1])
   assert.deepEqual(heads, ["result", "assetColumn", "differenceColumn", "checkedByColumn", "photoColumn", "reviewColumn", "actions"])
   assert.equal(page.match(/<TableEmptyRow\s+colSpan=\{7\}/g)?.length, 1)
-  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(\{ locale, roundId: round\.id, assetId: item\.asset\.id, returnTo: listHref \}\) : null/)
+  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditStatus !== "pending" && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(\{ locale, roundId: round\.id, assetId: item\.asset\.id, returnTo: listHref \}\) : null/)
   assert.match(page, /<RowActions\s+code=\{item\.asset\.assetTag\}\s+name=\{item\.asset\.name\}\s+menuLabel=\{tCommon\("moreActionsFor", \{ code: item\.asset\.assetTag \}\)\}\s+next=\{undefined\}\s+groups=\{item\.groups\}\s*\/>/)
   assert.match(page, /\.\.\.\(editHref \? \[\{ kind: "link" as const, key: "edit", label: t\("editScanResult"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\] : \[\]\),/)
   assert.match(page, /\{ kind: "link" as const, key: "view", label: tCommon\("view"\), href: assetHref, icon: <Eye aria-hidden="true" \/> \},/)
@@ -176,6 +176,13 @@ test("the table: ผล / ทรัพย์สิน / สิ่งที่ต
   assert.equal(page.match(/<RoundItemMissingComponents\b/g)?.length, 2, "the phone card and the table")
   assert.match(page, /\{item\.editHref \? \(\s*<div className="mt-3 flex justify-end">\s*<Link href=\{item\.editHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   assert.doesNotMatch(page, /item\.asset\.currentLocation|item\.asset\.custodian|t\("expectedLocation"\)/, "the table shows what differed, not the asset's current values")
+  // สิ่งที่ต่าง reads the field's name, "แผนก: ฝ่ายบัญชี → ฝ่ายขาย", never the finding's type (board AU-Round).
+  assert.match(page, /label: t\(`differenceField_\$\{difference\.field\}`\),/)
+  assert.doesNotMatch(page, /label: tFinding\(`type_\$\{difference\.findingType\}`\)/)
+  const messages = JSON.parse(read("messages/th.json"))
+  assert.deepEqual(["location", "department", "custodian", "condition"].map((field) => messages.auditRound[`differenceField_${field}`]), ["ที่ตั้ง", "แผนก", "ผู้ถือครอง", "สภาพ"])
+  // A long tag wraps inside the phone card; the ผล badge keeps its size beside it.
+  assert.match(page, /<div className="flex min-w-0 items-start justify-between gap-2">\s*<Link href=\{item\.assetHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 min-w-0 items-center md:min-h-0"\)\}>\s*<span className="tag min-w-0 break-all font-medium">\{item\.asset\.assetTag\}<\/span>\s*<\/Link>\s*<StatusBadge className="shrink-0" label=\{item\.resultLabel\} tone=\{item\.resultTone\} \/>/)
 })
 
 test("every list link comes from the one builder: paging, page size and the past-last-page redirect keep every filter (group 2 plan 2 global constraint)", () => {

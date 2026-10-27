@@ -219,16 +219,17 @@ export function buildAuditRoundPageMainAction({ steps, pendingItems, pendingFind
   return canApprove ? { kind: "close", disabled: !canClose || openedByViewer } : null
 }
 
-export type AuditRoundResultBadgeKey = "pending" | "found" | "confirmedWithParent" | "mismatch" | "notFound" | "outOfScope"
+export type AuditRoundResultBadgeKey = "pending" | "found" | "confirmedWithParent" | "mismatchShort" | "notFound" | "outOfScope"
 
-// The ผล column (spec §8): one badge per row. A checked item with no result reads ไม่ตรง, as it counts (P2-R2).
+// The ผล column (spec §8): one badge per row. A checked item with no result reads ไม่ตรง, as it counts (P2-R2). The
+// badge is a chip, so it reads the short "ไม่ตรง" as the result chip does (spec §5); sentences keep "รายการไม่ตรง".
 export function auditRoundResultBadge(auditStatus: string, auditResult: string | null): { labelKey: AuditRoundResultBadgeKey; tone: StatusTone } {
   if (auditStatus === "pending") return { labelKey: "pending", tone: "muted" }
   if (auditResult === "found") return { labelKey: "found", tone: "success" }
   if (auditResult === "confirmed_with_parent") return { labelKey: "confirmedWithParent", tone: "success" }
   if (auditResult === "not_found") return { labelKey: "notFound", tone: "danger" }
   if (auditResult === "out_of_scope") return { labelKey: "outOfScope", tone: "info" }
-  return { labelKey: "mismatch", tone: "warning" }
+  return { labelKey: "mismatchShort", tone: "warning" }
 }
 
 export type AuditRoundReviewState = "pending" | "exception" | "approved" | "rejected"
