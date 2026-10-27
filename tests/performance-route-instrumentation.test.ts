@@ -44,6 +44,10 @@ const routeFiles = [
     file: "src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx",
     labels: ["audit-scan.initial-data", "audit-scan.checklist-data"],
   },
+  {
+    file: "src/app/[locale]/(dashboard)/audit/rounds/[id]/pending/page.tsx",
+    labels: ["audit-pending.page-data"],
+  },
 ]
 
 test("high-latency dashboard routes include performance timing labels", () => {

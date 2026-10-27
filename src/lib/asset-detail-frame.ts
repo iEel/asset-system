@@ -2,7 +2,8 @@
 // the API's own definition of "open" (spec §5 Performance, §7.1).
 import { prisma } from "@/lib/db"
 import type { AuditRoundRef } from "@/lib/asset-detail-frame-rules"
-import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { latestAuditResultAt, latestAuditResultOrderBy, latestAuditResultWhere } from "@/lib/latest-audit-result-rules"
 import {
   disposalReadinessAssetSelect,
   getDisposalReadinessBlockersForAsset,
@@ -43,8 +44,8 @@ export async function getAssetDetailFrame(assetId: string): Promise<AssetDetailF
       select: { auditRound: auditRoundRefSelect },
     }),
     prisma.auditItem.findFirst({
-      where: { assetId, auditResult: { not: null }, auditRound: { isActive: true, status: auditRoundCoverageWhere } },
-      orderBy: [{ lastScanAt: "desc" }, { updatedAt: "desc" }],
+      where: { assetId, ...latestAuditResultWhere },
+      orderBy: latestAuditResultOrderBy,
       select: { auditResult: true, lastScanAt: true, updatedAt: true, auditRound: auditRoundRefSelect },
     }),
     // The latest handover that is not voided.
@@ -62,7 +63,7 @@ export async function getAssetDetailFrame(assetId: string): Promise<AssetDetailF
     openDisposalId: openDisposal?.id ?? null,
     latestAuditResult:
       latestItem && latestItem.auditResult
-        ? { auditResult: latestItem.auditResult, at: latestItem.lastScanAt ?? latestItem.updatedAt, round: latestItem.auditRound }
+        ? { auditResult: latestItem.auditResult, at: latestAuditResultAt(latestItem), round: latestItem.auditRound }
         : null,
     pendingAudit: pendingItem ? { round: pendingItem.auditRound } : null,
     latestHandover,

@@ -1,53 +1,58 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
-import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
 import { Eye, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { hasPermission } from "@/lib/auth-utils"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
-import { AuditMarkNotFoundButton } from "@/components/audit/audit-mark-not-found-button"
-import { AuditPendingRowActions } from "@/components/audit/audit-pending-row-actions"
+import { AuditMarkNotFoundButton, type AuditNotFoundAsset } from "@/components/audit/audit-mark-not-found-button"
 import { cn, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
-import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil } from "@/components/ui/nil"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { TabNav } from "@/components/ui/tab-nav"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
-import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { LIST_PAGE_SIZES, appendListPage, lastListPage, parseListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo, normalizeAuditRoundWorkflowReturnTo } from "@/lib/operational-return-navigation"
-import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
+import { auditRoundStatusLabelKey, effectiveAuditRoundStatus, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
+import { buildAuditRoundDueLine } from "@/lib/audit-rounds-list-rules"
+import { startOfBangkokDay } from "@/lib/waiting-work-rules"
+import { withPerformanceTiming } from "@/lib/performance-timing"
+import { getAuditPendingListData, type AuditPendingListItem } from "@/lib/audit-pending-list-data"
+import {
+  buildAuditPendingContinueScanHref,
+  describeAuditPendingCustodian,
+  describeAuditPendingPlace,
+  labelAuditPendingRoomChips,
+  type AuditPendingCustodian,
+  type AuditPendingPlace,
+  type AuditPendingRoomChipLabel,
+} from "@/lib/audit-pending-list-rules"
 
 type AuditPendingPageProps = {
   params: Promise<{ locale: string; id: string }>
   searchParams: Promise<{ returnTo?: string | string[]; search?: string | string[]; locationId?: string | string[]; page?: string | string[]; pageSize?: string | string[] }>
 }
 
-type AuditPendingItem = {
-  id: string
-  asset: {
-    id: string
-    assetTag: string
-    name: string
-    currentLocation: { code: string; name: string }
-    custodian: { code: string; fullNameTh: string } | null
-    movements: Array<{ performedAt: Date }>
-  }
-}
-
 export default async function AuditPendingPage({ params, searchParams }: AuditPendingPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
   const { search = "" } = rawSearchParams
-  await requirePagePermission(locale, "audit", "view")
+  const user = await requirePagePermission(locale, "audit", "view")
+  // audit:edit scans and records not found (group 2 spec §5, bug 14): a viewer gets no scan link, no not-found button
+  // and no "เดินตรวจต่อ"; the asset's name still opens the asset.
+  const canScan = hasPermission(user, "audit", "edit")
   const t = await getTranslations("auditPending")
+  const tRound = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
   const searchText = resolveFirstSearchParam(search).trim()
   const locationFilter = resolveFirstSearchParam(rawSearchParams.locationId ?? "").trim()
@@ -55,77 +60,20 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
 
   const round = await prisma.auditRound.findFirst({
     where: { id, isActive: true },
-    select: {
-      id: true,
-      auditNo: true,
-      name: true,
-      status: true,
-    },
+    select: { id: true, auditNo: true, name: true, status: true, endDate: true },
   })
   if (!round || isAuditRoundReadOnlyStatus(round.status)) notFound()
 
-  // Real pages (spec 2B B4, §5.9.2 row 4): the pending items load on their own once the round passed the read-only
-  // check, with the whole count in the same Promise.all, so the box above the list counts every pending item.
-  const where: Prisma.AuditItemWhereInput = {
-    auditRoundId: round.id,
-    auditStatus: "pending",
-    ...(locationFilter ? { expectedLocationId: locationFilter } : {}),
-    ...(searchText
-      ? {
-          asset: {
-            OR: [
-              { assetTag: { contains: searchText } },
-              { name: { contains: searchText } },
-              {
-                currentLocation: {
-                  OR: [
-                    { code: { contains: searchText } },
-                    { name: { contains: searchText } },
-                  ],
-                },
-              },
-              {
-                custodian: {
-                  OR: [
-                    { code: { contains: searchText } },
-                    { fullNameTh: { contains: searchText } },
-                  ],
-                },
-              },
-            ],
-          },
-        }
-      : {}),
-  }
-  const { skip, take } = listPageWindow(listPage)
-  const [items, total] = await Promise.all([
-    prisma.auditItem.findMany({
-      where,
-      include: {
-        asset: {
-          select: {
-            id: true,
-            assetTag: true,
-            name: true,
-            currentLocation: { select: { code: true, name: true } },
-            custodian: { select: { code: true, fullNameTh: true } },
-            movements: {
-              where: { movementType: { contains: "audit" } },
-              orderBy: { performedAt: "desc" },
-              take: 1,
-              select: { performedAt: true },
-            },
-          },
-        },
-      },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      skip,
-      take,
-    }),
-    prisma.auditItem.count({ where }),
-  ])
+  // One load after the read-only check (spec §9): the round-wide counts, the room chips within the search, one page of
+  // rows and the names of their expected rooms and custodians.
+  const data = await withPerformanceTiming("audit-pending.page-data", () =>
+    getAuditPendingListData({ roundId: round.id, searchText, locationFilter, listPage }),
+  )
+  const { items, total } = data
   const returnToHref = normalizeAuditRoundWorkflowReturnTo(locale, round.id, rawSearchParams.returnTo)
+  // Always the round page, with its own returnTo: the scan links' back target and the trail's AUD-… link.
   const scanReturnToHref = resolveAuditPendingScanReturnTo(locale, round.id, returnToHref)
+  const continueScanHref = buildAuditPendingContinueScanHref({ locale, roundId: round.id, returnToHref, scanReturnToHref })
   const pendingHref = `/${locale}/audit/rounds/${round.id}/pending`
   // The list URL keeps the search, the room, the page size and the page's own returnTo (spec 2B §5.9.2 row 4).
   const listHref = (next: { search?: string; locationId?: string; page?: number; pageSize?: number }) =>
@@ -147,54 +95,73 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
   const clearSearchHref = listHref({ search: "" })
   const clearRoomFilterHref = listHref({ locationId: "" })
   const pageSizeInput = Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize }))
-  const filterLocation = locationFilter
-    ? await prisma.location.findFirst({ where: { id: locationFilter }, select: { code: true, name: true } })
-    : null
-  const locationFilterLabel = filterLocation ? `${filterLocation.code} - ${filterLocation.name}` : locationFilter
-  const emptyTitle = searchText ? t("emptySearchTitle") : t("emptyTitle")
-  const emptyHelp = searchText ? t("emptySearchHelp") : t("emptyHelp")
-  const emptyActionHref = searchText ? clearSearchHref : returnToHref
-  const emptyActionLabel = searchText ? t("clearSearch") : tCommon("back")
+  const dueLine = buildAuditRoundDueLine(round.status, round.endDate, startOfBangkokDay(new Date()))
+  const roomLabels = labelAuditPendingRoomChips(data.roomChips.chips, data.places)
+  const roomTabs = data.roomChips.chips.map((chip) => ({
+    key: chip.key,
+    label: chip.kind === "all" ? t("roomAll") : chip.kind === "other" ? t("roomOther") : formatAuditPendingRoomChip(roomLabels.get(chip.key), t("roomUnknown")),
+    count: formatCount(chip.count),
+    href: listHref({ locationId: chip.kind === "all" ? "" : chip.key }),
+  }))
+  // A search with no rows offers "ล้างคำค้น"; a room with no rows "ดูทุกห้อง"; a round with nothing left the way back.
+  const empty = searchText
+    ? { title: t("emptySearchTitle"), help: t("emptySearchHelp"), href: clearSearchHref, label: t("clearSearch") }
+    : locationFilter
+      ? { title: t("roomEmptyTitle"), help: t("roomEmptyHelp"), href: clearRoomFilterHref, label: t("roomFilterClear") }
+      : { title: t("emptyTitle"), help: t("emptyHelp"), href: returnToHref, label: tCommon("back") }
+  const describe = (item: AuditPendingListItem) => describeAuditPendingItem(item, data.places, data.people, data.lastAuditAt)
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t("title")}
-        meta={t("subtitle", { round: `${round.auditNo} - ${round.name}` })}
+        breadcrumbs={[
+          { label: tRound("title"), href: `/${locale}/audit/rounds` },
+          { label: round.auditNo, href: scanReturnToHref, code: true },
+          { label: t("title") },
+        ]}
+        title={t("titleWithCount", { count: formatCount(data.counts.pending) })}
+        meta={
+          <>
+            <span className="tag">{round.auditNo}</span>
+            <StatusBadge label={tRound(auditRoundStatusLabelKey(round.status) ?? "statusOpen")} status={effectiveAuditRoundStatus(round.status)} />
+            <span>{t("checkedOfTotal", { checked: formatCount(data.counts.checked), total: formatCount(data.counts.total) })}</span>
+            {dueLine ? <span>{dueLine.kind === "left" ? tRound("daysLeft", { days: formatCount(dueLine.days) }) : tRound("daysOverdue", { days: formatCount(dueLine.days) })}</span> : null}
+          </>
+        }
         back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
+        actions={
+          canScan && data.counts.pending > 0 ? (
+            <Link href={continueScanHref} className={buttonVariants({ size: "md" })}>
+              <ScanLine aria-hidden="true" />
+              {tRound("nextStepContinueScan", { count: formatCount(data.counts.pending) })}
+            </Link>
+          ) : undefined
+        }
       />
 
-      <ContentPanel>
-        <div className="text-sm text-muted-foreground">
-          {t("pendingCount", { count: formatCount(total) })}
-          {locationFilter ? (
-            <div className="mt-1 flex flex-wrap items-center gap-x-3">
-              <span>{t("roomFilter", { location: locationFilterLabel })}</span>
-              <Link href={clearRoomFilterHref} className={cn(linkVariants(), "inline-flex min-h-11 items-center md:min-h-0")}>
-                {t("roomFilterClear")}
-              </Link>
-            </div>
-          ) : null}
+      {/* The room chips, counted by the expected room within the search (spec §5, §9); the search at their right from lg. */}
+      <div className="flex flex-col lg:flex-row lg:items-start lg:gap-6">
+        <TabNav aria-label={t("roomChips")} items={roomTabs} current={data.roomChips.current} scroll={false} className="mb-4 min-w-0 lg:flex-1" />
+        <div className="min-w-0 lg:w-104 lg:shrink-0">
+          <MasterDataSearch
+            action={`/${locale}/audit/rounds/${round.id}/pending`}
+            defaultValue={searchText}
+            placeholder={t("searchPlaceholder")}
+            submitLabel={tCommon("search")}
+            hiddenInputs={{ returnTo: returnToHref, ...(locationFilter ? { locationId: locationFilter } : {}), ...pageSizeInput }}
+          />
         </div>
-      </ContentPanel>
-
-      <MasterDataSearch
-        action={`/${locale}/audit/rounds/${round.id}/pending`}
-        defaultValue={searchText}
-        placeholder={t("searchPlaceholder")}
-        submitLabel={tCommon("search")}
-        hiddenInputs={{ returnTo: returnToHref, ...(locationFilter ? { locationId: locationFilter } : {}), ...pageSizeInput }}
-      />
+      </div>
 
       <div className={cn(getPanelClasses(), "overflow-hidden")}>
         <div className={`${getMobileCardListClasses()} p-3`}>
           {items.length === 0 ? (
             <ActionEmptyState
               icon={<ScanLine className="h-6 w-6" />}
-              title={emptyTitle}
-              description={emptyHelp}
-              actionHref={emptyActionHref}
-              actionLabel={emptyActionLabel}
+              title={empty.title}
+              description={empty.help}
+              actionHref={empty.href}
+              actionLabel={empty.label}
               actionVariant="secondary"
             />
           ) : (
@@ -202,13 +169,18 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
               <AuditPendingMobileCard
                 key={item.id}
                 item={item}
+                facts={describe(item)}
                 locale={locale}
                 roundId={round.id}
                 scanReturnToHref={scanReturnToHref}
+                canScan={canScan}
                 labels={{
                   expectedLocation: t("expectedLocation"),
                   expectedCustodian: t("expectedCustodian"),
                   lastAuditDate: t("lastAuditDate"),
+                  lastAuditNever: t("lastAuditNever"),
+                  noCustodian: t("noCustodian"),
+                  roomUnknown: t("roomUnknown"),
                   scanPendingAsset: t("scanPendingAsset"),
                   viewAsset: t("viewAsset"),
                 }}
@@ -219,58 +191,52 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
         <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
           <DataTableHeader>
             <tr>
-              <DataTableHead>{t("assetTag")}</DataTableHead>
-              <DataTableHead>{t("assetName")}</DataTableHead>
+              <DataTableHead>{t("asset")}</DataTableHead>
               <DataTableHead>{t("expectedLocation")}</DataTableHead>
-              <DataTableHead>{t("expectedCustodian")}</DataTableHead>
               <DataTableHead>{t("lastAuditDate")}</DataTableHead>
-              <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
+              {canScan ? (
+                <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
+              ) : null}
             </tr>
           </DataTableHeader>
           <DataTableBody>
             {items.length === 0 ? (
               <TableEmptyRow
-                colSpan={6}
-                emptyState={{
-                  icon: <ScanLine className="h-6 w-6" />,
-                  title: emptyTitle,
-                  description: emptyHelp,
-                  actionHref: emptyActionHref,
-                  actionLabel: emptyActionLabel,
-                  actionVariant: "secondary",
-                }}
+                colSpan={canScan ? 4 : 3}
+                emptyState={{ icon: <ScanLine className="h-6 w-6" />, title: empty.title, description: empty.help, actionHref: empty.href, actionLabel: empty.label, actionVariant: "secondary" }}
               />
             ) : (
-              items.map((item) => (
-                <ClickableTableRow
-                  key={item.id}
-                  href={`/${locale}/assets/${item.asset.id}`}
-                  label={`${tCommon("view")}: ${item.asset.assetTag}`}
-                >
-                  <DataTableCell className="whitespace-nowrap">
-                    <span className="tag font-medium text-foreground">{item.asset.assetTag}</span>
-                  </DataTableCell>
-                  <DataTableCell className="min-w-56 text-foreground">{item.asset.name}</DataTableCell>
-                  <DataTableCell className="min-w-56 text-muted-foreground">
-                    {formatAuditPendingLocation(item.asset.currentLocation)}
-                  </DataTableCell>
-                  <DataTableCell className="min-w-56 text-muted-foreground">
-                    {formatAuditPendingCustodian(item.asset.custodian) ?? <Nil />}
-                  </DataTableCell>
-                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
-                    {formatAuditPendingLastAudit(item.asset.movements) ?? <Nil />}
-                  </DataTableCell>
-                  <DataTableCell align="right" sticky="right">
-                    <AuditPendingRowActions
-                      itemId={item.id}
-                      assetTag={item.asset.assetTag}
-                      assetName={item.asset.name}
-                      scanHref={buildAuditPendingScanHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: scanReturnToHref })}
-                      assetHref={`/${locale}/assets/${item.asset.id}`}
-                    />
-                  </DataTableCell>
-                </ClickableTableRow>
-              ))
+              items.map((item) => {
+                const facts = describe(item)
+                const assetHref = `/${locale}/assets/${item.asset.id}`
+                const scanHref = buildAuditPendingScanHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: scanReturnToHref })
+                // The whole row opens the asset (Appendix A §9, P2-R28); its links and buttons are ignored by the row,
+                // and the not-found dialog's events stop in its "row" wrapper.
+                return (
+                  <ClickableTableRow key={item.id} href={assetHref} label={`${tCommon("view")}: ${item.asset.assetTag}`}>
+                    <DataTableCell className="min-w-64">
+                      <Link href={assetHref} className={cn(linkVariants({ size: "inherit" }), "font-semibold")}>{item.asset.name}</Link>
+                      <div className="mt-0.5 text-meta">
+                        <span className="tag">{item.asset.assetTag}</span>
+                      </div>
+                      <div className="mt-0.5 text-meta text-muted-foreground">{formatAuditPendingCustodian(facts.custodian, t("noCustodian")) ?? <Nil />}</div>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-56 text-muted-foreground">{formatAuditPendingLocation(facts.location, t("roomUnknown"))}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditPendingLastAudit(facts.lastAuditAt) ?? t("lastAuditNever")}</DataTableCell>
+                    {canScan ? (
+                      <DataTableCell align="right" sticky="right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={scanHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                            <ScanLine aria-hidden="true" />
+                            {t("scanPendingAsset")}
+                          </Link>
+                          <AuditMarkNotFoundButton itemId={item.id} variant="row" asset={facts.notFound} />
+                        </div>
+                      </DataTableCell>
+                    ) : null}
+                  </ClickableTableRow>
+                )
+              })
             )}
           </DataTableBody>
         </DataTable>
@@ -302,19 +268,26 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
 
 function AuditPendingMobileCard({
   item,
+  facts,
   locale,
   roundId,
   scanReturnToHref,
+  canScan,
   labels,
 }: {
-  item: AuditPendingItem
+  item: AuditPendingListItem
+  facts: AuditPendingItemFacts
   locale: string
   roundId: string
   scanReturnToHref: string
+  canScan: boolean
   labels: {
     expectedLocation: string
     expectedCustodian: string
     lastAuditDate: string
+    lastAuditNever: string
+    noCustodian: string
+    roomUnknown: string
     scanPendingAsset: string
     viewAsset: string
   }
@@ -332,46 +305,58 @@ function AuditPendingMobileCard({
       <KeyValueList
         className="mt-3"
         items={[
-          { key: "location", label: labels.expectedLocation, value: formatAuditPendingLocation(item.asset.currentLocation) },
-          { key: "custodian", label: labels.expectedCustodian, value: formatAuditPendingCustodian(item.asset.custodian) },
-          { key: "lastAudit", label: labels.lastAuditDate, value: formatAuditPendingLastAudit(item.asset.movements) },
+          { key: "location", label: labels.expectedLocation, value: formatAuditPendingLocation(facts.location, labels.roomUnknown) },
+          { key: "custodian", label: labels.expectedCustodian, value: formatAuditPendingCustodian(facts.custodian, labels.noCustodian) },
+          { key: "lastAudit", label: labels.lastAuditDate, value: formatAuditPendingLastAudit(facts.lastAuditAt) ?? labels.lastAuditNever },
         ]}
       />
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <Link href={scanHref} className={buttonVariants()}>
-          <ScanLine aria-hidden="true" />
-          {labels.scanPendingAsset}
-        </Link>
+      <div className={cn("mt-4 grid gap-2", canScan && "sm:grid-cols-3")}>
+        {canScan ? (
+          <Link href={scanHref} className={buttonVariants()}>
+            <ScanLine aria-hidden="true" />
+            {labels.scanPendingAsset}
+          </Link>
+        ) : null}
         <Link href={`/${locale}/assets/${item.asset.id}`} className={buttonVariants({ variant: "outline" })}>
           <Eye aria-hidden="true" />
           {labels.viewAsset}
         </Link>
-        <AuditMarkNotFoundButton itemId={item.id} variant="button" />
+        {canScan ? <AuditMarkNotFoundButton itemId={item.id} variant="button" asset={facts.notFound} /> : null}
       </div>
     </article>
   )
 }
 
-function formatAuditPendingLocation(location: { code: string; name: string }) {
-  return (
-    <>
-      <span className="tag">{location.code}</span> - {location.name}
-    </>
-  )
+type AuditPendingItemFacts = { location: AuditPendingPlace | null; custodian: AuditPendingCustodian; lastAuditAt: Date | null; notFound: AuditNotFoundAsset }
+
+// The item's expected room and custodian (bug 13), named by id; the not-found dialog names the same facts (bug 15).
+// ตรวจล่าสุด is the asset's latest audit result (P2-R32), null when it has none.
+function describeAuditPendingItem(item: AuditPendingListItem, places: ReadonlyMap<string, AuditPendingPlace>, people: ReadonlyMap<string, AuditPendingPlace>, lastAuditAt: ReadonlyMap<string, Date>): AuditPendingItemFacts {
+  const location = describeAuditPendingPlace(item.expectedLocationId, places)
+  const custodian = describeAuditPendingCustodian(item.expectedCustodianId, people)
+  return { location, custodian, lastAuditAt: lastAuditAt.get(item.asset.id) ?? null, notFound: { name: item.asset.name, tag: item.asset.assetTag, location, custodian } }
 }
 
-// null when nobody holds the asset: the page shows Nil, not a typed dash.
-function formatAuditPendingCustodian(custodian: { code: string; fullNameTh: string } | null) {
-  return custodian ? (
-    <>
-      <span className="tag">{custodian.code}</span> - {custodian.fullNameTh}
-    </>
-  ) : null
+// null when the asset has no audit result yet (formatDateTime would print a dash); date and time (P2-R13).
+function formatAuditPendingLastAudit(at: Date | null) {
+  return at ? formatDateTime(at) : null
 }
 
-// null before the first audit of the asset (formatDateTime would print a dash).
-function formatAuditPendingLastAudit(movements: Array<{ performedAt: Date }>) {
-  return movements[0] ? formatDateTime(movements[0].performedAt) : null
+// "ไม่ทราบห้อง" for a room the lookup cannot name (bug 16), never its id.
+function formatAuditPendingLocation(location: AuditPendingPlace | null, unknownLabel: string) {
+  return location ? <><span className="tag">{location.code}</span> - {location.name}</> : unknownLabel
+}
+
+// "ไม่มีผู้ถือครอง" when nobody holds the asset; null (the page shows Nil) for an id the lookup cannot name.
+function formatAuditPendingCustodian(custodian: AuditPendingCustodian, noneLabel: string) {
+  if (custodian.kind === "none") return noneLabel
+  return custodian.kind === "person" ? <><span className="tag">{custodian.code}</span> - {custodian.name}</> : null
+}
+
+// A room chip: its name, with its code when two chips share a name; "ไม่ทราบห้อง" for an unknown id (bug 16).
+function formatAuditPendingRoomChip(label: AuditPendingRoomChipLabel | undefined, unknownLabel: string) {
+  if (!label?.place) return unknownLabel
+  return label.showCode ? <>{label.place.name} <span className="tag">{label.place.code}</span></> : label.place.name
 }
 
 function resolveAuditPendingScanReturnTo(locale: string, roundId: string, returnToHref: string) {

@@ -89,13 +89,13 @@ test("audit findings preserve resolution context for disposal follow-up links", 
 
 test("the pending list can be narrowed to one room from the scan screen", () => {
   const pendingSource = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/pending/page.tsx", "utf8")
-  assert.match(pendingSource, /\.\.\.\(locationFilter \? \{ expectedLocationId: locationFilter \} : \{\}\)/)
-  assert.match(pendingSource, /t\("roomFilter", \{ location: /)
+  const rules = readFileSync("src/lib/audit-pending-list-rules.ts", "utf8")
+  assert.match(pendingSource, /const locationFilter = resolveFirstSearchParam\(rawSearchParams\.locationId \?\? ""\)\.trim\(\)/)
+  assert.match(rules, /return \{ expectedLocationId: locationFilter \}/)
   assert.match(pendingSource, /t\("roomFilterClear"\)/)
   for (const locale of ["th", "en"]) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { auditPending: Record<string, unknown> }
-    assert.equal(typeof messages.auditPending.roomFilter, "string")
-    assert.equal(typeof messages.auditPending.roomFilterClear, "string")
+    for (const key of ["roomFilterClear", "roomAll", "roomOther", "roomUnknown", "roomChips"]) assert.equal(typeof messages.auditPending[key], "string", key)
   }
 })
 

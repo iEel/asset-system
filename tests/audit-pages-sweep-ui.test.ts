@@ -117,13 +117,13 @@ test("audit round page: ContentPanels, the cancelled state as an info Notice wit
   assert.equal(source.match(/text-danger/g)?.length, 1, "only the overdue line")
 })
 
-test("audit pending page: the count in a ContentPanel with a text link, the list frame on the panel classes, the phone card facts in a KeyValueList and the codes as tag (spec 2D D9, D19, M29, M33)", () => {
+test("audit pending page: the count in the title and the rooms as TabNav chips, the list frame on the panel classes, the phone card facts in a KeyValueList and the codes as tag (spec 2D D9, D19, M29, M33; group 2 spec §9)", () => {
   const source = read(`${D}audit/rounds/[id]/pending/page.tsx`)
-  assert.match(source, /<ContentPanel>\s*<div className="text-sm text-muted-foreground">\s*\{t\("pendingCount", \{ count: formatCount\(total\) \}\)\}/)
-  assert.match(source, /<Link href=\{clearRoomFilterHref\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  assert.doesNotMatch(source, /<ContentPanel\b|t\("pendingCount"/)
+  assert.match(source, /<TabNav aria-label=\{t\("roomChips"\)\}/)
   assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
   assert.match(source, /<KeyValueList\s+className="mt-3"/)
   assert.match(source, /<span className="tag">\{location\.code\}<\/span> - \{location\.name\}/)
-  assert.match(source, /<span className="tag">\{custodian\.code\}<\/span> - \{custodian\.fullNameTh\}/)
+  assert.match(source, /<span className="tag">\{custodian\.code\}<\/span> - \{custodian\.name\}/)
   assert.doesNotMatch(source, /function PendingInfo\b|rounded-lg border|hover:underline|text-primary|\btext-xs\b|\borNil\b/)
 })

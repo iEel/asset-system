@@ -370,41 +370,36 @@ test("audit round detail: PageHeader, the round-wide StatStrip, the result and c
 })
 
 // Plan 2B-2 Task 11 (spec 2B §5.4 row pending, §5.9.2 row 4, bugs §5.10 #8 and #9, I21, R-m): the pending list of a
-// round. It pages like the B4 lists, but it is not in B4_LISTS: its one fixed take is the latest audit movement of each
-// asset, which the B4_LISTS check would read as a row limit.
-test("the pending list of a round pages on the server and counts every pending item (spec 2B §5.9.2 row 4, bug §5.10 #8)", () => {
+// round. It pages like the B4 lists, but it is not in B4_LISTS: its load lives in src/lib/audit-pending-list-data.ts
+// (group 2 plan 2 Task 6), which has no fixed take since ตรวจล่าสุด moved from movements to audit items (P2-R32).
+test("the pending list of a round pages on the server and counts every pending item (spec 2B §5.9.2 row 4, bug §5.10 #8; group 2 spec §9)", () => {
   const source = read(`${D}audit/rounds/[id]/pending/page.tsx`)
+  const data = read("src/lib/audit-pending-list-data.ts")
   assert.match(source, /const listPage = parseListPage\(\{ page: rawSearchParams\.page, pageSize: rawSearchParams\.pageSize \}\)/)
-  assert.match(source, /const \{ skip, take \} = listPageWindow\(listPage\)/)
-  assert.deepEqual(source.match(/\btake: \d+/g), ["take: 1"], "the only fixed take is the latest audit movement of each asset")
-  assert.match(source, /orderBy: \[\{ createdAt: "asc" \}, \{ id: "asc" \}\]/, "the old order plus id, so no item shows on two pages")
-  assert.match(source, /await Promise\.all\(\[\n\s+prisma\.auditItem\.findMany\(\{[\s\S]*?\n\s+\}\),\n\s+prisma\.auditItem\.count\(\{ where \}\),\n\s+\]\)/, "findMany and count in one Promise.all")
-  assert.ok(source.indexOf("if (!round || isAuditRoundReadOnlyStatus(round.status)) notFound()") < source.indexOf("prisma.auditItem.findMany("), "the items load only after the round passed the read-only check")
-  assert.match(source, /t\("pendingCount", \{ count: formatCount\(total\) \}\)/, "the box counts every pending item, not the rows of one page")
+  assert.match(data, /const \{ skip, take \} = listPageWindow\(listPage\)/)
+  assert.equal(data.match(/\btake: \d+/g), null, "no fixed take: one page of rows, and ตรวจล่าสุด in one read for the page's assets (P2-R32)")
+  assert.equal(source.match(/\btake: \d+/g), null)
+  assert.match(data, /await Promise\.all\(\[\n\s+prisma\.auditItem\.findMany\(\{ where, include: pendingItemInclude, orderBy: \[\{ createdAt: "asc" \}, \{ id: "asc" \}\], skip, take \}\),\n\s+prisma\.auditItem\.count\(\{ where \}\),\n\s+\]\)/, "findMany and count in one Promise.all, the old order plus id")
+  assert.ok(source.indexOf("if (!round || isAuditRoundReadOnlyStatus(round.status)) notFound()") < source.indexOf("getAuditPendingListData("), "the items load only after the round passed the read-only check")
+  assert.match(source, /title=\{t\("titleWithCount", \{ count: formatCount\(data\.counts\.pending\) \}\)\}/, "the title counts every pending item of the round, not the rows of one page (P2-R12)")
   assert.match(source, /^import \{ notFound, redirect \} from "next\/navigation"$/m)
   assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(items\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(listHref\(\{ page: lastPage \}\)\)/, "a page past the last one shows the last page (I21)")
   assert.match(source, /return appendOperationalReturnTo\(query \? `\$\{pendingHref\}\?\$\{query\}` : pendingHref, returnTo\)/, "every list link keeps the page's returnTo, the search and the room")
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
 })
 
-test("pending rows: RowActions on desktop with the not-found dialog opened through its handle, three buttons on the phone card (spec 2B §5.4, bug §5.10 #9, R-m)", () => {
+test("pending rows: the whole row and the name open the asset, and the row's two buttons and the phone card's scan and not-found are for audit:edit only (group 2 spec §9, Appendix A §9, bugs 14 and 15, P2-R14, P2-R28)", () => {
   const page = read(`${D}audit/rounds/[id]/pending/page.tsx`)
-  const wrapper = read(`${C}audit/audit-pending-row-actions.tsx`)
   for (const part of ["<PageHeader", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<DataTableFoot>", "<Pagination"]) {
     assert.ok(page.includes(part), `page: no ${part}`)
   }
   assert.match(page, /<div className="space-y-6">/)
   assert.match(page, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/, "the text link above the title became the back button (B2)")
-  assert.match(page, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
-  assert.match(page, /<DataTableCell align="right" sticky="right">\s*<AuditPendingRowActions/)
-  assert.match(page, /<AuditMarkNotFoundButton itemId=\{item\.id\} variant="button" \/>/, "the phone card keeps its own not-found button")
-  assert.match(wrapper, /^"use client"/)
-  assert.match(wrapper, /next=\{\{ label: t\("scanPendingAsset"\), href: scanHref, icon: <ScanLine aria-hidden="true" \/> \}\}/)
-  assert.match(wrapper, /\{ kind: "link", key: "view", label: t\("viewAsset"\), href: assetHref, icon: <Eye aria-hidden="true" \/> \}/)
-  assert.match(wrapper, /\{ kind: "action", key: "notFound", label: t\("markNotFound"\), icon: <AlertTriangle aria-hidden="true" \/>, onSelect: \(\) => notFoundRef\.current\?\.open\(\) \}/)
-  assert.match(wrapper, /openerRef=\{openerRef\}/)
-  assert.match(wrapper, /<AuditMarkNotFoundButton ref=\{notFoundRef\} itemId=\{itemId\} hideTrigger returnFocusRef=\{openerRef\} \/>/, "the dialog sits outside the menu and gives focus back to ⋯")
-  assert.match(wrapper, /<div data-no-row-click className="contents" onClick=\{stopPortalEvent\} onKeyDown=\{stopPortalEvent\}>/, "events from the dialog portal never reach the row")
+  assert.match(page, /\{canScan \? \(\n\s+<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(page, /<AuditMarkNotFoundButton itemId=\{item\.id\} variant="row" asset=\{facts\.notFound\} \/>/)
+  assert.match(page, /<AuditMarkNotFoundButton itemId=\{item\.id\} variant="button" asset=\{facts\.notFound\} \/>/, "the phone card keeps its own not-found button")
+  assert.doesNotMatch(page, /AuditPendingRowActions|<RowActions/, "two visible buttons, not RowActions' one next slot (P2-R14)")
+  assert.equal(existsSync(`${C}audit/audit-pending-row-actions.tsx`), false, "the ⋯ wrapper is gone")
 })
 
 // Plan 2B-2 Task 12 (spec 2B §5.4 row "maintenance", §5.10 #4 and #11, I21): the repair-record list. It already paged on

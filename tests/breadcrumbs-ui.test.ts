@@ -42,8 +42,8 @@ test("every record page ends its breadcrumb trail on a code; the create and list
     .flatMap((file) =>
       [...file.source.matchAll(/<Breadcrumbs\b[\s\S]*?\/>|\bbreadcrumbs=\{\[[\s\S]*?\]\}/g)].map((match) => ({ path: file.path, element: match[0].replace(/\s+/g, " ") })),
     )
-  assert.equal(sites.length, 12, "Breadcrumbs call sites")
-  assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 8, "call sites that mark a code")
+  assert.equal(sites.length, 13, "Breadcrumbs call sites")
+  assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 9, "call sites that mark a code")
 
   const base = "src/app/[locale]/(dashboard)/"
   const lastCode: Record<string, string> = {

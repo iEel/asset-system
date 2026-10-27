@@ -61,3 +61,17 @@ test("audit pending not-found dialog copy is translated", () => {
     assert.equal(typeof messages.auditPending.notFoundConfirm, "string")
   }
 })
+
+test("the not-found words: the result line, ผู้พิจารณา in place of ผู้ตรวจสอบ, and the asset's facts (group 2 spec §9, P2-R15, glossary row 11)", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.auditPending.notFoundResult, "รายการนี้จะออกจากรอตรวจ และส่งให้หัวหน้า IT พิจารณา ทะเบียนยังไม่เปลี่ยน")
+  assert.match(th.auditPending.notFoundDialogDescription, /ผู้พิจารณา/)
+  for (const namespace of ["auditPending", "auditRound"]) {
+    for (const [key, value] of Object.entries(th[namespace] as Record<string, string>)) assert.doesNotMatch(value, /ผู้ตรวจสอบ/, `${namespace}.${key}`)
+  }
+  for (const messages of [th, en]) {
+    for (const key of ["notFoundResult", "asset", "noCustodian", "roomUnknown", "expectedLocation", "expectedCustodian"]) assert.equal(typeof messages.auditPending[key], "string", key)
+  }
+  assert.doesNotMatch(en.auditPending.notFoundDialogDescription, /review/i)
+})

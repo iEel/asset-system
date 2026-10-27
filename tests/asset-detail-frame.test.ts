@@ -191,7 +191,8 @@ test("the frame reads one row or one count per question, in one round, with the 
   // The disposal API's own "open request" (src/app/api/disposal-requests/route.ts:68-73).
   assert.match(source, /where: \{ assetId, isActive: true, requestStatus: \{ in: \["pending", "approved"\] \} \}/)
   assert.match(source, /where: \{ assetId, auditStatus: "pending", auditRound: \{ isActive: true, status: auditRoundOperationalWhere \} \}/)
-  assert.match(source, /where: \{ assetId, auditResult: \{ not: null \}, auditRound: \{ isActive: true, status: auditRoundCoverageWhere \} \}/)
+  assert.match(source, /where: \{ assetId, \.\.\.latestAuditResultWhere \},\s+orderBy: latestAuditResultOrderBy,/, "the asset's latest result: the rule in src/lib/latest-audit-result-rules.ts, shared with the pending list (group 2 plan 2 P2-R32)")
+  assert.match(source, /at: latestAuditResultAt\(latestItem\)/)
   assert.match(source, /select: disposalReadinessAssetSelect/)
   assert.match(source, /disposalBlockers: readiness \? getDisposalReadinessBlockersForAsset\(readiness\) : \[\]/)
   assert.doesNotMatch(source, /findMany\(|"use client"/)
