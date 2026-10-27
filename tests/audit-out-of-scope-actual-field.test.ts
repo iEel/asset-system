@@ -86,6 +86,15 @@ test("out-of-scope scan save creates reviewable field findings without updating 
   assert.match(route, /actionTaken:\s*"out_of_scope_actual_field_reported"/)
   assert.match(route, /fieldFindingTypes/)
   assert.doesNotMatch(outOfScopeBlock, /tx\.asset\.update/)
+  const rescanStart = route.indexOf("if (!isAuditRoundOwnItem(item)) {")
+  const componentConfirmStart = route.indexOf("const parentAssetId = input.confirmedWithParentAssetId")
+  assert.ok(rescanStart > outOfScopeStart && rescanStart < componentConfirmStart, "the re-scan branch sits after the first out-of-scope scan and before the component confirm")
+  const rescanBlock = route.slice(rescanStart, componentConfirmStart)
+  assert.match(rescanBlock, /buildOutOfScopeFieldFindings\(snapshot, actual\)/)
+  assert.match(rescanBlock, /const evidenceFieldTypes = auditOutOfScopeRescanEvidenceFields\(fieldFindingTypes, savingByType, recordedByType\)/)
+  assert.match(rescanBlock, /evidenceFieldTypes\.length > 0 && evidenceAttachmentIds\.length === 0/)
+  assert.match(rescanBlock, /planAuditOutOfScopeRescanFindings\(/)
+  assert.doesNotMatch(rescanBlock, /tx\.asset\.update|tx\.assetMovement\.create|syncInstalledComponentsWithParent|canApplyAuditScanCorrections|applyCorrections|auditResult: auditResult/)
 })
 
 test("reviewing out-of-scope findings confirms the event without master updates", () => {

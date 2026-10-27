@@ -61,12 +61,12 @@ test("ids reach SQL Server in chunks of 2,000, under its 2,100-parameter limit",
   assert.deepEqual(chunkAuditIds(["a", "b", "c"], 2), [["a", "b"], ["c"]])
 })
 
-test("the count rules are pure and client-safe, and say that a re-scan turns an out-of-scope find into an own item", () => {
+test("the count rules are pure and client-safe, and say that a re-scan keeps an out-of-scope find out of scope", () => {
   const source = read("src/lib/audit-round-counts-rules.ts")
   assert.doesNotMatch(source, /from "@\//, "node --test and the phone walk import this file")
   assert.doesNotMatch(source, /^import (?!type )[^\n]*from "@prisma\/client"/m)
   assert.doesNotMatch(source, /prisma\./)
-  assert.match(source, /A re-scan of an out-of-scope find/)
+  assert.match(source, /A re-scan of an out-of-scope find keeps that result/)
 })
 
 test("one groupBy counts any set of rounds, in chunks of ids, folded by the rules; every requested round is in the map", () => {

@@ -54,7 +54,7 @@ export const auditScanSchema = z.object({
   scanSource: z.enum(["manual", "qr"]).default("manual"),
   applyCorrections: z.boolean().default(false),
   resultCorrection: z.boolean().default(false),
-  evidenceAttachmentIds: z.array(z.string().trim().min(1)).default([]),
+  evidenceAttachmentIds: z.array(z.string().trim().min(1)).max(20).default([]),
   confirmedWithParentAssetId: optionalText,
   componentConfirmationReason: optionalText,
   remark: optionalText,

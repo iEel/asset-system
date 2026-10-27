@@ -23,6 +23,18 @@ export type AuditLookupAuditItem = {
   auditStatus: string
   auditResult: string | null
 }
+/** A recorded out-of-scope find, as the lookup answers it: the snapshot its first scan compared against (expected*)
+ * and what was found (actual*). Saving the find again edits it, against that snapshot (group 2 plan 3, P3-R3). */
+export type AuditLookupRecordedFind = AuditLookupAuditItem & {
+  expectedLocationId: string
+  expectedCustodianId: string | null
+  expectedDepartmentId: string | null
+  expectedConditionId: string | null
+  actualLocationId: string | null
+  actualCustodianId: string | null
+  actualDepartmentId: string | null
+  actualConditionId: string | null
+}
 export type AuditLookupComponent = {
   assetId: string
   assetTag: string
@@ -49,6 +61,6 @@ export type AuditLookupAsset = {
 export type AuditLookupMatch = { assetId: string; assetTag: string; title: string; inRound: boolean }
 export type AuditScanLookupResponse =
   | { status: "in_round"; asset: AuditLookupAsset; item?: { assetId: string } }
-  | { status: "out_of_scope"; asset: AuditLookupAsset }
+  | { status: "out_of_scope"; asset: AuditLookupAsset; item?: AuditLookupRecordedFind }
   | { status: "candidates"; candidates?: string[]; matches: AuditLookupMatch[] }
   | { status: "unknown_asset"; candidates?: string[] }

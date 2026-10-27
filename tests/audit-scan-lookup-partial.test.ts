@@ -4,7 +4,7 @@ import * as nodeModule from "node:module"
 import { beforeEach, test } from "node:test"
 import { pathToFileURL } from "node:url"
 
-const state: { partial: Array<{ id: string; assetTag: string; name: string }>; inRound: string[]; calls: string[] } = { partial: [], inRound: [], calls: [] }
+const state: { partial: Array<{ id: string; assetTag: string; name: string }>; inRound: string[]; outOfScope: string[]; calls: string[] } = { partial: [], inRound: [], outOfScope: [], calls: [] }
 Object.assign(globalThis, { __lookupPartialState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -28,7 +28,7 @@ const mockedModuleSources = new Map<string, string>([
       },
       auditItem: {
         findUnique: async () => null,
-        findMany: async () => state().inRound.map((assetId) => ({ assetId })),
+        findMany: async () => [...state().inRound.map((assetId) => ({ assetId, auditResult: "found" })), ...state().outOfScope.map((assetId) => ({ assetId, auditResult: "out_of_scope" }))],
       },
     }
   `],
@@ -73,6 +73,7 @@ function lookup(rawValue: string) {
 beforeEach(() => {
   state.partial = []
   state.inRound = []
+  state.outOfScope = []
   state.calls = []
 })
 
@@ -87,6 +88,19 @@ test("when no code matches exactly, three or more characters return up to five p
 
   assert.equal(payload.status, "candidates")
   assert.deepEqual(payload.matches.map((match) => [match.assetId, match.inRound]), [["asset-1", false], ["asset-2", true]])
+})
+
+test("a partial match that is a recorded out-of-scope find reads as not in the round (P3-R3)", async () => {
+  state.partial = [
+    { id: "asset-1", assetTag: "GRL-COM-26-0036", name: "RAM" },
+    { id: "asset-2", assetTag: "GRL-COM-26-0037", name: "RAM" },
+  ]
+  state.inRound = ["asset-1"]
+  state.outOfScope = ["asset-2"]
+
+  const payload = await (await lookup("26-003")).json() as { status: string; matches: Array<{ assetId: string; inRound: boolean }> }
+
+  assert.deepEqual(payload.matches.map((match) => [match.assetId, match.inRound]), [["asset-1", true], ["asset-2", false]])
 })
 
 test("fewer than three characters never runs the partial search", async () => {

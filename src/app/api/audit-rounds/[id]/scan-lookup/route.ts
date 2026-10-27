@@ -5,6 +5,7 @@ import { errorResponse } from "@/lib/api-response"
 import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { auditScanLookupSchema } from "@/lib/validations/audit"
+import { isAuditRoundOwnItem } from "@/lib/audit-round-counts-rules"
 
 type AuditScanLookupContext = {
   params: Promise<{ id: string }>
@@ -122,11 +123,12 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
           take: 5,
         })
         if (partialMatches.length > 0) {
+          // A recorded out-of-scope find is an item of the round but not in it (P3-R3).
           const inRoundItems = await prisma.auditItem.findMany({
             where: { auditRoundId: id, assetId: { in: partialMatches.map((match) => match.id) } },
-            select: { assetId: true },
+            select: { assetId: true, auditResult: true },
           })
-          const inRoundAssetIds = new Set(inRoundItems.map((roundItem) => roundItem.assetId))
+          const inRoundAssetIds = new Set(inRoundItems.filter(isAuditRoundOwnItem).map((roundItem) => roundItem.assetId))
           return NextResponse.json({
             status: "candidates",
             candidates,
@@ -149,6 +151,14 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
         assetId: true,
         auditStatus: true,
         auditResult: true,
+        expectedLocationId: true,
+        expectedCustodianId: true,
+        expectedDepartmentId: true,
+        expectedConditionId: true,
+        actualLocationId: true,
+        actualCustodianId: true,
+        actualDepartmentId: true,
+        actualConditionId: true,
       },
     })
 
@@ -156,11 +166,15 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
       ...asset.parentComponents.map((component) => component.componentAsset.id),
       ...asset.installedInLinks.map((link) => link.parentAsset.id),
     ]
+    // A related component or parent that is an out-of-scope find reads as not in the round, so the walk never confirms
+    // it with its parent or marks it (P3-R3).
     const relatedAuditItems = relatedAssetIds.length
-      ? await prisma.auditItem.findMany({
-          where: { auditRoundId: id, assetId: { in: relatedAssetIds } },
-          select: { id: true, assetId: true, auditStatus: true, auditResult: true },
-        })
+      ? (
+          await prisma.auditItem.findMany({
+            where: { auditRoundId: id, assetId: { in: relatedAssetIds } },
+            select: { id: true, assetId: true, auditStatus: true, auditResult: true },
+          })
+        ).filter(isAuditRoundOwnItem)
       : []
 
     const payload = {
@@ -168,8 +182,10 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
       asset: buildAuditScanLookupAsset(asset, relatedAuditItems),
     }
 
-    if (!item) {
-      return NextResponse.json({ status: "out_of_scope", ...payload })
+    // A recorded out-of-scope find answers out of scope with its item: the walk edits it through the out-of-scope form,
+    // against the snapshot of its first scan, and the scan route keeps it out of scope (P3-R3).
+    if (!item || !isAuditRoundOwnItem(item)) {
+      return NextResponse.json({ status: "out_of_scope", ...payload, ...(item ? { item } : {}) })
     }
 
     return NextResponse.json({ status: "in_round", ...payload, item })

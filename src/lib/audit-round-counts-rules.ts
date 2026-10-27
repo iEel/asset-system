@@ -1,9 +1,9 @@
 // What a round counts (group 2 spec §5). An out-of-scope scan creates an AuditItem in the round with
 // auditResult "out_of_scope" (api/audit-rounds/[id]/scan/route.ts). The round's own items are its items without that
 // result: only they count in a total, a progress bar, "ตรวจแล้ว x / y" and the dashboard's round numbers. The
-// out-of-scope finds are counted apart, from the same rows. A re-scan of an out-of-scope find goes through the in-round
-// path and overwrites its result (found / wrong_* / need_review), so it becomes an own item; the phone walk's register
-// lookup fixes that in plan 3. Pure and client-safe: `import type` only, so node --test and the phone walk import it.
+// out-of-scope finds are counted apart, from the same rows. A re-scan of an out-of-scope find keeps that result: the
+// scan route's re-scan branch compares it with its first scan's snapshot and never makes it an own item (group 2 plan 3,
+// P3-R3). Pure and client-safe: `import type` only, so node --test and the phone walk import it.
 import type { Prisma } from "@prisma/client"
 
 export const AUDIT_OUT_OF_SCOPE_RESULT = "out_of_scope"
