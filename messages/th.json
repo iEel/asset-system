@@ -2378,7 +2378,8 @@
     "outOfScopeHint": "พิมพ์รหัสหรือ Serial ของที่เจอ แล้วกดค้นทะเบียน",
     "recordedOutOfScopeTitle": "บันทึกนอกขอบเขตแล้ว {count}",
     "pendingLinkRoom": "ของในห้องนี้ที่ยังหาไม่เจอ {count} รายการ →",
-    "pendingLinkRound": "ของในรอบนี้ที่ยังหาไม่เจอ {count} รายการ →"
+    "pendingLinkRound": "ของในรอบนี้ที่ยังหาไม่เจอ {count} รายการ →",
+    "sheetStatusOutOfScopeRecorded": "บันทึกนอกขอบเขตไว้แล้ว · บันทึกตอนนี้จะเป็นการแก้"
   },
   "auditFinding": {
     "title": "รายการไม่ตรงจากการตรวจนับ",

@@ -116,13 +116,13 @@ test("the variance report: the filters, the round's own items, the out-of-scope 
   assert.doesNotMatch(route, /auditScanHistory|_request|\["planned", "in_progress"\]|items\.length|Out-of-scope Scan Events/)
 })
 
-test("the round page lists the out-of-scope finds as items under every filter, counts them from the items, and offers no แก้ไขผลตรวจ on them (P2-R4, P2-R5)", () => {
+test("the round page lists the out-of-scope finds as items under every filter, counts them from the items, and offers แก้ไขผลตรวจ on them, which opens their out-of-scope form (P2-R5, P3-R4)", () => {
   const page = read(`${D}audit/rounds/[id]/page.tsx`)
   const data = read("src/lib/audit-round-page-data.ts")
   assert.doesNotMatch(page, /auditScanHistory\.findMany|auditItemId: null|isOutOfScopeResultList|ScanHistoryWhere|ScanHistoryResultFilter|outOfScopeScan/)
   assert.match(data, /findAuditRoundSearchLocations\(roundId, filters\.search\)/)
   assert.match(data, /orderBy: auditRoundItemListOrderBy,/)
-  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditStatus !== "pending" && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(/)
+  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditStatus !== "pending" \? buildAuditRoundScanEditHref\(/)
   assert.equal(page.match(/\{item\.editHref \? \(/g)?.length, 1, "the phone card's button; the table's is in ⋯ (item.groups)")
   assert.match(page, /if \(filterCompany\) \{\n\s+resultFilterChips\.push/, "the company chip shows on the out-of-scope list too")
   assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(round\.id, "export", filters\)/)

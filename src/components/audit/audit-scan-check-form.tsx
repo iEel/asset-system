@@ -34,11 +34,14 @@ import {
   type AuditScanOptions,
   type AuditScanRoom,
 } from "@/lib/audit-scan-session"
+import { auditOutOfScopeRescanEvidenceFields } from "@/lib/audit-out-of-scope-rescan"
 import { required } from "@/lib/validation-rules"
 
 export type AuditCheckTarget =
   | { kind: "item"; item: AuditScanItemRow; openedMode: "scan" | "edit" }
-  | { kind: "out_of_scope"; asset: AuditLookupAsset }
+  // recorded: the find's own row when it was already recorded out of scope (P3-R3). The form then compares against the
+  // first scan's snapshot (its expected values) and starts from what was recorded; null for a first record.
+  | { kind: "out_of_scope"; asset: AuditLookupAsset; recorded: AuditScanItemRow | null }
 
 export type AuditCheckSubmission = {
   values: AuditCheckValues
@@ -126,12 +129,16 @@ export function AuditScanCheckForm({
   const locale = useLocale()
   const confirm = useConfirm()
   const mode: AuditCheckMode = target.kind === "out_of_scope" ? "out_of_scope" : target.openedMode
-  const expected = target.kind === "item" ? expectedCheckValues(target.item) : masterCheckValues(lookupMasterValues(target.asset))
+  const expected = target.kind === "item"
+    ? expectedCheckValues(target.item)
+    : target.recorded ? expectedCheckValues(target.recorded) : masterCheckValues(lookupMasterValues(target.asset))
   const ownershipType = target.kind === "item" ? target.item.ownershipType : target.asset.ownershipType ?? null
   const [values, setValues] = useState<AuditCheckValues>(() =>
     target.kind === "item"
       ? buildCheckDefaults({ mode: target.openedMode, item: target.item, room })
-      : buildCheckDefaults({ mode: "out_of_scope", master: lookupMasterValues(target.asset), room }),
+      : target.recorded
+        ? buildCheckDefaults({ mode: "edit", item: target.recorded, room })
+        : buildCheckDefaults({ mode: "out_of_scope", master: lookupMasterValues(target.asset), room }),
   )
   const [departmentTouched, setDepartmentTouched] = useState(false)
   const [remark, setRemark] = useState("")
@@ -153,7 +160,12 @@ export function AuditScanCheckForm({
       reveal: (key) => revealFocusInScrollArea(bodyRef.current, document.getElementById(FIELD_IDS[key])),
     })
   const diff = diffCheckValues(values, expected, ownershipType)
-  const photoRequired = requiresCheckPhoto(mode, diff)
+  // A recorded find (P3-R18): a photo only for a field that differs from the snapshot and that this save changes from
+  // what was recorded, the scan route's own rule, so a remark-only edit needs none. A first record and an own item keep
+  // their rules (any differing field out of scope; N-AU1 in scope).
+  const recordedValues = target.kind === "out_of_scope" && target.recorded ? buildCheckDefaults({ mode: "edit", item: target.recorded, room }) : null
+  const photoDiff = recordedValues ? auditOutOfScopeRescanEvidenceFields(diff, values, recordedValues) : diff
+  const photoRequired = requiresCheckPhoto(mode, photoDiff)
   const missingPhoto = photoRequired && photos.length === 0
   const notes = target.kind === "item" ? getLatestValueNotes(target.item) : {}
   const pendingComponents = target.kind === "item" ? components.components.filter(isAuditComponentPending) : []
@@ -271,7 +283,7 @@ export function AuditScanCheckForm({
   }
 
   const statusLine = (() => {
-    if (target.kind === "out_of_scope") return t("sheetStatusOutOfScope")
+    if (target.kind === "out_of_scope") return target.recorded ? t("sheetStatusOutOfScopeRecorded") : t("sheetStatusOutOfScope")
     if (target.openedMode === "scan" && liveItem && isAuditItemChecked(liveItem) && liveItem.auditResult !== "not_found") {
       return t("sheetStatusJustChecked", { name: liveItem.scannedByName ?? "-" })
     }

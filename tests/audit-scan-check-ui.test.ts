@@ -11,7 +11,8 @@ test("the sheet starts from the shared defaults and counts mismatches with the s
   assert.match(source, /buildCheckDefaults\(\{ mode: target\.openedMode, item: target\.item, room \}\)/)
   assert.match(source, /buildCheckDefaults\(\{ mode: "out_of_scope", master: lookupMasterValues\(target\.asset\), room \}\)/)
   assert.match(source, /const diff = diffCheckValues\(values, expected, ownershipType\)/)
-  assert.match(source, /requiresCheckPhoto\(mode, diff\)/)
+  // P3-R18: the diff, or for a recorded out-of-scope find the fields this save changes.
+  assert.match(source, /const photoRequired = requiresCheckPhoto\(mode, photoDiff\)/)
 })
 
 test("one save button names the result, and a missing photo blocks it with a reason", () => {

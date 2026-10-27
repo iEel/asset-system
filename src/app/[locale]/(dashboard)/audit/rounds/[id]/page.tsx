@@ -276,7 +276,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     const badge = auditRoundResultBadge(item.auditStatus, item.auditResult)
     const review = auditRoundItemReviewState(item.findings.map((finding) => finding.reviewStatus))
     const assetHref = `/${locale}/assets/${item.asset.id}`
-    const editHref = canScan && !isRoundReadOnly && item.auditStatus !== "pending" && item.auditResult !== "out_of_scope" ? buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: listHref }) : null
+    const editHref = canScan && !isRoundReadOnly && item.auditStatus !== "pending" ? buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: listHref }) : null
     return {
       id: item.id,
       asset: item.asset,
@@ -300,8 +300,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       missingComponents: item.missingComponents.map((component) => ({ ...component, href: pageHref(roundWideFilters, { search: component.assetTag }) })),
       latestCorrection: item.correctionHistory[0] ?? null,
       editHref,
-      // ⋯: "แก้ไขผลตรวจ" for audit:edit on an open round, on a checked item only (a pending one has no result to edit),
-      // never on an out-of-scope row until plan 3 (P2-R4, P2-R7); "ดู".
+      // ⋯: "แก้ไขผลตรวจ" for audit:edit on an open round, on a checked item only (a pending one has no result to edit).
+      // On an out-of-scope find, it opens that record's out-of-scope form through the walk's lookup (P3-R4). Then "ดู".
       groups: [{ key: "row", items: [
         ...(editHref ? [{ kind: "link" as const, key: "edit", label: t("editScanResult"), href: editHref, icon: <Pencil aria-hidden="true" /> }] : []),
         { kind: "link" as const, key: "view", label: tCommon("view"), href: assetHref, icon: <Eye aria-hidden="true" /> },

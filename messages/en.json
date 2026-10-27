@@ -2378,7 +2378,8 @@
     "outOfScopeHint": "Type the tag or serial of what you found, then search the register",
     "recordedOutOfScopeTitle": "Recorded out of scope {count}",
     "pendingLinkRoom": "{count} items in this room not found yet →",
-    "pendingLinkRound": "{count} items in this round not found yet →"
+    "pendingLinkRound": "{count} items in this round not found yet →",
+    "sheetStatusOutOfScopeRecorded": "Already recorded out of scope · saving now edits it"
   },
   "auditFinding": {
     "title": "Audit Findings",

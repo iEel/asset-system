@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { AuditScanCamera } from "@/components/audit/audit-scan-camera"
@@ -37,6 +37,7 @@ import {
   type AuditOfflineScanPayload,
   type QueuedAuditScan,
 } from "@/lib/audit-offline-queue"
+import { isAuditRoundOwnItem } from "@/lib/audit-round-counts-rules"
 import {
   applyScanResult,
   auditScanListPageSize,
@@ -114,8 +115,6 @@ export function AuditScanWorkspace({
   const isWide = useMediaQuery("(min-width: 64rem)")
   const [room, setRoom, hasStoredRoom] = useAuditScanRoom(roundId)
   const [items, setItems] = useState(initialItems)
-  const [draft, setDraft] = useState("")
-  const [term, setTerm] = useState("")
   const [tab, setTab] = useState<AuditScanListTab>("pending")
   const [limit, setLimit] = useState(auditScanListPageSize)
   const [searchLimit, setSearchLimit] = useState(auditScanSearchPageSize)
@@ -124,12 +123,21 @@ export function AuditScanWorkspace({
   const [outOfScopeHint, setOutOfScopeHint] = useState(false)
   const initialTarget = useMemo<AuditCheckTarget | null>(() => {
     const item = initialAssetId ? initialItems.find((row) => row.assetId === initialAssetId) : undefined
-    return item ? { kind: "item", item, openedMode: getCheckMode(item) } : null
+    // A find recorded out of scope opens through the lookup (initialRecordedTag), never as a round item (P3-R3).
+    return item && isAuditRoundOwnItem(item) ? { kind: "item", item, openedMode: getCheckMode(item) } : null
   }, [initialAssetId, initialItems])
+  /** The round page's "แก้ไขผลตรวจ" on an out-of-scope find (P3-R4): its tag fills the search and is looked up once. */
+  const initialRecordedTag = useMemo(() => {
+    const item = initialAssetId ? initialItems.find((row) => row.assetId === initialAssetId) : undefined
+    return item && !isAuditRoundOwnItem(item) ? item.assetTag : null
+  }, [initialAssetId, initialItems])
+  const [draft, setDraft] = useState(initialRecordedTag ?? "")
+  const [term, setTerm] = useState(initialRecordedTag ?? "")
   const [target, setTarget] = useState<AuditCheckTarget | null>(initialTarget)
   const [roomPickerRequested, setRoomPickerRequested] = useState(false)
-  // Closing the picker, or a visit that starts on an asset's check sheet, ends the first-visit auto-open (D7).
-  const [roomPickerDismissed, setRoomPickerDismissed] = useState(initialTarget !== null)
+  // Closing the picker, or a visit that starts on an asset's check sheet or on a recorded find, ends the first-visit
+  // auto-open (D7).
+  const [roomPickerDismissed, setRoomPickerDismissed] = useState(initialTarget !== null || initialRecordedTag !== null)
   const [targetKey, setTargetKey] = useState(0)
   const [openedFromSearch, setOpenedFromSearch] = useState(false)
   const [components, setComponents] = useState<AuditCheckComponentsState>(emptyComponents)
@@ -329,10 +337,16 @@ export function AuditScanWorkspace({
     }
   }, [currentUser.id, getStorage, locale, refreshQueue, roundId, t, tCommon, uploadPhotoFile])
 
+  // The deep link to a recorded find runs the register lookup once the page is up, as a typed tag would (P3-R4).
+  const lookUpInitialRecordedFind = useEffectEvent(() => {
+    if (initialRecordedTag) void searchRegister(initialRecordedTag)
+  })
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void refreshQueue()
       if (initialTarget?.kind === "item") void loadComponents(initialTarget.item.assetId)
+      lookUpInitialRecordedFind()
     }, 0)
     return () => window.clearTimeout(timer)
   }, [initialTarget, loadComponents, refreshQueue])
@@ -406,9 +420,9 @@ export function AuditScanWorkspace({
     if (isWide) focusListPendingRef.current = "return"
   }
 
-  function openOutOfScope(asset: AuditLookupAsset) {
+  function openOutOfScope(asset: AuditLookupAsset, recorded: AuditScanItemRow | null = null) {
     returnFocusRef.current = inputRef.current
-    setTarget({ kind: "out_of_scope", asset })
+    setTarget({ kind: "out_of_scope", asset, recorded })
     setTargetKey((key) => key + 1)
     setOpenedFromSearch(true)
     setSaved(null)
@@ -490,12 +504,25 @@ export function AuditScanWorkspace({
         return
       }
       if (payload.status === "in_round") {
-        // An out-of-scope record saved by someone else becomes a round item after this page loaded.
-        const item = items.find((row) => row.assetId === payload.asset.id)
-          ?? (await syncNow()).find((row) => row.assetId === payload.asset.id)
+        // A round item missing here (the page loaded before it came in) arrives with a sync. Only own items answer in_round
+        // (Task 1): a find recorded out of scope answers out_of_scope with its item, below.
+        const item = findAuditScanOwnItem(items, payload.asset.id) ?? findAuditScanOwnItem(await syncNow(), payload.asset.id)
         if (item) {
           setLookup({ status: "idle" })
           openItem(item, true)
+        } else {
+          setLookup({ status: "error", message: tCommon("error") })
+        }
+        return
+      }
+      if (payload.status === "out_of_scope" && payload.item) {
+        // Already recorded out of scope: the form opens on that record and saving edits it (P3-R3). The record is a row of
+        // the round, here or after a sync when another phone saved it.
+        const recordedId = payload.item.id
+        const recorded = items.find((row) => row.itemId === recordedId) ?? (await syncNow()).find((row) => row.itemId === recordedId)
+        if (recorded) {
+          setLookup({ status: "idle" })
+          openOutOfScope(payload.asset, recorded)
         } else {
           setLookup({ status: "error", message: tCommon("error") })
         }
@@ -783,7 +810,7 @@ export function AuditScanWorkspace({
             notice={saved}
             photoRetryCount={photoRetry?.photos.length ?? 0}
             onEdit={() => {
-              const item = items.find((row) => row.assetId === saved.assetId)
+              const item = findAuditScanOwnItem(items, saved.assetId)
               if (item) openItem(item, false)
             }}
             onRetryPhotos={() => {

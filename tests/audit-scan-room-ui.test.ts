@@ -59,8 +59,8 @@ test("the room picker opens once on the first visit of a round with several room
   assert.match(picker, /onRoomChange\(next\)\n\s+onOpenChange\(false\)/)
   const workspace = read("src/components/audit/audit-scan-workspace.tsx")
   assert.match(workspace, /const \[room, setRoom, hasStoredRoom\] = useAuditScanRoom\(roundId\)/)
-  // A visit that starts on an asset's check sheet does not stack the picker on top of it.
-  assert.match(workspace, /const \[roomPickerDismissed, setRoomPickerDismissed\] = useState\(initialTarget !== null\)/)
+  // A visit that starts on an asset's check sheet, or on a recorded find's lookup, does not stack the picker on top of it.
+  assert.match(workspace, /const \[roomPickerDismissed, setRoomPickerDismissed\] = useState\(initialTarget !== null \|\| initialRecordedTag !== null\)/)
   assert.match(workspace, /const roomPickerOpen = roomPickerRequested \|\| \(!roomPickerDismissed && !hasStoredRoom && roomOptions\.length > 1\)/)
   assert.match(workspace, /function changeRoomPickerOpen\(next: boolean\) \{\n\s+setRoomPickerRequested\(next\)\n\s+if \(!next\) setRoomPickerDismissed\(true\)\n\s+\}/)
   assert.match(workspace, /<AuditScanRoomPicker room=\{room\} rooms=\{roomOptions\} open=\{roomPickerOpen\} onOpenChange=\{changeRoomPickerOpen\} onRoomChange=\{changeRoom\} \/>/)

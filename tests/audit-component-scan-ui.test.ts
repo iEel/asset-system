@@ -49,7 +49,7 @@ test("out-of-scope assets keep their component context from the lookup", () => {
   assert.match(types, /export type AuditLookupComponent/)
   assert.match(types, /components:\s*AuditLookupComponent\[\]/)
   assert.match(types, /installedIn:\s*AuditLookupInstalledInParent\[\]/)
-  assert.match(workspace, /function openOutOfScope\(asset: AuditLookupAsset\)[\s\S]*?components: normalizeAuditLookupComponents\(asset\.components\), installedIn: normalizeAuditLookupInstalledIn\(asset\.installedIn\)/)
+  assert.match(workspace, /function openOutOfScope\(asset: AuditLookupAsset, recorded: AuditScanItemRow \| null = null\)[\s\S]*?components: normalizeAuditLookupComponents\(asset\.components\), installedIn: normalizeAuditLookupInstalledIn\(asset\.installedIn\)/)
   assert.match(form, /components\.installedIn\.length > 0/)
   assert.match(form, /components\.components\.length > 0/)
   assert.match(form, /components=\{components\.components\}/)

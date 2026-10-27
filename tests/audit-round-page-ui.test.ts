@@ -162,12 +162,12 @@ test("ไปพิจารณารายการไม่ตรง follows th
   assert.match(page, /const resultFindingReviewHref = filters\.field\n\s+\? `\/\$\{locale\}\/audit\/findings\?status=pending&roundId=\$\{round\.id\}&findingType=\$\{auditFindingTypeByField\[filters\.field\]\}`\n\s+: filters\.result === "pending_review" \|\| filters\.result === "mismatch"\n\s+\? pendingReviewFindingsHref\n\s+: null/)
 })
 
-test("the table: ผล / ทรัพย์สิน / สิ่งที่ต่าง / ตรวจโดย / รูป / พิจารณา, then ⋯ with แก้ไขผลตรวจ for audit:edit only, on a checked item only, never on an out-of-scope row (spec §8, P2-R4, P2-R7, P2-R17)", () => {
+test("the table: ผล / ทรัพย์สิน / สิ่งที่ต่าง / ตรวจโดย / รูป / พิจารณา, then ⋯ with แก้ไขผลตรวจ for audit:edit only, on a checked item only, an out-of-scope find included (spec §8, P2-R7, P2-R17, P3-R4)", () => {
   const page = read(PAGE)
   const heads = [...page.matchAll(/<DataTableHead(?: [^>]*)?>\{(?:t|tCommon)\("(\w+)"\)\}<\/DataTableHead>/g)].map((match) => match[1])
   assert.deepEqual(heads, ["result", "assetColumn", "differenceColumn", "checkedByColumn", "photoColumn", "reviewColumn", "actions"])
   assert.equal(page.match(/<TableEmptyRow\s+colSpan=\{7\}/g)?.length, 1)
-  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditStatus !== "pending" && item\.auditResult !== "out_of_scope" \? buildAuditRoundScanEditHref\(\{ locale, roundId: round\.id, assetId: item\.asset\.id, returnTo: listHref \}\) : null/)
+  assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditStatus !== "pending" \? buildAuditRoundScanEditHref\(\{ locale, roundId: round\.id, assetId: item\.asset\.id, returnTo: listHref \}\) : null/)
   assert.match(page, /<RowActions\s+code=\{item\.asset\.assetTag\}\s+name=\{item\.asset\.name\}\s+menuLabel=\{tCommon\("moreActionsFor", \{ code: item\.asset\.assetTag \}\)\}\s+next=\{undefined\}\s+groups=\{item\.groups\}\s*\/>/)
   assert.match(page, /\.\.\.\(editHref \? \[\{ kind: "link" as const, key: "edit", label: t\("editScanResult"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\] : \[\]\),/)
   assert.match(page, /\{ kind: "link" as const, key: "view", label: tCommon\("view"\), href: assetHref, icon: <Eye aria-hidden="true" \/> \},/)
