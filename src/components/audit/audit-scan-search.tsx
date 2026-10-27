@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, type ReactNode, type RefObject } from "react"
+import { useId, useRef, type ReactNode, type RefObject } from "react"
 import { Camera } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -10,14 +10,17 @@ import {
   getAuditItemBadge,
   splitSearchHighlight,
   type AuditScanItemRow,
-  type AuditScanRoom,
+  type AuditScanListScope,
   type AuditSearchMatch,
+  type AuditSearchResult,
 } from "@/lib/audit-scan-session"
 import { getPanelClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
 export function AuditScanSearchField({
   value,
+  hint,
   cameraOpen,
   inputRef,
   onValueChange,
@@ -27,6 +30,8 @@ export function AuditScanSearchField({
   onClear,
 }: {
   value: string
+  /** The out-of-scope box's hint (spec §11), tied to the box as its description; null when not asked for. */
+  hint: string | null
   cameraOpen: boolean
   inputRef: RefObject<HTMLInputElement | null>
   onValueChange: (value: string) => void
@@ -37,6 +42,7 @@ export function AuditScanSearchField({
 }) {
   const t = useTranslations("auditScan")
   const composingRef = useRef(false)
+  const hintId = useId()
 
   return (
     <form
@@ -59,6 +65,7 @@ export function AuditScanSearchField({
         spellCheck={false}
         aria-label={t("searchItemsLabel")}
         placeholder={t("searchItemsPlaceholder")}
+        aria-describedby={hint ? hintId : undefined}
         value={value}
         onCompositionStart={() => {
           composingRef.current = true
@@ -86,28 +93,43 @@ export function AuditScanSearchField({
           </Button>
         }
       />
+      {hint ? <p id={hintId} className="mt-1 px-1 text-meta text-muted-foreground">{hint}</p> : null}
     </form>
   )
 }
 
 export function AuditScanSearchResults({
   term,
-  matches,
-  room,
+  search,
+  limit,
+  scope,
+  onShowMore,
   locationLabels,
   queuedAssetIds,
   onOpen,
   lookup,
+  lookupAfterMatches,
 }: {
   term: string
-  matches: AuditSearchMatch[]
-  room: AuditScanRoom
+  /** Every own match, an exact code first, then the chosen room's, with the true total (bug 20, P3-R5, P3-R17). */
+  search: AuditSearchResult
+  /** How many rows show: auditScanSearchPageSize, plus as many again per "แสดงเพิ่ม". */
+  limit: number
+  scope: AuditScanListScope
+  onShowMore: () => void
   locationLabels: ReadonlyMap<string, string>
   queuedAssetIds: ReadonlySet<string>
   onOpen: (item: AuditScanItemRow) => void
   lookup: ReactNode
+  /** After the out-of-scope box the find is not among the matches, so the register lookup stays under them. */
+  lookupAfterMatches: boolean
 }) {
   const t = useTranslations("auditScan")
+  const matches = search.matches
+  const shown = matches.slice(0, limit)
+  const resultLine = scope === "room"
+    ? t("searchResultInRoom", { term: term.trim(), inRoom: formatCount(search.inRoom), otherRooms: formatCount(search.otherRooms) })
+    : t("searchResultInRound", { term: term.trim(), count: formatCount(search.total) })
 
   function detail(match: AuditSearchMatch) {
     if (match.field === "serialNumber") return { prefix: t("matchedSerial", { value: "" }), value: match.value }
@@ -129,16 +151,16 @@ export function AuditScanSearchResults({
   }
 
   return (
-    <section data-audit-scan-results>
-      <p role="status" className="sr-only">{matches.length > 0 ? t("searchResultCount", { count: matches.length }) : t("searchNoResult")}</p>
+    <section data-audit-scan-results className="mt-2">
+      <p role="status" className="sr-only">{matches.length > 0 ? resultLine : t("searchNoResult")}</p>
       {matches.length === 0 ? lookup : (
         <>
-          <p className="px-1 pb-1 text-meta text-muted-foreground">{t("searchResultCount", { count: matches.length })}</p>
+          <p className="px-1 pb-1 text-meta text-muted-foreground">{resultLine}</p>
           <ul className={cn(getPanelClasses(), "divide-y divide-border overflow-hidden")}>
-            {matches.map((match) => {
+            {shown.map((match) => {
               const line = detail(match)
               const badge = queuedAssetIds.has(match.item.assetId) ? "queued" : getAuditItemBadge(match.item)
-              const elsewhere = room.locationId && match.item.expectedLocationId !== room.locationId
+              const elsewhere = match.elsewhere
               const place = locationLabels.get(match.item.expectedLocationId) ?? match.item.expectedLocationId
               return (
                 <li key={match.item.itemId}>
@@ -170,6 +192,12 @@ export function AuditScanSearchResults({
               )
             })}
           </ul>
+          {matches.length > shown.length ? (
+            <Button variant="outline" onClick={onShowMore} className="mt-2 w-full">
+              {t("showMore")}
+            </Button>
+          ) : null}
+          {lookupAfterMatches ? <div className="mt-2">{lookup}</div> : null}
         </>
       )}
     </section>

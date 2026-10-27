@@ -183,10 +183,11 @@ test("the coverage folds to one line (bar, percent, sentence) and opens the five
   assert.equal(open.match(/<CoverageGapList\b/g)?.length, 2)
 })
 
-test("DESIGN.md: the rounds list and the round page draw their bars with the shared parts; the scan header's bar waits for plan 3 (group 2 plans 1 and 2)", () => {
+test("DESIGN.md: the rounds list, the round page and the scan header draw their bars with the shared parts (group 2 plans 1-3)", () => {
   const design = read("DESIGN.md")
   const rule = design.slice(design.indexOf("\n**The Data Bars Rule.** "), design.indexOf("\n**The Status With Evidence Rule.** "))
-  assert.ok(rule.includes("The audit scan header's bar is an older progress bar; it keeps its own markup until group 2 plan 3 moves it onto `PaceBar`."))
+  assert.ok(rule.includes("The audit scan header's bar is a `PaceBar` under \"x / y\" and \"ไม่ตรง N\" (group 2 plan 3)."))
+  assert.ok(!rule.includes("older progress bar"))
   assert.ok(rule.includes("The rounds list draws each round's progress and the year's coverage with `PaceBar` (group 2 plan 1); the round page draws its result as a `DistributionBar`"))
   assert.ok(!rule.includes("AuditProgressBar"))
 })

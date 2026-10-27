@@ -376,7 +376,7 @@ const RAW_BUTTON_EXEMPT: ExemptList = {
   "src/components/assets/asset-thumbnail.tsx": { count: 1, kind: "permanent", why: "the thumbnail image is the control that opens the photo", ruling: "2D-3 R5" },
   "src/components/audit/audit-scan-camera.tsx": { count: 3, kind: "permanent", why: "zoom, torch and stop on the camera image, with their own dark fill and white ink", ruling: "2D-4 R5" },
   "src/components/audit/audit-scan-lookup-card.tsx": { count: 1, kind: "permanent", why: "a two-line register match that opens it", ruling: "2D-4 R5" },
-  "src/components/audit/audit-scan-room-list.tsx": { count: 1, kind: "permanent", why: "the whole row of two to four lines opens the check sheet", ruling: "2D-4 R5" },
+  "src/components/audit/audit-scan-room-list.tsx": { count: 2, kind: "permanent", why: "the whole row of two to four lines opens the check sheet; a recorded out-of-scope find's row opens its out-of-scope form", ruling: "2D-4 R5; group 2 plan 3 P3-R25" },
   "src/components/audit/audit-scan-room-picker.tsx": { count: 2, kind: "permanent", why: "the two-line room trigger under SheetTrigger asChild and the pressed room option", ruling: "2D-4 R5" },
   "src/components/audit/audit-scan-search.tsx": { count: 1, kind: "permanent", why: "the whole result row opens the check sheet", ruling: "2D-4 R5" },
   "src/components/auth/login-form.tsx": { count: 1, kind: "permanent", why: "the show-password toggle inside the password field, as SearchField's own clear button", ruling: "2C plan 4 Task 8, 2D-5 NG-R4" },

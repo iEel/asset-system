@@ -13,35 +13,30 @@ test("the room is remembered per round and survives private browsing", () => {
   assert.match(source, /\(\) => emptyAuditScanContext/)
 })
 
-test("the header is compact: one-line round name and a progress bar with counts", () => {
+test("the header is compact: the code and name truncate, the round's PaceBar under the counts, nothing sticky", () => {
   const source = read("src/components/audit/audit-scan-header.tsx")
   assert.match(source, /truncate/)
-  assert.match(source, /role="progressbar"/)
+  assert.match(source, /<PaceBar value=\{progress\.total === 0 \? 0 : progress\.checked \/ progress\.total\}/)
   assert.match(source, /t\("progressChecked", \{/)
   assert.doesNotMatch(source, /sticky/)
 })
 
-test("the header is one line: back, the round code (full name for screen readers) and the counts, then a thin bar (D5)", () => {
+test("the header: the round code on line 1 and its name small on line 2, then x / y over ไม่ตรง N (spec §11)", () => {
   const source = read("src/components/audit/audit-scan-header.tsx")
   assert.match(source, /roundCode: string/)
   const h1 = source.slice(source.indexOf("<h1"), source.indexOf("</h1>"))
-  assert.match(h1, /title=\{roundName\}/)
-  assert.match(h1, /<span aria-hidden="true" className="md:hidden">\{roundCode\}<\/span>/)
-  assert.match(h1, /<span className="sr-only md:not-sr-only">\{roundName\}<\/span>/)
-  // The counts sit on the same row as the back link and the h1, before the progress bar.
-  const row = source.slice(source.indexOf("<Link"), source.indexOf('role="progressbar"'))
-  assert.match(row, /<\/h1>\s*<p[^>]*shrink-0[^>]*>[\s\S]*t\("progressChecked", \{[\s\S]*t\("progressMismatch", \{/)
-  assert.match(source, /className="h-1 overflow-hidden rounded-full bg-muted"/)
-  assert.doesNotMatch(source, /h-1\.5/)
+  assert.match(h1, /\{roundCode\}<\/span>\s*<span className="block truncate text-meta text-muted-foreground">\{roundName\}<\/span>/)
+  const row = source.slice(source.indexOf("<Link"), source.indexOf("<PaceBar"))
+  assert.match(row, /<\/h1>\s*<p[^>]*shrink-0[^>]*>[\s\S]*t\("progressCount", \{[\s\S]*t\("progressMismatch", \{/)
   const workspace = read("src/components/audit/audit-scan-workspace.tsx")
   assert.match(workspace, /<AuditScanHeader roundName=\{roundName\} roundCode=\{roundCode\} backHref=\{backHref\} progress=\{progress\} \/>/)
   assert.match(read("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx"), /roundCode=\{round\.auditNo\}/)
 })
 
-test("the room button shows the chosen room with its pending count and a change cue (D5)", () => {
+test("the room button shows the chosen room, ห้องนี้ตรวจแล้ว x / y · เหลือ z and a change cue (bug 21)", () => {
   const source = read("src/components/audit/audit-scan-room-picker.tsx")
   const trigger = source.slice(source.indexOf("<SheetTrigger"), source.indexOf("</SheetTrigger>"))
-  assert.match(trigger, /t\("roomPendingOfTotal", \{ pending: selected\.pending, total: selected\.total \}\)/)
+  assert.match(trigger, /t\("roomCheckedOfTotal", \{ checked: formatCount\(progress\.checked\), total: formatCount\(progress\.total\), pending: formatCount\(progress\.pending\) \}\)/)
   assert.match(trigger, /t\("roomChange"\)/)
   assert.match(trigger, /t\("roomPick"\)/)
 })
@@ -72,11 +67,11 @@ test("the room picker opens once on the first visit of a round with several room
   assert.doesNotMatch(workspace, /useEffect\(\(\) => \{[^}]*setRoomPicker/, "derived, not set in an effect")
 })
 
-test("room list rows show tag, name and the full room on its own line (D6)", () => {
+test("room list rows show the name, the code under it and the full room on its own line (D6; group 2 spec §11)", () => {
   const source = read("src/components/audit/audit-scan-room-list.tsx")
   assert.doesNotMatch(source, /function secondLine/)
-  assert.match(source, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{item\.assetTag\}<\/span><\/span>/)
-  assert.match(source, /<span className="block truncate text-meta text-foreground">\{item\.name\}<\/span>/)
+  assert.match(source, /<span className="block break-words text-sm font-semibold text-foreground">\{item\.name\}<\/span>/)
+  assert.match(source, /<span className="block text-meta text-muted-foreground"><span className="tag whitespace-normal break-all">\{item\.assetTag\}<\/span><\/span>/)
   assert.match(source, /const place = showLocation \? locationLabels\.get\(item\.expectedLocationId\) \?\? item\.expectedLocationId : null/)
   assert.match(source, /\{place \? <span data-audit-scan-row-room className="block break-words text-meta text-muted-foreground">\{place\}<\/span> : null\}/)
   assert.doesNotMatch(source.slice(source.indexOf("data-audit-scan-row-room")).split("\n")[0], /truncate/)
@@ -86,7 +81,7 @@ test("the room picker is a sheet with search, pending counts, department and a c
   const source = read("src/components/audit/audit-scan-room-picker.tsx")
   assert.match(source, /<SheetTrigger asChild>/)
   assert.match(source, /side=\{isDesktop \? "right" : "bottom"\}/)
-  assert.match(source, /t\("roomPendingOfTotal", \{ pending: option\.pending, total: option\.total \}\)/)
+  assert.match(source, /t\("roomOptionCounts", \{ checked: formatCount\(option\.total - option\.pending\), total: formatCount\(option\.total\), pending: formatCount\(option\.pending\) \}\)/)
   assert.match(source, /t\("roomAllDepartments"\)/)
   assert.match(source, /choose\(\{ locationId: "", departmentId: "" \}\)/)
   assert.match(source, /min-h-11/)
@@ -121,7 +116,7 @@ test("the room list marks the row whose check panel is open", () => {
 })
 
 test("room and list copy exists in Thai and English", () => {
-  const keys = ["progressChecked", "progressMismatch", "roomPick", "roomChange", "roomSheetTitle", "roomSheetHelp", "roomSheetSearch", "roomPendingOfTotal", "roomDepartment", "roomAllDepartments", "roomClear", "roomListLabel", "roomListTabs", "tabPending", "tabChecked", "tabAll", "showMore", "checkedBy", "badgeFound", "badgeMismatch", "badgeNotFound", "badgeOutOfScope", "badgeQueued", "emptyPending", "emptyChecked", "emptyAll", "pendingLink"]
+  const keys = ["progressChecked", "progressCount", "progressMismatch", "roomPick", "roomChange", "roomSheetTitle", "roomSheetHelp", "roomSheetSearch", "roomCheckedOfTotal", "roomOptionCounts", "roomDepartmentOption", "roomDepartment", "roomAllDepartments", "roomClear", "roomListLabel", "roomListTabs", "tabPending", "tabChecked", "tabAllRoom", "tabAllRound", "showMore", "checkedBy", "badgeFound", "badgeMismatch", "badgeNotFound", "badgeOutOfScope", "badgeQueued", "emptyPending", "emptyChecked", "emptyAll", "emptyAllRound", "pendingLinkRoom", "pendingLinkRound", "categoryChipsLabel", "categoryAll", "categoryUnknown", "rowComponents"]
   for (const locale of ["th", "en"] as const) {
     assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
   }

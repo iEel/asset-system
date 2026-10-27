@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { AuditScanWorkspace } from "@/components/audit/audit-scan-workspace"
 import { getAuditRoundOptions } from "@/lib/audit-options"
-import { loadAuditScanRows } from "@/lib/audit-scan-data"
+import { loadAuditScanCategories, loadAuditScanRows } from "@/lib/audit-scan-data"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
 import { withPerformanceTiming } from "@/lib/performance-timing"
@@ -36,7 +36,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
 
   // Taken before loading so changes saved during the load are pulled by the first poll.
   const serverTime = new Date()
-  const [round, options, rows] = await withPerformanceTiming(
+  const [round, options, rows, categories] = await withPerformanceTiming(
     "audit-scan.initial-data",
     () => Promise.all([
       prisma.auditRound.findFirst({
@@ -45,6 +45,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
       }),
       getAuditRoundOptions(),
       loadAuditScanRows(id),
+      loadAuditScanCategories(id),
     ]),
     { route: "/audit/rounds/[id]/scan", locale }
   )
@@ -71,7 +72,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
   return (
     <AuditScanWorkspace
       roundId={round.id}
-      roundName={`${round.auditNo} - ${round.name}`}
+      roundName={round.name}
       roundCode={round.auditNo}
       backHref={returnToHref}
       pendingHref={pendingHref}
@@ -85,6 +86,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
       }}
       photoChecklistByCategory={photoChecklistByCategory}
       canApplyCorrections={canApplyCorrections}
+      categories={categories}
       initialAssetId={resolveFirstSearchParam(rawSearchParams.assetId)}
       currentUser={{ id: user.id, name: user.name }}
     />

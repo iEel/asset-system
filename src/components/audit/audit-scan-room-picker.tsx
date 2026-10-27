@@ -8,8 +8,9 @@ import { Field } from "@/components/ui/field"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useMediaQuery } from "@/components/ui/use-media-query"
-import type { AuditRoomOption, AuditScanRoom } from "@/lib/audit-scan-session"
+import { selectAuditRoomProgress, type AuditRoomOption, type AuditScanRoom } from "@/lib/audit-scan-session"
 import { getFieldControlClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
 export function AuditScanRoomPicker({
@@ -32,6 +33,7 @@ export function AuditScanRoomPicker({
   const listRef = useRef<HTMLUListElement | null>(null)
   const selected = rooms.find((option) => option.locationId === room.locationId)
   const selectedDepartment = selected?.departments.find((department) => department.departmentId === room.departmentId)
+  const progress = selectAuditRoomProgress(rooms, room)
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
     return needle ? rooms.filter((option) => option.label.toLocaleLowerCase().includes(needle)) : rooms
@@ -56,11 +58,11 @@ export function AuditScanRoomPicker({
           )}
         >
           <MapPin className="size-4 shrink-0" aria-hidden="true" />
-          {selected ? (
+          {selected && progress ? (
             <span className="min-w-0 flex-1 py-1">
               <span className="block break-words">{[selected.label, selectedDepartment?.label].filter(Boolean).join(" · ")}</span>
               <span className="block text-meta font-normal num">
-                {t("roomPendingOfTotal", { pending: selected.pending, total: selected.total })}
+                {t("roomCheckedOfTotal", { checked: formatCount(progress.checked), total: formatCount(progress.total), pending: formatCount(progress.pending) })}
               </span>
             </span>
           ) : (
@@ -102,7 +104,7 @@ export function AuditScanRoomPicker({
                 <option value="">{t("roomAllDepartments")}</option>
                 {selected.departments.map((department) => (
                   <option key={department.departmentId} value={department.departmentId}>
-                    {department.label} ({department.total})
+                    {t("roomDepartmentOption", { department: department.label, pending: formatCount(department.pending), total: formatCount(department.total) })}
                   </option>
                 ))}
               </NativeSelect>
@@ -126,7 +128,7 @@ export function AuditScanRoomPicker({
                 >
                   <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
                   <span className="shrink-0 text-meta num text-muted-foreground">
-                    {t("roomPendingOfTotal", { pending: option.pending, total: option.total })}
+                    {t("roomOptionCounts", { checked: formatCount(option.total - option.pending), total: formatCount(option.total), pending: formatCount(option.pending) })}
                   </span>
                   {active ? <Check className="size-4 shrink-0" aria-hidden="true" /> : null}
                 </button>

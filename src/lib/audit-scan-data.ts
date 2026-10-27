@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { toAuditScanItemRow } from "@/lib/audit-scan-rows"
+import type { AuditScanCategory } from "@/lib/audit-scan-session"
 
 export const auditScanItemSelect = {
   id: true,
@@ -64,4 +65,17 @@ export async function loadAuditScanRows(roundId: string, options: { since?: Date
   const userNames = new Map(users.map((user) => [user.id, user.displayName]))
   const componentCounts = new Map(componentGroups.map((group) => [group.parentAssetId, group._count._all]))
   return records.map((record) => toAuditScanItemRow(record, { userNames, componentCounts }))
+}
+
+/**
+ * Every category of the round's items, for the walk's chips (spec §11, P3-R6). A category closed after the round opened
+ * keeps its name, so there is no isActive filter (the round page's names do the same). Through the relation, never an
+ * id list, so a large round cannot reach SQL Server's 2,100 parameters.
+ */
+export async function loadAuditScanCategories(roundId: string): Promise<AuditScanCategory[]> {
+  return prisma.assetCategory.findMany({
+    where: { assets: { some: { auditItems: { some: { auditRoundId: roundId } } } } },
+    select: { id: true, code: true, name: true },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  })
 }

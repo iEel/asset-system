@@ -19,6 +19,9 @@ export type AuditScanOptions = {
   conditions: AuditScanOption[]
 }
 
+/** A category of the round's items, closed ones included, for the chips' names (spec §11, P3-R6). */
+export type AuditScanCategory = { id: string; code: string; name: string }
+
 /** One audit item as the scan screen needs it; ISO strings so it crosses the server/client boundary. */
 export type AuditScanItemRow = {
   itemId: string

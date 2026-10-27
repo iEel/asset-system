@@ -89,37 +89,37 @@ test("check panel and workspace: the side panel on the panel classes, its empty 
   assert.doesNotMatch(workspace, /bg-danger-soft|hover:underline|`Serial \$\{/)
 })
 
-test("scan header: the back link is a ghost icon link from buttonVariants and the counts go through formatCount (spec 2D D2, M29; DESIGN.md Numbers)", () => {
+test("scan header: the back link is a ghost icon link from buttonVariants named กลับไปหน้ารอบ, and the counts go through formatCount (spec 2D D2, M29; group 2 spec §11; DESIGN.md Numbers)", () => {
   const source = read(`${A}audit-scan-header.tsx`)
-  assert.match(source, /<Link\s+href=\{backHref\}\s+aria-label=\{tCommon\("back"\)\}\s+className=\{buttonVariants\(\{ variant: "ghost", size: "icon" \}\)\}\s*>\s*<ArrowLeft className="size-5" aria-hidden="true" \/>/)
-  assert.match(source, /<p className="shrink-0 pr-1 text-meta num text-muted-foreground">/)
-  assert.match(source, /t\("progressChecked", \{ checked: formatCount\(progress\.checked\), total: formatCount\(progress\.total\) \}\)/)
+  assert.match(source, /<Link href=\{backHref\} aria-label=\{t\("backToRound"\)\} className=\{buttonVariants\(\{ variant: "ghost", size: "icon" \}\)\}>\s*<ArrowLeft className="size-5" aria-hidden="true" \/>/)
+  assert.match(source, /<p data-audit-scan-progress className="shrink-0 pr-1 text-right text-meta num text-muted-foreground">/)
+  assert.match(source, /const checked = formatCount\(progress\.checked\)/)
   assert.match(source, /t\("progressMismatch", \{ count: formatCount\(progress\.mismatched\) \}\)/)
-  // The one-line header of the audit mobile fix (D5) stays: the code on phones, the thin bar.
-  assert.match(source, /<span aria-hidden="true" className="md:hidden">\{roundCode\}<\/span>/)
   assert.doesNotMatch(source, /toLocaleString|useLocale|\btext-xs\b|size-11|hover:bg-accent/)
 })
 
 test("room list: counts through formatCount, EmptyNote for an empty tab, the list on the panel classes, the tag as tag, meta lines, an outline show-more and a text link to the pending page (spec 2D D9, M21, M25, M29, M33)", () => {
   const source = read(`${A}audit-scan-room-list.tsx`)
   assert.match(source, /<span className="num">\{formatCount\(counts\[key\]\)\}<\/span>/)
-  assert.match(source, /<EmptyNote tone=\{tab === "pending" \? "clear" : "empty"\} className="justify-center px-2 py-6">\{t\(emptyLabelKey\[tab\]\)\}<\/EmptyNote>/)
+  assert.match(source, /<EmptyNote tone=\{tab === "pending" \? "clear" : "empty"\} className="justify-center px-2 py-6">\{t\(emptyLabelKey\[scope\]\[tab\]\)\}<\/EmptyNote>/)
   assert.match(source, /<ul className=\{cn\(getPanelClasses\(\), "mt-2 divide-y divide-border overflow-hidden"\)\}>/)
-  assert.match(source, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{item\.assetTag\}<\/span><\/span>/)
+  assert.match(source, /<span className="block text-meta text-muted-foreground"><span className="tag whitespace-normal break-all">\{item\.assetTag\}<\/span><\/span>/)
   assert.match(source, /<Button variant="outline" onClick=\{onShowMore\} className="mt-2 w-full">\s*\{t\("showMore"\)\}\s*<\/Button>/)
   assert.match(source, /href=\{pendingHref\}\s+className=\{cn\(linkVariants\(\), "mt-3 inline-flex min-h-11 items-center md:min-h-0"\)\}/)
-  // The row stays a raw button (the whole row opens the sheet) and says so for 2D-5.
-  assert.equal(source.match(/<button\b/g)?.length, 1)
+  // The row stays a raw button (the whole row opens the sheet) and says so for 2D-5; the recorded out-of-scope finds'
+  // row is the second (P3-R25).
+  assert.equal(source.match(/<button\b/g)?.length, 2)
   assert.match(source, /\{\/\* A raw button on purpose: [^\n]*\*\/\}\s*<button\s+type="button"\s+data-audit-scan-row/)
-  assert.doesNotMatch(source, /\btext-xs\b|font-semibold|tabular-nums|hover:underline|text-primary|rounded-md border border-border bg-surface/)
+  // The name is bold since group 2 spec §11 (font-semibold, as the pending list's names); the code is a tag at its own weight.
+  assert.doesNotMatch(source, /\btext-xs\b|tabular-nums|hover:underline|text-primary|rounded-md border border-border bg-surface/)
 })
 
 test("room picker: no dashed trigger, meta counts, the clear button in the dialog footer's layout, and the two raw buttons that stay say why (spec 2D D19, §5.4 rule 2)", () => {
   const source = read(`${A}audit-scan-room-picker.tsx`)
   assert.match(source, /selected \? "border-primary-border bg-primary-soft text-primary" : "border-control-border bg-surface text-muted-foreground hover:bg-accent"/)
-  assert.match(source, /<span className="block text-meta font-normal num">\s*\{t\("roomPendingOfTotal", \{ pending: selected\.pending, total: selected\.total \}\)\}/)
+  assert.match(source, /<span className="block text-meta font-normal num">\s*\{t\("roomCheckedOfTotal", \{ checked: formatCount\(progress\.checked\)/)
   assert.match(source, /<span className="shrink-0 text-meta font-semibold underline underline-offset-4">\{t\("roomChange"\)\}<\/span>/)
-  assert.match(source, /<span className="shrink-0 text-meta num text-muted-foreground">\s*\{t\("roomPendingOfTotal", \{ pending: option\.pending, total: option\.total \}\)\}/)
+  assert.match(source, /<span className="shrink-0 text-meta num text-muted-foreground">\s*\{t\("roomOptionCounts", \{ checked: formatCount\(option\.total - option\.pending\)/)
   assert.match(source, /<SheetFooter className="border-t border-border-soft bg-background px-4 py-3 sm:flex-row sm:flex-wrap sm:justify-end sm:px-5">\s*<Button variant="outline" onClick=\{\(\) => choose\(\{ locationId: "", departmentId: "" \}\)\}>/)
   assert.equal(source.match(/\{\/\* A raw button on purpose: [^\n]*\(2D-5 lists it\)\. \*\/\}/g)?.length, 2)
   assert.equal(source.match(/<button\b/g)?.length, 2)

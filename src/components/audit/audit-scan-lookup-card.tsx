@@ -23,11 +23,14 @@ export type AuditLookupState =
 
 export function AuditScanLookupCard({
   state,
+  title,
   onSearchRegister,
   onRecordOutOfScope,
   onPickMatch,
 }: {
   state: AuditLookupState
+  /** The first line: "ไม่พบในรอบนี้" by default; "ไม่ใช่รายการข้างบน" under matches. */
+  title?: string
   onSearchRegister: () => void
   onRecordOutOfScope: (asset: AuditLookupAsset) => void
   onPickMatch: (match: AuditLookupMatch) => void
@@ -36,7 +39,7 @@ export function AuditScanLookupCard({
 
   return (
     <ContentPanel>
-      <p className="text-sm font-medium text-foreground">{t("searchNoResult")}</p>
+      <p className="text-sm font-medium text-foreground">{title ?? t("searchNoResult")}</p>
       {state.status === "idle" ? (
         <Button type="button" variant="outline" className="mt-2 w-full" onClick={onSearchRegister}>
           <SearchCheck aria-hidden="true" />

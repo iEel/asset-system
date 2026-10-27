@@ -26,11 +26,11 @@ test("typing never searches mid-composition and Enter submits", () => {
   assert.match(source, /onSubmit=\{\(event\) => \{\s*event\.preventDefault\(\)\s*onSubmit\(\)/)
 })
 
-test("results highlight the match, warn about another room, and fall back to the register card", () => {
+test("results highlight the match, warn about another room (the rule's elsewhere), and fall back to the register card", () => {
   const source = read("src/components/audit/audit-scan-search.tsx")
   assert.match(source, /splitSearchHighlight\(/)
   assert.match(source, /<mark/)
-  assert.match(source, /room\.locationId && match\.item\.expectedLocationId !== room\.locationId/)
+  assert.match(source, /const elsewhere = match\.elsewhere/)
   assert.match(source, /matches\.length === 0 \? lookup/)
 })
 
@@ -49,7 +49,7 @@ test("each result shows its room in full on its own line, in warning ink when it
 test("results announce only the count through one quiet live region", () => {
   const source = read("src/components/audit/audit-scan-search.tsx")
   assert.doesNotMatch(source, /<section[^>]*aria-live/)
-  assert.match(source, /<p role="status" className="sr-only">\{matches\.length > 0 \? t\("searchResultCount", \{ count: matches\.length \}\) : t\("searchNoResult"\)\}<\/p>/)
+  assert.match(source, /<p role="status" className="sr-only">\{matches\.length > 0 \? resultLine : t\("searchNoResult"\)\}<\/p>/)
 })
 
 test("the lookup card never says not-found for offline or server errors", () => {
@@ -81,7 +81,7 @@ test("the camera panel scrolls into view below the sticky search bar", () => {
 })
 
 test("search and lookup copy exists in Thai and English", () => {
-  const keys = ["searchItemsLabel", "searchItemsPlaceholder", "searchClear", "openCamera", "searchResultCount", "searchNoResult", "searchRegister", "searchRegisterLoading", "lookupOutOfScope", "lookupCandidates", "lookupInRound", "lookupNotInRound", "lookupUnknown", "lookupOffline", "matchedSerial", "matchedFixedAsset", "matchedCustodian", "inLocation", "badgePending", "cameraPermissionDenied"]
+  const keys = ["searchItemsLabel", "searchItemsPlaceholder", "searchClear", "openCamera", "searchResultInRoom", "searchResultInRound", "lookupNotListed", "outOfScopeHint", "searchNoResult", "searchRegister", "searchRegisterLoading", "lookupOutOfScope", "lookupCandidates", "lookupInRound", "lookupNotInRound", "lookupUnknown", "lookupOffline", "matchedSerial", "matchedFixedAsset", "matchedCustodian", "inLocation", "badgePending", "cameraPermissionDenied"]
   for (const locale of ["th", "en"] as const) {
     assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
   }

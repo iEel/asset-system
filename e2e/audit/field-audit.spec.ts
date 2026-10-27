@@ -299,7 +299,7 @@ test.describe("IT staff in room B, offline, and not found", () => {
 
     // Not found: from the room's pending list, the in-app dialog, no remark needed.
     await list.getByRole("button", { name: /^ยังไม่ตรวจ/ }).click()
-    await page.getByRole("link", { name: "ของที่หาไม่เจอ → รายการค้าง" }).click()
+    await page.getByRole("link", { name: "ของในห้องนี้ที่ยังหาไม่เจอ 1 รายการ →" }).click()
     await page.waitForURL(`**/th/audit/rounds/${chain.roundId}/pending**`)
     // Group 2 spec §9: the title counts the round's pending items; the room chips count by the item's own room, room B
     // stays chosen from the scan page and room A has nothing left; each chip's count is its rows (P2-R11, P2-R12).

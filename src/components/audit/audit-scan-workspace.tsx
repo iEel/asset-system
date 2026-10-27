@@ -19,7 +19,9 @@ import { AuditScanSearchField, AuditScanSearchResults } from "@/components/audit
 import type { AuditLookupAsset, AuditScanComponent, AuditScanLookupResponse, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
 import { useAuditScanRoom } from "@/components/audit/use-audit-scan-room"
 import { useShellBannerSlot } from "@/components/layout/shell-banner"
+import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { Notice } from "@/components/ui/notice"
 import { useMediaQuery } from "@/components/ui/use-media-query"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
@@ -38,19 +40,25 @@ import {
 import {
   applyScanResult,
   auditScanListPageSize,
+  auditScanListScope,
   auditScanPollIntervalMs,
   auditScanSearchPageSize,
   buildRoomList,
   buildRoomOptions,
+  countAuditScanPendingForLink,
   findAuditScanItemByCodes,
   findAuditScanOwnItem,
+  foldAuditScanCategoryChips,
   getCheckMode,
   isAuditSearchReady,
+  listAuditScanRecordedOutOfScope,
   mergeStatusUpdates,
+  resolveAuditScanCategory,
   searchAuditItems,
   summarizeProgress,
   toScanPayloadValues,
   type AuditCheckValues,
+  type AuditScanCategory,
   type AuditScanItemRow,
   type AuditScanListTab,
   type AuditScanOptions,
@@ -78,6 +86,7 @@ export function AuditScanWorkspace({
   initialServerTime,
   options,
   photoChecklistByCategory,
+  categories,
   canApplyCorrections,
   initialAssetId,
   currentUser,
@@ -91,6 +100,8 @@ export function AuditScanWorkspace({
   initialServerTime: string
   options: AuditScanOptions
   photoChecklistByCategory: Record<string, string[]>
+  /** The round's categories, for the chips' names (spec §11, P3-R6). */
+  categories: AuditScanCategory[]
   canApplyCorrections: boolean
   initialAssetId?: string
   /** The signed-in person: queued checks are stamped with them, and only theirs send from this session. */
@@ -107,6 +118,10 @@ export function AuditScanWorkspace({
   const [term, setTerm] = useState("")
   const [tab, setTab] = useState<AuditScanListTab>("pending")
   const [limit, setLimit] = useState(auditScanListPageSize)
+  const [searchLimit, setSearchLimit] = useState(auditScanSearchPageSize)
+  // The chosen category with the room it was chosen in (categoryId below).
+  const [categoryChoice, setCategoryChoice] = useState<{ roomKey: string; categoryId: string | null }>({ roomKey: "", categoryId: null })
+  const [outOfScopeHint, setOutOfScopeHint] = useState(false)
   const initialTarget = useMemo<AuditCheckTarget | null>(() => {
     const item = initialAssetId ? initialItems.find((row) => row.assetId === initialAssetId) : undefined
     return item ? { kind: "item", item, openedMode: getCheckMode(item) } : null
@@ -150,14 +165,26 @@ export function AuditScanWorkspace({
   const progress = useMemo(() => summarizeProgress(items), [items])
   /** Opens by itself once per visit while the round has several rooms and none was ever chosen for it. */
   const roomPickerOpen = roomPickerRequested || (!roomPickerDismissed && !hasStoredRoom && roomOptions.length > 1)
-  const list = useMemo(() => buildRoomList({ items, room, tab, limit, locationLabels }), [items, room, tab, limit, locationLabels])
+  const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, { code: category.code, name: category.name }])), [categories])
+  const categoryChips = useMemo(() => foldAuditScanCategoryChips(items, { room, tab, names: categoryNames }), [items, room, tab, categoryNames])
+  // A room change clears the chosen category whichever way it came (the picker, its department, another tab through the
+  // storage event; spec §11, decision 3, P3-R6), and one that left the row stops narrowing the list.
+  const roomKey = `${room.locationId}|${room.departmentId}`
+  if (categoryChoice.roomKey !== roomKey && categoryChoice.categoryId !== null) setCategoryChoice({ roomKey, categoryId: null })
+  const categoryId = resolveAuditScanCategory(categoryChips, categoryChoice.roomKey === roomKey ? categoryChoice.categoryId : null)
+  const list = useMemo(() => buildRoomList({ items, room, tab, limit, locationLabels, categoryId }), [items, room, tab, limit, locationLabels, categoryId])
   const search = useMemo(() => searchAuditItems(items, term, custodianLabels, room), [items, term, custodianLabels, room])
-  // The first page of the room-first matches until Task 3's "แสดงเพิ่ม" (bug 20).
-  const matches = useMemo(() => search.matches.slice(0, auditScanSearchPageSize), [search])
   const queuedAssetIds = useMemo(() => new Set(queue.map((entry) => entry.assetId)), [queue])
   const sendableQueue = useMemo(() => queue.filter((entry) => canSendQueuedAuditScan(entry, currentUser.id)), [queue, currentUser.id])
   const heldQueue = useMemo(() => summarizeHeldAuditScans(queue, currentUser.id), [queue, currentUser.id])
   const liveItem = target?.kind === "item" ? items.find((row) => row.itemId === target.item.itemId) ?? null : null
+  const scope = auditScanListScope(room)
+  const pendingLinkCount = useMemo(() => countAuditScanPendingForLink(items, room), [items, room])
+  // P3-R25: the recorded out-of-scope finds, listed apart on the ตรวจแล้ว tab; no count reads them.
+  const recordedOutOfScope = useMemo(() => listAuditScanRecordedOutOfScope(items, { roomId: room.locationId }), [items, room.locationId])
+  const categoryRow = categoryChips.length > 0
+    ? { all: list.counts[tab], chips: categoryChips.map((chip) => ({ id: chip.id, label: categoryNames.get(chip.id)?.name ?? t("categoryUnknown"), count: chip.count })) }
+    : null
   const roomPendingHref = useMemo(() => {
     if (!room.locationId) return pendingHref
     const url = new URL(pendingHref, "http://local")
@@ -398,18 +425,50 @@ export function AuditScanWorkspace({
     setRoom(next)
     setTab("pending")
     setLimit(auditScanListPageSize)
+    setCategoryChoice({ roomKey: "", categoryId: null })
     void syncNow()
+  }
+
+  function changeTab(next: AuditScanListTab) {
+    setTab(next)
+    setLimit(auditScanListPageSize)
+    // The switch stays above the search results (spec §11): a tab press leaves the search for that tab's list.
+    if (isAuditSearchReady(term)) {
+      setDraft("")
+      changeTerm("")
+    }
+  }
+
+  function changeCategory(next: string | null) {
+    setCategoryChoice({ roomKey, categoryId: next })
+    setLimit(auditScanListPageSize)
   }
 
   function changeTerm(next: string) {
     setTerm(next)
+    setSearchLimit(auditScanSearchPageSize)
     setLookup({ status: "idle" })
   }
 
   function clearSearch() {
     setDraft("")
     changeTerm("")
+    setOutOfScopeHint(false)
     inputRef.current?.focus()
+  }
+
+  /** The out-of-scope box (spec §11): a record goes through the register lookup, so it starts at the search. */
+  function startOutOfScopeFind() {
+    setOutOfScopeHint(true)
+    inputRef.current?.focus()
+  }
+
+  /** A recorded out-of-scope find (P3-R25) opens as the deep link opens one: its tag in the search, then the register
+   * lookup, which answers out_of_scope with the item and opens its out-of-scope form (Task 4). */
+  function openRecordedOutOfScope(item: AuditScanItemRow) {
+    setDraft(item.assetTag)
+    changeTerm(item.assetTag)
+    void searchRegister(item.assetTag)
   }
 
   async function searchRegister(rawValue = term.trim()) {
@@ -458,8 +517,8 @@ export function AuditScanWorkspace({
   }
 
   function submitSearch() {
-    if (matches.length > 0) {
-      openItem(matches[0].item, true)
+    if (search.matches.length > 0) {
+      openItem(search.matches[0].item, true)
       return
     }
     void searchRegister()
@@ -488,6 +547,7 @@ export function AuditScanWorkspace({
     setSaved(notice)
     setTarget(null)
     setScanSource("manual")
+    setOutOfScopeHint(false)
     if (succeeded) navigator.vibrate?.(30)
     if (openedFromSearch) {
       setDraft("")
@@ -699,6 +759,7 @@ export function AuditScanWorkspace({
         <AuditScanRoomPicker room={room} rooms={roomOptions} open={roomPickerOpen} onOpenChange={changeRoomPickerOpen} onRoomChange={changeRoom} />
         <AuditScanSearchField
           value={draft}
+          hint={outOfScopeHint ? t("outOfScopeHint") : null}
           cameraOpen={cameraOpen}
           inputRef={inputRef}
           onValueChange={setDraft}
@@ -731,16 +792,43 @@ export function AuditScanWorkspace({
           />
         ) : null}
         <div ref={listAreaRef}>
+          <AuditScanRoomList
+            rows={list.rows}
+            total={list.total}
+            counts={list.counts}
+            tab={tab}
+            scope={scope}
+            searching={searching}
+            onTabChange={changeTab}
+            categories={categoryRow}
+            categoryId={categoryId}
+            onCategoryChange={changeCategory}
+            onShowMore={() => setLimit((current) => current + auditScanListPageSize)}
+            onOpen={(item) => openItem(item, false)}
+            queuedAssetIds={queuedAssetIds}
+            custodianLabels={custodianLabels}
+            locationLabels={locationLabels}
+            showLocation={!room.locationId}
+            pendingHref={roomPendingHref}
+            pendingCount={pendingLinkCount}
+            recordedOutOfScope={recordedOutOfScope}
+            onOpenRecorded={openRecordedOutOfScope}
+            activeItemId={isWide && target?.kind === "item" ? target.item.itemId : null}
+          />
           {searching ? (
             <AuditScanSearchResults
               term={term}
-              matches={matches}
-              room={room}
+              search={search}
+              limit={searchLimit}
+              scope={scope}
+              onShowMore={() => setSearchLimit((current) => current + auditScanSearchPageSize)}
               locationLabels={locationLabels}
               queuedAssetIds={queuedAssetIds}
               onOpen={(item) => openItem(item, true)}
+              lookupAfterMatches={outOfScopeHint}
               lookup={
                 <AuditScanLookupCard
+                  title={search.total > 0 ? t("lookupNotListed") : undefined}
                   state={lookup}
                   onSearchRegister={() => void searchRegister()}
                   onRecordOutOfScope={openOutOfScope}
@@ -748,27 +836,16 @@ export function AuditScanWorkspace({
                 />
               }
             />
-          ) : (
-            <AuditScanRoomList
-              rows={list.rows}
-              total={list.total}
-              counts={list.counts}
-              tab={tab}
-              onTabChange={(next) => {
-                setTab(next)
-                setLimit(auditScanListPageSize)
-              }}
-              onShowMore={() => setLimit((current) => current + auditScanListPageSize)}
-              onOpen={(item) => openItem(item, false)}
-              queuedAssetIds={queuedAssetIds}
-              custodianLabels={custodianLabels}
-              locationLabels={locationLabels}
-              showLocation={!room.locationId}
-              pendingHref={roomPendingHref}
-              activeItemId={isWide && target?.kind === "item" ? target.item.itemId : null}
-            />
-          )}
+          ) : null}
         </div>
+        <ContentPanel>
+          <div data-audit-scan-out-of-scope className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-foreground">{t("outOfScopeBoxTitle")}</p>
+            <Button variant="outline" size="md" onClick={startOutOfScopeFind}>
+              {t("outOfScopeBoxAction")}
+            </Button>
+          </div>
+        </ContentPanel>
       </div>
 
       <AuditScanCheckPanel
