@@ -2384,7 +2384,8 @@
     "chooseFoundValue": "Choose what you found",
     "departmentFollowsCustodian": "From the found custodian's department",
     "sheetHintFirstScan": "Does it match what you see? Tap Mismatch only where it differs.",
-    "valueNotInList": "Not in the list"
+    "valueNotInList": "Not in the list",
+    "sheetSerial": "Serial"
   },
   "auditFinding": {
     "title": "Audit Findings",

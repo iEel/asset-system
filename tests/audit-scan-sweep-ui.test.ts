@@ -84,7 +84,7 @@ test("check panel and workspace: the side panel on the panel classes, its empty 
   assert.doesNotMatch(panel, /border-dashed|rounded-lg border border-border bg-surface/)
   const workspace = read(`${A}audit-scan-workspace.tsx`)
   assert.match(workspace, /const targetDescription: ReactNode = target \? \(/)
-  assert.match(workspace, /\{targetSerial \? <> · Serial <span className="tag whitespace-normal break-all">\{targetSerial\}<\/span><\/> : null\}/)
+  assert.match(workspace, /\{targetSerial \? <> · \{t\("sheetSerial"\)\} <span className="tag whitespace-normal break-all">\{targetSerial\}<\/span><\/> : null\}/)
   assert.match(workspace, /<Notice\s+tone="danger"\s+role="alert"\s+action=\{\s*<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\s*\{t\("backToRound"\)\}\s*<\/Link>\s*\}\s*>\s*\{t\("roundClosedError"\)\}\s*<\/Notice>/)
   assert.doesNotMatch(workspace, /bg-danger-soft|hover:underline|`Serial \$\{/)
 })

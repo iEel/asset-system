@@ -72,7 +72,7 @@ test("room list rows show the name, the code under it and the full room on its o
   assert.doesNotMatch(source, /function secondLine/)
   assert.match(source, /<span className="block break-words text-sm font-semibold text-foreground">\{item\.name\}<\/span>/)
   assert.match(source, /<span className="block text-meta text-muted-foreground"><span className="tag whitespace-normal break-all">\{item\.assetTag\}<\/span><\/span>/)
-  assert.match(source, /const place = showLocation \? locationLabels\.get\(item\.expectedLocationId\) \?\? item\.expectedLocationId : null/)
+  assert.match(source, /const place = showLocation \? locationLabels\.get\(item\.expectedLocationId\) \?\? t\("valueNotInList"\) : null/)
   assert.match(source, /\{place \? <span data-audit-scan-row-room className="block break-words text-meta text-muted-foreground">\{place\}<\/span> : null\}/)
   assert.doesNotMatch(source.slice(source.indexOf("data-audit-scan-row-room")).split("\n")[0], /truncate/)
 })

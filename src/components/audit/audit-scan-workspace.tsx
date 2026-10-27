@@ -9,7 +9,7 @@ import { AuditScanCheckForm, type AuditCheckComponentsState, type AuditCheckSubm
 import { AuditScanCheckPanel } from "@/components/audit/audit-scan-check-panel"
 import { AuditScanComponentMissingDialog } from "@/components/audit/audit-scan-component-missing-dialog"
 import { AuditScanHeader } from "@/components/audit/audit-scan-header"
-import { normalizeAuditLookupComponents, normalizeAuditLookupInstalledIn, toAuditOfflinePhoto } from "@/components/audit/audit-scan-helpers"
+import { auditScanRowFromRecordedFind, normalizeAuditLookupComponents, normalizeAuditLookupInstalledIn, toAuditOfflinePhoto } from "@/components/audit/audit-scan-helpers"
 import { AuditScanLookupCard, type AuditLookupMatch, type AuditLookupState } from "@/components/audit/audit-scan-lookup-card"
 import { AuditScanOfflineBar } from "@/components/audit/audit-scan-offline-bar"
 import { AuditScanRoomList } from "@/components/audit/audit-scan-room-list"
@@ -169,7 +169,11 @@ export function AuditScanWorkspace({
 
   const locationLabels = useMemo(() => new Map(options.locations.map((option) => [option.id, option.label])), [options.locations])
   const custodianLabels = useMemo(() => new Map(options.employees.map((option) => [option.id, option.label])), [options.employees])
-  const roomOptions = useMemo(() => buildRoomOptions(items, options.locations, options.departments), [items, options.locations, options.departments])
+  const notInList = t("valueNotInList")
+  const roomOptions = useMemo(
+    () => buildRoomOptions(items, options.locations, options.departments, notInList),
+    [items, options.locations, options.departments, notInList],
+  )
   const progress = useMemo(() => summarizeProgress(items), [items])
   /** Opens by itself once per visit while the round has several rooms and none was ever chosen for it. */
   const roomPickerOpen = roomPickerRequested || (!roomPickerDismissed && !hasStoredRoom && roomOptions.length > 1)
@@ -415,6 +419,13 @@ export function AuditScanWorkspace({
   }
 
   function closeTarget() {
+    // A recorded out-of-scope find opens through its tag in the search (a row, the camera, the deep link, a typed tag).
+    // Dismissing it goes back to the walk as a save does, not to a "ไม่พบในรอบนี้" search for that tag (final review minor 1).
+    if (target?.kind === "out_of_scope" && target.recorded) {
+      setDraft("")
+      changeTerm("")
+      setOutOfScopeHint(false)
+    }
     setTarget(null)
     // The inline panel has no Radix focus return; the after-commit effect puts focus back where the check started.
     if (isWide) focusListPendingRef.current = "return"
@@ -516,16 +527,12 @@ export function AuditScanWorkspace({
         return
       }
       if (payload.status === "out_of_scope" && payload.item) {
-        // Already recorded out of scope: the form opens on that record and saving edits it (P3-R3). The record is a row of
-        // the round, here or after a sync when another phone saved it.
+        // Already recorded out of scope: the form opens on that record and saving edits it (P3-R3). A record not in state
+        // yet (another phone saved it, or a sync is still running) opens from the lookup's own answer (final review minor 2).
         const recordedId = payload.item.id
-        const recorded = items.find((row) => row.itemId === recordedId) ?? (await syncNow()).find((row) => row.itemId === recordedId)
-        if (recorded) {
-          setLookup({ status: "idle" })
-          openOutOfScope(payload.asset, recorded)
-        } else {
-          setLookup({ status: "error", message: tCommon("error") })
-        }
+        const recorded = items.find((row) => row.itemId === recordedId) ?? auditScanRowFromRecordedFind(payload.item, payload.asset)
+        setLookup({ status: "idle" })
+        openOutOfScope(payload.asset, recorded)
         return
       }
       if (payload.status === "out_of_scope") {
@@ -544,6 +551,12 @@ export function AuditScanWorkspace({
   }
 
   function submitSearch() {
+    // After "บันทึกนอกขอบเขต" the person types the find's code: Enter opens an own item only on an exact code (tier 0);
+    // a partial match (a prefix of a tag or serial) leaves Enter to the register lookup (final review minor 5).
+    if (outOfScopeHint && search.matches[0]?.tier !== 0) {
+      void searchRegister()
+      return
+    }
     if (search.matches.length > 0) {
       openItem(search.matches[0].item, true)
       return
@@ -768,7 +781,7 @@ export function AuditScanWorkspace({
   const targetDescription: ReactNode = target ? (
     <>
       <span className="tag whitespace-normal break-all">{targetCode}</span>
-      {targetSerial ? <> · Serial <span className="tag whitespace-normal break-all">{targetSerial}</span></> : null}
+      {targetSerial ? <> · {t("sheetSerial")} <span className="tag whitespace-normal break-all">{targetSerial}</span></> : null}
     </>
   ) : ""
 

@@ -1,8 +1,11 @@
 import type { AuditOfflinePhoto } from "../../lib/audit-offline-queue.ts"
+import type { AuditScanItemRow } from "../../lib/audit-scan-session.ts"
 import type {
   AuditInstalledInParent,
+  AuditLookupAsset,
   AuditLookupComponent,
   AuditLookupInstalledInParent,
+  AuditLookupRecordedFind,
   AuditScanComponent,
   QueuedAuditPhoto,
 } from "./audit-scan-types.ts"
@@ -28,6 +31,38 @@ export function normalizeAuditLookupInstalledIn(installedIn: AuditLookupInstalle
     componentRole: parent.componentRole,
     slotNo: parent.slotNo,
   }))
+}
+
+/** A recorded out-of-scope find as a walk row, from the lookup's answer alone: the out-of-scope form needs its snapshot
+ * (expected*) and what was recorded (actual*), which the lookup carries, so a find not yet pulled into the walk's state
+ * (another phone's save, a sync still running) opens without one (final review minor 2). */
+export function auditScanRowFromRecordedFind(item: AuditLookupRecordedFind, asset: AuditLookupAsset): AuditScanItemRow {
+  return {
+    itemId: item.id,
+    assetId: asset.id,
+    assetTag: asset.assetTag,
+    name: asset.subtitle,
+    serialNumber: asset.serialNumber,
+    fixedAssetCode: null,
+    categoryId: "",
+    ownershipType: asset.ownershipType ?? null,
+    expectedLocationId: item.expectedLocationId,
+    expectedCustodianId: item.expectedCustodianId,
+    expectedDepartmentId: item.expectedDepartmentId,
+    expectedConditionId: item.expectedConditionId,
+    actualLocationId: item.actualLocationId,
+    actualCustodianId: item.actualCustodianId,
+    actualDepartmentId: item.actualDepartmentId,
+    actualConditionId: item.actualConditionId,
+    auditStatus: item.auditStatus,
+    auditResult: item.auditResult,
+    lastScanAt: null,
+    scannedByName: null,
+    currentLocationId: asset.currentLocationId,
+    currentCustodianId: asset.custodianId,
+    currentDepartmentId: asset.departmentId,
+    componentCount: asset.components.length,
+  }
 }
 
 export function isAuditComponentChecked(component: AuditScanComponent) {

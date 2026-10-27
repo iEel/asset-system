@@ -87,7 +87,7 @@ test("without a room the list covers the whole round ordered by place then tag, 
 })
 
 test("room options list only places that have items, with pending counts and their departments", () => {
-  const options = buildRoomOptions(items, [{ id: "loc-1", label: "SNI_FL1 - ห้อง IT" }, { id: "loc-2", label: "SNI_FL2 - บัญชี" }, { id: "loc-9", label: "ว่าง" }], [{ id: "dept-1", label: "D01 - ไอที" }, { id: "dept-2", label: "D02 - บัญชี" }])
+  const options = buildRoomOptions(items, [{ id: "loc-1", label: "SNI_FL1 - ห้อง IT" }, { id: "loc-2", label: "SNI_FL2 - บัญชี" }, { id: "loc-9", label: "ว่าง" }], [{ id: "dept-1", label: "D01 - ไอที" }, { id: "dept-2", label: "D02 - บัญชี" }], "ไม่อยู่ในรายการ")
 
   assert.deepEqual(options.map((option) => [option.locationId, option.pending, option.total]), [["loc-1", 1, 2], ["loc-2", 1, 3]])
   assert.deepEqual(options[1].departments.map((department) => [department.departmentId, department.total]), [["dept-1", 2], ["dept-2", 1]])
@@ -127,4 +127,12 @@ test("search returns every match with its true total; the screen pages them by t
 test("highlight splits the first case-insensitive match", () => {
   assert.deepEqual(splitSearchHighlight("5CD123ABC", "cd1"), ["5", "CD1", "23ABC"])
   assert.equal(splitSearchHighlight("ABC", "zz"), null)
+})
+
+test("a room or department closed during the round reads ไม่อยู่ในรายการ in the picker, never its id (spec §5, final review minor 6)", () => {
+  // Only loc-1 and dept-1 are active options: loc-2 and dept-2 were closed after the round started.
+  const options = buildRoomOptions(items, [{ id: "loc-1", label: "SNI_FL1 - ห้อง IT" }], [{ id: "dept-1", label: "D01 - ไอที" }], "ไม่อยู่ในรายการ")
+  const labels = options.flatMap((option) => [option.label, ...option.departments.map((department) => department.label)])
+  assert.ok(labels.includes("ไม่อยู่ในรายการ"))
+  assert.ok(labels.every((label) => !/^(loc|dept)-/.test(label)), labels.join(", "))
 })

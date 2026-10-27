@@ -106,7 +106,7 @@ test("the room list and its tabs read own items; a category narrows the rows but
 })
 
 test("room options count own items, each department with its pending; the room button follows the chosen department (bug 21, P3-R13)", () => {
-  const rooms = buildRoomOptions(walk, locations, departments)
+  const rooms = buildRoomOptions(walk, locations, departments, "ไม่อยู่ในรายการ")
   assert.deepEqual(rooms.map((option) => [option.locationId, option.pending, option.total]), [["loc-a", 2, 4], ["loc-b", 1, 3]], "x1 leaves room A at 4; x2 adds no room C")
   assert.deepEqual(rooms[0].departments.map((entry) => [entry.departmentId, entry.label, entry.pending, entry.total]), [["dept-1", "D01 - ไอที", 1, 3], ["dept-2", "D02 - บัญชี", 1, 1]])
   assert.deepEqual(rooms[1].departments.map((entry) => [entry.departmentId, entry.pending, entry.total]), [["dept-1", 1, 2], ["dept-2", 0, 1]])

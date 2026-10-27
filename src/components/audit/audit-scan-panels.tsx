@@ -16,7 +16,7 @@ export type AuditScanTranslator = {
 
 // The components of the asset in the check sheet (D2, D3): a heading with the count and "พบครบทุกชิ้น", then one
 // compact row per component (about 64px): tag and status, then name · role · slot; on the right "พบ" (a check mark once
-// it is confirmed with the parent), "ไม่พบ" (the missing dialog) and ⋯ with the QR scan (group 2 spec §12).
+// it is confirmed with the parent), "ไม่พบ" (the missing dialog, while the component is pending) and ⋯ with the QR scan (group 2 spec §12).
 export function AuditComponentPanel({
   components,
   saving,
@@ -94,7 +94,8 @@ export function AuditComponentPanel({
                   <span className="sr-only"> {component.assetTag}</span>
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="min-w-16" disabled={rowDisabled} onClick={() => onMarkMissing(component)}>
+              {/* mark-not-found takes a pending item only: a checked component shows "ไม่พบ" but cannot press it. */}
+              <Button variant="outline" size="sm" className="min-w-16" disabled={rowDisabled || !isAuditComponentPending(component)} onClick={() => onMarkMissing(component)}>
                 {t("componentMarkMissing")}
                 <span className="sr-only"> {component.assetTag}</span>
               </Button>

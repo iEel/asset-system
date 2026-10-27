@@ -91,7 +91,7 @@ test("each component is one compact row: tag, StatusBadge, name · role · slot,
   assert.match(panel, /const rowDisabled = saving \|\| confirmingAll \|\| componentActionsDisabled \|\| !component\.auditItemId/)
   // ไม่พบ sits beside พบ and opens the missing dialog itself (group 2 spec §12); ⋯ keeps the QR scan only, so no menu
   // closes into a dialog and the focus guard is gone.
-  assert.match(panel, /<Button variant="outline" size="sm" className="min-w-16" disabled=\{rowDisabled\} onClick=\{\(\) => onMarkMissing\(component\)\}>[\s\S]*?t\("componentMarkMissing"\)/)
+  assert.match(panel, /<Button variant="outline" size="sm" className="min-w-16" disabled=\{rowDisabled \|\| !isAuditComponentPending\(component\)\} onClick=\{\(\) => onMarkMissing\(component\)\}>[\s\S]*?t\("componentMarkMissing"\)/)
   assert.match(panel, /<DropdownMenuTrigger asChild>\s*<Button variant="ghost" size="icon-sm" aria-label=\{tCommon\("moreActionsFor", \{ code: component\.assetTag \}\)\}/)
   assert.match(panel, /<DropdownMenuItem disabled=\{saving \|\| confirmingAll\} onSelect=\{\(\) => onScanComponent\(component\)\}>[\s\S]*?t\("componentScanQr"\)/)
   assert.equal(panel.match(/<DropdownMenuItem\b/g)?.length, 1)

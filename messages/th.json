@@ -2384,7 +2384,8 @@
     "chooseFoundValue": "เลือกค่าที่พบ",
     "departmentFollowsCustodian": "ตามแผนกของผู้ถือครองที่พบ",
     "sheetHintFirstScan": "ตรงกับของจริงไหม แตะ ไม่ตรง เฉพาะเรื่องที่ต่าง",
-    "valueNotInList": "ไม่อยู่ในรายการ"
+    "valueNotInList": "ไม่อยู่ในรายการ",
+    "sheetSerial": "Serial"
   },
   "auditFinding": {
     "title": "รายการไม่ตรงจากการตรวจนับ",

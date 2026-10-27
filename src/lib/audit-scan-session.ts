@@ -135,10 +135,13 @@ export type AuditRoomOption = {
   departments: AuditRoomDepartmentOption[]
 }
 
+/** The room picker's options. A room or department closed during the round is not in the options (they load active
+ * ones only); it reads `notInListLabel` ("ไม่อยู่ในรายการ"), never its id (spec §5, final review minor 6). */
 export function buildRoomOptions(
   items: readonly AuditScanItemRow[],
   locations: readonly AuditScanOption[],
   departments: readonly AuditScanOption[],
+  notInListLabel: string,
 ): AuditRoomOption[] {
   const locationLabels = new Map(locations.map((option) => [option.id, option.label]))
   const departmentLabels = new Map(departments.map((option) => [option.id, option.label]))
@@ -161,11 +164,11 @@ export function buildRoomOptions(
   return [...byLocation.entries()]
     .map(([locationId, entry]) => ({
       locationId,
-      label: locationLabels.get(locationId) ?? locationId,
+      label: locationLabels.get(locationId) ?? notInListLabel,
       pending: entry.pending,
       total: entry.total,
       departments: [...entry.departments.entries()]
-        .map(([departmentId, counts]) => ({ departmentId, label: departmentLabels.get(departmentId) ?? departmentId, pending: counts.pending, total: counts.total }))
+        .map(([departmentId, counts]) => ({ departmentId, label: departmentLabels.get(departmentId) ?? notInListLabel, pending: counts.pending, total: counts.total }))
         .sort((left, right) => compareText(left.label, right.label)),
     }))
     .sort((left, right) => compareText(left.label, right.label))

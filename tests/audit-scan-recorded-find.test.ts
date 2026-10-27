@@ -15,8 +15,9 @@ test("a lookup that finds a recorded find opens its out-of-scope form on that re
   const branch = workspace.slice(workspace.indexOf('if (payload.status === "out_of_scope" && payload.item) {'), workspace.indexOf('if (payload.status === "out_of_scope") {'))
   assert.ok(branch.length > 0, "the recorded branch comes before the first-record branch")
   assert.match(branch, /const recordedId = payload\.item\.id/)
-  assert.match(branch, /const recorded = items\.find\(\(row\) => row\.itemId === recordedId\) \?\? \(await syncNow\(\)\)\.find\(\(row\) => row\.itemId === recordedId\)/)
-  assert.match(branch, /if \(recorded\) \{\n\s+setLookup\(\{ status: "idle" \}\)\n\s+openOutOfScope\(payload\.asset, recorded\)\n\s+\} else \{\n\s+setLookup\(\{ status: "error", message: tCommon\("error"\) \}\)\n\s+\}\n\s+return/)
+  // A record not in state yet opens from the lookup's own answer, never a sync that can come back empty (final review minor 2).
+  assert.match(branch, /const recorded = items\.find\(\(row\) => row\.itemId === recordedId\) \?\? auditScanRowFromRecordedFind\(payload\.item, payload\.asset\)\n\s+setLookup\(\{ status: "idle" \}\)\n\s+openOutOfScope\(payload\.asset, recorded\)\n\s+return/)
+  assert.doesNotMatch(branch, /syncNow|status: "error"/)
   assert.doesNotMatch(branch, /openItem\(/, "never as a round item")
   assert.match(workspace, /function openOutOfScope\(asset: AuditLookupAsset, recorded: AuditScanItemRow \| null = null\) \{[\s\S]*?setTarget\(\{ kind: "out_of_scope", asset, recorded \}\)/)
 })

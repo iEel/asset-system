@@ -161,7 +161,7 @@ export function AuditScanSearchResults({
               const line = detail(match)
               const badge = queuedAssetIds.has(match.item.assetId) ? "queued" : getAuditItemBadge(match.item)
               const elsewhere = match.elsewhere
-              const place = locationLabels.get(match.item.expectedLocationId) ?? match.item.expectedLocationId
+              const place = locationLabels.get(match.item.expectedLocationId) ?? t("valueNotInList")
               return (
                 <li key={match.item.itemId}>
                   {/* A raw button on purpose: the whole result row opens the check sheet (2D-5 lists it). */}

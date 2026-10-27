@@ -156,7 +156,7 @@ export function AuditScanRoomList({
               {rows.map((item) => {
                 const badge = queuedAssetIds.has(item.assetId) ? "queued" : getAuditItemBadge(item)
                 const active = item.itemId === activeItemId
-                const place = showLocation ? locationLabels.get(item.expectedLocationId) ?? item.expectedLocationId : null
+                const place = showLocation ? locationLabels.get(item.expectedLocationId) ?? t("valueNotInList") : null
                 const detail = detailLine(item)
                 const checked = checkedLine(item)
                 return (

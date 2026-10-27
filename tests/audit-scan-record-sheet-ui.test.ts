@@ -70,7 +70,7 @@ test("the title is the asset's name; line 2 is its code and serial as tags that 
   assert.match(workspace, /const targetCode = target\?\.kind === "item" \? target\.item\.assetTag : target\?\.asset\.assetTag \?\? ""/)
   assert.match(workspace, /const targetSerial = target\?\.kind === "item" \? target\.item\.serialNumber : target\?\.asset\.serialNumber \?\? null/)
   assert.match(workspace, /<span className="tag whitespace-normal break-all">\{targetCode\}<\/span>/)
-  assert.match(workspace, /\{targetSerial \? <> · Serial <span className="tag whitespace-normal break-all">\{targetSerial\}<\/span><\/> : null\}/)
+  assert.match(workspace, /\{targetSerial \? <> · \{t\("sheetSerial"\)\} <span className="tag whitespace-normal break-all">\{targetSerial\}<\/span><\/> : null\}/)
   assert.match(read(`${A}audit-scan-types.ts`), /export type AuditLookupAsset = \{[\s\S]*?\n  subtitle: string\n  serialNumber: string \| null\n/)
   const panel = read(`${A}audit-scan-check-panel.tsx`)
   assert.match(panel, /<SheetHeader>\n\s+<SheetTitle>\{title\}<\/SheetTitle>\n\s+<SheetDescription>\{description\}<\/SheetDescription>\n\s+<\/SheetHeader>/)
@@ -81,7 +81,7 @@ test("the title is the asset's name; line 2 is its code and serial as tags that 
 test("a component row: พบ and ไม่พบ side by side, ไม่พบ opens the missing dialog, ⋯ keeps only the QR scan (spec §12)", () => {
   const panels = read(`${A}audit-scan-panels.tsx`)
   const panel = panels.slice(panels.indexOf("export function AuditComponentPanel"), panels.indexOf("export function AuditQrScannerOverlay"))
-  assert.match(panel, /<Button variant="outline" size="sm" className="min-w-16" disabled=\{rowDisabled\} onClick=\{\(\) => onMarkMissing\(component\)\}>\n\s+\{t\("componentMarkMissing"\)\}\n\s+<span className="sr-only"> \{component\.assetTag\}<\/span>/)
+  assert.match(panel, /<Button variant="outline" size="sm" className="min-w-16" disabled=\{rowDisabled \|\| !isAuditComponentPending\(component\)\} onClick=\{\(\) => onMarkMissing\(component\)\}>\n\s+\{t\("componentMarkMissing"\)\}\n\s+<span className="sr-only"> \{component\.assetTag\}<\/span>/)
   assert.ok(panel.indexOf('t("componentFound")') < panel.indexOf('t("componentMarkMissing")'), "พบ comes first")
   assert.ok(panel.indexOf('t("componentMarkMissing")') < panel.indexOf("<DropdownMenu>"), "ไม่พบ sits before ⋯, outside it")
   assert.equal(panel.match(/<DropdownMenuItem\b/g)?.length, 1, "⋯ holds the QR scan only")
