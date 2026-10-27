@@ -147,7 +147,6 @@ export function buildAuditRoundInsights(
   rounds: readonly { id: string; status: string }[],
   countsByRoundId: ReadonlyMap<string, AuditRoundCounts>,
   findingWork: ReadonlyMap<string, AuditRoundFindingWork>,
-  outOfScopeByRoundId: ReadonlyMap<string, number>,
 ): Map<string, AuditRoundListInsight> {
   const insights = new Map<string, AuditRoundListInsight>()
   for (const { id, status } of rounds) {
@@ -161,8 +160,8 @@ export function buildAuditRoundInsights(
       checked: counts.checked,
       pendingReview: work.pendingReview,
       openActions: work.openActions,
-      // Scan history, R4: never counts.outOfScope in plan 1.
-      outOfScope: outOfScopeByRoundId.get(id) ?? 0,
+      // From the out-of-scope items, as the round page's list it opens (P2-R4).
+      outOfScope: counts.outOfScope,
       // The close API's checklist (`api/audit-rounds/[id]/route.ts` `getCloseChecklist`, R2); the opener rule is the
       // round page's (plan 2).
       readyToClose: operational && counts.pending === 0 && work.pendingReview === 0 && work.openActions === 0,

@@ -43,16 +43,15 @@ import {
   auditRoundBranchFilterName,
   auditRoundResultPageSizeOptions,
   buildAuditRoundResultSummaryGroups,
+  buildAuditRoundExportHref,
   buildAuditRoundItemWhere,
   buildAuditRoundResultListHref,
-  buildAuditRoundScanHistoryWhere,
   getAuditRoundItemResultLabelKey,
   getAuditRoundItemStatusLabelKey,
-  isAuditRoundScanHistoryResultFilter,
   parseAuditRoundResultListParams,
   type AuditRoundResultFilter,
-  type AuditRoundResultListState,
 } from "@/lib/audit-round-result-filters"
+import { resolveAuditRoundListWhereInput } from "@/lib/audit-round-list-lookups"
 import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditRoundDetailPageProps = {
@@ -71,10 +70,11 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
 
   const resultListState = parseAuditRoundResultListParams(rawSearchParams)
   const resultListOffset = (resultListState.page - 1) * resultListState.pageSize
-  const isOutOfScopeResultList = isAuditRoundScanHistoryResultFilter(resultListState.result)
   const itemFilters = { companyId: resultListState.companyId, branchId: resultListState.branchId, categoryId: resultListState.categoryId, field: resultListState.field, components: resultListState.components }
-  const resultItemWhere = buildAuditRoundItemWhere({ roundId: id, result: resultListState.result, search: resultListState.search, ...itemFilters })
-  const resultScanHistoryWhere = buildAuditRoundScanHistoryWhere({ roundId: id, search: resultListState.search })
+  // The search matches the item's expected room too, and "อื่น ๆ" leaves out the six categories the chip row shows
+  // (P2-R5, P2-R11); the exports resolve the same input (audit-round-list-lookups.ts).
+  const resultWhereInput = await resolveAuditRoundListWhereInput(id, resultListState)
+  const resultItemWhere = buildAuditRoundItemWhere(resultWhereInput)
 
   const [
     round,
@@ -82,15 +82,12 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     resultCounts,
     findingTypeCounts,
     pendingReviewCount,
-    outOfScopeCount,
     openActionCount,
     approvedFindingCount,
     scanHistoryCount,
     evidenceItems,
     resultItems,
     resultItemTotal,
-    outOfScopeScanRows,
-    outOfScopeScanTotal,
     filterCompany,
     filterBranch,
   ] = await Promise.all([
@@ -148,7 +145,6 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       _count: { _all: true },
     }),
     prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "pending" } }),
-    prisma.auditScanHistory.count({ where: { auditRoundId: id, auditItemId: null } }),
     prisma.auditFinding.count({ where: { auditRoundId: id, actionStatus: { in: ["planned", "in_progress", "done"] } } }),
     prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "approved" } }),
     prisma.auditScanHistory.count({ where: { auditRoundId: id } }),
@@ -163,79 +159,41 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         },
       },
     }),
-    isOutOfScopeResultList
-      ? Promise.resolve([])
-      : prisma.auditItem.findMany({
-          where: resultItemWhere,
-          skip: resultListOffset,
-          take: resultListState.pageSize,
-          orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
-          include: {
-            asset: {
+    prisma.auditItem.findMany({
+      where: resultItemWhere,
+      skip: resultListOffset,
+      take: resultListState.pageSize,
+      orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }, { id: "asc" }],
+      include: {
+        asset: {
+          select: {
+            id: true,
+            assetTag: true,
+            name: true,
+            currentLocation: { select: { code: true, name: true } },
+            custodian: { select: { code: true, fullNameTh: true } },
+            condition: { select: { nameTh: true } },
+            parentComponents: {
+              where: { status: "installed", removedAt: null },
               select: {
-                id: true,
-                assetTag: true,
-                name: true,
-                currentLocation: { select: { code: true, name: true } },
-                custodian: { select: { code: true, fullNameTh: true } },
-                condition: { select: { nameTh: true } },
-                parentComponents: {
-                  where: { status: "installed", removedAt: null },
-                  select: {
-                    componentRole: true,
-                    slotNo: true,
-                    componentAsset: { select: { id: true, assetTag: true, name: true } },
-                  },
-                },
-                installedInLinks: {
-                  where: { status: "installed", removedAt: null },
-                  select: {
-                    componentRole: true,
-                    slotNo: true,
-                    parentAsset: { select: { id: true, assetTag: true, name: true } },
-                  },
-                },
+                componentRole: true,
+                slotNo: true,
+                componentAsset: { select: { id: true, assetTag: true, name: true } },
+              },
+            },
+            installedInLinks: {
+              where: { status: "installed", removedAt: null },
+              select: {
+                componentRole: true,
+                slotNo: true,
+                parentAsset: { select: { id: true, assetTag: true, name: true } },
               },
             },
           },
-        }),
-    isOutOfScopeResultList ? Promise.resolve(0) : prisma.auditItem.count({ where: resultItemWhere }),
-    isOutOfScopeResultList
-      ? prisma.auditScanHistory.findMany({
-          where: resultScanHistoryWhere,
-          skip: resultListOffset,
-          take: resultListState.pageSize,
-          orderBy: { scannedAt: "desc" },
-          include: {
-            asset: {
-              select: {
-                id: true,
-                assetTag: true,
-                name: true,
-                currentLocation: { select: { code: true, name: true } },
-                custodian: { select: { code: true, fullNameTh: true } },
-                parentComponents: {
-                  where: { status: "installed", removedAt: null },
-                  select: {
-                    componentRole: true,
-                    slotNo: true,
-                    componentAsset: { select: { id: true, assetTag: true, name: true } },
-                  },
-                },
-                installedInLinks: {
-                  where: { status: "installed", removedAt: null },
-                  select: {
-                    componentRole: true,
-                    slotNo: true,
-                    parentAsset: { select: { id: true, assetTag: true, name: true } },
-                  },
-                },
-              },
-            },
-          },
-        })
-      : Promise.resolve([]),
-    isOutOfScopeResultList ? prisma.auditScanHistory.count({ where: resultScanHistoryWhere }) : Promise.resolve(0),
+        },
+      },
+    }),
+    prisma.auditItem.count({ where: resultItemWhere }),
     // AuditItem.expectedCompanyId / expectedBranchId have no relation, so the chips' names need their own reads.
     resultListState.companyId
       ? prisma.company.findUnique({ where: { id: resultListState.companyId }, select: { code: true, nameTh: true } })
@@ -321,47 +279,36 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     out_of_scope: t("outOfScope"),
     pending_review: t("pendingReview"),
   }
-  const resultListTotal = isOutOfScopeResultList ? outOfScopeScanTotal : resultItemTotal
+  const resultListTotal = resultItemTotal
   // A result page past the last one (an old link, or results that moved to another bucket) shows the last page
   // (spec 2B I21). The result list keeps its own page and pageSize params (spec 2B §5.4 row rounds/[id]).
   const resultLastPage = lastListPage(resultListTotal, resultListState.pageSize)
-  const resultPageRowCount = isOutOfScopeResultList ? outOfScopeScanRows.length : resultItems.length
+  const resultPageRowCount = resultItems.length
   if (resultPageRowCount === 0 && resultListTotal > 0 && resultListState.page > resultLastPage) {
     redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, page: resultLastPage, pageSize: resultListState.pageSize }))
   }
   const { start: resultStart, end: resultEnd, totalPages: resultTotalPages } = paginationRange(resultListState.page, resultListState.pageSize, resultListTotal)
-  const resultRows = isOutOfScopeResultList
-    ? outOfScopeScanRows.map((history) => ({
-        id: history.id,
-        asset: history.asset,
-        auditStatus: "out_of_scope",
-        auditStatusLabel: t("outOfScope"),
-        auditResult: "out_of_scope",
-        auditResultLabel: formatDateTime(history.scannedAt),
-        auditResultTone: "info" as const,
-        componentRelationshipLines: buildAuditRoundComponentRelationshipLines(history.asset, t),
-        latestCorrection: null,
-        editHref: buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: history.asset.id, returnTo: resultListReturnHref }),
-      }))
-    : resultItems.map((item) => {
-        const statusLabelKey = getAuditRoundItemStatusLabelKey(item.auditStatus)
-        const itemStatusLabelKey = statusLabelKey ? null : getAuditItemStatusLabelKey(item.auditStatus)
-        const resultLabelKey = getAuditRoundItemResultLabelKey(item.auditResult)
-        const auditResult = item.auditResult ?? "pending"
-        const correctionHistory = correctionHistoryByItemId.get(item.id) ?? []
-        return {
-          id: item.id,
-          asset: item.asset,
-          auditStatus: item.auditStatus,
-          auditStatusLabel: statusLabelKey ? t(statusLabelKey) : itemStatusLabelKey ? tFinding(itemStatusLabelKey) : item.auditStatus,
-          auditResult,
-          auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : null,
-          auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : ("muted" as const),
-          componentRelationshipLines: buildAuditRoundComponentRelationshipLines(item.asset, t),
-          latestCorrection: correctionHistory[0] ?? null,
-          editHref: buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: resultListReturnHref }),
-        }
-      })
+  const resultRows = resultItems.map((item) => {
+    const statusLabelKey = getAuditRoundItemStatusLabelKey(item.auditStatus)
+    const itemStatusLabelKey = statusLabelKey ? null : getAuditItemStatusLabelKey(item.auditStatus)
+    const resultLabelKey = getAuditRoundItemResultLabelKey(item.auditResult)
+    const auditResult = item.auditResult ?? "pending"
+    const correctionHistory = correctionHistoryByItemId.get(item.id) ?? []
+    return {
+      id: item.id,
+      asset: item.asset,
+      auditStatus: item.auditStatus,
+      auditStatusLabel: statusLabelKey ? t(statusLabelKey) : itemStatusLabelKey ? tFinding(itemStatusLabelKey) : item.auditStatus,
+      auditResult,
+      auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : null,
+      auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : item.auditResult === "out_of_scope" ? ("info" as const) : ("muted" as const),
+      componentRelationshipLines: buildAuditRoundComponentRelationshipLines(item.asset, t),
+      latestCorrection: correctionHistory[0] ?? null,
+      // A re-scan from here would turn an out-of-scope find into an own item through the in-round scan path; plan 3
+      // fixes the walk's lookup (P2-R4), so its row offers no แก้ไขผลตรวจ until then.
+      editHref: item.auditResult === "out_of_scope" ? null : buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: resultListReturnHref }),
+    }
+  })
   const allResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const foundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "found", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const wrongLocationResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", field: "location", returnTo: returnToHref, pageSize: resultListState.pageSize })
@@ -370,16 +317,16 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const notFoundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "not_found", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  // The company and branch narrow only the item list (R13); out-of-scope rows are scan history and ignore both.
+  // The company and branch narrow every list, the out-of-scope one included (P2-R4).
   const resultFilterChips: FilterChipItem[] = []
-  if (!isOutOfScopeResultList && filterCompany) {
+  if (filterCompany) {
     resultFilterChips.push({
       key: "companyId",
       label: t("companyFilterChip", { company: `${filterCompany.code} - ${filterCompany.nameTh}` }),
       href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, ...itemFilters, companyId: null, pageSize: resultListState.pageSize }),
     })
   }
-  if (!isOutOfScopeResultList && filterBranch) {
+  if (filterBranch) {
     resultFilterChips.push({
       key: "branchId",
       label: t("branchFilterChip", { branch: auditRoundBranchFilterName({ name: filterBranch.name, companyCode: filterBranch.company.code }, Boolean(filterCompany)) }),
@@ -403,8 +350,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     openActions: openActionCount,
     scanHistoryRows: scanHistoryCount,
   }
-  const auditRoundExportHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export", state: resultListState })
-  const auditRoundExportPdfHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export-pdf", state: resultListState })
+  const auditRoundExportHref = buildAuditRoundExportHref(round.id, "export", resultListState)
+  const auditRoundExportPdfHref = buildAuditRoundExportHref(round.id, "export-pdf", resultListState)
+  const auditRoundVarianceHref = buildAuditRoundExportHref(round.id, "variance-export", resultListState)
   const hasResultBucketFilter = resultListState.result !== "all"
   const hasResultListSearch = Boolean(resultListState.search)
   const selectedResultLabel = resultFilterLabels[resultListState.result]
@@ -432,7 +380,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     { result: "wrong_custodian", count: wrongCustodianCount },
     { result: "wrong_condition", count: wrongConditionCount },
     { result: "not_found", count: notFoundCount },
-    { result: "out_of_scope", count: outOfScopeCount },
+    { result: "out_of_scope", count: roundCounts.outOfScope },
     { result: "pending_review", count: pendingReviewCount },
   ])
   const resultSummaryItemConfig = {
@@ -490,7 +438,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     <FileText aria-hidden="true" />
                     {t("exportResultPdf")}
                   </a>
-                  <a href={`/api/audit-rounds/${round.id}/variance-export`} download className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <a href={auditRoundVarianceHref} download className={buttonVariants({ variant: "outline", size: "md" })}>
                     <Download aria-hidden="true" />
                     {t("exportVariance")}
                   </a>
@@ -705,7 +653,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
                     {item.auditResultLabel ? <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} /> : null}
                   </div>
-                  {!isRoundReadOnly ? (
+                  {!isRoundReadOnly && item.editHref ? (
                     <div className="mt-3 flex justify-end">
                       <Link href={item.editHref} className={buttonVariants({ variant: "outline", size: "md" })}>
                         {t("editScanResult")}
@@ -788,7 +736,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                       {item.auditResultLabel ? <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} /> : <Nil />}
                     </DataTableCell>
                     <DataTableCell align="right" sticky="right">
-                      {!isRoundReadOnly ? (
+                      {!isRoundReadOnly && item.editHref ? (
                         <RowActions
                           code={item.asset.assetTag}
                           name={item.asset.name}
@@ -874,24 +822,6 @@ function buildAuditRoundScanEditHref({
   params.set("mode", "edit")
   params.set("returnTo", returnTo)
   return `/${locale}/audit/rounds/${roundId}/scan?${params.toString()}`
-}
-
-function buildAuditRoundExportHref({
-  roundId,
-  endpoint,
-  state,
-}: {
-  roundId: string
-  endpoint: "export" | "export-pdf"
-  state: Pick<AuditRoundResultListState, "result" | "search" | "companyId" | "branchId">
-}) {
-  const params = new URLSearchParams()
-  if (state.result !== "all") params.set("result", state.result)
-  if (state.search.trim()) params.set("search", state.search.trim())
-  if (state.companyId) params.set("companyId", state.companyId)
-  if (state.branchId) params.set("branchId", state.branchId)
-  const query = params.toString()
-  return `/api/audit-rounds/${roundId}/${endpoint}${query ? `?${query}` : ""}`
 }
 
 async function getEvidenceSummary({

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { chunkAuditIds } from "@/lib/audit-round-counts-rules"
 
 type FindingValue = {
   findingType: string
@@ -15,23 +16,21 @@ export async function buildFindingValueLabels(findings: FindingValue[]) {
   }
 
   const idList = Array.from(ids)
+  return buildAuditReferenceLabels(idList)
+}
+
+// The room, custodian, department and condition labels of a list of ids, for the round's exports and finding values.
+// SQL Server takes at most 2,100 parameters, and one round's export can name every room and custodian of its items
+// (1,509 on AUD-2026-0002), so each IN list goes in chunks of 2,000 (P2-R20).
+export async function buildAuditReferenceLabels(ids: ReadonlyArray<string | null | undefined>): Promise<Map<string, string>> {
+  const uniqueIds = Array.from(new Set(ids.filter((id): id is string => Boolean(id))))
+  const chunks = chunkAuditIds(uniqueIds)
+  const readChunked = async <T>(read: (chunk: string[]) => Promise<T[]>): Promise<T[]> => (await Promise.all(chunks.map(read))).flat()
   const [locations, employees, departments, conditions] = await Promise.all([
-    prisma.location.findMany({
-      where: { id: { in: idList } },
-      select: { id: true, code: true, name: true },
-    }),
-    prisma.employee.findMany({
-      where: { id: { in: idList } },
-      select: { id: true, code: true, fullNameTh: true },
-    }),
-    prisma.department.findMany({
-      where: { id: { in: idList } },
-      select: { id: true, code: true, name: true },
-    }),
-    prisma.assetCondition.findMany({
-      where: { id: { in: idList } },
-      select: { id: true, name: true, nameTh: true },
-    }),
+    readChunked((chunk) => prisma.location.findMany({ where: { id: { in: chunk } }, select: { id: true, code: true, name: true } })),
+    readChunked((chunk) => prisma.employee.findMany({ where: { id: { in: chunk } }, select: { id: true, code: true, fullNameTh: true } })),
+    readChunked((chunk) => prisma.department.findMany({ where: { id: { in: chunk } }, select: { id: true, code: true, name: true } })),
+    readChunked((chunk) => prisma.assetCondition.findMany({ where: { id: { in: chunk } }, select: { id: true, name: true, nameTh: true } })),
   ])
 
   const labels = new Map<string, string>()

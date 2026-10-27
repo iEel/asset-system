@@ -2118,7 +2118,7 @@
     "viewAll": "All",
     "viewOpen": "In progress",
     "viewPending": "Pending",
-    "viewReview": "Pending Decision",
+    "viewReview": "Has Pending Decisions",
     "viewReadyToClose": "Ready to Close",
     "viewCancelled": "Cancelled",
     "readyToClose": "Ready to close",

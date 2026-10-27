@@ -136,10 +136,10 @@ test("a round is ready to close only on the close API's three conditions: no pen
     { auditRoundId: "done", reviewStatus: "approved", actionStatus: "done", count: 1 },
     { auditRoundId: "review", reviewStatus: "pending", actionStatus: "not_required", count: 2 },
   ])
-  const insights = buildAuditRoundInsights(rounds, counts, work, new Map([["pending", 4]]))
+  const insights = buildAuditRoundInsights(rounds, counts, work)
   assert.deepEqual(rounds.filter((round) => insights.get(round.id)?.readyToClose).map((round) => round.id), ["ready", "draft", "empty"])
-  // The out-of-scope count is the scan history's (R4), never the items' count.
-  assert.deepEqual(insights.get("pending"), { operational: true, total: 2, pending: 1, checked: 1, pendingReview: 0, openActions: 0, outOfScope: 4, readyToClose: false })
+  // The out-of-scope count is the items' (P2-R4), as the round page's list it opens.
+  assert.deepEqual(insights.get("pending"), { operational: true, total: 2, pending: 1, checked: 1, pendingReview: 0, openActions: 0, outOfScope: 9, readyToClose: false })
   assert.equal(insights.get("done")?.openActions, 1)
   assert.equal(insights.get("closed")?.operational, false)
   assert.equal(isAuditRoundAwaitingDecision(insights.get("review")!), true, "fully scanned, decisions pending: the badge reads รอพิจารณา")

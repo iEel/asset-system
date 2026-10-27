@@ -4,15 +4,14 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { pdfResponse, renderAuditResultPdf } from "@/lib/audit-pdf"
 import { formatDate, formatDateTime } from "@/lib/utils"
-import { isSuccessfulAuditResult } from "@/lib/audit-result-summary"
+import { buildAuditReferenceLabels } from "@/lib/audit-finding-labels"
+import { resolveAuditRoundExportFilters } from "@/lib/audit-round-list-lookups"
 import {
   buildAuditExportFilterLabel,
   buildAuditExportFilename,
+  buildAuditRoundExportSummary,
   buildAuditRoundItemWhere,
-  buildAuditRoundScanHistoryWhere,
-  isAuditRoundScanHistoryResultFilter,
-  resolveAuditRoundResultFilter,
-  type AuditRoundResultFilter,
+  type AuditRoundItemWhereInput,
 } from "@/lib/audit-round-result-filters"
 
 export const runtime = "nodejs"
@@ -27,7 +26,7 @@ type AuditPdfExportRow = {
   expectedLocationId: string | null
   actualLocationId: string | null
   auditStatus: string
-  auditResult: string
+  auditResult: string | null
   reconcileStatus: string
   scanCount: number
   lastScanAt: Date | null
@@ -39,46 +38,35 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
     requirePermission(user, "audit", "export")
 
     const { id } = await context.params
-    const result = resolveAuditRoundResultFilter(request.nextUrl.searchParams.get("result"))
-    const search = request.nextUrl.searchParams.get("search") ?? ""
-    const companyId = request.nextUrl.searchParams.get("companyId")?.trim() || null
-    const branchId = request.nextUrl.searchParams.get("branchId")?.trim() || null
-    const isOutOfScopeExport = isAuditRoundScanHistoryResultFilter(result)
-
-    const [round, company, branch] = await Promise.all([
+    const [round, exportFilters] = await Promise.all([
       prisma.auditRound.findFirst({
         where: { id, isActive: true },
         select: { id: true, auditNo: true, name: true, startDate: true, endDate: true, status: true },
       }),
-      companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { code: true } }) : Promise.resolve(null),
-      branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { code: true, company: { select: { code: true } } } }) : Promise.resolve(null),
+      resolveAuditRoundExportFilters(id, request.nextUrl.searchParams),
     ])
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
     if (round.status === "cancelled") {
       return NextResponse.json({ error: "Audit round is cancelled" }, { status: 400 })
     }
-    // The export follows the page's company and branch chips (R13). The out-of-scope list ignores both, as the page
-    // does, and an unknown id exports as if absent, as the page's redirect shows.
-    const exportCompany = isOutOfScopeExport ? null : company
-    const exportBranch = isOutOfScopeExport ? null : branch
-    const filters = { companyId: exportCompany ? companyId : null, branchId: exportBranch ? branchId : null }
-    const filterLabel = buildAuditExportFilterLabel({ result, search, company: exportCompany, branch: exportBranch })
-    const rows = isOutOfScopeExport
-      ? await buildOutOfScopeExportRows(id, search)
-      : await buildAuditItemExportRows(id, result, search, filters)
+    // The export is the page's list (spec §8 "ตามตัวกรองที่เลือก"): every filter, the room search and อื่น ๆ included,
+    // the out-of-scope finds as items (P2-R4). An unknown id exports as if absent, as the page's redirect shows (R13).
+    const { filters, whereInput, company, branch, category } = exportFilters
+    const labelInput = { result: filters.result, search: filters.search, company, branch, category, field: filters.field, components: filters.components }
+    const filterLabel = buildAuditExportFilterLabel(labelInput)
+    const rows = await buildAuditItemExportRows(whereInput)
     const labels = await buildAuditReferenceLabels(rows.flatMap((row) => [row.expectedLocationId, row.actualLocationId]))
-    const pendingCount = rows.filter((row) => row.auditStatus === "pending").length
-    const scannedCount = rows.filter((row) => row.auditStatus === "scanned" || row.auditStatus === "reconciled" || row.auditStatus === "out_of_scope").length
-    const findingCount = rows.filter((row) => row.auditResult && !isSuccessfulAuditResult(row.auditResult)).length
+    const summary = buildAuditRoundExportSummary(rows)
 
     const buffer = await renderAuditResultPdf({
       title: `Audit Result - ${round.auditNo}`,
       subtitle: `${round.name} | ${formatDate(round.startDate)} - ${formatDate(round.endDate)} | Filter: ${filterLabel}`,
       summary: [
-        { label: "Exported Rows", value: rows.length },
-        { label: "Pending", value: pendingCount },
-        { label: "Scanned/Reconciled", value: scannedCount },
-        { label: "Needs Review/Out of Scope", value: findingCount },
+        { label: "Exported Rows", value: summary.exported },
+        { label: "Pending", value: summary.pending },
+        { label: "Checked", value: summary.checked },
+        { label: "Mismatch/Not Found", value: summary.mismatchOrNotFound },
+        { label: "Out of Scope", value: summary.outOfScope },
       ],
       rows: rows.map((row) => ({
         assetTag: row.assetTag,
@@ -86,28 +74,23 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
         expectedLocation: labelOrBlank(labels, row.expectedLocationId),
         actualLocation: labelOrBlank(labels, row.actualLocationId),
         auditStatus: row.auditStatus,
-        auditResult: row.auditResult,
+        auditResult: row.auditResult ?? "",
         reconcileStatus: row.reconcileStatus,
         scanCount: String(row.scanCount),
         lastScanAt: formatDateTime(row.lastScanAt),
       })),
     })
 
-    return pdfResponse(buffer, buildAuditExportFilename({ prefix: "audit-result", auditNo: round.auditNo, result, search, company: exportCompany, branch: exportBranch, extension: "pdf" }))
+    return pdfResponse(buffer, buildAuditExportFilename({ prefix: "audit-result", auditNo: round.auditNo, ...labelInput, extension: "pdf" }))
   } catch (error) {
     return errorResponse(error)
   }
 }
 
-async function buildAuditItemExportRows(
-  roundId: string,
-  result: AuditRoundResultFilter,
-  search: string,
-  filters: { companyId: string | null; branchId: string | null },
-): Promise<AuditPdfExportRow[]> {
+async function buildAuditItemExportRows(whereInput: AuditRoundItemWhereInput): Promise<AuditPdfExportRow[]> {
   const items = await prisma.auditItem.findMany({
-    where: buildAuditRoundItemWhere({ roundId, result, search, ...filters }),
-    orderBy: [{ auditStatus: "asc" }, { createdAt: "asc" }],
+    where: buildAuditRoundItemWhere(whereInput),
+    orderBy: [{ auditStatus: "asc" }, { createdAt: "asc" }, { id: "asc" }],
     include: {
       asset: {
         select: {
@@ -124,68 +107,11 @@ async function buildAuditItemExportRows(
     expectedLocationId: item.expectedLocationId,
     actualLocationId: item.actualLocationId,
     auditStatus: item.auditStatus,
-    auditResult: item.auditResult ?? "",
+    auditResult: item.auditResult,
     reconcileStatus: item.reconcileStatus ?? "",
     scanCount: item.scanCount,
     lastScanAt: item.lastScanAt,
   }))
-}
-
-async function buildOutOfScopeExportRows(roundId: string, search: string): Promise<AuditPdfExportRow[]> {
-  const scanRows = await prisma.auditScanHistory.findMany({
-    where: buildAuditRoundScanHistoryWhere({ roundId, search }),
-    orderBy: { scannedAt: "desc" },
-    include: {
-      asset: {
-        select: {
-          assetTag: true,
-          name: true,
-          currentLocationId: true,
-        },
-      },
-    },
-  })
-
-  return scanRows.map((history) => ({
-    assetTag: history.asset.assetTag,
-    assetName: history.asset.name,
-    expectedLocationId: null,
-    actualLocationId: history.asset.currentLocationId,
-    auditStatus: "out_of_scope",
-    auditResult: "out_of_scope",
-    reconcileStatus: "",
-    scanCount: 1,
-    lastScanAt: history.scannedAt,
-  }))
-}
-
-async function buildAuditReferenceLabels(ids: Array<string | null>) {
-  const uniqueIds = Array.from(new Set(ids.filter((id): id is string => Boolean(id))))
-  const [locations, employees, departments, conditions] = await Promise.all([
-    prisma.location.findMany({
-      where: { id: { in: uniqueIds } },
-      select: { id: true, code: true, name: true },
-    }),
-    prisma.employee.findMany({
-      where: { id: { in: uniqueIds } },
-      select: { id: true, code: true, fullNameTh: true },
-    }),
-    prisma.department.findMany({
-      where: { id: { in: uniqueIds } },
-      select: { id: true, code: true, name: true },
-    }),
-    prisma.assetCondition.findMany({
-      where: { id: { in: uniqueIds } },
-      select: { id: true, name: true, nameTh: true },
-    }),
-  ])
-
-  const labels = new Map<string, string>()
-  for (const location of locations) labels.set(location.id, `${location.code} - ${location.name}`)
-  for (const employee of employees) labels.set(employee.id, `${employee.code} - ${employee.fullNameTh}`)
-  for (const department of departments) labels.set(department.id, `${department.code} - ${department.name}`)
-  for (const condition of conditions) labels.set(condition.id, condition.nameTh || condition.name)
-  return labels
 }
 
 function labelOrBlank(labels: Map<string, string>, id?: string | null) {

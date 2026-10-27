@@ -135,7 +135,7 @@ test("every export link is an <a download>, as the report cards' (spec 2D M31)",
   const round = read(`${D}audit/rounds/[id]/page.tsx`)
   assert.match(round, /<a href=\{auditRoundExportHref\} download className=/)
   assert.match(round, /<a href=\{auditRoundExportPdfHref\} download className=/)
-  assert.match(round, /<a href=\{`\/api\/audit-rounds\/\$\{round\.id\}\/variance-export`\} download className=/)
+  assert.match(round, /<a href=\{auditRoundVarianceHref\} download className=/)
   assert.match(read(`${D}disposal/page.tsx`), /<a href=\{`\/api\/disposal-requests\/export\$\{query \? `\?\$\{query\}` : ""\}`\} download className=/)
   assert.match(read(`${D}maintenance/page.tsx`), /<a href=\{`\/api\/maintenance-tickets\/export\?\$\{listQuery\}`\} download className=/)
   const menu = read(`${C}assets/asset-register-export-menu.tsx`)

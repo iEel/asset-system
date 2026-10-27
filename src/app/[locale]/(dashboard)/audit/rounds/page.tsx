@@ -170,7 +170,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const matchedRoundIds = new Set(matchedRounds?.map((round) => round.id))
   const rounds = matchedRounds ? allRounds.filter((round) => matchedRoundIds.has(round.id)) : allRounds
   const roundIds = allRounds.map((round) => round.id)
-  const [countsByRoundId, findingWorkRows, outOfScopeWorkCounts] = roundIds.length
+  const [countsByRoundId, findingWorkRows] = roundIds.length
     ? await withPerformanceTiming(
         "audit-rounds.progress-data",
         () => Promise.all([
@@ -185,21 +185,14 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             },
             _count: { _all: true },
           }),
-          // Out-of-scope finds stay from scan history in plan 1, like the round page's list they open (R4).
-          prisma.auditScanHistory.groupBy({
-            by: ["auditRoundId"],
-            where: { auditRoundId: { in: roundIds }, auditItemId: null },
-            _count: { _all: true },
-          }),
         ]),
         { route: "/audit/rounds", locale, roundCount: roundIds.length }
       )
-    : ([new Map<string, AuditRoundCounts>(), [], []] as const)
+    : ([new Map<string, AuditRoundCounts>(), []] as const)
   const findingWorkByRoundId = foldAuditRoundFindingWork(
     findingWorkRows.map((row) => ({ auditRoundId: row.auditRoundId, reviewStatus: row.reviewStatus, actionStatus: row.actionStatus, count: row._count._all })),
   )
-  const outOfScopeByRoundId = new Map(outOfScopeWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
-  const insightsByRoundId = buildAuditRoundInsights(allRounds, countsByRoundId, findingWorkByRoundId, outOfScopeByRoundId)
+  const insightsByRoundId = buildAuditRoundInsights(allRounds, countsByRoundId, findingWorkByRoundId)
   const insightOf = (round: { id: string }): AuditRoundListInsight => insightsByRoundId.get(round.id) ?? emptyAuditRoundListInsight
   const filteredRounds = filterRoundsByView(rounds, insightsByRoundId, activeView)
   // Real pages (spec 2B B4, §5.9.2 row 7, I21): the view filters and the tab counts need the insight of every round,

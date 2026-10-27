@@ -10,7 +10,6 @@ import {
   buildAuditRoundItemWhere,
   buildAuditRoundItemsHref,
   buildAuditRoundResultListHref,
-  buildAuditRoundScanHistoryWhere,
   getAuditRoundItemResultLabelKey,
   getAuditRoundItemStatusLabelKey,
   parseAuditRoundResultListParams,
@@ -38,15 +37,6 @@ test("audit round result filters map dashboard buckets to scoped item queries", 
 
 test("audit round result searches stay scoped to the selected bucket", () => {
   assert.deepEqual(buildAuditRoundItemWhere({ roundId: "round-1", result: "all", field: "custodian", search: "SNI-EQU" }), own({ AND: [{ auditRoundId: "round-1" }, { findings: { some: { findingType: "wrong_custodian", reviewStatus: { in: ["pending", "approved"] } } } }, { OR: [{ asset: { assetTag: { contains: "SNI-EQU" } } }, { asset: { name: { contains: "SNI-EQU" } } }] }] }))
-
-  assert.deepEqual(buildAuditRoundScanHistoryWhere({ roundId: "round-1", search: "GRL" }), {
-    auditRoundId: "round-1",
-    auditItemId: null,
-    OR: [
-      { asset: { assetTag: { contains: "GRL" } } },
-      { asset: { name: { contains: "GRL" } } },
-    ],
-  })
 })
 
 test("audit round result drilldown href preserves return context and anchors the result list", () => {
@@ -153,17 +143,10 @@ test("audit round result exports use the same filters as the on-screen result li
 
   for (const route of [excelRoute, pdfRoute]) {
     assert.match(route, /request: NextRequest/)
-    assert.match(route, /request\.nextUrl\.searchParams/)
-    assert.match(route, /resolveAuditRoundResultFilter/)
-    assert.match(route, /buildAuditRoundItemWhere/)
-    assert.match(route, /buildAuditRoundScanHistoryWhere/)
-    assert.match(route, /isAuditRoundScanHistoryResultFilter/)
-    assert.match(route, /auditScanHistory\.findMany/)
+    assert.match(route, /resolveAuditRoundExportFilters\(id, request\.nextUrl\.searchParams\)/)
+    assert.match(route, /buildAuditRoundItemWhere\(whereInput\)/)
     assert.match(route, /auditItem\.findMany/)
-    assert.match(route, /out_of_scope/)
-    assert.match(route, /request\.nextUrl\.searchParams\.get\("companyId"\)/)
-    assert.match(route, /request\.nextUrl\.searchParams\.get\("branchId"\)/)
-    assert.match(route, /buildAuditRoundItemWhere\(\{ roundId, result, search, \.\.\.filters \}\)/)
+    assert.doesNotMatch(route, /auditScanHistory|ScanHistoryWhere|ScanHistoryResultFilter/, "the out-of-scope export is the out-of-scope items (P2-R4)")
   }
 })
 
@@ -336,7 +319,7 @@ test("the round page narrows its item list by company and branch, names each in 
   const page = roundPage()
   assert.match(page, /searchParams: Promise<\{[^}]*pageSize\?: string \| string\[\]; companyId\?: string \| string\[\]; branchId\?: string \| string\[\]; categoryId\?: string \| string\[\]; field\?: string \| string\[\]; components\?: string \| string\[\] \}>/)
   assert.match(page, /const itemFilters = \{ companyId: resultListState\.companyId, branchId: resultListState\.branchId, categoryId: resultListState\.categoryId, field: resultListState\.field, components: resultListState\.components \}/)
-  assert.match(page, /const resultItemWhere = buildAuditRoundItemWhere\(\{ roundId: id, result: resultListState\.result, search: resultListState\.search, \.\.\.itemFilters \}\)/)
+  assert.match(page, /const resultWhereInput = await resolveAuditRoundListWhereInput\(id, resultListState\)\n\s+const resultItemWhere = buildAuditRoundItemWhere\(resultWhereInput\)/)
   assert.match(page, /prisma\.auditItem\.count\(\{ where: resultItemWhere \}\)/, "the number above the list counts the filtered list")
   assert.match(page, /prisma\.company\.findUnique\(\{ where: \{ id: resultListState\.companyId \}, select: \{ code: true, nameTh: true \} \}\)/)
   assert.match(page, /prisma\.branch\.findUnique\(\{ where: \{ id: resultListState\.branchId \}, select: \{ name: true, company: \{ select: \{ code: true \} \} \} \}\)/)
@@ -347,7 +330,7 @@ test("the round page narrows its item list by company and branch, names each in 
   assert.match(page, /\.\.\.\(resultListState\.companyId \? \{ companyId: resultListState\.companyId \} : \{\}\)/, "the search keeps the company")
   assert.match(page, /\.\.\.\(resultListState\.branchId \? \{ branchId: resultListState\.branchId \} : \{\}\)/, "the search keeps the branch")
   assert.match(page, /previousHref=\{buildAuditRoundResultListHref\(\{ [^}]*\.\.\.itemFilters, page: resultListState\.page - 1/)
-  assert.match(page, /state: Pick<AuditRoundResultListState, "result" \| "search" \| "companyId" \| "branchId">/)
+  assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(round\.id, "export", resultListState\)/)
   assert.doesNotMatch(page, /const \w+ResultHref = buildAuditRoundResultListHref\(\{[^}]*(?:itemFilters|companyId|branchId)/, "the round-wide buckets open round-wide lists")
 })
 

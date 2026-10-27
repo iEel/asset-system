@@ -54,17 +54,17 @@ test("audit rounds UX copy is translated", () => {
   }
 })
 
-test("the rounds list counts with the one round count: the strip round-wide, the search on the tabs and table only, coverage on own items (group 2 plan 1 task 5, R1, R4, R6)", () => {
+test("the rounds list counts with the one round count: the strip round-wide, the search on the tabs and table only, coverage on own items (group 2 plan 1 task 5, R1, P2-R4, R6)", () => {
   const page = read(PAGE)
   // Every round once, unsearched; the search gives ids only.
   assert.match(page, /prisma\.auditRound\.findMany\(\{\n\s+where: \{ isActive: true \},\n\s+include: auditRoundListInclude,\n\s+orderBy: \[\{ createdAt: "desc" \}, \{ id: "asc" \}\],\n\s+\}\)/)
   assert.match(page, /searchText \? prisma\.auditRound\.findMany\(\{ where: \{ isActive: true, \.\.\.buildAuditRoundSearchWhere\(searchText\) \}, select: \{ id: true \} \}\) : null/)
   assert.match(page, /const rounds = matchedRounds \? allRounds\.filter\(\(round\) => matchedRoundIds\.has\(round\.id\)\) : allRounds/)
-  // One round count for own items; decisions and action plans apart; out-of-scope finds from scan history (R4).
+  // One round count for own items, out-of-scope finds apart; decisions and action plans apart.
   assert.match(page, /getAuditRoundCounts\(roundIds\)/)
   assert.match(page, /by: \["auditRoundId", "reviewStatus", "actionStatus"\]/)
   assert.match(page, /OR: \[\{ reviewStatus: "pending" \}, \{ actionStatus: \{ in: \[\.\.\.openAuditFindingActionStatuses\] \} \}\]/)
-  assert.match(page, /prisma\.auditScanHistory\.groupBy/)
+  assert.doesNotMatch(page, /auditScanHistory/)
   // Coverage: own items, the Bangkok year.
   assert.match(page, /where: withAuditRoundOwnItems\(\{ auditRound: \{ isActive: true, auditYear: currentYear, status: auditRoundCoverageWhere \} \}\)/)
   assert.match(page, /const currentYear = bangkokYear\(now\)/)

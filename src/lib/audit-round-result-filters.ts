@@ -278,51 +278,46 @@ export function foldAuditRoundResultCounts(rows: readonly AuditRoundResultCountR
   return counts
 }
 
-export function buildAuditRoundScanHistoryWhere({
-  roundId,
-  search,
-}: {
-  roundId: string
-  search?: string | null
-}): Prisma.AuditScanHistoryWhereInput {
-  const where: Prisma.AuditScanHistoryWhereInput = {
-    auditRoundId: roundId,
-    auditItemId: null,
-  }
-
-  const searchText = search?.trim()
-  if (searchText) {
-    where.OR = buildAssetSearchWhere(searchText)
-  }
-
-  return where
-}
-
-export function isAuditRoundScanHistoryResultFilter(result: AuditRoundResultFilter) {
-  return result === "out_of_scope"
-}
-
 type AuditExportCompany = { code: string }
 type AuditExportBranch = { code: string; company: { code: string } }
+type AuditExportCategory = { code: string }
 
-export function buildAuditExportFilterLabel({
-  result,
-  search,
-  company,
-  branch,
-}: {
+type AuditExportFilterLabelInput = {
   result: AuditRoundResultFilter
   search?: string | null
   company?: AuditExportCompany | null
   branch?: AuditExportBranch | null
-}) {
+  category?: AuditExportCategory | null
+  field?: AuditFindingField | null
+  components?: "missing" | null
+}
+
+// The export's filter label, in one order: result, company, branch, category (or "other"), field, missing components,
+// then the search (spec §8: the export names every filter of the list it holds).
+export function buildAuditExportFilterLabel({ result, search, company, branch, category, field, components }: AuditExportFilterLabelInput) {
   const parts: string[] = []
   if (result !== "all") parts.push(result)
   if (company) parts.push(`company-${company.code}`)
   if (branch) parts.push(company ? `branch-${branch.code}` : `branch-${branch.company.code}-${branch.code}`)
+  if (category) parts.push(`category-${category.code}`)
+  if (field) parts.push(`field-${field}`)
+  if (components) parts.push(`components-${components}`)
   const searchText = search ? search.trim() : ""
   if (searchText) parts.push(`search-${searchText}`)
   return parts.length > 0 ? parts.join("-") : "all"
+}
+
+// The PDF's summary cells (P2-R4): the out-of-scope finds apart from the round's own items, so pending + checked +
+// out of scope = the exported rows. Checked is every own item not pending, whatever its result.
+export function buildAuditRoundExportSummary(rows: ReadonlyArray<{ auditStatus: string; auditResult: string | null }>) {
+  const counts = foldAuditRoundResultCounts(rows.map((row) => ({ auditStatus: row.auditStatus, auditResult: row.auditResult, count: 1 })))
+  return { exported: rows.length, pending: counts.pending, checked: counts.found + counts.mismatch + counts.notFound, mismatchOrNotFound: counts.mismatch + counts.notFound, outOfScope: counts.outOfScope }
+}
+
+// Every result but `all` already leaves the out-of-scope finds out or keeps only them (Task 1), so only `all` differs:
+// the variance report keeps the finds, because they are variances too, and its summary counts them apart.
+export function buildAuditRoundVarianceWhere(input: AuditRoundItemWhereInput): Prisma.AuditItemWhereInput {
+  return input.result === "all" ? buildAuditRoundFilterWhere(input) : buildAuditRoundItemWhere(input)
 }
 
 export function sanitizeAuditExportFilenamePart(value: string) {
@@ -337,23 +332,16 @@ export function sanitizeAuditExportFilenamePart(value: string) {
 export function buildAuditExportFilename({
   prefix,
   auditNo,
-  result,
-  search,
-  company,
-  branch,
   extension,
   date = new Date(),
-}: {
+  ...filters
+}: AuditExportFilterLabelInput & {
   prefix: string
   auditNo: string
-  result: AuditRoundResultFilter
-  search?: string | null
-  company?: AuditExportCompany | null
-  branch?: AuditExportBranch | null
   extension: string
   date?: Date
 }) {
-  const filterLabel = buildAuditExportFilterLabel({ result, search, company, branch })
+  const filterLabel = buildAuditExportFilterLabel(filters)
   const filterSuffix = filterLabel === "all" ? "" : `-${sanitizeAuditExportFilenamePart(filterLabel)}`
   const cleanExtension = extension.replace(/^\./, "")
   return `${prefix}-${auditNo}${filterSuffix}-${date.toISOString().slice(0, 10)}.${cleanExtension}`
