@@ -16,6 +16,7 @@ import {
 import { auditScanSchema } from "@/lib/validations/audit"
 import { isAuditRoundOwnItem } from "@/lib/audit-round-counts-rules"
 import { auditOutOfScopeRescanEvidenceFields, planAuditOutOfScopeRescanFindings } from "@/lib/audit-out-of-scope-rescan"
+import { auditItemReviewState } from "@/lib/audit-item-review-state"
 
 type AuditScanContext = {
   params: Promise<{ id: string }>
@@ -401,7 +402,10 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
           })
         }
 
-        const pendingFindingCount = await tx.auditFinding.count({ where: { auditItemId: item.id, reviewStatus: "pending" } })
+        // The review state follows the findings as a reviewer's decision would leave it: a re-scan that closes the last
+        // pending finding decides it from the rest, and a new finding on a reconciled find puts it back to "reviewed".
+        const findings = await tx.auditFinding.findMany({ where: { auditItemId: item.id }, select: { findingType: true, reviewStatus: true } })
+        const reviewState = findings.length > 0 ? auditItemReviewState(findings, { pendingAuditStatus: "reviewed" }) : null
         return tx.auditItem.update({
           where: { id: item.id },
           data: {
@@ -412,7 +416,8 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             lastScanAt: scannedAt,
             scanCount: { increment: 1 },
             remark: input.remark,
-            ...(pendingFindingCount > 0 ? { findingRequired: true, reconcileStatus: "pending" } : {}),
+            ...(reviewState?.reconcileStatus === "pending" ? { findingRequired: true } : {}),
+            ...reviewState,
           },
         })
       })

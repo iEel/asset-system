@@ -13,7 +13,8 @@ type State = {
   findings: Finding[]
   outOfScopeFindingId: string | null
   attachmentIds: string[]
-  pendingCount: number
+  /** Every finding of the item, as the review state reads them after the plan is applied. */
+  reviewFindings: Array<{ findingType: string; reviewStatus: string }>
   calls: Call[]
   logs: Array<Record<string, unknown>>
 }
@@ -31,7 +32,7 @@ function recordedFind(): Record<string, unknown> {
   }
 }
 
-const state: State = { item: recordedFind(), parentItem: null, permissions: ["audit:edit"], findings: [], outOfScopeFindingId: "finding-oos", attachmentIds: ["att-1"], pendingCount: 1, calls: [], logs: [] }
+const state: State = { item: recordedFind(), parentItem: null, permissions: ["audit:edit"], findings: [], outOfScopeFindingId: "finding-oos", attachmentIds: ["att-1"], reviewFindings: [], calls: [], logs: [] }
 Object.assign(globalThis, { __outOfScopeRescanState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -68,6 +69,7 @@ const mockedModuleSources = new Map<string, string>([
       }
       if (name === "auditItem" && method === "update") return { ...state().item, ...args.data, scanCount: state().item.scanCount + 1 }
       if (name === "user" && method === "findUnique") return { displayName: "ผู้ตรวจ 1" }
+      if (name === "auditFinding" && method === "findMany" && args.where?.findingType === undefined) return state().reviewFindings
       if (name === "auditFinding" && method === "findMany") {
         const types = args.where?.findingType?.in ?? []
         const status = args.where?.reviewStatus
@@ -77,7 +79,6 @@ const mockedModuleSources = new Map<string, string>([
       if (name === "auditFinding" && method === "findFirst") {
         return args.where?.findingType === "out_of_scope" && state().outOfScopeFindingId ? { id: state().outOfScopeFindingId } : null
       }
-      if (name === "auditFinding" && method === "count") return state().pendingCount
       if (name === "auditFinding" && method === "create") return { id: "created-" + args.data.findingType, ...args.data }
       if (name === "attachment" && method === "findMany") return args.where.id.in.filter((id) => state().attachmentIds.includes(id)).map(attachment)
       if (name === "assetComponent" && method === "findFirst") return { parentAssetId: "asset-p1", parentAsset: { assetTag: "GRL-COM-26-0100", name: "Desktop" } }
@@ -155,14 +156,14 @@ beforeEach(() => {
   state.findings = []
   state.outOfScopeFindingId = "finding-oos"
   state.attachmentIds = ["att-1"]
-  state.pendingCount = 1
+  state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "pending" }]
   state.calls = []
   state.logs = []
 })
 
 test("a re-scan of an out-of-scope find stays out of scope: result and status kept, the found values saved, scanCount + 1, answered as out_of_scope (P3-R3)", async () => {
   state.findings = [{ id: "finding-loc", findingType: "wrong_location", actualValue: "loc-2", reviewStatus: "pending" }]
-  state.pendingCount = 2
+  state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "pending" }, { findingType: "wrong_location", reviewStatus: "pending" }]
 
   const response = await scan({ ...sameAsFirstScan, evidenceAttachmentIds: ["att-1"], remark: "ยังอยู่ห้อง 2" })
   assert.equal(response.status, 200)
@@ -188,14 +189,15 @@ test("a re-scan of an out-of-scope find stays out of scope: result and status ke
     scanCount: { increment: 1 },
     remark: "ยังอยู่ห้อง 2",
     findingRequired: true,
+    auditStatus: "reviewed",
     reconcileStatus: "pending",
-  }, "no auditResult, no auditStatus, no scannedAt / scannedBy: the first scan's stay")
+  }, "no auditResult, no scannedAt / scannedBy: the first scan's stay; the status stays reviewed while a finding waits")
   assert.deepEqual(callsTo("auditFinding.create"), [], "the unchanged wrong_location finding is left as it is")
 })
 
 test("the find is compared with its first scan's snapshot, never the master: matching the snapshot closes the pending field finding", async () => {
   state.findings = [{ id: "finding-loc", findingType: "wrong_location", actualValue: "loc-2", reviewStatus: "pending" }]
-  state.pendingCount = 1
+  state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "pending" }, { findingType: "wrong_location", reviewStatus: "rejected" }]
 
   const response = await scan({ actualLocationId: "loc-1", actualCustodianId: null, actualDepartmentId: "dept-1", actualConditionId: "condition-good" })
   assert.equal(response.status, 200)
@@ -233,13 +235,15 @@ test("a remark-only edit after the reviewer rejected the location files nothing 
   // The mock's findMany filters by the statuses the route asks for, so the rejected row is never returned; the route
   // still must not create a finding, because this save leaves the location as recorded.
   state.findings = [{ id: "finding-loc", findingType: "wrong_location", actualValue: "loc-2", reviewStatus: "rejected" }]
-  state.pendingCount = 0
+  state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "approved" }, { findingType: "wrong_location", reviewStatus: "rejected" }]
 
   const response = await scan({ ...sameAsFirstScan, remark: "ป้ายหลุด" })
   assert.equal(response.status, 200)
   assert.deepEqual(callsTo("auditFinding.create"), [])
   assert.deepEqual(callsTo("attachment.findMany"), [])
-  assert.equal("reconcileStatus" in dataOf(callsTo("auditItem.update")[0]), false, "the reviewer's decision is not undone")
+  const data = dataOf(callsTo("auditItem.update")[0])
+  assert.deepEqual([data.auditStatus, data.reconcileStatus], ["reconciled", "approved"], "the reviewer's decision is not undone: the state is what the review left")
+  assert.equal("findingRequired" in data, false)
 })
 
 test("the evidence must be the scanner's own active photos of this asset", async () => {
@@ -359,4 +363,38 @@ test("a save carries at most 20 evidence photos, refused before any read", async
   state.attachmentIds = ids.slice(0, 20)
   const accepted = await scan({ actualLocationId: "loc-3", evidenceAttachmentIds: ids.slice(0, 20) })
   assert.equal(accepted.status, 200)
+})
+
+test("the item's review state follows its findings after the re-scan, as the review route leaves it (final review minor 3)", async () => {
+  // The re-scan rejects the last pending field finding and the out_of_scope finding was approved: no longer pending.
+  state.findings = [{ id: "finding-loc", findingType: "wrong_location", actualValue: "loc-2", reviewStatus: "pending" }]
+  state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "approved" }, { findingType: "wrong_location", reviewStatus: "rejected" }]
+  let response = await scan({ actualLocationId: "loc-1", actualCustodianId: null, actualDepartmentId: "dept-1", actualConditionId: "condition-good" })
+  assert.equal(response.status, 200)
+  let data = dataOf(callsTo("auditItem.update")[0])
+  assert.deepEqual([data.auditStatus, data.reconcileStatus], ["reconciled", "approved"])
+  assert.equal("findingRequired" in data, false)
+  assert.ok(
+    callsTo("auditFinding.findMany").some((args) => JSON.stringify(args.where) === JSON.stringify({ auditItemId: "item-x1" })),
+    "the state reads every finding of the item",
+  )
+
+  // A new finding filed on a find already reconciled puts it back to reviewed / pending.
+  state.calls = []
+  state.findings = []
+  state.item = { ...recordedFind(), auditStatus: "reconciled", reconcileStatus: "approved" }
+  state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "approved" }, { findingType: "wrong_location", reviewStatus: "pending" }]
+  response = await scan({ actualLocationId: "loc-3", evidenceAttachmentIds: ["att-1"] })
+  assert.equal(response.status, 200)
+  data = dataOf(callsTo("auditItem.update")[0])
+  assert.deepEqual([data.auditStatus, data.reconcileStatus, data.findingRequired], ["reviewed", "pending", true])
+
+  // An exception decided before stays an exception.
+  state.calls = []
+  state.item = recordedFind()
+  state.reviewFindings = [{ findingType: "out_of_scope", reviewStatus: "exception" }]
+  response = await scan({ ...sameAsFirstScan, remark: "หมายเหตุ" })
+  assert.equal(response.status, 200)
+  data = dataOf(callsTo("auditItem.update")[0])
+  assert.deepEqual([data.auditStatus, data.reconcileStatus], ["reviewed", "exception"])
 })

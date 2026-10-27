@@ -9,6 +9,7 @@ import { auditFindingActionPlanSchema, auditFindingCloseSchema, auditFindingRevi
 import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { buildAuditFindingConflictPayload, hasAuditFindingConflict } from "@/lib/audit-finding-conflict"
+import { updateAuditItemReviewState } from "@/lib/audit-item-review-state"
 
 type ReviewContext = {
   params: Promise<{ id: string }>
@@ -303,54 +304,4 @@ async function getConfirmedComponentAssetIds(tx: ReviewTransaction, auditRoundId
   })
 
   return confirmedItems.map((item) => item.assetId)
-}
-
-async function updateAuditItemReviewState(tx: ReviewTransaction, auditItemId: string) {
-  const findings = await tx.auditFinding.findMany({
-    where: { auditItemId },
-    select: { findingType: true, reviewStatus: true },
-  })
-  const pendingCount = findings.filter((finding) => finding.reviewStatus === "pending").length
-  const approvedCount = findings.filter((finding) => finding.reviewStatus === "approved").length
-  const exceptionCount = findings.filter((finding) => finding.reviewStatus === "exception").length
-  const approvedNotFound = findings.some(
-    (finding) => finding.findingType === "not_found" && finding.reviewStatus === "approved"
-  )
-
-  if (pendingCount > 0) {
-    await tx.auditItem.update({
-      where: { id: auditItemId },
-      data: { reconcileStatus: "pending" },
-    })
-    return
-  }
-
-  if (exceptionCount > 0) {
-    await tx.auditItem.update({
-      where: { id: auditItemId },
-      data: { auditStatus: "reviewed", reconcileStatus: "exception" },
-    })
-    return
-  }
-
-  if (approvedNotFound) {
-    await tx.auditItem.update({
-      where: { id: auditItemId },
-      data: { auditStatus: "reviewed", reconcileStatus: "pending_investigation" },
-    })
-    return
-  }
-
-  if (approvedCount > 0) {
-    await tx.auditItem.update({
-      where: { id: auditItemId },
-      data: { auditStatus: "reconciled", reconcileStatus: "approved" },
-    })
-    return
-  }
-
-  await tx.auditItem.update({
-    where: { id: auditItemId },
-    data: { auditStatus: "reviewed", reconcileStatus: "rejected" },
-  })
 }
