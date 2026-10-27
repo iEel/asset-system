@@ -11,7 +11,7 @@ export function projectCode(projectName: string): string {
   return code
 }
 
-export type AuditAssetKey = "matched" | "mismatch" | "parent" | "component1" | "component2" | "notFound" | "offline" | "outOfScope"
+export type AuditAssetKey = "matched" | "mismatch" | "personal" | "parent" | "component1" | "component2" | "notFound" | "offline" | "outOfScope"
 
 export type AuditAssetPlan = {
   key: AuditAssetKey
@@ -21,10 +21,15 @@ export type AuditAssetPlan = {
   // In the round's department, or the run's own (the out-of-scope asset).
   department: "round" | "run"
   category: "desktop" | "component"
+  // Who answers for it (group 2 plan 3, P3-R15): the department (shared, no custodian), or one of the run's employees
+  // (personal), so the record sheet compares a custodian.
+  ownership: "shared" | "personal"
+  custodian: "receiver1" | null
 }
 
 // The walk (spec §6.2.2–3): in room A one matched, one mismatch (another department and the condition, with the photo),
-// a parent with two installed components; in room B one not found and one saved offline; and one asset of the run's
+// one personal asset held by the run's first receiver (group 2 spec §12, P3-R15: the custodian and the department), a
+// parent with two installed components; in room B one not found and one saved offline; and one asset of the run's
 // department in room A, outside the round's scope.
 export function auditRecords(runId: string, projectName: string) {
   const code = projectCode(projectName)
@@ -36,11 +41,14 @@ export function auditRecords(runId: string, projectName: string) {
     room,
     department: "round",
     category: "desktop",
+    ownership: "shared",
+    custodian: null,
     ...extra,
   })
   const assets: AuditAssetPlan[] = [
     asset("matched", "A1", "จอภาพ", "roomA"),
     asset("mismatch", "A2", "เครื่องพิมพ์", "roomA"),
+    asset("personal", "A3", "โน้ตบุ๊ก", "roomA", { ownership: "personal", custodian: "receiver1" }),
     asset("parent", "P1", "คอมพิวเตอร์ตั้งโต๊ะ", "roomA"),
     asset("component1", "C1", "หน่วยความจำ", "roomA", { category: "component" }),
     asset("component2", "C2", "ฮาร์ดดิสก์", "roomA", { category: "component" }),

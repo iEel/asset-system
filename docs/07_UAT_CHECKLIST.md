@@ -112,7 +112,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Move or transfer a parent asset with installed components and confirm active installed components receive supported field updates plus component movement rows.
 - [ ] Scan an expected asset.
 - [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR, pauses the camera after the QR read, locks the selected audit item with the `ล็อกเป้าหมายแล้ว` badge, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.
-- [ ] After selecting an audit asset, confirm the scan page shows system data for comparison: current location, custodian, department, and condition.
+- [ ] After selecting an audit asset, confirm the sheet is titled with the asset's name (wrapping on a long name) with "รหัส · Serial …" under it, and shows one row per compared field with the system's value and ตรง / ไม่ตรง: ที่ตั้ง (none for a software licence), ผู้ถือครอง (personal assets only), แผนก and สภาพ.
 - [ ] On a mobile device, confirm the sticky progress header is the only progress summary, shows the full compact progress bar before selecting an asset, collapses to a shorter checked/total + pending + photo strip after selecting an asset, and that the old metric-card row is not repeated below it.
 - [ ] Before selecting an item, choose a Location and Department work area. Confirm the pending quick queue, initial manual picker, and progress count use that work area, the selection returns after browser reload for the same audit round, clearing it restores round-wide counts, and direct QR/manual lookup still resolves items from the full current round.
 - [ ] Before scanning or selecting an asset, confirm the scan/manual entry panel is the most prominent area and includes short helper copy for starting the audit scan.
@@ -139,6 +139,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Scan an asset outside the audit round that has installed components, such as `SNI-EQU-20-0290` in a seeded/test environment, and confirm the out-of-scope action card shows the component panel with each component row. Component QR scan buttons should remain available, while `ยืนยันกับตัวหลัก` and `ไม่พบ` stay disabled for components that have no audit item in the current round.
 - [ ] Scan an asset outside the audit round, change its actual location or custodian, attach evidence, and confirm the save creates an out-of-scope record plus reviewable field mismatch findings.
 - [ ] Confirm the asset master data does not change immediately after the out-of-scope scan save.
+- [ ] Scan the same out-of-scope asset again (and open it from the round page's "แก้ไขผลตรวจ"): confirm the out-of-scope sheet opens with "บันทึกนอกขอบเขตไว้แล้ว · บันทึกตอนนี้จะเป็นการแก้", the save keeps it out of scope (the round page's นอกขอบเขต number is unchanged and ทั้งหมด does not grow), a field changed in this save asks for a photo and creates or updates its finding, a remark-only edit saves with no new photo, and the asset's master data does not change.
 - [ ] Approve the field mismatch finding as an audit reviewer and confirm the master asset data and movement log update only after approval.
 - [ ] Scan or enter an unknown QR/asset code and confirm it is shown as an unknown asset/not found in system, not as a not-found audit item.
 - [ ] Record not-found result from the pending list or zone queue for an expected item that cannot be physically located. On mobile, confirm the action opens an in-app dialog instead of a browser prompt, allows saving without a remark, optionally accepts an evidence photo, and creates the pending not-found Finding for review.
@@ -423,6 +424,63 @@ The automated suite covers the round page and the pending list in all four proje
   - the steps read their state;
   - "ส่งออก" and "อื่น ๆ" open their menus and focus comes back after the cancel dialog.
 - [ ] Both themes on a real monitor and phone.
+- [ ] An English pass of the new messages.
+
+## Audit Phone Walk B UAT (2026-10-27)
+
+The automated suite covers the phone walk and the record sheet in all four projects, the phone on WebKit (`e2e/audit/field-audit.spec.ts`), and "แสดงเพิ่ม" past ten on the phone projects (`e2e/audit/walk-search.spec.ts`). It checks:
+- the switch's counts and its third tab;
+- the category chips within the room and the tab, cleared on a room change;
+- the room-first search, and ten results with "แสดงเพิ่ม" on a round of eleven;
+- the recorded out-of-scope find listed apart on the ตรวจแล้ว tab with its "นอกขอบเขต" badge;
+- the header and the room button counting the round's own items;
+- a personal asset's custodian and department;
+- a wrong room, and "ไม่ตรง" without a value;
+- the components' "พบ" / "ไม่พบ";
+- a second scan of an out-of-scope find.
+
+A person still checks:
+
+- [ ] On iPhone Safari and Android Chrome, one-handed, in both themes:
+  - the sticky search;
+  - the switch, and the chip row scrolling sideways inside itself, while the page never scrolls sideways;
+  - ตรง / ไม่ตรง at 44px;
+  - the sheet's title wrapping on a long asset name;
+  - line 2 "รหัส · Serial …" on a long tag.
+- [ ] A round where a search matches more than ten items:
+  - the line counts every match, "ในห้องนี้ N · ห้องอื่น M";
+  - ten show;
+  - "แสดงเพิ่ม" adds ten more, the room's items first (a tag, serial or fixed asset code typed whole comes before them, wherever its room is).
+- [ ] A room with several departments:
+  - "ห้องนี้ตรวจแล้ว x / y · เหลือ z" follows the chosen department;
+  - the footer "ของในห้องนี้ที่ยังหาไม่เจอ N รายการ →" equals the pending list it opens for that room.
+- [ ] The category names:
+  - a round whose category was made inactive after it opened shows that chip by its name, never an id;
+  - a find another person records in a category the page did not load reads "หมวดหมู่อื่น".
+- [ ] Tap "เจอของที่ไม่อยู่ในรายการ? บันทึกนอกขอบเขต":
+  - the search takes focus, with "พิมพ์รหัสหรือ Serial ของที่เจอ แล้วกดค้นทะเบียน";
+  - the find is recorded through "ค้นในทะเบียนทั้งหมด".
+- [ ] A software licence has no ที่ตั้ง row, and a shared asset has no ผู้ถือครอง row. Neither save creates a finding for those fields.
+- [ ] Editing a saved result opens each field as it was saved: a field saved ไม่ตรง opens ไม่ตรง with its saved value.
+- [ ] The found badge reads "พบตรง" in the list and in the search results, and the first category chip reads "ทุกหมวดหมู่".
+- [ ] Custodian:
+  - "ไม่มี / ไม่ระบุ" can be chosen (on แผนก and สภาพ too, never on ที่ตั้ง);
+  - each person's department shows after the name;
+  - choosing a person moves แผนก with "ตามแผนกของผู้ถือครองที่พบ";
+  - setting แผนก first keeps it.
+- [ ] On the ตรวจแล้ว tab, "บันทึกนอกขอบเขตแล้ว N" lists the room's recorded out-of-scope finds (the round's with no room) with the "นอกขอบเขต" badge, the tab counts do not include them, and a tap opens the find's out-of-scope sheet.
+- [ ] An out-of-scope find opened from the round page's ⋯ "แก้ไขผลตรวจ" opens its out-of-scope sheet. Change its condition (the save asks for a photo) and save. Confirm:
+  - the round page still counts it under นอกขอบเขต;
+  - the condition finding waits for review;
+  - the register is unchanged.
+- [ ] Offline:
+  - a check saved offline is kept while the room changes and is sent when back;
+  - an out-of-scope save offline is refused with "ค้นนอกรอบต้องใช้อินเทอร์เน็ต".
+- [ ] At 1280 and 1440, the list and the side panel: the chips, and the ตรง / ไม่ตรง rows in the panel.
+- [ ] NVDA and VoiceOver:
+  - the switch and the chips read their counts and their pressed state;
+  - each field's ตรง / ไม่ตรง reads with the field's name;
+  - "เลือกค่าที่พบ" is read as focus moves to the field.
 - [ ] An English pass of the new messages.
 
 ## Sign-Off

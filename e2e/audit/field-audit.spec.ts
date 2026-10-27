@@ -4,11 +4,15 @@
 // 1. IT staff open the round of the project's department on the round form, after it shows its errors under the
 //    fields (spec §6.2.1, §6.7): no status choice, the department as a condition chip, the live count equal to the
 //    round's items, the round open at once (group 2 spec §7, §14, §16);
-// 2. IT staff walk room A by typing names and tags, from the round page's "เดินตรวจต่อ" (group 2 spec §8): one
-//    matched, one mismatch (another department and the condition, with the photo the condition asks for), a parent
-//    whose components are not all checked, an unknown and an out-of-scope search (spec §6.2.2);
-// 3. in room B the phone goes offline, saves a check, comes back and sends it; one asset is marked not found from the
-//    pending list, whose room chips count its rows and whose dialog names the asset (spec §6.2.2–3, group 2 spec §9);
+// 2. IT staff walk room A by typing names and tags, from the round page's "เดินตรวจต่อ" (group 2 spec §8): the switch
+//    and the category chips within the room and the tab, cleared on a room change, and a search with the room's items
+//    first (group 2 spec §11); one matched, one mismatch (another department and the condition, with the photo the
+//    condition asks for), a personal asset whose new custodian turns the department to ไม่ตรง, an asset of the other
+//    room opened as a wrong room, a parent whose components are not all checked, an unknown and an out-of-scope
+//    search, the find recorded again and still out of scope (spec §6.2.2, group 2 spec §12, §16);
+// 3. in room B the header counts the round's own items only; the phone goes offline, saves a check, comes back and
+//    sends it; one asset is marked not found from the pending list, whose room chips count its rows and whose dialog
+//    names the asset (spec §6.2.2–3, group 2 spec §9, §11);
 // 4. IT staff read the round page after the walk: the result and category chips equal their rows, each field's bar
 //    its rows, and the parent with a component not found is listed once (group 2 spec §8, §16);
 // 5. IT staff are refused the review of their own findings and the close of the round they opened (spec §6.2.4);
@@ -33,6 +37,7 @@ import { recordSettled, settleToasts } from "./settle.ts"
 import { fillTemplate } from "../shell/shell-words.ts"
 import * as roundPage from "./round-page-steps.ts"
 import { ROUND_PAGE_WORDS as W } from "./round-page-words.ts"
+import { SCAN_WORDS as S } from "./scan-words.ts"
 
 runPhoneOnWebKit()
 test.describe.configure({ mode: "serial" })
@@ -130,15 +135,15 @@ test.describe("IT staff open the round", () => {
 test.describe("IT staff walk room A", () => {
   asUser("itStaff")
 
-  test("IT staff walk room A by typing: matched, mismatch with its photo, a parent with components, an unknown and an out-of-scope search", async ({ page, measure, e2eDevice }, testInfo) => {
-    test.setTimeout(300_000)
+  test("IT staff walk room A by typing: the switch and the category chips, a room-first search, matched, mismatch with its photo, a personal asset's custodian, a wrong room, a parent with components, an unknown, and an out-of-scope find recorded twice", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.setTimeout(420_000)
     const chain = readChain(testInfo.project.name)
     const { records, assets } = chain
     if (e2eDevice === "phone") await scan.slowNetwork(page)
 
     await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page")
-    // Group 2 spec §8: the walk starts from the next-step card's main button; none of the round's seven items is checked yet.
-    await roundPage.nextStepCard(page).getByRole("link", { name: fillTemplate(W.continueScan, { count: 7 }), exact: true }).click()
+    // Group 2 spec §8: the walk starts from the next-step card's main button; none of the round's eight items is checked yet.
+    await roundPage.nextStepCard(page).getByRole("link", { name: fillTemplate(W.continueScan, { count: 8 }), exact: true }).click()
     await page.waitForURL(`**/th/audit/rounds/${chain.roundId}/scan**`)
     // Two rooms and none chosen yet: the room sheet opens by itself.
     await expect(page.getByRole("dialog", { name: "ห้องที่กำลังตรวจ" })).toBeVisible()
@@ -146,9 +151,66 @@ test.describe("IT staff walk room A", () => {
     await scan.pickRoom(page, records.rooms.roomA)
     await measure.recordPage("scan page in room A")
 
-    // Matched: found by its tag, every field as the system has it.
-    await scan.findAndOpen(page, assets.matched.tag, assets.matched.tag)
+    // Group 2 spec §11: the header names the way back and counts the round's eight; the room button reads what is done
+    // in the room and what is left (bug 21); the switch counts room A's six waiting items, its third tab "ทั้งห้อง"
+    // (P3-R7). A row shows the name and the code, the custodian, and the components.
+    const runTags = `${readRunState().runId}-${records.code}-`
+    await expect(page.getByRole("link", { name: S.backToRound, exact: true })).toHaveAttribute("href", new RegExp(`^/th/audit/rounds/${chain.roundId}(?:[?#]|$)`))
+    await expect(scan.progress(page)).toContainText("0 / 8")
+    await expect(scan.roomButton(page)).toContainText(fillTemplate(S.roomProgress, { checked: 0, total: 6, pending: 6 }))
+    await expect(scan.roomButton(page)).toContainText(S.roomChange)
+    await scan.expectTabs(page, [[S.tabPending, 6], [S.tabChecked, 0], [S.tabRoom, 6]])
+    await expect(scan.roomRows(page)).toHaveCount(6)
+    await expect(scan.roomRows(page).filter({ hasText: assets.parent.tag })).toContainText(fillTemplate(S.componentCount, { count: 2 }))
+    await expect(scan.roomRows(page).filter({ hasText: assets.personal.tag })).toContainText(readRunData().employees.receiver1.fullNameTh)
+
+    // The category chips (decision 3, P3-R6): "ทุกหมวดหมู่" first, then the room's categories by count (four desktops, two
+    // components). The component chip narrows the rows to the two components. Any room change clears it: room B
+    // holds one category, so it shows no chips, and all of its rows; with no room the switch reads "ทั้งรอบ" over the
+    // round's eight and the chips count them; back in room A the chips start from "ทุกหมวดหมู่" again.
+    await scan.expectCategoryChips(page, 6, [4, 2])
+    await recordSettled(page, measure, "scan page in room A with its category chips")
+    await scan.categoryChips(page).getByRole("button").nth(2).click()
+    await expect(scan.roomRows(page)).toHaveCount(2)
+    for (const asset of [assets.component1, assets.component2]) await expect(scan.roomRows(page).filter({ hasText: asset.tag })).toHaveCount(1)
+    await scan.pickRoom(page, records.rooms.roomB)
+    await expect(scan.categoryChips(page)).toHaveCount(0)
+    await scan.expectTabs(page, [[S.tabPending, 2], [S.tabChecked, 0], [S.tabRoom, 2]])
+    await expect(scan.roomRows(page)).toHaveCount(2)
+    await scan.clearRoom(page)
+    await scan.expectTabs(page, [[S.tabPending, 8], [S.tabChecked, 0], [S.tabRound, 8]])
+    await scan.expectCategoryChips(page, 8, [6, 2])
+    await expect(scan.roomRows(page)).toHaveCount(8)
+    await scan.categoryChips(page).getByRole("button").nth(2).click()
+    await expect(scan.roomRows(page)).toHaveCount(2)
+    await scan.pickRoom(page, records.rooms.roomA)
+    await scan.expectCategoryChips(page, 6, [4, 2])
+    await scan.expectTabs(page, [[S.tabPending, 6], [S.tabChecked, 0], [S.tabRoom, 6]])
+    await expect(scan.roomRows(page)).toHaveCount(6)
+
+    // The search (spec §11, bug 20, P3-R5): the project's own prefix finds the round's eight; room A's six come first,
+    // then room B's two, the line counts both, all eight show (no "แสดงเพิ่ม" below eleven), and the switch stays
+    // above the results.
+    await scan.typeSearch(page, runTags)
+    await scan.expectSearchLine(page, runTags, 6, 2)
+    const found = scan.searchRows(page)
+    await expect(found).toHaveCount(8)
+    const roomATags = [assets.matched, assets.mismatch, assets.personal, assets.parent, assets.component1, assets.component2].map((asset) => asset.tag)
+    const roomBTags = [assets.notFound, assets.offline].map((asset) => asset.tag)
+    const order = (await found.allTextContents()).map((text) => [...roomATags, ...roomBTags].find((tag) => text.includes(tag)) ?? text)
+    expect(order.slice(0, 6).sort(), "room A's items first").toEqual([...roomATags].sort())
+    expect(order.slice(6).sort(), "then the other room's").toEqual([...roomBTags].sort())
+    await expect(scan.searchResults(page).getByRole("button", { name: S.showMore, exact: true })).toHaveCount(0)
+    await scan.expectAbove(scan.tabs(page), found.first())
+    await recordSettled(page, measure, "search in room A, the room's items first")
+
+    // Matched: found by its tag, every field as the system has it. A first scan asks one question, and a shared asset's
+    // custodian is never compared, so its row is not shown (spec §12, bug 22).
+    await scan.findAndOpen(page, assets.matched.tag, assets.matched)
     await expect(scan.saveButton(page)).toHaveText("บันทึก · ตรงทุกข้อ")
+    await expect(scan.checkForm(page).getByText(S.firstScanHint, { exact: true })).toBeVisible()
+    for (const field of ["location", "department", "condition"] as const) await expect(scan.checkField(page, field)).toHaveCount(1)
+    await expect(scan.checkField(page, "custodian")).toHaveCount(0)
     await measure.recordPage("check of the matched asset")
     if (e2eDevice === "phone") {
       // The keyboard opens over the sheet for the note: the note stays above the pinned save bar, and the bar on screen.
@@ -170,10 +232,10 @@ test.describe("IT staff walk room A", () => {
     // Mismatch: found by a word of its name; it stands in another department and its condition is worse, so the save
     // waits for a photo and its reason names both (N-AU1: a department or location mismatch needs a photo too). A tap
     // on the waiting save opens the note-and-photo section (finding AU2, decided DX5 (ก)), and the person adds it there.
-    await scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch.tag)
+    await scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch)
     const runDepartment = runRecords(readRunState().runId).department.code
-    await scan.chooseInCheckField(page, "แผนก", runDepartment, `${runDepartment} - `)
-    await scan.chooseInCheckField(page, "สภาพ", "พอใช้", "พอใช้")
+    await scan.chooseInCheckField(page, "department", runDepartment, `${runDepartment} - `)
+    await scan.chooseInCheckField(page, "condition", "พอใช้", "พอใช้")
     await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)")
     await expect(scan.saveButton(page)).toHaveAttribute("aria-disabled", "true")
     await expect(scan.checkForm(page).getByText("ข้อมูลไม่ตรง ต้องแนบรูปก่อนบันทึก")).toBeVisible()
@@ -195,14 +257,73 @@ test.describe("IT staff walk room A", () => {
       expect((await photoUploaded).status(), "the photo is uploaded after the save").toBe(201)
     })
 
+    // A personal asset (P3-R15): its custodian is compared, so all four fields show. "ไม่ตรง" with nothing found chosen
+    // asks for it under the field and moves focus there, sending nothing (spec §12); the save label already counts the
+    // pressed row (P3-R22). A new custodian turns the department to ไม่ตรง, that person's department (N-AU1), and the
+    // save then waits for a photo. Tapping ตรง on the custodian undoes both (P3-R8), and the asset saves as matched, so
+    // the walk's findings stay the five of block 6.
+    const personalPosts = scan.watchScanPosts(page, chain.roundId, assets.personal.id)
+    await scan.findAndOpen(page, "โน้ตบุ๊ก", assets.personal)
+    for (const field of ["location", "custodian", "department", "condition"] as const) await expect(scan.checkField(page, field)).toHaveCount(1)
+    await scan.fieldAnswer(page, "condition", "mismatch").click()
+    await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 1 ข้อ (สภาพ)")
+    await scan.saveButton(page).click()
+    await expect(scan.checkField(page, "condition").getByText(S.chooseFoundValue, { exact: true })).toBeVisible()
+    await expect(scan.foundSelect(page, "condition")).toBeFocused()
+    expect(personalPosts.posts, "a ไม่ตรง with nothing found sends nothing").toEqual([])
+    await scan.fieldAnswer(page, "condition", "match").click()
+    await expect(scan.checkField(page, "condition").getByText(S.chooseFoundValue, { exact: true })).toHaveCount(0)
+    const receiver = readRunData().employees.receiver2
+    const runDepartmentPlace = runRecords(readRunState().runId).department
+    // The custodian's options read the department after the name (P3-R10).
+    await scan.chooseInCheckField(page, "custodian", receiver.code, new RegExp(`^${scan.escapeRegExp(`${receiver.code} - ${receiver.fullNameTh} · `)}.*${scan.escapeRegExp(runDepartmentPlace.name)}`))
+    const department = scan.checkField(page, "department")
+    await expect(scan.fieldAnswer(page, "department", "mismatch")).toHaveAttribute("aria-pressed", "true")
+    await expect(department).toHaveAttribute("data-mismatch", "true")
+    await expect(department.getByText(S.departmentFollowsCustodian, { exact: true })).toBeVisible()
+    await expect(scan.foundSelect(page, "department")).toContainText(`${runDepartmentPlace.code} - ${runDepartmentPlace.name}`)
+    await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 2 ข้อ (ผู้ถือครอง, แผนก)")
+    await expect(scan.saveButton(page)).toHaveAttribute("aria-disabled", "true")
+    await expect(scan.checkForm(page).getByText(S.photoRequiredPlacement)).toBeVisible()
+    await recordSettled(page, measure, "check of the personal asset, the department following the new custodian")
+    await scan.fieldAnswer(page, "custodian", "match").click()
+    await expect(scan.fieldAnswer(page, "department", "match")).toHaveAttribute("aria-pressed", "true")
+    await expect(department.getByText(S.departmentFollowsCustodian, { exact: true })).toHaveCount(0)
+    await expect(scan.saveButton(page)).toHaveText("บันทึก · ตรงทุกข้อ")
+    await expect(scan.saveButton(page)).not.toHaveAttribute("aria-disabled", "true")
+    await measure.timed("save the personal asset", async () => {
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(`${assets.personal.tag} บันทึกแล้ว · ตรงทุกข้อ`)
+    })
+    personalPosts.stop()
+    expect(personalPosts.posts, "saved once, as matched").toHaveLength(1)
+
+    // A room-B asset opened from room A (spec §12): the walked room is not where the system has it, so the location opens
+    // as ไม่ตรง with room A found and room B as the system's, and the save names it. Closed with "ไม่ใช่ชิ้นนี้", it
+    // sends nothing; block 3 marks it not found.
+    const roomBPosts = scan.watchScanPosts(page, chain.roundId, assets.notFound.id)
+    await scan.findAndOpen(page, assets.notFound.tag, assets.notFound, { inRoom: 0, otherRooms: 1 })
+    const location = scan.checkField(page, "location")
+    await expect(scan.fieldAnswer(page, "location", "mismatch")).toHaveAttribute("aria-pressed", "true")
+    await expect(location).toHaveAttribute("data-mismatch", "true")
+    await expect(scan.foundSelect(page, "location")).toContainText(`${records.rooms.roomA.code} - ${records.rooms.roomA.name}`)
+    await expect(location).toContainText(`${records.rooms.roomB.code} - ${records.rooms.roomB.name}`)
+    await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 1 ข้อ (ที่ตั้ง)")
+    await recordSettled(page, measure, "check of an asset of the other room")
+    await scan.checkForm(page).getByRole("button", { name: S.notThisOne, exact: true }).click()
+    await expect(scan.checkForm(page)).toHaveCount(0)
+    roomBPosts.stop()
+    expect(roomBPosts.posts, "nothing is sent for the other room's asset").toEqual([])
+
     // A parent with two installed components: one confirmed with the parent; saving the parent asks first while the
-    // other is unchecked, and cancelling sends nothing; the other is then marked missing, and the parent saves.
-    await scan.findAndOpen(page, assets.parent.tag, assets.parent.tag)
+    // other is unchecked, and cancelling sends nothing; the other is then marked missing from its own "ไม่พบ" beside
+    // "พบ" (spec §12), and the parent saves. "พบ <tag>" is exact: it is a part of "ไม่พบ <tag>".
+    await scan.findAndOpen(page, assets.parent.tag, assets.parent)
     const components = scan.checkForm(page).locator("[data-audit-component-row]")
     await expect(scan.checkForm(page).getByRole("heading", { name: "ส่วนควบ 2 ชิ้น" })).toBeVisible()
     await expect(components).toHaveCount(2)
     await measure.recordPage("check of the parent with its components")
-    await components.filter({ hasText: assets.component1.tag }).getByRole("button", { name: `พบ ${assets.component1.tag}` }).click()
+    await components.filter({ hasText: assets.component1.tag }).getByRole("button", { name: `พบ ${assets.component1.tag}`, exact: true }).click()
     await expect(page.getByText("ยืนยันส่วนควบกับทรัพย์สินหลักแล้ว")).toBeVisible()
     await expect(components.filter({ hasText: assets.component1.tag })).toContainText("ยืนยันกับทรัพย์สินหลัก")
     await expect(scan.checkForm(page).getByText("ส่วนควบตรวจแล้ว 1 / 2")).toBeVisible()
@@ -218,8 +339,7 @@ test.describe("IT staff walk room A", () => {
     await ask.getByRole("button", { name: "ยกเลิก" }).click()
     await expect(ask).toBeHidden()
     expect(parentScans, "cancelling the question sends nothing").toEqual([])
-    await components.filter({ hasText: assets.component2.tag }).getByRole("button", { name: `การดำเนินการของ ${assets.component2.tag}` }).click()
-    await page.getByRole("menuitem", { name: "ไม่พบส่วนควบนี้" }).click()
+    await components.filter({ hasText: assets.component2.tag }).getByRole("button", { name: `${S.componentNotFound} ${assets.component2.tag}`, exact: true }).click()
     const missing = page.getByRole("dialog", { name: "บันทึกส่วนควบที่ไม่พบ" })
     await expect(missing).toBeVisible()
     await recordSettled(page, measure, "component missing dialog")
@@ -241,19 +361,63 @@ test.describe("IT staff walk room A", () => {
     await expect(page.getByText("ไม่พบรหัสนี้ในทะเบียน · ตรวจตัวสะกดหรือพิมพ์ Serial")).toBeVisible()
     await recordSettled(page, measure, "unknown tag")
 
-    // An asset of the run's department standing in room A: outside the round's scope, recorded as such.
+    // An asset of the run's department standing in room A: outside the round's scope, recorded as such. The page then
+    // syncs its rows, the find among them.
     await scan.typeSearch(page, assets.outOfScope.tag)
     await page.getByRole("button", { name: "ค้นในทะเบียนทั้งหมด" }).click()
     await expect(page.getByText(`${assets.outOfScope.tag} ไม่อยู่ในขอบเขตรอบนี้`)).toBeVisible()
     await page.getByRole("button", { name: "บันทึกเป็นนอกขอบเขต" }).click()
-    await expect(scan.checkHeading(page, assets.outOfScope.tag)).toBeVisible()
+    await expect(scan.checkHeading(page, assets.outOfScope)).toBeVisible()
     await expect(scan.checkForm(page).getByText("นอกขอบเขตรอบนี้")).toBeVisible()
     await expect(scan.saveButton(page)).toHaveText("บันทึกนอกขอบเขต")
     await recordSettled(page, measure, "check of the out-of-scope asset")
+    const first = scan.nextScanSave(page, chain.roundId)
     await measure.timed("save out of scope", async () => {
       await scan.saveButton(page).click()
       await expect(scan.savedBanner(page)).toContainText(`${assets.outOfScope.tag} บันทึกเป็นนอกขอบเขตแล้ว`)
     })
+    expect((await first.saved).status(), "the first out-of-scope save").toBe(202)
+    await first.synced
+
+    // The find again (P3-R3, P3-R1): the round's own items hold no out-of-scope find, so the search finds nothing in the
+    // round, and the register answers that it was recorded out of scope: its sheet opens at once, with no first-record
+    // card (Task 4), every row as recorded (P3-R21: room A, its master room, so nothing reads ไม่ตรง), and nothing
+    // changes, so no photo is asked (P3-R18). The save keeps it out of scope (block 4 reads นอกขอบเขต 1 and ทั้งหมด 8
+    // on the round page, P3-R23).
+    await scan.typeSearch(page, assets.outOfScope.tag)
+    await expect(scan.searchRows(page)).toHaveCount(0)
+    await page.getByRole("button", { name: "ค้นในทะเบียนทั้งหมด" }).click()
+    await expect(scan.checkHeading(page, assets.outOfScope)).toBeVisible()
+    await expect(page.getByRole("button", { name: "บันทึกเป็นนอกขอบเขต" })).toHaveCount(0)
+    await expect(scan.checkForm(page).getByText(S.outOfScopeRecorded)).toBeVisible()
+    await expect(scan.checkForm(page).locator('[data-mismatch="true"]')).toHaveCount(0)
+    await expect(scan.saveButton(page)).toHaveText("บันทึกนอกขอบเขต")
+    await expect(scan.saveButton(page)).not.toHaveAttribute("aria-disabled", "true")
+    await recordSettled(page, measure, "check of the out-of-scope find, recorded before")
+    const again = scan.nextScanSave(page, chain.roundId)
+    await measure.timed("save the out-of-scope find again", async () => {
+      await scan.saveButton(page).click()
+      await expect(scan.savedBanner(page)).toContainText(`${assets.outOfScope.tag} บันทึกเป็นนอกขอบเขตแล้ว`)
+    })
+    const response = await again.saved
+    expect(response.status(), "the second save answers 200 with the item (P3-R24)").toBe(200)
+    expect(await response.json(), "it stays out of scope (P3-R3)").toMatchObject({ status: "out_of_scope", auditResult: "out_of_scope" })
+    await again.synced
+
+    // Every own item of room A is checked, the find synced in: the switch and the chips count the ตรวจแล้ว tab (four
+    // desktops, two components; the find is none of the room's rows), and the empty ยังไม่ตรวจ tab shows no chips (P3-R6).
+    // The find is listed apart at the end of the ตรวจแล้ว tab, with its นอกขอบเขต badge, counted in none of the tabs (P3-R25).
+    await scan.typeSearch(page, "")
+    await scan.tabs(page).getByRole("button", { name: new RegExp(`^${S.tabChecked}`) }).click()
+    await scan.expectTabs(page, [[S.tabPending, 0], [S.tabChecked, 6], [S.tabRoom, 6]])
+    await scan.expectCategoryChips(page, 6, [4, 2])
+    await expect(scan.roomRows(page)).toHaveCount(6)
+    await expect(scan.roomRows(page).filter({ hasText: assets.outOfScope.tag })).toHaveCount(0)
+    await expect(scan.recordedFinds(page).getByRole("heading")).toHaveText(fillTemplate(S.recordedOutOfScope, { count: 1 }))
+    await expect(scan.recordedFinds(page).getByRole("button", { name: scan.tagPattern(assets.outOfScope.tag) })).toContainText(S.badgeOutOfScope)
+    await recordSettled(page, measure, "room A, every item checked")
+    await scan.tabs(page).getByRole("button", { name: new RegExp(`^${S.tabPending}`) }).click()
+    await expect(scan.categoryChips(page)).toHaveCount(0)
   })
 })
 
@@ -269,6 +433,13 @@ test.describe("IT staff in room B, offline, and not found", () => {
 
     await measure.visit(`/th/audit/rounds/${chain.roundId}/scan`, "scan page")
     await scan.pickRoom(page, records.rooms.roomB)
+    // Own items only (P3-R1, P3-R2): the out-of-scope find is an item of the round but not one of its own, so after a
+    // fresh load the header reads the walk's 6 of 8 with its one mismatch, room B's button its two waiting, and room
+    // B's one category shows no chips.
+    await expect(scan.progress(page)).toContainText("6 / 8")
+    await expect(scan.progress(page)).toContainText(fillTemplate(S.progressMismatch, { count: 1 }))
+    await expect(scan.roomButton(page)).toContainText(fillTemplate(S.roomProgress, { checked: 0, total: 2, pending: 2 }))
+    await expect(scan.categoryChips(page)).toHaveCount(0)
     const list = page.locator("[data-audit-scan-room-list]")
     const offlineRow = list.getByRole("button", { name: scan.tagPattern(assets.offline.tag) })
     await expect(offlineRow).toBeVisible()
@@ -280,7 +451,7 @@ test.describe("IT staff in room B, offline, and not found", () => {
     await measure.whileOffline(async () => {
       await expect(scan.shellBanner(page)).toContainText("ออฟไลน์อยู่ · ผลตรวจนับจะเก็บไว้ในเครื่อง แล้วส่งเองเมื่อออนไลน์")
       await offlineRow.click()
-      await expect(scan.checkHeading(page, assets.offline.tag)).toBeVisible()
+      await expect(scan.checkHeading(page, assets.offline)).toBeVisible()
       await scan.saveButton(page).click()
       await expect(scan.savedBanner(page)).toContainText(`${assets.offline.tag} เก็บไว้ในเครื่อง · จะส่งเมื่อมีสัญญาณ`)
       await expect(scan.shellBanner(page)).toContainText("ออฟไลน์อยู่ · การตรวจนับ 1 รายการรอส่ง จะส่งเองเมื่อออนไลน์")
@@ -294,11 +465,15 @@ test.describe("IT staff in room B, offline, and not found", () => {
       await expect(scan.offlineBar(page)).toHaveCount(0)
       await expect(scan.shellBanner(page)).not.toContainText("ออฟไลน์อยู่")
     })
-    await list.getByRole("button", { name: /^ตรวจแล้ว/ }).click()
-    await expect(list.getByRole("button", { name: scan.tagPattern(assets.offline.tag) })).toContainText("ตรวจแล้ว")
+    await scan.tabs(page).getByRole("button", { name: /^ตรวจแล้ว/ }).click()
+    // The offline item saved as matched: its badge reads พบตรง, the round page's word (P3-R19).
+    await expect(list.getByRole("button", { name: scan.tagPattern(assets.offline.tag) })).toContainText(S.badgeFound)
 
-    // Not found: from the room's pending list, the in-app dialog, no remark needed.
-    await list.getByRole("button", { name: /^ยังไม่ตรวจ/ }).click()
+    // Not found: from the room's pending list, the in-app dialog, no remark needed. The footer counts room B's own
+    // item still waiting and opens the list with the room (P3-R14); the page finishes its requests first, so WebKit
+    // raises no page error for one the navigation cancels (E2E-1027C). The link line is Task 3's, word for word.
+    await scan.tabs(page).getByRole("button", { name: /^ยังไม่ตรวจ/ }).click()
+    await roundPage.settlePageRequests(page)
     await page.getByRole("link", { name: "ของในห้องนี้ที่ยังหาไม่เจอ 1 รายการ →" }).click()
     await page.waitForURL(`**/th/audit/rounds/${chain.roundId}/pending**`)
     // Group 2 spec §9: the title counts the round's pending items; the room chips count by the item's own room, room B
@@ -338,17 +513,17 @@ test.describe("IT staff read the round page after the walk", () => {
     const rows = roundPage.resultRows(page, e2eDevice, `${readRunState().runId}-${chain.records.code}-`)
     await measure.visit(roundHref, "round page after the walk (IT staff)")
 
-    // The result chips (group 2 spec §8, P2-R2, P2-R3): the round's 7 items are พบตรง 4 (A1, P1, C1, A5) + ไม่ตรง 1 (A2)
-    // + ไม่พบ 2 (A4, C2) + รอตรวจ 0; the out-of-scope find X1 apart; รอพิจารณา counts the 4 items with a finding still
-    // waiting (A2, C2, A4, X1). Each chip opens rows of its count.
+    // The result chips (group 2 spec §8, P2-R2, P2-R3): the round's 8 items are พบตรง 5 (A1, A3, P1, C1, A5) + ไม่ตรง 1
+    // (A2) + ไม่พบ 2 (A4, C2) + รอตรวจ 0; the out-of-scope find X1 apart, still after its second save (P3-R3); รอพิจารณา
+    // counts the 4 items with a finding still waiting (A2, C2, A4, X1). Each chip opens rows of its count.
     const results = roundPage.resultChips(page)
-    await roundPage.expectChips(results, [[W.resultAll, 7], [W.resultPending, 0], [W.resultFound, 4], [W.resultMismatch, 1], [W.resultNotFound, 2], [W.resultOutOfScope, 1], [W.resultPendingReview, 4]])
+    await roundPage.expectChips(results, [[W.resultAll, 8], [W.resultPending, 0], [W.resultFound, 5], [W.resultMismatch, 1], [W.resultNotFound, 2], [W.resultOutOfScope, 1], [W.resultPendingReview, 4]])
     await roundPage.expectChipsMatchRows(page, results, rows)
 
-    // The category chips count within the result in use (decision 2): five desktops and two components in all, one of
+    // The category chips count within the result in use (decision 2): six desktops and two components in all, one of
     // each among the not-founds (A4, C2). Each chip opens rows of its count.
     const categories = roundPage.categoryChips(page)
-    await roundPage.expectChip(categories, `categoryId=${masters.categoryDesktop}`, 5)
+    await roundPage.expectChip(categories, `categoryId=${masters.categoryDesktop}`, 6)
     await roundPage.expectChip(categories, `categoryId=${masters.categoryComponent}`, 2)
     await roundPage.expectChipsMatchRows(page, categories, rows)
     await roundPage.settlePageRequests(page)

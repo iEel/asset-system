@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 // The E2E suite's field audit walk and review (spec docs/superpowers/specs/2026-10-19-e2e-workflow-suite-design.md
@@ -10,6 +10,10 @@ const read = (file: string) => readFileSync(file, "utf8").replace(/\r/g, "")
 const SPEC = "e2e/audit/field-audit.spec.ts"
 // The Thai words of one namespace of messages/th.json, so the walk's words are the app's own.
 const thai = (namespace: string) => JSON.parse(read("messages/th.json"))[namespace] as Record<string, string>
+// Every text of a messages tree, and a text with its placeholders alike (a step's template and a th.json value are the
+// same words whatever their placeholders are named).
+const values = (node: unknown): string[] => (typeof node === "string" ? [node] : node && typeof node === "object" ? Object.values(node).flatMap(values) : [])
+const shape = (text: string) => text.replace(/\{\w+\}/g, "{}")
 
 // The text of one block of the spec: from its describe line to the next top-level describe (or the end).
 function block(source: string, title: string): string {
@@ -38,12 +42,13 @@ test("the walk's records carry the run id and the project within the schemas' li
       assert.ok(!tags.has(asset.tag), `${asset.tag} is the project's own`)
       tags.add(asset.tag)
     }
-    // Room A: matched, mismatch, the parent and its two components; room B: not found and offline; the outsider is the
-    // run's department in room A.
+    // Room A: matched, mismatch, the personal asset, the parent and its two components; room B: not found and offline;
+    // the outsider is the run's department in room A.
     const where = Object.fromEntries(records.assets.map((asset) => [asset.key, `${asset.room}/${asset.department}`]))
     assert.deepEqual(where, {
       matched: "roomA/round",
       mismatch: "roomA/round",
+      personal: "roomA/round",
       parent: "roomA/round",
       component1: "roomA/round",
       component2: "roomA/round",
@@ -52,6 +57,12 @@ test("the walk's records carry the run id and the project within the schemas' li
       outOfScope: "roomA/run",
     })
     assert.deepEqual(records.components.map((component) => component.key), ["component1", "component2"])
+    // Group 2 plan 3 (P3-R15): one personal asset, held by the run's first receiver, for the custodian step; the rest
+    // are shared, with no custodian. Eight round items: the round form's sample shows eight rows
+    // (src/app/api/audit-rounds/preview/route.ts), so block 1 sees each of them.
+    assert.deepEqual(records.assets.filter((asset) => asset.ownership === "personal").map((asset) => [asset.key, asset.custodian]), [["personal", "receiver1"]])
+    assert.ok(records.assets.filter((asset) => asset.ownership === "shared").every((asset) => asset.custodian === null))
+    assert.equal(records.assets.filter((asset) => asset.department === "round").length, 8)
     assert.ok(records.round.name.startsWith(runId) && records.ownRound.name.startsWith(runId) && records.unknownTag.startsWith(prefix))
   }
   assert.throws(() => projectCode("setup"), /no short code/)
@@ -60,6 +71,7 @@ test("the walk's records carry the run id and the project within the schemas' li
   const data = read("e2e/audit/audit-data.ts")
   for (const route of [`"/api/departments"`, `"/api/locations"`, `"/api/assets"`, "/components`"]) assert.ok(data.includes(route), route)
   assert.ok(!/prisma|mssql/i.test(data.replace(/^\/\/.*$/gm, "")), "no direct database access")
+  assert.ok(data.includes("ownershipType: plan.ownership,") && data.includes("custodianId: plan.custodian ? run.employees[plan.custodian].id : null,"))
   // The master ids come from the asset form, on a page of its own beside the round form (group 2 plan 1 task 4: the
   // round form's conditions are chips with no select to read). Each select's options are waited for (13B loop 5).
   assert.match(data, /const form = await page\.context\(\)\.newPage\(\)\n\s*try \{\n\s*await form\.goto\("\/th\/assets\/new"\)/)
@@ -111,10 +123,10 @@ test("IT staff walk room A by typing on the phone, on a slow network: matched, m
   assert.ok(walk.includes(`asUser("itStaff")`))
   assert.ok(walk.includes(`if (e2eDevice === "phone") await scan.slowNetwork(page)`), "slow 4G on the phone only")
   // Found by typing: the tag for most, a word of the name for the mismatch.
-  assert.ok(walk.includes("scan.findAndOpen(page, assets.matched.tag, assets.matched.tag)"))
-  assert.ok(walk.includes(`scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch.tag)`))
+  assert.ok(walk.includes("scan.findAndOpen(page, assets.matched.tag, assets.matched)"))
+  assert.ok(walk.includes(`scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch)`))
   // Group 2 plan 2 (spec §8): the walk opens the scan page from the next-step card's main button, not the old header link.
-  assert.ok(walk.includes("await roundPage.nextStepCard(page).getByRole(\"link\", { name: fillTemplate(W.continueScan, { count: 7 }), exact: true }).click()"))
+  assert.ok(walk.includes("await roundPage.nextStepCard(page).getByRole(\"link\", { name: fillTemplate(W.continueScan, { count: 8 }), exact: true }).click()"))
   assert.ok(!walk.includes(`{ name: "สแกนตรวจนับ" }`), "not the old header link")
   // The mismatch: another department and the condition, with the photo; the parent asks while a component is unchecked.
   assert.ok(walk.includes(`"บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)"`))
@@ -176,6 +188,8 @@ test("offline the check waits on the device and is sent when the phone is back; 
   assert.ok(!room.includes("setOffline("), "the window is the measurement's")
   assert.ok(room.includes(words.savedQueued.replace("{assetTag}", "${assets.offline.tag}")), "kept on the device")
   assert.ok(room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerQueued.replace("{count}", "1"))) && room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerOfflineSaves)) && room.includes(words.pendingLinkRoom.replace("{count}", "1")))
+  // Group 2 plan 3 (P3-R14): WebKit's page settles before the footer link leaves it; the link's words are Task 3's pin above.
+  assert.match(room, /await roundPage\.settlePageRequests\(page\)\n\s*await page\.getByRole\("link", \{ name: "ของในห้องนี้ที่ยังหาไม่เจอ 1 รายการ →" \}\)\.click\(\)/)
   assert.ok(room.includes("const notFound = { ...assets.notFound, room: records.rooms.roomB, custodian: null }"))
   assert.ok(room.includes(`pending.markNotFound(page, e2eDevice, notFound, () => recordSettled(page, measure, "not found dialog"))`))
   // Group 2 plan 2 (spec §9): the title and the room chips count the rows; room B stays chosen at 0 after its last item (P2-R11, P2-R12).
@@ -254,10 +268,11 @@ test("IT staff read the round page after the walk: each chip's count is its rows
   assert.ok(after.includes(`asUser("itStaff")`))
   // In the chain after room B and before the refusals: the walk's results, no decision yet.
   assert.ok(spec.indexOf(`test.describe("IT staff in room B, offline, and not found"`) < spec.indexOf(title) && spec.indexOf(title) < spec.indexOf(`test.describe("IT staff are refused the review and the close"`))
-  // The walk's counts (spec §8, P2-R2, P2-R3): 7 = 4 + 1 + 2 + 0, the out-of-scope find apart, four items waiting.
-  assert.ok(after.includes("await roundPage.expectChips(results, [[W.resultAll, 7], [W.resultPending, 0], [W.resultFound, 4], [W.resultMismatch, 1], [W.resultNotFound, 2], [W.resultOutOfScope, 1], [W.resultPendingReview, 4]])"))
+  // The walk's counts (spec §8, P2-R2, P2-R3; group 2 plan 3 adds the personal asset, saved as matched): 8 = 5 + 1 + 2 + 0,
+  // the out-of-scope find apart even after its second save (P3-R3), four items waiting.
+  assert.ok(after.includes("await roundPage.expectChips(results, [[W.resultAll, 8], [W.resultPending, 0], [W.resultFound, 5], [W.resultMismatch, 1], [W.resultNotFound, 2], [W.resultOutOfScope, 1], [W.resultPendingReview, 4]])"))
   assert.equal((after.match(/await roundPage\.expectChipsMatchRows\(page, (?:results|categories), rows\)/g) ?? []).length, 3)
-  for (const [category, count] of [["categoryDesktop", 5], ["categoryComponent", 2], ["categoryDesktop", 1], ["categoryComponent", 1]] as const) {
+  for (const [category, count] of [["categoryDesktop", 6], ["categoryComponent", 2], ["categoryDesktop", 1], ["categoryComponent", 1]] as const) {
     assert.ok(after.includes(`await roundPage.expectChip(categories, \`categoryId=\${masters.${category}}\`, ${count})`), `${category} ${count}`)
   }
   assert.ok(after.includes(`for (const field of ["department", "condition"] as const) {`) && after.includes("await expect(card.getByText(W.multipleFields, { exact: true })).toBeVisible()"))
@@ -269,4 +284,102 @@ test("IT staff read the round page after the walk: each chip's count is its rows
   assert.ok(!after.includes("W.reviewItems"))
   assert.ok(after.includes(`await parentRow.getByRole("link", { name: assets.component2.tag, exact: true }).click()`))
   // "ส่วนควบของ <parent>" on the findings page is plan 4's step (spec §16), not this block's.
+})
+
+test("the phone walk reads the app's own words and the walk's markup: the switch and the category chips, a room-first search, the record sheet's ตรง / ไม่ตรง, a personal asset, a wrong room and a second out-of-scope find (group 2 plan 3 task 6)", async () => {
+  const { SCAN_WORDS: S } = await import("../e2e/audit/scan-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(S)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  // The words that stay, by their keys.
+  const words = th.auditScan as Record<string, string>
+  for (const [name, key] of [["tabsLabel", "roomListTabs"], ["tabPending", "tabPending"], ["tabChecked", "tabChecked"], ["roomClear", "roomClear"], ["roomPick", "roomPick"], ["showMore", "showMore"], ["notThisOne", "notThisOne"], ["photoRequiredPlacement", "photoRequiredPlacement"], ["progressMismatch", "progressMismatch"], ["recordedOutOfScope", "recordedOutOfScopeTitle"], ["badgeOutOfScope", "badgeOutOfScope"]] as const) {
+    assert.equal(S[name], words[key], name)
+  }
+  // Bugs 20, 21 and spec §11-§12: the old wordings left the walk.
+  for (const old of ["ยังไม่ตรวจ {pending} / {total}", "พบ {count} รายการในรอบนี้ · Enter = เปิดรายการแรก", "ของที่หาไม่เจอ → รายการค้าง", "หมายเหตุ / รูป"]) assert.ok(!values(words).includes(old), old)
+
+  // The steps: a field by its key, then ไม่ตรง, then "ที่พบ" (spec §12), never the first button in it.
+  const steps = read("e2e/audit/scan-steps.ts")
+  for (const name of ["roomButton", "pickRoom", "clearRoom", "progress", "tabs", "expectTabs", "categoryChips", "expectCategoryChips", "roomRows", "recordedFinds", "typeSearch", "searchResults", "searchRows", "expectSearchLine", "findAndOpen", "checkHeading", "checkField", "fieldAnswer", "foundSelect", "chooseInCheckField", "addPhoto", "watchScanPosts", "nextScanSave", "expectAbove"]) {
+    assert.match(steps, new RegExp(`^export (?:async )?function ${name}\\(`, "m"), name)
+  }
+  assert.ok(steps.includes("return checkForm(page).locator(`[data-audit-check-field=\"${field}\"]`)"))
+  assert.ok(!steps.includes('getByRole("button").first()'), "not the first button of a field")
+  assert.ok(steps.includes("return page.getByRole(\"heading\", { name: asset.name, exact: true })"), "the sheet's title is the asset's name (bug 23)")
+  // The markup the steps read (Tasks 3 and 5).
+  const audit = readdirSync("src/components/audit").map((file) => read(`src/components/audit/${file}`)).join("\n")
+  for (const hook of ["data-audit-scan-progress", "data-audit-scan-room", "data-audit-scan-room-list", "data-audit-scan-row", "data-audit-scan-results", "data-audit-component-row", "data-audit-scan-recorded-out-of-scope", "data-audit-scan-recorded-row"]) assert.ok(audit.includes(hook), hook)
+  assert.match(audit, /data-audit-check-field=\{/, "each field carries its key")
+
+  // Block 2: the walk in room A.
+  const walk = block(read(SPEC), "IT staff walk room A")
+  assert.ok(walk.includes("test.setTimeout(420_000)"))
+  assert.ok(walk.includes("await expect(scan.roomButton(page)).toContainText(fillTemplate(S.roomProgress, { checked: 0, total: 6, pending: 6 }))"))
+  // The switch and the chips (P3-R6, P3-R7): within the room and the tab, cleared on a room change, the third tab by the room.
+  for (const line of [
+    "await scan.expectTabs(page, [[S.tabPending, 6], [S.tabChecked, 0], [S.tabRoom, 6]])",
+    "await scan.expectCategoryChips(page, 6, [4, 2])",
+    "await scan.pickRoom(page, records.rooms.roomB)",
+    "await scan.expectTabs(page, [[S.tabPending, 8], [S.tabChecked, 0], [S.tabRound, 8]])",
+    "await scan.expectCategoryChips(page, 8, [6, 2])",
+    "await scan.expectTabs(page, [[S.tabPending, 0], [S.tabChecked, 6], [S.tabRoom, 6]])",
+  ]) assert.ok(walk.includes(line), line)
+  assert.equal((walk.match(/await expect\(scan\.categoryChips\(page\)\)\.toHaveCount\(0\)/g) ?? []).length, 2, "no chips in room B, nor on an empty tab")
+  // The room-first search (bug 20, P3-R5).
+  assert.ok(walk.includes("await scan.expectSearchLine(page, runTags, 6, 2)"))
+  assert.ok(walk.includes(`expect(order.slice(0, 6).sort(), "room A's items first").toEqual([...roomATags].sort())`))
+  assert.ok(walk.includes("await scan.expectAbove(scan.tabs(page), found.first())"))
+  // The record sheet (spec §12): a shared asset has no custodian row; the personal asset's steps; a wrong room.
+  assert.ok(walk.includes(`await expect(scan.checkField(page, "custodian")).toHaveCount(0)`))
+  assert.ok(walk.includes(`await scan.findAndOpen(page, "โน้ตบุ๊ก", assets.personal)`))
+  assert.ok(walk.includes(`await expect(scan.foundSelect(page, "condition")).toBeFocused()`))
+  assert.ok(walk.includes(`expect(personalPosts.posts, "a ไม่ตรง with nothing found sends nothing").toEqual([])`))
+  assert.ok(walk.includes(`await expect(department.getByText(S.departmentFollowsCustodian, { exact: true })).toBeVisible()`))
+  assert.ok(walk.includes(`await expect(scan.saveButton(page)).toHaveText("บันทึก · ไม่ตรง 2 ข้อ (ผู้ถือครอง, แผนก)")`))
+  assert.ok(walk.includes(`await scan.fieldAnswer(page, "custodian", "match").click()`))
+  assert.ok(walk.includes(`await scan.findAndOpen(page, assets.notFound.tag, assets.notFound, { inRoom: 0, otherRooms: 1 })`))
+  assert.ok(walk.includes(`expect(roomBPosts.posts, "nothing is sent for the other room's asset").toEqual([])`))
+  // The components side by side: "พบ <tag>" exactly (it is a part of "ไม่พบ <tag>"), "ไม่พบ" beside it, no ⋯.
+  assert.ok(walk.includes("getByRole(\"button\", { name: `พบ ${assets.component1.tag}`, exact: true })"))
+  assert.ok(walk.includes("getByRole(\"button\", { name: `${S.componentNotFound} ${assets.component2.tag}`, exact: true })"))
+  assert.ok(!walk.includes("การดำเนินการของ"), "the missing component is not behind ⋯")
+  // The second out-of-scope save stays out of scope (P3-R3), and the walk's counts never take the find in (P3-R1).
+  assert.ok(walk.includes("await expect(scan.checkForm(page).getByText(S.outOfScopeRecorded)).toBeVisible()"))
+  assert.ok(walk.includes(`await expect(scan.checkForm(page).locator('[data-mismatch="true"]')).toHaveCount(0)`), "it opens as recorded (P3-R21)")
+  assert.ok(walk.includes(`expect(response.status(), "the second save answers 200 with the item (P3-R24)").toBe(200)`))
+  assert.ok(walk.includes(`expect(await response.json(), "it stays out of scope (P3-R3)").toMatchObject({ status: "out_of_scope", auditResult: "out_of_scope" })`))
+  assert.ok(walk.includes("await expect(scan.roomRows(page).filter({ hasText: assets.outOfScope.tag })).toHaveCount(0)"))
+  // The recorded find listed apart on the ตรวจแล้ว tab, with its badge (P3-R25).
+  assert.ok(walk.includes("await expect(scan.recordedFinds(page).getByRole(\"heading\")).toHaveText(fillTemplate(S.recordedOutOfScope, { count: 1 }))"))
+  assert.ok(walk.includes("await expect(scan.recordedFinds(page).getByRole(\"button\", { name: scan.tagPattern(assets.outOfScope.tag) })).toContainText(S.badgeOutOfScope)"))
+
+  // Block 3: after a reload the header counts the round's own items only (P3-R1, P3-R2).
+  const room = block(read(SPEC), "IT staff in room B, offline, and not found")
+  assert.ok(room.includes(`await expect(scan.progress(page)).toContainText("6 / 8")`))
+  assert.ok(room.includes("await expect(scan.progress(page)).toContainText(fillTemplate(S.progressMismatch, { count: 1 }))"))
+  assert.ok(room.includes("await expect(scan.checkHeading(page, assets.offline)).toBeVisible()"))
+  assert.ok(room.includes("toContainText(S.badgeFound)"), "the found badge reads พบตรง (P3-R19)")
+})
+
+test("the walk's search spec opens its own round of eleven on its own room, on the phone only, shows แสดงเพิ่ม past ten, and the IT head cancels it whatever happens (group 2 plan 3 task 6, spec §16, P3-R15)", () => {
+  const spec = read("e2e/audit/walk-search.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
+  assert.ok(spec.split("\n").includes("runPhoneOnWebKit()"), "the phone on WebKit, as the field audit's walk")
+  assert.ok(spec.includes(`asUser("itStaff")`))
+  assert.ok(spec.includes(`test.skip(e2eDevice !== "phone", `), "phone projects only (spec §16)")
+  // Its own records: a room, eleven assets that share the search word, a round on that room (spec §16).
+  assert.ok(spec.includes(`recordPrefix(testInfo, "AUW")`))
+  assert.ok(spec.includes("const roomId = await createRoom(roomCode, roomName)"))
+  assert.ok(spec.includes("const tags = Array.from({ length: 11 }, "))
+  assert.ok(spec.includes(`expect(round.generatedItems, "the room's eleven assets").toBe(11)`))
+  assert.doesNotMatch(spec, /\bstatus: "/, "the round's body sends no status (spec §7)")
+  // Ten, then แสดงเพิ่ม, then eleven.
+  assert.ok(spec.includes("await scan.expectSearchLine(page, term, 11, 0)"))
+  assert.ok(spec.includes("await expect(scan.searchRows(page)).toHaveCount(10)"))
+  assert.ok(spec.includes("const more = scan.searchResults(page).getByRole(\"button\", { name: S.showMore, exact: true })"))
+  assert.ok(spec.includes("await more.click()"))
+  assert.ok(spec.includes("await expect(scan.searchRows(page)).toHaveCount(11)"))
+  // Cancelled whatever happens, by the IT head through the round route (never a DELETE).
+  assert.match(spec, /\} finally \{\n\s+await rounds\.cancelAsItHead\(playwright\.request, baseURL, round\.id, /)
 })

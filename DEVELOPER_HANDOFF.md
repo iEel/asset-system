@@ -62,6 +62,11 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
   - Out-of-scope finds are counted and listed from their items everywhere; the scan history feeds no count.
   - The pending list reads the item's expected room and custodian. It hides scan and not-found without `audit:edit`.
   - ตรวจล่าสุด (the pending list and the asset page) reads one rule: the asset's latest audit result, `src/lib/latest-audit-result-rules.ts`.
+- Audit phone walk and record sheet (page group 2 plan 3):
+  - The walk counts the round's own items only (`isAuditRoundOwnItem`). It folds results with `foldAuditRoundResultCounts`, so the phone, the round page and the dashboard agree. The full rows stay only for merging saves and polls.
+  - The walk's rules stay pure in `src/lib/audit-scan-session.ts`: the room-first search with its true total, the room options within the chosen department, the third tab, and the category chips.
+  - The record sheet's ตรง / ไม่ตรง is UI state per field (`src/lib/audit-check-record-rules.ts`), opened from the saved result on an edit. The saved diff stays `diffCheckValues`, and the scan route compares as before.
+  - A second scan of an out-of-scope find stays out of scope. The lookup answers `out_of_scope` with its item, and the scan route updates that item against its first snapshot, never the register.
 - Audit round cancellation is now an explicit read-only lifecycle state (`cancelled`). Users with audit approval permission can cancel a round with a required reason and the cancelled-by user is shown on the historical detail; the system preserves audit items, scan history, findings, evidence, system logs, and any approved/immediate master-data changes instead of rolling them back. Cancelled rounds stay visible for historical review but are excluded from current coverage, operational queues, approval inbox close readiness, scan/pending entry points, mutation routes, and active exports.
 - Audit Findings at `/th/audit/findings` is the existing `รายการไม่ตรง` workflow with Phase 2 review polish, not a separate center. Summary cards still show pending review, open actions, overdue actions, and closed findings; quick filters are URL-backed and also drive Excel/PDF exports through the shared `buildAuditFindingWhere` helper; each row shows a clearer system-vs-found comparison plus a resolution-state badge. The page now keeps normal freshness feedback as a quiet `loaded at` metadata strip with a compact refresh action, only surfaces a larger warning when the page becomes stale, and uses an approve/reject decision modal with system-vs-found values and impact copy. Approving a correctable finding now checks whether the master asset changed after the finding was reported; if current master data differs from the expected snapshot, the API returns a conflict warning and requires explicit confirmation before applying the correction. No database schema or assignment/closure/SOD behavior changed in this phase.
 - Audit result Excel export guards worksheet date formatting by existing column keys only, preventing ExcelJS `Out of bounds. Excel supports columns from 1 to 16384` errors on result sheets that do not contain every audit/finding date column.
@@ -1224,6 +1229,20 @@ npm run build
   - **Deploy note:**
     - the read-only SELECT in `docs/08_PRODUCTION_READINESS.md` was run on Production on 2026-10-27 at the user's request: 0 rows, and no scan history without an item id, so no round's นอกขอบเขต number changes; re-run it before the deploy only if out-of-scope scans happen on Production before then;
     - `AUD-2026-0002` is cancelled through "อื่น ๆ" → "ยกเลิกรอบตรวจ".
+- Page group 2, plan 3: the phone walk and the record sheet.
+  - 2026-10-27, branch `feat/group2-audit-phone-walk`. Not deployed, no migration. Plan `docs/superpowers/plans/2026-10-27-group2-audit-phone-walk.md`.
+  - Canvas B for `/audit/rounds/{id}/scan` (spec §11, §12; bugs 20-23).
+  - **Own items:** every phone count, room, tab, search and camera match reads `items.filter(isAuditRoundOwnItem)`.
+  - **Out-of-scope re-scan:** the lookup and the scan route keep a recorded find out of scope (no master write, evidence only for a differing field the save changes through `auditOutOfScopeRescanEvidenceFields`, shared with the form; 200 with the item; component confirm refused). The round page offers "แก้ไขผลตรวจ" on its row again.
+  - **Record sheet:** fields that are not compared are hidden. The department follows a new custodian only where the custodian is compared.
+  - **E2E:**
+    - the walk's helpers rewritten for the new markup in `e2e/audit/scan-steps.ts`, with the words in `e2e/audit/scan-words.ts`;
+    - one personal asset (A3) in the walk data, so the chain's round has 8 items;
+    - the new steps in `e2e/audit/field-audit.spec.ts`;
+    - `e2e/audit/walk-search.spec.ts`: "แสดงเพิ่ม" past 10 on its own room and round of 11 (phone projects only, cancelled by the IT head; P3-R15).
+  - **Calls for the user to check:**
+    - P3-R17: an exact tag, serial or fixed asset code typed whole opens first even when it is in another room (spec §11 says the chosen room comes first), so Enter opens what was typed.
+    - P3-R25: recorded out-of-scope finds leave the walk's tabs and search (spec §5, counts equal lists); the ตรวจแล้ว tab lists them apart under "บันทึกนอกขอบเขตแล้ว N" with the นอกขอบเขต badge Appendix A §11 keeps.
 
 ## Open Go-Live Decisions
 
