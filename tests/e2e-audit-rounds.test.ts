@@ -120,15 +120,27 @@ test("the round page and pending steps stand on the result list's chips, the car
   }
   // Spec §5: a chip row is checked against the rows each chip opens, never against a global count.
   assert.ok(steps.includes("await expect(rows, `${chip.text}: its count is its rows (spec §5)`).toHaveCount(Number(chip.count.replace(/,/g, \"\")))"))
-  // E2E-1027B: the app registers its service worker on load, so each navigation away first lets that registration
-  // settle (bounded); a goto right after a load cancels the sw.js fetch and the measurement records a failed request.
-  assert.match(steps, /^export async function settleServiceWorker\(page: Page\)/m)
+  // E2E-1027B/C: a navigation right after a load cancels the page's own requests (the shell's session and notification
+  // fetches, the service worker's sw.js); WebKit raises a page error for a cancelled shell request, which the allow-list
+  // does not allow. So each navigation away first lets the page finish its requests, then the registration settle.
+  assert.match(steps, /^export async function settlePageRequests\(page: Page\)/m)
+  assert.ok(!steps.includes("settleServiceWorker"), "one helper, renamed")
+  const settle = steps.slice(steps.indexOf("export async function settlePageRequests("))
+  assert.match(settle, /^export async function settlePageRequests\(page: Page\) \{\s*await page\.waitForLoadState\("networkidle"\)\s*await page\.evaluate\(/)
   assert.ok(steps.includes("navigator.serviceWorker?.ready"))
   assert.ok(steps.includes("setTimeout(resolve, 5000)"))
   const matchRows = steps.slice(steps.indexOf("export async function expectChipsMatchRows("))
-  assert.match(matchRows, /for \(const chip of chips\) \{[\s\S]*?await settleServiceWorker\(page\)\s*await page\.goto\(chip\.href\)/)
-  assert.match(matchRows, /await settleServiceWorker\(page\)\s*await page\.goto\(start\)/)
+  assert.match(matchRows, /for \(const chip of chips\) \{[\s\S]*?await settlePageRequests\(page\)\s*await page\.goto\(chip\.href\)/)
+  assert.match(matchRows, /await settlePageRequests\(page\)\s*await page\.goto\(start\)/)
   assert.equal((steps.match(/page\.goto\(/g) ?? []).length, 2, "every goto of the steps is behind the wait")
+  // The round-page block of the field-audit spec navigates in quick turns too (E2E-1027C): each of those is behind it.
+  const spec = read("e2e/audit/field-audit.spec.ts")
+  const roundBlock = spec.slice(spec.indexOf('test("IT staff read the round page after the walk'), spec.indexOf("const missingLine = roundPage.componentsMissingLine(card)"))
+  assert.match(roundBlock, /await roundPage\.settlePageRequests\(page\)\s*await roundPage\.chipByLabel\(results, W\.resultNotFound\)\.click\(\)/)
+  assert.match(roundBlock, /await roundPage\.settlePageRequests\(page\)\s*await roundPage\.fieldBar\(card, field\)\.click\(\)/)
+  const gotos = roundBlock.match(/await page\.goto\(roundHref\)/g) ?? []
+  assert.equal(gotos.length, 2, "the block's two returns to the round page")
+  assert.equal((roundBlock.match(/await roundPage\.settlePageRequests\(page\)\s*await page\.goto\(roundHref\)/g) ?? []).length, gotos.length, "every goto of the block is behind the wait")
   // The markup the steps read (Tasks 4-6): the result list's anchor, TabNav's count span, and the pending list's
   // TabNav room chips with the whole row still opening the asset (P2-R28).
   const audit = ["src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", ...readdirSync("src/components/audit").map((file) => `src/components/audit/${file}`)]

@@ -351,6 +351,7 @@ test.describe("IT staff read the round page after the walk", () => {
     await roundPage.expectChip(categories, `categoryId=${masters.categoryDesktop}`, 5)
     await roundPage.expectChip(categories, `categoryId=${masters.categoryComponent}`, 2)
     await roundPage.expectChipsMatchRows(page, categories, rows)
+    await roundPage.settlePageRequests(page)
     await roundPage.chipByLabel(results, W.resultNotFound).click()
     await page.waitForURL(/[?&]result=not_found(?:[&#]|$)/)
     await roundPage.expectChip(categories, `categoryId=${masters.categoryDesktop}`, 1)
@@ -360,6 +361,7 @@ test.describe("IT staff read the round page after the walk", () => {
     // Step 2 of the next-step card counts findings (P2-R26): nothing is pending, and five findings wait (A2's department
     // and condition, C2, A4, X1), the rows of the findings page that "รอ 5" and the main button open; block 6 decides
     // those five.
+    await roundPage.settlePageRequests(page)
     await page.goto(roundHref)
     const findingsHref = new RegExp(`^/th/audit/findings\\?status=pending&roundId=${chain.roundId}(?:&|$)`)
     const nextStep = roundPage.nextStepCard(page)
@@ -376,10 +378,12 @@ test.describe("IT staff read the round page after the walk", () => {
       const word = field === "department" ? W.fieldDepartment : W.fieldCondition
       await expect(roundPage.fieldBar(card, field)).toHaveAccessibleName(word)
       await expect(card.getByRole("listitem").filter({ has: page.locator(`a[href*="field=${field}"]`) })).toHaveText(new RegExp(`^${scan.escapeRegExp(word)}\\s*1$`))
+      await roundPage.settlePageRequests(page)
       await roundPage.fieldBar(card, field).click()
       await page.waitForURL(new RegExp(`[?&]field=${field}(?:[&#]|$)`))
       await expect(rows).toHaveCount(1)
       await expect(rows).toContainText(assets.mismatch.tag)
+      await roundPage.settlePageRequests(page)
       await page.goto(roundHref)
     }
 

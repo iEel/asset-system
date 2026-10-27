@@ -59,10 +59,15 @@ export async function expectChip(row: Locator, hrefPart: string, count: number) 
   await expect(chipCount(chip)).toHaveText(formatted(count))
 }
 
-// The app registers its service worker on window load (src/components/pwa/pwa-service-worker-register.tsx); a goto
-// right after a load cancels that sw.js fetch and the measurement records a failed request (WebKit, E2E-1027B). Before
-// each navigation away, the registration is let settle, at most five seconds (no service worker: no wait).
-export async function settleServiceWorker(page: Page) {
+// A navigation right after a load cancels the page's own requests: the shell's hydration fetches (session-keeper's
+// /api/session/status, shell-notifications' /api/notifications) and the service worker's sw.js, which the app registers
+// on window load (src/components/pwa/pwa-service-worker-register.tsx). WebKit raises a page error for a shell request a
+// navigation cancels ("... due to access control checks", E2E-1027C), which the allow-list does not allow, and the
+// measurement records the cancelled sw.js as a failed request (E2E-1027B). So before each navigation away the page
+// finishes its requests (network idle, the suite's precedent), then the registration settles, at most five seconds
+// (no service worker: no wait).
+export async function settlePageRequests(page: Page) {
+  await page.waitForLoadState("networkidle")
   await page.evaluate(() =>
     Promise.race([
       navigator.serviceWorker?.ready.then(() => undefined) ?? Promise.resolve(),
@@ -85,11 +90,11 @@ export async function expectChipsMatchRows(page: Page, row: Locator, rows: Locat
   expect(chips.length, "the row has chips").toBeGreaterThan(0)
   for (const chip of chips) {
     expect(chip.count, `${chip.text}: a count`).toMatch(/^[\d,]+$/)
-    await settleServiceWorker(page)
+    await settlePageRequests(page)
     await page.goto(chip.href)
     await expect(rows, `${chip.text}: its count is its rows (spec §5)`).toHaveCount(Number(chip.count.replace(/,/g, "")))
   }
-  await settleServiceWorker(page)
+  await settlePageRequests(page)
   await page.goto(start)
 }
 
