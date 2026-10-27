@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 // The rounds list and round form steps of the E2E suite (plan docs/superpowers/plans/2026-10-26-group2-audit-rounds.md,
@@ -76,4 +76,68 @@ test("the rounds list spec opens its own round, finds it by its number, checks t
   assert.equal((spec.match(/await rounds\.expectTabs\(page, /g) ?? []).length, 2)
   // Cancelled whatever happens.
   assert.match(spec, /\} finally \{\n\s+if \(!cancelled\) await rounds\.cancelAsItHead\(playwright\.request, baseURL, round\.id, /)
+})
+
+test("the round page and pending list steps read the app's own words (group 2 plan 2 task 7)", async () => {
+  const { ROUND_PAGE_WORDS } = await import("../e2e/audit/round-page-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(ROUND_PAGE_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  // The keys that stay from plan 1 and before.
+  const round = th.auditRound as Record<string, string>
+  assert.equal(ROUND_PAGE_WORDS.nextStep, round.nextStep)
+  assert.equal(ROUND_PAGE_WORDS.continueScan, round.nextStepContinueScan)
+  assert.equal(ROUND_PAGE_WORDS.closeRound, round.closeRound)
+  assert.equal(ROUND_PAGE_WORDS.cancelRound, round.cancelRound)
+  assert.equal(ROUND_PAGE_WORDS.activeFilters, round.activeFilters)
+  assert.equal(ROUND_PAGE_WORDS.clearFilter, round.clearFilter)
+  assert.equal(ROUND_PAGE_WORDS.scanThis, th.auditPending.scanPendingAsset)
+  assert.equal(ROUND_PAGE_WORDS.viewAsset, th.auditPending.viewAsset)
+  assert.equal(ROUND_PAGE_WORDS.markNotFound, th.auditPending.markNotFound)
+  assert.equal(ROUND_PAGE_WORDS.noCustodian, th.asset.noCustodian)
+  // The words Tasks 4-5 put on the page, by key.
+  assert.equal(ROUND_PAGE_WORDS.reviewWaiting, round.stepReviewWaiting)
+  assert.equal(ROUND_PAGE_WORDS.reviewItems, round.nextStepReviewItems)
+  assert.equal(ROUND_PAGE_WORDS.componentsMissingChip, round.componentsMissingChip)
+  assert.equal(ROUND_PAGE_WORDS.missingComponentPrefix, round.missingComponentPrefix)
+  assert.equal(ROUND_PAGE_WORDS.fieldDepartment, th.auditFinding.type_wrong_department)
+  assert.equal(ROUND_PAGE_WORDS.fieldCondition, th.auditFinding.type_wrong_condition)
+  // Bug 12 and P2-R15: no English report name and no ผู้ตรวจสอบ left in the round and pending words.
+  assert.deepEqual(values(round).filter((text) => text.includes("Variance")), [])
+  assert.deepEqual([...values(round), ...values(th.auditPending)].filter((text) => text.includes("ผู้ตรวจสอบ")), [])
+  // The result card's help is Task 4's round-wide sentence (P2-R15 applied there); Task 6 does not touch it.
+  assert.match(round.resultDashboardHelp, /^นับทั้งรอบ ไม่ขึ้นกับตัวกรองของรายการด้านล่าง/)
+})
+
+test("the round page and pending steps stand on the result list's chips, the cards' headings and the rows (group 2 plan 2 task 7)", () => {
+  const steps = read("e2e/audit/round-page-steps.ts")
+  for (const name of ["resultRows", "resultChips", "categoryChips", "chipByLabel", "chipByHref", "chipCount", "chipLabel", "expectChips", "expectChip", "expectChipsMatchRows", "nextStepCard", "mismatchCard", "fieldBar", "componentsMissingLine", "filterChip", "expectInside"]) {
+    assert.match(steps, new RegExp(`^export (?:async )?function ${name}\\(`, "m"), name)
+  }
+  const pending = read("e2e/audit/pending-steps.ts")
+  for (const name of ["pendingRows", "pendingEntry", "roomChips", "expectRoomChips", "markNotFound"]) {
+    assert.match(pending, new RegExp(`^export (?:async )?function ${name}\\(`, "m"), name)
+  }
+  // Spec §5: a chip row is checked against the rows each chip opens, never against a global count.
+  assert.ok(steps.includes("await expect(rows, `${chip.text}: its count is its rows (spec §5)`).toHaveCount(Number(chip.count.replace(/,/g, \"\")))"))
+  // The markup the steps read (Tasks 4-6): the result list's anchor, TabNav's count span, and the pending list's
+  // TabNav room chips with the whole row still opening the asset (P2-R28).
+  const audit = ["src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", ...readdirSync("src/components/audit").map((file) => `src/components/audit/${file}`)]
+  assert.ok(audit.some((file) => read(file).includes('id="audit-result-list"')), "the result list's anchor")
+  assert.match(read("src/components/ui/tab-nav.tsx"), /<span className=\{cn\("ms-1\.5 text-meta num"/)
+  const pendingPage = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/pending/page.tsx")
+  assert.match(pendingPage, /<TabNav\b/)
+  assert.match(pendingPage, /<ClickableTableRow\b/)
+})
+
+test("the rounds list spec's viewer reads the pending list and the round page with no scan, not-found or menu (group 2 plan 2 task 7)", () => {
+  const spec = read("e2e/audit/rounds-list.spec.ts")
+  assert.ok(spec.includes("const assets = await createAssets(page, choices, roomId, [`${prefix}-A1`, `${prefix}-A2`])"))
+  assert.ok(spec.includes(`await pending.expectRoomChips(page, 2, { [roomId]: 2 }, "all")`))
+  assert.ok(spec.includes(`await expect(page.getByRole("main").getByRole("button", { name: P.markNotFound, exact: true })).toHaveCount(0)`))
+  assert.ok(spec.includes(`await expect(page.getByRole("main").getByRole("link", { name: P.scanThis, exact: true })).toHaveCount(0)`))
+  assert.ok(spec.includes(`await expect(roundPage.nextStepCard(page).getByRole("link", { name: nextName, exact: true })).toHaveAttribute("href", pendingHref)`))
+  assert.ok(spec.includes(`await expect(page.getByRole("main").getByRole("button", { name: P.more, exact: true })).toHaveCount(0)`))
+  // No visible scan link for the viewer: the rounds list, the pending list and the round page.
+  assert.equal((spec.match(/await expect\(page\.locator\('main a\[href\*="\/scan"\]'\)\.filter\(\{ visible: true \}\)\)\.toHaveCount\(0\)/g) ?? []).length, 3)
 })

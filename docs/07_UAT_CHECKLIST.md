@@ -299,9 +299,9 @@ Superseded by the menu B shell (see Menu B Shell UAT); kept as history.
 
 - [ ] Return to the same page: on page 2 or 3 of `/th/audit/rounds`, `/th/disposal/batches`, `/th/maintenance/pm`, `/th/disposal`, `/th/maintenance` and `/th/master-data/departments` (with the page size set to 50 on one of them), open a record (round detail, batch, PM edit, request, repair record, department edit) and go back with the page's "กลับ" button or its crumb. Confirm the list opens on the same page with the same page size and filters. On a phone the round detail's bottom-bar "กลับ" (left arrow) does the same, and a saved PM plan returns to that page too.
 - [ ] On page 3 of `/th/audit/findings` (or the last page of a queue with more than 50 findings), open a finding's asset and use the browser Back button: the findings list returns on page 3 with the same queue, search and page size.
-- [ ] Last row of the last page: on `/th/audit/rounds/<id>/pending`, mark the only item of the last page "บันทึกไม่พบ" (⋯ on desktop) and confirm the list lands on the new last page and the count box drops by one; on `/th/audit/findings?status=pending`, decide the only finding of the last page and confirm the queue lands on its new last page; on `/th/master-data/departments`, delete the only row of the last page through ⋯ → "ลบ" → confirm, and confirm the list lands on the new last page. Opening `?page=99` on each paged list opens its last page (`/th/audit/rounds` shows the last page and keeps the URL).
-- [ ] Totals: the pager total of `/th/audit/findings` equals the number in the strip cell of the queue in use; the count box of `/th/audit/rounds/<id>/pending` counts every pending item (more than 200 when the round has more); `/th/disposal/batches` reaches batches older than the newest 100; `/th/maintenance/pm` reaches plans past the first 500, in the same order (active, paused, ended, then the next due date).
-- [ ] Dialogs opened from a row: on `/th/disposal` at desktop width, open "พิจารณาคำขอ" or "บันทึกตัดจำหน่าย" from a row, cancel it, and confirm focus returns to that button and the request page did not open; on `/th/audit/rounds/<id>/pending`, do the same with ⋯ → "บันทึกไม่พบ" (focus returns to ⋯). On every master-data list, ⋯ → "ลบ" asks the same confirmation as before and Cancel returns focus to ⋯.
+- [ ] Last row of the last page: on `/th/audit/rounds/<id>/pending`, mark the only item of the last page with the row's "บันทึกไม่พบ" and confirm the list lands on the new last page and the title "รายการรอตรวจ N รายการ" drops by one; on `/th/audit/findings?status=pending`, decide the only finding of the last page and confirm the queue lands on its new last page; on `/th/master-data/departments`, delete the only row of the last page through ⋯ → "ลบ" → confirm, and confirm the list lands on the new last page. Opening `?page=99` on each paged list opens its last page (`/th/audit/rounds` shows the last page and keeps the URL).
+- [ ] Totals: the pager total of `/th/audit/findings` equals the number in the strip cell of the queue in use; the title of `/th/audit/rounds/<id>/pending` counts every pending item of the round (more than 200 when the round has more), and "ทุกห้อง N" equals the pager total; `/th/disposal/batches` reaches batches older than the newest 100; `/th/maintenance/pm` reaches plans past the first 500, in the same order (active, paused, ended, then the next due date).
+- [ ] Dialogs opened from a row: on `/th/disposal` at desktop width, open "พิจารณาคำขอ" or "บันทึกตัดจำหน่าย" from a row, cancel it, and confirm focus returns to that button and the request page did not open; on `/th/audit/rounds/<id>/pending`, do the same with the row's "บันทึกไม่พบ" (focus returns to it). On every master-data list, ⋯ → "ลบ" asks the same confirmation as before and Cancel returns focus to ⋯.
 - [ ] Filters and chips: on `/th/audit/findings` opened from a round or a report, the "รอบตรวจ: …" and "ประเภท: …" chips each remove only their own filter; on `/th/maintenance?assetId=<id>`, the "เฉพาะทรัพย์สินนี้" chip removes only the asset filter and keeps the search, status, dates and page size, and "กรอง" keeps the chosen page size; on `/th/disposal` at 375px the folded filter panel reads "ใช้ตัวกรอง N รายการ".
 - [ ] Selections stay on one page: on `/th/audit/findings` (approver), tick findings, then go to the next page or another queue and confirm the ticks are cleared; "อนุมัติที่เลือก" is the primary button and "ปฏิเสธที่เลือก" the red-outlined one. On `/th/disposal`, "เลือกหน้านี้" selects only rows of the page on screen.
 
@@ -387,6 +387,42 @@ The automated suite covers the rounds list and the create form in all four proje
 - [ ] An old draft round (on a copy of Production, `AUD-2026-0002` before it is cancelled) reads "เปิดตรวจ" on the list, the round page, the dashboard, the employee page and the global search, with no "ร่าง" anywhere.
 - [ ] NVDA: the tabs read their counts, the chip reads "ล้างตัวกรองนี้: …", the next step reads in full.
 - [ ] Both themes on a real monitor and phone; on the phone the summary panel sits under the form and the round cards show the next step.
+- [ ] An English pass of the new messages.
+
+## Audit Round B UAT (2026-10-27)
+
+The automated suite covers the round page and the pending list in all four projects (`e2e/audit/`): the chips against their rows, the field bars, "ส่วนควบไม่ครบ", the close inside the next-step card, the opener's sentence, the cancel in "อื่น ๆ", the room chips, the not-found dialog, the viewer's controls and the Excel export of a category. A person still checks:
+
+- [ ] On a copy of Production data, open `AUD-2026-0002` (1,509 items) before it is cancelled. Confirm:
+  - the round page opens;
+  - the result card's four numbers add up to the round's items, with "พบเพิ่มนอกขอบเขต N" apart;
+  - "รูปหลักฐาน: มี x จาก y ที่ตรวจแล้ว" counts only checked items;
+  - Excel ผลตรวจ, PDF and รายงานผลต่าง download with a category, a company and a search chosen, each with the same rows as the page.
+- [ ] The next-step card at each step of a real round:
+  - the detail lines;
+  - "แผนแก้ไขค้าง x" opening the open action plans;
+  - "ปิดรอบตรวจ" inside the card at 1280 and 1440 with the sidebar open and closed;
+  - a closed round reads complete;
+  - a cancelled round shows its cancel details (time, by whom, reason) and no card.
+- [ ] From the dashboard's company and branch links, the company and branch chips stay beside the category chip, and each result chip's count equals its rows.
+- [ ] On a round with more than six categories, "อื่น ๆ" lists the rest, and a chosen category outside the six stays as its own chip.
+- [ ] Old links: `?result=wrong_location`, `wrong_custodian` and `wrong_condition` open the matching field filter.
+- [ ] Search by a room's code and by its name, on ทั้งหมด and on นอกขอบเขต.
+- [ ] "ส่วนควบไม่ครบ" on real parents (for example a notebook with a missing adapter): the parent listed once, every missing component named, and each code opening that component's row.
+- [ ] Pending list:
+  - more than six rooms ("อื่น ๆ" opens the rest);
+  - the chosen room kept at 0 after its last item;
+  - `?locationId=<unknown>` goes back to all rooms and never shows a raw id;
+  - after a move during the round, a search by the expected room and by the expected custodian finds the item;
+  - the not-found dialog on a phone;
+  - an asset found in place in an earlier round shows that scan's date and time under ตรวจล่าสุด, the same as its asset page, and an asset never checked reads "ยังไม่เคยตรวจ";
+  - a viewer sees no scan, not-found or "เดินตรวจต่อ".
+- [ ] NVDA:
+  - the chips read their counts;
+  - the filter chips read "ล้างตัวกรองนี้: …";
+  - the steps read their state;
+  - "ส่งออก" and "อื่น ๆ" open their menus and focus comes back after the cancel dialog.
+- [ ] Both themes on a real monitor and phone.
 - [ ] An English pass of the new messages.
 
 ## Sign-Off

@@ -1,6 +1,7 @@
 // The rounds list (group 2 spec §6, §16): the status tabs and their counts follow the search; one status badge,
 // never ร่าง; the next step whole, to the scan page for IT staff and to the pending list for a viewer; the viewer's
-// strip cell opens a work view with its removable chip; a cancelled round moves to ยกเลิก. The test opens its own
+// pending list counts the room's items and offers no scan or not-found, and the viewer's round page opens the pending
+// list (group 2 spec §8, §9); the viewer's strip cell opens a work view with its removable chip; a cancelled round moves to ยกเลิก. The test opens its own
 // round on its own room, finds it by its number (spec §16: never on a first page), and the IT head cancels it
 // whatever happens.
 import { asUser, expect, test } from "../support/fixtures.ts"
@@ -9,15 +10,18 @@ import { fillTemplate } from "../shell/shell-words.ts"
 import { bangkokDate } from "../transactions/tx-plan.ts"
 import * as rounds from "./round-steps.ts"
 import { ROUNDS_WORDS as W } from "./rounds-words.ts"
+import * as pending from "./pending-steps.ts"
+import * as roundPage from "./round-page-steps.ts"
+import { ROUND_PAGE_WORDS as P } from "./round-page-words.ts"
 
 asUser("itStaff")
 
 test("the rounds list: status tabs that follow the search, the next step whole and by role, a work view's chip, a cancelled round under ยกเลิก", async ({ page, measure, e2eDevice, e2eTheme, playwright, baseURL }, testInfo) => {
-  test.setTimeout(180_000)
+  test.setTimeout(240_000)
   const prefix = recordPrefix(testInfo, "AUL")
   const roomId = await createRoom(`${prefix}-R`, `${prefix} ห้องทดสอบรายการรอบ`)
   const choices = await readAssetChoices(page, measure)
-  await createAssets(page, choices, roomId, [`${prefix}-A1`, `${prefix}-A2`])
+  const assets = await createAssets(page, choices, roomId, [`${prefix}-A1`, `${prefix}-A2`])
   // The body the form sends (spec §7: no status).
   const opened = await page.request.post("/api/audit-rounds", {
     data: {
@@ -96,6 +100,28 @@ test("the rounds list: status tabs that follow the search, the next step whole a
     await expect(entry).toHaveCount(1)
     await viewerNext.click()
     await page.waitForURL(`**/th/audit/rounds/${round.id}/pending**`)
+    // The pending list as the viewer (group 2 spec §9, §13 bug 14, P2-R7): the title and the room chip count the round's
+    // two items, the rows show them with a way to the asset (the name on the desktop, whose whole row opens it too,
+    // P2-R28; "ดูทรัพย์สิน" on the phone card), and nothing scans or records.
+    await measure.recordPage("pending list (viewer)")
+    await expect(page.getByRole("heading", { level: 1, name: fillTemplate(P.pendingTitle, { count: 2 }) })).toBeVisible()
+    await pending.expectRoomChips(page, 2, { [roomId]: 2 }, "all")
+    await expect(pending.pendingRows(page, e2eDevice, prefix)).toHaveCount(2)
+    for (const asset of assets) {
+      const assetLink = pending.pendingEntry(page, e2eDevice, asset.assetTag).getByRole("link", { name: e2eDevice === "phone" ? P.viewAsset : asset.name, exact: true })
+      await expect(assetLink).toHaveAttribute("href", new RegExp(`^/th/assets/${asset.id}(?:[?#]|$)`))
+    }
+    await expect(page.getByRole("main").getByRole("button", { name: P.markNotFound, exact: true })).toHaveCount(0)
+    await expect(page.getByRole("main").getByRole("link", { name: P.scanThis, exact: true })).toHaveCount(0)
+    await expect(page.getByRole("main").getByRole("link", { name: new RegExp(`^${W.continueScan}`) })).toHaveCount(0)
+    await expect(page.locator('main a[href*="/scan"]').filter({ visible: true })).toHaveCount(0)
+
+    // The round page as the viewer (P2-R7): its next step opens the pending list; no scan link, no export or อื่น ๆ menu.
+    await measure.visit(`/th/audit/rounds/${round.id}`, "round page (viewer)")
+    await expect(roundPage.nextStepCard(page).getByRole("link", { name: nextName, exact: true })).toHaveAttribute("href", pendingHref)
+    await expect(page.locator('main a[href*="/scan"]').filter({ visible: true })).toHaveCount(0)
+    await expect(page.getByRole("main").getByRole("button", { name: P.exportMenu, exact: true })).toHaveCount(0)
+    await expect(page.getByRole("main").getByRole("button", { name: P.more, exact: true })).toHaveCount(0)
 
     // The IT head cancels the round: it leaves กำลังดำเนินการ for ยกเลิก, with its badge and no next step.
     await rounds.cancelAsItHead(playwright.request, baseURL, round.id, `${prefix} ยกเลิกรอบทดสอบรายการรอบ`)

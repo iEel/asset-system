@@ -66,7 +66,39 @@
 - When an in-scope parent asset has installed components, audit preview/create includes those active installed component assets automatically. Components remain separate audit items, but the scan page shows them under the parent so field auditors can scan the component QR, confirm it with the parent when the label is inaccessible, or record the component as missing directly from an in-app dialog. Confirming a component with the parent saves immediately and does not require an extra note; if the auditor has not entered a remark, the system records the standard confirmed-with-parent reason in the audit trail. Recording a missing component also avoids browser prompts, does not require a remark, optionally accepts an evidence photo, and attaches that photo to the reviewable `audit_finding` record.
 - Parent asset operations that move or reassign the physical package sync supported fields to installed components with movement logs. Audit correction sync is limited to fields the audit workflow updates today: location/custodian from scan correction and location/custodian/department from approved findings. Branch does not change through audit scan, and condition/status remain per asset.
 - The audit rounds list leads with "งานที่ต้องทำต่อ" (round-wide: เดินตรวจต่อ, พิจารณารายการไม่ตรง, แผนแก้ไขค้าง → `findings?status=action_open`, รอบที่ปิดได้แล้ว), then status tabs กำลังดำเนินการ / ปิดแล้ว / ยกเลิก / ทั้งหมด (`view=open|closed|cancelled|all`, default `open`) whose counts follow the search. The work views `pending`, `review` and `readyToClose` stay URL views shown as a removable chip. Each row's ขั้นถัดไป wraps; "เดินตรวจต่อ (N)" opens the scan page for `audit:edit` and the pending list for everyone else. "พร้อมปิดรอบ" uses the close API's three conditions. The year's coverage folds to one line.
-- Every count of a round counts its own items only: an out-of-scope find is an `AuditItem` with `auditResult: "out_of_scope"` and is counted apart (`src/lib/audit-round-counts-rules.ts`, `getAuditRoundCounts`). The round page's Excel and PDF exports (all and each result) follow the same own-items rule; the pending-review export keeps the out-of-scope finds waiting for review, and the out-of-scope export still reads the scan history (R18). Old `draft` rounds read as open everywhere, with no data update.
+- Every count of a round counts its own items only (`src/lib/audit-round-counts-rules.ts`, `getAuditRoundCounts`).
+  - An out-of-scope find is an `AuditItem` with `auditResult: "out_of_scope"`. It is counted apart, from those items and never from the scan history. This holds on the round page, the rounds list, the Excel and PDF exports and the variance report (page group 2 plan 2).
+  - พบตรง + ไม่ตรง + ไม่พบ + รอตรวจ = the round's items. A checked item with no result counts as ไม่ตรง.
+  - Old `draft` rounds read as open everywhere, with no data update.
+- The round page (`/audit/rounds/{id}`, page group 2 plan 2) opens with:
+  - **The header:**
+    - the trail, status, number, dates, "เหลือ / เลยกำหนด N วัน" and "เปิดโดย …";
+    - "ส่งออก ▾" for `audit:export`;
+    - "อื่น ๆ ▾" with "ยกเลิกรอบตรวจ" for `audit:approve`.
+  - **The next-step card:**
+    - เดินตรวจ / หัวหน้า IT พิจารณา / ปิดรอบ, with the four close conditions;
+    - "ปิดรอบตรวจ" sits in the card at step 3;
+    - the opener reads "ผู้เปิดรอบปิดรอบเองไม่ได้ ให้หัวหน้าคนอื่นปิด".
+  - **The round-wide cards:** the result card and "ไม่ตรงเรื่องอะไร".
+  - **The result list:**
+    - One filter state, `parseAuditRoundListFilters` in `src/lib/audit-round-result-filters.ts`, holds:
+      - `result=all|pending|found|mismatch|not_found|out_of_scope|pending_review`;
+      - `categoryId` (or `other`);
+      - `field=location|department|custodian|condition`;
+      - `components=missing`;
+      - `companyId`, `branchId` and `search`.
+    - It builds the list's where (`buildAuditRoundItemWhere`, one `AND` list) and every link, page and export (`buildAuditRoundPageHref`).
+    - Each chip counts within the other filters.
+    - The search matches the code, the name and the item's expected room.
+    - Old `result=wrong_*` links open the field filter.
+- The pending list (`/audit/rounds/{id}/pending`):
+  - It reads the item's expected room and custodian for its rows, its search and its room chips:
+    - "ทุกห้อง N";
+    - the six rooms with the most pending items;
+    - "อื่น ๆ", which is `locationId=other`.
+  - The chosen room stays, even at 0. An unknown `locationId` goes back to all rooms.
+  - "สแกนรายการนี้" and "บันทึกไม่พบ" sit on each row, for `audit:edit` only.
+  - The not-found dialog names the asset. It says the item leaves the pending list for the IT head's decision, and the register stays as it is.
 - Audit rounds can be cancelled (`ยกเลิก`) with a required reason when a test or incorrect-scope round should stop. Cancellation preserves historical audit items, scan history, findings, evidence, and already-applied master changes; it does not rollback prior work. A cancelled round is read-only, excluded from operational queues and current coverage, and remains accessible only for history/review with cancellation time, user, and reason metadata.
 - Opening audit round detail, pending list, or scan from `/audit/rounds` preserves the current rounds view/search through a sanitized `returnTo` value. The scan and pending pages return to the round detail, and the round detail returns to the originating rounds list context.
 - Scan printed Asset Label QR codes or manually enter asset identifiers. The Audit Scan camera uses the same native-resolution Asset QR decoder as `/asset-management/scan`, defaults to the rear-camera scan-first flow, and stops after a successful QR read so the selected target is locked before the auditor saves or changes the result. Use `เปลี่ยน / สแกนใหม่` to clear the locked target and return to the scan input. QR scans stay exact/raw-value based for traceability; partial matching is manual-only.

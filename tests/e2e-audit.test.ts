@@ -113,6 +113,9 @@ test("IT staff walk room A by typing on the phone, on a slow network: matched, m
   // Found by typing: the tag for most, a word of the name for the mismatch.
   assert.ok(walk.includes("scan.findAndOpen(page, assets.matched.tag, assets.matched.tag)"))
   assert.ok(walk.includes(`scan.findAndOpen(page, "เครื่องพิมพ์", assets.mismatch.tag)`))
+  // Group 2 plan 2 (spec §8): the walk opens the scan page from the next-step card's main button, not the old header link.
+  assert.ok(walk.includes("await roundPage.nextStepCard(page).getByRole(\"link\", { name: fillTemplate(W.continueScan, { count: 7 }), exact: true }).click()"))
+  assert.ok(!walk.includes(`{ name: "สแกนตรวจนับ" }`), "not the old header link")
   // The mismatch: another department and the condition, with the photo; the parent asks while a component is unchecked.
   assert.ok(walk.includes(`"บันทึก · ไม่ตรง 2 ข้อ (แผนก, สภาพ)"`))
   // N-AU1 (user decision 2026-10-21): the department and the condition differ, so the waiting save names both
@@ -173,9 +176,17 @@ test("offline the check waits on the device and is sent when the phone is back; 
   assert.ok(!room.includes("setOffline("), "the window is the measurement's")
   assert.ok(room.includes(words.savedQueued.replace("{assetTag}", "${assets.offline.tag}")), "kept on the device")
   assert.ok(room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerQueued.replace("{count}", "1"))) && room.includes(thai("common").offlineBannerWith.replace("{detail}", words.bannerOfflineSaves)) && room.includes(words.pendingLink))
-  assert.ok(room.includes("pending.markNotFound(page, e2eDevice, assets.notFound.tag"))
+  assert.ok(room.includes("const notFound = { ...assets.notFound, room: records.rooms.roomB, custodian: null }"))
+  assert.ok(room.includes(`pending.markNotFound(page, e2eDevice, notFound, () => recordSettled(page, measure, "not found dialog"))`))
+  // Group 2 plan 2 (spec §9): the title and the room chips count the rows; room B stays chosen at 0 after its last item (P2-R11, P2-R12).
+  assert.ok(room.includes("await pending.expectRoomChips(page, 1, { [chain.rooms.roomB]: 1 }, chain.rooms.roomB)"))
+  assert.ok(room.includes("await roundPage.expectChipsMatchRows(page, pending.roomChips(page), pending.pendingRows(page, e2eDevice, runTags))"))
+  assert.ok(room.includes("await pending.expectRoomChips(page, 0, { [chain.rooms.roomB]: 0 }, chain.rooms.roomB)"))
   const pendingSteps = read("e2e/audit/pending-steps.ts")
   for (const key of ["markNotFound", "notFoundDialogTitle", "notFoundConfirm", "notFoundSuccess"]) assert.ok(pendingSteps.includes(thai("auditPending")[key]), key)
+  // Spec §9 (bugs 14, 15): the button sits on the row on both screens, and the dialog names the asset.
+  assert.ok(!pendingSteps.includes("การดำเนินการของ"), "no ⋯ on the desktop row")
+  assert.ok(pendingSteps.includes("for (const text of [asset.name, asset.tag, asset.room.code, asset.room.name, asset.custodian ?? W.noCustodian, W.notFoundResult]) await expect(dialog).toContainText(text)"))
 })
 
 test("IT staff are refused the review and the close; the IT head reviews every finding and closes the round (e2e audit task 4, EA4)", async () => {
@@ -200,6 +211,10 @@ test("IT staff are refused the review and the close; the IT head reviews every f
   assert.ok(head.includes(`getByRole("main").getByText("${thai("auditRound").statusClosed}", { exact: true })`), "the closed badge, in the app's own word")
   const review = read("e2e/audit/review-steps.ts")
   assert.ok(review.includes("export function findingEntry(") && review.includes("export async function browserFetch("))
+  // Group 2 plan 2 (spec §8, §13 bug 2): the close sits whole inside the next-step card, and the IT head did not open the round.
+  assert.ok(head.includes(`const close = nextStep.getByRole("button", { name: "${thai("auditRound").closeRound}", exact: true })`))
+  assert.ok(head.includes("await roundPage.expectInside(close, nextStep)"))
+  assert.ok(head.includes("await expect(page.getByText(W.openerCannotClose)).toHaveCount(0)") && !head.includes("ผู้ปิดรอบต้องไม่ใช่ผู้สร้างรอบ"))
 })
 
 test("the IT head's own finding and own close are refused by the segregation rules and the round is cancelled; the audit exports by permission (e2e audit task 5, EA5)", async () => {
@@ -210,13 +225,46 @@ test("the IT head's own finding and own close are refused by the segregation rul
   // The rules as the code has them (spec §6.2.4, the user's "เลือก 3"): the reporter may not review, the opener may not close.
   assert.ok(own.includes(`body: { error: "${auditSegregationErrors.reviewOwnFinding}" }`))
   assert.ok(own.includes(`body: { error: "${auditSegregationErrors.closeOwnRound}" }`))
-  assert.ok(own.includes(thai("auditRound").closeSeparateApprover))
+  // Group 2 plan 2 (spec §8, §9): the next-step card tells the opener, with no close before step 3; the cancel is in
+  // "อื่น ๆ"; the room chips before and after the not-found.
+  assert.ok(own.includes("await expect(nextStep.getByText(W.openerCannotClose)).toBeVisible()") && !own.includes("ผู้ปิดรอบต้องไม่ใช่ผู้สร้างรอบ"))
+  assert.ok(own.includes(`await expect(nextStep.getByRole("button", { name: "${thai("auditRound").closeRound}", exact: true })).toHaveCount(0)`))
+  assert.ok(own.includes(`await page.getByRole("main").getByRole("button", { name: W.more, exact: true }).click()`) && own.includes(`await page.getByRole("menuitem", { name: W.cancelRound, exact: true }).click()`))
+  assert.ok(own.includes(`await pending.expectRoomChips(page, 2, { [chain.rooms.roomB]: 2 }, "all")`) && own.includes(`await pending.expectRoomChips(page, 1, { [chain.rooms.roomB]: 1 }, "all")`))
   assert.ok(own.includes(thai("auditRound").cancelReasonRequired) && own.includes(thai("auditRound").cancelSuccess))
 
   // The exports: finding AU1 is fixed (FX4) and decision U1 is DX6 (ก): the IT head holds audit:export and downloads.
   const exports = block(spec, "The audit exports by permission")
   assert.ok(!exports.includes(`test.fail(true, "AU1: `) && !exports.includes(`test.fail(true, "U1: `), "AU1 is fixed (FX4); U1 is decided (DX6)")
   assert.ok(exports.includes(`page.getByRole("link", { name: "${thai("auditFinding").exportFindings}" })`))
+  // Group 2 plan 2 (spec §8, §16): IT staff get no export menu on the round page; after the review the IT head sees the
+  // rejected condition leave its bar (P2-R1) and the Excel export follow the category.
+  assert.ok(exports.includes(`await expect(page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true })).toHaveCount(0)`))
+  assert.ok(exports.includes(`await page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true }).click()`))
+  assert.ok(exports.includes(`await expect(roundPage.fieldBar(card, "condition")).toHaveCount(0)`))
+  assert.ok(exports.includes(`expect(tags.sort(), "the category's items only").toEqual([assets.component1.tag, assets.component2.tag].sort())`))
   const { E2E_ROLE_PERMISSIONS } = await import("../e2e/support/run-plan.ts")
   assert.deepEqual(Object.entries(E2E_ROLE_PERMISSIONS).filter(([, permissions]) => permissions.includes("audit:export")).map(([key]) => key), ["itHead"], "only the IT head holds audit:export (DX6)")
+})
+
+test("IT staff read the round page after the walk: each chip's count is its rows, the categories within the result, a bar per field, the parent with a component not found (group 2 plan 2 task 7)", () => {
+  const spec = read(SPEC)
+  const title = `test.describe("IT staff read the round page after the walk"`
+  const after = block(spec, "IT staff read the round page after the walk")
+  assert.ok(after.includes(`asUser("itStaff")`))
+  // In the chain after room B and before the refusals: the walk's results, no decision yet.
+  assert.ok(spec.indexOf(`test.describe("IT staff in room B, offline, and not found"`) < spec.indexOf(title) && spec.indexOf(title) < spec.indexOf(`test.describe("IT staff are refused the review and the close"`))
+  // The walk's counts (spec §8, P2-R2, P2-R3): 7 = 4 + 1 + 2 + 0, the out-of-scope find apart, four items waiting.
+  assert.ok(after.includes("await roundPage.expectChips(results, [[W.resultAll, 7], [W.resultPending, 0], [W.resultFound, 4], [W.resultMismatch, 1], [W.resultNotFound, 2], [W.resultOutOfScope, 1], [W.resultPendingReview, 4]])"))
+  assert.equal((after.match(/await roundPage\.expectChipsMatchRows\(page, (?:results|categories), rows\)/g) ?? []).length, 3)
+  for (const [category, count] of [["categoryDesktop", 5], ["categoryComponent", 2], ["categoryDesktop", 1], ["categoryComponent", 1]] as const) {
+    assert.ok(after.includes(`await roundPage.expectChip(categories, \`categoryId=\${masters.${category}}\`, ${count})`), `${category} ${count}`)
+  }
+  assert.ok(after.includes(`for (const field of ["department", "condition"] as const) {`) && after.includes("await expect(card.getByText(W.multipleFields, { exact: true })).toBeVisible()"))
+  assert.ok(after.includes("await expect(roundPage.filterChip(page, fillTemplate(W.componentsMissingChip, { count: 1 }))).toBeVisible()"))
+  assert.ok(after.includes("`${W.missingComponentPrefix} ${assets.component2.name} (${assets.component2.tag})`"))
+  // Step 2 counts findings, the rows of the findings page (P2-R26): the five the IT head decides in block 6.
+  assert.ok(after.includes("fillTemplate(W.reviewWaiting, { count: 5 })") && after.includes("fillTemplate(W.reviewItems, { count: 5 })"))
+  assert.ok(after.includes(`await parentRow.getByRole("link", { name: assets.component2.tag, exact: true }).click()`))
+  // "ส่วนควบของ <parent>" on the findings page is plan 4's step (spec §16), not this block's.
 })

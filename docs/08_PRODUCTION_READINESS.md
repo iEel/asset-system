@@ -101,7 +101,27 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 - [ ] Log locations are documented.
 - [ ] Backup path is documented.
 - [ ] Rollback plan is documented and tested.
-- [ ] Before or on deploy day, an IT head cancels the old draft audit round `AUD-2026-0002 "Test"` (1,509 items; finding E6 in `docs/audits/2026-10-07-full-review.md`) in Production through the round page ("ยกเลิกรอบตรวจ" with a reason). The user agreed on 2026-10-26. From page group 2 a draft round reads as open, so left alone it counts on the dashboard and in the rounds list. No SQL is run for it.
+- [ ] Before or on deploy day, an IT head cancels the old draft audit round `AUD-2026-0002 "Test"` (1,509 items; finding E6 in `docs/audits/2026-10-07-full-review.md`) in Production through the round page ("อื่น ๆ" → "ยกเลิกรอบตรวจ" with a reason; the cancel moved into that menu in page group 2 plan 2). The user agreed on 2026-10-26. From page group 2 a draft round reads as open, so left alone it counts on the dashboard and in the rounds list. No SQL is run for it.
+- [x] Before deploying page group 2 plan 2, this read-only SELECT was run on Production (`asset_management`) on 2026-10-27, by the controller at the user's request. Result: 0 rows, and 0 scan-history rows with no item id at all, so no round's นอกขอบเขต number changes on Production. Nothing was written.
+  - **Re-run** it, read-only, before the deploy only if out-of-scope scans happen on Production before then, and keep that result with the deploy notes.
+  - **Why the counts change:** from plan 2, every out-of-scope count reads the audit items with `auditResult = 'out_of_scope'`, never the scan history.
+  - **historyOnly:** finds saved before 2026-05-18 (`9b7a580e`) exist only as scan history (`auditItemId` NULL, no audit item).
+  - **rescanned:** finds whose asset was scanned again inside the round; their item now counts as the round's own.
+  - **What leaves:** both kinds leave that round's นอกขอบเขต number on the round page and the rounds list. The scan history itself stays.
+  - **If a listed round is still open** (`open` or `draft`), tell the IT head before the deploy.
+
+  ```sql
+  SELECT r.auditNo, r.status,
+    SUM(CASE WHEN i.id IS NULL THEN 1 ELSE 0 END) AS historyOnly,
+    SUM(CASE WHEN i.id IS NOT NULL AND (i.auditResult IS NULL OR i.auditResult <> 'out_of_scope') THEN 1 ELSE 0 END) AS rescanned
+  FROM audit_scan_history h
+  JOIN audit_rounds r ON r.id = h.auditRoundId
+  LEFT JOIN audit_items i ON i.auditRoundId = h.auditRoundId AND i.assetId = h.assetId
+  WHERE h.auditItemId IS NULL
+  GROUP BY r.auditNo, r.status
+  HAVING SUM(CASE WHEN i.id IS NULL OR i.auditResult IS NULL OR i.auditResult <> 'out_of_scope' THEN 1 ELSE 0 END) > 0
+  ORDER BY r.auditNo;
+  ```
 
 ## Deployment Documentation Coverage
 

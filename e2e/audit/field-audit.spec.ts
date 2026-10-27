@@ -4,16 +4,19 @@
 // 1. IT staff open the round of the project's department on the round form, after it shows its errors under the
 //    fields (spec §6.2.1, §6.7): no status choice, the department as a condition chip, the live count equal to the
 //    round's items, the round open at once (group 2 spec §7, §14, §16);
-// 2. IT staff walk room A by typing names and tags: one matched, one mismatch (another department and the condition,
-//    with the photo the condition asks for), a parent whose components are not all checked, an unknown and an
-//    out-of-scope search (spec §6.2.2);
+// 2. IT staff walk room A by typing names and tags, from the round page's "เดินตรวจต่อ" (group 2 spec §8): one
+//    matched, one mismatch (another department and the condition, with the photo the condition asks for), a parent
+//    whose components are not all checked, an unknown and an out-of-scope search (spec §6.2.2);
 // 3. in room B the phone goes offline, saves a check, comes back and sends it; one asset is marked not found from the
-//    pending list (spec §6.2.2–3);
-// 4. IT staff are refused the review of their own findings and the close of the round they opened (spec §6.2.4);
-// 5. the IT head reviews every finding and closes the round (spec §6.2.4);
-// 6. the IT head's own round: their own finding and their own close are refused, and the round is cancelled;
-// 7. the audit exports by permission (spec §6.2.5, §6.5): hidden from IT staff (finding AU1, fixed), downloaded by the
-//    IT head (decision U1, DX6 (ก)).
+//    pending list, whose room chips count its rows and whose dialog names the asset (spec §6.2.2–3, group 2 spec §9);
+// 4. IT staff read the round page after the walk: the result and category chips equal their rows, each field's bar
+//    its rows, and the parent with a component not found is listed once (group 2 spec §8, §16);
+// 5. IT staff are refused the review of their own findings and the close of the round they opened (spec §6.2.4);
+// 6. the IT head reviews every finding and closes the round from the next-step card (spec §6.2.4, group 2 spec §8);
+// 7. the IT head's own round: the room chips, their own finding and their own close are refused, the card says why,
+//    and the round is cancelled from "อื่น ๆ";
+// 8. the audit exports by permission (spec §6.2.5, §6.5): hidden from IT staff (finding AU1, fixed; the round page's
+//    menu too), downloaded by the IT head (decision U1, DX6 (ก)), the round's Excel by a category (group 2 spec §16).
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import ExcelJS from "exceljs"
 import { asUser, expect, runPhoneOnWebKit, test } from "../support/fixtures.ts"
@@ -27,6 +30,9 @@ import * as pending from "./pending-steps.ts"
 import * as review from "./review-steps.ts"
 import * as scan from "./scan-steps.ts"
 import { recordSettled, settleToasts } from "./settle.ts"
+import { fillTemplate } from "../shell/shell-words.ts"
+import * as roundPage from "./round-page-steps.ts"
+import { ROUND_PAGE_WORDS as W } from "./round-page-words.ts"
 
 runPhoneOnWebKit()
 test.describe.configure({ mode: "serial" })
@@ -131,7 +137,8 @@ test.describe("IT staff walk room A", () => {
     if (e2eDevice === "phone") await scan.slowNetwork(page)
 
     await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page")
-    await page.getByRole("link", { name: "สแกนตรวจนับ" }).first().click()
+    // Group 2 spec §8: the walk starts from the next-step card's main button; none of the round's seven items is checked yet.
+    await roundPage.nextStepCard(page).getByRole("link", { name: fillTemplate(W.continueScan, { count: 7 }), exact: true }).click()
     await page.waitForURL(`**/th/audit/rounds/${chain.roundId}/scan**`)
     // Two rooms and none chosen yet: the room sheet opens by itself.
     await expect(page.getByRole("dialog", { name: "ห้องที่กำลังตรวจ" })).toBeVisible()
@@ -294,17 +301,104 @@ test.describe("IT staff in room B, offline, and not found", () => {
     await list.getByRole("button", { name: /^ยังไม่ตรวจ/ }).click()
     await page.getByRole("link", { name: "ของที่หาไม่เจอ → รายการค้าง" }).click()
     await page.waitForURL(`**/th/audit/rounds/${chain.roundId}/pending**`)
+    // Group 2 spec §9: the title counts the round's pending items; the room chips count by the item's own room, room B
+    // stays chosen from the scan page and room A has nothing left; each chip's count is its rows (P2-R11, P2-R12).
+    const runTags = `${readRunState().runId}-${records.code}-`
+    await expect(page.getByRole("heading", { level: 1, name: fillTemplate(W.pendingTitle, { count: 1 }) })).toBeVisible()
+    await pending.expectRoomChips(page, 1, { [chain.rooms.roomB]: 1 }, chain.rooms.roomB)
+    await roundPage.expectChipsMatchRows(page, pending.roomChips(page), pending.pendingRows(page, e2eDevice, runTags))
     await expect(pending.pendingEntry(page, e2eDevice, assets.notFound.tag)).toBeVisible()
     await measure.recordPage("pending list of room B")
+    // The dialog names the asset with its room as the item has it and no custodian (spec §9, bug 15).
+    const notFound = { ...assets.notFound, room: records.rooms.roomB, custodian: null }
     const findingId = await measure.timed("mark not found", () =>
-      pending.markNotFound(page, e2eDevice, assets.notFound.tag, () => recordSettled(page, measure, "not found dialog")),
+      pending.markNotFound(page, e2eDevice, notFound, () => recordSettled(page, measure, "not found dialog")),
     )
     await expect(pending.pendingEntry(page, e2eDevice, assets.notFound.tag)).toHaveCount(0)
+    // The chosen room stays, at 0 (P2-R11).
+    await expect(page.getByRole("heading", { level: 1, name: fillTemplate(W.pendingTitle, { count: 0 }) })).toBeVisible()
+    await pending.expectRoomChips(page, 0, { [chain.rooms.roomB]: 0 }, chain.rooms.roomB)
     saveChain(project, { ...chain, notFoundFindingId: findingId })
 
     // The round has no item left to check (a GET of the round).
     const round = (await (await page.request.get(`/api/audit-rounds/${chain.roundId}`)).json()) as { items: { auditStatus: string; asset: { assetTag: string } }[] }
     expect(round.items.filter((item) => item.auditStatus === "pending").map((item) => item.asset.assetTag), "no item left to check").toEqual([])
+  })
+})
+
+test.describe("IT staff read the round page after the walk", () => {
+  asUser("itStaff")
+
+  test("IT staff read the round page after the walk: each chip's count is its rows, the categories count within the result, each field's bar is its rows, the parent with a component not found is listed once", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.setTimeout(240_000)
+    const chain = readChain(testInfo.project.name)
+    const { assets, masters } = chain
+    const roundHref = `/th/audit/rounds/${chain.roundId}`
+    // The walk's own rows: every tag of the project's records starts with the run id and the project's code.
+    const rows = roundPage.resultRows(page, e2eDevice, `${readRunState().runId}-${chain.records.code}-`)
+    await measure.visit(roundHref, "round page after the walk (IT staff)")
+
+    // The result chips (group 2 spec §8, P2-R2, P2-R3): the round's 7 items are พบตรง 4 (A1, P1, C1, A5) + ไม่ตรง 1 (A2)
+    // + ไม่พบ 2 (A4, C2) + รอตรวจ 0; the out-of-scope find X1 apart; รอพิจารณา counts the 4 items with a finding still
+    // waiting (A2, C2, A4, X1). Each chip opens rows of its count.
+    const results = roundPage.resultChips(page)
+    await roundPage.expectChips(results, [[W.resultAll, 7], [W.resultPending, 0], [W.resultFound, 4], [W.resultMismatch, 1], [W.resultNotFound, 2], [W.resultOutOfScope, 1], [W.resultPendingReview, 4]])
+    await roundPage.expectChipsMatchRows(page, results, rows)
+
+    // The category chips count within the result in use (decision 2): five desktops and two components in all, one of
+    // each among the not-founds (A4, C2). Each chip opens rows of its count.
+    const categories = roundPage.categoryChips(page)
+    await roundPage.expectChip(categories, `categoryId=${masters.categoryDesktop}`, 5)
+    await roundPage.expectChip(categories, `categoryId=${masters.categoryComponent}`, 2)
+    await roundPage.expectChipsMatchRows(page, categories, rows)
+    await roundPage.chipByLabel(results, W.resultNotFound).click()
+    await page.waitForURL(/[?&]result=not_found(?:[&#]|$)/)
+    await roundPage.expectChip(categories, `categoryId=${masters.categoryDesktop}`, 1)
+    await roundPage.expectChip(categories, `categoryId=${masters.categoryComponent}`, 1)
+    await roundPage.expectChipsMatchRows(page, categories, rows)
+
+    // Step 2 of the next-step card counts findings (P2-R26): nothing is pending, and five findings wait (A2's department
+    // and condition, C2, A4, X1), the rows of the findings page that "รอ 5" and the main button open; block 6 decides
+    // those five.
+    await page.goto(roundHref)
+    const findingsHref = new RegExp(`^/th/audit/findings\\?status=pending&roundId=${chain.roundId}(?:&|$)`)
+    const nextStep = roundPage.nextStepCard(page)
+    await expect(nextStep.getByRole("link", { name: fillTemplate(W.reviewWaiting, { count: 5 }), exact: true })).toHaveAttribute("href", findingsHref)
+    await expect(nextStep.getByRole("link", { name: fillTemplate(W.reviewItems, { count: 5 }), exact: true })).toHaveAttribute("href", findingsHref)
+
+    // "ไม่ตรงเรื่องอะไร" (spec §8, P2-R1, P2-R18): the mismatch is wrong in its department and its condition, both
+    // waiting, so each bar holds it once and the card says one item is wrong in more than one way. Each bar's word is
+    // its link, its count beside it in the same item (Task 4); each bar opens its rows.
+    const card = roundPage.mismatchCard(page)
+    await expect(card.getByText(W.multipleFields, { exact: true })).toBeVisible()
+    await recordSettled(page, measure, "round page, the mismatch card (IT staff)")
+    for (const field of ["department", "condition"] as const) {
+      const word = field === "department" ? W.fieldDepartment : W.fieldCondition
+      await expect(roundPage.fieldBar(card, field)).toHaveAccessibleName(word)
+      await expect(card.getByRole("listitem").filter({ has: page.locator(`a[href*="field=${field}"]`) })).toHaveText(new RegExp(`^${scan.escapeRegExp(word)}\\s*1$`))
+      await roundPage.fieldBar(card, field).click()
+      await page.waitForURL(new RegExp(`[?&]field=${field}(?:[&#]|$)`))
+      await expect(rows).toHaveCount(1)
+      await expect(rows).toContainText(assets.mismatch.tag)
+      await page.goto(roundHref)
+    }
+
+    // "ส่วนควบไม่ครบ" (decision 6): the parent whose second component was marked not found in the walk, listed once,
+    // with that component named under it; its code opens the component's own row on this page (P2-R17).
+    const missingLine = roundPage.componentsMissingLine(card)
+    await expect(missingLine).toHaveAccessibleName(new RegExp(`^${scan.escapeRegExp(fillTemplate(W.componentsMissingLine, { count: 1 }))}`))
+    await missingLine.click()
+    await page.waitForURL(/[?&]components=missing(?:[&#]|$)/)
+    await expect(roundPage.filterChip(page, fillTemplate(W.componentsMissingChip, { count: 1 }))).toBeVisible()
+    await expect(rows).toHaveCount(1)
+    const parentRow = rows.filter({ hasText: assets.parent.tag })
+    await expect(parentRow).toHaveCount(1)
+    await expect(parentRow).toContainText(`${W.missingComponentPrefix} ${assets.component2.name} (${assets.component2.tag})`)
+    await recordSettled(page, measure, "round page, parents with a component not found (IT staff)")
+    await parentRow.getByRole("link", { name: assets.component2.tag, exact: true }).click()
+    await page.waitForURL((url) => url.pathname === roundHref && url.searchParams.get("search") === assets.component2.tag && !url.searchParams.has("components"))
+    await expect(rows).toHaveCount(1)
+    await expect(rows).toContainText(assets.component2.tag)
   })
 })
 
@@ -379,11 +473,14 @@ test.describe("The IT head reviews and closes", () => {
     expect(mismatch.department?.code, "the approved department").toBe(runDepartment)
     expect(mismatch.condition.name, "the rejected condition stays").toBe("Good")
 
-    // The checklist is clear and the IT head did not open the round: the close goes through.
+    // The checklist is clear and the IT head did not open the round: "ปิดรอบตรวจ" sits whole inside the next-step card
+    // (group 2 spec §8, §13 bug 2), with no opener's sentence, and the close goes through.
     await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page (IT head)")
-    const close = page.getByRole("button", { name: "ปิดรอบตรวจ" })
+    const nextStep = roundPage.nextStepCard(page)
+    const close = nextStep.getByRole("button", { name: "ปิดรอบตรวจ", exact: true })
     await expect(close).toBeEnabled()
-    await expect(page.getByText("ผู้ปิดรอบต้องไม่ใช่ผู้สร้างรอบ")).toHaveCount(0)
+    await roundPage.expectInside(close, nextStep)
+    await expect(page.getByText(W.openerCannotClose)).toHaveCount(0)
     await close.click()
     const confirm = page.getByRole("alertdialog", { name: "ยืนยันปิดรอบตรวจนับนี้?" })
     await expect(confirm).toBeVisible()
@@ -428,9 +525,19 @@ test.describe("The IT head's own round", () => {
     const ownSaved = (await (await page.request.get(`/api/audit-rounds/${own.id}`)).json()) as { status: string }
     expect(ownSaved.status, "a client's status is ignored: the round opens").toBe("open")
 
-    // They mark one asset not found: the finding is theirs.
+    // They mark one asset not found from the pending list (group 2 spec §9): the title and the room chips count room B's
+    // two items, each chip's count is its rows, and "เดินตรวจต่อ (2)" opens the scan page (the IT head holds audit:edit);
+    // after the save one is left.
     await measure.visit(`/th/audit/rounds/${own.id}/pending`, "pending list of the IT head's round")
-    const findingId = await pending.markNotFound(page, e2eDevice, assets.notFound.tag)
+    const ownRows = pending.pendingRows(page, e2eDevice, `${readRunState().runId}-${records.code}-`)
+    await expect(page.getByRole("heading", { level: 1, name: fillTemplate(W.pendingTitle, { count: 2 }) })).toBeVisible()
+    await expect(page.getByRole("main").getByRole("link", { name: fillTemplate(W.continueScan, { count: 2 }), exact: true })).toHaveAttribute("href", new RegExp(`^/th/audit/rounds/${own.id}/scan(?:[?#]|$)`))
+    await pending.expectRoomChips(page, 2, { [chain.rooms.roomB]: 2 }, "all")
+    await roundPage.expectChipsMatchRows(page, pending.roomChips(page), ownRows)
+    const findingId = await pending.markNotFound(page, e2eDevice, { ...assets.notFound, room: records.rooms.roomB, custodian: null })
+    await expect(page.getByRole("heading", { level: 1, name: fillTemplate(W.pendingTitle, { count: 1 }) })).toBeVisible()
+    await pending.expectRoomChips(page, 1, { [chain.rooms.roomB]: 1 }, "all")
+    await expect(ownRows).toHaveCount(1)
 
     // Their own finding: the note instead of the buttons, and the review route refuses it (segregation of duties).
     await measure.visit(`/th/audit/findings?status=pending&roundId=${own.id}`, "findings of the IT head's round")
@@ -441,17 +548,22 @@ test.describe("The IT head's own round", () => {
     const reviewed = await review.browserFetch(page, `/api/audit-findings/${findingId}/review`, "POST", { action: "approve" })
     expect(reviewed).toEqual({ status: 403, body: { error: "Audit finding must be reviewed by a different user than the reporter" } })
 
-    // Their own round: the close waits with the rule beside it, and the close route refuses the opener (spec §6.2.4:
-    // the rule as the code has it, src/app/api/audit-rounds/[id]/route.ts closeOwnRound).
+    // Their own round: the next-step card tells the opener they cannot close it, and offers no close yet (room B's other
+    // asset is still to check, so step 3 is not reached); the close route refuses the opener (spec §6.2.4: the rule as
+    // the code has it, src/app/api/audit-rounds/[id]/route.ts closeOwnRound).
     await measure.visit(`/th/audit/rounds/${own.id}`, "the IT head's round")
-    await expect(page.getByText("ผู้ปิดรอบต้องไม่ใช่ผู้สร้างรอบ")).toBeVisible()
-    await expect(page.getByRole("button", { name: "ปิดรอบตรวจ" })).toBeDisabled()
+    const nextStep = roundPage.nextStepCard(page)
+    await expect(nextStep.getByText(W.openerCannotClose)).toBeVisible()
+    await expect(nextStep.getByRole("button", { name: "ปิดรอบตรวจ", exact: true })).toHaveCount(0)
     measure.expectRefusal({ method: "PATCH", url: new RegExp(`/api/audit-rounds/${own.id}$`), status: 403, reason: "the opener may not close their own round (closeOwnRound)" })
     const closed = await review.browserFetch(page, `/api/audit-rounds/${own.id}`, "PATCH", { action: "close" })
     expect(closed).toEqual({ status: 403, body: { error: "Audit round must be closed by a different approver than the creator" } })
 
-    // The round is cancelled with a reason; an empty reason first shows its error under the field.
-    await page.getByRole("button", { name: "ยกเลิกรอบตรวจ" }).click()
+    // The round is cancelled from "อื่น ๆ" (group 2 spec §8) with a reason; an empty reason first shows its error under
+    // the field.
+    await page.getByRole("main").getByRole("button", { name: W.more, exact: true }).click()
+    await recordSettled(page, measure, "the round's อื่น ๆ menu")
+    await page.getByRole("menuitem", { name: W.cancelRound, exact: true }).click()
     const cancel = page.getByRole("dialog", { name: "ยืนยันยกเลิกรอบตรวจ" })
     await expect(cancel).toBeVisible()
     await cancel.getByRole("button", { name: "ยืนยันยกเลิก" }).click()
@@ -482,6 +594,9 @@ test.describe("The audit exports by permission", () => {
       await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()
       await expect(page.getByRole("link", { name: "ส่งออกรายการไม่ตรง" })).toHaveCount(0)
       await expect(page.getByRole("link", { name: "ส่งออก PDF" })).toHaveCount(0)
+      // Nor the round page's export menu (group 2 spec §8: "ส่งออก ▾" needs audit:export).
+      await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page (IT staff, no export)")
+      await expect(page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true })).toHaveCount(0)
     })
   })
 
@@ -511,6 +626,60 @@ test.describe("The audit exports by permission", () => {
       for (const asset of [chain.assets.mismatch, chain.assets.component2, chain.assets.notFound, chain.assets.outOfScope]) {
         expect(tags.has(asset.tag), `${asset.tag} is in the export`).toBe(true)
       }
+    })
+
+    test("the round page after the review: the rejected finding leaves its bar, and a category narrows the result chips, the rows and the Excel export (group 2 spec §8, §16)", async ({ page, measure, e2eDevice }, testInfo) => {
+      test.setTimeout(180_000)
+      const chain = readChain(testInfo.project.name)
+      const { assets, masters } = chain
+      const rows = roundPage.resultRows(page, e2eDevice, `${readRunState().runId}-${chain.records.code}-`)
+      await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page, closed (IT head)")
+
+      // P2-R1: the rejected condition finding leaves its bar; the approved department stays, so one item, one field.
+      const card = roundPage.mismatchCard(page)
+      await expect(roundPage.fieldBar(card, "department")).toHaveAccessibleName(W.fieldDepartment)
+      await expect(card.getByRole("listitem").filter({ has: page.locator('a[href*="field=department"]') })).toHaveText(new RegExp(`^${scan.escapeRegExp(W.fieldDepartment)}\\s*1$`))
+      await expect(roundPage.fieldBar(card, "condition")).toHaveCount(0)
+      await expect(card.getByText(W.multipleFields, { exact: true })).toHaveCount(0)
+
+      // A category (decision 2): its chip joins the filter chips, the result chips count within it, the rows narrow to it.
+      const component = roundPage.chipByHref(roundPage.categoryChips(page), `categoryId=${masters.categoryComponent}`)
+      const label = await roundPage.chipLabel(component)
+      await component.click()
+      await page.waitForURL(new RegExp(`[?&]categoryId=${masters.categoryComponent}(?:[&#]|$)`))
+      await expect(roundPage.filterChip(page, label)).toBeVisible()
+      await roundPage.expectChips(roundPage.resultChips(page), [[W.resultAll, 2], [W.resultPending, 0], [W.resultFound, 1], [W.resultMismatch, 0], [W.resultNotFound, 1], [W.resultOutOfScope, 0], [W.resultPendingReview, 0]])
+      await expect(rows).toHaveCount(2)
+      for (const asset of [assets.component1, assets.component2]) await expect(rows.filter({ hasText: asset.tag })).toHaveCount(1)
+
+      // "ส่งออก ▾" (spec §8): three exports, each of the chosen filters; the Excel one downloads the category's items only.
+      await page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true }).click()
+      const items = page.getByRole("menuitem")
+      await expect(items).toHaveCount(3)
+      for (const item of await items.all()) await expect(item).toContainText(W.exportScope)
+      await expect(items.filter({ hasText: W.exportVariance })).toHaveAttribute("href", new RegExp(`[?&]categoryId=${masters.categoryComponent}(?:&|$)`))
+      const excel = items.filter({ hasText: W.exportExcel })
+      await expect(excel).toHaveAttribute("href", new RegExp(`[?&]categoryId=${masters.categoryComponent}(?:&|$)`))
+      await recordSettled(page, measure, "the round's export menu (IT head)")
+      const downloading = page.waitForEvent("download")
+      await excel.click()
+      const download = await downloading
+      // The file as downloaded, kept in the report.
+      const file = await download.path().catch(() => null)
+      if (file) await testInfo.attach(`download ${download.suggestedFilename()}`, { path: file, contentType: "application/octet-stream" })
+      expect(download.suggestedFilename(), "an Excel file").toMatch(/\.xlsx$/)
+      expect(file, "the download completed").not.toBeNull()
+      const workbook = new ExcelJS.Workbook()
+      await workbook.xlsx.readFile(file ?? "")
+      // The "Asset Tag" column (src/lib/audit-excel.ts auditResultColumns), found by its header on the export's one sheet.
+      const sheet = workbook.worksheets[0]
+      const tagColumn = ((sheet?.getRow(1).values ?? []) as unknown[]).indexOf("Asset Tag")
+      expect(tagColumn, "the Asset Tag column").toBeGreaterThan(0)
+      const tags: string[] = []
+      sheet?.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) tags.push(String(row.getCell(tagColumn).value ?? ""))
+      })
+      expect(tags.sort(), "the category's items only").toEqual([assets.component1.tag, assets.component2.tag].sort())
     })
   })
 })
