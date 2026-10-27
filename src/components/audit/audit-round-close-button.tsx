@@ -7,30 +7,11 @@ import { Lock } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
-import { ContentPanel } from "@/components/ui/content-panel"
-import { Notice } from "@/components/ui/notice"
-import { StatStrip } from "@/components/ui/stat-strip"
 import { useApiError } from "@/components/ui/use-api-error"
-import { formatCount } from "@/lib/display-format"
 
-type ChecklistItem = {
-  label: string
-  value: number
-  ok: boolean
-  // The drill-down of a count; an item without one is a rule.
-  href?: string
-  actionLabel?: string
-}
-
-export function AuditRoundCloseButton({
-  roundId,
-  disabled,
-  checklist,
-}: {
-  roundId: string
-  disabled: boolean
-  checklist: ChecklistItem[]
-}) {
+// The close action of the round page's next-step card, shown at step 3 (group 2 spec §8, §13 bug 2): the card writes
+// the four conditions the close API checks, this button asks first, then PATCHes { action: "close" } and refreshes.
+export function AuditRoundCloseButton({ roundId, disabled }: { roundId: string; disabled: boolean }) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("auditRound")
@@ -58,38 +39,10 @@ export function AuditRoundCloseButton({
     }
   }
 
-  // Items with a drill-down are counts in the strip; the others are rules (the closer is not the creator),
-  // shown under the strip only while they block closing.
-  const counts = checklist.filter((item) => item.href)
-  const rules = checklist.filter((item) => !item.href)
-
   return (
-    <ContentPanel
-      title={t("closeChecklist")}
-      description={t("closeChecklistHelp")}
-      actions={
-        <Button onClick={closeRound} busy={saving} disabled={disabled}>
-          <Lock aria-hidden="true" />
-          {t("closeRound")}
-        </Button>
-      }
-    >
-      <StatStrip
-        items={counts.map((item) => ({
-          key: item.label,
-          label: item.label,
-          value: formatCount(item.value),
-          href: item.href && item.value > 0 ? item.href : undefined,
-          foot: item.href && item.value > 0 ? item.actionLabel : undefined,
-          footTitle: item.href && item.value > 0 ? item.actionLabel : undefined,
-          attention: !item.ok,
-        }))}
-      />
-      {rules.map((item) =>
-        !item.ok ? (
-          <Notice key={item.label} tone="neutral" className="mt-3">{item.label}</Notice>
-        ) : null,
-      )}
-    </ContentPanel>
+    <Button onClick={closeRound} busy={saving} disabled={disabled}>
+      <Lock aria-hidden="true" />
+      {t("closeRound")}
+    </Button>
   )
 }

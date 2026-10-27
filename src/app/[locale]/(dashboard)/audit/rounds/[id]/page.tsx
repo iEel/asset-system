@@ -1,53 +1,64 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, ArrowLeft, Download, FileText, Pencil, ScanLine } from "lucide-react"
+import { ArrowLeft, Check, ChevronRight, FileText, ListChecks, Pencil, ScanLine } from "lucide-react"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
-import { AuditRoundCancelButton } from "@/components/audit/audit-round-cancel-button"
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
+import { AuditRoundHeaderMenus } from "@/components/audit/audit-round-header-menus"
 import { hasPermission } from "@/lib/auth-utils"
-import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
+import { ActionBar, actionBarPagePadding, type ActionBarLink } from "@/components/ui/action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
+import { DistributionBar } from "@/components/ui/distribution-bar"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
 import { KeyValueList } from "@/components/ui/key-value-list"
 import { Nil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
+import { PaceBar } from "@/components/ui/pace-bar"
 import { Pagination } from "@/components/ui/pagination"
 import { RowActions } from "@/components/ui/row-actions"
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { Steps } from "@/components/ui/steps"
+import { toneIcons } from "@/components/ui/tone-icons"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses, getPanelClasses } from "@/lib/design-system"
-import { formatCount } from "@/lib/display-format"
+import { formatCount, formatPercent } from "@/lib/display-format"
 import { lastListPage } from "@/lib/list-pagination"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { auditRoundStatusLabelKey, effectiveAuditRoundStatus, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import type { AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { getAuditRoundPageData } from "@/lib/audit-round-page-data"
+import { auditRoundPageStepKeys, buildAuditRoundPageMainAction, buildAuditRoundPageSteps, type AuditRoundPageStepKey } from "@/lib/audit-round-page-rules"
+import { buildAuditRoundDueLine } from "@/lib/audit-rounds-list-rules"
+import { startOfBangkokDay } from "@/lib/waiting-work-rules"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { paginationRange } from "@/lib/master-data-query"
 import {
+  auditFindingFields,
   auditFindingTypeByField,
   auditRoundBranchFilterName,
   auditRoundResultPageSizeOptions,
-  buildAuditRoundResultSummaryGroups,
   buildAuditRoundExportHref,
   buildAuditRoundPageHref,
   buildAuditRoundResultListHref,
   getAuditRoundItemResultLabelKey,
   getAuditRoundItemStatusLabelKey,
+  parseAuditRoundListFilters,
   parseAuditRoundResultListParams,
+  type AuditRoundListFilters,
+  type AuditRoundPageHrefOverrides,
   type AuditRoundResultFilter,
 } from "@/lib/audit-round-result-filters"
 import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
+
+const WarningIcon = toneIcons.warning
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -79,19 +90,28 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const filterCompany = data.filterNames.company
   const filterBranch = data.filterNames.branch
   const filterCategory = data.filterNames.category
-  const isRoundCreator = data.steps.close.openedByViewer
   const isRoundReadOnly = isAuditRoundReadOnlyStatus(round.status)
   // The round's exports need audit:export (their routes check it; the E2E suite's AU1, M1).
   const canExportRound = round.status !== "cancelled" && hasPermission(user, "audit", "export")
   const cancelledByDisplayName = data.round.cancelledByLabel
-  const pendingCount = data.steps.walk.left
-  const processedCount = data.steps.walk.checked
-  const foundCount = data.resultCard.found
-  const notFoundCount = data.resultCard.notFound
-  const mismatchCount = data.resultCard.mismatch
-  const progress = data.steps.walk.total > 0 ? Math.round((data.steps.walk.checked / data.steps.walk.total) * 100) : 0
 
   const returnToHref = normalizeOperationalReturnTo(locale, "audit-rounds", rawSearchParams.returnTo)
+  // Who may do what here (group 2 spec §5, P2-R7): audit:edit scans and corrects, audit:approve cancels and closes,
+  // audit:export exports. Nobody is offered a control the API would refuse.
+  const canScan = hasPermission(user, "audit", "edit")
+  // Every link of the page's list (cards, chips, bars, paging, exports): one builder, the list's way back and page size
+  // kept (group 2 plan 2). The cards are round-wide, so their links start from roundWideFilters (spec §5).
+  const roundWideFilters = parseAuditRoundListFilters({})
+  const pageHref = (target: AuditRoundListFilters, overrides: AuditRoundPageHrefOverrides = {}) =>
+    buildAuditRoundPageHref(locale, round.id, target, { pageSize, returnTo: returnToHref, ...overrides })
+  // The exports follow the list's filters (spec §8 "ตามตัวกรองที่เลือก"): Task 1's builder, Task 2's three lines, now
+  // over the page's filters.
+  const auditRoundExportHref = buildAuditRoundExportHref(round.id, "export", filters)
+  const auditRoundExportPdfHref = buildAuditRoundExportHref(round.id, "export-pdf", filters)
+  const auditRoundVarianceHref = buildAuditRoundExportHref(round.id, "variance-export", filters)
+  const allResultHref = pageHref(roundWideFilters)
+  // "เหลือ / เลยกำหนด N วัน" on an open round only, display only (spec §8, §15; plan 1 R26).
+  const due = buildAuditRoundDueLine(round.status, round.endDate, startOfBangkokDay(new Date()))
   // An unknown or stale company, branch or category drops only its own filter, so the list never sits under a chip it cannot name.
   const staleCategory = Boolean(filters.categoryId && filters.categoryId !== "other" && !filterCategory)
   if ((filters.companyId && !filterCompany) || (filters.branchId && !filterBranch) || staleCategory) {
@@ -149,14 +169,6 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       editHref: item.auditResult === "out_of_scope" ? null : buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: resultListReturnHref }),
     }
   })
-  const allResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const foundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "found", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const wrongLocationResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", field: "location", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const wrongCustodianResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", field: "custodian", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const wrongConditionResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", field: "condition", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const notFoundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "not_found", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
-  const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
   // The company and branch narrow every list, the out-of-scope one included (P2-R4).
   const resultFilterChips: FilterChipItem[] = []
   if (filterCompany) {
@@ -175,17 +187,49 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   }
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
   const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
-  const closeChecklist = [
-    { label: t("closePendingItems"), value: data.steps.close.checklist.pendingItems, ok: data.steps.close.checklist.pendingItems === 0, href: pendingHref, actionLabel: t("checklistDrilldown") },
-    { label: t("closePendingFindings"), value: data.steps.close.checklist.pendingFindings, ok: data.steps.close.checklist.pendingFindings === 0, href: pendingReviewFindingsHref, actionLabel: t("checklistDrilldown") },
-    { label: t("closeOpenActions"), value: data.steps.close.checklist.openActions, ok: data.steps.close.checklist.openActions === 0, href: openActionFindingsHref, actionLabel: t("checklistDrilldown") },
-    { label: t("closeSeparateApprover"), value: isRoundCreator ? 1 : 0, ok: !isRoundCreator },
+  const stepsState = buildAuditRoundPageSteps({ status: round.status, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings })
+  const mainAction = buildAuditRoundPageMainAction({ steps: stepsState, pendingItems: data.steps.close.checklist.pendingItems, pendingFindings: data.steps.close.checklist.pendingFindings, canClose: data.steps.close.canClose, openedByViewer: data.steps.close.openedByViewer, canScan, canApprove })
+  const stepLabels: Record<AuditRoundPageStepKey, string> = { walk: t("stepWalk"), review: t("stepReview"), close: t("stepClose") }
+  const stepItems = stepsState ? auditRoundPageStepKeys.map((key, index) => ({ id: key, label: stepLabels[key], state: stepsState.states[index] })) : []
+  // The main step as a link (the close is a button, in the card only): the card's head and the phone bar's primary.
+  const mainLink =
+    mainAction?.kind === "walk"
+      ? { href: mainAction.target === "scan" ? scanHref : pendingHref, label: t("nextStepContinueScan", { count: formatCount(mainAction.count) }), icon: mainAction.target === "scan" ? <ScanLine className="h-4 w-4" /> : <ListChecks className="h-4 w-4" /> }
+      : mainAction?.kind === "review"
+        ? { href: pendingReviewFindingsHref, label: t("nextStepReviewItems", { count: formatCount(mainAction.count) }), icon: <FileText className="h-4 w-4" /> }
+        : null
+  // The four conditions the close API checks (audit-round-close.ts getAuditRoundCloseChecklist, and the route's
+  // closeOwnRound), each linked to its rows while it blocks; the counts are the API's (findings, P2-R3). The opener is
+  // told they cannot close (spec §8).
+  const checklist = data.steps.close.checklist
+  const closeConditions = [
+    { key: "pendingItems", ok: checklist.pendingItems === 0, label: checklist.pendingItems === 0 ? t("closeNoPendingItems") : t("closePendingItemsCount", { count: formatCount(checklist.pendingItems) }), href: pendingHref },
+    { key: "pendingFindings", ok: checklist.pendingFindings === 0, label: checklist.pendingFindings === 0 ? t("closeNoPendingFindings") : t("closePendingFindingsCount", { count: formatCount(checklist.pendingFindings) }), href: pendingReviewFindingsHref },
+    { key: "openActions", ok: checklist.openActions === 0, label: checklist.openActions === 0 ? t("closeNoOpenActions") : t("openActionsCount", { count: formatCount(checklist.openActions) }), href: openActionFindingsHref },
+    { key: "opener", ok: !data.steps.close.openedByViewer, label: data.steps.close.openedByViewer ? t("closeOwnRoundNotice") : t("closeSeparateApprover") },
   ]
-  const canCloseRound = data.steps.close.canClose
+  const barActions: ActionBarLink[] = [
+    ...(mainLink ? [{ ...mainLink, primary: true }] : []),
+    ...(mainLink?.href === pendingHref ? [] : [{ href: pendingHref, label: t("pendingAssets"), icon: <ListChecks className="h-4 w-4" /> }]),
+    ...(mainAction?.kind === "review" ? [] : [{ href: pendingReviewFindingsHref, label: t("openFindingReview"), icon: <FileText className="h-4 w-4" /> }]),
+    { href: returnToHref, label: tCommon("back"), icon: <ArrowLeft className="h-4 w-4" /> },
+  ]
+  // The result card is round-wide (spec §5, §8): each cell opens its result with every other filter cleared, so its
+  // count is the rows it opens; พบตรง + ไม่ตรง + ไม่พบ + รอตรวจ = ทั้งหมด (P2-R2). Out-of-scope finds sit apart.
+  const resultCells = ([
+    ["found", t("found"), data.resultCard.found, "success"],
+    ["mismatch", t("mismatchShort"), data.resultCard.mismatch, "warning"],
+    ["not_found", t("notFound"), data.resultCard.notFound, "danger"],
+    ["pending", t("pending"), data.resultCard.pending, "muted"],
+  ] as const).map(([result, label, count, tone]) => ({ result, label, count, tone, href: pageHref(roundWideFilters, { result }) }))
+  // ไม่ตรงเรื่องอะไร (spec §8, P2-R16): round-wide, so each bar opens its field with the other filters cleared.
+  const fieldBarRows = auditFindingFields.map((field) => ({
+    field,
+    label: tFinding(`type_${auditFindingTypeByField[field]}`),
+    count: data.fieldBars.counts[field],
+    href: pageHref(roundWideFilters, { field }),
+  }))
   const cancelImpact = data.cancelImpact
-  const auditRoundExportHref = buildAuditRoundExportHref(round.id, "export", resultListState)
-  const auditRoundExportPdfHref = buildAuditRoundExportHref(round.id, "export-pdf", resultListState)
-  const auditRoundVarianceHref = buildAuditRoundExportHref(round.id, "variance-export", resultListState)
   const hasResultBucketFilter = resultListState.result !== "all"
   const hasResultListSearch = Boolean(resultListState.search)
   const selectedResultLabel = resultFilterLabels[resultListState.result]
@@ -207,38 +251,6 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       : resultListState.field
         ? `/${locale}/audit/findings?status=pending&roundId=${round.id}&findingType=${auditFindingTypeByField[resultListState.field]}`
         : null
-  const resultSummaryGroups = buildAuditRoundResultSummaryGroups([
-    { result: "found", count: foundCount },
-    { result: "wrong_location", count: data.fieldBars.counts.location },
-    { result: "wrong_custodian", count: data.fieldBars.counts.custodian },
-    { result: "wrong_condition", count: data.fieldBars.counts.condition },
-    { result: "not_found", count: notFoundCount },
-    { result: "out_of_scope", count: data.resultCard.outOfScope },
-    { result: "pending_review", count: data.steps.review.pendingFindings },
-  ])
-  const resultSummaryItemConfig = {
-    found: { label: t("found"), tone: "success" as const, href: foundResultHref, actionLabel: t("viewResultItems") },
-    wrong_location: { label: t("wrongLocation"), tone: "warning" as const, href: wrongLocationResultHref, actionLabel: t("viewResultItems") },
-    wrong_custodian: { label: t("wrongCustodian"), tone: "warning" as const, href: wrongCustodianResultHref, actionLabel: t("viewResultItems") },
-    wrong_condition: { label: t("wrongCondition"), tone: "warning" as const, href: wrongConditionResultHref, actionLabel: t("viewResultItems") },
-    not_found: { label: t("notFound"), tone: "danger" as const, href: notFoundResultHref, actionLabel: t("viewResultItems") },
-    out_of_scope: { label: t("outOfScope"), tone: "info" as const, href: outOfScopeResultHref, actionLabel: t("viewResultItems") },
-    pending_review: { label: t("pendingReview"), tone: "muted" as const, href: pendingReviewResultHref, actionLabel: t("viewPendingReviewAssets") },
-  }
-  const resultNormalGroup = resultSummaryGroups.normal.map((item) => ({ ...item, ...resultSummaryItemConfig[item.result] }))
-  const resultNeedsReviewGroup = resultSummaryGroups.needsReview.map((item) => ({ ...item, ...resultSummaryItemConfig[item.result] }))
-  // The result buckets as StatStrip cells: a bucket with items is a link to its list, the bucket in view is current
-  // (aria-current and the primary line), and an empty bucket is plain text.
-  const resultStatItems = (group: typeof resultNormalGroup): StatStripItem[] =>
-    group.map((item) => ({
-      key: item.result,
-      label: item.label,
-      value: formatCount(item.count),
-      href: item.count > 0 ? item.href : undefined,
-      current: resultListState.result === item.result,
-      foot: item.count > 0 ? item.actionLabel : undefined,
-      footTitle: item.count > 0 ? item.actionLabel : undefined,
-    }))
 
   return (
     <div className={actionBarPagePadding.single}>
@@ -256,54 +268,20 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <span>
               {formatDate(round.startDate)} – {formatDate(round.endDate)}
             </span>
+            {due ? <span className={due.kind === "overdue" ? "text-danger" : "text-warning"}>{due.kind === "overdue" ? t("daysOverdue", { days: formatCount(due.days) }) : t("daysLeft", { days: formatCount(due.days) })}</span> : null}
+            {data.round.createdByLabel ? <span>{t("openedBy", { name: data.round.createdByLabel })}</span> : null}
           </>
         }
         actions={
-          canExportRound || !isRoundReadOnly ? (
-            <>
-              {canExportRound ? (
-                <>
-                  <a href={auditRoundExportHref} download className={buttonVariants({ variant: "outline", size: "md" })}>
-                    <Download aria-hidden="true" />
-                    {t("exportResult")}
-                  </a>
-                  <a href={auditRoundExportPdfHref} download className={buttonVariants({ variant: "outline", size: "md" })}>
-                    <FileText aria-hidden="true" />
-                    {t("exportResultPdf")}
-                  </a>
-                  <a href={auditRoundVarianceHref} download className={buttonVariants({ variant: "outline", size: "md" })}>
-                    <Download aria-hidden="true" />
-                    {t("exportVariance")}
-                  </a>
-                </>
-              ) : null}
-              {!isRoundReadOnly ? (
-                <>
-                  <Link href={pendingHref} className={buttonVariants({ variant: "outline", size: "md" })}>
-                    <AlertTriangle aria-hidden="true" />
-                    {t("pendingAssets")}
-                  </Link>
-                  <Link href={scanHref} className={buttonVariants({ size: "md" })}>
-                    <ScanLine aria-hidden="true" />
-                    {t("scan")}
-                  </Link>
-                </>
-              ) : null}
-            </>
+          canExportRound || (canApprove && !isRoundReadOnly) ? (
+            <AuditRoundHeaderMenus
+              exports={canExportRound ? { excel: auditRoundExportHref, pdf: auditRoundExportPdfHref, variance: auditRoundVarianceHref } : null}
+              cancel={canApprove && !isRoundReadOnly ? { roundId: round.id, impact: cancelImpact } : null}
+            />
           ) : undefined
         }
       />
-      {!isRoundReadOnly ? (
-        <ActionBar
-          label={tCommon("actions")}
-          actions={[
-            { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
-            { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
-            { href: pendingReviewFindingsHref, label: t("openFindingReview"), icon: <FileText className="h-4 w-4" /> },
-            { href: returnToHref, label: tCommon("back"), icon: <ArrowLeft className="h-4 w-4" /> },
-          ]}
-        />
-      ) : null}
+      {!isRoundReadOnly ? <ActionBar label={tCommon("actions")} actions={barActions} /> : null}
 
       {round.status === "cancelled" ? (
         <ContentPanel title={t("statusCancelled")} className="mb-6">
@@ -319,69 +297,127 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         </ContentPanel>
       ) : null}
 
-      <StatStrip
-        className="mb-6"
-        items={[
-          { key: "totalExpected", label: t("totalExpected"), value: formatCount(data.steps.walk.total) },
-          { key: "pending", label: t("pending"), value: formatCount(pendingCount) },
-          { key: "scanned", label: t("scanned"), value: formatCount(processedCount) },
-          { key: "progress", label: t("progress"), value: `${formatCount(progress)}%` },
-        ]}
-      />
-
-      <ContentPanel className="mb-6">
-        <AuditProgressBar
-          total={data.steps.walk.total}
-          processed={processedCount}
-          pending={pendingCount}
-          label={t("progress")}
-          processedLabel={t("scanned")}
-          pendingLabel={t("pending")}
-          breakdown={[
-            { label: t("found"), value: foundCount, tone: "success" },
-            { label: t("mismatch"), value: mismatchCount, tone: "warning" },
-            { label: t("notFound"), value: notFoundCount, tone: "danger" },
-            { label: t("pending"), value: pendingCount, tone: "muted" },
-          ]}
-        />
-      </ContentPanel>
-
-      <ContentPanel title={t("resultDashboard")} description={t("resultDashboardHelp")} className="mb-6">
-        <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.65fr)_1fr]">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{t("resultNormalGroup")}</h3>
-            <StatStrip className="mt-2" items={resultStatItems(resultNormalGroup)} />
+      {stepsState ? (
+        <ContentPanel
+          divided
+          title={stepsState.current ? t("nextStepTitle", { step: stepLabels[stepsState.current] }) : t("stepsClosedTitle")}
+          className="mb-6"
+          actions={
+            mainAction?.kind === "close" ? (
+              <AuditRoundCloseButton roundId={round.id} disabled={mainAction.disabled} />
+            ) : mainLink ? (
+              <Link href={mainLink.href} className={buttonVariants({ size: "md" })}>
+                {mainLink.icon}
+                {mainLink.label}
+              </Link>
+            ) : undefined
+          }
+        >
+          <Steps label={t("stepsLabel")} steps={stepItems} />
+          {/* Steps holds one short label per step (P2-R8): each step's line sits under the rail, its heading for the
+              phone, where the rail's labels are screen-reader only. */}
+          <div className="mt-4 grid gap-4 text-sm md:grid-cols-3">
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-meta font-medium text-muted-foreground md:sr-only">{stepLabels.walk}</h3>
+              <p className="text-foreground">
+                <span className="num">{t("stepWalkChecked", { checked: formatCount(data.steps.walk.checked), total: formatCount(data.steps.walk.total) })}</span>
+                {" · "}
+                {data.steps.walk.left > 0 ? (
+                  <Link href={pendingHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{t("stepWalkLeft", { count: formatCount(data.steps.walk.left) })}</Link>
+                ) : (
+                  <span className="text-muted-foreground">{t("stepWalkLeft", { count: formatCount(0) })}</span>
+                )}
+              </p>
+            </div>
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-meta font-medium text-muted-foreground md:sr-only">{stepLabels.review}</h3>
+              <p className="text-foreground">
+                {/* Findings, so "รอ n" is the rows of the findings page it opens, as "พิจารณา n รายการ" is (P2-R26). */}
+                {data.steps.review.pendingFindings > 0 ? (
+                  <Link href={pendingReviewFindingsHref} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{t("stepReviewWaiting", { count: formatCount(data.steps.review.pendingFindings) })}</Link>
+                ) : (
+                  <span className="text-muted-foreground">{t("stepReviewWaiting", { count: formatCount(0) })}</span>
+                )}
+                {" · "}
+                <span className="num">{t("stepReviewDecided", { count: formatCount(data.steps.review.decidedFindings) })}</span>
+              </p>
+            </div>
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-meta font-medium text-muted-foreground md:sr-only">{stepLabels.close}</h3>
+              <ul className="space-y-1">
+                {closeConditions.map((condition) => (
+                  <li key={condition.key} className="flex items-start gap-2">
+                    {condition.ok ? (
+                      <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <WarningIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
+                    )}
+                    {!condition.ok && condition.href ? (
+                      <Link href={condition.href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{condition.label}</Link>
+                    ) : (
+                      <span className={condition.ok ? "text-muted-foreground" : "text-foreground"}>{condition.label}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{t("resultNeedsReviewGroup")}</h3>
-            <StatStrip className="mt-2" items={resultStatItems(resultNeedsReviewGroup)} />
-          </div>
-        </div>
-      </ContentPanel>
-
-      <ContentPanel title={t("evidenceSummary")} description={t("evidenceSummaryHelp")} className="mb-6">
-        <StatStrip
-          items={[
-            { key: "evidenceAttached", label: t("evidenceAttached"), value: formatCount(data.evidence.withPhoto) },
-            { key: "evidenceMissing", label: t("evidenceMissing"), value: formatCount(data.evidence.withoutPhoto) },
-            { key: "checklistComplete", label: t("checklistComplete"), value: formatCount(data.evidence.checklistComplete) },
-            { key: "checklistIncomplete", label: t("checklistIncomplete"), value: formatCount(data.evidence.checklistIncomplete) },
-          ]}
-        />
-      </ContentPanel>
-
-      {canApprove && !isRoundReadOnly ? (
-        <div className="mb-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <AuditRoundCloseButton
-            roundId={round.id}
-            disabled={!canCloseRound}
-            checklist={closeChecklist}
-          />
-          <ContentPanel title={t("cancelRound")} description={t("cancelDialogHelp")} className="lg:min-w-72 lg:self-start">
-            <AuditRoundCancelButton roundId={round.id} impact={cancelImpact} />
-          </ContentPanel>
-        </div>
+        </ContentPanel>
       ) : null}
+
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        <ContentPanel divided title={t("resultDashboard")} description={t("resultDashboardHelp")}>
+          <DistributionBar segments={resultCells.map((cell) => ({ key: cell.result, count: cell.count, tone: cell.tone, href: cell.href, title: t("resultSegmentTitle", { result: cell.label, count: formatCount(cell.count) }) }))} />
+          {/* The cells are the bar's words (The Data Bars Rule): every count and the same links. */}
+          <StatStrip
+            className="mt-4"
+            items={[
+              { key: "all", label: t("viewAll"), value: formatCount(data.resultCard.all), href: data.resultCard.all > 0 ? pageHref(roundWideFilters) : undefined },
+              ...resultCells.map((cell) => ({ key: cell.result, label: cell.label, value: formatCount(cell.count), href: cell.count > 0 ? cell.href : undefined, foot: data.resultCard.all > 0 ? formatPercent(cell.count / data.resultCard.all) : undefined })),
+            ]}
+          />
+          <p className="mt-3 text-sm text-muted-foreground">
+            {data.resultCard.outOfScope > 0 ? (
+              <Link href={pageHref(roundWideFilters, { result: "out_of_scope" })} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{t("outOfScopeExtra", { count: formatCount(data.resultCard.outOfScope) })}</Link>
+            ) : (
+              t("outOfScopeExtra", { count: formatCount(0) })
+            )}
+          </p>
+        </ContentPanel>
+
+        <ContentPanel divided title={t("mismatchFieldsTitle")}>
+          <ul aria-label={t("mismatchFieldsTitle")} className="space-y-3">
+            {fieldBarRows.map((bar) => (
+              <li key={bar.field} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-sm">
+                {bar.count > 0 ? (
+                  <Link href={bar.href} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center md:min-h-0")}>{bar.label}</Link>
+                ) : (
+                  <span className="text-muted-foreground">{bar.label}</span>
+                )}
+                <span className="num font-semibold text-foreground">{formatCount(bar.count)}</span>
+                <span className="col-span-2 block">
+                  <PaceBar value={data.fieldBars.distinctItems > 0 ? bar.count / data.fieldBars.distinctItems : 0} pace={null} label={t("fieldBarLabel", { field: bar.label, count: formatCount(bar.count), total: formatCount(data.fieldBars.distinctItems) })} behind={false} />
+                </span>
+              </li>
+            ))}
+          </ul>
+          {data.fieldBars.multipleFields ? <p className="mt-3 text-sm text-muted-foreground">{t("multipleFieldsNote")}</p> : null}
+          <div className="mt-4 space-y-1 border-t border-border-soft pt-4 text-sm text-muted-foreground">
+            <p>{t("evidenceLine", { withPhoto: formatCount(data.evidence.withPhoto), checked: formatCount(data.evidence.checked) })}</p>
+            {data.evidence.checklistComplete + data.evidence.checklistIncomplete > 0 ? (
+              <p>{t("evidenceChecklistLine", { complete: formatCount(data.evidence.checklistComplete), incomplete: formatCount(data.evidence.checklistIncomplete) })}</p>
+            ) : null}
+            {data.componentsMissing > 0 ? (
+              <p>
+                <Link href={pageHref(roundWideFilters, { components: "missing" })} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center gap-1 md:min-h-0")}>
+                  {t("componentsMissingLine", { count: formatCount(data.componentsMissing) })}
+                  <ChevronRight aria-hidden="true" className="size-4" />
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        </ContentPanel>
+      </div>
 
       <section id="audit-result-list" className="scroll-mt-24">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

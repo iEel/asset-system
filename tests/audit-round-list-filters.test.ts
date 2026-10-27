@@ -173,15 +173,12 @@ test("the round page keeps every parsed filter in its where and its links until 
   const page = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx")
   assert.match(page, /branchId\?: string \| string\[\]; categoryId\?: string \| string\[\]; field\?: string \| string\[\]; components\?: string \| string\[\] \}>/)
   assert.match(page, /const itemFilters = \{ companyId: resultListState\.companyId, branchId: resultListState\.branchId, categoryId: resultListState\.categoryId, field: resultListState\.field, components: resultListState\.components \}/)
-  for (const [name, field] of [["wrongLocation", "location"], ["wrongCustodian", "custodian"], ["wrongCondition", "condition"]]) {
-    assert.match(page, new RegExp(`const ${name}ResultHref = buildAuditRoundResultListHref\\(\\{ locale, roundId: round\\.id, result: "all", field: "${field}", returnTo: returnToHref, pageSize: resultListState\\.pageSize \\}\\)`), name)
-  }
   assert.match(page, /&findingType=\$\{auditFindingTypeByField\[resultListState\.field\]\}/)
   assert.match(page, /pending: t\("pending"\),/)
   assert.match(page, /mismatch: t\("mismatch"\),/)
   for (const key of ["categoryId", "field", "components"]) {
     assert.match(page, new RegExp(`\\.\\.\\.\\(resultListState\\.${key} \\? \\{ ${key}: resultListState\\.${key} \\} : \\{\\}\\)`), `the search keeps ${key}`)
   }
-  // The summary boxes keep their wrong_* keys (AuditRoundResultSummaryKey) until Task 4; no link writes result=wrong_*.
+  // No link writes result=wrong_* (the field bars write field=, Task 4).
   assert.doesNotMatch(page, /findingReviewTypeByResult|buildAuditRoundResultListHref\(\{[^}]*result: "wrong_/)
 })

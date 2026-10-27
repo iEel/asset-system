@@ -11,12 +11,15 @@ import {
   auditRoundTopCategoryIds,
   auditSystemFindingDecisionActions,
   buildAuditRoundCategoryChips,
+  buildAuditRoundPageMainAction,
+  buildAuditRoundPageSteps,
   foldAuditRoundEvidence,
   formatAuditUserLabel,
   hasMultipleAuditFieldFindings,
   listAuditRoundMissingComponents,
   resolveAuditRoundRowChecker,
 } from "../src/lib/audit-round-page-rules.ts"
+import { auditRoundHrefQuery, buildAuditRoundExportHref, buildAuditRoundPageHref, parseAuditRoundListFilters } from "../src/lib/audit-round-result-filters.ts"
 
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
@@ -138,4 +141,50 @@ test("the round page's rules are pure and client-safe", () => {
   assert.doesNotMatch(source, /from "@\//)
   assert.doesNotMatch(source, /^import (?!type )[^\n]*from "@prisma\/client"/m)
   assert.doesNotMatch(source, /prisma\./)
+})
+
+// Group 2 plan 2 Task 4 (spec §8, P2-R8): the round page's three steps, the button that follows them, and the export
+// links that carry the list's filters.
+test("three steps: the walk until nothing is pending, then the decisions, then the close; all complete once closed; none for a cancelled round (spec §8, P2-R8)", () => {
+  assert.equal(buildAuditRoundPageSteps({ status: "cancelled", pendingItems: 3, pendingFindings: 1 }), null)
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0 }), { states: ["complete", "complete", "complete"], current: null })
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 12, pendingFindings: 5 }), { states: ["current", "upcoming", "upcoming"], current: "walk" })
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5 }), { states: ["complete", "current", "upcoming"], current: "review" })
+  // A leftover draft reads as open (spec §14).
+  assert.deepEqual(buildAuditRoundPageSteps({ status: "draft", pendingItems: 0, pendingFindings: 0 }), { states: ["complete", "complete", "current"], current: "close" })
+})
+
+test("the main button follows the step: the scan for audit:edit or the pending list, then the decisions, then ปิดรอบตรวจ for audit:approve, disabled while a plan is open or for the opener (spec §8, §5, P2-R7)", () => {
+  const base = { pendingItems: 12, pendingFindings: 5, canClose: false, openedByViewer: false, canScan: true, canApprove: true }
+  const walk = buildAuditRoundPageSteps({ status: "open", pendingItems: 12, pendingFindings: 5 })
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...base, steps: walk }), { kind: "walk", count: 12, target: "scan" })
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...base, steps: walk, canScan: false }), { kind: "walk", count: 12, target: "pending" })
+  const review = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 5 })
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...base, pendingItems: 0, steps: review }), { kind: "review", count: 5 })
+  const close = buildAuditRoundPageSteps({ status: "open", pendingItems: 0, pendingFindings: 0 })
+  const atClose = { ...base, pendingItems: 0, pendingFindings: 0, steps: close }
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: true }), { kind: "close", disabled: false })
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: false }), { kind: "close", disabled: true }, "an open action plan")
+  assert.deepEqual(buildAuditRoundPageMainAction({ ...atClose, canClose: true, openedByViewer: true }), { kind: "close", disabled: true }, "the opener")
+  assert.equal(buildAuditRoundPageMainAction({ ...atClose, canClose: true, canApprove: false }), null)
+  assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: buildAuditRoundPageSteps({ status: "closed", pendingItems: 0, pendingFindings: 0 }) }), null)
+  assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: null }), null)
+})
+
+test("an export link carries the list's filters and nothing else: the page link's query without page, page size and returnTo (spec §8 ตามตัวกรองที่เลือก)", () => {
+  const listHref = "/th/audit/rounds/round-1?result=found&categoryId=cat-1&search=PC&page=2&pageSize=50&returnTo=%2Fth%2Faudit%2Frounds#audit-result-list"
+  assert.equal(auditRoundHrefQuery(listHref).get("categoryId"), "cat-1")
+  assert.equal(auditRoundHrefQuery("/th/audit/rounds/round-1#audit-result-list").toString(), "")
+  // Round trip through Task 1's builders and parser: the export (from the filters) is the list link's query less its
+  // paging and way back, and the route reads back exactly the filters the list shows.
+  const filters = { ...parseAuditRoundListFilters({}), result: "mismatch", categoryId: "other", field: "department", components: "missing", companyId: "company-1", branchId: "branch-1", search: "PC" } as const
+  const href = buildAuditRoundPageHref("th", "round-1", filters, { page: 3, pageSize: 50, returnTo: "/th/audit/rounds" })
+  const exported = new URL(buildAuditRoundExportHref("round-1", "export-pdf", filters), "http://local")
+  assert.equal(exported.pathname, "/api/audit-rounds/round-1/export-pdf")
+  for (const name of ["page", "pageSize", "returnTo"]) assert.equal(exported.searchParams.has(name), false, name)
+  const listQuery = auditRoundHrefQuery(href)
+  for (const name of ["page", "pageSize", "returnTo"]) listQuery.delete(name)
+  assert.equal(exported.searchParams.toString(), listQuery.toString())
+  const parsed = parseAuditRoundListFilters(Object.fromEntries(exported.searchParams))
+  for (const key of ["result", "categoryId", "field", "components", "companyId", "branchId", "search"] as const) assert.equal(parsed[key], filters[key], key)
 })

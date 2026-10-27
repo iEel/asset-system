@@ -11,26 +11,10 @@ import test from "node:test"
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const C = "src/components/"
 
-test("audit progress bar: no frame of its own, counts through formatCount, the breakdown as a legend with shape markers (spec 2D D9, M22)", () => {
-  const source = read(`${C}audit/audit-progress-bar.tsx`)
-  assert.match(source, /<div className=\{compact \? "min-w-44" : undefined\}>/)
-  assert.match(source, /\{formatCount\(processed\)\}\/\{formatCount\(total\)\}/)
-  assert.match(source, /\{formatCount\(pending\)\}/)
-  assert.match(source, /\{formatCount\(percent\)\}%/)
-  assert.match(source, /<span aria-hidden="true" className=\{statusMarkerVariants\(\{ tone: item\.tone \?\? "muted" \}\)\} \/>/)
-  assert.match(source, /<dd className="text-count num text-foreground">\{formatCount\(item\.value\)\}<\/dd>/)
-  assert.doesNotMatch(source, /rounded-lg|border-border|bg-surface|getBreakdownClass|-soft\b|\btext-xs\b|text-lg/)
-})
-
-test("audit round close: a ContentPanel with the shared busy Button, the checklist counts as a StatStrip with attention, and a blocking rule as a neutral Notice (spec 2D D7, D9, M22, M29)", () => {
+test("audit round close: the shared busy Button only; the next-step card writes the conditions (spec 2D D7; group 2 spec §8, §13 bug 2)", () => {
   const source = read(`${C}audit/audit-round-close-button.tsx`)
-  assert.match(source, /<ContentPanel\s+title=\{t\("closeChecklist"\)\}\s+description=\{t\("closeChecklistHelp"\)\}\s+actions=\{/)
   assert.match(source, /<Button onClick=\{closeRound\} busy=\{saving\} disabled=\{disabled\}>\s*<Lock aria-hidden="true" \/>\s*\{t\("closeRound"\)\}/)
-  assert.match(source, /<StatStrip\b/)
-  assert.match(source, /value: formatCount\(item\.value\)/)
-  assert.match(source, /href: item\.href && item\.value > 0 \? item\.href : undefined/)
-  assert.match(source, /attention: !item\.ok/)
-  assert.match(source, /<Notice key=\{item\.label\} tone="neutral" className="mt-3">\{item\.label\}<\/Notice>/)
+  assert.doesNotMatch(source, /<ContentPanel\b|<StatStrip\b|<Notice\b|checklist/)
   assert.doesNotMatch(source, /<button\b|Loader2|CheckCircle2|disabled:opacity|text-white|-soft\b|rounded-lg|rounded-md|text-2xl|\btext-xs\b/)
 })
 
@@ -118,20 +102,19 @@ test("audit rounds list: the coverage a folded `<details>` on the panel classes 
   assert.doesNotMatch(source, /function (?:AuditStatusBadge|MobileAuditField)\b|"All assets"|rounded-full|rounded-lg|\b(?:bg|border)-(?:success|warning|danger|info)-(?:soft|border)\b|\btext-info\b|hover:underline|hover:text-primary|text-2xl font-bold|\btext-xs\b|CheckCircle2|ClipboardCheck/)
 })
 
-test("audit round page: ContentPanels, the cancelled state as an info Notice with its facts in a KeyValueList, the result list head without a frame, the list frame on the panel classes, Chips and info Notices instead of the info tint (spec 2D §3.4, D7, D9, M22, M29)", () => {
+test("audit round page: ContentPanels, the cancelled state as an info Notice with its facts in a KeyValueList, the result list head without a frame, the list frame on the panel classes, Chips and info Notices instead of the info tint (spec 2D §3.4, D7, D9, M22, M29; group 2 spec §8: the next-step card, the result card and ไม่ตรงเรื่องอะไร)", () => {
   const source = read(`${D}audit/rounds/[id]/page.tsx`)
   assert.match(source, /<ContentPanel title=\{t\("statusCancelled"\)\} className="mb-6">\s*<Notice tone="info">\{t\("cancelledReadOnlyNotice"\)\}<\/Notice>/)
   assert.match(source, /value: round\.cancelledAt \? formatDateTime\(round\.cancelledAt\) : null/)
-  assert.match(source, /<ContentPanel className="mb-6">\s*<AuditProgressBar/)
-  for (const key of ["resultDashboard", "evidenceSummary", "cancelRound"]) {
-    assert.match(source, new RegExp(`<ContentPanel title=\\{t\\("${key}"\\)\\}`), key)
-  }
+  assert.match(source, /<ContentPanel\s+divided\s+title=\{stepsState\.current \?/)
+  for (const key of ["resultDashboard", "mismatchFieldsTitle"]) assert.match(source, new RegExp(`<ContentPanel divided title=\\{t\\("${key}"\\)\\}`), key)
   assert.match(source, /<span className="num font-medium text-foreground">\{formatCount\(resultListTotal\)\}<\/span> \{t\("items"\)\}/)
   assert.match(source, /<div className=\{cn\(getPanelClasses\(\), "overflow-hidden"\)\}>/)
   assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center md:min-h-0"\)\}/)
   assert.equal(source.match(/<Chip key=\{line\} title=\{line\}>\{line\}<\/Chip>/g)?.length, 2)
   assert.equal(source.match(/<Notice tone="info" className="mt-2">/g)?.length, 2)
-  assert.doesNotMatch(source, /\b(?:bg|text|border)-info(?:-soft|-border)?\b|bg-danger-soft|border-danger-border|text-danger|rounded-full|rounded-lg border|hover:text-primary|\btext-xs\b/)
+  assert.doesNotMatch(source, /\b(?:bg|text|border)-info(?:-soft|-border)?\b|bg-danger-soft|border-danger-border|rounded-full|rounded-lg border|hover:text-primary|\btext-xs\b/)
+  assert.equal(source.match(/text-danger/g)?.length, 1, "only the overdue line")
 })
 
 test("audit pending page: the count in a ContentPanel with a text link, the list frame on the panel classes, the phone card facts in a KeyValueList and the codes as tag (spec 2D D9, D19, M29, M33)", () => {

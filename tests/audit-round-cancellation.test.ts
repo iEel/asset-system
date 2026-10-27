@@ -92,7 +92,8 @@ test("audit rounds UI exposes cancellation and cancelled read-only state", () =>
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
-  assert.match(detail, /AuditRoundCancelButton/)
+  assert.match(detail, /<AuditRoundHeaderMenus\b/)
+  assert.match(readFileSync("src/components/audit/audit-round-header-menus.tsx", "utf8"), /<AuditRoundCancelButton ref=\{cancelDialogRef\} hideTrigger/)
   assert.match(detail, /isAuditRoundReadOnlyStatus\(round\.status\)/)
   assert.match(detail, /cancelReason/)
   assert.match(detail, /cancelledAt/)

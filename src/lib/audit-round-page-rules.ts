@@ -1,9 +1,11 @@
 // The round page's rules (group 2 spec §5, §8): who decided a finding, the field bars' distinct items, a person's name,
-// the category chips, the photo count, who checked a row, a parent's missing components. Pure and client-safe:
+// the category chips, the photo count, who checked a row, a parent's missing components, the next-step card's three steps
+// and the main button that follows them. Pure and client-safe:
 // `import type` and relative .ts imports only, so node --test imports it.
 import type { Prisma } from "@prisma/client"
 import { foldTopCategories, isAuditRoundOwnItem } from "./audit-round-counts-rules.ts"
 import { auditCountedFindingReviewStatuses, auditFindingFields, auditFindingTypeByField, type AuditFindingField } from "./audit-round-result-filters.ts"
+import { getLinearStepStates, type StepState } from "./step-states.ts"
 
 // The scan closes a finding itself in four ways. A re-scan rejects stale findings with this remark (scan/route.ts:44,
 // :623-639). Three paths set these actionTaken values (scan/route.ts:346-357, :359-372, :466-479). None of them is a
@@ -168,4 +170,45 @@ export function listAuditRoundMissingComponents(
   return links
     .filter((link) => link.componentAsset.auditItems.length > 0)
     .map((link) => ({ id: link.componentAsset.id, assetTag: link.componentAsset.assetTag, name: link.componentAsset.name }))
+}
+
+export const auditRoundPageStepKeys = ["walk", "review", "close"] as const
+export type AuditRoundPageStepKey = (typeof auditRoundPageStepKeys)[number]
+export type AuditRoundPageSteps = { states: StepState[]; current: AuditRoundPageStepKey | null }
+
+// The walk until nothing is pending, then the decisions, then the close: the close API's own first two conditions
+// (audit-round-close.ts getAuditRoundCloseChecklist), so step 3 is reached exactly when only the plans and the opener
+// rule can block it.
+// A closed round has every step complete; a cancelled round has no card (its cancel box instead, P2-R8). A leftover
+// draft reads as open (spec §14).
+export function buildAuditRoundPageSteps({ status, pendingItems, pendingFindings }: { status: string; pendingItems: number; pendingFindings: number }): AuditRoundPageSteps | null {
+  if (status === "cancelled") return null
+  if (status === "closed") return { states: getLinearStepStates(auditRoundPageStepKeys.length, auditRoundPageStepKeys.length - 1, "complete"), current: null }
+  const index = pendingItems > 0 ? 0 : pendingFindings > 0 ? 1 : 2
+  return { states: getLinearStepStates(auditRoundPageStepKeys.length, index), current: auditRoundPageStepKeys[index] }
+}
+
+export type AuditRoundPageMainAction =
+  | { kind: "walk"; count: number; target: "scan" | "pending" }
+  | { kind: "review"; count: number }
+  | { kind: "close"; disabled: boolean }
+  | null
+
+// The card's main button follows the step (spec §8): "เดินตรวจต่อ (N)" opens the scan page for audit:edit and the
+// pending list for anyone else (spec §5, P2-R7); "พิจารณา N รายการ" counts the pending findings, the rows of the
+// findings page it opens; at step 3 "ปิดรอบตรวจ" for audit:approve, disabled while a plan is open or for the opener
+// (the API refuses both).
+export function buildAuditRoundPageMainAction({ steps, pendingItems, pendingFindings, canClose, openedByViewer, canScan, canApprove }: {
+  steps: AuditRoundPageSteps | null
+  pendingItems: number
+  pendingFindings: number
+  canClose: boolean
+  openedByViewer: boolean
+  canScan: boolean
+  canApprove: boolean
+}): AuditRoundPageMainAction {
+  if (!steps?.current) return null
+  if (steps.current === "walk") return { kind: "walk", count: pendingItems, target: canScan ? "scan" : "pending" }
+  if (steps.current === "review") return { kind: "review", count: pendingFindings }
+  return canApprove ? { kind: "close", disabled: !canClose || openedByViewer } : null
 }

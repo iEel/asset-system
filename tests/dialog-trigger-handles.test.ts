@@ -10,11 +10,13 @@ const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const decision = "src/components/disposal/disposal-decision-button.tsx"
 const execution = "src/components/disposal/disposal-execution-button.tsx"
 const notFound = "src/components/audit/audit-mark-not-found-button.tsx"
+const cancelRound = "src/components/audit/audit-round-cancel-button.tsx"
 
 for (const [path, handle] of [
   [decision, "DisposalDecisionButtonHandle"],
   [execution, "DisposalExecutionButtonHandle"],
   [notFound, "AuditMarkNotFoundButtonHandle"],
+  [cancelRound, "AuditRoundCancelButtonHandle"],
 ] as const) {
   test(`${handle}: the owner can open the dialog and hide the trigger`, () => {
     const source = read(path)
@@ -49,4 +51,12 @@ test("the not-found dialog opens through openDialog and gives focus back to the 
   assert.match(source, /useImperativeHandle\(ref, \(\) => \(\{ open: openDialog \}\)\)/)
   assert.match(source, /\{hideTrigger \? null : trigger\}/)
   assert.match(source, /<AccessibleDialog[\s\S]*?returnFocusRef=\{returnFocusRef\}[\s\S]*?onClose=\{closeDialog\}/)
+})
+
+test("the round cancel dialog opens through its handle and gives focus back to อื่น ๆ (group 2 spec §8)", () => {
+  const source = read(cancelRound)
+  assert.match(source, /useImperativeHandle\(ref, \(\) => \(\{ open: \(\) => setDialogOpen\(true\) \}\)\)/)
+  assert.match(source, /\{hideTrigger \? null : \(/)
+  assert.match(source, /<AccessibleDialog[\s\S]*?returnFocusRef=\{returnFocusRef\}[\s\S]*?onClose=\{closeDialog\}/)
+  assert.match(source, /^export type AuditRoundCancellationImpact = \{/m)
 })

@@ -92,11 +92,7 @@ test("the dashboard counts the round's own items, so its KPI equals the round pa
 
 test("the round page's total, checked and progress come from the page data's round-wide fold of its own items (group 2 spec §5, §8)", () => {
   const page = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx")
-  assert.match(page, /const pendingCount = data\.steps\.walk\.left\n\s+const processedCount = data\.steps\.walk\.checked/)
-  assert.match(page, /const progress = data\.steps\.walk\.total > 0 \? Math\.round\(\(data\.steps\.walk\.checked \/ data\.steps\.walk\.total\) \* 100\) : 0/)
-  assert.match(page, /\{ key: "totalExpected", label: t\("totalExpected"\), value: formatCount\(data\.steps\.walk\.total\) \}/)
-  assert.match(page, /\{ key: "scanned", label: t\("scanned"\), value: formatCount\(processedCount\) \}/)
-  assert.match(page, /<AuditProgressBar\s+total=\{data\.steps\.walk\.total\}\s+processed=\{processedCount\}\s+pending=\{pendingCount\}/)
+  assert.doesNotMatch(page, /AuditProgressBar|t\("totalExpected"\)/, "the next-step card replaced the totals (spec §8)")
   assert.match(page, /const cancelImpact = data\.cancelImpact/)
   // The cancel dialog's "work done" stays the API's count (route.ts getCancellationImpact): every non-pending item.
   assert.match(read("src/lib/audit-round-page-data.ts"), /processedItems: walk\.checked \+ resultCard\.outOfScope,/)

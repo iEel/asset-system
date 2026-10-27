@@ -73,7 +73,7 @@ export function auditPace(start: Date, due: Date, today: Date): number {
   return Math.min(1, Math.max(0, elapsed / span))
 }
 
-/** A whole percent, the round page's own rule (audit-progress-bar.tsx). */
+/** A whole percent, as the round page and the rounds list show it. */
 export function auditPercent(processed: number, expected: number): number {
   return expected > 0 ? Math.round((processed / expected) * 100) : 0
 }

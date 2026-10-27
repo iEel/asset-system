@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useImperativeHandle, useState, type FormEvent, type Ref, type RefObject } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { AlertTriangle } from "lucide-react"
@@ -22,7 +22,7 @@ import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { formatCount } from "@/lib/display-format"
 import { maxLength, required } from "@/lib/validation-rules"
 
-type AuditRoundCancellationImpact = {
+export type AuditRoundCancellationImpact = {
   pendingItems: number
   processedItems: number
   pendingFindings: number
@@ -30,6 +30,8 @@ type AuditRoundCancellationImpact = {
   openActions: number
   scanHistoryRows: number
 }
+
+export type AuditRoundCancelButtonHandle = { open: () => void }
 
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1).
 const FIELD_IDS = {
@@ -51,7 +53,21 @@ function validate(values: { reason: string }): Partial<Record<CancelField, strin
   return errors
 }
 
-export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; impact: AuditRoundCancellationImpact }) {
+// The round's cancel dialog (spec 2D M26). Its owner, the round page header's อื่น ๆ menu (group 2 spec §8), renders it
+// outside the menu with hideTrigger, opens it through the handle and passes its trigger as returnFocusRef (R-m).
+export function AuditRoundCancelButton({
+  roundId,
+  impact,
+  ref,
+  hideTrigger = false,
+  returnFocusRef,
+}: {
+  roundId: string
+  impact: AuditRoundCancellationImpact
+  ref?: Ref<AuditRoundCancelButtonHandle>
+  hideTrigger?: boolean
+  returnFocusRef?: RefObject<HTMLElement | null>
+}) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("auditRound")
@@ -60,6 +76,7 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
   const [reason, setReason] = useState("")
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<CancelField>({ params: FIELD_PARAMS })
+  useImperativeHandle(ref, () => ({ open: () => setDialogOpen(true) }))
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
 
   // The next opening starts with no errors.
@@ -102,10 +119,12 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
 
   return (
     <>
-      <Button variant="danger" busy={saving} onClick={() => setDialogOpen(true)} className="w-full sm:w-auto">
-        <AlertTriangle aria-hidden="true" />
-        {t("cancelRound")}
-      </Button>
+      {hideTrigger ? null : (
+        <Button variant="danger" busy={saving} onClick={() => setDialogOpen(true)} className="w-full sm:w-auto">
+          <AlertTriangle aria-hidden="true" />
+          {t("cancelRound")}
+        </Button>
+      )}
 
       <AccessibleDialog
         open={dialogOpen}
@@ -113,6 +132,7 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
         description={t("cancelDialogHelp")}
         busy={saving}
         size="sm"
+        returnFocusRef={returnFocusRef}
         onClose={closeDialog}
       >
         <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>

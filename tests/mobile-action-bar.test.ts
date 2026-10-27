@@ -103,7 +103,7 @@ test("the four detail pages use ActionBar with its page padding, and the two old
   for (const [route, [source, root]] of Object.entries(pages)) {
     assert.match(source, root, route)
     if (route === "assets/[id]") continue
-    assert.match(source, /^import \{ ActionBar, actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m, route)
+    assert.match(source, route === "audit/rounds/[id]" ? /^import \{ ActionBar, actionBarPagePadding, type ActionBarLink \} from "@\/components\/ui\/action-bar"$/m : /^import \{ ActionBar, actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m, route)
     assert.match(source, /<ActionBar\s+label=\{tCommon\("actions"\)\}/, route)
     assert.doesNotMatch(source, /MobileActionBar|\bpb-(?:24|36)\b/, route)
   }

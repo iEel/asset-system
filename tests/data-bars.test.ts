@@ -88,7 +88,7 @@ test("DESIGN.md, docs/14 and design.json state The Data Bars Rule and the two pa
   assert.ok(colorRule !== -1 && barsRule > colorRule && barsRule < design.indexOf("\n**The Status With Evidence Rule.** "), "§2: the rule follows The Where Color Lives Rule")
   assert.ok(design.slice(colorRule, barsRule).includes("and as the segments of a data bar (The Data Bars Rule)."), "The Where Color Lives Rule names the data bars")
   const rule = design.slice(barsRule, design.indexOf("\n\n", barsRule + 1))
-  for (const phrase of ["`statusFillVariants`", "2px apart", "3:1", "`tests/design-tokens-contrast.test.ts`", "never the only carrier of its meaning", "`aria-hidden=\"true\"`", "always paired with a table", "`role=\"img\"`", "`AuditProgressBar`"]) {
+  for (const phrase of ["`statusFillVariants`", "2px apart", "3:1", "`tests/design-tokens-contrast.test.ts`", "never the only carrier of its meaning", "`aria-hidden=\"true\"`", "always paired with a table", "`role=\"img\"`", "The audit scan header's bar"]) {
     assert.ok(rule.includes(phrase), phrase)
   }
   assert.ok(design.includes("the ring, input, menu and data bar pairs"), "The Token Contrast Rule names the data bar pairs")

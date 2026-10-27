@@ -48,27 +48,6 @@ export const auditRoundResultPageSizeOptions = [25, 50, 100] as const
 
 const AUDIT_ROUND_DEFAULT_PAGE_SIZE = 25
 
-export type AuditRoundResultSummaryKey = "found" | "wrong_location" | "wrong_custodian" | "wrong_condition" | "not_found" | "out_of_scope" | "pending_review"
-
-export type AuditRoundResultSummaryInput = {
-  result: AuditRoundResultSummaryKey
-  count: number
-}
-
-export type AuditRoundResultSummaryItem = AuditRoundResultSummaryInput & {
-  actionable: boolean
-}
-
-const auditRoundNormalResultOrder: AuditRoundResultSummaryKey[] = ["found"]
-const auditRoundNeedsReviewResultOrder: AuditRoundResultSummaryKey[] = [
-  "wrong_location",
-  "wrong_custodian",
-  "wrong_condition",
-  "not_found",
-  "out_of_scope",
-  "pending_review",
-]
-
 const auditRoundItemStatusLabelKeys: Record<string, "pending" | "scanned"> = {
   pending: "pending",
   scanned: "scanned",
@@ -89,33 +68,12 @@ const auditRoundItemResultLabelKeys: Record<string, "found" | "confirmedWithPare
   out_of_scope: "outOfScope",
 }
 
-export function buildAuditRoundResultSummaryGroups(items: AuditRoundResultSummaryInput[]) {
-  const byResult = new Map(items.map((item) => [item.result, item]))
-  return {
-    normal: buildAuditRoundResultSummaryItems(auditRoundNormalResultOrder, byResult),
-    needsReview: buildAuditRoundResultSummaryItems(auditRoundNeedsReviewResultOrder, byResult).sort((left, right) => {
-      if (left.actionable === right.actionable) return 0
-      return left.actionable ? -1 : 1
-    }),
-  }
-}
-
 export function getAuditRoundItemStatusLabelKey(status: string | null | undefined) {
   return status ? (auditRoundItemStatusLabelKeys[status] ?? null) : null
 }
 
 export function getAuditRoundItemResultLabelKey(result: string | null | undefined) {
   return result ? (auditRoundItemResultLabelKeys[result] ?? null) : null
-}
-
-function buildAuditRoundResultSummaryItems(
-  order: Array<AuditRoundResultSummaryInput["result"]>,
-  byResult: Map<AuditRoundResultSummaryInput["result"], AuditRoundResultSummaryInput>,
-): AuditRoundResultSummaryItem[] {
-  return order.map((result) => {
-    const count = byResult.get(result)?.count ?? 0
-    return { result, count, actionable: count > 0 }
-  })
 }
 
 export function resolveAuditRoundResultFilter(value?: string | string[] | null): AuditRoundResultFilter {
@@ -389,6 +347,12 @@ export function buildAuditRoundPageHref(locale: string, roundId: string, filters
   if (overrides.returnTo) params.set("returnTo", overrides.returnTo)
   const query = params.toString()
   return `/${locale}/audit/rounds/${roundId}${query ? `?${query}` : ""}#audit-result-list`
+}
+
+// The query of a round-page link as URLSearchParams: the search's hidden inputs read it (Task 5), so the one writer
+// (buildAuditRoundPageHref) decides every name and default (group 2 plan 2).
+export function auditRoundHrefQuery(href: string): URLSearchParams {
+  return new URLSearchParams(href.split("#")[0].split("?")[1] ?? "")
 }
 
 /** The round's exports: the list's own filter params, with no page, returnTo or hash. */

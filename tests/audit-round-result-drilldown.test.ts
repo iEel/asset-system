@@ -6,7 +6,6 @@ import {
   auditRoundBranchFilterName,
   buildAuditExportFilename,
   buildAuditExportFilterLabel,
-  buildAuditRoundResultSummaryGroups,
   buildAuditRoundItemWhere,
   buildAuditRoundItemsHref,
   buildAuditRoundResultListHref,
@@ -54,30 +53,6 @@ test("audit round result drilldown href preserves return context and anchors the
   )
 })
 
-test("audit round result summary separates normal results from actionable exceptions", () => {
-  const groups = buildAuditRoundResultSummaryGroups([
-    { result: "found", count: 12 },
-    { result: "wrong_location", count: 2 },
-    { result: "wrong_custodian", count: 0 },
-    { result: "wrong_condition", count: 1 },
-    { result: "not_found", count: 0 },
-    { result: "out_of_scope", count: 3 },
-    { result: "pending_review", count: 0 },
-  ])
-
-  assert.deepEqual(groups.normal.map((item) => item.result), ["found"])
-  assert.deepEqual(groups.needsReview.map((item) => item.result), [
-    "wrong_location",
-    "wrong_condition",
-    "out_of_scope",
-    "wrong_custodian",
-    "not_found",
-    "pending_review",
-  ])
-  assert.equal(groups.needsReview.find((item) => item.result === "wrong_location")?.actionable, true)
-  assert.equal(groups.needsReview.find((item) => item.result === "wrong_custodian")?.actionable, false)
-})
-
 test("audit round item display labels use translation keys instead of raw values", () => {
   assert.equal(getAuditRoundItemStatusLabelKey("scanned"), "scanned")
   assert.equal(getAuditRoundItemStatusLabelKey("pending"), "pending")
@@ -107,12 +82,9 @@ test("audit round detail page exposes clickable result dashboard and paginated r
 
   assert.match(page, /result\?: string \| string\[\]/)
   assert.match(page, /buildAuditRoundResultListHref/)
-  assert.match(page, /resultNormalGroup/)
-  assert.match(page, /resultNeedsReviewGroup/)
-  assert.match(page, /href: foundResultHref/)
-  assert.match(page, /href: item\.count > 0 \? item\.href : undefined/)
+  assert.match(page, /href: pageHref\(roundWideFilters, \{ result \}\)/)
+  assert.match(page, /href: cell\.count > 0 \? cell\.href : undefined/)
   assert.match(page, /openFindingReview/)
-  assert.match(page, /viewPendingReviewAssets/)
   assert.match(page, /resultListTitle/)
   assert.match(page, /resultListDescription/)
   assert.match(page, /emptyResultTitle/)
@@ -125,16 +97,13 @@ test("audit round detail page exposes clickable result dashboard and paginated r
   assert.match(page, /resultItems\.map/)
 })
 
-test("audit round detail export links preserve the active result bucket and search", () => {
+test("audit round exports follow every filter of the list (group 2 spec §8 ตามตัวกรองที่เลือก)", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
-
-  assert.match(page, /buildAuditRoundExportHref/)
-  assert.match(page, /auditRoundExportHref/)
-  assert.match(page, /auditRoundExportPdfHref/)
-  assert.match(page, /resultListState\.result/)
-  assert.match(page, /resultListState\.search/)
-  assert.match(page, /href=\{auditRoundExportHref\}/)
-  assert.match(page, /href=\{auditRoundExportPdfHref\}/)
+  const menus = readFileSync("src/components/audit/audit-round-header-menus.tsx", "utf8")
+  assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(round\.id, "export", filters\)/)
+  assert.match(page, /const auditRoundExportPdfHref = buildAuditRoundExportHref\(round\.id, "export-pdf", filters\)/)
+  assert.match(menus, /href=\{exports\.excel\}/)
+  assert.match(menus, /href=\{exports\.pdf\}/)
 })
 
 test("audit round result exports use the same filters as the on-screen result list", () => {
@@ -215,18 +184,15 @@ test("audit round close checklist items link to focused drilldown pages", () => 
 
   assert.match(page, /pendingHref/)
   assert.match(page, /status=action_open/)
-  assert.match(page, /checklistDrilldown/)
+  assert.match(page, /closeConditions/)
   assert.match(page, /href: pendingHref/)
   assert.match(page, /href: pendingReviewFindingsHref/)
   assert.match(page, /href: openActionFindingsHref/)
 
-  assert.match(closeButton, /href\?: string/)
-  assert.match(closeButton, /actionLabel\?: string/)
-  assert.match(closeButton, /<StatStrip\b/)
-  assert.match(closeButton, /item\.href && item\.value > 0/)
+  assert.doesNotMatch(closeButton, /href\?: string|<StatStrip\b/)
 
   for (const messages of [th, en]) {
-    assert.equal(typeof messages.auditRound.checklistDrilldown, "string")
+    assert.equal(typeof messages.auditRound.closeNoPendingItems, "string")
   }
 })
 
@@ -332,7 +298,7 @@ test("the round page narrows its item list by company and branch, names each in 
   assert.match(page, /\.\.\.\(resultListState\.companyId \? \{ companyId: resultListState\.companyId \} : \{\}\)/, "the search keeps the company")
   assert.match(page, /\.\.\.\(resultListState\.branchId \? \{ branchId: resultListState\.branchId \} : \{\}\)/, "the search keeps the branch")
   assert.match(page, /previousHref=\{buildAuditRoundResultListHref\(\{ [^}]*\.\.\.itemFilters, page: resultListState\.page - 1/)
-  assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(round\.id, "export", resultListState\)/)
+  assert.match(page, /const pageHref = \(target: AuditRoundListFilters, overrides: AuditRoundPageHrefOverrides = \{\}\) =>/)
   assert.doesNotMatch(page, /const \w+ResultHref = buildAuditRoundResultListHref\(\{[^}]*(?:itemFilters|companyId|branchId)/, "the round-wide buckets open round-wide lists")
 })
 
