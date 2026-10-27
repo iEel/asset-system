@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   auditScanListPageSize,
+  auditScanSearchPageSize,
   buildRoomList,
   buildRoomOptions,
   getAuditItemBadge,
@@ -51,6 +52,7 @@ const items: AuditScanItemRow[] = [
   row({ itemId: "i5", assetId: "a5", assetTag: "SNI-EQU-26-0016", serialNumber: null, expectedLocationId: "loc-2", auditStatus: "reviewed", auditResult: "not_found" }),
 ]
 const labels = new Map([["loc-1", "SNI_FL1 - ห้อง IT"], ["loc-2", "SNI_FL2 - บัญชี"]])
+const noRoom = { locationId: "", departmentId: "" }
 
 test("badges and progress follow the saved audit result", () => {
   assert.equal(getAuditItemBadge(items[0]), null)
@@ -95,24 +97,31 @@ test("search needs two characters and ranks exact codes, then prefixes, then con
   const custodians = new Map([["emp-1", "E0412 - สมชาย ใจดี"]])
   assert.equal(isAuditSearchReady("5"), false)
   assert.equal(isAuditSearchReady("โน"), true)
-  assert.deepEqual(searchAuditItems(items, "5", custodians), [])
+  assert.deepEqual(searchAuditItems(items, "5", custodians, noRoom), { matches: [], total: 0, inRoom: 0, otherRooms: 0 })
 
-  const serial = searchAuditItems(items, "5CD1", custodians)
+  const serial = searchAuditItems(items, "5CD1", custodians, noRoom).matches
   assert.deepEqual(serial.map((match) => [match.item.itemId, match.field, match.tier]), [["i1", "serialNumber", 1], ["i3", "serialNumber", 1]])
 
-  const exact = searchAuditItems(items, "sni-equ-22-0310", custodians)
+  const exact = searchAuditItems(items, "sni-equ-22-0310", custodians, noRoom).matches
   assert.deepEqual(exact.map((match) => [match.item.itemId, match.tier]), [["i2", 0]])
 
-  const byName = searchAuditItems(items, "สมชาย", custodians)
+  const byName = searchAuditItems(items, "สมชาย", custodians, noRoom).matches
   assert.equal(byName[0].field, "custodian")
 
-  const ranking = searchAuditItems(items, "SNI-EQU", custodians)
+  const ranking = searchAuditItems(items, "SNI-EQU", custodians, noRoom).matches
   assert.deepEqual(ranking.map((match) => match.item.itemId), ["i1", "i3", "i2", "i5"], "pending before checked within one tier")
+
+  const inRoom = searchAuditItems(items, "SNI-EQU", custodians, { locationId: "loc-2", departmentId: "" })
+  assert.deepEqual(inRoom.matches.map((match) => match.item.itemId), ["i3", "i5", "i1", "i2"], "the chosen room first")
+  assert.deepEqual([inRoom.total, inRoom.inRoom, inRoom.otherRooms], [4, 2, 2])
 })
 
-test("search returns at most ten results", () => {
+test("search returns every match with its true total; the screen pages them by ten (bug 20)", () => {
   const many = Array.from({ length: 30 }, (_, index) => row({ itemId: `m${index}`, assetTag: `ROOM-${index}` }))
-  assert.equal(searchAuditItems(many, "ROOM", new Map()).length, 10)
+  const result = searchAuditItems(many, "ROOM", new Map(), noRoom)
+  assert.equal(result.total, 30)
+  assert.equal(result.matches.length, 30)
+  assert.equal(auditScanSearchPageSize, 10)
 })
 
 test("highlight splits the first case-insensitive match", () => {

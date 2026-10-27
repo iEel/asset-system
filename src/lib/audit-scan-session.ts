@@ -1,8 +1,12 @@
 import { filterAuditItemsByContext, type AuditScanContext } from "./audit-scan-context.ts"
 import { normalizeAssetOwnershipType, requiresCustodian } from "./asset-ownership.ts"
+import { isSuccessfulAuditResult } from "./audit-result-summary.ts"
+import { isAuditRoundOwnItem } from "./audit-round-counts-rules.ts"
+import { foldAuditRoundResultCounts } from "./audit-round-result-filters.ts"
 
 export const auditScanListPageSize = 50
-export const auditScanSearchLimit = 10
+/** The search shows this many matches at a time, and "แสดงเพิ่ม" adds as many again (bug 20, P3-R5). The rule returns them all. */
+export const auditScanSearchPageSize = 10
 export const auditScanMinSearchLength = 2
 export const auditScanPollIntervalMs = 30_000
 
@@ -47,7 +51,16 @@ export type AuditScanRoom = AuditScanContext
 export type AuditScanListTab = "pending" | "checked" | "all"
 export type AuditItemBadge = "found" | "mismatch" | "not_found" | "out_of_scope"
 
-const foundResults = new Set(["found", "confirmed_with_parent"])
+// The round's own items (group 2 spec §5, P3-R1). An out-of-scope find is an AuditItem of the round (scan route), but
+// no phone count, room, tab, chip, search or match reads it. Each rule filters here, so a caller cannot forget;
+// applyScanResult and mergeStatusUpdates keep every item, so a saved find stays in state for the next poll.
+function ownItems<T extends { auditResult: string | null }>(items: readonly T[]): T[] {
+  return items.filter(isAuditRoundOwnItem)
+}
+
+function isInAuditScanTab(item: Pick<AuditScanItemRow, "auditStatus">, tab: AuditScanListTab) {
+  return tab === "all" || (tab === "checked") === isAuditItemChecked(item)
+}
 
 export function isAuditItemChecked(item: Pick<AuditScanItemRow, "auditStatus">) {
   return item.auditStatus !== "pending"
@@ -57,19 +70,16 @@ export function getAuditItemBadge(item: Pick<AuditScanItemRow, "auditStatus" | "
   if (!isAuditItemChecked(item)) return null
   if (item.auditResult === "not_found") return "not_found"
   if (item.auditResult === "out_of_scope") return "out_of_scope"
-  if (!item.auditResult || foundResults.has(item.auditResult)) return "found"
-  return "mismatch"
+  // P2-R2: a checked item with no result reads ไม่ตรง, as the header and the round page count it.
+  return isSuccessfulAuditResult(item.auditResult) ? "found" : "mismatch"
 }
 
-export function summarizeProgress(items: readonly AuditScanItemRow[]) {
-  let checked = 0
-  let mismatched = 0
-  for (const item of items) {
-    if (!isAuditItemChecked(item)) continue
-    checked += 1
-    if (getAuditItemBadge(item) === "mismatch") mismatched += 1
-  }
-  return { total: items.length, checked, mismatched }
+export type AuditScanProgress = { total: number; checked: number; mismatched: number }
+
+/** The header (spec §11, P3-R2): the round page's fold over the same rows, so "ไม่ตรง N" is the round page's ไม่ตรง. */
+export function summarizeProgress(items: readonly AuditScanItemRow[]): AuditScanProgress {
+  const counts = foldAuditRoundResultCounts(items.map((item) => ({ auditStatus: item.auditStatus, auditResult: item.auditResult, count: 1 })))
+  return { total: counts.all, checked: counts.all - counts.pending, mismatched: counts.mismatch }
 }
 
 function compareText(left: string, right: string) {
@@ -82,14 +92,16 @@ export function buildRoomList({
   tab,
   limit,
   locationLabels,
+  categoryId = null,
 }: {
   items: readonly AuditScanItemRow[]
   room: AuditScanRoom
   tab: AuditScanListTab
   limit: number
   locationLabels: ReadonlyMap<string, string>
+  categoryId?: string | null
 }) {
-  const inRoom = filterAuditItemsByContext([...items], room)
+  const inRoom = filterAuditItemsByContext(ownItems(items), room)
   const pending = inRoom.filter((item) => !isAuditItemChecked(item))
   const checked = inRoom.filter(isAuditItemChecked)
   const byPlace = (left: AuditScanItemRow, right: AuditScanItemRow) =>
@@ -99,21 +111,25 @@ export function buildRoomList({
     || compareText(left.assetTag, right.assetTag)
   const byRecent = (left: AuditScanItemRow, right: AuditScanItemRow) =>
     (right.lastScanAt ?? "").localeCompare(left.lastScanAt ?? "") || compareText(left.assetTag, right.assetTag)
-  const source = tab === "pending" ? pending.sort(byPlace) : tab === "checked" ? checked.sort(byRecent) : [...inRoom].sort(byPlace)
+  const inTab = inRoom.filter((item) => isInAuditScanTab(item, tab) && (!categoryId || item.categoryId === categoryId))
+  const source = inTab.sort(tab === "checked" ? byRecent : byPlace)
 
   return {
     rows: source.slice(0, limit),
     total: source.length,
+    // Within the room, not the category: each tab's count is its chip row's ทุกหมวดหมู่ (P3-R6, P3-R16).
     counts: { pending: pending.length, checked: checked.length, all: inRoom.length },
   }
 }
+
+export type AuditRoomDepartmentOption = { departmentId: string; label: string; pending: number; total: number }
 
 export type AuditRoomOption = {
   locationId: string
   label: string
   pending: number
   total: number
-  departments: Array<{ departmentId: string; label: string; total: number }>
+  departments: AuditRoomDepartmentOption[]
 }
 
 export function buildRoomOptions(
@@ -123,14 +139,18 @@ export function buildRoomOptions(
 ): AuditRoomOption[] {
   const locationLabels = new Map(locations.map((option) => [option.id, option.label]))
   const departmentLabels = new Map(departments.map((option) => [option.id, option.label]))
-  const byLocation = new Map<string, { pending: number; total: number; departments: Map<string, number> }>()
+  const byLocation = new Map<string, { pending: number; total: number; departments: Map<string, { pending: number; total: number }> }>()
 
-  for (const item of items) {
-    const entry = byLocation.get(item.expectedLocationId) ?? { pending: 0, total: 0, departments: new Map<string, number>() }
+  for (const item of ownItems(items)) {
+    const entry = byLocation.get(item.expectedLocationId) ?? { pending: 0, total: 0, departments: new Map<string, { pending: number; total: number }>() }
+    const isPending = !isAuditItemChecked(item)
     entry.total += 1
-    if (!isAuditItemChecked(item)) entry.pending += 1
+    if (isPending) entry.pending += 1
     if (item.expectedDepartmentId) {
-      entry.departments.set(item.expectedDepartmentId, (entry.departments.get(item.expectedDepartmentId) ?? 0) + 1)
+      const department = entry.departments.get(item.expectedDepartmentId) ?? { pending: 0, total: 0 }
+      department.total += 1
+      if (isPending) department.pending += 1
+      entry.departments.set(item.expectedDepartmentId, department)
     }
     byLocation.set(item.expectedLocationId, entry)
   }
@@ -142,14 +162,39 @@ export function buildRoomOptions(
       pending: entry.pending,
       total: entry.total,
       departments: [...entry.departments.entries()]
-        .map(([departmentId, total]) => ({ departmentId, label: departmentLabels.get(departmentId) ?? departmentId, total }))
+        .map(([departmentId, counts]) => ({ departmentId, label: departmentLabels.get(departmentId) ?? departmentId, pending: counts.pending, total: counts.total }))
         .sort((left, right) => compareText(left.label, right.label)),
     }))
     .sort((left, right) => compareText(left.label, right.label))
 }
 
+export type AuditRoomProgress = { checked: number; total: number; pending: number }
+
+/** The room button (spec §11, bug 21, P3-R13): the chosen room, within the chosen department when there is one, as the list counts it. */
+export function selectAuditRoomProgress(rooms: readonly AuditRoomOption[], room: AuditScanRoom): AuditRoomProgress | null {
+  const option = room.locationId ? rooms.find((entry) => entry.locationId === room.locationId) : undefined
+  if (!option) return null
+  const scope = room.departmentId
+    ? option.departments.find((entry) => entry.departmentId === room.departmentId) ?? { pending: 0, total: 0 }
+    : option
+  return { checked: scope.total - scope.pending, total: scope.total, pending: scope.pending }
+}
+
+/** The footer link (P3-R14): the pending list it opens filters by room only, so the department, category and tab do not narrow it. */
+export function countAuditScanPendingForLink(items: readonly AuditScanItemRow[], room: AuditScanRoom): number {
+  return ownItems(items).filter((item) => !isAuditItemChecked(item) && (!room.locationId || item.expectedLocationId === room.locationId)).length
+}
+
+export type AuditScanListScope = "room" | "round"
+
+/** One rule for the words that follow the room (P3-R7): the third tab, the search line and the footer. */
+export function auditScanListScope(room: AuditScanRoom): AuditScanListScope {
+  return room.locationId ? "room" : "round"
+}
+
 export type AuditSearchField = "assetTag" | "serialNumber" | "fixedAssetCode" | "name" | "custodian"
-export type AuditSearchMatch = { item: AuditScanItemRow; field: AuditSearchField; value: string; tier: 0 | 1 | 2 }
+export type AuditSearchMatch = { item: AuditScanItemRow; field: AuditSearchField; value: string; tier: 0 | 1 | 2; elsewhere: boolean }
+export type AuditSearchResult = { matches: AuditSearchMatch[]; total: number; inRoom: number; otherRooms: number }
 
 const exactMatchFields = new Set<AuditSearchField>(["assetTag", "serialNumber", "fixedAssetCode"])
 
@@ -165,13 +210,14 @@ export function searchAuditItems(
   items: readonly AuditScanItemRow[],
   term: string,
   custodianLabels: ReadonlyMap<string, string>,
-  limit = auditScanSearchLimit,
-): AuditSearchMatch[] {
-  if (!isAuditSearchReady(term)) return []
+  room: AuditScanRoom,
+): AuditSearchResult {
+  if (!isAuditSearchReady(term)) return { matches: [], total: 0, inRoom: 0, otherRooms: 0 }
   const needle = normalizeSearchText(term)
   const matches: AuditSearchMatch[] = []
 
-  for (const item of items) {
+  for (const item of ownItems(items)) {
+    const elsewhere = Boolean(room.locationId) && item.expectedLocationId !== room.locationId
     const fields: Array<[AuditSearchField, string | null]> = [
       ["assetTag", item.assetTag],
       ["serialNumber", item.serialNumber],
@@ -185,21 +231,80 @@ export function searchAuditItems(
       const value = normalizeSearchText(raw)
       const tier = value === needle && exactMatchFields.has(field) ? 0 : value.startsWith(needle) ? 1 : value.includes(needle) ? 2 : null
       if (tier === null) continue
-      if (!best || tier < best.tier) best = { item, field, value: raw, tier }
+      if (!best || tier < best.tier) best = { item, field, value: raw, tier, elsewhere }
       if (tier === 0) break
     }
     if (best) matches.push(best)
   }
 
-  return matches
-    .sort((left, right) =>
-      left.tier - right.tier
-      || Number(isAuditItemChecked(left.item)) - Number(isAuditItemChecked(right.item))
-      || compareText(left.item.assetTag, right.item.assetTag))
-    .slice(0, limit)
+  // An exact code first wherever its room is, so Enter opens what was typed whole (P3-R17); then the chosen room
+  // (spec §11: a moved asset is what the audit must find, so the rest follow), then today's relevance in each group.
+  // The rule keeps every match; the screen shows auditScanSearchPageSize at a time (bug 20).
+  matches.sort((left, right) =>
+    Number(left.tier !== 0) - Number(right.tier !== 0)
+    || Number(left.elsewhere) - Number(right.elsewhere)
+    || left.tier - right.tier
+    || Number(isAuditItemChecked(left.item)) - Number(isAuditItemChecked(right.item))
+    || compareText(left.item.assetTag, right.item.assetTag))
+  const otherRooms = matches.filter((match) => match.elsewhere).length
+  return { matches, total: matches.length, inRoom: room.locationId ? matches.length - otherRooms : 0, otherRooms }
 }
 
 export { splitSearchHighlight } from "./search-highlight.ts"
+
+export type AuditScanCategoryChip = { id: string; count: number }
+export type AuditScanCategoryNames = ReadonlyMap<string, { code: string; name: string }>
+
+/** The category chips (decision 3, P3-R6): within the room and tab, largest first, then by name; hidden at one or none. */
+export function foldAuditScanCategoryChips(
+  items: readonly AuditScanItemRow[],
+  { room, tab, names }: { room: AuditScanRoom; tab: AuditScanListTab; names: AuditScanCategoryNames },
+): AuditScanCategoryChip[] {
+  const counts = new Map<string, number>()
+  for (const item of filterAuditItemsByContext(ownItems(items), room)) {
+    if (isInAuditScanTab(item, tab)) counts.set(item.categoryId, (counts.get(item.categoryId) ?? 0) + 1)
+  }
+  if (counts.size <= 1) return []
+  return [...counts.entries()]
+    .map(([id, count]) => ({ id, count }))
+    .sort((left, right) =>
+      right.count - left.count
+      || Number(!names.has(left.id)) - Number(!names.has(right.id))
+      || compareText(names.get(left.id)?.name ?? "", names.get(right.id)?.name ?? "")
+      || compareText(names.get(left.id)?.code ?? "", names.get(right.id)?.code ?? "")
+      || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
+}
+
+/** A chosen category narrows the list only while it is on the row, so a saved last item never leaves an empty list with no chip to clear. */
+export function resolveAuditScanCategory(chips: readonly AuditScanCategoryChip[], categoryId: string | null): string | null {
+  return categoryId && chips.some((chip) => chip.id === categoryId) ? categoryId : null
+}
+
+/** An asset's own item, for a component, a register pick or a lookup (P3-R1). */
+export function findAuditScanOwnItem(items: readonly AuditScanItemRow[], assetId: string): AuditScanItemRow | null {
+  return items.find((item) => item.assetId === assetId && isAuditRoundOwnItem(item)) ?? null
+}
+
+/** The camera's match (P3-R1): an own item by asset id, tag or serial; anything else goes to the register lookup. */
+export function findAuditScanItemByCodes(items: readonly AuditScanItemRow[], candidates: readonly string[]): AuditScanItemRow | null {
+  const codes = new Set(candidates.map((value) => value.toLocaleLowerCase()))
+  if (codes.size === 0) return null
+  return ownItems(items).find((item) =>
+    codes.has(item.assetId.toLocaleLowerCase())
+    || codes.has(item.assetTag.toLocaleLowerCase())
+    || (item.serialNumber ? codes.has(item.serialNumber.toLocaleLowerCase()) : false)) ?? null
+}
+
+/**
+ * The round's recorded out-of-scope finds, apart from every count (P3-R25: spec §5 counts = lists, so they are no row
+ * of a tab): where each was found (the snapshot's room when no place was recorded), in the chosen room or the whole
+ * round, most recent first. The ตรวจแล้ว tab shows them as their own section, each opening its out-of-scope form.
+ */
+export function listAuditScanRecordedOutOfScope(items: readonly AuditScanItemRow[], { roomId }: { roomId: string }): AuditScanItemRow[] {
+  return items
+    .filter((item) => !isAuditRoundOwnItem(item) && (!roomId || (item.actualLocationId ?? item.expectedLocationId) === roomId))
+    .sort((left, right) => (right.lastScanAt ?? "").localeCompare(left.lastScanAt ?? "") || compareText(left.assetTag, right.assetTag))
+}
 
 export type AuditCheckMode = "scan" | "edit" | "out_of_scope"
 export type AuditCheckField = "location" | "custodian" | "department" | "condition"

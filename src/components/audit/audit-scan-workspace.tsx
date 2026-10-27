@@ -39,8 +39,11 @@ import {
   applyScanResult,
   auditScanListPageSize,
   auditScanPollIntervalMs,
+  auditScanSearchPageSize,
   buildRoomList,
   buildRoomOptions,
+  findAuditScanItemByCodes,
+  findAuditScanOwnItem,
   getCheckMode,
   isAuditSearchReady,
   mergeStatusUpdates,
@@ -148,7 +151,9 @@ export function AuditScanWorkspace({
   /** Opens by itself once per visit while the round has several rooms and none was ever chosen for it. */
   const roomPickerOpen = roomPickerRequested || (!roomPickerDismissed && !hasStoredRoom && roomOptions.length > 1)
   const list = useMemo(() => buildRoomList({ items, room, tab, limit, locationLabels }), [items, room, tab, limit, locationLabels])
-  const matches = useMemo(() => searchAuditItems(items, term, custodianLabels), [items, term, custodianLabels])
+  const search = useMemo(() => searchAuditItems(items, term, custodianLabels, room), [items, term, custodianLabels, room])
+  // The first page of the room-first matches until Task 3's "แสดงเพิ่ม" (bug 20).
+  const matches = useMemo(() => search.matches.slice(0, auditScanSearchPageSize), [search])
   const queuedAssetIds = useMemo(() => new Set(queue.map((entry) => entry.assetId)), [queue])
   const sendableQueue = useMemo(() => queue.filter((entry) => canSendQueuedAuditScan(entry, currentUser.id)), [queue, currentUser.id])
   const heldQueue = useMemo(() => summarizeHeldAuditScans(queue, currentUser.id), [queue, currentUser.id])
@@ -461,7 +466,7 @@ export function AuditScanWorkspace({
   }
 
   function pickRegisterMatch(match: AuditLookupMatch) {
-    const item = match.inRound ? items.find((row) => row.assetId === match.assetId) : undefined
+    const item = match.inRound ? findAuditScanOwnItem(items, match.assetId) : null
     if (item) openItem(item, true)
     else void searchRegister(match.assetId)
   }
@@ -469,11 +474,7 @@ export function AuditScanWorkspace({
   function handleDecoded(text: string) {
     setCameraOpen(false)
     setScanSource("qr")
-    const candidates = new Set(extractAssetLookupCandidatesFromScanValue(text).map((value) => value.toLocaleLowerCase()))
-    const item = items.find((row) =>
-      candidates.has(row.assetId.toLocaleLowerCase())
-      || candidates.has(row.assetTag.toLocaleLowerCase())
-      || (row.serialNumber ? candidates.has(row.serialNumber.toLocaleLowerCase()) : false))
+    const item = findAuditScanItemByCodes(items, extractAssetLookupCandidatesFromScanValue(text))
     if (item) {
       openItem(item, false)
       return
@@ -661,7 +662,7 @@ export function AuditScanWorkspace({
   }
 
   function scanComponent(component: AuditScanComponent) {
-    const item = items.find((row) => row.assetId === component.assetId)
+    const item = findAuditScanOwnItem(items, component.assetId)
     if (item) openItem(item, false)
     else toast.error(t("componentOutOfRound"))
   }
