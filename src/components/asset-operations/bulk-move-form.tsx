@@ -1,30 +1,29 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
+import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"
 import { Button } from "@/components/ui/button"
-import { preventEnterSubmit } from "@/components/ui/choice-card"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { EmptyNote } from "@/components/ui/empty-note"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { checkboxVariants } from "@/components/ui/field-variants"
+import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/ui/page-header"
-import { SearchField } from "@/components/ui/search-field"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import type { AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
+import { bulkMoveBlockedList, readBulkMoveBlocked, type BulkMoveBlockedAsset } from "@/lib/bulk-move-blocked"
 import { maxLength, required } from "@/lib/validation-rules"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type BulkMoveFormValues = { assetIds: readonly string[]; toLocationId: string; reason: string; remark: string }
 
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The asset
-// list is one group: its id is on the list, and focus goes to its first checkbox (O-R5).
+// picker's root carries the id, so focus goes to its search field (spec 6.1).
 const FIELD_IDS = {
   assetIds: "bulk-move-assets",
   toLocationId: "bulk-move-to-location",
@@ -46,7 +45,7 @@ function validate(values: BulkMoveFormValues): Partial<Record<BulkMoveField, str
   return errors
 }
 
-export function BulkMoveForm({ assets, locations }: { assets: Option[]; locations: Option[] }) {
+export function BulkMoveForm({ locations }: { locations: Option[] }) {
   const locale = useLocale()
   const apiError = useApiError()
   const router = useRouter()
@@ -54,36 +53,32 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const fieldErrors = useFieldErrors<BulkMoveField>()
-  const [assetQuery, setAssetQuery] = useState("")
-  const [assetIds, setAssetIds] = useState<string[]>([])
-  const assetSearchId = useId()
-  const assetsLabelId = useId()
+  const [assets, setAssets] = useState<AssetOperationSearchRow[]>([])
+  const [blockedAssets, setBlockedAssets] = useState<BulkMoveBlockedAsset[]>([])
+  const assetIds = assets.map((asset) => asset.id)
   const [values, setValues] = useState({
     toLocationId: "",
     reason: "",
     remark: "",
   })
 
-  const availableAssets = useMemo(() => {
-    const normalizedQuery = assetQuery.toLocaleLowerCase().replace(/\s+/g, "")
-    return assets.filter((asset) => {
-      if (asset.disabled) return false
-      if (!normalizedQuery) return true
-      return asset.label.toLocaleLowerCase().replace(/\s+/g, "").includes(normalizedQuery)
-    })
-  }, [assetQuery, assets])
-
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key] })
+
+  // The asset field's one error: none chosen, the assets the server refused by tag and reason, or a server field error.
+  const assetsError =
+    fieldErrors.errors.assetIds === "required"
+      ? t("selectAssets")
+      : fieldErrors.errors.assetIds === "blocked"
+        ? t("blockedAssets", { count: blockedAssets.length, list: bulkMoveBlockedList(blockedAssets, (code) => apiError.describe(code).message) })
+        : fieldErrors.message("assetIds")
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field in FIELD_IDS) fieldErrors.clear(field as BulkMoveField)
   }
 
-  function toggleAsset(assetId: string) {
-    setAssetIds((current) =>
-      current.includes(assetId) ? current.filter((id) => id !== assetId) : [...current, assetId]
-    )
+  function changeAssets(rows: AssetOperationSearchRow[]) {
+    setAssets(rows)
     fieldErrors.clear("assetIds")
   }
 
@@ -101,7 +96,15 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
-        // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        // A refusal that names assets (a License, a Disposed or Retired asset) shows them under the asset field; one that
+        // names a field of this form shows under it; any other keeps the toast (spec §4.1, server search Task 7).
+        const blocked = readBulkMoveBlocked(payload)
+        if (blocked.length > 0) {
+          setBlockedAssets(blocked)
+          fieldErrors.setErrors({ assetIds: "blocked" })
+          focusFirstError()
+          return
+        }
         if (fieldErrors.applyServer(payload) && focusFirstError()) return
         throw new Error(payload?.error ?? tCommon("error"))
       }
@@ -121,51 +124,16 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
       <ContentPanel>
         <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
-            <FieldLabel id={assetsLabelId} htmlFor={assetSearchId} required className="mb-1.5 block">
-              {t("assets")}
-            </FieldLabel>
-            <SearchField
-              id={assetSearchId}
-              className="mb-2"
-              value={assetQuery}
-              onChange={(event) => setAssetQuery(event.target.value)}
-              placeholder={tCommon("searchSelectPlaceholder")}
-            />
-            <div
-              role="group"
+            <AssetOperationPicker
               id="bulk-move-assets"
-              aria-labelledby={assetsLabelId}
-              aria-describedby={fieldErrors.errors.assetIds ? "bulk-move-assets-error" : undefined}
-              className="max-h-72 overflow-y-auto rounded-md border border-border bg-surface"
-            >
-              {availableAssets.length === 0 ? (
-                <EmptyNote padded role="status">{tCommon("noData")}</EmptyNote>
-              ) : (
-                availableAssets.map((asset) => {
-                  const checked = assetIds.includes(asset.id)
-                  return (
-                    <label
-                      key={asset.id}
-                      className="flex min-h-11 cursor-pointer items-center gap-3 border-b border-border-soft px-3 text-sm last:border-b-0 hover:bg-row-hover has-checked:bg-primary-soft"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleAsset(asset.id)}
-                        onKeyDown={preventEnterSubmit}
-                        className={checkboxVariants()}
-                      />
-                      <span className="min-w-0 truncate">{asset.label}</span>
-                    </label>
-                  )
-                })
-              )}
-            </div>
-            {fieldErrors.errors.assetIds ? (
-              <FieldError id="bulk-move-assets-error" className="mt-1.5">
-                {fieldErrors.errors.assetIds === "required" ? t("selectAssets") : fieldErrors.message("assetIds")}
-              </FieldError>
-            ) : null}
+              label={t("assets")}
+              mode="bulkMove"
+              multiple
+              values={assets}
+              required
+              error={assetsError}
+              onChange={changeAssets}
+            />
           </div>
           <SearchableSelect id="bulk-move-to-location" label={t("toLocation")} value={values.toLocationId} required options={locations} placeholder={t("selectLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toLocationId")} onChange={(value) => setField("toLocationId", value)} />
           <Field label={t("reason")} id="bulk-move-reason" required error={fieldErrors.message("reason")}>

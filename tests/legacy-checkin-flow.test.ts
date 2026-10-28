@@ -2,22 +2,10 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
-const operationOptionsSource = () => readFileSync("src/lib/asset-operation-options.ts", "utf8")
 const checkinFormSource = () => readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
 const checkinPageSource = () => readFileSync("src/app/[locale]/(dashboard)/asset-management/checkin/page.tsx", "utf8")
 const legacyCheckoutRoutePath = "src/app/api/assets/[id]/legacy-checkout/route.ts"
 const checkinMessages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).checkin
-
-test("check-in options expose legacy return candidates from current custodians without active checkouts", () => {
-  const source = operationOptionsSource()
-
-  assert.match(source, /custodian: \{ select: \{ code: true, fullNameTh: true \} \}/)
-  assert.match(source, /conditionId: true/)
-  assert.match(source, /legacyReturnCandidates/)
-  assert.match(source, /asset is LegacyReturnAsset/)
-  assert.match(source, /filterLegacyReturnEligibleAssets/)
-  assert.match(source, /hasActiveMaintenance:\s*activeMaintenanceAssetIds\.has\(asset\.id\)/)
-})
 
 test("check-in page loads the master lists, the preselect and the legacy count, never the register", () => {
   const source = checkinPageSource()

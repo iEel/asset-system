@@ -23,7 +23,6 @@ test("open checkout queries exclude void transaction documents", () => {
     "src/app/api/assets/[id]/legacy-checkout/route.ts",
     "src/app/api/employees/[id]/route.ts",
     "src/app/[locale]/(dashboard)/assets/page.tsx",
-    "src/lib/asset-operation-options.ts",
     "src/lib/asset-state-review-service.ts",
     "src/lib/checkin-page-data.ts",
     "src/lib/disposal-readiness.ts",

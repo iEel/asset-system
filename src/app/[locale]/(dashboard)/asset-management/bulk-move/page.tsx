@@ -1,4 +1,4 @@
-import { getAssetOperationAssetLists, getAssetOperationMasterOptions } from "@/lib/asset-operation-options"
+import { getAssetOperationMasterOptions } from "@/lib/asset-operation-options"
 import { requirePagePermission } from "@/lib/page-auth"
 import { BulkMoveForm } from "@/components/asset-operations/bulk-move-form"
 
@@ -9,8 +9,7 @@ type BulkMovePageProps = {
 export default async function BulkMovePage({ params }: BulkMovePageProps) {
   const { locale } = await params
   await requirePagePermission(locale, "asset", "edit")
-  const master = await getAssetOperationMasterOptions()
-  const { assets } = await getAssetOperationAssetLists(master)
+  const options = await getAssetOperationMasterOptions()
 
-  return <BulkMoveForm assets={assets} locations={master.locations} />
+  return <BulkMoveForm locations={options.locations} />
 }

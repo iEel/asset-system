@@ -4,7 +4,6 @@ import test from "node:test"
 
 const users = [
   "src/app/api/assets/[id]/legacy-checkout/route.ts",
-  "src/lib/asset-operation-options.ts",
   "src/app/[locale]/(dashboard)/assets/page.tsx",
   "src/lib/asset-state-review-service.ts",
   "src/lib/checkin-page-data.ts",

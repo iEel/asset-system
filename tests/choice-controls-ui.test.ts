@@ -79,14 +79,10 @@ test("checkout picks the handover mode with required ChoiceCard radios, and no f
   assert.deepEqual(readSourceFiles("src").filter((file) => /\baccent-primary\b/.test(file.source)).map((file) => file.path), [])
 })
 
-test("bulk move lists assets as real checkbox rows that Enter cannot submit (P1)", () => {
+test("bulk move picks assets through the shared picker, with no checkbox row per asset (P1, server search Task 7)", () => {
   const source = readFileSync("src/components/asset-operations/bulk-move-form.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.match(source, /<FieldLabel id=\{assetsLabelId\} htmlFor=\{assetSearchId\} required className="mb-1\.5 block">/)
-  assert.match(source, /<SearchField\n\s+id=\{assetSearchId\}/)
-  // The list is the group that holds the assets' error (v-track plan 2 O5).
-  assert.match(source, /<div\n\s+role="group"\n\s+id="bulk-move-assets"\n\s+aria-labelledby=\{assetsLabelId\}\n[^\n]*\n\s+className="max-h-72 overflow-y-auto rounded-md border border-border bg-surface"\n\s+>/)
-  assert.match(source, /<input\n\s+type="checkbox"\n\s+checked=\{checked\}\n\s+onChange=\{\(\) => toggleAsset\(asset\.id\)\}\n\s+onKeyDown=\{preventEnterSubmit\}\n\s+className=\{checkboxVariants\(\)\}/)
-  assert.match(source, /className="flex min-h-11 cursor-pointer items-center gap-3 border-b border-border-soft px-3 text-sm last:border-b-0 hover:bg-row-hover has-checked:bg-primary-soft"/)
+  assert.match(source, /<AssetOperationPicker\n\s+id="bulk-move-assets"\n\s+label=\{t\("assets"\)\}\n\s+mode="bulkMove"\n\s+multiple\n\s+values=\{assets\}\n\s+required\n/)
+  assert.doesNotMatch(source, /type="checkbox"|checkboxVariants|preventEnterSubmit|<SearchField\b|role="group"|<FieldError\b|availableAssets|toggleAsset/)
   assert.doesNotMatch(source, /rounded border \$\{checked|<button|import \{ Check|function Field\(|Loader2/)
   assert.match(source, /<Button type="submit" busy=\{saving\}>/)
 })

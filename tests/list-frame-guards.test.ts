@@ -173,7 +173,6 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
     "src/app/api/disposal-requests/bulk-decision/route.ts": { count: 1, kind: "permanent", why: "the API's stand-in asset tag for a request it cannot find", ruling: "2B R-n" },
     "src/lib/asset-cross-scope.ts": { count: 5, kind: "permanent", why: "server-built summary rows: the custodian, its company and branch, the home location and its branch", ruling: "2B R-n" },
     "src/lib/asset-import-history.ts": { count: 3, kind: "permanent", why: "server-built import history: the batch id, the file name and the approver", ruling: "2B R-n" },
-    "src/lib/asset-operation-options.ts": { count: 1, kind: "permanent", why: "the custodian label of a legacy return candidate, built on the server", ruling: "2B R-n" },
     "src/lib/asset-operation-search-rules.ts": { count: 2, kind: "permanent", why: "the label of a handover destination that cannot be read, built on the server", ruling: "2B R-n" },
     "src/lib/asset-tag.ts": { count: 1, kind: "permanent", why: "the asset tag separator's default, not an empty value", ruling: "2B R-n" },
     "src/lib/audit-correction-history.ts": { count: 1, kind: "permanent", why: "the correction's user name, an argument of a translated sentence", ruling: "2B R-n" },

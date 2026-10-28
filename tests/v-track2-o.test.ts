@@ -255,11 +255,12 @@ test("bulk move: the destination is checked at last, and the errors show under t
   // The destination had the star and nothing checked it (spec §5): an id for focus and its error (V4).
   assert.match(source, /<SearchableSelect id="bulk-move-to-location" label=\{t\("toLocation"\)\} [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
   assert.match(source, /<Field label=\{t\("reason"\)\} id="bulk-move-reason" required error=\{fieldErrors\.message\("reason"\)\}>/)
-  // The asset list is one group with one error under it, in the list's own words; focus goes to its first checkbox (O-R5).
-  assert.match(source, /<div\n\s+role="group"\n\s+id="bulk-move-assets"\n\s+aria-labelledby=\{assetsLabelId\}\n\s+aria-describedby=\{fieldErrors\.errors\.assetIds \? "bulk-move-assets-error" : undefined\}\n/)
-  assert.ok(source.includes('<FieldError id="bulk-move-assets-error" className="mt-1.5">'))
-  assert.ok(source.includes('{fieldErrors.errors.assetIds === "required" ? t("selectAssets") : fieldErrors.message("assetIds")}'))
-  assert.match(source, /current\.includes\(assetId\) \? current\.filter\(\(id\) => id !== assetId\) : \[\.\.\.current, assetId\]\n\s+\)\n\s+fieldErrors\.clear\("assetIds"\)/)
+  // The asset picker is the field: its search carries the id focus goes to, and one error sits under it (server search Task 7).
+  assert.match(source, /<AssetOperationPicker\n\s+id="bulk-move-assets"\n/)
+  assert.ok(source.includes("error={assetsError}"))
+  assert.match(source, /fieldErrors\.errors\.assetIds === "required"\s+\? t\("selectAssets"\)\s+: fieldErrors\.errors\.assetIds === "blocked"\s+\? t\("blockedAssets", \{ count: blockedAssets\.length, list: bulkMoveBlockedList\(blockedAssets, \(code\) => apiError\.describe\(code\)\.message\) \}\)\s+: fieldErrors\.message\("assetIds"\)/)
+  assert.match(source, /function changeAssets\(rows: AssetOperationSearchRow\[\]\) \{\n\s+setAssets\(rows\)\n\s+fieldErrors\.clear\("assetIds"\)/)
+  assert.match(source, /const blocked = readBulkMoveBlocked\(payload\)\n\s+if \(blocked\.length > 0\) \{\n\s+setBlockedAssets\(blocked\)\n\s+fieldErrors\.setErrors\(\{ assetIds: "blocked" \}\)\n\s+focusFirstError\(\)\n\s+return\n\s+\}\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/)
 })
 
 test("transaction cancel dialog: the reason's error under the field instead of the dialog Notice, and a blocked confirm says why and stays focusable (v-track O6)", () => {

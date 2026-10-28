@@ -1975,7 +1975,8 @@
     "reason": "Move Reason",
     "remark": "Remark",
     "selectedCount": "{count} selected",
-    "success": "Assets moved successfully"
+    "success": "Assets moved successfully",
+    "blockedAssets": "{count} cannot be moved: {list}. Remove them, then save again."
   },
   "auditRound": {
     "title": "Audit Rounds",
