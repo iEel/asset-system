@@ -273,13 +273,17 @@ function AuditFindingsBatchResult({ report }: { report: BatchReport }) {
   const { reportNeedsFocus, reportFocused, dismissReport } = useAuditFindingsSelection()
   // The button is this component's own. The result takes focus once, when it first shows: the buttons that started the
   // batch are gone with the selection. A later mount (another page of the filter, the redirect) takes it again only when
-  // the remount dropped focus to the body; a tab or filter link outside the provider keeps it.
+  // the remount dropped focus to the body; a tab or filter link outside the provider keeps it. The second check runs on
+  // mount only: a later render never pulls focus back from the body a click left it on.
   const dismissRef = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
-    if (!reportNeedsFocus && document.activeElement !== document.body) return
+    if (!reportNeedsFocus) return
     dismissRef.current?.focus()
     reportFocused()
   }, [reportNeedsFocus, reportFocused])
+  useEffect(() => {
+    if (document.activeElement === document.body) dismissRef.current?.focus()
+  }, [])
   return (
     <div className="flex min-w-0 flex-col items-start gap-2">
       {report.failed.length > 0 ? (
