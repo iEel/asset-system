@@ -128,10 +128,10 @@ test("every export link is an <a download>, as the report cards' (spec 2D M31)",
   assert.match(header, /<a href=\{"\/api\/assets\/export\?" \+ exportQuery\} download className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   assert.match(header, /<a href=\{"\/api\/reports\/assets-overview\/export\?" \+ exportQuery\} download className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
   assert.doesNotMatch(header, /<Link\b/)
-  // The other export screens (open issue CF-c, the user 2026-10-17).
-  const findings = read(`${D}audit/findings/page.tsx`)
-  assert.match(findings, /<a href=\{`\/api\/audit-findings\/export\?\$\{exportParams\.toString\(\)\}`\} download className=/)
-  assert.match(findings, /<a href=\{`\/api\/audit-findings\/export-pdf\?\$\{exportParams\.toString\(\)\}`\} download className=/)
+  // The other export screens (open issue CF-c, the user 2026-10-17); the findings page's two are in its "ส่งออก ▾" since group 2 plan 4.
+  const findingsMenu = read(`${C}audit/audit-findings-export-menu.tsx`)
+  assert.match(findingsMenu, /<a href=\{excelHref\} download>/)
+  assert.match(findingsMenu, /<a href=\{pdfHref\} download>/)
   const roundMenus = read(`${C}audit/audit-round-header-menus.tsx`)
   assert.match(roundMenus, /<a href=\{exports\.excel\} download>/)
   assert.match(roundMenus, /<a href=\{exports\.pdf\} download>/)

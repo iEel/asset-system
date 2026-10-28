@@ -77,12 +77,12 @@ test("audit rounds preserve list context across round detail, scan, and pending 
   assert.match(scanSource, /backHref=\{returnToHref\}/)
 })
 
-test("audit findings preserve resolution context for disposal follow-up links", () => {
+test("audit findings preserve resolution context for disposal follow-up links, the open finding and the way back", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
 
   assert.match(source, /const auditFindingsReturnHref = buildAuditFindingsHref\(locale, filters, \{ page: listPage\.page, pageSize: listPage\.pageSize, finding: filters\.findingId \}\)/)
   assert.match(source, /const filters = parseAuditFindingsListFilters\(locale, await searchParams\)/)
-  assert.match(source, /hiddenInputs=\{Object\.fromEntries\(auditFindingsHrefQuery\(buildAuditFindingsHref\(locale, filters, \{ search: "", pageSize: listPage\.pageSize \}\)\)\)\}/)
+  assert.match(source, /hiddenInputs=\{Object\.fromEntries\(auditFindingsHrefQuery\(buildAuditFindingsHref\(locale, filters, \{ search: "", roundId: null, findingType: null, pageSize: listPage\.pageSize \}\)\)\)\}/)
   assert.match(source, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\/new\?assetId=\$\{finding\.asset\.id\}&reason=/)
   assert.match(source, /auditFindingsReturnHref\)/)
 })

@@ -8,6 +8,7 @@ export function MasterDataSearch({
   placeholder,
   submitLabel,
   hiddenInputs = {},
+  leading,
   children,
 }: {
   action: string
@@ -15,6 +16,9 @@ export function MasterDataSearch({
   placeholder: string
   submitLabel: string
   hiddenInputs?: Record<string, string | number>
+  // Toolbar fields before the search (a FilterSelect with hideLabel and fieldSize="md"): the findings page's รอบ and
+  // เรื่อง, whose search comes last (group 2 spec §10). The visual order is the DOM order.
+  leading?: ReactNode
   // More toolbar fields (a FilterSelect with hideLabel and fieldSize="md"), placed between the search and the button.
   children?: ReactNode
 }) {
@@ -26,6 +30,7 @@ export function MasterDataSearch({
       {Object.entries(hiddenInputs).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
+      {leading}
       <SearchField name="search" defaultValue={defaultValue} placeholder={placeholder} aria-label={submitLabel} fieldSize="md" className="sm:flex-[1_1_320px]" />
       {children}
       <Button type="submit" variant="outline" size="md">{submitLabel}</Button>

@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
-  auditFindingResolutionStatuses,
   buildAuditFindingWhere,
   isAuditFindingWaitingStatus,
   resolveAuditFindingStatus,
@@ -20,11 +19,11 @@ test("audit findings page exposes the findings workflow", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
 
   assert.match(page, /DataFreshnessBanner/)
-  assert.match(page, /resolutionSummaryItems/)
   assert.match(page, /resolutionFilters/)
-  assert.match(page, /ResolutionMetric/)
+  assert.match(page, /followUpChips/)
   assert.match(page, /FindingValueChange/)
   assert.match(page, /resolveFindingState/)
+  assert.doesNotMatch(page, /resolutionSummaryItems|ResolutionMetric|<StatStrip\b/, "the tab and sub-chip counts replace the strip (group 2 plan 4, P4-R1)")
 })
 
 test("audit finding exports use the same resolution filters as the page", () => {
@@ -71,12 +70,9 @@ test("audit finding resolution copy is translated", () => {
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   for (const messages of [th, en]) {
-    assert.equal(typeof messages.auditFinding.resolutionTitle, "string")
-    assert.equal(typeof messages.auditFinding.resolutionHelp, "string")
-    assert.equal(typeof messages.auditFinding.summaryPendingReview, "string")
-    assert.equal(typeof messages.auditFinding.summaryOpenActions, "string")
-    assert.equal(typeof messages.auditFinding.summaryOverdue, "string")
-    assert.equal(typeof messages.auditFinding.summaryClosed, "string")
+    for (const gone of ["resolutionTitle", "resolutionHelp", "summaryPendingReview", "summaryOpenActions", "summaryOverdue", "summaryClosed"]) {
+      assert.equal(messages.auditFinding[gone], undefined, `${gone}: the StatStrip went in group 2 plan 4`)
+    }
     assert.equal(typeof messages.auditFinding.filterActionOpen, "string")
     assert.equal(typeof messages.auditFinding.filterOverdue, "string")
     assert.equal(typeof messages.auditFinding.filterClosed, "string")
@@ -163,7 +159,6 @@ test("the two action filters are the bell's two kinds, with the rules they are g
     assert.equal(isAuditFindingWaitingStatus(status), true)
   }
   assert.equal(isAuditFindingWaitingStatus("action_open"), false)
-  assert.deepEqual([...auditFindingResolutionStatuses], ["pending", "action_open", "overdue", "closed", "approved", "rejected", "exception", "all"], "the tabs stay as they are")
 })
 
 test("a search, round or type narrows an action filter without replacing its own conditions", () => {
@@ -185,17 +180,17 @@ test("a search, round or type narrows an action filter without replacing its own
   })
 })
 
-test("the findings page reads the bell's rules for the action filters and shows the filter as a chip (group 1 spec §6.5)", () => {
+test("the findings page reads its lists through Task 2's page data, with the bell's rules for its two kinds, and a bell filter opens ต้องติดตาม with its chip (group 1 spec §6.5; group 2 spec §10, P4-R3)", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8").replace(/\r\n/g, "\n")
+  const data = readFileSync("src/lib/audit-findings-page-data.ts", "utf8").replace(/\r\n/g, "\n")
   assert.match(page, /const waitingRules = isAuditFindingWaitingStatus\(status\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
   assert.match(page, /getAuditFindingsPageData\(\{ locale, filters, user, canApprove, typeSearchLabels, rules: waitingRules, now: pageLoadedAt \}\)/)
-  const data = readFileSync("src/lib/audit-findings-page-data.ts", "utf8").replace(/\r\n/g, "\n")
+  assert.doesNotMatch(page, /buildAuditFindingWhere|prisma\./, "the wheres and the counts live in the page data (Task 2)")
   assert.match(data, /const whereFor = \(status: AuditFindingStatus\) => buildAuditFindingWhere\(\{ \.\.\.base, status \}\)/)
   assert.match(data, /const base = \{ search: filters\.search, roundId: filters\.roundId, findingType: filters\.findingType, now, rules, typeSearchLabels \}/)
   assert.doesNotMatch(data, /now: today/)
-  assert.doesNotMatch(page, /now: today/)
   assert.match(page, /const tNotifications = await getTranslations\("notifications"\)/)
   assert.match(page, /action_not_due: tNotifications\("openAuditActions"\),\n\s+action_due_soon: tNotifications\("auditActionsDueSoon"\),/)
-  assert.match(page, /\.\.\.\(isAuditFindingWaitingStatus\(status\) \? \[\{ key: "status", label: resolutionFilterLabels\[status\], href: filterHref\("all"\) \}\] : \[\]\),/)
-  assert.match(page, /const resolutionFilters = auditFindingResolutionStatuses\.map\(/, "the tabs come from the 8 tab statuses only")
+  assert.match(page, /\.\.\.\(isAuditFindingWaitingStatus\(status\) \? \[\{ key: "status", label: waitingLabels\[status\], href: filterHref\(\{ status: "follow_up" \}\) \}\] : \[\]\),/)
+  assert.match(page, /const resolutionFilters = auditFindingTabs\.map\(/, "the tabs come from the six tabs only")
 })

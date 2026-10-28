@@ -66,7 +66,7 @@ test("a region that scrolls takes the keyboard: the dialog body and the batch re
 test("the audit exports show only to a role with audit:export (e2e fix task FX4: AU1, M1)", () => {
   const findings = read("src/app/[locale]/(dashboard)/audit/findings/page.tsx")
   assert.match(findings, /const canExport = hasPermission\(user, "audit", "export"\)/)
-  assert.match(findings, /\{canExport \? \(\n\s*<div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">\n\s*<a href=\{`\/api\/audit-findings\/export\?/)
+  assert.match(findings, /actions=\{canExport \? <AuditFindingsExportMenu excelHref=\{`\/api\/audit-findings\/export\?/)
   const round = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx")
   assert.match(round, /const canExportRound = round\.status !== "cancelled" && hasPermission\(user, "audit", "export"\)/)
   assert.ok(!read("e2e/audit/field-audit.spec.ts").includes(`test.fail(true, "AU1: `))
@@ -249,10 +249,11 @@ test("the PM plan's edit page is left only once its asset select has loaded its 
 
 test("the findings page offers the review controls only to a role with audit:approve (e2e decision DX3 (ก): M4)", () => {
   const findings = read("src/app/[locale]/(dashboard)/audit/findings/page.tsx")
-  // Both the card and the table row render AuditFindingReviewActions for canApprove alone, as the review route checks.
+  // The panel renders AuditFindingReviewActions for canApprove alone, as the review route checks (group 2 plan 4 Task 3;
+  // Task 4 replaces it with the panel's own decision under the same gate).
   const reviewActions = findings.match(/\{canApprove \? \(\n\s*<AuditFindingReviewActions\b/g) ?? []
-  assert.equal(reviewActions.length, 2)
-  assert.equal((findings.match(/<AuditFindingReviewActions\b/g) ?? []).length, 2)
+  assert.equal(reviewActions.length, 1)
+  assert.equal((findings.match(/<AuditFindingReviewActions\b/g) ?? []).length, 1)
   assert.doesNotMatch(findings, /canEdit \|\| canApprove/)
   assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M4: `))
 })

@@ -289,28 +289,27 @@ test("the finding row triggers are Button sm: approve outline, reject danger, bu
 // Task 8 (spec 2B §5.4 row "audit/findings", §5.9.2 row 3, §5.10 row 2, I21, I24): the findings list page.
 const FINDINGS_PAGE = `${D}audit/findings/page.tsx`
 
-test("findings: PageHeader with a back link, StatStrip, TabNav, chips for the hidden filters, DataTable and the shared Pagination (spec 2B §5.4, I24)", () => {
+test("findings: PageHeader with the way back and ส่งออก ▾, TabNav with counts, the list on DataTable, the review pane beside it, and the shared Pagination (spec 2B §5.4, I24; group 2 spec §10)", () => {
   const source = read(FINDINGS_PAGE)
-  for (const part of ["<PageHeader", "<StatStrip", "<TabNav", "<FilterChipList", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<KeyValueList", "<DataTableFoot>", "<Pagination"]) {
+  for (const part of ["<PageHeader", "<PageBackLink", "<AuditFindingsExportMenu", "<TabNav", "<FilterChipList", "<FilterSelect", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<DataTableFoot>", "<Pagination", "data-audit-finding-pane"]) {
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.match(source, /<div className="space-y-6">/)
-  assert.match(source, /back=\{<PageBackLink href=\{`\/\$\{locale\}\/audit\/rounds`\} label=\{t\("backToRounds"\)\} \/>\}/, "the way back has the left arrow, not the plus of a create button (spec 2B §5.10 row 2)")
-  assert.match(source, /<TabNav aria-label=\{t\("quickFilters"\)\} items=\{resolutionFilters\} current=\{status\} scroll=\{false\} \/>/)
-  assert.match(source, /current: status === item\.status,\n\s+scroll: false,/, "the strip cell of the filter in use keeps aria-current and the scroll position")
-  assert.match(read("src/lib/audit-findings-page-data.ts"), /filters\.roundId \? prisma\.auditRound\.findUnique\(\{ where: \{ id: filters\.roundId \}, select: \{ id: true, auditNo: true, name: true \} \}\)/, "the round chip names its round (I24)")
+  assert.match(source, /back=\{<PageBackLink href=\{back\.href\} label=\{backLabel\} \/>\}/, "the way back has the left arrow (spec 2B §5.10 row 2) and honours returnTo (P4-R12)")
+  assert.match(source, /<TabNav aria-label=\{t\("quickFilters"\)\} items=\{resolutionFilters\} current=\{view\.tab\} scroll=\{false\} \/>/)
   assert.match(source, /<FilterChipList chips=\{filterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
   assert.match(source, /<AuditFindingsBatchActions key=\{selectionKey\} findings=\{batchReviewFindings\} \/>/, "another page or filter starts the batch selection empty")
-  assert.match(source, /<TableEmptyRow\n\s+colSpan=\{8\}\n\s+emptyState=\{\{[\s\S]*?actionVariant: "secondary",/)
-  assert.match(source, /<DataTableHead align="right" sticky="right">\{tCommon\("actions"\)\}<\/DataTableHead>/)
-  assert.match(source, /<AuditFindingReviewActions\n/, "the review decision stays visible in the row (fix round 3: the rest is in ⋯)")
-  assert.doesNotMatch(source, /<MasterDataHeader\b|<ColumnHeader\b|toLocaleString\(/)
+  assert.match(source, /<TableEmptyRow colSpan=\{[^}]+\} emptyState=\{\{ icon: <FileText \/>, \.\.\.empty, actionVariant: "secondary" \}\} \/>/)
+  // Task 2's pin, kept: the round select names a round that is not among its options (I24).
+  assert.match(read("src/lib/audit-findings-page-data.ts"), /filters\.roundId \? prisma\.auditRound\.findUnique\(\{ where: \{ id: filters\.roundId \}, select: \{ id: true, auditNo: true, name: true \} \}\)/, "the round select names its round (I24)")
+  assert.doesNotMatch(source, /<StatStrip\b|<MasterDataHeader\b|<ColumnHeader\b|toLocaleString\(|sticky="right"/)
 })
 
-test("findings page on the server, count the whole list once and keep the page in returnTo (spec 2B §5.9.2 row 3)", () => {
+test("findings page on the server: Task 2's page data pages and counts the list, a page past the end goes to the last, and the page sizes link (spec 2B §5.9.2 row 3; group 2 plan 4)", () => {
   const source = read(FINDINGS_PAGE)
   const data = read("src/lib/audit-findings-page-data.ts")
   const rules = read("src/lib/audit-finding-filters.ts")
+  assert.match(source, /const \{ rows, total, listPage, counts, back \} = data/)
   assert.match(rules, /listPage: parseListPage\(\{ page: params\.page, pageSize: params\.pageSize \}\)/)
   assert.match(data, /const \{ skip, take \} = listPageWindow\(listPage\)/)
   assert.match(data, /orderBy: auditFindingsListOrderBy, skip, take/)
@@ -321,9 +320,9 @@ test("findings page on the server, count the whole list once and keep the page i
   assert.match(data, /const total = isAuditFindingWaitingStatus\(filters\.status\) \? \(waitingTotal \?\? 0\) : counts\[filters\.status\]/)
   assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
   assert.match(source, /const lastPage = lastListPage\(\w+, [\w.]+\)\n\s+if \(\w+\.length === 0 && \w+ > 0 && [\w.]+ > lastPage\) \{\n\s+redirect\(/)
-  assert.match(rules, /appendListPage\(params, \{ page: overrides\.page, pageSize: overrides\.pageSize \}\)/, "buildAuditFindingsHref writes page above 1 and pageSize other than 25 only")
-  assert.match(source, /buildAuditFindingsHref\(locale, filters, \{ \.\.\.next, status: nextStatus, pageSize: listPage\.pageSize \}\)/, "a filter link goes back to page 1 and keeps the page size")
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: pageHref\(\{ pageSize: value \}\) \}\)\)\}/)
+  assert.match(rules, /appendListPage\(params, \{ page: overrides\.page, pageSize: overrides\.pageSize \}\)/, "buildAuditFindingsHref writes page above 1 and pageSize other than 25 only")
+  assert.match(source, /buildAuditFindingsHref\(locale, filters, \{ \.\.\.next, pageSize: listPage\.pageSize \}\)/, "a filter link goes back to page 1 and keeps the page size")
 })
 
 // Plan 2B-2 Task 9 (spec 2B §5.4 row rounds, §5.9.2 row 7, I20, I21): the audit rounds list. The view filters and the
@@ -511,58 +510,25 @@ test("the rounds page coverage-gap tables wrap their number headers and carry th
   assert.equal(source.match(/scrollHint: tCommon\("tableScrollHint"\)/g)?.length ?? 0, 2, "both gap lists pass the hint")
 })
 
-// Audit mobile fix D8 (2026-10-16, replaces 2B-2 Task 18 fix 2): the desktop findings table had 13 columns (2,272px in a
-// ~965px box) with approve/reject last, so reviewers scrolled right on every row. Now 8 columns that fit 1280×800; the
-// actions are pinned right (sticky) in a 200px column (approve and reject on one line, fix round 1), so below 1280 they stay in view while it scrolls.
-test("the findings desktop table has 8 columns with the actions pinned right (audit mobile fix D8)", () => {
+// Group 2 plan 4 Task 3 (spec §10) replaces audit mobile fix D8's 8 columns: the decision, the plan, the badges and the
+// evidence are in the review panel beside the list, so the table has four columns (after Task 5's tick column for an
+// approver) and no pinned action column.
+test("the findings desktop table has the four columns of spec §10 and no action column; the comparison keeps the D8 look", () => {
   const source = read(`${D}audit/findings/page.tsx`)
   const table = source.slice(source.indexOf("<DataTable framed={false}"), source.indexOf("</DataTable>"))
   const heads = [...table.matchAll(/<DataTableHead\b[^>]*>(.*?)<\/DataTableHead>/g)].map((match) => match[1])
-  assert.deepEqual(heads, [
-    `{t("reportedAt")}`,
-    `{t("auditRound")}`,
-    `{t("asset")}`,
-    `{t("findingType")}`,
-    `{t("comparisonColumn")}`,
-    `{tCommon("status")}`,
-    `{t("actionOwner")}`,
-    `{tCommon("actions")}`,
-  ])
+  assert.deepEqual(heads.slice(-4), [`{t("findingTopic")}`, `{t("asset")}`, `{t("comparisonColumn")}`, `{t("roundShort")}`])
+  assert.ok(heads.length <= 5, "at most the tick column before them")
   assert.match(table, /scrollHint=\{tCommon\("tableScrollHint"\)\}/, "the shared hint still shows while the table overflows")
-  assert.match(table, /<DataTableCell align="right" sticky="right">\n\s+\{\/\* Pattern ช1/)
-  assert.match(table, /\{canApprove \? \(\n\s+<AuditFindingReviewActions\n\s+compact\n\s+menuCode=\{rowCode\}\n\s+menuLinks=\{disposalMenuLinks\}\n/, "fix round 3: plan, close and the disposal request in one ⋯")
-  assert.match(table, /\) : disposalMenuLinks\.length > 0 \? \(\n\s+<RowActions code=\{rowCode\} name=\{assetLabel\} menuLabel=\{tCommon\("moreActionsFor", \{ code: rowCode \}\)\} groups=\{\[\{ key: "finding", items: disposalMenuLinks \}\]\} \/>/, "without review rights the disposal request still has its ⋯")
-  assert.match(table, /const disposalMenuLinks: RowActionItem\[\] = canCreateDisposal && finding\.asset\n\s+\? \[\{ kind: "link", key: "disposal", label: t\("openDisposalRequest"\), href: appendOperationalReturnTo\(/)
-  assert.doesNotMatch(table, /buttonVariants\(/, "no button-styled link left in the table cell")
-  assert.match(table, /<FindingValueChange\n/, "system → found as compact text")
-  assert.doesNotMatch(table, /<FindingComparison\b/, "no inner bordered box in the table (plan 2D-4 moved the phone card's values into its KeyValueList)")
-  assert.match(table, /<FindingStatusBadges items=\{findingStatusBadges\(finding, resolutionState\)\} \/>/, "the five statuses in one cell")
-  assert.match(table, /<AuditFindingEvidenceList\n\s+compact\n/)
-  assert.match(table, /: <Nil label=\{t\("noActionOwner"\)\} \/>/)
-  assert.match(table, /\{finding\.actionDueDate \? t\("dueOn", \{ date: formatDateTime\(finding\.actionDueDate\) \}\) : <Nil \/>\}/, "fix round 1: the second line says what the date is")
-  assert.doesNotMatch(table, /\bhideLabel\b/, "fix round 1: the actions header is visible, as in the mockup")
-  // Fix round 2: in the real browser the auto layout squeezed the owner column to 40px (its cells were "—"), so the
-  // table is fixed: a <colgroup> sets every width (px = 4 × the spacing step) and minWidth is their sum, at most the
-  // 963px inside the 1280×800 box. Below that the table scrolls and the actions stay pinned.
-  assert.match(table, /^<DataTable framed=\{false\} layout="fixed" minWidth=\{960\} /)
-  const cols = [...table.matchAll(/<col className="w-(\d+)" \/>/g)].map((match) => Number(match[1]) * 4)
-  // Fix round 3: the comparison gets 152px (an asset name as the found value wrapped into 10 lines at 84px), taken from
-  // the round, asset, type, status and action columns; the action column holds approve/reject stacked plus ⋯ (118px).
-  assert.deepEqual(cols, [104, 116, 136, 76, 152, 124, 88, 164], "date, round, asset, type, system → found, status, owner, actions")
-  assert.equal(cols.reduce((sum, width) => sum + width, 0), 960)
-  assert.match(table, /<DataTableHead>\{t\("actionOwner"\)\}<\/DataTableHead>/, "the owner header stays on one line")
+  assert.match(table, /^<DataTable framed=\{false\} layout="fixed" minWidth=\{[^}]+\} /)
+  assert.doesNotMatch(table, /sticky=|<RowActions\b|<AuditFindingReviewActions\b|buttonVariants\(|<FindingComparison\b/, "no action cell, no button-styled link and no inner box in a row")
   assert.doesNotMatch(table, /<DataTableCell[^>]*\b(?:min-)?w-\d+/, "the widths live in the colgroup only")
-  assert.doesNotMatch(table, /\bmin-w-(?:56|64|80)\b/)
-
-  // Fix round 3: in the table the evidence is one line, the count and then the file links, each truncated.
-  const evidence = source.slice(source.indexOf("function AuditFindingEvidenceList"), source.indexOf("function resolveFindingState"))
-  assert.match(evidence, /if \(compact\) \{\n\s+return \(\n\s+<div className="mt-1 flex min-w-0 items-center gap-1 text-meta text-muted-foreground">\n\s+<span className="shrink-0">\{labels\.count\}<\/span>/)
-  assert.match(evidence, /className=\{cn\(linkVariants\(\), "flex min-w-0 items-center gap-1"\)\}/)
 
   const change = source.slice(source.indexOf("function FindingValueChange"), source.indexOf("function AuditFindingEvidenceList"))
   assert.doesNotMatch(change, /\bborder\b|\brounded/, "the comparison has no box of its own")
   assert.match(change, /<ArrowRight aria-hidden="true"/)
   assert.match(change, /<span className="font-medium text-foreground">\{orNil\(actualValue\)\}<\/span>/, "the found value in medium weight")
+  assert.doesNotMatch(source.slice(source.indexOf("function AuditFindingEvidenceList"), source.indexOf("function resolveFindingState")), /compact/, "one evidence list, the panel's")
 
   const badges = source.slice(source.indexOf("const findingStatusBadges"), source.indexOf("return (\n    <div className=\"space-y-6\">"))
   assert.match(badges, /resolutionState === "pending_review" \? \[\]/, "the review badge only when the state does not say it already")
@@ -570,7 +536,6 @@ test("the findings desktop table has 8 columns with the actions pinned right (au
   assert.match(badges, /tone: RESOLUTION_STATE_TONES\[resolutionState\]/, "the resolution badge keeps its tones")
   assert.match(badges, /status: finding\.reviewStatus/)
   assert.match(badges, /status: finding\.actionStatus/)
-  assert.match(source, /<ul className="flex w-25 flex-col items-start gap-1">/, "a fixed-width status list: a long label truncates instead of widening the table")
 })
 
 // Plan 2B-4 Task 5 (spec 2B §4.4.5, §5.5, §4.6.3, bug §5.10 #7): the employee page on the page primitives. The shell

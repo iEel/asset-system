@@ -13,18 +13,6 @@ import {
   type WaitingWorkRules,
 } from "./waiting-work-rules.ts"
 
-// The page's eight quick filters until Task 3 draws the six tabs (plan 4 Task 3 removes this list).
-export const auditFindingResolutionStatuses = [
-  "pending",
-  "action_open",
-  "overdue",
-  "closed",
-  "approved",
-  "rejected",
-  "exception",
-  "all",
-] as const
-
 // The bell's two action kinds (group 1 spec §6.3): reached by a link only, never a tab.
 export const auditFindingWaitingStatuses = ["action_not_due", "action_due_soon"] as const
 

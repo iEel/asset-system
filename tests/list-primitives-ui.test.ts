@@ -122,7 +122,7 @@ test("ClickableTableRow takes the shared row classes: lit while focus is inside,
   const source = readFileSync("src/components/ui/clickable-table-row.tsx", "utf8").replace(/\r\n/g, "\n")
 
   assert.match(source, /import \{ dataTableRowClasses \} from "@\/components\/ui\/data-table"/)
-  assert.match(source, /className=\{cn\(dataTableRowClasses, "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", className\)\}/)
+  assert.match(source, /className=\{cn\(dataTableRowClasses, "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", current && clickableTableRowCurrentClasses, className\)\}/)
   assert.doesNotMatch(source, /focus:bg-row-hover|className = ""/, "focus-within covers focus on the row itself")
   assert.match(source, /target\.closest\("a,button,input,select,textarea,\[data-no-row-click\]"\)/, "clicks on controls inside the row still do not open it")
 })
@@ -306,13 +306,15 @@ test("ContentPanel divided has a 56px head over a line and a padded or flush bod
   assert.match(source, /<ul data-slot="content-panel-rows" className=\{cn\("divide-y divide-border-soft \[&>\*\]:px-4 \[&>\*\]:py-3 md:\[&>\*\]:px-5", className\)\} \{\.\.\.props\} \/>/)
 })
 
-test("MasterDataSearch is a frameless search toolbar on SearchField and Button, with its props unchanged (2B §6.3.5, I8)", () => {
+test("MasterDataSearch is a frameless search toolbar on SearchField and Button, with two optional slots (2B §6.3.5, I8; group 2 plan 4)", () => {
   const source = readFileSync("src/components/master-data/master-data-layout.tsx", "utf8").replace(/\r\n/g, "\n")
   const search = source.match(/export function MasterDataSearch\([\s\S]*?\n\}\n/)?.[0] ?? ""
   assert.ok(search, "function MasterDataSearch not found")
-  // An optional children slot (between the field and the button) carries the departments status filter (critique 2026-10-20 E1).
-  assert.match(search, /^export function MasterDataSearch\(\{\n  action,\n  defaultValue,\n  placeholder,\n  submitLabel,\n  hiddenInputs = \{\},\n  children,\n\}: \{/)
-  assert.ok(search.indexOf("{children}") > search.indexOf("<SearchField") && search.indexOf("{children}") < search.indexOf("<Button"), "the slot sits between the field and the button")
+  // Two optional slots (critique 2026-10-20 E1; group 2 plan 4): leading before the field (the findings page's รอบ and
+  // เรื่อง), children between the field and the button (the departments status filter).
+  assert.match(search, /^export function MasterDataSearch\(\{\n  action,\n  defaultValue,\n  placeholder,\n  submitLabel,\n  hiddenInputs = \{\},\n  leading,\n  children,\n\}: \{/)
+  assert.ok(search.indexOf("{leading}") > search.indexOf('type="hidden"') && search.indexOf("{leading}") < search.indexOf("<SearchField"), "leading sits before the field")
+  assert.ok(search.indexOf("{children}") > search.indexOf("<SearchField") && search.indexOf("{children}") < search.indexOf("<Button"), "children sit between the field and the button")
   assert.match(search, /<form role="search" action=\{action\} className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">/)
   assert.match(search, /<input key=\{name\} type="hidden" name=\{name\} value=\{value\} \/>/)
   assert.match(search, /<SearchField name="search" defaultValue=\{defaultValue\} placeholder=\{placeholder\} aria-label=\{submitLabel\} fieldSize="md" className="sm:flex-\[1_1_320px\]" \/>/)

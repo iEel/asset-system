@@ -1,44 +1,52 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { Archive, ArrowRight, Download, FileText } from "lucide-react"
+import { ArrowRight, FileText } from "lucide-react"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
 import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
-import { formatFindingValue } from "@/lib/audit-finding-labels"
+import { AuditFindingsExportMenu } from "@/components/audit/audit-findings-export-menu"
+import { AuditFindingPaneTop } from "@/components/audit/audit-finding-pane-top"
 import { cn, formatDateTime } from "@/lib/utils"
 import { formatFileSize } from "@/lib/uploads"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { Chip } from "@/components/ui/chip"
+import { ContentPanel } from "@/components/ui/content-panel"
 import { DataFreshnessBanner } from "@/components/ui/data-freshness-banner"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
+import { FilterSelect, type FilterSelectOption } from "@/components/ui/filter-select"
 import { KeyValueList } from "@/components/ui/key-value-list"
-import { Nil, orNil } from "@/components/ui/nil"
+import { orNil } from "@/components/ui/nil"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
-import { RowActions, type RowActionItem } from "@/components/ui/row-actions"
-import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { TabNav } from "@/components/ui/tab-nav"
-import { isSameAuditActor } from "@/lib/audit-segregation"
 import {
-  auditFindingResolutionStatuses,
+  auditFindingFollowUpChips,
+  auditFindingStatusView,
+  auditFindingTabStatus,
+  auditFindingTabs,
+  auditFindingTypeShortLabelKeys,
+  auditFindingTypes,
   auditFindingsHrefQuery,
   buildAuditFindingsHref,
   getAuditFindingToday,
   isAuditFindingWaitingStatus,
   isOpenAuditFindingActionStatus,
   parseAuditFindingsListFilters,
-  type AuditFindingResolutionStatus,
+  resolveAuditFindingType,
+  type AuditFindingFollowUpChip,
+  type AuditFindingTab,
   type AuditFindingsHrefOverrides,
 } from "@/lib/audit-finding-filters"
-import { getAuditFindingsPageData, type AuditFindingEvidenceAttachment } from "@/lib/audit-findings-page-data"
 import { getAuditFindingTypeSearchLabels } from "@/lib/audit-finding-search-labels"
-import { withPerformanceTiming } from "@/lib/performance-timing"
+import { getAuditFindingsPageData, type AuditFindingEvidenceAttachment, type AuditFindingsPageRow } from "@/lib/audit-findings-page-data"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
 import { getPanelClasses } from "@/lib/design-system"
@@ -46,6 +54,7 @@ import { formatCount } from "@/lib/display-format"
 import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 import { getAuditItemReconcileStatusLabelKey, getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditFindingsPageProps = {
@@ -56,15 +65,15 @@ type AuditFindingsPageProps = {
 export default async function AuditFindingsPage({ params, searchParams }: AuditFindingsPageProps) {
   const { locale } = await params
   const filters = parseAuditFindingsListFilters(locale, await searchParams)
-  const { status, search: searchText, roundId, findingType } = filters
+  const { status, search: searchText, roundId, findingType, findingId } = filters
   const user = await requirePagePermission(locale, "audit", "view")
-  // canEdit goes: its only use was the owner list, which now follows audit:approve (P4-R21).
   const canApprove = hasPermission(user, "audit", "approve")
   // The exports' routes need audit:export (spec §6.5: a role without it does not see them; the E2E suite's AU1, M1).
   const canExport = hasPermission(user, "audit", "export")
   const canCreateDisposal = hasPermission(user, "disposal", "create")
 
   const t = await getTranslations("auditFinding")
+  const tRound = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
   const tAsset = await getTranslations("asset")
   const tNotifications = await getTranslations("notifications")
@@ -76,59 +85,99 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     const key = getAuditItemReconcileStatusLabelKey(status)
     return key ? t(key) : status
   }
+
+  // Task 2's one load, as Task 2 wired it: every count, the rows and the open finding come from one builder.
   const pageLoadedAt = new Date()
   // The bell's two action kinds read its own day count; other statuses read no setting.
   const waitingRules = isAuditFindingWaitingStatus(status) ? await getWaitingWorkRules() : DEFAULT_WAITING_WORK_RULES
-  const today = getAuditFindingToday()
   const typeSearchLabels = await getAuditFindingTypeSearchLabels()
   const data = await withPerformanceTiming(
     "audit-findings.page-data",
     () => getAuditFindingsPageData({ locale, filters, user, canApprove, typeSearchLabels, rules: waitingRules, now: pageLoadedAt }),
-    { route: "/audit/findings", locale, status, hasSearch: Boolean(searchText), hasFinding: Boolean(filters.findingId) }
+    { route: "/audit/findings", locale, status, hasSearch: Boolean(searchText), hasFinding: Boolean(findingId) }
   )
-  const { rows: findings, total, listPage, valueLabels, employees: employeeOptions, filterRound } = data
-  const { pending: pendingReviewCount, action_open: openActionCount, overdue: overdueCount, closed: closedCount } = data.counts
+  const { rows, total, listPage, counts, back } = data
+  // The finding open in the panel (?finding=), wherever it is in the list (Task 2).
+  const chosen = data.panel?.finding ?? null
+  const today = getAuditFindingToday(pageLoadedAt)
+  // ต้องติดตาม and its sub-chips (P4-R3): an old value opens its tab and sub-chip; a bell value opens ต้องติดตาม with its chip.
+  const view = auditFindingStatusView(status)
+  // The way back (P4-R12): Task 2's returnTo, else the round of roundId, else the rounds list.
+  const backLabel = back.target === "round" ? t("backToRound") : t("backToRounds")
+
+  // Every link is Task 2's one writer, so returnTo rides on each (spec 2B §5.9.2 row 3; spec §10).
   const auditFindingsReturnHref = buildAuditFindingsHref(locale, filters, { page: listPage.page, pageSize: listPage.pageSize, finding: filters.findingId })
-  // This list at another page or page size, with the same filters.
+  // This list at another page or page size, with the same filters and no finding open, as a filter does (P4-R30). A link
+  // with a finding and no page opens the page that holds it (P4-R18), so a pager link to page 1 that kept the finding
+  // would land back on the finding's page.
   const pageHref = (next: { page?: number; pageSize?: number }) => buildAuditFindingsHref(locale, filters, next)
-  // A filter link goes back to page 1 and keeps the page size (spec 2B §5.9.1).
-  const filterHref = (nextStatus: AuditFindingResolutionStatus, next: Pick<AuditFindingsHrefOverrides, "roundId" | "findingType"> = {}) =>
-    buildAuditFindingsHref(locale, filters, { ...next, status: nextStatus, pageSize: listPage.pageSize })
+  // Another tab, sub-chip or filter: page 1 with the page size kept (spec 2B §5.9.1), and no finding open.
+  const filterHref = (next: Pick<AuditFindingsHrefOverrides, "status" | "search" | "roundId" | "findingType">) => buildAuditFindingsHref(locale, filters, { ...next, pageSize: listPage.pageSize })
+  // A row or a card: this list with that finding open in the panel (?finding=, spec §10).
+  const findingHref = (id: string) => buildAuditFindingsHref(locale, filters, { page: listPage.page, pageSize: listPage.pageSize, finding: id })
+  const closeHref = buildAuditFindingsHref(locale, filters, { page: listPage.page, pageSize: listPage.pageSize })
+  const clearSearchHref = filterHref({ search: "" })
+  // The disposal request from a finding, back to this list and its finding (Appendix A §10 bullet 4). Task 4's panel
+  // takes it too.
+  const disposalHrefFor = (finding: { id: string; findingType: string; asset: { id: string } | null; auditRound: { auditNo: string } }) =>
+    canCreateDisposal && finding.asset
+      ? appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)
+      : null
+
+  // A page past the last one (an old link, or the last finding of the last page decided) shows the last page (spec 2B I21).
+  // It keeps the open finding, unlike the pager (P4-R30): the panel stays on the finding it showed.
+  const lastPage = lastListPage(total, listPage.pageSize)
+  if (rows.length === 0 && total > 0 && listPage.page > lastPage) {
+    redirect(buildAuditFindingsHref(locale, filters, { page: lastPage, pageSize: listPage.pageSize, finding: filters.findingId }))
+  }
+  const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
+
+  // The whole filtered list, in the reader's language (P4-R7); never the open finding or the page.
   const exportParams = new URLSearchParams()
   if (searchText) exportParams.set("search", searchText)
   if (roundId) exportParams.set("roundId", roundId)
   if (findingType) exportParams.set("findingType", findingType)
   exportParams.set("status", status)
-  // A page past the last one (an old link, or the last finding of the last page decided) shows the last page (spec 2B I21).
-  const lastPage = lastListPage(total, listPage.pageSize)
-  if (findings.length === 0 && total > 0 && listPage.page > lastPage) {
-    redirect(pageHref({ page: lastPage, pageSize: listPage.pageSize }))
-  }
-  const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
-  const attachmentsByFindingId = new Map<string, AuditFindingEvidenceAttachment[]>(findings.map((finding) => [finding.id, finding.evidence]))
-  const attachmentCountByFindingId = new Map(
-    Array.from(attachmentsByFindingId, ([findingId, attachments]) => [findingId, attachments.length])
-  )
-  const batchReviewFindings = findings
-    .filter((finding) => finding.reviewStatus === "pending" && !isSameAuditActor(user.id, finding.reportedBy))
-    .map((finding) => ({
-      id: finding.id,
-      label: finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo,
-      detail: `${finding.auditRound.auditNo} · ${t(`type_${finding.findingType}`)}`,
-    }))
-  const resolutionFilterLabels: Record<AuditFindingResolutionStatus, string> = {
+  exportParams.set("locale", locale)
+
+  const tabLabels: Record<AuditFindingTab, string> = {
     pending: t("status_pending"),
-    follow_up: t("tabFollowUp"),
-    action_open: t("filterActionOpen"),
-    overdue: t("filterOverdue"),
-    closed: t("filterClosed"),
     approved: t("status_approved"),
     rejected: t("status_rejected"),
-    exception: t("status_exception"),
+    followUp: t("tabFollowUp"),
+    closed: t("filterClosed"),
     all: t("status_all"),
+  }
+  const chipLabels: Record<AuditFindingFollowUpChip, string> = {
+    action_open: t("filterActionOpen"),
+    overdue: t("filterOverdue"),
+    exception: t("status_exception"),
+  }
+  const waitingLabels = {
     action_not_due: tNotifications("openAuditActions"),
     action_due_soon: tNotifications("auditActionsDueSoon"),
   }
+  // The tab and sub-chip counts replace the strip (P4-R1); each is built from the where of the rows it opens (spec §5).
+  const resolutionFilters = auditFindingTabs.map((tab) => ({ key: tab, label: tabLabels[tab], count: formatCount(counts[auditFindingTabStatus[tab]]), href: filterHref({ status: auditFindingTabStatus[tab] }) }))
+  const followUpChips = auditFindingFollowUpChips.map((chip) => ({ key: chip, label: chipLabels[chip], count: formatCount(counts[chip]), href: filterHref({ status: chip }) }))
+  // A bell link's filter is narrower than ต้องติดตาม and has no sub-chip, so it shows as a chip; removing it opens the tab.
+  const filterChips: FilterChipItem[] = [
+    ...(isAuditFindingWaitingStatus(status) ? [{ key: "status", label: waitingLabels[status], href: filterHref({ status: "follow_up" }) }] : []),
+  ]
+  // "รอบ:" and "เรื่อง:" (spec §10, bug 19, P4-R28): a round the options do not hold still shows, by its number or as
+  // ไม่อยู่ในรายการ; an unknown type is null already (Task 2), so it never reaches the select.
+  const roundOptions: FilterSelectOption[] = data.roundOptions.map((round) => ({ value: round.id, label: `${round.auditNo} · ${round.name}` }))
+  if (roundId && !roundOptions.some((option) => option.value === roundId)) {
+    roundOptions.push({ value: roundId, label: data.filterRound ? `${data.filterRound.auditNo} · ${data.filterRound.name}` : t("filterNotListed") })
+  }
+  // เรื่อง names the field in the round page's one short word (P4-R2): a Chip, since it names something and is not a
+  // state. A stored type the app does not know reads ไม่อยู่ในรายการ, never its code.
+  const topicLabel = (type: string) => {
+    const known = resolveAuditFindingType(type)
+    return known ? tRound(auditFindingTypeShortLabelKeys[known]) : t("filterNotListed")
+  }
+  const topicOptions: FilterSelectOption[] = auditFindingTypes.map((type) => ({ value: type, label: topicLabel(type) }))
+
   const resolutionStateLabels: Record<ResolutionState, string> = {
     pending_review: t("resolutionStatePendingReview"),
     open_action: t("resolutionStateOpenAction"),
@@ -136,55 +185,30 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     closed: t("resolutionStateClosed"),
     resolved: t("resolutionStateResolved"),
   }
-  const resolutionSummaryItems: ResolutionMetric[] = [
-    {
-      status: "pending",
-      label: t("summaryPendingReview"),
-      help: t("summaryPendingReviewHelp"),
-      count: pendingReviewCount,
-      attention: pendingReviewCount > 0,
-    },
-    {
-      status: "action_open",
-      label: t("summaryOpenActions"),
-      help: t("summaryOpenActionsHelp"),
-      count: openActionCount,
-      attention: false,
-    },
-    {
-      status: "overdue",
-      label: t("summaryOverdue"),
-      help: t("summaryOverdueHelp"),
-      count: overdueCount,
-      attention: overdueCount > 0,
-    },
-    {
-      status: "closed",
-      label: t("summaryClosed"),
-      help: t("summaryClosedHelp"),
-      count: closedCount,
-      attention: false,
-    },
-  ]
-  const resolutionFilters = auditFindingResolutionStatuses.map((item) => ({
-    key: item,
-    label: resolutionFilterLabels[item],
-    href: filterHref(item),
-  }))
-  // roundId and findingType come from a drill-down link and have no field on this page, so each shows as a chip that
-  // removes only itself (spec 2B I24, DESIGN.md "chips for every active filter that is not visible on screen").
-  const findingTypeKey = `type_${findingType}`
-  const filterChips: FilterChipItem[] = [
-    // A bell link's action filter has no tab, so it shows as a chip; removing it keeps the round and type.
-    ...(isAuditFindingWaitingStatus(status) ? [{ key: "status", label: resolutionFilterLabels[status], href: filterHref("all") }] : []),
-    ...(roundId ? [{ key: "roundId", label: `${t("auditRound")}: ${filterRound?.auditNo ?? roundId}`, href: filterHref(status, { roundId: null }) }] : []),
-    ...(findingType ? [{ key: "findingType", label: `${t("findingType")}: ${t.has(findingTypeKey) ? t(findingTypeKey) : findingType}`, href: filterHref(status, { findingType: null }) }] : []),
-  ]
-  // The batch selection belongs to one page of one filter: another page or filter starts with nothing selected.
-  const selectionKey = `${listPage.page}:${listPage.pageSize}:${status}:${searchText}:${roundId}:${findingType}`
-  // The five statuses of a finding in one table cell (audit mobile fix D8): the resolution state always, the others
-  // only when they add something to it. Each keeps the tone it had in its own column.
-  const findingStatusBadges = (finding: (typeof findings)[number], resolutionState: ResolutionState): FindingStatusBadgeItem[] => [
+  // The plan of a finding that has one, under its values (Appendix A §10 keeps owner and due date on the list): its
+  // state, the owner's name (never an id, P4-R11) and the due date.
+  const followUpLine = (row: AuditFindingsPageRow) =>
+    row.actionStatus === "not_required"
+      ? null
+      : [t(`actionStatus_${row.actionStatus}`), row.ownerLabel ?? t("noActionOwner"), ...(row.actionDueDate ? [t("dueOn", { date: formatDateTime(row.actionDueDate) })] : [])].join(" · ")
+  // A search with no rows offers "ล้างคำค้น" (spec §5); otherwise the way back.
+  const empty = searchText
+    ? { title: t("emptySearchTitle"), description: t("emptySearchHelp"), actionHref: clearSearchHref, actionLabel: t("clearSearch") }
+    : { title: t("emptyTitle"), description: t("emptyHelp"), actionHref: back.href, actionLabel: backLabel }
+  // The batch (until Task 5): the page's findings the viewer may decide (Task 2's reviewable, the route's own rule).
+  const batchReviewFindings = rows
+    .filter((row) => row.reviewable)
+    .map((row) => ({
+      id: row.id,
+      label: row.asset ? `${row.asset.assetTag} - ${row.asset.name}` : row.auditRound.auditNo,
+      detail: `${row.auditRound.auditNo} · ${t(`type_${row.findingType}`)}`,
+    }))
+  // The batch selection belongs to one page of one filter: another page or filter starts with nothing selected. The open
+  // finding is not part of it, so opening a row keeps the selection.
+  const selectionKey = `${listPage.page}:${listPage.pageSize}:${status}:${searchText}:${roundId ?? ""}:${findingType ?? ""}`
+  // The five statuses of a finding (audit mobile fix D8): the resolution state always, the others only when they add
+  // something to it. Each keeps the tone it had in its own column. Shown in the panel since group 2 plan 4.
+  const findingStatusBadges = (finding: AuditFindingsPageRow, resolutionState: ResolutionState): FindingStatusBadgeItem[] => [
     { key: "resolutionState", title: t("resolutionState"), label: resolutionStateLabels[resolutionState], tone: RESOLUTION_STATE_TONES[resolutionState] },
     // "รอพิจารณา" already says the review is pending.
     ...(resolutionState === "pending_review" ? [] : [{ key: "reviewStatus", title: t("reviewStatus"), label: t(`status_${finding.reviewStatus}`), status: finding.reviewStatus }]),
@@ -195,18 +219,102 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     // Nothing reconciled yet: no badge.
     ...(!finding.auditItem.reconcileStatus || finding.auditItem.reconcileStatus === "pending" ? [] : [{ key: "reconcileStatus", title: t("reconcileStatus"), label: formatReconcileStatus(finding.auditItem.reconcileStatus), status: finding.auditItem.reconcileStatus }]),
   ]
+  const chosenDisposalHref = chosen ? disposalHrefFor(chosen) : null
+
+  // The review panel's slot (spec §10): the open finding, or the empty panel, rendered once. Task 4 replaces this
+  // expression with its own panel under the same two hooks; until then the body is today's card for the open finding,
+  // so plan, close and the decision keep working between the two commits (Appendix A §10).
+  const panel = chosen ? (
+    <div data-audit-finding-panel data-finding-id={chosen.id} className="min-w-0">
+      <ContentPanel divided title={t("panelTitle")}>
+        <div data-audit-finding-panel-body className="space-y-4">
+          <FindingStatusBadges items={findingStatusBadges(chosen, resolveFindingState(chosen, today))} />
+          <KeyValueList
+            items={[
+              { key: "findingType", label: t("findingTopic"), value: t(`type_${chosen.findingType}`) },
+              {
+                key: "asset",
+                label: t("asset"),
+                value: chosen.asset ? (
+                  <>
+                    <span className="tag font-medium">{chosen.asset.assetTag}</span> - {chosen.asset.name}
+                    {chosen.parent ? <span className="mt-0.5 block text-meta text-muted-foreground">{t("componentOfParent", { assetTag: chosen.parent.assetTag, name: chosen.parent.name })}</span> : null}
+                  </>
+                ) : null,
+              },
+              {
+                key: "auditRound",
+                label: t("auditRound"),
+                value: (
+                  <Link href={`/${locale}/audit/rounds/${chosen.auditRound.id}`} className={linkVariants({ size: "inherit" })}>
+                    <span className="tag">{chosen.auditRound.auditNo}</span> · {chosen.auditRound.name}
+                  </Link>
+                ),
+              },
+              { key: "systemValue", label: t("systemValue"), value: chosen.expectedLabel },
+              { key: "foundValue", label: t("foundValue"), value: chosen.actualLabel ? <span className="font-medium">{chosen.actualLabel}</span> : null },
+              { key: "actionOwner", label: t("actionOwner"), value: chosen.ownerLabel, nilLabel: t("noActionOwner") },
+              { key: "actionDueDate", label: t("actionDueDate"), value: chosen.actionDueDate ? formatDateTime(chosen.actionDueDate) : null },
+            ]}
+          />
+          <AuditFindingEvidenceList
+            attachments={chosen.evidence}
+            labels={{
+              title: t("evidenceAttachments"),
+              count: t("evidenceAttachmentCount", { count: chosen.evidence.length }),
+              open: t("openEvidenceAttachment"),
+            }}
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {chosen.asset ? <Link href={`/${locale}/assets/${chosen.asset.id}`} className={buttonVariants({ variant: "outline", size: "md" })}>{t("openAsset")}</Link> : null}
+            {chosenDisposalHref ? (
+              <Link href={chosenDisposalHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                {t("openDisposalRequest")}
+              </Link>
+            ) : null}
+          </div>
+          {canApprove ? (
+            <AuditFindingReviewActions
+              key={chosen.id}
+              findingId={chosen.id}
+              assetLabel={chosen.asset ? `${chosen.asset.assetTag} - ${chosen.asset.name}` : chosen.auditRound.auditNo}
+              findingTypeLabel={t(`type_${chosen.findingType}`)}
+              expectedValue={chosen.expectedLabel}
+              actualValue={chosen.actualLabel}
+              reviewStatus={chosen.reviewStatus}
+              actionStatus={chosen.actionStatus}
+              actionPlan={chosen.actionPlan}
+              actionOwnerId={chosen.actionOwnerId}
+              actionDueDate={chosen.actionDueDate}
+              evidenceCount={chosen.evidence.length}
+              employees={data.employees}
+              reviewBlocked={chosen.reportedByViewer}
+              reviewBlockedReason={t("segregationReviewBlocked")}
+            />
+          ) : null}
+        </div>
+      </ContentPanel>
+    </div>
+  ) : (
+    <div data-audit-finding-panel-empty className="min-w-0">
+      <ContentPanel title={t("panelTitle")}>
+        <EmptyNote>{findingId ? t("panelNotFound") : t("panelEmpty")}</EmptyNote>
+      </ContentPanel>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("title")}
         meta={t("subtitle")}
-        back={<PageBackLink href={`/${locale}/audit/rounds`} label={t("backToRounds")} />}
+        back={<PageBackLink href={back.href} label={backLabel} />}
+        actions={canExport ? <AuditFindingsExportMenu excelHref={`/api/audit-findings/export?${exportParams.toString()}`} pdfHref={`/api/audit-findings/export-pdf?${exportParams.toString()}`} /> : null}
       />
 
       <DataFreshnessBanner
-        loadedAtIso={pageLoadedAt.toISOString()}
-        loadedAtLabel={formatDateTime(pageLoadedAt)}
+        loadedAtIso={data.loadedAt.toISOString()}
+        loadedAtLabel={formatDateTime(data.loadedAt)}
         labels={{
           freshTitle: t("freshnessFreshTitle"),
           freshHelp: t("freshnessFreshHelp"),
@@ -216,310 +324,163 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         }}
       />
 
-      <section aria-labelledby="audit-finding-resolution-title" className="space-y-3">
-        <div>
-          <h2 id="audit-finding-resolution-title" className="text-base font-semibold text-foreground">{t("resolutionTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("resolutionHelp")}</p>
-        </div>
-        <StatStrip
-          items={resolutionSummaryItems.map((item) => ({
-            key: item.status,
-            label: item.label,
-            value: formatCount(item.count),
-            foot: item.help,
-            footTitle: item.help,
-            href: filterHref(item.status),
-            current: status === item.status,
-            scroll: false,
-            attention: item.attention,
-          }))}
-        />
-      </section>
-
-      <MasterDataSearch
-        action={`/${locale}/audit/findings`}
-        defaultValue={searchText}
-        placeholder={tCommon("search")}
-        submitLabel={tCommon("search")}
-        hiddenInputs={Object.fromEntries(auditFindingsHrefQuery(buildAuditFindingsHref(locale, filters, { search: "", pageSize: listPage.pageSize })))}
-      />
-
-      <section aria-labelledby="audit-finding-queue-title" className="space-y-3">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      {/* Two panes from xl (spec §10): the list, then the review pane (420px, sticky from xl and scrolling on its own,
+          P4-R31). Below xl an open finding takes the page and the list waits behind "กลับไปรายการไม่ตรง" (P4-R13); with
+          none open the pane is not shown there. AuditFindingPaneTop opens each finding at its top. */}
+      <div data-audit-findings-panes className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start xl:gap-4">
+        <div data-audit-findings-list className={cn("min-w-0 space-y-4", chosen && "max-xl:hidden")}>
           <div>
-            <h2 id="audit-finding-queue-title" className="text-base font-semibold text-foreground">{t("quickFilters")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("quickFiltersHelp")}</p>
+            <TabNav aria-label={t("quickFilters")} items={resolutionFilters} current={view.tab} scroll={false} />
+            {view.tab === "followUp" ? <TabNav aria-label={t("followUpChipsLabel")} items={followUpChips} current={view.chip ?? ""} scroll={false} /> : null}
           </div>
-          {canExport ? (
-            <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">
-              <a href={`/api/audit-findings/export?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
-                <Download aria-hidden="true" />
-                {t("exportFindings")}
-              </a>
-              <a href={`/api/audit-findings/export-pdf?${exportParams.toString()}`} download className={buttonVariants({ variant: "outline", size: "md" })}>
-                <FileText aria-hidden="true" />
-                {t("exportFindingsPdf")}
-              </a>
-            </div>
-          ) : null}
-        </div>
-        <TabNav aria-label={t("quickFilters")} items={resolutionFilters} current={status} scroll={false} />
-        <FilterChipList chips={filterChips} label={t("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} />
-      </section>
 
-      {canApprove ? <AuditFindingsBatchActions key={selectionKey} findings={batchReviewFindings} /> : null}
+          <MasterDataSearch
+            action={`/${locale}/audit/findings`}
+            defaultValue={searchText}
+            placeholder={tCommon("search")}
+            submitLabel={tCommon("search")}
+            hiddenInputs={Object.fromEntries(auditFindingsHrefQuery(buildAuditFindingsHref(locale, filters, { search: "", roundId: null, findingType: null, pageSize: listPage.pageSize })))}
+            leading={
+              <>
+                <FilterSelect label={t("roundShort")} name="roundId" defaultValue={roundId ?? ""} allLabel={t("roundFilterAll")} options={roundOptions} hideLabel fieldSize="md" className="sm:w-56" />
+                <FilterSelect label={t("findingTopic")} name="findingType" defaultValue={findingType ?? ""} allLabel={t("topicFilterAll")} options={topicOptions} hideLabel fieldSize="md" className="sm:w-40" />
+              </>
+            }
+          />
+          <FilterChipList chips={filterChips} label={t("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} />
 
-      <div className={cn(getPanelClasses(), "overflow-hidden")}>
-        <div className="grid gap-3 p-3 md:hidden">
-          {findings.length === 0 ? (
-            <ActionEmptyState
-              icon={<FileText />}
-              title={t("emptyTitle")}
-              description={t("emptyHelp")}
-              actionHref={`/${locale}/audit/rounds`}
-              actionLabel={t("backToRounds")}
-              actionVariant="secondary"
-            />
-          ) : (
-            findings.map((finding) => {
-              const resolutionState = resolveFindingState(finding, today)
-              const assetLabel = finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo
-              const findingTypeLabel = t(`type_${finding.findingType}`)
-              const expectedValue = formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)
-              const actualValue = formatFindingValue(finding.findingType, finding.actualValue, valueLabels)
+          {canApprove ? <AuditFindingsBatchActions key={selectionKey} findings={batchReviewFindings} /> : null}
 
-              return (
-                <div key={finding.id} className="rounded-md border border-border bg-background p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-semibold text-foreground">
-                        {finding.asset ? <><span className="tag font-medium">{finding.asset.assetTag}</span> - {finding.asset.name}</> : <span className="tag font-medium">{finding.auditRound.auditNo}</span>}
-                      </div>
-                      <div className="mt-1 text-meta text-muted-foreground">{formatDateTime(finding.reportedAt)}</div>
-                    </div>
-                    <StatusBadge label={resolutionStateLabels[resolutionState]} tone={RESOLUTION_STATE_TONES[resolutionState]} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <StatusBadge label={t(`status_${finding.reviewStatus}`)} status={finding.reviewStatus} />
-                    <StatusBadge label={t(`actionStatus_${finding.actionStatus}`)} status={finding.actionStatus} />
-                  </div>
-                  <KeyValueList
-                    className="mt-3"
-                    items={[
-                      { key: "auditRound", label: t("auditRound"), value: <><span className="tag">{finding.auditRound.auditNo}</span> · {finding.auditRound.name}</> },
-                      { key: "findingType", label: t("findingType"), value: findingTypeLabel },
-                      { key: "systemValue", label: t("systemValue"), value: expectedValue },
-                      { key: "foundValue", label: t("foundValue"), value: actualValue ? <span className="font-medium">{actualValue}</span> : null },
-                      {
-                        key: "actionOwner",
-                        label: t("actionOwner"),
-                        value: finding.ownerLabel,
-                        nilLabel: t("noActionOwner"),
-                      },
-                      { key: "actionDueDate", label: t("actionDueDate"), value: finding.actionDueDate ? formatDateTime(finding.actionDueDate) : null },
-                    ]}
-                  />
-                  <AuditFindingEvidenceList
-                    attachments={attachmentsByFindingId.get(finding.id) ?? []}
-                    labels={{
-                      title: t("evidenceAttachments"),
-                      count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
-                      open: t("openEvidenceAttachment"),
-                    }}
-                  />
-                  <div className="mt-3 flex flex-col gap-2">
-                    <Link
-                      href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
-                      className={buttonVariants({ variant: "outline" })}
+          <div className={cn(getPanelClasses(), "overflow-hidden")}>
+            <div className="grid gap-3 p-3 md:hidden">
+              {rows.length === 0 ? (
+                <ActionEmptyState icon={<FileText />} {...empty} actionVariant="secondary" />
+              ) : (
+                rows.map((row) => {
+                  const resolutionState = resolveFindingState(row, today)
+                  const code = row.asset?.assetTag ?? row.auditRound.auditNo
+                  const line = followUpLine(row)
+
+                  return (
+                    <article
+                      key={row.id}
+                      data-audit-finding-card={row.id}
+                      data-finding-type={row.findingType}
+                      className="relative min-w-0 rounded-md border border-border bg-background p-4 transition-colors hover:bg-row-hover"
                     >
-                      {tCommon("view")}
-                    </Link>
-                    {canApprove ? (
-                      <AuditFindingReviewActions
-                        findingId={finding.id}
-                        assetLabel={assetLabel}
-                        findingTypeLabel={findingTypeLabel}
-                        expectedValue={expectedValue}
-                        actualValue={actualValue}
-                        reviewStatus={finding.reviewStatus}
-                        actionStatus={finding.actionStatus}
-                        actionPlan={finding.actionPlan}
-                        actionOwnerId={finding.actionOwnerId}
-                        actionDueDate={finding.actionDueDate}
-                        evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
-                        employees={employeeOptions}
-                        reviewBlocked={isSameAuditActor(user.id, finding.reportedBy)}
-                        reviewBlockedReason={t("segregationReviewBlocked")}
-                      />
-                    ) : null}
-                    {canCreateDisposal && finding.asset ? (
-                      <Link
-                        href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                        className={buttonVariants({ variant: "outline" })}
-                      >
-                        {t("openDisposalRequest")}
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-        <DataTable framed={false} layout="fixed" minWidth={960} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
-          {/* 8 fixed columns, 960px in all, inside the 963px of the 1280×800 box (audit mobile fix D8). The auto layout
-              squeezed a column whose cells were all "—", so every width is set here. The comparison gets 152px, since
-              a found value can be an asset name; the action column holds approve and reject stacked plus ⋯ (118px).
-              Below 1280 the table scrolls and the action column stays pinned. */}
-          <colgroup>
-            <col className="w-26" />
-            <col className="w-29" />
-            <col className="w-34" />
-            <col className="w-19" />
-            <col className="w-38" />
-            <col className="w-31" />
-            <col className="w-22" />
-            <col className="w-41" />
-          </colgroup>
-          <DataTableHeader>
-            <tr>
-              <DataTableHead>{t("reportedAt")}</DataTableHead>
-              <DataTableHead>{t("auditRound")}</DataTableHead>
-              <DataTableHead>{t("asset")}</DataTableHead>
-              <DataTableHead>{t("findingType")}</DataTableHead>
-              <DataTableHead className="whitespace-normal">{t("comparisonColumn")}</DataTableHead>
-              <DataTableHead>{tCommon("status")}</DataTableHead>
-              <DataTableHead>{t("actionOwner")}</DataTableHead>
-              <DataTableHead align="right" sticky="right">{tCommon("actions")}</DataTableHead>
-            </tr>
-          </DataTableHeader>
-          <DataTableBody>
-            {findings.length === 0 ? (
-              <TableEmptyRow
-                colSpan={8}
-                emptyState={{
-                  icon: <FileText />,
-                  title: t("emptyTitle"),
-                  description: t("emptyHelp"),
-                  actionHref: `/${locale}/audit/rounds`,
-                  actionLabel: t("backToRounds"),
-                  actionVariant: "secondary",
-                }}
-              />
-            ) : (
-              findings.map((finding) => {
-                const resolutionState = resolveFindingState(finding, today)
-                const assetLabel = finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo
-                const findingTypeLabel = t(`type_${finding.findingType}`)
-                const expectedValue = formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)
-                const actualValue = formatFindingValue(finding.findingType, finding.actualValue, valueLabels)
-                const rowCode = finding.asset?.assetTag ?? finding.auditRound.auditNo
-                const disposalMenuLinks: RowActionItem[] = canCreateDisposal && finding.asset
-                  ? [{ kind: "link", key: "disposal", label: t("openDisposalRequest"), href: appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref), icon: <Archive aria-hidden="true" /> }]
-                  : []
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          {/* The whole card is this link (the register's stretched-link row): a tap opens the panel full
+                              screen at the top of the page, so the default scroll stays (P4-R13). */}
+                          <Link
+                            href={findingHref(row.id)}
+                            data-audit-finding-open
+                            className="block break-words font-semibold text-foreground before:absolute before:inset-0 before:rounded-md before:content-[''] focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-ring"
+                          >
+                            <span className="tag font-medium">{code}</span>
+                            {row.asset ? <> - {row.asset.name}</> : null}
+                          </Link>
+                          {row.parent ? <p className="mt-1 break-words text-meta text-muted-foreground">{t("componentOfParent", { assetTag: row.parent.assetTag, name: row.parent.name })}</p> : null}
+                        </div>
+                        <StatusBadge className="shrink-0" label={resolutionStateLabels[resolutionState]} tone={RESOLUTION_STATE_TONES[resolutionState]} />
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
+                        <Chip data-audit-finding-subject>{topicLabel(row.findingType)}</Chip>
+                        <span className="tag">{row.auditRound.auditNo}</span>
+                      </div>
+                      <FindingValueChange className="mt-2" expectedLabel={t("systemValue")} actualLabel={t("foundValue")} expectedValue={row.expectedLabel} actualValue={row.actualLabel} />
+                      {line ? <p className="mt-1 text-meta text-muted-foreground">{line}</p> : null}
+                    </article>
+                  )
+                })
+              )}
+            </div>
+            <DataTable framed={false} layout="fixed" minWidth={520} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+              {/* Four columns (spec §10): เรื่อง, ทรัพย์สิน, ตามระบบ → ที่พบ, รอบ; the asset takes what is left. 520px fits
+                  the list pane beside the 420px panel at 1280 (527px) and 1440 (685px). Task 5 adds the tick column first. */}
+              <colgroup>
+                <col className="w-24" />
+                <col />
+                <col className="w-44" />
+                <col className="w-28" />
+              </colgroup>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{t("findingTopic")}</DataTableHead>
+                  <DataTableHead>{t("asset")}</DataTableHead>
+                  <DataTableHead className="whitespace-normal">{t("comparisonColumn")}</DataTableHead>
+                  <DataTableHead>{t("roundShort")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {rows.length === 0 ? (
+                  <TableEmptyRow colSpan={4} emptyState={{ icon: <FileText />, ...empty, actionVariant: "secondary" }} />
+                ) : (
+                  rows.map((row) => {
+                    const code = row.asset?.assetTag ?? row.auditRound.auditNo
+                    const topic = topicLabel(row.findingType)
+                    const line = followUpLine(row)
 
-                return (
-                  <ClickableTableRow
-                    key={finding.id}
-                    href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
-                    label={`${tCommon("view")}: ${finding.asset?.assetTag ?? finding.auditRound.auditNo}`}
-                  >
-                    <DataTableCell className="text-meta text-muted-foreground">{formatDateTime(finding.reportedAt)}</DataTableCell>
-                    <DataTableCell className="text-muted-foreground">
-                      <Link href={`/${locale}/audit/rounds/${finding.auditRound.id}`} className={linkVariants({ size: "inherit" })}>
-                        <span className="tag">{finding.auditRound.auditNo}</span>
-                      </Link>
-                      <div className="text-meta text-muted-foreground">{finding.auditRound.name}</div>
-                    </DataTableCell>
-                    <DataTableCell>
-                      {finding.asset ? (
-                        <>
-                          <div className="font-medium text-foreground"><span className="tag">{finding.asset.assetTag}</span></div>
-                          <div className="text-meta text-muted-foreground">{finding.asset.name}</div>
-                        </>
-                      ) : <Nil />}
-                    </DataTableCell>
-                    <DataTableCell className="text-muted-foreground">{findingTypeLabel}</DataTableCell>
-                    <DataTableCell>
-                      <FindingValueChange
-                        expectedLabel={t("systemValue")}
-                        actualLabel={t("foundValue")}
-                        expectedValue={expectedValue}
-                        actualValue={actualValue}
-                      />
-                      <AuditFindingEvidenceList
-                        compact
-                        attachments={attachmentsByFindingId.get(finding.id) ?? []}
-                        labels={{
-                          title: t("evidenceAttachments"),
-                          count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
-                          open: t("openEvidenceAttachment"),
-                        }}
-                      />
-                    </DataTableCell>
-                    <DataTableCell>
-                      <FindingStatusBadges items={findingStatusBadges(finding, resolutionState)} />
-                    </DataTableCell>
-                    <DataTableCell className="text-muted-foreground">
-                      <div>{finding.ownerLabel ? finding.ownerLabel : <Nil label={t("noActionOwner")} />}</div>
-                      <div className="mt-0.5 text-meta">{finding.actionDueDate ? t("dueOn", { date: formatDateTime(finding.actionDueDate) }) : <Nil />}</div>
-                    </DataTableCell>
-                    <DataTableCell align="right" sticky="right">
-                      {/* Pattern ช1 (2B, fix round 3): the review decision stays visible; plan, close and the disposal request
-                          are in one ⋯, whose items mount the dialogs (AuditFindingReviewActions compact). */}
-                      {canApprove ? (
-                        <AuditFindingReviewActions
-                          compact
-                          menuCode={rowCode}
-                          menuLinks={disposalMenuLinks}
-                          findingId={finding.id}
-                          assetLabel={assetLabel}
-                          findingTypeLabel={findingTypeLabel}
-                          expectedValue={expectedValue}
-                          actualValue={actualValue}
-                          reviewStatus={finding.reviewStatus}
-                          actionStatus={finding.actionStatus}
-                          actionPlan={finding.actionPlan}
-                          actionOwnerId={finding.actionOwnerId}
-                          actionDueDate={finding.actionDueDate}
-                          evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
-                          employees={employeeOptions}
-                          reviewBlocked={isSameAuditActor(user.id, finding.reportedBy)}
-                          reviewBlockedReason={t("segregationReviewBlocked")}
-                        />
-                      ) : disposalMenuLinks.length > 0 ? (
-                        <RowActions code={rowCode} name={assetLabel} menuLabel={tCommon("moreActionsFor", { code: rowCode })} groups={[{ key: "finding", items: disposalMenuLinks }]} />
-                      ) : (
-                        <Nil />
-                      )}
-                    </DataTableCell>
-                  </ClickableTableRow>
-                )
-              })
-            )}
-          </DataTableBody>
-        </DataTable>
-        {total > 0 ? (
-          <DataTableFoot>
-            <Pagination
-              page={listPage.page}
-              totalPages={totalPages}
-              previousHref={pageHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
-              nextHref={pageHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
-              pageSize={listPage.pageSize}
-              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: pageHref({ pageSize: value }) }))}
-              labels={{
-                navigation: tCommon("pagination"),
-                previous: tCommon("previous"),
-                next: tCommon("next"),
-                pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
-                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
-                pageSizeGroup: tCommon("pageSizeLabel"),
-                rowsPerPage: tCommon("rowsPerPage"),
-              }}
-            />
-          </DataTableFoot>
-        ) : null}
+                    return (
+                      <ClickableTableRow
+                        key={row.id}
+                        href={findingHref(row.id)}
+                        scroll={false}
+                        current={row.id === chosen?.id}
+                        rowData={{ "data-audit-finding-row": row.id, "data-finding-type": row.findingType }}
+                        label={`${tCommon("view")}: ${code} · ${topic}`}
+                      >
+                        <DataTableCell><Chip data-audit-finding-subject>{topic}</Chip></DataTableCell>
+                        <DataTableCell>
+                          <Link href={findingHref(row.id)} scroll={false} data-audit-finding-open className={cn(linkVariants({ size: "inherit" }), "break-all")}>
+                            <span className="tag">{code}</span>
+                          </Link>
+                          {row.asset ? <div className="break-words text-meta text-muted-foreground">{row.asset.name}</div> : null}
+                          {row.parent ? <div className="break-words text-meta text-muted-foreground">{t("componentOfParent", { assetTag: row.parent.assetTag, name: row.parent.name })}</div> : null}
+                        </DataTableCell>
+                        <DataTableCell>
+                          <FindingValueChange expectedLabel={t("systemValue")} actualLabel={t("foundValue")} expectedValue={row.expectedLabel} actualValue={row.actualLabel} />
+                          {line ? <div className="mt-1 text-meta text-muted-foreground">{line}</div> : null}
+                        </DataTableCell>
+                        <DataTableCell className="text-muted-foreground">
+                          <span className="tag">{row.auditRound.auditNo}</span>
+                          <div className="break-words text-meta">{row.auditRound.name}</div>
+                        </DataTableCell>
+                      </ClickableTableRow>
+                    )
+                  })
+                )}
+              </DataTableBody>
+            </DataTable>
+            {total > 0 ? (
+              <DataTableFoot>
+                <Pagination
+                  page={listPage.page}
+                  totalPages={totalPages}
+                  previousHref={pageHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
+                  nextHref={pageHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
+                  pageSize={listPage.pageSize}
+                  pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: pageHref({ pageSize: value }) }))}
+                  labels={{
+                    navigation: tCommon("pagination"),
+                    previous: tCommon("previous"),
+                    next: tCommon("next"),
+                    pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
+                    range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                    pageSizeGroup: tCommon("pageSizeLabel"),
+                    rowsPerPage: tCommon("rowsPerPage"),
+                  }}
+                />
+              </DataTableFoot>
+            ) : null}
+          </div>
+        </div>
+
+        <div data-audit-finding-pane className={cn("min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100dvh_-_var(--shell-top)_-_3rem)] xl:overflow-y-auto", !chosen && "max-xl:hidden")}>
+          {chosen ? <AuditFindingPaneTop key={chosen.id} /> : null}
+          {chosen ? <PageBackLink href={closeHref} label={t("backToList")} className="mb-3 xl:hidden" /> : null}
+          {panel}
+        </div>
       </div>
     </div>
   )
@@ -533,31 +494,23 @@ type FindingResolutionSnapshot = {
   actionDueDate: Date | string | null
 }
 
-// One cell of the resolution number strip (StatStrip). Its count covers the whole filtered list, never one page.
-type ResolutionMetric = {
-  status: "pending" | "action_open" | "overdue" | "closed"
-  label: string
-  help: string
-  count: number
-  // Work waits on it: the cell's foot line turns warning with its icon. No tone fill (spec 2B R-d).
-  attention: boolean
-}
-
-// The desktop table's comparison (audit mobile fix D8): system value → found value as text that wraps, no box of its
-// own. The labels are for screen readers; the column header says it to everyone else.
+// System value → found value as text that wraps, no box of its own (audit mobile fix D8). The labels are for screen
+// readers; the column header says it to everyone else.
 function FindingValueChange({
   expectedLabel,
   actualLabel,
   expectedValue,
   actualValue,
+  className,
 }: {
   expectedLabel: string
   actualLabel: string
   expectedValue?: string | null
   actualValue?: string | null
+  className?: string
 }) {
   return (
-    <div className="break-words text-sm text-muted-foreground">
+    <div className={cn("break-words text-sm text-muted-foreground", className)}>
       <span className="sr-only">{expectedLabel}: </span>
       <span>{orNil(expectedValue)}</span>
       <ArrowRight aria-hidden="true" className="mx-1 inline size-3.5 align-middle text-faint-foreground" />
@@ -567,40 +520,8 @@ function FindingValueChange({
   )
 }
 
-function AuditFindingEvidenceList({
-  attachments,
-  labels,
-  compact = false,
-}: {
-  attachments: AuditFindingEvidenceAttachment[]
-  labels: { title: string; count: string; open: string }
-  /** The desktop table: the count and the file links on one line, truncated, no box. */
-  compact?: boolean
-}) {
+function AuditFindingEvidenceList({ attachments, labels }: { attachments: AuditFindingEvidenceAttachment[]; labels: { title: string; count: string; open: string } }) {
   if (attachments.length === 0) return null
-
-  if (compact) {
-    return (
-      <div className="mt-1 flex min-w-0 items-center gap-1 text-meta text-muted-foreground">
-        <span className="shrink-0">{labels.count}</span>
-        {attachments.map((attachment) => (
-          <a
-            key={attachment.id}
-            href={`/api/attachments/${attachment.id}?inline=1`}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`${labels.open}: ${attachment.originalName}`}
-            title={attachment.originalName}
-            className={cn(linkVariants(), "flex min-w-0 items-center gap-1")}
-          >
-            <span aria-hidden="true" className="shrink-0 text-faint-foreground">·</span>
-            <FileText aria-hidden="true" className="size-3.5 shrink-0" />
-            <span className="truncate">{attachment.originalName}</span>
-          </a>
-        ))}
-      </div>
-    )
-  }
 
   return (
     <div className="mt-3 min-w-0">
@@ -667,11 +588,10 @@ type FindingStatusBadgeItem = {
   tone?: StatusTone
 }
 
-// The status badges of one finding, stacked (audit mobile fix D8). The list is as wide as its 124px column's content
-// (100px): a longer label truncates and its tooltip has the whole text.
+// The status badges of one finding in the review panel, in a row that wraps.
 function FindingStatusBadges({ items }: { items: FindingStatusBadgeItem[] }) {
   return (
-    <ul className="flex w-25 flex-col items-start gap-1">
+    <ul className="flex flex-wrap items-start gap-2">
       {items.map((item) => (
         <li key={item.key} title={`${item.title}: ${item.label}`} className="max-w-full">
           <span className="sr-only">{item.title}: </span>
