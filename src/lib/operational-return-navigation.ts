@@ -41,6 +41,25 @@ export function normalizeDisposalBatchReturnTo(locale: string, value: ReturnToPa
   return normalizeInternalReturnTo(fallback, value, [batchesPath])
 }
 
+// The findings page's way back (group 2 plan 4, P4-R12): the rounds list with its filters, or one round's page, the pages
+// that link here (not the create page). Anything else is no way back (null), and the page falls back to the round or
+// the rounds list.
+export function normalizeAuditFindingsReturnTo(locale: string, value: ReturnToParam): string | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return null
+
+  try {
+    const url = new URL(raw, "http://asset.local")
+    const rounds = `/${locale}/audit/rounds`
+    const roundId = url.pathname.startsWith(`${rounds}/`) ? url.pathname.slice(rounds.length + 1) : ""
+    const roundPage = roundId.length > 0 && !roundId.includes("/") && roundId !== "new"
+    if (url.origin !== "http://asset.local" || (url.pathname !== rounds && !roundPage)) return null
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return null
+  }
+}
+
 export function appendOperationalReturnTo(href: string, returnTo: string) {
   const separator = href.includes("?") ? "&" : "?"
   return `${href}${separator}returnTo=${encodeURIComponent(returnTo)}`

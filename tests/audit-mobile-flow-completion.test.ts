@@ -39,9 +39,11 @@ test("audit component missing dialog copy is translated", () => {
 test("audit findings page loads and renders evidence attachments for review", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
 
-  assert.match(page, /const attachmentsByFindingId = new Map<string, AuditFindingEvidenceAttachment\[\]>\(\)/)
-  assert.match(page, /prisma\.attachment\.findMany\(\{[\s\S]*where: \{ module: "audit_finding"/)
-  assert.match(page, /orderBy: \{ uploadedAt: "desc" \}/)
+  const data = readFileSync("src/lib/audit-findings-page-data.ts", "utf8")
+
+  assert.match(data, /const evidenceByFindingId = new Map<string, AuditFindingEvidenceAttachment\[\]>\(\)/)
+  assert.match(data, /prisma\.attachment\.findMany\(\{[\s\S]*where: \{ module: "audit_finding"/)
+  assert.match(data, /orderBy: \{ uploadedAt: "desc" \}/)
   assert.match(page, /function AuditFindingEvidenceList/)
   assert.match(page, /href=\{`\/api\/attachments\/\$\{attachment\.id\}\?inline=1`\}/)
   assert.match(page, /target="_blank"/)

@@ -5,6 +5,7 @@ import { errorResponse } from "@/lib/api-response"
 import { auditFindingColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
+import { getAuditFindingTypeSearchLabels } from "@/lib/audit-finding-search-labels"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
 
@@ -18,8 +19,10 @@ export async function GET(request: NextRequest) {
     const findingType = request.nextUrl.searchParams.get("findingType")?.trim()
     const status = resolveAuditFindingStatus(request.nextUrl.searchParams.get("status")?.trim())
     const rules = isAuditFindingWaitingStatus(status) ? await getWaitingWorkRules() : DEFAULT_WAITING_WORK_RULES
+    // The search reads the type words as the page does (bug 19), so the file holds the rows the page shows.
+    const typeSearchLabels = await getAuditFindingTypeSearchLabels()
     const findings = await prisma.auditFinding.findMany({
-      where: buildAuditFindingWhere({ status, search, roundId, findingType, rules }),
+      where: buildAuditFindingWhere({ status, search, roundId, findingType, rules, typeSearchLabels }),
       include: {
         auditRound: { select: { auditNo: true, name: true } },
         asset: { select: { assetTag: true, name: true } },

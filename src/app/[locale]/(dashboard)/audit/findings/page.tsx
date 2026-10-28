@@ -2,13 +2,12 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { Archive, ArrowRight, Download, FileText } from "lucide-react"
-import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
 import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
-import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
+import { formatFindingValue } from "@/lib/audit-finding-labels"
 import { cn, formatDateTime } from "@/lib/utils"
 import { formatFileSize } from "@/lib/uploads"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
@@ -28,40 +27,38 @@ import { TabNav } from "@/components/ui/tab-nav"
 import { isSameAuditActor } from "@/lib/audit-segregation"
 import {
   auditFindingResolutionStatuses,
-  buildAuditFindingWhere,
+  auditFindingsHrefQuery,
+  buildAuditFindingsHref,
   getAuditFindingToday,
   isAuditFindingWaitingStatus,
   isOpenAuditFindingActionStatus,
-  resolveAuditFindingStatus,
+  parseAuditFindingsListFilters,
   type AuditFindingResolutionStatus,
+  type AuditFindingsHrefOverrides,
 } from "@/lib/audit-finding-filters"
+import { getAuditFindingsPageData, type AuditFindingEvidenceAttachment } from "@/lib/audit-findings-page-data"
+import { getAuditFindingTypeSearchLabels } from "@/lib/audit-finding-search-labels"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
 import { getPanelClasses } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
-import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { getAuditItemReconcileStatusLabelKey, getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; roundId?: string; findingType?: string; page?: string | string[]; pageSize?: string | string[] }>
-}
-
-type AuditFindingEvidenceAttachment = {
-  id: string
-  originalName: string
-  fileType: string
-  fileSize: number
-  uploadedAt: Date
+  searchParams: Promise<{ search?: string; status?: string; roundId?: string; findingType?: string; finding?: string; returnTo?: string; page?: string | string[]; pageSize?: string | string[] }>
 }
 
 export default async function AuditFindingsPage({ params, searchParams }: AuditFindingsPageProps) {
   const { locale } = await params
-  const { search = "", status: statusParam = "pending", roundId: roundIdParam = "", findingType: findingTypeParam = "", page, pageSize } = await searchParams
+  const filters = parseAuditFindingsListFilters(locale, await searchParams)
+  const { status, search: searchText, roundId, findingType } = filters
   const user = await requirePagePermission(locale, "audit", "view")
-  const canEdit = hasPermission(user, "audit", "edit")
+  // canEdit goes: its only use was the owner list, which now follows audit:approve (P4-R21).
   const canApprove = hasPermission(user, "audit", "approve")
   // The exports' routes need audit:export (spec §6.5: a role without it does not see them; the E2E suite's AU1, M1).
   const canExport = hasPermission(user, "audit", "export")
@@ -80,101 +77,38 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     return key ? t(key) : status
   }
   const pageLoadedAt = new Date()
-  const searchText = search.trim()
-  const roundId = roundIdParam.trim()
-  const findingType = findingTypeParam.trim()
-  const status = resolveAuditFindingStatus(statusParam)
   // The bell's two action kinds read its own day count; other statuses read no setting.
   const waitingRules = isAuditFindingWaitingStatus(status) ? await getWaitingWorkRules() : DEFAULT_WAITING_WORK_RULES
   const today = getAuditFindingToday()
-  const listPage = parseListPage({ page, pageSize })
-  const auditFindingsReturnHref = buildAuditFindingsHref(locale, status, searchText, { roundId, findingType }, listPage)
+  const typeSearchLabels = await getAuditFindingTypeSearchLabels()
+  const data = await withPerformanceTiming(
+    "audit-findings.page-data",
+    () => getAuditFindingsPageData({ locale, filters, user, canApprove, typeSearchLabels, rules: waitingRules, now: pageLoadedAt }),
+    { route: "/audit/findings", locale, status, hasSearch: Boolean(searchText), hasFinding: Boolean(filters.findingId) }
+  )
+  const { rows: findings, total, listPage, valueLabels, employees: employeeOptions, filterRound } = data
+  const { pending: pendingReviewCount, action_open: openActionCount, overdue: overdueCount, closed: closedCount } = data.counts
+  const auditFindingsReturnHref = buildAuditFindingsHref(locale, filters, { page: listPage.page, pageSize: listPage.pageSize, finding: filters.findingId })
   // This list at another page or page size, with the same filters.
-  const pageHref = (next: { page?: number; pageSize?: number }) => buildAuditFindingsHref(locale, status, searchText, { roundId, findingType }, next)
+  const pageHref = (next: { page?: number; pageSize?: number }) => buildAuditFindingsHref(locale, filters, next)
   // A filter link goes back to page 1 and keeps the page size (spec 2B §5.9.1).
-  const filterHref = (nextStatus: AuditFindingResolutionStatus, filters: { roundId?: string; findingType?: string } = { roundId, findingType }) =>
-    buildAuditFindingsHref(locale, nextStatus, searchText, filters, { pageSize: listPage.pageSize })
+  const filterHref = (nextStatus: AuditFindingResolutionStatus, next: Pick<AuditFindingsHrefOverrides, "roundId" | "findingType"> = {}) =>
+    buildAuditFindingsHref(locale, filters, { ...next, status: nextStatus, pageSize: listPage.pageSize })
   const exportParams = new URLSearchParams()
   if (searchText) exportParams.set("search", searchText)
   if (roundId) exportParams.set("roundId", roundId)
   if (findingType) exportParams.set("findingType", findingType)
   exportParams.set("status", status)
-  const where = buildAuditFindingWhere({ status, search: searchText, roundId, findingType, now: pageLoadedAt, rules: waitingRules })
-  const { skip, take } = listPageWindow(listPage)
-  const [findings, employees, pendingReviewCount, openActionCount, overdueCount, closedCount, otherStatusTotal, filterRound] = await Promise.all([
-    prisma.auditFinding.findMany({
-      where,
-      include: {
-        auditRound: { select: { id: true, auditNo: true, name: true } },
-        auditItem: { select: { auditStatus: true, reconcileStatus: true } },
-        asset: { select: { id: true, assetTag: true, name: true } },
-      },
-      orderBy: [{ reportedAt: "desc" }, { id: "asc" }],
-      skip,
-      take,
-    }),
-    canEdit
-      ? prisma.employee.findMany({
-          where: { isActive: true },
-          select: { id: true, code: true, fullNameTh: true },
-          orderBy: { code: "asc" },
-        })
-      : Promise.resolve([]),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "action_open", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "overdue", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "closed", search: searchText, roundId, findingType, now: pageLoadedAt }) }),
-    // The four counts above already cover the whole list of their status; any other status needs one count of its own.
-    SUMMARY_STATUSES.has(status) ? Promise.resolve(null) : prisma.auditFinding.count({ where }),
-    // The round chip names the round (spec 2B I24). Read-only, one row.
-    roundId ? prisma.auditRound.findUnique({ where: { id: roundId }, select: { auditNo: true } }) : Promise.resolve(null),
-  ])
-  const summaryCounts: Partial<Record<AuditFindingResolutionStatus, number>> = {
-    pending: pendingReviewCount,
-    action_open: openActionCount,
-    overdue: overdueCount,
-    closed: closedCount,
-  }
-  const total = summaryCounts[status] ?? otherStatusTotal ?? 0
   // A page past the last one (an old link, or the last finding of the last page decided) shows the last page (spec 2B I21).
   const lastPage = lastListPage(total, listPage.pageSize)
   if (findings.length === 0 && total > 0 && listPage.page > lastPage) {
     redirect(pageHref({ page: lastPage, pageSize: listPage.pageSize }))
   }
   const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
-  const findingIds = findings.map((finding) => finding.id)
-  const evidenceAttachments = findingIds.length
-    ? await prisma.attachment.findMany({
-        where: { module: "audit_finding", referenceId: { in: findingIds }, isActive: true },
-        select: {
-          id: true,
-          referenceId: true,
-          originalName: true,
-          fileType: true,
-          fileSize: true,
-          uploadedAt: true,
-        },
-        orderBy: { uploadedAt: "desc" },
-      })
-    : []
-  const attachmentsByFindingId = new Map<string, AuditFindingEvidenceAttachment[]>()
-  for (const attachment of evidenceAttachments) {
-    const current = attachmentsByFindingId.get(attachment.referenceId) ?? []
-    current.push({
-      id: attachment.id,
-      originalName: attachment.originalName,
-      fileType: attachment.fileType,
-      fileSize: attachment.fileSize,
-      uploadedAt: attachment.uploadedAt,
-    })
-    attachmentsByFindingId.set(attachment.referenceId, current)
-  }
+  const attachmentsByFindingId = new Map<string, AuditFindingEvidenceAttachment[]>(findings.map((finding) => [finding.id, finding.evidence]))
   const attachmentCountByFindingId = new Map(
     Array.from(attachmentsByFindingId, ([findingId, attachments]) => [findingId, attachments.length])
   )
-  const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
-  const employeeLabelById = new Map(employeeOptions.map((employee) => [employee.id, employee.label]))
-  const valueLabels = await buildFindingValueLabels(findings)
   const batchReviewFindings = findings
     .filter((finding) => finding.reviewStatus === "pending" && !isSameAuditActor(user.id, finding.reportedBy))
     .map((finding) => ({
@@ -184,6 +118,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     }))
   const resolutionFilterLabels: Record<AuditFindingResolutionStatus, string> = {
     pending: t("status_pending"),
+    follow_up: t("tabFollowUp"),
     action_open: t("filterActionOpen"),
     overdue: t("filterOverdue"),
     closed: t("filterClosed"),
@@ -242,8 +177,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const filterChips: FilterChipItem[] = [
     // A bell link's action filter has no tab, so it shows as a chip; removing it keeps the round and type.
     ...(isAuditFindingWaitingStatus(status) ? [{ key: "status", label: resolutionFilterLabels[status], href: filterHref("all") }] : []),
-    ...(roundId ? [{ key: "roundId", label: `${t("auditRound")}: ${filterRound?.auditNo ?? roundId}`, href: filterHref(status, { findingType }) }] : []),
-    ...(findingType ? [{ key: "findingType", label: `${t("findingType")}: ${t.has(findingTypeKey) ? t(findingTypeKey) : findingType}`, href: filterHref(status, { roundId }) }] : []),
+    ...(roundId ? [{ key: "roundId", label: `${t("auditRound")}: ${filterRound?.auditNo ?? roundId}`, href: filterHref(status, { roundId: null }) }] : []),
+    ...(findingType ? [{ key: "findingType", label: `${t("findingType")}: ${t.has(findingTypeKey) ? t(findingTypeKey) : findingType}`, href: filterHref(status, { findingType: null }) }] : []),
   ]
   // The batch selection belongs to one page of one filter: another page or filter starts with nothing selected.
   const selectionKey = `${listPage.page}:${listPage.pageSize}:${status}:${searchText}:${roundId}:${findingType}`
@@ -306,7 +241,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
-        hiddenInputs={{ status, ...(roundId ? { roundId } : {}), ...(findingType ? { findingType } : {}), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
+        hiddenInputs={Object.fromEntries(auditFindingsHrefQuery(buildAuditFindingsHref(locale, filters, { search: "", pageSize: listPage.pageSize })))}
       />
 
       <section aria-labelledby="audit-finding-queue-title" className="space-y-3">
@@ -378,7 +313,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       {
                         key: "actionOwner",
                         label: t("actionOwner"),
-                        value: finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : null,
+                        value: finding.ownerLabel,
                         nilLabel: t("noActionOwner"),
                       },
                       { key: "actionDueDate", label: t("actionDueDate"), value: finding.actionDueDate ? formatDateTime(finding.actionDueDate) : null },
@@ -526,7 +461,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       <FindingStatusBadges items={findingStatusBadges(finding, resolutionState)} />
                     </DataTableCell>
                     <DataTableCell className="text-muted-foreground">
-                      <div>{finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : <Nil label={t("noActionOwner")} />}</div>
+                      <div>{finding.ownerLabel ? finding.ownerLabel : <Nil label={t("noActionOwner")} />}</div>
                       <div className="mt-0.5 text-meta">{finding.actionDueDate ? t("dueOn", { date: formatDateTime(finding.actionDueDate) }) : <Nil />}</div>
                     </DataTableCell>
                     <DataTableCell align="right" sticky="right">
@@ -607,9 +542,6 @@ type ResolutionMetric = {
   // Work waits on it: the cell's foot line turns warning with its icon. No tone fill (spec 2B R-d).
   attention: boolean
 }
-
-// The statuses the strip counts. A list filtered by one of them takes its total from the strip (spec 2B §5.9.2 row 3).
-const SUMMARY_STATUSES: ReadonlySet<AuditFindingResolutionStatus> = new Set(["pending", "action_open", "overdue", "closed"])
 
 // The desktop table's comparison (audit mobile fix D8): system value → found value as text that wraps, no box of its
 // own. The labels are for screen readers; the column header says it to everyone else.
@@ -748,21 +680,4 @@ function FindingStatusBadges({ items }: { items: FindingStatusBadgeItem[] }) {
       ))}
     </ul>
   )
-}
-
-function buildAuditFindingsHref(
-  locale: string,
-  status: AuditFindingResolutionStatus,
-  searchText: string,
-  filters: { roundId?: string; findingType?: string } = {},
-  listPage: { page?: number; pageSize?: number } = {}
-) {
-  const params = new URLSearchParams()
-  params.set("status", status)
-  if (searchText) params.set("search", searchText)
-  if (filters.roundId) params.set("roundId", filters.roundId)
-  if (filters.findingType) params.set("findingType", filters.findingType)
-  // page only above 1 and pageSize only when it is not 25, so every default link stays as it was (spec 2B B4).
-  appendListPage(params, listPage)
-  return `/${locale}/audit/findings?${params.toString()}`
 }

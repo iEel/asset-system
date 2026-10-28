@@ -118,13 +118,15 @@ test("audit finding filters can drill into a specific round and finding type", (
       reviewStatus: "pending",
       auditRoundId: "round-1",
       findingType: "wrong_custodian",
-      OR: [
-        { findingType: { contains: "SNI-EQU" } },
-        { auditRound: { auditNo: { contains: "SNI-EQU" } } },
-        { auditRound: { name: { contains: "SNI-EQU" } } },
-        { asset: { assetTag: { contains: "SNI-EQU" } } },
-        { asset: { name: { contains: "SNI-EQU" } } },
-      ],
+      // The search is one entry of AND (plan 4 P4-R3, FP §1), and a code is no longer searched (bug 19).
+      AND: [{
+        OR: [
+          { asset: { assetTag: { contains: "SNI-EQU" } } },
+          { asset: { name: { contains: "SNI-EQU" } } },
+          { auditRound: { auditNo: { contains: "SNI-EQU" } } },
+          { auditRound: { name: { contains: "SNI-EQU" } } },
+        ],
+      }],
     }
   )
 })
@@ -143,7 +145,8 @@ test("audit findings page and exports preserve round drilldown filters", () => {
     assert.match(route, /const roundId = request\.nextUrl\.searchParams\.get\("roundId"\)/)
     assert.match(route, /const findingType = request\.nextUrl\.searchParams\.get\("findingType"\)/)
     assert.match(route, /const rules = isAuditFindingWaitingStatus\(status\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
-    assert.match(route, /buildAuditFindingWhere\(\{ status, search, roundId, findingType, rules \}\)/)
+    assert.match(route, /buildAuditFindingWhere\(\{ status, search, roundId, findingType, rules, typeSearchLabels \}\)/)
+    assert.match(route, /const typeSearchLabels = await getAuditFindingTypeSearchLabels\(\)/)
   }
 })
 
@@ -172,11 +175,10 @@ test("a search, round or type narrows an action filter without replacing its own
       { findingType: "wrong_location" },
       {
         OR: [
-          { findingType: { contains: "SNI" } },
-          { auditRound: { auditNo: { contains: "SNI" } } },
-          { auditRound: { name: { contains: "SNI" } } },
           { asset: { assetTag: { contains: "SNI" } } },
           { asset: { name: { contains: "SNI" } } },
+          { auditRound: { auditNo: { contains: "SNI" } } },
+          { auditRound: { name: { contains: "SNI" } } },
         ],
       },
     ],
@@ -186,7 +188,11 @@ test("a search, round or type narrows an action filter without replacing its own
 test("the findings page reads the bell's rules for the action filters and shows the filter as a chip (group 1 spec §6.5)", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(page, /const waitingRules = isAuditFindingWaitingStatus\(status\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
-  assert.match(page, /const where = buildAuditFindingWhere\(\{ status, search: searchText, roundId, findingType, now: pageLoadedAt, rules: waitingRules \}\)/)
+  assert.match(page, /getAuditFindingsPageData\(\{ locale, filters, user, canApprove, typeSearchLabels, rules: waitingRules, now: pageLoadedAt \}\)/)
+  const data = readFileSync("src/lib/audit-findings-page-data.ts", "utf8").replace(/\r\n/g, "\n")
+  assert.match(data, /const whereFor = \(status: AuditFindingStatus\) => buildAuditFindingWhere\(\{ \.\.\.base, status \}\)/)
+  assert.match(data, /const base = \{ search: filters\.search, roundId: filters\.roundId, findingType: filters\.findingType, now, rules, typeSearchLabels \}/)
+  assert.doesNotMatch(data, /now: today/)
   assert.doesNotMatch(page, /now: today/)
   assert.match(page, /const tNotifications = await getTranslations\("notifications"\)/)
   assert.match(page, /action_not_due: tNotifications\("openAuditActions"\),\n\s+action_due_soon: tNotifications\("auditActionsDueSoon"\),/)
