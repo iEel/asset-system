@@ -1325,7 +1325,15 @@
       "pmTitle": "บำรุงรักษาตามรอบ (PM)",
       "pmEmpty": "ยังไม่ได้ตั้งรอบ PM สำหรับทรัพย์สินนี้ เช่น ทำความสะอาดและตรวจแบตเตอรี่ทุก 6 เดือน",
       "pmSetup": "ตั้งรอบ PM"
-    }
+    },
+    "transactionReasonComponentCheckout": "ส่วนควบไปพร้อมเครื่องหลัก ส่งมอบแยกไม่ได้",
+    "transactionReasonComponentCheckin": "ส่วนควบรับคืนพร้อมเครื่องหลัก",
+    "transactionReasonLicenseCheckout": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ส่งมอบไม่ได้",
+    "transactionReasonLicenseCheckin": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
+    "transactionReasonLicenseMove": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
+    "transactionReasonHandoverModeMissing": "ไม่พบลักษณะการถือครองในรายการส่งมอบ กรุณาให้ผู้ดูแลตรวจสอบข้อมูล",
+    "transactionReasonHandoverStatusMismatch": "สถานะทรัพย์สินไม่ตรงกับลักษณะการถือครอง กรุณาให้ผู้ดูแลตรวจสอบก่อนรับคืน",
+    "transactionReasonSameAsset": "เป็นทรัพย์สินที่กำลังส่งมอบ เลือกเป็นปลายทางไม่ได้"
   },
   "company": {
     "title": "บริษัท",

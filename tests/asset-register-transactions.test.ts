@@ -73,7 +73,7 @@ test("the asset page asks the shared action rule, and the register's old helper 
 })
 
 test("the open handover's transfer reason lives in the shared rule and keeps its words (user decision 2026-10-21 Y2)", () => {
-  const rule = readFileSync("src/lib/asset-actions.ts", "utf8").replace(/\r/g, "")
+  const rule = readFileSync("src/lib/asset-operation-eligibility.ts", "utf8").replace(/\r/g, "")
   assert.match(rule, /"asset\.transactionReasonOpenCheckout"/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8")).asset
   const en = JSON.parse(readFileSync("messages/en.json", "utf8")).asset

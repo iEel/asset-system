@@ -1325,7 +1325,15 @@
       "pmTitle": "Preventive maintenance (PM)",
       "pmEmpty": "No PM plan for this asset yet, for example cleaning and a battery check every 6 months",
       "pmSetup": "Set up PM"
-    }
+    },
+    "transactionReasonComponentCheckout": "A component goes with its parent asset and cannot be handed over on its own",
+    "transactionReasonComponentCheckin": "A component is returned with its parent asset",
+    "transactionReasonLicenseCheckout": "A License is assigned on the asset page and cannot be handed over",
+    "transactionReasonLicenseCheckin": "A License is assigned on the asset page and cannot be returned",
+    "transactionReasonLicenseMove": "A License is assigned on the asset page and cannot be moved",
+    "transactionReasonHandoverModeMissing": "The handover has no custody type. Ask an administrator to review the record.",
+    "transactionReasonHandoverStatusMismatch": "The asset status does not match its custody type. Ask an administrator to review it before check-in.",
+    "transactionReasonSameAsset": "This is the asset being handed over; it cannot be its own destination"
   },
   "company": {
     "title": "Companies",

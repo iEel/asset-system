@@ -124,6 +124,14 @@ test("the transactions are the ownership type's others: available first, then un
   }
 })
 
+test("an open handover the return cannot take says why in the picker's words (server-search spec §5, 6.3)", () => {
+  const checkin = (overrides: Partial<AssetActionInput>) => brief(all(overrides).find((action) => action.key === "checkin"))
+  assert.deepEqual(checkin({ statusName: "In Use", custodianId: "e-1", openCheckoutId: "co-1", openCheckoutHandoverMode: null }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonHandoverModeMissing"])
+  assert.deepEqual(checkin({ statusName: "Pending Repair", openCheckoutId: "co-1", openCheckoutHandoverMode: "temporary_loan" }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonHandoverStatusMismatch"])
+  // An open repair still comes first (as :98).
+  assert.deepEqual(checkin({ statusName: "Pending Repair", openCheckoutId: "co-1", openCheckoutHandoverMode: "temporary_loan", openRepairId: "r-1" }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonActiveMaintenance"])
+})
+
 test("a transfer is offered exactly when the transfer API accepts it (group 1 spec §7.1 \"Transfers follow the API exactly\")", () => {
   for (const ownership of ["personal", "stock", "shared", "component"] as const) {
     for (const statusName of statuses) {

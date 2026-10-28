@@ -1,9 +1,11 @@
+import { normalizeAssetStateName } from "./asset-lifecycle-policy.ts"
 import {
-  getAssetLifecycleTransitionError,
-  getCheckinHandoverStatusError,
-  isLegacyReturnEligible,
-  normalizeAssetStateName,
-} from "./asset-lifecycle-policy.ts"
+  getCheckinVerdict,
+  getCheckoutVerdict,
+  getTransferVerdict,
+  type AssetOperationFacts,
+  type AssetOperationVerdict,
+} from "./asset-operation-eligibility.ts"
 import { buildAssetRegisterTransactionHref } from "./asset-operation-policy.ts"
 import type { AssetOwnershipType } from "./asset-ownership.ts"
 import { appendReturnTo } from "./asset-return-navigation.ts"
@@ -101,39 +103,38 @@ function assetPath(input: AssetActionInput, page: "components" | "edit") {
   return `/${input.locale}/assets/${encodeURIComponent(input.assetId)}/${page}`
 }
 
-// Each check runs in its API's own order.
+function factsOf(input: AssetActionInput): AssetOperationFacts {
+  return {
+    statusName: input.statusName,
+    ownership: input.ownership,
+    custodianId: input.custodianId,
+    openCheckout: input.openCheckoutId ? { id: input.openCheckoutId, handoverMode: input.openCheckoutHandoverMode } : null,
+    hasOpenRepair: Boolean(input.openRepairId),
+  }
+}
+
+function fromVerdict(key: AssetActionKey, labelKey: string, verdict: AssetOperationVerdict, href: () => string): AssetAction {
+  return verdict.eligible ? available(key, labelKey, href()) : unavailable(key, labelKey, verdict.reasonKey)
+}
+
+// The transaction pages' verdicts (asset-operation-eligibility.ts): one rule for this page, the pickers and the save routes.
 function buildTableAction(input: AssetActionInput, key: AssetActionKey, labelKey: string): AssetAction {
-  const { locale, assetId, statusName, ownership, custodianId, openCheckoutId, openCheckoutHandoverMode, openRepairId, returnTo } = input
+  const { locale, assetId, ownership, openCheckoutId, returnTo } = input
+  const facts = factsOf(input)
 
   switch (key) {
-    // api/assets/[id]/checkout: Ready, then no open checkout.
     case "checkout":
-      if (getAssetLifecycleTransitionError("checkout", statusName)) return unavailable(key, labelKey, "asset.transactionReasonStatusNotReady")
-      if (openCheckoutId) return unavailable(key, labelKey, "asset.transactionReasonOpenCheckoutHandover")
-      return available(key, labelKey, buildAssetRegisterTransactionHref(locale, assetId, "checkout", returnTo))
+      return fromVerdict(key, labelKey, getCheckoutVerdict(facts), () => buildAssetRegisterTransactionHref(locale, assetId, "checkout", returnTo))
 
-    // api/assets/[id]/checkin against the open checkout, or api/assets/[id]/legacy-checkout.
-    case "checkin":
-      if (openCheckoutId && getCheckinHandoverStatusError(openCheckoutHandoverMode, statusName) === null && !openRepairId) {
-        return available(key, labelKey, buildAssetRegisterTransactionHref(locale, assetId, "checkin", returnTo, openCheckoutId))
-      }
-      if (isLegacyReturnEligible({ statusName, custodianId, hasOpenCheckout: Boolean(openCheckoutId), hasActiveMaintenance: Boolean(openRepairId) })) {
-        return available(key, labelKey, buildAssetRegisterTransactionHref(locale, assetId, "checkin", returnTo))
-      }
-      if (openRepairId) return unavailable(key, labelKey, "asset.transactionReasonActiveMaintenance")
-      if (!custodianId) return unavailable(key, labelKey, "asset.transactionReasonNoReturnRecord")
-      return unavailable(key, labelKey, "asset.transactionReasonStatusNotReturnable")
-
-    // api/assets/[id]/transfer: a custodian (personal) is assign_custodian, a move without one is move_scope; then the
-    // open checkout (user decision 2026-10-21 Y2).
-    case "transfer": {
-      const personal = ownership === "personal"
-      if (getAssetLifecycleTransitionError(personal ? "assign_custodian" : "move_scope", statusName)) {
-        return unavailable(key, labelKey, personal ? "asset.transactionReasonStatusNotTransferable" : "asset.transactionReasonWrittenOff")
-      }
-      if (openCheckoutId) return unavailable(key, labelKey, "asset.transactionReasonOpenCheckout")
-      return available(key, labelKey, buildAssetRegisterTransactionHref(locale, assetId, "transfer", returnTo))
+    // A return opens the open handover itself; a legacy return opens the asset.
+    case "checkin": {
+      const verdict = getCheckinVerdict(facts)
+      return fromVerdict(key, labelKey, verdict, () => buildAssetRegisterTransactionHref(locale, assetId, "checkin", returnTo, verdict.path === "handover" ? openCheckoutId : null))
     }
+
+    // A custodian (personal) is assign_custodian, a move without one is move_scope (user decision 2026-10-21 Y2).
+    case "transfer":
+      return fromVerdict(key, labelKey, getTransferVerdict(facts, { assignCustodian: ownership === "personal" }), () => buildAssetRegisterTransactionHref(locale, assetId, "transfer", returnTo))
 
     // Their pages and the edit and components APIs check no status.
     case "manageComponents":
