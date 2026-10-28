@@ -254,36 +254,19 @@ test("the findings batch panel: shared checkboxes, Button with busy, approve in 
   assert.match(source, /<ConfirmTextDialog\n/, "the confirm dialog stays as it is (2C plan 3)")
 })
 
-// Task 7 (spec 2B §5.4 row "audit/findings", §8.6 row 9, O21): the row triggers of a finding. Its three dialogs have no
-// open() handle, so the triggers stay in the row cell (I21) and only become Button sm; the dialogs stay with 2C.
-const FINDING_REVIEW = `${C}audit/audit-finding-review-actions.tsx`
+// Group 2 plan 4 (spec §10, Appendix A §10): the review decision moved into the review panel (audit-finding-decision.tsx);
+// this file keeps a finding's follow-up: "แผนแก้ไข" and "ปิดรายการไม่ตรง" as outline Buttons that mount their dialogs.
+const FINDING_FOLLOW_UP = `${C}audit/audit-finding-review-actions.tsx`
 
-test("the finding row triggers are Button sm: approve outline, reject danger, busy while the decision saves, no click through to the row; the dialogs stay (spec 2B §5.4, O21)", () => {
-  const source = read(FINDING_REVIEW)
-  assert.match(source, /<div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:justify-end" onClick=\{stopPortalClick\}>/, "a click inside a dialog portal does not reach the table row and open the asset")
-  assert.match(source, /function stopPortalClick\(event: ReactMouseEvent<HTMLDivElement>\) \{\n\s+if \(!event\.currentTarget\.contains\(event\.target as Node\)\) event\.stopPropagation\(\)\n\}/)
-  assert.match(source, /<Button\n\s+variant="outline"\n\s+size="sm"\n\s+onClick=\{\(\) => setReviewModalAction\("approve"\)\}\n\s+busy=\{reviewing === "approve"\}\n\s+disabled=\{reviewing === "reject"\}\n\s+title=\{t\("approve"\)\}\n\s+>\n\s+<Check aria-hidden="true" \/>/)
-  assert.match(source, /<Button\n\s+variant="danger"\n\s+size="sm"\n\s+onClick=\{\(\) => setReviewModalAction\("reject"\)\}\n\s+busy=\{reviewing === "reject"\}\n\s+disabled=\{reviewing === "approve"\}\n\s+title=\{t\("reject"\)\}\n\s+>\n\s+<X aria-hidden="true" \/>/)
-  assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setPlanOpen\(true\)\}>\n\s+<CalendarClock aria-hidden="true" \/>/)
-  assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setCloseOpen\(true\)\}>\n\s+<FileUp aria-hidden="true" \/>/)
+test("the finding follow-up: แผนแก้ไข and ปิดรายการไม่ตรง are outline Buttons that mount their two dialogs; the review decision is no longer here (group 2 spec §10, Appendix A §10)", () => {
+  const source = read(FINDING_FOLLOW_UP)
+  assert.match(source, /export function AuditFindingFollowUpActions\(/)
+  assert.match(source, /<Button variant="outline" size="md" onClick=\{\(\) => setPlanOpen\(true\)\}>\n\s+<CalendarClock aria-hidden="true" \/>\n\s+\{t\("actionPlan"\)\}/)
+  assert.match(source, /\{actionStatus !== "closed" \? \(\n\s+<Button variant="outline" size="md" onClick=\{\(\) => setCloseOpen\(true\)\}>\n\s+<FileUp aria-hidden="true" \/>\n\s+\{t\("closeFinding"\)\}/)
+  assert.equal(source.match(/<AccessibleDialog open title=\{t\("(?:actionPlanTitle|closeFindingTitle)"\)\} busy=\{saving\} size="md" onClose=\{onClose\}>/g)?.length, 2)
+  assert.equal(source.match(/<AccessibleDialog\b/g)?.length, 2, "the action-plan and close dialogs stay; the decision has no dialog (group 2 spec §10)")
+  assert.doesNotMatch(source, /ReviewDecisionModal|AuditFindingReviewActions|\bcompact\b|RowActions|stopPortalClick|returnFocusRef|segregationReviewBlocked/)
   assert.doesNotMatch(source, /<button\b|<Loader2\b|\btext-success\b|disabled:opacity-50/, "no hand-written trigger, spinner or green text is left")
-  // Audit mobile fix D8, fix round 1: in the findings table the self-review note is small warning text with its icon, no box.
-  assert.match(source, /<p className="flex items-start gap-1\.5 text-left text-meta text-warning">\n\s+<AlertTriangle aria-hidden="true" className="mt-0\.5 size-3\.5 shrink-0" \/>\n\s+<span>\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/span>/)
-  // Fix round 3 (coordinator ruling, pattern ช1 of 2B): in the table only the review decision stays visible (approve
-  // and reject stacked, or the note); plan, close and the page's links (the disposal request) go into the shared ⋯.
-  // The menu holds no dialog (R-m): its items set the state that mounts the dialog, which gives focus back to ⋯.
-  const compactBranch = source.slice(source.indexOf("  if (compact) {"), source.indexOf("  return (\n    <div className=\"flex min-w-0 flex-col gap-2"))
-  assert.match(compactBranch, /<div className="flex min-w-0 items-start justify-end gap-1\.5" onClick=\{stopPortalClick\}>/)
-  assert.match(compactBranch, /reviewBlocked \? blockedNote : <div className="flex flex-col items-end gap-2">\{reviewButtons\}<\/div>/)
-  assert.match(compactBranch, /<RowActions\n\s+code=\{menuCode\}\n\s+name=\{assetLabel\}\n\s+menuLabel=\{tCommon\("moreActionsFor", \{ code: menuCode \}\)\}\n\s+groups=\{\[\{ key: "finding", items: menuItems \}\]\}\n\s+openerRef=\{openerRef\}/)
-  assert.match(compactBranch, /\{ kind: "action", key: "plan", label: t\("actionPlan"\), icon: <CalendarClock aria-hidden="true" \/>, onSelect: \(\) => setPlanOpen\(true\) \}/)
-  assert.match(compactBranch, /\{ kind: "action" as const, key: "close", label: t\("closeFinding"\), icon: <FileUp aria-hidden="true" \/>, onSelect: \(\) => setCloseOpen\(true\) \}/)
-  assert.match(compactBranch, /\.\.\.menuLinks,/)
-  assert.doesNotMatch(compactBranch, /setPlanOpen\(true\)\}>|setCloseOpen\(true\)\}>/, "no plan or close button in the table cell")
-  assert.equal(source.match(/returnFocusRef=\{openerRef\}/g)?.length, 2, "the plan and close dialogs give focus back to ⋯")
-  assert.equal(source.match(/<AccessibleDialog open title=\{t\("(?:actionPlanTitle|closeFindingTitle)"\)\} busy=\{saving\} size="md" returnFocusRef=\{returnFocusRef\} onClose=\{onClose\}>/g)?.length, 2)
-  assert.match(source, /<Notice tone="warning">\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/Notice>/, "the phone cards keep the box: a warning Notice since plan 2D-4")
-  assert.equal(source.match(/<AccessibleDialog\b/g)?.length, 3, "the review, action-plan and close dialogs stay as they are (O21)")
 })
 
 // Task 8 (spec 2B §5.4 row "audit/findings", §5.9.2 row 3, §5.10 row 2, I21, I24): the findings list page.

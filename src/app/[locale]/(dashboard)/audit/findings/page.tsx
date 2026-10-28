@@ -5,23 +5,19 @@ import { ArrowRight, FileText } from "lucide-react"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
-import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
 import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
 import { AuditFindingsExportMenu } from "@/components/audit/audit-findings-export-menu"
 import { AuditFindingPaneTop } from "@/components/audit/audit-finding-pane-top"
+import { AuditFindingReviewPanel, AuditFindingReviewPanelEmpty } from "@/components/audit/audit-finding-review-panel"
 import { cn, formatDateTime } from "@/lib/utils"
 import { formatFileSize } from "@/lib/uploads"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { linkVariants } from "@/components/ui/button-variants"
 import { Chip } from "@/components/ui/chip"
-import { ContentPanel } from "@/components/ui/content-panel"
-import { DataFreshnessBanner } from "@/components/ui/data-freshness-banner"
 import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
-import { EmptyNote } from "@/components/ui/empty-note"
 import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
 import { FilterSelect, type FilterSelectOption } from "@/components/ui/filter-select"
-import { KeyValueList } from "@/components/ui/key-value-list"
 import { orNil } from "@/components/ui/nil"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Pagination } from "@/components/ui/pagination"
@@ -219,88 +215,36 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     // Nothing reconciled yet: no badge.
     ...(!finding.auditItem.reconcileStatus || finding.auditItem.reconcileStatus === "pending" ? [] : [{ key: "reconcileStatus", title: t("reconcileStatus"), label: formatReconcileStatus(finding.auditItem.reconcileStatus), status: finding.auditItem.reconcileStatus }]),
   ]
-  const chosenDisposalHref = chosen ? disposalHrefFor(chosen) : null
-
-  // The review panel's slot (spec §10): the open finding, or the empty panel, rendered once. Task 4 replaces this
-  // expression with its own panel under the same two hooks; until then the body is today's card for the open finding,
-  // so plan, close and the decision keep working between the two commits (Appendix A §10).
-  const panel = chosen ? (
-    <div data-audit-finding-panel data-finding-id={chosen.id} className="min-w-0">
-      <ContentPanel divided title={t("panelTitle")}>
-        <div data-audit-finding-panel-body className="space-y-4">
-          <FindingStatusBadges items={findingStatusBadges(chosen, resolveFindingState(chosen, today))} />
-          <KeyValueList
-            items={[
-              { key: "findingType", label: t("findingTopic"), value: t(`type_${chosen.findingType}`) },
-              {
-                key: "asset",
-                label: t("asset"),
-                value: chosen.asset ? (
-                  <>
-                    <span className="tag font-medium">{chosen.asset.assetTag}</span> - {chosen.asset.name}
-                    {chosen.parent ? <span className="mt-0.5 block text-meta text-muted-foreground">{t("componentOfParent", { assetTag: chosen.parent.assetTag, name: chosen.parent.name })}</span> : null}
-                  </>
-                ) : null,
-              },
-              {
-                key: "auditRound",
-                label: t("auditRound"),
-                value: (
-                  <Link href={`/${locale}/audit/rounds/${chosen.auditRound.id}`} className={linkVariants({ size: "inherit" })}>
-                    <span className="tag">{chosen.auditRound.auditNo}</span> · {chosen.auditRound.name}
-                  </Link>
-                ),
-              },
-              { key: "systemValue", label: t("systemValue"), value: chosen.expectedLabel },
-              { key: "foundValue", label: t("foundValue"), value: chosen.actualLabel ? <span className="font-medium">{chosen.actualLabel}</span> : null },
-              { key: "actionOwner", label: t("actionOwner"), value: chosen.ownerLabel, nilLabel: t("noActionOwner") },
-              { key: "actionDueDate", label: t("actionDueDate"), value: chosen.actionDueDate ? formatDateTime(chosen.actionDueDate) : null },
-            ]}
-          />
-          <AuditFindingEvidenceList
-            attachments={chosen.evidence}
-            labels={{
-              title: t("evidenceAttachments"),
-              count: t("evidenceAttachmentCount", { count: chosen.evidence.length }),
-              open: t("openEvidenceAttachment"),
-            }}
-          />
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            {chosen.asset ? <Link href={`/${locale}/assets/${chosen.asset.id}`} className={buttonVariants({ variant: "outline", size: "md" })}>{t("openAsset")}</Link> : null}
-            {chosenDisposalHref ? (
-              <Link href={chosenDisposalHref} className={buttonVariants({ variant: "outline", size: "md" })}>
-                {t("openDisposalRequest")}
-              </Link>
-            ) : null}
-          </div>
-          {canApprove ? (
-            <AuditFindingReviewActions
-              key={chosen.id}
-              findingId={chosen.id}
-              assetLabel={chosen.asset ? `${chosen.asset.assetTag} - ${chosen.asset.name}` : chosen.auditRound.auditNo}
-              findingTypeLabel={t(`type_${chosen.findingType}`)}
-              expectedValue={chosen.expectedLabel}
-              actualValue={chosen.actualLabel}
-              reviewStatus={chosen.reviewStatus}
-              actionStatus={chosen.actionStatus}
-              actionPlan={chosen.actionPlan}
-              actionOwnerId={chosen.actionOwnerId}
-              actionDueDate={chosen.actionDueDate}
-              evidenceCount={chosen.evidence.length}
-              employees={data.employees}
-              reviewBlocked={chosen.reportedByViewer}
-              reviewBlockedReason={t("segregationReviewBlocked")}
-            />
-          ) : null}
-        </div>
-      </ContentPanel>
-    </div>
+  // The review panel (group 2 spec §10): the open finding, or the empty panel, in Task 3's slot. It renders once; the pane
+  // places it beside the table from xl and full screen below. After the last decision on รอพิจารณา or ทั้งหมด, the tabs
+  // whose work is deciding, the empty panel says the tab is done (P4-R18). The other four keep
+  // "เลือกรายการทางซ้ายเพื่อพิจารณา" (P4-R32): อนุมัติแล้ว and ปฏิเสธแล้ว hold no pending finding; ต้องติดตาม and ปิดแล้ว
+  // filter on the plan (actionStatus), not the review, so a finding whose plan was saved before its review can sit
+  // there still pending, but their work is the plan and the close. view is Task 3's auditFindingStatusView(status).
+  const panel = data.panel ? (
+    <AuditFindingReviewPanel
+      locale={locale}
+      data={data.panel}
+      canApprove={canApprove}
+      employees={data.employees}
+      statusBadges={findingStatusBadges(data.panel.finding, resolveFindingState(data.panel.finding, today))}
+      evidence={
+        <AuditFindingEvidenceList
+          attachments={data.panel.finding.evidence}
+          labels={{
+            title: t("evidenceAttachments"),
+            count: t("evidenceAttachmentCount", { count: data.panel.finding.evidence.length }),
+            open: t("openEvidenceAttachment"),
+          }}
+        />
+      }
+      disposalHref={disposalHrefFor(data.panel.finding)}
+      loadedAtIso={data.loadedAt.toISOString()}
+      loadedAtLabel={formatDateTime(data.loadedAt)}
+      closeHref={closeHref}
+    />
   ) : (
-    <div data-audit-finding-panel-empty className="min-w-0">
-      <ContentPanel title={t("panelTitle")}>
-        <EmptyNote>{findingId ? t("panelNotFound") : t("panelEmpty")}</EmptyNote>
-      </ContentPanel>
-    </div>
+    <AuditFindingReviewPanelEmpty state={findingId ? "notFound" : data.reviewableTotal === 0 && (view.tab === "pending" || view.tab === "all") ? "done" : "choose"} />
   )
 
   return (
@@ -310,18 +254,6 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         meta={t("subtitle")}
         back={<PageBackLink href={back.href} label={backLabel} />}
         actions={canExport ? <AuditFindingsExportMenu excelHref={`/api/audit-findings/export?${exportParams.toString()}`} pdfHref={`/api/audit-findings/export-pdf?${exportParams.toString()}`} /> : null}
-      />
-
-      <DataFreshnessBanner
-        loadedAtIso={data.loadedAt.toISOString()}
-        loadedAtLabel={formatDateTime(data.loadedAt)}
-        labels={{
-          freshTitle: t("freshnessFreshTitle"),
-          freshHelp: t("freshnessFreshHelp"),
-          staleTitle: t("freshnessStaleTitle"),
-          staleHelp: t("freshnessStaleHelp"),
-          refresh: t("freshnessRefresh"),
-        }}
       />
 
       {/* Two panes from xl (spec §10): the list, then the review pane (420px, sticky from xl and scrolling on its own,
@@ -586,18 +518,4 @@ type FindingStatusBadgeItem = {
   label: string
   status?: string
   tone?: StatusTone
-}
-
-// The status badges of one finding in the review panel, in a row that wraps.
-function FindingStatusBadges({ items }: { items: FindingStatusBadgeItem[] }) {
-  return (
-    <ul className="flex flex-wrap items-start gap-2">
-      {items.map((item) => (
-        <li key={item.key} title={`${item.title}: ${item.label}`} className="max-w-full">
-          <span className="sr-only">{item.title}: </span>
-          <StatusBadge label={item.label} status={item.status} tone={item.tone} />
-        </li>
-      ))}
-    </ul>
-  )
 }

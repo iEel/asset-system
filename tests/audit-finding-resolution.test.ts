@@ -18,7 +18,7 @@ import {
 test("audit findings page exposes the findings workflow", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
 
-  assert.match(page, /DataFreshnessBanner/)
+  assert.match(readFileSync("src/components/audit/audit-finding-review-panel.tsx", "utf8"), /<DataFreshnessBanner\b/)
   assert.match(page, /resolutionFilters/)
   assert.match(page, /followUpChips/)
   assert.match(page, /FindingValueChange/)
@@ -36,20 +36,20 @@ test("audit finding exports use the same resolution filters as the page", () => 
   }
 })
 
-test("audit finding review uses a decision modal with conflict guard", () => {
-  const actions = readFileSync("src/components/audit/audit-finding-review-actions.tsx", "utf8")
+test("audit finding review decides in the panel with the conflict guard: a 409 warns and the next approve confirms it (group 2 spec §10)", () => {
+  const decision = readFileSync("src/components/audit/audit-finding-decision.tsx", "utf8")
   const route = readFileSync("src/app/api/audit-findings/[id]/review/route.ts", "utf8")
 
-  assert.match(actions, /ReviewDecisionModal/)
-  assert.match(actions, /reviewConflictTitle/)
-  assert.match(actions, /confirmConflict/)
-  assert.doesNotMatch(actions, /window\.prompt/)
+  assert.match(decision, /reviewConflictTitle/)
+  assert.match(decision, /action === "approve" && conflict !== null/)
+  assert.match(decision, /confirmConflict/)
+  assert.doesNotMatch(decision, /window\.prompt|AccessibleDialog/)
   assert.match(route, /hasAuditFindingConflict/)
   assert.match(route, /buildAuditFindingConflictPayload/)
   assert.match(route, /status: 409/)
 })
 
-test("audit finding freshness and review modal copy is translated", () => {
+test("audit finding freshness and review panel copy is translated; the decision dialog's words are gone (group 2 spec §10)", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
@@ -57,11 +57,12 @@ test("audit finding freshness and review modal copy is translated", () => {
     assert.equal(typeof messages.auditFinding.freshnessFreshTitle, "string")
     assert.equal(typeof messages.auditFinding.freshnessStaleTitle, "string")
     assert.equal(typeof messages.auditFinding.freshnessRefresh, "string")
-    assert.equal(typeof messages.auditFinding.reviewDecisionTitle_approve, "string")
-    assert.equal(typeof messages.auditFinding.reviewDecisionTitle_reject, "string")
-    assert.equal(typeof messages.auditFinding.reviewDecisionHelp_approve, "string")
     assert.equal(typeof messages.auditFinding.reviewConflictTitle, "string")
     assert.equal(typeof messages.auditFinding.reviewConfirmConflict, "string")
+    assert.equal(typeof messages.auditFinding.reviewReasonLabel, "string")
+    assert.equal(typeof messages.auditFinding.effectChange, "string")
+    assert.equal(messages.auditFinding.reviewDecisionTitle_approve, undefined)
+    assert.equal(messages.auditFinding.reviewDecisionHelp_approve, undefined)
   }
 })
 

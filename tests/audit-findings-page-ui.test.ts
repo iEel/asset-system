@@ -118,27 +118,6 @@ test("the empty states: ล้างคำค้น after a search, else the way
   assert.match(page, /const empty = searchText\n\s+\? \{ title: t\("emptySearchTitle"\), description: t\("emptySearchHelp"\), actionHref: clearSearchHref, actionLabel: t\("clearSearch"\) \}\n\s+: \{ title: t\("emptyTitle"\), description: t\("emptyHelp"\), actionHref: back\.href, actionLabel: backLabel \}/)
 })
 
-// Task 4 deletes this test with the interim body: its panel has its own tests, under the same two hooks.
-test("until Task 4 the panel slot holds today's facts, badges, evidence, the asset and disposal links, and the review actions for audit:approve alone (Appendix A §10, M4)", () => {
-  const page = read(PAGE)
-  const panel = page.slice(page.indexOf("const panel = chosen ? ("), page.indexOf("return (\n    <div className=\"space-y-6\">"))
-  assert.match(panel, /<div data-audit-finding-panel data-finding-id=\{chosen\.id\} className="min-w-0">\n\s+<ContentPanel divided title=\{t\("panelTitle"\)\}>\n\s+<div data-audit-finding-panel-body className="space-y-4">/)
-  assert.match(panel, /<div data-audit-finding-panel-empty className="min-w-0">\n\s+<ContentPanel title=\{t\("panelTitle"\)\}>\n\s+<EmptyNote>\{findingId \? t\("panelNotFound"\) : t\("panelEmpty"\)\}<\/EmptyNote>/)
-  assert.match(panel, /<FindingStatusBadges items=\{findingStatusBadges\(chosen, resolveFindingState\(chosen, today\)\)\} \/>/)
-  assert.match(panel, /\{ key: "systemValue", label: t\("systemValue"\), value: chosen\.expectedLabel \}/)
-  assert.match(panel, /\{ key: "actionOwner", label: t\("actionOwner"\), value: chosen\.ownerLabel, nilLabel: t\("noActionOwner"\) \}/)
-  assert.match(panel, /<span className="tag font-medium">\{chosen\.asset\.assetTag\}<\/span> - \{chosen\.asset\.name\}/)
-  assert.match(panel, /<Link href=\{`\/\$\{locale\}\/audit\/rounds\/\$\{chosen\.auditRound\.id\}`\} className=\{linkVariants\(\{ size: "inherit" \}\)\}>/)
-  assert.match(panel, /<AuditFindingEvidenceList\n\s+attachments=\{chosen\.evidence\}/)
-  assert.match(panel, /\{chosen\.asset \? <Link href=\{`\/\$\{locale\}\/assets\/\$\{chosen\.asset\.id\}`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\{t\("openAsset"\)\}<\/Link> : null\}/)
-  assert.match(panel, /\{chosenDisposalHref \? \(\n\s+<Link href=\{chosenDisposalHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
-  assert.match(panel, /\{canApprove \? \(\n\s+<AuditFindingReviewActions\n\s+key=\{chosen\.id\}\n\s+findingId=\{chosen\.id\}/)
-  assert.match(panel, /employees=\{data\.employees\}/)
-  assert.match(panel, /reviewBlocked=\{chosen\.reportedByViewer\}/)
-  assert.match(page, /<StatusBadge label=\{item\.label\} status=\{item\.status\} tone=\{item\.tone\} \/>/, "the panel's badges, one list")
-  assert.match(page, /<ul className="flex flex-wrap items-start gap-2">/, "the panel's badges wrap in a row")
-})
-
 test("ClickableTableRow: scroll={false} keeps the list where it is, current marks the open record with aria-current and primary-soft, hovered or not, and rowData puts a test's hooks on the row (DESIGN.md Data Tables)", async () => {
   const source = read("src/components/ui/clickable-table-row.tsx")
   assert.match(source, /^  scroll = true,\n  current = false,\n  rowData,\n  children,\n\}: \{$/m)

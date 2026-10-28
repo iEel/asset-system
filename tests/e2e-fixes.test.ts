@@ -247,14 +247,16 @@ test("the PM plan's edit page is left only once its asset select has loaded its 
   assert.match(read("e2e/repair/pm-plan.spec.ts"), /toHaveValue\("2026-02-28"\)\n(?:\s*\/\/[^\n]*\n)*\s*await page\.waitForLoadState\("networkidle"\)\n(?:\s*\/\/[^\n]*\n)*\s*let row = await visitPlanRow\(page, measure, title, "PM plans after done"\)/)
 })
 
-test("the findings page offers the review controls only to a role with audit:approve (e2e decision DX3 (ก): M4)", () => {
-  const findings = read("src/app/[locale]/(dashboard)/audit/findings/page.tsx")
-  // The panel renders AuditFindingReviewActions for canApprove alone, as the review route checks (group 2 plan 4 Task 3;
-  // Task 4 replaces it with the panel's own decision under the same gate).
-  const reviewActions = findings.match(/\{canApprove \? \(\n\s*<AuditFindingReviewActions\b/g) ?? []
-  assert.equal(reviewActions.length, 1)
-  assert.equal((findings.match(/<AuditFindingReviewActions\b/g) ?? []).length, 1)
-  assert.doesNotMatch(findings, /canEdit \|\| canApprove/)
+test("the findings panel offers the review controls only to a role with audit:approve (e2e decision DX3 (ก): M4; group 2 plan 4)", () => {
+  const rules = read("src/lib/audit-finding-review-panel-rules.ts")
+  const panel = read("src/components/audit/audit-finding-review-panel.tsx")
+  const page = read("src/app/[locale]/(dashboard)/audit/findings/page.tsx")
+  // The gate reads audit:approve first, as the review route checks it before anything else; plan and close follow it.
+  assert.match(rules, /if \(!input\.canApprove\) return \{ decide: "noPermission", followUp: false \}/)
+  assert.match(panel, /\{gate\.decide === "noPermission" \? null : \(\n\s*<AuditFindingDecision\b/)
+  assert.match(panel, /\{gate\.followUp \? \(\n\s*<AuditFindingFollowUpActions\b/)
+  assert.match(page, /canApprove=\{canApprove\}/)
+  assert.doesNotMatch(page, /<AuditFindingReviewActions\b|canEdit \|\| canApprove/)
   assert.ok(!read("e2e/cross-cutting/roles.spec.ts").includes(`test.fail(true, "M4: `))
 })
 

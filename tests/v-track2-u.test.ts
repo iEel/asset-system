@@ -131,28 +131,24 @@ test("the two not-found dialogs keep the browser out, name their remark for focu
   assert.ok(missing.includes('onSubmit(remark.trim() || t("componentMissingDefaultRemark", { assetTag: parentAssetTag }), evidence)'))
 })
 
-test("finding dialogs: decision, action plan and close are forms that validate themselves, and close waits for evidence with its reason beside the button (v-track U4)", () => {
+test("finding dialogs: action plan and close are forms that validate themselves, close waits for evidence with its reason beside the button, and the panel's reason box is required to reject (v-track U4; group 2 spec §10, decision 5)", () => {
   const source = read(`${C}audit-finding-review-actions.tsx`)
-  // Three dialogs, three tables; the decision's request is sent by the row's review(), which keeps its toast (U-R5).
-  assertMigratedForm(source, { ids: { reviewRemark: "audit-review-remark" }, table: "REVIEW_FIELD_IDS", server: false })
+  // Two dialogs, two tables; the decision moved to the review panel.
   assertMigratedForm(source, {
     ids: { actionPlan: "audit-plan-action-plan", actionDueDate: "audit-plan-due-date", actionStatus: "audit-plan-status" },
     table: "PLAN_FIELD_IDS",
   })
   assertMigratedForm(source, { ids: { closureRemark: "audit-close-remark" }, table: "CLOSE_FIELD_IDS" })
-  assert.equal(source.match(/<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/g)?.length, 3)
+  assert.equal(source.match(/<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/g)?.length, 2)
   const rules = validateBody(source)
   for (const rule of [
-    'if (values.reviewRemark !== undefined) check("reviewRemark", maxLength(values.reviewRemark, 4000))',
     'if (values.actionPlan !== undefined) check("actionPlan", required(values.actionPlan) ?? maxLength(values.actionPlan, 4000))',
     'if (values.closureRemark !== undefined) check("closureRemark", maxLength(values.closureRemark, 4000))',
   ]) assert.ok(rules.includes(rule), rule)
-  for (const call of ["validate({ reviewRemark })", "validate({ actionPlan: values.actionPlan })", "validate({ closureRemark })"]) {
+  assert.doesNotMatch(rules, /reviewRemark/)
+  for (const call of ["validate({ actionPlan: values.actionPlan })", "validate({ closureRemark })"]) {
     assert.ok(source.includes(`fieldErrors.setErrors(${call})`), call)
   }
-  // The decision submits its form; a second press after a conflict confirms it, as before.
-  assert.match(source, /const nextConflict = await onReview\(action, reviewRemark\.trim\(\), Boolean\(conflict\)\)/)
-  assert.match(source, /<Button type="submit" variant=\{action === "approve" \? "default" : "destructive"\} busy=\{reviewing\}>/)
   assert.doesNotMatch(source, /onClick=\{\(\) => submit\(|onClick=\{closeFinding\}/)
   // The plan's fields clear their own error when they change.
   assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+if \(field in PLAN_FIELD_IDS\) fieldErrors\.clear\(field as PlanField\)/)
@@ -163,6 +159,16 @@ test("finding dialogs: decision, action plan and close are forms that validate t
   assert.match(source, /\{needsEvidence \? <p id="audit-close-reason" className="text-meta text-muted-foreground">\{t\("closeNeedsEvidence"\)\}<\/p> : null\}\n\s+<\/AccessibleDialogBody>/)
   assert.match(source, /<Button\n\s+type="submit"\n\s+busy=\{saving\}\n\s+aria-disabled=\{needsEvidence \|\| undefined\}\n\s+aria-describedby=\{needsEvidence \? "audit-close-reason" : undefined\}\n\s+>/)
   assert.doesNotMatch(source, /disabled=\{uploadedCount === 0\}/)
+  // The panel's decision: no <form> (two commands share one box), its own validate() with the reject rule (decision 5),
+  // the server's fieldErrors under the box, focus on the box.
+  const decision = read(`${C}audit-finding-decision.tsx`)
+  // messages: [] — a reject's "required" shows the panel's own sentence (P4-R27), so the box has no plain
+  // fieldErrors.message("reviewRemark"); its error is checked on its own below, as round cancel's is (U2).
+  assertMigratedForm(decision, { ids: { reviewRemark: "audit-review-reason" }, formless: true, messages: [] })
+  assert.ok(validateBody(decision).includes('check("reviewRemark", (values.action === "reject" ? required(values.reviewRemark) : null) ?? maxLength(values.reviewRemark, 4000))'))
+  assert.ok(decision.includes("fieldErrors.setErrors(validate({ action, reviewRemark }))"))
+  assert.ok(decision.includes('fieldErrors.setErrors(validate({ action: "approve", reviewRemark }))'))
+  assert.ok(decision.includes('error={fieldErrors.errors.reviewRemark === "required" ? t("reviewReasonRequired") : fieldErrors.message("reviewRemark")}'), "the reject's own sentence under the box (P4-R27)")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
   assert.equal(th.auditFinding.closeNeedsEvidence, "ยังไม่มีหลักฐานปิดงาน ต้องแนบหลักฐานอย่างน้อย 1 ไฟล์ก่อนจึงจะปิดรายการไม่ตรงได้")

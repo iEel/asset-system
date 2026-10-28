@@ -42,18 +42,15 @@ test("audit round form: the sections in one panel and the summary in another, co
   assert.doesNotMatch(source, /<StatStrip\b|<aside\b|<section\b|function PreviewMetric\b|uppercase|tracking-|primary-soft|primary-border|info-soft|info-border|text-info|warning-soft|warning-border|rounded-lg|\btext-xs\b|<input\b|checkboxVariants/)
 })
 
-test("finding review actions: a warning Notice on the phone card, KeyValueLists with Nil in the dialog, the impact and the conflict as Notices by meaning, no typed dash (spec 2D D7, D19, LV2)", () => {
-  const source = read(`${C}audit/audit-finding-review-actions.tsx`)
-  assert.match(source, /<Notice tone="warning">\{reviewBlockedReason \?\? t\("segregationReviewBlocked"\)\}<\/Notice>/)
-  assert.match(source, /<p className="flex items-start gap-1\.5 text-left text-meta text-warning">/, "the table keeps the small note of the audit mobile fix")
-  assert.match(source, /<div className="rounded-md border border-border bg-background p-4">/)
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the finding summary and the conflict dates")
-  assert.match(source, /\{ key: "systemValue", label: t\("systemValue"\), value: expectedValue \}/)
-  assert.match(source, /<Notice tone=\{action === "approve" \? "warning" : "neutral"\} title=\{t\(`reviewDecisionImpactTitle_\$\{action\}`\)\}>/)
-  assert.match(source, /<Notice tone="warning" role="alert" title=\{t\("reviewConflictTitle"\)\}>\{t\("reviewConflictHelp"\)\}<\/Notice>/)
-  assert.match(source, /value: conflict\.findingReportedAt \? formatDateTime\(conflict\.findingReportedAt\) : null/)
-  assert.match(source, /<p className="text-sm text-muted-foreground">\{t\("closureEvidenceCount", \{ count: uploadedCount \}\)\}<\/p>/)
-  assert.doesNotMatch(source, /"-"|function (?:ReviewPreviewField|formatClientDateTime)\b|rounded-lg|border-warning-border|border-danger-border|bg-danger-soft|\btext-xs\b/)
+test("finding follow-up and decision: the close count a muted line, the conflict a warning Notice with its dates in a KeyValueList, no typed dash (spec 2D D7, D19, LV2; group 2 spec §10)", () => {
+  const actions = read(`${C}audit/audit-finding-review-actions.tsx`)
+  assert.match(actions, /<p className="text-sm text-muted-foreground">\{t\("closureEvidenceCount", \{ count: uploadedCount \}\)\}<\/p>/)
+  const decision = read(`${C}audit/audit-finding-decision.tsx`)
+  assert.match(decision, /<Notice tone="warning" role="alert" title=\{t\("reviewConflictTitle"\)\}>\{t\("reviewConflictHelp"\)\}<\/Notice>/)
+  assert.match(decision, /value: conflict\.findingReportedAt \? formatDateTime\(conflict\.findingReportedAt\) : null/)
+  for (const source of [actions, decision]) {
+    assert.doesNotMatch(source, /"-"|function (?:ReviewPreviewField|formatClientDateTime)\b|rounded-lg|border-warning-border|border-danger-border|bg-danger-soft|\btext-xs\b/)
+  }
 })
 
 test("findings batch panel: a ContentPanel, the pending findings as checkbox ChoiceCards in a quiet grouping (spec 2D D9, M25)", () => {
