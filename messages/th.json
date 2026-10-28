@@ -4713,7 +4713,14 @@
     "statusBlocksEdit": "สถานะทรัพย์สินนี้แก้ไขข้อมูลไม่ได้",
     "statusBlocksMaintenance": "สถานะทรัพย์สินนี้บันทึกซ่อมไม่ได้ โหลดหน้าใหม่เพื่อดูสถานะล่าสุด",
     "employeeActiveFromAd": "สถานะนี้มาจาก AD: ปิดหรือเปิดบัญชีใน AD แล้วรอซิงก์",
-    "crossSiteRequest": "คำขอนี้ไม่ได้มาจากหน้าของระบบ จึงไม่รับ"
+    "crossSiteRequest": "คำขอนี้ไม่ได้มาจากหน้าของระบบ จึงไม่รับ",
+    "componentCheckoutNotAllowed": "ส่วนควบไปพร้อมเครื่องหลัก ส่งมอบแยกไม่ได้",
+    "licenseCheckoutNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ส่งมอบไม่ได้",
+    "componentCheckinNotAllowed": "ส่วนควบรับคืนพร้อมเครื่องหลัก",
+    "licenseCheckinNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
+    "licenseMoveNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
+    "checkinRepairOpen": "มีงานซ่อมที่ยังไม่ปิด กรุณาปิดหรือยกเลิกงานซ่อมก่อน",
+    "checkoutDestinationNotAllowed": "เลือกทรัพย์สินนี้เป็นปลายทางไม่ได้ เลือกปลายทางอื่น"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

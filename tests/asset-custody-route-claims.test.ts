@@ -7,10 +7,13 @@ import { pathToFileURL } from "node:url"
 type CustodyRouteState = {
   claimCount: number
   assetStatusName: string
+  assetOwnershipType: string
+  destinations: Record<string, { id: string; ownershipType: string; custodianId: string | null; status: { name: string } }>
+  openCheckoutAssetIds: string[]
   calls: string[]
 }
 
-const state: CustodyRouteState = { claimCount: 1, assetStatusName: "Ready", calls: [] }
+const state: CustodyRouteState = { claimCount: 1, assetStatusName: "Ready", assetOwnershipType: "personal", destinations: {}, openCheckoutAssetIds: [], calls: [] }
 Object.assign(globalThis, { __custodyRouteState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -48,6 +51,7 @@ const mockedModuleSources = new Map<string, string>([
     const asset = () => ({
       id: "asset-1",
       assetTag: "GRL-COM-26-0036",
+      ownershipType: state().assetOwnershipType,
       statusId: "status-current",
       conditionId: "condition-good",
       branchId: "branch-1",
@@ -63,9 +67,11 @@ const mockedModuleSources = new Map<string, string>([
           return async (args) => {
             state().calls.push(name + "." + String(method))
             if (method === "updateMany") return { count: name === "asset" ? state().claimCount : 1 }
+            if (name === "asset" && method === "findFirst" && args?.where?.id && args.where.id !== "asset-1") return state().destinations[args.where.id] ?? null
             if (name === "asset" && (method === "findFirst" || method === "findUnique")) return asset()
             if (name === "asset" && method === "update") return { ...asset(), ...(args?.data ?? {}), updatedAt: new Date("2026-10-07T03:00:00Z") }
             if (name === "assetCondition") return { name: "Good", isActive: true }
+            if (name === "assetCheckout" && method === "findFirst") return state().openCheckoutAssetIds.includes(args?.where?.assetId) ? { id: "checkout-open", handoverMode: "temporary_loan" } : null
             if (method === "findFirst" || method === "findUnique") return null
             if (method === "findMany") return []
             if (method === "count") return 0
@@ -134,6 +140,9 @@ const checkoutBody = {
 beforeEach(() => {
   state.claimCount = 1
   state.assetStatusName = "Ready"
+  state.assetOwnershipType = "personal"
+  state.destinations = {}
+  state.openCheckoutAssetIds = []
   state.calls = []
 })
 
@@ -175,4 +184,80 @@ test("a legacy return backfill that loses the race for the asset returns 409 and
 
   assert.equal(response.status, 409)
   assert.equal(state.calls.includes("assetCheckout.create"), false)
+})
+
+const refusal = async (response: Response) => [response.status, await response.json()]
+const moveBody = { toLocationId: "location-2", reason: "ย้ายห้อง" }
+
+test("a handover refuses a ส่วนควบ and a License with the picker's words, before any write (server-search spec 6.5)", async () => {
+  for (const [ownership, code] of [["component", "ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED"], ["software_license", "ASSET_LICENSE_CHECKOUT_NOT_ALLOWED"]] as const) {
+    state.assetOwnershipType = ownership
+    state.calls = []
+    assert.deepEqual(await refusal(await post(checkoutRoute, checkoutBody)), [409, { code, error: code }], ownership)
+    assert.equal(state.calls.includes("asset.updateMany"), false, ownership)
+    assert.equal(state.calls.includes("assetCheckout.create"), false, ownership)
+  }
+  // Ownership first, as the picker: a License that is not Ready reads the License word.
+  state.assetStatusName = "In Use"
+  assert.deepEqual(await refusal(await post(checkoutRoute, checkoutBody)), [409, { code: "ASSET_LICENSE_CHECKOUT_NOT_ALLOWED", error: "ASSET_LICENSE_CHECKOUT_NOT_ALLOWED" }])
+})
+
+test("a handover of a Ready บุคคล, ส่วนกลาง or Stock asset still saves", async () => {
+  for (const ownership of ["personal", "shared", "stock"]) {
+    state.assetOwnershipType = ownership
+    assert.equal((await post(checkoutRoute, checkoutBody)).status, 201, ownership)
+  }
+})
+
+const toAsset = (parentAssetId: string) => ({ ...checkoutBody, checkoutType: "asset", custodianId: undefined, parentAssetId })
+const destination = (id: string, ownershipType: string, statusName: string) => ({ id, ownershipType, custodianId: null, status: { name: statusName } })
+const destinationRefusal = [409, {
+  code: "ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED", error: "ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED",
+  fieldErrors: { parentAssetId: "checkoutDestinationNotAllowed" },
+}]
+
+test("a handover to ทรัพย์สินอื่น refuses a destination the picker would not offer, under its field and before any write (server-search spec 6.5, S-R39)", async () => {
+  state.destinations = {
+    "asset-license": destination("asset-license", "software_license", "Ready"),
+    "asset-component": destination("asset-component", "component", "Ready"),
+    "asset-repair": destination("asset-repair", "personal", "Under Maintenance"),
+    "asset-loaned": destination("asset-loaned", "personal", "Ready"),
+  }
+  state.openCheckoutAssetIds = ["asset-loaned"]
+  // itself, missing or inactive, a License, a ส่วนควบ, not Ready, under an open handover
+  for (const parentAssetId of ["asset-1", "asset-missing", "asset-license", "asset-component", "asset-repair", "asset-loaned"]) {
+    state.calls = []
+    assert.deepEqual(await refusal(await post(checkoutRoute, toAsset(parentAssetId))), destinationRefusal, parentAssetId)
+    assert.equal(state.calls.includes("asset.updateMany"), false, parentAssetId)
+    assert.equal(state.calls.includes("assetCheckout.create"), false, parentAssetId)
+  }
+})
+
+test("a handover to a Ready ทรัพย์สินอื่น with no open handover still saves", async () => {
+  for (const ownership of ["personal", "shared", "stock"]) {
+    state.destinations = { "asset-pc": destination("asset-pc", ownership, "Ready") }
+    assert.equal((await post(checkoutRoute, toAsset("asset-pc"))).status, 201, ownership)
+  }
+})
+
+test("a legacy return backfill refuses a ส่วนควบ and a License; a held บุคคล, ส่วนกลาง or Stock asset still backfills (server-search spec 6.5)", async () => {
+  state.assetStatusName = "In Use"
+  for (const [ownership, code] of [["component", "ASSET_COMPONENT_CHECKIN_NOT_ALLOWED"], ["software_license", "ASSET_LICENSE_CHECKIN_NOT_ALLOWED"]] as const) {
+    state.assetOwnershipType = ownership
+    state.calls = []
+    assert.deepEqual(await refusal(await post(legacyCheckoutRoute, {})), [409, { code, error: code }], ownership)
+    assert.equal(state.calls.includes("assetCheckout.create"), false, ownership)
+  }
+  for (const ownership of ["personal", "shared", "stock"]) {
+    state.assetOwnershipType = ownership
+    assert.equal((await post(legacyCheckoutRoute, {})).status, 201, ownership)
+  }
+})
+
+test("a transfer refuses a License; a ส่วนควบ still moves (server-search spec 6.5)", async () => {
+  state.assetOwnershipType = "software_license"
+  assert.deepEqual(await refusal(await post(transferRoute, moveBody)), [409, { code: "ASSET_LICENSE_MOVE_NOT_ALLOWED", error: "ASSET_LICENSE_MOVE_NOT_ALLOWED" }])
+  assert.equal(state.calls.includes("asset.updateMany"), false)
+  state.assetOwnershipType = "component"
+  assert.equal((await post(transferRoute, moveBody)).status, 201)
 })

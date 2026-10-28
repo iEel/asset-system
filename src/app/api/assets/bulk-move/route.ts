@@ -6,6 +6,7 @@ import { assetBulkMoveSchema } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { getBulkCustodyChangeError } from "@/lib/asset-custody-policy"
 import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
+import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,12 +23,22 @@ export async function POST(request: NextRequest) {
         currentLocationId: true,
         assetTag: true,
         name: true,
+        ownershipType: true,
         status: { select: { name: true } },
       },
     })
 
     if (assets.length !== uniqueAssetIds.length) {
       return NextResponse.json({ error: "Some assets were not found" }, { status: 404 })
+    }
+
+    // A License is bound on its asset page, never moved (server-search spec 6.5); named per asset like the written-off refusal below.
+    const licenses = assets.flatMap((asset) => {
+      const code = getAssetOperationOwnershipRefusal("move", asset.ownershipType)
+      return code ? [{ assetId: asset.id, assetTag: asset.assetTag, code }] : []
+    })
+    if (licenses.length > 0) {
+      return NextResponse.json({ code: licenses[0].code, error: licenses[0].code, blocked: licenses }, { status: 409 })
     }
 
     const activeCheckouts = await prisma.assetCheckout.findMany({

@@ -4,8 +4,8 @@ import * as nodeModule from "node:module"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
 
-type CheckinState = { calls: Array<{ call: string; args: Record<string, unknown> }>; openRecords: number }
-const state: CheckinState = { calls: [], openRecords: 0 }
+type CheckinState = { calls: Array<{ call: string; args: Record<string, unknown> }>; openRecords: number; openRecordCounts: number[] }
+const state: CheckinState = { calls: [], openRecords: 0, openRecordCounts: [] }
 Object.assign(globalThis, { __checkinTicketState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -63,7 +63,7 @@ const mockedModuleSources = new Map<string, string>([
               return { id, name: String(id).replace("status:", "") }
             }
             if (method === "updateMany") return { count: 1 }
-            if (name === "maintenanceTicket" && method === "count") return state().openRecords
+            if (name === "maintenanceTicket" && method === "count") return state().openRecordCounts.shift() ?? state().openRecords
             if (method === "count") return 0
             if (method === "findMany") return []
             if (method === "findFirst" || method === "findUnique") return null
@@ -139,14 +139,28 @@ test("returning an asset as 'send for repair' opens an unfinished repair record"
   assert.match(String(ticket.problem), /จอแตก/)
 })
 
-test("an asset that already has an unfinished record does not get a second one", async () => {
-  state.calls = []
-  state.openRecords = 1
-  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
+test("an asset with an unfinished repair record cannot be returned, and nothing is written (server-search spec 6.5)", async () => {
+  for (const nextStatusId of ["status:Under Maintenance", "status:Ready"]) {
+    state.calls = []
+    state.openRecords = 1
+    const response = await route.POST(checkinRequest(nextStatusId), context)
 
-  assert.equal(response.status, 201, await response.clone().text())
-  assert.equal(state.calls.some(({ call }) => call === "maintenanceTicket.create"), false)
+    assert.equal(response.status, 409, nextStatusId)
+    assert.deepEqual(await response.json(), { code: "ASSET_CHECKIN_REPAIR_OPEN", error: "ASSET_CHECKIN_REPAIR_OPEN" }, nextStatusId)
+    assert.deepEqual(state.calls.filter(({ call }) => /\.(create|update|updateMany)$/.test(call)), [], nextStatusId)
+  }
   state.openRecords = 0
+})
+
+test("a repair opened while the return is being saved still refuses it inside the transaction", async () => {
+  state.calls = []
+  state.openRecordCounts = [0, 1]
+  const response = await route.POST(checkinRequest("status:Ready"), context)
+
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), { code: "ASSET_CHECKIN_REPAIR_OPEN", error: "ASSET_CHECKIN_REPAIR_OPEN" })
+  assert.equal(state.calls.some(({ call }) => call === "assetCheckin.create"), false)
+  state.openRecordCounts = []
 })
 
 test("returning to Ready does not create a repair record", async () => {

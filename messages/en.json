@@ -4713,7 +4713,14 @@
     "statusBlocksEdit": "Asset status does not allow editing",
     "statusBlocksMaintenance": "Asset status does not allow a repair record. Reload the page to see its current status.",
     "employeeActiveFromAd": "This status comes from AD: disable or enable the account in AD, then wait for the sync",
-    "crossSiteRequest": "This request did not come from the app's own pages, so it was refused"
+    "crossSiteRequest": "This request did not come from the app's own pages, so it was refused",
+    "componentCheckoutNotAllowed": "A component goes with its parent asset and cannot be handed over on its own",
+    "licenseCheckoutNotAllowed": "A License is assigned on the asset page and cannot be handed over",
+    "componentCheckinNotAllowed": "A component is returned with its parent asset",
+    "licenseCheckinNotAllowed": "A License is assigned on the asset page and cannot be returned",
+    "licenseMoveNotAllowed": "A License is assigned on the asset page and cannot be moved",
+    "checkinRepairOpen": "Close or cancel the active repair ticket before returning this asset.",
+    "checkoutDestinationNotAllowed": "This asset cannot be the destination. Choose another one."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

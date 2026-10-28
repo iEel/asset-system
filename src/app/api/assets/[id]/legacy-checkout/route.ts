@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError } from "@/lib/asset-lifecycle-policy"
+import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
@@ -31,10 +32,13 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
         custodianId: true,
         conditionId: true,
         statusId: true,
+        ownershipType: true,
         status: { select: { name: true, nameTh: true } },
       },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    const ownershipRefusal = getAssetOperationOwnershipRefusal("legacyCheckin", asset.ownershipType)
+    if (ownershipRefusal) return NextResponse.json({ code: ownershipRefusal, error: ownershipRefusal }, { status: 409 })
     const statusError = getAssetLifecycleTransitionError("legacy_return_backfill", asset.status.name)
     if (statusError) return NextResponse.json({ code: statusError, error: statusError }, { status: 409 })
     if (!asset.custodianId) {

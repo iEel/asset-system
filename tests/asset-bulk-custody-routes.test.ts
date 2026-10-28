@@ -10,6 +10,7 @@ type MockAsset = {
   custodianId: string | null
   currentLocationId: string
   departmentId: string | null
+  ownershipType?: string
 }
 
 type BulkCustodyState = {
@@ -47,6 +48,7 @@ const mockedModuleSources = new Map<string, string>([
       id: asset.id,
       assetTag: asset.id.toUpperCase(),
       name: "Laptop",
+      ...(asset.ownershipType ? { ownershipType: asset.ownershipType } : {}),
       statusId: "status:" + asset.statusName,
       conditionId: "condition-good",
       custodianId: asset.custodianId,
@@ -146,6 +148,8 @@ beforeEach(() => {
     { id: "ready-1", statusName: "Ready", custodianId: null, currentLocationId: "loc-1", departmentId: "dept-1" },
     { id: "loaned-1", statusName: "Checked Out", custodianId: "emp-5", currentLocationId: "loc-1", departmentId: "dept-1" },
     { id: "disposed-1", statusName: "Disposed", custodianId: null, currentLocationId: "loc-yard", departmentId: "dept-1" },
+    { id: "license-1", statusName: "Ready", custodianId: null, currentLocationId: "loc-1", departmentId: "dept-1", ownershipType: "software_license" },
+    { id: "component-1", statusName: "Ready", custodianId: null, currentLocationId: "loc-1", departmentId: "dept-1", ownershipType: "component" },
   ]
   state.activeCheckoutAssetIds = ["loaned-1"]
   state.calls = []
@@ -180,7 +184,32 @@ test("bulk move refuses written-off assets", async () => {
   const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["disposed-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
 
   assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), { code: "ASSET_STATUS_TRANSFER_NOT_ALLOWED", error: "Disposed or retired assets cannot be moved.", blocked: [{ assetId: "disposed-1", assetTag: "DISPOSED-1", code: "ASSET_STATUS_TRANSFER_NOT_ALLOWED" }] })
   assert.deepEqual(assetWrites(), [])
+})
+
+test("bulk move refuses a License, named per asset as a written-off asset is (server-search spec 6.5)", async () => {
+  const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["ready-1", "license-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), {
+    code: "ASSET_LICENSE_MOVE_NOT_ALLOWED", error: "ASSET_LICENSE_MOVE_NOT_ALLOWED",
+    blocked: [{ assetId: "license-1", assetTag: "LICENSE-1", code: "ASSET_LICENSE_MOVE_NOT_ALLOWED" }],
+  })
+  assert.deepEqual(assetWrites(), [])
+})
+
+test("the License refusal comes before the open-handover and written-off ones, the picker's order", async () => {
+  const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["license-1", "loaned-1", "disposed-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
+  assert.equal(response.status, 409)
+  const body = await response.json() as { code: string; blocked: Array<{ assetId: string }> }
+  assert.equal(body.code, "ASSET_LICENSE_MOVE_NOT_ALLOWED")
+  assert.deepEqual(body.blocked.map((row) => row.assetId), ["license-1"])
+})
+
+test("bulk move still moves Ready assets of the other ownership types, a ส่วนควบ included", async () => {
+  const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["ready-1", "component-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { updated: 2, componentSync: { updated: 0, skipped: 0, movements: 0 } })
 })
 
 function registerEdit(assetId: string, overrides: Record<string, unknown>) {

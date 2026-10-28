@@ -4,6 +4,7 @@ import { join } from "node:path"
 import test from "node:test"
 
 import { apiErrorKeyByMessage, describeApiError, getApiErrorKey, isUnauthorizedError } from "../src/lib/api-error-catalog.ts"
+import { assetOperationRefusalReasonKeys } from "../src/lib/asset-operation-eligibility.ts"
 
 const thai = { lookup: (key: string) => `TH:${key}`, unknown: "เกิดข้อผิดพลาด", empty: "เกิดข้อผิดพลาด" }
 
@@ -102,4 +103,20 @@ test("a 401's text is recognised wherever it reaches the screen", () => {
   assert.equal(isUnauthorizedError("Unauthorized · ref 0123abcd"), true)
   assert.equal(isUnauthorizedError("INTEGRATION_UNAUTHORIZED"), false)
   assert.equal(isUnauthorizedError(new Error("Forbidden")), false)
+})
+
+test("a transaction refusal reads the picker's words for the same rule (server-search spec 6.5, S-R6)", () => {
+  assert.deepEqual(Object.fromEntries(Object.keys(assetOperationRefusalReasonKeys).map((code) => [code, getApiErrorKey(code)])), {
+    ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED: "componentCheckoutNotAllowed", ASSET_LICENSE_CHECKOUT_NOT_ALLOWED: "licenseCheckoutNotAllowed",
+    ASSET_COMPONENT_CHECKIN_NOT_ALLOWED: "componentCheckinNotAllowed", ASSET_LICENSE_CHECKIN_NOT_ALLOWED: "licenseCheckinNotAllowed",
+    ASSET_LICENSE_MOVE_NOT_ALLOWED: "licenseMoveNotAllowed", ASSET_CHECKIN_REPAIR_OPEN: "checkinRepairOpen",
+  })
+  // The destination refusal has one word of its own (S-R39), not a picker reason.
+  assert.equal(getApiErrorKey("ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED"), "checkoutDestinationNotAllowed")
+  for (const locale of ["th", "en"] as const) {
+    const table = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+    for (const [code, reasonKey] of Object.entries(assetOperationRefusalReasonKeys)) {
+      assert.equal(table.apiErrors[getApiErrorKey(code)!], table.asset[reasonKey.slice("asset.".length)], `${locale} ${code}`)
+    }
+  }
 })

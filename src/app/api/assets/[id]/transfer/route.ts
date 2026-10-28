@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError, getTransferTargetStatusName } from "@/lib/asset-lifecycle-policy"
+import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetTransferSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
@@ -39,6 +40,8 @@ export async function POST(request: NextRequest, context: TransferContext) {
       include: { status: { select: { name: true, nameTh: true } } },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    const ownershipRefusal = getAssetOperationOwnershipRefusal("move", asset.ownershipType)
+    if (ownershipRefusal) return NextResponse.json({ code: ownershipRefusal, error: ownershipRefusal }, { status: 409 })
     const operation = input.toCustodianId ? "assign_custodian" : "move_scope"
     const statusError = getAssetLifecycleTransitionError(operation, asset.status.name)
     if (statusError) return NextResponse.json({ code: statusError, error: statusError }, { status: 409 })
