@@ -266,7 +266,7 @@ test("GF4 a Field that shows the required star keeps native required on its cont
     for (const field of findJsxElements(file.source, "Field")) {
       const where = `${file.path}:${field.line}`
       const children = field.children ?? ""
-      if (findJsxTags(children, ["SearchableSelect"]).length > 0) problems.push(`${where}: SearchableSelect inside Field (it renders its own label)`)
+      for (const tag of findJsxTags(children, ["SearchableSelect", "AssetOperationPicker"])) problems.push(`${where}: ${tag.name} inside Field (it renders its own label)`)
       // The first control (a file input counts; checkbox, radio and hidden do not).
       const control = findJsxTags(children, CONTROL_TAGS).find((tag) => !/^(?:checkbox|radio|hidden)$/.test(jsxAttrValue(tag.text, "type") ?? ""))
       const star = hasJsxAttr(field.text, "required")
@@ -314,7 +314,7 @@ test("GF8 a label never wraps something that brings its own label", () => {
   const problems: string[] = []
   for (const file of sources) {
     for (const label of findJsxElements(file.source, "label")) {
-      const nested = (label.children ?? "").match(/<(Field|FileDropzone|ScannerTextInput|SearchableSelect|label)(?=[\s/>])/)
+      const nested = (label.children ?? "").match(/<(Field|FileDropzone|ScannerTextInput|SearchableSelect|AssetOperationPicker|label)(?=[\s/>])/)
       if (nested) problems.push(`${file.path}:${label.line}: <label> wraps <${nested[1]}>`)
     }
   }

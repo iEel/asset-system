@@ -64,7 +64,7 @@ const METRIC_CARD_TAG = /<MetricCard(?=[\s/>])/g
 // Plan 2D-4 Task 38 (DS-9): ReviewValue (the bulk disposal execution review).
 // Plan 2D-4 Task 39 (DS-10): MobileDisposalField (the disposal queue's phone card).
 const LOCAL_KEY_VALUE = /\bfunction (?:Info|InfoRow|DetailItem|BatchInfo|MobileAuditDetailField|MovementInfo|ReviewItem|MobileField|DocumentFact|ReadOnly|ReviewPreviewField|FindingComparison|MobileAuditField|PendingInfo|ReviewValue|MobileDisposalField)\b/g
-const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|FactStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil|DesktopSelectionBar)\b/g
+const UI_NAME = /\bfunction (?:StatusBadge|MetricCard|ColumnHeader|PageHeader|Pagination|DataTable|TabNav|StatStrip|FactStrip|KeyValueList|RowActions|TableEmptyRow|EmptyNote|Nil|AssetOperationPicker|DesktopSelectionBar)\b/g
 const ROW_DELETE_BUTTON = /<[A-Z]\w*DeleteButton\s+id=/g
 // aria-current="page" written as a literal, or "page" inside an expression ({active ? "page" : undefined}). A variable
 // named page, "step" and "true" do not count.
@@ -128,8 +128,8 @@ const OWNERS: Readonly<Record<string, readonly string[]>> = {
   LT4: [`${C}ui/pagination.tsx`], // the shared pager
   LN1: NAV_PRIMITIVES, // the navigation primitives set aria-current themselves
   // Each shared part defines its own name: DataTable and TableEmptyRow, EmptyNote, KeyValueList, Nil, PageHeader,
-  // Pagination, RowActions, StatStrip, FactStrip, StatusBadge, TabNav, DesktopSelectionBar.
-  LN2: ["data-table", "desktop-selection-bar", "empty-note", "fact-strip", "key-value-list", "nil", "page-header", "pagination", "row-actions", "stat-strip", "status-badge", "tab-nav"].map((name) => `${C}ui/${name}.tsx`),
+  // Pagination, RowActions, StatStrip, FactStrip, StatusBadge, TabNav, DesktopSelectionBar, AssetOperationPicker.
+  LN2: ["asset-operation-picker", "data-table", "desktop-selection-bar", "empty-note", "fact-strip", "key-value-list", "nil", "page-header", "pagination", "row-actions", "stat-strip", "status-badge", "tab-nav"].map((name) => `${C}ui/${name}.tsx`),
 }
 
 // ---- What stays (spec 2D §5.1, §5.3), one list per rule, in the order of COUNTERS; {} means nothing stays. Rulings:

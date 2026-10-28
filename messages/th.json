@@ -4769,5 +4769,22 @@
     "componentsManage": "จัดการ",
     "componentsEmpty": "ไม่มีส่วนควบ",
     "componentsMore": "ดูทั้งหมด {count} รายการ"
+  },
+  "assetOperation": {
+    "hint": "พิมพ์รหัสทรัพย์สิน ชื่อ Serial หรือชื่อผู้ถือครอง อย่างน้อย 2 ตัวอักษร",
+    "hintCheckin": "พิมพ์รหัสทรัพย์สิน ชื่อผู้ถือครอง หรือเลขที่เอกสารส่งมอบ อย่างน้อย 2 ตัวอักษร",
+    "searching": "กำลังค้นหา…",
+    "notFound": "ไม่พบทรัพย์สินที่ตรงกับคำค้น",
+    "failed": "ค้นหาไม่สำเร็จ",
+    "resultCountMore": "พบ {count} รายการ แสดง {shown} รายการแรก พิมพ์เพิ่มเพื่อให้แคบลง",
+    "selectedTitle": "ที่เลือกแล้ว {count} รายการ",
+    "chosen": "เลือกแล้ว",
+    "change": "เปลี่ยน",
+    "changeNamed": "เปลี่ยน{label} {tag}",
+    "removeNamed": "นำ {tag} ออก",
+    "noHolderGroup": "ไม่มีผู้ถือครอง",
+    "groupCount": "ถืออยู่ {count} ชิ้น",
+    "handoverLine": "ใบส่งมอบ {documentNo} · ส่งมอบ {date}",
+    "legacyLine": "ข้อมูลเก่า (ไม่มีใบส่งมอบ)"
   }
 }

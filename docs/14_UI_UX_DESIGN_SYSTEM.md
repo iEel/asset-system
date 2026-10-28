@@ -64,6 +64,7 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | A file picker | `FileDropzone`, plus `FileQueueList` for files that wait to upload | help text goes in `description`, not in `Field`'s `hint` |
 | A search box | `SearchField` | `onClear` and `clearLabel` only from a client component |
 | A searchable picker | `SearchableSelect` | has its own label, hint and error; pass `id` and `error` so a save can focus it and tie its error (its button trigger takes no `aria-invalid`) |
+| An asset for a transaction (ส่งมอบ, รับคืน, โอนย้าย, ย้ายที่ตั้งหลายรายการ) | `AssetOperationPicker` | asks the server search with the page's `mode` and `context` and never holds a list of the register; a row it cannot take stays listed with its reason; `multiple` with `values` for many picks; `id` and `error` as `SearchableSelect` (the search field is `<id>-search`); never inside `Field` |
 | An action menu | `DropdownMenu` | an item that cannot run now uses `unavailable` with `DropdownMenuItemDescription` for the reason |
 | A keyboard hint | `Kbd` | Latin keys and symbols only |
 | A status | `StatusBadge` | one size; there is no `size` prop; an asset state takes its tone from `status.name` (`getAssetStateTone`), never a database color; an active record is `tone="success"` |

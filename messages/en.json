@@ -4769,5 +4769,22 @@
     "componentsManage": "Manage",
     "componentsEmpty": "No components",
     "componentsMore": "View all {count}"
+  },
+  "assetOperation": {
+    "hint": "Type an asset code, name, serial number or holder's name (at least 2 characters)",
+    "hintCheckin": "Type an asset code, the holder's name or the handover document no. (at least 2 characters)",
+    "searching": "Searching…",
+    "notFound": "No asset matches this search",
+    "failed": "The search failed",
+    "resultCountMore": "{count} found, showing the first {shown}. Type more to narrow the list",
+    "selectedTitle": "Chosen: {count}",
+    "chosen": "Chosen",
+    "change": "Change",
+    "changeNamed": "Change {label} {tag}",
+    "removeNamed": "Remove {tag}",
+    "noHolderGroup": "No holder",
+    "groupCount": "Holds {count}",
+    "handoverLine": "Handover {documentNo} · {date}",
+    "legacyLine": "Legacy data (no handover document)"
   }
 }

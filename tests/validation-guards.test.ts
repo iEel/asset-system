@@ -119,7 +119,7 @@ const V_FORMS: readonly string[] = [
   `${C}admin/system-settings-form.tsx`,
 ]
 
-// Required selects (SearchableSelect and its two wrappers) with no error=: an asterisk that nothing checks (spec §5).
+// Required selects (SearchableSelect, its two wrappers and AssetOperationPicker) with no error=: an asterisk that nothing checks (spec §5).
 // Exact counts at the plan's base; a row drops in the commit that gives its selects their errors, and a new one fails.
 const SELECT_STAR_ONLY: Readonly<Record<string, number>> = {
 }
@@ -135,7 +135,7 @@ const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: strin
   [`${C}assets/asset-form.tsx`]: { count: 1, why: "the asset is saved and the page moves to it; a follow-up step that failed (install, documents, photos) can be finished there", ruling: "asset partial save fix 2026-10-19" },
 }
 
-const SELECT_TAGS = ["SearchableSelect", "MaintenanceOptionSelect", "AuditScanCheckField"]
+const SELECT_TAGS = ["SearchableSelect", "MaintenanceOptionSelect", "AuditScanCheckField", "AssetOperationPicker"]
 const VALIDATION_TOAST = /\btoast\.(?:error|warning)\(/g
 const formTags = (source: string) => findJsxTags(withoutBlockComments(source), ["form"]).filter((tag) => jsxAttrValue(tag.text, "role") !== "search")
 const starOnlySelects = (source: string) => findJsxTags(source, SELECT_TAGS).filter((tag) => hasJsxAttr(tag.text, "required") && !hasJsxAttr(tag.text, "error"))
