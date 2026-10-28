@@ -21,6 +21,7 @@ import {
 } from "../src/lib/audit-export-labels.ts"
 import { auditFindingTypes } from "../src/lib/audit-finding-filters.ts"
 import { attachmentContentDisposition } from "../src/lib/download-filename.ts"
+import { buildAuditExportFilename, sanitizeAuditExportFilenamePart } from "../src/lib/audit-round-result-filters.ts"
 import { workbookResponse } from "../src/lib/asset-excel.ts"
 import { readSourceFiles } from "./helpers/source-files.ts"
 
@@ -183,4 +184,21 @@ test("the new words, Thai and English; English reads as today's export (glossary
   assert.equal(en("auditFinding.exportSummary_rejectedOrException"), "Rejected/Exception")
   assert.equal(Object.keys(messages.th.auditRound).filter((key) => key.startsWith("varianceMetric_")).length, 13)
   assert.equal(Object.keys(messages.th.auditFinding).filter((key) => key.startsWith("actionTaken_")).length, auditFindingActionTakenCodes.length)
+})
+
+test("M-1: a Thai search keeps its vowels and tone marks in the file name, and filename* carries it whole", () => {
+  const date = new Date("2026-10-28T03:00:00Z")
+  const meeting = buildAuditExportFilename({ prefix: "audit-result", auditNo: "AUD-2026-0003", result: "all", search: "ห้องประชุม", extension: "xlsx", date })
+  assert.equal(meeting, "audit-result-AUD-2026-0003-search-ห้องประชุม-2026-10-28.xlsx")
+  const place = buildAuditExportFilename({ prefix: "audit-result", auditNo: "AUD-2026-0003", result: "mismatch", search: "ที่ตั้ง 2/3", extension: "pdf", date })
+  assert.equal(place, "audit-result-AUD-2026-0003-mismatch-search-ที่ตั้ง-2-3-2026-10-28.pdf")
+  assert.equal(sanitizeAuditExportFilenamePart(" ที่ตั้ง "), "ที่ตั้ง")
+  for (const name of [meeting, place]) {
+    const value = attachmentContentDisposition(name)
+    const [, ascii, encoded] = value.match(/^attachment; filename="([^"]*)"; filename\*=UTF-8''(.*)$/) ?? []
+    assert.match(ascii, /^[\x20-\x7E]+$/, value)
+    assert.doesNotMatch(ascii, /[฀-๿]/)
+    assert.equal(decodeURIComponent(encoded), name, "the whole UTF-8 name")
+  }
+  assert.equal(attachmentContentDisposition(meeting).split(";")[1], " filename=\"audit-result-AUD-2026-0003-search-2026-10-28.xlsx\"")
 })

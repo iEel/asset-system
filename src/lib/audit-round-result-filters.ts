@@ -292,10 +292,11 @@ export function buildAuditRoundVarianceWhere(input: AuditRoundItemWhereInput): P
   return input.result === "all" ? buildAuditRoundFilterWhere(input) : buildAuditRoundItemWhere(input)
 }
 
+// Letters, their marks (a Thai vowel or tone mark is \p{M}: final review M-1), digits, "_" and "-"; every other run is "-".
 export function sanitizeAuditExportFilenamePart(value: string) {
   return value
     .trim()
-    .replace(/[^\p{L}\p{N}_-]+/gu, "-")
+    .replace(/[^\p{L}\p{M}\p{N}_-]+/gu, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80) || "all"
