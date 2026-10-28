@@ -102,24 +102,35 @@ export function buildAssetOperationSearchWheres(input: AssetOperationSearchInput
   text: Prisma.AssetWhereInput
   exact: Prisma.AssetWhereInput
   prefix: Prisma.AssetWhereInput
+  /** รับคืน only: the text on assets with an open handover or a custodian (S-R45). */
+  held?: Prisma.AssetWhereInput
 } {
   const { q } = input
   const base = baseWhere(input)
   const text = assetOperationTextConditions(q)
-  if (input.mode === "checkin") {
-    text.push({
+  const codes = {
+    exact: { ...base, OR: [{ assetTag: q }, { serialNumber: q }, { fixedAssetCode: q }] },
+    prefix: { ...base, OR: [{ assetTag: { startsWith: q } }, { serialNumber: { startsWith: q } }, { fixedAssetCode: { startsWith: q } }] },
+  }
+  if (input.mode !== "checkin") return { text: { ...base, OR: text }, ...codes }
+
+  text.push(
+    {
       checkouts: {
         some: {
           ...openCheckoutWhere,
           OR: [{ documentNo: { contains: q } }, { custodian: { code: { contains: q } } }, { custodian: { fullNameTh: { contains: q } } }],
         },
       },
-    })
-  }
+    },
+    // S-R47: the room an asset sits in finds it too.
+    { currentLocation: { code: { contains: q } } },
+    { currentLocation: { name: { contains: q } } },
+  )
   return {
     text: { ...base, OR: text },
-    exact: { ...base, OR: [{ assetTag: q }, { serialNumber: q }, { fixedAssetCode: q }] },
-    prefix: { ...base, OR: [{ assetTag: { startsWith: q } }, { serialNumber: { startsWith: q } }, { fixedAssetCode: { startsWith: q } }] },
+    ...codes,
+    held: { ...base, AND: [{ OR: text }, { OR: [{ checkouts: { some: openCheckoutWhere } }, { custodianId: { not: null } }] }] },
   }
 }
 
@@ -186,6 +197,8 @@ export type AssetOperationSearchRow = {
   statusLabel: string
   /** Held: the holder's "code - fullNameTh"; else the location's "code - name". */
   placeLabel: string
+  /** The current location's "code - name", "-" when it cannot be read (S-R47). */
+  locationLabel: string
   currentLocationId: string
   conditionId: string
   eligible: boolean
@@ -213,17 +226,19 @@ export type AssetOperationSearchAnswer = {
 }
 
 /**
- * Exact codes first, then codes that start with the text, then the rest; each asset at its first appearance, at most
- * 20. Each list is ordered by tag with take 20, so the first 20 of each contain the first 20 of the merge (S-R3).
+ * Exact codes first, then (รับคืน) the held rows, then codes that start with the text, then the rest; each asset at its
+ * first appearance, at most 20. Each list is ordered by tag with take 20, so the first 20 of each contain the first 20
+ * of the merge (S-R3, S-R45).
  */
 export function rankAssetOperationMatches<T extends { id: string }>(lists: {
   exact: readonly T[]
+  held?: readonly T[]
   prefix: readonly T[]
   contains: readonly T[]
 }): T[] {
   const seen = new Set<string>()
   const ranked: T[] = []
-  for (const row of [...lists.exact, ...lists.prefix, ...lists.contains]) {
+  for (const row of [...lists.exact, ...(lists.held ?? []), ...lists.prefix, ...lists.contains]) {
     if (ranked.length >= assetOperationSearchLimit) break
     if (seen.has(row.id)) continue
     seen.add(row.id)
@@ -264,6 +279,10 @@ function destinationLabel(labels: ReadonlyMap<string, string>, id: string): stri
 
 function personLabel(person: { code: string; fullNameTh: string } | null): string {
   return readableLabel(person && `${person.code} - ${person.fullNameTh}`)
+}
+
+function placeCodeLabel(place: { code: string; name: string } | null): string {
+  return readableLabel(place && `${place.code} - ${place.name}`)
 }
 
 /** Who holds what รับคืน returns: the open handover's destination, else the asset's holder (ข้อมูลเก่า), else none. */
@@ -318,6 +337,7 @@ export function buildAssetOperationSearchRow(
     placeLabel: asset.custodian
       ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}`
       : `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
+    locationLabel: placeCodeLabel(asset.currentLocation),
     currentLocationId: asset.currentLocationId,
     conditionId: asset.conditionId,
     eligible: verdict.eligible,

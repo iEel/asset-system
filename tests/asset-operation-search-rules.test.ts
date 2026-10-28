@@ -87,12 +87,22 @@ test("the wheres: active assets; exact and prefix on the three codes; รับ�
     exact: { isActive: true, OR: [{ assetTag: "0228" }, { serialNumber: "0228" }, { fixedAssetCode: "0228" }] },
     prefix: { isActive: true, OR: [{ assetTag: { startsWith: "0228" } }, { serialNumber: { startsWith: "0228" } }, { fixedAssetCode: { startsWith: "0228" } }] },
   })
-  assert.deepEqual(buildAssetOperationSearchWheres(input("mode=checkin&q=HO-26")).text, {
+  const checkinText = [...assetOperationTextConditions("HO-26"), { checkouts: { some: { isReturned: false, transactionStatus: "active", OR: [
+    { documentNo: { contains: "HO-26" } }, { custodian: { code: { contains: "HO-26" } } }, { custodian: { fullNameTh: { contains: "HO-26" } } },
+  ] } } }, { currentLocation: { code: { contains: "HO-26" } } }, { currentLocation: { name: { contains: "HO-26" } } }]
+  const checkin = buildAssetOperationSearchWheres(input("mode=checkin&q=HO-26"))
+  // S-R47: รับคืน also matches the current location's code and name.
+  assert.deepEqual(checkin.text, { isActive: true, OR: checkinText })
+  // S-R45: รับคืน adds the held tier, the same text on assets with an open handover or a custodian.
+  assert.deepEqual(checkin.held, {
     isActive: true,
-    OR: [...assetOperationTextConditions("HO-26"), { checkouts: { some: { isReturned: false, transactionStatus: "active", OR: [
-      { documentNo: { contains: "HO-26" } }, { custodian: { code: { contains: "HO-26" } } }, { custodian: { fullNameTh: { contains: "HO-26" } } },
-    ] } } }],
+    AND: [{ OR: checkinText }, { OR: [{ checkouts: { some: { isReturned: false, transactionStatus: "active" } } }, { custodianId: { not: null } }] }],
   })
+  for (const mode of ["checkout", "checkoutParent", "transfer", "bulkMove"]) {
+    const wheres = buildAssetOperationSearchWheres(input(`mode=${mode}&q=ab`))
+    assert.deepEqual(Object.keys(wheres), ["text", "exact", "prefix"], `${mode} keeps three tiers`)
+    assert.equal(JSON.stringify(wheres.text).includes("currentLocation"), false, mode)
+  }
   const parent = buildAssetOperationSearchWheres(input("mode=checkoutParent&q=ab&handedOverAssetId=asset-9"))
   for (const where of [parent.text, parent.exact, parent.prefix]) assert.deepEqual(where.NOT, { id: "asset-9" })
   assert.deepEqual(buildAssetOperationByIdWhere(input("mode=transfer&id=asset-1")), { isActive: true, id: "asset-1" })
@@ -105,6 +115,17 @@ test("exact codes first, then codes that start with the text, then the rest, at 
   const many = Array.from({ length: 25 }, (_, index) => r(`R${index}`))
   assert.equal(rankAssetOperationMatches({ exact: [], prefix: [], contains: many }).length, 20)
   assert.deepEqual(rankAssetOperationMatches({ exact: many.slice(0, 20), prefix: [r("P")], contains: [] }).map((row) => row.id), many.slice(0, 20).map((row) => row.id))
+})
+
+test("รับคืน: exact codes, then held rows, then code prefixes, then the rest (S-R45)", () => {
+  const r = (id: string) => ({ id })
+  assert.deepEqual(
+    rankAssetOperationMatches({ exact: [r("E")], held: [r("H1"), r("E"), r("H2")], prefix: [r("P"), r("H1")], contains: [r("A"), r("H2"), r("P")] }).map((row) => row.id),
+    ["E", "H1", "H2", "P", "A"],
+  )
+  const many = Array.from({ length: 25 }, (_, index) => r(`N${index}`))
+  const ranked = rankAssetOperationMatches({ exact: [], held: [r("H1"), r("H2")], prefix: [], contains: many.slice(0, 20) })
+  assert.deepEqual([ranked.length, ranked[0].id, ranked[1].id], [20, "H1", "H2"])
 })
 
 test("each mode asks Task 1's verdict, so the picker, the asset page and the routes agree (spec §5, S-R1)", () => {
@@ -136,11 +157,11 @@ test("each mode asks Task 1's verdict, so the picker, the asset page and the rou
 test("a row carries the words the picker shows, no raw code: status nameTh, the holder when held, else the location (spec 6.1)", () => {
   assert.deepEqual(buildAssetOperationSearchRow(input("mode=checkout&q=0228"), asset, { openCheckout: null, hasOpenRepair: false }), {
     id: "asset-1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก Dell Latitude 5440", serialNumber: "SN-1",
-    statusLabel: "พร้อมใช้งาน", placeLabel: "IT-2 - ห้อง IT ชั้น 2",
+    statusLabel: "พร้อมใช้งาน", placeLabel: "IT-2 - ห้อง IT ชั้น 2", locationLabel: "IT-2 - ห้อง IT ชั้น 2",
     currentLocationId: "loc-1", conditionId: "cond-1", eligible: true, reasonKey: null,
   })
   const row = buildAssetOperationSearchRow(input("mode=checkout&q=0228"), held, { openCheckout: null, hasOpenRepair: false })
-  assert.deepEqual([row.placeLabel, row.eligible, row.reasonKey], ["EMP-0412 - สมชาย ใจดี", false, "asset.transactionReasonStatusNotReady"])
+  assert.deepEqual([row.placeLabel, row.locationLabel, row.eligible, row.reasonKey], ["EMP-0412 - สมชาย ใจดี", "IT-2 - ห้อง IT ชั้น 2", false, "asset.transactionReasonStatusNotReady"])
   const keys = Object.keys(buildAssetOperationSearchRow(input("mode=transfer&q=0228"), held, ctx(handover)))
   assert.deepEqual(keys.filter((key) => ["checkout", "legacy", "holderKey", "holderLabel", "holderEmployeeId"].includes(key)), [])
 })
@@ -153,7 +174,7 @@ test("รับคืน rows: the open handover with the panel's fields, ข้
   })
   assert.deepEqual(["legacy" in handed, handed.holderKey, handed.holderLabel, handed.holderEmployeeId, handed.eligible], [false, "employee:emp-1", "EMP-0412 - สมชาย ใจดี", "emp-1", true])
   const legacy = buildAssetOperationSearchRow(input("mode=checkin&q=สมชาย"), held, ctx(null))
-  assert.deepEqual(["checkout" in legacy, legacy.legacy, legacy.holderKey, legacy.holderEmployeeId, legacy.eligible], [false, true, "employee:emp-1", "emp-1", true])
+  assert.deepEqual(["checkout" in legacy, legacy.legacy, legacy.holderKey, legacy.holderEmployeeId, legacy.eligible, legacy.locationLabel], [false, true, "employee:emp-1", "emp-1", true, "IT-2 - ห้อง IT ชั้น 2"])
   const nothing = buildAssetOperationSearchRow(input("mode=checkin&q=0228"), asset, ctx(null))
   assert.deepEqual(["legacy" in nothing, nothing.holderKey, nothing.holderLabel, nothing.holderEmployeeId, nothing.eligible, nothing.reasonKey],
     [false, "none", null, null, false, "asset.transactionReasonNoReturnRecord"])

@@ -100,7 +100,8 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   const describedBy = [errorId, hintId].filter(Boolean).join(" ")
   const stateText =
     state === "loading" ? t("searching") : state === "empty" ? t("notFound") : state === "error" ? t("failed") : countText
-  const liveText = state === "hint" ? announcement : open ? stateText : ""
+  // A pick's count is read even while the list stays open on ย้ายที่ตั้งหลายรายการ (S-R44); typing clears it.
+  const liveText = announcement || (open && state !== "hint" ? stateText : "")
 
   // An answer is kept under the URL it answers, so an older one never shows for a newer text (Review Focus 3).
   useEffect(() => {
@@ -147,10 +148,17 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
 
   function pick(row: AssetOperationSearchRow) {
     if (!getAssetOperationRowView(row, chosenIds).selectable) return
+    // Many: the text and the list stay, so several rows of one answer can be picked; the active row moves on to the
+    // next one that can still be taken (S-R44).
     if (props.multiple) {
       props.onChange([...values, row])
-      setQuery("")
-      setActiveId(null)
+      const picked = flatRows.indexOf(row)
+      const next = moveAssetOperationActive(
+        selectableRows.map((option) => (option.id === row.id ? { ...option, selectable: false } : option)),
+        picked,
+        1,
+      )
+      setActiveId(next >= 0 ? flatRows[next].id : null)
       setAnnouncement(t("selectedTitle", { count: values.length + 1 }))
       return
     }
@@ -392,12 +400,12 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   )
 }
 
-// A row's second line, and the chosen box's: the handover document, ข้อมูลเก่า, or the status and the place.
+// A row's second line, and the chosen box's: the handover document, ข้อมูลเก่า and its room, or the status and the place.
 function RowDetail({ row }: { row: AssetOperationSearchRow }) {
   const t = useTranslations("assetOperation")
   const detail = getAssetOperationRowDetail(row)
   if (detail.kind === "handover") return <>{t("handoverLine", { documentNo: detail.documentNo, date: formatDate(detail.checkoutDate) })}</>
-  if (detail.kind === "legacy") return <>{t("legacyLine")}</>
+  if (detail.kind === "legacy") return <>{t("legacyLineAt", { location: detail.locationLabel })}</>
   return <>{[detail.statusLabel, detail.placeLabel].join(" · ")}</>
 }
 

@@ -195,7 +195,7 @@ test("a transfer to the second room and a new custodian, and its TR- document; t
   assert.match(spec, /await visit\(measure, `\/th\/asset-management\/transfers\/\$\{transfer\.id\}`, "TR- document", testInfo\)/)
   assert.match(spec, /await expectPrints\(page, "พิมพ์เอกสารโอนย้าย"\)/)
   assert.deepEqual(expectedFailures(spec), [], "TX-A4 (FX10) and TX-A6 (FX13) are fixed")
-  assert.ok(spec.includes("await expect(row).toContainText(TX_WORDS.legacyRow)"))
+  assert.ok(spec.includes('await expect(row).toContainText(TX_WORDS.legacyRow.replace("{location}", `${room.code} - ${room.name}`))'), "the ข้อมูลเก่า line names the room (S-R47)")
   assert.ok(!spec.includes("legacy-checkout") && !spec.includes("pickAsset("), "the ข้อมูลเก่า row is read, never picked")
   assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/)
 })

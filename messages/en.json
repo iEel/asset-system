@@ -1941,7 +1941,8 @@
     "legacyReturnConfirmTitle": "Create a backdated handover, then return it",
     "legacyReturnConfirmDescription": "{asset} is with {holder} but has no handover document. The system creates a backdated handover with its change history, then continues on this return form.",
     "legacyReturnConfirm": "Create and return",
-    "openRepairReturnNotice": "This asset has an open repair. After the return it goes to Send to repair under that repair; no new repair record is created."
+    "openRepairReturnNotice": "This asset has an open repair. After the return it goes to Send to repair under that repair; no new repair record is created.",
+    "returnByFormer": "{name} (former employee)"
   },
   "transfer": {
     "title": "Transfer Asset",
@@ -4775,6 +4776,6 @@
     "noHolderGroup": "No holder",
     "groupCount": "Holds {count}",
     "handoverLine": "Handover {documentNo} · {date}",
-    "legacyLine": "Legacy data (no handover document)"
+    "legacyLineAt": "Legacy record (no handover) · {location}"
   }
 }

@@ -32,11 +32,11 @@ function checkout(overrides: Partial<AssetOperationSearchCheckoutRecord>): Asset
 type Where = { id?: string | { in: string[] }; assetId?: { in: string[] }; OR?: Array<{ assetTag?: unknown }> } & Record<string, unknown>
 type Args = { where: Where; select?: unknown; orderBy?: unknown; take?: number }
 function fakeDb(data: {
-  exact?: AssetOperationSearchAsset[]; prefix?: AssetOperationSearchAsset[]; contains?: AssetOperationSearchAsset[]; total?: number
+  exact?: AssetOperationSearchAsset[]; held?: AssetOperationSearchAsset[]; prefix?: AssetOperationSearchAsset[]; contains?: AssetOperationSearchAsset[]; total?: number
   checkouts?: AssetOperationSearchCheckoutRecord[]; repairAssetIds?: string[]
 } = {}) {
   const calls: Array<{ call: string; args: Args }> = []
-  const all = [...(data.exact ?? []), ...(data.prefix ?? []), ...(data.contains ?? [])]
+  const all = [...(data.exact ?? []), ...(data.held ?? []), ...(data.prefix ?? []), ...(data.contains ?? [])]
   const db: AssetOperationSearchDb = {
     asset: {
       async findMany(args: Args) {
@@ -44,6 +44,7 @@ function fakeDb(data: {
         const { id } = args.where
         if (typeof id === "string") return all.filter((row) => row.id === id).slice(0, 1)
         if (id) return []   // the parent-asset labels
+        if (args.where.AND) return data.held ?? []   // รับคืน's held tier (S-R45)
         const first = args.where.OR?.[0]?.assetTag
         if (typeof first === "string") return data.exact ?? []
         if (first && typeof first === "object" && "startsWith" in first) return data.prefix ?? []
@@ -131,5 +132,28 @@ test("รับคืน: a person's handover and ข้อมูลเก่า
   ])
   assert.deepEqual(calls.filter((call) => call.call === "department.findMany").map((call) => call.args.where), [{ id: { in: ["dep-1"] } }])
   assert.equal(calls.some((call) => call.call === "location.findMany"), false)
-  assert.equal(calls.filter((call) => call.call === "asset.findMany").length, 3)   // no parent-asset read
+  assert.equal(calls.filter((call) => call.call === "asset.findMany").length, 4)   // four tiers, no parent-asset read
+})
+
+test("รับคืน: held rows come right after the exact code, so 25 unheld rows ahead by tag never push them out of the 20 (S-R45)", async () => {
+  const none = Array.from({ length: 25 }, (_, index) => asset(`A-${String(index).padStart(2, "0")}`, { id: `n${index}` }))
+  const heldRows = [
+    asset("Z-1", { id: "h1", custodianId: "emp-1", custodian: somchai, status: inUse }),
+    asset("Z-2", { id: "h2", status: { name: "Checked Out", nameTh: "ถูกยืม" } }),
+  ]
+  const { db, calls } = fakeDb({ held: heldRows, contains: none.slice(0, 20), total: 27, checkouts: [checkout({ id: "co-2", assetId: "h2" })] })
+  const query = input("mode=checkin&q=A-")
+  const answer = await searchAssetOperationOptions(db, query)
+  assert.equal(answer.rows.length, 20)
+  assert.ok(answer.rows.some((row) => row.id === "h1") && answer.rows.some((row) => row.id === "h2"), "both held rows are in the 20")
+  assert.deepEqual(answer.groups?.map((group) => group.key), ["employee:emp-1", "none"])
+  assert.equal(answer.total, 27)
+  const lists = calls.filter((call) => call.call === "asset.findMany")
+  assert.equal(lists.length, 4)
+  for (const list of lists) assert.deepEqual([list.args.take, list.args.orderBy], [20, { assetTag: "asc" }])
+  assert.ok(lists.some((list) => JSON.stringify(list.args.where) === JSON.stringify(buildAssetOperationSearchWheres(query).held)), "the held where is read")
+  for (const call of calls) {
+    const ids = (call.args.where.assetId ?? call.args.where.id) as { in?: string[] } | undefined
+    if (ids && typeof ids === "object" && ids.in) assert.ok(ids.in.length <= 20, call.call)
+  }
 })

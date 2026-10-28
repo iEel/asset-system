@@ -137,7 +137,7 @@ export function CheckinForm({
   const [values, setValues] = useState<CheckinFormValues>({
     checkoutId: initialChoice.checkoutId,
     returnDate: toLocalDateInputValue(),
-    returnBy: employees.find((employee) => employee.id === initialChoice.returnByEmployeeId)?.label ?? "",
+    returnBy: employees.find((employee) => employee.id === initialChoice.returnByEmployeeId)?.label ?? initialChoice.returnByInactiveLabel ?? "",
     receiveBy: "",
     conditionAfter: "",
     // The arrival's row with an open repair returns into ส่งซ่อม (S-R43).
@@ -153,9 +153,13 @@ export function CheckinForm({
   const choice = getCheckinChoice(chosen, employeeIds)
   const blockedReason = choice.reasonKey ? tAll(choice.reasonKey) : undefined
   const selectedCheckout = chosen?.eligible ? chosen.checkout ?? null : null
+  // A holder who has left still returns it: the select offers them once more, named as a former employee (S-R46).
+  const returnByOptions = choice.returnByInactiveLabel && choice.returnByEmployeeId
+    ? [...employees, { id: choice.returnByEmployeeId, label: t("returnByFormer", { name: choice.returnByInactiveLabel }) }]
+    : employees
   const conditionLabelById = useMemo(() => new Map(conditions.map((condition) => [condition.id, condition.label])), [conditions])
   const selectedStatus = statuses.find((status) => status.id === values.nextStatusId)
-  const selectedReturnBy = employees.find((employee) => employee.id === returnByEmployeeId)
+  const selectedReturnBy = returnByOptions.find((employee) => employee.id === returnByEmployeeId)
   const selectedReceiver = employees.find((employee) => employee.id === receiveByEmployeeId)
   const selectedLocation = locations.find((location) => location.id === values.nextLocationId)
   const sendsToRepair = selectedStatus?.name === "Under Maintenance"
@@ -198,11 +202,12 @@ export function CheckinForm({
     if (field in FIELD_IDS) fieldErrors.clear(field as CheckinField)
   }
 
-  function setEmployeeField(field: "returnBy" | "receiveBy", employeeId: string) {
+  // formerLabel: the name of a holder who is no longer an active employee, which the RT- records (S-R46).
+  function setEmployeeField(field: "returnBy" | "receiveBy", employeeId: string, formerLabel: string | null = null) {
     const employee = employees.find((item) => item.id === employeeId)
     if (field === "returnBy") setReturnByEmployeeId(employeeId)
     if (field === "receiveBy") setReceiveByEmployeeId(employeeId)
-    setField(field, employee?.label ?? "")
+    setField(field, employee?.label ?? (employeeId ? formerLabel ?? "" : ""))
   }
 
   function handleDamageNoteChange(value: string) {
@@ -228,7 +233,7 @@ export function CheckinForm({
     ])
   }
 
-  // A pick: the row's handover, and its holder as the return-by when the holder is an active employee. A return-by the
+  // A pick: the row's handover, and its holder as the return-by, a former employee included (S-R46). A return-by the
   // form filled in from the previous row goes when the new choice has none; one chosen by hand stays (spec 6.3).
   // A row with an open repair sets the next status to ส่งซ่อม; leaving it clears the status it set (S-R43).
   function applyChoice(row: AssetOperationSearchRow | null) {
@@ -236,7 +241,7 @@ export function CheckinForm({
     const prefilled = getCheckinChoice(chosen, employeeIds).returnByEmployeeId
     setChosen(row)
     setField("checkoutId", next.checkoutId)
-    if (next.returnByEmployeeId) setEmployeeField("returnBy", next.returnByEmployeeId)
+    if (next.returnByEmployeeId) setEmployeeField("returnBy", next.returnByEmployeeId, next.returnByInactiveLabel)
     else if (prefilled && returnByEmployeeId === prefilled) setEmployeeField("returnBy", "")
     if (row?.openRepair && repairStatus) setField("nextStatusId", repairStatus.id)
     else if (repairLocked) setField("nextStatusId", "")
@@ -420,12 +425,12 @@ export function CheckinForm({
             label={t("returnBy")}
             value={returnByEmployeeId}
             required
-            options={employees}
+            options={returnByOptions}
             placeholder={t("selectReturnBy")}
             searchPlaceholder={tCommon("searchSelectPlaceholder")}
             emptyLabel={tCommon("searchSelectNoResults")}
             error={fieldErrors.message("returnBy")}
-            onChange={(value) => setEmployeeField("returnBy", value)}
+            onChange={(value) => setEmployeeField("returnBy", value, value === choice.returnByEmployeeId ? choice.returnByInactiveLabel : null)}
           />
           <SearchableSelect
             id="checkin-receive-by"

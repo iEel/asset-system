@@ -17,7 +17,7 @@ import { assetOperationSearchMinChars, type AssetOperationSearchAnswer, type Ass
 // Server search Task 4 (spec 6.1, 6.3, Review Focus 3): what the shared picker shows, as plain data.
 const row = (over: Partial<AssetOperationSearchRow> = {}): AssetOperationSearchRow => ({
   id: "a1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก Dell Latitude 5440", statusLabel: "พร้อมใช้งาน",
-  placeLabel: "IT-02 - ห้อง IT ชั้น 2", serialNumber: null, currentLocationId: "loc-1", conditionId: "cond-1", eligible: true, reasonKey: null, ...over,
+  placeLabel: "IT-02 - ห้อง IT ชั้น 2", locationLabel: "IT-02 - ห้อง IT ชั้น 2", serialNumber: null, currentLocationId: "loc-1", conditionId: "cond-1", eligible: true, reasonKey: null, ...over,
 })
 const answer = (rows: AssetOperationSearchRow[], over: Partial<AssetOperationSearchAnswer> = {}): AssetOperationSearchAnswer =>
   ({ mode: "checkout", total: rows.length, rows, ...over })
@@ -75,7 +75,8 @@ test("a row: takeable, chosen already, or not takeable with its reason key; chos
 test("the second line: the handover document on รับคืน, ข้อมูลเก่า for a legacy row, else status and place (spec 6.1, 6.3)", () => {
   const checkout = { id: "c1", documentNo: "HO-2026-0151", checkoutType: "user", handoverMode: "permanent_assignment", checkoutDate: "2026-03-12T00:00:00.000Z", expectedReturnDate: null, conditionBefore: "cond-1", remark: null, destinationLabel: "EMP-0412 - สมชาย ใจดี" }
   assert.deepEqual(getAssetOperationRowDetail(row({ checkout })), { kind: "handover", documentNo: "HO-2026-0151", checkoutDate: "2026-03-12T00:00:00.000Z" })
-  assert.deepEqual(getAssetOperationRowDetail(row({ legacy: true })), { kind: "legacy" })
+  // S-R47: a ข้อมูลเก่า row names where the asset is.
+  assert.deepEqual(getAssetOperationRowDetail(row({ legacy: true, placeLabel: "EMP-0412 - สมชาย ใจดี" })), { kind: "legacy", locationLabel: "IT-02 - ห้อง IT ชั้น 2" })
   assert.deepEqual(getAssetOperationRowDetail(row()), { kind: "place", statusLabel: "พร้อมใช้งาน", placeLabel: "IT-02 - ห้อง IT ชั้น 2" })
   assert.deepEqual(getAssetOperationRowDetail(row({ checkout: { ...checkout, documentNo: null } })), { kind: "place", statusLabel: "พร้อมใช้งาน", placeLabel: "IT-02 - ห้อง IT ชั้น 2" }, "a handover without a number reads as an ordinary row (S-R22)")
 })

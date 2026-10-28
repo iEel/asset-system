@@ -16,7 +16,7 @@ import {
 } from "./asset-operation-search-rules.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
-// The reads of the transaction pages' asset search (server search spec 6.1-6.4). Bounded: at most 4 asset reads,
+// The reads of the transaction pages' asset search (server search spec 6.1-6.4). Bounded: at most 5 asset reads,
 // 1 count, 2 fact reads and 2 label reads per answer, every `in` list at most 20 ids. The db is injected, as
 // searchMaintenanceOptions, so the pages call it for the preselect and the tests fake it.
 
@@ -52,13 +52,15 @@ async function readMatches(
     orderBy: { assetTag: "asc" },
     take: assetOperationSearchLimit,
   }) as Promise<AssetOperationSearchAsset[]>
-  const [exact, prefix, contains, total] = await Promise.all([
+  // รับคืน reads one more tier, the held rows (S-R45); the count stays every text match.
+  const [exact, held, prefix, contains, total] = await Promise.all([
     list(wheres.exact),
+    wheres.held ? list(wheres.held) : Promise.resolve([]),
     list(wheres.prefix),
     list(wheres.text),
     db.asset.count({ where: wheres.text }),
   ])
-  return { assets: rankAssetOperationMatches({ exact, prefix, contains }), total }
+  return { assets: rankAssetOperationMatches({ exact, held, prefix, contains }), total }
 }
 
 async function readDestinationLabels(

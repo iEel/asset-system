@@ -50,7 +50,8 @@ test("the combobox Task 8 drives: the list, the active row, rows that cannot be 
   assert.match(source, /id=\{`\$\{id\}-option-\$\{row\.id\}`\}/)
   assert.match(source, /\bmin-h-11\b/, "rows are 44px tall below md")
   assert.match(source, /splitSearchHighlight\(/)
-  assert.match(source, /const liveText = state === "hint" \? announcement : open \? /)
+  // S-R44: a pick keeps the list open, so its count is read over the list's line.
+  assert.match(source, /const liveText = announcement \|\| \(open && state !== "hint" \? stateText : ""\)/)
   assert.ok(source.includes('aria-live="polite">{liveText}</span>'), "the region reads nothing while the list is closed")
   assert.ok(source.includes('setAnnouncement(t("selectedTitle", { count: values.length - 1 }))'), "a remove reads the new count")
   assert.ok(source.includes('setAnnouncement("")'), "typing clears the old count")
@@ -72,11 +73,28 @@ test("every word comes from messages: the states, the count, reasons through the
     't("searching")', 't("notFound")', 't("failed")', 'tCommon("tryAgain")', 'tCommon("searchSelectPlaceholder")',
     'tCommon("searchSelectResultCount", { count: formatCount(countLine.count) })',
     't("resultCountMore", { count: formatCount(countLine.count), shown: formatCount(countLine.shown) })',
-    't("chosen")', 't("noHolderGroup")', 't("legacyLine")', 't("selectedTitle", { count: values.length })', 't("change")',
+    't("chosen")', 't("noHolderGroup")', 't("legacyLineAt", { location: detail.locationLabel })', 't("selectedTitle", { count: values.length })', 't("change")',
     't(mode === "checkin" ? "hintCheckin" : "hint")', "tAll(note.key)",
   ]) assert.ok(source.includes(part), part)
   assert.match(source, /t\("handoverLine", \{ documentNo: detail\.documentNo, date: formatDate\(detail\.checkoutDate\) \}\)/)
   assert.match(source, /t\("groupCount", \{ count: section\.group\.count \}\)/)
+})
+
+test("S-R44: a pick on ย้ายที่ตั้งหลายรายการ keeps the text and the list, and the active row moves to the next one that can be taken; a single pick is unchanged", () => {
+  const source = read(PART)
+  const start = source.indexOf("  function pick(row: AssetOperationSearchRow) {")
+  const pick = source.slice(start, source.indexOf("\n  }\n", start))
+  const multiple = pick.slice(pick.indexOf("if (props.multiple) {"), pick.indexOf("      return\n"))
+  assert.ok(start > 0 && multiple.length > 0)
+  assert.doesNotMatch(multiple, /setQuery\(/, "the search text stays")
+  assert.doesNotMatch(multiple, /setOpen\(/, "the list stays open")
+  assert.ok(multiple.includes("props.onChange([...values, row])"))
+  assert.match(multiple, /const picked = flatRows\.indexOf\(row\)/)
+  assert.match(multiple, /const next = moveAssetOperationActive\(\s*selectableRows\.map\(\(option\) => \(option\.id === row\.id \? \{ \.\.\.option, selectable: false \} : option\)\),\s*picked,\s*1,?\s*\)/)
+  assert.match(multiple, /setActiveId\(next >= 0 \? flatRows\[next\]\.id : null\)/)
+  assert.ok(multiple.includes('setAnnouncement(t("selectedTitle", { count: values.length + 1 }))'))
+  // The single pick: the field takes the row, the list closes, focus goes to เปลี่ยน.
+  assert.match(pick, /props\.onChange\(row\)\n\s+setOpen\(false\)\n\s+focusRequest\.current = "change"/)
 })
 
 test("final review I-1: a keyboard move scrolls the active row into view through the listbox ref, never through document; a hover does not", () => {
@@ -127,12 +145,15 @@ test("the picker's words, Thai and English (glossary: ผู้ถือคร�
     noHolderGroup: ["ไม่มีผู้ถือครอง", "No holder"],
     groupCount: ["ถืออยู่ {count} ชิ้น", "Holds {count}"],
     handoverLine: ["ใบส่งมอบ {documentNo} · ส่งมอบ {date}", "Handover {documentNo} · {date}"],
-    legacyLine: ["ข้อมูลเก่า (ไม่มีใบส่งมอบ)", "Legacy data (no handover document)"],
+    legacyLineAt: ["ข้อมูลเก่า (ไม่มีใบส่งมอบ) · {location}", "Legacy record (no handover) · {location}"],
   }
   for (const [key, [thai, english]] of Object.entries(words)) {
     assert.equal(th.assetOperation?.[key], thai, `th ${key}`)
     assert.equal(en.assetOperation?.[key], english, `en ${key}`)
   }
+  // S-R47: the line without the place has no reader left.
+  assert.equal(th.assetOperation?.legacyLine, undefined)
+  assert.equal(en.assetOperation?.legacyLine, undefined)
   assert.equal(th.common.searchSelectResultCount, "พบ {count} รายการ")
   assert.equal(th.common.tryAgain, "ลองอีกครั้ง")
 })

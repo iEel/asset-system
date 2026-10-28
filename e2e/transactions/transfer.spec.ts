@@ -120,10 +120,12 @@ test.describe("transfer", () => {
     const transfer = transfers.get(testInfo.project.name)
     expect(transfer, "the transfer test ran first").toBeTruthy()
     if (!transfer) return
+    const room = await ensureSecondLocation()
     await visit(measure, "/th/asset-management/checkin", "return form, empty", testInfo)
     const row = await findAssetRow(page, "checkin-checkout", transfer.assetTag, transfer.assetTag)
     await expect(row).not.toHaveAttribute("aria-disabled", "true")
-    await expect(row).toContainText(TX_WORDS.legacyRow)
+    // The ข้อมูลเก่า line names the room the transfer took it to (S-R47).
+    await expect(row).toContainText(TX_WORDS.legacyRow.replace("{location}", `${room.code} - ${room.name}`))
     // The group that holds the row (the inner locator is relative to the group: Playwright queries it inside each group).
     await expect(page.locator("#checkin-checkout-listbox [data-asset-option-group]").filter({ has: page.locator(`[data-asset-option="${transfer.assetId}"]`) })).toContainText(transfer.custodian)
   })

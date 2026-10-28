@@ -74,13 +74,13 @@ export function getAssetOperationRowView(
 
 export type AssetOperationRowDetail =
   | { kind: "handover"; documentNo: string; checkoutDate: string }
-  | { kind: "legacy" }
+  | { kind: "legacy"; locationLabel: string }
   | { kind: "place"; statusLabel: string; placeLabel: string }
 
-/** The second line: the handover document (only with a number, S-R22), ข้อมูลเก่า, else status and place. */
+/** The second line: the handover document (only with a number, S-R22), ข้อมูลเก่า and where it is (S-R47), else status and place. */
 export function getAssetOperationRowDetail(row: AssetOperationSearchRow): AssetOperationRowDetail {
   if (row.checkout?.documentNo) return { kind: "handover", documentNo: row.checkout.documentNo, checkoutDate: row.checkout.checkoutDate }
-  if (row.legacy) return { kind: "legacy" }
+  if (row.legacy) return { kind: "legacy", locationLabel: row.locationLabel }
   return { kind: "place", statusLabel: row.statusLabel, placeLabel: row.placeLabel }
 }
 
