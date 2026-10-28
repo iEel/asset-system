@@ -243,15 +243,14 @@ test("the disposal batch page builds on PageHeader, StatStrip, KeyValueList, Dat
 // row triggers. The panel and the triggers are 2C files, so only their list part is checked; their dialogs stay with 2C.
 const FINDINGS_BATCH = `${C}audit/audit-findings-batch-actions.tsx`
 
-test("the findings batch panel: shared checkboxes, Button with busy, approve in the primary color and reject as danger (spec 2B R-c, §8.6 row 8)", () => {
+test("the findings batch: ticks in a 44px label, the shared bar with ล้าง, reject as danger and approve in the primary color, busy while it runs (spec §10, P4-R15)", () => {
   const source = read(FINDINGS_BATCH)
-  assert.match(source, /<ChoiceCard\s+key=\{finding\.id\}\s+type="checkbox"\s+label=\{finding\.label\}\s+description=\{finding\.detail\}\s+checked=\{selectedSet\.has\(finding\.id\)\}\s+onChange=\{\(\) => toggleFinding\(finding\.id\)\}/)
-  assert.match(source, /actions=\{\s*<>\s*<Button variant="outline" size="md" onClick=\{toggleAll\}>/)
-  // With nothing selected the buttons are aria-disabled with their reason (v-track plan 2 U5); busy stays disabled.
-  assert.match(source, /<Button\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("approve"\)\}\n\s+busy=\{reviewing === "approve"\}\n\s+aria-disabled=\{noSelection \|\| undefined\}\n[^\n]*\n\s+disabled=\{reviewing === "reject" \|\| reviewDialogAction !== null\}\n\s+>/)
-  assert.match(source, /<Button\n\s+variant="danger"\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("reject"\)\}\n\s+busy=\{reviewing === "reject"\}\n\s+aria-disabled=\{noSelection \|\| undefined\}\n[^\n]*\n\s+disabled=\{reviewing === "approve" \|\| reviewDialogAction !== null\}\n\s+>/)
-  assert.doesNotMatch(source, /<button\b|<Loader2\b|\bbg-success\b|\bbg-danger\b|opacity-50|h-4 w-4 rounded/, "no hand-written button, spinner, green fill or old checkbox is left")
-  assert.match(source, /<ConfirmTextDialog\n/, "the confirm dialog stays as it is (2C plan 3)")
+  assert.match(source, /<DesktopSelectionBar\n/)
+  assert.match(source, /<Button variant="danger" size="md" onClick=\{\(\) => openDialog\("reject"\)\} busy=\{selection\.running === "reject"\} disabled=\{selection\.running === "approve"\}>/)
+  assert.match(source, /<Button size="md" onClick=\{\(\) => openDialog\("approve"\)\} busy=\{selection\.running === "approve"\} disabled=\{selection\.running === "reject"\}>/)
+  assert.equal(source.match(/className=\{checkboxVariants\(\)\}/g)?.length, 2, "the header tick and the row tick")
+  assert.doesNotMatch(source, /<button\b|<Loader2\b|\bbg-success\b|\bbg-danger\b|opacity-50|h-4 w-4 rounded|<ChoiceCard/, "no hand-written button, spinner, green fill, old checkbox or card list")
+  assert.match(source, /<ConfirmTextDialog\n/, "the shared reason stays the shared dialog")
 })
 
 // Group 2 plan 4 (spec §10, Appendix A §10): the review decision moved into the review panel (audit-finding-decision.tsx);
@@ -281,7 +280,7 @@ test("findings: PageHeader with the way back and ส่งออก ▾, TabNav 
   assert.match(source, /back=\{<PageBackLink href=\{back\.href\} label=\{backLabel\} \/>\}/, "the way back has the left arrow (spec 2B §5.10 row 2) and honours returnTo (P4-R12)")
   assert.match(source, /<TabNav aria-label=\{t\("quickFilters"\)\} items=\{resolutionFilters\} current=\{view\.tab\} scroll=\{false\} \/>/)
   assert.match(source, /<FilterChipList chips=\{filterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
-  assert.match(source, /<AuditFindingsBatchActions key=\{selectionKey\} findings=\{batchReviewFindings\} \/>/, "another page or filter starts the batch selection empty")
+  assert.match(source, /<AuditFindingsSelectionProvider key=\{selectionKey\} filterKey=\{filterKey\} findings=\{selectableFindings\}>/, "another page or filter starts the ticks empty")
   assert.match(source, /<TableEmptyRow colSpan=\{[^}]+\} emptyState=\{\{ icon: <FileText \/>, \.\.\.empty, actionVariant: "secondary" \}\} \/>/)
   // Task 2's pin, kept: the round select names a round that is not among its options (I24).
   assert.match(read("src/lib/audit-findings-page-data.ts"), /filters\.roundId \? prisma\.auditRound\.findUnique\(\{ where: \{ id: filters\.roundId \}, select: \{ id: true, auditNo: true, name: true \} \}\)/, "the round select names its round (I24)")

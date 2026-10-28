@@ -24,6 +24,14 @@ type ConfirmTextDialogProps = {
   cancelLabel: string
   closeLabel?: string
   defaultValue?: string
+  /** A star and aria-required; the caller's validate() checks it, since the form is noValidate (v-track §4.5). */
+  required?: boolean
+  /** The caller's error for the field, under it (useFieldErrors). */
+  error?: ReactNode
+  /** The textarea's id, for the caller's focusFirst. */
+  inputId?: string
+  /** Each change, so the caller clears its error. */
+  onValueChange?: (value: string) => void
   busy?: boolean
   tone?: ConfirmTextDialogTone
   onClose: () => void
@@ -57,15 +65,20 @@ function ConfirmTextForm({
   confirmLabel,
   cancelLabel,
   defaultValue = "",
+  required = false,
+  error,
+  inputId,
+  onValueChange,
   busy,
   tone = "default",
   inputRef,
   onConfirm,
 }: Pick<
   ConfirmTextDialogProps,
-  "fieldLabel" | "placeholder" | "confirmLabel" | "cancelLabel" | "defaultValue" | "tone" | "onConfirm"
+  "fieldLabel" | "placeholder" | "confirmLabel" | "cancelLabel" | "defaultValue" | "required" | "error" | "inputId" | "onValueChange" | "tone" | "onConfirm"
 > & { busy: boolean; inputRef: RefObject<HTMLTextAreaElement | null> }) {
-  const fieldId = useId()
+  const generatedId = useId()
+  const fieldId = inputId ?? generatedId
   const [value, setValue] = useState(defaultValue)
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -77,13 +90,17 @@ function ConfirmTextForm({
   return (
     <form onSubmit={handleSubmit} noValidate className={accessibleDialogFormClasses}>
       <AccessibleDialogBody>
-        <Field label={fieldLabel}>
+        <Field label={fieldLabel} required={required} error={error}>
           <Textarea
             ref={inputRef}
             id={fieldId}
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              setValue(event.target.value)
+              onValueChange?.(event.target.value)
+            }}
             disabled={busy}
+            required={required}
             rows={4}
             placeholder={placeholder}
             className="min-h-28"

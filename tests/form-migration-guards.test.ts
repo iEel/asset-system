@@ -121,6 +121,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}reports/report-preset-controls.tsx`]: [0, 1, 0],
   // Plan 2D-5 (spec 2D §5.5): the shared scanner input passes maxLength to its Input.
   [`${C}ui/scanner-text-input.tsx`]: [0, 1, 0],
+  // Group 2 plan 4 Task 5: the shared confirm dialog passes its caller's required to its Textarea.
+  [`${C}ui/confirm-text-dialog.tsx`]: [1, 0, 0],
 }
 
 // GF7 old label span, red star, legend and checkbox markup

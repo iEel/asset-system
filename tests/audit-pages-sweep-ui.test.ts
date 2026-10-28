@@ -53,12 +53,11 @@ test("finding follow-up and decision: the close count a muted line, the conflict
   }
 })
 
-test("findings batch panel: a ContentPanel, the pending findings as checkbox ChoiceCards in a quiet grouping (spec 2D D9, M25)", () => {
+test("findings batch: the shared bar and native ticks in a 44px label, no card list and no panel of its own (group 2 spec §10, P4-R15)", () => {
   const source = read(`${C}audit/audit-findings-batch-actions.tsx`)
-  assert.match(source, /<ContentPanel\s+title=\{t\("batchReview"\)\}\s+description=\{t\("batchReviewHelp"\)\}\s+actions=\{/)
-  assert.match(source, /<div className="rounded-md border border-border bg-background p-3">/)
-  assert.match(source, /<ChoiceCard\s+key=\{finding\.id\}\s+type="checkbox"\s+label=\{finding\.label\}\s+description=\{finding\.detail\}/)
-  assert.doesNotMatch(source, /<section\b|<label\b|<input\b|checkboxVariants|hover:bg-accent|rounded-lg|\bmb-4\b|\btext-xs\b/)
+  assert.match(source, /import \{ DesktopSelectionBar \} from "@\/components\/ui\/desktop-selection-bar"/)
+  assert.equal(source.match(/<label (?:data-no-row-click )?className="flex min-h-11 w-11 cursor-pointer items-center justify-center">/g)?.length, 2)
+  assert.doesNotMatch(source, /<ContentPanel\b|<ChoiceCard\b|<section\b|hover:bg-accent|rounded-lg|\bmb-4\b|\btext-xs\b|\bshadow-/)
 })
 
 const D = "src/app/[locale]/(dashboard)/"

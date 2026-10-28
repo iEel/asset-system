@@ -99,7 +99,7 @@ test("panels and bottom action bars are flat", () => {
   // and no drop shadow. Its current cell's 2px line is an inset shadow, which the size list below does not match.
   assert.equal(existsSync("src/components/ui/metric-card.tsx"), false)
   assert.doesNotMatch(read("src/components/ui/stat-strip.tsx"), /\bbg-(?:success|warning|danger|info)-soft\b|\bshadow-(?:sm|md|lg|xl|2xl)\b/)
-  for (const path of ["src/components/ui/action-bar.tsx"]) {
+  for (const path of ["src/components/ui/action-bar.tsx", "src/components/ui/desktop-selection-bar.tsx"]) {
     assert.doesNotMatch(read(path), /backdrop-blur|bg-surface\/95|shadow-md/, path)
   }
 })

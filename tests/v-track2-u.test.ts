@@ -175,30 +175,24 @@ test("finding dialogs: action plan and close are forms that validate themselves,
   assert.equal(en.auditFinding.closeNeedsEvidence, "No closure evidence yet. Attach at least one file before you close this discrepancy.")
 })
 
-test("batch review: approve and reject stay focusable with nothing selected and say why beside them; the confirm dialog's form keeps the browser out (v-track U5)", () => {
+test("batch review: one shared reason, required to reject, checked by validate() under the field before any request; the actions exist only while a row is ticked (v-track U5; group 2 plan 4 decision 5)", () => {
   const source = read(`${C}audit-findings-batch-actions.tsx`)
   // The form is ConfirmTextDialog's (a shared part, NOT_IN_SCOPE); it takes noValidate for its caller (spec §4.5).
   assert.match(read("src/components/ui/confirm-text-dialog.tsx"), /<form onSubmit=\{handleSubmit\} noValidate className=\{accessibleDialogFormClasses\}>/)
-  // Nothing in the dialog can be wrong before the request (U-R6); no toast for a validation error.
-  assert.match(source, /^function validate\(\): Partial<Record<"reviewRemark", string>> \{\n  return \{\}\n\}$/m)
-  assert.match(source, /async function reviewSelected\(action: "approve" \| "reject", reviewRemark: string\) \{\n\s+if \(Object\.keys\(validate\(\)\)\.length > 0\) return/)
+  assert.match(source, /^import \{ useFieldErrors \} from "@\/components\/ui\/use-field-errors"$/m)
+  const rules = validateBody(source)
+  assert.ok(rules.includes('check("reviewRemark", values.action === "reject" ? (required(values.reviewRemark) ?? maxLength(values.reviewRemark, 4000)) : maxLength(values.reviewRemark, 4000))'))
+  assert.match(source, /fieldErrors\.setErrors\(validate\(\{ action, reviewRemark \}\)\)\n\s+if \(focusFirstError\(\)\) return/)
+  assert.match(source, /const focusFirstError = \(\) => fieldErrors\.focusFirst\(FIELD_ORDER, \{ idFor: \(key\) => FIELD_IDS\[key\] \}\)/)
   assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/)
-  // The selection is a prerequisite (spec §4.4): aria-disabled with the reason beside the buttons; busy stays disabled.
-  assert.match(source, /const noSelection = selectedCount === 0/)
-  assert.match(source, /function openReviewDialog\(action: "approve" \| "reject"\) \{\n\s+if \(noSelection\) return/)
-  for (const [action, other] of [["approve", "reject"], ["reject", "approve"]]) {
-    assert.match(
-      source,
-      new RegExp(`onClick=\\{\\(\\) => openReviewDialog\\("${action}"\\)\\}\\n\\s+busy=\\{reviewing === "${action}"\\}\\n\\s+aria-disabled=\\{noSelection \\|\\| undefined\\}\\n\\s+aria-describedby=\\{noSelection \\? "audit-batch-review-reason" : undefined\\}\\n\\s+disabled=\\{reviewing === "${other}" \\|\\| reviewDialogAction !== null\\}\\n`),
-      action,
-    )
-  }
-  assert.ok(source.includes('{noSelection ? <p id="audit-batch-review-reason" className="text-meta text-muted-foreground">{t("batchNeedsSelection")}</p> : null}'))
-  assert.doesNotMatch(source, /selectedCount === 0 \|\|/)
+  // No prerequisite gate is left: the buttons render only while a row is ticked (the bar's countLabel).
+  assert.match(source, /countLabel=\{count > 0 \? t\("selectedCount", \{ count: countText \}\) : null\}/)
+  assert.doesNotMatch(source, /aria-describedby=\{noSelection|batchNeedsSelection|function openReviewDialog/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
-  assert.equal(th.auditFinding.batchNeedsSelection, "ยังไม่ได้เลือกรายการ ต้องเลือกรายการไม่ตรงอย่างน้อย 1 รายการก่อนจึงจะพิจารณาได้")
-  assert.equal(en.auditFinding.batchNeedsSelection, "Nothing selected yet. Select at least one discrepancy before you decide.")
+  assert.equal(th.auditFinding.batchRejectReason, "เหตุผล")
+  assert.equal(en.auditFinding.batchRejectReason, "Reason")
+  assert.equal(th.auditFinding.batchNeedsSelection, undefined)
 })
 
 test("scan check: the location's rule and each ไม่ตรง row's ที่พบ have their errors, focus stays inside the sheet, and a missing photo keeps save focusable with its reason (v-track U6; group 2 spec §12)", () => {

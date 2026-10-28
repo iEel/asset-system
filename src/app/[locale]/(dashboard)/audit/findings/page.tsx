@@ -5,7 +5,13 @@ import { ArrowRight, FileText } from "lucide-react"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { MasterDataSearch } from "@/components/master-data/master-data-layout"
-import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
+import {
+  AuditFindingSelectAllTick,
+  AuditFindingSelectTick,
+  AuditFindingsSelectionBar,
+  AuditFindingsSelectionProvider,
+  type AuditFindingSelectable,
+} from "@/components/audit/audit-findings-batch-actions"
 import { AuditFindingsExportMenu } from "@/components/audit/audit-findings-export-menu"
 import { AuditFindingPaneTop } from "@/components/audit/audit-finding-pane-top"
 import { AuditFindingReviewPanel, AuditFindingReviewPanelEmpty } from "@/components/audit/audit-finding-review-panel"
@@ -191,17 +197,18 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const empty = searchText
     ? { title: t("emptySearchTitle"), description: t("emptySearchHelp"), actionHref: clearSearchHref, actionLabel: t("clearSearch") }
     : { title: t("emptyTitle"), description: t("emptyHelp"), actionHref: back.href, actionLabel: backLabel }
-  // The batch (until Task 5): the page's findings the viewer may decide (Task 2's reviewable, the route's own rule).
-  const batchReviewFindings = rows
-    .filter((row) => row.reviewable)
-    .map((row) => ({
-      id: row.id,
-      label: row.asset ? `${row.asset.assetTag} - ${row.asset.name}` : row.auditRound.auditNo,
-      detail: `${row.auditRound.auditNo} · ${t(`type_${row.findingType}`)}`,
-    }))
+  // The rows the viewer may tick (spec §10): Task 2's reviewable, the review route's own rule (P4-R20). A finding they
+  // reported has none; the panel says why.
+  const selectableFindings: AuditFindingSelectable[] = canApprove
+    ? rows
+        .filter((row) => row.reviewable)
+        .map((row) => ({ id: row.id, code: row.asset?.assetTag ?? row.auditRound.auditNo, topic: topicLabel(row.findingType), panelHref: findingHref(row.id) }))
+    : []
   // The batch selection belongs to one page of one filter: another page or filter starts with nothing selected. The open
   // finding is not part of it, so opening a row keeps the selection.
   const selectionKey = `${listPage.page}:${listPage.pageSize}:${status}:${searchText}:${roundId ?? ""}:${findingType ?? ""}`
+  // The same key without the page and its size: whose result the selection bar shows (P4-R34).
+  const filterKey = `${status}:${searchText}:${roundId ?? ""}:${findingType ?? ""}`
   // The five statuses of a finding (audit mobile fix D8): the resolution state always, the others only when they add
   // something to it. Each keeps the tone it had in its own column. Shown in the panel since group 2 plan 4.
   const findingStatusBadges = (finding: AuditFindingsPageRow, resolutionState: ResolutionState): FindingStatusBadgeItem[] => [
@@ -281,131 +288,146 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           />
           <FilterChipList chips={filterChips} label={t("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} />
 
-          {canApprove ? <AuditFindingsBatchActions key={selectionKey} findings={batchReviewFindings} /> : null}
-
-          <div className={cn(getPanelClasses(), "overflow-hidden")}>
-            <div className="grid gap-3 p-3 md:hidden">
-              {rows.length === 0 ? (
-                <ActionEmptyState icon={<FileText />} {...empty} actionVariant="secondary" />
-              ) : (
-                rows.map((row) => {
-                  const resolutionState = resolveFindingState(row, today)
-                  const code = row.asset?.assetTag ?? row.auditRound.auditNo
-                  const line = followUpLine(row)
-
-                  return (
-                    <article
-                      key={row.id}
-                      data-audit-finding-card={row.id}
-                      data-finding-type={row.findingType}
-                      className="relative min-w-0 rounded-md border border-border bg-background p-4 transition-colors hover:bg-row-hover"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          {/* The whole card is this link (the register's stretched-link row): a tap opens the panel full
-                              screen at the top of the page, so the default scroll stays (P4-R13). */}
-                          <Link
-                            href={findingHref(row.id)}
-                            data-audit-finding-open
-                            className="block break-words font-semibold text-foreground before:absolute before:inset-0 before:rounded-md before:content-[''] focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-ring"
-                          >
-                            <span className="tag font-medium">{code}</span>
-                            {row.asset ? <> - {row.asset.name}</> : null}
-                          </Link>
-                          {row.parent ? <p className="mt-1 break-words text-meta text-muted-foreground">{t("componentOfParent", { assetTag: row.parent.assetTag, name: row.parent.name })}</p> : null}
-                        </div>
-                        <StatusBadge className="shrink-0" label={resolutionStateLabels[resolutionState]} tone={RESOLUTION_STATE_TONES[resolutionState]} />
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
-                        <Chip data-audit-finding-subject>{topicLabel(row.findingType)}</Chip>
-                        <span className="tag">{row.auditRound.auditNo}</span>
-                      </div>
-                      <FindingValueChange className="mt-2" expectedLabel={t("systemValue")} actualLabel={t("foundValue")} expectedValue={row.expectedLabel} actualValue={row.actualLabel} />
-                      {line ? <p className="mt-1 text-meta text-muted-foreground">{line}</p> : null}
-                    </article>
-                  )
-                })
-              )}
-            </div>
-            <DataTable framed={false} layout="fixed" minWidth={520} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
-              {/* Four columns (spec §10): เรื่อง, ทรัพย์สิน, ตามระบบ → ที่พบ, รอบ; the asset takes what is left. 520px fits
-                  the list pane beside the 420px panel at 1280 (527px) and 1440 (685px). Task 5 adds the tick column first. */}
-              <colgroup>
-                <col className="w-24" />
-                <col />
-                <col className="w-44" />
-                <col className="w-28" />
-              </colgroup>
-              <DataTableHeader>
-                <tr>
-                  <DataTableHead>{t("findingTopic")}</DataTableHead>
-                  <DataTableHead>{t("asset")}</DataTableHead>
-                  <DataTableHead className="whitespace-normal">{t("comparisonColumn")}</DataTableHead>
-                  <DataTableHead>{t("roundShort")}</DataTableHead>
-                </tr>
-              </DataTableHeader>
-              <DataTableBody>
+          {/* The ticks of one page of one filter (DESIGN.md Data Tables); the bar is the list pane's last child, outside
+              the panel's overflow, so it sticks to main (P4-R15). */}
+          <AuditFindingsSelectionProvider key={selectionKey} filterKey={filterKey} findings={selectableFindings}>
+            <div className={cn(getPanelClasses(), "overflow-hidden")}>
+              <div className="grid gap-3 p-3 md:hidden">
                 {rows.length === 0 ? (
-                  <TableEmptyRow colSpan={4} emptyState={{ icon: <FileText />, ...empty, actionVariant: "secondary" }} />
+                  <ActionEmptyState icon={<FileText />} {...empty} actionVariant="secondary" />
                 ) : (
                   rows.map((row) => {
+                    const resolutionState = resolveFindingState(row, today)
                     const code = row.asset?.assetTag ?? row.auditRound.auditNo
-                    const topic = topicLabel(row.findingType)
                     const line = followUpLine(row)
 
                     return (
-                      <ClickableTableRow
+                      <article
                         key={row.id}
-                        href={findingHref(row.id)}
-                        scroll={false}
-                        current={row.id === chosen?.id}
-                        rowData={{ "data-audit-finding-row": row.id, "data-finding-type": row.findingType }}
-                        label={`${tCommon("view")}: ${code} · ${topic}`}
+                        data-audit-finding-card={row.id}
+                        data-finding-type={row.findingType}
+                        className="relative min-w-0 rounded-md border border-border bg-background p-4 transition-colors hover:bg-row-hover"
                       >
-                        <DataTableCell><Chip data-audit-finding-subject>{topic}</Chip></DataTableCell>
-                        <DataTableCell>
-                          <Link href={findingHref(row.id)} scroll={false} data-audit-finding-open className={cn(linkVariants({ size: "inherit" }), "break-all")}>
-                            <span className="tag">{code}</span>
-                          </Link>
-                          {row.asset ? <div className="break-words text-meta text-muted-foreground">{row.asset.name}</div> : null}
-                          {row.parent ? <div className="break-words text-meta text-muted-foreground">{t("componentOfParent", { assetTag: row.parent.assetTag, name: row.parent.name })}</div> : null}
-                        </DataTableCell>
-                        <DataTableCell>
-                          <FindingValueChange expectedLabel={t("systemValue")} actualLabel={t("foundValue")} expectedValue={row.expectedLabel} actualValue={row.actualLabel} />
-                          {line ? <div className="mt-1 text-meta text-muted-foreground">{line}</div> : null}
-                        </DataTableCell>
-                        <DataTableCell className="text-muted-foreground">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            {/* The whole card is this link (the register's stretched-link row): a tap opens the panel full
+                                screen at the top of the page, so the default scroll stays (P4-R13). */}
+                            <Link
+                              href={findingHref(row.id)}
+                              data-audit-finding-open
+                              className="block break-words font-semibold text-foreground before:absolute before:inset-0 before:rounded-md before:content-[''] focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-ring"
+                            >
+                              <span className="tag font-medium">{code}</span>
+                              {row.asset ? <> - {row.asset.name}</> : null}
+                            </Link>
+                            {row.parent ? <p className="mt-1 break-words text-meta text-muted-foreground">{t("componentOfParent", { assetTag: row.parent.assetTag, name: row.parent.name })}</p> : null}
+                          </div>
+                          <StatusBadge className="shrink-0" label={resolutionStateLabels[resolutionState]} tone={RESOLUTION_STATE_TONES[resolutionState]} />
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
+                          <Chip data-audit-finding-subject>{topicLabel(row.findingType)}</Chip>
                           <span className="tag">{row.auditRound.auditNo}</span>
-                          <div className="break-words text-meta">{row.auditRound.name}</div>
-                        </DataTableCell>
-                      </ClickableTableRow>
+                        </div>
+                        <FindingValueChange className="mt-2" expectedLabel={t("systemValue")} actualLabel={t("foundValue")} expectedValue={row.expectedLabel} actualValue={row.actualLabel} />
+                        {line ? <p className="mt-1 text-meta text-muted-foreground">{line}</p> : null}
+                      </article>
                     )
                   })
                 )}
-              </DataTableBody>
-            </DataTable>
-            {total > 0 ? (
-              <DataTableFoot>
-                <Pagination
-                  page={listPage.page}
-                  totalPages={totalPages}
-                  previousHref={pageHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
-                  nextHref={pageHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
-                  pageSize={listPage.pageSize}
-                  pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: pageHref({ pageSize: value }) }))}
-                  labels={{
-                    navigation: tCommon("pagination"),
-                    previous: tCommon("previous"),
-                    next: tCommon("next"),
-                    pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
-                    range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
-                    pageSizeGroup: tCommon("pageSizeLabel"),
-                    rowsPerPage: tCommon("rowsPerPage"),
-                  }}
-                />
-              </DataTableFoot>
-            ) : null}
-          </div>
+              </div>
+              <DataTable framed={false} layout="fixed" minWidth={520} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+                {/* Four columns (spec §10): เรื่อง, ทรัพย์สิน, ตามระบบ → ที่พบ, รอบ; the asset takes what is left. 520px fits
+                    the list pane beside the 420px panel at 1280 (527px) and 1440 (685px). For audit:approve the tick column
+                    comes first, out of the auto asset column (P4-R36). */}
+                <colgroup>
+                  {canApprove ? <col className="w-11" /> : null}
+                  <col className="w-24" />
+                  <col />
+                  <col className="w-44" />
+                  <col className="w-28" />
+                </colgroup>
+                <DataTableHeader>
+                  <tr>
+                    {canApprove ? (
+                      <DataTableHead className="p-0 first:pl-0 md:first:pl-0">
+                        <AuditFindingSelectAllTick />
+                      </DataTableHead>
+                    ) : null}
+                    <DataTableHead>{t("findingTopic")}</DataTableHead>
+                    <DataTableHead>{t("asset")}</DataTableHead>
+                    <DataTableHead className="whitespace-normal">{t("comparisonColumn")}</DataTableHead>
+                    <DataTableHead>{t("roundShort")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {rows.length === 0 ? (
+                    <TableEmptyRow colSpan={canApprove ? 5 : 4} emptyState={{ icon: <FileText />, ...empty, actionVariant: "secondary" }} />
+                  ) : (
+                    rows.map((row) => {
+                      const code = row.asset?.assetTag ?? row.auditRound.auditNo
+                      const topic = topicLabel(row.findingType)
+                      const line = followUpLine(row)
+
+                      return (
+                        <ClickableTableRow
+                          key={row.id}
+                          href={findingHref(row.id)}
+                          scroll={false}
+                          current={row.id === chosen?.id}
+                          rowData={{ "data-audit-finding-row": row.id, "data-finding-type": row.findingType }}
+                          label={`${tCommon("view")}: ${code} · ${topic}`}
+                        >
+                          {canApprove ? (
+                            <DataTableCell className="p-0 first:pl-0 md:first:pl-0">
+                              <AuditFindingSelectTick findingId={row.id} />
+                            </DataTableCell>
+                          ) : null}
+                          <DataTableCell><Chip data-audit-finding-subject>{topic}</Chip></DataTableCell>
+                          <DataTableCell>
+                            <Link href={findingHref(row.id)} scroll={false} data-audit-finding-open className={cn(linkVariants({ size: "inherit" }), "break-all")}>
+                              <span className="tag">{code}</span>
+                            </Link>
+                            {row.asset ? <div className="break-words text-meta text-muted-foreground">{row.asset.name}</div> : null}
+                            {row.parent ? <div className="break-words text-meta text-muted-foreground">{t("componentOfParent", { assetTag: row.parent.assetTag, name: row.parent.name })}</div> : null}
+                          </DataTableCell>
+                          <DataTableCell>
+                            <FindingValueChange expectedLabel={t("systemValue")} actualLabel={t("foundValue")} expectedValue={row.expectedLabel} actualValue={row.actualLabel} />
+                            {line ? <div className="mt-1 text-meta text-muted-foreground">{line}</div> : null}
+                          </DataTableCell>
+                          <DataTableCell className="text-muted-foreground">
+                            <span className="tag">{row.auditRound.auditNo}</span>
+                            <div className="break-words text-meta">{row.auditRound.name}</div>
+                          </DataTableCell>
+                        </ClickableTableRow>
+                      )
+                    })
+                  )}
+                </DataTableBody>
+              </DataTable>
+              {total > 0 ? (
+                <DataTableFoot>
+                  <Pagination
+                    page={listPage.page}
+                    totalPages={totalPages}
+                    previousHref={pageHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
+                    nextHref={pageHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
+                    pageSize={listPage.pageSize}
+                    pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: pageHref({ pageSize: value }) }))}
+                    labels={{
+                      navigation: tCommon("pagination"),
+                      previous: tCommon("previous"),
+                      next: tCommon("next"),
+                      pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
+                      range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                      pageSizeGroup: tCommon("pageSizeLabel"),
+                      rowsPerPage: tCommon("rowsPerPage"),
+                    }}
+                  />
+                </DataTableFoot>
+              ) : null}
+            </div>
+            {canApprove ? <AuditFindingsSelectionBar /> : null}
+          </AuditFindingsSelectionProvider>
         </div>
 
         <div data-audit-finding-pane className={cn("min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100dvh_-_var(--shell-top)_-_3rem)] xl:overflow-y-auto", !chosen && "max-xl:hidden")}>
