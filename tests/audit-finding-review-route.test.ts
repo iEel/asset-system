@@ -161,7 +161,8 @@ test("an approve needs no reason and applies the found value once", async () => 
   assert.equal(callsTo("assetMovement.create").length, 1)
   assert.equal(dataOf(callsTo("auditFinding.update")[0]).actionTaken, "master_asset_updated")
   const order = state.calls.map((entry) => entry.call)
-  assert.ok(order.indexOf("auditFinding.updateMany") < order.indexOf("asset.update"), "the claim comes before any master change")
+  const claimAt = order.indexOf("auditFinding.updateMany")
+  assert.ok(claimAt >= 0 && claimAt < order.indexOf("asset.update"), "the claim comes before any master change")
 })
 
 test("a second press, a second tab or a batch beside the panel applies nothing: one decision per finding (P4-R6)", async () => {
