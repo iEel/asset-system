@@ -1,6 +1,7 @@
 // The workflow forms as IT staff fill them (spec §6.7): their save button, a date a few days from today, and the return
 // form filled correctly after a handover to the run's first receiver.
 import type { Page } from "@playwright/test"
+import { expect } from "../../support/fixtures.ts"
 import { readRunData } from "../../support/state.ts"
 import type { AssetChoices } from "./records.ts"
 import { choose } from "./ui.ts"
@@ -17,11 +18,12 @@ export function isoDay(offset: number): string {
   return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`
 }
 
-// The return form (src/components/asset-operations/checkin-form.tsx) from its first person on: the receiver returns it,
-// IT staff receive it, Good, back to Ready in the run's room.
+// The return form (src/components/asset-operations/checkin-form.tsx) from its first person on: the receiver already
+// returns it, as the chosen handover's holder (return-by starts filled, spec 6.3); IT staff receive it, Good, back to
+// Ready in the run's room.
 export async function fillReturn(page: Page, choices: AssetChoices) {
   const run = readRunData()
-  await choose(page, "checkin-return-by", run.employees.receiver1.code)
+  await expect(page.locator("#checkin-return-by")).toContainText(run.employees.receiver1.code)
   await choose(page, "checkin-receive-by", run.employees.itStaff.code)
   await page.locator("#checkin-condition-after").selectOption(choices.goodConditionId)
   await page.locator("#checkin-next-status").selectOption({ label: "พร้อมใช้งาน" })

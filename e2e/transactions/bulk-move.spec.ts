@@ -7,13 +7,16 @@ import { txAssetName, txAssetTag } from "./tx-plan.ts"
 import {
   ensureSecondLocation,
   expectFieldError,
+  pickAsset,
   pickSearchable,
   readAsset,
   readAssetMasters,
   record,
+  searchAssets,
   visit,
   visitAssetPage,
 } from "./tx-support.ts"
+import { TX_WORDS } from "./tx-words.ts"
 
 asUser("itStaff")
 
@@ -56,20 +59,24 @@ test("three assets added on the batch form move to the second room together", as
   await expect(page.getByText("สร้างทรัพย์สินเป็นชุดสำเร็จ")).toBeVisible()
   await record(measure, "batch created", testInfo)
 
-  // The bulk move: a wrong entry first (nothing chosen), then the three found by their tags.
+  // The bulk move: a wrong entry first (nothing chosen), then each asset typed by its tag and picked (spec 6.3).
   await visit(measure, "/th/asset-management/bulk-move", "bulk move form", testInfo)
   await page.getByRole("button", { name: "บันทึก", exact: true }).click()
   await expectFieldError(page, "bulk-move-assets", "กรุณาเลือกทรัพย์สินอย่างน้อย 1 รายการ")
   await expectFieldError(page, "bulk-move-to-location", "กรุณาระบุข้อมูลนี้")
   await expectFieldError(page, "bulk-move-reason", "กรุณาระบุข้อมูลนี้")
-  await expect(page.locator("#bulk-move-assets input[type=checkbox]").first()).toBeFocused()
+  await expect(page.locator("#bulk-move-assets-search")).toBeFocused()
+  await expect(page.locator("#bulk-move-assets-search")).toHaveAttribute("aria-describedby", /(?:^|\s)bulk-move-assets-error(?:\s|$)/)
 
-  await page.getByRole("searchbox", { name: "ทรัพย์สิน" }).fill(tags[0].slice(0, -1))
-  const list = page.locator("#bulk-move-assets")
-  await expect(list.getByRole("checkbox")).toHaveCount(3)
-  for (const tag of tags) await list.getByRole("checkbox", { name: new RegExp(tag) }).check()
-  await expect(page.getByRole("main")).toContainText("เลือกแล้ว 3 รายการ")
+  for (const tag of tags) await pickAsset(page, "bulk-move-assets", tag, tag)
+  await expect(page.locator("[data-asset-picked]")).toHaveCount(3)
+  await expect(page.getByRole("main")).toContainText(TX_WORDS.chosenList.replace("{count}", "3"))
   await expect(page.locator("#bulk-move-assets-error")).toHaveCount(0)
+  // A later answer marks the chosen ones (spec 6.1).
+  const listbox = await searchAssets(page, "bulk-move-assets", tags[0].slice(0, -1))
+  await expect(listbox.locator("[data-asset-option]").filter({ hasText: TX_WORDS.alreadyChosen })).toHaveCount(3)
+  await record(measure, "bulk move, three chosen and a later answer", testInfo)
+  await page.keyboard.press("Escape")
   await pickSearchable(page, "bulk-move-to-location", room.code, `${room.code} - ${room.name}`)
   await page.locator("#bulk-move-reason").fill(`${runId} ย้ายทั้งชุดไปห้องปลายทาง`)
   const moved = page.waitForResponse((response) => response.url().endsWith("/api/assets/bulk-move") && response.request().method() === "POST")

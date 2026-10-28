@@ -6,8 +6,8 @@ import { readRunData, readRunState } from "../support/state.ts"
 import { runRecords } from "../support/run-plan.ts"
 import { fillReturn, isoDay, save } from "./support/forms.ts"
 import { createAsset, handOver, projectMarker, readAsset, readAssetChoices, returnAsset } from "./support/records.ts"
-// The transaction pages' longer first arrival (13B loop 7): they load every asset and checkout for their pickers.
-import { TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
+// The transaction pages' first arrival and the shared picker's chosen asset (the transaction area's helpers).
+import { pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
 import { choose, expectFieldError, expectNoFieldError } from "./support/ui.ts"
 // The round form's steps (group 2 spec §7): its conditions as chips, its own submit, the live count and the sample.
 import { addCondition, cancelAsItHead, createButton, showSample, waitForFirstCount, willCreate } from "../audit/round-steps.ts"
@@ -102,7 +102,7 @@ test("handover: no handover mode shows its error, and the corrected handover sav
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-HO", name: "ฟอร์มส่งมอบ", ownershipType: "personal" })
   await measure.visit(`/th/asset-management/checkout?assetId=${asset.id}`, "handover form")
-  await expect(page.locator("#checkout-asset")).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
+  await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await choose(page, "checkout-destination", run.employees.receiver2.code)
   await page.locator("#checkout-condition").selectOption(choices.goodConditionId)
   await save(page)
@@ -125,18 +125,19 @@ test("handover: no handover mode shows its error, and the corrected handover sav
   expect([saved.status.name, saved.custodianId]).toEqual(["In Use", run.employees.receiver2.id])
 })
 
-test("return: no one who returns it shows its error, and the corrected return saves", async ({ page, measure }, testInfo) => {
+test("return: no one who receives it shows its error, and the corrected return saves", async ({ page, measure }, testInfo) => {
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-RT", name: "ฟอร์มรับคืน", ownershipType: "personal" })
   const checkout = await handOver(page.request, asset, run.employees.receiver1.id, choices)
   await measure.visit(`/th/asset-management/checkin?checkoutId=${checkout.id}`, "return form")
-  await expect(page.locator("#checkin-checkout")).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
+  await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await save(page)
-  await expectFieldError(page, "checkin-return-by", REQUIRED)
+  // The handover's holder starts as return-by (spec 6.3), so the first wrong field is receive-by.
+  await expectFieldError(page, "checkin-receive-by", REQUIRED)
 
   await fillReturn(page, choices)
-  await expectNoFieldError(page, "checkin-return-by")
+  await expectNoFieldError(page, "checkin-receive-by")
   await save(page)
   // The review dialog's axe is the finding M9 test's (its body fails on the phone).
   const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })
@@ -176,7 +177,7 @@ test("the return's review dialog passes axe (finding M9 on the phone)", async ({
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-RV", name: "ตรวจสอบก่อนรับคืน", ownershipType: "personal" })
   const checkout = await handOver(page.request, asset, run.employees.receiver1.id, choices)
   await measure.visit(`/th/asset-management/checkin?checkoutId=${checkout.id}`, "return form (review)")
-  await expect(page.locator("#checkin-checkout")).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
+  await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await fillReturn(page, choices)
   await save(page)
   await expect(page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })).toBeVisible()
@@ -188,7 +189,7 @@ test("transfer: an empty reason shows its error, and the corrected transfer save
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-TR", name: "ฟอร์มโอนย้าย", ownershipType: "personal" })
   await measure.visit(`/th/asset-management/transfer?assetId=${asset.id}`, "transfer form")
-  await expect(page.locator("#transfer-asset")).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
+  await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await choose(page, page.getByRole("button", { name: /^ผู้ถือครองปลายทาง/ }), run.employees.receiver1.code)
   await save(page)
   await expectFieldError(page, "transfer-reason", REQUIRED)

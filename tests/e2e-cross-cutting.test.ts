@@ -136,6 +136,9 @@ test("roles and permissions: each refused page and request needs a permission th
     assert.ok(handler.indexOf("prisma.") < 0 || handler.indexOf(call) < handler.indexOf("prisma."), `${refusal.file} ${refusal.method}: the permission before any read`)
     assert.equal(refusal.path, `/api/${refusal.file.replace(/\/route\.ts$/, "").replace("[id]", refusals.NO_RECORD)}`, `${refusal.file}: its path`)
   }
+  // The transaction pickers' search needs asset:edit like their pages (server asset search): the viewer's GET is refused.
+  assert.deepEqual(refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.method === "GET").map((refusal) => refusal.path), ["/api/asset-operations/search"])
+  assert.ok(read("e2e/cross-cutting/support/roles-ui.ts").includes('refusal.method === "GET" ? { method: "GET" } : { method: refusal.method, data: refusal.body }'))
   // The disposal decision picks its permission from the body: "decision" (any action but execute) is approve.
   assert.match(handlerBody(read("src/app/api/disposal-requests/[id]/route.ts"), "PATCH"), /if \(action === "execute"\) \{\n\s+requirePermission\(user, "disposal", "edit"\)\n\s+\} else \{\n\s+requirePermission\(user, "disposal", "approve"\)/)
   // The write controls are the app's own words.
@@ -217,7 +220,7 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
     ["src/components/assets/asset-form.tsx", `check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)`, "asset-warranty-end"],
     ["src/components/assets/asset-form.tsx", `check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))`, "asset-tag"],
     ["src/components/asset-operations/checkout-form.tsx", `if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")`, "checkout-handover-mode"],
-    ["src/components/asset-operations/checkin-form.tsx", `check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100))`, "checkin-return-by"],
+    ["src/components/asset-operations/checkin-form.tsx", `check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))`, "checkin-receive-by"],
     ["src/components/asset-operations/transfer-form.tsx", `check("reason", required(values.reason) ?? maxLength(values.reason, 500))`, "transfer-reason"],
     ["src/components/maintenance/repair-record-form.tsx", `check("problem", required(values.problem) ?? maxLength(values.problem, 4000))`, "repair-record-problem"],
     ["src/components/maintenance/maintenance-plan-form.tsx", `check("title", required(values.title) ?? maxLength(values.title, 200))`, "maintenance-plan-title"],
@@ -233,9 +236,8 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   // Every other id the spec fills is a control of its form.
   const controls: Record<string, string[]> = {
     "src/components/assets/asset-form.tsx": ["asset-name", "asset-category", "asset-ownership-type", "asset-company", "asset-branch", "asset-department", "asset-current-location", "asset-status", "asset-condition", "asset-warranty-start"],
-    "src/components/asset-operations/checkout-form.tsx": ["checkout-asset", "checkout-destination", "checkout-condition"],
-    "src/components/asset-operations/checkin-form.tsx": ["checkin-checkout", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"],
-    "src/components/asset-operations/transfer-form.tsx": ["transfer-asset"],
+    "src/components/asset-operations/checkout-form.tsx": ["checkout-destination", "checkout-condition"],
+    "src/components/asset-operations/checkin-form.tsx": ["checkin-return-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"],
     "src/components/maintenance/repair-record-form.tsx": ["repair-record-asset"],
     "src/components/maintenance/maintenance-plan-form.tsx": ["maintenance-plan-asset"],
     "src/components/disposal/disposal-request-form.tsx": ["disposal-request-requested-by"],

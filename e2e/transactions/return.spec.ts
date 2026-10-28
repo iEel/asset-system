@@ -11,15 +11,19 @@ import {
   expectPrints,
   handoverByApi,
   PHOTO_FIXTURE,
+  pickAsset,
+  pickedAsset,
   pickSearchable,
   readAsset,
   readAssetMasters,
   record,
+  searchAssets,
   signOnPad,
   visit,
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { TX_WORDS } from "./tx-words.ts"
 import { primaryAction } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
@@ -40,17 +44,19 @@ test("a return: the RT- document prints, and the asset is Ready in the room it w
   await primary.click()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkin\\?checkoutId=${handover.id}`))
   await expect(page.getByRole("heading", { level: 1, name: "รับคืนทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
+  await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag)
   await expect(page.getByRole("main")).toContainText(handover.documentNo)
+  // The handover's holder returns it: return-by starts filled (spec 6.3).
+  await expect(page.locator("#checkin-return-by")).toContainText(`${receiver.code} - ${receiver.fullNameTh}`)
   await record(measure, "return form", testInfo)
 
   // A wrong entry first: nothing chosen; each error shows under its field and the first takes focus.
   await page.getByRole("button", { name: "บันทึก", exact: true }).click()
-  for (const field of ["checkin-return-by", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"]) {
+  for (const field of ["checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"]) {
     await expectFieldError(page, field, "กรุณาระบุข้อมูลนี้")
   }
-  await expect(page.locator("#checkin-return-by")).toBeFocused()
+  await expect(page.locator("#checkin-receive-by")).toBeFocused()
 
-  await pickSearchable(page, "checkin-return-by", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
   await pickSearchable(page, "checkin-receive-by", staff.code, `${staff.code} - ${staff.fullNameTh}`)
   await page.locator("#checkin-condition-after").selectOption({ label: "ดี" })
   await page.locator("#checkin-next-status").selectOption({ label: "พร้อมใช้งาน" })
@@ -101,8 +107,18 @@ test("a return sent to repair opens an unfinished repair record, and the asset i
   const handover = await handoverByApi(page, asset.id, receiver.id, masters.goodConditionId)
   const problem = `${asset.assetTag} จอแตกตอนรับคืน`
 
-  await visit(measure, `/th/asset-management/checkin?checkoutId=${handover.id}`, "return form", testInfo)
-  await pickSearchable(page, "checkin-return-by", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
+  // Found on the empty form (spec 6.3): by the holder's name the answer is one group, theirs; picked by its tag, the
+  // handover's document shows and its holder starts as return-by.
+  await visit(measure, "/th/asset-management/checkin", "return form", testInfo)
+  const listbox = await searchAssets(page, "checkin-checkout", receiver.fullNameTh)
+  const groups = listbox.locator("[data-asset-option-group]")
+  await expect(groups).toHaveCount(1)
+  await expect(groups).toContainText(`${receiver.code} - ${receiver.fullNameTh}`)
+  await expect(groups).toContainText(new RegExp(TX_WORDS.holderCount.replace("{count}", "\\d+")))
+  await record(measure, "return picker, grouped by the holder", testInfo)
+  await pickAsset(page, "checkin-checkout", asset.assetTag, asset.assetTag)
+  await expect(page.getByRole("main")).toContainText(handover.documentNo)
+  await expect(page.locator("#checkin-return-by")).toContainText(`${receiver.code} - ${receiver.fullNameTh}`)
   await pickSearchable(page, "checkin-receive-by", staff.code, `${staff.code} - ${staff.fullNameTh}`)
   await page.locator("#checkin-condition-after").selectOption({ label: "เสียหาย" })
   await page.locator("#checkin-next-status").selectOption({ label: "ส่งซ่อม" })

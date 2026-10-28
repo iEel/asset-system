@@ -1,8 +1,9 @@
 // Roles and permissions (spec §6.6) as plain data the unit test pins against the code: the create, edit and approve
 // pages and requests each E2E user is refused, the permission each needs (the page's requirePagePermission, the
 // route's requirePermission), and the controls a read-only list must not offer. Every request carries an empty body
-// and a record id that does not exist, so even a route that failed to check the permission could not change a record:
-// each checks the permission before it reads the body or a record (the unit test pins that order).
+// (a GET carries no body) and a record id that does not exist, so even a route that failed to check the permission
+// could not change a record: each checks the permission before it reads the body or a record (the unit test pins that
+// order).
 import { E2E_ROLE_PERMISSIONS, type E2eUserKey } from "../../support/run-plan.ts"
 
 // The id of no record: every route checks the permission before it looks the record up.
@@ -36,13 +37,14 @@ export const VIEWER_PAGE_REFUSALS: readonly PageRefusal[] = [
 ]
 
 export type ApiRefusal = {
-  method: "POST" | "PUT" | "PATCH"
+  method: "GET" | "POST" | "PUT" | "PATCH"
   // The request's path, with NO_RECORD for a record id.
   path: string
   // The route file under src/app/api/ and its handler.
   file: string
   permission: string
-  // The body, empty unless the route picks its permission from it (the disposal PATCH: "decision" is approve).
+  // The body, empty unless the route picks its permission from it (the disposal PATCH: "decision" is approve); a GET
+  // sends none.
   body: Record<string, unknown>
 }
 
@@ -53,6 +55,7 @@ export const VIEWER_API_REFUSALS: readonly ApiRefusal[] = [
   { method: "POST", path: `/api/assets/${NO_RECORD}/checkin`, file: "assets/[id]/checkin/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: `/api/assets/${NO_RECORD}/transfer`, file: "assets/[id]/transfer/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: "/api/assets/bulk-move", file: "assets/bulk-move/route.ts", permission: "asset:edit", body: {} },
+  { method: "GET", path: "/api/asset-operations/search", file: "asset-operations/search/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: "/api/audit-rounds", file: "audit-rounds/route.ts", permission: "audit:create", body: {} },
   { method: "POST", path: `/api/audit-rounds/${NO_RECORD}/scan`, file: "audit-rounds/[id]/scan/route.ts", permission: "audit:edit", body: {} },
   { method: "POST", path: "/api/maintenance-tickets", file: "maintenance-tickets/route.ts", permission: "maintenance:create", body: {} },

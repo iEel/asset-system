@@ -11,7 +11,7 @@ import { expectNotFound } from "./ui.ts"
 export async function expectRefused(request: APIRequestContext, refusals: readonly ApiRefusal[]) {
   const answers: string[] = []
   for (const refusal of refusals) {
-    const response = await request.fetch(refusal.path, { method: refusal.method, data: refusal.body })
+    const response = await request.fetch(refusal.path, refusal.method === "GET" ? { method: "GET" } : { method: refusal.method, data: refusal.body })
     answers.push(`${refusal.method} ${refusal.path} ${response.status()}`)
   }
   expect(answers).toEqual(refusals.map((refusal) => `${refusal.method} ${refusal.path} 403`))

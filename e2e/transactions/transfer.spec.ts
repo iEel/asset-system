@@ -8,6 +8,8 @@ import {
   ensureSecondLocation,
   expectFieldError,
   expectPrints,
+  findAssetRow,
+  pickedAsset,
   pickSearchable,
   readAsset,
   readAssetMasters,
@@ -16,11 +18,12 @@ import {
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { TX_WORDS } from "./tx-words.ts"
 import { menuItem, openMoreActions, primaryAction } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
 
-const transfers = new Map<string, { assetId: string; transferId: string; documentNo: string; custodian: string }>()
+const transfers = new Map<string, { assetId: string; assetTag: string; transferId: string; documentNo: string; custodian: string }>()
 
 test.describe("transfer", () => {
   test.describe.configure({ mode: "serial" })
@@ -37,7 +40,7 @@ test.describe("transfer", () => {
     await menuItem(await openMoreActions(page, e2eDevice), "โอนย้าย").click()
     await expect(page).toHaveURL(new RegExp(`/th/asset-management/transfer\\?assetId=${asset.id}`))
     await expect(page.getByRole("heading", { level: 1, name: "โอนย้ายทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
-    await expect(page.locator("#transfer-asset")).toContainText(asset.assetTag)
+    await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag)
     await record(measure, "transfer form", testInfo)
 
     // A wrong entry first: no destination and no reason.
@@ -64,7 +67,7 @@ test.describe("transfer", () => {
     })
     const transfer = (await (await saved).json()) as { id: string; documentNo: string }
     expect(transfer.documentNo).toMatch(/^TR-/)
-    transfers.set(testInfo.project.name, { assetId: asset.id, transferId: transfer.id, documentNo: transfer.documentNo, custodian: receiver.fullNameTh })
+    transfers.set(testInfo.project.name, { assetId: asset.id, assetTag: asset.assetTag, transferId: transfer.id, documentNo: transfer.documentNo, custodian: receiver.fullNameTh })
 
     // The form opens the TR- document (user decision 2026-10-21, FX10); the asset has the new room and custodian.
     await page.waitForURL(new RegExp(`/th/asset-management/transfers/${transfer.id}(?:[?#]|$)`))
@@ -109,5 +112,19 @@ test.describe("transfer", () => {
     if (!transfer) return
     await visit(measure, `/th/asset-management/transfers/${transfer.transferId}`, "TR- document", testInfo)
     await expect(page.getByRole("main")).toContainText(transfer.custodian, { timeout: 3_000 })
+  })
+
+  // The transferred asset is held with no handover: รับคืน lists it as ข้อมูลเก่า under its holder, ready to pick (spec
+  // 6.3). It is read, never picked, so no backfill is made (S-R7).
+  test("the transferred asset is a ข้อมูลเก่า row on รับคืน, under its holder (server asset search)", async ({ page, measure }, testInfo) => {
+    const transfer = transfers.get(testInfo.project.name)
+    expect(transfer, "the transfer test ran first").toBeTruthy()
+    if (!transfer) return
+    await visit(measure, "/th/asset-management/checkin", "return form, empty", testInfo)
+    const row = await findAssetRow(page, "checkin-checkout", transfer.assetTag, transfer.assetTag)
+    await expect(row).not.toHaveAttribute("aria-disabled", "true")
+    await expect(row).toContainText(TX_WORDS.legacyRow)
+    // The group that holds the row (the inner locator is relative to the group: Playwright queries it inside each group).
+    await expect(page.locator("#checkin-checkout-listbox [data-asset-option-group]").filter({ has: page.locator(`[data-asset-option="${transfer.assetId}"]`) })).toContainText(transfer.custodian)
   })
 })

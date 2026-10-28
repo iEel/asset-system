@@ -7,9 +7,12 @@ import { readRunData } from "../support/state.ts"
 import { bangkokDate } from "./tx-plan.ts"
 import {
   createTxAsset,
+  expectAssetBlocked,
   expectFieldError,
   expectPrints,
+  findAssetRow,
   PHOTO_FIXTURE,
+  pickedAsset,
   pickSearchable,
   readAsset,
   readAssetMasters,
@@ -19,6 +22,7 @@ import {
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { TX_WORDS } from "./tx-words.ts"
 import { openMoreActions, primaryAction, readMenuEntries } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
@@ -35,7 +39,7 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
   await primary.click()
   await expect(page).toHaveURL(new RegExp(`/th/asset-management/checkout\\?assetId=${asset.id}`))
   await expect(page.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
-  await expect(page.locator("#checkout-asset")).toContainText(asset.assetTag)
+  await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag)
   await record(measure, "handover form", testInfo)
 
   // A wrong entry first: no receiver and no handover mode; each error shows under its field and the first takes focus.
@@ -189,12 +193,15 @@ test.describe("no double checkout", () => {
     expect(after.status.name).toBe("In Use")
     expect(after.custodianId).toBe(first.id)
 
-    // A fresh form no longer offers the asset, and its page offers the handover only as an unavailable item with its reason.
+    // A fresh form from the asset page starts with the asset chosen but blocked, the reason under the field (spec 6.4);
+    // an empty form's picker lists it faint with the same reason, and a click chooses nothing (spec 6.1, §8).
     await visit(measure, `/th/asset-management/checkout?assetId=${asset.id}`, "a fresh handover form", testInfo)
-    await page.locator("#checkout-asset").click()
-    await page.getByRole("dialog").last().getByRole("combobox").fill(asset.assetTag)
-    await expect(page.getByRole("dialog").last()).toContainText("ไม่พบรายการ")
-    await page.keyboard.press("Escape")
+    await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag)
+    await expectFieldError(page, "checkout-asset", TX_WORDS.reasonNotReady)
+    await visit(measure, "/th/asset-management/checkout", "an empty handover form", testInfo)
+    const blocked = await findAssetRow(page, "checkout-asset", asset.assetTag, asset.assetTag)
+    await record(measure, "handover picker, a blocked row", testInfo)
+    await expectAssetBlocked(page, blocked, TX_WORDS.reasonNotReady)
     await visitAssetPage(measure, asset.id, "asset handed over", testInfo)
     await expect(primaryAction(page, e2eDevice)).toHaveAccessibleName("รับคืน")
     expect(await readMenuEntries(await openMoreActions(page, e2eDevice))).toContainEqual({ label: "ส่งมอบ", reason: "ส่งมอบได้เมื่อสถานะเป็น พร้อมใช้งาน เท่านั้น", available: false })

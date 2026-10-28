@@ -146,6 +146,48 @@ export async function pickSearchable(page: Page, trigger: string | Locator, sear
   await expect(button).toContainText(typeof option === "string" ? option : search)
 }
 
+// The transaction pickers' search (Task 3) and the shared asset picker (src/components/ui/asset-operation-picker.tsx,
+// spec 6.1): type into #<fieldId>-search, wait for the answer to exactly that text (it must differ from the field's current
+// text: a fill that changes nothing sends no request), and read the rows in #<fieldId>-listbox.
+export const ASSET_SEARCH_PATH = "/api/asset-operations/search"
+export async function searchAssets(page: Page, fieldId: string, text: string): Promise<Locator> {
+  const answered = page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return url.pathname === ASSET_SEARCH_PATH && url.searchParams.get("q") === text
+  })
+  await page.locator(`#${fieldId}-search`).fill(text)
+  expect((await answered).status(), `${ASSET_SEARCH_PATH} q=${text}`).toBe(200)
+  const listbox = page.locator(`#${fieldId}-listbox`)
+  await expect(listbox).toBeVisible()
+  return listbox
+}
+// The answer's one row of the asset whose tag shows whole.
+export async function findAssetRow(page: Page, fieldId: string, text: string, assetTag: string): Promise<Locator> {
+  const row = (await searchAssets(page, fieldId, text)).locator("[data-asset-option]").filter({ has: page.getByText(assetTag, { exact: true }) })
+  await expect(row).toHaveCount(1)
+  return row
+}
+// Choose a takeable row; the field (or bulk-move's chosen list) then holds it. Returns the asset's id.
+export async function pickAsset(page: Page, fieldId: string, text: string, assetTag: string): Promise<string> {
+  const row = await findAssetRow(page, fieldId, text, assetTag)
+  await expect(row).not.toHaveAttribute("aria-disabled", "true")
+  const assetId = (await row.getAttribute("data-asset-option")) ?? ""
+  await row.click()
+  await expect(pickedAsset(page, assetId)).toContainText(assetTag)
+  return assetId
+}
+// A row the transaction cannot take: marked, its reason under it, and a click (forced: Playwright waits for an
+// aria-disabled row to be enabled) chooses nothing.
+export async function expectAssetBlocked(page: Page, row: Locator, reason: string) {
+  await expect(row).toHaveAttribute("aria-disabled", "true")
+  await expect(row.locator("[data-asset-option-reason]")).toHaveText(reason)
+  await row.click({ force: true })
+  await expect(page.locator("[data-asset-picked]")).toHaveCount(0)
+}
+export function pickedAsset(page: Page, assetId: string): Locator {
+  return page.locator(`[data-asset-picked="${assetId}"]`)
+}
+
 // The field's error under it (the V track): its text, in the element the field names with aria-describedby.
 export async function expectFieldError(page: Page, fieldId: string, message: string | RegExp) {
   await expect(page.locator(`#${fieldId}-error`)).toHaveText(message)
@@ -233,11 +275,13 @@ export async function record(measure: Measure, label: string, testInfo: TestInfo
   await settle(measure.page)
   return dropKnownAxe(await measure.recordPage(label), KNOWN_AXE, testInfo)
 }
-// The four transaction pages (checkout, checkin, transfer, bulk-move) load every active asset, every active checkout
-// and every employee, department and location for their pickers (getAssetOperationOptions in
-// src/lib/asset-operation-options.ts), so their first render can be slow on the growing dev data. The first arrival
-// check after a navigation into one of them waits this long; server search is a separate task (13B loop 7).
-export const TRANSACTION_PAGE_ARRIVAL_MS = 30_000
+// The four transaction pages (checkout, checkin, transfer, bulk-move) load no asset register since the server asset
+// search: they read only their master lists (getAssetOperationMasterOptions in src/lib/asset-operation-options.ts, about
+// 770 employees and 1,100 locations) and, from the asset page, one row by id; their pickers ask the server. The first
+// arrival check after a navigation into one of them waits this long. It was 30 s while they loaded every asset (13B
+// loop 7); 15 s keeps one step above the suite's 10 s expect for the first request of a fresh build over the VPN
+// (bulk-move arrived in about 3 s even with 8,796 rows, E2E-1028C; S-R8, S-R36).
+export const TRANSACTION_PAGE_ARRIVAL_MS = 15_000
 const TRANSACTION_PAGE_PATH = /^\/th\/asset-management\/(?:checkout|checkin|transfer|bulk-move)(?:[?#]|$)/
 
 // Measure.visit's steps (the page loaded, then recorded), with the settle and the known findings. A transaction page

@@ -111,12 +111,13 @@ test("an asset registered on the form with a photo and a purchase document, a wr
     const at = masters.indexOf(wait)
     assert.ok(goto >= 0 && at > goto && at < read0, wait)
   }
-  // The four transaction pages load only the small master lists; their pickers ask the server. The arrival wait comes
-  // down in Task 8 (S-R8).
+  // The four transaction pages load no asset register (server asset search): the first arrival check after a
+  // navigation into one waits TRANSACTION_PAGE_ARRIVAL_MS, 15 s (30 s while they loaded every asset, 13B loop 7);
+  // nothing else waits longer.
   assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(\): Promise<AssetOperationMasterOptions>/)
   for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.match(read(`src/app/[locale]/(dashboard)/asset-management/${page}/page.tsx`), /getAssetOperationMasterOptions\(\)/, page)
   assert.doesNotMatch(read("src/lib/asset-operation-options.ts"), /getAssetOperationAssetLists\b/)
-  assert.match(support, /export const TRANSACTION_PAGE_ARRIVAL_MS = 30_000\n/)
+  assert.match(support, /export const TRANSACTION_PAGE_ARRIVAL_MS = 15_000\n/)
   assert.match(support, /const TRANSACTION_PAGE_PATH = \/\^\\\/th\\\/asset-management\\\/\(\?:checkout\|checkin\|transfer\|bulk-move\)\(\?:\[\?#\]\|\$\)\//)
   assert.match(support, /await measure\.page\.goto\(path, \{ waitUntil: "load" \}\)\n\s*if \(TRANSACTION_PAGE_PATH\.test\(path\)\) await expect\(measure\.page\.getByRole\("heading", \{ level: 1 \}\)\)\.toBeVisible\(\{ timeout: TRANSACTION_PAGE_ARRIVAL_MS \}\)\n\s*return record\(measure, label, testInfo\)/)
   const arrival = "{ timeout: TRANSACTION_PAGE_ARRIVAL_MS }"
@@ -144,6 +145,10 @@ test("a handover signed with the device's own pointer and printed, a due date be
   // The double checkout: a second form of the same asset, refused (409) as the test itself declares.
   assert.match(spec, /const otherDesk = await page\.context\(\)\.newPage\(\)/)
   assert.match(spec, /measure\.expectRefusal\(\{ method: "POST", url: new RegExp\(`\/api\/assets\/\$\{asset\.id\}\/checkout\$`\), status: 409,/)
+  assert.ok(spec.includes('await expectFieldError(page, "checkout-asset", TX_WORDS.reasonNotReady)'))
+  assert.ok(spec.includes('const blocked = await findAssetRow(page, "checkout-asset", asset.assetTag, asset.assetTag)'))
+  assert.ok(spec.includes("await expectAssetBlocked(page, blocked, TX_WORDS.reasonNotReady)"))
+  assert.ok(!spec.includes('toContainText("ไม่พบรายการ")'))
   assert.deepEqual(expectedFailures(spec), [], "TX-A1 is fixed (FX9)")
   // The pad: the mouse on the desktop, Chromium's touch input on the phone, then the tap the emulation loses.
   const support = read("e2e/transactions/tx-support.ts")
@@ -158,9 +163,12 @@ test("a handover signed with the device's own pointer and printed, a due date be
 
 test("a return to the second room prints the RT- document, and a return sent to repair opens a repair record (e2e transactions task 3, TX3)", async () => {
   const spec = readTxSpec("e2e/transactions/return.spec.ts")
-  for (const field of ["checkin-return-by", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"]) {
-    assert.ok(spec.includes(`"${field}"`), field)
-  }
+  for (const field of ["checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"]) assert.ok(spec.includes(`"${field}"`), field)
+  assert.ok(spec.includes('await expect(page.locator("#checkin-receive-by")).toBeFocused()'))
+  assert.equal(spec.split('await expect(page.locator("#checkin-return-by")).toContainText(`${receiver.code} - ${receiver.fullNameTh}`)').length - 1, 2, "both returns start with the holder")
+  assert.ok(!spec.includes('pickSearchable(page, "checkin-return-by"'))
+  assert.ok(spec.includes('const listbox = await searchAssets(page, "checkin-checkout", receiver.fullNameTh)'))
+  assert.ok(spec.includes('await pickAsset(page, "checkin-checkout", asset.assetTag, asset.assetTag)'))
   assert.match(spec, /await expectPrints\(page, "พิมพ์ใบรับคืน"\)/)
   assert.match(spec, /expect\(after\.currentLocationId\)\.toBe\(room\.id\)/)
   assert.match(spec, /selectOption\(\{ label: "ส่งซ่อม" \}\)/)
@@ -187,6 +195,8 @@ test("a transfer to the second room and a new custodian, and its TR- document; t
   assert.match(spec, /await visit\(measure, `\/th\/asset-management\/transfers\/\$\{transfer\.id\}`, "TR- document", testInfo\)/)
   assert.match(spec, /await expectPrints\(page, "พิมพ์เอกสารโอนย้าย"\)/)
   assert.deepEqual(expectedFailures(spec), [], "TX-A4 (FX10) and TX-A6 (FX13) are fixed")
+  assert.ok(spec.includes("await expect(row).toContainText(TX_WORDS.legacyRow)"))
+  assert.ok(!spec.includes("legacy-checkout") && !spec.includes("pickAsset("), "the ข้อมูลเก่า row is read, never picked")
   assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/)
 })
 
@@ -195,6 +205,10 @@ test("three assets added on the batch form move to the second room in one bulk m
   assert.match(spec, /getByRole\("button", \{ name: "เพิ่มเป็นชุด" \}\)/)
   assert.match(spec, /expect\(batch\.created\)\.toBe\(3\)/)
   assert.match(spec, /await expectFieldError\(page, "bulk-move-assets", "กรุณาเลือกทรัพย์สินอย่างน้อย 1 รายการ"\)/)
+  assert.ok(spec.includes('for (const tag of tags) await pickAsset(page, "bulk-move-assets", tag, tag)'))
+  assert.ok(spec.includes('await expect(page.locator("#bulk-move-assets-search")).toBeFocused()'))
+  assert.ok(spec.includes('TX_WORDS.chosenList.replace("{count}", "3")'))
+  for (const old of ["input[type=checkbox]", 'getByRole("checkbox"', 'getByRole("searchbox"']) assert.ok(!spec.includes(old), old)
   assert.match(spec, /await expectFieldError\(page, "bulk-move-to-location", "กรุณาระบุข้อมูลนี้"\)/)
   assert.match(spec, /expect\(after\.currentLocationId, asset\.assetTag\)\.toBe\(room\.id\)/)
   assert.match(spec, /await page\.waitForLoadState\("networkidle"\)/)
@@ -225,4 +239,39 @@ test("the desk delivery on the phone: taps, the keyboard over the form, a finger
   assert.deepEqual(readdirSync("e2e/transactions").filter((file) => file.endsWith(".spec.ts")).sort(), [
     "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return.spec.ts", "transfer.spec.ts",
   ])
+})
+
+test("the transaction specs find assets on the shared picker: the helper waits for the search's answer to the typed text, reads the picker's hooks, and the words are the app's (server asset search task 8)", async () => {
+  const support = read("e2e/transactions/tx-support.ts")
+  assert.ok(support.includes('export const ASSET_SEARCH_PATH = "/api/asset-operations/search"'))
+  assert.match(read("src/app/api/asset-operations/search/route.ts"), /export async function GET\(/)
+  for (const signature of [
+    "export async function searchAssets(page: Page, fieldId: string, text: string): Promise<Locator>",
+    "export async function findAssetRow(page: Page, fieldId: string, text: string, assetTag: string): Promise<Locator>",
+    "export async function pickAsset(page: Page, fieldId: string, text: string, assetTag: string): Promise<string>",
+    "export async function expectAssetBlocked(page: Page, row: Locator, reason: string)",
+    "export function pickedAsset(page: Page, assetId: string): Locator",
+  ]) assert.ok(support.includes(signature), signature)
+  const search = support.slice(support.indexOf("export async function searchAssets("), support.indexOf("export async function findAssetRow("))
+  assert.ok(search.indexOf("page.waitForResponse(") >= 0 && search.indexOf("page.waitForResponse(") < search.indexOf(".fill(text)"), "the wait is set before the text is typed")
+  const picker = read("src/components/ui/asset-operation-picker.tsx")
+  for (const hook of ['role="combobox"', "-listbox", "data-asset-option=", "data-asset-option-reason", "data-asset-option-group", "data-asset-picked=", "aria-disabled"]) assert.ok(picker.includes(hook), hook)
+  for (const [file, id] of [["checkout-form.tsx", "checkout-asset"], ["checkin-form.tsx", "checkin-checkout"], ["transfer-form.tsx", "transfer-asset"], ["bulk-move-form.tsx", "bulk-move-assets"]]) {
+    assert.match(read(`src/components/asset-operations/${file}`), new RegExp(`<AssetOperationPicker\\s+id="${id}"`), file)
+  }
+  const { readdirSync } = await import("node:fs")
+  const specs = [...readdirSync("e2e/transactions").filter((name) => name.endsWith(".spec.ts")).map((name) => `e2e/transactions/${name}`), "e2e/cross-cutting/field-errors.spec.ts"]
+  for (const file of specs) {
+    const source = read(file)
+    assert.doesNotMatch(source, /(?:pickSearchable|choose)\(\w+, "(?:checkout-asset|checkin-checkout|transfer-asset|bulk-move-assets)"/, file)
+    for (const id of ["checkout-asset", "checkin-checkout", "transfer-asset"]) assert.ok(!source.includes(`locator("#${id}")`), `${file}: ${id} is read through pickedAsset`)
+  }
+  const { TX_WORDS } = await import("../e2e/transactions/tx-words.ts")
+  const values = new Set<string>()
+  const walk = (node: unknown): void => {
+    if (typeof node === "string") values.add(node.replace(/\{\w+\}/g, "{}"))
+    else if (node && typeof node === "object") Object.values(node).forEach(walk)
+  }
+  walk(JSON.parse(read("messages/th.json")))
+  for (const [key, word] of Object.entries(TX_WORDS)) assert.ok(values.has(word.replace(/\{\w+\}/g, "{}")), key)
 })
