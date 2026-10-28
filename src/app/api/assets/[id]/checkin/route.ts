@@ -84,7 +84,8 @@ export async function POST(request: NextRequest, context: CheckinContext) {
 
     // An open repair takes the return into ส่งซ่อม under that repair, so another next status is refused (S-R43, the
     // user's choice ก 2026-10-29); the repair record below is not created a second time (openRecords === 0).
-    if (!sendsToRepair && await prisma.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0) {
+    const hasOpenRepairBefore = await prisma.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0
+    if (!sendsToRepair && hasOpenRepairBefore) {
       return repairStatusRequiredResponse()
     }
 
@@ -107,12 +108,16 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         },
       })
       if (!activeCheckout) throw new Error("Active checkout not found")
-      if (!sendsToRepair && await tx.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0) {
+      const hasOpenRepair = await tx.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0
+      if (!sendsToRepair && hasOpenRepair) {
         throw new Error("ASSET_CHECKIN_REPAIR_STATUS_REQUIRED")
       }
+      // S-R48: a permanent handover whose asset went into repair (Under Maintenance or Pending Repair) fits while that
+      // repair is open; the checkin clears the holder, so finishing the repair later restores Ready.
       const handoverStatusError = getCheckinHandoverStatusError(
         activeCheckout.handoverMode,
         activeCheckout.asset.status.name,
+        { hasOpenRepair },
       )
       if (handoverStatusError) throw new Error(handoverStatusError)
 

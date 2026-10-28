@@ -83,12 +83,12 @@ export function getCheckoutParentVerdict(
 }
 
 // api/assets/[id]/checkin against the open handover (any ownership, S-R2), or api/assets/[id]/legacy-checkout. An open
-// repair does not refuse the handover's return: the return goes into ส่งซ่อม under that repair (S-R43). The legacy
-// backfill still refuses one.
+// repair does not refuse the handover's return: the return goes into ส่งซ่อม under that repair (S-R43), and with it open a
+// permanent handover's asset may be Under Maintenance or Pending Repair (S-R48). The legacy backfill still refuses one.
 export function getCheckinVerdict(facts: AssetOperationFacts): AssetCheckinVerdict {
   if (facts.openCheckout) {
     const path = "handover"
-    const error = getCheckinHandoverStatusError(facts.openCheckout.handoverMode, facts.statusName)
+    const error = getCheckinHandoverStatusError(facts.openCheckout.handoverMode, facts.statusName, { hasOpenRepair: facts.hasOpenRepair })
     if (error === "ASSET_HANDOVER_MODE_MISSING") return { ...no("asset.transactionReasonHandoverModeMissing"), path }
     if (error === "ASSET_HANDOVER_STATUS_MISMATCH") return { ...no("asset.transactionReasonHandoverStatusMismatch"), path }
     return { ...yes, path }

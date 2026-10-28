@@ -23,8 +23,10 @@ import {
   visitAssetPage,
   TRANSACTION_PAGE_ARRIVAL_MS,
 } from "./tx-support.ts"
+import { bangkokDate } from "./tx-plan.ts"
 import { TX_WORDS } from "./tx-words.ts"
-import { primaryAction } from "../asset-detail/detail-steps.ts"
+import { factCell, primaryAction } from "../asset-detail/detail-steps.ts"
+import { DETAIL_WORDS } from "../asset-detail/detail-words.ts"
 
 asUser("itStaff")
 
@@ -150,4 +152,74 @@ test("a return sent to repair opens an unfinished repair record, and the asset i
   await visit(measure, `/th/maintenance/${ticket.id}`, "the repair record", testInfo)
   await expect(page.getByRole("main")).toContainText(ticket.repairNo)
   await expect(page.getByRole("main")).toContainText(asset.assetTag)
+})
+
+test("a permanent handover whose asset went into repair is returned into ส่งซ่อม under that repair, with no second record and no custodian (S-R48)", async ({ page, measure, e2eDevice, browserName }, testInfo) => {
+  const data = readRunData()
+  const receiver = data.employees.receiver1
+  const staff = data.employees.itStaff
+  const room = await ensureSecondLocation()
+  const masters = await readAssetMasters(page)
+  const asset = await createTxAsset(page, masters, testInfo.project.name, "RT3", "โน้ตบุ๊กซ่อมแล้วรับคืน")
+  await handoverByApi(page, asset.id, receiver.id, masters.goodConditionId)
+
+  // An unfinished repair through the repair form's own route (every key of its body): the handed-over notebook goes
+  // In Use -> Under Maintenance (src/lib/repair-record-policy.ts), its handover still open.
+  const problem = `${asset.assetTag} เปิดไม่ติด ส่งซ่อมระหว่างถือครอง`
+  const opened = await page.request.post("/api/maintenance-tickets", {
+    data: {
+      assetId: asset.id,
+      maintenancePlanId: null,
+      problem,
+      reportedDate: bangkokDate(),
+      done: false,
+      outcome: "usable",
+      reportedById: staff.id,
+      vendorId: null,
+      repairCost: null,
+      invoiceNo: null,
+      remark: "E2E repair before the return",
+    },
+  })
+  expect(opened.status(), `POST /api/maintenance-tickets: ${(await opened.text()).slice(0, 300)}`).toBe(201)
+  const repair = (await opened.json()) as { id: string; repairNo: string; repairStatus: string }
+  expect(repair.repairStatus).toBe("in_progress")
+  expect((await readAsset(page, asset.id)).status.name, "the repair moved the asset").toBe("Under Maintenance")
+
+  // On รับคืน the asset is takeable, and its next status is locked to ส่งซ่อม under the open repair (S-R43).
+  await visit(measure, "/th/asset-management/checkin", "return form", testInfo)
+  await pickAsset(page, "checkin-checkout", asset.assetTag, asset.assetTag)
+  const nextStatus = page.locator("#checkin-next-status option")
+  await expect(nextStatus).toHaveCount(1)
+  await expect(nextStatus).toHaveText("ส่งซ่อม")
+  await expect(page.getByRole("main")).toContainText("มีงานซ่อมที่ยังไม่ปิดอยู่ หลังรับคืนทรัพย์สินจะเข้าสถานะ ส่งซ่อม ต่อกับงานซ่อมเดิม ไม่สร้างใบซ่อมใหม่")
+  await expect(page.getByLabel("รายละเอียดปัญหาในใบซ่อม")).toHaveCount(0)
+  await record(measure, "return form, an open repair", testInfo)
+  await pickSearchable(page, "checkin-receive-by", staff.code, `${staff.code} - ${staff.fullNameTh}`)
+  await page.locator("#checkin-condition-after").selectOption({ label: "เสียหาย" })
+  await page.locator("#checkin-next-location").selectOption({ label: `${room.code} - ${room.name}` })
+  await signOnPad(page, page.getByRole("group", { name: "ลายเซ็นผู้คืน" }), e2eDevice, browserName)
+
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })
+  await expect(review).toContainText("อยู่ระหว่างซ่อม")
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkin`) && response.request().method() === "POST")
+  await review.getByRole("button", { name: "ยืนยันรับคืน" }).click()
+  const savedResponse = await saved
+  expect(savedResponse.status(), "the return under repair is saved").toBe(201)
+  const checkin = (await savedResponse.json()) as { id: string; documentNo: string }
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkins/${checkin.id}`)
+  await record(measure, "RT- document (returned under repair)", testInfo)
+
+  const after = await readAsset(page, asset.id)
+  expect(after.status.name).toBe("Under Maintenance")
+  expect(after.custodianId).toBeNull()
+  // The repair list still has the one record, still open: the return joined it.
+  const listed = (await (await page.request.get(`/api/maintenance-tickets?assetId=${asset.id}`)).json()) as { data: { id: string; repairStatus: string }[] }
+  expect(listed.data.map((ticket) => ticket.id), "one repair record for the asset").toEqual([repair.id])
+  expect(listed.data[0].repairStatus).toBe("in_progress")
+
+  await visitAssetPage(measure, asset.id, "asset returned under repair", testInfo)
+  await expect(page.getByTestId("asset-identity-summary")).toContainText("อยู่ระหว่างซ่อม")
+  await expect(factCell(page, DETAIL_WORDS.custodianCell)).toContainText("ไม่มีผู้ถือครอง")
 })

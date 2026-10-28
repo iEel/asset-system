@@ -20,6 +20,18 @@ test("checkin requires the mode-authoritative source status", () => {
   assert.equal(getCheckinHandoverStatusError(null, "In Use"), "ASSET_HANDOVER_MODE_MISSING")
 })
 
+test("a permanent handover whose asset went into repair fits Under Maintenance or Pending Repair while that repair is open (S-R48)", () => {
+  assert.equal(getCheckinHandoverStatusError("permanent_assignment", "Under Maintenance", { hasOpenRepair: true }), null)
+  assert.equal(getCheckinHandoverStatusError("permanent_assignment", "Pending Repair", { hasOpenRepair: true }), null)
+  assert.equal(getCheckinHandoverStatusError("permanent_assignment", "Under Maintenance"), "ASSET_HANDOVER_STATUS_MISMATCH")
+  assert.equal(getCheckinHandoverStatusError("permanent_assignment", "Under Maintenance", { hasOpenRepair: false }), "ASSET_HANDOVER_STATUS_MISMATCH")
+  assert.equal(getCheckinHandoverStatusError("temporary_loan", "Under Maintenance", { hasOpenRepair: true }), "ASSET_HANDOVER_STATUS_MISMATCH")
+  assert.equal(getCheckinHandoverStatusError("permanent_assignment", "In Use", { hasOpenRepair: true }), null)
+  for (const options of [undefined, { hasOpenRepair: true }, { hasOpenRepair: false }]) {
+    assert.equal(getCheckinHandoverStatusError(null, "Under Maintenance", options), "ASSET_HANDOVER_MODE_MISSING")
+  }
+})
+
 test("checkout rejects every source status except Ready", () => {
   assert.equal(getAssetLifecycleTransitionError("checkout", "Ready"), null)
 

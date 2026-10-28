@@ -4,8 +4,14 @@ import * as nodeModule from "node:module"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
 
-type CheckinState = { calls: Array<{ call: string; args: Record<string, unknown> }>; openRecords: number; openRecordCounts: number[] }
-const state: CheckinState = { calls: [], openRecords: 0, openRecordCounts: [] }
+type CheckinState = {
+  calls: Array<{ call: string; args: Record<string, unknown> }>
+  openRecords: number
+  openRecordCounts: number[]
+  // The open handover the transaction reads; a temporary loan in Checked Out unless a test sets another.
+  checkout: { handoverMode: string; statusName: string } | null
+}
+const state: CheckinState = { calls: [], openRecords: 0, openRecordCounts: [], checkout: null }
 Object.assign(globalThis, { __checkinTicketState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -55,7 +61,8 @@ const mockedModuleSources = new Map<string, string>([
             if (name === "asset" && (method === "findFirst" || method === "findUnique")) return asset
             if (name === "asset" && method === "update") return { ...asset, ...(args?.data ?? {}), updatedAt: new Date("2026-10-07T03:00:00Z") }
             if (name === "assetCheckout" && method === "findFirst") {
-              return { id: "co-1", assetId: "asset-1", handoverMode: "temporary_loan", custodianId: "emp-5", asset: { status: { name: "Checked Out" } } }
+              const checkout = state().checkout ?? { handoverMode: "temporary_loan", statusName: "Checked Out" }
+              return { id: "co-1", assetId: "asset-1", handoverMode: checkout.handoverMode, custodianId: "emp-5", asset: { status: { name: checkout.statusName } } }
             }
             if (name === "assetCondition") return { name: "Damaged", isActive: true }
             if (name === "assetStatus") {
@@ -178,6 +185,47 @@ test("a repair opened while the return is being saved refuses a next status othe
   assert.deepEqual(await response.json(), repairStatusRequired)
   assert.equal(state.calls.some(({ call }) => call === "assetCheckin.create"), false)
   state.openRecordCounts = []
+})
+
+test("a permanent handover whose asset went into repair is returned into ส่งซ่อม under that repair, and the handover is closed (S-R48)", async () => {
+  state.calls = []
+  state.openRecords = 1
+  state.checkout = { handoverMode: "permanent_assignment", statusName: "Under Maintenance" }
+  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  const closed = state.calls.find(({ call }) => call === "assetCheckout.update")?.args as { where: { id: string }; data: Record<string, unknown> }
+  assert.deepEqual([closed.where.id, closed.data.isReturned], ["co-1", true])
+  const update = state.calls.find(({ call }) => call === "asset.update")?.args.data as Record<string, unknown>
+  assert.deepEqual([update.statusId, update.custodianId], ["status:Under Maintenance", null])
+  assert.equal(state.calls.some(({ call }) => call === "maintenanceTicket.create"), false)
+  state.openRecords = 0
+  state.checkout = null
+})
+
+test("a permanent handover under repair still has to go into ส่งซ่อม: another next status is refused under that field (S-R48, S-R43)", async () => {
+  state.calls = []
+  state.openRecords = 1
+  state.checkout = { handoverMode: "permanent_assignment", statusName: "Under Maintenance" }
+  const response = await route.POST(checkinRequest("status:Ready"), context)
+
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), repairStatusRequired)
+  assert.deepEqual(state.calls.filter(({ call }) => /\.(create|update|updateMany)$/.test(call)), [])
+  state.openRecords = 0
+  state.checkout = null
+})
+
+test("a permanent handover in Under Maintenance without an open repair is refused as a status mismatch, as before (S-R48)", async () => {
+  state.calls = []
+  state.openRecords = 0
+  state.checkout = { handoverMode: "permanent_assignment", statusName: "Under Maintenance" }
+  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
+
+  assert.equal(response.status, 409, await response.clone().text())
+  assert.deepEqual(await response.json(), { code: "ASSET_HANDOVER_STATUS_MISMATCH", error: "ASSET_HANDOVER_STATUS_MISMATCH" })
+  assert.equal(state.calls.some(({ call }) => call === "assetCheckin.create"), false)
+  state.checkout = null
 })
 
 test("returning to Ready does not create a repair record", async () => {

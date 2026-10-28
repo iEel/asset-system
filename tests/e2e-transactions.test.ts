@@ -187,6 +187,31 @@ test("a return to the second room prints the RT- document, and a return sent to 
   assert.match(findings, /test\.skip\(e2eDevice !== "phone", "the review dialog scrolls on the phone only"\)/)
 })
 
+test("a permanent handover whose asset went into repair is returned into ส่งซ่อม under that repair (server search addendum S-R48)", () => {
+  const spec = readTxSpec("e2e/transactions/return.spec.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const title = "a permanent handover whose asset went into repair is returned into ส่งซ่อม under that repair, with no second record and no custodian (S-R48)"
+  const start = spec.indexOf(`test("${title}"`)
+  assert.ok(start >= 0, "the S-R48 test")
+  const body = spec.slice(start)
+  // Its asset carries the run and the project; the repair is opened unfinished through the repair form's own route.
+  assert.ok(body.includes('await createTxAsset(page, masters, testInfo.project.name, "RT3", '))
+  assert.ok(body.includes('page.request.post("/api/maintenance-tickets", {'))
+  assert.match(body, /done: false,/)
+  assert.ok(body.includes('expect((await readAsset(page, asset.id)).status.name, "the repair moved the asset").toBe("Under Maintenance")'))
+  // The picker takes it, and the next status is ส่งซ่อม alone, with the app's own notice.
+  assert.ok(body.includes('await pickAsset(page, "checkin-checkout", asset.assetTag, asset.assetTag)'))
+  assert.ok(body.includes(`await expect(nextStatus).toHaveText("${th.checkin.sendToRepairOption}")`))
+  assert.ok(body.includes(th.checkin.openRepairReturnNotice), "checkin.openRepairReturnNotice")
+  // After the save: Under Maintenance, no custodian, and the one repair record still open.
+  assert.match(body, /expect\(after\.status\.name\)\.toBe\("Under Maintenance"\)/)
+  assert.match(body, /expect\(after\.custodianId\)\.toBeNull\(\)/)
+  assert.ok(body.includes('toEqual([repair.id])'))
+  assert.ok(body.includes(`toContainText("${th.asset.noCustodian}")`))
+  // Nothing deleted, and none of the run's forbidden writes.
+  for (const banned of ["request.delete", "/api/admin/settings", "ldap", "import-confirm", "import-preview"]) assert.ok(!body.toLowerCase().includes(banned), banned)
+})
+
 test("a transfer to the second room and a new custodian, and its TR- document; the two gaps of the document are expected to fail (e2e transactions task 4, TX4)", async () => {
   const spec = readTxSpec("e2e/transactions/transfer.spec.ts")
   assert.match(spec, /await expectFieldError\(page, "transfer-to-location", "เลือกปลายทางการโอนย้ายอย่างน้อย 1 รายการ"\)/)

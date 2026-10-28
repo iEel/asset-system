@@ -143,6 +143,18 @@ test("รับคืน is offered for an open handover with an open repair, an
   }
 })
 
+test("รับคืน is offered for a permanent handover whose asset went into repair, and opens that handover (S-R48, the user's choice ก 2026-10-29)", () => {
+  const rt = `returnTo=${encodeURIComponent(base.returnTo)}`
+  for (const statusName of ["Under Maintenance", "Pending Repair"]) {
+    const handedOver = { statusName, custodianId: "e-1", openCheckoutId: "co-1", openCheckoutHandoverMode: "permanent_assignment" } as const
+    const set = actions({ ...handedOver, openRepairId: "r-1" })
+    assert.deepEqual(brief(set.primary), ["checkin", "asset.rowActionCheckin", true, null], statusName)
+    assert.equal(set.primary?.href, `/th/asset-management/checkin?checkoutId=co-1&${rt}`, statusName)
+    // Without the open repair the status does not fit the permanent handover, as before.
+    assert.deepEqual(brief(all(handedOver).find((action) => action.key === "checkin")), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonHandoverStatusMismatch"], statusName)
+  }
+})
+
 test("a transfer is offered exactly when the transfer API accepts it (group 1 spec §7.1 \"Transfers follow the API exactly\")", () => {
   for (const ownership of ["personal", "stock", "shared", "component"] as const) {
     for (const statusName of statuses) {
@@ -178,7 +190,8 @@ test("a checkout and a return are offered exactly when their APIs accept them", 
             if (getAssetLifecycleTransitionError("checkout", statusName) === null && openCheckoutId) assert.equal(checkout.reasonKey, "asset.transactionReasonOpenCheckoutHandover", where)
             // api/assets/[id]/checkin against the open checkout, or api/assets/[id]/legacy-checkout.
             // S-R43: the handover's return takes an open repair (it goes into ส่งซ่อม); the legacy backfill still refuses one.
-            const returnAccepted = (openCheckoutId !== null && getCheckinHandoverStatusError(mode, statusName) === null)
+            // S-R48: with that repair open, a permanent handover's status may be Under Maintenance or Pending Repair.
+            const returnAccepted = (openCheckoutId !== null && getCheckinHandoverStatusError(mode, statusName, { hasOpenRepair: openRepairId !== null }) === null)
               || isLegacyReturnEligible({ statusName, custodianId, hasOpenCheckout: openCheckoutId !== null, hasActiveMaintenance: openRepairId !== null })
             assert.equal(checkin.enabled, returnAccepted, where)
           }

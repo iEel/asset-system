@@ -109,14 +109,21 @@ export function getAssetLifecycleTransitionError(
   return operationErrorCodes[operation]
 }
 
+// Opening an unfinished repair moves a permanent handover In Use -> Under Maintenance (getRepairRecordCreateEffect), so
+// while that repair is open Under Maintenance and Pending Repair also fit the mode; the return then goes into ส่งซ่อม
+// under that repair (S-R48, extends S-R43). A temporary loan is unchanged: no unfinished repair opens on Checked Out.
+const permanentUnderRepairStatusNames = new Set(["Under Maintenance", "Pending Repair"].map(normalizeAssetStateName))
+
 export function getCheckinHandoverStatusError(
   mode: AssetHandoverMode | string | null | undefined,
   currentStatusName: string | null | undefined,
+  options: { hasOpenRepair?: boolean } = {},
 ): CheckinHandoverStatusError | null {
   if (!isAssetHandoverMode(mode)) return "ASSET_HANDOVER_MODE_MISSING"
-  return normalizeAssetStateName(currentStatusName) === normalizeAssetStateName(getHandoverRequiredSourceStatusName(mode))
-    ? null
-    : "ASSET_HANDOVER_STATUS_MISMATCH"
+  const current = normalizeAssetStateName(currentStatusName)
+  if (current === normalizeAssetStateName(getHandoverRequiredSourceStatusName(mode))) return null
+  if (mode === "permanent_assignment" && options.hasOpenRepair && permanentUnderRepairStatusNames.has(current)) return null
+  return "ASSET_HANDOVER_STATUS_MISMATCH"
 }
 
 export function getAssetCreateStatusNames(): string[] {
