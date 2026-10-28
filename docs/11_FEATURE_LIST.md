@@ -152,7 +152,7 @@ Important data semantics:
 | Reversible transactions | A user with `asset:edit` can cancel only the latest eligible Check-out, Check-in, or Transfer; the system restores the exact versioned asset/component snapshot and never asks the operator to guess a replacement status |
 | VOID documents | Cancelled operation documents remain readable and printable with cancellation user/time/reason and VOID presentation instead of being deleted |
 | Cancellation safety review | Stale, downstream-dependent, non-latest, or legacy snapshot-less cancellation attempts do not mutate asset data and create/update `transaction_cancellation_blocked` in Asset State Review |
-| Bulk move | Bulk location movement for multiple assets |
+| Bulk move | Bulk location movement for multiple assets, each typed by its code and picked from the server search |
 | Bulk update | API support for selected asset location/custodian updates |
 | Movement history | Every key operation creates `AssetMovement` records |
 | Operation documents | Printable handover and return documents with readable configurable document numbers |

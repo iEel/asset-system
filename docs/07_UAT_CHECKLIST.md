@@ -86,8 +86,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Confirm Serial Number scanner inputs scan manufacturer QR/barcode labels with the 16:9 scan-line guide, native-resolution ZXing multi-format decoder, optional browser `BarcodeDetector` fallback, focused internal scan-band crops, and direct crop `ImageData` ZXing fallback; center the barcode band on the line, make the bars fill most of the frame, and adjust distance until the lines are sharp.
 - [ ] Check-out an asset.
 - [ ] Check-in an asset.
-- [ ] For a legacy/imported `Ready` or `In Use` asset that has a current custodian but no open checkout or unfinished repair record, search the Check-in `ข้อมูลเก่า` panel by Asset Tag/holder/location, create the backfilled handover, and complete the normal return form; confirm the activity/audit history includes `legacy_return_backfill`.
-- [ ] Record an unfinished repair ("ยังซ่อมไม่เสร็จ") by mistake on an `In Use` personal asset, then press "ยกเลิกบันทึก". Confirm the record becomes `cancelled`, the asset returns to `In Use`, the "ยังซ่อมไม่เสร็จ" counts exclude it, and the asset becomes eligible for the legacy return panel. Confirm a finished record offers no cancel action.
+- [ ] For a legacy/imported `Ready` or `In Use` asset that has a current custodian but no open checkout or unfinished repair record, type its Asset Tag or the holder's name in the Check-in asset field, pick its `ข้อมูลเก่า (ไม่มีใบส่งมอบ)` row, confirm "สร้างใบส่งมอบย้อนหลังแล้วรับคืน" once, and complete the normal return form; confirm the activity/audit history includes `legacy_return_backfill`.
+- [ ] Record an unfinished repair ("ยังซ่อมไม่เสร็จ") by mistake on an `In Use` personal asset, then press "ยกเลิกบันทึก". Confirm the record becomes `cancelled`, the asset returns to `In Use`, the "ยังซ่อมไม่เสร็จ" counts exclude it, and the asset shows as a takeable ข้อมูลเก่า row in the Check-in asset picker. Confirm a finished record offers no cancel action.
 - [ ] Transfer a `Ready` asset to a destination custodian and confirm the review shows `ใช้งานอยู่ / In Use`, the save does not ask the operator to select a status, Asset Detail shows `In Use`, and movement/audit history contains the before/after status. Repeat with a location-only or department-only transfer and confirm the existing status is preserved.
 - [ ] On Maintenance, filter by status (ยังซ่อมไม่เสร็จ / ซ่อมเสร็จแล้ว / ยกเลิก), date range, and search; confirm invalid date ranges show feedback, legacy statuses (`reported`, `waiting_parts`, `completed`, ...) appear under ยังซ่อมไม่เสร็จ, and opening a record then Back returns to the same filters.
 - [ ] Using keyboard only, open the "ซ่อมเสร็จ", "ยกเลิกบันทึก", "แก้ไขรายละเอียด", attachment-delete, and PM state dialogs; verify initial focus, Tab containment, Escape dismissal when not saving, focus restoration, visible focus rings, and 375px mobile layout with 44px buttons and no body overflow.
@@ -528,6 +528,30 @@ A person still checks:
   - the bar reads its count;
   - the reason error is read as focus moves to the box.
 - [ ] An English pass of the new messages and of the exports with `locale=en`.
+
+## Transaction Asset Search UAT (2026-10-28)
+
+The automated suite covers the shared asset picker of ส่งมอบ, รับคืน, โอนย้าย and ย้ายที่ตั้งหลายรายการ in all four projects (`e2e/transactions/*.spec.ts`, `e2e/cross-cutting/field-errors.spec.ts`, `e2e/cross-cutting/roles.spec.ts`). It checks:
+- each page's asset found by typing and picked from the answer to that text;
+- a handed-over asset opened from its page chosen but blocked, with its reason under the field, and listed faint with the same reason on an empty form, where a click chooses nothing;
+- รับคืน: a holder's name giving one group, theirs, with "ถืออยู่ N ชิ้น"; return-by starting as the holder; the transferred asset read as a ข้อมูลเก่า row under its holder (never picked, so no backfill);
+- ย้ายที่ตั้งหลายรายการ: three tags typed and picked one at a time, "ที่เลือกแล้ว 3 รายการ", and "เลือกแล้ว" on the chosen rows of a later answer;
+- the viewer refused the search (`GET /api/asset-operations/search`, 403) and the four pages.
+
+A person still checks:
+
+- [ ] Each page answers a typed code within about 1 s on Production-size data over the VPN (spec §4: an index if over 1 s).
+- [ ] ส่งมอบ lists a ส่วนควบ, a License, an In Use asset and an open handover, each with its reason.
+- [ ] รับคืน: a person's name lists their assets under them; a ข้อมูลเก่า row backfills and returns; a held computer's components read "ส่วนควบรับคืนพร้อมเครื่องหลัก" and come back with it.
+- [ ] โอนย้าย: a custodian chosen after an asset that no longer fits clears it, with the reason under the field.
+- [ ] โอนย้าย: a บุคคล asset in อยู่ระหว่างตรวจสอบ is takeable with no custodian and is cleared with its reason when a custodian is chosen; the asset page shows โอนย้าย disabled for it (S-R40).
+- [ ] ย้ายที่ตั้งหลายรายการ: remove a chosen row; a failed search keeps the chosen list.
+- [ ] A VPN drop shows "ค้นหาไม่สำเร็จ ลองอีกครั้ง", and the retry works.
+- [ ] NVDA and VoiceOver:
+  - the active row is read;
+  - blocked rows are skipped;
+  - the count is read politely.
+- [ ] An English pass of the new messages.
 
 ## Sign-Off
 
