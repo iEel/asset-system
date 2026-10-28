@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { auditResultColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
 import { buildAuditReferenceLabels } from "@/lib/audit-finding-labels"
+import { auditExportItemResultKey, auditExportItemStatusKey, auditExportReconcileStatusKey, auditExportWord, resolveAuditExportLocale } from "@/lib/audit-export-labels"
 import { resolveAuditRoundExportFilters } from "@/lib/audit-round-list-lookups"
 import {
   auditRoundItemListOrderBy,
@@ -30,7 +32,7 @@ type AuditExportRow = {
   actualDepartmentId: string | null
   actualConditionId: string | null
   auditStatus: string
-  auditResult: string
+  auditResult: string | null
   reconcileStatus: string
   scanCount: number
   scannedAt: Date | string
@@ -44,9 +46,11 @@ export async function GET(request: NextRequest, context: AuditExportContext) {
     requirePermission(user, "audit", "export")
 
     const { id } = await context.params
-    const [round, exportFilters] = await Promise.all([
+    const locale = resolveAuditExportLocale(request.nextUrl.searchParams.get("locale"))
+    const [round, exportFilters, t] = await Promise.all([
       prisma.auditRound.findFirst({ where: { id, isActive: true }, select: { id: true, auditNo: true, name: true, status: true } }),
       resolveAuditRoundExportFilters(id, request.nextUrl.searchParams),
+      getTranslations({ locale }),
     ])
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
     if (round.status === "cancelled") {
@@ -88,9 +92,9 @@ export async function GET(request: NextRequest, context: AuditExportContext) {
         actualCustodian: labelOrBlank(labels, row.actualCustodianId),
         actualDepartment: labelOrBlank(labels, row.actualDepartmentId),
         actualCondition: labelOrBlank(labels, row.actualConditionId),
-        auditStatus: row.auditStatus,
-        auditResult: row.auditResult,
-        reconcileStatus: row.reconcileStatus,
+        auditStatus: auditExportWord(t, auditExportItemStatusKey(row.auditStatus), row.auditStatus),
+        auditResult: t(auditExportItemResultKey(row.auditStatus, row.auditResult)),
+        reconcileStatus: auditExportWord(t, auditExportReconcileStatusKey(row.reconcileStatus), row.reconcileStatus),
         scanCount: row.scanCount,
         scannedAt: row.scannedAt,
         lastScanAt: row.lastScanAt,
@@ -132,7 +136,7 @@ async function buildAuditItemExportRows(whereInput: AuditRoundItemWhereInput): P
     actualDepartmentId: item.actualDepartmentId,
     actualConditionId: item.actualConditionId,
     auditStatus: item.auditStatus,
-    auditResult: item.auditResult ?? "",
+    auditResult: item.auditResult,
     reconcileStatus: item.reconcileStatus ?? "",
     scanCount: item.scanCount,
     scannedAt: item.scannedAt ?? "",

@@ -186,7 +186,7 @@ test("the main button follows the step: the scan for audit:edit or the pending l
   assert.equal(buildAuditRoundPageMainAction({ ...atClose, steps: null }), null)
 })
 
-test("an export link carries the list's filters and nothing else: the page link's query without page, page size and returnTo (spec §8 ตามตัวกรองที่เลือก)", () => {
+test("an export link carries the list's filters and the page's language and nothing else: the page link's query without page, page size and returnTo (spec §8 ตามตัวกรองที่เลือก)", () => {
   const listHref = "/th/audit/rounds/round-1?result=found&categoryId=cat-1&search=PC&page=2&pageSize=50&returnTo=%2Fth%2Faudit%2Frounds#audit-result-list"
   assert.equal(auditRoundHrefQuery(listHref).get("categoryId"), "cat-1")
   assert.equal(auditRoundHrefQuery("/th/audit/rounds/round-1#audit-result-list").toString(), "")
@@ -194,11 +194,13 @@ test("an export link carries the list's filters and nothing else: the page link'
   // paging and way back, and the route reads back exactly the filters the list shows.
   const filters = { ...parseAuditRoundListFilters({}), result: "mismatch", categoryId: "other", field: "department", components: "missing", companyId: "company-1", branchId: "branch-1", search: "PC" } as const
   const href = buildAuditRoundPageHref("th", "round-1", filters, { page: 3, pageSize: 50, returnTo: "/th/audit/rounds" })
-  const exported = new URL(buildAuditRoundExportHref("round-1", "export-pdf", filters), "http://local")
+  const exported = new URL(buildAuditRoundExportHref("th", "round-1", "export-pdf", filters), "http://local")
   assert.equal(exported.pathname, "/api/audit-rounds/round-1/export-pdf")
   for (const name of ["page", "pageSize", "returnTo"]) assert.equal(exported.searchParams.has(name), false, name)
   const listQuery = auditRoundHrefQuery(href)
   for (const name of ["page", "pageSize", "returnTo"]) listQuery.delete(name)
+  assert.equal(exported.searchParams.get("locale"), "th", "the page's language for the file's words (P4-R7)")
+  exported.searchParams.delete("locale")
   assert.equal(exported.searchParams.toString(), listQuery.toString())
   const parsed = parseAuditRoundListFilters(Object.fromEntries(exported.searchParams))
   for (const key of ["result", "categoryId", "field", "components", "companyId", "branchId", "search"] as const) assert.equal(parsed[key], filters[key], key)

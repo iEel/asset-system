@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
@@ -7,6 +8,7 @@ import { styleWorksheetHeader } from "@/lib/asset-excel"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { isOpenAuditFindingActionStatus } from "@/lib/audit-finding-filters"
 import { resolveAuditRoundExportFilters } from "@/lib/audit-round-list-lookups"
+import { auditExportActionStatusKey, auditExportFindingTypeKey, auditExportReconcileStatusKey, auditExportReviewStatusKey, auditExportWord, resolveAuditExportLocale } from "@/lib/audit-export-labels"
 import { buildAuditExportFilename, buildAuditRoundVarianceWhere, foldAuditRoundResultCounts } from "@/lib/audit-round-result-filters"
 
 type AuditVarianceExportContext = {
@@ -37,12 +39,14 @@ export async function GET(request: NextRequest, context: AuditVarianceExportCont
     requirePermission(user, "audit", "export")
 
     const { id } = await context.params
-    const [round, exportFilters] = await Promise.all([
+    const locale = resolveAuditExportLocale(request.nextUrl.searchParams.get("locale"))
+    const [round, exportFilters, t] = await Promise.all([
       prisma.auditRound.findFirst({
         where: { id, isActive: true },
         select: { id: true, auditNo: true, name: true, status: true },
       }),
       resolveAuditRoundExportFilters(id, request.nextUrl.searchParams),
+      getTranslations({ locale }),
     ])
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
     if (round.status === "cancelled") {
@@ -79,19 +83,19 @@ export async function GET(request: NextRequest, context: AuditVarianceExportCont
     ]
     const pendingReview = findings.filter((finding) => finding.reviewStatus === "pending").length
     summarySheet.addRows([
-      { metric: "Total Expected Assets", count: counts.all },
-      { metric: "Matched Assets", count: counts.found },
-      { metric: "Mismatched Assets", count: counts.mismatch },
-      { metric: "Pending Assets", count: counts.pending },
-      { metric: "Not Found Assets", count: counts.notFound },
-      { metric: "Wrong Location Findings", count: countFinding(findings, "wrong_location") },
-      { metric: "Wrong Custodian Findings", count: countFinding(findings, "wrong_custodian") },
-      { metric: "Wrong Department Findings", count: countFinding(findings, "wrong_department") },
-      { metric: "Wrong Condition Findings", count: countFinding(findings, "wrong_condition") },
-      { metric: "Out-of-scope Findings", count: countFinding(findings, "out_of_scope") },
-      { metric: "Out-of-scope Assets", count: counts.outOfScope },
-      { metric: "Pending Review Findings", count: pendingReview },
-      { metric: "Open Action Plans", count: findings.filter((finding) => isOpenAuditFindingActionStatus(finding.actionStatus)).length },
+      { metric: t("auditRound.varianceMetric_totalExpected"), count: counts.all },
+      { metric: t("auditRound.varianceMetric_matched"), count: counts.found },
+      { metric: t("auditRound.varianceMetric_mismatched"), count: counts.mismatch },
+      { metric: t("auditRound.varianceMetric_pending"), count: counts.pending },
+      { metric: t("auditRound.varianceMetric_notFound"), count: counts.notFound },
+      { metric: t("auditRound.varianceMetric_wrongLocation"), count: countFinding(findings, "wrong_location") },
+      { metric: t("auditRound.varianceMetric_wrongCustodian"), count: countFinding(findings, "wrong_custodian") },
+      { metric: t("auditRound.varianceMetric_wrongDepartment"), count: countFinding(findings, "wrong_department") },
+      { metric: t("auditRound.varianceMetric_wrongCondition"), count: countFinding(findings, "wrong_condition") },
+      { metric: t("auditRound.varianceMetric_outOfScopeFindings"), count: countFinding(findings, "out_of_scope") },
+      { metric: t("auditRound.varianceMetric_outOfScopeAssets"), count: counts.outOfScope },
+      { metric: t("auditRound.varianceMetric_pendingReview"), count: pendingReview },
+      { metric: t("auditRound.varianceMetric_openActions"), count: findings.filter((finding) => isOpenAuditFindingActionStatus(finding.actionStatus)).length },
     ])
     styleWorksheetHeader(summarySheet)
 
@@ -105,12 +109,12 @@ export async function GET(request: NextRequest, context: AuditVarianceExportCont
         auditName: round.name,
         assetTag: finding.asset?.assetTag ?? "",
         assetName: finding.asset?.name ?? "",
-        findingType: finding.findingType,
+        findingType: auditExportWord(t, auditExportFindingTypeKey(finding.findingType), finding.findingType),
         expectedValue: formatFindingValue(finding.findingType, finding.expectedValue, valueLabels),
         actualValue: formatFindingValue(finding.findingType, finding.actualValue, valueLabels),
-        reviewStatus: finding.reviewStatus,
-        reconcileStatus: finding.auditItem.reconcileStatus ?? "",
-        actionStatus: finding.actionStatus,
+        reviewStatus: auditExportWord(t, auditExportReviewStatusKey(finding.reviewStatus), finding.reviewStatus),
+        reconcileStatus: auditExportWord(t, auditExportReconcileStatusKey(finding.auditItem.reconcileStatus), finding.auditItem.reconcileStatus),
+        actionStatus: auditExportWord(t, auditExportActionStatusKey(finding.actionStatus), finding.actionStatus),
         actionOwner: finding.actionOwner ? `${finding.actionOwner.code} - ${finding.actionOwner.fullNameTh}` : "",
         actionDueDate: toExcelDate(finding.actionDueDate),
         actionPlan: finding.actionPlan ?? "",

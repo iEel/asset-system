@@ -88,8 +88,8 @@ test("the Excel and PDF exports read the page's whole filter state, the out-of-s
   }
   const pdf = read(`${API}export-pdf/route.ts`)
   assert.match(pdf, /const summary = buildAuditRoundExportSummary\(rows\)/)
-  assert.match(pdf, /\{ label: "Checked", value: summary\.checked \}/)
-  assert.match(pdf, /\{ label: "Out of Scope", value: summary\.outOfScope \}/)
+  assert.match(pdf, /\{ label: t\("auditRound\.exportSummary_checked"\), value: summary\.checked \}/)
+  assert.match(pdf, /\{ label: t\("auditRound\.exportSummary_outOfScope"\), value: summary\.outOfScope \}/)
   assert.doesNotMatch(pdf, /row\.auditStatus === "out_of_scope"|scannedCount/)
 })
 
@@ -103,12 +103,12 @@ test("the variance report: the filters, the round's own items, the out-of-scope 
   assert.match(route, /orderBy: \[\{ reviewStatus: "asc" \}, \{ findingType: "asc" \}, \{ reportedAt: "asc" \}, \{ id: "asc" \}\]/)
   assert.match(route, /const counts = foldAuditRoundResultCounts\(/)
   for (const row of [
-    /\{ metric: "Total Expected Assets", count: counts\.all \}/,
-    /\{ metric: "Matched Assets", count: counts\.found \}/,
-    /\{ metric: "Mismatched Assets", count: counts\.mismatch \}/,
-    /\{ metric: "Pending Assets", count: counts\.pending \}/,
-    /\{ metric: "Not Found Assets", count: counts\.notFound \}/,
-    /\{ metric: "Out-of-scope Assets", count: counts\.outOfScope \}/,
+    /\{ metric: t\("auditRound\.varianceMetric_totalExpected"\), count: counts\.all \}/,
+    /\{ metric: t\("auditRound\.varianceMetric_matched"\), count: counts\.found \}/,
+    /\{ metric: t\("auditRound\.varianceMetric_mismatched"\), count: counts\.mismatch \}/,
+    /\{ metric: t\("auditRound\.varianceMetric_pending"\), count: counts\.pending \}/,
+    /\{ metric: t\("auditRound\.varianceMetric_notFound"\), count: counts\.notFound \}/,
+    /\{ metric: t\("auditRound\.varianceMetric_outOfScopeAssets"\), count: counts\.outOfScope \}/,
   ]) assert.match(route, row)
   assert.match(route, /findings\.filter\(\(finding\) => isOpenAuditFindingActionStatus\(finding\.actionStatus\)\)\.length/)
   assert.match(route, /buildAuditExportFilename\(\{ prefix: "audit-variance"/)
@@ -125,9 +125,9 @@ test("the round page lists the out-of-scope finds as items under every filter, c
   assert.match(page, /const editHref = canScan && !isRoundReadOnly && item\.auditStatus !== "pending" \? buildAuditRoundScanEditHref\(/)
   assert.equal(page.match(/\{item\.editHref \? \(/g)?.length, 1, "the phone card's button; the table's is in ⋯ (item.groups)")
   assert.match(page, /if \(filterCompany\) \{\n\s+resultFilterChips\.push/, "the company chip shows on the out-of-scope list too")
-  assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(round\.id, "export", filters\)/)
-  assert.match(page, /const auditRoundExportPdfHref = buildAuditRoundExportHref\(round\.id, "export-pdf", filters\)/)
-  assert.match(page, /const auditRoundVarianceHref = buildAuditRoundExportHref\(round\.id, "variance-export", filters\)/)
+  assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(locale, round\.id, "export", filters\)/)
+  assert.match(page, /const auditRoundExportPdfHref = buildAuditRoundExportHref\(locale, round\.id, "export-pdf", filters\)/)
+  assert.match(page, /const auditRoundVarianceHref = buildAuditRoundExportHref\(locale, round\.id, "variance-export", filters\)/)
   assert.doesNotMatch(page, /function buildAuditRoundExportHref/)
   // The cancel dialog still counts every scan event (route.ts getCancellationImpact).
   assert.match(data, /prisma\.auditScanHistory\.count\(\{ where: \{ auditRoundId: roundId \} \}\)/)

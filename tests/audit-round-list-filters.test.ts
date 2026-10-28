@@ -159,11 +159,11 @@ test("one link writer: the page's list, its exports and the dashboard carry ever
   const withRooms = { ...none, expectedLocationIds: ["loc-1"], roundLocationIds: ["loc-1", "loc-2"] }
   assert.equal(buildAuditRoundPageHref("th", "round-1", withRooms), "/th/audit/rounds/round-1#audit-result-list", "a lookup never reaches the URL")
   assert.equal(
-    buildAuditRoundExportHref("round-1", "export", full),
-    "/api/audit-rounds/round-1/export?result=mismatch&search=PC+1&companyId=c-1&branchId=b-1&categoryId=other&field=location&components=missing",
+    buildAuditRoundExportHref("th", "round-1", "export", full),
+    "/api/audit-rounds/round-1/export?result=mismatch&search=PC+1&companyId=c-1&branchId=b-1&categoryId=other&field=location&components=missing&locale=th",
   )
-  assert.equal(buildAuditRoundExportHref("round-1", "variance-export", none), "/api/audit-rounds/round-1/variance-export")
-  assert.equal(buildAuditRoundExportHref("round-1", "export-pdf", { ...none, field: "department" }), "/api/audit-rounds/round-1/export-pdf?field=department")
+  assert.equal(buildAuditRoundExportHref("en", "round-1", "variance-export", none), "/api/audit-rounds/round-1/variance-export?locale=en")
+  assert.equal(buildAuditRoundExportHref("th", "round-1", "export-pdf", { ...none, field: "department" }), "/api/audit-rounds/round-1/export-pdf?field=department&locale=th")
   // The dashboard's links (R13) go through the same writer.
   assert.equal(buildAuditRoundItemsHref("th", "round-1", { companyId: "company-1", branchId: "branch-1" }), "/th/audit/rounds/round-1?companyId=company-1&branchId=branch-1#audit-result-list")
 })

@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server"
+import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
-import { buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
+import { auditExportActionStatusKey, auditExportActionTaken, auditExportFindingTypeKey, auditExportReviewStatusKey, auditExportWord, buildAuditFindingExportFilterWords, resolveAuditExportLocale } from "@/lib/audit-export-labels"
+import { auditFindingFilterLabelKeys, buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
 import { getAuditFindingTypeSearchLabels } from "@/lib/audit-finding-search-labels"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
@@ -16,6 +18,8 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
     requirePermission(user, "audit", "export")
+    const locale = resolveAuditExportLocale(request.nextUrl.searchParams.get("locale"))
+    const t = await getTranslations({ locale })
 
     const search = request.nextUrl.searchParams.get("search")?.trim()
     const roundId = request.nextUrl.searchParams.get("roundId")?.trim()
@@ -42,27 +46,30 @@ export async function GET(request: NextRequest) {
         })
       : []
     const ownerCodeById = new Map(owners.map((owner) => [owner.id, owner.code]))
+    // The round's number for the filter line, as the page's round chip reads it.
+    const filterRound = roundId ? await prisma.auditRound.findUnique({ where: { id: roundId }, select: { auditNo: true } }) : null
 
     const buffer = await renderAuditFindingPdf({
-      title: `Audit Findings - ${status}`,
-      subtitle: search ? `Filtered by "${search}"` : "All matching findings",
+      // The tab in use and its chip in the page's words (Task 2, P4-R3), never the URL value.
+      title: t("auditFinding.exportPdfTitle", { filter: auditFindingFilterLabelKeys(status).map((key) => t(key)).join(" · ") }),
+      subtitle: t("auditRound.exportPdfFilter", { filter: buildAuditFindingExportFilterWords({ roundNo: filterRound?.auditNo ?? null, findingType: findingType ?? null, search: search ?? null }, t) }),
       summary: [
-        { label: "Total Findings", value: findings.length },
-        { label: "Pending", value: findings.filter((finding) => finding.reviewStatus === "pending").length },
-        { label: "Approved", value: findings.filter((finding) => finding.reviewStatus === "approved").length },
-        { label: "Rejected/Exception", value: findings.filter((finding) => finding.reviewStatus === "rejected" || finding.reviewStatus === "exception").length },
+        { label: t("auditFinding.exportSummary_total"), value: findings.length },
+        { label: t("auditFinding.exportSummary_pending"), value: findings.filter((finding) => finding.reviewStatus === "pending").length },
+        { label: t("auditFinding.exportSummary_approved"), value: findings.filter((finding) => finding.reviewStatus === "approved").length },
+        { label: t("auditFinding.exportSummary_rejectedOrException"), value: findings.filter((finding) => finding.reviewStatus === "rejected" || finding.reviewStatus === "exception").length },
       ],
       rows: findings.map((finding) => ({
         reportedAt: formatDateTime(finding.reportedAt),
         auditNo: finding.auditRound.auditNo,
         assetTag: finding.asset?.assetTag ?? "",
-        findingType: finding.findingType,
+        findingType: auditExportWord(t, auditExportFindingTypeKey(finding.findingType), finding.findingType),
         expectedValue: formatFindingValue(finding.findingType, finding.expectedValue, valueLabels),
         actualValue: formatFindingValue(finding.findingType, finding.actualValue, valueLabels),
-        reviewStatus: finding.reviewStatus,
-        actionStatus: finding.actionStatus,
-        actionOwner: finding.actionOwnerId ? (ownerCodeById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "",
-        actionTaken: finding.actionTaken ?? "",
+        reviewStatus: auditExportWord(t, auditExportReviewStatusKey(finding.reviewStatus), finding.reviewStatus),
+        actionStatus: auditExportWord(t, auditExportActionStatusKey(finding.actionStatus), finding.actionStatus),
+        actionOwner: finding.actionOwnerId ? (ownerCodeById.get(finding.actionOwnerId) ?? "") : "",
+        actionTaken: auditExportActionTaken(t, finding.actionTaken),
       })),
     })
 

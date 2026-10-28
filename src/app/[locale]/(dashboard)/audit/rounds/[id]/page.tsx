@@ -109,9 +109,9 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     buildAuditRoundPageHref(locale, round.id, target, { pageSize, returnTo: returnToHref, ...overrides })
   // The exports follow the list's filters (spec §8 "ตามตัวกรองที่เลือก"): Task 1's builder, Task 2's three lines, now
   // over the page's filters.
-  const auditRoundExportHref = buildAuditRoundExportHref(round.id, "export", filters)
-  const auditRoundExportPdfHref = buildAuditRoundExportHref(round.id, "export-pdf", filters)
-  const auditRoundVarianceHref = buildAuditRoundExportHref(round.id, "variance-export", filters)
+  const auditRoundExportHref = buildAuditRoundExportHref(locale, round.id, "export", filters)
+  const auditRoundExportPdfHref = buildAuditRoundExportHref(locale, round.id, "export-pdf", filters)
+  const auditRoundVarianceHref = buildAuditRoundExportHref(locale, round.id, "variance-export", filters)
   const allResultHref = pageHref(roundWideFilters)
   // "เหลือ / เลยกำหนด N วัน" on an open round only, display only (spec §8, §15; plan 1 R26).
   const due = buildAuditRoundDueLine(round.status, round.endDate, startOfBangkokDay(new Date()))

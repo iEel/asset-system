@@ -44,7 +44,7 @@ test("the header: number, status, dates, days left or overdue on an open round, 
   assert.match(page, /const pageHref = \(target: AuditRoundListFilters, overrides: AuditRoundPageHrefOverrides = \{\}\) =>\n\s+buildAuditRoundPageHref\(locale, round\.id, target, \{ pageSize, returnTo: returnToHref, \.\.\.overrides \}\)/)
   // Task 1's export builder over the list's filters (no page, page size or way back).
   for (const [name, endpoint] of [["auditRoundExportHref", "export"], ["auditRoundExportPdfHref", "export-pdf"], ["auditRoundVarianceHref", "variance-export"]]) {
-    assert.match(page, new RegExp(`const ${name} = buildAuditRoundExportHref\\(round\\.id, "${endpoint}", filters\\)`), name)
+    assert.match(page, new RegExp(`const ${name} = buildAuditRoundExportHref\\(locale, round\\.id, "${endpoint}", filters\\)`), name)
   }
   assert.doesNotMatch(page, /<a href=|download className=|t\("scan"\)|t\("exportResult"\)|function buildAuditRoundExportHref/, "the exports live in the menu; the header has no scan link")
 })

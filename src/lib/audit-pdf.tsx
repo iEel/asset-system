@@ -1,6 +1,7 @@
 import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer"
 import { resolvePdfFont } from "@/lib/pdf-font"
 import { formatDateTime } from "@/lib/utils"
+import { attachmentContentDisposition } from "@/lib/download-filename"
 
 const pdfFont = resolvePdfFont()
 const fontFamily = pdfFont.family
@@ -171,7 +172,7 @@ export function pdfResponse(buffer: Buffer, filename: string) {
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": attachmentContentDisposition(filename),
       "Cache-Control": "no-store",
     },
   })

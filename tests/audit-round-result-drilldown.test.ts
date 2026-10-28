@@ -93,8 +93,8 @@ test("audit round detail page exposes clickable result dashboard and paginated r
 test("audit round exports follow every filter of the list (group 2 spec §8 ตามตัวกรองที่เลือก)", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
   const menus = readFileSync("src/components/audit/audit-round-header-menus.tsx", "utf8")
-  assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(round\.id, "export", filters\)/)
-  assert.match(page, /const auditRoundExportPdfHref = buildAuditRoundExportHref\(round\.id, "export-pdf", filters\)/)
+  assert.match(page, /const auditRoundExportHref = buildAuditRoundExportHref\(locale, round\.id, "export", filters\)/)
+  assert.match(page, /const auditRoundExportPdfHref = buildAuditRoundExportHref\(locale, round\.id, "export-pdf", filters\)/)
   assert.match(menus, /href=\{exports\.excel\}/)
   assert.match(menus, /href=\{exports\.pdf\}/)
 })
@@ -143,13 +143,15 @@ test("audit round filtered result exports include the active filter in filenames
   assert.match(filters, /search\.trim\(\)/)
 
   for (const route of [excelRoute, pdfRoute]) {
-    assert.match(route, /buildAuditExportFilterLabel/)
     assert.match(route, /buildAuditExportFilename/)
-    assert.match(route, /filterLabel/)
   }
 
+  assert.match(excelRoute, /buildAuditExportFilterLabel/)
+  assert.match(excelRoute, /filterLabel/)
   assert.match(excelRoute, /workbook\.addWorksheet\(buildAuditExportWorksheetName\(filterLabel\)\)/)
-  assert.match(pdfRoute, /subtitle: `\$\{round\.name\} \| \$\{formatDate\(round\.startDate\)\} - \$\{formatDate\(round\.endDate\)\} \| Filter: \$\{filterLabel\}`/)
+  // The PDF's filter line is in words (group 2 plan 4 P4-R7); the file name keeps the code label.
+  assert.match(pdfRoute, /const filterWords = buildAuditExportFilterWords\(labelInput, auditExportFilterWords\(t\)\)/)
+  assert.match(pdfRoute, /subtitle: `\$\{round\.name\} \| \$\{formatDate\(round\.startDate\)\} - \$\{formatDate\(round\.endDate\)\} \| \$\{t\("auditRound\.exportPdfFilter", \{ filter: filterWords \}\)\}`/)
 })
 test("audit round result list exposes component relationship context without duplicating scan workflow", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")

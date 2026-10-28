@@ -613,7 +613,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           { key: "asset-overview", name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
           { key: "maintenance-follow-up", name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
           { key: "disposal-follow-up", name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover"), allowed: canDisposalExport },
-          { key: "audit-findings", name: t("weeklyAuditFindings"), cadence: t("weekly"), href: "/api/audit-findings/export?status=pending", owner: t("ownerAudit"), allowed: canAuditExport },
+          { key: "audit-findings", name: t("weeklyAuditFindings"), cadence: t("weekly"), href: `/api/audit-findings/export?status=pending&locale=${locale}`, owner: t("ownerAudit"), allowed: canAuditExport },
         ]
         const reportCatalog: ReportCatalogCategory[] = [
           {
@@ -655,8 +655,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             audience: t("catalogAuditAudience"),
             icon: <ClipboardCheck className="h-5 w-5" />,
             reports: [
-              { key: "audit-findings", label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export?status=all", exportLabel: t("exportAuditFindings"), exportAllowed: canAuditExport },
-              { key: "audit-findings-pdf", label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export-pdf?status=all", exportLabel: t("exportPdf"), exportAllowed: canAuditExport },
+              { key: "audit-findings", label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: `/api/audit-findings/export?status=all&locale=${locale}`, exportLabel: t("exportAuditFindings"), exportAllowed: canAuditExport },
+              { key: "audit-findings-pdf", label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: `/api/audit-findings/export-pdf?status=all&locale=${locale}`, exportLabel: t("exportPdf"), exportAllowed: canAuditExport },
             ],
           },
           {

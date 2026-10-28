@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs"
+import { attachmentContentDisposition } from "./download-filename.ts"
 
 export const assetExportColumns = [
   { header: "Asset Tag", key: "assetTag", width: 22 },
@@ -94,7 +95,7 @@ export function workbookResponse(buffer: ExcelJS.Buffer, filename: string) {
   return new Response(buffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": attachmentContentDisposition(filename),
       "Cache-Control": "no-store",
     },
   })

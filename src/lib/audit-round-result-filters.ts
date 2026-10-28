@@ -254,7 +254,7 @@ type AuditExportCompany = { code: string }
 type AuditExportBranch = { code: string; company: { code: string } }
 type AuditExportCategory = { code: string }
 
-type AuditExportFilterLabelInput = {
+export type AuditExportFilterLabelInput = {
   result: AuditRoundResultFilter
   search?: string | null
   company?: AuditExportCompany | null
@@ -369,10 +369,12 @@ export function auditRoundHrefQuery(href: string): URLSearchParams {
   return new URLSearchParams(href.split("#")[0].split("?")[1] ?? "")
 }
 
-/** The round's exports: the list's own filter params, with no page, returnTo or hash. */
-export function buildAuditRoundExportHref(roundId: string, endpoint: AuditRoundExportEndpoint, filters: AuditRoundListHrefFilters): string {
-  const query = writeAuditRoundListParams(filters).toString()
-  return `/api/audit-rounds/${roundId}/${endpoint}${query ? `?${query}` : ""}`
+/** The round's exports: the list's own filter params, with no page, returnTo or hash, then the page's language for the
+ *  file's words (P4-R7). */
+export function buildAuditRoundExportHref(locale: string, roundId: string, endpoint: AuditRoundExportEndpoint, filters: AuditRoundListHrefFilters): string {
+  const params = writeAuditRoundListParams(filters)
+  params.set("locale", locale)
+  return `/api/audit-rounds/${roundId}/${endpoint}?${params.toString()}`
 }
 
 /** The round's whole item list for a company, a branch or both (R13); no returnTo (R14). */

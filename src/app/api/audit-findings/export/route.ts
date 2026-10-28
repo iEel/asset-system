@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server"
+import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { auditFindingColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
+import { auditExportActionStatusKey, auditExportActionTaken, auditExportFindingTypeKey, auditExportReviewStatusKey, auditExportWord, resolveAuditExportLocale } from "@/lib/audit-export-labels"
 import { buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
 import { getAuditFindingTypeSearchLabels } from "@/lib/audit-finding-search-labels"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
@@ -13,6 +15,8 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
     requirePermission(user, "audit", "export")
+    const locale = resolveAuditExportLocale(request.nextUrl.searchParams.get("locale"))
+    const t = await getTranslations({ locale })
 
     const search = request.nextUrl.searchParams.get("search")?.trim()
     const roundId = request.nextUrl.searchParams.get("roundId")?.trim()
@@ -50,17 +54,17 @@ export async function GET(request: NextRequest) {
         auditName: finding.auditRound.name,
         assetTag: finding.asset?.assetTag ?? "",
         assetName: finding.asset?.name ?? "",
-        findingType: finding.findingType,
+        findingType: auditExportWord(t, auditExportFindingTypeKey(finding.findingType), finding.findingType),
         expectedValue: formatFindingValue(finding.findingType, finding.expectedValue, valueLabels),
         actualValue: formatFindingValue(finding.findingType, finding.actualValue, valueLabels),
-        reviewStatus: finding.reviewStatus,
-        actionStatus: finding.actionStatus,
-        actionOwner: finding.actionOwnerId ? (ownerLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "",
+        reviewStatus: auditExportWord(t, auditExportReviewStatusKey(finding.reviewStatus), finding.reviewStatus),
+        actionStatus: auditExportWord(t, auditExportActionStatusKey(finding.actionStatus), finding.actionStatus),
+        actionOwner: finding.actionOwnerId ? (ownerLabelById.get(finding.actionOwnerId) ?? "") : "",
         actionDueDate: finding.actionDueDate ?? "",
         actionPlan: finding.actionPlan ?? "",
         closedAt: finding.closedAt ?? "",
         reviewedAt: finding.reviewedAt ?? "",
-        actionTaken: finding.actionTaken ?? "",
+        actionTaken: auditExportActionTaken(t, finding.actionTaken),
         remark: finding.remark ?? "",
         reviewRemark: finding.reviewRemark ?? "",
       }))
