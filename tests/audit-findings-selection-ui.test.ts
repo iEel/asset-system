@@ -55,6 +55,17 @@ test("bugs 17-18: the runner over every ticked finding, one guard against a seco
   assert.doesNotMatch(source, /confirmConflict/, "a batch never confirms a conflict (spec §10)")
 })
 
+test("M-4: a batch whose provider unmounted before it finished (a tab, a filter or the pager clicked mid-run) stores no result, so coming back shows none (P4-R34)", () => {
+  const source = read(BATCH)
+  assert.match(source, /const mountedRef = useRef\(false\)/)
+  assert.match(source, /useEffect\(\(\) => \{\n\s+mountedRef\.current = true\n\s+return \(\) => \{\n\s+mountedRef\.current = false\n\s+\}\n\s+\}, \[\]\)/, "set on mount, cleared on unmount (and set again by a Strict Mode remount)")
+  assert.match(source, /const result = await runAuditFindingBatchReview\(ids, \{ action, reviewRemark \}, sendReview, setProgress\)\n(?:\s+\/\/ [^\n]*\n)*\s+if \(!mountedRef\.current\) return\n\s+setReport\(\{/, "checked before the result is stored; the finally still refreshes")
+  const context = source.slice(source.indexOf("type SelectionContextValue = {"), source.indexOf("const AuditFindingsSelectionContext"))
+  assert.doesNotMatch(context, /mounted/i, "the ref stays in the provider")
+  const value = source.slice(source.indexOf("const value: SelectionContextValue = {"), source.indexOf("return <AuditFindingsSelectionContext.Provider"))
+  assert.doesNotMatch(value, /mountedRef/, "never read during render")
+})
+
 test("the bar: the count, ล้าง, reject then approve N; progress then the result in Task 4's words; each failure with its reason and the panel link for a 409; the result takes focus once", () => {
   const source = read(BATCH)
   assert.match(source, /<DesktopSelectionBar\n\s+label=\{t\("selectionBarLabel"\)\}\n\s+countLabel=\{count > 0 \? t\("selectedCount", \{ count: countText \}\) : null\}\n\s+clearLabel=\{t\("clearSelection"\)\}\n\s+onClear=\{selection\.clear\}\n\s+clearDisabled=\{selection\.running !== null\}/)

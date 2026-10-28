@@ -130,6 +130,15 @@ export function AuditFindingsSelectionProvider({ filterKey, findings, children }
   const setReport = (next: BatchReport | null) => setStored(next ? { filterKey, report: next, focused: false } : null)
   // A second submit before the next render must not start a second run (spec: one decision per finding).
   const runningRef = useRef(false)
+  // M-4: a batch outlives its provider when a tab, a filter or the pager is clicked mid-run; its result must not land
+  // in the layout's store, or coming back to that filter would show it (P4-R34). Read only in run, never in render.
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
   const tickableIds = useMemo(() => findings.map((finding) => finding.id), [findings])
   const findingById = useMemo(() => new Map(findings.map((finding) => [finding.id, finding])), [findings])
   const selectedIds = useMemo(() => tickableIds.filter((id) => selected.has(id)), [tickableIds, selected])
@@ -170,6 +179,8 @@ export function AuditFindingsSelectionProvider({ filterKey, findings, children }
     setReport(null)
     try {
       const result = await runAuditFindingBatchReview(ids, { action, reviewRemark }, sendReview, setProgress)
+      // Left mid-run: drop the result (the finally still refreshes the page now shown).
+      if (!mountedRef.current) return
       setReport({
         succeeded: result.succeeded.length,
         failed: result.failed.flatMap((failure) => {
