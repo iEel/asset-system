@@ -2,6 +2,7 @@ import type { AssetOperationMode } from "./asset-operation-eligibility.ts"
 import {
   buildAssetOperationSearchHref,
   isAssetOperationSearchReady,
+  isAssetOperationSearchTooLong,
   type AssetOperationSearchAnswer,
   type AssetOperationSearchGroup,
   type AssetOperationSearchRow,
@@ -16,7 +17,7 @@ export const assetOperationNoHolderGroupKey = "none"
 
 export type AssetOperationPickerContext = { assignCustodian?: boolean; handedOverAssetId?: string | null }
 
-/** The URL to ask, or null while there is nothing to ask (no id and fewer than 2 characters). With an id, q is ignored. */
+/** The URL to ask, or null while there is nothing to ask (no id, and fewer than 2 or more than 100 characters). With an id, q is ignored. */
 export function buildAssetOperationSearchUrl(input: {
   mode: AssetOperationMode
   q?: string
@@ -24,7 +25,7 @@ export function buildAssetOperationSearchUrl(input: {
   context?: AssetOperationPickerContext
 }): string | null {
   const { mode, id, context } = input
-  if (!id && !isAssetOperationSearchReady(input.q ?? "")) return null
+  if (!id && (!isAssetOperationSearchReady(input.q ?? "") || isAssetOperationSearchTooLong(input.q ?? ""))) return null
   return buildAssetOperationSearchHref({
     mode,
     ...(id ? { id } : { q: (input.q ?? "").trim() }),

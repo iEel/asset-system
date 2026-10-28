@@ -123,6 +123,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}ui/scanner-text-input.tsx`]: [0, 1, 0],
   // Group 2 plan 4 Task 5: the shared confirm dialog passes its caller's required to its Textarea.
   [`${C}ui/confirm-text-dialog.tsx`]: [1, 0, 0],
+  // Server search final review M-6: the transaction asset picker caps its search text at 100 characters.
+  [`${C}ui/asset-operation-picker.tsx`]: [0, 1, 0],
 }
 
 // GF7 old label span, red star, legend and checkbox markup

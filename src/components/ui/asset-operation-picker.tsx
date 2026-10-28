@@ -22,7 +22,12 @@ import {
   type AssetOperationPickerContext,
   type AssetOperationPickerResult,
 } from "@/lib/asset-operation-picker-rules"
-import type { AssetOperationSearchAnswer, AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
+import {
+  assetOperationSearchMaxChars,
+  type AssetOperationSearchAnswer,
+  type AssetOperationSearchRow,
+} from "@/lib/asset-operation-search-rules"
+import { formatCount } from "@/lib/display-format"
 import { splitSearchHighlight } from "@/lib/search-highlight"
 import { cn, formatDate } from "@/lib/utils"
 
@@ -68,6 +73,9 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   const searchRef = useRef<HTMLInputElement>(null)
   const changeRef = useRef<HTMLButtonElement>(null)
   const focusRequest = useRef<"search" | "change" | null>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+  // Set by the arrow keys only, so a hover never scrolls the list (final review I-1).
+  const keyboardMove = useRef(false)
 
   const value = props.multiple ? null : props.value
   const values = props.multiple ? props.values : noRows
@@ -84,8 +92,8 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   const listOpen = open && state === "results"
   const countLine = getAssetOperationCountLine(answer ?? { total: 0, rows: noRows })
   const countText = countLine.more
-    ? t("resultCountMore", { count: countLine.count, shown: countLine.shown })
-    : tCommon("searchSelectResultCount", { count: countLine.count })
+    ? t("resultCountMore", { count: formatCount(countLine.count), shown: formatCount(countLine.shown) })
+    : tCommon("searchSelectResultCount", { count: formatCount(countLine.count) })
   const chosenBlockedReason = value && !value.eligible ? value.reasonKey : null
   const shownError = error ?? (chosenBlockedReason ? tAll(chosenBlockedReason) : null)
   const errorId = shownError ? `${id}-error` : undefined
@@ -122,6 +130,14 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
     if (request === "change") changeRef.current?.focus()
     else searchRef.current?.focus()
   }, [value, values])
+
+  // aria-activedescendant keeps focus in the input, so the browser never scrolls the list: bring the row the arrows reach
+  // into view (final review I-1).
+  useEffect(() => {
+    if (!keyboardMove.current || activeId === null) return
+    keyboardMove.current = false
+    listRef.current?.querySelector(`[data-asset-option="${activeId}"]`)?.scrollIntoView({ block: "nearest" })
+  }, [activeId])
 
   function retry() {
     setResult(null)
@@ -178,7 +194,10 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
         return
       }
       const next = moveAssetOperationActive(selectableRows, activeIndex, event.key === "ArrowDown" ? 1 : -1)
-      if (next >= 0) setActiveId(flatRows[next].id)
+      if (next >= 0) {
+        keyboardMove.current = true
+        setActiveId(flatRows[next].id)
+      }
       return
     }
     if (event.key === "Enter") {
@@ -227,7 +246,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
           <RowDetail row={row} />
         </span>
         {note ? (
-          <span data-asset-option-reason className="text-meta text-warning">
+          <span data-asset-option-reason className={cn("text-meta", note.kind === "chosen" ? "text-muted-foreground" : "text-warning")}>
             {note.kind === "chosen" ? t("chosen") : tAll(note.key)}
           </span>
         ) : null}
@@ -292,6 +311,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
             aria-required={required || undefined}
             aria-invalid={shownError ? true : undefined}
             autoComplete="off"
+            maxLength={assetOperationSearchMaxChars}
             className="pl-9"
           />
         </div>
@@ -313,7 +333,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
             </div>
           ) : (
             <>
-              <ul role="listbox" id={listboxId} aria-labelledby={labelId} className="max-h-80 overflow-y-auto">
+              <ul role="listbox" ref={listRef} id={listboxId} aria-labelledby={labelId} className="max-h-80 overflow-y-auto">
                 {sections.map((section, sectionIndex) =>
                   section.group ? (
                     <li key={section.group.key} role="presentation" data-asset-option-group={section.group.key}>

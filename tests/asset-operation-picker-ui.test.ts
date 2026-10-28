@@ -70,12 +70,36 @@ test("every word comes from messages: the states, the count, reasons through the
   for (const part of [
     'useTranslations("assetOperation")', 'useTranslations("common")', "const tAll = useTranslations()",
     't("searching")', 't("notFound")', 't("failed")', 'tCommon("tryAgain")', 'tCommon("searchSelectPlaceholder")',
-    'tCommon("searchSelectResultCount", { count: countLine.count })', 't("resultCountMore", { count: countLine.count, shown: countLine.shown })',
+    'tCommon("searchSelectResultCount", { count: formatCount(countLine.count) })',
+    't("resultCountMore", { count: formatCount(countLine.count), shown: formatCount(countLine.shown) })',
     't("chosen")', 't("noHolderGroup")', 't("legacyLine")', 't("selectedTitle", { count: values.length })', 't("change")',
     't(mode === "checkin" ? "hintCheckin" : "hint")', "tAll(note.key)",
   ]) assert.ok(source.includes(part), part)
   assert.match(source, /t\("handoverLine", \{ documentNo: detail\.documentNo, date: formatDate\(detail\.checkoutDate\) \}\)/)
   assert.match(source, /t\("groupCount", \{ count: section\.group\.count \}\)/)
+})
+
+test("final review I-1: a keyboard move scrolls the active row into view through the listbox ref, never through document; a hover does not", () => {
+  const source = read(PART)
+  assert.match(source, /const listRef = useRef<HTMLUListElement>\(null\)/)
+  assert.match(source, /<ul role="listbox" ref=\{listRef\}/)
+  assert.match(source, /const keyboardMove = useRef\(false\)/)
+  assert.match(source, /if \(next >= 0\) \{\s+keyboardMove\.current = true\s+setActiveId\(flatRows\[next\]\.id\)/)
+  assert.match(
+    source,
+    /useEffect\(\(\) => \{\s+if \(!keyboardMove\.current \|\| activeId === null\) return\s+keyboardMove\.current = false\s+listRef\.current\?\.querySelector\(`\[data-asset-option="\$\{activeId\}"\]`\)\?\.scrollIntoView\(\{ block: "nearest" \}\)\s+\}, \[activeId\]\)/,
+  )
+  assert.doesNotMatch(source, /\bdocument\./)
+  assert.doesNotMatch(source.replace(/window\.(?:setTimeout|clearTimeout)\(/g, ""), /\bwindow\./)
+})
+
+test("final review M-1, M-11, M-6: the counts are grouped, เลือกแล้ว is muted while a reason stays a warning, the search text is capped", () => {
+  const source = read(PART)
+  assert.ok(source.includes('import { formatCount } from "@/lib/display-format"'))
+  assert.ok(source.includes('className={cn("text-meta", note.kind === "chosen" ? "text-muted-foreground" : "text-warning")}'))
+  assert.doesNotMatch(source, /data-asset-option-reason className="text-meta text-warning"/)
+  assert.ok(source.includes("maxLength={assetOperationSearchMaxChars}"))
+  assert.match(source, /import \{[^}]*\bassetOperationSearchMaxChars\b[^}]*\} from "@\/lib\/asset-operation-search-rules"/)
 })
 
 test("tokens only (N1, R1, N4, LT5) and the shared parts only (N3, GF2, GB1): no opacity, tint, dark: or color value; no raw button, input or spinner; no popover; no global listener", () => {

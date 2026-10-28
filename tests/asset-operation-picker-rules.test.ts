@@ -39,6 +39,10 @@ test("the search URL: the trimmed text, or the id with no 2-character rule, then
   assert.equal(buildAssetOperationSearchUrl({ mode: "checkoutParent", q: "NB", context: { handedOverAssetId: "a9" } }), `${BASE}mode=checkoutParent&q=NB&handedOverAssetId=a9`)
   assert.equal(buildAssetOperationSearchUrl({ mode: "checkoutParent", q: "NB", context: { handedOverAssetId: null } }), `${BASE}mode=checkoutParent&q=NB`)
   assert.equal(buildAssetOperationSearchUrl({ mode: "bulkMove", q: "NB" }), `${BASE}mode=bulkMove&q=NB`)
+  // final review M-6: no URL for a text longer than the route takes
+  assert.equal(buildAssetOperationSearchUrl({ mode: "checkout", q: "a".repeat(100) }), `${BASE}mode=checkout&q=${"a".repeat(100)}`)
+  assert.equal(buildAssetOperationSearchUrl({ mode: "checkout", q: "a".repeat(101) }), null)
+  assert.equal(buildAssetOperationSearchUrl({ mode: "checkin", id: "a1", q: "a".repeat(101) }), `${BASE}mode=checkin&id=a1`)
 })
 
 test("the state: the hint under 2 characters, searching until the answer for this very text, then failed, nothing found or rows (spec 6.1, Review Focus 3 and 5)", () => {

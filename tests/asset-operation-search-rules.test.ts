@@ -9,7 +9,7 @@ import {
   type AssetOperationFacts, type AssetOperationVerdict,
 } from "../src/lib/asset-operation-eligibility.ts"
 import {
-  assetOperationSearchLimit, assetOperationSearchMinChars, assetOperationTextConditions, buildAssetOperationByIdWhere,
+  assetOperationSearchLimit, assetOperationSearchMaxChars, assetOperationSearchMinChars, assetOperationTextConditions, buildAssetOperationByIdWhere,
   buildAssetOperationSearchHref, buildAssetOperationSearchRow, buildAssetOperationSearchWheres, getAssetOperationSearchVerdict,
   getCheckinHolder, groupAssetOperationCheckinRows, isAssetOperationSearchReady, parseAssetOperationSearch, rankAssetOperationMatches,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
@@ -53,6 +53,15 @@ test("the query: a mode, the trimmed text of 2 or more characters or an id; anyt
   assert.equal(input("mode=checkoutParent&q=ab&handedOverAssetId=asset-9").handedOverAssetId, "asset-9")
   assert.equal(input("mode=checkout&q=ab&handedOverAssetId=asset-9").handedOverAssetId, null)   // only ทรัพย์สินอื่น leaves an asset out
   for (const mode of ["checkout", "checkoutParent", "checkin", "transfer", "bulkMove"]) assert.equal(input(`mode=${mode}&q=ab`).mode, mode)
+})
+
+test("final review M-6: the search text is capped at 100 characters, counted as code points", () => {
+  assert.equal(assetOperationSearchMaxChars, 100)
+  assert.equal(input(`mode=checkout&q=${"a".repeat(100)}`).q, "a".repeat(100))
+  assert.equal(input(`mode=checkout&q=${encodeURIComponent(` ${"ก".repeat(100)} `)}`).q, "ก".repeat(100))
+  assert.equal(input(`mode=checkout&q=${encodeURIComponent("😀".repeat(100))}`).q, "😀".repeat(100))   // 200 UTF-16 units, 100 code points
+  assert.deepEqual(parseAssetOperationSearch(new URLSearchParams(`mode=checkout&q=${"a".repeat(101)}`)), { error: "Invalid search" })
+  assert.deepEqual(parseAssetOperationSearch(new URLSearchParams(`mode=checkout&q=${encodeURIComponent("ก".repeat(101))}`)), { error: "Invalid search" })
 })
 
 test("the picker's href and the route's parse read the same names", () => {

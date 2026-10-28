@@ -18,12 +18,19 @@ import { normalizeAssetOwnershipType } from "./asset-ownership.ts"
 // The verdicts are Task 1's (asset-operation-eligibility.ts), so the picker, the asset page and the save routes agree.
 
 export const assetOperationSearchMinChars = 2
+/** The longest text the search takes, counted as code points (final review M-6); bounds the LIKE work. */
+export const assetOperationSearchMaxChars = 100
 export const assetOperationSearchLimit = 20
 export const assetOperationSearchPath = "/api/asset-operations/search"
 
 /** At least 2 characters after trimming, counted as code points (as isAuditSearchReady). */
 export function isAssetOperationSearchReady(text: string): boolean {
   return Array.from(text.trim()).length >= assetOperationSearchMinChars
+}
+
+/** Longer than assetOperationSearchMaxChars after trimming, counted as code points. */
+export function isAssetOperationSearchTooLong(text: string): boolean {
+  return Array.from(text.trim()).length > assetOperationSearchMaxChars
 }
 
 export type AssetOperationSearchInput = {
@@ -46,6 +53,7 @@ export function parseAssetOperationSearch(params: URLSearchParams): AssetOperati
   const id = params.get("id")?.trim() || null
   const q = params.get("q")?.trim() ?? ""
   if (!id && !isAssetOperationSearchReady(q)) return { ...invalidSearch }
+  if (isAssetOperationSearchTooLong(q)) return { ...invalidSearch }
   return {
     mode,
     q,
