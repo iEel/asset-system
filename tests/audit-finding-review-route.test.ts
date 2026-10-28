@@ -268,3 +268,13 @@ test("only a deadlock is retried: already decided inside the transaction runs on
   assert.equal(callsTo("$transaction").length, 3)
   assert.deepEqual(writes(), [])
 })
+
+test("each decision's item-state read names the finding's item and asset (I-1b)", async () => {
+  for (const overrides of [{}, { findingType: "not_found", actualValue: null }, { findingType: "out_of_scope" }, { findingType: "wrong_colour" }]) {
+    state.finding = finding(overrides)
+    state.pending = true
+    state.calls = []
+    assert.equal((await post({ action: "approve" })).status, 200, JSON.stringify(overrides))
+    assert.deepEqual(callsTo("auditFinding.findMany").map((args) => args.where), [{ auditItemId: "item-1", assetId: "asset-1" }], JSON.stringify(overrides))
+  }
+})

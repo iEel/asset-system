@@ -169,7 +169,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
               actionTaken: "out_of_scope_confirmed_no_master_update",
             },
           })
-          await updateAuditItemReviewState(tx, finding.auditItemId)
+          await updateAuditItemReviewState(tx, finding)
           return reviewed
         }
 
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
               actionTaken: "not_found_confirmed_no_master_update",
             },
           })
-          await updateAuditItemReviewState(tx, finding.auditItemId)
+          await updateAuditItemReviewState(tx, finding)
           return reviewed
         }
 
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
               actionTaken: "manual_review_required",
             },
           })
-          await updateAuditItemReviewState(tx, finding.auditItemId)
+          await updateAuditItemReviewState(tx, finding)
           return reviewed
         }
 
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
           actionTaken: input.action === "approve" ? "master_asset_updated" : "finding_rejected",
         },
       })
-      await updateAuditItemReviewState(tx, finding.auditItemId)
+      await updateAuditItemReviewState(tx, finding)
       return reviewed
     }))
 

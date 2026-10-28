@@ -24,14 +24,22 @@ export function auditItemReviewState(
   return { auditStatus: "reviewed", reconcileStatus: "rejected" }
 }
 
-/** Reads the item's findings and writes its review state (the review route, after each decision). */
-export async function updateAuditItemReviewState(tx: Prisma.TransactionClient, auditItemId: string) {
+/**
+ * Reads the item's findings and writes its review state (the review route, after each decision). `audit_findings` has
+ * no index on `auditItemId`, so the read also names the asset: every creator copies the item's asset onto the finding
+ * (final review I-1b), so the set is the same, and the read seeks `IX_audit_findings_assetId` instead of scanning the
+ * table under the review's claim lock. A finding without an asset reads by its item alone.
+ */
+export async function updateAuditItemReviewState(
+  tx: Prisma.TransactionClient,
+  finding: { auditItemId: string; assetId: string | null }
+) {
   const findings = await tx.auditFinding.findMany({
-    where: { auditItemId },
+    where: finding.assetId ? { auditItemId: finding.auditItemId, assetId: finding.assetId } : { auditItemId: finding.auditItemId },
     select: { findingType: true, reviewStatus: true },
   })
   await tx.auditItem.update({
-    where: { id: auditItemId },
+    where: { id: finding.auditItemId },
     data: auditItemReviewState(findings),
   })
 }
