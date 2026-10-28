@@ -109,8 +109,16 @@ test("a transaction refusal reads the picker's words for the same rule (server-s
   assert.deepEqual(Object.fromEntries(Object.keys(assetOperationRefusalReasonKeys).map((code) => [code, getApiErrorKey(code)])), {
     ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED: "componentCheckoutNotAllowed", ASSET_LICENSE_CHECKOUT_NOT_ALLOWED: "licenseCheckoutNotAllowed",
     ASSET_COMPONENT_CHECKIN_NOT_ALLOWED: "componentCheckinNotAllowed", ASSET_LICENSE_CHECKIN_NOT_ALLOWED: "licenseCheckinNotAllowed",
-    ASSET_LICENSE_MOVE_NOT_ALLOWED: "licenseMoveNotAllowed", ASSET_CHECKIN_REPAIR_OPEN: "checkinRepairOpen",
+    ASSET_LICENSE_MOVE_NOT_ALLOWED: "licenseMoveNotAllowed",
   })
+  // S-R43: an open repair no longer refuses a return; another next status than ส่งซ่อม is refused under that field.
+  assert.equal(getApiErrorKey("ASSET_CHECKIN_REPAIR_OPEN"), null)
+  assert.equal(getApiErrorKey("ASSET_CHECKIN_REPAIR_STATUS_REQUIRED"), "checkinRepairStatusRequired")
+  const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors
+  assert.deepEqual([words("th").checkinRepairStatusRequired, words("en").checkinRepairStatusRequired], [
+    "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม", "This asset has an open repair. Choose Send to repair as the next status.",
+  ])
+  for (const locale of ["th", "en"] as const) assert.equal(words(locale).checkinRepairOpen, undefined, locale)
   // The destination refusal has one word of its own (S-R39), not a picker reason.
   assert.equal(getApiErrorKey("ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED"), "checkoutDestinationNotAllowed")
   for (const locale of ["th", "en"] as const) {

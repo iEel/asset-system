@@ -1940,7 +1940,8 @@
     "legacyReturnCount": "{count} legacy items (no handover document). Find them by asset tag or holder's name.",
     "legacyReturnConfirmTitle": "Create a backdated handover, then return it",
     "legacyReturnConfirmDescription": "{asset} is with {holder} but has no handover document. The system creates a backdated handover with its change history, then continues on this return form.",
-    "legacyReturnConfirm": "Create and return"
+    "legacyReturnConfirm": "Create and return",
+    "openRepairReturnNotice": "This asset has an open repair. After the return it goes to Send to repair under that repair; no new repair record is created."
   },
   "transfer": {
     "title": "Transfer Asset",
@@ -4708,8 +4709,8 @@
     "componentCheckinNotAllowed": "A component is returned with its parent asset",
     "licenseCheckinNotAllowed": "A License is assigned on the asset page and cannot be returned",
     "licenseMoveNotAllowed": "A License is assigned on the asset page and cannot be moved",
-    "checkinRepairOpen": "Close or cancel the active repair ticket before returning this asset.",
-    "checkoutDestinationNotAllowed": "This asset cannot be the destination. Choose another one."
+    "checkoutDestinationNotAllowed": "This asset cannot be the destination. Choose another one.",
+    "checkinRepairStatusRequired": "This asset has an open repair. Choose Send to repair as the next status."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

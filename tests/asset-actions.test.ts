@@ -66,7 +66,7 @@ test("the primary is the first rule that applies (group 1 spec §7.1, rules 1-7)
   // 4. Pending Repair or Under Maintenance with an open repair record: the record.
   for (const statusName of ["Pending Repair", "Under Maintenance"]) {
     assert.deepEqual(brief(actions({ statusName, openRepairId: "r-1" }).primary), ["viewRepair", "asset.actionViewRepair", true, null], statusName)
-    // A loan that went to repair: the return waits for the repair, so the record comes first.
+    // A loan that went to repair: its status no longer fits the handover's return, so the record comes first.
     assert.deepEqual(brief(actions({ statusName, custodianId: "e-1", openCheckoutId: "co-1", openCheckoutHandoverMode: "temporary_loan", openRepairId: "r-1" }).primary), ["viewRepair", "asset.actionViewRepair", true, null], statusName)
   }
   // 5. Pending Repair without a record: บันทึกซ่อม.
@@ -90,12 +90,12 @@ test("the transactions are the ownership type's others: available first, then un
     ["checkout", "asset.rowActionCheckout", false, "asset.transactionReasonStatusNotReady"],
     ["transfer", "asset.rowActionTransfer", false, "asset.transactionReasonOpenCheckout"],
   ])
-  // A loan that went to repair cannot be returned until the repair closes; the record is the next step.
+  // A loan whose status went to Pending Repair no longer fits its handover's return; the record is the next step.
   const repair = actions({ statusName: "Pending Repair", custodianId: "e-1", openCheckoutId: "co-1", openCheckoutHandoverMode: "temporary_loan", openRepairId: "r-1" })
   assert.equal(repair.primary?.key, "viewRepair")
   assert.deepEqual(repair.transactions.map(brief), [
     ["checkout", "asset.rowActionCheckout", false, "asset.transactionReasonStatusNotReady"],
-    ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonActiveMaintenance"],
+    ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonHandoverStatusMismatch"],
     ["transfer", "asset.rowActionTransfer", false, "asset.transactionReasonStatusNotTransferable"],
   ])
   assert.deepEqual(brief(actions({ statusName: "Lost", custodianId: "e-1" }).transactions.find((action) => action.key === "checkin")), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonStatusNotReturnable"])
@@ -128,8 +128,19 @@ test("an open handover the return cannot take says why in the picker's words (se
   const checkin = (overrides: Partial<AssetActionInput>) => brief(all(overrides).find((action) => action.key === "checkin"))
   assert.deepEqual(checkin({ statusName: "In Use", custodianId: "e-1", openCheckoutId: "co-1", openCheckoutHandoverMode: null }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonHandoverModeMissing"])
   assert.deepEqual(checkin({ statusName: "Pending Repair", openCheckoutId: "co-1", openCheckoutHandoverMode: "temporary_loan" }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonHandoverStatusMismatch"])
-  // An open repair still comes first (as :98).
-  assert.deepEqual(checkin({ statusName: "Pending Repair", openCheckoutId: "co-1", openCheckoutHandoverMode: "temporary_loan", openRepairId: "r-1" }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonActiveMaintenance"])
+  // S-R43: an open repair no longer refuses the return of an open handover; the status rule still applies (as :98).
+  assert.deepEqual(checkin({ statusName: "Pending Repair", openCheckoutId: "co-1", openCheckoutHandoverMode: "temporary_loan", openRepairId: "r-1" }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonHandoverStatusMismatch"])
+  // A ข้อมูลเก่า holder with an open repair keeps the repair refusal (the backfill route refuses it).
+  assert.deepEqual(checkin({ statusName: "In Use", custodianId: "e-1", openRepairId: "r-1" }), ["checkin", "asset.rowActionCheckin", false, "asset.transactionReasonActiveMaintenance"])
+})
+
+test("รับคืน is offered for an open handover with an open repair, and opens that handover (S-R43, the user's choice ก 2026-10-29)", () => {
+  const rt = `returnTo=${encodeURIComponent(base.returnTo)}`
+  for (const [statusName, mode] of [["Checked Out", "temporary_loan"], ["In Use", "permanent_assignment"]] as const) {
+    const set = actions({ statusName, custodianId: "e-1", openCheckoutId: "co-1", openCheckoutHandoverMode: mode, openRepairId: "r-1" })
+    assert.deepEqual(brief(set.primary), ["checkin", "asset.rowActionCheckin", true, null], statusName)
+    assert.equal(set.primary?.href, `/th/asset-management/checkin?checkoutId=co-1&${rt}`, statusName)
+  }
 })
 
 test("a transfer is offered exactly when the transfer API accepts it (group 1 spec §7.1 \"Transfers follow the API exactly\")", () => {
@@ -166,7 +177,8 @@ test("a checkout and a return are offered exactly when their APIs accept them", 
             assert.equal(checkout.enabled, getAssetLifecycleTransitionError("checkout", statusName) === null && openCheckoutId === null, where)
             if (getAssetLifecycleTransitionError("checkout", statusName) === null && openCheckoutId) assert.equal(checkout.reasonKey, "asset.transactionReasonOpenCheckoutHandover", where)
             // api/assets/[id]/checkin against the open checkout, or api/assets/[id]/legacy-checkout.
-            const returnAccepted = (openCheckoutId !== null && getCheckinHandoverStatusError(mode, statusName) === null && openRepairId === null)
+            // S-R43: the handover's return takes an open repair (it goes into ส่งซ่อม); the legacy backfill still refuses one.
+            const returnAccepted = (openCheckoutId !== null && getCheckinHandoverStatusError(mode, statusName) === null)
               || isLegacyReturnEligible({ statusName, custodianId, hasOpenCheckout: openCheckoutId !== null, hasActiveMaintenance: openRepairId !== null })
             assert.equal(checkin.enabled, returnAccepted, where)
           }

@@ -75,7 +75,7 @@ test("a text search: three reads of 20 by tag and one count; 20 rows, the exact 
   assert.equal(calls.some((call) => call.call === "department.findMany" || call.call === "location.findMany"), false)
 })
 
-test("an open handover or an open repair reaches the verdict: listed, not takeable, with the asset page's reason (spec 6.3)", async () => {
+test("an open handover or an open repair reaches the row: the handover listed, not takeable, with the asset page's reason; the repair flagged on รับคืน (spec 6.3, S-R43)", async () => {
   const handedOver = fakeDb({ contains: [asset("SNI-EQU-25-0228", { id: "asset-1" })], total: 1, checkouts: [checkout({ assetId: "asset-1" })] })
   const [row] = (await searchAssetOperationOptions(handedOver.db, input("mode=checkout&q=0228"))).rows
   assert.deepEqual([row.eligible, row.reasonKey], [false, "asset.transactionReasonOpenCheckoutHandover"])
@@ -84,7 +84,8 @@ test("an open handover or an open repair reaches the verdict: listed, not takeab
     checkouts: [checkout({ assetId: "asset-2" })], repairAssetIds: ["asset-2"],
   })
   const [returning] = (await searchAssetOperationOptions(repaired.db, input("mode=checkin&q=0228"))).rows
-  assert.deepEqual([returning.eligible, returning.reasonKey, returning.checkout?.documentNo], [false, "asset.transactionReasonActiveMaintenance", "HO-2026-0151"])
+  // S-R43: the handover's return takes the open repair, and the row says so for the form's ส่งซ่อม.
+  assert.deepEqual([returning.eligible, returning.reasonKey, returning.checkout?.documentNo, returning.openRepair], [true, null, "HO-2026-0151", true])
 })
 
 test("by id: one read of one active asset, no count, the same verdict (spec 6.4, S-R5)", async () => {

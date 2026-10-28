@@ -82,9 +82,10 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       }
     }
 
-    // An open repair blocks the return, as on the asset page and in the picker (server-search spec 6.5).
-    if (await prisma.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0) {
-      return NextResponse.json({ code: "ASSET_CHECKIN_REPAIR_OPEN", error: "ASSET_CHECKIN_REPAIR_OPEN" }, { status: 409 })
+    // An open repair takes the return into ส่งซ่อม under that repair, so another next status is refused (S-R43, the
+    // user's choice ก 2026-10-29); the repair record below is not created a second time (openRecords === 0).
+    if (!sendsToRepair && await prisma.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0) {
+      return repairStatusRequiredResponse()
     }
 
     const { record: checkin, componentSync } = await prisma.$transaction(async (tx) => {
@@ -106,7 +107,9 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         },
       })
       if (!activeCheckout) throw new Error("Active checkout not found")
-      if (await tx.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0) throw new Error("ASSET_CHECKIN_REPAIR_OPEN")
+      if (!sendsToRepair && await tx.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } }) > 0) {
+        throw new Error("ASSET_CHECKIN_REPAIR_STATUS_REQUIRED")
+      }
       const handoverStatusError = getCheckinHandoverStatusError(
         activeCheckout.handoverMode,
         activeCheckout.asset.status.name,
@@ -304,14 +307,26 @@ export async function POST(request: NextRequest, context: CheckinContext) {
 
     return NextResponse.json(checkin, { status: 201 })
   } catch (error) {
+    if (error instanceof Error && error.message === "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED") return repairStatusRequiredResponse()
     if (
       error instanceof Error
-      && ["ASSET_HANDOVER_MODE_MISSING", "ASSET_HANDOVER_STATUS_MISMATCH", "ASSET_CHECKIN_REPAIR_OPEN"].includes(error.message)
+      && ["ASSET_HANDOVER_MODE_MISSING", "ASSET_HANDOVER_STATUS_MISMATCH"].includes(error.message)
     ) {
       return NextResponse.json({ code: error.message, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)
   }
+}
+
+function repairStatusRequiredResponse() {
+  return NextResponse.json(
+    {
+      code: "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED",
+      error: "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED",
+      fieldErrors: { nextStatusId: "checkinRepairStatusRequired" },
+    },
+    { status: 409 },
+  )
 }
 
 async function parseCheckinRequest(request: NextRequest) {

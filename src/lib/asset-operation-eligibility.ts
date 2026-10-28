@@ -30,7 +30,7 @@ export type AssetOperationOwnershipRefusalCode =
   | "ASSET_COMPONENT_CHECKIN_NOT_ALLOWED"
   | "ASSET_LICENSE_CHECKIN_NOT_ALLOWED"
   | "ASSET_LICENSE_MOVE_NOT_ALLOWED"
-export type AssetOperationRefusalCode = AssetOperationOwnershipRefusalCode | "ASSET_CHECKIN_REPAIR_OPEN"
+export type AssetOperationRefusalCode = AssetOperationOwnershipRefusalCode
 
 // Each refusal code's words, defined only here.
 export const assetOperationRefusalReasonKeys: Readonly<Record<AssetOperationRefusalCode, string>> = {
@@ -39,7 +39,6 @@ export const assetOperationRefusalReasonKeys: Readonly<Record<AssetOperationRefu
   ASSET_COMPONENT_CHECKIN_NOT_ALLOWED: "asset.transactionReasonComponentCheckin",
   ASSET_LICENSE_CHECKIN_NOT_ALLOWED: "asset.transactionReasonLicenseCheckin",
   ASSET_LICENSE_MOVE_NOT_ALLOWED: "asset.transactionReasonLicenseMove",
-  ASSET_CHECKIN_REPAIR_OPEN: "asset.transactionReasonActiveMaintenance",
 }
 
 const ownershipRefusals: Record<AssetOperationOwnershipOperation, Partial<Record<AssetOwnershipType, AssetOperationOwnershipRefusalCode>>> = {
@@ -83,11 +82,12 @@ export function getCheckoutParentVerdict(
   return getCheckoutVerdict(facts)
 }
 
-// api/assets/[id]/checkin against the open handover (any ownership, S-R2), or api/assets/[id]/legacy-checkout.
+// api/assets/[id]/checkin against the open handover (any ownership, S-R2), or api/assets/[id]/legacy-checkout. An open
+// repair does not refuse the handover's return: the return goes into ส่งซ่อม under that repair (S-R43). The legacy
+// backfill still refuses one.
 export function getCheckinVerdict(facts: AssetOperationFacts): AssetCheckinVerdict {
   if (facts.openCheckout) {
     const path = "handover"
-    if (facts.hasOpenRepair) return { ...no(assetOperationRefusalReasonKeys.ASSET_CHECKIN_REPAIR_OPEN), path }
     const error = getCheckinHandoverStatusError(facts.openCheckout.handoverMode, facts.statusName)
     if (error === "ASSET_HANDOVER_MODE_MISSING") return { ...no("asset.transactionReasonHandoverModeMissing"), path }
     if (error === "ASSET_HANDOVER_STATUS_MISMATCH") return { ...no("asset.transactionReasonHandoverStatusMismatch"), path }
@@ -97,7 +97,7 @@ export function getCheckinVerdict(facts: AssetOperationFacts): AssetCheckinVerdi
   const path = facts.custodianId ? "legacy" : null
   const refused = ownershipRefusal("legacyCheckin", facts.ownership)
   if (refused) return { ...refused, path }
-  if (facts.hasOpenRepair) return { ...no(assetOperationRefusalReasonKeys.ASSET_CHECKIN_REPAIR_OPEN), path }
+  if (facts.hasOpenRepair) return { ...no("asset.transactionReasonActiveMaintenance"), path }
   if (!facts.custodianId) return { ...no("asset.transactionReasonNoReturnRecord"), path }
   // The repair and the holder have passed, so this only checks the status.
   if (!isLegacyReturnEligible({ statusName: facts.statusName, custodianId: facts.custodianId, hasOpenCheckout: false, hasActiveMaintenance: false })) {

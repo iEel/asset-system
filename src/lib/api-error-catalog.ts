@@ -27,7 +27,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Asset tag format template must include {running} and only use supported tokens": "assetTagTemplateInvalid",
   "ASSET_ACTIVE_CHECKOUT_EXISTS": "assetActiveCheckoutExists",
   "ASSET_CHANGED_DURING_OPERATION": "assetChangedDuringOperation",
-  "ASSET_CHECKIN_REPAIR_OPEN": "checkinRepairOpen",
+  "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED": "checkinRepairStatusRequired",
   "ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED": "checkoutDestinationNotAllowed",
   "ASSET_COMPONENT_CHECKIN_NOT_ALLOWED": "componentCheckinNotAllowed",
   "ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED": "componentCheckoutNotAllowed",

@@ -1940,7 +1940,8 @@
     "legacyReturnCount": "ข้อมูลเก่า (ไม่มีใบส่งมอบ) {count} รายการ ค้นหาได้ด้วยรหัสทรัพย์สินหรือชื่อผู้ถือครอง",
     "legacyReturnConfirmTitle": "สร้างใบส่งมอบย้อนหลังแล้วรับคืน",
     "legacyReturnConfirmDescription": "{asset} อยู่กับ {holder} แต่ไม่มีใบส่งมอบ ระบบจะสร้างใบส่งมอบย้อนหลังพร้อมประวัติการแก้ไข แล้วไปต่อที่ฟอร์มรับคืนนี้",
-    "legacyReturnConfirm": "สร้างและรับคืน"
+    "legacyReturnConfirm": "สร้างและรับคืน",
+    "openRepairReturnNotice": "มีงานซ่อมที่ยังไม่ปิดอยู่ หลังรับคืนทรัพย์สินจะเข้าสถานะ ส่งซ่อม ต่อกับงานซ่อมเดิม ไม่สร้างใบซ่อมใหม่"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",
@@ -4708,8 +4709,8 @@
     "componentCheckinNotAllowed": "ส่วนควบรับคืนพร้อมเครื่องหลัก",
     "licenseCheckinNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
     "licenseMoveNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
-    "checkinRepairOpen": "มีงานซ่อมที่ยังไม่ปิด กรุณาปิดหรือยกเลิกงานซ่อมก่อน",
-    "checkoutDestinationNotAllowed": "เลือกทรัพย์สินนี้เป็นปลายทางไม่ได้ เลือกปลายทางอื่น"
+    "checkoutDestinationNotAllowed": "เลือกทรัพย์สินนี้เป็นปลายทางไม่ได้ เลือกปลายทางอื่น",
+    "checkinRepairStatusRequired": "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

@@ -159,6 +159,16 @@ test("รับคืน rows: the open handover with the panel's fields, ข้
     [false, "none", null, null, false, "asset.transactionReasonNoReturnRecord"])
 })
 
+test("รับคืน: a row whose asset has an open repair says so, and the return form sends it to ส่งซ่อม (S-R43)", () => {
+  const repairing = { ...ctx(handover), hasOpenRepair: true }
+  const row = buildAssetOperationSearchRow(input("mode=checkin&q=สมชาย"), held, repairing)
+  assert.deepEqual([row.openRepair, row.eligible, row.reasonKey, row.checkout?.id], [true, true, null, "co-1"])
+  assert.equal("openRepair" in buildAssetOperationSearchRow(input("mode=checkin&q=สมชาย"), held, ctx(handover)), false)
+  for (const mode of ["checkout", "checkoutParent", "transfer", "bulkMove"]) {
+    assert.equal("openRepair" in buildAssetOperationSearchRow(input(`mode=${mode}&q=0228`), held, repairing), false, mode)
+  }
+})
+
 test("a handover to a department, a location or another asset groups under that destination; an unreadable label is '-' (S-R4)", () => {
   const labels = { departments: new Map([["dep-1", "IT - ฝ่ายไอที"]]), locations: new Map([["loc-9", "WH - คลัง IT"]]), assets: new Map([["asset-p", "SNI-COM-23-0001 - คอมพิวเตอร์ตั้งโต๊ะ HP"]]) }
   const to = (overrides: Partial<AssetOperationSearchCheckoutRecord>) => ({ ...handover, custodianId: null, custodian: null, ...overrides })

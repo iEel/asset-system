@@ -38,7 +38,6 @@ test("ownership comes first: what a ส่วนควบ and a License never ta
     ASSET_COMPONENT_CHECKIN_NOT_ALLOWED: "asset.transactionReasonComponentCheckin",
     ASSET_LICENSE_CHECKIN_NOT_ALLOWED: "asset.transactionReasonLicenseCheckin",
     ASSET_LICENSE_MOVE_NOT_ALLOWED: "asset.transactionReasonLicenseMove",
-    ASSET_CHECKIN_REPAIR_OPEN: "asset.transactionReasonActiveMaintenance",
   })
 })
 
@@ -61,13 +60,16 @@ test("ทรัพย์สินอื่น as the destination: what ส่ง
   assert.deepEqual(getCheckoutParentVerdict(facts({ ownership: "component" }), { handedOverAssetId: "a-1", assetId: "a-2" }), no("asset.transactionReasonComponentCheckout"))
 })
 
-test("รับคืน: an open handover of any ownership is returnable when its custody type is set, the status fits and no repair is open (spec 6.3, S-R2)", () => {
+test("รับคืน: an open handover of any ownership is returnable when its custody type is set and the status fits, an open repair included (spec 6.3, S-R2, S-R43)", () => {
   const back = (overrides: Partial<AssetOperationFacts>) => getCheckinVerdict(facts(overrides))
   for (const ownership of owners) {
     assert.deepEqual(back({ ownership, statusName: "Checked Out", custodianId: "e-1", openCheckout: handover("temporary_loan") }), { ...yes, path: "handover" }, ownership)
     assert.deepEqual(back({ ownership, statusName: "In Use", custodianId: "e-1", openCheckout: handover("permanent_assignment") }), { ...yes, path: "handover" }, ownership)
   }
-  assert.deepEqual(back({ statusName: "Pending Repair", openCheckout: handover("temporary_loan"), hasOpenRepair: true }), { ...no("asset.transactionReasonActiveMaintenance"), path: "handover" }, "the repair first")
+  // S-R43: an open repair no longer refuses the return; the return goes into ส่งซ่อม under that repair.
+  assert.deepEqual(back({ statusName: "Checked Out", openCheckout: handover("temporary_loan"), hasOpenRepair: true }), { ...yes, path: "handover" }, "an open repair")
+  assert.deepEqual(back({ statusName: "In Use", openCheckout: handover("permanent_assignment"), hasOpenRepair: true }), { ...yes, path: "handover" }, "an open repair")
+  assert.deepEqual(back({ statusName: "Pending Repair", openCheckout: handover("temporary_loan"), hasOpenRepair: true }), { ...no("asset.transactionReasonHandoverStatusMismatch"), path: "handover" }, "the status still has to fit")
   for (const mode of [null, "bogus"]) assert.deepEqual(back({ statusName: "In Use", openCheckout: handover(mode) }), { ...no("asset.transactionReasonHandoverModeMissing"), path: "handover" }, String(mode))
   assert.deepEqual(back({ statusName: "In Use", openCheckout: handover("temporary_loan") }), { ...no("asset.transactionReasonHandoverStatusMismatch"), path: "handover" })
   assert.deepEqual(back({ statusName: "Checked Out", openCheckout: handover("permanent_assignment") }), { ...no("asset.transactionReasonHandoverStatusMismatch"), path: "handover" })

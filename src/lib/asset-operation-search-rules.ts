@@ -200,6 +200,8 @@ export type AssetOperationSearchRow = {
   holderKey?: string
   holderLabel?: string | null
   holderEmployeeId?: string | null
+  /** An open repair: the return goes into ส่งซ่อม under it (S-R43). Absent when there is none. */
+  openRepair?: true
 }
 export type AssetOperationSearchGroup = { key: string; label: string | null; count: number }
 export type AssetOperationSearchAnswer = {
@@ -342,6 +344,7 @@ export function buildAssetOperationSearchRow(
   row.holderKey = holder.key
   row.holderLabel = holder.label
   row.holderEmployeeId = holder.employeeId
+  if (hasOpenRepair) row.openRepair = true
   return row
 }
 

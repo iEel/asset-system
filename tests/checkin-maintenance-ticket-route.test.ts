@@ -139,26 +139,43 @@ test("returning an asset as 'send for repair' opens an unfinished repair record"
   assert.match(String(ticket.problem), /จอแตก/)
 })
 
-test("an asset with an unfinished repair record cannot be returned, and nothing is written (server-search spec 6.5)", async () => {
-  for (const nextStatusId of ["status:Under Maintenance", "status:Ready"]) {
-    state.calls = []
-    state.openRecords = 1
-    const response = await route.POST(checkinRequest(nextStatusId), context)
+const repairStatusRequired = {
+  code: "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED",
+  error: "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED",
+  fieldErrors: { nextStatusId: "checkinRepairStatusRequired" },
+}
 
-    assert.equal(response.status, 409, nextStatusId)
-    assert.deepEqual(await response.json(), { code: "ASSET_CHECKIN_REPAIR_OPEN", error: "ASSET_CHECKIN_REPAIR_OPEN" }, nextStatusId)
-    assert.deepEqual(state.calls.filter(({ call }) => /\.(create|update|updateMany)$/.test(call)), [], nextStatusId)
-  }
+test("an asset with an unfinished repair record is returned into ส่งซ่อม under that repair, with no second record (S-R43)", async () => {
+  state.calls = []
+  state.openRecords = 1
+  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  const update = state.calls.find(({ call }) => call === "asset.update")?.args.data as Record<string, unknown>
+  assert.equal(update.statusId, "status:Under Maintenance")
+  assert.equal(state.calls.some(({ call }) => call === "maintenanceTicket.create"), false)
+  assert.equal(state.calls.some(({ call, args }) => call === "assetMovement.create" && (args.data as Record<string, unknown>)?.movementType === "maintenance_create"), false)
   state.openRecords = 0
 })
 
-test("a repair opened while the return is being saved still refuses it inside the transaction", async () => {
+test("with an unfinished repair record another next status than ส่งซ่อม is refused under that field, and nothing is written (S-R43)", async () => {
+  state.calls = []
+  state.openRecords = 1
+  const response = await route.POST(checkinRequest("status:Ready"), context)
+
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), repairStatusRequired)
+  assert.deepEqual(state.calls.filter(({ call }) => /\.(create|update|updateMany)$/.test(call)), [])
+  state.openRecords = 0
+})
+
+test("a repair opened while the return is being saved refuses a next status other than ส่งซ่อม inside the transaction (S-R43)", async () => {
   state.calls = []
   state.openRecordCounts = [0, 1]
   const response = await route.POST(checkinRequest("status:Ready"), context)
 
   assert.equal(response.status, 409)
-  assert.deepEqual(await response.json(), { code: "ASSET_CHECKIN_REPAIR_OPEN", error: "ASSET_CHECKIN_REPAIR_OPEN" })
+  assert.deepEqual(await response.json(), repairStatusRequired)
   assert.equal(state.calls.some(({ call }) => call === "assetCheckin.create"), false)
   state.openRecordCounts = []
 })

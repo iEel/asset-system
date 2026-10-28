@@ -203,6 +203,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Add asset, print QR label, scan QR, then check-out.
 - [ ] Check-out asset, check-in with `Ready`, and confirm status/timeline.
 - [ ] Check-out asset, check-in with "ส่งซ่อม", and confirm the asset is `Under Maintenance` with one unfinished repair record created from the damage note.
+- [ ] An asset whose repair is open is returned into ส่งซ่อม under the same repair: the asset page offers "รับคืน", the form sets the next status to "ส่งซ่อม" with no other choice and says no new repair record is made, and after the save the asset is `Under Maintenance` with still one unfinished repair record (S-R43).
 - [ ] From Asset Detail (or by scanning the asset QR) press "บันทึกซ่อม" on a `Ready` asset, save "ซ่อมเสร็จแล้ว / ใช้งานได้", and confirm the asset status is unchanged and the record appears in the asset's repair history. Print the record and confirm the print page shows the new fields.
 - [ ] Record "ยังซ่อมไม่เสร็จ" for (a) an asset with valid personal custody or an active permanent assignment and (b) an asset without custody. Confirm both become `Under Maintenance`; press "ซ่อมเสร็จ" and confirm (a) returns to `In Use` and (b) to `Ready`. Repeat with outcome "ซ่อมไม่ได้ เสนอจำหน่าย" and confirm `Pending Disposal` (refused while an active checkout exists).
 - [ ] On "ทรัพย์สินค้างสถานะซ่อมแต่ไม่มีบันทึก", record a finished/usable repair for one listed asset and confirm it leaves the box and returns to its custody-derived status.

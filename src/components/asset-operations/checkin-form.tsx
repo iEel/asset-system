@@ -73,8 +73,12 @@ type CheckinField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckinField[]
 
 // noValidate turns the browser's check off, so this restates the controls' required (the return date had the star and
-// no check at all, spec §5) and the server's 100-character limit on the two names (v-track M-R2).
-function validate(values: CheckinFormValues): Partial<Record<CheckinField, string>> {
+// no check at all, spec §5) and the server's 100-character limit on the two names (v-track M-R2). A row with an open
+// repair returns into ส่งซ่อม only, in the server's words (S-R43).
+function validate(
+  values: CheckinFormValues,
+  { repairLocked, sendsToRepair }: { repairLocked: boolean; sendsToRepair: boolean },
+): Partial<Record<CheckinField, string>> {
   const errors: Partial<Record<CheckinField, string>> = {}
   const check = (key: CheckinField, code: string | null) => {
     if (code) errors[key] = code
@@ -84,7 +88,7 @@ function validate(values: CheckinFormValues): Partial<Record<CheckinField, strin
   check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100))
   check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))
   check("conditionAfter", required(values.conditionAfter))
-  check("nextStatusId", required(values.nextStatusId))
+  check("nextStatusId", required(values.nextStatusId) ?? (repairLocked && !sendsToRepair ? "checkinRepairStatusRequired" : null))
   check("nextLocationId", required(values.nextLocationId))
   return errors
 }
@@ -129,13 +133,15 @@ export function CheckinForm({
   const [receiveSignatureDataUrl, setReceiveSignatureDataUrl] = useState<string | null>(null)
   const [returnByEmployeeId, setReturnByEmployeeId] = useState(initialChoice.returnByEmployeeId ?? "")
   const [receiveByEmployeeId, setReceiveByEmployeeId] = useState("")
+  const repairStatus = statuses.find((status) => status.name === "Under Maintenance")
   const [values, setValues] = useState<CheckinFormValues>({
     checkoutId: initialChoice.checkoutId,
     returnDate: toLocalDateInputValue(),
     returnBy: employees.find((employee) => employee.id === initialChoice.returnByEmployeeId)?.label ?? "",
     receiveBy: "",
     conditionAfter: "",
-    nextStatusId: "",
+    // The arrival's row with an open repair returns into ส่งซ่อม (S-R43).
+    nextStatusId: initialRow?.openRepair && repairStatus ? repairStatus.id : "",
     nextLocationId: "",
     missingAccessories: "",
     damageNote: "",
@@ -152,8 +158,9 @@ export function CheckinForm({
   const selectedReturnBy = employees.find((employee) => employee.id === returnByEmployeeId)
   const selectedReceiver = employees.find((employee) => employee.id === receiveByEmployeeId)
   const selectedLocation = locations.find((location) => location.id === values.nextLocationId)
-  const repairStatus = statuses.find((status) => status.name === "Under Maintenance")
   const sendsToRepair = selectedStatus?.name === "Under Maintenance"
+  // A row with an open repair returns into ส่งซ่อม under that repair: the select offers that status only (S-R43).
+  const repairLocked = Boolean(chosen?.openRepair && repairStatus)
   const photoTypes = [
     { id: "overview", label: t("photoTypeOverview") },
     { id: "assetTag", label: t("photoTypeAssetTag") },
@@ -223,6 +230,7 @@ export function CheckinForm({
 
   // A pick: the row's handover, and its holder as the return-by when the holder is an active employee. A return-by the
   // form filled in from the previous row goes when the new choice has none; one chosen by hand stays (spec 6.3).
+  // A row with an open repair sets the next status to ส่งซ่อม; leaving it clears the status it set (S-R43).
   function applyChoice(row: AssetOperationSearchRow | null) {
     const next = getCheckinChoice(row, employeeIds)
     const prefilled = getCheckinChoice(chosen, employeeIds).returnByEmployeeId
@@ -230,6 +238,8 @@ export function CheckinForm({
     setField("checkoutId", next.checkoutId)
     if (next.returnByEmployeeId) setEmployeeField("returnBy", next.returnByEmployeeId)
     else if (prefilled && returnByEmployeeId === prefilled) setEmployeeField("returnBy", "")
+    if (row?.openRepair && repairStatus) setField("nextStatusId", repairStatus.id)
+    else if (repairLocked) setField("nextStatusId", "")
   }
 
   // A ข้อมูลเก่า row is not taken as it is: it asks once, then the backfill makes its handover (spec 6.3, S-R26).
@@ -283,7 +293,7 @@ export function CheckinForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    fieldErrors.setErrors(validate(values))
+    fieldErrors.setErrors(validate(values, { repairLocked, sendsToRepair }))
     if (focusFirstError()) return
     setReviewOpen(true)
   }
@@ -450,8 +460,8 @@ export function CheckinForm({
             error={fieldErrors.message("nextStatusId")}
             onChange={(value) => setField("nextStatusId", value)}
           >
-            <option value="">{t("selectStatus")}</option>
-            {statuses.map((status) => (
+            {repairLocked ? null : <option value="">{t("selectStatus")}</option>}
+            {(repairLocked && repairStatus ? [repairStatus] : statuses).map((status) => (
               <option key={status.id} value={status.id}>{status.name === "Under Maintenance" ? t("sendToRepairOption") : status.label}</option>
             ))}
           </Select>
@@ -529,7 +539,15 @@ export function CheckinForm({
             />
           </div>
 
-          {sendsToRepair ? (
+          {/* An open repair: the return joins it, so no new record and no problem to describe (S-R43). */}
+          {repairLocked ? (
+            <div className="md:col-span-2">
+              <Notice tone="info" title={t("sendToRepairTitle")}>
+                {t("openRepairReturnNotice")}
+              </Notice>
+            </div>
+          ) : null}
+          {sendsToRepair && !repairLocked ? (
             <div className="md:col-span-2 grid gap-3">
               <Notice tone="info" title={t("sendToRepairTitle")}>
                 {t("sendToRepairHelp")}

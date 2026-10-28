@@ -183,7 +183,8 @@ test("checkin: the return date is checked at last, errors under the field instea
     'check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100))',
     'check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))',
     'check("conditionAfter", required(values.conditionAfter))',
-    'check("nextStatusId", required(values.nextStatusId))',
+    // S-R43: a row with an open repair takes ส่งซ่อม only, in the server's words.
+    'check("nextStatusId", required(values.nextStatusId) ?? (repairLocked && !sendsToRepair ? "checkinRepairStatusRequired" : null))',
     'check("nextLocationId", required(values.nextLocationId))',
   ]) assert.ok(rules.includes(rule), rule)
   for (const key of Object.keys(ids)) if (key !== "checkoutId") assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
