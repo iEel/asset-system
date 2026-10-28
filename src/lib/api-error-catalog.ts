@@ -179,6 +179,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Invalid return condition for check-in": "invalidReturnCondition",
   "Invalid return status for check-in": "invalidReturnStatus",
   "Invalid role selection": "invalidRoleSelection",
+  "Invalid search": "invalidRequest",
   "Invalid since": "invalidRequest",
   "Invalid transaction snapshot date": "invalidTransactionSnapshot",
   "LDAP is disabled": "ldapDisabled",

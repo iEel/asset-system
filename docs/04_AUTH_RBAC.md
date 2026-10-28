@@ -72,6 +72,7 @@ Transaction cancellation follows the existing permissions instead of adding a ne
 - `asset:view` may read and print active or VOID operation documents but cannot cancel them.
 - `setting:view` may view the Asset State Review/Data Quality queue; `setting:edit` is required to resolve or dismiss findings, including `transaction_cancellation_blocked` reviews.
 - API authorization is enforced server-side even when the UI hides or disables an action.
+- The transaction pages' asset search (`GET /api/asset-operations/search`) needs `asset:edit`, the permission of the four pages (ส่งมอบ, รับคืน, โอนย้าย, ย้ายที่ตั้งหลายรายการ) and their save routes; the viewer has none of them. It answers at most 20 rows and a total, each row with the asset page's verdict for that transaction.
 
 ## Dashboard Navigation And Unauthorized Pages
 
