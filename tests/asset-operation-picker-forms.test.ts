@@ -44,7 +44,7 @@ test("ส่งมอบ: the asset and the ทรัพย์สินอื่
   assert.match(source, /\{values\.checkoutType === "asset" \? \(\n\s+<AssetOperationPicker\n\s+id="checkout-destination"\n\s+label=\{t\("checkoutTo"\)\}\n\s+mode="checkoutParent"\n\s+context=\{\{ handedOverAssetId: values\.asset\?\.id \}\}/)
   assert.ok(source.includes('if (key === "assetId" && assetReasonKey) return tAll(assetReasonKey)'))
   assert.ok(source.includes("parentAsset: current.parentAsset?.id === asset?.id ? null : current.parentAsset"))
-  assert.match(source, /\{initialAsset\?\.eligible \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
+  assert.match(source, /\{initialAsset\?\.eligible && values\.asset\?\.id === initialAsset\.id \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
   assert.ok(source.includes("const response = await fetch(`/api/assets/${values.asset?.id}/checkout`, {"))
   assert.doesNotMatch(source, /options=\{assets\}|assets\.(?:filter|find)\(|initialAssetId|t\("selectAsset"\)/)
 })
@@ -56,7 +56,7 @@ test("โอนย้าย: the asset is the shared picker under the custodian'
   assert.ok(source.includes('buildAssetOperationSearchHref({ mode: "transfer", id: assetId, assignCustodian: true })'))
   assert.ok(source.includes("const cleared = transferAssetToClear(current, rechecked)"))
   assert.ok(source.includes('t("assetClearedForCustodian", { assetTag: values.clearedAsset.assetTag, reason: tAll(values.clearedAsset.reasonKey) })'))
-  assert.match(source, /\{initialAsset\?\.eligible \? \(/)
+  assert.match(source, /\{initialAsset\?\.eligible && values\.asset\?\.id === initialAsset\.id \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
   assert.doesNotMatch(source, /personalTransferEligible|availableAssets|initialAssetId|t\("selectAsset"\)/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
@@ -66,4 +66,17 @@ test("โอนย้าย: the asset is the shared picker under the custodian'
     assert.equal(messages.checkout.selectAsset, undefined, `${locale}.checkout.selectAsset has no reader and is removed`)
     assert.equal(messages.transfer.selectAsset, undefined, `${locale}.transfer.selectAsset has no reader and is removed`)
   }
+})
+
+test("look step: the arrival banner shows only while the arrival asset is still the chosen one (cleared or changed, it goes)", () => {
+  for (const form of ["checkout-form.tsx", "transfer-form.tsx"]) {
+    const source = read(`${C}${form}`)
+    assert.equal(source.match(/<FormContextBanner /g)?.length, 1, form)
+    assert.ok(source.includes("{initialAsset?.eligible && values.asset?.id === initialAsset.id ? ("), form)
+    assert.doesNotMatch(source, /\{initialAsset\?\.eligible \? \(/, form)
+  }
+  const checkin = read(`${C}checkin-form.tsx`)
+  assert.equal(checkin.match(/<FormContextBanner /g)?.length, 1)
+  assert.match(checkin, /\{initialRow\?\.eligible && chosen\?\.id === initialRow\.id \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{`\$\{initialRow\.assetTag\} - \$\{initialRow\.name\}`\} \/>/)
+  assert.doesNotMatch(checkin, /\{initialRow\?\.eligible \? \(/)
 })

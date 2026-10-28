@@ -316,7 +316,8 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
           />
         </div>
       )}
-      <FieldHint id={hintId}>{hint ?? t(mode === "checkin" ? "hintCheckin" : "hint")}</FieldHint>
+      {/* The hint tells people to type, so it shows only with the search field the combobox names it from (look step). */}
+      {showSearch ? <FieldHint id={hintId}>{hint ?? t(mode === "checkin" ? "hintCheckin" : "hint")}</FieldHint> : null}
       {shownError ? <FieldError id={errorId}>{shownError}</FieldError> : null}
       {showSearch && open && state !== "hint" ? (
         <div className="min-w-0 overflow-hidden rounded-md border border-border bg-surface" onMouseDown={(event) => event.preventDefault()}>

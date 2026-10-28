@@ -266,7 +266,8 @@ export function CheckoutForm({
   return (
     <OperationShell title={t("title")}>
       <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
-        {initialAsset?.eligible ? (
+        {/* The arrival banner names the ?assetId= asset only while it is still the chosen one (look step). */}
+        {initialAsset?.eligible && values.asset?.id === initialAsset.id ? (
           <div className="md:col-span-2">
             <FormContextBanner label={t("asset")} value={assetOperationRowLabel(initialAsset)} />
           </div>

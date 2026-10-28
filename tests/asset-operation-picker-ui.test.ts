@@ -160,3 +160,12 @@ test("DESIGN.md and docs/14 describe AssetOperationPicker, and the guards know i
   assert.ok(forms.includes('for (const tag of findJsxTags(children, ["SearchableSelect", "AssetOperationPicker"])) problems.push(`${where}: ${tag.name} inside Field (it renders its own label)`)'))
   assert.ok(forms.includes("/<(Field|FileDropzone|ScannerTextInput|SearchableSelect|AssetOperationPicker|label)(?=[\\s/>])/"))
 })
+
+test("look step: the hint shows only with the search field, so a chosen value never reads 'type...'; the combobox names it, เปลี่ยน names only the error", () => {
+  const source = read(PART)
+  assert.ok(source.includes('{showSearch ? <FieldHint id={hintId}>{hint ?? t(mode === "checkin" ? "hintCheckin" : "hint")}</FieldHint> : null}'))
+  assert.equal(source.match(/<FieldHint /g)?.length, 1)
+  assert.match(source, /const showSearch = props\.multiple \|\| !value/)
+  assert.match(source, /onClick=\{change\}\n\s+aria-label=\{t\("changeNamed", \{ label, tag: value\.assetTag \}\)\}\n\s+aria-describedby=\{errorId\}/)
+  assert.match(source, /role="combobox"[\s\S]*?aria-describedby=\{describedBy\}/)
+})
