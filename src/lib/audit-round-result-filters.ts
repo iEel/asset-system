@@ -319,9 +319,14 @@ export function buildAuditExportFilename({
   return `${prefix}-${auditNo}${filterSuffix}-${date.toISOString().slice(0, 10)}.${cleanExtension}`
 }
 
+// The round result sheet's name: the filter code stays (P4-R29), but Excel refuses * ? : / \ [ ] in a sheet name, more
+// than 31 characters, and a quote at either end, and a free-text search can bring any of them (final review I-2).
 export function buildAuditExportWorksheetName(filterLabel: string) {
   if (filterLabel === "all") return "Audit Results"
-  return `Results - ${filterLabel}`.slice(0, 31)
+  return `Results - ${filterLabel}`
+    .replace(/[*?:/\\[\]]+/g, "-")
+    .slice(0, 31)
+    .replace(/^'+|'+$/g, "")
 }
 
 export type AuditRoundListHrefFilters = Omit<AuditRoundListFilters, "expectedLocationIds" | "roundLocationIds">

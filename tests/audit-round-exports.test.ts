@@ -1,9 +1,11 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import ExcelJS from "exceljs"
 
 import {
   buildAuditExportFilename,
+  buildAuditExportWorksheetName,
   buildAuditExportFilterLabel,
   buildAuditRoundExportSummary,
   buildAuditRoundVarianceWhere,
@@ -149,4 +151,21 @@ test("the work view no longer reads like the badge, and the variance report is i
   assert.equal(th.auditRound.pendingReview, "รอพิจารณา", "the badge keeps its word")
   assert.notEqual(th.auditRound.viewReview, th.auditRound.pendingReview)
   assert.equal(th.auditRound.exportVariance, "รายงานผลต่าง")
+})
+
+test("the round result sheet name: no character Excel forbids, at most 31, no quote at either end; ExcelJS takes it (I-2)", () => {
+  const forbidden = ["*", "?", ":", "/", "\\", "[", "]"]
+  const searches = [...forbidden.map((char) => `3${char}1`), "ชั้น 2/3", "a/b\c[d]*e?f:g", "x".repeat(19) + "'", "'quoted'", "'".repeat(40)]
+  for (const search of searches) {
+    const name = buildAuditExportWorksheetName(buildAuditExportFilterLabel({ result: "mismatch", search }))
+    assert.doesNotMatch(name, /[*?:/\[\]]/, `${search} -> ${name}`)
+    assert.ok(name.length > 0 && name.length <= 31, `${search} -> ${name}`)
+    assert.doesNotMatch(name, /^'|'$/, `${search} -> ${name}`)
+    const workbook = new ExcelJS.Workbook()
+    assert.doesNotThrow(() => workbook.addWorksheet(name), `${search} -> ${name}`)
+    assert.equal(workbook.worksheets[0].name, name)
+  }
+  assert.equal(buildAuditExportWorksheetName(buildAuditExportFilterLabel({ result: "mismatch", search: "3/1" })), "Results - mismatch-search-3-1", "the suffix keeps its filter code (P4-R29)")
+  assert.equal(buildAuditExportWorksheetName(buildAuditExportFilterLabel({ result: "all", search: "ห้อง 3" })), "Results - search-ห้อง 3", "a Thai search stays as typed")
+  assert.equal(buildAuditExportWorksheetName("all"), "Audit Results")
 })
