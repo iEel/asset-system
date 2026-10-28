@@ -6,6 +6,7 @@ import type { Locator, Page } from "@playwright/test"
 import { expect } from "../support/fixtures.ts"
 import { bell, bellBox } from "../shell/shell-steps.ts"
 import { WAITING_ORDER, WAITING_TITLES, type WaitingKey } from "./dashboard-words.ts"
+import { REVIEW_WORDS } from "../audit/review-words.ts"
 
 // The spec file takes the browser types from here: it imports nothing from @playwright/test.
 export type { Locator, Page }
@@ -62,6 +63,14 @@ export const LIST_TOTAL: Partial<Record<WaitingKey, "approvals" | "range">> = {
   returnsDueSoon: "range",
   warrantyExpiringSoon: "range",
   licenseExpiringSoon: "range",
+}
+
+// The tab a findings link lands on (group 2 plan 4, P4-R3): pending on รอพิจารณา, and the bell's open and due-soon
+// actions on ต้องติดตาม, each listing the bell's own where.
+export const FINDING_TABS: Readonly<Record<string, string>> = {
+  pendingAuditFindings: REVIEW_WORDS.tabPending,
+  openAuditActions: REVIEW_WORDS.tabFollowUp,
+  auditActionsDueSoon: REVIEW_WORDS.tabFollowUp,
 }
 
 // The bell's rows (src/components/layout/notification-bell.tsx): each group is a region, each row a link whose first

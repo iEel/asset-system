@@ -268,3 +268,13 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
   assert.ok(!spec.includes(`test.fail(true, "M3: `) && !spec.includes(`test.fail(true, "M8: `) && !spec.includes(`"M9: `))
 })
+
+test("finding M4 holds in the findings panel: IT staff get no tick, and a finding they open offers no review control or reason box (group 2 plan 4 task 7)", () => {
+  const spec = read("e2e/cross-cutting/roles.spec.ts")
+  const m4 = spec.slice(spec.indexOf('test("the findings page offers IT staff no review control'), spec.indexOf('test.describe("the employee"'))
+  assert.ok(m4.includes(`await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)`), "no tick, so no selection bar")
+  assert.match(m4, /await settlePageRequests\(page\)\n\s*await openFinding\(page, first, id\)/)
+  assert.ok(m4.includes(`for (const name of REVIEW_BUTTON_NAMES) await expect(findingPanel(page).getByRole("button", { name, exact: true })).toHaveCount(0)`))
+  assert.ok(m4.includes(`await expect(page.locator("#audit-review-reason")).toHaveCount(0)`))
+  assert.ok(spec.includes(`from "../audit/review-steps.ts"`) && spec.includes(`from "../audit/round-page-steps.ts"`))
+})

@@ -15,12 +15,17 @@
 //    names the asset (spec §6.2.2–3, group 2 spec §9, §11);
 // 4. IT staff read the round page after the walk: the result and category chips equal their rows, each field's bar
 //    its rows, and the parent with a component not found is listed once (group 2 spec §8, §16);
-// 5. IT staff are refused the review of their own findings and the close of the round they opened (spec §6.2.4);
-// 6. the IT head reviews every finding and closes the round from the next-step card (spec §6.2.4, group 2 spec §8);
-// 7. the IT head's own round: the room chips, their own finding and their own close are refused, the card says why,
-//    and the round is cancelled from "อื่น ๆ";
+// 5. IT staff are refused the review of their own findings and the close of the round they opened; the findings page
+//    gives them no tick and a panel that decides nothing (spec §6.2.4, group 2 spec §10);
+// 6. the IT head reviews every finding in the panel: a row opens it with ?finding=, each decision moves to the next,
+//    a reject without a reason is refused by the panel and the API, the component names its machine, and on the
+//    desktop a batch from the selection bar reports one failure made on purpose; then the close from the next-step
+//    card (spec §6.2.4, group 2 spec §8, §10, §16);
+// 7. the IT head's own round: the room chips, their own finding (no tick, and the panel says why) and their own close
+//    are refused, the card says why, and the round is cancelled from "อื่น ๆ";
 // 8. the audit exports by permission (spec §6.2.5, §6.5): hidden from IT staff (finding AU1, fixed; the round page's
-//    menu too), downloaded by the IT head (decision U1, DX6 (ก)), the round's Excel by a category (group 2 spec §16).
+//    menu too), downloaded by the IT head from "ส่งออก ▾" in words with English headers (decision U1, DX6 (ก), group 2
+//    spec §10), the round's Excel by a category (group 2 spec §16).
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import ExcelJS from "exceljs"
 import { asUser, expect, runPhoneOnWebKit, test } from "../support/fixtures.ts"
@@ -38,6 +43,7 @@ import { fillTemplate } from "../shell/shell-words.ts"
 import * as roundPage from "./round-page-steps.ts"
 import { ROUND_PAGE_WORDS as W } from "./round-page-words.ts"
 import { SCAN_WORDS as S } from "./scan-words.ts"
+import { REVIEW_WORDS as R } from "./review-words.ts"
 
 runPhoneOnWebKit()
 test.describe.configure({ mode: "serial" })
@@ -584,7 +590,7 @@ test.describe("IT staff read the round page after the walk", () => {
 test.describe("IT staff are refused the review and the close", () => {
   asUser("itStaff")
 
-  test("IT staff are refused the review of their own findings and the close of the round they opened", async ({ page, measure }, testInfo) => {
+  test("IT staff are refused the review of their own findings and the close of the round they opened", async ({ page, measure, e2eDevice }, testInfo) => {
     const chain = readChain(testInfo.project.name)
     if (!chain.notFoundFindingId) throw new Error("the not-found save left no finding id")
     await measure.visit(`/th/audit/findings?status=pending&roundId=${chain.roundId}`, "findings of the round (IT staff)")
@@ -594,6 +600,20 @@ test.describe("IT staff are refused the review and the close", () => {
     await expect(page.getByText("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้").filter({ visible: true })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "ปฏิเสธ", exact: true })).toHaveCount(0)
+    // Group 2 plan 4 (spec §10): no tick and no selection bar; the panel a row opens reads the finding, its machine
+    // included, and decides nothing: no decision, no plan, no close, no reason box.
+    await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)
+    await expect(review.selectionBar(page)).toBeHidden()
+    const component = review.findingEntry(page, e2eDevice, chain.assets.component2.tag, "not_found")
+    const componentId = await review.findingId(component, e2eDevice)
+    await roundPage.settlePageRequests(page)
+    await review.openFinding(page, component, componentId)
+    const panel = review.findingPanel(page)
+    await expect(panel).toContainText(fillTemplate(R.componentOf, { parentTag: chain.assets.parent.tag, parentName: chain.assets.parent.name }))
+    for (const name of [R.approve, R.reject, R.actionPlan, R.closeFinding]) await expect(panel.getByRole("button", { name, exact: true })).toHaveCount(0)
+    await expect(page.locator("#audit-review-reason")).toHaveCount(0)
+    await expect(page.getByText(R.ownFinding).filter({ visible: true })).toHaveCount(0)
+    await recordSettled(page, measure, "a finding's panel (IT staff, read only)")
 
     // The review route refuses them: IT staff hold no audit approve.
     measure.expectRefusal({ method: "POST", url: /\/api\/audit-findings\/[^/]+\/review$/, status: 403, reason: "IT staff hold no audit approve (spec §6.2.4)" })
@@ -601,6 +621,7 @@ test.describe("IT staff are refused the review and the close", () => {
     expect(reviewed).toEqual({ status: 403, body: { error: "Forbidden: insufficient permissions" } })
 
     // The round page offers them no close, and the close route refuses them: no approve, and they opened it.
+    await roundPage.settlePageRequests(page)
     await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page (IT staff)")
     await expect(page.getByRole("heading", { level: 1, name: chain.records.round.name })).toBeVisible()
     await expect(page.getByRole("button", { name: "ปิดรอบตรวจ" })).toHaveCount(0)
@@ -613,38 +634,191 @@ test.describe("IT staff are refused the review and the close", () => {
 test.describe("The IT head reviews and closes", () => {
   asUser("itHead")
 
-  test("the IT head reviews every finding of the round and closes it", async ({ page, measure, e2eDevice }, testInfo) => {
-    test.setTimeout(240_000)
+  test("the IT head reviews every finding of the round in the panel, one batch on the desktop with a failure on purpose, and closes it", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.setTimeout(300_000)
     const chain = readChain(testInfo.project.name)
     const { assets } = chain
-    const runDepartment = runRecords(readRunState().runId).department.code
-    await measure.visit(`/th/audit/findings?status=pending&roundId=${chain.roundId}`, "findings of the round (IT head)")
+    const runDept = runRecords(readRunState().runId).department
+    const runDepartment = runDept.code
+    const listHref = `/th/audit/findings?status=pending&roundId=${chain.roundId}`
+    await measure.visit(listHref, "findings of the round (IT head)")
 
-    // Each finding of the walk, approved or rejected with a remark in its dialog.
-    const decisions: { tag: string; type: string; action: "approve" | "reject"; remark: string }[] = [
-      { tag: assets.mismatch.tag, type: "แผนกไม่ตรง", action: "approve", remark: `ย้ายไปแผนก ${runDepartment} ตามที่พบ` },
-      { tag: assets.mismatch.tag, type: "สภาพไม่ตรง", action: "reject", remark: "ตรวจซ้ำแล้ว สภาพยังดี" },
-      { tag: assets.component2.tag, type: "ไม่พบทรัพย์สิน", action: "approve", remark: "ยืนยันไม่พบส่วนควบ" },
-      { tag: assets.notFound.tag, type: "ไม่พบทรัพย์สิน", action: "approve", remark: "ยืนยันไม่พบ" },
-      { tag: assets.outOfScope.tag, type: "ทรัพย์สินนอกขอบเขต", action: "approve", remark: "อยู่นอกขอบเขตรอบนี้จริง" },
+    // The six tabs count within the round (P4-R1, P4-R3, spec §5): the walk's five findings wait, none is decided yet.
+    await review.expectTabs(page, [[R.tabPending, 5], [R.tabApproved, 0], [R.tabRejected, 0], [R.tabFollowUp, 0], [R.tabClosed, 0], [R.tabAll, 5]], R.tabPending)
+    const rows = review.findingRows(page, e2eDevice)
+    await expect(rows).toHaveCount(5)
+
+    // Each finding of the walk, by its asset and its type: the word of its เรื่อง chip (P4-R2) and the decision.
+    type Decision = { key: "component" | "department" | "condition" | "notFound" | "outOfScope"; asset: { id: string; tag: string; name: string }; code: review.AuditFindingTypeCode; subject: string; type: string; action: "approve" | "reject"; remark: string }
+    const decisions: Decision[] = [
+      { key: "component", asset: assets.component2, code: "not_found", subject: R.subjectNotFound, type: "ไม่พบทรัพย์สิน", action: "approve", remark: "ยืนยันไม่พบส่วนควบ" },
+      { key: "department", asset: assets.mismatch, code: "wrong_department", subject: R.subjectDepartment, type: "แผนกไม่ตรง", action: "approve", remark: `ย้ายไปแผนก ${runDepartment} ตามที่พบ` },
+      { key: "condition", asset: assets.mismatch, code: "wrong_condition", subject: R.subjectCondition, type: "สภาพไม่ตรง", action: "reject", remark: "ตรวจซ้ำแล้ว สภาพยังดี" },
+      { key: "notFound", asset: assets.notFound, code: "not_found", subject: R.subjectNotFound, type: "ไม่พบทรัพย์สิน", action: "approve", remark: "ยืนยันไม่พบ" },
+      { key: "outOfScope", asset: assets.outOfScope, code: "out_of_scope", subject: R.subjectOutOfScope, type: "ทรัพย์สินนอกขอบเขต", action: "approve", remark: "อยู่นอกขอบเขตรอบนี้จริง" },
     ]
-    await expect(page.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(decisions.length)
-    for (const [index, decision] of decisions.entries()) {
-      const approve = decision.action === "approve"
-      const entry = review.findingEntry(page, e2eDevice, decision.tag, decision.type)
-      await expect(entry).toHaveCount(1)
-      await entry.getByRole("button", { name: approve ? "อนุมัติ" : "ปฏิเสธ", exact: true }).click()
-      const dialog = page.getByRole("dialog", { name: approve ? "ยืนยันการอนุมัติรายการไม่ตรง" : "ยืนยันการปฏิเสธรายการไม่ตรง" })
-      await expect(dialog).toBeVisible()
-      await dialog.getByLabel(approve ? "หมายเหตุการอนุมัติ" : "หมายเหตุการปฏิเสธ").fill(decision.remark)
-      if (index === 0) await recordSettled(page, measure, "review dialog")
-      await measure.timed(`${decision.action} ${decision.type} ${decision.tag}`, async () => {
-        await dialog.getByRole("button", { name: approve ? "อนุมัติรายการไม่ตรง" : "ปฏิเสธรายการไม่ตรง" }).click()
-        await expect(dialog).toBeHidden()
-        await expect(entry).toHaveCount(0)
-      })
-      await expect(page.getByText(approve ? "อนุมัติรายการไม่ตรงและปรับข้อมูลทรัพย์สินสำเร็จ" : "ปฏิเสธรายการไม่ตรงสำเร็จ").first()).toBeVisible()
+    const ids = {} as Record<Decision["key"], string>
+    for (const decision of decisions) {
+      const entry = review.findingEntry(page, e2eDevice, decision.asset.tag, decision.code)
+      await expect(entry, `${decision.type} ${decision.asset.tag}`).toHaveCount(1)
+      await expect(entry.locator("[data-audit-finding-subject]")).toHaveText(decision.subject)
+      ids[decision.key] = await review.findingId(entry, e2eDevice)
     }
+    expect(ids.notFound, "the not-found save's finding").toBe(chain.notFoundFindingId)
+    // The page's order of its pending findings, for "k จาก N" and the next one (P4-R18).
+    let order = await review.readFindingOrder(page, e2eDevice)
+    expect([...order].sort(), "the five rows are the walk's findings").toEqual(Object.values(ids).sort())
+    // On the desktop each can be ticked: none is the IT head's own (spec §10).
+    if (e2eDevice === "desktop") await expect(rows.getByRole("checkbox")).toHaveCount(5)
+
+    // A component's finding names its machine, in the row and in the panel (spec §10, §16, decision 6); the other
+    // not-found is no component.
+    const parentLine = fillTemplate(R.componentOf, { parentTag: assets.parent.tag, parentName: assets.parent.name })
+    const component = review.findingEntry(page, e2eDevice, assets.component2.tag, "not_found")
+    await expect(component).toContainText(parentLine)
+    await expect(review.findingEntry(page, e2eDevice, assets.notFound.tag, "not_found")).not.toContainText(assets.parent.tag)
+
+    // Choosing a row opens it in the panel with ?finding= (spec §10, §16), and a reload reopens it.
+    const panel = review.findingPanel(page)
+    await roundPage.settlePageRequests(page)
+    await review.openFinding(page, component, ids.component)
+    await roundPage.settlePageRequests(page)
+    await page.reload()
+    await expect(panel).toHaveAttribute("data-finding-id", ids.component)
+    if (e2eDevice === "desktop") await expect(component).toHaveAttribute("aria-current", "true")
+    await expect(panel).toContainText(parentLine)
+    // ไม่พบ: approving leaves the register, with no word of a transfer (P4-R24).
+    const effect = panel.locator("[data-audit-finding-effect]")
+    await expect(effect).toHaveText(R.approveNoChangeNotFound)
+    await expect(panel.getByRole("link", { name: R.openAsset, exact: true })).toHaveAttribute("href", new RegExp(`^/th/assets/${assets.component2.id}(?:[?#]|$)`))
+    await expect(panel.getByRole("button", { name: R.approveAllFields, exact: true })).toHaveCount(0)
+    await recordSettled(page, measure, "the findings panel, a component not found (IT head)")
+
+    // A finding in the panel: as it is, or opened by its own link (?finding=, a shared link reopens it).
+    const show = async (id: string) => {
+      if (new URL(page.url()).searchParams.get("finding") === id) return
+      await roundPage.settlePageRequests(page)
+      await page.goto(`${listHref}&finding=${id}`)
+      await expect(panel).toHaveAttribute("data-finding-id", id)
+    }
+    // Approve or reject in the panel: one review at once, no confirm dialog, then the panel holds the next finding the IT
+    // head may decide (spec §10, P4-R18), its "k จาก N" counting those findings in the tab's order (all five here).
+    const decide = async (decision: Decision) => {
+      const id = ids[decision.key]
+      await show(id)
+      await expect(panel).toContainText(decision.type)
+      await expect(panel).toContainText(fillTemplate(R.position, { position: order.indexOf(id) + 1, total: order.length }))
+      await page.locator("#audit-review-reason").fill(decision.remark)
+      const next = review.nextPendingAfter(order, id)
+      const reviewed = review.reviewResponse(page, id)
+      await measure.timed(`${decision.action} ${decision.type} ${decision.asset.tag}`, async () => {
+        await panel.getByRole("button", { name: decision.action === "approve" ? R.approve : R.reject, exact: true }).click()
+        expect((await reviewed).status(), "the decision is taken at once").toBe(200)
+      })
+      order = order.filter((other) => other !== id)
+      if (next) {
+        await page.waitForURL((url) => url.searchParams.get("finding") === next)
+        await expect(panel).toHaveAttribute("data-finding-id", next)
+        await expect(panel).toContainText(fillTemplate(R.position, { position: order.indexOf(next) + 1, total: order.length }))
+      } else {
+        await expect(panel.getByRole("button", { name: R.approve, exact: true }), "none left on the tab").toHaveCount(0)
+      }
+    }
+    await decide(decisions[0])
+
+    // The department: the comparison marks the two fields the item differs in, the sentence says what approving
+    // changes, and the asset's other pending field is offered with "อนุมัติทุกช่องของทรัพย์สินนี้", not pressed: the
+    // condition is rejected below.
+    await show(ids.department)
+    for (const field of ["department", "condition"]) await expect(panel.locator(`[data-audit-finding-field="${field}"]`)).toHaveAttribute("data-mismatch", "true")
+    await expect(panel.locator('[data-audit-finding-field="location"]')).toHaveCount(1)
+    await expect(panel.locator('[data-audit-finding-field="location"]')).not.toHaveAttribute("data-mismatch", "true")
+    await expect(panel).toContainText(fillTemplate(R.approveChanges, { field: R.subjectDepartment, from: `${chain.records.department.code} - ${chain.records.department.name}`, to: `${runDept.code} - ${runDept.name}` }))
+    await expect(panel.getByRole("button", { name: R.approveAllFields, exact: true })).toBeVisible()
+    await recordSettled(page, measure, "the findings panel, a department to change (IT head)")
+    await decide(decisions[1])
+
+    // The condition, rejected: first without a reason, which the panel refuses with nothing sent and the review API
+    // refuses too, missing or blank (decision 5, spec §16); then with its reason.
+    await show(ids.condition)
+    await expect(panel).toContainText(fillTemplate(R.approveChanges, { field: R.subjectCondition, from: "ดี", to: "พอใช้" }))
+    const remark = page.locator("#audit-review-reason")
+    await remark.fill("")
+    const posts = review.watchReviewPosts(page, ids.condition)
+    await panel.getByRole("button", { name: R.reject, exact: true }).click()
+    await expect(page.locator("#audit-review-reason-error")).toHaveText(R.rejectReasonRequired)
+    await expect(remark).toBeFocused()
+    await expect(remark).toHaveAttribute("aria-invalid", "true")
+    posts.stop()
+    expect(posts.posts, "a reject without a reason sends nothing").toEqual([])
+    await recordSettled(page, measure, "the findings panel, a reject without a reason (IT head)")
+    measure.expectRefusal({ method: "POST", url: new RegExp(`/api/audit-findings/${ids.condition}/review$`), status: 400, reason: "a reject without a reason: the review schema refuses it (decision 5)" })
+    for (const body of [{ action: "reject" }, { action: "reject", reviewRemark: "   " }]) {
+      expect(await review.browserFetch(page, `/api/audit-findings/${ids.condition}/review`, "POST", body), JSON.stringify(body)).toEqual({ status: 400, body: { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { reviewRemark: "required" } } })
+    }
+    await decide(decisions[2])
+
+    // นอกขอบเขต: approving leaves the register, and says how to move the asset (P4-R24).
+    await show(ids.outOfScope)
+    await expect(effect).toHaveText(R.approveNoChangeOutOfScope)
+
+    if (e2eDevice === "desktop") {
+      // Several at once (spec §10, bugs 17-18): the header tick, the bar and its clear. X1 is decided through the API
+      // first, as another tab would (P4-R16), so the bar's batch has one success and one failure, goes past the
+      // failure, says so, and refreshes.
+      await roundPage.settlePageRequests(page)
+      await page.goto(listHref)
+      await review.expectTabs(page, [[R.tabPending, 2], [R.tabApproved, 2], [R.tabRejected, 1], [R.tabFollowUp, 0], [R.tabClosed, 0], [R.tabAll, 5]], R.tabPending)
+      await expect(rows).toHaveCount(2)
+      const bar = review.selectionBar(page)
+      const ticks = rows.getByRole("checkbox")
+      const all = page.getByRole("main").getByRole("checkbox", { name: R.selectAll, exact: true })
+      await expect(bar).toBeHidden()
+      await all.check()
+      for (const tick of await ticks.all()) await expect(tick).toBeChecked()
+      await expect(bar).toContainText(fillTemplate(R.selectedCount, { count: 2 }))
+      await bar.getByRole("button", { name: R.clearSelection, exact: true }).click()
+      await expect(bar).toBeHidden()
+      for (const tick of await ticks.all()) await expect(tick).not.toBeChecked()
+      await all.check()
+      await expect(bar.getByRole("button", { name: R.rejectSelected, exact: true })).toBeVisible()
+      await recordSettled(page, measure, "the selection bar, two findings ticked (IT head)")
+      const earlier = await review.browserFetch(page, `/api/audit-findings/${ids.outOfScope}/review`, "POST", { action: "approve", reviewRemark: decisions[4].remark })
+      expect(earlier.status, "X1 decided through the API before the batch (P4-R16)").toBe(200)
+      measure.expectRefusal({ method: "POST", url: new RegExp(`/api/audit-findings/${ids.outOfScope}/review$`), status: 400, reason: "decided through the API before the bar's batch (P4-R16): the batch reports it as a failure" })
+      // "อนุมัติที่เลือก 2 รายการ" asks once, with an optional remark, before a batch changes the register (P4-R25).
+      await bar.getByRole("button", { name: fillTemplate(R.approveSelected, { count: 2 }), exact: true }).click()
+      const dialog = page.getByRole("dialog", { name: fillTemplate(R.batchApproveTitle, { count: 2 }) })
+      await expect(dialog).toBeVisible()
+      await recordSettled(page, measure, "the batch's approve dialog (IT head)")
+      const answers = [review.reviewResponse(page, ids.notFound), review.reviewResponse(page, ids.outOfScope)] as const
+      await measure.timed("approve the two ticked from the bar", async () => {
+        await dialog.getByRole("button", { name: fillTemplate(R.batchApproveConfirm, { count: 2 }), exact: true }).click()
+        const [notFound, outOfScope] = await Promise.all(answers)
+        expect(notFound.status(), "A4 is approved").toBe(200)
+        expect(outOfScope.status(), "X1 was decided already: one failure, and the batch goes on").toBe(400)
+      })
+      // The result stays in the bar, in the panel's words, until it is closed (bugs 17-18).
+      await expect(bar.getByRole("status")).toHaveText(fillTemplate(R.batchResult, { succeeded: 1, failed: 1 }))
+      await expect(bar.getByRole("listitem")).toHaveCount(1)
+      await expect(bar.getByRole("listitem")).toContainText(`${assets.outOfScope.tag} ${R.subjectOutOfScope}: ${R.batchFailedAlreadyDecided}`)
+      await expect(rows).toHaveCount(0)
+      await recordSettled(page, measure, "the batch's result (IT head)")
+      await bar.getByRole("button", { name: R.batchResultDismiss, exact: true }).click()
+      await expect(bar).toBeHidden()
+    } else {
+      // The phone keeps its cards and has no ticks (spec §10): the last two are decided in the panel, the last leaving
+      // none on the tab.
+      await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)
+      await decide(decisions[3])
+      await decide(decisions[4])
+    }
+
+    // Every finding is decided: the tabs count four approved and one rejected, and the pending tab is empty.
+    await roundPage.settlePageRequests(page)
+    await page.goto(listHref)
+    await review.expectTabs(page, [[R.tabPending, 0], [R.tabApproved, 4], [R.tabRejected, 1], [R.tabFollowUp, 0], [R.tabClosed, 0], [R.tabAll, 5]], R.tabPending)
+    await expect(page.getByRole("main").getByText(R.emptyTitle, { exact: true }).filter({ visible: true })).toHaveCount(1)
     await recordSettled(page, measure, "findings of the round, all reviewed")
 
     // The approved department is the asset's now; the rejected condition is not (a GET of the asset).
@@ -654,6 +828,7 @@ test.describe("The IT head reviews and closes", () => {
 
     // The checklist is clear and the IT head did not open the round: "ปิดรอบตรวจ" sits whole inside the next-step card
     // (group 2 spec §8, §13 bug 2), with no opener's sentence, and the close goes through.
+    await roundPage.settlePageRequests(page)
     await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page (IT head)")
     const nextStep = roundPage.nextStepCard(page)
     const close = nextStep.getByRole("button", { name: "ปิดรอบตรวจ", exact: true })
@@ -718,11 +893,21 @@ test.describe("The IT head's own round", () => {
     await pending.expectRoomChips(page, 1, { [chain.rooms.roomB]: 1 }, "all")
     await expect(ownRows).toHaveCount(1)
 
-    // Their own finding: the note instead of the buttons, and the review route refuses it (segregation of duties).
+    // Their own finding (spec §10, Appendix A §10): the row has no tick, and the panel says why instead of the buttons;
+    // the review route refuses it (segregation of duties).
+    await roundPage.settlePageRequests(page)
     await measure.visit(`/th/audit/findings?status=pending&roundId=${own.id}`, "findings of the IT head's round")
-    const entry = review.findingEntry(page, e2eDevice, assets.notFound.tag, "ไม่พบทรัพย์สิน")
-    await expect(entry.getByText("ไม่สามารถพิจารณารายการไม่ตรงที่คุณเป็นผู้รายงานเองได้")).toBeVisible()
-    await expect(entry.getByRole("button", { name: "อนุมัติ", exact: true })).toHaveCount(0)
+    const entry = review.findingEntry(page, e2eDevice, assets.notFound.tag, "not_found")
+    await expect(entry).toHaveCount(1)
+    await expect(entry.getByRole("checkbox")).toHaveCount(0)
+    await roundPage.settlePageRequests(page)
+    await review.openFinding(page, entry, findingId)
+    const panel = review.findingPanel(page)
+    await expect(panel.getByText(R.ownFinding)).toBeVisible()
+    await expect(panel.getByRole("button", { name: R.approve, exact: true })).toHaveCount(0)
+    await expect(panel.getByRole("button", { name: R.reject, exact: true })).toHaveCount(0)
+    await expect(page.locator("#audit-review-reason")).toHaveCount(0)
+    await recordSettled(page, measure, "the panel of the IT head's own finding")
     measure.expectRefusal({ method: "POST", url: new RegExp(`/api/audit-findings/${findingId}/review$`), status: 403, reason: "the reporter may not review their own finding (segregation of duties)" })
     const reviewed = await review.browserFetch(page, `/api/audit-findings/${findingId}/review`, "POST", { action: "approve" })
     expect(reviewed).toEqual({ status: 403, body: { error: "Audit finding must be reviewed by a different user than the reporter" } })
@@ -730,6 +915,7 @@ test.describe("The IT head's own round", () => {
     // Their own round: the next-step card tells the opener they cannot close it, and offers no close yet (room B's other
     // asset is still to check, so step 3 is not reached); the close route refuses the opener (spec §6.2.4: the rule as
     // the code has it, src/app/api/audit-rounds/[id]/route.ts closeOwnRound).
+    await roundPage.settlePageRequests(page)
     await measure.visit(`/th/audit/rounds/${own.id}`, "the IT head's round")
     const nextStep = roundPage.nextStepCard(page)
     await expect(nextStep.getByText(W.openerCannotClose)).toBeVisible()
@@ -771,8 +957,9 @@ test.describe("The audit exports by permission", () => {
       const chain = readChain(testInfo.project.name)
       await measure.visit(`/th/audit/findings?status=all&roundId=${chain.roundId}`, "findings of the round, all (IT staff)")
       await expect(page.getByRole("heading", { level: 1, name: "รายการไม่ตรงจากการตรวจนับ" })).toBeVisible()
-      await expect(page.getByRole("link", { name: "ส่งออกรายการไม่ตรง" })).toHaveCount(0)
-      await expect(page.getByRole("link", { name: "ส่งออก PDF" })).toHaveCount(0)
+      // The findings export sits in "ส่งออก ▾" (spec §10), which needs audit:export: no menu and no export link.
+      await expect(page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true })).toHaveCount(0)
+      await expect(page.locator('main a[href^="/api/audit-findings/export"]')).toHaveCount(0)
       // Nor the round page's export menu (group 2 spec §8: "ส่งออก ▾" needs audit:export).
       await measure.visit(`/th/audit/rounds/${chain.roundId}`, "round page (IT staff, no export)")
       await expect(page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true })).toHaveCount(0)
@@ -782,11 +969,22 @@ test.describe("The audit exports by permission", () => {
   test.describe("IT head", () => {
     asUser("itHead")
 
-    test("the findings export downloads the round's findings (decision U1)", async ({ page, measure }, testInfo) => {
+    test("the findings export downloads the round's findings from ส่งออก ▾, in words (decision U1, group 2 spec §10)", async ({ page, measure }, testInfo) => {
       const chain = readChain(testInfo.project.name)
       await measure.visit(`/th/audit/findings?status=all&roundId=${chain.roundId}`, "findings of the round, all (IT head)")
+      // "ส่งออก ▾" (spec §10, P4-R7): Excel and PDF, each of the page's filters and its language.
+      await page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true }).click()
+      const items = page.getByRole("menuitem")
+      await expect(items).toHaveCount(2)
+      // Task 3's two items, by their names: "ส่งออกรายการไม่ตรง …" (Excel) and "ส่งออก PDF …".
+      const excel = items.filter({ hasText: R.exportExcel })
+      for (const [item, route] of [[excel, "export"], [items.filter({ hasText: R.exportPdf }), "export-pdf"]] as const) {
+        await expect(item).toHaveAttribute("href", new RegExp(`^/api/audit-findings/${route}\\?`))
+        for (const param of ["status=all", `roundId=${chain.roundId}`, "locale=th"]) await expect(item).toHaveAttribute("href", new RegExp(`[?&]${scan.escapeRegExp(param)}(?:&|$)`))
+      }
+      await recordSettled(page, measure, "the findings export menu (IT head)")
       const downloading = page.waitForEvent("download")
-      await page.getByRole("link", { name: "ส่งออกรายการไม่ตรง" }).click()
+      await excel.click()
       const download = await downloading
       // The file as downloaded, kept in the report.
       const file = await download.path().catch(() => null)
@@ -795,16 +993,27 @@ test.describe("The audit exports by permission", () => {
       expect(file, "the download completed").not.toBeNull()
       const workbook = new ExcelJS.Workbook()
       await workbook.xlsx.readFile(file ?? "")
-      // The "Asset Tag" column (src/lib/audit-excel.ts auditFindingColumns), found by its header.
+      // The sheet and its headers stay English (P4-R7): the "Asset Tag" column, found by its header.
       const sheet = workbook.getWorksheet("Audit Findings")
-      const header = (sheet?.getRow(1).values ?? []) as unknown[]
+      if (!sheet) throw new Error("no Audit Findings sheet")
+      const header = (sheet.getRow(1).values ?? []) as unknown[]
       const tagColumn = header.indexOf("Asset Tag")
+      const typeColumn = header.indexOf("Finding Type")
       expect(tagColumn, "the Asset Tag column").toBeGreaterThan(0)
-      const tags = new Set<string>()
-      sheet?.eachRow((row) => tags.add(String(row.getCell(tagColumn).value ?? "")))
+      expect(typeColumn, "the Finding Type column").toBeGreaterThan(0)
+      const types = new Map<string, string[]>()
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return
+        const tag = String(row.getCell(tagColumn).value ?? "")
+        types.set(tag, [...(types.get(tag) ?? []), String(row.getCell(typeColumn).value ?? "")])
+      })
       for (const asset of [chain.assets.mismatch, chain.assets.component2, chain.assets.notFound, chain.assets.outOfScope]) {
-        expect(tags.has(asset.tag), `${asset.tag} is in the export`).toBe(true)
+        expect(types.has(asset.tag), `${asset.tag} is in the export`).toBe(true)
       }
+      // The codes read as the page's words (P4-R7, P4-R8).
+      expect(types.get(chain.assets.mismatch.tag)?.sort(), "A2's two findings, by their words").toEqual(["แผนกไม่ตรง", "สภาพไม่ตรง"].sort())
+      expect(types.get(chain.assets.outOfScope.tag), "X1's finding, by its word").toEqual(["ทรัพย์สินนอกขอบเขต"])
+      expect(review.rawCodeCells(sheet, ["Finding Type", "Review Status", "Action Status", "Action Taken"]), "no raw code in a cell (P4-R7, P4-R8)").toEqual([])
     })
 
     test("the round page after the review: the rejected finding leaves its bar, and a category narrows the result chips, the rows and the Excel export (group 2 spec §8, §16)", async ({ page, measure, e2eDevice }, testInfo) => {
@@ -840,6 +1049,8 @@ test.describe("The audit exports by permission", () => {
       const excel = items.filter({ hasText: W.exportExcel })
       await expect(excel).toHaveAttribute("href", new RegExp(`[?&]categoryId=${masters.categoryComponent}(?:&|$)`))
       await recordSettled(page, measure, "the round's export menu (IT head)")
+      // Group 2 plan 4 (P4-R7): each export speaks the page's language.
+      for (const item of await items.all()) await expect(item).toHaveAttribute("href", /[?&]locale=th(?:&|$)/)
       const downloading = page.waitForEvent("download")
       await excel.click()
       const download = await downloading
@@ -859,6 +1070,8 @@ test.describe("The audit exports by permission", () => {
         if (rowNumber > 1) tags.push(String(row.getCell(tagColumn).value ?? ""))
       })
       expect(tags.sort(), "the category's items only").toEqual([assets.component1.tag, assets.component2.tag].sort())
+      // The status columns hold words, never a code; the headers stay English (P4-R7).
+      expect(review.rawCodeCells(sheet, ["Audit Status", "Audit Result", "Reconcile Status"]), "no raw code in a cell (P4-R7)").toEqual([])
     })
   })
 })

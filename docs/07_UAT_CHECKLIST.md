@@ -151,10 +151,10 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## audit_reviewer
 
 - [ ] Review audit findings.
-- [ ] Open `/th/audit/findings` and confirm the resolution summary cards, quick filters, system-vs-found comparison, evidence attachment links, and Excel/PDF exports use the same selected queue.
+- [ ] Open `/th/audit/findings` and confirm the six tabs and their counts, the "รอบ:" / "เรื่อง:" filters, the panel's system-vs-found comparison and its sentence, the evidence links, and "ส่งออก ▾" (Excel and PDF) follow the same tab and filters.
 - [ ] Confirm `/th/audit/findings` shows only compact loaded-at metadata during normal use and switches to a stale-data warning after the configured stale period.
 - [ ] If master asset data changes after a finding is reported, approving a correctable finding shows a conflict warning and requires explicit confirmation before applying the correction.
-- [ ] Approve or resolve a finding.
+- [ ] Approve or reject a finding in the panel (`/th/audit/findings?finding=…`): it takes effect at once and the panel moves to the next pending finding; a reject asks for a reason.
 - [ ] Confirm segregation-of-duties guard blocks self-review where applicable.
 - [ ] Review round progress.
 - [ ] From `/th/audit/rounds`, choose a status tab or a work-view chip and search, open round detail, open Scan and Pending from that round, then use Back and confirm the browser returns to the same round detail and filtered rounds list context.
@@ -299,12 +299,12 @@ Superseded by the menu B shell (see Menu B Shell UAT); kept as history.
 ## List Pages UAT (UI round 4 phase 2B)
 
 - [ ] Return to the same page: on page 2 or 3 of `/th/audit/rounds`, `/th/disposal/batches`, `/th/maintenance/pm`, `/th/disposal`, `/th/maintenance` and `/th/master-data/departments` (with the page size set to 50 on one of them), open a record (round detail, batch, PM edit, request, repair record, department edit) and go back with the page's "กลับ" button or its crumb. Confirm the list opens on the same page with the same page size and filters. On a phone the round detail's bottom-bar "กลับ" (left arrow) does the same, and a saved PM plan returns to that page too.
-- [ ] On page 3 of `/th/audit/findings` (or the last page of a queue with more than 50 findings), open a finding's asset and use the browser Back button: the findings list returns on page 3 with the same queue, search and page size.
+- [ ] On page 3 of `/th/audit/findings` (or the last page of a tab with more than 50 findings), open a finding, press "เปิดหน้าทรัพย์สิน" in the panel and use the browser Back button: the findings list returns on page 3 with the same tab, filters, search, page size and the same finding open.
 - [ ] Last row of the last page: on `/th/audit/rounds/<id>/pending`, mark the only item of the last page with the row's "บันทึกไม่พบ" and confirm the list lands on the new last page and the title "รายการรอตรวจ N รายการ" drops by one; on `/th/audit/findings?status=pending`, decide the only finding of the last page and confirm the queue lands on its new last page; on `/th/master-data/departments`, delete the only row of the last page through ⋯ → "ลบ" → confirm, and confirm the list lands on the new last page. Opening `?page=99` on each paged list opens its last page (`/th/audit/rounds` shows the last page and keeps the URL).
-- [ ] Totals: the pager total of `/th/audit/findings` equals the number in the strip cell of the queue in use; the title of `/th/audit/rounds/<id>/pending` counts every pending item of the round (more than 200 when the round has more), and "ทุกห้อง N" equals the pager total; `/th/disposal/batches` reaches batches older than the newest 100; `/th/maintenance/pm` reaches plans past the first 500, in the same order (active, paused, ended, then the next due date).
+- [ ] Totals: the pager total of `/th/audit/findings` equals the count of the tab in use (and of the sub-chip under ต้องติดตาม); the title of `/th/audit/rounds/<id>/pending` counts every pending item of the round (more than 200 when the round has more), and "ทุกห้อง N" equals the pager total; `/th/disposal/batches` reaches batches older than the newest 100; `/th/maintenance/pm` reaches plans past the first 500, in the same order (active, paused, ended, then the next due date).
 - [ ] Dialogs opened from a row: on `/th/disposal` at desktop width, open "พิจารณาคำขอ" or "บันทึกตัดจำหน่าย" from a row, cancel it, and confirm focus returns to that button and the request page did not open; on `/th/audit/rounds/<id>/pending`, do the same with the row's "บันทึกไม่พบ" (focus returns to it). On every master-data list, ⋯ → "ลบ" asks the same confirmation as before and Cancel returns focus to ⋯.
-- [ ] Filters and chips: on `/th/audit/findings` opened from a round or a report, the "รอบตรวจ: …" and "ประเภท: …" chips each remove only their own filter; on `/th/maintenance?assetId=<id>`, the "เฉพาะทรัพย์สินนี้" chip removes only the asset filter and keeps the search, status, dates and page size, and "กรอง" keeps the chosen page size; on `/th/disposal` at 375px the folded filter panel reads "ใช้ตัวกรอง N รายการ".
-- [ ] Selections stay on one page: on `/th/audit/findings` (approver), tick findings, then go to the next page or another queue and confirm the ticks are cleared; "อนุมัติที่เลือก" is the primary button and "ปฏิเสธที่เลือก" the red-outlined one. On `/th/disposal`, "เลือกหน้านี้" selects only rows of the page on screen.
+- [ ] Filters and chips: on `/th/audit/findings` opened from a round or a report, the "รอบ:" and "เรื่อง:" filters show the round and the field, and changing one keeps the other, the tab and the search; on `/th/maintenance?assetId=<id>`, the "เฉพาะทรัพย์สินนี้" chip removes only the asset filter and keeps the search, status, dates and page size, and "กรอง" keeps the chosen page size; on `/th/disposal` at 375px the folded filter panel reads "ใช้ตัวกรอง N รายการ".
+- [ ] Selections stay on one page: on `/th/audit/findings` (approver, desktop), tick findings, then go to the next page or another tab and confirm the ticks are cleared; the bar reads "N รายการที่เลือก · ล้าง · ปฏิเสธที่เลือก · อนุมัติที่เลือก N รายการ", with "อนุมัติที่เลือก N รายการ" the primary button. On `/th/disposal`, "เลือกหน้านี้" selects only rows of the page on screen.
 
 ## Adaptive UI Release Gate
 
@@ -482,6 +482,52 @@ A person still checks:
   - each field's ตรง / ไม่ตรง reads with the field's name;
   - "เลือกค่าที่พบ" is read as focus moves to the field.
 - [ ] An English pass of the new messages.
+
+## Audit Findings B UAT (2026-10-28)
+
+The automated suite covers the findings page in all four projects, the phone on WebKit (`e2e/audit/field-audit.spec.ts`), and finding M4 (`e2e/cross-cutting/roles.spec.ts`). It checks:
+- the six tabs and their counts within the round;
+- the เรื่อง chips;
+- a row opening the panel with `?finding=`, and a reload reopening it;
+- each decision moving to the next finding with "k จาก N";
+- a reject without a reason refused by the panel and by the API;
+- "ส่วนควบของ <parent>" in the row and in the panel;
+- the comparison and the sentence of what approving changes;
+- on the desktop, the ticks, the bar, "ล้าง", and a batch with one failure made on purpose ("สำเร็จ 1 · ไม่สำเร็จ 1");
+- the own finding with no tick and the panel's reason;
+- IT staff with no review control in the list or in the panel;
+- "ส่งออก ▾" with the round and the locale, and the Excel's cells in words with English headers;
+- the dashboard's findings links landing on รอพิจารณา and ต้องติดตาม.
+
+A person still checks:
+
+- [ ] At 1280 and 1440, in both themes: the two panes (the panel about 420px) and the chosen row's fill. The sticky bar covers no row. The panel scrolls on its own on a long finding, and stays in view when a row far down the list is opened (P4-R31).
+- [ ] At 768 and 1024, in both themes, with a row ticked: at 768 the selection bar sits above the bottom navigation and every nav button can be pressed; at 1024 the bar is flush at the bottom and there is no field navigation (P4-R35).
+- [ ] At 1024, 768 and 390: scroll the list and open a finding near its bottom. The panel opens at its top with "กลับไปรายการไม่ตรง" in view. Decide it, and the next finding also opens at its title (P4-R31).
+- [ ] With more pending findings than one page (page size 25), decide the last finding of page 1: the panel opens the first of page 2. Decide the last pending finding of the tab: the panel says the tab is done.
+- [ ] A 409: edit an asset's department through the asset form after its finding was reported, then approve that finding:
+  - the warning shows in the panel, and a second press applies it;
+  - inside a batch, the finding is skipped, and the result says to decide it in the panel.
+- [ ] "ปฏิเสธที่เลือก" asks one reason, refuses an empty one under the box, and rejects each ticked finding with it.
+- [ ] "อนุมัติทุกช่องของทรัพย์สินนี้" on an asset with two pending fields applies both, and the rows stay one per finding.
+- [ ] Two tabs on one finding: decide it in one, then press อนุมัติ in the other. It is refused as already decided, and nothing is applied twice.
+- [ ] The follow-up in the panel:
+  - "แผนแก้ไข" saves the owner, the due date and the status, and the owner reads as a name for a role without `audit:edit`;
+  - "ปิดรายการไม่ตรง" needs one evidence file;
+  - the evidence list, "เปิดคำขอตัดจำหน่าย" (it returns to the same finding) and the freshness banner work;
+  - on a closed or cancelled round, the panel offers no plan or close.
+- [ ] On iPhone Safari and Android Chrome: tapping a card opens the panel full screen, and its back returns to the list at the same place.
+- [ ] Old links land: the round page's "แผนแก้ไขค้าง" opens ต้องติดตาม › ต้องแก้ไข; the bell's open and due-soon actions open ต้องติดตาม with the bell's count; an `?status=overdue` link opens เกินกำหนด.
+- [ ] Each sub-chip's count equals its rows.
+- [ ] Search "แผนก" or "ที่ตั้ง": the findings of that field come up (bug 19). "เรื่อง:" narrows to one field.
+- [ ] Open the PDF exports (round, findings) and the variance Excel: the statuses, results and actions read as words, and an `actionTaken` code with no word yet is an empty cell, never the code (P4-R29).
+- [ ] A round export with a Thai search downloads, with the Thai name kept.
+- [ ] NVDA and VoiceOver:
+  - the tabs read their counts;
+  - a tick reads its finding;
+  - the bar reads its count;
+  - the reason error is read as focus moves to the box.
+- [ ] An English pass of the new messages and of the exports with `locale=en`.
 
 ## Sign-Off
 

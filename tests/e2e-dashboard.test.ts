@@ -38,3 +38,12 @@ test("the dashboard spec runs as three users through the suite's fixtures, compa
   assert.match(spec, /\} finally \{\n\s+const cancelled = await page\.request\.patch\(`\/api\/audit-rounds\/\$\{round\.id\}`, \{ data: \{ action: "cancel"/, "(d) the round is cancelled whatever happens")
   assert.ok(spec.includes(`locator('a[href*="crossScope="]')`), "(e) the cross-scope number once")
 })
+
+test("each findings link of งานที่รอคุณ lands on its tab: pending on รอพิจารณา, the bell's open and due-soon actions on ต้องติดตาม (group 2 plan 4 task 7, P4-R3)", () => {
+  const steps = read("e2e/dashboard/dashboard-steps.ts")
+  assert.ok(steps.includes(`import { REVIEW_WORDS } from "../audit/review-words.ts"`))
+  for (const line of ["pendingAuditFindings: REVIEW_WORDS.tabPending,", "openAuditActions: REVIEW_WORDS.tabFollowUp,", "auditActionsDueSoon: REVIEW_WORDS.tabFollowUp,"]) assert.ok(steps.includes(line), line)
+  const spec = read("e2e/dashboard/dashboard.spec.ts")
+  assert.ok(spec.includes("const tab = FINDING_TABS[list.key]"))
+  assert.ok(spec.includes("if (tab) await expect(currentFindingTab(page), list.key).toHaveText(new RegExp(`^${escapeRegExp(tab)}`))"))
+})

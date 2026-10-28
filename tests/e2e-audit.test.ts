@@ -250,7 +250,8 @@ test("the IT head's own finding and own close are refused by the segregation rul
   // The exports: finding AU1 is fixed (FX4) and decision U1 is DX6 (ก): the IT head holds audit:export and downloads.
   const exports = block(spec, "The audit exports by permission")
   assert.ok(!exports.includes(`test.fail(true, "AU1: `) && !exports.includes(`test.fail(true, "U1: `), "AU1 is fixed (FX4); U1 is decided (DX6)")
-  assert.ok(exports.includes(`page.getByRole("link", { name: "${thai("auditFinding").exportFindings}" })`))
+  // Group 2 plan 4 (spec §10): the findings export sits in "ส่งออก ▾", no longer a link of its own.
+  assert.ok(!exports.includes(`{ name: "ส่งออกรายการไม่ตรง" }`), "no findings export link")
   // Group 2 plan 2 (spec §8, §16): IT staff get no export menu on the round page; after the review the IT head sees the
   // rejected condition leave its bar (P2-R1) and the Excel export follow the category.
   assert.ok(exports.includes(`await expect(page.getByRole("main").getByRole("button", { name: W.exportMenu, exact: true })).toHaveCount(0)`))
@@ -283,7 +284,7 @@ test("IT staff read the round page after the walk: each chip's count is its rows
   assert.ok(after.includes("fillTemplate(W.reviewWaiting, { count: 5 })") && after.includes("fillTemplate(W.viewPendingFindings, { count: 5 })"))
   assert.ok(!after.includes("W.reviewItems"))
   assert.ok(after.includes(`await parentRow.getByRole("link", { name: assets.component2.tag, exact: true }).click()`))
-  // "ส่วนควบของ <parent>" on the findings page is plan 4's step (spec §16), not this block's.
+  // "ส่วนควบของ <parent>" on the findings page is block 6's step (group 2 plan 4, spec §16).
 })
 
 test("the phone walk reads the app's own words and the walk's markup: the switch and the category chips, a room-first search, the record sheet's ตรง / ไม่ตรง, a personal asset, a wrong room and a second out-of-scope find (group 2 plan 3 task 6)", async () => {
@@ -382,4 +383,100 @@ test("the walk's search spec opens its own round of eleven on its own room, on t
   assert.ok(spec.includes("await expect(scan.searchRows(page)).toHaveCount(11)"))
   // Cancelled whatever happens, by the IT head through the round route (never a DELETE).
   assert.match(spec, /\} finally \{\n\s+await rounds\.cancelAsItHead\(playwright\.request, baseURL, round\.id, /)
+})
+
+test("the findings page in the walk: a row opens the panel with ?finding=, a decision moves to the next, a reject without a reason is refused, a component names its machine, a batch reports one failure on purpose, and the export sits in ส่งออก ▾ (group 2 plan 4 task 7)", async () => {
+  const { REVIEW_WORDS: R } = await import("../e2e/audit/review-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(R)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  // The words that stay, by their keys (the review buttons are refusals.ts's WRITE_BUTTON_NAMES too).
+  const finding = th.auditFinding as Record<string, string>
+  for (const [name, key] of [
+    ["title", "title"], ["emptyTitle", "emptyTitle"], ["tabsLabel", "quickFilters"], ["tabPending", "status_pending"], ["tabApproved", "status_approved"], ["tabRejected", "status_rejected"], ["tabFollowUp", "tabFollowUp"], ["tabClosed", "filterClosed"], ["tabAll", "status_all"],
+    ["approve", "approve"], ["reject", "reject"], ["actionPlan", "actionPlan"], ["closeFinding", "closeFinding"], ["ownFinding", "segregationReviewBlocked"], ["openAsset", "openAsset"], ["reasonLabel", "reviewReasonLabel"], ["rejectReasonRequired", "reviewReasonRequired"],
+    ["approveNoChangeOutOfScope", "effectNoChangeOutOfScope"], ["approveNoChangeNotFound", "effectNoChangeNotFound"], ["approveAllFields", "approveAllFields"],
+    ["selectAll", "selectAllOnPage"], ["clearSelection", "clearSelection"], ["rejectSelected", "rejectSelected"], ["batchApproveTitle", "batchApproveTitle"], ["batchApproveConfirm", "batchApproveConfirm"], ["batchResult", "reviewResultSummary"], ["batchFailedAlreadyDecided", "reviewFailure_alreadyDecided"], ["batchResultDismiss", "batchResultDismiss"],
+    ["exportExcel", "exportFindings"], ["exportPdf", "exportFindingsPdf"],
+  ] as const) {
+    assert.equal(R[name], finding[key], name)
+  }
+  // The เรื่อง chip reads the round page's short words (P4-R2).
+  const round = th.auditRound as Record<string, string>
+  for (const [name, key] of [["subjectLocation", "differenceField_location"], ["subjectCustodian", "differenceField_custodian"], ["subjectDepartment", "differenceField_department"], ["subjectCondition", "differenceField_condition"], ["subjectNotFound", "notFound"], ["subjectOutOfScope", "outOfScope"]] as const) {
+    assert.equal(R[name], round[key], name)
+  }
+  assert.equal(R.exportMenu, th.common.export)
+
+  // The steps, and the next finding on one page (P4-R18): the one after, else the first before it (the page's first);
+  // none when it was the last.
+  const steps = await import("../e2e/audit/review-steps.ts")
+  assert.equal(steps.nextPendingAfter(["a", "b", "c"], "b"), "c")
+  assert.equal(steps.nextPendingAfter(["a", "b", "c"], "c"), "a")
+  assert.equal(steps.nextPendingAfter(["a"], "a"), null)
+  assert.throws(() => steps.nextPendingAfter(["a"], "z"), /not in the page's order/)
+  const source = read("e2e/audit/review-steps.ts")
+  for (const name of ["findingRows", "findingEntry", "findingId", "readFindingOrder", "openFinding", "findingPanel", "findingTabs", "currentFindingTab", "expectTabs", "selectionBar", "nextPendingAfter", "reviewResponse", "watchReviewPosts", "rawCodeCells", "browserFetch"]) {
+    assert.match(source, new RegExp(`^export (?:async )?function ${name}\\(`, "m"), name)
+  }
+  assert.ok(source.includes('return page.locator("[data-audit-finding-panel]").filter({ visible: true })'))
+  assert.ok(source.includes('await (card ? entry : entry.locator("[data-audit-finding-subject]")).click()'), "a row opens the panel by a click on its chip, not its link; a card by its stretched link")
+  // The markup the steps read (Tasks 3-5).
+  const findingsDir = "src/app/[locale]/(dashboard)/audit/findings"
+  const sources = [
+    ...readdirSync(findingsDir).filter((file) => file.endsWith(".tsx")).map((file) => read(`${findingsDir}/${file}`)),
+    ...readdirSync("src/components/audit").map((file) => read(`src/components/audit/${file}`)),
+    read("src/components/ui/desktop-selection-bar.tsx"),
+  ].join("\n")
+  for (const hook of ["data-audit-finding-row", "data-audit-finding-card", "data-finding-type", "data-audit-finding-subject", "data-audit-finding-panel", "data-audit-finding-panel-empty", "data-finding-id", "data-audit-finding-field", "data-audit-finding-effect", 'data-slot="desktop-selection-bar"', '"audit-review-reason"']) {
+    assert.ok(sources.includes(hook), hook)
+  }
+
+  const spec = read(SPEC)
+  // Block 5: IT staff get no tick, and the panel a row opens decides nothing (decision DX3, spec §10).
+  const refused = block(spec, "IT staff are refused the review and the close")
+  assert.ok(refused.includes(`await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)`))
+  assert.match(refused, /await roundPage\.settlePageRequests\(page\)\n\s*await review\.openFinding\(page, component, componentId\)/)
+  assert.ok(refused.includes("for (const name of [R.approve, R.reject, R.actionPlan, R.closeFinding]) await expect(panel.getByRole(\"button\", { name, exact: true })).toHaveCount(0)"))
+  assert.ok(refused.includes(`await expect(page.locator("#audit-review-reason")).toHaveCount(0)`))
+
+  // Block 6: the panel, the next finding, the refused reject, the component's machine, the batch.
+  const head = block(spec, "The IT head reviews and closes")
+  assert.ok(head.includes("await review.expectTabs(page, [[R.tabPending, 5], [R.tabApproved, 0], [R.tabRejected, 0], [R.tabFollowUp, 0], [R.tabClosed, 0], [R.tabAll, 5]], R.tabPending)"))
+  assert.ok(head.includes("await review.expectTabs(page, [[R.tabPending, 0], [R.tabApproved, 4], [R.tabRejected, 1], [R.tabFollowUp, 0], [R.tabClosed, 0], [R.tabAll, 5]], R.tabPending)"))
+  assert.ok(head.includes(`expect(ids.notFound, "the not-found save's finding").toBe(chain.notFoundFindingId)`))
+  assert.ok(head.includes("const parentLine = fillTemplate(R.componentOf, { parentTag: assets.parent.tag, parentName: assets.parent.name })"))
+  assert.ok(head.includes("await expect(component).toContainText(parentLine)") && head.includes("await expect(panel).toContainText(parentLine)"))
+  assert.match(head, /await roundPage\.settlePageRequests\(page\)\n\s*await page\.reload\(\)/)
+  assert.ok(head.includes(`expect((await reviewed).status(), "the decision is taken at once").toBe(200)`))
+  assert.ok(head.includes(`await page.waitForURL((url) => url.searchParams.get("finding") === next)`))
+  assert.ok(head.includes("fillTemplate(R.position, { position: order.indexOf(id) + 1, total: order.length })"))
+  assert.ok(head.includes(`await expect(page.locator("#audit-review-reason-error")).toHaveText(R.rejectReasonRequired)`), "the reject's own sentence (P4-R27)")
+  assert.ok(head.includes(`expect(posts.posts, "a reject without a reason sends nothing").toEqual([])`))
+  assert.ok(head.includes(`toEqual({ status: 400, body: { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { reviewRemark: "required" } } })`))
+  // The consequence sentence per type (P4-R24): ไม่พบ alone, นอกขอบเขต with the transfer.
+  assert.ok(head.includes("await expect(effect).toHaveText(R.approveNoChangeNotFound)") && head.includes("await expect(effect).toHaveText(R.approveNoChangeOutOfScope)"))
+  assert.equal((head.match(/measure\.expectRefusal\(\{ method: "POST", url: new RegExp\(`\/api\/audit-findings\/\$\{ids\.(?:condition|outOfScope)\}\/review\$`\), status: 400, /g) ?? []).length, 2)
+  assert.ok(head.includes(`expect(earlier.status, "X1 decided through the API before the batch (P4-R16)").toBe(200)`))
+  assert.ok(head.includes("fillTemplate(R.approveSelected, { count: 2 })") && head.includes("fillTemplate(R.batchResult, { succeeded: 1, failed: 1 })"))
+  assert.ok(head.includes(`expect(outOfScope.status(), "X1 was decided already: one failure, and the batch goes on").toBe(400)`))
+  // The panel decides with no dialog (spec §10); the bar's batch asks once in its own (P4-R25).
+  assert.ok(!head.includes("ยืนยันการอนุมัติรายการไม่ตรง"), "no decision dialog in the panel (spec §10)")
+  assert.equal((head.match(/getByRole\("dialog"/g) ?? []).length, 1, "one dialog: the batch's")
+  assert.ok(head.includes('page.getByRole("dialog", { name: fillTemplate(R.batchApproveTitle, { count: 2 }) })'))
+  // Every navigation of the block waits for the page's requests first (E2E-1027B/C).
+  const gotos = head.match(/await page\.(?:goto|reload)\(/g) ?? []
+  assert.equal((head.match(/await roundPage\.settlePageRequests\(page\)\n\s*await page\.(?:goto|reload)\(/g) ?? []).length, gotos.length)
+
+  // Block 7: the own finding has no tick, and the panel says why (spec §10, Appendix A §10).
+  const own = block(spec, "The IT head's own round")
+  assert.ok(own.includes(`await expect(entry.getByRole("checkbox")).toHaveCount(0)`))
+  assert.ok(own.includes("await expect(panel.getByText(R.ownFinding)).toBeVisible()"))
+
+  // Block 8: the findings export in "ส่งออก ▾" with the round and the locale; the files speak words (P4-R7, P4-R8).
+  const exports = block(spec, "The audit exports by permission")
+  assert.ok(exports.includes(`await expect(page.locator('main a[href^="/api/audit-findings/export"]')).toHaveCount(0)`))
+  assert.ok(exports.includes('for (const param of ["status=all", `roundId=${chain.roundId}`, "locale=th"])'))
+  assert.ok(exports.includes(`expect(review.rawCodeCells(sheet, ["Finding Type", "Review Status", "Action Status", "Action Taken"]), "no raw code in a cell (P4-R7, P4-R8)").toEqual([])`))
+  assert.ok(exports.includes(`expect(review.rawCodeCells(sheet, ["Audit Status", "Audit Result", "Reconcile Status"]), "no raw code in a cell (P4-R7)").toEqual([])`))
 })

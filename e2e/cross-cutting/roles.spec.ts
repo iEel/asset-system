@@ -9,6 +9,8 @@ import { expectApprovalInboxNotFound, expectRefused, readOnlyUrl, writeControls 
 import { expectNotFound, visitRefused } from "./support/ui.ts"
 import { controlNames, detailWriteControls, openMoreActionsIfShown, readMenuEntries } from "../asset-detail/detail-steps.ts"
 import { DETAIL_VIEWS, DETAIL_WORDS } from "../asset-detail/detail-words.ts"
+import { findingId, findingPanel, findingRows, openFinding } from "../audit/review-steps.ts"
+import { settlePageRequests } from "../audit/round-page-steps.ts"
 
 test.describe("the viewer", () => {
   asUser("viewer")
@@ -123,12 +125,22 @@ test.describe("IT staff", () => {
 
   // Finding M4, decided (DX3 (ก)): the findings page shows the approve, reject, plan and close controls only to a role
   // with audit:approve, the permission the review route checks; IT staff hold audit:edit and see none of them.
-  test("the findings page offers IT staff no review control without audit:approve (finding M4)", async ({ page, measure }) => {
+  test("the findings page offers IT staff no review control without audit:approve (finding M4)", async ({ page, measure, e2eDevice }) => {
     await measure.visit("/th/audit/findings", "audit findings (IT staff)")
     // The queue's empty state (auditFinding.emptyTitle) shows when there is no pending finding to look at.
     const empty = await page.getByRole("main").getByText("ไม่พบรายการไม่ตรงตามตัวกรอง", { exact: true }).filter({ visible: true }).count()
     test.skip(empty > 0, "no pending finding in the dev database to look at")
     for (const name of REVIEW_BUTTON_NAMES) await expect(page.getByRole("main").getByRole("button", { name, exact: true }).filter({ visible: true })).toHaveCount(0)
+    // Group 2 plan 4 (spec §10): no tick, so no selection bar, and the panel a row opens offers none of them either,
+    // nor the reason box. Only absences are read on this global page (spec §16).
+    await expect(page.getByRole("main").getByRole("checkbox")).toHaveCount(0)
+    const first = findingRows(page, e2eDevice).first()
+    const id = await findingId(first, e2eDevice)
+    await settlePageRequests(page)
+    await openFinding(page, first, id)
+    for (const name of REVIEW_BUTTON_NAMES) await expect(findingPanel(page).getByRole("button", { name, exact: true })).toHaveCount(0)
+    await expect(page.locator("#audit-review-reason")).toHaveCount(0)
+    await measure.recordPage("audit findings, a finding's panel (IT staff)")
   })
 })
 

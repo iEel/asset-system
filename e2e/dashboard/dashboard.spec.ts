@@ -13,7 +13,8 @@ import { templatePattern } from "../shell/shell-words.ts"
 import { bangkokDate } from "../transactions/tx-plan.ts"
 import { recordSettled } from "../audit/settle.ts"
 import { DASHBOARD_WORDS, SECTION_ORDER } from "./dashboard-words.ts"
-import { bellRows, byWaitingOrder, countIn, expectedPace, kpiCell, kpiLabels, LIST_TOTAL, section, sectionOrder, waitingHref, waitingRows } from "./dashboard-steps.ts"
+import { bellRows, byWaitingOrder, countIn, expectedPace, FINDING_TABS, kpiCell, kpiLabels, LIST_TOTAL, section, sectionOrder, waitingHref, waitingRows } from "./dashboard-steps.ts"
+import { currentFindingTab } from "../audit/review-steps.ts"
 
 test.describe("the IT head", () => {
   asUser("itHead")
@@ -67,6 +68,9 @@ test.describe("the IT head", () => {
         expect(await countIn(kpiCell(page, new RegExp(`^${DASHBOARD_WORDS.approvalsTotal}$`)).locator("dd").first()), list.key).toBe(list.count)
       } else {
         await expect(page.getByRole("main"), list.key).toContainText(`จาก ${list.count} รายการ`)
+        // Group 2 plan 4 (P4-R3): a findings link lands on its tab.
+        const tab = FINDING_TABS[list.key]
+        if (tab) await expect(currentFindingTab(page), list.key).toHaveText(new RegExp(`^${escapeRegExp(tab)}`))
       }
       followed.push(list.key)
     }

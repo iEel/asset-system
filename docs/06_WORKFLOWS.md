@@ -156,7 +156,14 @@
   - is refused for a component confirmation on that item, and works online only.
 - If an item was previously marked not found and is later scanned in the same audit round, the existing found-later recovery path should resolve the not-found finding through the current audit scan logic.
 - Review findings and close rounds with segregation-of-duties protection.
-- Use `/audit/findings` as the existing `รายการไม่ตรง` follow-up workflow after field scanning. The page groups existing audit findings into pending review, open action, overdue, and closed queues, shows system-vs-found values together, keeps review/action/closure controls in place, and exports Excel/PDF with the same active filters. Normal freshness feedback is a compact loaded-at metadata strip with refresh; a larger stale warning appears only after the page has been open past the configured stale window. Reviewers approve/reject through a decision modal, can open `audit_finding` evidence attachments inline from the finding card/table, and approving a correctable finding checks whether the master asset changed after the finding was reported before applying corrections.
+- Use `/audit/findings` (page group 2 plan 4) as the `รายการไม่ตรง` follow-up after field scanning.
+  - **Tabs:** รอพิจารณา / อนุมัติแล้ว / ปฏิเสธแล้ว / ต้องติดตาม (ต้องแก้ไข / เกินกำหนด / ต้องตรวจสอบพิเศษ) / ปิดแล้ว / ทั้งหมด, each with its count within the "รอบ:" / "เรื่อง:" filters and the search. Old `status` links open their tab.
+  - **The panel:** a row (a card on the phone) opens the finding in it, with `?finding=`. It shows the four fields with the mismatched ones marked, the photo, the remark, who checked it, and what approving changes in the register.
+  - **Deciding:** approve or reject there takes effect at once and moves to the next pending finding; a reject needs a reason, also in the API. An asset changed after the report needs a second press.
+  - **Several at once:** on the desktop, ticks and the selection bar. The bar goes on past a failure, reports "สำเร็จ X · ไม่สำเร็จ Y", and skips a changed asset to the panel.
+  - **Who:** the reporter cannot decide their own finding, and the panel says why. Without `audit:approve` nobody sees a decide, plan or close control.
+  - **Follow-up:** the action plan and the close with evidence stay in the panel, for open rounds.
+  - **Exports:** "ส่งออก ▾" exports Excel and PDF with the same filters, in the page's language.
 - Disposal follow-up links opened from `/audit/findings` carry the current findings queue/search as a sanitized return context so reviewers can return to the same resolution queue after the disposal workflow.
 
 ## Maintenance And PM
