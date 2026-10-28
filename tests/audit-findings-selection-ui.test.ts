@@ -78,7 +78,7 @@ test("the page: one provider per selectionKey around the list pane, the ticks in
   assert.match(read("src/app/[locale]/(dashboard)/audit/findings/layout.tsx"), /<AuditFindingsBatchReportProvider>\{children\}<\/AuditFindingsBatchReportProvider>/, "the result survives the redirect to the last page (P4-R34)")
   const table = page.slice(page.indexOf("<DataTable framed={false}"), page.indexOf("</DataTable>"))
   assert.match(table, /^<DataTable framed=\{false\} layout="fixed" minWidth=\{520\} /, "the tick comes out of the auto column: the table still fits beside the panel at 1280 (P4-R36)")
-  assert.match(table, /<colgroup>\s*\{canApprove \? <col className="w-11" \/> : null\}\s*<col className="w-24" \/>/)
+  assert.match(table, /<colgroup>\s*\{canApprove \? <col className="w-11" \/> : null\}\s*<col className="w-28" \/>/)
   assert.match(table, /\{canApprove \? \(\n\s+<DataTableHead className="p-0 first:pl-0 md:first:pl-0">\n\s+<AuditFindingSelectAllTick \/>\n\s+<\/DataTableHead>\n\s+\) : null\}/)
   assert.match(table, /\{canApprove \? \(\n\s+<DataTableCell className="p-0 first:pl-0 md:first:pl-0">\n\s+<AuditFindingSelectTick findingId=\{row\.id\} \/>\n\s+<\/DataTableCell>\n\s+\) : null\}/, "the first column's gutter cleared, so the 44px label fills its column (P4-R36)")
   assert.match(table, /<TableEmptyRow colSpan=\{canApprove \? 5 : 4\} /)

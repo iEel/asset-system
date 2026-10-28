@@ -277,7 +277,7 @@ test("findings: PageHeader with the way back and ส่งออก ▾, TabNav 
     assert.ok(source.includes(part), `no ${part}`)
   }
   assert.match(source, /<div className="space-y-6">/)
-  assert.match(source, /back=\{<PageBackLink href=\{back\.href\} label=\{backLabel\} \/>\}/, "the way back has the left arrow (spec 2B §5.10 row 2) and honours returnTo (P4-R12)")
+  assert.match(source, /back=\{<PageBackLink href=\{back\.href\} label=\{backLabel\} className=\{chosen \? "max-xl:hidden" : undefined\} \/>\}/, "the way back has the left arrow (spec 2B §5.10 row 2) and honours returnTo (P4-R12)")
   assert.match(source, /<TabNav aria-label=\{t\("quickFilters"\)\} items=\{resolutionFilters\} current=\{view\.tab\} scroll=\{false\} \/>/)
   assert.match(source, /<FilterChipList chips=\{filterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
   assert.match(source, /<AuditFindingsSelectionProvider key=\{selectionKey\} filterKey=\{filterKey\} findings=\{selectableFindings\}>/, "another page or filter starts the ticks empty")

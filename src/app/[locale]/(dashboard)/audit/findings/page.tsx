@@ -259,7 +259,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
       <PageHeader
         title={t("title")}
         meta={t("subtitle")}
-        back={<PageBackLink href={back.href} label={backLabel} />}
+        // Below xl an open finding takes the page and has its own "กลับไปรายการไม่ตรง": one way back, never two arrows.
+        back={<PageBackLink href={back.href} label={backLabel} className={chosen ? "max-xl:hidden" : undefined} />}
         actions={canExport ? <AuditFindingsExportMenu excelHref={`/api/audit-findings/export?${exportParams.toString()}`} pdfHref={`/api/audit-findings/export-pdf?${exportParams.toString()}`} /> : null}
       />
 
@@ -341,10 +342,10 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     comes first, out of the auto asset column (P4-R36). */}
                 <colgroup>
                   {canApprove ? <col className="w-11" /> : null}
-                  <col className="w-24" />
-                  <col />
-                  <col className="w-44" />
                   <col className="w-28" />
+                  <col />
+                  <col className="w-40" />
+                  <col className="w-32" />
                 </colgroup>
                 <DataTableHeader>
                   <tr>
@@ -385,7 +386,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                           <DataTableCell><Chip data-audit-finding-subject>{topic}</Chip></DataTableCell>
                           <DataTableCell>
                             <Link href={findingHref(row.id)} scroll={false} data-audit-finding-open className={cn(linkVariants({ size: "inherit" }), "break-all")}>
-                              <span className="tag">{code}</span>
+                              {/* A long code wraps inside its column beside the panel (1280), never over the next one. */}
+                              <span className="tag whitespace-normal">{code}</span>
                             </Link>
                             {row.asset ? <div className="break-words text-meta text-muted-foreground">{row.asset.name}</div> : null}
                             {row.parent ? <div className="break-words text-meta text-muted-foreground">{t("componentOfParent", { assetTag: row.parent.assetTag, name: row.parent.name })}</div> : null}
@@ -395,7 +397,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                             {line ? <div className="mt-1 text-meta text-muted-foreground">{line}</div> : null}
                           </DataTableCell>
                           <DataTableCell className="text-muted-foreground">
-                            <span className="tag">{row.auditRound.auditNo}</span>
+                            <span className="tag whitespace-normal break-all">{row.auditRound.auditNo}</span>
                             <div className="break-words text-meta">{row.auditRound.name}</div>
                           </DataTableCell>
                         </ClickableTableRow>
