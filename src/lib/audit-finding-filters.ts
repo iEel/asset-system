@@ -123,10 +123,17 @@ export function buildAuditFindingTypeSearchLabels(translators: readonly AuditFin
 }
 
 // Bug 19: a field's name finds its findings ("ที่ตั้ง" finds ที่ตั้งไม่ตรง); a code is not a word, so it finds none.
+// M-2: the search must start a label or one of its space-separated words ("loc" finds Wrong Location, "ไม่" only
+// ไม่พบ), so a fragment of an asset's name ("on", "ไม่") does not pull in every finding of most types.
+function labelStartsWith(label: string, text: string): boolean {
+  const lower = label.toLocaleLowerCase()
+  return lower.startsWith(text) || lower.split(/\s+/).some((word) => word.startsWith(text))
+}
+
 export function auditFindingTypesMatchingSearch(search: string, labels: AuditFindingTypeSearchLabels = {}): AuditFindingType[] {
   const text = search.trim().toLocaleLowerCase()
   if (!text) return []
-  return auditFindingTypes.filter((type) => (labels[type] ?? []).some((label) => label.toLocaleLowerCase().includes(text)))
+  return auditFindingTypes.filter((type) => (labels[type] ?? []).some((label) => labelStartsWith(label, text)))
 }
 
 function auditFindingSearchConditions(searchText: string, typeSearchLabels?: AuditFindingTypeSearchLabels): Prisma.AuditFindingWhereInput[] {

@@ -103,8 +103,16 @@ test("เรื่อง: takes only a known type; the search reads the types' w
   assert.deepEqual(match("ที่ตั้ง"), ["wrong_location"])
   assert.deepEqual(match("ผู้ถือครอง"), ["wrong_custodian"])
   assert.deepEqual(match("สภาพ"), ["wrong_condition"])
-  assert.deepEqual(match("ไม่ตรง"), ["wrong_custodian", "wrong_location", "wrong_department", "wrong_condition"])
-  assert.deepEqual(match("ทรัพย์สิน"), ["not_found", "out_of_scope"])
+  // M-2: a type matches only when the search starts its label or one of its words, so a fragment of an asset's name
+  // ("ไม่", "on") no longer pulls in every finding of most types.
+  assert.deepEqual(match("ไม่"), ["not_found"], "ไม่พบ and ไม่พบทรัพย์สิน only")
+  assert.deepEqual(match("ไม่ตรง"), [], "inside a word, not its start")
+  assert.deepEqual(match("ทรัพย์สิน"), ["out_of_scope"], "ทรัพย์สินนอกขอบเขต only")
+  assert.deepEqual(match("on"), [])
+  assert.deepEqual(match("loc"), ["wrong_location"])
+  assert.deepEqual(match("wrong"), ["wrong_custodian", "wrong_location", "wrong_department", "wrong_condition"])
+  assert.deepEqual(match("scope"), ["out_of_scope"])
+  assert.deepEqual(match("Wrong Loc"), ["wrong_location"], "a prefix of the whole label")
   assert.deepEqual(match("LOCATION"), ["wrong_location"])
   assert.deepEqual(match("wrong_location"), [], "a code is not a word")
   assert.deepEqual(match("GRL-COM"), [])
