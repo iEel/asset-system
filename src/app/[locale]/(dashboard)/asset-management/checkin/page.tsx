@@ -1,4 +1,4 @@
-import { getAssetOperationOptions } from "@/lib/asset-operation-options"
+import { getAssetOperationAssetLists, getAssetOperationMasterOptions } from "@/lib/asset-operation-options"
 import { requirePagePermission } from "@/lib/page-auth"
 import { CheckinForm } from "@/components/asset-operations/checkin-form"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
@@ -12,7 +12,8 @@ export default async function CheckinPage({ params, searchParams }: CheckinPageP
   const { locale } = await params
   const filters = await searchParams
   await requirePagePermission(locale, "asset", "edit")
-  const options = await getAssetOperationOptions()
+  const master = await getAssetOperationMasterOptions()
+  const options = { ...master, ...(await getAssetOperationAssetLists(master)) }
 
   return (
     <CheckinForm

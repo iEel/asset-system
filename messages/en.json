@@ -1797,7 +1797,6 @@
   "checkout": {
     "title": "Check-out Asset",
     "asset": "Asset",
-    "selectAsset": "Select asset",
     "selectDestination": "Select destination",
     "selectCondition": "Select condition",
     "remark": "Remark",
@@ -1958,7 +1957,6 @@
     "title": "Transfer Asset",
     "printDocument": "Print transfer document",
     "asset": "Asset",
-    "selectAsset": "Select asset",
     "toLocation": "Destination Location",
     "toCustodian": "Destination Custodian",
     "toDepartment": "Destination Department",
@@ -1976,7 +1974,8 @@
     "reviewEvidence": "Evidence",
     "reviewNoEvidence": "No evidence files are attached to this transfer.",
     "reviewConfirm": "Confirm transfer",
-    "fromCustodian": "Previous Custodian"
+    "fromCustodian": "Previous Custodian",
+    "assetClearedForCustodian": "Removed {assetTag}: {reason}"
   },
   "bulkMove": {
     "title": "Bulk Move Locations",

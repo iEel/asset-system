@@ -111,10 +111,12 @@ test("an asset registered on the form with a photo and a purchase document, a wr
     const at = masters.indexOf(wait)
     assert.ok(goto >= 0 && at > goto && at < read0, wait)
   }
-  // The four transaction pages load every asset and checkout for their pickers (getAssetOperationOptions), so the first
-  // arrival check after a navigation into one waits TRANSACTION_PAGE_ARRIVAL_MS; nothing else waits longer (13B loop 7).
-  assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationOptions\(/)
-  for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.match(read(`src/app/[locale]/(dashboard)/asset-management/${page}/page.tsx`), /getAssetOperationOptions\(/, page)
+  // The four transaction pages load the master lists (getAssetOperationMasterOptions); ส่งมอบ and โอนย้าย ask the server
+  // search for their asset, while รับคืน and ย้ายที่ตั้งหลายรายการ still load their lists until server search Tasks 6-7, so
+  // the first arrival check after a navigation into one still waits TRANSACTION_PAGE_ARRIVAL_MS; nothing else waits
+  // longer (13B loop 7, S-R8).
+  assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(\): Promise<AssetOperationMasterOptions>/)
+  for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.match(read(`src/app/[locale]/(dashboard)/asset-management/${page}/page.tsx`), /getAssetOperationMasterOptions\(\)/, page)
   assert.match(support, /export const TRANSACTION_PAGE_ARRIVAL_MS = 30_000\n/)
   assert.match(support, /const TRANSACTION_PAGE_PATH = \/\^\\\/th\\\/asset-management\\\/\(\?:checkout\|checkin\|transfer\|bulk-move\)\(\?:\[\?#\]\|\$\)\//)
   assert.match(support, /await measure\.page\.goto\(path, \{ waitUntil: "load" \}\)\n\s*if \(TRANSACTION_PAGE_PATH\.test\(path\)\) await expect\(measure\.page\.getByRole\("heading", \{ level: 1 \}\)\)\.toBeVisible\(\{ timeout: TRANSACTION_PAGE_ARRIVAL_MS \}\)\n\s*return record\(measure, label, testInfo\)/)

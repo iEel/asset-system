@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
 import { toast } from "sonner"
+import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"
 import { Button } from "@/components/ui/button"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { Field } from "@/components/ui/field"
@@ -14,16 +15,26 @@ import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  assetOperationRowLabel,
+  chosenAssetReasonKey,
+  transferAssetToClear,
+  type ClearedTransferAsset,
+} from "@/lib/asset-operation-form-rules"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import { buildAssetOperationSearchHref, type AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { atLeastOne, maxLength, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 
-type Option = { id: string; label: string; disabled?: boolean; personalTransferEligible?: boolean }
+type Option = { id: string; label: string; disabled?: boolean }
 type TransferFormValues = {
-  assetId: string
+  /** The row the shared picker chose, or the ?assetId= answer (chosen-but-blocked when it cannot be taken, spec 6.4). */
+  asset: AssetOperationSearchRow | null
+  /** The asset a custodian chosen after it cleared, with the reason the field reads (spec 6.3). */
+  clearedAsset: ClearedTransferAsset | null
   toLocationId: string
   toCustodianId: string
   toDepartmentId: string
@@ -48,25 +59,25 @@ function validate(values: TransferFormValues): Partial<Record<TransferField, str
   const check = (key: TransferField, code: string | null) => {
     if (code) errors[key] = code
   }
-  check("assetId", required(values.assetId))
+  // A ?assetId= that arrived blocked stays chosen; save stops on it, and the field reads its reason (assetError).
+  check("assetId", required(values.asset) ?? (values.asset?.eligible === false ? "invalid" : null))
   check("toLocationId", atLeastOne([values.toLocationId, values.toCustodianId, values.toDepartmentId]) && "transferDestinationRequired")
   check("reason", required(values.reason) ?? maxLength(values.reason, 500))
   return errors
 }
 
 export function TransferForm({
-  assets,
   employees,
   departments,
   locations,
-  initialAssetId,
+  initialAsset,
   returnTo,
 }: {
-  assets: Option[]
   employees: Option[]
   departments: Option[]
   locations: Option[]
-  initialAssetId?: string
+  /** ?assetId=: the search's by-id answer, takeable or not (spec 6.4). */
+  initialAsset: AssetOperationSearchRow | null
   returnTo?: string
 }) {
   const locale = useLocale()
@@ -74,27 +85,31 @@ export function TransferForm({
   const router = useRouter()
   const t = useTranslations("transfer")
   const tCommon = useTranslations("common")
+  const tAll = useTranslations()
   const [saving, setSaving] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const fieldErrors = useFieldErrors<TransferField>()
-  const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
   const [values, setValues] = useState<TransferFormValues>({
-    assetId: initialAsset?.id ?? "",
+    asset: initialAsset,
+    clearedAsset: null,
     toLocationId: "",
     toCustodianId: "",
     toDepartmentId: "",
     reason: "",
     remark: "",
   })
-  const availableAssets = values.toCustodianId
-    ? assets.filter((asset) => asset.personalTransferEligible)
-    : assets
-  const selectedAsset = assets.find((asset) => asset.id === values.assetId)
+  // The asset's line under the field: a chosen row's reason, else the asset a custodian cleared, else the field's code.
+  const assetReasonKey = chosenAssetReasonKey(values.asset)
+  const assetError = assetReasonKey
+    ? tAll(assetReasonKey)
+    : values.clearedAsset
+      ? t("assetClearedForCustodian", { assetTag: values.clearedAsset.assetTag, reason: tAll(values.clearedAsset.reasonKey) })
+      : fieldErrors.message("assetId")
   const selectedLocation = locations.find((location) => location.id === values.toLocationId)
   const selectedCustodian = employees.find((employee) => employee.id === values.toCustodianId)
   const selectedDepartment = departments.find((department) => department.id === values.toDepartmentId)
   const reviewItems = buildOperationReviewSummary({
-    assetLabel: selectedAsset?.label ?? "",
+    assetLabel: values.asset ? assetOperationRowLabel(values.asset) : "",
     destinationLabels: [selectedLocation?.label, selectedCustodian?.label, selectedDepartment?.label],
     nextStatusLabel: values.toCustodianId ? t("inUseStatus") : t("statusUnchanged"),
     details: values.reason ? [{ label: t("reason"), value: values.reason }] : [],
@@ -120,16 +135,23 @@ export function TransferForm({
     // The three destinations are one rule, so a change of any clears it (spec §4.3).
     if (field === "toLocationId" || field === "toCustodianId" || field === "toDepartmentId") fieldErrors.clear("toLocationId")
     else if (field in FIELD_IDS) fieldErrors.clear(field as TransferField)
+    setValues((current) => ({ ...current, [field]: value }))
+    if (field === "toCustodianId" && value && values.asset) void recheckAssetForCustodian(values.asset.id)
+  }
+
+  function setAsset(asset: AssetOperationSearchRow | null) {
+    setValues((current) => ({ ...current, asset, clearedAsset: null }))
+    fieldErrors.clear("assetId")
+  }
+
+  // A custodian makes the transfer an assign (Ready or In Use only): the chosen asset is asked again under that rule (spec 6.3).
+  async function recheckAssetForCustodian(assetId: string) {
+    const response = await fetch(buildAssetOperationSearchHref({ mode: "transfer", id: assetId, assignCustodian: true })).catch(() => null)
+    const payload = response?.ok ? await response.json().catch(() => null) : null
+    const rechecked: AssetOperationSearchRow | null = payload?.data?.rows?.[0] ?? null
     setValues((current) => {
-      if (field === "toCustodianId" && value) {
-        const currentAsset = assets.find((asset) => asset.id === current.assetId)
-        return {
-          ...current,
-          toCustodianId: value,
-          assetId: currentAsset?.personalTransferEligible ? current.assetId : "",
-        }
-      }
-      return { ...current, [field]: value }
+      const cleared = transferAssetToClear(current, rechecked)
+      return cleared ? { ...current, asset: null, clearedAsset: cleared } : current
     })
   }
 
@@ -143,7 +165,7 @@ export function TransferForm({
   async function submitTransfer() {
     setSaving(true)
     try {
-      const response = await fetch(`/api/assets/${values.assetId}/transfer`, {
+      const response = await fetch(`/api/assets/${values.asset?.id}/transfer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -177,12 +199,21 @@ export function TransferForm({
       <PageHeader title={t("title")} className="mb-6" />
       <ContentPanel>
         <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
-          {initialAsset ? (
+          {initialAsset?.eligible ? (
             <div className="md:col-span-2">
-              <FormContextBanner label={t("asset")} value={initialAsset.label} />
+              <FormContextBanner label={t("asset")} value={assetOperationRowLabel(initialAsset)} />
             </div>
           ) : null}
-          <SearchableSelect id="transfer-asset" label={t("asset")} value={values.assetId} required options={availableAssets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("assetId")} onChange={(value) => setField("assetId", value)} />
+          <AssetOperationPicker
+            id="transfer-asset"
+            label={t("asset")}
+            mode="transfer"
+            context={{ assignCustodian: Boolean(values.toCustodianId) }}
+            value={values.asset}
+            required
+            error={assetError}
+            onChange={setAsset}
+          />
           <SearchableSelect id="transfer-to-location" label={t("toLocation")} value={values.toLocationId} options={locations} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toLocationId")} onChange={(value) => setField("toLocationId", value)} />
           <SearchableSelect label={t("toCustodian")} value={values.toCustodianId} options={employees} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toCustodianId", value)} />
           <SearchableSelect label={t("toDepartment")} value={values.toDepartmentId} options={departments} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toDepartmentId", value)} />

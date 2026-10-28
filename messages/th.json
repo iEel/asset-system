@@ -1797,7 +1797,6 @@
   "checkout": {
     "title": "ส่งมอบทรัพย์สิน",
     "asset": "ทรัพย์สิน",
-    "selectAsset": "เลือกทรัพย์สิน",
     "selectDestination": "เลือกปลายทาง",
     "selectCondition": "เลือกสภาพ",
     "remark": "หมายเหตุ",
@@ -1958,7 +1957,6 @@
     "title": "โอนย้ายทรัพย์สิน",
     "printDocument": "พิมพ์เอกสารโอนย้าย",
     "asset": "ทรัพย์สิน",
-    "selectAsset": "เลือกทรัพย์สิน",
     "toLocation": "ที่ตั้งปลายทาง",
     "toCustodian": "ผู้ถือครองปลายทาง",
     "toDepartment": "แผนกปลายทาง",
@@ -1976,7 +1974,8 @@
     "reviewEvidence": "หลักฐาน",
     "reviewNoEvidence": "ไม่มีไฟล์หลักฐานในรายการโอนย้ายนี้",
     "reviewConfirm": "ยืนยันโอนย้าย",
-    "fromCustodian": "ผู้ถือครองเดิม"
+    "fromCustodian": "ผู้ถือครองเดิม",
+    "assetClearedForCustodian": "นำ {assetTag} ออกแล้ว: {reason}"
   },
   "bulkMove": {
     "title": "ย้ายที่ตั้งหลายรายการ",
