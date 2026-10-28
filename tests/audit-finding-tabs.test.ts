@@ -212,3 +212,13 @@ test("the page and both exports read the type words of both languages through on
     assert.match(read(path), /const typeSearchLabels = await getAuditFindingTypeSearchLabels\(\)/, path)
   }
 })
+
+test("M-6: both findings exports order as the page does, with its id tie-break, so equal report times keep the page's order", () => {
+  assert.deepEqual(auditFindingsListOrderBy, [{ reportedAt: "desc" }, { id: "asc" }])
+  for (const path of ["src/app/api/audit-findings/export/route.ts", "src/app/api/audit-findings/export-pdf/route.ts"]) {
+    const route = read(path)
+    assert.match(route, /^import \{[^}]*\bauditFindingsListOrderBy\b[^}]*\} from "@\/lib\/audit-finding-filters"$/m, path)
+    assert.match(route, /orderBy: auditFindingsListOrderBy,\n\s+take: 5000,/, path)
+    assert.doesNotMatch(route, /orderBy: \{ reportedAt: "desc" \}/, path)
+  }
+})

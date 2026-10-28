@@ -5,7 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { auditExportActionStatusKey, auditExportActionTaken, auditExportFindingTypeKey, auditExportReviewStatusKey, auditExportWord, buildAuditFindingExportFilterWords, resolveAuditExportLocale } from "@/lib/audit-export-labels"
-import { auditFindingFilterLabelKeys, buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
+import { auditFindingFilterLabelKeys, auditFindingsListOrderBy, buildAuditFindingWhere, isAuditFindingWaitingStatus, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
 import { getAuditFindingTypeSearchLabels } from "@/lib/audit-finding-search-labels"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
 import { DEFAULT_WAITING_WORK_RULES } from "@/lib/waiting-work-rules"
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         auditRound: { select: { auditNo: true, name: true } },
         asset: { select: { assetTag: true, name: true } },
       },
-      orderBy: { reportedAt: "desc" },
+      orderBy: auditFindingsListOrderBy,
       take: 5000,
     })
     const valueLabels = await buildFindingValueLabels(findings)
