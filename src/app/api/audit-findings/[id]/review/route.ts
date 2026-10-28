@@ -10,6 +10,7 @@ import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregatio
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { buildAuditFindingConflictPayload, hasAuditFindingConflict } from "@/lib/audit-finding-conflict"
 import { updateAuditItemReviewState } from "@/lib/audit-item-review-state"
+import { withDeadlockRetry } from "@/lib/transaction-retry"
 
 type ReviewContext = {
   params: Promise<{ id: string }>
@@ -144,7 +145,9 @@ export async function POST(request: NextRequest, context: ReviewContext) {
     }
 
     const reviewedAt = new Date()
-    const reviewedFinding = await prisma.$transaction(async (tx) => {
+    // A deadlock victim (SQL Server 1205, final review I-1) is rolled back whole, so it runs again; after a winner has
+    // committed, the claim below refuses the retry with the same "already reviewed" answer.
+    const reviewedFinding = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
       // One decision per finding (P4-R6): the pending check above runs before the transaction, so two presses, two tabs
       // or a batch beside the panel can all pass it. Only one claim finds the finding still pending; any other is
       // refused with the same words before a master change, a movement or a component sync.
@@ -266,7 +269,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
       })
       await updateAuditItemReviewState(tx, finding.auditItemId)
       return reviewed
-    })
+    }))
 
     await logAudit({
       userId: user.id,

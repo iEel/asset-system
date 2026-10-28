@@ -7,7 +7,9 @@ import { pathToFileURL } from "node:url"
 import { classifyAuditFindingReviewResponse } from "../src/lib/audit-finding-review-results.ts"
 
 type Call = { call: string; args: Record<string, unknown> }
-const state: { finding: Record<string, unknown> | null; pending: boolean; calls: Call[] } = { finding: null, pending: true, calls: [] }
+// `deadlocks`: how many transactions SQL Server picks as the victim before one runs (I-1); `onDeadlock` runs as each
+// victim rolls back, as a winner committing meanwhile would.
+const state: { finding: Record<string, unknown> | null; pending: boolean; calls: Call[]; deadlocks: number; onDeadlock: (() => void) | null } = { finding: null, pending: true, calls: [], deadlocks: 0, onDeadlock: null }
 Object.assign(globalThis, { __reviewRouteState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -58,7 +60,15 @@ const mockedModuleSources = new Map<string, string>([
     }
     const client = new Proxy({}, {
       get(_target, key) {
-        if (key === "$transaction") return async (callback) => callback(client)
+        if (key === "$transaction") return async (callback) => {
+          state().calls.push({ call: "$transaction", args: {} })
+          if (state().deadlocks > 0) {
+            state().deadlocks -= 1
+            state().onDeadlock?.()
+            throw Object.assign(new Error("Transaction failed due to a write conflict or a deadlock. Please retry your transaction"), { name: "PrismaClientKnownRequestError", code: "P2034" })
+          }
+          return callback(client)
+        }
         return model(String(key))
       },
     })
@@ -123,6 +133,8 @@ beforeEach(() => {
   state.finding = finding()
   state.pending = true
   state.calls = []
+  state.deadlocks = 0
+  state.onDeadlock = null
 })
 
 test("a reject without a reason is refused under its field before anything is written (decision 5, P4-R5)", async () => {
@@ -219,4 +231,40 @@ test("every check keeps its order and its answer: 404, read-only round, schema, 
 
   assert.deepEqual(callsTo("auditFinding.updateMany"), [], "no refusal above reaches the claim")
   assert.equal((await post({ action: "approve", confirmConflict: true })).status, 200, "the second press confirms it")
+})
+
+test("a review chosen as a deadlock victim runs again and decides once (I-1)", async () => {
+  state.deadlocks = 1
+  const approved = await post({ action: "approve" })
+  assert.equal(approved.status, 200)
+  assert.deepEqual(approved.outcome, { ok: true })
+  assert.equal(callsTo("$transaction").length, 2, "the victim, then the run that decides")
+  assert.equal(callsTo("asset.update").length, 1)
+  assert.equal(callsTo("assetMovement.create").length, 1)
+  assert.equal(callsTo("auditFinding.update").length, 1)
+})
+
+test("a retry after the winner committed answers already decided through the claim, and writes nothing (I-1)", async () => {
+  state.deadlocks = 1
+  state.onDeadlock = () => { state.pending = false }
+  const retried = await post({ action: "reject", reviewRemark: "จากชุดที่เลือก" })
+  assert.equal(retried.status, 400)
+  assert.deepEqual(retried.payload, { error: "Audit finding has already been reviewed" })
+  assert.deepEqual(retried.outcome, { ok: false, reason: "alreadyDecided" })
+  assert.equal(callsTo("$transaction").length, 2)
+  assert.deepEqual(writes(), ["auditFinding.updateMany"], "the claim only")
+})
+
+test("only a deadlock is retried: already decided inside the transaction runs once; three deadlocks give up (I-1)", async () => {
+  state.pending = false
+  assert.deepEqual((await post({ action: "approve" })).outcome, { ok: false, reason: "alreadyDecided" })
+  assert.equal(callsTo("$transaction").length, 1)
+
+  state.pending = true
+  state.calls = []
+  state.deadlocks = 3
+  const gaveUp = await post({ action: "approve" })
+  assert.equal(gaveUp.status, 500)
+  assert.equal(callsTo("$transaction").length, 3)
+  assert.deepEqual(writes(), [])
 })
