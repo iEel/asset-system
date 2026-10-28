@@ -19,24 +19,32 @@ test("check-in options expose legacy return candidates from current custodians w
   assert.match(source, /hasActiveMaintenance:\s*activeMaintenanceAssetIds\.has\(asset\.id\)/)
 })
 
-test("check-in page passes legacy return candidates to the form", () => {
+test("check-in page loads the master lists, the preselect and the legacy count, never the register", () => {
   const source = checkinPageSource()
 
-  assert.match(source, /legacyReturnCandidates=\{options\.legacyReturnCandidates\}/)
+  assert.match(source, /getAssetOperationMasterOptions\(\)/)
+  assert.match(source, /getCheckinPreselect\(\{ checkoutId: filters\.checkoutId, assetId: filters\.assetId \}\)/)
+  assert.match(source, /countLegacyReturns\(\)/)
+  assert.match(source, /initialRow=\{preselect\.row\}/)
+  assert.match(source, /initialQuery=\{preselect\.query\}/)
+  assert.match(source, /legacyReturnCount=\{legacyReturnCount\}/)
+  assert.doesNotMatch(source, /getAssetOperationOptions|getAssetOperationAssetLists|legacyReturnCandidates|activeCheckouts/)
 })
 
-test("check-in form can backfill a legacy checkout and continue through the normal return form", () => {
+test("a legacy row asks once, then backfills the handover and continues the normal return (spec 6.3)", () => {
   const source = checkinFormSource()
 
-  assert.match(source, /legacyReturnCandidates/)
-  assert.match(source, /legacyReturnSearch/)
-  assert.match(source, /filteredLegacyReturnCandidates/)
-  assert.match(source, /handleCreateLegacyCheckout/)
+  for (const snippet of [
+    'if (row?.legacy) {',
+    'title: t("legacyReturnConfirmTitle")',
+    'confirmLabel: t("legacyReturnConfirm")',
+    'buildAssetOperationSearchHref({ mode: "checkin", id: assetId })',
+    'fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")',
+    'else if (prefilled && returnByEmployeeId === prefilled) setEmployeeField("returnBy", "")',
+  ]) assert.ok(source.includes(snippet), snippet)
   assert.match(source, /\/api\/assets\/\$\{assetId\}\/legacy-checkout/)
   assert.match(source, /asset-management\/checkin\?checkoutId=/)
-  assert.match(source, /filteredLegacyReturnCandidates\.map/)
-  assert.match(source, /legacyReturnFilteredCount/)
-  assert.match(source, /legacyReturnNoResults/)
+  assert.doesNotMatch(source, /legacyReturnCandidates|legacyReturnSearch|filteredLegacyReturnCandidates|legacyBackfillSavingId|hasActiveCheckouts|<SearchField\b|<Chip\b|<EmptyNote\b|<ActionEmptyState\b/)
 })
 
 test("legacy checkout API creates an auditable backfilled handover instead of changing check-in rules", () => {
@@ -55,13 +63,25 @@ test("legacy checkout API creates an auditable backfilled handover instead of ch
   assert.match(source, /Asset already has an active checkout/)
 })
 
-test("legacy check-in messages exist in Thai and English", () => {
+test("legacy check-in messages exist in Thai and English, and the old list's words have no reader and are removed", () => {
   const keys = [
+    "legacyReturnCreated",
+    "legacyReturnFailed",
+    "legacyReturnCount",
+    "legacyReturnConfirmTitle",
+    "legacyReturnConfirmDescription",
+    "legacyReturnConfirm",
+  ]
+  const removed = [
+    "selectCheckout",
+    "noActiveCheckoutsOption",
+    "noActiveCheckoutsTitle",
+    "noActiveCheckoutsDescription",
+    "goToCheckout",
+    "handoverReviewRequired",
     "legacyReturnTitle",
     "legacyReturnDescription",
     "legacyReturnAction",
-    "legacyReturnCreated",
-    "legacyReturnFailed",
     "legacyReturnCurrentHolder",
     "legacyReturnCurrentLocation",
     "legacyReturnBadge",
@@ -74,13 +94,8 @@ test("legacy check-in messages exist in Thai and English", () => {
     const messages = checkinMessages(locale)
     const missing = keys.filter((key) => !(key in messages))
     assert.deepEqual(missing, [], `${locale} checkin messages are missing keys`)
+    const kept = removed.filter((key) => key in messages)
+    assert.deepEqual(kept, [], `${locale} checkin messages that have no reader and are removed`)
   }
-})
-
-test("the legacy return row keeps its label while it works, and its search box is a SearchField (2C batch 1b)", () => {
-  const source = checkinFormSource().replace(/\r\n/g, "\n")
-  assert.match(source, /<Button\n\s+variant="outline"\n\s+busy=\{legacyBackfillSavingId === asset\.id\}\n\s+disabled=\{saving\}/)
-  assert.match(source, /<PackageCheck \/>\n\s+\{t\("legacyReturnAction"\)\}/)
-  assert.doesNotMatch(source, /t\("legacyReturnCreating"\)/)
-  assert.match(source, /<SearchField\n\s+aria-label=\{t\("legacyReturnSearch"\)\}/)
+  assert.equal(checkinMessages("th").legacyReturnConfirmTitle, "สร้างใบส่งมอบย้อนหลังแล้วรับคืน")
 })

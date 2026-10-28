@@ -186,11 +186,14 @@ test("checkin: the return date is checked at last, errors under the field instea
     'check("nextStatusId", required(values.nextStatusId))',
     'check("nextLocationId", required(values.nextLocationId))',
   ]) assert.ok(rules.includes(rule), rule)
-  for (const key of Object.keys(ids)) assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
+  for (const key of Object.keys(ids)) if (key !== "checkoutId") assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
+  // The asset field shows a chosen row's reason first, then its own error (server search Task 6, spec 6.4).
+  assert.ok(source.includes('error={blockedReason ?? fieldErrors.message("checkoutId")}'))
   // The return date had the star and no check (spec §5): native required joins the star and validate() checks it.
   assert.match(source, /<Field label=\{t\("returnDate"\)\} id="checkin-return-date" required error=\{fieldErrors\.message\("returnDate"\)\}>\n\s+<Input type="date" value=\{values\.returnDate\} onChange=\{\(event\) => setField\("returnDate", event\.target\.value\)\} required \/>/)
-  // The three required selects have an id for focus and show their error (V4).
-  for (const id of ["checkin-checkout", "checkin-return-by", "checkin-receive-by"]) {
+  // The three required pickers have an id for focus and show their error (V4); the asset is the shared asset picker.
+  assert.match(source, /<AssetOperationPicker\n\s+id="checkin-checkout"\n/)
+  for (const id of ["checkin-return-by", "checkin-receive-by"]) {
     assert.match(source, new RegExp(`<SearchableSelect\\n\\s+id="${id}"\\n`), id)
   }
   // A refusal from the review closes it, and the field takes focus once the dialog has gone (O-R1).

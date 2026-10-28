@@ -7,6 +7,7 @@ const users = [
   "src/lib/asset-operation-options.ts",
   "src/app/[locale]/(dashboard)/assets/page.tsx",
   "src/lib/asset-state-review-service.ts",
+  "src/lib/checkin-page-data.ts",
 ]
 
 test("open repair checks use the shared filter and ignore the old [PM] prefix", () => {

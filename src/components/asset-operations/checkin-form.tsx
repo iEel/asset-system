@@ -3,13 +3,12 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { PackageCheck, Save } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
-import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"
 import { Button } from "@/components/ui/button"
-import { Chip } from "@/components/ui/chip"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
@@ -20,12 +19,17 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Notice } from "@/components/ui/notice"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { PageHeader } from "@/components/ui/page-header"
-import { SearchField } from "@/components/ui/search-field"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import {
+  buildAssetOperationSearchHref,
+  type AssetOperationSearchAnswer,
+  type AssetOperationSearchRow,
+} from "@/lib/asset-operation-search-rules"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { getCheckinChoice } from "@/lib/checkin-choice"
 import { formatCount } from "@/lib/display-format"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { toLocalDateInputValue } from "@/lib/local-date"
@@ -35,31 +39,6 @@ import { useFieldErrors } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type StatusOption = Option & { name?: string }
-type CheckoutOption = Option & {
-  documentNo?: string | null
-  assetId?: string
-  assetTag?: string
-  assetName?: string
-  serialNumber?: string | null
-  checkoutType?: string
-  handoverMode?: string | null
-  statusName?: string
-  statusLabel?: string
-  checkoutDate?: string
-  expectedReturnDate?: string | null
-  conditionBefore?: string | null
-  destinationLabel?: string
-  remark?: string | null
-}
-type LegacyReturnCandidate = Option & {
-  assetTag: string
-  assetName: string
-  custodianLabel: string
-  custodianId: string
-  currentLocationId: string
-  currentLocationLabel: string
-  conditionId: string
-}
 type QueuedPhoto = {
   id: string
   label: string
@@ -111,48 +90,49 @@ function validate(values: CheckinFormValues): Partial<Record<CheckinField, strin
 }
 
 export function CheckinForm({
-  activeCheckouts,
-  legacyReturnCandidates,
   employees,
   locations,
   statuses,
   conditions,
-  initialCheckoutId,
-  initialLegacyAssetId,
+  initialRow,
+  initialQuery,
+  legacyReturnCount,
   returnTo,
 }: {
-  activeCheckouts: CheckoutOption[]
-  legacyReturnCandidates: LegacyReturnCandidate[]
   employees: Option[]
   locations: Option[]
   statuses: StatusOption[]
   conditions: StatusOption[]
-  initialCheckoutId?: string
-  initialLegacyAssetId?: string
+  /** ?checkoutId=: the open handover's row, chosen or chosen-but-blocked (spec 6.4). */
+  initialRow: AssetOperationSearchRow | null
+  /** ?assetId=: the asset's tag, the search starts filled (spec 6.4). */
+  initialQuery: string
+  legacyReturnCount: number
   returnTo?: string
 }) {
   const locale = useLocale()
   const apiError = useApiError()
   const router = useRouter()
+  const confirm = useConfirm()
   const t = useTranslations("checkin")
   const tCommon = useTranslations("common")
+  const tAll = useTranslations()
   const [saving, setSaving] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const fieldErrors = useFieldErrors<CheckinField>()
-  const [legacyBackfillSavingId, setLegacyBackfillSavingId] = useState<string | null>(null)
-  const initialLegacyCandidate = legacyReturnCandidates.find((asset) => asset.id === initialLegacyAssetId)
-  const [legacyReturnSearch, setLegacyReturnSearch] = useState(initialLegacyCandidate?.assetTag ?? "")
+  const employeeIds = useMemo(() => new Set(employees.map((employee) => employee.id)), [employees])
+  const initialChoice = getCheckinChoice(initialRow, employeeIds)
+  const [chosen, setChosen] = useState<AssetOperationSearchRow | null>(initialRow)
   const [photoType, setPhotoType] = useState("overview")
   const [photosAfter, setPhotosAfter] = useState<QueuedPhoto[]>([])
   const [returnSignatureDataUrl, setReturnSignatureDataUrl] = useState<string | null>(null)
   const [receiveSignatureDataUrl, setReceiveSignatureDataUrl] = useState<string | null>(null)
-  const [returnByEmployeeId, setReturnByEmployeeId] = useState("")
+  const [returnByEmployeeId, setReturnByEmployeeId] = useState(initialChoice.returnByEmployeeId ?? "")
   const [receiveByEmployeeId, setReceiveByEmployeeId] = useState("")
-  const initialCheckout = activeCheckouts.find((checkout) => checkout.id === initialCheckoutId && !checkout.disabled)
   const [values, setValues] = useState<CheckinFormValues>({
-    checkoutId: initialCheckout?.id ?? "",
+    checkoutId: initialChoice.checkoutId,
     returnDate: toLocalDateInputValue(),
-    returnBy: "",
+    returnBy: employees.find((employee) => employee.id === initialChoice.returnByEmployeeId)?.label ?? "",
     receiveBy: "",
     conditionAfter: "",
     nextStatusId: "",
@@ -163,10 +143,10 @@ export function CheckinForm({
     maintenanceProblem: "",
   })
 
-  const selectedCheckout = useMemo(
-    () => activeCheckouts.find((checkout) => checkout.id === values.checkoutId),
-    [activeCheckouts, values.checkoutId]
-  )
+  // The chosen row: its open handover when it can come back, else its reason under the field (spec 6.3, 6.4).
+  const choice = getCheckinChoice(chosen, employeeIds)
+  const blockedReason = choice.reasonKey ? tAll(choice.reasonKey) : undefined
+  const selectedCheckout = chosen?.eligible ? chosen.checkout ?? null : null
   const conditionLabelById = useMemo(() => new Map(conditions.map((condition) => [condition.id, condition.label])), [conditions])
   const selectedStatus = statuses.find((status) => status.id === values.nextStatusId)
   const selectedReturnBy = employees.find((employee) => employee.id === returnByEmployeeId)
@@ -174,26 +154,6 @@ export function CheckinForm({
   const selectedLocation = locations.find((location) => location.id === values.nextLocationId)
   const repairStatus = statuses.find((status) => status.name === "Under Maintenance")
   const sendsToRepair = selectedStatus?.name === "Under Maintenance"
-  const hasActiveCheckoutRecords = activeCheckouts.length > 0
-  const hasActiveCheckouts = activeCheckouts.some((checkout) => !checkout.disabled)
-  const activeCheckoutOptions = activeCheckouts.map((checkout) => ({
-    ...checkout,
-    label: checkout.disabled ? `${checkout.label} — ${t("handoverModeMissing")}` : checkout.label,
-  }))
-  const hasLegacyReturnCandidates = legacyReturnCandidates.length > 0
-  const filteredLegacyReturnCandidates = useMemo(() => {
-    const query = normalizeText(legacyReturnSearch)
-    if (!query) return legacyReturnCandidates
-
-    return legacyReturnCandidates.filter((asset) =>
-      [
-        asset.assetTag,
-        asset.assetName,
-        asset.custodianLabel,
-        asset.currentLocationLabel,
-      ].some((value) => normalizeText(value).includes(query))
-    )
-  }, [legacyReturnCandidates, legacyReturnSearch])
   const photoTypes = [
     { id: "overview", label: t("photoTypeOverview") },
     { id: "assetTag", label: t("photoTypeAssetTag") },
@@ -203,7 +163,7 @@ export function CheckinForm({
   ]
   const evidenceCount = photosAfter.length + Number(Boolean(returnSignatureDataUrl)) + Number(Boolean(receiveSignatureDataUrl))
   const reviewItems = buildOperationReviewSummary({
-    assetLabel: selectedCheckout ? `${selectedCheckout.assetTag ?? ""} - ${selectedCheckout.assetName ?? selectedCheckout.label}`.trim() : "",
+    assetLabel: selectedCheckout && chosen ? `${chosen.assetTag} - ${chosen.name}` : "",
     sourceLabel: selectedReturnBy?.label,
     destinationLabels: [selectedReceiver?.label],
     nextStatusLabel: selectedStatus?.label,
@@ -261,9 +221,38 @@ export function CheckinForm({
     ])
   }
 
-  async function handleCreateLegacyCheckout(assetId: string) {
-    const candidate = legacyReturnCandidates.find((asset) => asset.id === assetId)
-    setLegacyBackfillSavingId(assetId)
+  // A pick: the row's handover, and its holder as the return-by when the holder is an active employee. A return-by the
+  // form filled in from the previous row goes when the new choice has none; one chosen by hand stays (spec 6.3).
+  function applyChoice(row: AssetOperationSearchRow | null) {
+    const next = getCheckinChoice(row, employeeIds)
+    const prefilled = getCheckinChoice(chosen, employeeIds).returnByEmployeeId
+    setChosen(row)
+    setField("checkoutId", next.checkoutId)
+    if (next.returnByEmployeeId) setEmployeeField("returnBy", next.returnByEmployeeId)
+    else if (prefilled && returnByEmployeeId === prefilled) setEmployeeField("returnBy", "")
+  }
+
+  // A ข้อมูลเก่า row is not taken as it is: it asks once, then the backfill makes its handover (spec 6.3, S-R26).
+  function chooseRow(row: AssetOperationSearchRow | null) {
+    if (row?.legacy) {
+      void confirmLegacyReturn(row)
+      return
+    }
+    applyChoice(row)
+  }
+
+  async function confirmLegacyReturn(row: AssetOperationSearchRow) {
+    const accepted = await confirm({
+      title: t("legacyReturnConfirmTitle"),
+      description: t("legacyReturnConfirmDescription", { asset: `${row.assetTag} - ${row.name}`, holder: row.holderLabel ?? row.placeLabel }),
+      confirmLabel: t("legacyReturnConfirm"),
+    })
+    if (accepted) await handleCreateLegacyCheckout(row)
+  }
+
+  async function handleCreateLegacyCheckout(row: AssetOperationSearchRow) {
+    const assetId = row.id
+    setSaving(true)
     try {
       const response = await fetch(`/api/assets/${assetId}/legacy-checkout`, {
         method: "POST",
@@ -272,24 +261,23 @@ export function CheckinForm({
       if (!response.ok) throw new Error(payload?.error ?? t("legacyReturnFailed"))
 
       toast.success(t("legacyReturnCreated"))
-      if (candidate) {
-        setReturnByEmployeeId(candidate.custodianId)
-        setValues((current) => ({
-          ...current,
-          checkoutId: payload.id,
-          returnBy: candidate.custodianLabel,
-          conditionAfter: current.conditionAfter || candidate.conditionId,
-          nextLocationId: current.nextLocationId || candidate.currentLocationId,
-        }))
-        fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")
-      }
+      // The handover exists now; the search answers it as a HO- row, which the form takes like any pick.
+      const created = await fetchCheckinRow(assetId)
+      if (!created?.checkout) throw new Error(tCommon("error"))
+      applyChoice(created)
+      setValues((current) => ({
+        ...current,
+        conditionAfter: current.conditionAfter || row.conditionId,
+        nextLocationId: current.nextLocationId || row.currentLocationId,
+      }))
+      fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")
       const checkinHref = `/${locale}/asset-management/checkin?checkoutId=${payload.id}`
       router.replace(returnTo ? appendReturnTo(checkinHref, returnTo) : checkinHref)
       router.refresh()
     } catch (error) {
       apiError.toast(error instanceof Error ? error : t("legacyReturnFailed"))
     } finally {
-      setLegacyBackfillSavingId(null)
+      setSaving(false)
     }
   }
 
@@ -302,7 +290,7 @@ export function CheckinForm({
 
   async function submitCheckin() {
     // The review opens only after validate() found the checkout, so this only narrows the type.
-    const assetId = selectedCheckout?.assetId
+    const assetId = selectedCheckout ? chosen?.id : undefined
     if (!assetId) return
     setSaving(true)
     const body = new FormData()
@@ -350,107 +338,32 @@ export function CheckinForm({
       <PageHeader title={t("title")} className="mb-6" />
       <ContentPanel>
         <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
-          {initialCheckout ? (
+          {initialRow?.eligible ? (
             <div className="md:col-span-2">
-              <FormContextBanner label={t("asset")} value={initialCheckout.label} />
+              <FormContextBanner label={t("asset")} value={`${initialRow.assetTag} - ${initialRow.name}`} />
             </div>
           ) : null}
-          <SearchableSelect
-            id="checkin-checkout"
-            label={t("asset")}
-            value={values.checkoutId}
-            required
-            disabled={!hasActiveCheckoutRecords}
-            options={activeCheckoutOptions}
-            placeholder={hasActiveCheckoutRecords ? t("selectCheckout") : t("noActiveCheckoutsOption")}
-            searchPlaceholder={tCommon("searchSelectPlaceholder")}
-            emptyLabel={tCommon("searchSelectNoResults")}
-            error={fieldErrors.message("checkoutId")}
-            onChange={(value) => setField("checkoutId", value)}
-          />
+          <div className="md:col-span-2 grid gap-1.5">
+            <AssetOperationPicker
+              id="checkin-checkout"
+              label={t("asset")}
+              mode="checkin"
+              value={chosen}
+              required
+              initialQuery={initialQuery}
+              error={blockedReason ?? fieldErrors.message("checkoutId")}
+              onChange={chooseRow}
+            />
+            {legacyReturnCount > 0 ? (
+              <p className="text-meta text-muted-foreground">{t("legacyReturnCount", { count: formatCount(legacyReturnCount) })}</p>
+            ) : null}
+          </div>
 
-          {!hasActiveCheckoutRecords && (
-            <div className="md:col-span-2">
-              <ActionEmptyState
-                icon={<PackageCheck />}
-                title={t("noActiveCheckoutsTitle")}
-                description={t("noActiveCheckoutsDescription")}
-                actionHref={`/${locale}/asset-management/checkout`}
-                actionLabel={t("goToCheckout")}
-                actionVariant="secondary"
-              />
-            </div>
-          )}
-
-          {hasActiveCheckoutRecords && !hasActiveCheckouts ? (
-            <Notice tone="warning" title={t("handoverReviewRequired")} className="md:col-span-2">
-              {t("handoverModeMissing")}
-            </Notice>
-          ) : null}
-
-          {hasLegacyReturnCandidates && (
-            <div className="md:col-span-2 grid gap-3">
-              <Notice tone="warning" title={t("legacyReturnTitle")}>
-                {t("legacyReturnDescription")}
-              </Notice>
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                <span className="text-meta text-muted-foreground">
-                  {t("legacyReturnFilteredCount", {
-                    shown: formatCount(filteredLegacyReturnCandidates.length),
-                    total: formatCount(legacyReturnCandidates.length),
-                  })}
-                </span>
-                <SearchField
-                  aria-label={t("legacyReturnSearch")}
-                  placeholder={t("legacyReturnSearch")}
-                  className="w-full lg:max-w-sm"
-                  value={legacyReturnSearch}
-                  onChange={(event) => setLegacyReturnSearch(event.target.value)}
-                />
-              </div>
-              <div className="max-h-96 overflow-y-auto rounded-md border border-border bg-background">
-                {filteredLegacyReturnCandidates.length === 0 ? (
-                  <EmptyNote padded role="status">{t("legacyReturnNoResults")}</EmptyNote>
-                ) : (
-                  <ul className="divide-y divide-border-soft">
-                    {filteredLegacyReturnCandidates.map((asset) => (
-                      <li key={asset.id} className="grid gap-3 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="tag font-medium text-foreground">{asset.assetTag}</span>
-                            <Chip>{t("legacyReturnBadge")}</Chip>
-                          </div>
-                          <div className="mt-1 truncate text-sm text-muted-foreground" title={asset.assetName}>{asset.assetName}</div>
-                          <div className="mt-2 grid gap-1 text-meta text-muted-foreground md:grid-cols-2">
-                            <span className="truncate" title={asset.custodianLabel}>{t("legacyReturnCurrentHolder")}: {asset.custodianLabel}</span>
-                            <span className="truncate" title={asset.currentLocationLabel}>{t("legacyReturnCurrentLocation")}: {asset.currentLocationLabel}</span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          busy={legacyBackfillSavingId === asset.id}
-                          disabled={saving}
-                          onClick={() => handleCreateLegacyCheckout(asset.id)}
-                          className="w-full shrink-0 lg:w-auto"
-                        >
-                          <PackageCheck />
-                          {t("legacyReturnAction")}
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
-
-          {hasActiveCheckouts && (
-            <>
           <Field label={t("returnDate")} id="checkin-return-date" required error={fieldErrors.message("returnDate")}>
             <Input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} required />
           </Field>
 
-          {selectedCheckout && (
+          {selectedCheckout && chosen && (
             <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("currentCustody")}</div>
               {/* D19: the handover and the asset as two shared KeyValueLists; an empty value shows Nil. */}
@@ -476,10 +389,10 @@ export function CheckinForm({
                 />
                 <KeyValueList
                   items={[
-                    { key: "assetTag", label: t("assetTag"), value: selectedCheckout.assetTag ? <span className="tag">{selectedCheckout.assetTag}</span> : null },
-                    { key: "serialNumber", label: t("serialNumber"), value: selectedCheckout.serialNumber ? <span className="tag">{selectedCheckout.serialNumber}</span> : null },
-                    { key: "assetName", label: t("assetName"), value: selectedCheckout.assetName },
-                    { key: "currentAssetStatus", label: t("currentAssetStatus"), value: selectedCheckout.statusLabel ?? selectedCheckout.statusName },
+                    { key: "assetTag", label: t("assetTag"), value: chosen.assetTag ? <span className="tag">{chosen.assetTag}</span> : null },
+                    { key: "serialNumber", label: t("serialNumber"), value: chosen.serialNumber ? <span className="tag">{chosen.serialNumber}</span> : null },
+                    { key: "assetName", label: t("assetName"), value: chosen.name },
+                    { key: "currentAssetStatus", label: t("currentAssetStatus"), value: chosen.statusLabel },
                     {
                       key: "conditionBefore",
                       label: t("conditionBefore"),
@@ -632,8 +545,6 @@ export function CheckinForm({
               {tCommon("save")}
             </Button>
           </div>
-            </>
-          )}
         </form>
         <OperationReviewDialog
           open={reviewOpen}
@@ -684,8 +595,12 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(value))
 }
 
-function normalizeText(value: string) {
-  return value.trim().toLocaleLowerCase("th-TH")
+// The new handover's row after the backfill, read by id as the page's preselect is (spec 6.4).
+async function fetchCheckinRow(assetId: string): Promise<AssetOperationSearchRow | null> {
+  const response = await fetch(buildAssetOperationSearchHref({ mode: "checkin", id: assetId }))
+  if (!response.ok) return null
+  const payload = (await response.json().catch(() => null)) as { data?: AssetOperationSearchAnswer } | null
+  return payload?.data?.rows[0] ?? null
 }
 
 function dataUrlToFile(dataUrl: string, fileName: string) {
