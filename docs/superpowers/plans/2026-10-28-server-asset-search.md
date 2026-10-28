@@ -2966,3 +2966,33 @@ Addendum rulings (they bind Tasks 9 and 10 and supersede the rulings they name):
 - [ ] **Step 5: Commit** with `fix(asset-operations): pick several assets from one bulk-move search, held rows first on รับคืน, a former employee as return-by, and the ข้อมูลเก่า row's location (server search addendum S-R44 to S-R47)` and the trailer.
 
 After Task 10 the controller rebuilds and runs `e2e/transactions e2e/cross-cutting/field-errors.spec.ts e2e/asset-detail e2e/smoke`. It then updates the changelog, the wiki question 65 and the canvas checklist of the gaps found in the canvas boards.
+
+### Task 9b: A permanent handover under repair can be returned (S-R48)
+
+S-R48 (the user, 2026-10-29, second choice ก; extends S-R43): opening an unfinished repair on a permanently handed-over asset moves it In Use → Under Maintenance (`getRepairRecordCreateEffect`, `src/lib/repair-record-policy.ts`). The return then failed `getCheckinHandoverStatusError` ("permanent needs In Use"), in the old pages and on this branch alike, so S-R43 alone covered almost no real case. Now, for a `permanent_assignment` handover whose asset has an open repair, the statuses `Under Maintenance` and `Pending Repair` fit the mode, and the return goes into ส่งซ่อม under that repair (S-R43). The checkin clears the holder as usual, so finishing the repair later restores Ready (`getRepairRestoreStatusName` with no active checkout → `getMaintenanceOperationalTarget`). A `temporary_loan` is unchanged: a repair cannot be opened on a Checked Out asset (`MAINTENANCE_ASSET_ON_LOAN`).
+
+**Files:** `src/lib/asset-lifecycle-policy.ts` (`getCheckinHandoverStatusError`), `src/lib/asset-operation-eligibility.ts`, `src/app/api/assets/[id]/checkin/route.ts`, `docs/05_ASSET_LIFECYCLE.md`, `docs/07_UAT_CHECKLIST.md`, `e2e/transactions/return.spec.ts` (one new test). Tests: the lifecycle policy tests (grep `tests/` for `getCheckinHandoverStatusError`), `tests/asset-operation-eligibility.test.ts`, `tests/asset-actions.test.ts`, `tests/checkin-maintenance-ticket-route.test.ts`, `tests/e2e-transactions.test.ts` (pin the new E2E test's title if that file pins titles).
+
+- [ ] **Step 1: Write the failing tests.**
+  - `getCheckinHandoverStatusError(mode, statusName, options?: { hasOpenRepair?: boolean })`:
+    - `("permanent_assignment", "Under Maintenance", { hasOpenRepair: true })` → null;
+    - the same with `"Pending Repair"` → null;
+    - `("permanent_assignment", "Under Maintenance")` → `"ASSET_HANDOVER_STATUS_MISMATCH"`, as today;
+    - `("temporary_loan", "Under Maintenance", { hasOpenRepair: true })` → `"ASSET_HANDOVER_STATUS_MISMATCH"`;
+    - `("permanent_assignment", "In Use", { hasOpenRepair: true })` → null;
+    - a missing mode → `"ASSET_HANDOVER_MODE_MISSING"` whatever the options.
+  - Verdict: an open permanent handover + Under Maintenance + `hasOpenRepair` → eligible, `path: "handover"`. Without the repair → `no("asset.transactionReasonHandoverStatusMismatch")`. The agreement test still holds, and `getAssetActions`' รับคืน is enabled in that case (a new `tests/asset-actions.test.ts` case).
+  - Route: a permanent handover whose asset is Under Maintenance with an open repair and next status `status:Under Maintenance` → 201, the handover closed, no `maintenanceTicket.create`. The same with `status:Ready` → the S-R43 409 `ASSET_CHECKIN_REPAIR_STATUS_REQUIRED`. Under Maintenance without an open repair → 409 `ASSET_HANDOVER_STATUS_MISMATCH`, as today.
+  - E2E, `e2e/transactions/return.spec.ts`, one new test, run-scoped tag like the file's others:
+    1. a permanent handover to the receiver;
+    2. open an unfinished repair on the asset through the repair page or API the existing specs use (find the helper in `e2e/`, e.g. how `e2e/maintenance` or `return.spec.ts:100` opens one);
+    3. on รับคืน pick the asset: it is takeable, the next status is locked to ส่งซ่อม with `checkin.openRepairReturnNotice`;
+    4. save; the asset page reads อยู่ระหว่างซ่อม with no custodian, and the repair list still has exactly one open record for it.
+- [ ] **Step 2: Run the unit tests and see them fail.**
+- [ ] **Step 3: Implement.**
+  - The lifecycle function takes the optional options.
+  - The verdict passes `{ hasOpenRepair: facts.hasOpenRepair }`.
+  - The route reads the open-repair count once before the transaction and once inside it, as today. It passes the in-transaction result to `getCheckinHandoverStatusError`, and keeps the S-R43 check before the status check.
+  - Docs: docs/05 states the rule; docs/07 adds a UAT line ("a permanently handed-over notebook whose repair was opened can be returned into ส่งซ่อม; after the repair it is พร้อมใช้งาน").
+- [ ] **Step 4: Run `npm test`, `npx tsc --noEmit`, `npm run lint` (0 errors).** Do not run Playwright; the controller runs the E2E.
+- [ ] **Step 5: Commit** with `fix(checkin): a permanent handover whose asset went into repair can be returned into ส่งซ่อม under that repair, and becomes พร้อมใช้งาน when the repair is finished (server search addendum S-R48, the user's choice ก 2026-10-29)` and the trailer.
