@@ -143,7 +143,17 @@ export async function POST(request: NextRequest, context: ReviewContext) {
       }
     }
 
+    const reviewedAt = new Date()
     const reviewedFinding = await prisma.$transaction(async (tx) => {
+      // One decision per finding (P4-R6): the pending check above runs before the transaction, so two presses, two tabs
+      // or a batch beside the panel can all pass it. Only one claim finds the finding still pending; any other is
+      // refused with the same words before a master change, a movement or a component sync.
+      const claimed = await tx.auditFinding.updateMany({
+        where: { id, reviewStatus: "pending" },
+        data: { reviewedBy: user.id, reviewedAt },
+      })
+      if (claimed.count !== 1) throw new Error("Audit finding has already been reviewed")
+
       if (input.action === "approve") {
         if (finding.findingType === "out_of_scope") {
           const reviewed = await tx.auditFinding.update({
@@ -151,7 +161,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
             data: {
               reviewStatus: "approved",
               reviewedBy: user.id,
-              reviewedAt: new Date(),
+              reviewedAt,
               reviewRemark: input.reviewRemark,
               actionTaken: "out_of_scope_confirmed_no_master_update",
             },
@@ -166,7 +176,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
             data: {
               reviewStatus: "approved",
               reviewedBy: user.id,
-              reviewedAt: new Date(),
+              reviewedAt,
               reviewRemark: input.reviewRemark,
               actionTaken: "not_found_confirmed_no_master_update",
             },
@@ -183,7 +193,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
             data: {
               reviewStatus: "exception",
               reviewedBy: user.id,
-              reviewedAt: new Date(),
+              reviewedAt,
               reviewRemark: input.reviewRemark,
               actionTaken: "manual_review_required",
             },
@@ -249,7 +259,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
         data: {
           reviewStatus: input.action === "approve" ? "approved" : "rejected",
           reviewedBy: user.id,
-          reviewedAt: new Date(),
+          reviewedAt,
           reviewRemark: input.reviewRemark,
           actionTaken: input.action === "approve" ? "master_asset_updated" : "finding_rejected",
         },

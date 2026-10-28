@@ -69,11 +69,23 @@ export const auditRoundCancelSchema = z.object({
   reason: z.string().trim().min(1).max(4000),
 })
 
-export const auditFindingReviewSchema = z.object({
-  action: z.enum(["approve", "reject"]),
-  reviewRemark: optionalText,
-  confirmConflict: z.boolean().optional().default(false),
-})
+// The review's two answers (decision 5, group 2 spec §2, §10): a reason is required to reject, and the batch sends one
+// review per finding, so this one schema holds for one finding and for several at once. Approving needs none. Both
+// remarks stop at 4000, as the client does (plan 4 Task 1, P4-R5).
+const reviewConfirmConflict = z.boolean().optional().default(false)
+
+export const auditFindingReviewSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("approve"),
+    reviewRemark: z.string().trim().max(4000).transform((value) => value || null).nullable().optional(),
+    confirmConflict: reviewConfirmConflict,
+  }),
+  z.object({
+    action: z.literal("reject"),
+    reviewRemark: z.string().trim().min(1).max(4000),
+    confirmConflict: reviewConfirmConflict,
+  }),
+])
 
 const optionalDate = z.preprocess(
   (value) => (value == null || (typeof value === "string" && value.trim().length === 0) ? undefined : value),
