@@ -58,21 +58,21 @@ test("six tabs and ต้องติดตาม's three sub-chips; every old l
   assert.equal(resolveAuditFindingStatus(null), "pending")
 })
 
-test("each status keeps today's round scope; ต้องติดตาม is one OR of its two arms, each with its own scope (P4-R3)", () => {
+test("each status keeps today's round scope; ต้องติดตาม is one OR of its two arms, both open work now (P4-R3, P4-R37)", () => {
   assert.deepEqual(where({ status: "pending" }), { reviewStatus: "pending", auditRound: operational })
   assert.deepEqual(where({ status: "action_open" }), { actionStatus: open, auditRound: operational })
   assert.deepEqual(where({ status: "overdue" }), { actionStatus: open, actionDueDate: { lt: today }, auditRound: operational })
-  assert.deepEqual(where({ status: "exception" }), { reviewStatus: "exception", auditRound: coverage })
+  assert.deepEqual(where({ status: "exception" }), { reviewStatus: "exception", actionStatus: { not: "closed" }, auditRound: operational }, "work still open: open rounds, plan not closed (user, M-3, P4-R37)")
   assert.deepEqual(where({ status: "approved" }), { reviewStatus: "approved", auditRound: coverage })
   assert.deepEqual(where({ status: "rejected" }), { reviewStatus: "rejected", auditRound: coverage })
   assert.deepEqual(where({ status: "closed" }), { actionStatus: "closed", auditRound: coverage })
   assert.deepEqual(where({ status: "all" }), { auditRound: coverage })
   // One count over the OR, not a sum: an exception can also hold an open plan.
   assert.deepEqual(where({ status: "follow_up" }), {
-    AND: [{ OR: [{ actionStatus: open, auditRound: operational }, { reviewStatus: "exception", auditRound: coverage }] }],
+    AND: [{ OR: [{ actionStatus: open, auditRound: operational }, { reviewStatus: "exception", actionStatus: { not: "closed" }, auditRound: operational }] }],
   })
   // A round drops the scope, as every status does today (audit-finding-filters.ts:112-113).
-  assert.deepEqual(where({ status: "follow_up", roundId: "round-1" }), { auditRoundId: "round-1", AND: [{ OR: [{ actionStatus: open }, { reviewStatus: "exception" }] }] })
+  assert.deepEqual(where({ status: "follow_up", roundId: "round-1" }), { auditRoundId: "round-1", AND: [{ OR: [{ actionStatus: open }, { reviewStatus: "exception", actionStatus: { not: "closed" } }] }] })
   assert.deepEqual(where({ status: "pending", roundId: "round-1" }), { reviewStatus: "pending", auditRoundId: "round-1" }, "still the round page's step-2 count (P2-R26)")
 })
 
@@ -86,7 +86,7 @@ test("every OR goes in one AND list: the search never overwrites ต้องต
   ]
   assert.deepEqual(where({ status: "follow_up", search: " ที่ตั้ง ", findingType: "wrong_location" }), {
     findingType: "wrong_location",
-    AND: [{ OR: [{ actionStatus: open, auditRound: operational }, { reviewStatus: "exception", auditRound: coverage }] }, { OR: search }],
+    AND: [{ OR: [{ actionStatus: open, auditRound: operational }, { reviewStatus: "exception", actionStatus: { not: "closed" }, auditRound: operational }] }, { OR: search }],
   })
   assert.deepEqual(where({ status: "pending", search: "ที่ตั้ง" }), { reviewStatus: "pending", auditRound: operational, AND: [{ OR: search }] })
 })

@@ -164,8 +164,11 @@ function auditFindingStatusPart(status: AuditFindingSingleStatus, now: Date): Au
       return { where: { actionStatus: "closed" }, scope: "coverage" }
     case "approved":
     case "rejected":
-    case "exception":
       return { where: { reviewStatus: status }, scope: "coverage" }
+    // ต้องตรวจสอบพิเศษ is work still open (user, 2026-10-28, final review M-3, P4-R37): open rounds only, and not once its
+    // plan is closed (that one reads under ปิดแล้ว), so ต้องติดตาม never keeps what nobody can act on.
+    case "exception":
+      return { where: { reviewStatus: "exception", actionStatus: { not: "closed" } }, scope: "operational" }
     case "all":
       return { where: {}, scope: "coverage" }
   }
