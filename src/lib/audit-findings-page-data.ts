@@ -126,8 +126,9 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
   const listPage = resolveAuditFindingsListPage(filters.listPage, { pageGiven: filters.pageGiven, findingIndex })
   const { skip, take } = listPageWindow(listPage)
   // "อนุมัติทุกช่องของทรัพย์สินนี้": the asset's other pending findings in the same round (spec §10). They come first,
-  // because the next finding after approve-all steps over the ones the viewer may approve with it.
-  const siblings = chosen?.assetId
+  // because the next finding after approve-all steps over the ones the viewer may approve with it. Only an approver can
+  // approve them, so a viewer reads none (M-5).
+  const siblings = chosen?.assetId && canApprove
     ? (
         await prisma.auditFinding.findMany({
           where: { auditRoundId: chosen.auditRoundId, assetId: chosen.assetId, reviewStatus: "pending", id: { not: chosen.id } },
@@ -152,8 +153,8 @@ export async function getAuditFindingsPageData({ locale, filters, user, canAppro
     isAuditFindingWaitingStatus(filters.status) ? prisma.auditFinding.count({ where: listWhere }) : Promise.resolve(null),
     canApprove ? prisma.auditFinding.count({ where: reviewableWhere }) : Promise.resolve(null),
     // The plan dialog's owners: the plan is an approver's action (route.ts:35), so a reviewer without audit:edit gets them
-    // too (P4-R21).
-    canApprove
+    // too (P4-R21). Only the open panel's dialog uses them, so they are read with a finding open (M-5).
+    chosen && canApprove
       ? prisma.employee.findMany({ where: { isActive: true }, select: { id: true, code: true, fullNameTh: true }, orderBy: { code: "asc" } })
       : Promise.resolve([]),
     filters.roundId ? prisma.auditRound.findUnique({ where: { id: filters.roundId }, select: { id: true, auditNo: true, name: true } }) : Promise.resolve(null),

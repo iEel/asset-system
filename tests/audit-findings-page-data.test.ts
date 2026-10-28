@@ -102,7 +102,8 @@ test("each tab and sub-chip counts with the list's own where, within the round, 
   assert.equal(callsTo("auditFinding.count").length, auditFindingCountedStatuses.length + 1)
   assert.ok(callsTo("auditFinding.count").some((args) => isDeepStrictEqual(args.where, { AND: [whereFor(params, "action_open"), auditFindingReviewableWhere("user-head")] })))
   assert.equal(data.reviewableTotal, 0)
-  assert.equal(callsTo("employee.findMany").filter((args) => isDeepStrictEqual(args.where, { isActive: true })).length, 1, "the plan dialog's owners for audit:approve (P4-R21)")
+  assert.equal(callsTo("employee.findMany").filter((args) => isDeepStrictEqual(args.where, { isActive: true })).length, 0, "no finding open: no owner list, even for audit:approve (M-5)")
+  assert.deepEqual(data.employees, [])
   assert.equal(data.loadedAt, now)
   assert.deepEqual(data.back, { href: "/th/audit/rounds/round-1", target: "round" })
   assert.equal(data.panel, null)
@@ -211,6 +212,7 @@ test("the chosen finding loads off the page; a link with it and no page opens th
   // The asset's other pending findings in this round, the viewer's own marked.
   assert.deepEqual(callsTo("auditFinding.findMany").find((args) => (args.where as { assetId?: string }).assetId)?.where, { auditRoundId: "round-1", assetId: "asset-1", reviewStatus: "pending", id: { not: "f-7" } })
   assert.deepEqual(data.panel.siblings, [{ ...siblingRows[0], reportedByViewer: false }, { ...siblingRows[1], reportedByViewer: true }])
+  assert.equal(callsTo("employee.findMany").filter((args) => isDeepStrictEqual(args.where, { isActive: true })).length, 1, "a finding open for audit:approve: the plan dialog's owners (P4-R21, M-5)")
   assert.equal(data.panel.reporterLabel, "สมศรี (somsri)")
   assert.equal(data.panel.scannedByLabel, "สมศรี (somsri)")
   assert.equal(data.panel.finding.auditItem.remark, "อยู่ห้องบัญชี")
@@ -257,6 +259,9 @@ test("a page in the link wins; a finding outside the list still opens, with no p
   // The value labels still read employees by id; only the owner list (where isActive) follows audit:approve (P4-R21).
   assert.equal(callsTo("employee.findMany").filter((args) => isDeepStrictEqual(args.where, { isActive: true })).length, 0, "no owner list without audit:approve (P4-R21)")
   assert.deepEqual(viewer.employees, [])
+  // M-5: a viewer can never approve the asset's other findings, so they are not read.
+  assert.deepEqual(callsTo("auditFinding.findMany").filter((args) => (args.where as { assetId?: string }).assetId), [], "no siblings read without audit:approve (M-5)")
+  assert.deepEqual(viewer.panel?.siblings, [])
 
   state.respond = () => undefined
   state.calls = []
