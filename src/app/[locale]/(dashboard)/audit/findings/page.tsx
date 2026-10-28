@@ -385,8 +385,9 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                           ) : null}
                           <DataTableCell><Chip data-audit-finding-subject>{topic}</Chip></DataTableCell>
                           <DataTableCell>
-                            <Link href={findingHref(row.id)} scroll={false} data-audit-finding-open className={cn(linkVariants({ size: "inherit" }), "break-all")}>
-                              {/* A long code wraps inside its column beside the panel (1280), never over the next one. */}
+                            <Link href={findingHref(row.id)} scroll={false} data-audit-finding-open className={cn(linkVariants({ size: "inherit" }), "[overflow-wrap:anywhere]")}>
+                              {/* A long code wraps inside its column beside the panel (1280), at a hyphen where it can, never over
+                                  the next one. */}
                               <span className="tag whitespace-normal">{code}</span>
                             </Link>
                             {row.asset ? <div className="break-words text-meta text-muted-foreground">{row.asset.name}</div> : null}
@@ -397,7 +398,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                             {line ? <div className="mt-1 text-meta text-muted-foreground">{line}</div> : null}
                           </DataTableCell>
                           <DataTableCell className="text-muted-foreground">
-                            <span className="tag whitespace-normal break-all">{row.auditRound.auditNo}</span>
+                            <span className="tag whitespace-normal [overflow-wrap:anywhere]">{row.auditRound.auditNo}</span>
                             <div className="break-words text-meta">{row.auditRound.name}</div>
                           </DataTableCell>
                         </ClickableTableRow>
