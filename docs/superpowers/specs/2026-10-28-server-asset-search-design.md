@@ -102,6 +102,7 @@ A ส่วนควบ installed in a parent travels with the parent on ส่�
 **โอนย้าย (transfer)** — searches active assets. ส่วนควบ is takeable here (its ย้ายส่วนควบ is this page); ซอฟต์แวร์/License is not — "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้" (*new word, my call*).
 - With no new custodian chosen (move location/department): takes any status except Disposed/Retired, with no open handover. Not takeable: "ย้ายไม่ได้เมื่อสถานะเป็น ตัดจำหน่ายแล้ว หรือ ปลดระวาง"; "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้".
 - With a new custodian chosen: takes Ready or In Use with no open handover. Not takeable: "โอนย้ายได้เมื่อสถานะเป็น พร้อมใช้งาน หรือ ใช้งานอยู่"; the open-handover reason.
+- A บุคคล asset outside Ready/In Use (for example อยู่ระหว่างตรวจสอบ, รอซ่อม) can still be moved to another location or department with no custodian chosen, as today and as ส่วนกลาง and Stock; the asset page's โอนย้าย for a บุคคล asset is the custodian change and stays disabled for it (the user, 2026-10-28, choice ก: one function, two contexts).
 - Choosing a custodian after an asset keeps today's rule: an asset that no longer fits is cleared, and the field says why under it (*my call*: today it is cleared silently).
 
 **ย้ายที่ตั้งหลายรายการ (bulk-move)** — searches active assets, many picks; the ownership rule of โอนย้าย applies (*my call*: it is a move of several assets).
@@ -114,7 +115,7 @@ Each route refuses, with a catalogued code and the same word as the picker, what
 
 | Route | Today | Adds |
 |---|---|---|
-| `POST /api/assets/[id]/checkout` | Ready, no open handover | ส่วนควบ and ซอฟต์แวร์/License refused |
+| `POST /api/assets/[id]/checkout` | Ready, no open handover | ส่วนควบ and ซอฟต์แวร์/License refused; a ทรัพย์สินอื่น destination (`parentAssetId`) the picker would not offer (itself, inactive, ส่วนควบ, License, not Ready, under an open handover) refused under the destination field (the user, 2026-10-28; Production has used only พนักงาน handovers so far) |
 | `POST /api/assets/[id]/checkin` | handover mode, status fits mode | an open repair refused |
 | `POST /api/assets/[id]/legacy-checkout` | holder, no handover, no repair, Ready/In Use | ส่วนควบ and ซอฟต์แวร์/License refused |
 | `POST /api/assets/[id]/transfer` | status per operation, no open handover | ซอฟต์แวร์/License refused |
