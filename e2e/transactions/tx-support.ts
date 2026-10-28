@@ -139,6 +139,9 @@ export async function ensureSecondLocation(): Promise<{ id: string; code: string
 // A SearchableSelect (a button that opens a searchable list), by its id or its locator: open it, type, pick the option.
 export async function pickSearchable(page: Page, trigger: string | Locator, search: string, option: string | RegExp) {
   const button = typeof trigger === "string" ? page.locator(`#${trigger}`) : trigger
+  // A page that streams fast can still hold React's hidden copy of its segment (div#S:0[hidden]) beside the revealed one
+  // for a moment after the h1 shows, so wait for the one trigger before the click (TX-A8 on WebKit, server search).
+  await expect(button).toHaveCount(1)
   await button.click()
   const input = page.getByRole("dialog").last().getByRole("combobox")
   await input.fill(search)
