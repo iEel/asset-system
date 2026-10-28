@@ -2893,3 +2893,76 @@ Then it runs `node tools/wiki-lint.mjs AssetSystem --repo D:/Antigravity/asset-s
 - S-R42: A repeated `?assetId=` or `?checkoutId=` (an array in Next's `searchParams`) is normalised in the loaders to its first value, as `asset-return-navigation.ts:9` does; an empty string counts as absent (Tasks 5, 6).
 
 Rulings bind the tasks. Where a task and a ruling disagree, the ruling wins; where a ruling and the spec disagree, the spec wins and the controller rules again.
+
+---
+
+## Addendum (2026-10-29): what the new pages lost against the old ones
+
+A function audit compared the old pages (`c6db08c4`), the canvas TX boards and this branch (four inventory agents, four verifiers; the full table is the session's `scratchpad/server-search/gap-audit.json`). The user chose, on 2026-10-29: open repairs no longer block a return (choice ก), and fix the four other losses. Spec 6.1, 6.3 and 6.5 are amended to match.
+
+Addendum rulings (they bind Tasks 9 and 10 and supersede the rulings they name):
+- S-R43 (supersedes the repair part of S-R2, S-R6, S-R11, S-R15): on the handover path an open repair no longer refuses the return. With an open repair the return goes into ส่งซ่อม (status `Under Maintenance`), and no second repair record is made (the route's existing `openRecords === 0` guard). `getAssetActions`' รับคืน is enabled for an open handover with an open repair. The ข้อมูลเก่า path keeps its repair refusal, because the legacy backfill route refuses an open repair. The route refuses another next status with 409 `ASSET_CHECKIN_REPAIR_STATUS_REQUIRED` under `nextStatusId`. `ASSET_CHECKIN_REPAIR_OPEN` and its words leave the code, the catalog and the messages.
+- S-R44: on ย้ายที่ตั้งหลายรายการ a pick keeps the search text and the list open, so several rows of one answer can be picked. The active row moves to the next takeable row, and picked rows read "เลือกแล้ว".
+- S-R45 (extends S-R3/S-R19 for รับคืน only): the order is exact code first, then held rows (an open handover or a custodian), then code prefix, then the rest, each tier by tag. The total still counts every text match.
+- S-R46: return-by is prefilled with the row's holder even when that person is not an active employee. The select then offers that person once more, as "{code - name} (พ้นสภาพ)", and the RT- records them.
+- S-R47: on รับคืน a ข้อมูลเก่า row's second line is "ข้อมูลเก่า (ไม่มีใบส่งมอบ) · {location code - name}" ("-" when there is none). The รับคืน text also matches the current location's code and name.
+
+### Task 9: A return with an open repair goes into ส่งซ่อม (S-R43)
+
+**Files:** `src/lib/asset-operation-eligibility.ts`, `src/lib/asset-actions.ts` (only if a comment or branch names the repair), `src/lib/asset-operation-search-rules.ts` (row flag), `src/app/api/assets/[id]/checkin/route.ts`, `src/lib/api-error-catalog.ts`, `src/components/asset-operations/checkin-form.tsx`, `messages/th.json` and `messages/en.json` (through `node scripts/messages-edit.mjs`), `docs/05_ASSET_LIFECYCLE.md`, `docs/07_UAT_CHECKLIST.md`. Tests: `tests/asset-operation-eligibility.test.ts`, `tests/asset-actions.test.ts`, `tests/api-error-catalog.test.ts`, `tests/checkin-maintenance-ticket-route.test.ts`, `tests/asset-operation-search-rules.test.ts`, the checkin form pins (grep `tests/` for `checkin-form`), plus any other pin that names `ASSET_CHECKIN_REPAIR_OPEN` or `checkinRepairOpen`.
+
+- [ ] **Step 1: Write the failing tests.**
+  - Verdict: an open handover (mode set, status fits) with `hasOpenRepair: true` is eligible with `path: "handover"`. A ข้อมูลเก่า row with an open repair stays `no("asset.transactionReasonActiveMaintenance")` with `path: "legacy"`. The agreement test keeps comparing `getAssetActions` with the verdicts.
+  - `getAssetActions`: รับคืน is available for `openCheckoutId` + `openRepairId` with a fitting mode and status. Its href carries the checkout id. Rewrite the test that pinned ActiveMaintenance first for an open handover.
+  - `assetOperationRefusalReasonKeys` no longer has `ASSET_CHECKIN_REPAIR_OPEN`, and the S-R6 catalog test drops it. The catalog maps `ASSET_CHECKIN_REPAIR_STATUS_REQUIRED` to `checkinRepairStatusRequired`.
+  - Search row: in mode `checkin` a row whose asset has an open repair carries `openRepair: true`. Rows without one have no `openRepair` key, and the other modes never have it.
+  - Route (`tests/checkin-maintenance-ticket-route.test.ts`): with an open repair and next status `status:Under Maintenance`, the return is 201, the asset goes to Under Maintenance, and no `maintenanceTicket.create` runs. With an open repair and next status `status:Ready` it answers 409 `{ code: "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED", error: same, fieldErrors: { nextStatusId: "checkinRepairStatusRequired" } }` and writes nothing. The in-transaction re-check also answers that 409 when the repair opens between the pre-check and the transaction. With no open repair, ส่งซ่อม still creates the in_progress record, as today.
+  - Form (source pins): a chosen row with `openRepair` sets the next status to the `Under Maintenance` status and offers no other. It shows the notice `checkin.openRepairReturnNotice`, and not `checkin.sendToRepairHelp` or the repair-problem field. `validate` gives `checkinRepairStatusRequired` for another status.
+- [ ] **Step 2: Run them and see them fail.**
+- [ ] **Step 3: Implement.**
+  - The verdict's handover branch drops the repair check. The legacy branch writes the literal `"asset.transactionReasonActiveMaintenance"`.
+  - The search row builder sets `openRepair: true` when `hasOpenRepair` is true and the mode is checkin.
+  - The route replaces both repair refusals (the pre-check and the in-transaction re-check) with "open repair and not `sendsToRepair` → that 409 with `fieldErrors`". The catch block maps the in-transaction throw to the same answer.
+  - The form, on a pick or arrival of a row with `openRepair`: set `nextStatusId` to the `Under Maintenance` status id from its statuses, and narrow the select to that option (or lock it with the notice). Clear that lock when the choice changes.
+  - Words, through one change file:
+    - th `checkin.openRepairReturnNotice` = "มีงานซ่อมที่ยังไม่ปิดอยู่ หลังรับคืนทรัพย์สินจะเข้าสถานะ ส่งซ่อม ต่อกับงานซ่อมเดิม ไม่สร้างใบซ่อมใหม่"
+    - en `checkin.openRepairReturnNotice` = "This asset has an open repair. After the return it goes to Send to repair under that repair; no new repair record is created."
+    - th `apiErrors.checkinRepairStatusRequired` = "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม"
+    - en `apiErrors.checkinRepairStatusRequired` = "This asset has an open repair. Choose Send to repair as the next status."
+    - delete `apiErrors.checkinRepairOpen` in both
+  - Docs:
+    - docs/05: replace the check-in refusal of an open repair with the new rule.
+    - docs/07: add a UAT line ("an asset whose repair is open is returned into ส่งซ่อม under the same repair").
+- [ ] **Step 4: Run the tests, then `npm test`, `npx tsc --noEmit`, `npm run lint` (0 errors).**
+- [ ] **Step 5: Commit** with `fix(checkin): a return with an open repair goes into ส่งซ่อม under that repair instead of being refused, and the asset page offers it (server search addendum S-R43, the user's choice ก 2026-10-29)` and the trailer.
+
+### Task 10: Pick many from one search, held rows first on รับคืน, a leaver as return-by, and the legacy row's location (S-R44 to S-R47)
+
+**Files:** `src/components/ui/asset-operation-picker.tsx`, `src/lib/asset-operation-picker-rules.ts`, `src/lib/asset-operation-search-rules.ts`, `src/lib/asset-operation-search.ts`, `src/lib/checkin-choice.ts`, `src/components/asset-operations/checkin-form.tsx`, messages (through `node scripts/messages-edit.mjs`), `DESIGN.md` (the picker section's pick behaviour), `docs/06_WORKFLOWS.md` (checkin search fields), and E2E only if a spec asserts the old behaviour. Tests: `tests/asset-operation-picker-ui.test.ts`, `tests/asset-operation-picker-rules.test.ts`, `tests/asset-operation-search-rules.test.ts`, `tests/asset-operation-search.test.ts`, `tests/checkin-choice.test.ts`, the checkin form pins.
+
+- [ ] **Step 1: Write the failing tests.**
+  - **S-R44 (picker source pins):** a `multiple` pick no longer calls `setQuery("")` and keeps `open`. It moves the active row to the next takeable row of `flatRows`, and the announcement still reads `selectedTitle` with the new count. A single pick is unchanged.
+  - **S-R45 (search):**
+    - `buildAssetOperationSearchWheres` in mode checkin returns a `held` where. It is `{ AND: [the text OR, { OR: [{ checkouts: { some: open } }, { custodianId: { not: null } }] }] }` on the base.
+    - `searchAssetOperationOptions` runs it as one more 20-row tier.
+    - `rankAssetOperationMatches` takes an optional `held` list ordered exact → held → prefix → contains.
+    - A test: with 25 "none" rows ahead by tag and 2 held rows after them, both held rows are in the 20 and their groups come before "ไม่มีผู้ถือครอง".
+    - The other modes keep three tiers.
+  - **S-R46:**
+    - `getCheckinChoice` returns the holder as `returnByEmployeeId` even when they are not in the active set, and adds `returnByInactiveLabel: string | null` = the holder label when not active.
+    - The form adds one extra option `{ id, label: "{label} (พ้นสภาพ)" }` to the return-by select when that label is set (word `checkin.returnByFormer` = th "{name} (พ้นสภาพ)" / en "{name} (former employee)").
+    - The prefill and the clear rules of S-R32 are otherwise unchanged.
+  - **S-R47:**
+    - Rows get `locationLabel: string` ("code - name" of `currentLocation`, or "-").
+    - The legacy line reads `assetOperation.legacyLineAt` = th "ข้อมูลเก่า (ไม่มีใบส่งมอบ) · {location}" / en "Legacy record (no handover) · {location}".
+    - In mode checkin the text conditions add `{ currentLocation: { code: { contains } } }` and `{ currentLocation: { name: { contains } } }`.
+    - If `legacyLine` loses its last reader, delete it.
+    - The LV2 count of `"-"` fallbacks in `tests/list-frame-guards.test.ts` is updated if a new `"-"` is added.
+- [ ] **Step 2: Run them and see them fail.**
+- [ ] **Step 3: Implement** to the tests. The search stays bounded: at most 5 asset lists + 1 count + 2 fact reads + 2 label reads, every `in` list ≤ 20 ids.
+- [ ] **Step 4: Run the tests, then `npm test`, `npx tsc --noEmit`, `npm run lint` (0 errors).**
+  - Read `e2e/transactions/bulk-move.spec.ts` and `e2e/transactions/return.spec.ts`.
+  - If a step depends on the search clearing after a bulk pick, or on the old legacy line or row order, update it minimally and say so.
+- [ ] **Step 5: Commit** with `fix(asset-operations): pick several assets from one bulk-move search, held rows first on รับคืน, a former employee as return-by, and the ข้อมูลเก่า row's location (server search addendum S-R44 to S-R47)` and the trailer.
+
+After Task 10 the controller rebuilds and runs `e2e/transactions e2e/cross-cutting/field-errors.spec.ts e2e/asset-detail e2e/smoke`. It then updates the changelog, the wiki question 65 and the canvas checklist of the gaps found in the canvas boards.

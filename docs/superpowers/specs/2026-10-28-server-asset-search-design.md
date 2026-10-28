@@ -92,12 +92,13 @@ A ส่วนควบ installed in a parent travels with the parent on ส่�
 
 **รับคืน (checkin)** — searches what can come back: open handovers, and assets held by someone without a handover (ข้อมูลเก่า).
 - Results are **grouped by the holder** (the approved mockup): the group line is the person (code - name) and "ถืออยู่ N ชิ้น"; a handover to a department, a location or another asset groups under that destination's label (*my call*).
-- Each row: tag · name, and either the handover document (HO-… and its date) or "ข้อมูลเก่า (ไม่มีใบส่งมอบ)".
-- Takes an open handover when its handover mode is set, the asset's status fits the mode (permanent needs In Use, temporary needs Checked Out) and the asset has **no open repair** (the asset page's rule; ก). Not takeable: handover mode missing (today's `handoverModeMissing` word); status does not fit (the catalog word for `ASSET_HANDOVER_STATUS_MISMATCH`); an open repair (`asset.transactionReasonActiveMaintenance`). An open handover of any ownership type stays returnable when these hold, so nothing already handed over is stranded (*my call*).
+- Each row: tag · name, and either the handover document (HO-… and its date) or "ข้อมูลเก่า (ไม่มีใบส่งมอบ)" with the asset's current location, as the old legacy panel showed it (the user, 2026-10-29). รับคืน also matches the current location's code and name, so every ข้อมูลเก่า asset in one room can be found, as before.
+- Order on รับคืน: an exact code first, then the assets that have something to return (an open handover or a holder), then the rest by tag, so the "ไม่มีผู้ถือครอง" rows never push a returnable row out of the 20 (the user, 2026-10-29).
+- Takes an open handover when its handover mode is set, the asset's status fits the mode (permanent needs In Use, temporary needs Checked Out) (the asset page's rule; ก). Not takeable: handover mode missing (today's `handoverModeMissing` word); status does not fit (the catalog word for `ASSET_HANDOVER_STATUS_MISMATCH`). **An open repair does not block the return** (the user, 2026-10-29, choice ก, superseding the 2026-10-28 rule): the asset is coming back to IT to be repaired, so the return goes into ส่งซ่อม (Under Maintenance), the next status is fixed to it, the form says so, and no second repair record is made. The asset page's รับคืน follows the same rule. A ข้อมูลเก่า row with an open repair stays not takeable, as the backfill route requires. An open handover of any ownership type stays returnable when these hold, so nothing already handed over is stranded (*my call*).
 - Takes a ข้อมูลเก่า row when the legacy rule holds (ownership บุคคล, ส่วนกลาง or Stock; holder set; no open handover; no open repair; status Ready or In Use). Not takeable: ส่วนควบ — "ส่วนควบรับคืนพร้อมเครื่องหลัก" (*new word, my call*; without this rule every component of a held computer would show as a ข้อมูลเก่า row); ซอฟต์แวร์/License — "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้" (*new word, my call*); an open repair (`transactionReasonActiveMaintenance`); a status that cannot be returned (`transactionReasonStatusNotReturnable`).
 - An asset with nothing to return (no open handover and no holder, for example a CCTV of ส่วนกลาง that nobody borrowed, or a stock item in the store) is listed, not takeable, with `asset.transactionReasonNoReturnRecord` "ไม่มีผู้ถือครองหรือรายการส่งมอบที่รอรับคืน", in a last group "ไม่มีผู้ถือครอง" (the builder check; the user's rule that what cannot be taken is still shown with its reason).
 - Picking a ข้อมูลเก่า row asks once — "สร้างใบส่งมอบย้อนหลังแล้วรับคืน" — and then does exactly what today's "สร้างรายการย้อนหลังและรับคืน" button does (`POST /api/assets/[id]/legacy-checkout`, then continue the return). The separate legacy list goes; a one-line count of ข้อมูลเก่า may stay (*my call*, following the canvas note).
-- The return-by person is filled from the chosen row's holder (today only on the legacy path; *my call* to do it for both).
+- The return-by person is filled from the chosen row's holder (today only on the legacy path; *my call* to do it for both). A holder who is no longer an active employee (a leaver's imported asset) is still filled, shown as "{holder} (พ้นสภาพ)", so the RT- names the person who held it (the user, 2026-10-29).
 
 **โอนย้าย (transfer)** — searches active assets. ส่วนควบ is takeable here (its ย้ายส่วนควบ is this page); ซอฟต์แวร์/License is not — "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้" (*new word, my call*).
 - With no new custodian chosen (move location/department): takes any status except Disposed/Retired, with no open handover. Not takeable: "ย้ายไม่ได้เมื่อสถานะเป็น ตัดจำหน่ายแล้ว หรือ ปลดระวาง"; "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงโอนย้ายได้".
@@ -107,7 +108,7 @@ A ส่วนควบ installed in a parent travels with the parent on ส่�
 
 **ย้ายที่ตั้งหลายรายการ (bulk-move)** — searches active assets, many picks; the ownership rule of โอนย้าย applies (*my call*: it is a move of several assets).
 - Takes: not ซอฟต์แวร์/License, no open handover and a status other than Disposed/Retired. Not takeable: the License reason; the open-handover reason; the Disposed/Retired reason. (Today open-handover assets are hidden and Disposed/Retired ones can be ticked and then refused.)
-- Picking adds to "ที่เลือกแล้ว N รายการ" (6.1); the save sends the chosen ids as today.
+- Picking adds to "ที่เลือกแล้ว N รายการ" (6.1); the save sends the chosen ids as today. The search and its list stay after a pick, so several assets can be picked from one search, as the old checkbox list allowed; the picked rows read "เลือกแล้ว" (the user, 2026-10-29).
 
 ### 6.5 Save routes made to match the asset page (ก)
 
@@ -116,7 +117,7 @@ Each route refuses, with a catalogued code and the same word as the picker, what
 | Route | Today | Adds |
 |---|---|---|
 | `POST /api/assets/[id]/checkout` | Ready, no open handover | ส่วนควบ and ซอฟต์แวร์/License refused; a ทรัพย์สินอื่น destination (`parentAssetId`) the picker would not offer (itself, inactive, ส่วนควบ, License, not Ready, under an open handover) refused under the destination field (the user, 2026-10-28; Production has used only พนักงาน handovers so far) |
-| `POST /api/assets/[id]/checkin` | handover mode, status fits mode | an open repair refused |
+| `POST /api/assets/[id]/checkin` | handover mode, status fits mode | with an open repair, a next status other than ส่งซ่อม refused under the next-status field (`ASSET_CHECKIN_REPAIR_STATUS_REQUIRED`; 2026-10-29, superseding "an open repair refused") |
 | `POST /api/assets/[id]/legacy-checkout` | holder, no handover, no repair, Ready/In Use | ส่วนควบ and ซอฟต์แวร์/License refused |
 | `POST /api/assets/[id]/transfer` | status per operation, no open handover | ซอฟต์แวร์/License refused |
 | `POST /api/assets/bulk-move` | no open handover, not Disposed/Retired | ซอฟต์แวร์/License refused (named per asset, as its Disposed/Retired refusal does) |
