@@ -32,6 +32,25 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   assert.ok(plan.txAssetTag("E2E-1019T2329", "desktop-light", "BM3").length <= 50)
   assert.throws(() => plan.txAssetTag("E2E-1019A", "setup", "X"), /four device × theme projects/)
   assert.deepEqual(plan.secondLocation("E2E-1019A"), { code: "E2E-1019A-L2", name: "E2E-1019A ห้องปลายทาง E2E", locationType: "Room" })
+  // The department tests' assets start in an existing department (group 3 plan 1 task 8): IT first, else the first by code,
+  // among those the asset form offers for the run's company; never the run's own nor another run's. The run makes none.
+  const departments = [
+    { id: "d-run", code: "E2E-1019A-D", name: "E2E-1019A แผนกทดสอบ E2E", companyId: "c1" },
+    { id: "d-old", code: "E2E-1018B-D", name: "E2E-1018B แผนกทดสอบ E2E", companyId: "c1" },
+    { id: "d-other", code: "ADM", name: "ธุรการ", companyId: "c2" },
+    { id: "d-hr", code: "HR", name: "ทรัพยากรบุคคล", companyId: null },
+    { id: "d-acc", code: "ACC", name: "บัญชี", companyId: "c1" },
+    { id: "d-it", code: "IT", name: "เทคโนโลยีสารสนเทศ", companyId: "c1" },
+  ]
+  const run = { departmentId: "d-run", companyId: "c1" }
+  assert.equal(plan.chooseSecondDepartment(departments, run)?.id, "d-it")
+  assert.equal(plan.chooseSecondDepartment(departments.filter((department) => department.code !== "IT"), run)?.id, "d-acc")
+  assert.equal(plan.chooseSecondDepartment(departments.filter((department) => !["IT", "ACC"].includes(department.code)), run)?.id, "d-hr")
+  assert.equal(plan.chooseSecondDepartment(departments.slice(0, 3), run), undefined)
+  // The negative search's word: one of the other department's name that the asset's own text does not hold.
+  assert.equal(plan.departmentWord("ฝ่าย เทคโนโลยีสารสนเทศ", ["E2E-1019A-DL-MW1", "E2E-1019A DL โน้ตบุ๊กค้นหาหลายคำ", "E2E-1019A แผนกทดสอบ E2E"]), "เทคโนโลยีสารสนเทศ")
+  assert.equal(plan.departmentWord("e2e IT", ["E2E-1019A-DL-MW1"]), "IT")
+  assert.throws(() => plan.departmentWord("dl", ["E2E-1019A DL โน้ตบุ๊ก"]), /every word/)
   // Asia/Bangkok is UTC+7: 17:30 UTC is already the next day there.
   assert.equal(plan.bangkokDate(0, new Date("2026-10-19T17:30:00Z")), "2026-10-20")
   assert.equal(plan.bangkokDate(-1, new Date("2026-10-19T10:00:00Z")), "2026-10-18")
@@ -271,7 +290,7 @@ test("the desk delivery on the phone: three steps on one form, the read-back, a 
   // Every spec of the area is pinned by this file.
   const { readdirSync } = await import("node:fs")
   assert.deepEqual(readdirSync("e2e/transactions").filter((file) => file.endsWith(".spec.ts")).sort(), [
-    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return.spec.ts", "transfer.spec.ts",
+    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover-department.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return.spec.ts", "transfer.spec.ts",
   ])
 })
 
@@ -308,4 +327,41 @@ test("the transaction specs find assets on the shared picker: the helper waits f
   }
   walk(JSON.parse(read("messages/th.json")))
   for (const [key, word] of Object.entries(TX_WORDS)) assert.ok(values.has(word.replace(/\{\w+\}/g, "{}")), key)
+})
+
+test("ส่งมอบ gives a บุคคล asset the receiver's department, a ส่วนกลาง asset keeps its own, and a search of name words and a department word finds the asset (group 3 plan 1 task 8)", () => {
+  const spec = readTxSpec("e2e/transactions/handover-department.spec.ts")
+  const support = read("e2e/transactions/tx-support.ts")
+  for (const signature of [
+    'export type CreateAssetOptions = { ownershipType?: "personal" | "shared"; departmentId?: string }',
+    "export async function readSecondDepartment(): Promise<{ id: string; code: string; name: string }>",
+    "export async function expectNoAssetFound(page: Page, fieldId: string, text: string)",
+    "export async function saveHandoverForm(page: Page, device: E2eDevice, assetId: string): Promise<{ id: string; documentNo: string }>",
+  ]) assert.ok(support.includes(signature), signature)
+  // The second department is an existing one, read as the seed admin and chosen by the plan's rule; the E2E makes no department.
+  const readStart = support.indexOf("export async function readSecondDepartment(")
+  const readSecond = support.slice(readStart, support.indexOf("\nexport ", readStart + 1))
+  assert.ok(readSecond.includes('admin.get("/api/departments")'), "read through the department API")
+  assert.ok(readSecond.includes("chooseSecondDepartment("), "chosen by chooseSecondDepartment")
+  for (const [file, source] of [["tx-support.ts", support], ["handover-department.spec.ts", spec]]) assert.doesNotMatch(source, /\.post\(\s*["'`]\/api\/departments/, file)
+  // The desktop saves through the footer and the review, the phone through its three steps (spec §7.3, §7.4).
+  const start = support.indexOf("export async function saveHandoverForm(")
+  const save = support.slice(start, support.indexOf("\nexport ", start + 1))
+  const at = ["ตรวจสอบและบันทึก", "ตรวจสอบก่อนส่งมอบ", "ยืนยันส่งมอบ", "ถัดไป: ให้ผู้รับตรวจ", "ถูกต้อง ลงชื่อรับ", "บันทึกการส่งมอบ"].map((word) => save.indexOf(`"${word}"`))
+  assert.ok(at.every((index, i) => index >= 0 && (i === 0 || index > at[i - 1])), "both paths, in order")
+  assert.ok(save.indexOf("page.waitForResponse(") < at[0], "the wait is set before the first click")
+  assert.equal(spec.split("await readSecondDepartment()").length - 1, 4)
+  assert.ok(spec.includes("expect(after.departmentId).toBe(data.departmentId)"))
+  assert.equal(spec.split("expect(after.departmentId).toBe(second.id)").length - 1, 2)
+  assert.equal(spec.split('ownershipType: "shared"').length - 1, 2)
+  assert.ok(spec.includes('await expect(page.getByRole("main")).toContainText(TX_WORDS.departmentChange)'))
+  // The summary is read on the desktop only (P1-R4); for a ส่วนกลาง asset it never shows the chosen department (P1-R2).
+  assert.equal(spec.split('if (e2eDevice === "desktop")').length - 1, 3)
+  assert.equal(spec.split(`const summary = page.locator('[data-slot="operation-summary-card"]')`).length - 1, 3)
+  assert.equal(spec.split("await expect(summary).not.toContainText(runDepartment.name)").length - 1, 2)
+  assert.ok(spec.includes('await page.locator("#checkout-type").getByRole("button", { name: "แผนก", exact: true }).click()'))
+  assert.ok(spec.includes('await findAssetRow(page, "checkout-asset", `${asset.name} ${RUN_DEPARTMENT_WORD}`, asset.assetTag)'))
+  assert.ok(spec.includes("const secondWord = departmentWord(second.name, [asset.assetTag, asset.name, runDepartment.name])"))
+  assert.ok(spec.includes('await expectNoAssetFound(page, "checkout-asset", `${asset.name} ${secondWord}`)'))
+  for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "ldap", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })

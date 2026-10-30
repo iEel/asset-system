@@ -9,6 +9,10 @@ export const TX_WORDS = {
   holderCount: "ถืออยู่ {count} ชิ้น",
   reviewAndSave: "ตรวจสอบและบันทึก",
   checkoutFooter: "ส่งมอบ {tag} ให้ {receiver}",
+  // The picker with no rows (assetOperation.notFound) and the history's department move (asset.movementTypes.department_change),
+  // group 3 plan 1 task 8.
+  searchNotFound: "ไม่พบทรัพย์สินที่ตรงกับคำค้น",
+  departmentChange: "เปลี่ยนแผนก",
   // ส่งมอบ on the phone, three steps (group 3 spec §7.4, checkout.phone*).
   phoneNext: "ถัดไป: ให้ผู้รับตรวจ",
   phoneAccept: "ถูกต้อง ลงชื่อรับ",

@@ -9,7 +9,8 @@ import type { Measure } from "../support/measure.ts"
 import { ADMIN_STATE_FILE, fromRoot } from "../support/paths.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { dropKnownAxe, KNOWN_AXE } from "./known-findings.ts"
-import { bangkokDate, PHONE_KEYBOARD_OPEN, secondLocation, txAssetName, txAssetTag } from "./tx-plan.ts"
+import { bangkokDate, chooseSecondDepartment, type MasterDepartment, PHONE_KEYBOARD_OPEN, secondLocation, txAssetName, txAssetTag } from "./tx-plan.ts"
+import { TX_WORDS } from "./tx-words.ts"
 
 export const PHOTO_FIXTURE = fromRoot("e2e/fixtures/photo.png")
 export const PDF_FIXTURE = fromRoot("e2e/fixtures/evidence.pdf")
@@ -48,8 +49,11 @@ const EMPTY_ASSET_BODY = {
   isActive: true,
 }
 
-// One personal E2E asset, Ready, in the run's department and first room, through the asset API as the signed-in user.
-export async function createAsset(page: Page, masters: AssetMasters, tag: string, name: string): Promise<CreatedAsset> {
+// One E2E asset, Ready, in the run's first room, through the asset API as the signed-in user. It is personal (บุคคล) and
+// in the run's department unless the options say otherwise: the department tests (group 3 plan 1 task 8) start a
+// ส่วนกลาง asset, or one in an existing department other than the run's, to read the department back after a handover.
+export type CreateAssetOptions = { ownershipType?: "personal" | "shared"; departmentId?: string }
+export async function createAsset(page: Page, masters: AssetMasters, tag: string, name: string, options: CreateAssetOptions = {}): Promise<CreatedAsset> {
   const data = readRunData()
   // Every key of the form's body, as the form sends it: the schema reads a missing optional key as missing (N3).
   const response = await page.request.post("/api/assets", {
@@ -58,10 +62,10 @@ export async function createAsset(page: Page, masters: AssetMasters, tag: string
       assetTag: tag,
       name,
       categoryId: masters.categoryId,
-      ownershipType: "personal",
+      ownershipType: options.ownershipType ?? "personal",
       companyId: data.companyId,
       branchId: data.branchId,
-      departmentId: data.departmentId,
+      departmentId: options.departmentId ?? data.departmentId,
       currentLocationId: data.locationId,
       homeLocationId: data.locationId,
       statusId: masters.readyStatusId,
@@ -75,9 +79,9 @@ export async function createAsset(page: Page, masters: AssetMasters, tag: string
 }
 
 // The project's asset for one workflow step: E2E-<run>-<project>-<key>.
-export async function createTxAsset(page: Page, masters: AssetMasters, projectName: string, key: string, label: string) {
+export async function createTxAsset(page: Page, masters: AssetMasters, projectName: string, key: string, label: string, options: CreateAssetOptions = {}) {
   const { runId } = readRunState()
-  return createAsset(page, masters, txAssetTag(runId, projectName, key), txAssetName(runId, projectName, label))
+  return createAsset(page, masters, txAssetTag(runId, projectName, key), txAssetName(runId, projectName, label), options)
 }
 
 // A permanent handover through the checkout API (the form's own route, JSON body), on the date given (today by default),
@@ -111,6 +115,8 @@ export type AssetRead = {
   currentLocationId: string
   custodian: { code: string; fullNameTh: string } | null
   currentLocation: { code: string; name: string } | null
+  departmentId: string | null
+  department: { code: string; name: string } | null
 }
 
 export async function readAsset(page: Page, assetId: string): Promise<AssetRead> {
@@ -131,6 +137,23 @@ export async function ensureSecondLocation(): Promise<{ id: string; code: string
     const response = await admin.post("/api/locations", { data: { ...planned, branchId: readRunData().branchId, isActive: true } })
     if (response.status() !== 201) throw new Error(`POST /api/locations ${planned.code} answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
     return (await response.json()) as { id: string; code: string; name: string }
+  } finally {
+    await admin.dispose()
+  }
+}
+
+// The department the department tests' assets start in (group 3 plan 1 task 8): an existing one of the master data,
+// chosen by chooseSecondDepartment (tx-plan.ts). IT staff have no department:view, so the seed admin reads the list with
+// a GET, as the global setup reads departments. The E2E makes no department.
+export async function readSecondDepartment(): Promise<{ id: string; code: string; name: string }> {
+  const { baseURL } = readRunState()
+  const admin = await request.newContext({ baseURL, storageState: fromRoot(ADMIN_STATE_FILE) })
+  try {
+    const response = await admin.get("/api/departments")
+    if (response.status() !== 200) throw new Error(`GET /api/departments answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
+    const chosen = chooseSecondDepartment((await response.json()) as MasterDepartment[], readRunData())
+    if (!chosen) throw new Error("the dev data has no active department, other than the run's, that the asset form offers for the run's company (code IT first): the department tests need one")
+    return { id: chosen.id, code: chosen.code, name: chosen.name }
   } finally {
     await admin.dispose()
   }
@@ -189,6 +212,18 @@ export async function expectAssetBlocked(page: Page, row: Locator, reason: strin
 }
 export function pickedAsset(page: Page, assetId: string): Locator {
   return page.locator(`[data-asset-picked="${assetId}"]`)
+}
+// A search with no rows (group 3 plan 1 task 8): the answer to exactly that text is waited for, as searchAssets does;
+// the picker then shows no listbox and says so (its live region repeats the words, hence first()).
+export async function expectNoAssetFound(page: Page, fieldId: string, text: string) {
+  const answered = page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return url.pathname === ASSET_SEARCH_PATH && url.searchParams.get("q") === text
+  })
+  await page.locator(`#${fieldId}-search`).fill(text)
+  expect((await answered).status(), `${ASSET_SEARCH_PATH} q=${text}`).toBe(200)
+  await expect(page.locator(`#${fieldId}-listbox`)).toHaveCount(0)
+  await expect(page.getByText(TX_WORDS.searchNotFound, { exact: true }).first()).toBeVisible()
 }
 // The condition chips of ส่งมอบ (group 3 spec §7.2): one radio per master condition, by its Thai name.
 export function conditionChip(page: Page, label: string): Locator {
@@ -268,6 +303,26 @@ export async function expectPrints(page: Page, buttonName: string) {
   })
   await page.getByRole("button", { name: buttonName }).click()
   expect(await page.evaluate(() => (window as Window & { __e2ePrints?: number }).__e2ePrints)).toBe(1)
+}
+
+// Save a filled ส่งมอบ form the device's way (group 3 spec §7.3, §7.4; P1-R4), with no photo and no signature (both
+// optional; handover.spec.ts and desk-delivery.spec.ts cover them): on the desktop the footer's ตรวจสอบและบันทึก and the
+// review dialog's ยืนยันส่งมอบ, on the phone the three steps with no dialog. The HO- page then opens.
+export async function saveHandoverForm(page: Page, device: E2eDevice, assetId: string): Promise<{ id: string; documentNo: string }> {
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${assetId}/checkout`) && response.request().method() === "POST")
+  if (device === "desktop") {
+    await page.getByRole("button", { name: "ตรวจสอบและบันทึก", exact: true }).click()
+    await page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" }).getByRole("button", { name: "ยืนยันส่งมอบ" }).click()
+  } else {
+    await page.getByRole("button", { name: "ถัดไป: ให้ผู้รับตรวจ", exact: true }).click()
+    await page.getByRole("button", { name: "ถูกต้อง ลงชื่อรับ", exact: true }).click()
+    await page.getByRole("button", { name: "บันทึกการส่งมอบ", exact: true }).click()
+  }
+  const response = await saved
+  expect(response.status(), `POST /api/assets/${assetId}/checkout: ${(await response.text()).slice(0, 300)}`).toBe(201)
+  const checkout = (await response.json()) as { id: string; documentNo: string }
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkouts/${checkout.id}`)
+  return { id: checkout.id, documentNo: checkout.documentNo }
 }
 
 // The area's measured pages (spec §8). The page settles first: axe reads a toast or dialog still fading in as low
