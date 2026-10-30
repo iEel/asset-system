@@ -49,7 +49,12 @@ test("the combobox Task 8 drives: the list, the active row, rows that cannot be 
   assert.match(source, /aria-activedescendant=\{listOpen && activeIndex >= 0 \? `\$\{id\}-option-\$\{flatRows\[activeIndex\]\.id\}` : undefined\}/)
   assert.match(source, /id=\{`\$\{id\}-option-\$\{row\.id\}`\}/)
   assert.match(source, /\bmin-h-11\b/, "rows are 44px tall below md")
-  assert.match(source, /splitSearchHighlight\(/)
+  assert.match(source, /splitSearchHighlightWords\(value, words\)/)
+  assert.doesNotMatch(source, /\bsplitSearchHighlight\(/)
+  for (const part of [
+    "const words = splitAssetOperationSearchWords(query)", "<WordsHighlight value={row.assetTag} words={words} />",
+    "<WordsHighlight value={row.name} words={words} />", "<WordsHighlight value={section.group.label} words={words} />",
+  ]) assert.ok(source.includes(part), part)
   // S-R44: a pick keeps the list open, so its count is read over the list's line.
   assert.match(source, /const liveText = announcement \|\| \(open && state !== "hint" \? stateText : ""\)/)
   assert.ok(source.includes('aria-live="polite">{liveText}</span>'), "the region reads nothing while the list is closed")

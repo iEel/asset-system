@@ -167,7 +167,7 @@ test("a return to the second room prints the RT- document, and a return sent to 
   assert.ok(spec.includes('await expect(page.locator("#checkin-receive-by")).toBeFocused()'))
   assert.equal(spec.split('await expect(page.locator("#checkin-return-by")).toContainText(`${receiver.code} - ${receiver.fullNameTh}`)').length - 1, 2, "both returns start with the holder")
   assert.ok(!spec.includes('pickSearchable(page, "checkin-return-by"'))
-  assert.ok(spec.includes('const listbox = await searchAssets(page, "checkin-checkout", receiver.fullNameTh)'))
+  assert.ok(spec.includes('const listbox = await searchAssets(page, "checkin-checkout", receiver.code)'))
   assert.ok(spec.includes('await pickAsset(page, "checkin-checkout", asset.assetTag, asset.assetTag)'))
   assert.match(spec, /await expectPrints\(page, "พิมพ์ใบรับคืน"\)/)
   assert.match(spec, /expect\(after\.currentLocationId\)\.toBe\(room\.id\)/)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { Search, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -24,11 +24,12 @@ import {
 } from "@/lib/asset-operation-picker-rules"
 import {
   assetOperationSearchMaxChars,
+  splitAssetOperationSearchWords,
   type AssetOperationSearchAnswer,
   type AssetOperationSearchRow,
 } from "@/lib/asset-operation-search-rules"
 import { formatCount } from "@/lib/display-format"
-import { splitSearchHighlight } from "@/lib/search-highlight"
+import { splitSearchHighlightWords } from "@/lib/search-highlight"
 import { cn, formatDate } from "@/lib/utils"
 
 type AssetOperationPickerBaseProps = {
@@ -218,7 +219,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
     if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) setOpen(false)
   }
 
-  const term = query.trim()
+  const words = splitAssetOperationSearchWords(query)
 
   function renderRow(row: AssetOperationSearchRow) {
     const index = flatRows.indexOf(row)
@@ -245,10 +246,10 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
       >
         <span className="min-w-0 break-words">
           <span className="tag font-medium">
-            <TagHighlight value={row.assetTag} term={term} />
+            <WordsHighlight value={row.assetTag} words={words} />
           </span>
           {" · "}
-          {row.name}
+          <WordsHighlight value={row.name} words={words} />
         </span>
         <span className={cn("block min-w-0 break-words text-meta", view.selectable && "text-muted-foreground")}>
           <RowDetail row={row} />
@@ -354,7 +355,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
                           t("noHolderGroup")
                         ) : (
                           <>
-                            <TagHighlight value={section.group.label} term={term} />
+                            <WordsHighlight value={section.group.label} words={words} />
                             {" · "}
                             {t("groupCount", { count: section.group.count })}
                           </>
@@ -409,15 +410,15 @@ function RowDetail({ row }: { row: AssetOperationSearchRow }) {
   return <>{[detail.statusLabel, detail.placeLabel].join(" · ")}</>
 }
 
-// The typed part in a <mark>, as GlobalSearch shows it.
-function TagHighlight({ value, term }: { value: string; term: string }) {
-  const parts = splitSearchHighlight(value, term)
-  if (!parts) return <>{value}</>
+// Each typed word in a <mark>, as GlobalSearch shows its term.
+function WordsHighlight({ value, words }: { value: string; words: readonly string[] }) {
   return (
     <>
-      {parts[0]}
-      <mark className="rounded-sm bg-warning-soft px-0.5 text-foreground">{parts[1]}</mark>
-      {parts[2]}
+      {splitSearchHighlightWords(value, words).map((part, index) => (
+        <Fragment key={index}>
+          {part.marked ? <mark className="rounded-sm bg-warning-soft px-0.5 text-foreground">{part.text}</mark> : part.text}
+        </Fragment>
+      ))}
     </>
   )
 }

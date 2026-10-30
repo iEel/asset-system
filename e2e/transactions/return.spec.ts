@@ -109,10 +109,11 @@ test("a return sent to repair opens an unfinished repair record, and the asset i
   const handover = await handoverByApi(page, asset.id, receiver.id, masters.goodConditionId)
   const problem = `${asset.assetTag} จอแตกตอนรับคืน`
 
-  // Found on the empty form (spec 6.3): by the holder's name the answer is one group, theirs; picked by its tag, the
+  // Found on the empty form (spec 6.3): by the holder's code the answer is one group, theirs; picked by its tag, the
   // handover's document shows and its holder starts as return-by.
   await visit(measure, "/th/asset-management/checkin", "return form", testInfo)
-  const listbox = await searchAssets(page, "checkin-checkout", receiver.fullNameTh)
+  // by the holder's code: a full name is several words, and each word now matches on its own (group 3 spec §11)
+  const listbox = await searchAssets(page, "checkin-checkout", receiver.code)
   const groups = listbox.locator("[data-asset-option-group]")
   await expect(groups).toHaveCount(1)
   await expect(groups).toContainText(`${receiver.code} - ${receiver.fullNameTh}`)

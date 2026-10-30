@@ -9,9 +9,10 @@ import {
   type AssetOperationFacts, type AssetOperationVerdict,
 } from "../src/lib/asset-operation-eligibility.ts"
 import {
-  assetOperationSearchLimit, assetOperationSearchMaxChars, assetOperationSearchMinChars, assetOperationTextConditions, buildAssetOperationByIdWhere,
-  buildAssetOperationSearchHref, buildAssetOperationSearchRow, buildAssetOperationSearchWheres, getAssetOperationSearchVerdict,
+  assetOperationSearchLimit, assetOperationSearchMaxChars, assetOperationSearchMaxWords, assetOperationSearchMinChars, assetOperationTextConditions,
+  buildAssetOperationByIdWhere, buildAssetOperationSearchHref, buildAssetOperationSearchRow, buildAssetOperationSearchWheres, getAssetOperationSearchVerdict,
   getCheckinHolder, groupAssetOperationCheckinRows, isAssetOperationSearchReady, parseAssetOperationSearch, rankAssetOperationMatches,
+  splitAssetOperationSearchWords,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
 } from "../src/lib/asset-operation-search-rules.ts"
 
@@ -71,14 +72,15 @@ test("the picker's href and the route's parse read the same names", () => {
   assert.equal(buildAssetOperationSearchHref({ mode: "checkout", id: "asset-2" }), "/api/asset-operations/search?mode=checkout&id=asset-2")
 })
 
-test("the text matches 6 of the register's own conditions: tag, name, serial, fixed-asset code, the holder's code and name (spec 6.2)", () => {
+test("the text matches 6 of the register's own conditions, then the asset's and the holder's department names (spec 6.2, §11)", () => {
   const conditions = assetOperationTextConditions("0228")
   assert.deepEqual(conditions, [
     { assetTag: { contains: "0228" } }, { name: { contains: "0228" } }, { serialNumber: { contains: "0228" } }, { fixedAssetCode: { contains: "0228" } },
     { custodian: { code: { contains: "0228" } } }, { custodian: { fullNameTh: { contains: "0228" } } },
+    { department: { name: { contains: "0228" } } }, { custodian: { department: { name: { contains: "0228" } } } },
   ])
   const register = assetSearchConditions("0228")
-  for (const condition of conditions) assert.ok(register.some((entry) => isDeepStrictEqual(entry, condition)), JSON.stringify(condition))
+  for (const condition of conditions.slice(0, 6)) assert.ok(register.some((entry) => isDeepStrictEqual(entry, condition)), JSON.stringify(condition))
 })
 
 test("the wheres: active assets; exact and prefix on the three codes; รับคืน adds the open handover", () => {
@@ -104,6 +106,38 @@ test("the wheres: active assets; exact and prefix on the three codes; รับ�
     assert.equal(JSON.stringify(wheres.text).includes("currentLocation"), false, mode)
   }
   assert.deepEqual(buildAssetOperationByIdWhere(input("mode=transfer&id=asset-1")), { isActive: true, id: "asset-1" })
+})
+
+test("multi-word: the text splits on whitespace into at most 5 words, duplicates dropped, in typed order (P1-R6)", () => {
+  assert.equal(assetOperationSearchMaxWords, 5)
+  assert.deepEqual(splitAssetOperationSearchWords("  notebook   บัญชี "), ["notebook", "บัญชี"])
+  assert.deepEqual(splitAssetOperationSearchWords("notebook\tบัญชี\n0228"), ["notebook", "บัญชี", "0228"])
+  assert.deepEqual(splitAssetOperationSearchWords("Dell dell DELL 5440 dell"), ["Dell", "5440"])
+  assert.deepEqual(splitAssetOperationSearchWords("w1 w2 w3 w4 w5 w6 w7"), ["w1", "w2", "w3", "w4", "w5"])
+  assert.deepEqual(splitAssetOperationSearchWords("w1 w1 w2 w3 w4 w5 w6"), ["w1", "w2", "w3", "w4", "w5"])   // duplicates go before the cap
+  assert.deepEqual(splitAssetOperationSearchWords("SNI-EQU-25-0228"), ["SNI-EQU-25-0228"])
+  assert.deepEqual(splitAssetOperationSearchWords("   "), [])
+})
+
+test("multi-word: every word must match a field, the code tiers keep the whole text; รับคืน's held tier needs every word too (spec §11)", () => {
+  const q = "notebook บัญชี"
+  assert.deepEqual(buildAssetOperationSearchWheres(input(`mode=checkout&q=${encodeURIComponent(q)}`)), {
+    text: { isActive: true, AND: [{ OR: assetOperationTextConditions("notebook") }, { OR: assetOperationTextConditions("บัญชี") }] },
+    exact: { isActive: true, OR: [{ assetTag: q }, { serialNumber: q }, { fixedAssetCode: q }] },
+    prefix: { isActive: true, OR: [{ assetTag: { startsWith: q } }, { serialNumber: { startsWith: q } }, { fixedAssetCode: { startsWith: q } }] },
+  })
+  const checkinWord = (word: string) => ({ OR: [...assetOperationTextConditions(word), { checkouts: { some: { isReturned: false, transactionStatus: "active", OR: [
+    { documentNo: { contains: word } }, { custodian: { code: { contains: word } } }, { custodian: { fullNameTh: { contains: word } } },
+  ] } } }, { currentLocation: { code: { contains: word } } }, { currentLocation: { name: { contains: word } } }] })
+  const checkin = buildAssetOperationSearchWheres(input(`mode=checkin&q=${encodeURIComponent("สมชาย HO-26")}`))
+  assert.deepEqual(checkin.text, { isActive: true, AND: [checkinWord("สมชาย"), checkinWord("HO-26")] })
+  assert.deepEqual(checkin.held, { isActive: true, AND: [checkinWord("สมชาย"), checkinWord("HO-26"),
+    { OR: [{ checkouts: { some: { isReturned: false, transactionStatus: "active" } } }, { custodianId: { not: null } }] }] })
+  // One word left after the duplicates go: today's shape.
+  assert.deepEqual(buildAssetOperationSearchWheres(input("mode=transfer&q=Dell%20dell")).text, { isActive: true, OR: assetOperationTextConditions("Dell") })
+  const six = buildAssetOperationSearchWheres(input("mode=bulkMove&q=w1%20w2%20w3%20w4%20w5%20w6"))
+  assert.equal((six.text.AND as unknown[]).length, 5)
+  assert.deepEqual(six.exact.OR, [{ assetTag: "w1 w2 w3 w4 w5 w6" }, { serialNumber: "w1 w2 w3 w4 w5 w6" }, { fixedAssetCode: "w1 w2 w3 w4 w5 w6" }])
 })
 
 test("exact codes first, then codes that start with the text, then the rest, at most 20 (spec 6.1, S-R3)", () => {

@@ -32,6 +32,24 @@ export function isAssetOperationSearchTooLong(text: string): boolean {
   return Array.from(text.trim()).length > assetOperationSearchMaxChars
 }
 
+/** The most words a search reads; each must match a field (group 3 spec §11, P1-R6). */
+export const assetOperationSearchMaxWords = 5
+
+/** Split on whitespace; duplicates dropped (compared lower-cased, first spelling kept); then the first 5, in typed order. */
+export function splitAssetOperationSearchWords(q: string): string[] {
+  const seen = new Set<string>()
+  const words: string[] = []
+  for (const word of q.split(/\s+/)) {
+    if (!word) continue
+    const key = word.toLocaleLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    words.push(word)
+    if (words.length >= assetOperationSearchMaxWords) break
+  }
+  return words
+}
+
 export type AssetOperationSearchInput = {
   mode: AssetOperationMode
   q: string
@@ -77,16 +95,43 @@ export function buildAssetOperationSearchHref(input: {
 
 export const openCheckoutWhere = { isReturned: false, transactionStatus: "active" } satisfies Prisma.AssetCheckoutWhereInput
 
-/** 6 of the register's own conditions (asset-list-query.ts assetSearchConditions): the codes, the name and the holder. */
-export function assetOperationTextConditions(q: string): Prisma.AssetWhereInput[] {
+/**
+ * The register's 6 (asset-list-query.ts assetSearchConditions), then the asset's and the holder's department names
+ * (group 3 spec §11).
+ */
+export function assetOperationTextConditions(word: string): Prisma.AssetWhereInput[] {
   return [
-    { assetTag: { contains: q } },
-    { name: { contains: q } },
-    { serialNumber: { contains: q } },
-    { fixedAssetCode: { contains: q } },
-    { custodian: { code: { contains: q } } },
-    { custodian: { fullNameTh: { contains: q } } },
+    { assetTag: { contains: word } },
+    { name: { contains: word } },
+    { serialNumber: { contains: word } },
+    { fixedAssetCode: { contains: word } },
+    { custodian: { code: { contains: word } } },
+    { custodian: { fullNameTh: { contains: word } } },
+    { department: { name: { contains: word } } },
+    { custodian: { department: { name: { contains: word } } } },
   ]
+}
+
+/** One word's clause: any field; รับคืน adds the open handover and the current room (S-R47). */
+function wordClause(mode: AssetOperationMode, word: string): Prisma.AssetWhereInput {
+  const conditions = assetOperationTextConditions(word)
+  if (mode !== "checkin") return { OR: conditions }
+  return {
+    OR: [
+      ...conditions,
+      {
+        checkouts: {
+          some: {
+            ...openCheckoutWhere,
+            OR: [{ documentNo: { contains: word } }, { custodian: { code: { contains: word } } }, { custodian: { fullNameTh: { contains: word } } }],
+          },
+        },
+      },
+      // S-R47: the room an asset sits in finds it too.
+      { currentLocation: { code: { contains: word } } },
+      { currentLocation: { name: { contains: word } } },
+    ],
+  }
 }
 
 export function buildAssetOperationSearchWheres(input: AssetOperationSearchInput): {
@@ -98,30 +143,19 @@ export function buildAssetOperationSearchWheres(input: AssetOperationSearchInput
 } {
   const { q } = input
   const base = { isActive: true }
-  const text = assetOperationTextConditions(q)
+  // Every word must match a field (AND over words, OR over fields); the code tiers keep the whole text (spec §11).
+  const clauses = splitAssetOperationSearchWords(q).map((word) => wordClause(input.mode, word))
+  const text: Prisma.AssetWhereInput = clauses.length === 1 ? { ...base, ...clauses[0] } : { ...base, AND: clauses }
   const codes = {
     exact: { ...base, OR: [{ assetTag: q }, { serialNumber: q }, { fixedAssetCode: q }] },
     prefix: { ...base, OR: [{ assetTag: { startsWith: q } }, { serialNumber: { startsWith: q } }, { fixedAssetCode: { startsWith: q } }] },
   }
-  if (input.mode !== "checkin") return { text: { ...base, OR: text }, ...codes }
+  if (input.mode !== "checkin") return { text, ...codes }
 
-  text.push(
-    {
-      checkouts: {
-        some: {
-          ...openCheckoutWhere,
-          OR: [{ documentNo: { contains: q } }, { custodian: { code: { contains: q } } }, { custodian: { fullNameTh: { contains: q } } }],
-        },
-      },
-    },
-    // S-R47: the room an asset sits in finds it too.
-    { currentLocation: { code: { contains: q } } },
-    { currentLocation: { name: { contains: q } } },
-  )
   return {
-    text: { ...base, OR: text },
+    text,
     ...codes,
-    held: { ...base, AND: [{ OR: text }, { OR: [{ checkouts: { some: openCheckoutWhere } }, { custodianId: { not: null } }] }] },
+    held: { ...base, AND: [...clauses, { OR: [{ checkouts: { some: openCheckoutWhere } }, { custodianId: { not: null } }] }] },
   }
 }
 

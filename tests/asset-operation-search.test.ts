@@ -44,7 +44,7 @@ function fakeDb(data: {
         const { id } = args.where
         if (typeof id === "string") return all.filter((row) => row.id === id).slice(0, 1)
         if (id) return []   // the parent-asset labels
-        if (args.where.AND) return data.held ?? []   // รับคืน's held tier (S-R45)
+        if (JSON.stringify(args.where).includes('"custodianId"')) return data.held ?? []   // รับคืน's held tier (S-R45): only it names custodianId
         const first = args.where.OR?.[0]?.assetTag
         if (typeof first === "string") return data.exact ?? []
         if (first && typeof first === "object" && "startsWith" in first) return data.prefix ?? []
@@ -156,4 +156,23 @@ test("รับคืน: held rows come right after the exact code, so 25 unhel
     const ids = (call.args.where.assetId ?? call.args.where.id) as { in?: string[] } | undefined
     if (ids && typeof ids === "object" && ids.in) assert.ok(ids.in.length <= 20, call.call)
   }
+})
+
+test("multi-word: the contains tier and the count read every word, the code tiers the whole text; รับคืน reads the held tier too (spec §11)", async () => {
+  const q = encodeURIComponent("notebook บัญชี")
+  const query = input(`mode=checkout&q=${q}`)
+  const wheres = buildAssetOperationSearchWheres(query)
+  assert.equal((wheres.text.AND as unknown[]).length, 2)
+  const { db, calls } = fakeDb({ contains: [asset("SNI-NB-25-0001", { name: "notebook Dell" })], total: 1 })
+  const answer = await searchAssetOperationOptions(db, query)
+  assert.deepEqual([answer.total, answer.rows.map((row) => row.assetTag)], [1, ["SNI-NB-25-0001"]])
+  assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.where), [wheres.exact, wheres.prefix, wheres.text])
+  assert.deepEqual(calls.filter((call) => call.call === "asset.count").map((call) => call.args.where), [wheres.text])
+  const checkinQuery = input(`mode=checkin&q=${q}`)
+  const heldRow = asset("SNI-NB-25-0002", { id: "h1", custodianId: "emp-1", custodian: somchai, status: inUse })
+  const checkin = fakeDb({ held: [heldRow], total: 1 })
+  assert.deepEqual((await searchAssetOperationOptions(checkin.db, checkinQuery)).rows.map((row) => row.id), ["h1"])
+  const checkinWheres = buildAssetOperationSearchWheres(checkinQuery)
+  assert.deepEqual(checkin.calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.where),
+    [checkinWheres.exact, checkinWheres.held, checkinWheres.prefix, checkinWheres.text])
 })
