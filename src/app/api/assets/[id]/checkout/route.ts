@@ -8,8 +8,7 @@ import { issuesToFieldErrors } from "@/lib/field-errors"
 import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError, getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
 import { getHandoverTargetStatusName } from "@/lib/asset-handover-mode"
-import { getAssetOperationOwnershipRefusal, getCheckoutParentVerdict } from "@/lib/asset-operation-eligibility"
-import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
@@ -54,33 +53,6 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     })
     if (activeCheckout) {
       return NextResponse.json({ error: "Asset already has an active checkout" }, { status: 400 })
-    }
-
-    // ทรัพย์สินอื่น as the destination: only what the picker would offer (server-search spec 6.5, S-R39).
-    if (input.checkoutType === "asset" && input.parentAssetId) {
-      const destination = await prisma.asset.findFirst({
-        where: { id: input.parentAssetId, isActive: true },
-        select: { ownershipType: true, custodianId: true, status: { select: { name: true } } },
-      })
-      const destinationCheckout = destination
-        ? await prisma.assetCheckout.findFirst({
-          where: { assetId: input.parentAssetId, isReturned: false, transactionStatus: "active" },
-          select: { id: true, handoverMode: true },
-        })
-        : null
-      if (!destination || !getCheckoutParentVerdict({
-        statusName: destination.status.name,
-        ownership: normalizeAssetOwnershipType(destination.ownershipType),
-        custodianId: destination.custodianId,
-        openCheckout: destinationCheckout,
-        hasOpenRepair: false,
-      }, { handedOverAssetId: id, assetId: input.parentAssetId }).eligible) {
-        return NextResponse.json({
-          code: "ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED",
-          error: "ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED",
-          fieldErrors: { parentAssetId: "checkoutDestinationNotAllowed" },
-        }, { status: 409 })
-      }
     }
 
     const checkoutCondition = await prisma.assetCondition.findUnique({
@@ -129,7 +101,6 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
           custodianId: input.checkoutType === "user" ? input.custodianId : null,
           departmentId: input.checkoutType === "department" ? input.departmentId : null,
           locationId: input.checkoutType === "location" ? input.locationId : null,
-          parentAssetId: input.checkoutType === "asset" ? input.parentAssetId : null,
           checkoutDate: input.checkoutDate,
           expectedReturnDate: input.expectedReturnDate,
           conditionBefore: input.conditionBefore,
@@ -292,7 +263,6 @@ async function parseCheckoutRequest(request: NextRequest) {
       custodianId: optionalFormText(formData, "custodianId"),
       departmentId: optionalFormText(formData, "departmentId"),
       locationId: optionalFormText(formData, "locationId"),
-      parentAssetId: optionalFormText(formData, "parentAssetId"),
       checkoutDate: requiredFormText(formData, "checkoutDate"),
       expectedReturnDate: optionalFormText(formData, "expectedReturnDate"),
       conditionBefore: requiredFormText(formData, "conditionBefore"),

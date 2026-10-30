@@ -79,16 +79,15 @@ function validateBody(source: string) {
 // The shape every operation form shares (plan 1's M-R1 to M-R4, O-R1): the FIELD_IDS table in visual order (several
 // server keys may share the one control that shows them, O-R3), each id once in the markup, validate() through the hook,
 // the server's refusal on the same fields, focus on the first wrong field, and no toast for a validation error. A
-// dialog without a <form> (O-R6) passes noValidate: false. A shared id is one control of two rendered by a condition
-// (ส่งมอบ's destination: the shared picker for ทรัพย์สินอื่น, the select for the other types), so it is written twice.
-function assertOperationForm(source: string, form: { ids: Record<string, string>; noValidate?: false; shared?: readonly string[] }) {
+// dialog without a <form> (O-R6) passes noValidate: false.
+function assertOperationForm(source: string, form: { ids: Record<string, string>; noValidate?: false }) {
   if (form.noValidate !== false) assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate[ >\n]/, "noValidate directly after onSubmit")
   assert.match(source, /import \{ useFieldErrors(?:, useValidationMessage)? \} from "@\/components\/ui\/use-field-errors"/)
   const block = source.match(/const FIELD_IDS = \{\n([\s\S]*?)\n\} as const/)
   assert.ok(block, "const FIELD_IDS = { … } as const")
   assert.deepEqual(block[1].split("\n"), Object.entries(form.ids).map(([key, id]) => `  ${key}: "${id}",`), "FIELD_IDS: the fields in visual order with their ids")
   for (const id of new Set(Object.values(form.ids))) {
-    assert.equal(source.match(new RegExp(`\\bid="${escape(id)}"`, "g"))?.length, form.shared?.includes(id) ? 2 : 1, `id "${id}" once on the page`)
+    assert.equal(source.match(new RegExp(`\\bid="${escape(id)}"`, "g"))?.length, 1, `id "${id}" once on the page`)
   }
   assert.match(source, /fieldErrors\.setErrors\(validate\(/, "the client's errors come from validate()")
   assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/, "the server's fieldErrors land on the same fields")
@@ -107,13 +106,11 @@ test("checkout: errors under the field, the handover rules with the server's cod
       custodianId: "checkout-destination",
       departmentId: "checkout-destination",
       locationId: "checkout-destination",
-      parentAssetId: "checkout-destination",
       handoverMode: "checkout-handover-mode",
       conditionBefore: "checkout-condition",
       checkoutDate: "checkout-date",
       expectedReturnDate: "checkout-expected-return",
     },
-    shared: ["checkout-destination"],
   })
   const rules = validateBody(source)
   for (const rule of [
@@ -147,7 +144,7 @@ test("checkout: errors under the field, the handover rules with the server's cod
   // The two required selects have an id for focus and show their error (V4); the handover mode is one group (F-R8).
   assert.match(source, /<AssetOperationPicker\n\s+id="checkout-asset"\n/)
   assert.match(source, /<SearchableSelect\n\s+id="checkout-destination"\n/)
-  assert.match(source, /<AssetOperationPicker\n\s+id="checkout-destination"\n/)
+  assert.doesNotMatch(source, /<AssetOperationPicker\n\s+id="checkout-destination"/)
   assert.match(source, /<FieldGroup legend=\{t\("handoverMode"\)\} id="checkout-handover-mode" required error=\{errorText\("handoverMode"\)\}>/)
   // A refusal from the review: the review closes, and the field takes focus once the dialog has gone (O-R1).
   assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)

@@ -10,7 +10,7 @@ export type AssetHandoverModeErrorCode =
   | "HANDOVER_TEMPORARY_DUE_DATE_REQUIRED"
   | "HANDOVER_RETURN_BEFORE_CHECKOUT"
 
-type CheckoutType = "user" | "department" | "location" | "asset"
+type CheckoutType = "user" | "department" | "location"
 
 export function getHandoverTargetStatusName(mode: AssetHandoverMode): "In Use" | "Checked Out" {
   return mode === "permanent_assignment" ? "In Use" : "Checked Out"

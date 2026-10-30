@@ -55,3 +55,14 @@ test("the checkout form uses the shared fields and a busy save button (2C batch 
   assert.match(source, /<p className=\{fieldLabelClasses\}>\{t\("handoverMode"\)\}<\/p>\n\s+<p className="mt-1\.5 text-sm text-foreground">\{t\("temporaryLoan"\)\}<\/p>/)
   assert.equal(source.match(/<FormContextBanner /g)?.length, 1)
 })
+
+test("the route takes no ทรัพย์สินอื่น destination; the words for new saves go, and old records keep theirs (group 3 spec §7.3, §13)", () => {
+  assert.doesNotMatch(routeSource, /getCheckoutParentVerdict|ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED|input\.parentAssetId|"parentAssetId"|checkoutType === "asset"/)
+  const [th, en] = ["th", "en"].map((locale) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")))
+  assert.equal(th.checkout.nonUserTemporaryHelp, "การส่งมอบให้แผนกหรือที่ตั้งเป็นการยืมใช้ชั่วคราวและต้องระบุกำหนดคืน")
+  assert.equal(en.checkout.nonUserTemporaryHelp, "Handovers to a department or location are temporary loans and require a return date.")
+  for (const table of [th, en]) {
+    assert.deepEqual([table.checkout.toAsset, table.asset.transactionReasonSameAsset, table.apiErrors.checkoutDestinationNotAllowed], [undefined, undefined, undefined])
+  }
+  assert.deepEqual([th.checkout.type_asset, th.checkin.type_asset, en.checkout.type_asset, en.checkin.type_asset], ["ทรัพย์สินอื่น", "ทรัพย์สินอื่น", "Another Asset", "Another Asset"])
+})

@@ -4,7 +4,6 @@ import {
   assetOperationModes,
   getBulkMoveVerdict,
   getCheckinVerdict,
-  getCheckoutParentVerdict,
   getCheckoutVerdict,
   getTransferVerdict,
   type AssetOperationFacts,
@@ -38,7 +37,6 @@ export type AssetOperationSearchInput = {
   q: string
   id: string | null
   assignCustodian: boolean
-  handedOverAssetId: string | null
 }
 
 const invalidSearch = { error: "Invalid search" } as const
@@ -59,7 +57,6 @@ export function parseAssetOperationSearch(params: URLSearchParams): AssetOperati
     q,
     id,
     assignCustodian: params.get("assignCustodian") === "1",
-    handedOverAssetId: mode === "checkoutParent" ? params.get("handedOverAssetId")?.trim() || null : null,
   }
 }
 
@@ -69,14 +66,12 @@ export function buildAssetOperationSearchHref(input: {
   q?: string
   id?: string
   assignCustodian?: boolean
-  handedOverAssetId?: string | null
 }): string {
   const params = new URLSearchParams()
   params.append("mode", input.mode)
   if (input.q) params.append("q", input.q)
   if (input.id) params.append("id", input.id)
   if (input.assignCustodian) params.append("assignCustodian", "1")
-  if (input.handedOverAssetId) params.append("handedOverAssetId", input.handedOverAssetId)
   return `${assetOperationSearchPath}?${params.toString()}`
 }
 
@@ -94,10 +89,6 @@ export function assetOperationTextConditions(q: string): Prisma.AssetWhereInput[
   ]
 }
 
-function baseWhere(input: AssetOperationSearchInput): Prisma.AssetWhereInput {
-  return input.handedOverAssetId ? { isActive: true, NOT: { id: input.handedOverAssetId } } : { isActive: true }
-}
-
 export function buildAssetOperationSearchWheres(input: AssetOperationSearchInput): {
   text: Prisma.AssetWhereInput
   exact: Prisma.AssetWhereInput
@@ -106,7 +97,7 @@ export function buildAssetOperationSearchWheres(input: AssetOperationSearchInput
   held?: Prisma.AssetWhereInput
 } {
   const { q } = input
-  const base = baseWhere(input)
+  const base = { isActive: true }
   const text = assetOperationTextConditions(q)
   const codes = {
     exact: { ...base, OR: [{ assetTag: q }, { serialNumber: q }, { fixedAssetCode: q }] },
@@ -135,7 +126,7 @@ export function buildAssetOperationSearchWheres(input: AssetOperationSearchInput
 }
 
 export function buildAssetOperationByIdWhere(input: AssetOperationSearchInput): Prisma.AssetWhereInput {
-  return { ...baseWhere(input), id: input.id ?? undefined }
+  return { isActive: true, id: input.id ?? undefined }
 }
 
 export const assetOperationSearchAssetSelect = {
@@ -249,7 +240,6 @@ export function rankAssetOperationMatches<T extends { id: string }>(lists: {
 
 export function getAssetOperationSearchVerdict(
   input: AssetOperationSearchInput,
-  assetId: string,
   facts: AssetOperationFacts,
 ): AssetOperationVerdict {
   const pick = (verdict: AssetOperationVerdict): AssetOperationVerdict =>
@@ -257,8 +247,6 @@ export function getAssetOperationSearchVerdict(
   switch (input.mode) {
     case "checkout":
       return pick(getCheckoutVerdict(facts))
-    case "checkoutParent":
-      return pick(getCheckoutParentVerdict(facts, { handedOverAssetId: input.handedOverAssetId, assetId }))
     case "checkin":
       return pick(getCheckinVerdict(facts))
     case "transfer":
@@ -327,7 +315,7 @@ export function buildAssetOperationSearchRow(
     openCheckout: openCheckout && { id: openCheckout.id, handoverMode: openCheckout.handoverMode },
     hasOpenRepair,
   }
-  const verdict = getAssetOperationSearchVerdict(input, asset.id, facts)
+  const verdict = getAssetOperationSearchVerdict(input, facts)
   const row: AssetOperationSearchRow = {
     id: asset.id,
     assetTag: asset.assetTag,

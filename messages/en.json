@@ -1332,8 +1332,7 @@
     "transactionReasonLicenseCheckin": "A License is assigned on the asset page and cannot be returned",
     "transactionReasonLicenseMove": "A License is assigned on the asset page and cannot be moved",
     "transactionReasonHandoverModeMissing": "The handover has no custody type. Ask an administrator to review the record.",
-    "transactionReasonHandoverStatusMismatch": "The asset status does not match its custody type. Ask an administrator to review it before check-in.",
-    "transactionReasonSameAsset": "This is the asset being handed over; it cannot be its own destination"
+    "transactionReasonHandoverStatusMismatch": "The asset status does not match its custody type. Ask an administrator to review it before check-in."
   },
   "company": {
     "title": "Companies",
@@ -1808,7 +1807,7 @@
     "permanentAssignmentHelp": "Continuous employee use with no planned return date",
     "temporaryLoan": "Temporary loan",
     "temporaryLoanHelp": "Borrowed use that must be returned by a specified date",
-    "nonUserTemporaryHelp": "Handovers to a department, location, or another asset are temporary loans and require a return date.",
+    "nonUserTemporaryHelp": "Handovers to a department or location are temporary loans and require a return date.",
     "resultingStatus": "Status after saving",
     "statusInUse": "In Use",
     "statusCheckedOut": "On Loan",
@@ -1821,7 +1820,6 @@
     "toUser": "User",
     "toDepartment": "Department",
     "toLocation": "Location",
-    "toAsset": "Another Asset",
     "checkoutDate": "Check-out Date",
     "expectedReturn": "Expected Return Date",
     "conditionBefore": "Condition Before",
@@ -4710,7 +4708,6 @@
     "componentCheckinNotAllowed": "A component is returned with its parent asset",
     "licenseCheckinNotAllowed": "A License is assigned on the asset page and cannot be returned",
     "licenseMoveNotAllowed": "A License is assigned on the asset page and cannot be moved",
-    "checkoutDestinationNotAllowed": "This asset cannot be the destination. Choose another one.",
     "checkinRepairStatusRequired": "This asset has an open repair. Choose Send to repair as the next status."
   },
   "session": {

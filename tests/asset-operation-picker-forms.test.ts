@@ -37,13 +37,12 @@ test("the four pages load the master lists; ส่งมอบ and โอนย�
   for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.doesNotMatch(read(`${P}${page}/page.tsx`), /getAssetOperationOptions\(/, page)
 })
 
-test("ส่งมอบ: the asset and the ทรัพย์สินอื่น destination are the shared picker; an asset that arrived blocked reads its reason under the field (spec 6.3, 6.4)", () => {
+test("ส่งมอบ: the asset is the shared picker; an asset that arrived blocked reads its reason under the field (spec 6.3, 6.4)", () => {
   const source = read(`${C}checkout-form.tsx`)
   assert.ok(source.includes('import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"'))
   assert.match(source, /<AssetOperationPicker\n\s+id="checkout-asset"\n\s+label=\{t\("asset"\)\}\n\s+mode="checkout"\n\s+value=\{values\.asset\}\n\s+required\n\s+error=\{errorText\("assetId"\)\}\n\s+onChange=\{setAsset\}/)
-  assert.match(source, /\{values\.checkoutType === "asset" \? \(\n\s+<AssetOperationPicker\n\s+id="checkout-destination"\n\s+label=\{t\("checkoutTo"\)\}\n\s+mode="checkoutParent"\n\s+context=\{\{ handedOverAssetId: values\.asset\?\.id \}\}/)
+  assert.doesNotMatch(source, /checkoutParent|handedOverAssetId|parentAsset|value="asset"|t\("toAsset"\)/)
   assert.ok(source.includes('if (key === "assetId" && assetReasonKey) return tAll(assetReasonKey)'))
-  assert.ok(source.includes("parentAsset: current.parentAsset?.id === asset?.id ? null : current.parentAsset"))
   assert.match(source, /\{initialAsset\?\.eligible && values\.asset\?\.id === initialAsset\.id \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
   assert.ok(source.includes("const response = await fetch(`/api/assets/${values.asset?.id}/checkout`, {"))
   assert.doesNotMatch(source, /options=\{assets\}|assets\.(?:filter|find)\(|initialAssetId|t\("selectAsset"\)/)

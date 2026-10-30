@@ -66,7 +66,6 @@ export async function getAssetOperationPreselect(
     q: "",
     id,
     assignCustodian: false,
-    handedOverAssetId: null,
   })
   return answer.rows[0] ?? null
 }

@@ -5,7 +5,7 @@ import test from "node:test"
 import { getAssetActions, type AssetActionInput } from "../src/lib/asset-actions.ts"
 import {
   assetOperationModes, assetOperationRefusalReasonKeys, getAssetOperationOwnershipRefusal, getBulkMoveVerdict,
-  getCheckinVerdict, getCheckoutParentVerdict, getCheckoutVerdict, getTransferVerdict, type AssetOperationFacts,
+  getCheckinVerdict, getCheckoutVerdict, getTransferVerdict, type AssetOperationFacts,
 } from "../src/lib/asset-operation-eligibility.ts"
 
 const facts = (overrides: Partial<AssetOperationFacts>): AssetOperationFacts => ({
@@ -20,8 +20,9 @@ const statuses = ["Draft", "Ready", "In Use", "Reserved", "Checked Out", "In Tra
 const handovers = [null, handover(null), handover("temporary_loan"), handover("permanent_assignment")]
 const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
 
-test("the modes are the four pages' pickers plus the handover-into-an-asset destination", () => {
-  assert.deepEqual([...assetOperationModes], ["checkout", "checkoutParent", "checkin", "transfer", "bulkMove"])
+test("the modes are the four pages' pickers; the ทรัพย์สินอื่น destination is gone (group 3 spec §7.3)", () => {
+  assert.deepEqual([...assetOperationModes], ["checkout", "checkin", "transfer", "bulkMove"])
+  assert.doesNotMatch(readFileSync("src/lib/asset-operation-eligibility.ts", "utf8"), /getCheckoutParentVerdict|checkoutParent|transactionReasonSameAsset/)
 })
 
 test("ownership comes first: what a ส่วนควบ and a License never take, as the codes the routes answer", () => {
@@ -50,14 +51,6 @@ test("ส่งมอบ takes a บุคคล, ส่วนกลาง or St
   assert.deepEqual(getCheckoutVerdict(facts({ openCheckout: handover("temporary_loan") })), no("asset.transactionReasonOpenCheckoutHandover"))
   assert.deepEqual(getCheckoutVerdict(facts({ statusName: "Checked Out", openCheckout: handover("temporary_loan") })), no("asset.transactionReasonStatusNotReady"), "the route's order")
   assert.deepEqual(getCheckoutVerdict(facts({ hasOpenRepair: true })), yes, "an open repair is not the checkout route's rule")
-})
-
-test("ทรัพย์สินอื่น as the destination: what ส่งมอบ could take, never the asset being handed over", () => {
-  assert.deepEqual(getCheckoutParentVerdict(facts({}), { handedOverAssetId: "a-1", assetId: "a-2" }), yes)
-  assert.deepEqual(getCheckoutParentVerdict(facts({}), { handedOverAssetId: null, assetId: "a-2" }), yes)
-  assert.deepEqual(getCheckoutParentVerdict(facts({}), { handedOverAssetId: "a-1", assetId: "a-1" }), no("asset.transactionReasonSameAsset"))
-  assert.deepEqual(getCheckoutParentVerdict(facts({ statusName: "In Use" }), { handedOverAssetId: "a-1", assetId: "a-2" }), no("asset.transactionReasonStatusNotReady"))
-  assert.deepEqual(getCheckoutParentVerdict(facts({ ownership: "component" }), { handedOverAssetId: "a-1", assetId: "a-2" }), no("asset.transactionReasonComponentCheckout"))
 })
 
 test("รับคืน: an open handover of any ownership is returnable when its custody type is set and the status fits, an open repair included (spec 6.3, S-R2, S-R43)", () => {
@@ -149,9 +142,9 @@ test("the asset page and the picker give one asset the same answer (spec §5, §
 
 test("the new words are the spec's, the custody-type words are the return form's, and every reason exists in Thai and English (spec 6.3)", () => {
   const th = messages("th"), en = messages("en")
-  assert.deepEqual(["ComponentCheckout", "ComponentCheckin", "LicenseCheckout", "LicenseCheckin", "LicenseMove", "SameAsset"].map((name) => th.asset[`transactionReason${name}`]), [
+  assert.deepEqual(["ComponentCheckout", "ComponentCheckin", "LicenseCheckout", "LicenseCheckin", "LicenseMove"].map((name) => th.asset[`transactionReason${name}`]), [
     "ส่วนควบไปพร้อมเครื่องหลัก ส่งมอบแยกไม่ได้", "ส่วนควบรับคืนพร้อมเครื่องหลัก", "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ส่งมอบไม่ได้",
-    "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้", "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้", "เป็นทรัพย์สินที่กำลังส่งมอบ เลือกเป็นปลายทางไม่ได้",
+    "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้", "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
   ])
   for (const table of [th, en]) {
     assert.equal(table.asset.transactionReasonHandoverModeMissing, table.checkin.handoverModeMissing)
@@ -160,11 +153,11 @@ test("the new words are the spec's, the custody-type words are the return form's
   const keys = new Set<string>()
   for (const ownership of owners) for (const statusName of statuses) for (const openCheckout of handovers) for (const hasOpenRepair of [false, true]) for (const custodianId of [null, "e-1"]) {
     const f = facts({ ownership, statusName, openCheckout, hasOpenRepair, custodianId })
-    for (const verdict of [getCheckoutVerdict(f), getCheckoutParentVerdict(f, { handedOverAssetId: "a-1", assetId: "a-1" }), getCheckinVerdict(f), getTransferVerdict(f, { assignCustodian: true }), getTransferVerdict(f, { assignCustodian: false }), getBulkMoveVerdict(f)]) {
+    for (const verdict of [getCheckoutVerdict(f), getCheckinVerdict(f), getTransferVerdict(f, { assignCustodian: true }), getTransferVerdict(f, { assignCustodian: false }), getBulkMoveVerdict(f)]) {
       if (verdict.reasonKey) keys.add(verdict.reasonKey)
     }
   }
-  assert.deepEqual([...keys].sort(), ["ActiveMaintenance", "ComponentCheckin", "ComponentCheckout", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutHandover", "SameAsset", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "WrittenOff"].map((name) => `asset.transactionReason${name}`))
+  assert.deepEqual([...keys].sort(), ["ActiveMaintenance", "ComponentCheckin", "ComponentCheckout", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutHandover", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "WrittenOff"].map((name) => `asset.transactionReason${name}`))
   for (const key of keys) for (const table of [th, en]) assert.equal(typeof table.asset[key.slice("asset.".length)], "string", key)
 })
 

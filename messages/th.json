@@ -1332,8 +1332,7 @@
     "transactionReasonLicenseCheckin": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
     "transactionReasonLicenseMove": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
     "transactionReasonHandoverModeMissing": "ไม่พบลักษณะการถือครองในรายการส่งมอบ กรุณาให้ผู้ดูแลตรวจสอบข้อมูล",
-    "transactionReasonHandoverStatusMismatch": "สถานะทรัพย์สินไม่ตรงกับลักษณะการถือครอง กรุณาให้ผู้ดูแลตรวจสอบก่อนรับคืน",
-    "transactionReasonSameAsset": "เป็นทรัพย์สินที่กำลังส่งมอบ เลือกเป็นปลายทางไม่ได้"
+    "transactionReasonHandoverStatusMismatch": "สถานะทรัพย์สินไม่ตรงกับลักษณะการถือครอง กรุณาให้ผู้ดูแลตรวจสอบก่อนรับคืน"
   },
   "company": {
     "title": "บริษัท",
@@ -1808,7 +1807,7 @@
     "permanentAssignmentHelp": "ใช้งานต่อเนื่องโดยไม่มีกำหนดคืน",
     "temporaryLoan": "ยืมใช้ชั่วคราว",
     "temporaryLoanHelp": "ยืมใช้และต้องส่งคืนภายในวันที่กำหนด",
-    "nonUserTemporaryHelp": "การส่งมอบให้แผนก ที่ตั้ง หรือทรัพย์สินอื่นเป็นการยืมใช้ชั่วคราวและต้องระบุกำหนดคืน",
+    "nonUserTemporaryHelp": "การส่งมอบให้แผนกหรือที่ตั้งเป็นการยืมใช้ชั่วคราวและต้องระบุกำหนดคืน",
     "resultingStatus": "สถานะหลังบันทึก",
     "statusInUse": "ใช้งานอยู่",
     "statusCheckedOut": "ถูกยืม",
@@ -1821,7 +1820,6 @@
     "toUser": "พนักงาน",
     "toDepartment": "แผนก",
     "toLocation": "ที่ตั้ง",
-    "toAsset": "ทรัพย์สินอื่น",
     "checkoutDate": "วันที่ส่งมอบ",
     "expectedReturn": "กำหนดคืน",
     "conditionBefore": "สภาพก่อนส่งมอบ",
@@ -4710,7 +4708,6 @@
     "componentCheckinNotAllowed": "ส่วนควบรับคืนพร้อมเครื่องหลัก",
     "licenseCheckinNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
     "licenseMoveNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
-    "checkoutDestinationNotAllowed": "เลือกทรัพย์สินนี้เป็นปลายทางไม่ได้ เลือกปลายทางอื่น",
     "checkinRepairStatusRequired": "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม"
   },
   "session": {

@@ -75,7 +75,7 @@ test("?checkoutId= starts with that open handover's row, read by id; it wins ove
   state.checkout = { assetId: "asset-1" }; state.answer = { mode: "checkin", total: 1, rows: [handoverRow] }
   assert.deepEqual(await data.getCheckinPreselect({ checkoutId: "co-1", assetId: "asset-9" }), { row: handoverRow, query: "" })
   assert.deepEqual(state.calls[0], { call: "assetCheckout.findFirst", args: { where: { id: "co-1", isReturned: false, transactionStatus: "active" }, select: { assetId: true } } })
-  assert.deepEqual(state.calls[1], { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-1", assignCustodian: false, handedOverAssetId: null } } })
+  assert.deepEqual(state.calls[1], { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-1", assignCustodian: false } } })
   state.calls.length = 0
   assert.deepEqual(await data.getCheckinPreselect({ checkoutId: ["co-1", "co-2"] }), { row: handoverRow, query: "" }, "a repeated ?checkoutId= takes the first")
   assert.deepEqual(state.calls[0], { call: "assetCheckout.findFirst", args: { where: { id: "co-1", isReturned: false, transactionStatus: "active" }, select: { assetId: true } } })
@@ -94,10 +94,10 @@ test("a blocked handover arrives chosen-but-blocked; a returned or unknown one, 
 test("?assetId= fills the search with the asset's tag and chooses nothing; an unknown asset or no parameter leaves it empty", async () => {
   state.answer = { mode: "checkin", total: 1, rows: [{ ...handoverRow, legacy: true, checkout: undefined }] }
   assert.deepEqual(await data.getCheckinPreselect({ assetId: "asset-2" }), { row: null, query: "NB-0228" })
-  assert.deepEqual(state.calls.at(-1), { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-2", assignCustodian: false, handedOverAssetId: null } } })
+  assert.deepEqual(state.calls.at(-1), { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-2", assignCustodian: false } } })
   assert.equal(state.calls.some((call) => call.call === "assetCheckout.findFirst"), false)
   assert.deepEqual(await data.getCheckinPreselect({ assetId: ["asset-2", "asset-3"] }), { row: null, query: "NB-0228" }, "a repeated ?assetId= takes the first")
-  assert.deepEqual(state.calls.at(-1), { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-2", assignCustodian: false, handedOverAssetId: null } } })
+  assert.deepEqual(state.calls.at(-1), { call: "search", args: { input: { mode: "checkin", q: "", id: "asset-2", assignCustodian: false } } })
   state.answer = { mode: "checkin", total: 0, rows: [] }
   assert.deepEqual(await data.getCheckinPreselect({ assetId: "gone" }), { row: null, query: "" })
   state.calls.length = 0

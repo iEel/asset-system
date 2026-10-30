@@ -7,7 +7,7 @@ const optionalDate = z.preprocess(
   z.coerce.date().nullable().optional()
 )
 
-export const checkoutTypes = ["user", "department", "location", "asset"] as const
+export const checkoutTypes = ["user", "department", "location"] as const
 
 export const assetCheckoutSchema = z
   .object({
@@ -16,7 +16,6 @@ export const assetCheckoutSchema = z
     custodianId: optionalText,
     departmentId: optionalText,
     locationId: optionalText,
-    parentAssetId: optionalText,
     checkoutDate: z.coerce.date(),
     expectedReturnDate: optionalDate,
     conditionBefore: z.string().trim().min(1),
@@ -32,9 +31,6 @@ export const assetCheckoutSchema = z
     }
     if (input.checkoutType === "location" && !input.locationId) {
       context.addIssue({ code: "custom", path: ["locationId"], message: "Location is required" })
-    }
-    if (input.checkoutType === "asset" && !input.parentAssetId) {
-      context.addIssue({ code: "custom", path: ["parentAssetId"], message: "Parent asset is required" })
     }
 
     try {

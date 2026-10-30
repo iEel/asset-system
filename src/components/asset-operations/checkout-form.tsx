@@ -33,7 +33,7 @@ import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 
 type Option = { id: string; label: string; disabled?: boolean }
-type CheckoutType = "user" | "department" | "location" | "asset"
+type CheckoutType = "user" | "department" | "location"
 type HandoverModeSelection = "" | AssetHandoverMode
 type CheckoutFormValues = {
   /** The row the shared picker chose, or the ?assetId= answer (chosen-but-blocked when it cannot be taken, spec 6.4). */
@@ -43,8 +43,6 @@ type CheckoutFormValues = {
   custodianId: string
   departmentId: string
   locationId: string
-  /** ทรัพย์สินอื่น: the destination asset, chosen through the shared picker (mode checkoutParent). */
-  parentAsset: AssetOperationSearchRow | null
   checkoutDate: string
   expectedReturnDate: string
   conditionBefore: string
@@ -52,14 +50,13 @@ type CheckoutFormValues = {
 }
 
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The one
-// destination select shows the key of the checkout type: custodianId, departmentId, locationId or parentAssetId (O-R3).
+// destination select shows the key of the checkout type: custodianId, departmentId or locationId (O-R3).
 const FIELD_IDS = {
   assetId: "checkout-asset",
   checkoutType: "checkout-type",
   custodianId: "checkout-destination",
   departmentId: "checkout-destination",
   locationId: "checkout-destination",
-  parentAssetId: "checkout-destination",
   handoverMode: "checkout-handover-mode",
   conditionBefore: "checkout-condition",
   checkoutDate: "checkout-date",
@@ -67,7 +64,7 @@ const FIELD_IDS = {
 } as const
 type CheckoutField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckoutField[]
-const DESTINATION_KEYS = ["custodianId", "departmentId", "locationId", "parentAssetId"] as const
+const DESTINATION_KEYS = ["custodianId", "departmentId", "locationId"] as const
 // The handover codes (the server's catalog keys, which validate() sends too) read the checkout form's own sentences, in
 // the words of its fields (spec §7.1); every other code reads the shared message (O-R2).
 const HANDOVER_MESSAGE_KEYS: Readonly<Record<string, string>> = {
@@ -137,24 +134,18 @@ export function CheckoutForm({
     custodianId: "",
     departmentId: "",
     locationId: "",
-    parentAsset: null,
     checkoutDate: toLocalDateInputValue(),
     expectedReturnDate: "",
     conditionBefore: "",
     remark: "",
   })
 
-  // The three master-list destinations; ทรัพย์สินอื่น is the shared picker and holds its row (spec 6.3).
   const destinationOptions = values.checkoutType === "user"
     ? employees
     : values.checkoutType === "department"
       ? departments
-      : values.checkoutType === "location"
-        ? locations
-        : []
-  const destinationLabel = values.checkoutType === "asset"
-    ? (values.parentAsset ? assetOperationRowLabel(values.parentAsset) : undefined)
-    : destinationOptions.find((option) => option.id === destinationValue(values))?.label
+      : locations
+  const destinationLabel = destinationOptions.find((option) => option.id === destinationValue(values))?.label
   const assetReasonKey = chosenAssetReasonKey(values.asset)
   const selectedCondition = conditions.find((condition) => condition.id === values.conditionBefore)
   const handoverModeLabel = values.handoverMode === "permanent_assignment"
@@ -209,9 +200,8 @@ export function CheckoutForm({
     else if (field in FIELD_IDS) fieldErrors.clear(field as CheckoutField)
   }
 
-  // An asset cannot be its own destination: choosing the asset that is the ทรัพย์สินอื่น destination clears it.
   function setAsset(asset: AssetOperationSearchRow | null) {
-    setValues((current) => ({ ...current, asset, parentAsset: current.parentAsset?.id === asset?.id ? null : current.parentAsset }))
+    setValues((current) => ({ ...current, asset }))
     fieldErrors.clear("assetId")
   }
 
@@ -230,7 +220,6 @@ export function CheckoutForm({
     body.set("custodianId", values.checkoutType === "user" ? values.custodianId : "")
     body.set("departmentId", values.checkoutType === "department" ? values.departmentId : "")
     body.set("locationId", values.checkoutType === "location" ? values.locationId : "")
-    body.set("parentAssetId", values.checkoutType === "asset" ? (values.parentAsset?.id ?? "") : "")
     body.set("checkoutDate", values.checkoutDate)
     body.set("expectedReturnDate", values.expectedReturnDate)
     body.set("conditionBefore", values.conditionBefore)
@@ -295,7 +284,6 @@ export function CheckoutForm({
               custodianId: "",
               departmentId: "",
               locationId: "",
-              parentAsset: null,
               expectedReturnDate: "",
             }))
             fieldErrors.clear("checkoutType", ...DESTINATION_KEYS, "handoverMode", "expectedReturnDate")
@@ -304,36 +292,19 @@ export function CheckoutForm({
           <option value="user">{t("toUser")}</option>
           <option value="department">{t("toDepartment")}</option>
           <option value="location">{t("toLocation")}</option>
-          <option value="asset">{t("toAsset")}</option>
         </Select>
-        {values.checkoutType === "asset" ? (
-          <AssetOperationPicker
-            id="checkout-destination"
-            label={t("checkoutTo")}
-            mode="checkoutParent"
-            context={{ handedOverAssetId: values.asset?.id }}
-            value={values.parentAsset}
-            required
-            error={errorText(destinationKey(values.checkoutType))}
-            onChange={(parentAsset) => {
-              setValues((current) => ({ ...current, parentAsset }))
-              fieldErrors.clear("parentAssetId")
-            }}
-          />
-        ) : (
-          <SearchableSelect
-            id="checkout-destination"
-            label={t("checkoutTo")}
-            value={destinationValue(values)}
-            required
-            options={destinationOptions}
-            placeholder={t("selectDestination")}
-            searchPlaceholder={tCommon("searchSelectPlaceholder")}
-            emptyLabel={tCommon("searchSelectNoResults")}
-            error={errorText(destinationKey(values.checkoutType))}
-            onChange={(value) => setDestinationValue(values.checkoutType, value)}
-          />
-        )}
+        <SearchableSelect
+          id="checkout-destination"
+          label={t("checkoutTo")}
+          value={destinationValue(values)}
+          required
+          options={destinationOptions}
+          placeholder={t("selectDestination")}
+          searchPlaceholder={tCommon("searchSelectPlaceholder")}
+          emptyLabel={tCommon("searchSelectNoResults")}
+          error={errorText(destinationKey(values.checkoutType))}
+          onChange={(value) => setDestinationValue(values.checkoutType, value)}
+        />
         <div className="md:col-span-2">
           {values.checkoutType === "user" ? (
             <FieldGroup legend={t("handoverMode")} id="checkout-handover-mode" required error={errorText("handoverMode")}>
@@ -483,8 +454,7 @@ function dataUrlToFile(dataUrl: string, fileName: string) {
 function destinationKey(type: CheckoutType): (typeof DESTINATION_KEYS)[number] {
   if (type === "user") return "custodianId"
   if (type === "department") return "departmentId"
-  if (type === "location") return "locationId"
-  return "parentAssetId"
+  return "locationId"
 }
 
 function destinationValue(values: {
@@ -492,12 +462,10 @@ function destinationValue(values: {
   custodianId: string
   departmentId: string
   locationId: string
-  parentAsset: AssetOperationSearchRow | null
 }) {
   if (values.checkoutType === "user") return values.custodianId
   if (values.checkoutType === "department") return values.departmentId
-  if (values.checkoutType === "location") return values.locationId
-  return values.parentAsset?.id ?? ""
+  return values.locationId
 }
 
 function OperationShell({ title, children }: { title: string; children: React.ReactNode }) {

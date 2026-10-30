@@ -5,7 +5,7 @@ import { isDeepStrictEqual } from "node:util"
 
 import { assetSearchConditions } from "../src/lib/asset-list-query.ts"
 import {
-  getBulkMoveVerdict, getCheckinVerdict, getCheckoutParentVerdict, getCheckoutVerdict, getTransferVerdict,
+  getBulkMoveVerdict, getCheckinVerdict, getCheckoutVerdict, getTransferVerdict,
   type AssetOperationFacts, type AssetOperationVerdict,
 } from "../src/lib/asset-operation-eligibility.ts"
 import {
@@ -42,7 +42,7 @@ test("the search asks for 2 characters and answers 20 rows (spec 6.1, 6.2)", () 
 })
 
 test("the query: a mode, the trimmed text of 2 or more characters or an id; anything else is 'Invalid search'", () => {
-  const base = { mode: "checkout", q: "ab", id: null, assignCustodian: false, handedOverAssetId: null }
+  const base = { mode: "checkout", q: "ab", id: null, assignCustodian: false }
   assert.deepEqual(parseAssetOperationSearch(new URLSearchParams("mode=checkout&q=%20ab%20")), base)
   for (const query of ["mode=checkout&q=a", "mode=checkout&q=%20a%20", "mode=checkout", "mode=audit&q=ab", "q=ab"]) {
     assert.deepEqual(parseAssetOperationSearch(new URLSearchParams(query)), { error: "Invalid search" }, query)
@@ -50,9 +50,9 @@ test("the query: a mode, the trimmed text of 2 or more characters or an id; anyt
   assert.deepEqual(input("mode=checkin&id=%20asset-1%20"), { ...base, mode: "checkin", q: "", id: "asset-1" })   // by id: no 2-character rule
   assert.equal(input("mode=transfer&q=ab&assignCustodian=1").assignCustodian, true)
   assert.equal(input("mode=transfer&q=ab&assignCustodian=0").assignCustodian, false)
-  assert.equal(input("mode=checkoutParent&q=ab&handedOverAssetId=asset-9").handedOverAssetId, "asset-9")
-  assert.equal(input("mode=checkout&q=ab&handedOverAssetId=asset-9").handedOverAssetId, null)   // only ทรัพย์สินอื่น leaves an asset out
-  for (const mode of ["checkout", "checkoutParent", "checkin", "transfer", "bulkMove"]) assert.equal(input(`mode=${mode}&q=ab`).mode, mode)
+  for (const mode of ["checkout", "checkin", "transfer", "bulkMove"]) assert.equal(input(`mode=${mode}&q=ab`).mode, mode)
+  assert.deepEqual(parseAssetOperationSearch(new URLSearchParams("mode=checkoutParent&q=ab")), { error: "Invalid search" })
+  assert.deepEqual(input("mode=checkout&q=ab&handedOverAssetId=asset-9"), base)   // a stray parameter is not read
 })
 
 test("final review M-6: the search text is capped at 100 characters, counted as code points", () => {
@@ -67,8 +67,8 @@ test("final review M-6: the search text is capped at 100 characters, counted as 
 test("the picker's href and the route's parse read the same names", () => {
   const href = buildAssetOperationSearchHref({ mode: "transfer", q: "02 28", assignCustodian: true })
   assert.equal(href, "/api/asset-operations/search?mode=transfer&q=02+28&assignCustodian=1")
-  assert.deepEqual(parseAssetOperationSearch(new URL(href, "http://localhost").searchParams), { mode: "transfer", q: "02 28", id: null, assignCustodian: true, handedOverAssetId: null })
-  assert.equal(buildAssetOperationSearchHref({ mode: "checkoutParent", id: "asset-2", handedOverAssetId: "asset-1" }), "/api/asset-operations/search?mode=checkoutParent&id=asset-2&handedOverAssetId=asset-1")
+  assert.deepEqual(parseAssetOperationSearch(new URL(href, "http://localhost").searchParams), { mode: "transfer", q: "02 28", id: null, assignCustodian: true })
+  assert.equal(buildAssetOperationSearchHref({ mode: "checkout", id: "asset-2" }), "/api/asset-operations/search?mode=checkout&id=asset-2")
 })
 
 test("the text matches 6 of the register's own conditions: tag, name, serial, fixed-asset code, the holder's code and name (spec 6.2)", () => {
@@ -81,7 +81,7 @@ test("the text matches 6 of the register's own conditions: tag, name, serial, fi
   for (const condition of conditions) assert.ok(register.some((entry) => isDeepStrictEqual(entry, condition)), JSON.stringify(condition))
 })
 
-test("the wheres: active assets; exact and prefix on the three codes; รับคืน adds the open handover; ทรัพย์สินอื่น leaves out the asset handed over", () => {
+test("the wheres: active assets; exact and prefix on the three codes; รับคืน adds the open handover", () => {
   assert.deepEqual(buildAssetOperationSearchWheres(input("mode=checkout&q=0228")), {
     text: { isActive: true, OR: assetOperationTextConditions("0228") },
     exact: { isActive: true, OR: [{ assetTag: "0228" }, { serialNumber: "0228" }, { fixedAssetCode: "0228" }] },
@@ -98,15 +98,12 @@ test("the wheres: active assets; exact and prefix on the three codes; รับ�
     isActive: true,
     AND: [{ OR: checkinText }, { OR: [{ checkouts: { some: { isReturned: false, transactionStatus: "active" } } }, { custodianId: { not: null } }] }],
   })
-  for (const mode of ["checkout", "checkoutParent", "transfer", "bulkMove"]) {
+  for (const mode of ["checkout", "transfer", "bulkMove"]) {
     const wheres = buildAssetOperationSearchWheres(input(`mode=${mode}&q=ab`))
     assert.deepEqual(Object.keys(wheres), ["text", "exact", "prefix"], `${mode} keeps three tiers`)
     assert.equal(JSON.stringify(wheres.text).includes("currentLocation"), false, mode)
   }
-  const parent = buildAssetOperationSearchWheres(input("mode=checkoutParent&q=ab&handedOverAssetId=asset-9"))
-  for (const where of [parent.text, parent.exact, parent.prefix]) assert.deepEqual(where.NOT, { id: "asset-9" })
   assert.deepEqual(buildAssetOperationByIdWhere(input("mode=transfer&id=asset-1")), { isActive: true, id: "asset-1" })
-  assert.deepEqual(buildAssetOperationByIdWhere(input("mode=checkoutParent&id=asset-9&handedOverAssetId=asset-9")), { isActive: true, NOT: { id: "asset-9" }, id: "asset-9" })
 })
 
 test("exact codes first, then codes that start with the text, then the rest, at most 20 (spec 6.1, S-R3)", () => {
@@ -140,10 +137,9 @@ test("each mode asks Task 1's verdict, so the picker, the asset page and the rou
     { statusName: "Disposed", ownership: "shared", custodianId: null, openCheckout: null, hasOpenRepair: false },
   ]
   const pick = (verdict: AssetOperationVerdict) => ({ eligible: verdict.eligible, reasonKey: verdict.reasonKey })
-  const verdict = (query: string, row: AssetOperationFacts) => getAssetOperationSearchVerdict(input(query), "asset-1", row)
+  const verdict = (query: string, row: AssetOperationFacts) => getAssetOperationSearchVerdict(input(query), row)
   for (const row of facts) {
     assert.deepEqual(verdict("mode=checkout&q=ab", row), pick(getCheckoutVerdict(row)))
-    assert.deepEqual(verdict("mode=checkoutParent&q=ab&handedOverAssetId=asset-1", row), pick(getCheckoutParentVerdict(row, { handedOverAssetId: "asset-1", assetId: "asset-1" })))
     assert.deepEqual(verdict("mode=checkin&q=ab", row), pick(getCheckinVerdict(row)))
     assert.deepEqual(verdict("mode=transfer&q=ab", row), pick(getTransferVerdict(row, { assignCustodian: false })))
     assert.deepEqual(verdict("mode=transfer&q=ab&assignCustodian=1", row), pick(getTransferVerdict(row, { assignCustodian: true })))
@@ -185,7 +181,7 @@ test("รับคืน: a row whose asset has an open repair says so, and the 
   const row = buildAssetOperationSearchRow(input("mode=checkin&q=สมชาย"), held, repairing)
   assert.deepEqual([row.openRepair, row.eligible, row.reasonKey, row.checkout?.id], [true, true, null, "co-1"])
   assert.equal("openRepair" in buildAssetOperationSearchRow(input("mode=checkin&q=สมชาย"), held, ctx(handover)), false)
-  for (const mode of ["checkout", "checkoutParent", "transfer", "bulkMove"]) {
+  for (const mode of ["checkout", "transfer", "bulkMove"]) {
     assert.equal("openRepair" in buildAssetOperationSearchRow(input(`mode=${mode}&q=0228`), held, repairing), false, mode)
   }
 })

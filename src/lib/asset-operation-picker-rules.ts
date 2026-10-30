@@ -15,7 +15,7 @@ export const assetOperationPickerDebounceMs = 250
 /** The รับคืน group of assets nobody holds (S-R23). */
 export const assetOperationNoHolderGroupKey = "none"
 
-export type AssetOperationPickerContext = { assignCustodian?: boolean; handedOverAssetId?: string | null }
+export type AssetOperationPickerContext = { assignCustodian?: boolean }
 
 /** The URL to ask, or null while there is nothing to ask (no id, and fewer than 2 or more than 100 characters). With an id, q is ignored. */
 export function buildAssetOperationSearchUrl(input: {
@@ -30,7 +30,6 @@ export function buildAssetOperationSearchUrl(input: {
     mode,
     ...(id ? { id } : { q: (input.q ?? "").trim() }),
     assignCustodian: context?.assignCustodian,
-    handedOverAssetId: context?.handedOverAssetId,
   })
 }
 

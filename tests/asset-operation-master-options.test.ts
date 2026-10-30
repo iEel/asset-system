@@ -82,10 +82,10 @@ test("?assetId= is one by-id answer under the page's rule, and no query without 
   assert.equal(await options.getAssetOperationPreselect("checkout", undefined), null)
   assert.equal(state.searchCalls.length, 0)
   assert.deepEqual(await options.getAssetOperationPreselect("transfer", "a1"), chosen)
-  assert.deepEqual(state.searchCalls, [{ input: { mode: "transfer", q: "", id: "a1", assignCustodian: false, handedOverAssetId: null } }])
+  assert.deepEqual(state.searchCalls, [{ input: { mode: "transfer", q: "", id: "a1", assignCustodian: false } }])
   assert.deepEqual(await options.getAssetOperationPreselect("checkout", ["a1", "a2"]), chosen, "a repeated ?assetId= takes the first, as Next hands it an array")
   assert.equal(state.searchCalls.length, 2)
-  assert.deepEqual(state.searchCalls.at(-1), { input: { mode: "checkout", q: "", id: "a1", assignCustodian: false, handedOverAssetId: null } })
+  assert.deepEqual(state.searchCalls.at(-1), { input: { mode: "checkout", q: "", id: "a1", assignCustodian: false } })
   state.rows = []
   assert.equal(await options.getAssetOperationPreselect("checkout", "gone"), null)
 })

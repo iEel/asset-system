@@ -119,8 +119,9 @@ test("a transaction refusal reads the picker's words for the same rule (server-s
     "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม", "This asset has an open repair. Choose Send to repair as the next status.",
   ])
   for (const locale of ["th", "en"] as const) assert.equal(words(locale).checkinRepairOpen, undefined, locale)
-  // The destination refusal has one word of its own (S-R39), not a picker reason.
-  assert.equal(getApiErrorKey("ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED"), "checkoutDestinationNotAllowed")
+  // The ทรัพย์สินอื่น destination is gone (group 3 spec §7.3), and its word with it.
+  assert.equal(getApiErrorKey("ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED"), null)
+  for (const locale of ["th", "en"] as const) assert.equal(words(locale).checkoutDestinationNotAllowed, undefined, locale)
   for (const locale of ["th", "en"] as const) {
     const table = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
     for (const [code, reasonKey] of Object.entries(assetOperationRefusalReasonKeys)) {

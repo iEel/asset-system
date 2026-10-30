@@ -7,7 +7,7 @@ import {
   getHandoverTargetStatusName,
   isAssetHandoverMode,
 } from "../src/lib/asset-handover-mode.ts"
-import { assetCheckoutSchema } from "../src/lib/validations/asset-operations.ts"
+import { assetCheckoutSchema, checkoutTypes } from "../src/lib/validations/asset-operations.ts"
 
 test("derives the lifecycle status from the explicit handover mode", () => {
   assert.equal(getHandoverTargetStatusName("permanent_assignment"), "In Use")
@@ -127,4 +127,13 @@ test("checkout validation requires a coherent handover mode", () => {
   if (!temporaryWithoutDueDate.success) {
     assert.equal(temporaryWithoutDueDate.error.issues[0]?.message, "HANDOVER_TEMPORARY_DUE_DATE_REQUIRED")
   }
+})
+
+test("ทรัพย์สินอื่น is no longer a checkout type: the schema refuses it, and an old client's parentAssetId is dropped (group 3 spec §7.3)", () => {
+  assert.deepEqual([...checkoutTypes], ["user", "department", "location"])
+  const loan = { handoverMode: "temporary_loan", checkoutDate: "2026-08-31", expectedReturnDate: "2026-09-01", conditionBefore: "good" }
+  const toAsset = assetCheckoutSchema.safeParse({ ...loan, checkoutType: "asset", parentAssetId: "asset-2" })
+  assert.equal(toAsset.success, false)
+  assert.ok(!toAsset.success && toAsset.error.issues.some((issue) => issue.path.join(".") === "checkoutType"))
+  assert.equal("parentAssetId" in assetCheckoutSchema.parse({ ...loan, checkoutType: "location", locationId: "loc-1", parentAssetId: "asset-2" }), false)
 })

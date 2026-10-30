@@ -39,7 +39,6 @@ function searchById(assetId: string) {
     q: "",
     id: assetId,
     assignCustodian: false,
-    handedOverAssetId: null,
   })
 }
 

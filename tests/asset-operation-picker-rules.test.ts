@@ -36,8 +36,6 @@ test("the search URL: the trimmed text, or the id with no 2-character rule, then
   assert.equal(buildAssetOperationSearchUrl({ mode: "checkin", id: "a1", q: "x" }), `${BASE}mode=checkin&id=a1`)
   assert.equal(buildAssetOperationSearchUrl({ mode: "transfer", q: "NB", context: { assignCustodian: true } }), `${BASE}mode=transfer&q=NB&assignCustodian=1`)
   assert.equal(buildAssetOperationSearchUrl({ mode: "transfer", q: "NB", context: { assignCustodian: false } }), `${BASE}mode=transfer&q=NB`)
-  assert.equal(buildAssetOperationSearchUrl({ mode: "checkoutParent", q: "NB", context: { handedOverAssetId: "a9" } }), `${BASE}mode=checkoutParent&q=NB&handedOverAssetId=a9`)
-  assert.equal(buildAssetOperationSearchUrl({ mode: "checkoutParent", q: "NB", context: { handedOverAssetId: null } }), `${BASE}mode=checkoutParent&q=NB`)
   assert.equal(buildAssetOperationSearchUrl({ mode: "bulkMove", q: "NB" }), `${BASE}mode=bulkMove&q=NB`)
   // final review M-6: no URL for a text longer than the route takes
   assert.equal(buildAssetOperationSearchUrl({ mode: "checkout", q: "a".repeat(100) }), `${BASE}mode=checkout&q=${"a".repeat(100)}`)

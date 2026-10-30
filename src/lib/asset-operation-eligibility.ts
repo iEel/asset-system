@@ -6,7 +6,7 @@ import type { AssetOwnershipType } from "./asset-ownership.ts"
 // Pure: callers pass the open handover and the open repair from dedicated queries. Each verdict returns the first rule
 // that fails, in its route's order. Reason keys are full message keys, written as literals.
 
-export const assetOperationModes = ["checkout", "checkoutParent", "checkin", "transfer", "bulkMove"] as const
+export const assetOperationModes = ["checkout", "checkin", "transfer", "bulkMove"] as const
 export type AssetOperationMode = (typeof assetOperationModes)[number]
 
 export type AssetOperationFacts = {
@@ -71,15 +71,6 @@ export function getCheckoutVerdict(facts: AssetOperationFacts): AssetOperationVe
   if (getAssetLifecycleTransitionError("checkout", facts.statusName)) return no("asset.transactionReasonStatusNotReady")
   if (facts.openCheckout) return no("asset.transactionReasonOpenCheckoutHandover")
   return yes
-}
-
-// ทรัพย์สินอื่น as a handover's destination: never the asset being handed over, then what ส่งมอบ could take.
-export function getCheckoutParentVerdict(
-  facts: AssetOperationFacts,
-  context: { handedOverAssetId: string | null; assetId: string },
-): AssetOperationVerdict {
-  if (context.assetId === context.handedOverAssetId) return no("asset.transactionReasonSameAsset")
-  return getCheckoutVerdict(facts)
 }
 
 // api/assets/[id]/checkin against the open handover (any ownership, S-R2), or api/assets/[id]/legacy-checkout. An open
