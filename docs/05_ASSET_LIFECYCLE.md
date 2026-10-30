@@ -52,7 +52,7 @@ Selectable physical conditions are `Not Assessed`, `New`, `Good`, `Fair`, `Damag
 |---|---|---|
 | Draft | Ready | Asset registration completed |
 | Ready | In Use | Permanent assignment to an employee, or transfer custody to a person |
-| Ready | Checked Out | Temporary loan to an employee, department, location, or another asset |
+| Ready | Checked Out | Temporary loan to an employee, department or location |
 | In Use / Checked Out | Ready | Check-in / return with normal result |
 | In Use / Checked Out | Under Maintenance | Check-in / return with result "ส่งซ่อม" (send for repair); an unfinished repair record is opened in the same transaction |
 | In Use / Checked Out | Pending Disposal | Check-in / return with disposal recommendation |
@@ -91,7 +91,7 @@ Cancelling a Check-out, Check-in, or Transfer is a compensating transaction, not
 | Ready | Asset is usable and available for normal operations. | Check-out, transfer, maintenance, disposal request, audit, or stay Ready. |
 | In Use | Asset is permanently assigned to an employee, assigned through personal transfer, or represents an imported active-use record. | Continue custody transfer as needed, or return an active permanent assignment through Check-in. |
 | Reserved | Legacy or planning status for an asset held for a future use. | Move to Ready or a controlled custody workflow when released. |
-| Checked Out | Asset is temporarily loaned to a person, location, department, or another asset. | Check-in to `Ready`, `Under Maintenance` ("ส่งซ่อม", opens a repair record), or `Pending Disposal`. |
+| Checked Out | Asset is temporarily loaned to a person, location, or department. | Check-in to `Ready`, `Under Maintenance` ("ส่งซ่อม", opens a repair record), or `Pending Disposal`. |
 | In Transit | Legacy or logistics movement status. | Confirm arrival through the relevant movement workflow and return to an active status. |
 | Under Inspection | Asset is being reviewed because data, location, custody, condition, or master data needs confirmation. | The currently enforced exit is controlled correction to `Ready`. After that correction, use personal transfer, maintenance, or disposal workflow as required. Recording an audit item as not found creates a finding but does not change the asset to `Missing` or `Lost`. |
 | Pending Repair | Legacy status from the old repair workflow. New work no longer sets it; the value stays in master data for history. | Record the repair ("บันทึกซ่อม"): finished moves the asset to its custody-derived status or `Pending Disposal`; unfinished moves it to `Under Maintenance`. The Maintenance page lists these assets under "ทรัพย์สินค้างสถานะซ่อมแต่ไม่มีบันทึก". |
@@ -106,8 +106,9 @@ The status diagram used for operator handoff is stored as `docs/asset-lifecycle-
 
 ## Current Code Enforcement
 
-- Check-out requires `asset:edit`, loads active assets only, blocks an asset that already has an active checkout, and accepts only `Ready` and refuses ส่วนควบ and License assets (409 `ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED`, `ASSET_LICENSE_CHECKOUT_NOT_ALLOWED`); a ทรัพย์สินอื่น destination must be another active asset that could itself be handed over (409 `ASSET_CHECKOUT_DESTINATION_NOT_ALLOWED` under the destination field); `Under Inspection` therefore remains blocked.
+- Check-out requires `asset:edit`, loads active assets only, blocks an asset that already has an active checkout, and accepts only `Ready` and refuses ส่วนควบ and License assets (409 `ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED`, `ASSET_LICENSE_CHECKOUT_NOT_ALLOWED`); it refuses an unknown or inactive employee, department or location (409 `ASSET_CHECKOUT_DESTINATION_INACTIVE` under the destination field); the `asset` destination type is refused by the schema (400), and old ทรัพย์สินอื่น handovers stay readable; `Under Inspection` therefore remains blocked.
 - Check-out requires an explicit custody mode for user destinations. `permanent_assignment` requires an employee custodian, forbids a due date, and sets `In Use`; `temporary_loan` requires a valid due date and sets `Checked Out`. Non-user destinations are always temporary loans. The server derives the status rather than accepting a user-selected lifecycle value.
+- Check-out sets the department by `getCheckoutNextDepartmentId` (`src/lib/asset-department-rule.ts`, group 3 spec §6), the one rule the route and the page's summary call: a บุคคล or Stock asset takes the employee's department, or the chosen department on a checkout to a department; a checkout to a location leaves it unchanged; a ส่วนกลาง asset keeps its own department on every checkout. Installed components follow the parent; a change writes a `department_change` movement (referenceType `checkout`, "เปลี่ยนแผนก" in the history), and cancelling the HO- restores the department.
 - Check-in requires `asset:edit` and an active checkout; an asset with an unfinished repair record is returned into `Under Maintenance` ("ส่งซ่อม") under that record, with no second record, and any other return result is refused (409 `ASSET_CHECKIN_REPAIR_STATUS_REQUIRED` under `nextStatusId`, checked again inside the transaction; server search addendum S-R43, 2026-10-29). The legacy backfill still refuses an asset with an unfinished repair record. Check-in verifies `permanent_assignment` from `In Use` or `temporary_loan` from `Checked Out`; while an unfinished repair record is open, a `permanent_assignment` is also accepted from `Under Maintenance` or `Pending Repair`, because opening that repair moved it there (the return then goes into ส่งซ่อม under that record, clears the custodian, and finishing the repair restores `Ready`; server search addendum S-R48, 2026-10-29). A `temporary_loan` is unchanged, since no unfinished repair opens on a `Checked Out` asset (`MAINTENANCE_ASSET_ON_LOAN`). Check-in only accepts return results `Ready`, `Under Maintenance` (shown as "ส่งซ่อม"), or `Pending Disposal`.
 - The `Under Maintenance` return result also requires `maintenance:create` and a recorder employee, and opens an `in_progress` repair record from the damage note in the same transaction, so the asset never sits in a repair status without a record.
 - Transfer requires `asset:edit`, blocks assets that already have an active checkout, refuses License assets (409 `ASSET_LICENSE_MOVE_NOT_ALLOWED`), and accepts personal custody assignment only from `Ready` or `In Use`; `Under Inspection` therefore remains blocked. A transfer with `toCustodianId` resolves the required `In Use` status server-side and updates it atomically with the new custodian; location-only or department-only transfers preserve the current status.
@@ -154,7 +155,7 @@ These are recommended hardening items for future work. They should be implemente
 | Mode | Valid destination | Due date | Status while held | Check-in source |
 |---|---|---|---|---|
 | `permanent_assignment` | Employee with custodian | Not allowed | `In Use` | `In Use` |
-| `temporary_loan` | Employee, department, location, or another asset | Required | `Checked Out` | `Checked Out` |
+| `temporary_loan` | Employee, department, or location | Required | `Checked Out` | `Checked Out` |
 
 The mode is explicit and server-derived; users do not choose the resulting lifecycle status. An active Checkout with a missing/unknown mode or a status mismatch creates a critical Asset State Review. Unknown mode has no automatic status target. Completed legacy Checkouts may remain null and display as unspecified.
 

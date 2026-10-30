@@ -555,6 +555,18 @@ A person still checks:
   - the count is read politely.
 - [ ] An English pass of the new messages.
 
+## Transactions Group 3 Plan 1 UAT (ส่งมอบ, 2026-10-31)
+
+E2E covers the department after a handover on both devices and the multi-word search (`e2e/transactions/handover-department.spec.ts`), the desktop handover with signature, photo and review (`handover.spec.ts`), and the phone's three steps (`desk-delivery.spec.ts`). Check by hand:
+
+- [ ] Desktop 1440, both themes: the three sections, the summary rows (bold when changed), the checklist, the footnote, the footer line and ยกเลิก; the summary's แผนก equals what is saved for a Stock asset to a department and for any asset to a room.
+- [ ] A computer with components: the "ไปด้วย" list, a component with its own handover left behind, the components' holder and department after saving; the receiver's hint counts it once.
+- [ ] The condition chips offer every selectable master condition and start on the asset's.
+- [ ] Phone (iOS Safari, Android Chrome): the three steps, ยกเลิกและกลับ, step back, "รับในนามของ" for a department or room, landscape signing, the HO- opens.
+- [ ] On dev, a deactivated employee, department or room is refused under its field; an old ทรัพย์สินอื่น handover reads on HO-, RT-, the history and the return search; a cancelled HO- restores the department.
+- [ ] "notebook บัญชี" on ส่งมอบ, รับคืน and โอนย้าย, with a 6th word ignored.
+- [ ] NVDA and VoiceOver on the Segmented, the chips, the summary and the steps; an English pass.
+
 ## Sign-Off
 
 | Role | Tester | Date | Result | Notes |

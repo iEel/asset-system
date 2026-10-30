@@ -140,7 +140,7 @@ Important data semantics:
 
 | Feature | Details |
 |---|---|
-| Check-out | Handover to employee, department, location, or another asset |
+| Check-out | Handover to employee, department, or location; the department follows the receiver for บุคคล and Stock assets |
 | Check-out evidence | Before-handover photo, receiver signature pad, attachment evidence |
 | Check-out validation | Blocks duplicate active checkout and protected lifecycle statuses |
 | Check-in | Return workflow with return/receive parties, condition after, next status, next location |
