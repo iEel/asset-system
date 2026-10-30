@@ -1,29 +1,37 @@
 import {
+  assetOperationComponentLinkSelect,
   assetOperationSearchAssetSelect,
   assetOperationSearchCheckoutSelect,
+  assetOperationSearchDetailAssetSelect,
+  buildAssetOperationComponentLinkWhere,
   assetOperationSearchLimit,
   buildAssetOperationByIdWhere,
+  buildAssetOperationRowDetail,
   buildAssetOperationSearchRow,
   buildAssetOperationSearchWheres,
   groupAssetOperationCheckinRows,
   openCheckoutWhere,
   rankAssetOperationMatches,
+  type AssetOperationComponentLink,
   type AssetOperationDestinationLabels,
   type AssetOperationSearchAnswer,
   type AssetOperationSearchAsset,
   type AssetOperationSearchCheckoutRecord,
+  type AssetOperationSearchDetailAsset,
   type AssetOperationSearchInput,
 } from "./asset-operation-search-rules.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // The reads of the transaction pages' asset search (server search spec 6.1-6.4). Bounded: at most 5 asset reads,
-// 1 count, 2 fact reads and 2 label reads per answer, every `in` list at most 20 ids. The db is injected, as
+// 1 count, 2 fact reads and 2 label reads per answer, every `in` list at most 20 ids; with detail=1 (by id only): one
+// read of the parent's installed links and one of their open handovers. The db is injected, as
 // searchMaintenanceOptions, so the pages call it for the preselect and the tests fake it.
 
 // Method syntax, so fakes may narrow args; the route passes `prisma as unknown as AssetOperationSearchDb`.
 export type AssetOperationSearchDb = {
   asset: { findMany(args: object): Promise<unknown[]>; count(args: object): Promise<number> }
   assetCheckout: { findMany(args: object): Promise<unknown[]> }
+  assetComponent: { findMany(args: object): Promise<unknown[]> }
   maintenanceTicket: { findMany(args: object): Promise<unknown[]> }
   department: { findMany(args: object): Promise<unknown[]> }
   location: { findMany(args: object): Promise<unknown[]> }
@@ -39,7 +47,7 @@ async function readMatches(
   if (input.id) {
     const assets = await db.asset.findMany({
       where: buildAssetOperationByIdWhere(input),
-      select: assetOperationSearchAssetSelect,
+      select: input.detail ? assetOperationSearchDetailAssetSelect : assetOperationSearchAssetSelect,
       take: 1,
     }) as AssetOperationSearchAsset[]
     return { assets, total: assets.length }
@@ -94,6 +102,22 @@ async function readDestinationLabels(
   }
 }
 
+// The chosen asset's detail (group 3 spec §7.1): its installed links, then the open handovers of those components.
+async function readChosenDetail(db: AssetOperationSearchDb, asset: AssetOperationSearchDetailAsset) {
+  const links = await db.assetComponent.findMany({
+    where: buildAssetOperationComponentLinkWhere(asset.id),
+    select: assetOperationComponentLinkSelect,
+  }) as AssetOperationComponentLink[]
+  const componentIds = [...new Set(links.map((link) => link.componentAssetId))]
+  const handedOver = componentIds.length
+    ? await db.assetCheckout.findMany({
+        where: { assetId: { in: componentIds }, ...openCheckoutWhere },
+        select: { assetId: true },
+      }) as Array<{ assetId: string }>
+    : []
+  return buildAssetOperationRowDetail(asset, links, new Set(handedOver.map((checkout) => checkout.assetId)))
+}
+
 export async function searchAssetOperationOptions(
   db: AssetOperationSearchDb,
   input: AssetOperationSearchInput,
@@ -127,5 +151,6 @@ export async function searchAssetOperationOptions(
     hasOpenRepair: repairAssetIds.has(asset.id),
     ...(labels ? { labels } : {}),
   }))
+  if (input.detail) rows[0].detail = await readChosenDetail(db, assets[0] as AssetOperationSearchDetailAsset)
   return mode === "checkin" ? { mode, total, ...groupAssetOperationCheckinRows(rows) } : { mode, total, rows }
 }

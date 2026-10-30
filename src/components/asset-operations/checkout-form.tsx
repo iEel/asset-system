@@ -23,6 +23,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { assetOperationRowLabel, chosenAssetReasonKey } from "@/lib/asset-operation-form-rules"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import type { AssetOperationEmployeeOption } from "@/lib/asset-operation-options"
 import type { AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { toLocalDateInputValue } from "@/lib/local-date"
@@ -108,7 +109,7 @@ export function CheckoutForm({
   initialAsset,
   returnTo,
 }: {
-  employees: Option[]
+  employees: AssetOperationEmployeeOption[]
   departments: Option[]
   locations: Option[]
   conditions: Option[]

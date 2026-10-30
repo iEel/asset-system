@@ -7,8 +7,10 @@ import type { AssetOperationSearchRow } from "@/lib/asset-operation-search-rules
 
 export type AssetOperationOption = { id: string; label: string }
 export type AssetOperationNamedOption = AssetOperationOption & { name: string }
+/** ส่งมอบ's hint line (group 3 spec §7.2): "<แผนก> · <สาขา> · ตอนนี้ถือครองทรัพย์สินอยู่ N รายการ". */
+export type AssetOperationEmployeeOption = AssetOperationOption & { departmentId: string; departmentLabel: string; branchLabel: string; heldCount: number }
 export type AssetOperationMasterOptions = {
-  employees: AssetOperationOption[]
+  employees: AssetOperationEmployeeOption[]
   departments: AssetOperationOption[]
   locations: AssetOperationOption[]
   statuses: AssetOperationNamedOption[]
@@ -18,10 +20,10 @@ export type AssetOperationMasterOptions = {
 // The master lists the four transaction pages read (server search spec §3 goal 1): no asset, handover or repair. The
 // asset of ส่งมอบ and โอนย้าย comes from the server search, one row at most here (getAssetOperationPreselect).
 export async function getAssetOperationMasterOptions(): Promise<AssetOperationMasterOptions> {
-  const [employees, departments, locations, statuses, conditions] = await Promise.all([
+  const [employees, departments, locations, statuses, conditions, held] = await Promise.all([
     prisma.employee.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, fullNameTh: true },
+      select: { id: true, code: true, fullNameTh: true, departmentId: true, department: { select: { code: true, name: true } }, branch: { select: { name: true } } },
       orderBy: { code: "asc" },
     }),
     prisma.department.findMany({
@@ -40,10 +42,24 @@ export async function getAssetOperationMasterOptions(): Promise<AssetOperationMa
       select: { id: true, name: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
     }),
+    prisma.asset.groupBy({
+      by: ["custodianId"],
+      // Leaves out ส่วนควบ (spec §7.2): an asset owned as ส่วนควบ, and one installed in another whatever its ownership (it carries its parent's holder).
+      where: { isActive: true, custodianId: { not: null }, ownershipType: { not: "component" }, installedInLinks: { none: { status: "installed", removedAt: null } } },
+      _count: { _all: true },
+    }),
   ])
+  const heldCounts = new Map(held.map((group) => [group.custodianId, group._count._all]))
 
   return {
-    employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
+    employees: employees.map((employee) => ({
+      id: employee.id,
+      label: `${employee.code} - ${employee.fullNameTh}`,
+      departmentId: employee.departmentId,
+      departmentLabel: `${employee.department.code} - ${employee.department.name}`,
+      branchLabel: employee.branch.name,
+      heldCount: heldCounts.get(employee.id) ?? 0,
+    })),
     departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}` })),
     locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
     statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name })),
@@ -58,6 +74,7 @@ export async function getAssetOperationMasterOptions(): Promise<AssetOperationMa
 export async function getAssetOperationPreselect(
   mode: AssetOperationMode,
   assetId: string | string[] | undefined,
+  options?: { detail?: boolean },
 ): Promise<AssetOperationSearchRow | null> {
   const id = Array.isArray(assetId) ? assetId[0] : assetId
   if (!id) return null
@@ -66,6 +83,7 @@ export async function getAssetOperationPreselect(
     q: "",
     id,
     assignCustodian: false,
+    ...(options?.detail ? { detail: true as const } : {}),
   })
   return answer.rows[0] ?? null
 }

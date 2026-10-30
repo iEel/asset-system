@@ -27,10 +27,10 @@ test("a custodian chosen after the asset clears it only when the answer says it 
 })
 
 test("the four pages load the master lists; ส่งมอบ and โอนย้าย start from the by-id answer, asked after the permission (spec §3, 6.4)", () => {
-  for (const page of ["checkout", "transfer"]) {
+  for (const [page, call] of [["checkout", 'getAssetOperationPreselect("checkout", filters.assetId, { detail: true })'], ["transfer", 'getAssetOperationPreselect("transfer", filters.assetId)']]) {
     const source = read(`${P}${page}/page.tsx`)
     const permission = source.indexOf('await requirePagePermission(locale, "asset", "edit")')
-    assert.ok(permission >= 0 && permission < source.indexOf(`getAssetOperationPreselect("${page}", filters.assetId)`), page)
+    assert.ok(permission >= 0 && permission < source.indexOf(call), page)
     assert.ok(source.includes("getAssetOperationMasterOptions()") && source.includes("initialAsset={initialAsset}"), page)
     assert.doesNotMatch(source, /getAssetOperationAssetLists|initialAssetId|assets=/, page)
   }

@@ -3,7 +3,8 @@ import test from "node:test"
 
 import { searchAssetOperationOptions, type AssetOperationSearchDb } from "../src/lib/asset-operation-search.ts"
 import {
-  buildAssetOperationSearchWheres, parseAssetOperationSearch,
+  assetOperationSearchAssetSelect, assetOperationSearchDetailAssetSelect, buildAssetOperationSearchWheres, parseAssetOperationSearch,
+  type AssetOperationComponentLink, type AssetOperationSearchDetailAsset,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
 } from "../src/lib/asset-operation-search-rules.ts"
 
@@ -21,6 +22,15 @@ function asset(tag: string, overrides: Partial<AssetOperationSearchAsset> = {}):
     currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null, ...overrides,
   }
 }
+function detailAsset(tag: string, overrides: Partial<AssetOperationSearchDetailAsset> = {}): AssetOperationSearchDetailAsset {
+  return {
+    ...asset(tag), departmentId: null, department: null, branch: { name: "สำนักงานใหญ่" },
+    currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2", branch: { name: "สำนักงานใหญ่" } }, ...overrides,
+  }
+}
+function link(id: string, assetTag: string, name: string): AssetOperationComponentLink {
+  return { componentAssetId: id, componentAsset: { assetTag, name } }
+}
 function checkout(overrides: Partial<AssetOperationSearchCheckoutRecord>): AssetOperationSearchCheckoutRecord {
   return {
     id: "co-1", assetId: "asset-1", documentNo: "HO-2026-0151", checkoutType: "user", handoverMode: "permanent_assignment",
@@ -33,7 +43,7 @@ type Where = { id?: string | { in: string[] }; assetId?: { in: string[] }; OR?: 
 type Args = { where: Where; select?: unknown; orderBy?: unknown; take?: number }
 function fakeDb(data: {
   exact?: AssetOperationSearchAsset[]; held?: AssetOperationSearchAsset[]; prefix?: AssetOperationSearchAsset[]; contains?: AssetOperationSearchAsset[]; total?: number
-  checkouts?: AssetOperationSearchCheckoutRecord[]; repairAssetIds?: string[]
+  checkouts?: AssetOperationSearchCheckoutRecord[]; repairAssetIds?: string[]; links?: AssetOperationComponentLink[]
 } = {}) {
   const calls: Array<{ call: string; args: Args }> = []
   const all = [...(data.exact ?? []), ...(data.held ?? []), ...(data.prefix ?? []), ...(data.contains ?? [])]
@@ -53,6 +63,7 @@ function fakeDb(data: {
       async count(args: Args) { calls.push({ call: "asset.count", args }); return data.total ?? 0 },
     },
     assetCheckout: { async findMany(args: Args) { calls.push({ call: "assetCheckout.findMany", args }); return (data.checkouts ?? []).filter((row) => args.where.assetId?.in.includes(row.assetId)) } },
+    assetComponent: { async findMany(args: Args) { calls.push({ call: "assetComponent.findMany", args }); return data.links ?? [] } },
     maintenanceTicket: { async findMany(args: Args) { calls.push({ call: "maintenanceTicket.findMany", args }); return (data.repairAssetIds ?? []).map((assetId) => ({ assetId })) } },
     department: { async findMany(args: Args) { calls.push({ call: "department.findMany", args }); return [{ id: "dep-1", code: "IT", name: "ฝ่ายไอที" }] } },
     location: { async findMany(args: Args) { calls.push({ call: "location.findMany", args }); return [] } },
@@ -175,4 +186,30 @@ test("multi-word: the contains tier and the count read every word, the code tier
   const checkinWheres = buildAssetOperationSearchWheres(checkinQuery)
   assert.deepEqual(checkin.calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.where),
     [checkinWheres.exact, checkinWheres.held, checkinWheres.prefix, checkinWheres.text])
+})
+
+test("by id with detail=1: the detail select, one read of the installed links and one of their open handovers; a component with its own handover stays behind (group 3 plan 1 Task 4, P1-R5)", async () => {
+  const notebook = detailAsset("NB-0017", { id: "asset-1", custodianId: "emp-1", custodian: somchai, departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
+    currentLocation: { code: "RY-01", name: "ห้องบัญชี", branch: { name: "สาขาระยอง" } } })
+  const { db, calls } = fakeDb({ contains: [notebook], links: [link("c-1", "NB-0017-01", "Adapter 65W"), link("c-2", "NB-0017-02", "Mouse ไร้สาย")], checkouts: [checkout({ id: "co-9", assetId: "c-2" })] })
+  const [row] = (await searchAssetOperationOptions(db, input("mode=checkout&id=asset-1&detail=1"))).rows
+  assert.deepEqual(row.detail, {
+    ownership: "personal", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
+    components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }],
+  })
+  assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchDetailAssetSelect])
+  assert.deepEqual(calls.filter((call) => call.call === "assetComponent.findMany").map((call) => call.args.where), [{ parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } }])
+  assert.deepEqual(calls.filter((call) => call.call === "assetCheckout.findMany").map((call) => call.args.where.assetId?.in).sort(), [["asset-1"], ["c-1", "c-2"]])
+})
+
+test("without detail=1 the by-id read keeps the list select and reads nothing more; a parent without components reads no component handovers (P1-R5)", async () => {
+  const plain = fakeDb({ contains: [detailAsset("NB-0017", { id: "asset-1" })], links: [link("c-1", "NB-0017-01", "Adapter 65W")] })
+  const [row] = (await searchAssetOperationOptions(plain.db, input("mode=checkout&id=asset-1"))).rows
+  assert.equal("detail" in row, false)
+  assert.deepEqual(plain.calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchAssetSelect])
+  assert.equal(plain.calls.some((call) => call.call === "assetComponent.findMany"), false)
+  const bare = fakeDb({ contains: [detailAsset("CCTV-0001", { id: "asset-2", ownershipType: "shared" })] })
+  const [shared] = (await searchAssetOperationOptions(bare.db, input("mode=checkout&id=asset-2&detail=1"))).rows
+  assert.deepEqual([shared.detail?.ownership, shared.detail?.departmentLabel, shared.detail?.holderLabel, shared.detail?.components], ["shared", null, null, []])
+  assert.equal(bare.calls.filter((call) => call.call === "assetCheckout.findMany").length, 1, "only the asset's own handover read")
 })

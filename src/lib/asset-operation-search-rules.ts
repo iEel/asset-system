@@ -10,7 +10,7 @@ import {
   type AssetOperationMode,
   type AssetOperationVerdict,
 } from "./asset-operation-eligibility.ts"
-import { normalizeAssetOwnershipType } from "./asset-ownership.ts"
+import { normalizeAssetOwnershipType, type AssetOwnershipType } from "./asset-ownership.ts"
 
 // The rules of the transaction pages' bounded asset search (server search spec 6.1-6.3): the query, the where clauses,
 // the ranking, the row and the รับคืน groups. Client-safe: the picker imports the constants, the href and the types.
@@ -55,6 +55,8 @@ export type AssetOperationSearchInput = {
   q: string
   id: string | null
   assignCustodian: boolean
+  /** By id only, with detail=1: the row carries the chosen asset's detail. Absent otherwise. */
+  detail?: true
 }
 
 const invalidSearch = { error: "Invalid search" } as const
@@ -75,6 +77,7 @@ export function parseAssetOperationSearch(params: URLSearchParams): AssetOperati
     q,
     id,
     assignCustodian: params.get("assignCustodian") === "1",
+    ...(id && params.get("detail") === "1" ? { detail: true as const } : {}),
   }
 }
 
@@ -84,12 +87,14 @@ export function buildAssetOperationSearchHref(input: {
   q?: string
   id?: string
   assignCustodian?: boolean
+  detail?: boolean
 }): string {
   const params = new URLSearchParams()
   params.append("mode", input.mode)
   if (input.q) params.append("q", input.q)
   if (input.id) params.append("id", input.id)
   if (input.assignCustodian) params.append("assignCustodian", "1")
+  if (input.detail) params.append("detail", "1")
   return `${assetOperationSearchPath}?${params.toString()}`
 }
 
@@ -178,6 +183,43 @@ export const assetOperationSearchAssetSelect = {
 } satisfies Prisma.AssetSelect
 export type AssetOperationSearchAsset = Prisma.AssetGetPayload<{ select: typeof assetOperationSearchAssetSelect }>
 
+/** The by-id read with detail=1 (group 3 spec §7.1): the list select, plus the department and both branches. */
+export const assetOperationSearchDetailAssetSelect = {
+  ...assetOperationSearchAssetSelect,
+  departmentId: true,
+  department: { select: { code: true, name: true } },
+  branch: { select: { name: true } },
+  currentLocation: { select: { code: true, name: true, branch: { select: { name: true } } } },
+} satisfies Prisma.AssetSelect
+export type AssetOperationSearchDetailAsset = Prisma.AssetGetPayload<{ select: typeof assetOperationSearchDetailAssetSelect }>
+
+export const assetOperationComponentLinkSelect = {
+  componentAssetId: true,
+  componentAsset: { select: { assetTag: true, name: true } },
+} satisfies Prisma.AssetComponentSelect
+export type AssetOperationComponentLink = Prisma.AssetComponentGetPayload<{ select: typeof assetOperationComponentLinkSelect }>
+
+/** The installed links that move with the parent: the filter of syncInstalledComponentsWithParent (asset-component-sync.ts). */
+export function buildAssetOperationComponentLinkWhere(parentAssetId: string): Prisma.AssetComponentWhereInput {
+  return { parentAssetId, status: "installed", removedAt: null, componentAsset: { isActive: true } }
+}
+
+export type AssetOperationChosenComponent = { id: string; assetTag: string; name: string; travels: boolean }
+/** The chosen asset's detail on ส่งมอบ (group 3 spec §7.1, §7.3). Labels are null when there is none, never "-". */
+export type AssetOperationChosenDetail = {
+  ownership: AssetOwnershipType
+  /** status.name, the English name getAssetStateTone reads. */
+  statusName: string
+  departmentId: string | null
+  /** "code - name" */
+  departmentLabel: string | null
+  /** "code - fullNameTh" */
+  holderLabel: string | null
+  ownerBranchLabel: string
+  locationBranchLabel: string
+  components: AssetOperationChosenComponent[]
+}
+
 export const assetOperationSearchCheckoutSelect = {
   id: true,
   assetId: true,
@@ -240,6 +282,8 @@ export type AssetOperationSearchRow = {
   holderEmployeeId?: string | null
   /** An open repair: the return goes into ส่งซ่อม under it (S-R43). Absent when there is none. */
   openRepair?: true
+  /** By id with detail=1 only (group 3 spec §7.1). */
+  detail?: AssetOperationChosenDetail
 }
 export type AssetOperationSearchGroup = { key: string; label: string | null; count: number }
 export type AssetOperationSearchAnswer = {
@@ -388,6 +432,37 @@ export function buildAssetOperationSearchRow(
   row.holderEmployeeId = holder.employeeId
   if (hasOpenRepair) row.openRepair = true
   return row
+}
+
+/**
+ * The chosen asset's detail: each installed component once (the first link), by tag; it travels unless it has its own
+ * open handover, as the sync skips it (asset-component-sync.ts).
+ */
+export function buildAssetOperationRowDetail(
+  asset: AssetOperationSearchDetailAsset,
+  links: readonly AssetOperationComponentLink[],
+  handedOverComponentIds: ReadonlySet<string>,
+): AssetOperationChosenDetail {
+  const components = new Map<string, AssetOperationChosenComponent>()
+  for (const link of links) {
+    if (components.has(link.componentAssetId)) continue
+    components.set(link.componentAssetId, {
+      id: link.componentAssetId,
+      assetTag: link.componentAsset.assetTag,
+      name: link.componentAsset.name,
+      travels: !handedOverComponentIds.has(link.componentAssetId),
+    })
+  }
+  return {
+    ownership: normalizeAssetOwnershipType(asset.ownershipType),
+    statusName: asset.status.name,
+    departmentId: asset.departmentId,
+    departmentLabel: asset.department ? `${asset.department.code} - ${asset.department.name}` : null,
+    holderLabel: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null,
+    ownerBranchLabel: asset.branch.name,
+    locationBranchLabel: asset.currentLocation.branch.name,
+    components: [...components.values()].sort((a, b) => a.assetTag.localeCompare(b.assetTag)),
+  }
 }
 
 /** รับคืน: groups follow their first row's rank, `none` last; the rows follow group by group (S-R4). */

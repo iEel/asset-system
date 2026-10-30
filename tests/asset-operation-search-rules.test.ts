@@ -12,7 +12,8 @@ import {
   assetOperationSearchLimit, assetOperationSearchMaxChars, assetOperationSearchMaxWords, assetOperationSearchMinChars, assetOperationTextConditions,
   buildAssetOperationByIdWhere, buildAssetOperationSearchHref, buildAssetOperationSearchRow, buildAssetOperationSearchWheres, getAssetOperationSearchVerdict,
   getCheckinHolder, groupAssetOperationCheckinRows, isAssetOperationSearchReady, parseAssetOperationSearch, rankAssetOperationMatches,
-  splitAssetOperationSearchWords,
+  splitAssetOperationSearchWords, buildAssetOperationComponentLinkWhere, buildAssetOperationRowDetail,
+  type AssetOperationChosenDetail, type AssetOperationSearchDetailAsset,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
 } from "../src/lib/asset-operation-search-rules.ts"
 
@@ -54,6 +55,8 @@ test("the query: a mode, the trimmed text of 2 or more characters or an id; anyt
   for (const mode of ["checkout", "checkin", "transfer", "bulkMove"]) assert.equal(input(`mode=${mode}&q=ab`).mode, mode)
   assert.deepEqual(parseAssetOperationSearch(new URLSearchParams("mode=checkoutParent&q=ab")), { error: "Invalid search" })
   assert.deepEqual(input("mode=checkout&q=ab&handedOverAssetId=asset-9"), base)   // a stray parameter is not read
+  assert.equal(input("mode=checkout&id=asset-1&detail=1").detail, true)
+  for (const q of ["mode=checkout&id=asset-1", "mode=checkout&id=asset-1&detail=true", "mode=checkout&q=ab&detail=1"]) assert.equal("detail" in input(q), false, q)
 })
 
 test("final review M-6: the search text is capped at 100 characters, counted as code points", () => {
@@ -70,6 +73,29 @@ test("the picker's href and the route's parse read the same names", () => {
   assert.equal(href, "/api/asset-operations/search?mode=transfer&q=02+28&assignCustodian=1")
   assert.deepEqual(parseAssetOperationSearch(new URL(href, "http://localhost").searchParams), { mode: "transfer", q: "02 28", id: null, assignCustodian: true })
   assert.equal(buildAssetOperationSearchHref({ mode: "checkout", id: "asset-2" }), "/api/asset-operations/search?mode=checkout&id=asset-2")
+  const detailHref = buildAssetOperationSearchHref({ mode: "checkout", id: "asset-1", detail: true })
+  assert.equal(detailHref, "/api/asset-operations/search?mode=checkout&id=asset-1&detail=1")
+  assert.deepEqual(parseAssetOperationSearch(new URL(detailHref, "http://localhost").searchParams), { mode: "checkout", q: "", id: "asset-1", assignCustodian: false, detail: true })
+  assert.equal(buildAssetOperationSearchHref({ mode: "checkout", id: "asset-1", detail: false }), "/api/asset-operations/search?mode=checkout&id=asset-1")
+})
+
+test("the chosen asset's detail: ownership, the status's English name, department and holder as 'code - name' (null when none), both branches, each installed component once by tag with whether it travels (group 3 plan 1 Task 4, spec §7.1)", () => {
+  const chosen: AssetOperationSearchDetailAsset = { ...held, ownershipType: "stock", departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
+    branch: { name: "สำนักงานใหญ่" }, currentLocation: { code: "RY-01", name: "ห้องบัญชี", branch: { name: "สาขาระยอง" } } }
+  const link = (id: string, assetTag: string, name: string) => ({ componentAssetId: id, componentAsset: { assetTag, name } })
+  const links = [link("c-2", "NB-0017-02", "Mouse ไร้สาย"), link("c-1", "NB-0017-01", "Adapter 65W"), link("c-2", "NB-0017-02", "Mouse ไร้สาย")]
+  const expected: AssetOperationChosenDetail = {
+    ownership: "stock", statusName: "In Use", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี",
+    ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
+    components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }],
+  }
+  assert.deepEqual(buildAssetOperationRowDetail(chosen, links, new Set(["c-2"])), expected)
+  const bare = buildAssetOperationRowDetail({ ...chosen, ownershipType: "bogus", departmentId: null, department: null, custodianId: null, custodian: null }, [], new Set())
+  assert.deepEqual([bare.ownership, bare.departmentId, bare.departmentLabel, bare.holderLabel, bare.components], ["personal", null, null, null, []])
+  // The same links the sync moves with the parent (asset-component-sync.ts:115-122).
+  assert.deepEqual(buildAssetOperationComponentLinkWhere("asset-1"), { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } })
+  const sync = readFileSync("src/lib/asset-component-sync.ts", "utf8")
+  for (const part of ['status: "installed"', "removedAt: null", "componentAsset: { isActive: true }"]) assert.ok(sync.includes(part), part)
 })
 
 test("the text matches 6 of the register's own conditions, then the asset's and the holder's department names (spec 6.2, §11)", () => {
