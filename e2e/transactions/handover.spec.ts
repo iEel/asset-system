@@ -4,7 +4,7 @@
 // its error under the field (spec §6.7).
 import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData } from "../support/state.ts"
-import { bangkokDate } from "./tx-plan.ts"
+import { bangkokDate, thaiDay } from "./tx-plan.ts"
 import {
   conditionChip,
   createTxAsset,
@@ -135,7 +135,7 @@ test("a temporary loan: a due date before the handover date shows its error unde
   const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })
   await expect(review).toContainText("ยืมใช้ชั่วคราว")
   await expect(review).toContainText("ถูกยืม")
-  await expect(review).toContainText(dueDate)
+  await expect(review).toContainText(thaiDay(dueDate))
   await expect(review).toContainText("พอใช้")
   const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkout`) && response.request().method() === "POST")
   await review.getByRole("button", { name: "ยืนยันส่งมอบ" }).click()
@@ -174,11 +174,14 @@ test.describe("no double checkout", () => {
     const first = data.employees.receiver1
     const second = data.employees.receiver2
 
-    // Both forms open before either saves.
+    // Both forms open before either saves. This desk opens its review first: the review's re-read of the asset (final
+    // review I1) still finds it Ready. The other desk then saves, so this desk's confirm meets the server's refusal.
     await visit(measure, `/th/asset-management/checkout?assetId=${asset.id}`, "the second desk's handover form", testInfo)
     const otherDesk = await page.context().newPage()
     await otherDesk.goto(`/th/asset-management/checkout?assetId=${asset.id}`)
     await expect(otherDesk.getByRole("heading", { level: 1, name: "ส่งมอบทรัพย์สิน" })).toBeVisible({ timeout: TRANSACTION_PAGE_ARRIVAL_MS })
+    await fillHandover(page, second.code, `${second.code} - ${second.fullNameTh}`)
+    await expect(page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })).toBeVisible()
     await fillHandover(otherDesk, first.code, `${first.code} - ${first.fullNameTh}`)
     const firstSaved = otherDesk.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkout`) && response.request().method() === "POST")
     await otherDesk.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" }).getByRole("button", { name: "ยืนยันส่งมอบ" }).click()
@@ -187,7 +190,6 @@ test.describe("no double checkout", () => {
     await otherDesk.close()
 
     measure.expectRefusal({ method: "POST", url: new RegExp(`/api/assets/${asset.id}/checkout$`), status: 409, reason: "the asset was handed over from the other form first" })
-    await fillHandover(page, second.code, `${second.code} - ${second.fullNameTh}`)
     const refused = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkout`) && response.request().method() === "POST")
     await page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" }).getByRole("button", { name: "ยืนยันส่งมอบ" }).click()
     expect((await refused).status()).toBe(409)

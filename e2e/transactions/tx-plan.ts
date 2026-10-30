@@ -66,6 +66,12 @@ export function bangkokDate(offsetDays = 0, now: Date = new Date()): string {
   return bangkok.toISOString().slice(0, 10)
 }
 
+// A YYYY-MM-DD day as the pages show it in Thai: "7 พ.ย. 2569" (the Buddhist year; group 3 plan 1 final review M5).
+export function thaiDay(day: string): string {
+  return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric" })
+    .format(new Date(`${day}T00:00:00+07:00`))
+}
+
 // The phone with the on-screen keyboard open (spec §8 "the keyboard-open height for the forms with a sticky save
 // bar"): 390 wide, 360 of the 664 visible points left above the keyboard.
 export const PHONE_KEYBOARD_OPEN = { width: 390, height: 360 } as const
