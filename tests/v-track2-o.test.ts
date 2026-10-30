@@ -107,9 +107,9 @@ test("checkout: errors under the field, the handover rules with the server's cod
       departmentId: "checkout-destination",
       locationId: "checkout-destination",
       handoverMode: "checkout-handover-mode",
+      expectedReturnDate: "checkout-expected-return",
       conditionBefore: "checkout-condition",
       checkoutDate: "checkout-date",
-      expectedReturnDate: "checkout-expected-return",
     },
   })
   const rules = validateBody(source)
@@ -144,6 +144,7 @@ test("checkout: errors under the field, the handover rules with the server's cod
   // The two required selects have an id for focus and show their error (V4); the handover mode is one group (F-R8).
   assert.match(source, /<AssetOperationPicker\n\s+id="checkout-asset"\n/)
   assert.match(source, /<SearchableSelect\n\s+id="checkout-destination"\n/)
+  assert.match(source, /<AssetConditionChoice\n\s+id="checkout-condition"\n/)
   assert.doesNotMatch(source, /<AssetOperationPicker\n\s+id="checkout-destination"/)
   assert.match(source, /<FieldGroup legend=\{t\("handoverMode"\)\} id="checkout-handover-mode" required error=\{errorText\("handoverMode"\)\}>/)
   // A refusal from the review: the review closes, and the field takes focus once the dialog has gone (O-R1).

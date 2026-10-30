@@ -91,13 +91,10 @@ test("the check-in form draws its title with PageHeader (2B-1 task 23, I13)", ()
   assert.doesNotMatch(source, /<h1\b|PageBackLink/, "the operation forms keep having no back button (B2)")
 })
 
-test("the check-out form's OperationShell draws its title with PageHeader and stays a card (2B-1 task 23, I13)", () => {
+test("the check-out form is the operation frame (group 3 plan 1 Task 6)", () => {
   const source = read(`${C}asset-operations/checkout-form.tsx`)
-  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "checkout-form.tsx imports PageHeader")
-  assert.match(
-    source,
-    /function OperationShell\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{title\} className="mb-6" \/>\n\s+<ContentPanel>\{children\}<\/ContentPanel>/,
-  )
+  assert.ok(source.includes('import { OperationFormFrame } from "@/components/asset-operations/operation-form-frame"'), "checkout-form.tsx imports OperationFormFrame")
+  assert.match(source, /<OperationFormFrame\n\s+title=\{t\("title"\)\}\n\s+description=\{t\("description"\)\}/)
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
 

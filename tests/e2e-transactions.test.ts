@@ -150,8 +150,16 @@ test("a handover signed with the device's own pointer and printed, a due date be
   assert.ok(spec.includes("await expectAssetBlocked(page, blocked, TX_WORDS.reasonNotReady)"))
   assert.ok(!spec.includes('toContainText("ไม่พบรายการ")'))
   assert.deepEqual(expectedFailures(spec), [], "TX-A1 is fixed (FX9)")
+  // Group 3 plan 1 Task 6: the footer's ตรวจสอบและบันทึก, the condition chips preselected, desktop only (the phone steps
+  // are desk-delivery.spec.ts), and the footer that shows.
+  assert.ok(spec.includes("{ name: TX_WORDS.reviewAndSave, exact: true }"))
+  assert.ok(!spec.includes('{ name: "บันทึก", exact: true }'))
+  assert.equal(spec.split('test.skip(e2eDevice === "phone", PHONE_STEPS)').length - 1, 4)
+  assert.ok(spec.includes('await expect(conditionChip(page, "ดี")).toBeChecked()'))
+  assert.equal(spec.split(`page.locator('[data-slot="sticky-form-footer"]').filter({ visible: true })`).length - 1, 2, "the bar that shows: from Task 7 the page also holds the phone bar")
   // The pad: the mouse on the desktop, Chromium's touch input on the phone, then the tap the emulation loses.
   const support = read("e2e/transactions/tx-support.ts")
+  assert.ok(support.includes("export function conditionChip(page: Page, label: string): Locator {"))
   assert.match(support, /await cdp\.send\("Input\.dispatchTouchEvent", \{ type: "touchStart", touchPoints: \[points\[0\]\] \}\)/)
   assert.match(support, /expect\(pointerTypes, "the stroke reached the pad as the device's own pointer"\)\.toEqual\(\[device === "desktop" \? "mouse" : "touch"\]\)/)
   assert.match(support, /await group\.locator\("div\[id\]"\)\.first\(\)\.tap\(\)/)

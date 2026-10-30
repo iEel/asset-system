@@ -215,6 +215,10 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   }
   assert.equal(common.save, "บันทึก")
   assert.match(read("e2e/cross-cutting/support/forms.ts"), /page\.getByRole\("button", \{ name: "บันทึก", exact: true \}\)\.click\(\)/)
+  // The transaction pages' footer submit is assetOperation.reviewAndSave (group 3 plan 1 Task 6).
+  assert.equal((thai.assetOperation as Record<string, string>).reviewAndSave, "ตรวจสอบและบันทึก")
+  assert.ok(read("e2e/cross-cutting/support/forms.ts").includes('return page.getByRole("button", { name: "ตรวจสอบและบันทึก", exact: true }).click()'))
+  assert.ok(spec.includes("await reviewAndSave(page)"))
   // Each form checks the field the test leaves wrong, with the code that sentence reads (the V track's validate()).
   const forms: [string, string, string][] = [
     ["src/components/assets/asset-form.tsx", `check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)`, "asset-warranty-end"],

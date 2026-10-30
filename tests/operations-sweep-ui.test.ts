@@ -75,7 +75,7 @@ test("review focus 5: the shared back and print buttons sit in the toolbar that 
 
 test("check-out, transfer and bulk move forms: the form panel is a ContentPanel, and the bulk move's empty answer is the picker's (spec 2D D9, M21, M25; server search Task 7)", () => {
   const checkout = read(`${C}asset-operations/checkout-form.tsx`)
-  assert.match(checkout, /<PageHeader title=\{title\} className="mb-6" \/>\n\s+<ContentPanel>\{children\}<\/ContentPanel>/)
+  assert.match(checkout, /<FormSection number=\{1\} title=\{t\("sectionAsset"\)\}>/)
   const transfer = read(`${C}asset-operations/transfer-form.tsx`)
   assert.match(transfer, /<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n\s+<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\}/)
   assert.match(transfer, /<\/form>\n\s+<OperationReviewDialog[\s\S]*?\/>\n\s+<\/ContentPanel>/, "the review dialog stays inside the panel")

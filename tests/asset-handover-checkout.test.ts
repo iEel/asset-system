@@ -48,9 +48,12 @@ test("handover mode guidance and recovery messages are localized", () => {
 test("the checkout form uses the shared fields and a busy save button (2C batch 1b)", () => {
   const source = formSource.replace(/\r\n/g, "\n")
   assert.doesNotMatch(source, /function Field\(|<input|<select|<textarea|Loader2/)
-  assert.match(source, /<NativeSelect value=\{value\} required=\{required\} onChange=/)
+  assert.doesNotMatch(source, /<NativeSelect|function Select\(/)
+  assert.match(source, /<AssetConditionChoice\n\s+id="checkout-condition"/)
   assert.match(source, /<Field label=\{t\("expectedReturn"\)\} id="checkout-expected-return" required error=\{errorText\("expectedReturnDate"\)\}>\n\s+<Input\n\s+type="date"\n\s+value=\{values\.expectedReturnDate\}\n\s+min=\{values\.checkoutDate\}/)
-  assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
+  // The submit is the frame's (group 3 plan 1 Task 6): only the old inline save is pinned out.
+  assert.ok(source.includes("busy: saving"))
+  assert.doesNotMatch(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">/)
   // A non-user checkout is always a temporary loan: plain text in the field-label style, not a banner (K24).
   assert.match(source, /<p className=\{fieldLabelClasses\}>\{t\("handoverMode"\)\}<\/p>\n\s+<p className="mt-1\.5 text-sm text-foreground">\{t\("temporaryLoan"\)\}<\/p>/)
   assert.equal(source.match(/<FormContextBanner /g)?.length, 1)

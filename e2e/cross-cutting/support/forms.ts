@@ -6,9 +6,15 @@ import { readRunData } from "../../support/state.ts"
 import type { AssetChoices } from "./records.ts"
 import { choose } from "./ui.ts"
 
-// Every workflow form's submit button is common.save.
+// The workflow forms' submit button is common.save.
 export function save(page: Page) {
   return page.getByRole("button", { name: "บันทึก", exact: true }).click()
+}
+
+// The transaction pages' footer submit is assetOperation.reviewAndSave (group 3 spec §5); the other forms keep
+// common.save.
+export function reviewAndSave(page: Page) {
+  return page.getByRole("button", { name: "ตรวจสอบและบันทึก", exact: true }).click()
 }
 
 // A date input's value, days from today on this machine (Asia/Bangkok, like the browser's timezoneId).

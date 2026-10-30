@@ -4,10 +4,11 @@
 import { expect, test, asUser } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { runRecords } from "../support/run-plan.ts"
-import { fillReturn, isoDay, save } from "./support/forms.ts"
+import { fillReturn, isoDay, reviewAndSave, save } from "./support/forms.ts"
 import { createAsset, handOver, projectMarker, readAsset, readAssetChoices, returnAsset } from "./support/records.ts"
-// The transaction pages' first arrival and the shared picker's chosen asset (the transaction area's helpers).
-import { pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
+// The transaction pages' first arrival, the shared picker's chosen asset and the condition chips (the transaction area's
+// helpers).
+import { conditionChip, pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
 import { choose, expectFieldError, expectNoFieldError } from "./support/ui.ts"
 // The round form's steps (group 2 spec §7): its conditions as chips, its own submit, the live count and the sample.
 import { addCondition, cancelAsItHead, createButton, showSample, waitForFirstCount, willCreate } from "../audit/round-steps.ts"
@@ -97,20 +98,22 @@ test("a typed tag that already exists is refused with the tag's field error, not
   expect(((await again.json()) as { fieldErrors?: Record<string, string> }).fieldErrors?.assetTag).toBe("duplicate")
 })
 
-test("handover: no handover mode shows its error, and the corrected handover saves", async ({ page, measure }, testInfo) => {
+test("handover: no handover mode shows its error, and the corrected handover saves", async ({ page, measure, e2eDevice }, testInfo) => {
+  // Below lg the checkout is the three phone steps (spec §7.4, P1-R4); group 3 plan 1 Task 7 writes the phone path.
+  test.skip(e2eDevice === "phone", "below lg the checkout is the three phone steps (spec §7.4, P1-R4): desk-delivery.spec.ts")
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-HO", name: "ฟอร์มส่งมอบ", ownershipType: "personal" })
   await measure.visit(`/th/asset-management/checkout?assetId=${asset.id}`, "handover form")
   await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await choose(page, "checkout-destination", run.employees.receiver2.code)
-  await page.locator("#checkout-condition").selectOption(choices.goodConditionId)
-  await save(page)
+  await expect(conditionChip(page, "ดี")).toBeChecked()
+  await reviewAndSave(page)
   await expectFieldError(page, "checkout-handover-mode", HANDOVER_MODE_REQUIRED, { group: true, focus: 'input[name="handoverModeChoice"][value="permanent_assignment"]' })
 
   await page.getByRole("radio", { name: /^มอบหมายใช้งานประจำ/ }).check()
   await expectNoFieldError(page, "checkout-handover-mode")
-  await save(page)
+  await reviewAndSave(page)
   const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })
   await expect(review).toBeVisible()
   await measure.recordPage("handover review")

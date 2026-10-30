@@ -6,6 +6,7 @@ import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData } from "../support/state.ts"
 import { bangkokDate } from "./tx-plan.ts"
 import {
+  conditionChip,
   createTxAsset,
   expectAssetBlocked,
   expectFieldError,
@@ -26,8 +27,10 @@ import { TX_WORDS } from "./tx-words.ts"
 import { openMoreActions, primaryAction, readMenuEntries } from "../asset-detail/detail-steps.ts"
 
 asUser("itStaff")
+const PHONE_STEPS = "below lg the checkout is the three phone steps (spec §7.4, P1-R4): desk-delivery.spec.ts"
 
 test("a permanent handover: the receiver signs, a photo is attached, the review confirms; the asset is In Use with the receiver as custodian and the HO- document prints", async ({ page, measure, e2eDevice, browserName }, testInfo) => {
+  test.skip(e2eDevice === "phone", PHONE_STEPS)
   const receiver = readRunData().employees.receiver1
   const masters = await readAssetMasters(page)
   const asset = await createTxAsset(page, masters, testInfo.project.name, "HO1", "โน้ตบุ๊กส่งมอบประจำ")
@@ -43,22 +46,23 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
   await record(measure, "handover form", testInfo)
 
   // A wrong entry first: no receiver and no handover mode; each error shows under its field and the first takes focus.
-  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
   await expectFieldError(page, "checkout-destination", "กรุณาระบุข้อมูลนี้")
   await expectFieldError(page, "checkout-handover-mode", "กรุณาเลือกลักษณะการส่งมอบก่อนดำเนินการต่อ")
-  await expectFieldError(page, "checkout-condition", "กรุณาระบุข้อมูลนี้")
+  await expect(conditionChip(page, "ดี")).toBeChecked()
   await expect(page.locator("#checkout-destination")).toBeFocused()
 
   await pickSearchable(page, "checkout-destination", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
+  await expect(page.locator("#checkout-destination-hint")).toContainText(/ตอนนี้ถือครองทรัพย์สินอยู่ \d+ รายการ$/)
+  await expect(page.locator('[data-slot="sticky-form-footer"]').filter({ visible: true })).toContainText(TX_WORDS.checkoutFooter.replace("{tag}", asset.assetTag).replace("{receiver}", `${receiver.code} - ${receiver.fullNameTh}`))
   await page.getByRole("radio", { name: /มอบหมายใช้งานประจำ/ }).check()
-  await page.locator("#checkout-condition").selectOption({ label: "ดี" })
   await expect(page.locator("#checkout-destination-error")).toHaveCount(0)
   await expect(page.locator("#checkout-handover-mode-error")).toHaveCount(0)
   await page.locator("form input[type=file]").setInputFiles(PHOTO_FIXTURE)
   await expect(page.getByText("เลือกรูปแล้ว พร้อมบันทึกพร้อมรายการส่งมอบ")).toBeVisible()
   await signOnPad(page, page.getByRole("group", { name: "ลายเซ็นผู้รับ" }), e2eDevice, browserName)
 
-  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
   const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })
   await expect(review).toBeVisible()
   await expect(review).toContainText(asset.assetTag)
@@ -101,6 +105,7 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
 })
 
 test("a temporary loan: a due date before the handover date shows its error under the field; corrected, the asset is Checked Out with its due date", async ({ page, measure, e2eDevice, browserName }, testInfo) => {
+  test.skip(e2eDevice === "phone", PHONE_STEPS)
   const receiver = readRunData().employees.receiver2
   const masters = await readAssetMasters(page)
   const asset = await createTxAsset(page, masters, testInfo.project.name, "HO2", "โน้ตบุ๊กยืมชั่วคราว")
@@ -108,14 +113,15 @@ test("a temporary loan: a due date before the handover date shows its error unde
   const dueDate = bangkokDate(7)
 
   await visit(measure, `/th/asset-management/checkout?assetId=${asset.id}`, "loan form", testInfo)
+  await expect(page.locator('[data-slot="sticky-form-footer"]').filter({ visible: true }).getByRole("link", { name: "ยกเลิก" })).toHaveAttribute("href", "/th/assets")
   await pickSearchable(page, "checkout-destination", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
   await page.getByRole("radio", { name: /ยืมใช้ชั่วคราว/ }).check()
-  await page.locator("#checkout-condition").selectOption({ label: "ดี" })
+  await conditionChip(page, "พอใช้").check()
   await page.locator("#checkout-date").fill(today)
 
   // A wrong entry first: the due date the day before the handover.
   await page.locator("#checkout-expected-return").fill(bangkokDate(-1))
-  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
   await expectFieldError(page, "checkout-expected-return", "วันกำหนดคืนต้องเป็นวันเดียวกับหรือหลังวันที่ส่งมอบ")
   await expect(page.locator("#checkout-expected-return")).toBeFocused()
   await expect(page.getByRole("dialog")).toHaveCount(0)
@@ -123,11 +129,12 @@ test("a temporary loan: a due date before the handover date shows its error unde
   await page.locator("#checkout-expected-return").fill(dueDate)
   await expect(page.locator("#checkout-expected-return-error")).toHaveCount(0)
   await signOnPad(page, page.getByRole("group", { name: "ลายเซ็นผู้รับ" }), e2eDevice, browserName)
-  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
   const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })
   await expect(review).toContainText("ยืมใช้ชั่วคราว")
   await expect(review).toContainText("ถูกยืม")
   await expect(review).toContainText(dueDate)
+  await expect(review).toContainText("พอใช้")
   const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkout`) && response.request().method() === "POST")
   await review.getByRole("button", { name: "ยืนยันส่งมอบ" }).click()
   const checkout = (await (await saved).json()) as { id: string; documentNo: string; expectedReturnDate: string | null; handoverMode: string }
@@ -153,14 +160,14 @@ test.describe("no double checkout", () => {
   test.describe.configure({ mode: "serial" })
 
   test("a second handover of an asset already handed over is refused, and the asset stays with the first receiver", async ({ page, measure, e2eDevice }, testInfo) => {
+    test.skip(e2eDevice === "phone", PHONE_STEPS)
     const data = readRunData()
     const masters = await readAssetMasters(page)
     const asset = await createTxAsset(page, masters, testInfo.project.name, "HO3", "โน้ตบุ๊กส่งมอบซ้ำ")
     const fillHandover = async (form: typeof page, receiverCode: string, receiverLabel: string) => {
       await pickSearchable(form, "checkout-destination", receiverCode, receiverLabel)
       await form.getByRole("radio", { name: /มอบหมายใช้งานประจำ/ }).check()
-      await form.locator("#checkout-condition").selectOption({ label: "ดี" })
-      await form.getByRole("button", { name: "บันทึก", exact: true }).click()
+      await form.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
     }
     const first = data.employees.receiver1
     const second = data.employees.receiver2
@@ -207,7 +214,8 @@ test.describe("no double checkout", () => {
     expect(await readMenuEntries(await openMoreActions(page, e2eDevice))).toContainEqual({ label: "ส่งมอบ", reason: "ส่งมอบได้เมื่อสถานะเป็น พร้อมใช้งาน เท่านั้น", available: false })
   })
 
-  test("the refusal says why: the asset is already handed over (finding TX-A1)", async ({ e2eTheme }, testInfo) => {
+  test("the refusal says why: the asset is already handed over (finding TX-A1)", async ({ e2eDevice, e2eTheme }, testInfo) => {
+    test.skip(e2eDevice === "phone", PHONE_STEPS)
     // TX-A1 fixed (FX9): this test now keeps the refusal's reason in Thai.
     const text = refusalToasts.get(testInfo.project.name)
     expect(text, `the refusal test ran first (${e2eTheme})`).toBeTruthy()

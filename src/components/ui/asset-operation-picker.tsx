@@ -44,6 +44,8 @@ type AssetOperationPickerBaseProps = {
   required?: boolean
   /** รับคืน ?assetId=: the search starts filled and open (spec 6.4). */
   initialQuery?: string
+  /** One asset: replaces the chosen box's text (ส่งมอบ's asset card, group 3 spec §7.1); data-asset-picked and เปลี่ยน stay. */
+  pickedBody?: (row: AssetOperationSearchRow) => React.ReactNode
 }
 
 export type AssetOperationPickerProps =
@@ -56,7 +58,7 @@ const noIds: ReadonlySet<string> = new Set()
 // The asset field of the transaction pages (server search spec 6.1). It asks the bounded server search and never holds
 // a list of the register. The list sits inline under the field and closes through the root's onBlur.
 export function AssetOperationPicker(props: AssetOperationPickerProps) {
-  const { id, label, mode, context, hint, error, required, initialQuery } = props
+  const { id, label, mode, context, hint, error, required, initialQuery, pickedBody } = props
   const t = useTranslations("assetOperation")
   const tCommon = useTranslations("common")
   const tAll = useTranslations()
@@ -279,16 +281,18 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
           data-asset-picked={value.id}
           className="flex min-h-11 min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm"
         >
-          <span className="grid min-w-0 gap-0.5">
-            <span className="min-w-0 break-words">
-              <span className="tag font-medium">{value.assetTag}</span>
-              {" · "}
-              {value.name}
+          {pickedBody ? pickedBody(value) : (
+            <span className="grid min-w-0 gap-0.5">
+              <span className="min-w-0 break-words">
+                <span className="tag font-medium">{value.assetTag}</span>
+                {" · "}
+                {value.name}
+              </span>
+              <span className="min-w-0 break-words text-meta text-muted-foreground">
+                <RowDetail row={value} />
+              </span>
             </span>
-            <span className="min-w-0 break-words text-meta text-muted-foreground">
-              <RowDetail row={value} />
-            </span>
-          </span>
+          )}
           <Button
             ref={changeRef}
             variant="outline"

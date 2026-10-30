@@ -43,7 +43,7 @@ test("ส่งมอบ: the asset is the shared picker; an asset that arrived 
   assert.match(source, /<AssetOperationPicker\n\s+id="checkout-asset"\n\s+label=\{t\("asset"\)\}\n\s+mode="checkout"\n\s+value=\{values\.asset\}\n\s+required\n\s+error=\{errorText\("assetId"\)\}\n\s+onChange=\{setAsset\}/)
   assert.doesNotMatch(source, /checkoutParent|handedOverAssetId|parentAsset|value="asset"|t\("toAsset"\)/)
   assert.ok(source.includes('if (key === "assetId" && assetReasonKey) return tAll(assetReasonKey)'))
-  assert.match(source, /\{initialAsset\?\.eligible && values\.asset\?\.id === initialAsset\.id \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
+  assert.match(source, /\{initialAsset\?\.eligible && values\.asset\?\.id === initialAsset\.id \? \(\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
   assert.ok(source.includes("const response = await fetch(`/api/assets/${values.asset?.id}/checkout`, {"))
   assert.doesNotMatch(source, /options=\{assets\}|assets\.(?:filter|find)\(|initialAssetId|t\("selectAsset"\)/)
 })

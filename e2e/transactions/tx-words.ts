@@ -7,4 +7,6 @@ export const TX_WORDS = {
   alreadyChosen: "เลือกแล้ว",
   chosenList: "ที่เลือกแล้ว {count} รายการ",
   holderCount: "ถืออยู่ {count} ชิ้น",
+  reviewAndSave: "ตรวจสอบและบันทึก",
+  checkoutFooter: "ส่งมอบ {tag} ให้ {receiver}",
 } as const

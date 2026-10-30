@@ -86,7 +86,7 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}maintenance/repair-record-form.tsx`]: [2, 3, 0],
   [`${C}maintenance/repair-record-actions.tsx`]: [3, 6, 0],
   [`${C}asset-operations/checkin-form.tsx`]: [5, 0, 0],
-  [`${C}asset-operations/checkout-form.tsx`]: [6, 0, 0],
+  [`${C}asset-operations/checkout-form.tsx`]: [3, 0, 0],
   [`${C}asset-operations/transfer-form.tsx`]: [1, 1, 0],
   [`${C}asset-operations/bulk-move-form.tsx`]: [1, 1, 0],
   // Group 3 plan 1 Task 5: the condition chips pass their caller's required to each radio.

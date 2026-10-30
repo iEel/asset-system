@@ -190,6 +190,10 @@ export async function expectAssetBlocked(page: Page, row: Locator, reason: strin
 export function pickedAsset(page: Page, assetId: string): Locator {
   return page.locator(`[data-asset-picked="${assetId}"]`)
 }
+// The condition chips of ส่งมอบ (group 3 spec §7.2): one radio per master condition, by its Thai name.
+export function conditionChip(page: Page, label: string): Locator {
+  return page.locator("#checkout-condition").getByRole("radio", { name: label, exact: true })
+}
 
 // The field's error under it (the V track): its text, in the element the field names with aria-describedby.
 export async function expectFieldError(page: Page, fieldId: string, message: string | RegExp) {
