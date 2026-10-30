@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { ZodError } from "zod"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
@@ -9,6 +10,8 @@ import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/a
 import { getAssetLifecycleTransitionError, getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
 import { getHandoverTargetStatusName } from "@/lib/asset-handover-mode"
 import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
+import { getCheckoutNextDepartmentId } from "@/lib/asset-department-rule"
+import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
@@ -66,16 +69,20 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         { status: 400 },
       )
     }
+    if (!(await readActiveCheckoutDestination(prisma, input))) {
+      return destinationInactiveResponse(checkoutDestinationField(input.checkoutType))
+    }
 
     const targetStatusName = getHandoverTargetStatusName(input.handoverMode)
     const targetStatusId = await getRequiredAssetStatusId(targetStatusName)
 
     const nextLocationId = input.locationId ?? asset.currentLocationId
     const nextCustodianId = input.checkoutType === "user" ? input.custodianId : asset.custodianId
-    const nextDepartmentId = input.checkoutType === "department" ? input.departmentId : asset.departmentId
 
     const { record: checkout, componentSync } = await prisma.$transaction(async (tx) => {
       await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
+      const destination = await readActiveCheckoutDestination(tx, input)
+      if (!destination) throw new CheckoutDestinationInactiveError(checkoutDestinationField(input.checkoutType))
       const beforeAsset = await tx.asset.findUnique({
         where: { id },
         select: {
@@ -90,6 +97,13 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         },
       })
       if (!beforeAsset) throw new Error("Asset not found")
+      const nextDepartmentId = getCheckoutNextDepartmentId({
+        ownership: normalizeAssetOwnershipType(asset.ownershipType),
+        checkoutType: input.checkoutType,
+        currentDepartmentId: beforeAsset.departmentId,
+        employeeDepartmentId: destination.employeeDepartmentId,
+        chosenDepartmentId: input.departmentId ?? null,
+      })
 
       const documentNo = await generateCheckoutDocumentNo(tx, input.checkoutDate)
       const record = await tx.assetCheckout.create({
@@ -170,6 +184,20 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
           remark: input.remark,
         },
       })
+      if (nextDepartmentId !== beforeAsset.departmentId) {
+        await tx.assetMovement.create({
+          data: {
+            assetId: id,
+            movementType: "department_change",
+            fromValue: beforeAsset.departmentId,
+            toValue: nextDepartmentId,
+            reason: "Asset checkout",
+            referenceType: "checkout",
+            referenceId: record.id,
+            performedBy: user.id,
+          },
+        })
+      }
 
       const componentSync = await syncInstalledComponentsWithParent(tx, {
         parentAssetId: id,
@@ -225,6 +253,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
 
     return NextResponse.json(checkout, { status: 201 })
   } catch (error) {
+    if (error instanceof CheckoutDestinationInactiveError) return destinationInactiveResponse(error.field)
     if (error instanceof AssetOperationConflictError) {
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
@@ -236,6 +265,55 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     }
     return errorResponse(error, 400)
   }
+}
+
+type CheckoutDestinationField = "custodianId" | "departmentId" | "locationId"
+
+function checkoutDestinationField(checkoutType: "user" | "department" | "location"): CheckoutDestinationField {
+  if (checkoutType === "user") return "custodianId"
+  if (checkoutType === "department") return "departmentId"
+  return "locationId"
+}
+
+// The destination must exist and be active. The employee's own department is not read:
+// an inactive one is written as it is (group 3 spec §6, call 5).
+async function readActiveCheckoutDestination(
+  db: Pick<Prisma.TransactionClient, "employee" | "department" | "location">,
+  input: { checkoutType: "user" | "department" | "location"; custodianId?: string | null; departmentId?: string | null; locationId?: string | null },
+): Promise<{ employeeDepartmentId: string | null } | null> {
+  if (input.checkoutType === "user") {
+    if (!input.custodianId) return null
+    const employee = await db.employee.findFirst({ where: { id: input.custodianId, isActive: true }, select: { departmentId: true } })
+    return employee ? { employeeDepartmentId: employee.departmentId } : null
+  }
+  if (input.checkoutType === "department") {
+    if (!input.departmentId) return null
+    const department = await db.department.findFirst({ where: { id: input.departmentId, isActive: true }, select: { id: true } })
+    return department ? { employeeDepartmentId: null } : null
+  }
+  if (!input.locationId) return null
+  const location = await db.location.findFirst({ where: { id: input.locationId, isActive: true }, select: { id: true } })
+  return location ? { employeeDepartmentId: null } : null
+}
+
+class CheckoutDestinationInactiveError extends Error {
+  readonly field: CheckoutDestinationField
+
+  constructor(field: CheckoutDestinationField) {
+    super("ASSET_CHECKOUT_DESTINATION_INACTIVE")
+    this.field = field
+  }
+}
+
+function destinationInactiveResponse(field: CheckoutDestinationField) {
+  return NextResponse.json(
+    {
+      code: "ASSET_CHECKOUT_DESTINATION_INACTIVE",
+      error: "ASSET_CHECKOUT_DESTINATION_INACTIVE",
+      fieldErrors: { [field]: "checkoutDestinationInactive" },
+    },
+    { status: 409 },
+  )
 }
 
 async function parseCheckoutRequest(request: NextRequest) {

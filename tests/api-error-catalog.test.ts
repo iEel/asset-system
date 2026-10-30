@@ -129,3 +129,9 @@ test("a transaction refusal reads the picker's words for the same rule (server-s
     }
   }
 })
+
+test("an inactive checkout destination reads its own words under the field (group 3 spec §6, §7.2)", () => {
+  assert.equal(getApiErrorKey("ASSET_CHECKOUT_DESTINATION_INACTIVE"), "checkoutDestinationInactive")
+  const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors.checkoutDestinationInactive
+  assert.deepEqual([words("th"), words("en")], ["ปลายทางนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกใหม่", "This destination is missing or inactive. Choose another one."])
+})

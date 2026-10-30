@@ -4708,7 +4708,8 @@
     "componentCheckinNotAllowed": "ส่วนควบรับคืนพร้อมเครื่องหลัก",
     "licenseCheckinNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
     "licenseMoveNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
-    "checkinRepairStatusRequired": "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม"
+    "checkinRepairStatusRequired": "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม",
+    "checkoutDestinationInactive": "ปลายทางนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกใหม่"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

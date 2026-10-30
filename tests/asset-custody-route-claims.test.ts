@@ -10,9 +10,27 @@ type CustodyRouteState = {
   assetOwnershipType: string
   openCheckoutAssetIds: string[]
   calls: string[]
+  employees: Record<string, { id: string; departmentId: string }>
+  employeeAnswers: Array<{ id: string; departmentId: string } | null>
+  activeDepartmentIds: string[]
+  activeLocationIds: string[]
+  writes: Array<{ call: string; data: Record<string, unknown> }>
+  syncChanges: Array<Record<string, unknown>>
 }
 
-const state: CustodyRouteState = { claimCount: 1, assetStatusName: "Ready", assetOwnershipType: "personal", openCheckoutAssetIds: [], calls: [] }
+const state: CustodyRouteState = {
+  claimCount: 1,
+  assetStatusName: "Ready",
+  assetOwnershipType: "personal",
+  openCheckoutAssetIds: [],
+  calls: [],
+  employees: { "emp-2": { id: "emp-2", departmentId: "dept-2" } },
+  employeeAnswers: [],
+  activeDepartmentIds: ["dept-3"],
+  activeLocationIds: ["location-2"],
+  writes: [],
+  syncChanges: [],
+}
 Object.assign(globalThis, { __custodyRouteState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -35,7 +53,8 @@ const mockedModuleSources = new Map<string, string>([
     export async function generateTransferDocumentNo() { return "TR-202610-0001" }
   `],
   ["@/lib/asset-component-sync", `
-    export async function syncInstalledComponentsWithParent() {
+    export async function syncInstalledComponentsWithParent(_tx, args) {
+      globalThis.__custodyRouteState.syncChanges.push(args.changes)
       return { updated: 0, skipped: 0, movements: 0, componentSnapshots: [] }
     }
   `],
@@ -65,11 +84,18 @@ const mockedModuleSources = new Map<string, string>([
         get(_target, method) {
           return async (args) => {
             state().calls.push(name + "." + String(method))
+            if (method === "create" || method === "update") state().writes.push({ call: name + "." + String(method), data: args?.data ?? {} })
             if (method === "updateMany") return { count: name === "asset" ? state().claimCount : 1 }
             if (name === "asset" && (method === "findFirst" || method === "findUnique")) return asset()
             if (name === "asset" && method === "update") return { ...asset(), ...(args?.data ?? {}), updatedAt: new Date("2026-10-07T03:00:00Z") }
             if (name === "assetCondition") return { name: "Good", isActive: true }
             if (name === "assetCheckout" && method === "findFirst") return state().openCheckoutAssetIds.includes(args?.where?.assetId) ? { id: "checkout-open", handoverMode: "temporary_loan" } : null
+            if (name === "employee" && method === "findFirst") {
+              if (state().employeeAnswers.length > 0) return state().employeeAnswers.shift()
+              return args?.where?.isActive === true ? (state().employees[args.where.id] ?? null) : null
+            }
+            if (name === "department" && method === "findFirst") return args?.where?.isActive === true && state().activeDepartmentIds.includes(args.where.id) ? { id: args.where.id } : null
+            if (name === "location" && method === "findFirst") return args?.where?.isActive === true && state().activeLocationIds.includes(args.where.id) ? { id: args.where.id } : null
             if (method === "findFirst" || method === "findUnique") return null
             if (method === "findMany") return []
             if (method === "count") return 0
@@ -141,6 +167,12 @@ beforeEach(() => {
   state.assetOwnershipType = "personal"
   state.openCheckoutAssetIds = []
   state.calls = []
+  state.employees = { "emp-2": { id: "emp-2", departmentId: "dept-2" } }
+  state.employeeAnswers = []
+  state.activeDepartmentIds = ["dept-3"]
+  state.activeLocationIds = ["location-2"]
+  state.writes = []
+  state.syncChanges = []
 })
 
 test("a handover that loses the race for the asset returns 409 and records nothing", async () => {
@@ -233,4 +265,59 @@ test("a transfer refuses a License; a ส่วนควบ still moves (server-
   assert.equal(state.calls.includes("asset.updateMany"), false)
   state.assetOwnershipType = "component"
   assert.equal((await post(transferRoute, moveBody)).status, 201)
+})
+
+const written = (call: string) => state.writes.filter((write) => write.call === call).map((write) => write.data)
+const toDepartment = (departmentId: string) => ({ ...checkoutBody, checkoutType: "department", custodianId: undefined, departmentId })
+const toRoom = (locationId: string) => ({ ...checkoutBody, checkoutType: "location", custodianId: undefined, locationId })
+const departmentLine = (toValue: string) => ({ assetId: "asset-1", movementType: "department_change", fromValue: "dept-1", toValue, reason: "Asset checkout", referenceType: "checkout", referenceId: "assetCheckout-new", performedBy: "user-1" })
+const inactive = (field: string) => [409, { code: "ASSET_CHECKOUT_DESTINATION_INACTIVE", error: "ASSET_CHECKOUT_DESTINATION_INACTIVE", fieldErrors: { [field]: "checkoutDestinationInactive" } }]
+
+test("a handover gives a บุคคล or Stock asset and its components the employee's or the chosen department, with a department_change line (group 3 spec §6)", async () => {
+  for (const [ownership, body, departmentId] of [["personal", checkoutBody, "dept-2"], ["stock", checkoutBody, "dept-2"], ["personal", toDepartment("dept-3"), "dept-3"], ["stock", toDepartment("dept-3"), "dept-3"]] as const) {
+    state.assetOwnershipType = ownership; state.writes = []; state.syncChanges = []
+    assert.equal((await post(checkoutRoute, body)).status, 201, `${ownership} ${body.checkoutType}`)
+    assert.equal(written("asset.update")[0].departmentId, departmentId)
+    assert.equal(state.syncChanges[0].departmentId, departmentId)
+    assert.deepEqual(written("assetMovement.create").filter((row) => row.movementType === "department_change"), [departmentLine(departmentId)])
+  }
+})
+
+test("a ส่วนกลาง asset keeps its department, a room or the same department changes nothing, and no department_change is written (spec §6, P1-R2)", async () => {
+  state.employees["emp-same"] = { id: "emp-same", departmentId: "dept-1" }
+  for (const [ownership, body] of [["shared", checkoutBody], ["shared", toDepartment("dept-3")], ["personal", toRoom("location-2")], ["stock", toRoom("location-2")], ["personal", { ...checkoutBody, custodianId: "emp-same" }]] as const) {
+    state.assetOwnershipType = ownership; state.writes = []; state.syncChanges = []
+    assert.equal((await post(checkoutRoute, body)).status, 201, `${ownership} ${body.checkoutType}`)
+    assert.equal(written("asset.update")[0].departmentId, "dept-1")
+    assert.equal(state.syncChanges[0].departmentId, "dept-1")
+    assert.deepEqual(written("assetMovement.create").map((row) => row.movementType), ["checkout"])
+  }
+  state.assetOwnershipType = "shared"; state.writes = []
+  await post(checkoutRoute, toDepartment("dept-3"))
+  assert.equal(written("assetCheckout.create")[0].departmentId, "dept-3", "the HO- still names the department it went to")
+})
+
+test("an unknown or inactive employee, department or room is refused under its field, before any write (spec §6, §7.2)", async () => {
+  for (const [body, field] of [[{ ...checkoutBody, custodianId: "emp-left" }, "custodianId"], [toDepartment("dept-closed"), "departmentId"], [toRoom("location-closed"), "locationId"]] as const) {
+    state.calls = []
+    assert.deepEqual(await refusal(await post(checkoutRoute, body)), inactive(field), field)
+    assert.equal(state.calls.includes("asset.updateMany"), false, field)
+    assert.equal(state.calls.includes("assetCheckout.create"), false, field)
+  }
+})
+
+test("an employee deactivated while the handover is saved is refused inside the transaction, before the HO- record (spec §6)", async () => {
+  state.employeeAnswers = [{ id: "emp-2", departmentId: "dept-2" }, null]
+  assert.deepEqual(await refusal(await post(checkoutRoute, checkoutBody)), inactive("custodianId"))
+  const reads = state.calls.flatMap((call, index) => (call === "employee.findFirst" ? [index] : []))
+  assert.equal(reads.length, 2)
+  assert.ok(reads[1] > state.calls.indexOf("asset.updateMany"), "read again after the claim")
+  assert.equal(state.calls.includes("assetCheckout.create"), false)
+})
+
+test("an active employee whose department is closed still receives the asset, with that department (spec §6, call 5)", async () => {
+  state.employees["emp-2"] = { id: "emp-2", departmentId: "dept-closed" }
+  assert.equal((await post(checkoutRoute, checkoutBody)).status, 201)
+  assert.equal(written("asset.update")[0].departmentId, "dept-closed")
+  assert.equal(state.calls.includes("department.findFirst"), false, "the employee's department is not checked")
 })
