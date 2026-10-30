@@ -4774,6 +4774,12 @@
     "noHolderGroup": "ไม่มีผู้ถือครอง",
     "groupCount": "ถืออยู่ {count} ชิ้น",
     "handoverLine": "ใบส่งมอบ {documentNo} · ส่งมอบ {date}",
-    "legacyLineAt": "ข้อมูลเก่า (ไม่มีใบส่งมอบ) · {location}"
+    "legacyLineAt": "ข้อมูลเก่า (ไม่มีใบส่งมอบ) · {location}",
+    "reviewAndSave": "ตรวจสอบและบันทึก",
+    "summaryTitle": "สรุปก่อนบันทึก",
+    "summaryNow": "ตอนนี้",
+    "summaryNext": "หลังบันทึก",
+    "summaryCheckDone": "ครบแล้ว",
+    "summaryCheckMissing": "ยังไม่ครบ"
   }
 }

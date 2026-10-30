@@ -57,6 +57,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}assets/asset-form.tsx`]: ["/th/assets/new", "/th/assets/sample-1/edit"],
   [`${C}admin/system-settings-form.tsx`]: ["/th/admin/settings"],
   [`${C}audit/audit-round-form.tsx`]: ["/th/audit/rounds/new"],
+  // Group 3 plan 1: the frame of ส่งมอบ, รับคืน and โอนย้าย; plans 2 and 3 add /th/asset-management/checkin and /transfer when their forms move onto it.
+  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling
@@ -87,6 +89,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}asset-operations/checkout-form.tsx`]: [6, 0, 0],
   [`${C}asset-operations/transfer-form.tsx`]: [1, 1, 0],
   [`${C}asset-operations/bulk-move-form.tsx`]: [1, 1, 0],
+  // Group 3 plan 1 Task 5: the condition chips pass their caller's required to each radio.
+  [`${C}asset-operations/condition-choice.tsx`]: [1, 0, 0],
   [`${C}disposal/disposal-request-form.tsx`]: [3, 1, 1],
   [`${C}disposal/disposal-batch-form.tsx`]: [1, 1, 1],
   [`${C}disposal/disposal-execution-button.tsx`]: [8, 4, 1],

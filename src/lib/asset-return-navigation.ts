@@ -22,6 +22,11 @@ export function normalizeAssetReturnTo(locale: string, value: ReturnToParam) {
   }
 }
 
+// ยกเลิก on ส่งมอบ, รับคืน and โอนย้าย (group 3 spec §5): the normalized returnTo, else the register.
+export function getOperationCancelHref(locale: string, returnTo: string | undefined): string {
+  return normalizeAssetReturnTo(locale, returnTo)
+}
+
 export function normalizeAssetComponentManagerReturnTo(locale: string, assetId: string, value: ReturnToParam) {
   const allowedPath = `/${locale}/assets/${encodeURIComponent(assetId)}`
   const fallback = `${allowedPath}?view=components`

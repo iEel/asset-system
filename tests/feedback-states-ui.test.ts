@@ -173,6 +173,14 @@ function repeatsBusy(tag: string): boolean {
   return new RegExp(`(?<![\\w.$])${escaped}(?![\\w$])`).test(disabled)
 }
 
+// Shared parts with no directive (like Segmented and Steps) that hold a busy Button: only client modules render them, so
+// their click guard runs on the client. Group 3 plan 1 Task 5: the frame of ส่งมอบ, รับคืน and โอนย้าย, whose save bar is busy.
+const CLIENT_RENDERED_PARTS = new Set(["src/components/asset-operations/operation-form-frame.tsx"])
+const importersOf = (path: string) => {
+  const specifier = path.replace(/^src\//, "@/").replace(/\.tsx$/, "")
+  return sources.filter((entry) => entry.source.includes(`from "${specifier}"`))
+}
+
 test("busy comes from client state, and a busy Button's disabled never repeats the busy condition", () => {
   assert.equal(repeatsBusy("<Button busy={saving} disabled={saving || missingPhoto}>"), true)
   assert.equal(repeatsBusy("<Button busy={saving} disabled>"), true)
@@ -184,7 +192,8 @@ test("busy comes from client state, and a busy Button's disabled never repeats t
     for (const tag of buttonOpeningTags(file.source)) {
       if (!/\sbusy[=\s/>]/.test(tag)) continue
       busyButtons += 1
-      if (!isClientModule(file.source)) offenders.push(`${file.path}: busy in a server file (its click guard cannot cross to the client)`)
+      const clientRendered = CLIENT_RENDERED_PARTS.has(file.path) && importersOf(file.path).every((entry) => isClientModule(entry.source))
+      if (!isClientModule(file.source) && !clientRendered) offenders.push(`${file.path}: busy in a server file (its click guard cannot cross to the client)`)
       if (repeatsBusy(tag)) offenders.push(`${file.path}: disabled repeats the busy condition and drops keyboard focus`)
     }
   }

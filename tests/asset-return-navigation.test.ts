@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
-import { normalizeAssetComponentManagerReturnTo, normalizeAssetReturnTo } from "../src/lib/asset-return-navigation.ts"
+import { getOperationCancelHref, normalizeAssetComponentManagerReturnTo, normalizeAssetReturnTo } from "../src/lib/asset-return-navigation.ts"
 
 function readSource(path: string) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
@@ -84,4 +84,14 @@ test("the component manager also returns to the register that opened it, with it
   assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/th/assets/other-id"), fallback)
   assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/en/assets?search=nb"), fallback)
   assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "https://evil.example/th/assets?search=nb"), fallback)
+})
+
+test("ยกเลิก on the transaction pages goes to the normalized returnTo, else the register (group 3 spec §5)", () => {
+  assert.equal(getOperationCancelHref("th", undefined), "/th/assets")
+  assert.equal(getOperationCancelHref("th", ""), "/th/assets")
+  assert.equal(getOperationCancelHref("th", "/th/assets/a-1?view=custody"), "/th/assets/a-1?view=custody")
+  assert.equal(getOperationCancelHref("th", "/th/assets?search=nb&page=2"), "/th/assets?search=nb&page=2")
+  assert.equal(getOperationCancelHref("th", "/th/asset-management/scan"), "/th/asset-management/scan")
+  assert.equal(getOperationCancelHref("th", "/th/assets/a-1/edit"), "/th/assets")
+  assert.equal(getOperationCancelHref("en", "https://evil.example/en/assets/a-1"), "/en/assets")
 })

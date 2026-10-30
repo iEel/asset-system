@@ -4774,6 +4774,12 @@
     "noHolderGroup": "No holder",
     "groupCount": "Holds {count}",
     "handoverLine": "Handover {documentNo} · {date}",
-    "legacyLineAt": "Legacy record (no handover) · {location}"
+    "legacyLineAt": "Legacy record (no handover) · {location}",
+    "reviewAndSave": "Review and save",
+    "summaryTitle": "Summary before saving",
+    "summaryNow": "Now",
+    "summaryNext": "After saving",
+    "summaryCheckDone": "Done",
+    "summaryCheckMissing": "Not yet"
   }
 }
