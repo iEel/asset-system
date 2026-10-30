@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const nextLocationId = input.locationId ?? asset.currentLocationId
     const nextCustodianId = input.checkoutType === "user" ? input.custodianId : asset.custodianId
 
-    const { record: checkout, componentSync } = await prisma.$transaction(async (tx) => {
+    const { record: checkout, componentSync, departmentId, previousDepartmentId } = await prisma.$transaction(async (tx) => {
       await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
       const destination = await readActiveCheckoutDestination(tx, input)
       if (!destination) throw new CheckoutDestinationInactiveError(checkoutDestinationField(input.checkoutType))
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         movements: componentSync.movements,
       }
 
-      return { record: finalizedRecord, componentSync: componentSyncSummary }
+      return { record: finalizedRecord, componentSync: componentSyncSummary, departmentId: nextDepartmentId, previousDepartmentId: beforeAsset.departmentId }
     })
 
     await logAudit({
@@ -248,7 +248,8 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       module: "asset",
       recordId: id,
       oldValue: asset,
-      newValue: { ...input, targetStatusName, checkoutId: checkout.id, componentSync },
+      // The department the checkout wrote, and the one it replaced (final review M9).
+      newValue: { ...input, targetStatusName, checkoutId: checkout.id, componentSync, departmentId, previousDepartmentId },
     })
 
     return NextResponse.json(checkout, { status: 201 })
@@ -268,6 +269,14 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
 }
 
 type CheckoutDestinationField = "custodianId" | "departmentId" | "locationId"
+
+// Each destination field reads its own refusal (final review M10); the code and its catalog key
+// (checkoutDestinationInactive) stay, for the toast.
+const DESTINATION_INACTIVE_KEYS: Record<CheckoutDestinationField, string> = {
+  custodianId: "checkoutReceiverInactive",
+  departmentId: "checkoutDepartmentInactive",
+  locationId: "checkoutLocationInactive",
+}
 
 function checkoutDestinationField(checkoutType: "user" | "department" | "location"): CheckoutDestinationField {
   if (checkoutType === "user") return "custodianId"
@@ -310,7 +319,7 @@ function destinationInactiveResponse(field: CheckoutDestinationField) {
     {
       code: "ASSET_CHECKOUT_DESTINATION_INACTIVE",
       error: "ASSET_CHECKOUT_DESTINATION_INACTIVE",
-      fieldErrors: { [field]: "checkoutDestinationInactive" },
+      fieldErrors: { [field]: DESTINATION_INACTIVE_KEYS[field] },
     },
     { status: 409 },
   )

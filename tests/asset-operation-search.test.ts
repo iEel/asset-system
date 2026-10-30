@@ -194,7 +194,7 @@ test("by id with detail=1: the detail select, one read of the installed links an
   const { db, calls } = fakeDb({ contains: [notebook], links: [link("c-1", "NB-0017-01", "Adapter 65W"), link("c-2", "NB-0017-02", "Mouse ไร้สาย")], checkouts: [checkout({ id: "co-9", assetId: "c-2" })] })
   const [row] = (await searchAssetOperationOptions(db, input("mode=checkout&id=asset-1&detail=1"))).rows
   assert.deepEqual(row.detail, {
-    ownership: "personal", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
+    ownership: "personal", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
     components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }],
   })
   assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchDetailAssetSelect])

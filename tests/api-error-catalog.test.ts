@@ -134,4 +134,11 @@ test("an inactive checkout destination reads its own words under the field (grou
   assert.equal(getApiErrorKey("ASSET_CHECKOUT_DESTINATION_INACTIVE"), "checkoutDestinationInactive")
   const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors.checkoutDestinationInactive
   assert.deepEqual([words("th"), words("en")], ["ปลายทางนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกใหม่", "This destination is missing or inactive. Choose another one."])
+  // Under each field its own sentence (final review M10); the one above stays for the toast.
+  const field = (locale: "th" | "en", key: string) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors[key]
+  for (const [key, th, en] of [
+    ["checkoutReceiverInactive", "พนักงานคนนี้พ้นสภาพหรือถูกปิดใช้งานแล้ว เลือกคนอื่น", "This employee has left or is inactive. Choose someone else."],
+    ["checkoutDepartmentInactive", "แผนกนี้ถูกปิดใช้งานแล้ว เลือกแผนกอื่น", "This department is inactive. Choose another."],
+    ["checkoutLocationInactive", "ที่ตั้งนี้ถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น", "This location is inactive. Choose another."],
+  ]) assert.deepEqual([field("th", key), field("en", key)], [th, en], key)
 })

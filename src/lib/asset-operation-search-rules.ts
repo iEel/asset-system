@@ -213,8 +213,12 @@ export type AssetOperationChosenDetail = {
   departmentId: string | null
   /** "code - name" */
   departmentLabel: string | null
+  /** The department's name alone, for the summary card (look L1). */
+  departmentName: string | null
   /** "code - fullNameTh" */
   holderLabel: string | null
+  /** fullNameTh alone, for the summary card (look L1). */
+  holderName: string | null
   ownerBranchLabel: string
   locationBranchLabel: string
   components: AssetOperationChosenComponent[]
@@ -458,7 +462,9 @@ export function buildAssetOperationRowDetail(
     statusName: asset.status.name,
     departmentId: asset.departmentId,
     departmentLabel: asset.department ? `${asset.department.code} - ${asset.department.name}` : null,
+    departmentName: asset.department?.name ?? null,
     holderLabel: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null,
+    holderName: asset.custodian?.fullNameTh ?? null,
     ownerBranchLabel: asset.branch.name,
     locationBranchLabel: asset.currentLocation.branch.name,
     components: [...components.values()].sort((a, b) => a.assetTag.localeCompare(b.assetTag)),

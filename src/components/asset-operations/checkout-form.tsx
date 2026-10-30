@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -28,7 +28,7 @@ import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { Textarea } from "@/components/ui/textarea"
 import { assetOperationRowLabel, chosenAssetReasonKey } from "@/lib/asset-operation-form-rules"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
-import type { AssetOperationEmployeeOption } from "@/lib/asset-operation-options"
+import type { AssetOperationEmployeeOption, AssetOperationNamedOption } from "@/lib/asset-operation-options"
 import { buildAssetOperationSearchHref, type AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
 import { appendReturnTo, getOperationCancelHref } from "@/lib/asset-return-navigation"
 import {
@@ -37,9 +37,12 @@ import {
   checkoutComponents,
   checkoutConditionDefault,
   checkoutReceiverLabel,
+  checkoutReceiverName,
+  checkoutSubmitAction,
   withCheckoutAssetDetail,
   type CheckoutChoice,
   type CheckoutDestinationType,
+  type CheckoutDetailState,
   type CheckoutPhoneStep,
 } from "@/lib/checkout-form-rules"
 import { checkoutPhonePartClass, formatCheckoutDay, getCheckoutSignStatement } from "@/lib/checkout-phone-steps"
@@ -54,6 +57,7 @@ import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { useMediaQuery } from "@/components/ui/use-media-query"
 
 type Option = { id: string; label: string; disabled?: boolean }
+type NamedOption = AssetOperationNamedOption & { disabled?: boolean }
 type CheckoutType = CheckoutDestinationType
 type HandoverModeSelection = "" | AssetHandoverMode
 type CheckoutFormValues = {
@@ -137,8 +141,8 @@ export function CheckoutForm({
   deliveredByLabel,
 }: {
   employees: AssetOperationEmployeeOption[]
-  departments: Option[]
-  locations: Option[]
+  departments: NamedOption[]
+  locations: NamedOption[]
   conditions: Option[]
   /** ?assetId=: the search's by-id answer with its detail, takeable or not (spec 6.4, §7.1). */
   initialAsset: AssetOperationSearchRow | null
@@ -158,6 +162,13 @@ export function CheckoutForm({
   const fieldErrors = useFieldErrors<CheckoutField>()
   const [photoBefore, setPhotoBefore] = useState<File | null>(null)
   const [receiverSignatureDataUrl, setReceiverSignatureDataUrl] = useState<string | null>(null)
+  // The chosen asset's detail=1 read (final review I1): the summary, the read-back and the statement need it. The
+  // ?assetId= answer arrives with it; a picked row reads it. assetIdRef is the chosen id, so a late answer for an asset
+  // chosen before does not set the state.
+  const [assetDetail, setAssetDetail] = useState<CheckoutDetailState>(initialAsset && !initialAsset.detail ? "failed" : "ready")
+  const assetIdRef = useRef(initialAsset?.id ?? null)
+  // A submit's read of the asset is under way: the submit buttons show busy.
+  const [readingForSubmit, setReadingForSubmit] = useState(false)
   // The phone step (spec §7.4, P1-R4); from lg it is ignored and every section shows.
   const [step, setStep] = useState<CheckoutPhoneStep>(1)
   const isDesktop = useMediaQuery("(min-width: 64rem)")
@@ -191,6 +202,8 @@ export function CheckoutForm({
   }
   const cancelHref = getOperationCancelHref(locale, returnTo)
   const receiverLabel = checkoutReceiverLabel(choice)
+  // The read-back names the receiver plainly (look L1); the footer, the pad's helper and the statement keep "code - name".
+  const receiverName = checkoutReceiverName(choice)
   const summaryRows = buildCheckoutSummaryRows(choice, {
     holder: tOperation("summaryHolder"),
     department: tOperation("summaryDepartment"),
@@ -245,10 +258,12 @@ export function CheckoutForm({
       { label: t("handoverMode"), value: handoverModeLabel },
       { label: t("resultingStatus"), value: resultingStatusLabel },
       ...(values.handoverMode === "temporary_loan" && values.expectedReturnDate
-        ? [{ label: t("expectedReturn"), value: values.expectedReturnDate }]
+        ? [{ label: t("expectedReturn"), value: formatCheckoutDay(values.expectedReturnDate, locale) }]
         : []),
+      // The photo and the signature each on its own line, so a signature that is gone shows (final review M1).
+      { label: t("photoBefore"), value: photoBefore ? t("reviewAttached") : t("reviewNotAttached") },
+      { label: t("receiverSignature"), value: receiverSignatureDataUrl ? t("reviewAttached") : t("reviewNotAttached") },
     ],
-    evidenceLabel: photoBefore || receiverSignatureDataUrl ? t("reviewEvidenceAttached") : t("reviewNoEvidence"),
     labels: {
       asset: t("asset"),
       source: t("checkedOutBy"),
@@ -300,28 +315,64 @@ export function CheckoutForm({
   function setAsset(row: AssetOperationSearchRow | null) {
     setValues((current) => ({ ...current, asset: row, conditionBefore: checkoutConditionDefault(row, conditions) }))
     fieldErrors.clear("assetId", "conditionBefore")
+    assetIdRef.current = row?.id ?? null
+    setAssetDetail(row && !row.detail ? "loading" : "ready")
     if (row && !row.detail) void loadAssetDetail(row.id)
   }
 
-  // The by-id read with detail=1 (spec §7.1, P1-R5): its whole row, so a verdict that changed since the pick shows. A
-  // failed read keeps the row: the card shows the location alone, and the summary only its checklist.
-  async function loadAssetDetail(assetId: string) {
+  // The by-id read with detail=1 (spec §7.1, P1-R5): its whole row, so a verdict that changed since the pick shows. The
+  // answer is used only while it is still the chosen asset (withCheckoutAssetDetail). A failed read (network, non-OK,
+  // no row) keeps the row and sets the detail "failed": the card, and the phone's step 1, show อ่านข้อมูลสรุปไม่สำเร็จ
+  // with ลองอีกครั้ง (final review I1). Returns the answered row, or null when the read failed.
+  async function loadAssetDetail(assetId: string): Promise<AssetOperationSearchRow | null> {
+    if (assetIdRef.current === assetId) setAssetDetail("loading")
     const response = await fetch(buildAssetOperationSearchHref({ mode: "checkout", id: assetId, detail: true })).catch(() => null)
     const payload = response?.ok ? await response.json().catch(() => null) : null
-    const answered: AssetOperationSearchRow | null = payload?.data?.rows?.[0] ?? null
+    const row: AssetOperationSearchRow | null = payload?.data?.rows?.[0] ?? null
+    const answered = row?.id === assetId && row.detail ? row : null
+    if (assetIdRef.current !== assetId) return null
     setValues((current) => ({ ...current, asset: withCheckoutAssetDetail(current.asset, answered) }))
+    setAssetDetail(answered ? "ready" : "failed")
+    return answered
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (readingForSubmit) return
     fieldErrors.setErrors(validate(values))
     if (focusFirstError()) return
     // The desktop reviews in the dialog; the phone's step 1 goes on to the read-back, and step 3 saves (step 3 still
-    // checks every field). The phone never opens the dialog.
-    if (isDesktop) return setReviewOpen(true)
-    if (step === 1) return moveToStep(2)
-    if (step === 3) void submitCheckout()
+    // checks every field). The phone never opens the dialog. The review and step 2 read the chosen asset again first, so
+    // the card, the read-back and step 3's statement show what the save will change (final review I1, M3): the submit's
+    // detail is "loading" until that read answers.
+    const hasAsset = values.asset !== null
+    let action = checkoutSubmitAction({ isDesktop, step, detail: "loading", hasAsset })
+    if (action === "readDetail" && values.asset) {
+      setReadingForSubmit(true)
+      const answered = await loadAssetDetail(values.asset.id).finally(() => setReadingForSubmit(false))
+      // No longer takeable since the pick: stop, and the asset field reads its reason (the blocked-row path).
+      if (answered && !answered.eligible) {
+        fieldErrors.setErrors({ assetId: "invalid" })
+        focusFirstError()
+        return
+      }
+      action = checkoutSubmitAction({ isDesktop, step, detail: answered ? "ready" : "failed", hasAsset })
+    }
+    if (action === "review") return setReviewOpen(true)
+    if (action === "nextStep") return moveToStep(2)
+    if (action === "save") return void submitCheckout()
+    // readDetail: the read failed, and the warning with ลองอีกครั้ง shows.
   }
+
+  // อ่านข้อมูลสรุปไม่สำเร็จ, with ลองอีกครั้ง: in the summary card, and on the phone's step 1 above the bar's buttons.
+  const detailFailedNotice = values.asset && assetDetail === "failed" ? (
+    <span role="status" className="grid justify-items-start gap-2">
+      <span>{t("detailReadFailed")}</span>
+      <Button type="button" variant="outline" size="sm" onClick={() => values.asset && void loadAssetDetail(values.asset.id)}>
+        {tCommon("tryAgain")}
+      </Button>
+    </span>
+  ) : null
 
   async function submitCheckout() {
     setSaving(true)
@@ -376,6 +427,7 @@ export function CheckoutForm({
             nextLabel={tOperation("summaryNext")}
             rows={summaryRows}
             checklist={checklist}
+            warnings={detailFailedNotice ? [detailFailedNotice] : []}
             footnote={t("summaryFootnote")}
           />}
           footer={{
@@ -385,13 +437,13 @@ export function CheckoutForm({
             cancelHref,
             cancelLabel: tCommon("cancel"),
             submitLabel: tOperation("reviewAndSave"),
-            busy: saving,
+            busy: saving || readingForSubmit,
             formId: CHECKOUT_FORM_ID,
           }}
         >
           <CheckoutPhoneBar step={step} cancelHref={cancelHref} onStep={moveToStep} className={checkoutPhonePartClass("stepsBar", step)} />
           <CheckoutReadBack
-            receiverLabel={receiverLabel ?? ""}
+            receiverLabel={receiverName ?? ""}
             assetName={values.asset?.name ?? ""}
             assetTag={values.asset?.assetTag ?? ""}
             serialNumber={values.asset?.serialNumber ?? null}
@@ -449,7 +501,7 @@ export function CheckoutForm({
               <div className="grid gap-4 md:grid-cols-2">
                 <FieldGroup legend={t("checkoutTo")} id="checkout-type" required error={errorText("checkoutType")}>
                   <Segmented
-                    aria-label={t("checkoutTo")}
+                    labelledBy="checkout-type-legend"
                     showCheck
                     value={values.checkoutType}
                     options={[
@@ -467,6 +519,8 @@ export function CheckoutForm({
                         locationId: "",
                         expectedReturnDate: "",
                       }))
+                      // Another receiver: the signature given for the last one goes (final review M2).
+                      setReceiverSignatureDataUrl(null)
                       fieldErrors.clear("checkoutType", ...DESTINATION_KEYS, "handoverMode", "expectedReturnDate")
                     }}
                   />
@@ -583,7 +637,9 @@ export function CheckoutForm({
             ) : null}
           </p>
           <div data-checkout-part="evidence" className={checkoutPhonePartClass("evidence", step)}>
-            <FormSection number={3} title={<>{t("sectionEvidence")} <span className="font-normal text-muted-foreground">{t("sectionEvidenceOptional")}</span></>}>
+            {/* The heading introduces the photo; on the phone's step 3 the statement is the step's heading (look L2). */}
+            <FormSection number={3} title={<>{t("sectionEvidence")} <span className="font-normal text-muted-foreground">{t("sectionEvidenceOptional")}</span></>} className={cn("mb-4", checkoutPhonePartClass("evidenceHeading", step))} />
+            <div>
               <div className="grid gap-4">
                 <div data-checkout-part="photo" className={checkoutPhonePartClass("photo", step)}>
                   <Field label={t("photoBefore")}>
@@ -600,7 +656,9 @@ export function CheckoutForm({
                   </Field>
                 </div>
                 <div data-checkout-part="signature" className={checkoutPhonePartClass("signature", step)}>
+                  {/* A new receiver remounts the pad, so no ink given for another stays (final review M2). */}
                   <SignaturePad
+                    key={`${values.checkoutType}:${destinationValue(values)}`}
                     label={t("receiverSignature")}
                     helper={receiverLabel ? t("receiverSignatureFor", { name: receiverLabel }) : t("receiverSignatureHelp")}
                     clearLabel={t("clearSignature")}
@@ -613,17 +671,17 @@ export function CheckoutForm({
                   </p>
                 </div>
               </div>
-            </FormSection>
+            </div>
           </div>
         </OperationFormFrame>
-        <StickyFormFooter className={checkoutPhonePartClass("stepsFooter", step)}>
+        <StickyFormFooter className={checkoutPhonePartClass("stepsFooter", step)} status={step === 1 && detailFailedNotice ? <Notice tone="warning">{detailFailedNotice}</Notice> : undefined}>
           {step === 2 ? (
             <>
               <Button type="button" variant="outline" onClick={() => moveToStep(1)}>{t("phoneFix")}</Button>
               <Button type="button" onClick={() => moveToStep(3)}>{t("phoneAccept")}</Button>
             </>
           ) : null}
-          {step === 1 ? <Button type="submit">{t("phoneNext")}</Button> : null}
+          {step === 1 ? <Button type="submit" busy={readingForSubmit}>{t("phoneNext")}</Button> : null}
           {step === 3 ? <Button type="submit" busy={saving}>{t("phoneSave")}</Button> : null}
         </StickyFormFooter>
       </form>
@@ -648,6 +706,8 @@ export function CheckoutForm({
   }
 
   function setDestinationValue(type: CheckoutType, value: string) {
+    // Another receiver: the signature given for the last one goes (final review M2).
+    if (value !== destinationValue(values)) setReceiverSignatureDataUrl(null)
     if (type === "user") setField("custodianId", value)
     if (type === "department") setField("departmentId", value)
     if (type === "location") setField("locationId", value)

@@ -3,19 +3,21 @@
 // the checkout route calls (asset-department-rule.ts), so the card never promises what the save does not write.
 import { getCheckoutNextDepartmentId } from "./asset-department-rule.ts"
 import type { AssetHandoverMode } from "./asset-handover-mode.ts"
-import type { AssetOperationEmployeeOption, AssetOperationOption } from "./asset-operation-options.ts"
+import type { AssetOperationEmployeeOption, AssetOperationNamedOption } from "./asset-operation-options.ts"
 import type { AssetOperationChosenComponent, AssetOperationSearchRow } from "./asset-operation-search-rules.ts"
 
 export type CheckoutDestinationType = "user" | "department" | "location"
 /** The phone's three steps (spec §7.4, P1-R4): the only export of this type. */
 export type CheckoutPhoneStep = 1 | 2 | 3
+/** The chosen asset's detail=1 read, owned by the form beside the asset (final review I1). */
+export type CheckoutDetailState = "loading" | "failed" | "ready"
 export type CheckoutChoice = {
   asset: AssetOperationSearchRow | null
   checkoutType: CheckoutDestinationType
   handoverMode: "" | AssetHandoverMode
   employee: AssetOperationEmployeeOption | null
-  department: AssetOperationOption | null
-  location: AssetOperationOption | null
+  department: AssetOperationNamedOption | null
+  location: AssetOperationNamedOption | null
 }
 export type CheckoutSummaryWords = {
   holder: string
@@ -61,27 +63,51 @@ export function checkoutReceiverLabel(choice: CheckoutChoice): string | null {
   return choice.location?.label ?? null
 }
 
-/** สรุปก่อนบันทึก (spec §7.3): ตอนนี้ and หลังบันทึก per field the save writes; none without the asset's detail. */
+/** The chosen destination's plain name (an employee's fullNameTh, a department's or room's name) for the phone's read-back (look L1). */
+export function checkoutReceiverName(choice: CheckoutChoice): string | null {
+  if (choice.checkoutType === "user") return choice.employee?.name ?? null
+  if (choice.checkoutType === "department") return choice.department?.name ?? null
+  return choice.location?.name ?? null
+}
+
+/**
+ * What a submit does (final review I1, M3). The desktop's ตรวจสอบและบันทึก and the phone's step 1 read the chosen asset
+ * again (detail=1) first, and go on only once that read is ready: the review, or step 2. Step 3 saves on what step 2
+ * showed. Step 2 has no submit button and never saves or moves by a submit: should one arrive, it only reads again and
+ * stays. Without an asset (the field checks stop that first) there is nothing to read.
+ */
+export function checkoutSubmitAction(input: { isDesktop: boolean; step: CheckoutPhoneStep; detail: CheckoutDetailState; hasAsset: boolean }): "review" | "nextStep" | "save" | "readDetail" {
+  if (!input.isDesktop && input.step === 3) return "save"
+  if (!input.isDesktop && input.step === 2) return "readDetail"
+  if (input.hasAsset && input.detail !== "ready") return "readDetail"
+  return input.isDesktop ? "review" : "nextStep"
+}
+
+/**
+ * สรุปก่อนบันทึก (spec §7.3): ตอนนี้ and หลังบันทึก per field the save writes; none without the asset's detail. People and
+ * departments read by name, not "code - name", so the narrow card does not wrap (look L1).
+ */
 export function buildCheckoutSummaryRows(choice: CheckoutChoice, words: CheckoutSummaryWords): CheckoutSummaryRow[] {
   const asset = choice.asset
   const detail = asset?.detail
   if (!asset || !detail) return []
   const rows: CheckoutSummaryRow[] = []
 
-  const holderNow = detail.holderLabel ?? words.none
+  const holderNow = detail.holderName ?? words.none
   if (choice.checkoutType === "user") {
     rows.push({
       key: "holder",
       label: words.holder,
       now: holderNow,
-      next: choice.employee?.label ?? words.notChosen,
+      next: choice.employee?.name ?? words.notChosen,
+      // Compared by "code - name", which tells two people of one name apart.
       changed: choice.employee !== null && choice.employee.label !== detail.holderLabel,
     })
   } else {
-    rows.push({ key: "holder", label: words.holder, now: holderNow, next: detail.holderLabel ? words.kept(detail.holderLabel) : words.none, changed: false })
+    rows.push({ key: "holder", label: words.holder, now: holderNow, next: detail.holderName ? words.kept(detail.holderName) : words.none, changed: false })
   }
 
-  const departmentNow = detail.departmentLabel ?? words.none
+  const departmentNow = detail.departmentName ?? words.none
   const waitingOnReceiver =
     !FIXED_DEPARTMENT_OWNERSHIPS.has(detail.ownership) &&
     ((choice.checkoutType === "user" && !choice.employee) || (choice.checkoutType === "department" && !choice.department))
@@ -97,9 +123,9 @@ export function buildCheckoutSummaryRows(choice: CheckoutChoice, words: Checkout
     : nextDepartmentId === detail.departmentId
       ? departmentNow
       : choice.employee && nextDepartmentId === choice.employee.departmentId
-        ? choice.employee.departmentLabel
+        ? choice.employee.departmentName
         : choice.department && nextDepartmentId === choice.department.id
-          ? choice.department.label
+          ? choice.department.name
           : departmentNow
   rows.push({ key: "department", label: words.department, now: departmentNow, next: departmentNext, changed: !waitingOnReceiver && nextDepartmentId !== detail.departmentId })
 

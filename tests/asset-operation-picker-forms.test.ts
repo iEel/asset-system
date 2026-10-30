@@ -31,7 +31,9 @@ test("the four pages load the master lists; ส่งมอบ and โอนย�
     const source = read(`${P}${page}/page.tsx`)
     const permission = source.indexOf('await requirePagePermission(locale, "asset", "edit")')
     assert.ok(permission >= 0 && permission < source.indexOf(call), page)
-    assert.ok(source.includes("getAssetOperationMasterOptions()") && source.includes("initialAsset={initialAsset}"), page)
+    // Only ส่งมอบ asks for the employees' detail (final review M4).
+    const masters = page === "checkout" ? "getAssetOperationMasterOptions({ employeeDetail: true })" : "getAssetOperationMasterOptions()"
+    assert.ok(source.includes(masters) && source.includes("initialAsset={initialAsset}"), page)
     assert.doesNotMatch(source, /getAssetOperationAssetLists|initialAssetId|assets=/, page)
   }
   for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.doesNotMatch(read(`${P}${page}/page.tsx`), /getAssetOperationOptions\(/, page)

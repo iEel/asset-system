@@ -4,9 +4,11 @@ import { cn } from "@/lib/utils"
 
 export type SegmentedOption<T extends string> = { value: T; label: React.ReactNode }
 
-type SegmentedProps<T extends string> = {
-  // Required: the name of the group, read before the options.
-  "aria-label": string
+// Required: the name of the group, read before the options. Either its own aria-label, or labelledBy: the id of a label
+// already on the page (a FieldGroup's legend), so the group is not named twice (group 3 final review M6).
+type SegmentedName = { "aria-label": string; labelledBy?: never } | { labelledBy: string; "aria-label"?: never }
+
+type SegmentedProps<T extends string> = SegmentedName & {
   value: T
   options: readonly SegmentedOption<T>[]
   onValueChange: (value: T) => void
@@ -37,6 +39,7 @@ const segmentedDisabledClasses = "disabled:cursor-not-allowed disabled:bg-backgr
 // components can render it with a handler.
 function Segmented<T extends string>({
   "aria-label": ariaLabel,
+  labelledBy,
   value,
   options,
   onValueChange,
@@ -47,7 +50,7 @@ function Segmented<T extends string>({
   className,
 }: SegmentedProps<T>) {
   return (
-    <div role="group" aria-label={ariaLabel} data-slot="segmented" className={cn(fill ? "flex" : "inline-flex", segmentedFrameClasses, className)}>
+    <div role="group" aria-label={labelledBy ? undefined : ariaLabel} aria-labelledby={labelledBy} data-slot="segmented" className={cn(fill ? "flex" : "inline-flex", segmentedFrameClasses, className)}>
       {options.map((option) => {
         const pressed = option.value === value
         return (

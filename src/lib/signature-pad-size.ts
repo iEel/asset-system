@@ -3,3 +3,10 @@
 export function signaturePadHeight(tall: boolean, viewportWidth: number, viewportHeight: number): number {
   return tall && viewportWidth < 1024 ? Math.max(180, Math.min(280, Math.round(viewportHeight / 2))) : 180
 }
+
+// A resize drops the drawing only when the pad becomes hidden (width 0, as on leaving the phone's step 3): a hidden
+// pad's drawing is gone. Any other width change (a scrollbar, a window resize, zoom) keeps it, redrawn to the new size
+// (final review M1).
+export function shouldDropSignature(previousWidth: number, nextWidth: number): boolean {
+  return nextWidth === 0 && previousWidth > 0
+}

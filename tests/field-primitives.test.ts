@@ -140,7 +140,10 @@ test("Segmented works in server components, names its group and keeps 44px optio
   assert.doesNotMatch(source, /"use client"|\buse(?:State|Effect|LayoutEffect|Context)\b|\bcreateContext\b/)
   assert.doesNotMatch(source, /shadow-|opacity-|leading-tight|rounded-\[/)
   assert.match(source, /export type SegmentedOption<T extends string> = \{ value: T; label: React\.ReactNode \}/)
-  assert.match(source, /"aria-label": string/)
+  // Named by its own aria-label, or by labelledBy (a FieldGroup legend's id), never both (group 3 final review M6).
+  assert.match(source, /type SegmentedName = \{ "aria-label": string; labelledBy\?: never \} \| \{ labelledBy: string; "aria-label"\?: never \}/)
+  assert.match(source, /aria-label=\{labelledBy \? undefined : ariaLabel\} aria-labelledby=\{labelledBy\}/)
+  assert.match(read("src/components/ui/field-group.tsx"), /<legend id=\{`\$\{groupId\}-legend`\}/)
   assert.match(source, /options: readonly SegmentedOption<T>\[\]/)
   assert.match(source, /<button\s+key=\{option\.value\}\s+type="button"\s+aria-pressed=\{pressed\}/)
   assert.match(source, /const segmentedSizeClasses = \{ sm: "md:min-h-8", md: "md:min-h-9" \} as const/)

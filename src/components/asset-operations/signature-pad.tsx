@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { signaturePadHeight } from "@/lib/signature-pad-size"
+import { shouldDropSignature, signaturePadHeight } from "@/lib/signature-pad-size"
 
 export function SignaturePad({
   label,
@@ -26,6 +26,9 @@ export function SignaturePad({
   // The latest onChange, for the resize below; and whether the canvas holds a stroke.
   const onChangeRef = useRef(onChange)
   const drawnRef = useRef(false)
+  // The drawing last reported, redrawn after a visible resize; and the canvas's last CSS width.
+  const dataUrlRef = useRef<string | null>(null)
+  const widthRef = useRef(0)
   const [hasSignature, setHasSignature] = useState(false)
   const labelId = useId()
   const helperId = useId()
@@ -56,13 +59,27 @@ export function SignaturePad({
       context.strokeStyle = "#0f172a"
       context.fillStyle = "#ffffff"
       context.fillRect(0, 0, width, height)
-      // A resize repaints the canvas white, so a drawn signature goes with it: what is saved is what the pad shows
-      // (a pad hidden on going back from the phone's step 3 is a resize too).
-      if (drawnRef.current) {
+      const previousWidth = widthRef.current
+      widthRef.current = width
+      if (!drawnRef.current) return
+      // A pad that becomes hidden (going back from the phone's step 3) drops its drawing: what is saved is what the pad
+      // shows. Any other width change (a scrollbar, zoom, a window resize) redraws the drawing scaled to the new size
+      // and keeps the value it reported (final review M1).
+      if (shouldDropSignature(previousWidth, width)) {
         drawnRef.current = false
+        dataUrlRef.current = null
         setHasSignature(false)
         onChangeRef.current(null)
+        return
       }
+      const dataUrl = dataUrlRef.current
+      if (!dataUrl || width === 0) return
+      const image = new Image()
+      image.onload = () => {
+        // A later resize or a clear since: only the drawing still reported is painted.
+        if (dataUrlRef.current === dataUrl) context.drawImage(image, 0, 0, width, height)
+      }
+      image.src = dataUrl
     }
 
     resizeCanvas()
@@ -112,7 +129,9 @@ export function SignaturePad({
     const canvas = canvasRef.current
     if (!canvas) return
     canvas.releasePointerCapture(event.pointerId)
-    onChange(canvas.toDataURL("image/png"))
+    const dataUrl = canvas.toDataURL("image/png")
+    dataUrlRef.current = dataUrl
+    onChange(dataUrl)
   }
 
   function clearSignature() {
@@ -124,6 +143,7 @@ export function SignaturePad({
     context.fillStyle = "#ffffff"
     context.fillRect(0, 0, rect.width, rect.height)
     drawnRef.current = false
+    dataUrlRef.current = null
     setHasSignature(false)
     onChange(null)
   }

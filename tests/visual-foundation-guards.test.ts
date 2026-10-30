@@ -276,7 +276,7 @@ test("the shared segmented control marks the chosen option with primary-soft and
   assert.match(globals(), /--radius-control: 6px;/, "rounded-control needs its token, or Tailwind drops the class without an error")
 
   const segmented = read("src/components/ui/segmented.tsx")
-  assert.match(segmented, /<div role="group" aria-label=\{ariaLabel\} data-slot="segmented" className=\{cn\(fill \? "flex" : "inline-flex", segmentedFrameClasses, className\)\}>/)
+  assert.match(segmented, /<div role="group" aria-label=\{labelledBy \? undefined : ariaLabel\} aria-labelledby=\{labelledBy\} data-slot="segmented" className=\{cn\(fill \? "flex" : "inline-flex", segmentedFrameClasses, className\)\}>/)
   assert.match(segmented, /const segmentedFrameClasses = "gap-0\.5 rounded-md border border-border bg-surface p-0\.5"/)
   // No weight in the shared part (font-medium and font-semibold never sit in one class list) and no ring offset (2px gap).
   assert.equal(segmented.match(/const segmentedOptionClasses = "([^"]+)"/)?.[1], "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-control text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")

@@ -241,7 +241,7 @@ test("a group of choices shows its error under the group, tied to the group, and
   // The group is the fieldset the old markup used (legend with the shared label class and star), with an id for
   // focusFirst and data-slot="field-group" for the focus helper, which measures it and focuses its first control.
   assert.match(group, /<fieldset id=\{groupId\} data-slot="field-group" aria-describedby=\{describedBy\} className=\{cn\("min-w-0", className\)\}>/)
-  assert.match(group, /<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\s*\{legend\}\s*\{required \? <FieldRequiredMark \/> : null\}\s*<\/legend>/)
+  assert.match(group, /<legend id=\{`\$\{groupId\}-legend`\} className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\s*\{legend\}\s*\{required \? <FieldRequiredMark \/> : null\}\s*<\/legend>/)
   // Error before hint, as Field reads them; the error id is <group id>-error.
   assert.match(group, /const describedBy = \[errorId, hintId\]\.filter\(Boolean\)\.join\(" "\) \|\| undefined/)
   assert.match(group, /const errorId = error \? `\$\{groupId\}-error` : undefined/)

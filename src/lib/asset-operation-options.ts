@@ -6,26 +6,46 @@ import { searchAssetOperationOptions, type AssetOperationSearchDb } from "@/lib/
 import type { AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
 
 export type AssetOperationOption = { id: string; label: string }
+type EmployeeRow = { id: string; code: string; fullNameTh: string; departmentId: string; department?: { code: string; name: string }; branch?: { name: string } }
 export type AssetOperationNamedOption = AssetOperationOption & { name: string }
-/** ส่งมอบ's hint line (group 3 spec §7.2): "<แผนก> · <สาขา> · ตอนนี้ถือครองทรัพย์สินอยู่ N รายการ". */
-export type AssetOperationEmployeeOption = AssetOperationOption & { departmentId: string; departmentLabel: string; branchLabel: string; heldCount: number }
-export type AssetOperationMasterOptions = {
-  employees: AssetOperationEmployeeOption[]
-  departments: AssetOperationOption[]
-  locations: AssetOperationOption[]
+/** An employee on รับคืน, โอนย้าย and ย้ายหลายรายการ: the department id comes free with the row. */
+export type AssetOperationEmployeePlainOption = AssetOperationOption & { departmentId: string }
+/**
+ * ส่งมอบ's employee (group 3 spec §7.2, final review M4): the hint line "<แผนก> · <สาขา> · ตอนนี้ถือครองทรัพย์สินอยู่ N
+ * รายการ", and the plain names the summary card and the read-back show (look L1).
+ */
+export type AssetOperationEmployeeOption = AssetOperationEmployeePlainOption & {
+  /** fullNameTh */
+  name: string
+  departmentLabel: string
+  departmentName: string
+  branchLabel: string
+  heldCount: number
+}
+export type AssetOperationMasterOptions<Employee extends AssetOperationEmployeePlainOption = AssetOperationEmployeePlainOption> = {
+  employees: Employee[]
+  departments: AssetOperationNamedOption[]
+  locations: AssetOperationNamedOption[]
   statuses: AssetOperationNamedOption[]
   conditions: AssetOperationNamedOption[]
 }
 
 // The master lists the four transaction pages read (server search spec §3 goal 1): no asset, handover or repair. The
-// asset of ส่งมอบ and โอนย้าย comes from the server search, one row at most here (getAssetOperationPreselect).
-export async function getAssetOperationMasterOptions(): Promise<AssetOperationMasterOptions> {
+// asset of ส่งมอบ and โอนย้าย comes from the server search, one row at most here (getAssetOperationPreselect). Only
+// { employeeDetail: true } (ส่งมอบ) reads the employee's department and branch and runs the held-count groupBy over
+// the register (final review M4).
+export async function getAssetOperationMasterOptions(options: { employeeDetail: true }): Promise<AssetOperationMasterOptions<AssetOperationEmployeeOption>>
+export async function getAssetOperationMasterOptions(options?: { employeeDetail?: false }): Promise<AssetOperationMasterOptions>
+export async function getAssetOperationMasterOptions(options?: { employeeDetail?: boolean }): Promise<AssetOperationMasterOptions<AssetOperationEmployeePlainOption | AssetOperationEmployeeOption>> {
+  const employeeDetail = options?.employeeDetail === true
   const [employees, departments, locations, statuses, conditions, held] = await Promise.all([
     prisma.employee.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, fullNameTh: true, departmentId: true, department: { select: { code: true, name: true } }, branch: { select: { name: true } } },
+      select: employeeDetail
+        ? { id: true, code: true, fullNameTh: true, departmentId: true, department: { select: { code: true, name: true } }, branch: { select: { name: true } } }
+        : { id: true, code: true, fullNameTh: true, departmentId: true },
       orderBy: { code: "asc" },
-    }),
+    }) as Promise<EmployeeRow[]>,
     prisma.department.findMany({
       where: { isActive: true },
       select: { id: true, code: true, name: true },
@@ -42,26 +62,32 @@ export async function getAssetOperationMasterOptions(): Promise<AssetOperationMa
       select: { id: true, name: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
     }),
-    prisma.asset.groupBy({
-      by: ["custodianId"],
-      // Leaves out ส่วนควบ (spec §7.2): an asset owned as ส่วนควบ, and one installed in another whatever its ownership (it carries its parent's holder).
-      where: { isActive: true, custodianId: { not: null }, ownershipType: { not: "component" }, installedInLinks: { none: { status: "installed", removedAt: null } } },
-      _count: { _all: true },
-    }),
+    employeeDetail
+      ? prisma.asset.groupBy({
+        by: ["custodianId"],
+        // Leaves out ส่วนควบ (spec §7.2): an asset owned as ส่วนควบ, and one installed in another whatever its ownership (it carries its parent's holder).
+        where: { isActive: true, custodianId: { not: null }, ownershipType: { not: "component" }, installedInLinks: { none: { status: "installed", removedAt: null } } },
+        _count: { _all: true },
+      })
+      : Promise.resolve([] as Array<{ custodianId: string | null; _count: { _all: number } }>),
   ])
   const heldCounts = new Map(held.map((group) => [group.custodianId, group._count._all]))
 
   return {
-    employees: employees.map((employee) => ({
-      id: employee.id,
-      label: `${employee.code} - ${employee.fullNameTh}`,
-      departmentId: employee.departmentId,
-      departmentLabel: `${employee.department.code} - ${employee.department.name}`,
-      branchLabel: employee.branch.name,
-      heldCount: heldCounts.get(employee.id) ?? 0,
-    })),
-    departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}` })),
-    locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
+    employees: employees.map((employee) => {
+      const plain = { id: employee.id, label: `${employee.code} - ${employee.fullNameTh}`, departmentId: employee.departmentId }
+      if (!employeeDetail || !employee.department || !employee.branch) return plain
+      return {
+        ...plain,
+        name: employee.fullNameTh,
+        departmentLabel: `${employee.department.code} - ${employee.department.name}`,
+        departmentName: employee.department.name,
+        branchLabel: employee.branch.name,
+        heldCount: heldCounts.get(employee.id) ?? 0,
+      }
+    }),
+    departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}`, name: department.name })),
+    locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}`, name: location.name })),
     statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name })),
     conditions: getAssetOperationConditionOptions(conditions)
       .map((condition) => ({ id: condition.id, label: condition.nameTh, name: condition.name })),

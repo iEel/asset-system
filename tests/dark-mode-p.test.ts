@@ -112,7 +112,8 @@ test("the signature canvas is a forced-light scope, and the scope sits on paper 
   // The PNG it exports does not change: a white fill, the same stroke, cleared to white.
   assert.match(source, /context\.strokeStyle = "#0f172a"/)
   assert.equal(source.match(/context\.fillStyle = "#ffffff"/g)?.length, 2)
-  assert.match(source, /onChange\(canvas\.toDataURL\("image\/png"\)\)/)
+  // The PNG is kept to redraw after a visible resize, then reported (group 3 final review M1).
+  assert.match(source, /const dataUrl = canvas\.toDataURL\("image\/png"\)\n\s+dataUrlRef\.current = dataUrl\n\s+onChange\(dataUrl\)/)
   // The group around it (its label, helper line and clear button) follows the theme.
   assert.match(source, /<div role="group" aria-labelledby=\{labelId\} aria-describedby=\{helperId\} className="rounded-md border border-border bg-background p-3">/)
   const counts = Object.fromEntries(

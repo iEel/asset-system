@@ -1850,8 +1850,6 @@
     "reviewTitle": "ตรวจสอบก่อนส่งมอบ",
     "reviewDescription": "ยืนยันทรัพย์สิน ปลายทาง สภาพ และหลักฐานก่อนบันทึกรายการ",
     "reviewEvidence": "หลักฐาน",
-    "reviewEvidenceAttached": "มีรูปหรือ ลายเซ็นแนบแล้ว",
-    "reviewNoEvidence": "ยังไม่ได้แนบรูปหรือ ลายเซ็น",
     "reviewConfirm": "ยืนยันส่งมอบ",
     "description": "บันทึกการส่งมอบให้พนักงาน แผนก หรือที่ตั้ง เมื่อบันทึกแล้วระบบจะออกเลขใบส่งมอบให้",
     "sectionAsset": "ทรัพย์สินที่จะส่งมอบ",
@@ -1899,7 +1897,10 @@
     "signStatement": "ข้าพเจ้าได้รับ {tag} พร้อมส่วนควบ {count} รายการ ในสภาพ{condition}",
     "signStatementNoComponents": "ข้าพเจ้าได้รับ {tag} ในสภาพ{condition}",
     "signOnBehalf": "รับในนามของ {destination}",
-    "signLandscapeHint": "หมุนมือถือเป็นแนวนอน เพื่อเซ็นได้กว้างขึ้น"
+    "signLandscapeHint": "หมุนมือถือเป็นแนวนอน เพื่อเซ็นได้กว้างขึ้น",
+    "detailReadFailed": "อ่านข้อมูลสรุปไม่สำเร็จ",
+    "reviewAttached": "แนบแล้ว",
+    "reviewNotAttached": "ยังไม่ได้แนบ"
   },
   "checkin": {
     "title": "รับคืนทรัพย์สิน",
@@ -4755,7 +4756,10 @@
     "licenseCheckinNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
     "licenseMoveNotAllowed": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
     "checkinRepairStatusRequired": "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม",
-    "checkoutDestinationInactive": "ปลายทางนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกใหม่"
+    "checkoutDestinationInactive": "ปลายทางนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกใหม่",
+    "checkoutReceiverInactive": "พนักงานคนนี้พ้นสภาพหรือถูกปิดใช้งานแล้ว เลือกคนอื่น",
+    "checkoutDepartmentInactive": "แผนกนี้ถูกปิดใช้งานแล้ว เลือกแผนกอื่น",
+    "checkoutLocationInactive": "ที่ตั้งนี้ถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

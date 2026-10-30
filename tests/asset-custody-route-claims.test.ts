@@ -16,6 +16,7 @@ type CustodyRouteState = {
   activeLocationIds: string[]
   writes: Array<{ call: string; data: Record<string, unknown> }>
   syncChanges: Array<Record<string, unknown>>
+  audits: Array<{ action: string; newValue: Record<string, unknown> }>
 }
 
 const state: CustodyRouteState = {
@@ -30,6 +31,7 @@ const state: CustodyRouteState = {
   activeLocationIds: ["location-2"],
   writes: [],
   syncChanges: [],
+  audits: [],
 }
 Object.assign(globalThis, { __custodyRouteState: state })
 
@@ -46,7 +48,7 @@ const mockedModuleSources = new Map<string, string>([
     export function hasPermission() { return true }
     export function requirePermission() {}
   `],
-  ["@/lib/audit-log", `export async function logAudit() {}`],
+  ["@/lib/audit-log", `export async function logAudit(entry) { globalThis.__custodyRouteState.audits.push(entry) }`],
   ["@/lib/asset-status-flow", `export async function getRequiredAssetStatusId(name) { return "status:" + name }`],
   ["@/lib/operation-document-number", `
     export async function generateCheckoutDocumentNo() { return "HO-202610-0001" }
@@ -173,6 +175,7 @@ beforeEach(() => {
   state.activeLocationIds = ["location-2"]
   state.writes = []
   state.syncChanges = []
+  state.audits = []
 })
 
 test("a handover that loses the race for the asset returns 409 and records nothing", async () => {
@@ -271,7 +274,19 @@ const written = (call: string) => state.writes.filter((write) => write.call === 
 const toDepartment = (departmentId: string) => ({ ...checkoutBody, checkoutType: "department", custodianId: undefined, departmentId })
 const toRoom = (locationId: string) => ({ ...checkoutBody, checkoutType: "location", custodianId: undefined, locationId })
 const departmentLine = (toValue: string) => ({ assetId: "asset-1", movementType: "department_change", fromValue: "dept-1", toValue, reason: "Asset checkout", referenceType: "checkout", referenceId: "assetCheckout-new", performedBy: "user-1" })
-const inactive = (field: string) => [409, { code: "ASSET_CHECKOUT_DESTINATION_INACTIVE", error: "ASSET_CHECKOUT_DESTINATION_INACTIVE", fieldErrors: { [field]: "checkoutDestinationInactive" } }]
+// Each field reads its own refusal (final review M10); the code stays one.
+const inactiveKeys: Record<string, string> = { custodianId: "checkoutReceiverInactive", departmentId: "checkoutDepartmentInactive", locationId: "checkoutLocationInactive" }
+const inactive = (field: string) => [409, { code: "ASSET_CHECKOUT_DESTINATION_INACTIVE", error: "ASSET_CHECKOUT_DESTINATION_INACTIVE", fieldErrors: { [field]: inactiveKeys[field] } }]
+
+test("the system log records the department the handover wrote and the one it replaced (final review M9)", async () => {
+  assert.equal((await post(checkoutRoute, checkoutBody)).status, 201)
+  const checkout = state.audits.filter((entry) => entry.action === "checkout")
+  assert.equal(checkout.length, 1)
+  assert.deepEqual([checkout[0].newValue.departmentId, checkout[0].newValue.previousDepartmentId], ["dept-2", "dept-1"])
+  state.assetOwnershipType = "shared"; state.audits = []
+  await post(checkoutRoute, checkoutBody)
+  assert.deepEqual([state.audits[0].newValue.departmentId, state.audits[0].newValue.previousDepartmentId], ["dept-1", "dept-1"], "a ส่วนกลาง asset keeps its own")
+})
 
 test("a handover gives a บุคคล or Stock asset and its components the employee's or the chosen department, with a department_change line (group 3 spec §6)", async () => {
   for (const [ownership, body, departmentId] of [["personal", checkoutBody, "dept-2"], ["stock", checkoutBody, "dept-2"], ["personal", toDepartment("dept-3"), "dept-3"], ["stock", toDepartment("dept-3"), "dept-3"]] as const) {

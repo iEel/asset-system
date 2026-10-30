@@ -85,13 +85,13 @@ test("the chosen asset's detail: ownership, the status's English name, departmen
   const link = (id: string, assetTag: string, name: string) => ({ componentAssetId: id, componentAsset: { assetTag, name } })
   const links = [link("c-2", "NB-0017-02", "Mouse ไร้สาย"), link("c-1", "NB-0017-01", "Adapter 65W"), link("c-2", "NB-0017-02", "Mouse ไร้สาย")]
   const expected: AssetOperationChosenDetail = {
-    ownership: "stock", statusName: "In Use", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี",
+    ownership: "stock", statusName: "In Use", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี",
     ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
     components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }],
   }
   assert.deepEqual(buildAssetOperationRowDetail(chosen, links, new Set(["c-2"])), expected)
   const bare = buildAssetOperationRowDetail({ ...chosen, ownershipType: "bogus", departmentId: null, department: null, custodianId: null, custodian: null }, [], new Set())
-  assert.deepEqual([bare.ownership, bare.departmentId, bare.departmentLabel, bare.holderLabel, bare.components], ["personal", null, null, null, []])
+  assert.deepEqual([bare.ownership, bare.departmentId, bare.departmentLabel, bare.departmentName, bare.holderLabel, bare.holderName, bare.components], ["personal", null, null, null, null, null, []])
   // The same links the sync moves with the parent (asset-component-sync.ts:115-122).
   assert.deepEqual(buildAssetOperationComponentLinkWhere("asset-1"), { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } })
   const sync = readFileSync("src/lib/asset-component-sync.ts", "utf8")

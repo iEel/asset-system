@@ -68,16 +68,29 @@ registerHooks({
 
 const options = await import(pathToFileURL("src/lib/asset-operation-options.ts").href)
 
-test("the master lists read no asset row, handover or repair: each employee carries its department, branch and held count from one groupBy that leaves out ส่วนควบ, both an asset owned as ส่วนควบ and any asset installed in another (group 3 plan 1 Task 4, spec §7.2)", async () => {
+test("without employeeDetail (รับคืน, โอนย้าย, ย้ายหลายรายการ) the employees carry their department id only: no department or branch read, no held-count groupBy (final review M4)", async () => {
   state.calls = []
   state.args = {}
-  assert.deepEqual(await options.getAssetOperationMasterOptions(), {
+  const plain = await options.getAssetOperationMasterOptions()
+  assert.deepEqual(plain.employees, [
+    { id: "e1", label: "E001 - สมชาย ใจดี", departmentId: "d2" },
+    { id: "e2", label: "E002 - สมหญิง รักงาน", departmentId: "d1" },
+  ])
+  assert.deepEqual(plain.departments, [{ id: "d1", label: "IT - ไอที", name: "ไอที" }])
+  assert.equal(state.calls.includes("asset.groupBy"), false)
+  assert.deepEqual((state.args["employee.findMany"] as { select: unknown }).select, { id: true, code: true, fullNameTh: true, departmentId: true })
+})
+
+test("with employeeDetail (ส่งมอบ) the master lists read no asset row, handover or repair: each employee carries its name, department, branch and held count from one groupBy that leaves out ส่วนควบ, both an asset owned as ส่วนควบ and any asset installed in another (group 3 plan 1 Task 4, spec §7.2, final review M4, look L1)", async () => {
+  state.calls = []
+  state.args = {}
+  assert.deepEqual(await options.getAssetOperationMasterOptions({ employeeDetail: true }), {
     employees: [
-      { id: "e1", label: "E001 - สมชาย ใจดี", departmentId: "d2", departmentLabel: "ACC - บัญชี", branchLabel: "สำนักงานใหญ่", heldCount: 2 },
-      { id: "e2", label: "E002 - สมหญิง รักงาน", departmentId: "d1", departmentLabel: "IT - ไอที", branchLabel: "สาขาระยอง", heldCount: 0 },
+      { id: "e1", label: "E001 - สมชาย ใจดี", name: "สมชาย ใจดี", departmentId: "d2", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", branchLabel: "สำนักงานใหญ่", heldCount: 2 },
+      { id: "e2", label: "E002 - สมหญิง รักงาน", name: "สมหญิง รักงาน", departmentId: "d1", departmentLabel: "IT - ไอที", departmentName: "ไอที", branchLabel: "สาขาระยอง", heldCount: 0 },
     ],
-    departments: [{ id: "d1", label: "IT - ไอที" }],
-    locations: [{ id: "l1", label: "HQ-01 - ห้อง 101" }],
+    departments: [{ id: "d1", label: "IT - ไอที", name: "ไอที" }],
+    locations: [{ id: "l1", label: "HQ-01 - ห้อง 101", name: "ห้อง 101" }],
     statuses: [{ id: "s1", label: "พร้อมใช้งาน", name: "Ready" }],
     conditions: [{ id: "c1", label: "ดี", name: "Good" }],
   })

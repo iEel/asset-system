@@ -69,7 +69,9 @@ test("a permanent handover: the receiver signs, a photo is attached, the review 
   await expect(review).toContainText(receiver.fullNameTh)
   await expect(review).toContainText("มอบหมายใช้งานประจำ")
   await expect(review).toContainText("ใช้งานอยู่")
-  await expect(review).toContainText("มีรูปหรือ ลายเซ็นแนบแล้ว")
+  // The photo and the signature each on its own line (group 3 final review M1).
+  await expect(review).toContainText("รูปก่อนส่งมอบแนบแล้ว")
+  await expect(review).toContainText("ลายเซ็นผู้รับแนบแล้ว")
   await record(measure, "handover review", testInfo)
   const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${asset.id}/checkout`) && response.request().method() === "POST")
   await measure.timed("handover save", async () => {

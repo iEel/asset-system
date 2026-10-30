@@ -3,7 +3,7 @@
 // client-safe; the step type is checkout-form-rules.ts's alone.
 import type { CheckoutPhoneStep } from "./checkout-form-rules.ts"
 
-export const checkoutPhoneParts = ["asset", "receiver", "evidence", "photo", "dateField", "signature", "stepsBar", "stepsFooter", "dateLine", "readBack", "statement"] as const
+export const checkoutPhoneParts = ["asset", "receiver", "evidence", "evidenceHeading", "photo", "dateField", "signature", "stepsBar", "stepsFooter", "dateLine", "readBack", "statement"] as const
 export type CheckoutPhonePart = (typeof checkoutPhoneParts)[number]
 
 // The steps each part shows on. The form's own parts show at every width from lg; the phone-only parts never do.
@@ -15,6 +15,8 @@ const FORM_PART_STEPS: Partial<Record<CheckoutPhonePart, readonly CheckoutPhoneS
   signature: [3],
   // Section 3 holds the photo (step 1) and the pad (step 3).
   evidence: [1, 3],
+  // Section 3's numbered heading introduces the photo; on step 3 the statement is the step's heading (look L2).
+  evidenceHeading: [1],
 }
 const PHONE_PART_STEPS: Partial<Record<CheckoutPhonePart, readonly CheckoutPhoneStep[]>> = {
   stepsBar: [1, 2, 3],

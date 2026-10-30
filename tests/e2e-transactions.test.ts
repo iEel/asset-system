@@ -133,8 +133,9 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   // The four transaction pages load no asset register (server asset search): the first arrival check after a
   // navigation into one waits TRANSACTION_PAGE_ARRIVAL_MS, 15 s (30 s while they loaded every asset, 13B loop 7);
   // nothing else waits longer.
-  assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(\): Promise<AssetOperationMasterOptions>/)
-  for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.match(read(`src/app/[locale]/(dashboard)/asset-management/${page}/page.tsx`), /getAssetOperationMasterOptions\(\)/, page)
+  assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(options\?: \{ employeeDetail\?: false \}\): Promise<AssetOperationMasterOptions>/)
+  for (const page of ["checkin", "transfer", "bulk-move"]) assert.match(read(`src/app/[locale]/(dashboard)/asset-management/${page}/page.tsx`), /getAssetOperationMasterOptions\(\)/, page)
+  assert.match(read("src/app/[locale]/(dashboard)/asset-management/checkout/page.tsx"), /getAssetOperationMasterOptions\(\{ employeeDetail: true \}\)/, "ส่งมอบ alone reads the employees' detail (final review M4)")
   assert.doesNotMatch(read("src/lib/asset-operation-options.ts"), /getAssetOperationAssetLists\b/)
   assert.match(support, /export const TRANSACTION_PAGE_ARRIVAL_MS = 15_000\n/)
   assert.match(support, /const TRANSACTION_PAGE_PATH = \/\^\\\/th\\\/asset-management\\\/\(\?:checkout\|checkin\|transfer\|bulk-move\)\(\?:\[\?#\]\|\$\)\//)

@@ -8,7 +8,8 @@ type FieldGroupProps = {
   required?: boolean
   hint?: React.ReactNode
   error?: React.ReactNode
-  // The fieldset's id: focusFirst focuses the group's checked radio or first control, and the error is <id>-error.
+  // The fieldset's id: focusFirst focuses the group's checked radio or first control, the error is <id>-error, and the
+  // legend is <id>-legend (a control inside that names itself by the legend reads it, as Segmented's labelledBy).
   id?: string
   className?: string
   // The choices (checkboxes, radios, ChoiceCards). A checkbox may take aria-invalid from its caller; a radio may not.
@@ -27,7 +28,7 @@ function FieldGroup({ legend, required, hint, error, id, className, children }: 
 
   return (
     <fieldset id={groupId} data-slot="field-group" aria-describedby={describedBy} className={cn("min-w-0", className)}>
-      <legend className={cn(fieldLabelClasses, "mb-1.5")}>
+      <legend id={`${groupId}-legend`} className={cn(fieldLabelClasses, "mb-1.5")}>
         {legend}
         {required ? <FieldRequiredMark /> : null}
       </legend>
