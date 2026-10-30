@@ -141,7 +141,7 @@ test("the first wrong field is focused and scrolled clear of the top edge and th
   // The DOM half: the dashboard scroll area, the save bar, the label and the error line count; a closed <details> opens;
   // a group (fieldset) focuses its first control; a dialog or a sheet keeps the browser's own scroll.
   assert.match(focus, /closest<HTMLElement>\("\[data-dashboard-main\]"\)/)
-  assert.match(focus, /querySelector<HTMLElement>\('\[data-slot="sticky-form-footer"\]'\)/)
+  assert.match(focus, /\[\.\.\.main\.querySelectorAll<HTMLElement>\('\[data-slot="sticky-form-footer"\]'\)\]\.find\(\(bar\) => bar\.getClientRects\(\)\.length > 0\)/)
   assert.match(focus, /label\[for="\$\{CSS\.escape\(control\.id\)\}"\]/)
   assert.match(focus, /getElementById\(`\$\{control\.id\}-error`\)/)
   assert.match(focus, /node\.tagName === "DETAILS"/)

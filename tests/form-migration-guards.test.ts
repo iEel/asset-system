@@ -59,6 +59,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}audit/audit-round-form.tsx`]: ["/th/audit/rounds/new"],
   // Group 3 plan 1: the frame of ส่งมอบ, รับคืน and โอนย้าย; plans 2 and 3 add /th/asset-management/checkin and /transfer when their forms move onto it.
   [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout"],
+  // Group 3 plan 1 Task 7: the phone steps' own bar (P1-R4).
+  [`${C}asset-operations/checkout-form.tsx`]: ["/th/asset-management/checkout"],
 }
 
 // ---- EXEMPT lists (spec 2D §5.1) and OWNERS (§5.2), by rule, recounted over all of src at 388d4d5. A why or a ruling

@@ -9,4 +9,12 @@ export const TX_WORDS = {
   holderCount: "ถืออยู่ {count} ชิ้น",
   reviewAndSave: "ตรวจสอบและบันทึก",
   checkoutFooter: "ส่งมอบ {tag} ให้ {receiver}",
+  // ส่งมอบ on the phone, three steps (group 3 spec §7.4, checkout.phone*).
+  phoneNext: "ถัดไป: ให้ผู้รับตรวจ",
+  phoneAccept: "ถูกต้อง ลงชื่อรับ",
+  phoneFix: "มีบางอย่างไม่ถูกต้อง กลับไปแก้",
+  phoneSave: "บันทึกการส่งมอบ",
+  phoneCancelBack: "ยกเลิกและกลับ",
+  phoneBackToCheck: "ย้อนกลับไปขั้นตรวจ",
+  signOnBehalf: "รับในนามของ {destination}",
 } as const

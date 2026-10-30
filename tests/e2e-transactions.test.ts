@@ -257,16 +257,17 @@ test("the latest transaction cancelled: the state before it, the VOID document w
   assert.deepEqual(expectedFailures(spec), [], "TX-A5 (FX11) and TX-A7 (FX12) are fixed")
 })
 
-test("the desk delivery on the phone: taps, the keyboard over the form, a finger signature, the HO- document on the phone (e2e transactions task 7, TX7)", async () => {
+test("the desk delivery on the phone: three steps on one form, the read-back, a finger signature, a loan to a room, the HO- document on the phone (e2e transactions task 7, TX7; group 3 plan 1 task 7)", async () => {
   const spec = readTxSpec("e2e/transactions/desk-delivery.spec.ts")
-  assert.match(spec, /test\.skip\(e2eDevice !== "phone", "the desk delivery is done on the phone \(spec §6\.1\.8\)"\)/)
-  // Chromium on the phone (ruling TX-R3): Playwright draws a finger only through Chromium's touch input.
+  assert.equal(spec.split('test.skip(e2eDevice !== "phone", "the desk delivery is done on the phone (spec §6.1.8)")').length - 1, 2)
   assert.ok(!spec.split("\n").includes("runPhoneOnWebKit()"), "the desk delivery stays on Chromium")
-  assert.match(spec, /await openPhoneKeyboard\(page\)/)
-  assert.match(spec, /await expectReachable\(save\)/)
-  assert.match(spec, /await expectReachable\(confirm\)/)
-  assert.match(spec, /\.tap\(\)/)
-  assert.match(spec, /await signOnPad\(page, page\.getByRole\("group", \{ name: "ลายเซ็นผู้รับ" \}\), e2eDevice, browserName\)/)
+  for (const part of ["await openPhoneKeyboard(page)", "await expectReachable(next)", "await expectReachable(confirm)", "await expectReachable(save)",
+    'await expectFieldError(page, "checkout-handover-mode", "กรุณาเลือกลักษณะการส่งมอบก่อนดำเนินการต่อ")',
+    'await expectFieldError(page, "checkout-expected-return", "วันกำหนดคืนต้องเป็นวันเดียวกับหรือหลังวันที่ส่งมอบ")',
+    'await expectFieldError(page, "checkout-asset", TX_WORDS.reasonNotReady)',
+    'page.locator("[data-checkout-read-back]")', "TX_WORDS.phoneFix", "TX_WORDS.signOnBehalf", 'await expect(page.getByRole("dialog")).toHaveCount(0)',
+    'const pad = page.getByRole("group", { name: "ลายเซ็นผู้รับ" })', "await signOnPad(page, pad, e2eDevice, browserName)", ".tap()"]) assert.ok(spec.includes(part), part)
+  assert.equal(read("e2e/transactions/handover.spec.ts").split('test.skip(e2eDevice === "phone", PHONE_STEPS)').length - 1, 4, "the phone's handover is desk-delivery.spec.ts")
   // Every spec of the area is pinned by this file.
   const { readdirSync } = await import("node:fs")
   assert.deepEqual(readdirSync("e2e/transactions").filter((file) => file.endsWith(".spec.ts")).sort(), [

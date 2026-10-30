@@ -2,7 +2,9 @@
 // form filled correctly after a handover to the run's first receiver.
 import type { Page } from "@playwright/test"
 import { expect } from "../../support/fixtures.ts"
+import type { E2eDevice } from "../../support/matrix.ts"
 import { readRunData } from "../../support/state.ts"
+import { TX_WORDS } from "../../transactions/tx-words.ts"
 import type { AssetChoices } from "./records.ts"
 import { choose } from "./ui.ts"
 
@@ -15,6 +17,13 @@ export function save(page: Page) {
 // common.save.
 export function reviewAndSave(page: Page) {
   return page.getByRole("button", { name: "ตรวจสอบและบันทึก", exact: true }).click()
+}
+
+// ส่งมอบ's forward press: on the phone step 1's ถัดไป (the three steps, group 3 spec §7.4); on the desktop the footer's
+// ตรวจสอบและบันทึก.
+export function handoverForward(page: Page, device: E2eDevice): Promise<void> {
+  if (device === "phone") return page.getByRole("button", { name: TX_WORDS.phoneNext, exact: true }).click()
+  return reviewAndSave(page)
 }
 
 // A date input's value, days from today on this machine (Asia/Bangkok, like the browser's timezoneId).

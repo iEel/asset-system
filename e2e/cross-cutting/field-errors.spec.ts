@@ -4,11 +4,12 @@
 import { expect, test, asUser } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { runRecords } from "../support/run-plan.ts"
-import { fillReturn, isoDay, reviewAndSave, save } from "./support/forms.ts"
+import { fillReturn, handoverForward, isoDay, save } from "./support/forms.ts"
 import { createAsset, handOver, projectMarker, readAsset, readAssetChoices, returnAsset } from "./support/records.ts"
 // The transaction pages' first arrival, the shared picker's chosen asset and the condition chips (the transaction area's
 // helpers).
 import { conditionChip, pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
+import { TX_WORDS } from "../transactions/tx-words.ts"
 import { choose, expectFieldError, expectNoFieldError } from "./support/ui.ts"
 // The round form's steps (group 2 spec §7): its conditions as chips, its own submit, the live count and the sample.
 import { addCondition, cancelAsItHead, createButton, showSample, waitForFirstCount, willCreate } from "../audit/round-steps.ts"
@@ -99,8 +100,6 @@ test("a typed tag that already exists is refused with the tag's field error, not
 })
 
 test("handover: no handover mode shows its error, and the corrected handover saves", async ({ page, measure, e2eDevice }, testInfo) => {
-  // Below lg the checkout is the three phone steps (spec §7.4, P1-R4); group 3 plan 1 Task 7 writes the phone path.
-  test.skip(e2eDevice === "phone", "below lg the checkout is the three phone steps (spec §7.4, P1-R4): desk-delivery.spec.ts")
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-HO", name: "ฟอร์มส่งมอบ", ownershipType: "personal" })
@@ -108,17 +107,23 @@ test("handover: no handover mode shows its error, and the corrected handover sav
   await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await choose(page, "checkout-destination", run.employees.receiver2.code)
   await expect(conditionChip(page, "ดี")).toBeChecked()
-  await reviewAndSave(page)
+  await handoverForward(page, e2eDevice)
   await expectFieldError(page, "checkout-handover-mode", HANDOVER_MODE_REQUIRED, { group: true, focus: 'input[name="handoverModeChoice"][value="permanent_assignment"]' })
 
   await page.getByRole("radio", { name: /^มอบหมายใช้งานประจำ/ }).check()
   await expectNoFieldError(page, "checkout-handover-mode")
-  await reviewAndSave(page)
-  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })
+  await handoverForward(page, e2eDevice)
+  // The review: the dialog on the desktop, the read-back (step 2) on the phone (group 3 spec §7.4).
+  const review = e2eDevice === "phone" ? page.locator("[data-checkout-read-back]") : page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })
   await expect(review).toBeVisible()
   await measure.recordPage("handover review")
   await measure.timed("handover save", async () => {
-    await review.getByRole("button", { name: "ยืนยันส่งมอบ" }).click()
+    if (e2eDevice === "phone") {
+      await page.getByRole("button", { name: TX_WORDS.phoneAccept, exact: true }).click()
+      await page.getByRole("button", { name: TX_WORDS.phoneSave, exact: true }).click()
+    } else {
+      await review.getByRole("button", { name: "ยืนยันส่งมอบ" }).click()
+    }
     // The handover's document (HO-), src/components/asset-operations/checkout-form.tsx.
     await expect(page).toHaveURL(/\/th\/asset-management\/checkouts\/[0-9a-f-]{36}(?:[?#]|$)/)
   })

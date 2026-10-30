@@ -3,25 +3,36 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { signaturePadHeight } from "@/lib/signature-pad-size"
 
 export function SignaturePad({
   label,
   helper,
   clearLabel,
   disabled,
+  tall = false,
   onChange,
 }: {
   label: string
   helper: string
   clearLabel: string
   disabled?: boolean
+  /** The phone's sign step: a taller pad below lg (group 3 spec §7.4). */
+  tall?: boolean
   onChange: (dataUrl: string | null) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const drawingRef = useRef(false)
+  // The latest onChange, for the resize below; and whether the canvas holds a stroke.
+  const onChangeRef = useRef(onChange)
+  const drawnRef = useRef(false)
   const [hasSignature, setHasSignature] = useState(false)
   const labelId = useId()
   const helperId = useId()
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -34,7 +45,7 @@ export function SignaturePad({
 
       const ratio = window.devicePixelRatio || 1
       const { width } = canvas.getBoundingClientRect()
-      const height = 180
+      const height = signaturePadHeight(tall, window.innerWidth, window.innerHeight)
       canvas.width = Math.max(1, Math.floor(width * ratio))
       canvas.height = Math.floor(height * ratio)
       canvas.style.height = `${height}px`
@@ -45,13 +56,20 @@ export function SignaturePad({
       context.strokeStyle = "#0f172a"
       context.fillStyle = "#ffffff"
       context.fillRect(0, 0, width, height)
+      // A resize repaints the canvas white, so a drawn signature goes with it: what is saved is what the pad shows
+      // (a pad hidden on going back from the phone's step 3 is a resize too).
+      if (drawnRef.current) {
+        drawnRef.current = false
+        setHasSignature(false)
+        onChangeRef.current(null)
+      }
     }
 
     resizeCanvas()
     const observer = new ResizeObserver(resizeCanvas)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [])
+  }, [tall])
 
   function getPoint(event: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current
@@ -84,6 +102,7 @@ export function SignaturePad({
     const point = getPoint(event)
     context.lineTo(point.x, point.y)
     context.stroke()
+    drawnRef.current = true
     if (!hasSignature) setHasSignature(true)
   }
 
@@ -104,6 +123,7 @@ export function SignaturePad({
     const rect = canvas.getBoundingClientRect()
     context.fillStyle = "#ffffff"
     context.fillRect(0, 0, rect.width, rect.height)
+    drawnRef.current = false
     setHasSignature(false)
     onChange(null)
   }

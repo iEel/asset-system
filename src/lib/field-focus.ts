@@ -78,7 +78,8 @@ export function focusField(target: HTMLElement): HTMLElement | null {
   }
   control.focus({ preventScroll: true })
   const view = main.getBoundingClientRect()
-  const footer = main.querySelector<HTMLElement>('[data-slot="sticky-form-footer"]')
+  // The bar that shows: a page can hold a phone bar and a desktop bar (ส่งมอบ's phone steps, group 3 spec §7.4).
+  const footer = [...main.querySelectorAll<HTMLElement>('[data-slot="sticky-form-footer"]')].find((bar) => bar.getClientRects().length > 0)
   const field = fieldBounds(target, control)
   const next = fieldScrollTop({
     scrollTop: main.scrollTop,

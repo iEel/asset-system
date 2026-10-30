@@ -4,11 +4,13 @@ import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { CheckoutPhoneBar, CheckoutReadBack } from "@/components/asset-operations/checkout-phone-steps"
 import { AssetConditionChoice } from "@/components/asset-operations/condition-choice"
 import { OperationFormFrame } from "@/components/asset-operations/operation-form-frame"
 import { OperationSummaryCard } from "@/components/asset-operations/operation-summary-card"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"
+import { Button } from "@/components/ui/button"
 import { ChoiceCard } from "@/components/ui/choice-card"
 import { Field } from "@/components/ui/field"
 import { FieldGroup } from "@/components/ui/field-group"
@@ -22,6 +24,7 @@ import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Segmented } from "@/components/ui/segmented"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { Textarea } from "@/components/ui/textarea"
 import { assetOperationRowLabel, chosenAssetReasonKey } from "@/lib/asset-operation-form-rules"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
@@ -39,13 +42,16 @@ import {
   type CheckoutDestinationType,
   type CheckoutPhoneStep,
 } from "@/lib/checkout-form-rules"
+import { checkoutPhonePartClass, formatCheckoutDay, getCheckoutSignStatement } from "@/lib/checkout-phone-steps"
 import { getAssetStateTone } from "@/lib/design-system"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import type { AssetHandoverMode } from "@/lib/asset-handover-mode"
 import { waitForDialogToClose } from "@/lib/field-focus"
+import { cn } from "@/lib/utils"
 import { notBefore, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { useMediaQuery } from "@/components/ui/use-media-query"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = CheckoutDestinationType
@@ -119,7 +125,8 @@ function validate(values: CheckoutFormValues): Partial<Record<CheckoutField, str
 }
 
 // ส่งมอบ (group 3 spec §7.1-§7.3): three sections in the shared operation frame, the สรุปก่อนบันทึก card beside them
-// and the footer ตรวจสอบและบันทึก / ยกเลิก. The phone's three steps (spec §7.4) read step and the data-checkout-part hooks.
+// and the footer ตรวจสอบและบันทึก / ยกเลิก. Below lg the same form is the phone's three steps (spec §7.4, P1-R4): each
+// part takes its step's class beside its data-checkout-part hook, and the phone's own bar follows the frame.
 export function CheckoutForm({
   employees,
   departments,
@@ -127,6 +134,7 @@ export function CheckoutForm({
   conditions,
   initialAsset,
   returnTo,
+  deliveredByLabel,
 }: {
   employees: AssetOperationEmployeeOption[]
   departments: Option[]
@@ -135,6 +143,8 @@ export function CheckoutForm({
   /** ?assetId=: the search's by-id answer with its detail, takeable or not (spec 6.4, §7.1). */
   initialAsset: AssetOperationSearchRow | null
   returnTo?: string
+  /** ผู้ส่งมอบ on the phone's read-back: the signed-in user (spec §7.4). */
+  deliveredByLabel: string
 }) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -148,8 +158,11 @@ export function CheckoutForm({
   const fieldErrors = useFieldErrors<CheckoutField>()
   const [photoBefore, setPhotoBefore] = useState<File | null>(null)
   const [receiverSignatureDataUrl, setReceiverSignatureDataUrl] = useState<string | null>(null)
-  // The phone step (spec §7.4, P1-R4): Task 7 adds the setter.
-  const [step] = useState<CheckoutPhoneStep>(1)
+  // The phone step (spec §7.4, P1-R4); from lg it is ignored and every section shows.
+  const [step, setStep] = useState<CheckoutPhoneStep>(1)
+  const isDesktop = useMediaQuery("(min-width: 64rem)")
+  // Step 1 reads the handover date as a line; เปลี่ยน, or an error on the date, opens the field.
+  const [phoneDateOpen, setPhoneDateOpen] = useState(false)
   const [values, setValues] = useState<CheckoutFormValues>({
     asset: initialAsset,
     checkoutType: "user" as CheckoutType,
@@ -203,6 +216,8 @@ export function CheckoutForm({
     },
   )
   const { travelling, staying } = checkoutComponents(values.asset)
+  const dateOpen = phoneDateOpen || Boolean(fieldErrors.errors.checkoutDate)
+  const signStatement = getCheckoutSignStatement({ checkoutType: values.checkoutType, travellingCount: travelling.length })
 
   const destinationOptions = values.checkoutType === "user"
     ? employees
@@ -243,12 +258,29 @@ export function CheckoutForm({
     },
   })
 
-  // A refusal from the review closes it, and the field takes focus once the dialog has gone (spec §4.2, O-R1).
+  // A refusal from the review closes it, and the field takes focus once the dialog has gone (spec §4.2, O-R1). On the
+  // phone a refused field is on step 1, so the form returns there first.
   async function leaveReview() {
+    if (!isDesktop) return showStepOne()
     const closed = waitForDialogToClose()
     setReviewOpen(false)
     await closed
   }
+  // A phone step move: the page scrolls to the top and the step bar takes focus, so a screen reader reads the new step.
+  function moveToStep(next: CheckoutPhoneStep) {
+    setStep(next)
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>("[data-dashboard-main]")?.scrollTo({ top: 0, behavior: "auto" })
+      document.getElementById("checkout-phone-steps")?.focus({ preventScroll: true })
+    })
+  }
+
+  // Back to step 1 before a field takes focus: two frames, so its parts show again.
+  async function showStepOne() {
+    setStep(1)
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  }
+
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })
   const errorText = (key: CheckoutField) => {
     // A chosen asset this transaction cannot take reads its reason from arrival, over any code (spec 6.4).
@@ -284,7 +316,11 @@ export function CheckoutForm({
     event.preventDefault()
     fieldErrors.setErrors(validate(values))
     if (focusFirstError()) return
-    setReviewOpen(true)
+    // The desktop reviews in the dialog; the phone's step 1 goes on to the read-back, and step 3 saves (step 3 still
+    // checks every field). The phone never opens the dialog.
+    if (isDesktop) return setReviewOpen(true)
+    if (step === 1) return moveToStep(2)
+    if (step === 3) void submitCheckout()
   }
 
   async function submitCheckout() {
@@ -333,6 +369,7 @@ export function CheckoutForm({
         <OperationFormFrame
           title={t("title")}
           description={t("description")}
+          phoneSteps
           summary={<OperationSummaryCard
             title={tOperation("summaryTitle")}
             nowLabel={tOperation("summaryNow")}
@@ -352,7 +389,24 @@ export function CheckoutForm({
             formId: CHECKOUT_FORM_ID,
           }}
         >
-          <div data-checkout-part="asset">
+          <CheckoutPhoneBar step={step} cancelHref={cancelHref} onStep={moveToStep} className={checkoutPhonePartClass("stepsBar", step)} />
+          <CheckoutReadBack
+            receiverLabel={receiverLabel ?? ""}
+            assetName={values.asset?.name ?? ""}
+            assetTag={values.asset?.assetTag ?? ""}
+            serialNumber={values.asset?.serialNumber ?? null}
+            photoCount={photoBefore ? 1 : 0}
+            components={checkoutComponents(values.asset).travelling}
+            conditionLabel={selectedCondition?.label ?? ""}
+            handoverModeLabel={handoverModeLabel}
+            statusAfterLabel={resultingStatusLabel}
+            checkoutDateLabel={formatCheckoutDay(values.checkoutDate, locale)}
+            dueDateLabel={values.handoverMode === "temporary_loan" ? formatCheckoutDay(values.expectedReturnDate, locale) : null}
+            remark={values.remark}
+            deliveredByLabel={deliveredByLabel}
+            className={checkoutPhonePartClass("readBack", step)}
+          />
+          <div data-checkout-part="asset" className={checkoutPhonePartClass("asset", step)}>
             <FormSection number={1} title={t("sectionAsset")}>
               <div className="grid gap-4">
                 {/* The arrival banner names the ?assetId= asset only while it is still the chosen one (look step). */}
@@ -390,7 +444,7 @@ export function CheckoutForm({
               </div>
             </FormSection>
           </div>
-          <div data-checkout-part="receiver">
+          <div data-checkout-part="receiver" className={checkoutPhonePartClass("receiver", step)}>
             <FormSection number={2} title={t("sectionReceiver")}>
               <div className="grid gap-4 md:grid-cols-2">
                 <FieldGroup legend={t("checkoutTo")} id="checkout-type" required error={errorText("checkoutType")}>
@@ -493,9 +547,21 @@ export function CheckoutForm({
                   error={errorText("conditionBefore")}
                   onChange={(value) => setField("conditionBefore", value)}
                 />
-                <Field label={t("checkoutDate")} id="checkout-date" required error={errorText("checkoutDate")}>
-                  <Input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required />
-                </Field>
+                <div className={cn("flex min-w-0 items-center justify-between gap-3 md:col-span-2", checkoutPhonePartClass("dateLine", step), dateOpen && "hidden")}>
+                  <p className="min-w-0 text-sm text-foreground">
+                    {values.checkoutDate === toLocalDateInputValue()
+                      ? t("phoneDateToday", { date: formatCheckoutDay(values.checkoutDate, locale) })
+                      : t("phoneDateOther", { date: formatCheckoutDay(values.checkoutDate, locale) })}
+                  </p>
+                  <Button type="button" variant="ghost" size="sm" aria-label={t("phoneDateChange")} onClick={openPhoneDate}>
+                    {tOperation("change")}
+                  </Button>
+                </div>
+                <div className={cn(checkoutPhonePartClass("dateField", step), !dateOpen && "max-lg:hidden")}>
+                  <Field label={t("checkoutDate")} id="checkout-date" required error={errorText("checkoutDate")}>
+                    <Input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required />
+                  </Field>
+                </div>
                 <div className="md:col-span-2">
                   <Field label={t("remark")}>
                     <Textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
@@ -504,10 +570,22 @@ export function CheckoutForm({
               </div>
             </FormSection>
           </div>
-          <div data-checkout-part="evidence">
+          <p data-checkout-sign-statement className={cn("grid gap-1 text-base font-medium text-foreground", checkoutPhonePartClass("statement", step))}>
+            <span>
+              {t(signStatement.key, {
+                tag: values.asset?.assetTag ?? "",
+                count: checkoutComponents(values.asset).travelling.length,
+                condition: selectedCondition?.label ?? "",
+              })}
+            </span>
+            {signStatement.onBehalf ? (
+              <span className="text-sm font-normal text-muted-foreground">{t("signOnBehalf", { destination: receiverLabel ?? "" })}</span>
+            ) : null}
+          </p>
+          <div data-checkout-part="evidence" className={checkoutPhonePartClass("evidence", step)}>
             <FormSection number={3} title={<>{t("sectionEvidence")} <span className="font-normal text-muted-foreground">{t("sectionEvidenceOptional")}</span></>}>
               <div className="grid gap-4">
-                <div data-checkout-part="photo">
+                <div data-checkout-part="photo" className={checkoutPhonePartClass("photo", step)}>
                   <Field label={t("photoBefore")}>
                     <FileDropzone
                       file={photoBefore}
@@ -521,19 +599,33 @@ export function CheckoutForm({
                     />
                   </Field>
                 </div>
-                <div data-checkout-part="signature">
+                <div data-checkout-part="signature" className={checkoutPhonePartClass("signature", step)}>
                   <SignaturePad
                     label={t("receiverSignature")}
                     helper={receiverLabel ? t("receiverSignatureFor", { name: receiverLabel }) : t("receiverSignatureHelp")}
                     clearLabel={t("clearSignature")}
                     disabled={saving}
+                    tall
                     onChange={setReceiverSignatureDataUrl}
                   />
+                  <p className={cn("mt-2 text-meta text-muted-foreground", checkoutPhonePartClass("statement", step), "landscape:hidden")}>
+                    {t("signLandscapeHint")}
+                  </p>
                 </div>
               </div>
             </FormSection>
           </div>
         </OperationFormFrame>
+        <StickyFormFooter className={checkoutPhonePartClass("stepsFooter", step)}>
+          {step === 2 ? (
+            <>
+              <Button type="button" variant="outline" onClick={() => moveToStep(1)}>{t("phoneFix")}</Button>
+              <Button type="button" onClick={() => moveToStep(3)}>{t("phoneAccept")}</Button>
+            </>
+          ) : null}
+          {step === 1 ? <Button type="submit">{t("phoneNext")}</Button> : null}
+          {step === 3 ? <Button type="submit" busy={saving}>{t("phoneSave")}</Button> : null}
+        </StickyFormFooter>
       </form>
       <OperationReviewDialog
         open={reviewOpen}
@@ -548,6 +640,12 @@ export function CheckoutForm({
       />
     </>
   )
+
+  // เปลี่ยน on step 1's date line: the field opens and takes focus.
+  function openPhoneDate() {
+    setPhoneDateOpen(true)
+    requestAnimationFrame(() => document.getElementById("checkout-date")?.focus())
+  }
 
   function setDestinationValue(type: CheckoutType, value: string) {
     if (type === "user") setField("custodianId", value)

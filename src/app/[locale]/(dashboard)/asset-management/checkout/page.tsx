@@ -2,6 +2,7 @@ import { getAssetOperationMasterOptions, getAssetOperationPreselect } from "@/li
 import { requirePagePermission } from "@/lib/page-auth"
 import { CheckoutForm } from "@/components/asset-operations/checkout-form"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { getUserDisplayLabel } from "@/lib/user-display"
 
 type CheckoutPageProps = {
   params: Promise<{ locale: string }>
@@ -11,7 +12,7 @@ type CheckoutPageProps = {
 export default async function CheckoutPage({ params, searchParams }: CheckoutPageProps) {
   const { locale } = await params
   const filters = await searchParams
-  await requirePagePermission(locale, "asset", "edit")
+  const user = await requirePagePermission(locale, "asset", "edit")
   const [options, initialAsset] = await Promise.all([
     getAssetOperationMasterOptions(),
     getAssetOperationPreselect("checkout", filters.assetId, { detail: true }),
@@ -25,6 +26,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
       conditions={options.conditions}
       initialAsset={initialAsset}
       returnTo={filters.returnTo ? normalizeAssetReturnTo(locale, filters.returnTo) : undefined}
+      deliveredByLabel={getUserDisplayLabel(user)}
     />
   )
 }
