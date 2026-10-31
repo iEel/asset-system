@@ -144,8 +144,8 @@ export async function searchAssetOperationOptions(
     }) as Promise<AssetOperationSearchCheckoutRecord[]>,
     db.maintenanceTicket.findMany({
       where: { ...openRepairRecordWhere, assetId: { in: ids } },
-      select: { assetId: true },
-    }) as Promise<Array<{ assetId: string }>>,
+      select: { assetId: true, repairNo: true },
+    }) as Promise<Array<{ assetId: string; repairNo: string }>>,
     readAssetPhotoPreviews(db, assets),
     // An outstanding link holding a found asset (group 3 spec §8.5, §8.6), newest first.
     db.assetComponent.findMany({
@@ -160,6 +160,11 @@ export async function searchAssetOperationOptions(
     if (!openCheckoutByAssetId.has(checkout.assetId)) openCheckoutByAssetId.set(checkout.assetId, checkout)
   }
   const repairAssetIds = new Set(repairs.map((repair) => repair.assetId))
+  // รับคืน names the record a locked row joins: the first number per asset.
+  const repairNoByAssetId = new Map<string, string>()
+  for (const repair of repairs) {
+    if (!repairNoByAssetId.has(repair.assetId)) repairNoByAssetId.set(repair.assetId, repair.repairNo)
+  }
   // Two outstanding links of one component (GP X1): the newest wins, as the open handover above.
   const outstandingLinkByAssetId = new Map<string, AssetOperationOutstandingLinkRecord>()
   for (const link of outstandingLinks) {
@@ -184,6 +189,7 @@ export async function searchAssetOperationOptions(
   const rows = assets.map((asset) => buildAssetOperationSearchRow(input, asset, {
     openCheckout: openCheckoutByAssetId.get(asset.id) ?? null,
     hasOpenRepair: repairAssetIds.has(asset.id),
+    openRepairNo: repairNoByAssetId.get(asset.id) ?? null,
     photo: photos.get(asset.id) ?? null,
     outstanding: outstandingOf(asset.id),
     ...(labels ? { labels } : {}),

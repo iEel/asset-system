@@ -84,10 +84,10 @@ test("the three maintenance create and edit pages: crumbs in PageHeader and à¸à
   }
 })
 
-test("the check-in form draws its title with PageHeader (2B-1 task 23, I13)", () => {
+test("the check-in form is the operation frame, with T7's legacy link in its header (group 3 plan 2 Task 8)", () => {
   const source = read(`${C}asset-operations/checkin-form.tsx`)
-  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "checkin-form.tsx imports PageHeader")
-  assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("title"\)\} actions=\{legacyLink\} className="mb-6" \/>\n/)
+  assert.ok(source.includes('import { OperationFormFrame } from "@/components/asset-operations/operation-form-frame"'), "checkin-form.tsx imports OperationFormFrame")
+  assert.match(source, /<OperationFormFrame\n\s+title=\{t\("title"\)\}\n\s+description=\{t\("description"\)\}\n\s+actions=\{legacyLink\}\n/)
   assert.doesNotMatch(source, /<h1\b|PageBackLink/, "the operation forms keep having no back button (B2)")
 })
 

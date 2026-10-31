@@ -78,7 +78,7 @@ const words: CheckoutSummaryWords = {
 const pick = (rows: CheckoutSummaryRow[]) => rows.map(({ key, now, next, changed }) => [key, now, next, changed])
 
 test("บุคคล to an employee: holder, the employee's department, status and the components that go, people and departments by name (spec §7.3, §6, look L1)", () => {
-  const components = [{ id: "k1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "k2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }]
+  const components = [{ id: "k1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "HQ-01 - คลัง IT" }, { id: "k2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false, locationLabel: "HQ-01 - คลัง IT" }]
   const rows = buildCheckoutSummaryRows(choose({ asset: row({}, { components }), employee, handoverMode: "permanent_assignment" }), words)
   assert.deepEqual(rows.map((r) => r.label), ["ผู้ถือครอง", "แผนก", "สถานะ", "ส่วนควบ"])
   assert.deepEqual(pick(rows), [["holder", "ไม่มี", "สมชาย ใจดี", true], ["department", "Information Technology", "บัญชี", true],
@@ -223,7 +223,7 @@ test("the form's final-review fixes: the submit routes through checkoutSubmitAct
   assert.doesNotMatch(form, /evidenceLabel:|aria-label={t("checkoutTo")}/)
 })
 
-test("รับคืน's condition default: a picked asset recorded ยังไม่ประเมิน starts with none, now that รับคืน does not offer it (group 3 spec §19.2)", async () => {
+test("the shared condition default skips a condition the operation does not offer; รับคืน starts with none, the legacy backfill included (group 3 spec §19.2, §8.3)", async () => {
   // The shared default sits beside the options it reads (final review M11); ส่งมอบ keeps checkoutConditionDefault.
   const { operationConditionDefault, getAssetOperationConditionOptions } = await import("../src/lib/asset-lifecycle-policy.ts")
   const checkoutRules = await import("../src/lib/checkout-form-rules.ts")
@@ -235,9 +235,8 @@ test("รับคืน's condition default: a picked asset recorded ยัง�
   assert.equal(operationConditionDefault({ conditionId: "c-Damaged" }, getAssetOperationConditionOptions("checkout", masters)), "", "ส่งมอบ does not offer เสียหาย")
   assert.equal(checkoutConditionDefault, operationConditionDefault, "one rule")
   const form = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
-  assert.ok(form.includes("conditionAfter: current.conditionAfter || operationConditionDefault(row, conditions),"))
-  assert.ok(form.includes('import { operationConditionDefault } from "@/lib/asset-lifecycle-policy"'))
-  assert.doesNotMatch(form, /conditionAfter: current\.conditionAfter \|\| row\.conditionId/)
+  assert.doesNotMatch(form, /operationConditionDefault|conditionAfter: current\.conditionAfter \|\||nextLocationId: current\.nextLocationId \|\|/)
+  assert.ok(form.includes('conditionAfter: "",'), "รับคืน's condition starts empty, the legacy backfill included (spec §8.3, P2-R9)")
 })
 
 test("a condition refusal: which keys, which send for repair, and the repair link (group 3 spec §19.3, A1-R1)", async () => {

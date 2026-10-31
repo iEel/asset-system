@@ -118,7 +118,7 @@ test("a transaction refusal reads the picker's words for the same rule (server-s
   assert.equal(getApiErrorKey("ASSET_CHECKIN_REPAIR_STATUS_REQUIRED"), "checkinRepairStatusRequired")
   const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors
   assert.deepEqual([words("th").checkinRepairStatusRequired, words("en").checkinRepairStatusRequired], [
-    "มีงานซ่อมที่ยังไม่ปิด เลือกสถานะถัดไปเป็น ส่งซ่อม", "This asset has an open repair. Choose Send to repair as the next status.",
+    "มีงานซ่อมที่ยังไม่ปิด หลังรับคืนต้องเป็น ส่งซ่อม", "This asset has an open repair. After the return it must go to Send for repair.",
   ])
   for (const locale of ["th", "en"] as const) assert.equal(words(locale).checkinRepairOpen, undefined, locale)
   // The ทรัพย์สินอื่น destination is gone (group 3 spec §7.3), and its word with it.

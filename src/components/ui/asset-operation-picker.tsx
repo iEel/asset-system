@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { FieldError, FieldHint, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { StatusBadge } from "@/components/ui/status-badge"
 import type { AssetOperationMode } from "@/lib/asset-operation-eligibility"
 import {
   assetOperationNoHolderGroupKey,
@@ -16,12 +17,14 @@ import {
   buildAssetOperationSections,
   getAssetOperationCountLine,
   getAssetOperationPickerState,
+  getAssetOperationRowBadge,
   getAssetOperationRowDetail,
   getAssetOperationRowView,
   moveAssetOperationActive,
   resolveAssetOperationActive,
   type AssetOperationPickerContext,
   type AssetOperationPickerResult,
+  type AssetOperationRowBadgeView,
 } from "@/lib/asset-operation-picker-rules"
 import {
   assetOperationSearchMaxChars,
@@ -237,6 +240,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
     const index = flatRows.indexOf(row)
     const view = rowView(row)
     const note = view.note
+    const badge = getAssetOperationRowBadge(row)
     return (
       <li
         key={row.id}
@@ -266,6 +270,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
             {" · "}
             <WordsHighlight value={row.name} words={words} />
           </span>
+          {badge ? <RowBadge badge={badge} /> : null}
           <span className={cn("block min-w-0 break-words text-meta", view.selectable && "text-muted-foreground")}>
             <RowDetail row={row} />
           </span>
@@ -428,6 +433,14 @@ function RowDetail({ row }: { row: AssetOperationSearchRow }) {
   if (detail.kind === "handover") return <>{t("handoverLine", { documentNo: detail.documentNo, date: formatDate(detail.checkoutDate) })}</>
   if (detail.kind === "legacy") return <>{t("legacyLineAt", { location: detail.locationLabel })}</>
   return <>{[detail.statusLabel, detail.placeLabel].join(" · ")}</>
+}
+
+// รับคืน's badge (group 3 spec §8.2, P2-R17): มีใบส่งมอบ HO-…, ข้อมูลเก่า ไม่มีใบส่งมอบ or ส่วนควบค้างคืน, above the row's line.
+function RowBadge({ badge }: { badge: AssetOperationRowBadgeView }) {
+  const t = useTranslations("assetOperation")
+  if (badge.kind === "handover") return <StatusBadge label={t("badgeHandover", { documentNo: badge.documentNo })} tone="info" className="self-start" />
+  if (badge.kind === "legacy") return <StatusBadge label={t("badgeLegacy")} tone="warning" className="self-start" />
+  return <StatusBadge label={t("badgeOutstanding")} tone="warning" className="self-start" />
 }
 
 // Each typed word in a <mark>, as GlobalSearch shows its term.

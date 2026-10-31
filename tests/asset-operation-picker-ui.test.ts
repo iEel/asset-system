@@ -203,3 +203,13 @@ test("look step: the hint shows only with the search field, so a chosen value ne
   assert.match(source, /onClick=\{change\}\n\s+aria-label=\{t\("changeNamed", \{ label, tag: value\.assetTag \}\)\}\n\s+aria-describedby=\{errorId\}/)
   assert.match(source, /role="combobox"[\s\S]*?aria-describedby=\{describedBy\}/)
 })
+
+test("รับคืน's rows keep their line and gain a badge between the tag line and that line (group 3 spec §8.2, P2-R17)", () => {
+  const source = read(PART)
+  for (const part of [
+    'import { StatusBadge } from "@/components/ui/status-badge"', "const badge = getAssetOperationRowBadge(row)", "{badge ? <RowBadge badge={badge} /> : null}",
+    "function RowBadge({ badge }: { badge: AssetOperationRowBadgeView })",
+    't("badgeHandover", { documentNo: badge.documentNo })', 't("badgeLegacy")', 't("badgeOutstanding")', 'className="self-start"',
+  ]) assert.ok(source.includes(part), part)
+  assert.ok(source.indexOf("{badge ? <RowBadge badge={badge} /> : null}") < source.indexOf("<RowDetail row={row} />"), "the badge sits between the tag line and the row's line")
+})

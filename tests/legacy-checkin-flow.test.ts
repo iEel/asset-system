@@ -13,7 +13,9 @@ const checkinMessages = (locale: "th" | "en") => JSON.parse(readFileSync(`messag
 test("check-in page loads the master lists, the preselect and the legacy count, never the register; the count is the header's link to the register's noHandover list (group 3 spec §8.1, P2-R12)", () => {
   const source = checkinPageSource()
 
-  assert.match(source, /getAssetOperationMasterOptions\(\)/)
+  assert.match(source, /getAssetOperationMasterOptions\(\{ conditionsFor: "checkin" \}\)/)
+  assert.match(source, /readConditionLabels\(\)/)
+  assert.match(source, /readCheckinDepartment\(prisma\)\.catch\(\(\) => null\)/)
   assert.match(source, /getCheckinPreselect\(\{ checkoutId: filters\.checkoutId, assetId: filters\.assetId \}\)/)
   assert.match(source, /countLegacyReturns\(\)/)
   assert.match(source, /initialRow=\{preselect\.row\}/)
@@ -31,15 +33,16 @@ test("check-in page loads the master lists, the preselect and the legacy count, 
   assert.doesNotMatch(source, /getAssetOperationOptions|getAssetOperationAssetLists|legacyReturnCandidates|activeCheckouts/)
 })
 
-test("a legacy row asks once, then backfills the handover and continues the normal return (spec 6.3)", () => {
+test("a legacy row asks once, then backfills the handover and continues the normal return with no condition or room filled in; with no return department the confirm is refused (spec 6.3, group 3 spec §8.3, P2-R8)", () => {
   const source = checkinFormSource()
 
   for (const snippet of [
     'if (row?.legacy) {',
     'title: t("legacyReturnConfirmTitle")',
     'confirmLabel: t("legacyReturnConfirm")',
-    'buildAssetOperationSearchHref({ mode: "checkin", id: assetId })',
-    'fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")',
+    'buildAssetOperationSearchHref({ mode: "checkin", id: assetId, detail: true })',
+    'fieldErrors.clear("checkoutId", "returnBy")',
+    'if (!returnDepartment) {',
     'else if (prefilled && returnByEmployeeId === prefilled) setEmployeeField("returnBy", "")',
   ]) assert.ok(source.includes(snippet), snippet)
   assert.match(source, /\/api\/assets\/\$\{assetId\}\/legacy-checkout/)

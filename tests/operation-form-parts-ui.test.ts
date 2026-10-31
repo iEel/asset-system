@@ -29,13 +29,13 @@ test("OperationSummaryCard: ตอนนี้ then หลังบันทึ�
 
 test("OperationFormFrame: PageHeader with no breadcrumb (P1-R3), the audit-round grid, the summary column, the bar across both with ยกเลิก before the submit bound to formId", () => {
   const source = read(`${DIR}operation-form-frame.tsx`)
-  assert.match(source, /^export function OperationFormFrame\(\{ title, description, summary, footer, phoneSteps = false, children \}: OperationFormFrameProps\) \{$/m)
+  assert.match(source, /^export function OperationFormFrame\(\{ title, description, actions, summary, footer, phoneSteps = false, summaryOnPhone = true, children \}: OperationFormFrameProps\) \{$/m)
   for (const part of [
     "export type OperationFormFooter = { description: ReactNode; cancelHref: string; cancelLabel: string; submitLabel: string; busy: boolean; formId: string }",
-    'data-slot="operation-form-frame"', 'className="mx-auto max-w-6xl"', '<PageHeader title={title} meta={description} className="mb-6" />',
+    'data-slot="operation-form-frame"', 'className="mx-auto max-w-6xl"', '<PageHeader title={title} meta={description} actions={actions} className="mb-6" />',
     '"grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"', 'data-slot="operation-form-main"', '"grid min-w-0 content-start gap-8 p-4 sm:p-5"',
     '<StickyFormFooter className={cn("lg:col-span-2", phoneSteps && "max-lg:hidden")} status={footer.description}>',
-    '<div className={cn("min-w-0", phoneSteps && "max-lg:hidden")}>{summary}</div>',
+    '<div className={cn("min-w-0", (phoneSteps || !summaryOnPhone) && "max-lg:hidden")}>{summary}</div>', "actions?: ReactNode", "summaryOnPhone?: boolean",
     '<Link href={footer.cancelHref} className={buttonVariants({ variant: "outline" })}>', '<Button type="submit" form={footer.formId} busy={footer.busy}>',
   ]) assert.ok(source.includes(part), part)
   assert.ok(source.indexOf("{children}") < source.indexOf("{summary}") && source.indexOf("{summary}") < source.indexOf("<StickyFormFooter"), "main, summary, then the bar")
@@ -78,6 +78,7 @@ test("DESIGN.md and docs/14 describe the three parts after SignaturePad and Form
   for (const phrase of [
     "`OperationSummaryCard`", "`AssetConditionChoice`", "`src/components/asset-operations/operation-form-frame.tsx`", "ตอนนี้", "หลังบันทึก",
     "`<form onSubmit={handleSubmit} noValidate id={formId}>` wraps it", "`FormSection`s", "`form={formId}`", "`</OperationFormFrame>`", "`STICKY_FOOTER_ROUTES`", "no breadcrumb",
+    "`summaryOnPhone={false}`", "`actions`",
   ]) assert.ok(block.includes(phrase), phrase)
   const index = read("docs/14_UI_UX_DESIGN_SYSTEM.md")
   const row = index.split("\n").find((line) => line.startsWith("| The frame of ส่งมอบ, รับคืน and โอนย้าย | `OperationFormFrame`"))

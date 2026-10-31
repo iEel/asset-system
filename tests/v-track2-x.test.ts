@@ -112,7 +112,7 @@ test("checkin's refusals of the return condition and the return status name thei
   // The checkin form (Task 10, O3) already holds both keys, shows each under its select and hands a refusal back from
   // its review dialog (O-R1): no form change.
   const form = read(`${C}asset-operations/checkin-form.tsx`)
-  assert.match(form, /\n  conditionAfter: "checkin-condition-after",\n  nextStatusId: "checkin-next-status",\n/)
+  assert.match(form, /\n  conditionAfter: "checkin-condition-after",\n  returnDate: "checkin-return-date",\n  nextStatusId: "checkin-next-status",\n/)
   assert.ok(form.includes('error={fieldErrors.message("conditionAfter")}'))
   assert.ok(form.includes('error={fieldErrors.message("nextStatusId")}'))
   assert.ok(form.includes("const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))

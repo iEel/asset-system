@@ -31,7 +31,7 @@ function detailAsset(tag: string, overrides: Partial<AssetOperationSearchDetailA
   }
 }
 function link(id: string, assetTag: string, name: string): AssetOperationComponentLink {
-  return { componentAssetId: id, componentAsset: { assetTag, name } }
+  return { componentAssetId: id, componentAsset: { assetTag, name, currentLocation: { code: "RY-01", name: "ห้องบัญชี" } } }
 }
 function checkout(overrides: Partial<AssetOperationSearchCheckoutRecord>): AssetOperationSearchCheckoutRecord {
   return {
@@ -82,7 +82,7 @@ function fakeDb(data: {
         return (data.checkins ?? []).filter((row) => (args.where.id as { in: string[] }).in.includes(row.id))
       },
     },
-    maintenanceTicket: { async findMany(args: Args) { calls.push({ call: "maintenanceTicket.findMany", args }); return (data.repairAssetIds ?? []).map((assetId) => ({ assetId })) } },
+    maintenanceTicket: { async findMany(args: Args) { calls.push({ call: "maintenanceTicket.findMany", args }); return (data.repairAssetIds ?? []).map((assetId) => ({ assetId, repairNo: `RP-${assetId}` })) } },
     department: { async findMany(args: Args) { calls.push({ call: "department.findMany", args }); return [{ id: "dep-1", code: "IT", name: "ฝ่ายไอที" }] } },
     location: { async findMany(args: Args) { calls.push({ call: "location.findMany", args }); return [] } },
     attachment: {
@@ -122,6 +122,8 @@ test("an open handover or an open repair reaches the row: the handover listed, n
   const [returning] = (await searchAssetOperationOptions(repaired.db, input("mode=checkin&q=0228"))).rows
   // S-R43: the handover's return takes the open repair, and the row says so for the form's ส่งซ่อม.
   assert.deepEqual([returning.eligible, returning.reasonKey, returning.checkout?.documentNo, returning.openRepair], [true, null, "HO-2026-0151", true])
+  assert.equal(returning.openRepairNo, "RP-asset-2")
+  assert.deepEqual(repaired.calls.find((call) => call.call === "maintenanceTicket.findMany")?.args.select, { assetId: true, repairNo: true })
 })
 
 test("by id: one read of one active asset, no count, the same verdict (spec 6.4, S-R5)", async () => {
@@ -220,7 +222,7 @@ test("by id with detail=1: the detail select, one read of the installed links an
   const [row] = (await searchAssetOperationOptions(db, input("mode=checkout&id=asset-1&detail=1"))).rows
   assert.deepEqual(row.detail, {
     ownership: "personal", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
-    components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }],
+    components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "RY-01 - ห้องบัญชี" }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false, locationLabel: "RY-01 - ห้องบัญชี" }],
   })
   assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchDetailAssetSelect])
   assert.deepEqual(calls.filter((call) => call.call === "assetComponent.findMany").map((call) => call.args.where), [{ componentAssetId: { in: ["asset-1"] }, ...outstandingLinkWhere }, { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } }])

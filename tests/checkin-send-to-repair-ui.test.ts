@@ -6,7 +6,7 @@ test("check-in offers send-for-repair instead of a separate repair checkbox", ()
   const form = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
   assert.doesNotMatch(form, /createMaintenance/)
   assert.match(form, /"Under Maintenance"/)
-  assert.match(form, /toLocalDateInputValue\(\)/)
+  assert.match(form, /returnDate: checkinTodayDay\(\)/)
   assert.doesNotMatch(form, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/)
 })
 
@@ -15,14 +15,16 @@ test("check-in return statuses send damaged assets to repair, not to Pending Rep
   assert.match(flow, /\["Ready", "Under Maintenance", "Pending Disposal"\]/)
 })
 
-test("a row with an open repair returns into ส่งซ่อม only: the status is set and locked, the notice replaces the new-record help (S-R43)", () => {
+test("a row with an open repair returns into ส่งซ่อม only, whoever returns it: the status is set and locked, the notice stays and the hint names the record (S-R43, group 3 spec §8.3)", () => {
   const form = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
   // The pick (and the arrival's initial row) sets the next status to Under Maintenance from the page's statuses.
   assert.match(form, /row\?\.openRepair/)
   assert.match(form, /initialRow\?\.openRepair/)
   assert.match(form, /const repairLocked = Boolean\(chosen\?\.openRepair && repairStatus\)/)
   // The select offers no other status while the row has an open repair.
-  assert.match(form, /\(repairLocked && repairStatus \? \[repairStatus\] : statuses\)\.map\(/)
+  assert.ok(form.includes("const nextStatusOptions = checkinNextStatusOptions({ statuses, repairLocked, canCreateRepair })"))
+  assert.match(form, /nextStatusOptions\.map\(/)
+  assert.ok(form.includes('t("nextStatusJoinsRepair", { repairNo: chosen.openRepairNo })'))
   // The notice of the open repair, and neither the new-record help nor the repair-problem field.
   assert.match(form, /t\("openRepairReturnNotice"\)/)
   assert.match(form, /sendsToRepair && !repairLocked \?/)

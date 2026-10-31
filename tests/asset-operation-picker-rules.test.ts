@@ -7,10 +7,12 @@ import {
   buildAssetOperationSections,
   getAssetOperationCountLine,
   getAssetOperationPickerState,
+  getAssetOperationRowBadge,
   getAssetOperationRowDetail,
   getAssetOperationRowView,
   moveAssetOperationActive,
   resolveAssetOperationActive,
+  type AssetOperationRowBadgeView,
 } from "../src/lib/asset-operation-picker-rules.ts"
 import { assetOperationSearchMinChars, type AssetOperationSearchAnswer, type AssetOperationSearchRow } from "../src/lib/asset-operation-search-rules.ts"
 
@@ -127,4 +129,15 @@ test("pickBlocked: a refused row it accepts can be picked and keeps its reason; 
   assert.deepEqual(getAssetOperationRowView(damaged, none), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
   assert.deepEqual(getAssetOperationRowView(damaged, new Set(["a1"]), condition), { selectable: false, note: { kind: "chosen" } })
   assert.deepEqual(getAssetOperationRowView(row(), none, () => true), { selectable: true, note: null }, "a takeable row is unchanged")
+})
+
+test("รับคืน's row badge: the handover's number, ข้อมูลเก่า or ส่วนควบค้างคืน; T4's line below it is not the badge's (group 3 spec §8.2, §8.6, P2-R17)", () => {
+  const handover = { id: "co-1", documentNo: "HO-202610-0012", checkoutType: "user", handoverMode: "permanent_assignment", checkoutDate: "2026-10-01T02:00:00.000Z",
+    expectedReturnDate: null, conditionBefore: "cond-1", remark: null, destinationLabel: "E001 - สมชาย ใจดี" }
+  const handoverBadge: AssetOperationRowBadgeView = { kind: "handover", documentNo: "HO-202610-0012" }
+  assert.deepEqual(getAssetOperationRowBadge(row({ badge: "handover", checkout: handover })), handoverBadge)
+  assert.equal(getAssetOperationRowBadge(row({ badge: "handover", checkout: { ...handover, documentNo: null } })), null, "a handover without a number has no badge (S-R22)")
+  assert.deepEqual(getAssetOperationRowBadge(row({ badge: "legacy", legacy: true })), { kind: "legacy" })
+  assert.deepEqual(getAssetOperationRowBadge(row({ badge: "outstanding" })), { kind: "outstanding" })
+  assert.equal(getAssetOperationRowBadge(row()), null, "the other modes carry none")
 })

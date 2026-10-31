@@ -12,6 +12,13 @@ export function countLegacyReturns(): Promise<number> {
   return prisma.asset.count({ where: legacyReturnCountWhere })
 }
 
+// Every condition's name by id, inactive ones and ยังไม่ประเมิน included (group 3 spec §8.2, §19.2): the handover's
+// condition and the asset's own read a name on รับคืน, never an id.
+export async function readConditionLabels(): Promise<Record<string, string>> {
+  const conditions = await prisma.assetCondition.findMany({ select: { id: true, nameTh: true } })
+  return Object.fromEntries(conditions.map((condition) => [condition.id, condition.nameTh]))
+}
+
 export type CheckinPreselect = { row: AssetOperationSearchRow | null; query: string }
 
 function firstParam(value: string | string[] | undefined): string | null {
@@ -25,6 +32,8 @@ function searchById(assetId: string) {
     q: "",
     id: assetId,
     assignCustodian: false,
+    // The chosen row's detail (group 3 spec §8.2): the summary card and the components checklist read it.
+    detail: true,
   })
 }
 

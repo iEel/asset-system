@@ -201,7 +201,7 @@ export type AssetOperationSearchDetailAsset = Prisma.AssetGetPayload<{ select: t
 
 export const assetOperationComponentLinkSelect = {
   componentAssetId: true,
-  componentAsset: { select: { assetTag: true, name: true } },
+  componentAsset: { select: { assetTag: true, name: true, currentLocation: { select: { code: true, name: true } } } },
 } satisfies Prisma.AssetComponentSelect
 export type AssetOperationComponentLink = Prisma.AssetComponentGetPayload<{ select: typeof assetOperationComponentLinkSelect }>
 
@@ -255,7 +255,8 @@ export type AssetOperationLateReturn = {
 }
 export type AssetOperationRowBadge = "handover" | "legacy" | "outstanding"
 
-export type AssetOperationChosenComponent = { id: string; assetTag: string; name: string; travels: boolean }
+/** locationLabel: the component's own room, "code - name" (รับคืน's warning names where a missing one stays). */
+export type AssetOperationChosenComponent = { id: string; assetTag: string; name: string; travels: boolean; locationLabel: string }
 /** The chosen asset's detail on ส่งมอบ (group 3 spec §7.1, §7.3). Labels are null when there is none, never "-". */
 export type AssetOperationChosenDetail = {
   ownership: AssetOwnershipType
@@ -343,6 +344,8 @@ export type AssetOperationSearchRow = {
   holderEmployeeId?: string | null
   /** An open repair: the return goes into ส่งซ่อม under it (S-R43). Absent when there is none. */
   openRepair?: true
+  /** The open repair's number, set with openRepair when it was read (รับคืน's "ต่อใบซ่อม <no.>", group 3 spec §8.3, §8.4). */
+  openRepairNo?: string
   /** By id with detail=1 only (group 3 spec §7.1). */
   detail?: AssetOperationChosenDetail
 }
@@ -443,6 +446,8 @@ export function buildAssetOperationSearchRow(
   context: {
     openCheckout: AssetOperationSearchCheckoutRecord | null
     hasOpenRepair: boolean
+    /** รับคืน: the open repair's number. */
+    openRepairNo?: string | null
     labels?: AssetOperationDestinationLabels
     photo?: AssetPhotoPreview | null
     /** The outstanding link holding this asset, with its RT- on รับคืน (group 3 spec §8.5, §8.6). */
@@ -524,7 +529,10 @@ export function buildAssetOperationSearchRow(
   row.holderKey = holder.key
   row.holderLabel = holder.label
   row.holderEmployeeId = holder.employeeId
-  if (hasOpenRepair) row.openRepair = true
+  if (hasOpenRepair) {
+    row.openRepair = true
+    if (context.openRepairNo) row.openRepairNo = context.openRepairNo
+  }
   return row
 }
 
@@ -545,6 +553,7 @@ export function buildAssetOperationRowDetail(
       assetTag: link.componentAsset.assetTag,
       name: link.componentAsset.name,
       travels: !handedOverComponentIds.has(link.componentAssetId),
+      locationLabel: placeCodeLabel(link.componentAsset.currentLocation),
     })
   }
   return {

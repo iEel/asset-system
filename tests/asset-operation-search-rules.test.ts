@@ -83,12 +83,12 @@ test("the picker's href and the route's parse read the same names", () => {
 test("the chosen asset's detail: ownership, the status's English name, department and holder as 'code - name' (null when none), both branches, each installed component once by tag with whether it travels (group 3 plan 1 Task 4, spec §7.1)", () => {
   const chosen: AssetOperationSearchDetailAsset = { ...held, ownershipType: "stock", departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
     branch: { name: "สำนักงานใหญ่" }, currentLocation: { code: "RY-01", name: "ห้องบัญชี", branch: { name: "สาขาระยอง" } } }
-  const link = (id: string, assetTag: string, name: string) => ({ componentAssetId: id, componentAsset: { assetTag, name } })
+  const link = (id: string, assetTag: string, name: string) => ({ componentAssetId: id, componentAsset: { assetTag, name, currentLocation: { code: "RY-01", name: "ห้องบัญชี" } } })
   const links = [link("c-2", "NB-0017-02", "Mouse ไร้สาย"), link("c-1", "NB-0017-01", "Adapter 65W"), link("c-2", "NB-0017-02", "Mouse ไร้สาย")]
   const expected: AssetOperationChosenDetail = {
     ownership: "stock", statusName: "In Use", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี",
     ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
-    components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }],
+    components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "RY-01 - ห้องบัญชี" }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false, locationLabel: "RY-01 - ห้องบัญชี" }],
   }
   assert.deepEqual(buildAssetOperationRowDetail(chosen, links, new Set(["c-2"])), expected)
   const bare = buildAssetOperationRowDetail({ ...chosen, ownershipType: "bogus", departmentId: null, department: null, custodianId: null, custodian: null }, [], new Set())

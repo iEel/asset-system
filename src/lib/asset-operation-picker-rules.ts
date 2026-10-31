@@ -94,6 +94,20 @@ export function getAssetOperationRowDetail(row: AssetOperationSearchRow): AssetO
   return { kind: "place", statusLabel: row.statusLabel, placeLabel: row.placeLabel }
 }
 
+/** What the picker row's badge shows; T4's AssetOperationRowBadge is the row's raw "handover" | "legacy" | "outstanding". */
+export type AssetOperationRowBadgeView = { kind: "handover"; documentNo: string } | { kind: "legacy" } | { kind: "outstanding" }
+
+/**
+ * รับคืน's badge (group 3 spec §8.2, P2-R17): the handover's number (a handover without one has none, S-R22), ข้อมูลเก่า,
+ * or ส่วนควบค้างคืน. The other modes carry no badge.
+ */
+export function getAssetOperationRowBadge(row: Pick<AssetOperationSearchRow, "badge" | "checkout">): AssetOperationRowBadgeView | null {
+  if (row.badge === "handover") return row.checkout?.documentNo ? { kind: "handover", documentNo: row.checkout.documentNo } : null
+  if (row.badge === "legacy") return { kind: "legacy" }
+  if (row.badge === "outstanding") return { kind: "outstanding" }
+  return null
+}
+
 export type AssetOperationSection = { group: AssetOperationSearchGroup | null; rows: AssetOperationSearchRow[] }
 
 /** One flat section without groups; else the server's group order, empty groups dropped, stray rows in a last section. */

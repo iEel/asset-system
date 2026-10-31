@@ -166,10 +166,11 @@ test("checkin: the return date is checked at last, errors under the field instea
   const source = read(`${C}asset-operations/checkin-form.tsx`)
   const ids = {
     checkoutId: "checkin-checkout",
-    returnDate: "checkin-return-date",
+    missingComponentIds: "checkin-components",
     returnBy: "checkin-return-by",
     receiveBy: "checkin-receive-by",
     conditionAfter: "checkin-condition-after",
+    returnDate: "checkin-return-date",
     nextStatusId: "checkin-next-status",
     nextLocationId: "checkin-next-location",
   }
@@ -177,10 +178,10 @@ test("checkin: the return date is checked at last, errors under the field instea
   const rules = validateBody(source)
   for (const rule of [
     'check("checkoutId", required(values.checkoutId))',
-    'check("returnDate", required(values.returnDate))',
-    'check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100))',
+    'check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100) ?? (missingCount > 0 ? required(returnByEmployeeId) : null))',
     'check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))',
     'check("conditionAfter", required(values.conditionAfter))',
+    'check("returnDate", required(values.returnDate) ?? (dateError ? CHECKIN_RETURN_DATE_ERROR_KEYS[dateError] : null))',
     // S-R43: a row with an open repair takes ส่งซ่อม only, in the server's words.
     'check("nextStatusId", required(values.nextStatusId) ?? (repairLocked && !sendsToRepair ? "checkinRepairStatusRequired" : null))',
     'check("nextLocationId", required(values.nextLocationId))',
@@ -189,12 +190,13 @@ test("checkin: the return date is checked at last, errors under the field instea
   // The asset field shows a chosen row's reason first, then its own error (server search Task 6, spec 6.4).
   assert.ok(source.includes('error={blockedReason ?? fieldErrors.message("checkoutId")}'))
   // The return date had the star and no check (spec §5): native required joins the star and validate() checks it.
-  assert.match(source, /<Field label=\{t\("returnDate"\)\} id="checkin-return-date" required error=\{fieldErrors\.message\("returnDate"\)\}>\n\s+<Input type="date" value=\{values\.returnDate\} onChange=\{\(event\) => setField\("returnDate", event\.target\.value\)\} required \/>/)
+  assert.match(source, /<Field label=\{t\("returnDate"\)\} id="checkin-return-date" required error=\{fieldErrors\.message\("returnDate"\)\}>\n\s+<Input type="date" value=\{values\.returnDate\} min=\{handoverDay \?\? undefined\} max=\{todayDay\} onChange=\{\(event\) => setField\("returnDate", event\.target\.value\)\} required \/>/)
   // The three required pickers have an id for focus and show their error (V4); the asset is the shared asset picker.
   assert.match(source, /<AssetOperationPicker\n\s+id="checkin-checkout"\n/)
-  for (const id of ["checkin-return-by", "checkin-receive-by"]) {
+  for (const id of ["checkin-return-by", "checkin-receive-by", "checkin-next-location"]) {
     assert.match(source, new RegExp(`<SearchableSelect\\n\\s+id="${id}"\\n`), id)
   }
+  assert.match(source, /<AssetConditionChoice\n\s+id="checkin-condition-after"\n/)
   // A refusal from the review closes it, and the field takes focus once the dialog has gone (O-R1).
   assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)
   assert.ok(source.includes("fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
@@ -202,8 +204,9 @@ test("checkin: the return date is checked at last, errors under the field instea
   assert.match(source, /payload\?\.code === "ASSET_HANDOVER_MODE_MISSING"/)
   // Clearing (spec §4.3): a set clears its key; the legacy backfill and the repair status it picks clear theirs.
   assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+if \(field in FIELD_IDS\) fieldErrors\.clear\(field as CheckinField\)/)
-  assert.ok(source.includes('fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")'))
-  assert.ok(source.includes('if (value.trim() && !values.nextStatusId && repairStatus) fieldErrors.clear("nextStatusId")'))
+  assert.ok(source.includes('fieldErrors.clear("checkoutId", "returnBy")'))
+  assert.ok(!source.includes('fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")'))
+  assert.equal(source.split('if (picked && !values.nextStatusId) fieldErrors.clear("nextStatusId")').length - 1, 2)
   for (const locale of ["th", "en"]) {
     const checkin = messagesOf(locale).checkin
     for (const key of ["selectCheckoutRequired", "selectReturnAndReceiver", "completeRequiredFields"]) {

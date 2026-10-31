@@ -87,15 +87,17 @@ test("check-out, transfer and bulk move forms: the form panel is a ContentPanel,
   }
 })
 
-test("check-in form: a ContentPanel, the shared asset picker, the legacy link in the header, KeyValueList with Nil, and no box around the dropzone (spec 2D D7, D9, D19, M21, M22, M33; server search Task 6; group 3 plan 2 Task 7)", () => {
+test("check-in form: the shared asset picker in section 1, the legacy link in the frame's header, the holding strip as one KeyValueList with Nil, and no box around the dropzone (spec 2D D7, D9, D19, M21, M22, M33; server search Task 6; group 3 plan 2 Tasks 7 and 8)", () => {
   const source = read(`${C}asset-operations/checkin-form.tsx`)
-  assert.match(source, /<PageHeader title=\{t\("title"\)\} actions=\{legacyLink\} className="mb-6" \/>\n\s+<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\} noValidate /)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate id=\{CHECKIN_FORM_ID\}>\n\s+<OperationFormFrame\n[\s\S]*?actions=\{legacyLink\}/)
+  assert.match(source, /<FormSection number=\{1\} title=\{t\("sectionAsset"\)\}>/)
   assert.match(source, /<AssetOperationPicker\n\s+id="checkin-checkout"\n\s+label=\{t\("asset"\)\}\n\s+mode="checkin"\n\s+value=\{chosen\}\n\s+required\n\s+initialQuery=\{initialQuery\}\n/)
   assert.doesNotMatch(source, /legacyReturnCount/, "the count is the page's header link (group 3 spec §8.1)")
   assert.doesNotMatch(source, /<ActionEmptyState\b|<Chip\b|<EmptyNote\b|handoverReviewRequired|legacyReturnTitle/)
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 2, "the handover and the asset")
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 1, "the holding strip")
   assert.match(source, /value: selectedCheckout\.documentNo \? <span className="tag">\{selectedCheckout\.documentNo\}<\/span> : null/)
-  assert.match(source, /function formatDate\(value\?: string \| null\) \{\n\s+if \(!value\) return null\n/)
-  assert.match(source, /<Notice tone="info" title=\{t\("sendToRepairTitle"\)\}[^>]*>\n\s+\{t\("sendToRepairHelp"\)\}\n\s+<\/Notice>/)
+  assert.ok(source.includes("formatCheckoutDay("))
+  assert.doesNotMatch(source, /function formatDate\b/)
+  assert.doesNotMatch(source, /\{t\("sendToRepairHelp"\)\}\n\s+<\/Notice>/)
   assert.doesNotMatch(source, /function ReadOnly\b|"-"|<section\b|rounded-lg border|border-dashed|rounded-full|warning-soft|primary-soft|text-warning|\btext-xs\b|\buppercase\b|<Wrench\b|from "next\/link"/)
 })

@@ -78,6 +78,6 @@ test("look step: the arrival banner shows only while the arrival asset is still 
   }
   const checkin = read(`${C}checkin-form.tsx`)
   assert.equal(checkin.match(/<FormContextBanner /g)?.length, 1)
-  assert.match(checkin, /\{initialRow\?\.eligible && chosen\?\.id === initialRow\.id \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{`\$\{initialRow\.assetTag\} - \$\{initialRow\.name\}`\} \/>/)
+  assert.match(checkin, /\{initialRow\?\.eligible && chosen\?\.id === initialRow\.id \? \(\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{`\$\{initialRow\.assetTag\} - \$\{initialRow\.name\}`\} \/>/)
   assert.doesNotMatch(checkin, /\{initialRow\?\.eligible \? \(/)
 })

@@ -57,8 +57,8 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}assets/asset-form.tsx`]: ["/th/assets/new", "/th/assets/sample-1/edit"],
   [`${C}admin/system-settings-form.tsx`]: ["/th/admin/settings"],
   [`${C}audit/audit-round-form.tsx`]: ["/th/audit/rounds/new"],
-  // Group 3 plan 1: the frame of ส่งมอบ, รับคืน and โอนย้าย; plans 2 and 3 add /th/asset-management/checkin and /transfer when their forms move onto it.
-  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout"],
+  // Group 3: the frame of ส่งมอบ, รับคืน and โอนย้าย; plan 2 added /th/asset-management/checkin, plan 3 adds /transfer when its form moves onto it.
+  [`${C}asset-operations/operation-form-frame.tsx`]: ["/th/asset-management/checkout", "/th/asset-management/checkin"],
   // Group 3 plan 1 Task 7: the phone steps' own bar (P1-R4).
   [`${C}asset-operations/checkout-form.tsx`]: ["/th/asset-management/checkout"],
 }
@@ -87,7 +87,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}maintenance/maintenance-plan-form.tsx`]: [4, 2, 0],
   [`${C}maintenance/repair-record-form.tsx`]: [2, 3, 0],
   [`${C}maintenance/repair-record-actions.tsx`]: [3, 6, 0],
-  [`${C}asset-operations/checkin-form.tsx`]: [5, 0, 0],
+  // Group 3 plan 2 Task 8: the three local Selects go (the room is a SearchableSelect, the condition the chips); the return date's Input and the next status's NativeSelect keep theirs.
+  [`${C}asset-operations/checkin-form.tsx`]: [2, 0, 0],
   [`${C}asset-operations/checkout-form.tsx`]: [3, 0, 0],
   [`${C}asset-operations/transfer-form.tsx`]: [1, 1, 0],
   [`${C}asset-operations/bulk-move-form.tsx`]: [1, 1, 0],
