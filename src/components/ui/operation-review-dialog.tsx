@@ -9,7 +9,8 @@ type OperationReviewDialogProps = {
   open: boolean
   title: string
   description: ReactNode
-  items: OperationReviewItem[]
+  /** A value may be a node (group 3 spec §19.5: the chosen photo beside "แนบแล้ว"). */
+  items: Array<Omit<OperationReviewItem, "value"> & { value: ReactNode }>
   confirmLabel: string
   cancelLabel: string
   closeLabel?: string

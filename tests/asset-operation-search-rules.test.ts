@@ -25,7 +25,7 @@ function input(query: string): AssetOperationSearchInput {
 const somchai = { code: "EMP-0412", fullNameTh: "สมชาย ใจดี" }
 const asset: AssetOperationSearchAsset = {
   id: "asset-1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก Dell Latitude 5440", serialNumber: "SN-1", ownershipType: "personal",
-  custodianId: null, currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
+  modelId: null, custodianId: null, currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
   condition: { name: "Good" }, currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null,
 }
 const held: AssetOperationSearchAsset = { ...asset, custodianId: "emp-1", custodian: somchai, status: { name: "In Use", nameTh: "ใช้งานอยู่" } }
@@ -214,8 +214,11 @@ test("a row carries the words the picker shows, no raw code: status nameTh, the 
   assert.deepEqual(buildAssetOperationSearchRow(input("mode=checkout&q=0228"), asset, { openCheckout: null, hasOpenRepair: false }), {
     id: "asset-1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก Dell Latitude 5440", serialNumber: "SN-1",
     statusLabel: "พร้อมใช้งาน", placeLabel: "IT-2 - ห้อง IT ชั้น 2", locationLabel: "IT-2 - ห้อง IT ชั้น 2",
-    currentLocationId: "loc-1", conditionId: "cond-1", eligible: true, reasonKey: null,
+    currentLocationId: "loc-1", conditionId: "cond-1", eligible: true, reasonKey: null, photo: null,
   })
+  // The search hands the row its photo (group 3 spec §19.5); the row keeps it as given.
+  const photo = { id: "att-1", alt: "dell.jpg", fileType: "image/jpeg" }
+  assert.deepEqual(buildAssetOperationSearchRow(input("mode=checkin&q=0228"), asset, { openCheckout: null, hasOpenRepair: false, photo }).photo, photo)
   const row = buildAssetOperationSearchRow(input("mode=checkout&q=0228"), held, { openCheckout: null, hasOpenRepair: false })
   assert.deepEqual([row.placeLabel, row.locationLabel, row.eligible, row.reasonKey], ["EMP-0412 - สมชาย ใจดี", "IT-2 - ห้อง IT ชั้น 2", false, "asset.transactionReasonStatusNotReady"])
   const keys = Object.keys(buildAssetOperationSearchRow(input("mode=transfer&q=0228"), held, ctx(handover)))

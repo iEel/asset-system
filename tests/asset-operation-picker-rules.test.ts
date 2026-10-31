@@ -17,7 +17,7 @@ import { assetOperationSearchMinChars, type AssetOperationSearchAnswer, type Ass
 // Server search Task 4 (spec 6.1, 6.3, Review Focus 3): what the shared picker shows, as plain data.
 const row = (over: Partial<AssetOperationSearchRow> = {}): AssetOperationSearchRow => ({
   id: "a1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก Dell Latitude 5440", statusLabel: "พร้อมใช้งาน",
-  placeLabel: "IT-02 - ห้อง IT ชั้น 2", locationLabel: "IT-02 - ห้อง IT ชั้น 2", serialNumber: null, currentLocationId: "loc-1", conditionId: "cond-1", eligible: true, reasonKey: null, ...over,
+  placeLabel: "IT-02 - ห้อง IT ชั้น 2", locationLabel: "IT-02 - ห้อง IT ชั้น 2", serialNumber: null, currentLocationId: "loc-1", conditionId: "cond-1", eligible: true, reasonKey: null, photo: null, ...over,
 })
 const answer = (rows: AssetOperationSearchRow[], over: Partial<AssetOperationSearchAnswer> = {}): AssetOperationSearchAnswer =>
   ({ mode: "checkout", total: rows.length, rows, ...over })

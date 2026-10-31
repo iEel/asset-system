@@ -20,10 +20,11 @@ import {
   type AssetOperationSearchDetailAsset,
   type AssetOperationSearchInput,
 } from "./asset-operation-search-rules.ts"
+import { readAssetPhotoPreviews } from "./asset-photo-preview.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // The reads of the transaction pages' asset search (server search spec 6.1-6.4). Bounded: at most 5 asset reads,
-// 1 count, 2 fact reads and 2 label reads per answer, every `in` list at most 20 ids; with detail=1 (by id only): one
+// 1 count, 2 fact reads, 2 photo reads and 2 label reads per answer, every `in` list at most 20 ids; with detail=1 (by id only): one
 // read of the parent's installed links and one of their open handovers. The db is injected, as
 // searchMaintenanceOptions, so the pages call it for the preselect and the tests fake it.
 
@@ -35,6 +36,7 @@ export type AssetOperationSearchDb = {
   maintenanceTicket: { findMany(args: object): Promise<unknown[]> }
   department: { findMany(args: object): Promise<unknown[]> }
   location: { findMany(args: object): Promise<unknown[]> }
+  attachment: { findMany(args: object): Promise<unknown[]> }
 }
 
 type CodeName = { id: string; code: string; name: string }
@@ -127,7 +129,7 @@ export async function searchAssetOperationOptions(
   if (assets.length === 0) return mode === "checkin" ? { mode, total, rows: [], groups: [] } : { mode, total, rows: [] }
 
   const ids = assets.map((asset) => asset.id)
-  const [checkouts, repairs] = await Promise.all([
+  const [checkouts, repairs, photos] = await Promise.all([
     db.assetCheckout.findMany({
       where: { assetId: { in: ids }, ...openCheckoutWhere },
       select: assetOperationSearchCheckoutSelect,
@@ -137,6 +139,7 @@ export async function searchAssetOperationOptions(
       where: { ...openRepairRecordWhere, assetId: { in: ids } },
       select: { assetId: true },
     }) as Promise<Array<{ assetId: string }>>,
+    readAssetPhotoPreviews(db, assets),
   ])
   // The latest open handover per asset wins, as firstIdByAssetId (asset-actions.ts).
   const openCheckoutByAssetId = new Map<string, AssetOperationSearchCheckoutRecord>()
@@ -149,6 +152,7 @@ export async function searchAssetOperationOptions(
   const rows = assets.map((asset) => buildAssetOperationSearchRow(input, asset, {
     openCheckout: openCheckoutByAssetId.get(asset.id) ?? null,
     hasOpenRepair: repairAssetIds.has(asset.id),
+    photo: photos.get(asset.id) ?? null,
     ...(labels ? { labels } : {}),
   }))
   if (input.detail) rows[0].detail = await readChosenDetail(db, assets[0] as AssetOperationSearchDetailAsset)

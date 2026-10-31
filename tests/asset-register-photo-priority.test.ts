@@ -18,4 +18,6 @@ test("asset register thumbnails prefer model photos before asset photos", () => 
     modelPhotoSelection < assetPhotoSelection,
     "asset register photo selection should use the model photo before falling back to the asset photo"
   )
+  // The choice is the shared rule (group 3 spec §19.5): the register and the transaction search agree.
+  assert.match(pageSource, /photo: chooseAssetPhotoPreview\(\s*toPhotoPreview\(asset\.model\?\.id \? modelPhotoByModelId\.get\(asset\.model\.id\) : undefined\),\s*toPhotoPreview\(asset\.attachments\[0\]\),\s*\)/)
 })

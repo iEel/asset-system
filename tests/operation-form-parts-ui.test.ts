@@ -9,7 +9,9 @@ const RAW = /\bdark:|#[0-9a-fA-F]{3,8}\b|\brgba?\(|\b(?:bg|text|border|ring)-[a-
 
 test("OperationSummaryCard: ตอนนี้ then หลังบันทึก per row, the new value semibold only when it changes, the checklist, warnings, sticky from lg", () => {
   const source = read(`${DIR}operation-summary-card.tsx`)
-  assert.match(source, /^export function OperationSummaryCard\(\{ title, nowLabel, nextLabel, rows, checklist = \[\], warnings = \[\], footnote \}: OperationSummaryCardProps\) \{$/m)
+  assert.match(source, /^export function OperationSummaryCard\(\{ title, nowLabel, nextLabel, rows, checklist = \[\], warnings = \[\], footnote, photo, assetLabel \}: OperationSummaryCardProps\) \{$/m)
+  // The asset line (group 3 spec §19.5): the register photo and the asset's label, under the title, only when given.
+  assert.ok(source.includes('{photo || assetLabel ? (\n        <div data-summary-asset className="flex min-w-0 items-center gap-3 text-sm">'), "the asset line")
   for (const part of [
     "export type OperationSummaryRow = { key: string; label: string; now: ReactNode; next: ReactNode; changed: boolean }",
     "export type OperationSummaryCheck = { key: string; label: string; done: boolean; note?: string }",

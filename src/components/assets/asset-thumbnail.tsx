@@ -4,10 +4,13 @@ import { useState } from "react"
 import { ImageIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
+import type { AssetPhotoPreview } from "@/lib/asset-photo-preview"
 import { isThumbnailable, thumbnailUrl } from "@/lib/attachment-thumbnail"
 import { cn } from "@/lib/utils"
 
-export type AssetThumbnailPhoto = { id: string; alt: string; fileType: string }
+export type { AssetPhotoPreview }
+
+const frameSize = { 40: "size-10", 44: "size-11", 64: "size-16" } as const
 
 export function AssetThumbnail({
   photo,
@@ -17,10 +20,10 @@ export function AssetThumbnail({
   preview = true,
   className,
 }: {
-  photo: AssetThumbnailPhoto | null
+  photo: AssetPhotoPreview | null
   assetTag: string
   assetName: string
-  size: 40 | 44
+  size: 40 | 44 | 64
   preview?: boolean
   className?: string
 }) {
@@ -29,14 +32,14 @@ export function AssetThumbnail({
   const [open, setOpen] = useState(false)
   const frame = cn(
     "relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground",
-    size === 40 ? "size-10" : "size-11",
+    frameSize[size],
     className,
   )
 
   if (!photo || !isThumbnailable(photo.fileType) || failed) {
     return (
       <span className={frame}>
-        <ImageIcon className="size-4" aria-hidden="true" />
+        <ImageIcon className={size === 64 ? "size-6" : "size-4"} aria-hidden="true" />
       </span>
     )
   }

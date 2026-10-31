@@ -2,6 +2,7 @@
 
 import { ArrowLeft } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { AssetThumbnail, type AssetPhotoPreview } from "@/components/assets/asset-thumbnail"
 import { Button } from "@/components/ui/button"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { KeyValueList, type KeyValueItem } from "@/components/ui/key-value-list"
@@ -52,6 +53,8 @@ export type CheckoutReadBackProps = {
   assetName: string
   assetTag: string
   serialNumber: string | null
+  /** The register's photo (group 3 spec §19.5), so the receiver sees which asset they take. */
+  assetPhoto: AssetPhotoPreview | null
   photoCount: number
   components: ReadonlyArray<{ id: string; assetTag: string; name: string }>
   conditionLabel: string
@@ -70,6 +73,7 @@ export function CheckoutReadBack({
   assetName,
   assetTag,
   serialNumber,
+  assetPhoto,
   photoCount,
   components,
   conditionLabel,
@@ -96,14 +100,17 @@ export function CheckoutReadBack({
       <ContentPanel divided title={t("phoneStep2")} description={t("readBackHandOver")}>
         <div className="grid gap-4">
           <p className="min-w-0 break-words text-base font-semibold text-foreground">{t("readBackReceiving", { receiver: receiverLabel })}</p>
-          <div className="grid gap-1">
-            <p className="min-w-0 break-words font-medium text-foreground">{assetName}</p>
-            <p className="min-w-0 break-words text-sm text-muted-foreground">
-              {serialNumber ? t("readBackTagSerial", { tag: assetTag, serial: serialNumber }) : assetTag}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {photoCount > 0 ? t("readBackPhotoCount", { count: photoCount }) : t("readBackNoPhoto")}
-            </p>
+          <div className="flex min-w-0 items-start gap-3">
+            <AssetThumbnail photo={assetPhoto} assetTag={assetTag} assetName={assetName} size={64} />
+            <div className="grid min-w-0 flex-1 gap-1">
+              <p className="min-w-0 break-words font-medium text-foreground">{assetName}</p>
+              <p className="min-w-0 break-words text-sm text-muted-foreground">
+                {serialNumber ? t("readBackTagSerial", { tag: assetTag, serial: serialNumber }) : assetTag}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {photoCount > 0 ? t("readBackPhotoCount", { count: photoCount }) : t("readBackNoPhoto")}
+              </p>
+            </div>
           </div>
           {components.length > 0 ? (
             <div className="grid gap-1.5 text-sm">

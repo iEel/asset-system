@@ -11,6 +11,7 @@ import {
   type AssetOperationVerdict,
 } from "./asset-operation-eligibility.ts"
 import { normalizeAssetOwnershipType, type AssetOwnershipType } from "./asset-ownership.ts"
+import type { AssetPhotoPreview } from "./asset-photo-preview.ts"
 
 // The rules of the transaction pages' bounded asset search (server search spec 6.1-6.3): the query, the where clauses,
 // the ranking, the row and the รับคืน groups. Client-safe: the picker imports the constants, the href and the types.
@@ -174,6 +175,7 @@ export const assetOperationSearchAssetSelect = {
   name: true,
   serialNumber: true,
   ownershipType: true,
+  modelId: true,
   custodianId: true,
   currentLocationId: true,
   conditionId: true,
@@ -276,6 +278,8 @@ export type AssetOperationSearchRow = {
   eligible: boolean
   /** A full message key (root translator), null when eligible. */
   reasonKey: string | null
+  /** The register's photo (group 3 spec §19.5, A1-R6), every mode; null when the asset has none. */
+  photo: AssetPhotoPreview | null
   // รับคืน only (the keys are absent in the other modes):
   /** The open handover (the custody panel's fields). */
   checkout?: AssetOperationSearchCheckout
@@ -388,6 +392,7 @@ export function buildAssetOperationSearchRow(
     openCheckout: AssetOperationSearchCheckoutRecord | null
     hasOpenRepair: boolean
     labels?: AssetOperationDestinationLabels
+    photo?: AssetPhotoPreview | null
   },
 ): AssetOperationSearchRow {
   const { openCheckout, hasOpenRepair } = context
@@ -414,6 +419,7 @@ export function buildAssetOperationSearchRow(
     conditionId: asset.conditionId,
     eligible: verdict.eligible,
     reasonKey: verdict.reasonKey,
+    photo: context.photo ?? null,
   }
   if (input.mode !== "checkin") return row
 

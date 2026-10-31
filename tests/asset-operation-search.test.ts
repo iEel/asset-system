@@ -18,7 +18,7 @@ const inUse = { name: "In Use", nameTh: "ใช้งานอยู่" }
 function asset(tag: string, overrides: Partial<AssetOperationSearchAsset> = {}): AssetOperationSearchAsset {
   return {
     id: `id-${tag}`, assetTag: tag, name: `ชื่อ ${tag}`, serialNumber: null, ownershipType: "personal", custodianId: null,
-    currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
+    modelId: null, currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
     condition: { name: "Good" }, currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null, ...overrides,
   }
 }
@@ -44,6 +44,8 @@ type Args = { where: Where; select?: unknown; orderBy?: unknown; take?: number }
 function fakeDb(data: {
   exact?: AssetOperationSearchAsset[]; held?: AssetOperationSearchAsset[]; prefix?: AssetOperationSearchAsset[]; contains?: AssetOperationSearchAsset[]; total?: number
   checkouts?: AssetOperationSearchCheckoutRecord[]; repairAssetIds?: string[]; links?: AssetOperationComponentLink[]
+  modelImages?: Array<{ id: string; referenceId: string; originalName: string; fileType: string }>
+  assetImages?: Array<{ id: string; assetId: string; originalName: string; fileType: string }>
 } = {}) {
   const calls: Array<{ call: string; args: Args }> = []
   const all = [...(data.exact ?? []), ...(data.held ?? []), ...(data.prefix ?? []), ...(data.contains ?? [])]
@@ -67,6 +69,12 @@ function fakeDb(data: {
     maintenanceTicket: { async findMany(args: Args) { calls.push({ call: "maintenanceTicket.findMany", args }); return (data.repairAssetIds ?? []).map((assetId) => ({ assetId })) } },
     department: { async findMany(args: Args) { calls.push({ call: "department.findMany", args }); return [{ id: "dep-1", code: "IT", name: "ฝ่ายไอที" }] } },
     location: { async findMany(args: Args) { calls.push({ call: "location.findMany", args }); return [] } },
+    attachment: {
+      async findMany(args: Args) {
+        calls.push({ call: "attachment.findMany", args })
+        return args.where.module === "asset_model" ? data.modelImages ?? [] : (data.assetImages ?? []).filter((row) => args.where.assetId?.in.includes(row.assetId))
+      },
+    },
   }
   return { db, calls }
 }
@@ -212,4 +220,26 @@ test("without detail=1 the by-id read keeps the list select and reads nothing mo
   const [shared] = (await searchAssetOperationOptions(bare.db, input("mode=checkout&id=asset-2&detail=1"))).rows
   assert.deepEqual([shared.detail?.ownership, shared.detail?.departmentLabel, shared.detail?.holderLabel, shared.detail?.components], ["shared", null, null, []])
   assert.equal(bare.calls.filter((call) => call.call === "assetCheckout.findMany").length, 1, "only the asset's own handover read")
+})
+
+test("every row carries the register's photo, one photo read per answer: the model's image, else the asset's own, else null; the by-id detail=1 read too (group 3 spec §19.5, A1-R6)", async () => {
+  const { db, calls } = fakeDb({
+    contains: [asset("A-1", { id: "a1", modelId: "m1" }), asset("A-2", { id: "a2" }), asset("A-3", { id: "a3" })], total: 3,
+    modelImages: [{ id: "img-m1", referenceId: "m1", originalName: "dell.jpg", fileType: "image/jpeg" }],
+    assetImages: [{ id: "img-a1", assetId: "a1", originalName: "own.jpg", fileType: "image/jpeg" }, { id: "img-a2", assetId: "a2", originalName: "a2.png", fileType: "image/png" }],
+  })
+  for (const mode of ["checkout", "checkin", "transfer", "bulkMove"]) {
+    calls.length = 0
+    const answer = await searchAssetOperationOptions(db, input(`mode=${mode}&q=A-`))
+    assert.deepEqual(answer.rows.map((row) => [row.id, row.photo]), [
+      ["a1", { id: "img-m1", alt: "dell.jpg", fileType: "image/jpeg" }],
+      ["a2", { id: "img-a2", alt: "a2.png", fileType: "image/png" }],
+      ["a3", null],
+    ], mode)
+    assert.deepEqual(calls.filter((call) => call.call === "attachment.findMany").map((call) => call.args.where.module), ["asset_model", "asset"], mode)
+  }
+  const chosen = fakeDb({ contains: [detailAsset("NB-0017", { id: "asset-1", modelId: "m1" })], modelImages: [{ id: "img-m1", referenceId: "m1", originalName: "dell.jpg", fileType: "image/jpeg" }] })
+  const [row] = (await searchAssetOperationOptions(chosen.db, input("mode=checkout&id=asset-1&detail=1"))).rows
+  assert.deepEqual([row.photo, Boolean(row.detail)], [{ id: "img-m1", alt: "dell.jpg", fileType: "image/jpeg" }, true])
+  assert.equal("modelId" in assetOperationSearchAssetSelect, true)
 })

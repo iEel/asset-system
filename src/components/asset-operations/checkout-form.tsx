@@ -10,9 +10,11 @@ import { AssetConditionChoice } from "@/components/asset-operations/condition-ch
 import { OperationFormFrame } from "@/components/asset-operations/operation-form-frame"
 import { OperationSummaryCard } from "@/components/asset-operations/operation-summary-card"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
+import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChoiceCard } from "@/components/ui/choice-card"
+import { ChosenPhotoPreview } from "@/components/ui/chosen-photo-preview"
 import { Field } from "@/components/ui/field"
 import { FieldGroup } from "@/components/ui/field-group"
 import { fieldLabelClasses } from "@/components/ui/field-variants"
@@ -277,6 +279,19 @@ export function CheckoutForm({
     },
   })
 
+  // The review's รูปก่อนส่งมอบ line shows the chosen photo beside "แนบแล้ว" (group 3 spec §19.5).
+  const reviewDialogItems = reviewItems.map((item) => item.label === t("photoBefore") && photoBefore
+    ? {
+        ...item,
+        value: (
+          <span className="inline-flex items-center justify-end gap-2">
+            <ChosenPhotoPreview file={photoBefore} alt={t("photoBefore")} size={48} />
+            <span>{item.value}</span>
+          </span>
+        ),
+      }
+    : item)
+
   // A refusal from the review closes it, and the field takes focus once the dialog has gone (spec §4.2, O-R1). On the
   // phone a refused field is on step 1, so the form returns there first.
   async function leaveReview() {
@@ -433,6 +448,8 @@ export function CheckoutForm({
             checklist={checklist}
             warnings={detailFailedNotice ? [detailFailedNotice] : []}
             footnote={t("summaryFootnote")}
+            photo={values.asset ? <AssetThumbnail photo={values.asset.photo} assetTag={values.asset.assetTag} assetName={values.asset.name} size={64} /> : undefined}
+            assetLabel={values.asset ? assetOperationRowLabel(values.asset) : undefined}
           />}
           footer={{
             description: values.asset && receiverLabel
@@ -451,6 +468,7 @@ export function CheckoutForm({
             assetName={values.asset?.name ?? ""}
             assetTag={values.asset?.assetTag ?? ""}
             serialNumber={values.asset?.serialNumber ?? null}
+            assetPhoto={values.asset?.photo ?? null}
             photoCount={photoBefore ? 1 : 0}
             components={checkoutComponents(values.asset).travelling}
             conditionLabel={selectedCondition?.label ?? ""}
@@ -670,6 +688,7 @@ export function CheckoutForm({
                       browseLabel={t("photoBeforeDropHint")}
                     />
                   </Field>
+                  <ChosenPhotoPreview file={photoBefore} alt={t("photoBefore")} size={96} className="mt-2" />
                 </div>
                 <div data-checkout-part="signature" className={checkoutPhonePartClass("signature", step)}>
                   {/* A new receiver remounts the pad, so no ink given for another stays (final review M2). */}
@@ -705,7 +724,7 @@ export function CheckoutForm({
         open={reviewOpen}
         title={t("reviewTitle")}
         description={t("reviewDescription")}
-        items={reviewItems}
+        items={reviewDialogItems}
         confirmLabel={t("reviewConfirm")}
         cancelLabel={tCommon("cancel")}
         busy={saving}
@@ -747,14 +766,17 @@ export function CheckoutForm({
 function CheckoutAssetCard({ row }: { row: AssetOperationSearchRow }) {
   const t = useTranslations("checkout")
   return (
-    <span className="grid min-w-0 gap-1">
-      <span className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="tag font-medium">{row.assetTag}</span>
-        <StatusBadge label={row.statusLabel} tone={getAssetStateTone(row.detail?.statusName)} />
-      </span>
-      <span className="min-w-0 break-words font-medium text-foreground">{row.name}</span>
-      <span className="min-w-0 break-words text-meta text-muted-foreground">
-        {row.detail ? t("assetWhere", { location: row.locationLabel, branch: row.detail.locationBranchLabel, holder: row.detail.holderLabel ?? t("noHolder") }) : row.locationLabel}
+    <span className="flex min-w-0 items-start gap-3">
+      <AssetThumbnail photo={row.photo} assetTag={row.assetTag} assetName={row.name} size={44} />
+      <span className="grid min-w-0 gap-1">
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="tag font-medium">{row.assetTag}</span>
+          <StatusBadge label={row.statusLabel} tone={getAssetStateTone(row.detail?.statusName)} />
+        </span>
+        <span className="min-w-0 break-words font-medium text-foreground">{row.name}</span>
+        <span className="min-w-0 break-words text-meta text-muted-foreground">
+          {row.detail ? t("assetWhere", { location: row.locationLabel, branch: row.detail.locationBranchLabel, holder: row.detail.holderLabel ?? t("noHolder") }) : row.locationLabel}
+        </span>
       </span>
     </span>
   )

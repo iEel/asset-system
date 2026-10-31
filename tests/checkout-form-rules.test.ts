@@ -33,6 +33,7 @@ function row(o: Partial<AssetOperationSearchRow> = {}, d: Partial<AssetOperation
     conditionId: "c-good",
     eligible: true,
     reasonKey: null,
+    photo: null,
     detail: {
       ownership: "personal",
       statusName: "Ready",

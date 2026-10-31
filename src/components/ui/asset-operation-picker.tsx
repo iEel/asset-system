@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react"
 import { Search, X } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { Button } from "@/components/ui/button"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { FieldError, FieldHint, FieldLabel } from "@/components/ui/field"
@@ -250,26 +251,30 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
         }}
         onClick={() => pick(row)}
         className={cn(
-          "flex min-h-11 min-w-0 flex-col justify-center gap-0.5 border-b border-border-soft px-3 py-2 text-left text-sm last:border-b-0",
+          "flex min-h-11 min-w-0 items-center gap-3 border-b border-border-soft px-3 py-2 text-left text-sm last:border-b-0",
           view.selectable ? "cursor-pointer text-foreground" : "cursor-default text-faint-foreground",
           index === activeIndex && "bg-primary-soft",
         )}
       >
-        <span className="min-w-0 break-words">
-          <span className="tag font-medium">
-            <WordsHighlight value={row.assetTag} words={words} />
+        {/* The register's photo (group 3 spec §19.5); decorative, the row's text names the asset. */}
+        <AssetThumbnail photo={row.photo} assetTag={row.assetTag} assetName={row.name} size={40} preview={false} />
+        <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+          <span className="min-w-0 break-words">
+            <span className="tag font-medium">
+              <WordsHighlight value={row.assetTag} words={words} />
+            </span>
+            {" · "}
+            <WordsHighlight value={row.name} words={words} />
           </span>
-          {" · "}
-          <WordsHighlight value={row.name} words={words} />
-        </span>
-        <span className={cn("block min-w-0 break-words text-meta", view.selectable && "text-muted-foreground")}>
-          <RowDetail row={row} />
-        </span>
-        {note ? (
-          <span data-asset-option-reason className={cn("text-meta", note.kind === "chosen" ? "text-muted-foreground" : "text-warning")}>
-            {note.kind === "chosen" ? t("chosen") : tAll(note.key)}
+          <span className={cn("block min-w-0 break-words text-meta", view.selectable && "text-muted-foreground")}>
+            <RowDetail row={row} />
           </span>
-        ) : null}
+          {note ? (
+            <span data-asset-option-reason className={cn("text-meta", note.kind === "chosen" ? "text-muted-foreground" : "text-warning")}>
+              {note.kind === "chosen" ? t("chosen") : tAll(note.key)}
+            </span>
+          ) : null}
+        </span>
       </li>
     )
   }

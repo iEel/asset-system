@@ -24,7 +24,7 @@ const mockedModuleSources = new Map<string, string>([
   `],
   ["@/lib/db", `
     const state = () => globalThis.__assetOperationSearchRouteState
-    const ready = { id: "asset-1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก", serialNumber: null, ownershipType: "personal", custodianId: null,
+    const ready = { id: "asset-1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก", serialNumber: null, ownershipType: "personal", modelId: null, custodianId: null,
       currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
       currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null }
     const model = (name, rows) => ({
@@ -32,7 +32,7 @@ const mockedModuleSources = new Map<string, string>([
       count: async () => { state().calls.push(name + ".count"); return rows.length },
     })
     export const prisma = { asset: model("asset", [ready]), assetCheckout: model("assetCheckout", []), maintenanceTicket: model("maintenanceTicket", []),
-      department: model("department", []), location: model("location", []) }
+      department: model("department", []), location: model("location", []), attachment: model("attachment", []) }
   `],
 ])
 
@@ -85,6 +85,8 @@ test("an answer is { data } with the mode, the true total and the rows with thei
   assert.equal(response.status, 200)
   const { data } = await response.json() as { data: AssetOperationSearchAnswer }
   assert.deepEqual([data.mode, data.total, data.rows.map((row) => [row.assetTag, row.eligible, row.reasonKey])], ["checkout", 1, [["SNI-EQU-25-0228", true, null]]])
+  // The register photo is read from the real client (group 3 spec §19.5); an asset without one answers null.
+  assert.deepEqual([data.rows[0].photo, state.calls.filter((call) => call === "attachment.findMany").length], [null, 1])
 })
 
 test("the search's time can be measured on Production (spec §4: revisit over 1 s)", () => {

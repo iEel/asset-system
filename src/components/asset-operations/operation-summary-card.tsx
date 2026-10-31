@@ -15,6 +15,9 @@ export type OperationSummaryCardProps = {
   checklist?: OperationSummaryCheck[]
   warnings?: ReactNode[]
   footnote?: ReactNode
+  /** The asset line under the title (group 3 spec §19.5): the asset's photo, with its label beside it. */
+  photo?: ReactNode
+  assetLabel?: ReactNode
 }
 
 // One class string for the heads row and every row of the list, so the three columns line up.
@@ -22,12 +25,18 @@ const SUMMARY_ROW_CLASSES = "grid grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minma
 
 // "สรุปก่อนบันทึก" of ส่งมอบ, รับคืน and โอนย้าย (group 3 spec §5): one row per field the save writes, ตอนนี้ then หลังบันทึก,
 // the new value semibold only when it changes; then the checklist, the warnings and a footnote. Sticky in its column from lg.
-export function OperationSummaryCard({ title, nowLabel, nextLabel, rows, checklist = [], warnings = [], footnote }: OperationSummaryCardProps) {
+export function OperationSummaryCard({ title, nowLabel, nextLabel, rows, checklist = [], warnings = [], footnote, photo, assetLabel }: OperationSummaryCardProps) {
   const t = useTranslations("assetOperation")
 
   return (
     <div data-slot="operation-summary-card" className={cn(getPanelClasses(), "grid content-start gap-4 p-4 sm:p-5 lg:sticky lg:top-4 lg:self-start")}>
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      {photo || assetLabel ? (
+        <div data-summary-asset className="flex min-w-0 items-center gap-3 text-sm">
+          {photo}
+          {assetLabel ? <span className="min-w-0 break-words text-foreground">{assetLabel}</span> : null}
+        </div>
+      ) : null}
       {rows.length > 0 ? (
         <div className="grid gap-2 text-sm">
           {/* The column heads are visual only: each value names its column for a screen reader. */}
