@@ -12,7 +12,7 @@ type World = {
   permissions: string[]; link: Row | null; linkClaimCount: number; checkin: Row | null; component: Row; parent: Row
   /** Overrides for each parent read in turn (the read before the claim, then the one after it). */
   parentReads: Row[]
-  parentOpenCheckout: boolean; parentOpenRepair: boolean; componentOpenRepair: boolean; parentClaimCount: number
+  parentOpenCheckout: boolean; parentOpenRepair: boolean; componentOpenRepair: boolean; parentClaimCount: number; componentClaimCount: number
   department: Row | null
   /** Each room read takes the next answer; when empty the room is active. */
   locationAnswers: boolean[]
@@ -91,14 +91,14 @@ beforeEach(() => {
     permissions: ["asset:edit"], link: { id: "link-1", parentAssetId: "parent-1", componentRole: "RAM", slotNo: null }, linkClaimCount: 1,
     checkin: { id: "checkin-1", documentNo: "RT-202610-0001", returnDate: new Date("2026-10-20T00:00:00Z") },
     component: { ...COMPONENT }, parent: { ...PARENT }, parentReads: [], parentOpenCheckout: false, parentOpenRepair: false, componentOpenRepair: false,
-    parentClaimCount: 1, department: { id: "dept-it", code: "IT", name: "Information Technology", isActive: true }, locationAnswers: [],
+    parentClaimCount: 1, componentClaimCount: 1, department: { id: "dept-it", code: "IT", name: "Information Technology", isActive: true }, locationAnswers: [],
     conditions: { "cond-good": { name: "Good", isActive: true }, "cond-fair": { name: "Fair", isActive: true }, "cond-na": { name: "Not Assessed", isActive: true } }, audits: [],
   })
   db.calls = []
   db.answers = {
     "asset.findFirst": (a: Args) => (a.where?.id === "comp-1" && world.component.isActive ? { id: "comp-1" } : null),
     "asset.findUnique": (a: Args) => (a.where?.id === "comp-1" ? world.component : { ...world.parent, ...(world.parentReads.shift() ?? {}) }),
-    "asset.updateMany": () => ({ count: world.parentClaimCount }),
+    "asset.updateMany": (a: Args) => ({ count: a.where?.id === "comp-1" ? world.componentClaimCount : world.parentClaimCount }),
     "asset.update": (a: Args) => ({ ...world.component, ...(a.data as Row) }),
     "assetComponent.findFirst": () => world.link,
     "assetComponent.findUnique": () => world.link,
@@ -119,7 +119,10 @@ test("the parent in IT stock: the link is installed again, the component takes t
   assert.deepEqual(claim, { where: linkWhere, data: { updatedBy: "user-1" } })
   assert.deepEqual(write, { where: siblingsWhere, data: { status: "installed", updatedBy: "user-1" } }, "every outstanding link of this component under this RT- (GP X1)")
   assert.equal(rest.length, 0)
-  assert.deepEqual(args("asset.updateMany")[0].where, { id: "parent-1", isActive: true, statusId: "status-ready" }, "the parent is claimed")
+  assert.deepEqual(args("asset.updateMany").map((entry) => entry.where), [
+    { id: "comp-1", isActive: true },
+    { id: "parent-1", isActive: true, statusId: "status-ready" },
+  ], "the component is claimed, then the parent")
   assert.deepEqual(args("asset.update"), [{ where: { id: "comp-1" }, data: { currentLocationId: "loc-it", custodianId: null, departmentId: "dept-parent", updatedBy: "user-1" } }])
   assert.deepEqual(movements(), [
     { assetId: "parent-1", movementType: "component_install", toValue: linkValue, reason: null, referenceType: "checkin", referenceId: "checkin-1", performedBy: "user-1" },
@@ -135,7 +138,7 @@ test("the parent handed over again: the link ends, the component stands alone in
   Object.assign(world.parent, HANDED_OVER); world.parentOpenCheckout = true
   assert.deepEqual(await answer(await post(body({ expectedOutcome: "standalone", nextLocationId: "loc-store", remark: "คืนที่โต๊ะ IT" }))), [201, { checkinId: "checkin-1", documentNo: "RT-202610-0001", outcome: "standalone" }])
   assert.deepEqual(args("assetComponent.updateMany")[1], { where: siblingsWhere, data: { status: "removed", removedAt: new Date("2026-10-25"), updatedBy: "user-1" } })
-  assert.equal(args("asset.updateMany").length, 0)
+  assert.deepEqual(args("asset.updateMany").map((entry) => entry.where?.id), ["comp-1"], "only the component is claimed")
   assert.deepEqual(args("asset.update")[0].data, { currentLocationId: "loc-store", custodianId: null, departmentId: "dept-it", updatedBy: "user-1" })
   assert.deepEqual(movements().slice(0, 2), [
     { assetId: "parent-1", movementType: "component_remove", fromValue: linkValue, reason: null, referenceType: "checkin", referenceId: "checkin-1", performedBy: "user-1" },
@@ -176,6 +179,27 @@ test("re-attach: a parent claim that loses, or a parent that took a holder befor
   world.parentClaimCount = 1; world.parentReads = [{}, { custodianId: "emp-9" }]; db.calls = []
   assert.deepEqual(await answer(await post(body())), [409, CHANGED])
   assert.deepEqual([args("assetComponent.updateMany").length, args("asset.update").length, movements().length], [1, 0, 0])
+})
+
+test("re-attach: the component takes the room and department of the parent as re-read after the parent claim (final review server-1)", async () => {
+  world.parentReads = [{}, { currentLocationId: "loc-it-2", departmentId: "dept-parent-2" }]
+  assert.equal((await post(body())).status, 201)
+  assert.deepEqual(args("asset.update")[0].data, { currentLocationId: "loc-it-2", custodianId: null, departmentId: "dept-parent-2", updatedBy: "user-1" })
+  assert.deepEqual(movements().filter((row: Row) => row.movementType === "location_change").map((row: Row) => row.toValue), ["loc-it-2"])
+})
+
+test("the component row is claimed before its state, open handover and repair are read; a lost claim is refused as changed (final review server-4)", async () => {
+  assert.equal((await post(body())).status, 201)
+  const order = db.calls.map((entry) => entry.call + ":" + String(entry.args.where?.id ?? entry.args.where?.assetId ?? ""))
+  const claim = order.indexOf("asset.updateMany:comp-1")
+  assert.ok(claim >= 0, "the component is claimed")
+  assert.deepEqual(args("asset.updateMany")[0], { where: { id: "comp-1", isActive: true }, data: { updatedBy: "user-1" } })
+  assert.ok(claim < order.indexOf("asset.findUnique:comp-1"), "before the component is read")
+  assert.ok(claim < order.indexOf("assetCheckout.findFirst:comp-1"), "before its open handover is read")
+  assert.ok(claim < order.indexOf("maintenanceTicket.count:comp-1"), "before its open repair is counted")
+  world.componentClaimCount = 0; db.calls = []
+  assert.deepEqual(await answer(await post(body())), [409, CHANGED])
+  assert.deepEqual([args("asset.findUnique").length, args("asset.update").length, movements().length], [0, 0, 0])
 })
 
 test("stand alone needs a room; a closed room is refused under it, before and inside the transaction (P2-R3, P2-R15)", async () => {

@@ -97,6 +97,11 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
       })
       if (!linkRow || !checkinNow) throw changedDuringOperation()
 
+      // Claim the component row before reading its state, its open handover and its repair, in the order checkout and
+      // transfer take it (they claim the component, then read its links): one of two saves waits here, then sees the other.
+      const componentClaim = await tx.asset.updateMany({ where: { id, isActive: true }, data: { updatedBy: user.id } })
+      if (componentClaim.count !== 1) throw changedDuringOperation()
+
       const before = await tx.asset.findUnique({
         where: { id },
         select: {
@@ -141,11 +146,15 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
       if (outcome !== input.expectedOutcome) throw changedDuringOperation()
 
       const returnDepartment = await readCheckinDepartment(tx)
+      // A re-attach takes the parent's room and department from the read made after the parent claim: a move or a
+      // transfer that kept the status passes the claim, and the first read would then be stale.
+      let parent = read.parent
       if (outcome === "reattached") {
         await claimAssetForCustodyChange(tx, { assetId: read.parent.id, expectedStatusId: read.parent.statusId, updatedBy: user.id })
         // A holder or a repair set without a status change passes the claim; read the parent again.
         const reread = await readLateReturnParent(tx, read.parent.id)
         if (!reread || getLateReturnOutcome(reread.facts) !== "reattached") throw changedDuringOperation()
+        parent = reread.parent
       } else if (!(await isActiveLocation(tx, input.nextLocationId!))) {
         throw new LateReturnLocationInactiveError()
       }
@@ -153,12 +162,12 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
       const nextDepartmentId = getLateReturnDepartmentId({
         outcome,
         ownership,
-        parentDepartmentId: read.parent.departmentId,
+        parentDepartmentId: parent.departmentId,
         returnDepartmentId: returnDepartment.id,
         currentDepartmentId: before.departmentId,
       })
       const conditionChanged = Boolean(input.conditionId) && input.conditionId !== before.conditionId
-      const currentLocationId = outcome === "reattached" ? read.parent.currentLocationId : input.nextLocationId!
+      const currentLocationId = outcome === "reattached" ? parent.currentLocationId : input.nextLocationId!
 
       // Every outstanding link of this component under this RT- ends the same way (P2-R1); each keeps the RT- as its reference.
       await tx.assetComponent.updateMany({
