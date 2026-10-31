@@ -1341,7 +1341,8 @@
     "transactionReasonComponentOutstanding": "ส่วนควบค้างคืน รับคืนก่อน",
     "transactionReasonComponentOwnHandover": "ส่วนควบนี้มีใบส่งมอบของตัวเองค้างอยู่ ถอดออกจากเครื่องหลักก่อน",
     "componentOutstanding": "ค้างคืน",
-    "componentOutstandingWith": "อยู่กับ {holder}"
+    "componentOutstandingWith": "อยู่กับ {holder}",
+    "dataQualityNoHandover": "มีผู้ถือครองแต่ไม่มีใบส่งมอบ"
   },
   "company": {
     "title": "บริษัท",
@@ -1991,7 +1992,6 @@
     "reviewNoEvidence": "ยังไม่ได้แนบรูปหรือ ลายเซ็น",
     "reviewConfirm": "ยืนยันรับคืน",
     "photoAfterDescription": "ถ่ายได้หลายรูป รูปจะบันทึกพร้อมรายการรับคืน",
-    "legacyReturnCount": "ข้อมูลเก่า (ไม่มีใบส่งมอบ) {count} รายการ ค้นหาได้ด้วยรหัสทรัพย์สินหรือชื่อผู้ถือครอง",
     "legacyReturnConfirmTitle": "สร้างใบส่งมอบย้อนหลังแล้วรับคืน",
     "legacyReturnConfirmDescription": "{asset} อยู่กับ {holder} แต่ไม่มีใบส่งมอบ ระบบจะสร้างใบส่งมอบย้อนหลังพร้อมประวัติการแก้ไข แล้วไปต่อที่ฟอร์มรับคืนนี้",
     "legacyReturnConfirm": "สร้างและรับคืน",
@@ -2003,7 +2003,8 @@
     "documentComponentReturned": "{tag} คืนแล้ว {date} · รับโดย {name}",
     "documentRepair": "ใบซ่อม",
     "documentRepairOpened": "เปิดใบซ่อม {repairNo}",
-    "documentRepairJoined": "ต่อใบซ่อม {repairNo}"
+    "documentRepairJoined": "ต่อใบซ่อม {repairNo}",
+    "legacyReturnLink": "ข้อมูลเก่าที่ยังไม่มีใบส่งมอบ {count} รายการ · ดูรายการ"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",

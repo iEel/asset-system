@@ -22,6 +22,7 @@ import { AssetRegisterViewMemory } from "@/components/assets/asset-register-view
 import { buttonVariants } from "@/components/ui/button-variants"
 import { PageHeader } from "@/components/ui/page-header"
 import { formatCount } from "@/lib/display-format"
+import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { hasPermission } from "@/lib/auth-utils"
@@ -295,7 +296,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         returnDue: t("dataQualityReturnDue"),
         responsibility: t("dataQualityResponsibility"),
         department: t("dataQualityDepartment"),
-      },
+        noHandover: t("dataQualityNoHandover"),
+      } satisfies Record<AssetDataQualityFilter, string>,
       crossScope: {
         all: t("quickFilterCrossScopeAll"),
         custodian_company: t("quickFilterCustodianCrossCompany"),

@@ -1,4 +1,4 @@
-export const assetDataQualityFilters = ["responsibility", "serial", "photo", "department", "purchase", "warranty", "licenseExpiry", "returnDue"] as const
+export const assetDataQualityFilters = ["responsibility", "serial", "photo", "department", "purchase", "warranty", "licenseExpiry", "returnDue", "noHandover"] as const
 
 export type AssetDataQualityFilter = (typeof assetDataQualityFilters)[number]
 

@@ -31,7 +31,6 @@ import {
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { getCheckinChoice } from "@/lib/checkin-choice"
 import { operationConditionDefault } from "@/lib/asset-lifecycle-policy"
-import { formatCount } from "@/lib/display-format"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { maxLength, required } from "@/lib/validation-rules"
@@ -101,7 +100,7 @@ export function CheckinForm({
   conditions,
   initialRow,
   initialQuery,
-  legacyReturnCount,
+  legacyLink,
   returnTo,
 }: {
   employees: Option[]
@@ -112,7 +111,8 @@ export function CheckinForm({
   initialRow: AssetOperationSearchRow | null
   /** ?assetId=: the asset's tag, the search starts filled (spec 6.4). */
   initialQuery: string
-  legacyReturnCount: number
+  /** รับคืน's header link to the register's ข้อมูลเก่า list (group 3 spec §8.1), built by the page; null when there is none. */
+  legacyLink: React.ReactNode
   returnTo?: string
 }) {
   const locale = useLocale()
@@ -352,7 +352,7 @@ export function CheckinForm({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title={t("title")} className="mb-6" />
+      <PageHeader title={t("title")} actions={legacyLink} className="mb-6" />
       <ContentPanel>
         <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {/* The arrival banner names the ?checkoutId= row only while it is still the chosen one (look step). */}
@@ -372,9 +372,6 @@ export function CheckinForm({
               error={blockedReason ?? fieldErrors.message("checkoutId")}
               onChange={chooseRow}
             />
-            {legacyReturnCount > 0 ? (
-              <p className="text-meta text-muted-foreground">{t("legacyReturnCount", { count: formatCount(legacyReturnCount) })}</p>
-            ) : null}
           </div>
 
           <Field label={t("returnDate")} id="checkin-return-date" required error={fieldErrors.message("returnDate")}>

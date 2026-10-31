@@ -19,6 +19,7 @@ import {
   warrantyExpiringSoonWhere,
   type WaitingWorkRules,
 } from "../src/lib/waiting-work-rules.ts"
+import { legacyReturnCountWhere } from "../src/lib/legacy-return-rule.ts"
 
 test("parses asset custodian and supplier filters for master-data drilldowns", () => {
   const filters = parseAssetListParams({
@@ -145,7 +146,7 @@ test("only the three waiting-work values make the register read the notification
   for (const value of ["warranty", "licenseExpiry", "returnDue"]) {
     assert.equal(assetFiltersUseWaitingWorkRules(parseAssetListParams({ dataQuality: value })), true, value)
   }
-  for (const value of ["", "serial", "photo", "responsibility", "department", "purchase"]) {
+  for (const value of ["", "serial", "photo", "responsibility", "department", "purchase", "noHandover"]) {
     assert.equal(assetFiltersUseWaitingWorkRules(parseAssetListParams({ dataQuality: value })), false, value)
   }
 })
@@ -194,4 +195,15 @@ test("locationId lists the assets at that location and keeps its place in the qu
   assert.equal("currentLocationId" in buildAssetWhere(parseAssetListParams({})), false)
   assert.equal(buildAssetQueryString(filters), "custodianState=assigned&locationId=loc-1&sort=createdAt&direction=desc&page=1&pageSize=25")
   assert.equal(parseAssetListParams(new URLSearchParams(buildAssetQueryString(filters))).locationId, "loc-1")
+})
+
+test("dataQuality=noHandover lists what รับคืน's legacy count counts: the legacy where itself, not a copy (group 3 spec §8.1, P2-R20)", () => {
+  // The rule holds isActive: true, so the register's { isActive: true, AND: [rule] } lists exactly the rule's assets.
+  assert.equal(legacyReturnCountWhere.isActive, true)
+  const filters = parseAssetListParams({ dataQuality: "noHandover" })
+  assert.equal(filters.dataQuality, "noHandover")
+  const where = buildAssetWhere(filters)
+  assert.deepEqual(where, { isActive: true, AND: [legacyReturnCountWhere] })
+  assert.equal((where.AND as unknown[])[0], legacyReturnCountWhere, "one object")
+  assert.match(buildAssetQueryString(filters), /(^|&)dataQuality=noHandover(&|$)/)
 })

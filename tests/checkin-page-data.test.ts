@@ -156,3 +156,13 @@ test("?assetId= of an outstanding component starts with its late-return row, cho
   state.answer = { mode: "checkin", total: 1, rows: [blocked] }
   assert.deepEqual(await data.getCheckinPreselect({ assetId: "c-2" }), { row: blocked, query: "" })
 })
+
+test("the register's noHandover filter is the count's own where, so N on รับคืน is the register's total (group 3 spec §8.1, P2-R20)", async () => {
+  const query = await import(pathToFileURL("src/lib/asset-list-query.ts").href) as typeof import("../src/lib/asset-list-query.ts")
+  const where = query.buildAssetWhere(query.parseAssetListParams({ dataQuality: "noHandover" }))
+  assert.equal((where.AND as unknown[] | undefined)?.[0], data.legacyReturnCountWhere, "the register reads the re-exported object")
+  assert.equal(await data.countLegacyReturns(), 42)
+  const counted = state.calls.at(-1)
+  assert.equal(counted?.call, "asset.count")
+  assert.equal(counted?.args.where, data.legacyReturnCountWhere, "the count reads the same object")
+})

@@ -232,3 +232,9 @@ test("the reports page frames its views with PageHeader, FilterChipList and Stat
     assert.equal(existsSync(path), false, `${path} has no caller left`)
   }
 })
+
+test("report chips name noHandover, and the label map is checked against every register value (group 3 spec §8.1, P2-R20)", () => {
+  const source = page.replace(/\r\n/g, "\n")
+  assert.match(source, /returnDue: tAsset\("dataQualityReturnDue"\),\n\s+noHandover: tAsset\("dataQualityNoHandover"\),\n\s+\} satisfies Record<AssetDataQualityFilter, string>\n/)
+  assert.match(source, /^import type \{ AssetDataQualityFilter \} from "@\/lib\/asset-data-quality-filter"$/m)
+})

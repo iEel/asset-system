@@ -186,3 +186,11 @@ test("the register's routes build the same where as the page, and only the windo
   assert.match(options, /rules: assetFiltersUseWaitingWorkRules\(filters\) \? await getWaitingWorkRules\(\) : DEFAULT_WAITING_WORK_RULES/)
   assert.doesNotMatch(sheet(), /licenseExpiry|returnDue|custodianState|locationId/, "link-only values: the filter sheet offers no chip for them")
 })
+
+test("the register names noHandover on its chip and offers it last in the filter sheet (group 3 spec §8.1, P2-R20)", () => {
+  assert.match(page(), /department: t\("dataQualityDepartment"\),\n\s+noHandover: t\("dataQualityNoHandover"\),\n\s+\} satisfies Record<AssetDataQualityFilter, string>,\n\s+crossScope: \{/)
+  assert.match(page(), /^import type \{ AssetDataQualityFilter \} from "@\/lib\/asset-data-quality-filter"$/m)
+  assert.match(sheet(), /\["department", "dataQualityDepartment"\],\n\s+\["noHandover", "dataQualityNoHandover"\],\n\] as const satisfies ReadonlyArray<readonly \[AssetDataQualityFilter, string\]>/)
+  assert.equal(messages("th").dataQualityNoHandover, "มีผู้ถือครองแต่ไม่มีใบส่งมอบ")
+  assert.equal(messages("en").dataQualityNoHandover, "Has a holder but no handover document")
+})

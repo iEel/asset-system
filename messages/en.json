@@ -1341,7 +1341,8 @@
     "transactionReasonComponentOutstanding": "An outstanding component: return it first",
     "transactionReasonComponentOwnHandover": "This component has its own open handover. Remove it from its parent asset first.",
     "componentOutstanding": "Outstanding",
-    "componentOutstandingWith": "With {holder}"
+    "componentOutstandingWith": "With {holder}",
+    "dataQualityNoHandover": "Has a holder but no handover document"
   },
   "company": {
     "title": "Companies",
@@ -1991,7 +1992,6 @@
     "reviewNoEvidence": "No photo or signature attached",
     "reviewConfirm": "Confirm return",
     "photoAfterDescription": "Add as many photos as you need. They are saved with the return.",
-    "legacyReturnCount": "{count} legacy items (no handover document). Find them by asset tag or holder's name.",
     "legacyReturnConfirmTitle": "Create a backdated handover, then return it",
     "legacyReturnConfirmDescription": "{asset} is with {holder} but has no handover document. The system creates a backdated handover with its change history, then continues on this return form.",
     "legacyReturnConfirm": "Create and return",
@@ -2003,7 +2003,8 @@
     "documentComponentReturned": "{tag} returned {date} · received by {name}",
     "documentRepair": "Repair ticket",
     "documentRepairOpened": "Opened repair ticket {repairNo}",
-    "documentRepairJoined": "Joined repair ticket {repairNo}"
+    "documentRepairJoined": "Joined repair ticket {repairNo}",
+    "legacyReturnLink": "{count} legacy records without a handover document · View list"
   },
   "transfer": {
     "title": "Transfer Asset",

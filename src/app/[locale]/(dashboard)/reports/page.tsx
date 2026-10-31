@@ -6,6 +6,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
+import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { getAssetActivityWhere } from "@/lib/asset-activity-filter"
 import { getAssetWhereOptions } from "@/lib/asset-list-where-options"
 import { getWaitingWorkRules } from "@/lib/waiting-work"
@@ -153,7 +154,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     warranty: t("warrantyExpiring"),
     licenseExpiry: tAsset("dataQualityLicenseExpiry"),
     returnDue: tAsset("dataQualityReturnDue"),
-  }
+    noHandover: tAsset("dataQualityNoHandover"),
+  } satisfies Record<AssetDataQualityFilter, string>
   const crossScopeFilterLabels: Record<string, string> = {
     all: t("crossScopeAll"),
     custodian_company: t("crossScopeCustodianCompany"),

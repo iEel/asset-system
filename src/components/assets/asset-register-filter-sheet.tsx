@@ -30,6 +30,7 @@ const dataQualityOptions = [
   ["warranty", "dataQualityWarranty"],
   ["responsibility", "dataQualityResponsibility"],
   ["department", "dataQualityDepartment"],
+  ["noHandover", "dataQualityNoHandover"],
 ] as const satisfies ReadonlyArray<readonly [AssetDataQualityFilter, string]>
 
 const crossScopeOptions = [

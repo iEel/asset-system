@@ -4,6 +4,7 @@ import { normalizeAssetCrossScopeFilter } from "./asset-cross-scope-filter.ts"
 import { getAssetCustodianStateWhere, normalizeAssetCustodianStateFilter } from "./asset-custodian-state-filter.ts"
 import { normalizeAssetDataQualityFilter } from "./asset-data-quality-filter.ts"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes } from "./asset-ownership.ts"
+import { legacyReturnCountWhere } from "./legacy-return-rule.ts"
 import {
   DEFAULT_WAITING_WORK_RULES,
   licenseExpiringSoonWhere,
@@ -211,5 +212,7 @@ function buildAssetDataQualityWhere(
   if (dataQuality === "warranty") return warrantyExpiringSoonWhere(options.today, options.rules)
   if (dataQuality === "licenseExpiry") return licenseExpiringSoonWhere(options.today, options.rules)
   if (dataQuality === "returnDue") return returnsDueSoonAssetWhere(options.today, options.rules)
+  // รับคืน's legacy count, the same object, so the header's N is this list's total (group 3 spec §8.1, P2-R20).
+  if (dataQuality === "noHandover") return legacyReturnCountWhere
   return null
 }
