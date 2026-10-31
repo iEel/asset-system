@@ -5,6 +5,8 @@ import { errorResponse } from "@/lib/api-response"
 import { validationFailedBody } from "@/lib/api-error-exposure"
 import { settingFieldKeyFor } from "@/lib/field-errors"
 import { logAudit } from "@/lib/audit-log"
+import { CHECKIN_DEPARTMENT_SETTING_KEY, normalizeCheckinDepartmentCode } from "@/lib/checkin-department"
+import { fieldErrorResponse } from "@/lib/field-error-response"
 import { knownSystemSettingKeys, systemSettingDefaults } from "@/lib/system-setting-defaults"
 import { systemSettingsUpdateSchema } from "@/lib/validations/system-settings"
 import {
@@ -62,7 +64,7 @@ export async function PUT(request: NextRequest) {
     const submittedSettings = resolveSubmittedSecretSettings(
       input.settings,
       new Map(existingSettings.map((setting) => [setting.key, setting.value])),
-    )
+    ).map((setting) => (setting.key === CHECKIN_DEPARTMENT_SETTING_KEY ? { ...setting, value: normalizeCheckinDepartmentCode(setting.value) } : setting))
     const missingKeys = keys.filter((key) => !existingByKey.has(key) && !knownSystemSettingKeys.has(key))
     if (missingKeys.length > 0) {
       return NextResponse.json({ error: `Unknown settings: ${missingKeys.join(", ")}` }, { status: 400 })
@@ -82,6 +84,23 @@ export async function PUT(request: NextRequest) {
     )
     if (restrictedChangeError) {
       return NextResponse.json({ error: restrictedChangeError }, { status: 403 })
+    }
+    // The return department (group 3 spec §12, P2-R8) must name an active department. Only a changed value is read:
+    // a department closed later must not block saving unrelated settings, and the return itself refuses then.
+    const checkinDepartmentChange = changedSettings.find((setting) => setting.key === CHECKIN_DEPARTMENT_SETTING_KEY)
+    if (checkinDepartmentChange) {
+      const department = await prisma.department.findFirst({
+        where: { code: checkinDepartmentChange.value, isActive: true },
+        select: { id: true },
+      })
+      if (!department) {
+        return fieldErrorResponse({
+          status: 400,
+          error: "CHECKIN_DEPARTMENT_CODE_UNKNOWN",
+          code: "CHECKIN_DEPARTMENT_CODE_UNKNOWN",
+          fieldErrors: { [`settings.${CHECKIN_DEPARTMENT_SETTING_KEY}`]: "checkinDepartmentCodeUnknown" },
+        })
+      }
     }
 
     await prisma.$transaction(

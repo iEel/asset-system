@@ -15,6 +15,8 @@ export type SystemSettingsSearchResult = {
 export function getSystemSettingsTabForKey(key: string): SettingsTabId {
   if (key.startsWith("asset_tag_")) return "asset-numbering"
   if (key.startsWith("asset_label_") || key === "asset_qr_public_base_url") return "label-template"
+  // The return department (group 3 spec §12) is edited on the organization tab, ahead of the checkin_ documents rule.
+  if (key === "checkin_department_code") return "organization"
   if (key.startsWith("checkout_") || key.startsWith("checkin_") || key.startsWith("operation_document_")) return "documents"
   // The depreciation policy (accounting_depreciation_policy) is edited on the organization tab, with its builder.
   if (key === "company_name" || key === "default_currency" || key.startsWith("depreciation_") || key === "accounting_depreciation_policy") return "organization"

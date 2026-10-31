@@ -1,5 +1,5 @@
 export class AssetOperationConflictError extends Error {
-  readonly code: "ASSET_CHANGED_DURING_OPERATION" | "ASSET_ACTIVE_CHECKOUT_EXISTS"
+  readonly code: "ASSET_CHANGED_DURING_OPERATION" | "ASSET_ACTIVE_CHECKOUT_EXISTS" | "ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE"
 
   constructor(code: AssetOperationConflictError["code"], message: string) {
     super(message)

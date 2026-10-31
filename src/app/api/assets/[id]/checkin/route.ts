@@ -5,6 +5,10 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assetCheckinSchema } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
+import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
+import { getCheckinNextDepartmentId } from "@/lib/asset-department-rule"
+import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { readCheckinDepartment } from "@/lib/checkin-department"
 import { getAssetOperationConditionError, getCheckinHandoverStatusError } from "@/lib/asset-lifecycle-policy"
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
 import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
@@ -88,8 +92,11 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     if (!sendsToRepair && hasOpenRepairBefore) {
       return repairStatusRequiredResponse()
     }
+    // The return department (spec §12, P2-R8) must resolve before anything is written, ส่วนกลาง included; the
+    // transaction reads it again. It stays after the last pre-check (tests/v-track2-x.test.ts stubs no department).
+    await readCheckinDepartment(prisma)
 
-    const { record: checkin, componentSync } = await prisma.$transaction(async (tx) => {
+    const { record: checkin, componentSync, departmentId, previousDepartmentId } = await prisma.$transaction(async (tx) => {
       const activeCheckout = await tx.assetCheckout.findFirst({
         where: {
           id: input.checkoutId,
@@ -120,6 +127,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         { hasOpenRepair },
       )
       if (handoverStatusError) throw new Error(handoverStatusError)
+      const returnDepartment = await readCheckinDepartment(tx)
 
       const beforeAsset = await tx.asset.findUnique({
         where: { id },
@@ -135,6 +143,12 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         },
       })
       if (!beforeAsset) throw new Error("Asset not found")
+      // บุคคล and Stock go to the return department; ส่วนกลาง, ส่วนควบ and License keep theirs (P2-R7).
+      const nextDepartmentId = getCheckinNextDepartmentId({
+        ownership: normalizeAssetOwnershipType(asset.ownershipType),
+        returnDepartmentId: returnDepartment.id,
+        currentDepartmentId: beforeAsset.departmentId,
+      })
 
       const documentNo = await generateCheckinDocumentNo(tx, input.returnDate)
       const record = await tx.assetCheckin.create({
@@ -196,6 +210,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
           conditionId: input.conditionAfter,
           currentLocationId: input.nextLocationId,
           custodianId: null,
+          departmentId: nextDepartmentId,
           updatedBy: user.id,
         },
         select: {
@@ -223,12 +238,28 @@ export async function POST(request: NextRequest, context: CheckinContext) {
           remark: input.remark,
         },
       })
+      if (nextDepartmentId !== beforeAsset.departmentId) {
+        await tx.assetMovement.create({
+          data: {
+            assetId: id,
+            movementType: "department_change",
+            fromValue: beforeAsset.departmentId,
+            toValue: nextDepartmentId,
+            reason: "Asset checkin",
+            referenceType: "checkin",
+            referenceId: record.id,
+            performedBy: user.id,
+          },
+        })
+      }
 
+      // The travelling components take the parent's department (its kept one for a ส่วนกลาง parent), as checkout does.
       const componentSync = await syncInstalledComponentsWithParent(tx, {
         parentAssetId: id,
         changes: {
           currentLocationId: input.nextLocationId,
           custodianId: null,
+          departmentId: nextDepartmentId,
         },
         movementType: "parent_checkin_sync",
         referenceType: "checkin",
@@ -298,7 +329,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         movements: componentSync.movements,
       }
 
-      return { record: finalizedRecord, componentSync: componentSyncSummary }
+      return { record: finalizedRecord, componentSync: componentSyncSummary, departmentId: nextDepartmentId, previousDepartmentId: beforeAsset.departmentId }
     })
 
     await logAudit({
@@ -307,11 +338,12 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       module: "asset",
       recordId: id,
       oldValue: asset,
-      newValue: { ...input, checkinId: checkin.id, componentSync },
+      newValue: { ...input, checkinId: checkin.id, componentSync, departmentId, previousDepartmentId },
     })
 
     return NextResponse.json(checkin, { status: 201 })
   } catch (error) {
+    if (error instanceof AssetOperationConflictError) return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     if (error instanceof Error && error.message === "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED") return repairStatusRequiredResponse()
     if (
       error instanceof Error

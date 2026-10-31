@@ -193,6 +193,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           organizationDefaultsDescription: t("organizationDefaultsDescription"),
           companyName: t("companyName"),
           defaultCurrency: t("defaultCurrency"),
+          checkinDepartmentCode: t("checkinDepartmentCode"),
+          checkinDepartmentCodeHint: t("checkinDepartmentCodeHint"),
           accountingDepreciationPolicyDescription: t("accountingDepreciationPolicyDescription"),
           depreciationPolicyBuilderTitle: t("depreciationPolicyBuilderTitle"),
           depreciationPolicyBuilderDescription: t("depreciationPolicyBuilderDescription"),

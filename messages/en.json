@@ -4424,7 +4424,9 @@
     "ldapSyncModeManual": "Manual",
     "ldapSyncModeScheduled": "Scheduled",
     "prefixCategoriesRequired": "Choose at least one category for this prefix",
-    "prefixTransferNeedsSelection": "Tick categories in a list first, then move them."
+    "prefixTransferNeedsSelection": "Tick categories in a list first, then move them.",
+    "checkinDepartmentCode": "Return department",
+    "checkinDepartmentCodeHint": "A department code, such as IT. Returned Personal and Stock/Spare assets go back to this department; Shared assets keep theirs."
   },
   "transactionCancellation": {
     "action": "Cancel transaction",
@@ -4772,7 +4774,9 @@
     "checkoutConditionNonFunctional": "Not working. Send it for repair before handing it over.",
     "checkoutConditionSalvage": "Salvage awaiting disposal. It cannot be handed over.",
     "conditionAfterRepairRequired": "Choose the condition after repair.",
-    "invalidConditionAfterRepair": "Choose Good or Fair after a repair."
+    "invalidConditionAfterRepair": "Choose Good or Fair after a repair.",
+    "checkinDepartmentUnavailable": "The return cannot be saved: the return department is missing or inactive. An administrator can fix it in System Settings > Organization.",
+    "checkinDepartmentCodeUnknown": "No active department has this code. Check the code in Master Data > Department."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

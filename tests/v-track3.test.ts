@@ -203,6 +203,7 @@ function settingFields(): [key: string, id: string, errorKey: string, live: bool
     ["operation_document_running_digits", "operation-document-running-digits", "operationDocumentRunningDigitsKey", true],
     ["company_name", "company-name", '"company_name"', false],
     ["default_currency", "default-currency", '"default_currency"', false],
+    ["checkin_department_code", "checkin-department-code", "CHECKIN_DEPARTMENT_SETTING_KEY", false],
     ["accounting_depreciation_policy", "depreciation-policy-json", "depreciationPolicySettingKey", true],
     ["notification_return_due_soon_days", "notification-return-due-days", "notificationReturnDueSoonDaysKey", true],
     ["notification_audit_action_due_soon_days", "notification-audit-action-days", "notificationAuditActionDueSoonDaysKey", true],

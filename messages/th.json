@@ -4424,7 +4424,9 @@
     "ldapSyncModeManual": "กดซิงก์เอง",
     "ldapSyncModeScheduled": "ซิงก์ตามรอบเวลา",
     "prefixCategoriesRequired": "เลือกหมวดหมู่อย่างน้อย 1 หมวดหมู่สำหรับคำนำหน้ารหัสนี้",
-    "prefixTransferNeedsSelection": "ติ๊กเลือกหมวดหมู่ในรายการก่อน แล้วจึงกดย้าย"
+    "prefixTransferNeedsSelection": "ติ๊กเลือกหมวดหมู่ในรายการก่อน แล้วจึงกดย้าย",
+    "checkinDepartmentCode": "แผนกที่รับคืนเข้าคลัง",
+    "checkinDepartmentCodeHint": "รหัสแผนก เช่น IT ทรัพย์สินบุคคลและ Stock/สำรองที่รับคืนจะกลับเข้าแผนกนี้ ส่วนทรัพย์สินส่วนกลางคงแผนกเดิม"
   },
   "transactionCancellation": {
     "action": "ยกเลิกรายการ",
@@ -4772,7 +4774,9 @@
     "checkoutConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ",
     "checkoutConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้",
     "conditionAfterRepairRequired": "เลือกสภาพหลังซ่อม",
-    "invalidConditionAfterRepair": "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้"
+    "invalidConditionAfterRepair": "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้",
+    "checkinDepartmentUnavailable": "บันทึกรับคืนไม่ได้ เพราะแผนกที่รับคืนเข้าคลังไม่มีในระบบหรือถูกปิดใช้งาน ให้ผู้ดูแลระบบแก้ที่ ตั้งค่าระบบ > องค์กร",
+    "checkinDepartmentCodeUnknown": "ไม่มีแผนกที่ใช้งานอยู่ซึ่งใช้รหัสนี้ ตรวจรหัสที่ ข้อมูลหลัก > แผนก"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

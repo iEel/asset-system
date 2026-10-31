@@ -4,6 +4,7 @@ import { assetQrPublicBaseUrlKey } from "@/lib/asset-qr"
 import { assetDataQualityRulesKey, defaultAssetDataQualityRules } from "@/lib/data-quality-rules"
 import { defaultLdapSyncMaxScheduledDeactivations, ldapSyncMaxScheduledDeactivationsKey } from "@/lib/ldap-sync-safety"
 import { seedCompanyName } from "@/lib/seed-company-name"
+import { CHECKIN_DEPARTMENT_SETTING_KEY, DEFAULT_CHECKIN_DEPARTMENT_CODE } from "@/lib/checkin-department"
 import {
   retentionAttachmentDaysKey,
   retentionAuditLogDaysKey,
@@ -116,6 +117,7 @@ export const systemSettingDefaults = [
   },
   { key: "company_name", value: seedCompanyName, description: "ชื่อบริษัทหลัก" },
   { key: "default_currency", value: "THB", description: "สกุลเงินเริ่มต้น" },
+  { key: CHECKIN_DEPARTMENT_SETTING_KEY, value: DEFAULT_CHECKIN_DEPARTMENT_CODE, description: "รหัสแผนกที่ทรัพย์สินบุคคลและ Stock/สำรองกลับเข้าเมื่อรับคืน (ค่าเริ่มต้น IT)" },
   {
     key: depreciationPolicySettingKey,
     value: JSON.stringify(defaultDepreciationPolicy, null, 2),

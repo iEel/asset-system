@@ -44,6 +44,7 @@ import {
 } from "@/lib/asset-label-template"
 import { depreciationPolicySettingKey } from "@/lib/asset-depreciation"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
+import { CHECKIN_DEPARTMENT_SETTING_KEY } from "@/lib/checkin-department"
 import {
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
@@ -257,6 +258,8 @@ type SystemSettingsFormProps = {
     organizationDefaultsDescription: string
     companyName: string
     defaultCurrency: string
+    checkinDepartmentCode: string
+    checkinDepartmentCodeHint: string
     accountingDepreciationPolicyDescription: string
     depreciationPolicyBuilderTitle: string
     depreciationPolicyBuilderDescription: string
@@ -473,6 +476,7 @@ const friendlySettingKeys = new Set([
   "asset_tag_running_digits",
   "company_name",
   "default_currency",
+  CHECKIN_DEPARTMENT_SETTING_KEY,
   depreciationPolicySettingKey,
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
@@ -515,6 +519,7 @@ const SETTING_FIELD_IDS: Readonly<Record<string, string>> = {
   operation_document_running_digits: "operation-document-running-digits",
   company_name: "company-name",
   default_currency: "default-currency",
+  checkin_department_code: "checkin-department-code",
   accounting_depreciation_policy: "depreciation-policy-json",
   notification_return_due_soon_days: "notification-return-due-days",
   notification_audit_action_due_soon_days: "notification-audit-action-days",
@@ -1519,6 +1524,14 @@ export function SystemSettingsForm({
               id="default-currency"
               value={getValue("default_currency")}
               onChange={(event) => setValue("default_currency", event.target.value.toUpperCase())}
+              className="uppercase"
+            />
+          </Field>
+          <Field label={labels.checkinDepartmentCode} hint={labels.checkinDepartmentCodeHint} error={settingError(CHECKIN_DEPARTMENT_SETTING_KEY)}>
+            <Input
+              id="checkin-department-code"
+              value={getValue(CHECKIN_DEPARTMENT_SETTING_KEY)}
+              onChange={(event) => setValue(CHECKIN_DEPARTMENT_SETTING_KEY, event.target.value.toUpperCase())}
               className="uppercase"
             />
           </Field>

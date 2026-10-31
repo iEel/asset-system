@@ -1,17 +1,32 @@
 import assert from "node:assert/strict"
 import { existsSync } from "node:fs"
 import * as nodeModule from "node:module"
-import { test } from "node:test"
+import { beforeEach, test } from "node:test"
 import { pathToFileURL } from "node:url"
 
+type Department = { id: string; code: string; name: string; isActive: boolean }
 type CheckinState = {
   calls: Array<{ call: string; args: Record<string, unknown> }>
   openRecords: number
   openRecordCounts: number[]
   // The open handover the transaction reads; a temporary loan in Checked Out unless a test sets another.
   checkout: { handoverMode: string; statusName: string } | null
+  // The asset's own fields a test changes (ownershipType, departmentId).
+  assetOverrides: Record<string, unknown>
+  // The saved checkin_department_code (null: no row).
+  checkinDepartmentSetting: string | null
+  // The department master.
+  departments: Department[]
+  // One-off answers to department.findFirst.
+  departmentAnswers: Array<{ id: string; code: string; name: string } | null>
+  syncChanges: Array<Record<string, unknown>>
+  audits: Array<{ action: string; newValue: Record<string, unknown> }>
 }
-const state: CheckinState = { calls: [], openRecords: 0, openRecordCounts: [], checkout: null }
+const itDepartment: Department = { id: "dept-it", code: "IT", name: "Information Technology", isActive: true }
+const state: CheckinState = {
+  calls: [], openRecords: 0, openRecordCounts: [], checkout: null,
+  assetOverrides: {}, checkinDepartmentSetting: null, departments: [{ ...itDepartment }], departmentAnswers: [], syncChanges: [], audits: [],
+}
 Object.assign(globalThis, { __checkinTicketState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -27,11 +42,12 @@ const mockedModuleSources = new Map<string, string>([
     export function hasPermission() { return true }
     export function requirePermission() {}
   `],
-  ["@/lib/audit-log", `export async function logAudit() {}`],
+  ["@/lib/audit-log", `export async function logAudit(entry) { globalThis.__checkinTicketState.audits.push(entry) }`],
   ["@/lib/asset-status-flow", `export async function isValidCheckinReturnStatus() { return true }`],
   ["@/lib/operation-document-number", `export async function generateCheckinDocumentNo() { return "RT-202610-0001" }`],
   ["@/lib/asset-component-sync", `
-    export async function syncInstalledComponentsWithParent() {
+    export async function syncInstalledComponentsWithParent(_tx, args) {
+      globalThis.__checkinTicketState.syncChanges.push(args.changes)
       return { updated: 0, skipped: 0, movements: 0, componentSnapshots: [] }
     }
   `],
@@ -43,7 +59,7 @@ const mockedModuleSources = new Map<string, string>([
   `],
   ["@/lib/db", `
     const state = () => globalThis.__checkinTicketState
-    const asset = {
+    const baseAsset = {
       id: "asset-1",
       statusId: "status:Checked Out",
       conditionId: "condition-good",
@@ -51,15 +67,17 @@ const mockedModuleSources = new Map<string, string>([
       currentLocationId: "loc-1",
       custodianId: "emp-5",
       departmentId: "dept-1",
+      ownershipType: "personal",
       updatedAt: new Date("2026-10-01T00:00:00Z"),
     }
+    const asset = () => ({ ...baseAsset, ...state().assetOverrides })
     function model(name) {
       return new Proxy({}, {
         get(_target, method) {
           return async (args) => {
             state().calls.push({ call: name + "." + String(method), args: args ?? {} })
-            if (name === "asset" && (method === "findFirst" || method === "findUnique")) return asset
-            if (name === "asset" && method === "update") return { ...asset, ...(args?.data ?? {}), updatedAt: new Date("2026-10-07T03:00:00Z") }
+            if (name === "asset" && (method === "findFirst" || method === "findUnique")) return asset()
+            if (name === "asset" && method === "update") return { ...asset(), ...(args?.data ?? {}), updatedAt: new Date("2026-10-07T03:00:00Z") }
             if (name === "assetCheckout" && method === "findFirst") {
               const checkout = state().checkout ?? { handoverMode: "temporary_loan", statusName: "Checked Out" }
               return { id: "co-1", assetId: "asset-1", handoverMode: checkout.handoverMode, custodianId: "emp-5", asset: { status: { name: checkout.statusName } } }
@@ -71,6 +89,15 @@ const mockedModuleSources = new Map<string, string>([
             }
             if (method === "updateMany") return { count: 1 }
             if (name === "maintenanceTicket" && method === "count") return state().openRecordCounts.shift() ?? state().openRecords
+            if (name === "systemSetting" && method === "findUnique") {
+              const value = state().checkinDepartmentSetting
+              return args?.where?.key === "checkin_department_code" && value !== null ? { value } : null
+            }
+            if (name === "department" && method === "findFirst") {
+              if (state().departmentAnswers.length > 0) return state().departmentAnswers.shift()
+              const found = state().departments.find((department) => department.code === args?.where?.code && department.isActive === args?.where?.isActive)
+              return found ? { id: found.id, code: found.code, name: found.name } : null
+            }
             if (method === "count") return 0
             if (method === "findMany") return []
             if (method === "findFirst" || method === "findUnique") return null
@@ -133,6 +160,9 @@ function checkinRequest(nextStatusId: string, extra: Record<string, unknown> = {
 }
 
 const context = { params: Promise.resolve({ id: "asset-1" }) }
+beforeEach(() => {
+  Object.assign(state, { assetOverrides: {}, checkinDepartmentSetting: null, departments: [{ ...itDepartment }], departmentAnswers: [], syncChanges: [], audits: [] })
+})
 
 test("returning an asset as 'send for repair' opens an unfinished repair record", async () => {
   state.calls = []
@@ -249,4 +279,82 @@ test("a long damage note is capped to the movement reason column but kept in ful
   assert.equal(String(movement.reason).length, 500)
   const ticket = state.calls.find(({ call }) => call === "maintenanceTicket.create")?.args.data as Record<string, unknown>
   assert.ok(String(ticket.problem).includes(longNote))
+})
+
+const written = (call: string) => state.calls.filter((entry) => entry.call === call).map((entry) => entry.args.data as Record<string, unknown>)
+const departmentLines = () => written("assetMovement.create").filter((row) => row.movementType === "department_change")
+const departmentUnavailable = { code: "ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE", error: "ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE" }
+
+test("a return gives a บุคคล or Stock asset and its components the return department, with a department_change line and both departments in the log (group 3 spec §6, §12, P2-R7)", async () => {
+  for (const ownershipType of ["personal", "stock"]) {
+    state.calls = []
+    state.syncChanges = []
+    state.audits = []
+    state.assetOverrides = { ownershipType }
+    const response = await route.POST(checkinRequest("status:Ready"), context)
+    assert.equal(response.status, 201, await response.clone().text())
+    assert.equal(written("asset.update")[0].departmentId, "dept-it", ownershipType)
+    assert.equal(state.syncChanges[0].departmentId, "dept-it", ownershipType)
+    assert.deepEqual(departmentLines(), [{
+      assetId: "asset-1", movementType: "department_change", fromValue: "dept-1", toValue: "dept-it", reason: "Asset checkin",
+      referenceType: "checkin", referenceId: "assetCheckin-new", performedBy: "user-1",
+    }], ownershipType)
+    assert.deepEqual([state.audits[0].action, state.audits[0].newValue.departmentId, state.audits[0].newValue.previousDepartmentId], ["checkin", "dept-it", "dept-1"], ownershipType)
+  }
+})
+
+test("ส่วนกลาง, ส่วนควบ and License keep their department, and an asset already in the return department changes nothing: no department_change line (spec §6, decision 10, P2-R7)", async () => {
+  const cases: Array<{ ownershipType: string; departmentId?: string }> = [
+    { ownershipType: "shared" }, { ownershipType: "component" }, { ownershipType: "software_license" }, { ownershipType: "personal", departmentId: "dept-it" },
+  ]
+  for (const overrides of cases) {
+    state.calls = []
+    state.syncChanges = []
+    state.audits = []
+    state.assetOverrides = overrides
+    const kept = overrides.departmentId ?? "dept-1"
+    assert.equal((await route.POST(checkinRequest("status:Ready"), context)).status, 201, JSON.stringify(overrides))
+    assert.equal(written("asset.update")[0].departmentId, kept, JSON.stringify(overrides))
+    assert.equal(state.syncChanges[0].departmentId, kept, JSON.stringify(overrides))
+    assert.deepEqual(departmentLines(), [], JSON.stringify(overrides))
+    assert.deepEqual([state.audits[0].newValue.departmentId, state.audits[0].newValue.previousDepartmentId], [kept, kept], JSON.stringify(overrides))
+  }
+})
+
+test("the return department is the one the setting names, upper-cased, and the RT- snapshots carry the department before and after (spec §12, P2-R8)", async () => {
+  state.calls = []
+  state.checkinDepartmentSetting = " fin "
+  state.departments = [{ ...itDepartment }, { id: "dept-fin", code: "FIN", name: "Finance", isActive: true }]
+  assert.equal((await route.POST(checkinRequest("status:Ready"), context)).status, 201)
+  assert.equal(written("asset.update")[0].departmentId, "dept-fin")
+  const finalized = written("assetCheckin.update")[0]
+  assert.deepEqual(
+    [JSON.parse(String(finalized.beforeSnapshotJson)).departmentId, JSON.parse(String(finalized.afterSnapshotJson)).departmentId],
+    ["dept-1", "dept-fin"],
+  )
+})
+
+test("a missing or inactive return department refuses every return, ส่วนกลาง included, before anything is written (spec §6, §12, P2-R8)", async () => {
+  const cases: Array<[Department[], string]> = [[[], "personal"], [[{ ...itDepartment, isActive: false }], "personal"], [[], "shared"]]
+  for (const [departments, ownershipType] of cases) {
+    state.calls = []
+    state.departments = departments
+    state.assetOverrides = { ownershipType }
+    const response = await route.POST(checkinRequest("status:Ready"), context)
+    assert.deepEqual([response.status, await response.json()], [409, departmentUnavailable], ownershipType)
+    assert.deepEqual(state.calls.filter(({ call }) => /\.(create|update|updateMany)$/.test(call)), [], ownershipType)
+  }
+})
+
+test("a return department closed while the return is saved is refused inside the transaction, before the RT- record (spec §12, P2-R8)", async () => {
+  state.calls = []
+  state.departmentAnswers = [{ id: "dept-it", code: "IT", name: "Information Technology" }, null]
+  const response = await route.POST(checkinRequest("status:Ready"), context)
+  assert.deepEqual([response.status, await response.json()], [409, departmentUnavailable])
+  const calls = state.calls.map(({ call }) => call)
+  const reads = calls.flatMap((call, index) => (call === "department.findFirst" ? [index] : []))
+  assert.equal(reads.length, 2)
+  assert.ok(reads[1] > calls.lastIndexOf("assetCheckout.findFirst"), "read again inside the transaction")
+  assert.equal(calls.includes("assetCheckin.create"), false)
+  assert.equal(calls.includes("asset.update"), false)
 })

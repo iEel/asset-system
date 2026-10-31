@@ -156,3 +156,17 @@ test("a broken or salvage asset refused by ส่งมอบ reads its reason u
     }
   }
 })
+
+test("a broken return department reads words that tell an admin what to fix, and a settings save with an unknown code reads its own (group 3 spec §12, P2-R8)", () => {
+  assert.equal(getApiErrorKey("ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE"), "checkinDepartmentUnavailable")
+  assert.equal(getApiErrorKey("CHECKIN_DEPARTMENT_CODE_UNKNOWN"), "checkinDepartmentCodeUnknown")
+  const words = (locale: "th" | "en", key: string) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors[key]
+  assert.deepEqual([words("th", "checkinDepartmentUnavailable"), words("en", "checkinDepartmentUnavailable")], [
+    "บันทึกรับคืนไม่ได้ เพราะแผนกที่รับคืนเข้าคลังไม่มีในระบบหรือถูกปิดใช้งาน ให้ผู้ดูแลระบบแก้ที่ ตั้งค่าระบบ > องค์กร",
+    "The return cannot be saved: the return department is missing or inactive. An administrator can fix it in System Settings > Organization.",
+  ])
+  assert.deepEqual([words("th", "checkinDepartmentCodeUnknown"), words("en", "checkinDepartmentCodeUnknown")], [
+    "ไม่มีแผนกที่ใช้งานอยู่ซึ่งใช้รหัสนี้ ตรวจรหัสที่ ข้อมูลหลัก > แผนก",
+    "No active department has this code. Check the code in Master Data > Department.",
+  ])
+})

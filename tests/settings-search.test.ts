@@ -25,3 +25,8 @@ test("finds settings by their key, description, or tab label", () => {
     { key: "notification_warranty_expiry_days", description: "Warranty reminder", tab: "notifications", tabLabel: "Notifications" },
   ])
 })
+
+test("the return department is edited on the organization tab, ahead of the checkin_ documents rule (group 3 spec §12, P2-R8)", () => {
+  assert.equal(getSystemSettingsTabForKey("checkin_department_code"), "organization")
+  assert.equal(getSystemSettingsTabForKey("checkin_document_template"), "documents")
+})

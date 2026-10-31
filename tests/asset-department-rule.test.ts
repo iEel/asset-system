@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { getCheckoutNextDepartmentId } from "../src/lib/asset-department-rule.ts"
+import { getCheckinNextDepartmentId, getCheckoutNextDepartmentId } from "../src/lib/asset-department-rule.ts"
 import type { AssetOwnershipType } from "../src/lib/asset-ownership.ts"
 
 type Input = Parameters<typeof getCheckoutNextDepartmentId>[0]
@@ -34,4 +34,14 @@ test("the rule stays pure: import type only, relative .ts paths, no database", (
   const source = readFileSync("src/lib/asset-department-rule.ts", "utf8")
   assert.doesNotMatch(source, /from "@\/|@prisma\/client|\bprisma\./)
   for (const line of source.split(/\r?\n/).filter((line) => line.startsWith("import "))) assert.match(line, /^import type \{[^}]+\} from "\.\/[\w-]+\.ts"$/, line)
+})
+
+const ownerships: AssetOwnershipType[] = ["personal", "stock", "shared", "component", "software_license"]
+const back = (ownership: AssetOwnershipType, currentDepartmentId: string | null = "dept-now") =>
+  getCheckinNextDepartmentId({ ownership, returnDepartmentId: "dept-it", currentDepartmentId })
+
+test("รับคืน: บุคคล and Stock go to the return department; ส่วนกลาง, ส่วนควบ and License keep theirs (group 3 spec §6, §12, decisions 2 and 10, P2-R7)", () => {
+  assert.deepEqual(ownerships.map((ownership) => back(ownership)), ["dept-it", "dept-it", "dept-now", "dept-now", "dept-now"])
+  assert.deepEqual(ownerships.map((ownership) => back(ownership, null)), ["dept-it", "dept-it", null, null, null], "no department yet")
+  assert.deepEqual(ownerships.map((ownership) => back(ownership, "dept-it")), ["dept-it", "dept-it", "dept-it", "dept-it", "dept-it"], "already there")
 })

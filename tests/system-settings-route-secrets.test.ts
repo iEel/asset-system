@@ -10,6 +10,8 @@ type SettingsRouteState = {
   upserts: Array<{ key: string; value: string }>
   auditLogs: Array<{ oldValue?: Record<string, unknown>; newValue?: Record<string, unknown> }>
   ldapTestCalls: Array<Record<string, string>>
+  departments: Array<{ code: string; isActive: boolean }>
+  departmentReads: Array<Record<string, unknown>>
 }
 
 const state: SettingsRouteState = createState()
@@ -21,6 +23,8 @@ function createState(): SettingsRouteState {
     upserts: [],
     auditLogs: [],
     ldapTestCalls: [],
+    departments: [{ code: "IT", isActive: true }],
+    departmentReads: [],
   }
 }
 
@@ -64,6 +68,12 @@ const mockedModuleSources = new Map<string, string>([
         upsert: (args) => {
           state().upserts.push({ key: args.where.key, value: args.update.value })
           return Promise.resolve({})
+        },
+      },
+      department: {
+        findFirst: async (args) => {
+          state().departmentReads.push(args)
+          return state().departments.some((department) => department.code === args.where.code && department.isActive === args.where.isActive) ? { id: "dept-" + args.where.code } : null
         },
       },
       $transaction: async (operations) => Promise.all(operations),
@@ -213,4 +223,47 @@ test("LDAP connection test uses the stored password for the stored server", asyn
   assert.equal(response.status, 200)
   assert.equal(state.ldapTestCalls.length, 1)
   assert.equal(state.ldapTestCalls[0].ldap_bind_password, "Real-AD-Password")
+})
+
+const putSettings = (settings: Array<{ key: string; value: string }>) =>
+  settingsRoute.PUT(jsonRequest("http://localhost/api/admin/settings", "PUT", { settings }))
+const unknownCode = {
+  error: "CHECKIN_DEPARTMENT_CODE_UNKNOWN",
+  code: "CHECKIN_DEPARTMENT_CODE_UNKNOWN",
+  fieldErrors: { "settings.checkin_department_code": "checkinDepartmentCodeUnknown" },
+}
+
+test("the return department reads IT until someone saves it (group 3 spec §12, P2-R8)", async () => {
+  const settings = await (await settingsRoute.GET()).json() as Array<{ key: string; value: string }>
+  assert.equal(settings.find((setting) => setting.key === "checkin_department_code")?.value, "IT")
+})
+
+test("a return department code is saved upper-cased once an active department has it (spec §12, P2-R8)", async () => {
+  state.departments = [{ code: "IT", isActive: true }, { code: "FIN", isActive: true }]
+  const response = await putSettings([{ key: "checkin_department_code", value: " fin " }])
+  assert.equal(response.status, 200)
+  assert.deepEqual(state.upserts, [{ key: "checkin_department_code", value: "FIN" }])
+  assert.deepEqual(state.departmentReads, [{ where: { code: "FIN", isActive: true }, select: { id: true } }])
+})
+
+test("a code no active department has is refused under its field and nothing is saved, an empty one included (spec §12, P2-R8)", async () => {
+  state.departments = [{ code: "IT", isActive: true }, { code: "OLD", isActive: false }]
+  for (const value of ["zz", "old", ""]) {
+    state.upserts = []
+    const response = await putSettings([{ key: "company_name", value: "Sonic Logistics" }, { key: "checkin_department_code", value }])
+    assert.deepEqual([response.status, await response.json()], [400, unknownCode], value)
+    assert.deepEqual(state.upserts, [], value)
+  }
+})
+
+test("an unchanged code is not checked, so a department closed later never blocks saving other settings (spec §12, P2-R8)", async () => {
+  state.departments = [{ code: "IT", isActive: false }]
+  const response = await putSettings([{ key: "company_name", value: "Sonic Logistics" }, { key: "checkin_department_code", value: "it" }])
+  assert.equal(response.status, 200)
+  assert.deepEqual(state.upserts, [{ key: "company_name", value: "Sonic Logistics" }])
+  // A saved row counts the same way as the default.
+  state.stored.push(storedSetting("checkin_department_code", "FIN"))
+  state.upserts = []
+  assert.equal((await putSettings([{ key: "checkin_department_code", value: "fin" }])).status, 200)
+  assert.deepEqual([state.upserts, state.departmentReads], [[], []])
 })

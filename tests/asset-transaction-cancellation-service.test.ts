@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -7,6 +8,7 @@ import {
   buildCancellationMovementValues,
   cancelAssetTransaction,
   previewAssetTransactionCancellation,
+  type AssetCancellationRestorePlan,
   type AssetTransactionCancellationContext,
   type AssetTransactionCancellationRepository,
 } from "../src/lib/asset-transaction-cancellation-service.ts"
@@ -211,4 +213,45 @@ test("preview reports unsupported historical snapshots without mutating data", a
 
   assert.deepEqual(result, { eligible: false, reasons: ["unsupported_snapshot"] })
   assert.equal(repository.reviews.size, 0)
+})
+
+test("cancelling an RT- that moved the asset and its components to the return department puts their old department back (group 3 spec §6, P2-R7)", async () => {
+  const component = {
+    componentLinkId: "link-1", componentAssetId: "mouse-1", parentAssetId: "asset-1", relationshipStatus: "installed",
+    relationshipUpdatedAt: "2026-08-01T00:00:00.000Z", assetUpdatedAt: "2026-08-27T08:00:00.000Z", statusId: "ready", conditionId: "good",
+    branchId: "branch-1", currentLocationId: "desk-1", custodianId: "employee-1", departmentId: "department-1",
+  }
+  const before: AssetTransactionSnapshotV1 = { ...beforeSnapshot, components: [component] }
+  const after: AssetTransactionSnapshotV1 = {
+    ...afterSnapshot,
+    departmentId: "department-it",
+    components: [{ ...component, assetUpdatedAt: "2026-08-27T09:00:00.000Z", currentLocationId: "store-1", custodianId: null, departmentId: "department-it" }],
+  }
+  const context = structuredClone(eligibleContext)
+  context.document.beforeSnapshotJson = JSON.stringify(before)
+  context.document.afterSnapshotJson = JSON.stringify(after)
+  context.currentSnapshot = structuredClone(after)
+  const repository = new MemoryCancellationRepository()
+  repository.context = context
+  const plans: AssetCancellationRestorePlan[] = []
+  const apply = repository.applyCancellation.bind(repository)
+  repository.applyCancellation = async (input) => {
+    plans.push(input.restorePlan)
+    return apply(input)
+  }
+
+  const result = await cancelAssetTransaction(
+    { type: "checkin", transactionId: "checkin-1", userId: "user-1", reason: "รับคืนผิดเครื่อง", expectedUpdatedAt: "2026-08-27T09:00:01.000Z" },
+    repository,
+  )
+
+  assert.equal(result.status, "cancelled")
+  assert.equal(plans[0].asset.departmentId, "department-1")
+  assert.deepEqual(plans[0].components.map(({ componentAssetId, departmentId }) => [componentAssetId, departmentId]), [["mouse-1", "department-1"]])
+  const movement = buildCancellationMovementValues(after, before)
+  assert.deepEqual([JSON.parse(movement.fromValue).departmentId, JSON.parse(movement.toValue).departmentId], ["department-it", "department-1"])
+  // The Prisma repository writes both: the asset from the plan, and each component's department from its before entry.
+  const source = readFileSync("src/lib/asset-transaction-cancellation-prisma.ts", "utf8")
+  assert.match(source, /data: \{ \.\.\.input\.restorePlan\.asset, updatedBy: input\.userId \}/)
+  assert.match(source, /departmentId: component\.departmentId,/)
 })
