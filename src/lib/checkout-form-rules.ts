@@ -40,10 +40,16 @@ export type CheckoutCheck = { key: "asset" | "receiver" | "mode" | "signature"; 
 // The ownerships whose department never follows the receiver (asset-department-rule.ts): the summary never waits on them.
 const FIXED_DEPARTMENT_OWNERSHIPS: ReadonlySet<string> = new Set(["shared", "component", "software_license"])
 
-/** The asset's own condition when the master still offers it (spec §7.2), else none chosen. */
-export function checkoutConditionDefault(row: Pick<AssetOperationSearchRow, "conditionId"> | null, conditions: readonly { id: string }[]): string {
+/**
+ * The asset's own condition when the page's condition options offer it (spec §7.2), else none chosen. ส่งมอบ and รับคืน
+ * both ask it: neither offers ยังไม่ประเมิน, so an asset recorded so starts with no condition (group 3 spec §19.1-2).
+ */
+export function operationConditionDefault(row: Pick<AssetOperationSearchRow, "conditionId"> | null, conditions: readonly { id: string }[]): string {
   return row && conditions.some((condition) => condition.id === row.conditionId) ? row.conditionId : ""
 }
+
+/** ส่งมอบ's name for operationConditionDefault. */
+export const checkoutConditionDefault = operationConditionDefault
 
 /** The detail=1 answer replaces the chosen row only while it is still the chosen asset; a failed read keeps the row. */
 export function withCheckoutAssetDetail(current: AssetOperationSearchRow | null, answered: AssetOperationSearchRow | null): AssetOperationSearchRow | null {

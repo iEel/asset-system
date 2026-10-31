@@ -221,3 +221,17 @@ test("the form's final-review fixes: the submit routes through checkoutSubmitAct
   assert.equal(form.split("setReceiverSignatureDataUrl(null)").length - 1, 2, "the type change and the destination change")
   assert.doesNotMatch(form, /evidenceLabel:|aria-label={t("checkoutTo")}/)
 })
+
+test("รับคืน's condition default: a picked asset recorded ยังไม่ประเมิน starts with none, now that รับคืน does not offer it (group 3 spec §19.2)", async () => {
+  const { operationConditionDefault } = await import("../src/lib/checkout-form-rules.ts")
+  const { getAssetOperationConditionOptions } = await import("../src/lib/asset-lifecycle-policy.ts")
+  const masters = ["Not Assessed", "New", "Excellent", "Good", "Fair", "Poor", "Damaged", "Non-functional", "Salvage"].map((name) => ({ id: `c-${name}`, name }))
+  const checkin = getAssetOperationConditionOptions("checkin", masters)
+  assert.equal(operationConditionDefault({ conditionId: "c-Not Assessed" }, checkin), "")
+  assert.equal(operationConditionDefault({ conditionId: "c-Damaged" }, checkin), "c-Damaged")
+  assert.equal(operationConditionDefault({ conditionId: "c-Damaged" }, getAssetOperationConditionOptions("checkout", masters)), "", "ส่งมอบ does not offer เสียหาย")
+  assert.equal(checkoutConditionDefault, operationConditionDefault, "one rule")
+  const form = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
+  assert.ok(form.includes("conditionAfter: current.conditionAfter || operationConditionDefault(row, conditions),"))
+  assert.doesNotMatch(form, /conditionAfter: current\.conditionAfter \|\| row\.conditionId/)
+})

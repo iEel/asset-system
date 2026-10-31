@@ -30,6 +30,7 @@ import {
 } from "@/lib/asset-operation-search-rules"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { getCheckinChoice } from "@/lib/checkin-choice"
+import { operationConditionDefault } from "@/lib/checkout-form-rules"
 import { formatCount } from "@/lib/display-format"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { toLocalDateInputValue } from "@/lib/local-date"
@@ -282,7 +283,8 @@ export function CheckinForm({
       applyChoice(created)
       setValues((current) => ({
         ...current,
-        conditionAfter: current.conditionAfter || row.conditionId,
+        // Only a condition รับคืน offers: an asset recorded ยังไม่ประเมิน starts with none (group 3 spec §19.2).
+        conditionAfter: current.conditionAfter || operationConditionDefault(row, conditions),
         nextLocationId: current.nextLocationId || row.currentLocationId,
       }))
       fieldErrors.clear("checkoutId", "returnBy", "conditionAfter", "nextLocationId")
