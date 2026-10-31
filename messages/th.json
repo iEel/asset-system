@@ -4846,6 +4846,7 @@
     "summaryNone": "ไม่มี",
     "summaryNotChosen": "ยังไม่ได้เลือก",
     "summaryKept": "{value} (คงเดิม)",
-    "summaryCount": "{count} รายการ"
+    "summaryCount": "{count} รายการ",
+    "sendToRepair": "ส่งซ่อม"
   }
 }

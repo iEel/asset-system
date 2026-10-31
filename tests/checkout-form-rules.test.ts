@@ -235,3 +235,38 @@ test("รับคืน's condition default: a picked asset recorded ยัง�
   assert.ok(form.includes("conditionAfter: current.conditionAfter || operationConditionDefault(row, conditions),"))
   assert.doesNotMatch(form, /conditionAfter: current\.conditionAfter \|\| row\.conditionId/)
 })
+
+test("a condition refusal: which keys, which send for repair, and the repair link (group 3 spec §19.3, A1-R1)", async () => {
+  const { isCheckoutConditionReasonKey, checkoutNeedsRepairReasonKey, checkoutRepairHref } = await import("../src/lib/checkout-form-rules.ts")
+  for (const key of ["asset.transactionReasonConditionDamaged", "asset.transactionReasonConditionNonFunctional", "asset.transactionReasonConditionSalvage"]) {
+    assert.equal(isCheckoutConditionReasonKey(key), true, key)
+  }
+  assert.equal(isCheckoutConditionReasonKey("asset.transactionReasonStatusNotReady"), false)
+  assert.equal(isCheckoutConditionReasonKey(null), false)
+  assert.equal(isCheckoutConditionReasonKey(undefined), false)
+  assert.equal(checkoutNeedsRepairReasonKey("asset.transactionReasonConditionDamaged"), true)
+  assert.equal(checkoutNeedsRepairReasonKey("asset.transactionReasonConditionNonFunctional"), true)
+  assert.equal(checkoutNeedsRepairReasonKey("asset.transactionReasonConditionSalvage"), false, "ซาก gets no link")
+  assert.equal(checkoutNeedsRepairReasonKey("asset.transactionReasonStatusNotReady"), false)
+  assert.equal(checkoutNeedsRepairReasonKey(null), false)
+  assert.equal(checkoutRepairHref("th", "a b"), "/th/maintenance/new?assetId=a%20b&returnTo=%2Fth%2Fasset-management%2Fcheckout")
+})
+
+test("the form: a condition refusal can be picked, and ส่งซ่อม sits under the asset field for เสียหาย/ใช้งานไม่ได้ only (group 3 spec §19.3)", () => {
+  const form = read("src/components/asset-operations/checkout-form.tsx")
+  for (const part of [
+    "pickBlocked={(row) => isCheckoutConditionReasonKey(row.reasonKey)}",
+    "{values.asset && checkoutNeedsRepairReasonKey(assetReasonKey) ? (",
+    "href={checkoutRepairHref(locale, values.asset.id)}",
+    'buttonVariants({ variant: "outline", size: "sm" })',
+    'tOperation("sendToRepair")',
+    // A chosen refused asset stops before the review (the existing blocked-row path).
+    '(values.asset?.eligible === false ? "invalid" : null)',
+    'assetId: "checkout-asset",',
+  ]) assert.ok(form.includes(part), part)
+  assert.ok(form.indexOf("pickBlocked=") < form.indexOf("data-checkout-repair-link"), "the link follows the field and its error")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.assetOperation.sendToRepair, "ส่งซ่อม")
+  assert.equal(en.assetOperation.sendToRepair, "Send for repair")
+})

@@ -4846,6 +4846,7 @@
     "summaryNone": "None",
     "summaryNotChosen": "Not chosen yet",
     "summaryKept": "{value} (unchanged)",
-    "summaryCount": "{count}"
+    "summaryCount": "{count}",
+    "sendToRepair": "Send for repair"
   }
 }

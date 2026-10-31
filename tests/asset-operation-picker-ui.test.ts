@@ -66,7 +66,12 @@ test("keys: the arrows skip what cannot be taken, Enter picks and never submits 
   const source = read(PART)
   assert.match(source, /const activeIndex = resolveAssetOperationActive\(selectableRows, activeId\)/)
   assert.match(source, /moveAssetOperationActive\(selectableRows, activeIndex, event\.key === "ArrowDown" \? 1 : -1\)/)
-  assert.match(source, /const selectableRows = flatRows\.map\(\(row\) => \(\{ id: row\.id, selectable: getAssetOperationRowView\(row, chosenIds\)\.selectable \}\)\)/)
+  // One view per row for the pointer, the arrows, Enter and the look, so a pickBlocked row is reachable by keyboard (A1-R1).
+  assert.match(source, /const rowView = \(row: AssetOperationSearchRow\) => getAssetOperationRowView\(row, chosenIds, pickBlocked && \(\(\) => pickBlocked\(row\)\)\)/)
+  assert.match(source, /const pickBlocked = props\.multiple \? undefined : props\.pickBlocked/)
+  assert.match(source, /const selectableRows = flatRows\.map\(\(row\) => \(\{ id: row\.id, selectable: rowView\(row\)\.selectable \}\)\)/)
+  assert.ok(source.includes("if (!rowView(row).selectable) return"), "pick takes what the row shows as takeable")
+  assert.ok(source.includes("const view = rowView(row)"), "the row's look reads the same view")
   assert.match(source, /if \(event\.key === "Enter"\) \{\s+event\.preventDefault\(\)\s+if \(listOpen && activeIndex >= 0\)/)
   assert.match(source, /if \(event\.key === "Escape"\) \{\s+setOpen\(false\)/)
 })

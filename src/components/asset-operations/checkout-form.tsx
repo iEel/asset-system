@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
@@ -10,7 +11,7 @@ import { OperationFormFrame } from "@/components/asset-operations/operation-form
 import { OperationSummaryCard } from "@/components/asset-operations/operation-summary-card"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { AssetOperationPicker } from "@/components/ui/asset-operation-picker"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { ChoiceCard } from "@/components/ui/choice-card"
 import { Field } from "@/components/ui/field"
 import { FieldGroup } from "@/components/ui/field-group"
@@ -36,9 +37,12 @@ import {
   buildCheckoutSummaryRows,
   checkoutComponents,
   checkoutConditionDefault,
+  checkoutNeedsRepairReasonKey,
   checkoutReceiverLabel,
+  checkoutRepairHref,
   checkoutReceiverName,
   checkoutSubmitAction,
+  isCheckoutConditionReasonKey,
   withCheckoutAssetDetail,
   type CheckoutChoice,
   type CheckoutDestinationType,
@@ -474,7 +478,19 @@ export function CheckoutForm({
                   error={errorText("assetId")}
                   onChange={setAsset}
                   pickedBody={(row) => <CheckoutAssetCard row={row} />}
+                  // A row refused for its condition can be picked, so its reason reads under the field (spec §19.3, A1-R1).
+                  pickBlocked={(row) => isCheckoutConditionReasonKey(row.reasonKey)}
                 />
+                {/* เสียหาย or ใช้งานไม่ได้: ส่งซ่อม opens a new repair for the asset, under its reason; ซาก gets none. */}
+                {values.asset && checkoutNeedsRepairReasonKey(assetReasonKey) ? (
+                  <Link
+                    href={checkoutRepairHref(locale, values.asset.id)}
+                    data-checkout-repair-link
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "-mt-2 justify-self-start")}
+                  >
+                    {tOperation("sendToRepair")}
+                  </Link>
+                ) : null}
                 {travelling.length > 0 ? (
                   <div className="grid gap-1.5 text-sm">
                     <p className="font-medium text-foreground">{t("componentsTravel", { count: travelling.length })}</p>

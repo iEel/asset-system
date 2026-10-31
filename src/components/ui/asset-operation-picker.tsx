@@ -49,8 +49,14 @@ type AssetOperationPickerBaseProps = {
 }
 
 export type AssetOperationPickerProps =
-  | (AssetOperationPickerBaseProps & { multiple?: false; value: AssetOperationSearchRow | null; onChange: (row: AssetOperationSearchRow | null) => void })
-  | (AssetOperationPickerBaseProps & { multiple: true; values: AssetOperationSearchRow[]; onChange: (rows: AssetOperationSearchRow[]) => void })
+  | (AssetOperationPickerBaseProps & {
+      multiple?: false
+      value: AssetOperationSearchRow | null
+      onChange: (row: AssetOperationSearchRow | null) => void
+      /** A refused row this accepts can still be picked, so its reason reads under the field (group 3 spec §19.3, A1-R1). */
+      pickBlocked?: (row: AssetOperationSearchRow) => boolean
+    })
+  | (AssetOperationPickerBaseProps & { multiple: true; values: AssetOperationSearchRow[]; onChange: (rows: AssetOperationSearchRow[]) => void; pickBlocked?: never })
 
 const noRows: AssetOperationSearchRow[] = []
 const noIds: ReadonlySet<string> = new Set()
@@ -90,7 +96,10 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   const sections = answer ? buildAssetOperationSections(answer) : []
   const flatRows = sections.flatMap((section) => section.rows)
   const chosenIds = props.multiple ? new Set(values.map((row) => row.id)) : noIds
-  const selectableRows = flatRows.map((row) => ({ id: row.id, selectable: getAssetOperationRowView(row, chosenIds).selectable }))
+  const pickBlocked = props.multiple ? undefined : props.pickBlocked
+  // Whether a row can be taken, for the pointer, the arrows, Enter and the row's look alike (A1-R1).
+  const rowView = (row: AssetOperationSearchRow) => getAssetOperationRowView(row, chosenIds, pickBlocked && (() => pickBlocked(row)))
+  const selectableRows = flatRows.map((row) => ({ id: row.id, selectable: rowView(row).selectable }))
   const activeIndex = resolveAssetOperationActive(selectableRows, activeId)
   const listOpen = open && state === "results"
   const countLine = getAssetOperationCountLine(answer ?? { total: 0, rows: noRows })
@@ -150,7 +159,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   }
 
   function pick(row: AssetOperationSearchRow) {
-    if (!getAssetOperationRowView(row, chosenIds).selectable) return
+    if (!rowView(row).selectable) return
     // Many: the text and the list stay, so several rows of one answer can be picked; the active row moves on to the
     // next one that can still be taken (S-R44).
     if (props.multiple) {
@@ -225,7 +234,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
 
   function renderRow(row: AssetOperationSearchRow) {
     const index = flatRows.indexOf(row)
-    const view = getAssetOperationRowView(row, chosenIds)
+    const view = rowView(row)
     const note = view.note
     return (
       <li

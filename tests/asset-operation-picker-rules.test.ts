@@ -113,3 +113,14 @@ test("keys: the first row is active only when it can be taken; the arrows skip w
   assert.equal(moveAssetOperationActive([{ selectable: false }], -1, 1), -1)
   assert.equal(moveAssetOperationActive([], -1, 1), -1)
 })
+
+test("pickBlocked: a refused row it accepts can be picked and keeps its reason; chosen still wins (group 3 spec §19.3, A1-R1)", () => {
+  const none = new Set<string>()
+  const damaged = row({ eligible: false, reasonKey: "asset.transactionReasonConditionDamaged" })
+  const condition = (candidate: Pick<AssetOperationSearchRow, "reasonKey">) => candidate.reasonKey === "asset.transactionReasonConditionDamaged"
+  assert.deepEqual(getAssetOperationRowView(damaged, none, condition), { selectable: true, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
+  assert.deepEqual(getAssetOperationRowView(damaged, none, () => false), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
+  assert.deepEqual(getAssetOperationRowView(damaged, none), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
+  assert.deepEqual(getAssetOperationRowView(damaged, new Set(["a1"]), condition), { selectable: false, note: { kind: "chosen" } })
+  assert.deepEqual(getAssetOperationRowView(row(), none, () => true), { selectable: true, note: null }, "a takeable row is unchanged")
+})

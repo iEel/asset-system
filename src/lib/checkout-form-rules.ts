@@ -2,9 +2,11 @@
 // detail answer, its condition default and the receiver. Pure and client-safe; the department row reads the same rule
 // the checkout route calls (asset-department-rule.ts), so the card never promises what the save does not write.
 import { getCheckoutNextDepartmentId } from "./asset-department-rule.ts"
+import { checkoutConditionBlockReasonKeys } from "./asset-lifecycle-policy.ts"
 import type { AssetHandoverMode } from "./asset-handover-mode.ts"
 import type { AssetOperationEmployeeOption, AssetOperationNamedOption } from "./asset-operation-options.ts"
 import type { AssetOperationChosenComponent, AssetOperationSearchRow } from "./asset-operation-search-rules.ts"
+import { appendOperationalReturnTo } from "./operational-return-navigation.ts"
 
 export type CheckoutDestinationType = "user" | "department" | "location"
 /** The phone's three steps (spec §7.4, P1-R4): the only export of this type. */
@@ -176,4 +178,22 @@ export function buildCheckoutChecklist(choice: CheckoutChoice & { signed: boolea
       ? { key: "signature", label: words.signature, done: true }
       : { key: "signature", label: words.signature, done: false, note: words.signatureMissing },
   ]
+}
+
+const CONDITION_REASON_KEYS: ReadonlySet<string> = new Set(Object.values(checkoutConditionBlockReasonKeys))
+const REPAIR_REASON_KEYS: ReadonlySet<string> = new Set([checkoutConditionBlockReasonKeys.damaged, checkoutConditionBlockReasonKeys.nonFunctional])
+
+/** A row refused for its condition (เสียหาย, ใช้งานไม่ได้, ซาก): the only refused row ส่งมอบ's picker lets IT pick (A1-R1). */
+export function isCheckoutConditionReasonKey(reasonKey: string | null | undefined): boolean {
+  return typeof reasonKey === "string" && CONDITION_REASON_KEYS.has(reasonKey)
+}
+
+/** เสียหาย or ใช้งานไม่ได้: the ส่งซ่อม link shows; ซาก gets none (group 3 spec §19.3). */
+export function checkoutNeedsRepairReasonKey(reasonKey: string | null | undefined): boolean {
+  return typeof reasonKey === "string" && REPAIR_REASON_KEYS.has(reasonKey)
+}
+
+/** ส่งซ่อม: a new repair for the asset, which returns to ส่งมอบ. */
+export function checkoutRepairHref(locale: string, assetId: string): string {
+  return appendOperationalReturnTo(`/${locale}/maintenance/new?assetId=${encodeURIComponent(assetId)}`, `/${locale}/asset-management/checkout`)
 }
