@@ -9,7 +9,6 @@ const users = [
   "src/lib/legacy-return-rule.ts",
 ]
 
-
 test("open repair checks use the shared filter and ignore the old [PM] prefix", () => {
   for (const file of users) {
     const source = readFileSync(file, "utf8")

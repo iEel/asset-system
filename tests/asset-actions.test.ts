@@ -27,7 +27,6 @@ const base: AssetActionInput = {
   openDisposalId: null,
   outstanding: null,
   returnTo: "/th/assets?search=nb&page=1&pageSize=25",
-
   can: { assetEdit: true, maintenanceCreate: true, maintenanceView: true, disposalView: true },
 }
 const actions = (overrides: Partial<AssetActionInput>) => getAssetActions({ ...base, ...overrides })

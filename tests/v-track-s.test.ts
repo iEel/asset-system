@@ -438,7 +438,6 @@ test("asset, operation, maintenance and import refusals about a field name it; t
     assetComponent: { findMany: () => [] },
   })
   await expectBody(await checkout.POST(jsonRequest("POST", {
-
     handoverMode: "permanent_assignment", checkoutType: "user", custodianId: "employee-1", departmentId: "", locationId: "", parentAssetId: "",
     checkoutDate: "2026-10-17", expectedReturnDate: "", conditionBefore: "condition-gone", remark: "", receiverSignature: "",
   }), params), 400, { error: "Invalid asset condition for checkout", code: "ASSET_STATE_MASTER_NOT_FOUND", fieldErrors: { conditionBefore: "invalidCheckoutCondition" } })

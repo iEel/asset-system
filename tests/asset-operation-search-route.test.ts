@@ -35,7 +35,6 @@ const mockedModuleSources = new Map<string, string>([
       department: model("department", []), location: model("location", []), attachment: model("attachment", []),
       // The outstanding-link fact read (group 3 spec §8.5); none here, so no RT- read.
       assetComponent: model("assetComponent", []) }
-
   `],
 ])
 

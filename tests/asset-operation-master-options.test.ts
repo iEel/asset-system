@@ -109,7 +109,6 @@ test("with employeeDetail (ส่งมอบ) the master lists read no asset ro
         { installedInLinks: { some: outstandingLinkWhere } },
       ],
     },
-
     _count: { _all: true },
   })
   assert.deepEqual((state.args["employee.findMany"] as { select: unknown }).select,

@@ -158,7 +158,6 @@ test("the picker's words, Thai and English (glossary: ผู้ถือคร�
     handoverLine: ["ใบส่งมอบ {documentNo} · ส่งมอบ {date}", "Handover {documentNo} · {date}"],
     legacyLineAt: ["ข้อมูลเก่า (ไม่มีใบส่งมอบ) · {location}", "Legacy record (no handover) · {location}"],
     outstandingLine: ["ส่วนควบค้างคืน ของ {parentTag}", "Outstanding component of {parentTag}"],
-
   }
   for (const [key, [thai, english]] of Object.entries(words)) {
     assert.equal(th.assetOperation?.[key], thai, `th ${key}`)

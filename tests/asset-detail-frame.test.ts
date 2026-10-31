@@ -211,5 +211,4 @@ test("the frame reads one row or one count per question, in one round, with the 
   assert.match(source, /prisma\.assetComponent\.findFirst\(\{\s*where: \{ componentAssetId: assetId, \.\.\.outstandingLinkWhere \},\s*orderBy: \[\{ updatedAt: "desc" \}, \{ id: "asc" \}\],\s*select: \{ id: true, referenceId: true \},?\s*\}\)/)
   assert.match(source, /outstanding: outstandingLink \? \{ linkId: outstandingLink\.id, checkinId: outstandingLink\.referenceId \} : null/)
   assert.doesNotMatch(source, /findMany\(|"use client"/)
-
 })

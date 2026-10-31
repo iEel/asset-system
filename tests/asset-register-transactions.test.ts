@@ -92,7 +92,6 @@ test("the register's rows ask the shared action rule, with the open repair and d
   assert.match(register, /disposalView: hasPermission\(user, "disposal", "view"\)/)
   assert.match(register, /prisma\.assetComponent\.findMany\(\{\s*where: \{ componentAssetId: \{ in: assetIds \}, \.\.\.outstandingLinkWhere \},\s*select: \{ id: true, componentAssetId: true, referenceId: true \},\s*orderBy: \[\{ updatedAt: "desc" \}, \{ id: "asc" \}\],?\s*\}\)/)
   assert.match(register, /conditionName: asset\.condition\.name,\n\s+outstanding: outstandingByAssetId\.get\(asset\.id\) \?\? null,\n\s+returnTo: registerReturnHref,/)
-
   assert.doesNotMatch(register, /getAssetRegisterTransactionActions|getRowNextAction|buildAssetRegisterTransactionHref/)
   const policy = readFileSync("src/lib/asset-operation-policy.ts", "utf8")
   assert.doesNotMatch(policy, /export function getRowNextAction/)

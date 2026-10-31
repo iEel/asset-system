@@ -82,7 +82,6 @@ test("the second line: the handover document on รับคืน, ข้อม
   const lateReturn = { linkId: "link-1", checkinId: "rt-1", checkinNo: "RT-202610-0004", checkinDate: "2026-10-20T00:00:00.000Z", parent: { id: "asset-p", assetTag: "NB-0017", name: "โน้ตบุ๊ก Dell" }, parentInStock: true }
   assert.deepEqual(getAssetOperationRowDetail(row({ lateReturn, badge: "outstanding" })), { kind: "outstanding", parentTag: "NB-0017", documentNo: "RT-202610-0004" })
   assert.deepEqual(getAssetOperationRowDetail(row({ lateReturn: { ...lateReturn, checkinNo: null } })), { kind: "outstanding", parentTag: "NB-0017", documentNo: null })
-
 })
 
 test("sections: one flat section without groups; รับคืน follows the server's group order, drops empty groups, keeps a stray row last (spec 6.3, S-R4)", () => {
