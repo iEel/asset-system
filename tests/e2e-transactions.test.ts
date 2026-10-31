@@ -354,7 +354,26 @@ test("โอนย้าย through the footer: the second room and a new holder
     "await expect(changes).toContainText(TX_WORDS.transferKeptBoth)",
   ]) assert.ok(spec.includes(part), part)
   assert.equal(spec.split("await saveTransferForm(page, asset.id").length - 1, 5, "every save through the footer and the review")
-  assert.equal(spec.split("await pickTransferHolder(page, asset.id, ").length - 1, 4, "every holder pick waits for the re-ask")
+  assert.equal(spec.split("await pickTransferHolder(page, asset.id, ").length - 1, 5, "every holder pick waits for the re-ask (TR1 picks twice)")
+  // TR1, Review Focus 3 (final review tests-1): a department picked, a holder chosen locks the row, the × in the holder's
+  // row clears the holder, the row is free and empty, and the holder is chosen again; in that order, before the chip.
+  const focus = [
+    'await pickSearchable(page, "transfer-to-department", runDepartment.code, `${runDepartment.code} - ${runDepartment.name}`)',
+    "await pickTransferHolder(page, asset.id, receiver)",
+    "await expect(department).toBeDisabled()",
+    "await expect(department).toContainText(fillTemplate(TX_WORDS.transferFollowsHolder, { department: runDepartment.name }))",
+    `await page.locator('[data-transfer-row="holder"]').getByRole("button", { name: TX_WORDS.transferNoChange, exact: true }).click()`,
+    "await expect(department).toBeEnabled()",
+    "await expect(department).toHaveText(TX_WORDS.transferNoChange)",
+    "await pickTransferHolder(page, asset.id, receiver)",
+    "await centreInView(chip)",
+  ]
+  let from = 0
+  for (const step of focus) {
+    const index = spec.indexOf(step, from)
+    assert.ok(index >= 0, `TR1 in order: ${step}`)
+    from = index + step.length
+  }
   assert.equal(spec.split("await readSecondDepartment()").length - 1, 4)
   assert.equal(spec.split('if (e2eDevice === "desktop")').length - 1, 4, "the summary on the desktop only")
   for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "/api/locations", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
@@ -373,6 +392,25 @@ test("three assets added on the batch form move to the second room in one bulk m
   assert.match(spec, /expect\(after\.currentLocationId, asset\.assetTag\)\.toBe\(room\.id\)/)
   assert.match(spec, /await page\.waitForLoadState\("networkidle"\)/)
   assert.deepEqual(expectedFailures(spec), [])
+})
+
+test("signOnPad centres the pad once, then watches it without scrolling: two reads an interval apart with the same top and the pad under its own middle settle it, and a moved read or a failed hit centres it again (E2E-1031M; group 3 plan 3 final review tests-3)", () => {
+  const support = read("e2e/transactions/tx-support.ts")
+  const start = support.indexOf("export async function signOnPad(")
+  const body = support.slice(start, support.indexOf("\nexport ", start + 1))
+  const poll = body.slice(body.indexOf("await expect.poll("), body.indexOf(".toBe(true)"))
+  assert.ok(start >= 0 && poll.length > 0)
+  assert.match(body, /const centre = \(\) => canvas\.evaluate\(\(element\) => element\.scrollIntoView\(\{ block: "center" \}\)\)\n\s+await centre\(\)\n\s+let lastTop: number \| null = null\n\s+await expect\.poll\(/)
+  // The read itself never scrolls; only a moved read or a failed hit centres again, and the watch starts over.
+  assert.equal(body.split("scrollIntoView(").length - 1, 1, "one scroll, in centre()")
+  for (const part of [
+    "const rect = element.getBoundingClientRect()",
+    "document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === element",
+    "if (hit && lastTop === top) return true",
+    "intervals: [100, 150, 250]",
+  ]) assert.ok(poll.includes(part), part)
+  assert.match(poll, /if \(!hit \|\| \(lastTop !== null && lastTop !== top\)\) \{\n\s+await centre\(\)\n\s+lastTop = null\n\s+\} else \{\n\s+lastTop = top\n\s+\}/)
+  assert.doesNotMatch(body, /stays put/, "the comment says what it does now")
 })
 
 test("the latest transaction cancelled: the state before it, the VOID document with the reason, the cancel in the history; its two gaps are expected to fail (e2e transactions task 6, TX6)", async () => {

@@ -305,18 +305,26 @@ export async function signOnPad(page: Page, group: Locator, device: E2eDevice, b
   const canvas = group.locator("canvas")
   // Centred, not just in view: on the phone the sticky footer covers the bottom of the screen, and a pad scrolled only
   // to its edge takes the finger on the footer instead (group 3 plan 2 E2E-1031K). A picker closed just before hands
-  // focus back to its trigger a moment later, which scrolls the page again (E2E-1031M), so the pad is centred until it
-  // stays put and is the element under its own middle.
+  // focus back to its trigger a moment later, which scrolls the page again (E2E-1031M). So the pad is centred once and
+  // then watched without scrolling: it is settled when two consecutive reads, at least one interval apart, give the same
+  // top and the pad is the element under its own middle. A read that moved, or a failed hit, centres it again and the
+  // watch starts over, so a late scroll resets the wait instead of being hidden by it (final review tests-3).
+  const centre = () => canvas.evaluate((element) => element.scrollIntoView({ block: "center" }))
+  await centre()
   let lastTop: number | null = null
   await expect.poll(async () => {
     const { top, hit } = await canvas.evaluate((element) => {
-      element.scrollIntoView({ block: "center" })
       const rect = element.getBoundingClientRect()
       return { top: rect.top, hit: document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === element }
     })
-    const settled = hit && lastTop === top
-    lastTop = top
-    return settled
+    if (hit && lastTop === top) return true
+    if (!hit || (lastTop !== null && lastTop !== top)) {
+      await centre()
+      lastTop = null
+    } else {
+      lastTop = top
+    }
+    return false
   }, { message: "the signature pad stays centred and nothing covers it", intervals: [100, 150, 250] }).toBe(true)
   await canvas.evaluate((element) => {
     const seen: string[] = []

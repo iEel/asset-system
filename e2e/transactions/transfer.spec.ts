@@ -82,6 +82,16 @@ test.describe("transfer", () => {
     await pickSearchable(page, "transfer-to-location", room.code, `${room.code} - ${room.name}`)
     // The table keeps the picker's name (P3-R17): its label is hidden from sight, not dropped.
     await expect(page.locator("#transfer-to-custodian")).toHaveAccessibleName(/^ผู้ถือครองปลายทาง/)
+    // Review Focus 3 (P3-R5): a department picked first goes when a holder the department follows is chosen, and it does
+    // not come back when that holder is cleared with ×. The run's department is free to pick: the asset starts in second.
+    await pickSearchable(page, "transfer-to-department", runDepartment.code, `${runDepartment.code} - ${runDepartment.name}`)
+    await pickTransferHolder(page, asset.id, receiver)
+    await expect(department).toBeDisabled()
+    await expect(department).toContainText(fillTemplate(TX_WORDS.transferFollowsHolder, { department: runDepartment.name }))
+    // The × buttons share the picker's empty word, so this one is found in the holder's row.
+    await page.locator('[data-transfer-row="holder"]').getByRole("button", { name: TX_WORDS.transferNoChange, exact: true }).click()
+    await expect(department).toBeEnabled()
+    await expect(department).toHaveText(TX_WORDS.transferNoChange)
     await pickTransferHolder(page, asset.id, receiver)
     // A holder chosen: the แผนก row follows them and cannot be picked (spec §6, §9.2).
     await expect(department).toBeDisabled()

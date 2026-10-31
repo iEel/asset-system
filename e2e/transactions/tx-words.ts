@@ -48,7 +48,7 @@ export const TX_WORDS = {
   // reason for a new holder (transfer.assetClearedForCustodian, asset.transactionReasonTransferConditionDamaged), the
   // TR-'s แผนกเดิม (transfer.fromDepartment), and the page's own words (transfer.*): the locked แผนก row, the card's
   // lead and its "both stay" part, the footer, the components line, the components count of the card and the review,
-  // the cross-branch line, the chip.
+  // the cross-branch line, the chip, and the empty picker with its × (transfer.noChange).
   noneNow: "ไม่มี",
   inUseStatus: "ใช้งานอยู่",
   statusUnchanged: "คงสถานะเดิม",
@@ -64,4 +64,5 @@ export const TX_WORDS = {
   transferSummaryComponents: "ย้ายตาม {count} รายการ",
   transferCrossBranch: "ย้ายไปสาขาอื่น รหัสทรัพย์สินยังเป็นของ {branch} ตามเดิม",
   reasonChipUser: "เปลี่ยนผู้ใช้งาน",
+  transferNoChange: "ไม่เปลี่ยนแปลง",
 } as const
