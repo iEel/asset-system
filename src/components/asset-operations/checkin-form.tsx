@@ -822,7 +822,7 @@ export function CheckinForm({
                   />
                 </div>
               ) : null}
-              {travelling.length > 0 ? (
+              {!lateReturn && travelling.length > 0 ? (
                 <FieldGroup legend={t("componentsLegend")} id="checkin-components" hint={t("componentsNote")} error={fieldErrors.message("missingComponentIds")}>
                   <div className="grid gap-2">
                     {travelling.map((component) => (
