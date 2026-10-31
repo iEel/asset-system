@@ -23,7 +23,7 @@ function row(o: Partial<AssetOperationSearchRow> = {}, d: Partial<AssetOperation
     locationLabel: "HQ-01 - คลัง IT", currentLocationId: "l1", conditionId: "c-na", eligible: true, reasonKey: null, photo: null,
     checkout: handover, holderKey: "e1", holderLabel: "E001 - สมชาย ใจดี", holderEmployeeId: "e1",
     detail: { ownership: "personal", statusName: "In Use", departmentId: "d-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี",
-      holderLabel: "E001 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สำนักงานใหญ่", components: [], ...d },
+      holderLabel: "E001 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สำนักงานใหญ่", components: [], outstandingComponents: [], ...d },
     ...o,
   }
 }
@@ -160,7 +160,7 @@ test("the form: the form wraps the frame with the legacy link and no summary on 
     "nextStatusId: current.nextStatusId || picked", 'name="checkin-photo-type"',
     "key={`return:${returnByEmployeeId}`}", "key={`receive:${receiveByEmployeeId}`}",
     'apiError.describe("ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE").message', 'getApiErrorKey("ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE")',
-    "summary={<OperationSummaryCard", "rows={summaryRows}", "checklist={checklist}", 'footnote={t("summaryFootnote")}',
+    "summary={<OperationSummaryCard", "rows={lateReturn ? lateSummaryRows : summaryRows}", "checklist={lateReturn ? lateChecklist : checklist}", 'footnote={lateReturn ? lateFootnote : t("summaryFootnote")}',
     't("footerDescription", { tag: chosen.assetTag, returner: values.returnBy })', 'submitLabel: tOperation("reviewAndSave")', "formId: CHECKIN_FORM_ID",
     'label: t("conditionAfter"), value: selectedCondition?.label ?? ""', 'label: t("returnDate"), value: formatCheckoutDay(values.returnDate, locale)',
   ]) assert.ok(form.includes(part), part)

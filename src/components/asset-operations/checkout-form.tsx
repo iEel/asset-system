@@ -39,6 +39,8 @@ import {
   buildCheckoutSummaryRows,
   checkoutComponents,
   checkoutConditionDefault,
+  checkoutOutstandingComponents,
+  checkoutOutstandingLines,
   checkoutReceiverLabel,
   checkoutRepairHref,
   checkoutRepairLinkShown,
@@ -226,6 +228,7 @@ export function CheckoutForm({
     kept: (value) => tOperation("summaryKept", { value }),
     count: (count) => tOperation("summaryCount", { count }),
     componentsGo: (count) => t("summaryComponentsGo", { count }),
+    componentsOutstanding: (count) => t("summaryComponentsOutstanding", { count }),
   })
   const checklist = buildCheckoutChecklist(
     { ...choice, signed: receiverSignatureDataUrl !== null },
@@ -238,6 +241,8 @@ export function CheckoutForm({
     },
   )
   const { travelling, staying } = checkoutComponents(values.asset)
+  const outstanding = checkoutOutstandingComponents(values.asset)
+  const outstandingLines = checkoutOutstandingLines(values.asset, { with: (holder) => t("outstandingWith", { holder }), since: (documentNo) => t("outstandingSince", { documentNo }) })
   const dateOpen = phoneDateOpen || Boolean(fieldErrors.errors.checkoutDate)
   const signStatement = getCheckoutSignStatement({ checkoutType: values.checkoutType, travellingCount: travelling.length })
 
@@ -533,6 +538,11 @@ export function CheckoutForm({
                 {staying.length > 0 ? (
                   <Notice tone="info">
                     {t("componentsStaying", { count: staying.length, list: staying.map((component) => component.assetTag).join(", ") })}
+                  </Notice>
+                ) : null}
+                {outstanding.length > 0 ? (
+                  <Notice tone="warning" role="status" data-checkout-outstanding title={t("componentsOutstanding", { count: outstanding.length, list: outstandingLines.join(", ") })}>
+                    {t("componentsOutstandingNote")}
                   </Notice>
                 ) : null}
               </div>

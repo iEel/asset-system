@@ -1910,7 +1910,12 @@
     "signLandscapeHint": "Turn the phone sideways for a wider signing area.",
     "detailReadFailed": "Could not read the summary",
     "reviewAttached": "Attached",
-    "reviewNotAttached": "Not attached"
+    "reviewNotAttached": "Not attached",
+    "componentsOutstanding": "{count, plural, one {# component is still outstanding: {list}} other {# components are still outstanding: {list}}}",
+    "componentsOutstandingNote": "An outstanding component does not go with this handover. When it comes back, return it on the Check-in Asset page.",
+    "outstandingWith": "with {holder}",
+    "outstandingSince": "since {documentNo}",
+    "summaryComponentsOutstanding": "{count} outstanding"
   },
   "checkin": {
     "title": "Check-in Asset",
@@ -2024,7 +2029,25 @@
     "warningRepairOpens": "A repair record will be opened.",
     "warningRepairJoins": "Joins repair record {repairNo}.",
     "warningBrokenReady": "In this condition it cannot be handed over until it is repaired.",
-    "warningSalvageReady": "Salvage awaiting disposal cannot be handed over."
+    "warningSalvageReady": "Salvage awaiting disposal cannot be handed over.",
+    "lateSectionTitle": "Return an outstanding component",
+    "lateParent": "A component of {tag} {name}",
+    "lateSince": "Outstanding since {documentNo} · {date}",
+    "lateReattachNotice": "On saving, the component goes back into {parentTag}, which is in IT stock, and takes its location and department.",
+    "lateStandaloneNotice": "{parentTag} is no longer in IT stock. On saving, the component stands alone in IT stock instead of going back into it. Choose where to store it below.",
+    "lateCondition": "Condition on return (optional)",
+    "lateConditionUnchanged": "Unchanged",
+    "lateFooter": "Return {tag} from {holder}",
+    "lateFooterNoHolder": "Return {tag}",
+    "lateSummaryParent": "Component of",
+    "lateSummaryOutstanding": "{parentTag} (outstanding)",
+    "lateDepartmentUnavailable": "Not set up",
+    "lateSummaryFootnote": "No new document number: the return is a line on {documentNo}, which then opens for printing.",
+    "lateReviewDescription": "Confirm the receiver, the return date and where the component goes before saving.",
+    "lateReviewSince": "Outstanding since",
+    "lateResultReattach": "Back into {parentTag}",
+    "lateResultStandalone": "Stands alone, stored at {location}",
+    "lateSuccess": "Component returned"
   },
   "transfer": {
     "title": "Transfer Asset",

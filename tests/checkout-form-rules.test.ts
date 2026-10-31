@@ -6,6 +6,8 @@ import {
   buildCheckoutSummaryRows,
   checkoutComponents,
   checkoutConditionDefault,
+  checkoutOutstandingComponents,
+  checkoutOutstandingLines,
   checkoutReceiverLabel,
   checkoutReceiverName,
   checkoutSubmitAction,
@@ -45,6 +47,7 @@ function row(o: Partial<AssetOperationSearchRow> = {}, d: Partial<AssetOperation
       ownerBranchLabel: "สำนักงานใหญ่",
       locationBranchLabel: "สำนักงานใหญ่",
       components: [],
+      outstandingComponents: [],
       ...d,
     },
     ...o,
@@ -74,6 +77,7 @@ const words: CheckoutSummaryWords = {
   kept: (v) => `${v} (คงเดิม)`,
   count: (n) => `${n} รายการ`,
   componentsGo: (n) => `ไปด้วย ${n} รายการ`,
+  componentsOutstanding: (n) => `ค้างคืน ${n} รายการ`,
 }
 const pick = (rows: CheckoutSummaryRow[]) => rows.map(({ key, now, next, changed }) => [key, now, next, changed])
 
@@ -294,4 +298,36 @@ test("a save refused for the asset's condition reads the asset again before focu
   assert.ok(form.includes(refusal))
   assert.ok(form.indexOf(refusal) < form.indexOf("if (fieldErrors.applyServer(payload) && focusFirstError()) return"), "the read comes before the focus")
   assert.ok(form.includes('aria-describedby="checkout-asset-error"'), "the link reads with the reason under the asset field")
+})
+
+test("ส่งมอบ with a component still outstanding: the ส่วนควบ row adds ค้างคืน M, and each outstanding component reads its holder and its RT- (group 3 spec §7.1, §7.3, P2-R19)", () => {
+  const travelling = { id: "k1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "HQ-01 - คลัง IT" }
+  const outstanding = [{ assetTag: "NB-0017-02", name: "Mouse ไร้สาย", holderName: "สมชาย ใจดี", checkinNo: "RT-202610-0004" }]
+  const both = buildCheckoutSummaryRows(choose({ asset: row({}, { components: [travelling], outstandingComponents: outstanding }), employee }), words)
+  assert.deepEqual(pick(both).at(-1), ["components", "2 รายการ", "ไปด้วย 1 รายการ · ค้างคืน 1 รายการ", true])
+  const onlyOutstanding = buildCheckoutSummaryRows(choose({ asset: row({}, { outstandingComponents: outstanding }), employee }), words)
+  assert.deepEqual(pick(onlyOutstanding).at(-1), ["components", "1 รายการ", "ไปด้วย 0 รายการ · ค้างคืน 1 รายการ", false], "drawn for an outstanding component alone")
+  const staying = { ...travelling, id: "k3", travels: false }
+  assert.deepEqual(pick(buildCheckoutSummaryRows(choose({ asset: row({}, { components: [staying] }), employee }), words)).at(-1),
+    ["components", "1 รายการ", "ไปด้วย 0 รายการ", false], "a component with its own handover keeps today's row")
+  assert.equal(pick(buildCheckoutSummaryRows(choose({ employee }), words)).some(([key]) => key === "components"), false, "no components, no row")
+  assert.deepEqual(checkoutComponents(row({}, { components: [travelling], outstandingComponents: outstanding })).travelling, [travelling], "an outstanding component never travels")
+  const lineWords = { with: (holder: string) => `อยู่กับ ${holder}`, since: (no: string) => `ตั้งแต่ ${no}` }
+  assert.deepEqual(checkoutOutstandingLines(row({}, { outstandingComponents: [...outstanding, { assetTag: "NB-0017-03", name: "Dock", holderName: null, checkinNo: null }] }), lineWords),
+    ["NB-0017-02 Mouse ไร้สาย · อยู่กับ สมชาย ใจดี · ตั้งแต่ RT-202610-0004", "NB-0017-03 Dock"])
+  assert.deepEqual([checkoutOutstandingComponents(row({ detail: undefined })), checkoutOutstandingComponents(null), checkoutOutstandingLines(null, lineWords)], [[], [], []])
+})
+
+test("ส่งมอบ's form: the outstanding warning sits in section 1 after the components that go and stay, so the phone shows it on step 1; the summary words (P2-R19)", () => {
+  const form = read("src/components/asset-operations/checkout-form.tsx")
+  for (const part of [
+    "const outstanding = checkoutOutstandingComponents(values.asset)",
+    'const outstandingLines = checkoutOutstandingLines(values.asset, { with: (holder) => t("outstandingWith", { holder }), since: (documentNo) => t("outstandingSince", { documentNo }) })',
+    '<Notice tone="warning" role="status" data-checkout-outstanding title={t("componentsOutstanding", { count: outstanding.length, list: outstandingLines.join(", ") })}>',
+    't("componentsOutstandingNote")',
+    'componentsOutstanding: (count) => t("summaryComponentsOutstanding", { count }),',
+  ]) assert.ok(form.includes(part), part)
+  const at = (text: string) => form.indexOf(text)
+  assert.ok(at('data-checkout-part="asset"') < at("data-checkout-outstanding") && at("data-checkout-outstanding") < at('data-checkout-part="receiver"'), "section 1: phone step 1")
+  assert.ok(at("{staying.length > 0 ? (") < at("data-checkout-outstanding"), "after the components that stay")
 })

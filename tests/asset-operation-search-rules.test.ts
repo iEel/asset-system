@@ -16,6 +16,8 @@ import {
   type AssetOperationChosenDetail, type AssetOperationSearchDetailAsset,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
   assetOperationOutstandingLinkSelect, type AssetOperationOutstandingLinkRecord, type AssetOperationOutstandingRead,
+  assetOperationLateReturnParentSelect, assetOperationParentOutstandingLinkSelect, buildAssetOperationLateReturnParent, buildAssetOperationOutstandingComponents,
+  type AssetOperationParentOutstandingLink,
 } from "../src/lib/asset-operation-search-rules.ts"
 
 function input(query: string): AssetOperationSearchInput {
@@ -89,9 +91,10 @@ test("the chosen asset's detail: ownership, the status's English name, departmen
     ownership: "stock", statusName: "In Use", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี",
     ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
     components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "RY-01 - ห้องบัญชี" }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false, locationLabel: "RY-01 - ห้องบัญชี" }],
+    outstandingComponents: [],
   }
-  assert.deepEqual(buildAssetOperationRowDetail(chosen, links, new Set(["c-2"])), expected)
-  const bare = buildAssetOperationRowDetail({ ...chosen, ownershipType: "bogus", departmentId: null, department: null, custodianId: null, custodian: null }, [], new Set())
+  assert.deepEqual(buildAssetOperationRowDetail(chosen, links, new Set(["c-2"]), []), expected)
+  const bare = buildAssetOperationRowDetail({ ...chosen, ownershipType: "bogus", departmentId: null, department: null, custodianId: null, custodian: null }, [], new Set(), [])
   assert.deepEqual([bare.ownership, bare.departmentId, bare.departmentLabel, bare.departmentName, bare.holderLabel, bare.holderName, bare.components], ["personal", null, null, null, null, null, []])
   // The same links the sync moves with the parent (asset-component-sync.ts:115-122).
   assert.deepEqual(buildAssetOperationComponentLinkWhere("asset-1"), { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } })
@@ -356,4 +359,29 @@ test("the other modes refuse an outstanding component and carry no รับค�
   assert.equal(buildAssetOperationSearchRow(input("mode=checkin&q=0228"), held, ctx(handover)).badge, "handover")
   assert.equal(buildAssetOperationSearchRow(input("mode=checkin&q=0228"), held, ctx(null)).badge, "legacy")
   assert.equal("badge" in buildAssetOperationSearchRow(input("mode=checkin&q=0228"), asset, ctx(null)), false)
+})
+
+test("the chosen asset's outstanding components: each once (the first link; callers read newest first), by tag, with its holder and the RT- that left it out (group 3 spec §7.1, P2-R19)", () => {
+  assert.deepEqual(assetOperationParentOutstandingLinkSelect, {
+    componentAssetId: true, referenceId: true,
+    componentAsset: { select: { assetTag: true, name: true, custodian: { select: { fullNameTh: true } } } },
+  })
+  const out = (componentAssetId: string, assetTag: string, name: string, holder: string | null, referenceId: string | null): AssetOperationParentOutstandingLink =>
+    ({ componentAssetId, referenceId, componentAsset: { assetTag, name, custodian: holder ? { fullNameTh: holder } : null } })
+  const links = [out("c-3", "NB-0017-03", "Dock", "สมชาย ใจดี", "rt-2"), out("c-2", "NB-0017-02", "Mouse ไร้สาย", null, "rt-1"), out("c-3", "NB-0017-03", "Dock", "สมชาย ใจดี", "rt-1"), out("c-4", "NB-0017-04", "Pen", "สมหญิง รักงาน", null)]
+  assert.deepEqual(buildAssetOperationOutstandingComponents(links, new Map([["rt-1", "RT-202610-0004"], ["rt-2", "RT-202610-0009"]])), [
+    { assetTag: "NB-0017-02", name: "Mouse ไร้สาย", holderName: null, checkinNo: "RT-202610-0004" },
+    { assetTag: "NB-0017-03", name: "Dock", holderName: "สมชาย ใจดี", checkinNo: "RT-202610-0009" },
+    { assetTag: "NB-0017-04", name: "Pen", holderName: "สมหญิง รักงาน", checkinNo: null },
+  ])
+  assert.deepEqual(buildAssetOperationOutstandingComponents([out("c-2", "NB-0017-02", "Mouse ไร้สาย", null, "rt-9")], new Map()), [{ assetTag: "NB-0017-02", name: "Mouse ไร้สาย", holderName: null, checkinNo: null }], "an RT- that was not read")
+})
+
+test("a late return's parent: its room as 'code - name' and its department, for the re-attach summary (group 3 spec §8.6, P2-R7)", () => {
+  assert.deepEqual(assetOperationLateReturnParentSelect, {
+    id: true, currentLocationId: true, currentLocation: { select: { code: true, name: true } }, departmentId: true, department: { select: { name: true } },
+  })
+  const parent = { id: "asset-p", currentLocationId: "loc-it", currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, departmentId: "dep-adm", department: { name: "ธุรการ" } }
+  assert.deepEqual(buildAssetOperationLateReturnParent(parent), { locationId: "loc-it", locationLabel: "IT-2 - ห้อง IT ชั้น 2", departmentId: "dep-adm", departmentName: "ธุรการ" })
+  assert.deepEqual(buildAssetOperationLateReturnParent({ ...parent, departmentId: null, department: null }), { locationId: "loc-it", locationLabel: "IT-2 - ห้อง IT ชั้น 2", departmentId: null, departmentName: null })
 })

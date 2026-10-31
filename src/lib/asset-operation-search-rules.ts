@@ -205,6 +205,53 @@ export const assetOperationComponentLinkSelect = {
 } satisfies Prisma.AssetComponentSelect
 export type AssetOperationComponentLink = Prisma.AssetComponentGetPayload<{ select: typeof assetOperationComponentLinkSelect }>
 
+export const assetOperationParentOutstandingLinkSelect = {
+  componentAssetId: true,
+  referenceId: true,
+  componentAsset: { select: { assetTag: true, name: true, custodian: { select: { fullNameTh: true } } } },
+} satisfies Prisma.AssetComponentSelect
+export type AssetOperationParentOutstandingLink = Prisma.AssetComponentGetPayload<{ select: typeof assetOperationParentOutstandingLinkSelect }>
+/** A component of the chosen asset that did not come back (group 3 spec §7.1, §8.5): listed apart, it does not travel. */
+export type AssetOperationOutstandingComponent = { assetTag: string; name: string; holderName: string | null; checkinNo: string | null }
+
+/** Each outstanding component once (the first link; callers read newest first), by tag, with its holder and its RT-. */
+export function buildAssetOperationOutstandingComponents(
+  links: readonly AssetOperationParentOutstandingLink[],
+  checkinNoById: ReadonlyMap<string, string | null>,
+): AssetOperationOutstandingComponent[] {
+  const components = new Map<string, AssetOperationOutstandingComponent>()
+  for (const link of links) {
+    if (components.has(link.componentAssetId)) continue
+    components.set(link.componentAssetId, {
+      assetTag: link.componentAsset.assetTag,
+      name: link.componentAsset.name,
+      holderName: link.componentAsset.custodian?.fullNameTh ?? null,
+      checkinNo: link.referenceId ? checkinNoById.get(link.referenceId) ?? null : null,
+    })
+  }
+  return [...components.values()].sort((a, b) => a.assetTag.localeCompare(b.assetTag))
+}
+
+export const assetOperationLateReturnParentSelect = {
+  id: true,
+  currentLocationId: true,
+  currentLocation: { select: { code: true, name: true } },
+  departmentId: true,
+  department: { select: { name: true } },
+} satisfies Prisma.AssetSelect
+export type AssetOperationLateReturnParentRecord = Prisma.AssetGetPayload<{ select: typeof assetOperationLateReturnParentSelect }>
+/** Where a re-attached component goes (spec §8.6, P2-R7): its parent's room and department. */
+export type AssetOperationLateReturnParent = { locationId: string; locationLabel: string; departmentId: string | null; departmentName: string | null }
+
+export function buildAssetOperationLateReturnParent(parent: AssetOperationLateReturnParentRecord): AssetOperationLateReturnParent {
+  return {
+    locationId: parent.currentLocationId,
+    locationLabel: placeCodeLabel(parent.currentLocation),
+    departmentId: parent.departmentId,
+    departmentName: parent.department?.name ?? null,
+  }
+}
+
 /** The installed links that move with the parent: the filter of syncInstalledComponentsWithParent (asset-component-sync.ts). */
 export function buildAssetOperationComponentLinkWhere(parentAssetId: string): Prisma.AssetComponentWhereInput {
   return { parentAssetId, status: "installed", removedAt: null, componentAsset: { isActive: true } }
@@ -274,6 +321,10 @@ export type AssetOperationChosenDetail = {
   ownerBranchLabel: string
   locationBranchLabel: string
   components: AssetOperationChosenComponent[]
+  /** The asset's outstanding components (group 3 spec §7.1, §8.5): listed apart, they never travel. [] when none. */
+  outstandingComponents: AssetOperationOutstandingComponent[]
+  /** Only on an outstanding component's own row (รับคืน, spec §8.6): its parent's room and department. */
+  lateReturnParent?: AssetOperationLateReturnParent
 }
 
 export const assetOperationSearchCheckoutSelect = {
@@ -538,12 +589,14 @@ export function buildAssetOperationSearchRow(
 
 /**
  * The chosen asset's detail: each installed component once (the first link), by tag; it travels unless it has its own
- * open handover, as the sync skips it (asset-component-sync.ts).
+ * open handover, as the sync skips it (asset-component-sync.ts); the asset's outstanding components are listed apart
+ * (group 3 spec §7.1, §8.5); they never travel.
  */
 export function buildAssetOperationRowDetail(
   asset: AssetOperationSearchDetailAsset,
   links: readonly AssetOperationComponentLink[],
   handedOverComponentIds: ReadonlySet<string>,
+  outstandingComponents: AssetOperationOutstandingComponent[],
 ): AssetOperationChosenDetail {
   const components = new Map<string, AssetOperationChosenComponent>()
   for (const link of links) {
@@ -567,6 +620,7 @@ export function buildAssetOperationRowDetail(
     ownerBranchLabel: asset.branch.name,
     locationBranchLabel: asset.currentLocation.branch.name,
     components: [...components.values()].sort((a, b) => a.assetTag.localeCompare(b.assetTag)),
+    outstandingComponents,
   }
 }
 

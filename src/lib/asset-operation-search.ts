@@ -1,14 +1,18 @@
 import { outstandingLinkWhere } from "./asset-component-outstanding.ts"
 import {
   assetOperationComponentLinkSelect,
+  assetOperationLateReturnParentSelect,
   assetOperationOutstandingCheckinSelect,
   assetOperationOutstandingLinkSelect,
+  assetOperationParentOutstandingLinkSelect,
   assetOperationSearchAssetSelect,
   assetOperationSearchCheckoutSelect,
   assetOperationSearchDetailAssetSelect,
   buildAssetOperationComponentLinkWhere,
   assetOperationSearchLimit,
   buildAssetOperationByIdWhere,
+  buildAssetOperationLateReturnParent,
+  buildAssetOperationOutstandingComponents,
   buildAssetOperationRowDetail,
   buildAssetOperationSearchRow,
   buildAssetOperationSearchWheres,
@@ -17,7 +21,9 @@ import {
   rankAssetOperationMatches,
   type AssetOperationComponentLink,
   type AssetOperationDestinationLabels,
+  type AssetOperationLateReturnParentRecord,
   type AssetOperationOutstandingLinkRecord,
+  type AssetOperationParentOutstandingLink,
   type AssetOperationOutstandingRead,
   type AssetOperationSearchAnswer,
   type AssetOperationSearchAsset,
@@ -30,9 +36,11 @@ import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // The reads of the transaction pages' asset search (server search spec 6.1-6.4). Bounded: at most 5 asset reads,
 // 1 count, 3 fact reads (open handovers, open repairs, outstanding links), 2 photo reads, 2 label reads and, on รับคืน
-// when an outstanding link is found, 1 RT- read per answer, every `in` list at most 20 ids; with detail=1 (by id only): one
-// read of the parent's installed links and one of their open handovers. The db is injected, as
-// searchMaintenanceOptions, so the pages call it for the preselect and the tests fake it.
+// when an outstanding link is found, 1 RT- read per answer, every `in` list at most 20 ids; with detail=1 (by id only):
+// one read each of the asset's installed and outstanding links, then one of the installed components' open handovers and
+// one of the outstanding links' RT- numbers; an outstanding component's own row (รับคืน) also reads its parent's room and
+// department (group 3 spec §7.1, §8.6). The db is injected, as searchMaintenanceOptions, so the pages call it for the
+// preselect and the tests fake it.
 
 // Method syntax, so fakes may narrow args; the route passes `prisma as unknown as AssetOperationSearchDb`.
 export type AssetOperationSearchDb = {
@@ -111,20 +119,40 @@ async function readDestinationLabels(
   }
 }
 
-// The chosen asset's detail (group 3 spec §7.1): its installed links, then the open handovers of those components.
-async function readChosenDetail(db: AssetOperationSearchDb, asset: AssetOperationSearchDetailAsset) {
-  const links = await db.assetComponent.findMany({
-    where: buildAssetOperationComponentLinkWhere(asset.id),
-    select: assetOperationComponentLinkSelect,
-  }) as AssetOperationComponentLink[]
+// The chosen asset's detail (group 3 spec §7.1, §8.6): its installed and outstanding links (and, for an outstanding
+// component's own row, its parent's room and department), then the open handovers of the installed components and the
+// RT- numbers of the outstanding links.
+async function readChosenDetail(db: AssetOperationSearchDb, asset: AssetOperationSearchDetailAsset, lateReturnParentId: string | null) {
+  const [links, outstandingLinks, parents] = await Promise.all([
+    db.assetComponent.findMany({
+      where: buildAssetOperationComponentLinkWhere(asset.id),
+      select: assetOperationComponentLinkSelect,
+    }) as Promise<AssetOperationComponentLink[]>,
+    db.assetComponent.findMany({
+      where: { parentAssetId: asset.id, ...outstandingLinkWhere },
+      select: assetOperationParentOutstandingLinkSelect,
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    }) as Promise<AssetOperationParentOutstandingLink[]>,
+    lateReturnParentId
+      ? db.asset.findMany({ where: { id: lateReturnParentId }, select: assetOperationLateReturnParentSelect, take: 1 }) as Promise<AssetOperationLateReturnParentRecord[]>
+      : Promise.resolve([]),
+  ])
   const componentIds = [...new Set(links.map((link) => link.componentAssetId))]
-  const handedOver = componentIds.length
-    ? await db.assetCheckout.findMany({
-        where: { assetId: { in: componentIds }, ...openCheckoutWhere },
-        select: { assetId: true },
-      }) as Array<{ assetId: string }>
-    : []
-  return buildAssetOperationRowDetail(asset, links, new Set(handedOver.map((checkout) => checkout.assetId)))
+  const checkinIds = [...new Set(outstandingLinks.flatMap((link) => (link.referenceId ? [link.referenceId] : [])))]
+  const [handedOver, checkins] = await Promise.all([
+    componentIds.length
+      ? db.assetCheckout.findMany({
+          where: { assetId: { in: componentIds }, ...openCheckoutWhere },
+          select: { assetId: true },
+        }) as Promise<Array<{ assetId: string }>>
+      : Promise.resolve([]),
+    checkinIds.length
+      ? db.assetCheckin.findMany({ where: { id: { in: checkinIds } }, select: { id: true, documentNo: true } }) as Promise<Array<{ id: string; documentNo: string | null }>>
+      : Promise.resolve([]),
+  ])
+  const outstandingComponents = buildAssetOperationOutstandingComponents(outstandingLinks, new Map(checkins.map((checkin) => [checkin.id, checkin.documentNo])))
+  const detail = buildAssetOperationRowDetail(asset, links, new Set(handedOver.map((checkout) => checkout.assetId)), outstandingComponents)
+  return parents[0] ? { ...detail, lateReturnParent: buildAssetOperationLateReturnParent(parents[0]) } : detail
 }
 
 export async function searchAssetOperationOptions(
@@ -194,6 +222,6 @@ export async function searchAssetOperationOptions(
     outstanding: outstandingOf(asset.id),
     ...(labels ? { labels } : {}),
   }))
-  if (input.detail) rows[0].detail = await readChosenDetail(db, assets[0] as AssetOperationSearchDetailAsset)
+  if (input.detail) rows[0].detail = await readChosenDetail(db, assets[0] as AssetOperationSearchDetailAsset, rows[0].lateReturn?.parent.id ?? null)
   return mode === "checkin" ? { mode, total, ...groupAssetOperationCheckinRows(rows) } : { mode, total, rows }
 }

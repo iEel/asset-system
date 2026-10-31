@@ -50,6 +50,18 @@ import {
   checkinWarningLines,
   type CheckinReturnDepartment,
 } from "@/lib/checkin-form-rules"
+import {
+  EMPTY_LATE_RETURN_DRAFT,
+  buildLateReturnBody,
+  buildLateReturnChecklist,
+  buildLateReturnSummaryRows,
+  lateReturnDays,
+  lateReturnOf,
+  lateReturnOutcome,
+  validateLateReturn,
+  type LateReturnDraft,
+  type LateReturnField,
+} from "@/lib/checkin-late-return-rules"
 import { CHECKIN_RETURN_DATE_ERROR_KEYS, checkinHandoverDay, checkinReturnDateError, isLegacyBackfilledHandover } from "@/lib/checkin-route-rules"
 import { withCheckoutAssetDetail, type CheckoutDetailState } from "@/lib/checkout-form-rules"
 import { formatCheckoutDay } from "@/lib/checkout-phone-steps"
@@ -96,6 +108,16 @@ const FIELD_IDS = {
 } as const
 type CheckinField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckinField[]
+
+// The late return's fields (group 3 spec §8.6, P2-R4, P2-R11), keyed like the component-return route's fieldErrors, in
+// visual order. A second table, because their keys repeat FIELD_IDS' keys under other ids.
+const LATE_FIELD_IDS = {
+  receiveBy: "checkin-late-receive-by",
+  returnDate: "checkin-late-return-date",
+  conditionId: "checkin-late-condition",
+  nextLocationId: "checkin-late-location",
+} as const satisfies Record<LateReturnField, string>
+const LATE_FIELD_ORDER = Object.keys(LATE_FIELD_IDS) as LateReturnField[]
 
 // noValidate turns the browser's check off, so this restates the controls' required and the server's 100-character
 // limit on the two names (v-track M-R2). A missing component needs an employee as ผู้คืน, in the server's words (P2-R18); the return date is no
@@ -208,6 +230,10 @@ export function CheckinForm({
     remark: "",
     maintenanceProblem: "",
   })
+  // The late return of an outstanding component (spec §8.6, P2-R4): its own errors, because its keys are not the form's,
+  // and its own condition, room and remark, so nothing leaks into the return's required, defaultless fields.
+  const lateErrors = useFieldErrors<LateReturnField>()
+  const [late, setLate] = useState<LateReturnDraft>(EMPTY_LATE_RETURN_DRAFT)
 
   // The chosen row: its open handover when it can come back, else its reason under the field (spec 6.3, 6.4).
   const choice = getCheckinChoice(chosen, employeeIds)
@@ -307,6 +333,80 @@ export function CheckinForm({
     },
   )
 
+  // The chosen row is an outstanding component that came back late (spec §8.6, P2-R4): the panel takes sections 2 and 3.
+  const lateReturn = lateReturnOf(chosen)
+  const lateOutcome = lateReturn ? lateReturnOutcome(lateReturn) : null
+  const lateDays = lateReturnDays(lateReturn, new Date())
+  const lateLocation = locations.find((location) => location.id === late.nextLocationId)
+  const lateCondition = conditions.find((condition) => condition.id === late.conditionId)
+  const lateSummaryRows = chosen && lateReturn
+    ? buildLateReturnSummaryRows(
+        {
+          row: chosen,
+          lateReturn,
+          draft: late,
+          conditions,
+          locations,
+          // Every condition by id, so a component recorded ยังไม่ประเมิน reads its name.
+          currentConditionLabel: conditionLabels[chosen.conditionId] ?? null,
+          returnDepartment,
+        },
+        {
+          parent: t("lateSummaryParent"),
+          holder: tOperation("summaryHolder"),
+          location: tOperation("summaryLocation"),
+          department: tOperation("summaryDepartment"),
+          condition: t("conditionAfter"),
+          none: tOperation("summaryNone"),
+          notChosen: tOperation("summaryNotChosen"),
+          kept: (value) => tOperation("summaryKept", { value }),
+          outstandingOf: (parentTag) => t("lateSummaryOutstanding", { parentTag }),
+          departmentUnavailable: t("lateDepartmentUnavailable"),
+        },
+      )
+    : []
+  const lateChecklist = lateOutcome
+    ? buildLateReturnChecklist(
+        { eligible: chosen?.eligible === true, receiveBy: values.receiveBy, outcome: lateOutcome, nextLocationId: late.nextLocationId },
+        { asset: t("asset"), receiver: t("receiveBy"), location: t("nextLocation") },
+      )
+    : []
+  const lateFooter = chosen && lateReturn
+    ? chosen.holderLabel
+      ? t("lateFooter", { tag: chosen.assetTag, holder: chosen.holderLabel })
+      : t("lateFooterNoHolder", { tag: chosen.assetTag })
+    : null
+  const lateFootnote = lateReturn?.checkinNo ? t("lateSummaryFootnote", { documentNo: lateReturn.checkinNo }) : undefined
+  const lateReviewItems = chosen && lateReturn
+    ? buildOperationReviewSummary({
+        assetLabel: assetOperationRowLabel(chosen),
+        destinationLabels: [values.receiveBy],
+        details: [
+          { label: t("lateSummaryParent"), value: assetOperationRowLabel(lateReturn.parent) },
+          {
+            label: t("lateReviewSince"),
+            value: [lateReturn.checkinNo, lateDays.checkinDay ? formatCheckoutDay(lateDays.checkinDay, locale) : null].filter(Boolean).join(" · "),
+          },
+          { label: t("returnDate"), value: formatCheckoutDay(values.returnDate, locale) },
+          { label: t("conditionAfter"), value: lateCondition?.label ?? t("lateConditionUnchanged") },
+          {
+            label: tOperation("summaryNext"),
+            value: lateOutcome === "standalone"
+              ? t("lateResultStandalone", { location: lateLocation?.label ?? "" })
+              : t("lateResultReattach", { parentTag: lateReturn.parent.assetTag }),
+          },
+          { label: t("remark"), value: late.remark },
+        ],
+        labels: {
+          asset: t("asset"),
+          source: t("returnBy"),
+          destination: t("receiveBy"),
+          nextStatus: t("nextStatusAfterReturn"),
+          evidence: t("reviewEvidence"),
+        },
+      })
+    : []
+
   const evidenceCount = photosAfter.length + Number(Boolean(returnSignatureDataUrl)) + Number(Boolean(receiveSignatureDataUrl))
   const reviewItems = buildOperationReviewSummary({
     assetLabel: selectedCheckout && chosen ? `${chosen.assetTag} - ${chosen.name}` : "",
@@ -338,6 +438,7 @@ export function CheckinForm({
     await closed
   }
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })
+  const focusLateError = () => lateErrors.focusFirst(LATE_FIELD_ORDER, { idFor: (key) => LATE_FIELD_IDS[key], reveal: leaveReview })
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -357,6 +458,18 @@ export function CheckinForm({
       setReceiveByEmployeeId(employeeId)
     }
     setField(field, employee?.label ?? (employeeId ? formerLabel ?? "" : ""))
+  }
+
+  // The panel's own values: a change settles that field's error (the remark has no rule).
+  function setLateField(field: keyof LateReturnDraft, value: string) {
+    setLate((current) => ({ ...current, [field]: value }))
+    if (field !== "remark") lateErrors.clear(field)
+  }
+
+  // วันที่คืน is shared with section 2; on the panel its error is the late one.
+  function setLateReturnDate(value: string) {
+    setField("returnDate", value)
+    lateErrors.clear("returnDate")
   }
 
   // A condition picks หลังรับคืนให้เป็น when none is chosen yet (P2-R16): เสียหาย or ใช้งานไม่ได้ ส่งซ่อม, ซาก รอตัดจำหน่าย,
@@ -446,6 +559,8 @@ export function CheckinForm({
   // A ข้อมูลเก่า row is not taken as it is: it asks once, then the backfill makes its handover (spec 6.3, S-R26). With
   // no return department the return would be refused, so the confirm is refused first and no HO- is left behind (P2-R8).
   function chooseRow(row: AssetOperationSearchRow | null) {
+    setLate(EMPTY_LATE_RETURN_DRAFT)
+    lateErrors.setErrors({})
     if (row?.legacy) {
       if (!returnDepartment) {
         fieldErrors.setErrors({ checkoutId: getApiErrorKey("ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE") ?? "invalid" })
@@ -494,8 +609,17 @@ export function CheckinForm({
     }
   }
 
+  // The late return's checks (spec §8.6, P2-R13), then its review; the return's own checks below do not apply to it.
+  function openLateReview() {
+    if (!lateOutcome) return
+    lateErrors.setErrors(validateLateReturn({ ...late, receiveBy: values.receiveBy, returnDate: values.returnDate }, { outcome: lateOutcome, ...lateDays }))
+    if (focusLateError()) return
+    setReviewOpen(true)
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (lateReturn) return openLateReview()
     if (readingForSubmit) return
     fieldErrors.setErrors(validate(values, { repairLocked, sendsToRepair, returnByEmployeeId, missingCount: missingComponents.length, todayDay, handoverDay }))
     if (focusFirstError()) return
@@ -524,6 +648,12 @@ export function CheckinForm({
       </Button>
     </span>
   ) : null
+  // No return department: the card says so in the catalogued words, and the server refuses the save (P2-R8). A failed
+  // detail read keeps its ลองอีกครั้ง.
+  const lateWarnings = [
+    ...(returnDepartment ? [] : [apiError.describe("ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE").message]),
+    ...(detailFailedNotice ? [detailFailedNotice] : []),
+  ]
 
   async function submitCheckin() {
     // The review opens only after validate() found the checkout, so this only narrows the type.
@@ -572,6 +702,44 @@ export function CheckinForm({
     }
   }
 
+  // The late return saves to its own route (P2-R3) and opens the RT- it belongs to, not a new document.
+  async function submitLateReturn() {
+    if (!chosen || !lateReturn) return
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/assets/${chosen.id}/component-return`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildLateReturnBody(lateReturn, {
+          ...late,
+          receiveBy: values.receiveBy,
+          receiveByEmployeeId,
+          returnDate: values.returnDate,
+        })),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        // A refusal that names a field of the panel closes the review and shows under it.
+        if (lateErrors.applyServer(payload) && focusLateError()) return
+        // The parent or the link changed since the panel opened (Review Focus 3): the row is read again, so the panel
+        // shows the parent as it is now, then the toast says why.
+        if (payload?.code === "ASSET_CHANGED_DURING_OPERATION") {
+          setReviewOpen(false)
+          await loadRowDetail(chosen.id)
+        }
+        throw new Error(payload?.code ?? payload?.error ?? tCommon("error"))
+      }
+      toast.success(t("lateSuccess"))
+      const documentHref = `/${locale}/asset-management/checkins/${payload.checkinId}`
+      router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
+      router.refresh()
+    } catch (error) {
+      apiError.toast(error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       <form onSubmit={handleSubmit} noValidate id={CHECKIN_FORM_ID}>
@@ -584,15 +752,15 @@ export function CheckinForm({
             title={tOperation("summaryTitle")}
             nowLabel={tOperation("summaryNow")}
             nextLabel={tOperation("summaryNext")}
-            rows={summaryRows}
-            checklist={checklist}
-            warnings={[...warningLines, ...(detailFailedNotice ? [detailFailedNotice] : [])]}
-            footnote={t("summaryFootnote")}
+            rows={lateReturn ? lateSummaryRows : summaryRows}
+            checklist={lateReturn ? lateChecklist : checklist}
+            warnings={lateReturn ? lateWarnings : [...warningLines, ...(detailFailedNotice ? [detailFailedNotice] : [])]}
+            footnote={lateReturn ? lateFootnote : t("summaryFootnote")}
             photo={chosen ? <AssetThumbnail photo={chosen.photo} assetTag={chosen.assetTag} assetName={chosen.name} size={64} /> : undefined}
             assetLabel={chosen ? assetOperationRowLabel(chosen) : undefined}
           />}
           footer={{
-            description: chosen && values.returnBy
+            description: lateReturn ? lateFooter : chosen && values.returnBy
               ? t("footerDescription", { tag: chosen.assetTag, returner: values.returnBy })
               : t("footerIncomplete"),
             cancelHref,
@@ -673,164 +841,235 @@ export function CheckinForm({
               ) : null}
             </div>
           </FormSection>
-          <FormSection number={2} title={t("sectionReturn")}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <SearchableSelect
-                id="checkin-return-by"
-                label={t("returnBy")}
-                value={returnByEmployeeId}
-                required
-                options={returnByOptions}
-                placeholder={t("selectReturnBy")}
-                searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                emptyLabel={tCommon("searchSelectNoResults")}
-                hint={returnByEmployeeId && returnByEmployeeId === choice.returnByEmployeeId ? t("returnByHolder") : undefined}
-                error={fieldErrors.message("returnBy")}
-                onChange={(value) => setEmployeeField("returnBy", value, value === choice.returnByEmployeeId ? choice.returnByInactiveLabel : null)}
-              />
-              <SearchableSelect
-                id="checkin-receive-by"
-                label={t("receiveBy")}
-                value={receiveByEmployeeId}
-                required
-                options={employees}
-                placeholder={t("selectReceiveBy")}
-                searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                emptyLabel={tCommon("searchSelectNoResults")}
-                hint={receiveByEmployeeId && receiveByEmployeeId === currentEmployeeId ? t("receiveByYou") : undefined}
-                error={fieldErrors.message("receiveBy")}
-                onChange={(value) => setEmployeeField("receiveBy", value)}
-              />
-              <div className="md:col-span-2">
-                <AssetConditionChoice
-                  id="checkin-condition-after"
-                  legend={t("conditionAfter")}
-                  options={conditions}
-                  value={values.conditionAfter}
-                  required
-                  error={fieldErrors.message("conditionAfter")}
-                  onChange={setCondition}
-                />
-              </div>
-              <Field label={t("returnDate")} id="checkin-return-date" required error={fieldErrors.message("returnDate")}>
-                <Input type="date" value={values.returnDate} min={handoverDay ?? undefined} max={todayDay} onChange={(event) => setField("returnDate", event.target.value)} required />
-              </Field>
-              <Field label={t("nextStatusAfterReturn")} id="checkin-next-status" required hint={nextStatusHint} error={fieldErrors.message("nextStatusId")}>
-                <NativeSelect value={values.nextStatusId} required onChange={(event) => setField("nextStatusId", event.target.value)}>
-                  {repairLocked ? null : <option value="">{t("selectStatus")}</option>}
-                  {nextStatusOptions.map((status) => (
-                    <option key={status.id} value={status.id}>{status.name === "Under Maintenance" ? t("sendToRepairOption") : status.label}</option>
-                  ))}
-                </NativeSelect>
-              </Field>
-              <SearchableSelect
-                id="checkin-next-location"
-                label={t("nextLocation")}
-                value={values.nextLocationId}
-                required
-                options={locations}
-                placeholder={t("selectLocation")}
-                searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                emptyLabel={tCommon("searchSelectNoResults")}
-                error={fieldErrors.message("nextLocationId")}
-                onChange={(value) => setField("nextLocationId", value)}
-              />
-              <Field label={t("missingAccessories")}>
-                <Input value={values.missingAccessories} onChange={(event) => setField("missingAccessories", event.target.value)} />
-              </Field>
-              <div className="md:col-span-2">
-                <Field label={t("damageNote")}>
-                  <Textarea value={values.damageNote} onChange={(event) => handleDamageNoteChange(event.target.value)} rows={3} />
-                </Field>
-              </div>
-              {/* An open repair: the return joins it, so no new record and no problem to describe (S-R43). */}
-              {repairLocked ? (
-                <div className="md:col-span-2">
-                  <Notice tone="info" title={t("sendToRepairTitle")}>
-                    {t("openRepairReturnNotice")}
-                  </Notice>
-                </div>
-              ) : null}
-              {sendsToRepair && !repairLocked ? (
-                <div className="md:col-span-2">
-                  <Field label={t("maintenanceProblem")}>
-                    <Textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} placeholder={t("maintenanceProblemPlaceholder")} />
+          {lateReturn ? (
+            <div data-checkin-late-panel>
+              <FormSection number={2} title={t("lateSectionTitle")}>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-1 text-sm md:col-span-2">
+                    <p className="min-w-0 break-words text-foreground">{t("lateParent", { tag: lateReturn.parent.assetTag, name: lateReturn.parent.name })}</p>
+                    {lateReturn.checkinNo && lateDays.checkinDay ? (
+                      <p className="text-muted-foreground">{t("lateSince", { documentNo: lateReturn.checkinNo, date: formatCheckoutDay(lateDays.checkinDay, locale) })}</p>
+                    ) : null}
+                  </div>
+                  <div className="md:col-span-2">
+                    {lateOutcome === "standalone"
+                      ? <Notice tone="warning" role="status">{t("lateStandaloneNotice", { parentTag: lateReturn.parent.assetTag })}</Notice>
+                      : <Notice tone="info">{t("lateReattachNotice", { parentTag: lateReturn.parent.assetTag })}</Notice>}
+                  </div>
+                  <SearchableSelect
+                    id="checkin-late-receive-by"
+                    label={t("receiveBy")}
+                    value={receiveByEmployeeId}
+                    required
+                    options={employees}
+                    placeholder={t("selectReceiveBy")}
+                    searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                    emptyLabel={tCommon("searchSelectNoResults")}
+                    hint={receiveByEmployeeId && receiveByEmployeeId === currentEmployeeId ? t("receiveByYou") : undefined}
+                    error={lateErrors.message("receiveBy")}
+                    onChange={(value) => {
+                      setEmployeeField("receiveBy", value)
+                      lateErrors.clear("receiveBy")
+                    }}
+                  />
+                  <Field label={t("returnDate")} id="checkin-late-return-date" required error={lateErrors.message("returnDate")}>
+                    <Input type="date" value={values.returnDate} min={lateDays.checkinDay ?? undefined} max={lateDays.todayDay} onChange={(event) => setLateReturnDate(event.target.value)} required />
                   </Field>
-                </div>
-              ) : null}
-              <div className="md:col-span-2">
-                <Field label={t("remark")}>
-                  <Textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} />
-                </Field>
-              </div>
-            </div>
-          </FormSection>
-          <FormSection number={3} title={<>{t("sectionEvidence")} <span className="font-normal text-muted-foreground">{t("sectionEvidenceOptional")}</span></>}>
-            <div className="grid gap-4">
-              <FieldGroup legend={t("photoType")}>
-                <div className="flex flex-wrap gap-2">
-                  {photoTypes.map((type) => (
-                    <ChoiceChip
-                      key={type.id}
-                      type="radio"
-                      name="checkin-photo-type"
-                      value={type.id}
-                      checked={photoType === type.id}
-                      label={type.label}
-                      onChange={() => setPhotoType(type.id)}
+                  <div className="md:col-span-2">
+                    <AssetConditionChoice
+                      id="checkin-late-condition"
+                      legend={t("lateCondition")}
+                      options={[{ id: "", label: t("lateConditionUnchanged") }, ...conditions]}
+                      value={late.conditionId}
+                      required={false}
+                      error={lateErrors.message("conditionId")}
+                      onChange={(value) => setLateField("conditionId", value)}
                     />
-                  ))}
+                  </div>
+                  {lateOutcome === "standalone" ? (
+                    <SearchableSelect
+                      id="checkin-late-location"
+                      label={t("nextLocation")}
+                      value={late.nextLocationId}
+                      required
+                      options={locations}
+                      placeholder={t("selectLocation")}
+                      searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                      emptyLabel={tCommon("searchSelectNoResults")}
+                      error={lateErrors.message("nextLocationId")}
+                      onChange={(value) => setLateField("nextLocationId", value)}
+                    />
+                  ) : null}
+                  <div className="md:col-span-2">
+                    <Field label={t("remark")} id="checkin-late-remark">
+                      <Textarea value={late.remark} onChange={(event) => setLateField("remark", event.target.value)} rows={3} />
+                    </Field>
+                  </div>
                 </div>
-              </FieldGroup>
-              <FileDropzone
-                file={null}
-                onFileChange={addPhoto}
-                disabled={saving}
-                accept="image/*"
-                capture="environment"
-                title={t("photoAfterDropTitle")}
-                description={t("photoAfterDescription")}
-                browseLabel={t("photoAfterDropHint")}
-              />
-              <FileQueueList
-                items={photosAfter.map((photo) => ({ id: photo.id, name: photo.label, detail: photo.file.name }))}
-                emptyLabel={t("noQueuedPhotos")}
-                disabled={saving}
-                onRemove={(id) => setPhotosAfter((current) => current.filter((item) => item.id !== id))}
-              />
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Another person remounts the pad, so no ink given for someone else stays. */}
-                <SignaturePad
-                  key={`return:${returnByEmployeeId}`}
-                  label={t("returnSignature")}
-                  helper={t("returnSignatureHelp")}
-                  clearLabel={t("clearSignature")}
-                  disabled={saving}
-                  onChange={setReturnSignatureDataUrl}
-                />
-                <SignaturePad
-                  key={`receive:${receiveByEmployeeId}`}
-                  label={t("receiveSignature")}
-                  helper={t("receiveSignatureHelp")}
-                  clearLabel={t("clearSignature")}
-                  disabled={saving}
-                  onChange={setReceiveSignatureDataUrl}
-                />
-              </div>
+              </FormSection>
             </div>
-          </FormSection>
+          ) : (
+            <>
+              <FormSection number={2} title={t("sectionReturn")}>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <SearchableSelect
+                    id="checkin-return-by"
+                    label={t("returnBy")}
+                    value={returnByEmployeeId}
+                    required
+                    options={returnByOptions}
+                    placeholder={t("selectReturnBy")}
+                    searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                    emptyLabel={tCommon("searchSelectNoResults")}
+                    hint={returnByEmployeeId && returnByEmployeeId === choice.returnByEmployeeId ? t("returnByHolder") : undefined}
+                    error={fieldErrors.message("returnBy")}
+                    onChange={(value) => setEmployeeField("returnBy", value, value === choice.returnByEmployeeId ? choice.returnByInactiveLabel : null)}
+                  />
+                  <SearchableSelect
+                    id="checkin-receive-by"
+                    label={t("receiveBy")}
+                    value={receiveByEmployeeId}
+                    required
+                    options={employees}
+                    placeholder={t("selectReceiveBy")}
+                    searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                    emptyLabel={tCommon("searchSelectNoResults")}
+                    hint={receiveByEmployeeId && receiveByEmployeeId === currentEmployeeId ? t("receiveByYou") : undefined}
+                    error={fieldErrors.message("receiveBy")}
+                    onChange={(value) => setEmployeeField("receiveBy", value)}
+                  />
+                  <div className="md:col-span-2">
+                    <AssetConditionChoice
+                      id="checkin-condition-after"
+                      legend={t("conditionAfter")}
+                      options={conditions}
+                      value={values.conditionAfter}
+                      required
+                      error={fieldErrors.message("conditionAfter")}
+                      onChange={setCondition}
+                    />
+                  </div>
+                  <Field label={t("returnDate")} id="checkin-return-date" required error={fieldErrors.message("returnDate")}>
+                    <Input type="date" value={values.returnDate} min={handoverDay ?? undefined} max={todayDay} onChange={(event) => setField("returnDate", event.target.value)} required />
+                  </Field>
+                  <Field label={t("nextStatusAfterReturn")} id="checkin-next-status" required hint={nextStatusHint} error={fieldErrors.message("nextStatusId")}>
+                    <NativeSelect value={values.nextStatusId} required onChange={(event) => setField("nextStatusId", event.target.value)}>
+                      {repairLocked ? null : <option value="">{t("selectStatus")}</option>}
+                      {nextStatusOptions.map((status) => (
+                        <option key={status.id} value={status.id}>{status.name === "Under Maintenance" ? t("sendToRepairOption") : status.label}</option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                  <SearchableSelect
+                    id="checkin-next-location"
+                    label={t("nextLocation")}
+                    value={values.nextLocationId}
+                    required
+                    options={locations}
+                    placeholder={t("selectLocation")}
+                    searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                    emptyLabel={tCommon("searchSelectNoResults")}
+                    error={fieldErrors.message("nextLocationId")}
+                    onChange={(value) => setField("nextLocationId", value)}
+                  />
+                  <Field label={t("missingAccessories")}>
+                    <Input value={values.missingAccessories} onChange={(event) => setField("missingAccessories", event.target.value)} />
+                  </Field>
+                  <div className="md:col-span-2">
+                    <Field label={t("damageNote")}>
+                      <Textarea value={values.damageNote} onChange={(event) => handleDamageNoteChange(event.target.value)} rows={3} />
+                    </Field>
+                  </div>
+                  {/* An open repair: the return joins it, so no new record and no problem to describe (S-R43). */}
+                  {repairLocked ? (
+                    <div className="md:col-span-2">
+                      <Notice tone="info" title={t("sendToRepairTitle")}>
+                        {t("openRepairReturnNotice")}
+                      </Notice>
+                    </div>
+                  ) : null}
+                  {sendsToRepair && !repairLocked ? (
+                    <div className="md:col-span-2">
+                      <Field label={t("maintenanceProblem")}>
+                        <Textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} placeholder={t("maintenanceProblemPlaceholder")} />
+                      </Field>
+                    </div>
+                  ) : null}
+                  <div className="md:col-span-2">
+                    <Field label={t("remark")}>
+                      <Textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} />
+                    </Field>
+                  </div>
+                </div>
+              </FormSection>
+              <FormSection number={3} title={<>{t("sectionEvidence")} <span className="font-normal text-muted-foreground">{t("sectionEvidenceOptional")}</span></>}>
+                <div className="grid gap-4">
+                  <FieldGroup legend={t("photoType")}>
+                    <div className="flex flex-wrap gap-2">
+                      {photoTypes.map((type) => (
+                        <ChoiceChip
+                          key={type.id}
+                          type="radio"
+                          name="checkin-photo-type"
+                          value={type.id}
+                          checked={photoType === type.id}
+                          label={type.label}
+                          onChange={() => setPhotoType(type.id)}
+                        />
+                      ))}
+                    </div>
+                  </FieldGroup>
+                  <FileDropzone
+                    file={null}
+                    onFileChange={addPhoto}
+                    disabled={saving}
+                    accept="image/*"
+                    capture="environment"
+                    title={t("photoAfterDropTitle")}
+                    description={t("photoAfterDescription")}
+                    browseLabel={t("photoAfterDropHint")}
+                  />
+                  <FileQueueList
+                    items={photosAfter.map((photo) => ({ id: photo.id, name: photo.label, detail: photo.file.name }))}
+                    emptyLabel={t("noQueuedPhotos")}
+                    disabled={saving}
+                    onRemove={(id) => setPhotosAfter((current) => current.filter((item) => item.id !== id))}
+                  />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Another person remounts the pad, so no ink given for someone else stays. */}
+                    <SignaturePad
+                      key={`return:${returnByEmployeeId}`}
+                      label={t("returnSignature")}
+                      helper={t("returnSignatureHelp")}
+                      clearLabel={t("clearSignature")}
+                      disabled={saving}
+                      onChange={setReturnSignatureDataUrl}
+                    />
+                    <SignaturePad
+                      key={`receive:${receiveByEmployeeId}`}
+                      label={t("receiveSignature")}
+                      helper={t("receiveSignatureHelp")}
+                      clearLabel={t("clearSignature")}
+                      disabled={saving}
+                      onChange={setReceiveSignatureDataUrl}
+                    />
+                  </div>
+                </div>
+              </FormSection>
+            </>
+          )}
         </OperationFormFrame>
       </form>
       <OperationReviewDialog
         open={reviewOpen}
         title={t("reviewTitle")}
-        description={t("reviewDescription")}
-        items={reviewItems}
+        description={lateReturn ? t("lateReviewDescription") : t("reviewDescription")}
+        items={lateReturn ? lateReviewItems : reviewItems}
         confirmLabel={t("reviewConfirm")}
         cancelLabel={tCommon("cancel")}
         busy={saving}
         onClose={() => setReviewOpen(false)}
-        onConfirm={() => void submitCheckin()}
+        onConfirm={() => void (lateReturn ? submitLateReturn() : submitCheckin())}
       />
     </>
   )

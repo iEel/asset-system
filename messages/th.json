@@ -1910,7 +1910,12 @@
     "signLandscapeHint": "หมุนมือถือเป็นแนวนอน เพื่อเซ็นได้กว้างขึ้น",
     "detailReadFailed": "อ่านข้อมูลสรุปไม่สำเร็จ",
     "reviewAttached": "แนบแล้ว",
-    "reviewNotAttached": "ยังไม่ได้แนบ"
+    "reviewNotAttached": "ยังไม่ได้แนบ",
+    "componentsOutstanding": "ยังค้างคืน {count} รายการ: {list}",
+    "componentsOutstandingNote": "ชิ้นที่ค้างคืนไม่ไปกับการส่งมอบนี้ เมื่อได้คืนแล้วให้รับคืนที่หน้ารับคืนทรัพย์สิน",
+    "outstandingWith": "อยู่กับ {holder}",
+    "outstandingSince": "ตั้งแต่ {documentNo}",
+    "summaryComponentsOutstanding": "ค้างคืน {count} รายการ"
   },
   "checkin": {
     "title": "รับคืนทรัพย์สิน",
@@ -2024,7 +2029,25 @@
     "warningRepairOpens": "จะเปิดใบซ่อมให้",
     "warningRepairJoins": "ต่อใบซ่อม {repairNo}",
     "warningBrokenReady": "สภาพนี้ส่งมอบต่อไม่ได้จนกว่าจะส่งซ่อม",
-    "warningSalvageReady": "ซากรอตัดจำหน่าย ส่งมอบต่อไม่ได้"
+    "warningSalvageReady": "ซากรอตัดจำหน่าย ส่งมอบต่อไม่ได้",
+    "lateSectionTitle": "รับคืนส่วนควบที่ค้างคืน",
+    "lateParent": "ส่วนควบของ {tag} {name}",
+    "lateSince": "ค้างคืนตั้งแต่ {documentNo} · {date}",
+    "lateReattachNotice": "บันทึกแล้วส่วนควบจะกลับเข้าเครื่องหลัก {parentTag} ซึ่งอยู่ในคลัง IT โดยใช้ที่ตั้งและแผนกตามเครื่องหลัก",
+    "lateStandaloneNotice": "เครื่องหลัก {parentTag} ไม่ได้อยู่ในคลัง IT แล้ว บันทึกแล้วส่วนควบจะแยกเป็นทรัพย์สินเดี่ยวในคลัง IT ไม่กลับเข้าเครื่องหลัก เลือกที่ตั้งที่จะเก็บไว้ด้านล่าง",
+    "lateCondition": "สภาพตอนคืน (ไม่บังคับ)",
+    "lateConditionUnchanged": "คงเดิม",
+    "lateFooter": "รับคืน {tag} จาก {holder}",
+    "lateFooterNoHolder": "รับคืน {tag}",
+    "lateSummaryParent": "ส่วนควบของ",
+    "lateSummaryOutstanding": "{parentTag} (ค้างคืน)",
+    "lateDepartmentUnavailable": "ยังไม่ได้ตั้งค่า",
+    "lateSummaryFootnote": "ไม่ออกเลขเอกสารใหม่ บันทึกเป็นบรรทัดในใบรับคืน {documentNo} แล้วเปิดใบรับคืนให้พิมพ์",
+    "lateReviewDescription": "ยืนยันผู้รับคืน วันที่คืน และปลายทางของส่วนควบก่อนบันทึก",
+    "lateReviewSince": "ค้างคืนตั้งแต่",
+    "lateResultReattach": "กลับเข้าเครื่องหลัก {parentTag}",
+    "lateResultStandalone": "แยกเป็นทรัพย์สินเดี่ยว เก็บไว้ที่ {location}",
+    "lateSuccess": "รับคืนส่วนควบสำเร็จ"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",

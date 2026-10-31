@@ -5,7 +5,7 @@ import { getCheckoutNextDepartmentId } from "./asset-department-rule.ts"
 import { checkoutConditionBlockReasonKeys, operationConditionDefault } from "./asset-lifecycle-policy.ts"
 import type { AssetHandoverMode } from "./asset-handover-mode.ts"
 import type { AssetOperationEmployeeOption, AssetOperationNamedOption } from "./asset-operation-options.ts"
-import type { AssetOperationChosenComponent, AssetOperationSearchRow } from "./asset-operation-search-rules.ts"
+import type { AssetOperationChosenComponent, AssetOperationOutstandingComponent, AssetOperationSearchRow } from "./asset-operation-search-rules.ts"
 
 export type CheckoutDestinationType = "user" | "department" | "location"
 /** The phone's three steps (spec §7.4, P1-R4): the only export of this type. */
@@ -33,7 +33,9 @@ export type CheckoutSummaryWords = {
   kept: (value: string) => string
   count: (count: number) => string
   componentsGo: (count: number) => string
+  componentsOutstanding: (count: number) => string
 }
+export type CheckoutOutstandingWords = { with: (holder: string) => string; since: (documentNo: string) => string }
 export type CheckoutSummaryRow = { key: "holder" | "department" | "location" | "status" | "components"; label: string; now: string; next: string; changed: boolean }
 export type CheckoutCheckWords = { asset: string; receiver: string; mode: string; signature: string; signatureMissing: string }
 export type CheckoutCheck = { key: "asset" | "receiver" | "mode" | "signature"; label: string; done: boolean; note?: string }
@@ -53,6 +55,21 @@ export function withCheckoutAssetDetail(current: AssetOperationSearchRow | null,
 export function checkoutComponents(row: AssetOperationSearchRow | null): { travelling: AssetOperationChosenComponent[]; staying: AssetOperationChosenComponent[] } {
   const components = row?.detail?.components ?? []
   return { travelling: components.filter((component) => component.travels), staying: components.filter((component) => !component.travels) }
+}
+
+/** The chosen asset's components that did not come back (group 3 spec §7.1, P2-R19): they never travel. */
+export function checkoutOutstandingComponents(row: AssetOperationSearchRow | null): AssetOperationOutstandingComponent[] {
+  return row?.detail?.outstandingComponents ?? []
+}
+
+/** One line per outstanding component: "<tag> <name>", then its holder and the RT- that left it out when known. */
+export function checkoutOutstandingLines(row: AssetOperationSearchRow | null, words: CheckoutOutstandingWords): string[] {
+  return checkoutOutstandingComponents(row).map((component) => {
+    let line = `${component.assetTag} ${component.name}`
+    if (component.holderName) line += ` · ${words.with(component.holderName)}`
+    if (component.checkinNo) line += ` · ${words.since(component.checkinNo)}`
+    return line
+  })
 }
 
 /** The chosen destination's label, by the checkout type; null until one is chosen. */
@@ -84,7 +101,8 @@ export function checkoutSubmitAction(input: { isDesktop: boolean; step: Checkout
 
 /**
  * สรุปก่อนบันทึก (spec §7.3): ตอนนี้ and หลังบันทึก per field the save writes; none without the asset's detail. People and
- * departments read by name, not "code - name", so the narrow card does not wrap (look L1).
+ * departments read by name, not "code - name", so the narrow card does not wrap (look L1). An outstanding component
+ * counts in ส่วนควบ, does not travel, and reads ค้างคืน M (spec §7.3, P2-R19).
  */
 export function buildCheckoutSummaryRows(choice: CheckoutChoice, words: CheckoutSummaryWords): CheckoutSummaryRow[] {
   const asset = choice.asset
@@ -146,13 +164,15 @@ export function buildCheckoutSummaryRows(choice: CheckoutChoice, words: Checkout
     changed: choice.handoverMode !== "",
   })
 
-  if (detail.components.length > 0) {
+  const outstanding = checkoutOutstandingComponents(asset)
+  if (detail.components.length + outstanding.length > 0) {
     const { travelling } = checkoutComponents(asset)
+    const go = words.componentsGo(travelling.length)
     rows.push({
       key: "components",
       label: words.components,
-      now: words.count(detail.components.length),
-      next: words.componentsGo(travelling.length),
+      now: words.count(detail.components.length + outstanding.length),
+      next: outstanding.length > 0 ? `${go} · ${words.componentsOutstanding(outstanding.length)}` : go,
       changed: travelling.length > 0,
     })
   }

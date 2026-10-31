@@ -5,6 +5,7 @@ import { searchAssetOperationOptions, type AssetOperationSearchDb } from "../src
 import {
   assetOperationOutstandingLinkSelect, assetOperationSearchAssetSelect, assetOperationSearchDetailAssetSelect, buildAssetOperationSearchWheres, parseAssetOperationSearch,
   type AssetOperationOutstandingLinkRecord,
+  assetOperationLateReturnParentSelect, assetOperationParentOutstandingLinkSelect, type AssetOperationParentOutstandingLink,
   type AssetOperationComponentLink, type AssetOperationSearchDetailAsset,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
 } from "../src/lib/asset-operation-search-rules.ts"
@@ -50,6 +51,7 @@ function fakeDb(data: {
   assetImages?: Array<{ id: string; assetId: string; originalName: string; fileType: string }>
   outstanding?: AssetOperationOutstandingLinkRecord[]
   checkins?: Array<{ id: string; documentNo: string | null; returnDate: Date }>
+  parentOutstanding?: AssetOperationParentOutstandingLink[]
 } = {}) {
   const calls: Array<{ call: string; args: Args }> = []
   const all = [...(data.exact ?? []), ...(data.held ?? []), ...(data.prefix ?? []), ...(data.contains ?? [])]
@@ -73,6 +75,7 @@ function fakeDb(data: {
       async findMany(args: Args) {
         calls.push({ call: "assetComponent.findMany", args })
         if (args.where.componentAssetId) return (data.outstanding ?? []).filter((row) => args.where.componentAssetId!.in.includes(row.componentAssetId))
+        if (args.where.parentAssetId && args.where.status === "outstanding") return data.parentOutstanding ?? []
         return data.links ?? []
       },
     },
@@ -223,9 +226,10 @@ test("by id with detail=1: the detail select, one read of the installed links an
   assert.deepEqual(row.detail, {
     ownership: "personal", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
     components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "RY-01 - ห้องบัญชี" }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false, locationLabel: "RY-01 - ห้องบัญชี" }],
+    outstandingComponents: [],
   })
   assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchDetailAssetSelect])
-  assert.deepEqual(calls.filter((call) => call.call === "assetComponent.findMany").map((call) => call.args.where), [{ componentAssetId: { in: ["asset-1"] }, ...outstandingLinkWhere }, { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } }])
+  assert.deepEqual(calls.filter((call) => call.call === "assetComponent.findMany").map((call) => call.args.where), [{ componentAssetId: { in: ["asset-1"] }, ...outstandingLinkWhere }, { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } }, { parentAssetId: "asset-1", ...outstandingLinkWhere }])
   assert.deepEqual(calls.filter((call) => call.call === "assetCheckout.findMany").map((call) => call.args.where.assetId?.in).sort(), [["asset-1"], ["c-1", "c-2"]])
 })
 
@@ -294,4 +298,39 @@ test("every mode reads the found ids' outstanding links once, newest first; ร�
   const plain = fakeDb({ contains: [asset("A-9", { id: "a9" })], total: 1 })
   await searchAssetOperationOptions(plain.db, input("mode=checkin&q=A-9"))
   assert.equal(plain.calls.some((call) => call.call === "assetCheckin.findMany"), false, "no outstanding link, no RT- read")
+})
+
+test("by id with detail=1: the asset's outstanding links, newest first, then their RT- numbers in one read; none travels (group 3 spec §7.1, P2-R19)", async () => {
+  const out = (componentAssetId: string, assetTag: string, name: string, referenceId: string): AssetOperationParentOutstandingLink =>
+    ({ componentAssetId, referenceId, componentAsset: { assetTag, name, custodian: { fullNameTh: "สมชาย ใจดี" } } })
+  const { db, calls } = fakeDb({
+    contains: [detailAsset("NB-0017", { id: "asset-1" })], links: [link("c-1", "NB-0017-01", "Adapter 65W")],
+    parentOutstanding: [out("c-2", "NB-0017-02", "Mouse ไร้สาย", "rt-1")],
+    checkins: [{ id: "rt-1", documentNo: "RT-202610-0004", returnDate: new Date("2026-10-20T00:00:00.000Z") }],
+  })
+  const [row] = (await searchAssetOperationOptions(db, input("mode=checkout&id=asset-1&detail=1"))).rows
+  assert.deepEqual(row.detail?.outstandingComponents, [{ assetTag: "NB-0017-02", name: "Mouse ไร้สาย", holderName: "สมชาย ใจดี", checkinNo: "RT-202610-0004" }])
+  assert.deepEqual(row.detail?.components.map((component) => component.id), ["c-1"])
+  const parentRead = calls.filter((call) => call.call === "assetComponent.findMany").at(-1)
+  assert.deepEqual([parentRead?.args.where, parentRead?.args.select, parentRead?.args.orderBy],
+    [{ parentAssetId: "asset-1", ...outstandingLinkWhere }, assetOperationParentOutstandingLinkSelect, [{ updatedAt: "desc" }, { id: "asc" }]])
+  assert.deepEqual(calls.filter((call) => call.call === "assetCheckin.findMany").map((call) => [call.args.where, call.args.select]),
+    [[{ id: { in: ["rt-1"] } }, { id: true, documentNo: true }]])
+  assert.equal(row.detail && "lateReturnParent" in row.detail, false, "a parent's own row reads no late-return parent")
+  const none = fakeDb({ contains: [detailAsset("NB-0017", { id: "asset-1" })] })
+  await searchAssetOperationOptions(none.db, input("mode=checkout&id=asset-1&detail=1"))
+  assert.equal(none.calls.some((call) => call.call === "assetCheckin.findMany"), false, "no outstanding link, no RT- read")
+})
+
+test("an outstanding component's own row with detail=1 reads its parent's room and department, once (group 3 spec §8.6, P2-R7)", async () => {
+  const mouse = detailAsset("NB-0017-02", { id: "c-2", ownershipType: "component", custodianId: "emp-1", custodian: somchai })
+  const parent = detailAsset("NB-0017", { id: "asset-p", currentLocationId: "loc-it", currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2", branch: { name: "สำนักงานใหญ่" } },
+    departmentId: "dep-adm", department: { code: "ADM", name: "ธุรการ" } })
+  const { db, calls } = fakeDb({ contains: [mouse, parent], outstanding: [outstandingLink("link-1", "c-2")],
+    checkins: [{ id: "rt-1", documentNo: "RT-202610-0004", returnDate: new Date("2026-10-20T00:00:00.000Z") }] })
+  const [row] = (await searchAssetOperationOptions(db, input("mode=checkin&id=c-2&detail=1"))).rows
+  assert.equal(row.lateReturn?.parent.id, "asset-p")
+  assert.deepEqual(row.detail?.lateReturnParent, { locationId: "loc-it", locationLabel: "IT-2 - ห้อง IT ชั้น 2", departmentId: "dep-adm", departmentName: "ธุรการ" })
+  assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => [call.args.where, call.args.select]),
+    [[{ isActive: true, id: "c-2" }, assetOperationSearchDetailAssetSelect], [{ id: "asset-p" }, assetOperationLateReturnParentSelect]])
 })
