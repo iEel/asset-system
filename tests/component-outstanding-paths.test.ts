@@ -136,7 +136,10 @@ test("the parent's component manager keeps an outstanding link among the current
   assert.match(page, /custodian: \{ select: \{ code: true, fullNameTh: true \} \}/)
   assert.match(page, /const isCurrentLink = \(component: \{ status: string; removedAt: Date \| null \}\) => !component\.removedAt && \(component\.status === "installed" \|\| isOutstandingLink\(component\)\)/)
   assert.match(page, /prisma\.assetCheckin\.findMany\(\{ where: \{ id: \{ in: outstandingCheckinIds \} \}, select: \{ id: true, documentNo: true \} \}\)/)
-  assert.match(page, /\[t\("componentOutstanding"\), holder \? t\("componentOutstandingWith", \{ holder \}\) : null, documentNo\]\.filter\(Boolean\)\.join\(" · "\)/)
+  // One formatter for the line on every page (Task 12).
+  assert.match(page, /const outstandingWords = \{ outstanding: t\("componentOutstanding"\), withHolder: \(holder: string\) => t\("componentOutstandingWith", \{ holder \}\) \}/)
+  assert.match(page, /formatOutstandingComponentLine\(\{ holder: component\.componentAsset\.custodian, documentNo/)
+  assert.doesNotMatch(page, /\.filter\(Boolean\)\.join\(" · "\)/)
   assert.doesNotMatch(page, /component\.status !== "installed" \|\| component\.removedAt/)
   assert.match(manager, /outstandingLine\?: string \| null/)
   assert.match(manager, /\{component\.outstandingLine \? <div className="mt-1 text-meta font-medium text-warning">\{component\.outstandingLine\}<\/div> : null\}/)

@@ -1,6 +1,7 @@
 // The components tab's install/remove history (group 1 asset detail task 10, spec §7.7): each link row gives an
-// installation and, once removed, a removal, seen from this asset's side. Pure: relative type imports only, so
-// `node --test` loads it.
+// installation and, once removed, a removal, seen from this asset's side; a link a return left out, or brought back late,
+// adds its RT- event (group 3 spec §8.5, §8.6). Pure: relative imports only, so `node --test` loads it.
+import { isOutstandingLink } from "./asset-component-outstanding.ts"
 import type { AssetMovementDocument, AssetMovementReference } from "./asset-movement-labels.ts"
 
 export type AssetComponentHistoryAsset = { id: string; assetTag: string; name: string; isActive: boolean }
@@ -12,12 +13,22 @@ export type AssetComponentLinkRow = AssetMovementReference & {
   installedAt: Date
   removedAt: Date | null
   reason: string | null
+  /** installed, removed or outstanding (group 3 spec §8.5) */
+  status: string
+  /** the link's last change: the RT- that left it out, or the late return that put it back */
+  updatedAt: Date
   parentAsset: AssetComponentHistoryAsset
   componentAsset: AssetComponentHistoryAsset
 }
 
 // The movement types, so assetMovementLabelKey(kind) labels them.
-export type AssetComponentHistoryKind = "component_install" | "component_remove" | "installed_in_parent" | "removed_from_parent"
+export type AssetComponentHistoryKind =
+  | "component_install"
+  | "component_remove"
+  | "installed_in_parent"
+  | "removed_from_parent"
+  | "component_outstanding"
+  | "component_late_return"
 
 export type AssetComponentHistoryEvent = {
   id: string
@@ -45,13 +56,22 @@ export function buildAssetComponentHistory(
     // (`?? existing.*`), so they belong to the row's latest event: the removal when there is one, else the installation.
     const latest = { reason: row.reason, document: documentOf(row) }
     const none = { reason: null, document: null }
+    // The RT- writes its own reference on a link it leaves out, and a late return that re-attaches keeps it (group 3 spec
+    // §8.5, §8.6): the installation keeps the row's reason, and the RT- goes with its own event at the link's last change.
+    // A link ended standing alone stays a removal under the RT-, as the parent's history reads it.
+    const checkinEvent: AssetComponentHistoryKind | null = isOutstandingLink(row)
+      ? "component_outstanding"
+      : !row.removedAt && row.status === "installed" && row.referenceType === "checkin"
+        ? "component_late_return"
+        : null
     events.push({
       id: `${row.id}:install`,
       at: row.installedAt,
       kind: parentSide ? "component_install" : "installed_in_parent",
       other,
-      ...(row.removedAt ? none : latest),
+      ...(row.removedAt ? none : checkinEvent ? { reason: row.reason, document: null } : latest),
     })
+    if (checkinEvent) events.push({ id: `${row.id}:${checkinEvent === "component_outstanding" ? "outstanding" : "return"}`, at: row.updatedAt, kind: checkinEvent, other, reason: null, document: latest.document })
     if (row.removedAt) {
       events.push({
         id: `${row.id}:remove`,

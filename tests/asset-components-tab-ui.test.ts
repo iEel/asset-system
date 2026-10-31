@@ -11,7 +11,7 @@ test("the relationship map moved as it was, with an actions slot (spec §7.7, pl
   const map = read(MAP)
   assert.doesNotMatch(map, /"use client"|getTranslations|useTranslations/, "server-safe; the labels come from the tab")
   assert.match(map, /export function AssetRelationshipMap\(/)
-  assert.match(map, /export type RelationshipLink = \{ id: string; href: string; label: string; role: string \}/)
+  assert.match(map, /export type RelationshipLink = \{ id: string; href: string; label: string; role: string; note\?: string \| null \}/)
   assert.match(map, /<ContentPanel title=\{title\} description=\{subtitle\} actions=\{actions\}>/)
   assert.match(map, /<Notice tone="neutral" className="mt-4">\{noteLabel\}<\/Notice>/)
   assert.match(map, /<Chip>\{roleLabel\}<\/Chip>/)

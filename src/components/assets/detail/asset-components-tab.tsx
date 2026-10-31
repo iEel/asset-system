@@ -11,7 +11,7 @@ import { assetComponentHistoryColumn, type AssetComponentHistoryEvent } from "@/
 import { formatAssetDetailDate } from "@/lib/asset-detail-frame-rules"
 import { assetMovementLabelKey, buildAssetMovementDocumentHref, type AssetMovementDocumentKind } from "@/lib/asset-movement-labels"
 
-export type AssetRelationshipAsset = { id: string; href: string; assetTag: string; name: string; role: string; slotNo: string | null }
+export type AssetRelationshipAsset = { id: string; href: string; assetTag: string; name: string; role: string; slotNo: string | null; outstandingLine: string | null }
 
 type Translate = (key: string, values?: Record<string, string | number>) => string
 
@@ -51,7 +51,11 @@ export async function AssetComponentsTab({
     href: item.href,
     label: `${item.assetTag} - ${item.name}`,
     role: item.slotNo ? t("componentsTab.roleWithSlot", { role: item.role, slot: item.slotNo }) : item.role,
+    note: item.outstandingLine ?? null,
   })
+  // What is fitted now (group 3 spec §8.5, X24): an outstanding component is listed with its line but not counted, as the
+  // tab's own count.
+  const installedCount = components.filter((item) => !item.outstandingLine).length
   const column = assetComponentHistoryColumn(history)
   const columnLabel = column === "parent" ? t("componentsTab.columnParent") : column === "related" ? t("componentsTab.columnRelated") : t("componentsTab.columnComponent")
 
@@ -94,7 +98,7 @@ export async function AssetComponentsTab({
         parentLaneTitle={t("relationshipParentLane")}
         currentTitle={t("relationshipCurrentViewing")}
         componentsTitle={t("relationshipComponentsLane")}
-        componentsCountLabel={t("relationshipComponentsCount", { count: components.length })}
+        componentsCountLabel={t("relationshipComponentsCount", { count: installedCount })}
         moreItemsLabel={t("relationshipMoreItems", { count: Math.max(components.length - 5, 0) })}
         licenseAssignedTitle={t("relationshipLicenseAssignedAsset")}
         assignedLicensesTitle={t("relationshipAssignedLicenses")}
@@ -117,11 +121,11 @@ export async function AssetComponentsTab({
           role: formatLicenseRelationshipRole(license.licenseUsedSeats, license.licenseTotalSeats, t),
         }))}
         emptyLabel={t("relationshipMapEmpty")}
-        summaryParent={t("relationshipSummaryParent", { count: components.length })}
+        summaryParent={t("relationshipSummaryParent", { count: installedCount })}
         summaryComponent={t("relationshipSummaryComponent", { parent: parents[0]?.assetTag ?? "-" })}
         summaryParentAndComponent={t("relationshipSummaryParentAndComponent", {
           parent: parents[0]?.assetTag ?? "-",
-          count: components.length,
+          count: installedCount,
         })}
         summaryStandalone={t("relationshipSummaryStandalone")}
         roleParentLabel={t("relationshipRoleParent")}

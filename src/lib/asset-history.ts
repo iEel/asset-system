@@ -170,6 +170,8 @@ async function loadAssetHistory(assetId: string, locale: string, limit: number, 
     ownershipTypes: Object.fromEntries(ownershipTypes.map((type) => [type, t(`asset.ownershipType_${type}`)])),
     returnedFrom: (name) => t("asset.history.returnedFrom", { name }),
     repairDays: (days) => t("asset.history.repairDays", { days }),
+    receivedBy: (name) => t("asset.history.receivedBy", { name }),
+    lateReturnOutcomes: { reattached: t("asset.history.lateReturnReattached"), standalone: t("asset.history.lateReturnStandalone") },
   }
 
   const checkoutsById = new Map(checkouts.map((checkout) => [checkout.id, checkout]))

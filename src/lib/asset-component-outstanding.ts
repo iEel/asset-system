@@ -17,3 +17,13 @@ export const installedOrOutstandingLinkWhere: { status: { in: string[] }; remove
 export function isOutstandingLink(link: { status: string; removedAt?: Date | string | null }): boolean {
   return link.status === COMPONENT_LINK_OUTSTANDING && !link.removedAt
 }
+
+// The line an outstanding link reads on every page (group 3 spec §8.5): the asset pages and the component manager. The
+// words come from the caller (asset.componentOutstanding, componentOutstandingWith), so this module keeps no import.
+export function formatOutstandingComponentLine(
+  input: { holder: { code: string; fullNameTh: string } | null; documentNo: string | null },
+  words: { outstanding: string; withHolder: (holder: string) => string },
+): string {
+  const holder = input.holder ? `${input.holder.code} - ${input.holder.fullNameTh}` : null
+  return [words.outstanding, holder ? words.withHolder(holder) : null, input.documentNo].filter((part): part is string => Boolean(part)).join(" · ")
+}

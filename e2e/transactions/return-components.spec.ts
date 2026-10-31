@@ -28,6 +28,7 @@ import {
   saveLateReturn,
   saveReturnForm,
   visit,
+  visitAssetPage,
 } from "./tx-support.ts"
 import { TX_WORDS } from "./tx-words.ts"
 
@@ -115,6 +116,12 @@ test.describe("a component left out of a return", () => {
     // The parent's component manager (Task 5) keeps it as ค้างคืน · อยู่กับ <holder> · <RT-> (§8.5).
     await visit(measure, `/th/assets/${parent.id}/components`, "the parent's components, one outstanding", testInfo)
     await expect(page.getByRole("main")).toContainText(`${TX_WORDS.componentOutstanding} · ${fillTemplate(TX_WORDS.componentOutstandingWith, { holder: `${receiver.code} - ${receiver.fullNameTh}` })} · ${checkin.documentNo}`)
+    // The asset pages read the same line (Task 12, spec §8.5): the parent's components tab lists it apart from its count,
+    // and the component's own page names its parent with it in the first fact.
+    for (const [assetId, view, label] of [[parent.id, "components", "the parent's components tab, one outstanding"], [leftOut.id, undefined, "the outstanding component's page"]] as const) {
+      await visitAssetPage(measure, assetId, label, testInfo, view)
+      await expect(page.getByRole("main")).toContainText(`${TX_WORDS.componentOutstanding} · ${fillTemplate(TX_WORDS.componentOutstandingWith, { holder: `${receiver.code} - ${receiver.fullNameTh}` })} · ${checkin.documentNo}`)
+    }
   })
 
   test("the parent's next ส่งมอบ warns that a component is still out and leaves it behind (spec §7.1, §7.3, decision 8)", async ({ page, measure, e2eDevice }, testInfo) => {

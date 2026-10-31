@@ -36,6 +36,8 @@ const labels: AssetHistoryLabels = {
   ownershipTypes: { personal: th.asset.ownershipType_personal, stock: th.asset.ownershipType_stock },
   returnedFrom: (name) => fill(h.returnedFrom, { name }),
   repairDays: (days) => fill(h.repairDays, { days }),
+  receivedBy: (name) => fill(h.receivedBy, { name }),
+  lateReturnOutcomes: { reattached: h.lateReturnReattached, standalone: h.lateReturnStandalone },
 }
 const noLookup = new Map<string, string>()
 const movement = (input: Partial<AssetHistoryMovementInput> & { movementType: string }): AssetHistoryMovementInput => ({
@@ -238,4 +240,21 @@ test("the Excel row: the Bangkok date and time, the chip word, the event, the de
   )
   assert.equal(buildAssetHistoryExportFilename("GRL-COM-26-0017", new Date("2026-10-25T17:30:00Z")), "asset-history-GRL-COM-26-0017-2026-10-26.xlsx")
   assert.equal(buildAssetHistoryExportFilename("ทดสอบ/01", new Date("2026-10-25T03:00:00Z")), "asset-history-______01-2026-10-25.xlsx")
+})
+
+test("a component left out of a return and its late return read in words: who holds it, who received it and where it went (group 3 spec §8.5, §8.6, plan 2 Task 12)", () => {
+  const lookup = new Map([["emp-1", "E001 - สมชาย ใจดี"], ["emp-2", "E002 - สมหญิง รักงาน"], ["dept-acc", "ACC - บัญชี"], ["dept-hr", "HR - บุคคล"]])
+  const outstanding = (from: object, to: object) =>
+    assetHistoryMovementDetail(movement({ movementType: "component_outstanding", fromValue: JSON.stringify(from), toValue: JSON.stringify(to), reason: "Not returned with its parent asset" }), lookup, labels)
+  // ผู้คืน is someone else: the change, as today.
+  assert.equal(outstanding({ custodianId: "emp-1", departmentId: "dept-acc" }, { custodianId: "emp-2", departmentId: "dept-hr" }), "ผู้ถือครอง: E001 - สมชาย ใจดี → E002 - สมหญิง รักงาน · แผนก: ACC - บัญชี → HR - บุคคล")
+  // ผู้คืน already held it: nothing changed, so the line says who has it.
+  const same = { custodianId: "emp-1", departmentId: "dept-acc" }
+  assert.equal(outstanding(same, same), "ผู้ถือครอง: E001 - สมชาย ใจดี · แผนก: ACC - บัญชี")
+  const late = (outcome: string, receivedByName: string | null = "E009 - ช่าง ไอที") =>
+    assetHistoryMovementDetail(movement({ movementType: "component_late_return", toValue: JSON.stringify({ receivedByName, returnDate: "2026-10-25", outcome }), reason: "Component late return" }), noLookup, labels)
+  assert.equal(late("reattached"), "รับโดย E009 - ช่าง ไอที · กลับเข้าเครื่องหลัก")
+  assert.equal(late("standalone"), "รับโดย E009 - ช่าง ไอที · แยกเป็นทรัพย์สินเดี่ยว")
+  assert.equal(late("later", null), "later", "a code without a word shows as stored")
+  assert.equal(assetHistoryMovementDetail(movement({ movementType: "component_late_return", toValue: null }), noLookup, labels), null)
 })

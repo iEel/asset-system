@@ -47,7 +47,7 @@ import { getAssetDetailCounts } from "@/lib/asset-detail-counts"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { getMissingPhotoChecklistLabels } from "@/lib/asset-detail-format"
-import { installedOrOutstandingLinkWhere, isOutstandingLink } from "@/lib/asset-component-outstanding"
+import { formatOutstandingComponentLine, installedOrOutstandingLinkWhere, isOutstandingLink } from "@/lib/asset-component-outstanding"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -123,7 +123,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             orderBy: { installedAt: "desc" },
             include: {
               componentAsset: {
-                select: { id: true, assetTag: true, name: true, serialNumber: true },
+                select: { id: true, assetTag: true, name: true, serialNumber: true, custodian: { select: { code: true, fullNameTh: true } } },
               },
             },
           },
@@ -281,8 +281,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ],
   }
 
+  // Spec §8.5 "Asset pages" (group 3 plan 2 Task 12): an outstanding link is listed on both sides with
+  // "ค้างคืน · อยู่กับ <holder> · <RT->" and counted on neither. This asset's own is the link the frame's action rule reads
+  // (Task 4, the newest of any duplicates); the parent's are every outstanding link under it.
+  const outstandingComponentLinks = asset.parentComponents.filter((component) => isOutstandingLink(component))
+  const ownOutstandingLink = asset.installedInLinks.find((link) => link.id === frame.outstanding?.linkId && isOutstandingLink(link)) ?? null
+  const outstandingCheckinIdOf = (link: { referenceType: string | null; referenceId: string | null }) => (link.referenceType === "checkin" ? link.referenceId : null)
+  const outstandingLinks = [...outstandingComponentLinks, ...(ownOutstandingLink ? [ownOutstandingLink] : [])]
+  const outstandingCheckinIds = [...new Set(outstandingLinks.flatMap((link) => outstandingCheckinIdOf(link) ?? []))]
   // R59: the checklist only for the overview's ข้อมูลยังไม่ครบ line; the files tab reads its own through its loader.
-  const [photoChecklist, modelPhotos, licenseAssignedAsset] = await Promise.all([
+  const [photoChecklist, modelPhotos, licenseAssignedAsset, outstandingCheckins] = await Promise.all([
     canEditAsset && assetDetailView === "overview" ? getCategoryPhotoChecklist(asset.categoryId) : Promise.resolve([]),
     asset.model?.id
       ? prisma.attachment.findMany({
@@ -296,6 +304,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           select: { id: true, assetTag: true, name: true, serialNumber: true },
         })
       : null,
+    // The RT- numbers of the outstanding lines: one bounded read, of the ids the links name only.
+    outstandingCheckinIds.length > 0
+      ? prisma.assetCheckin.findMany({ where: { id: { in: outstandingCheckinIds } }, select: { id: true, documentNo: true } })
+      : Promise.resolve([]),
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
   const currentComponentsForPanel = currentComponents
@@ -305,6 +317,29 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     parentHref: appendReturnTo(`/${locale}/assets/${component.parentAsset.id}`, currentAssetDetailHref),
   }))
   const componentMissingSerialCount = currentComponentsForPanel.filter((component) => !component.componentAsset.serialNumber).length
+  const outstandingDocumentNos = new Map(outstandingCheckins.map((checkin) => [checkin.id, checkin.documentNo]))
+  const outstandingDocumentNoOf = (link: { referenceType: string | null; referenceId: string | null }) => {
+    const checkinId = outstandingCheckinIdOf(link)
+    return checkinId ? outstandingDocumentNos.get(checkinId) ?? null : null
+  }
+  const outstandingWords = { outstanding: t("componentOutstanding"), withHolder: (holder: string) => t("componentOutstandingWith", { holder }) }
+  const outstandingLineOf = (link: { referenceType: string | null; referenceId: string | null }, holder: { code: string; fullNameTh: string } | null) =>
+    formatOutstandingComponentLine({ holder, documentNo: outstandingDocumentNoOf(link) }, outstandingWords)
+  // The rows the overview and the components tab list: the outstanding first, each with its line, then the fitted ones.
+  const listedComponentsForPanel = [
+    ...outstandingComponentLinks.map((component) => ({ ...component, outstandingLine: outstandingLineOf(component, component.componentAsset.custodian) })),
+    ...currentComponentsForPanel.map((component) => ({ ...component, outstandingLine: null })),
+  ]
+  // This asset's parent while it is outstanding: the strip's first fact, the overview's parent row, the tab's parent lane.
+  const ownOutstanding = ownOutstandingLink
+    ? {
+        ...ownOutstandingLink,
+        parentHref: appendReturnTo(`/${locale}/assets/${ownOutstandingLink.parentAsset.id}`, currentAssetDetailHref),
+        documentNo: outstandingDocumentNoOf(ownOutstandingLink),
+        outstandingLine: outstandingLineOf(ownOutstandingLink, asset.custodian),
+      }
+    : null
+  const parentLinksForPanel = [...installedInLinksForPanel.map((link) => ({ ...link, outstandingLine: null })), ...(ownOutstanding ? [ownOutstanding] : [])]
   // The overview's เอกสารจัดซื้อ row (R31); the files tab's loader builds the full documents with their files.
   const purchaseDocuments = asset.purchaseDocumentLinks.map((link) => ({ id: link.purchaseDocument.id, documentNo: link.purchaseDocument.documentNo }))
   const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
@@ -501,6 +536,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             : null,
           department: asset.department ? `${asset.department.code} - ${asset.department.name}` : null,
           parent: installedInLinksForPanel[0]?.parentAsset ?? null,
+          outstanding: ownOutstanding ? { parent: ownOutstanding.parentAsset, heldBy: asset.custodian, documentNo: ownOutstanding.documentNo } : null,
           seats: { used: asset.licenseUsedSeats, total: asset.licenseTotalSeats },
           openCheckoutDate: frame.openCheckout?.checkoutDate ?? null,
           now,
@@ -513,7 +549,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         }}
         audit={describeAssetAudit(frame.latestAuditResult, frame.pendingAudit)}
         warranty={describeAssetWarranty(asset.warrantyEndDate, now)}
-        parentHref={installedInLinksForPanel[0]?.parentHref ?? null}
+        parentHref={installedInLinksForPanel[0]?.parentHref ?? ownOutstanding?.parentHref ?? null}
         canViewEmployee={canViewEmployee}
         canViewAudit={canViewAudit}
         purchaseEditHref={canEditAsset ? purchaseEditHref : null}
@@ -568,14 +604,15 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           recent={recent}
           documentAccess={documentAccess}
           components={{
-            children: currentComponentsForPanel.map((component) => ({
+            children: listedComponentsForPanel.map((component) => ({
               id: component.id,
               assetTag: component.componentAsset.assetTag,
               name: component.componentAsset.name,
               href: `/${locale}/assets/${encodeURIComponent(component.componentAsset.id)}`,
+              outstandingLine: component.outstandingLine,
             })),
-            parent: installedInLinksForPanel[0]
-              ? { assetTag: installedInLinksForPanel[0].parentAsset.assetTag, name: installedInLinksForPanel[0].parentAsset.name, href: installedInLinksForPanel[0].parentHref }
+            parent: parentLinksForPanel[0]
+              ? { assetTag: parentLinksForPanel[0].parentAsset.assetTag, name: parentLinksForPanel[0].parentAsset.name, href: parentLinksForPanel[0].parentHref, outstandingLine: parentLinksForPanel[0].outstandingLine }
               : null,
             manageHref: canEditAsset ? componentsTabHref : null,
             allHref: componentsTabHref,
@@ -597,21 +634,23 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           <AssetComponentsTab
             locale={locale}
             asset={{ id: asset.id, assetTag: asset.assetTag, name: asset.name, custodianName: asset.custodian?.fullNameTh ?? null }}
-            parents={installedInLinksForPanel.map((link) => ({
+            parents={parentLinksForPanel.map((link) => ({
               id: link.id,
               href: link.parentHref,
               assetTag: link.parentAsset.assetTag,
               name: link.parentAsset.name,
               role: link.componentRole,
               slotNo: link.slotNo,
+              outstandingLine: link.outstandingLine,
             }))}
-            components={currentComponentsForPanel.map((component) => ({
+            components={listedComponentsForPanel.map((component) => ({
               id: component.id,
               href: `/${locale}/assets/${component.componentAsset.id}`,
               assetTag: component.componentAsset.assetTag,
               name: component.componentAsset.name,
               role: component.componentRole,
               slotNo: component.slotNo,
+              outstandingLine: component.outstandingLine,
             }))}
             licenseDevice={licenseAssignedAsset}
             assignedLicenses={asset.assignedLicenses}

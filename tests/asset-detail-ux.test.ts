@@ -58,7 +58,7 @@ test("a component names its parent in the strip's first fact, not in a banner (s
   const source = assetDetailSource()
   assert.doesNotMatch(source, /AssetComponentContextBanner/)
   assert.match(source, /parent: installedInLinksForPanel\[0\]\?\.parentAsset \?\? null,/)
-  assert.match(source, /parentHref=\{installedInLinksForPanel\[0\]\?\.parentHref \?\? null\}/)
+  assert.match(source, /parentHref=\{installedInLinksForPanel\[0\]\?\.parentHref \?\? ownOutstanding\?\.parentHref \?\? null\}/)
   assert.match(read(`${DETAIL}asset-detail-fact-strip.tsx`), /t\("componentOf"\)/)
 })
 

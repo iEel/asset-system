@@ -21,6 +21,8 @@ const link = (row: Partial<AssetComponentLinkRow> & Pick<AssetComponentLinkRow, 
   reason: null,
   referenceType: null,
   referenceId: null,
+  status: "installed",
+  updatedAt: row.installedAt,
   ...row,
 })
 const repair = { kind: "repair" as const, id: "t1", code: "MT-20260802-0001" }
@@ -60,4 +62,34 @@ test("the component history rules are pure", () => {
   const source = readFileSync("src/lib/asset-component-history-rules.ts", "utf8")
   assert.doesNotMatch(source, /from "@\//)
   assert.doesNotMatch(source, /\bprisma\./)
+})
+
+test("a link a return left out reads ส่วนควบค้างคืน with its RT-, and one brought back late รับคืนส่วนควบค้างคืน; the installation keeps its own reason (group 3 spec §8.5, §8.6, plan 2 Task 12)", () => {
+  const rt = { kind: "checkin" as const, id: "rt-1", code: "RT-202610-0001" }
+  const documentOfRt = ({ referenceType, referenceId }: { referenceType: string | null; referenceId: string | null }) =>
+    referenceType === "checkin" && referenceId === "rt-1" ? rt : null
+  const out = link({ id: "o1", parentAsset: A, componentAsset: C1, installedAt: at("2026-01-10T03:00:00Z"), reason: "ติดตั้งตอนสร้างทรัพย์สิน", status: "outstanding", referenceType: "checkin", referenceId: "rt-1", updatedAt: at("2026-10-20T04:00:00Z") })
+  assert.deepEqual(buildAssetComponentHistory([out], "A", documentOfRt), [
+    { id: "o1:outstanding", at: at("2026-10-20T04:00:00Z"), kind: "component_outstanding", other: C1, reason: null, document: rt },
+    { id: "o1:install", at: at("2026-01-10T03:00:00Z"), kind: "component_install", other: C1, reason: "ติดตั้งตอนสร้างทรัพย์สิน", document: null },
+  ])
+  // The component's own page reads the same link from its side.
+  assert.deepEqual(buildAssetComponentHistory([out], "C1", documentOfRt).map((event) => [event.id, event.kind, event.other.id]), [
+    ["o1:outstanding", "component_outstanding", "A"],
+    ["o1:install", "installed_in_parent", "A"],
+  ])
+  // Re-attached by the late return: installed again, still under the RT- (Task 5 keeps the reference).
+  const back = { ...out, status: "installed", updatedAt: at("2026-10-25T03:00:00Z") }
+  assert.deepEqual(buildAssetComponentHistory([back], "A", documentOfRt).map((event) => [event.id, event.kind, event.reason, event.document?.code ?? null]), [
+    ["o1:return", "component_late_return", null, "RT-202610-0001"],
+    ["o1:install", "component_install", "ติดตั้งตอนสร้างทรัพย์สิน", null],
+  ])
+  // Standing alone, the link ended under the RT-: a removal, as Task 5's component_remove on the parent.
+  const ended = { ...out, status: "removed", removedAt: at("2026-10-25T00:00:00Z"), updatedAt: at("2026-10-25T03:00:00Z") }
+  assert.deepEqual(buildAssetComponentHistory([ended], "A", documentOfRt).map((event) => [event.id, event.kind, event.document?.code ?? null]), [
+    ["o1:remove", "component_remove", "RT-202610-0001"],
+    ["o1:install", "component_install", null],
+  ])
+  // Links with any other reference read as before.
+  assert.equal(buildAssetComponentHistory(rows, "A", documentOf).some((event) => event.kind === "component_outstanding" || event.kind === "component_late_return"), false)
 })

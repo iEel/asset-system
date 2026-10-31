@@ -16,6 +16,8 @@ export async function getAssetComponentHistory(assetId: string): Promise<AssetCo
       componentAssetId: true,
       installedAt: true,
       removedAt: true,
+      status: true,
+      updatedAt: true,
       reason: true,
       referenceType: true,
       referenceId: true,

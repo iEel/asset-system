@@ -30,7 +30,8 @@ export function assetDetailFileWhere(assetId: string): Prisma.AttachmentWhereInp
 }
 
 // The components count: the links Task 10 renders from the page's own reads, the current components plus
-// installedInLinks (installed, not removed, either side; R58).
+// installedInLinks (installed, not removed, either side; R58). An outstanding link (group 3 spec §8.5) is listed with its
+// line but not counted: the count means what is fitted now.
 export function assetDetailComponentLinkWhere(assetId: string): Prisma.AssetComponentWhereInput {
   return { status: "installed", removedAt: null, OR: [{ parentAssetId: assetId }, { componentAssetId: assetId }] }
 }

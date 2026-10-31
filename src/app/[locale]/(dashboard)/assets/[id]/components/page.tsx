@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { normalizeAssetComponentManagerReturnTo } from "@/lib/asset-return-navigation"
-import { isOutstandingLink } from "@/lib/asset-component-outstanding"
+import { formatOutstandingComponentLine, isOutstandingLink } from "@/lib/asset-component-outstanding"
 import { AssetComponentManager } from "@/components/assets/asset-component-manager"
 
 type ComponentManagerPageProps = {
@@ -55,6 +55,7 @@ export default async function AssetComponentManagerPage({ params, searchParams }
   })
 
   if (!asset) notFound()
+  const outstandingWords = { outstanding: t("componentOutstanding"), withHolder: (holder: string) => t("componentOutstandingWith", { holder }) }
 
   // An outstanding link (group 3 spec §8.5) stays among the current components, so ถอดออก reaches it.
   const isCurrentLink = (component: { status: string; removedAt: Date | null }) => !component.removedAt && (component.status === "installed" || isOutstandingLink(component))
@@ -67,10 +68,8 @@ export default async function AssetComponentManagerPage({ params, searchParams }
   const checkinDocumentNos = new Map(outstandingCheckins.map((checkin) => [checkin.id, checkin.documentNo]))
   const outstandingLineOf = (component: (typeof asset.parentComponents)[number]) => {
     if (!isOutstandingLink(component)) return null
-    const custodian = component.componentAsset.custodian
-    const holder = custodian ? `${custodian.code} - ${custodian.fullNameTh}` : null
     const documentNo = component.referenceType === "checkin" && component.referenceId ? checkinDocumentNos.get(component.referenceId) ?? null : null
-    return [t("componentOutstanding"), holder ? t("componentOutstandingWith", { holder }) : null, documentNo].filter(Boolean).join(" · ")
+    return formatOutstandingComponentLine({ holder: component.componentAsset.custodian, documentNo }, outstandingWords)
   }
 
   const componentIds = asset.parentComponents.map((component) => component.id)

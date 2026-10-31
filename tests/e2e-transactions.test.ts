@@ -472,3 +472,13 @@ test("รับคืน leaves a component out and lists it on the RT-, ส่�
   assert.ok(spec.includes("TX_WORDS.phoneComponentsFooter"))
   for (const banned of ["request.delete", "/api/admin/settings", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })
+
+test("the asset pages read the outstanding line: the parent's components tab and the component's own page (group 3 spec §8.5, plan 2 task 12)", () => {
+  const spec = readTxSpec("e2e/transactions/return-components.spec.ts")
+  const first = spec.slice(spec.indexOf('test("a return with one component left out'), spec.indexOf('test("the parent\'s next ส่งมอบ'))
+  const manager = first.indexOf("`/th/assets/${parent.id}/components`")
+  const pages = first.indexOf('[[parent.id, "components", "the parent\'s components tab, one outstanding"], [leftOut.id, undefined, "the outstanding component\'s page"]]')
+  assert.ok(manager > 0 && pages > manager, "at the end of the first test, after the component manager's check")
+  assert.ok(first.includes("await visitAssetPage(measure, assetId, label, testInfo, view)"))
+  assert.match(spec, /^\s+visitAssetPage,$/m)
+})

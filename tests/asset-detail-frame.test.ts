@@ -22,7 +22,7 @@ const now = new Date("2026-10-26T03:00:00Z") // 10:00 in Bangkok
 const heldDays = (cell: AssetHolderCell) => (cell.kind === "custodian" ? cell.heldDays : undefined)
 
 test("the first fact follows the ownership type, and ถือมาแล้ว counts Bangkok days from the open handover (spec §7.4)", () => {
-  const base = { custodian: null, department: null, parent: null, seats: { used: null, total: null }, openCheckoutDate: null, now }
+  const base = { custodian: null, department: null, parent: null, outstanding: null, seats: { used: null, total: null }, openCheckoutDate: null, now }
   const custodian = { id: "e1", code: "E001", fullNameTh: "สมชาย ใจดี", department: "ACC - ฝ่ายบัญชี" }
   assert.deepEqual(
     describeAssetHolder({ ...base, ownership: "personal", custodian, openCheckoutDate: new Date("2026-09-09T18:00:00Z") }),
@@ -39,6 +39,18 @@ test("the first fact follows the ownership type, and ถือมาแล้ว
   assert.deepEqual(describeAssetHolder({ ...base, ownership: "component" }), { kind: "parent", parent: null })
   assert.deepEqual(describeAssetHolder({ ...base, ownership: "software_license", seats: { used: 2, total: 5 } }), { kind: "seats", used: 2, total: 5 })
   assert.deepEqual(describeAssetHolder({ ...base, ownership: "software_license" }), { kind: "seats", used: 0, total: null })
+})
+
+test("an outstanding component names its parent in the first fact, with ค้างคืน · อยู่กับ … · RT-, whatever its ownership (group 3 spec §8.5, plan 2 Task 12)", () => {
+  const custodian = { id: "e1", code: "E001", fullNameTh: "สมชาย ใจดี", department: "ACC - ฝ่ายบัญชี" }
+  const base = { custodian, department: "IT - ฝ่ายไอที", parent: null, seats: { used: null, total: null }, openCheckoutDate: null, now }
+  const parent = { id: "p1", assetTag: "GRL-COM-26-0017", name: "Notebook Lenovo" }
+  const outstanding = { parent, heldBy: { code: "E001", fullNameTh: "สมชาย ใจดี" }, documentNo: "RT-202610-0001" }
+  for (const ownership of ["component", "personal", "stock", "shared", "software_license"] as const) {
+    assert.deepEqual(describeAssetHolder({ ...base, ownership, outstanding }), { kind: "outstanding", ...outstanding }, ownership)
+  }
+  assert.deepEqual(describeAssetHolder({ ...base, ownership: "component", outstanding: { parent, heldBy: null, documentNo: null } }), { kind: "outstanding", parent, heldBy: null, documentNo: null })
+  assert.deepEqual(describeAssetHolder({ ...base, ownership: "component", parent, outstanding: null }), { kind: "parent", parent }, "a fitted component reads as before")
 })
 
 test("ตรวจนับล่าสุด: waiting in an open round first, else the latest result with its badge tone, else never (spec §7.4)", () => {

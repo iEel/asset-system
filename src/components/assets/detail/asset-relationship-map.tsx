@@ -11,7 +11,7 @@ import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
 
 // The asset's relationship map (group 1 asset detail task 10): parent lane, this asset, components lane, the summary
 // line and the note, moved out of the page as they were. Server-safe, no directive: the labels come from the tab.
-export type RelationshipLink = { id: string; href: string; label: string; role: string }
+export type RelationshipLink = { id: string; href: string; label: string; role: string; note?: string | null }
 
 export function AssetRelationshipMap({
   title,
@@ -304,6 +304,7 @@ function RelationshipAssetCard({
           ) : null}
         </div>
       ) : null}
+      {link?.note ? <div className="text-meta text-muted-foreground [overflow-wrap:anywhere]">{link.note}</div> : null}
     </div>
   )
   const className = `block rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${current ? "min-h-36" : ""} ${getRelationshipCardClass(Boolean(current))}`

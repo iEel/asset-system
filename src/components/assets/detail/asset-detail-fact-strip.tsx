@@ -14,6 +14,7 @@ import {
   type AssetWarrantyCell,
   type AuditRoundRef,
 } from "@/lib/asset-detail-frame-rules"
+import { formatOutstandingComponentLine } from "@/lib/asset-component-outstanding"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
@@ -64,6 +65,20 @@ export function AssetDetailFactStrip({
       <span className="tag">{round.auditNo}</span>
     )
 
+  // The parent a component belongs to, linked when the page passes where it opens.
+  const parentValue = (parent: { assetTag: string; name: string }): ReactNode =>
+    parentHref ? (
+      <Link href={parentHref} className={standaloneLink}>
+        <span>
+          <span className="tag">{parent.assetTag}</span> {parent.name}
+        </span>
+      </Link>
+    ) : (
+      <>
+        <span className="tag">{parent.assetTag}</span> {parent.name}
+      </>
+    )
+
   let holderItem: FactStripItem
   if (holder.kind === "custodian") {
     holderItem = {
@@ -85,25 +100,19 @@ export function AssetDetailFactStrip({
       value: holder.department ?? <Nil />,
     }
   } else if (holder.kind === "parent") {
-    const parent = holder.parent
     holderItem = {
       key: "holder",
       label: t("componentOf"),
-      value: parent ? (
-        parentHref ? (
-          <Link href={parentHref} className={standaloneLink}>
-            <span>
-              <span className="tag">{parent.assetTag}</span> {parent.name}
-            </span>
-          </Link>
-        ) : (
-          <>
-            <span className="tag">{parent.assetTag}</span> {parent.name}
-          </>
-        )
-      ) : (
-        <Nil />
-      ),
+      value: holder.parent ? parentValue(holder.parent) : <Nil />,
+    }
+  } else if (holder.kind === "outstanding") {
+    // Still linked to its parent, not fitted, held by ผู้คืน (group 3 spec §8.5): the parent, then the line every page reads,
+    // as the plain sub-line (a fact is never colored text).
+    holderItem = {
+      key: "holder",
+      label: t("componentOf"),
+      value: parentValue(holder.parent),
+      sub: formatOutstandingComponentLine({ holder: holder.heldBy, documentNo: holder.documentNo }, { outstanding: tAsset("componentOutstanding"), withHolder: (name) => tAsset("componentOutstandingWith", { holder: name }) }),
     }
   } else {
     holderItem = {

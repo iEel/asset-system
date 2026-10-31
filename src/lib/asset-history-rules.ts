@@ -5,6 +5,7 @@ import { getBangkokDateKey } from "./preventive-maintenance.ts"
 import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "./audit-round-result-filters.ts"
 import { getAuditItemStatusLabelKey } from "./audit-item-status-labels.ts"
 import type { AssetMovementDocumentKind } from "./asset-movement-labels.ts"
+import type { ComponentLateReturnOutcome } from "./component-late-return.ts"
 
 export type AssetHistoryCategory = "checkout" | "checkin" | "transfer" | "audit" | "repair" | "disposal" | "component" | "edit"
 
@@ -110,6 +111,8 @@ export type AssetHistoryLabels = {
   ownershipTypes: Readonly<Record<string, string>>
   returnedFrom: (name: string) => string
   repairDays: (days: number) => string
+  receivedBy: (name: string) => string
+  lateReturnOutcomes: Readonly<Record<ComponentLateReturnOutcome, string>>
 }
 
 export type AssetHistoryMovementInput = {
@@ -234,6 +237,18 @@ function repairCloseParts(repair: NonNullable<AssetHistoryMovementInput["repair"
   return parts
 }
 
+// A component's late return (group 3 spec §8.6): who received it, then where it went; a code without a word shows as stored.
+function lateReturnParts(toValue: string | null, labels: AssetHistoryLabels): string[] {
+  const value = parseSnapshot(toValue)
+  if (!value) return []
+  const receivedBy = rawText(value.receivedByName)
+  const outcome = rawText(value.outcome)
+  return [
+    receivedBy ? labels.receivedBy(receivedBy) : null,
+    outcome ? (Object.hasOwn(labels.lateReturnOutcomes, outcome) ? labels.lateReturnOutcomes[outcome as ComponentLateReturnOutcome] : outcome) : null,
+  ].filter((part): part is string => part !== null)
+}
+
 function mainParts(input: AssetHistoryMovementInput, lookup: ReadonlyMap<string, string>, labels: AssetHistoryLabels): string[] {
   const type = input.movementType
   if (type === "checkout" && input.checkout && (input.checkout.destination || input.checkout.handoverMode)) {
@@ -249,6 +264,13 @@ function mainParts(input: AssetHistoryMovementInput, lookup: ReadonlyMap<string,
   }
   if (type === "maintenance_close" && input.repair) return repairCloseParts(input.repair, labels)
   if ((type === "maintenance_cancel" || type === "maintenance_status_update") && input.repair) return []
+  // A component a return left out (group 3 spec §8.5): what changed, or, when ผู้คืน already held it, who holds it.
+  if (type === "component_outstanding") {
+    const change = movementChangeText(input.fromValue, input.toValue, lookup, labels) ?? movementChangeText(null, input.toValue, lookup, labels)
+    return change ? [change] : []
+  }
+  // Its late return (spec §8.6): who received it, and whether it went back into its parent or stands alone.
+  if (type === "component_late_return") return lateReturnParts(input.toValue, labels)
   const change = movementChangeText(input.fromValue, input.toValue, lookup, labels)
   return change ? [change] : []
 }

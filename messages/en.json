@@ -1252,7 +1252,10 @@
       "showMore": "Show more ({count} left)",
       "empty": "This asset has no history yet",
       "emptyFiltered": "No events of this type in this period",
-      "capped": "Showing the latest {shown} of {total} events. Export to Excel to see older ones."
+      "capped": "Showing the latest {shown} of {total} events. Export to Excel to see older ones.",
+      "receivedBy": "Received by {name}",
+      "lateReturnReattached": "Back in its parent asset",
+      "lateReturnStandalone": "Stands alone"
     },
     "photoFrame": {
       "emptyTitle": "No photo yet",

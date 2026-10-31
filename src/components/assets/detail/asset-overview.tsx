@@ -79,8 +79,8 @@ export function AssetOverview({
   recent: { events: AssetHistoryEvent[]; total: number; historyHref: string } | null
   documentAccess: Record<AssetMovementDocumentKind, boolean>
   components: {
-    children: { id: string; assetTag: string; name: string; href: string }[]
-    parent: { assetTag: string; name: string; href: string } | null
+    children: { id: string; assetTag: string; name: string; href: string; outstandingLine: string | null }[]
+    parent: { assetTag: string; name: string; href: string; outstandingLine: string | null } | null
     manageHref: string | null
     allHref: string
   }
@@ -332,6 +332,7 @@ export function AssetOverview({
                     <Link href={components.parent.href} className={linkVariants({ size: "inherit" })}>
                       <span className="tag">{components.parent.assetTag}</span> {components.parent.name}
                     </Link>
+                    {components.parent.outstandingLine ? <span className="block text-meta">{components.parent.outstandingLine}</span> : null}
                   </li>
                 ) : null}
                 {shownChildren.map((child) => (
@@ -342,6 +343,7 @@ export function AssetOverview({
                         <span className="tag">{child.assetTag}</span>
                       </span>
                     </Link>
+                    {child.outstandingLine ? <span className="block text-meta text-muted-foreground">{child.outstandingLine}</span> : null}
                   </li>
                 ))}
                 {components.children.length > COMPONENT_PREVIEW_LIMIT ? (

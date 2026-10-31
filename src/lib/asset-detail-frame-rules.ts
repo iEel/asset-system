@@ -16,16 +16,31 @@ export type AssetHolderCell =
   | { kind: "department"; label: "managing" | "using"; department: string | null }
   | { kind: "parent"; parent: { id: string; assetTag: string; name: string } | null }
   | { kind: "seats"; used: number; total: number | null }
+  | {
+      kind: "outstanding"
+      parent: { id: string; assetTag: string; name: string }
+      heldBy: { code: string; fullNameTh: string } | null
+      documentNo: string | null
+    }
 
 export function describeAssetHolder(input: {
   ownership: AssetOwnershipKind
   custodian: { id: string; code: string; fullNameTh: string; department: string | null } | null
   department: string | null
   parent: { id: string; assetTag: string; name: string } | null
+  /** This asset's own outstanding link (group 3 spec §8.5): its parent, who holds it, the RT- that left it out. */
+  outstanding: {
+    parent: { id: string; assetTag: string; name: string }
+    heldBy: { code: string; fullNameTh: string } | null
+    documentNo: string | null
+  } | null
   seats: { used: number | null; total: number | null }
   openCheckoutDate: Date | null
   now: Date
 }): AssetHolderCell {
+  // A component a return left out reads its parent and its line whatever its ownership: still linked, not fitted, held
+  // by ผู้คืน (group 3 spec §8.5).
+  if (input.outstanding) return { kind: "outstanding", ...input.outstanding }
   switch (input.ownership) {
     case "personal": {
       const custodian = input.custodian
