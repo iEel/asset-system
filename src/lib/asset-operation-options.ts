@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { getCheckinReturnStatuses } from "@/lib/asset-status-flow"
-import { getAssetOperationConditionOptions } from "@/lib/asset-lifecycle-policy"
+import { getAssetOperationConditionOptions, type AssetOperationConditionOperation } from "@/lib/asset-lifecycle-policy"
 import type { AssetOperationMode } from "@/lib/asset-operation-eligibility"
 import { searchAssetOperationOptions, type AssetOperationSearchDb } from "@/lib/asset-operation-search"
 import type { AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
@@ -33,10 +33,11 @@ export type AssetOperationMasterOptions<Employee extends AssetOperationEmployeeP
 // The master lists the four transaction pages read (server search spec §3 goal 1): no asset, handover or repair. The
 // asset of ส่งมอบ and โอนย้าย comes from the server search, one row at most here (getAssetOperationPreselect). Only
 // { employeeDetail: true } (ส่งมอบ) reads the employee's department and branch and runs the held-count groupBy over
-// the register (final review M4).
-export async function getAssetOperationMasterOptions(options: { employeeDetail: true }): Promise<AssetOperationMasterOptions<AssetOperationEmployeeOption>>
-export async function getAssetOperationMasterOptions(options?: { employeeDetail?: false }): Promise<AssetOperationMasterOptions>
-export async function getAssetOperationMasterOptions(options?: { employeeDetail?: boolean }): Promise<AssetOperationMasterOptions<AssetOperationEmployeePlainOption | AssetOperationEmployeeOption>> {
+// the register (final review M4). The conditions are the operation's (group 3 spec §19.1): { conditionsFor: "checkout" }
+// (ส่งมอบ) offers ใหม่/ดี/พอใช้; the default is รับคืน's list.
+export async function getAssetOperationMasterOptions(options: { employeeDetail: true; conditionsFor?: AssetOperationConditionOperation }): Promise<AssetOperationMasterOptions<AssetOperationEmployeeOption>>
+export async function getAssetOperationMasterOptions(options?: { employeeDetail?: false; conditionsFor?: AssetOperationConditionOperation }): Promise<AssetOperationMasterOptions>
+export async function getAssetOperationMasterOptions(options?: { employeeDetail?: boolean; conditionsFor?: AssetOperationConditionOperation }): Promise<AssetOperationMasterOptions<AssetOperationEmployeePlainOption | AssetOperationEmployeeOption>> {
   const employeeDetail = options?.employeeDetail === true
   const [employees, departments, locations, statuses, conditions, held] = await Promise.all([
     prisma.employee.findMany({
@@ -89,7 +90,7 @@ export async function getAssetOperationMasterOptions(options?: { employeeDetail?
     departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}`, name: department.name })),
     locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}`, name: location.name })),
     statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name })),
-    conditions: getAssetOperationConditionOptions(conditions)
+    conditions: getAssetOperationConditionOptions(options?.conditionsFor ?? "checkin", conditions)
       .map((condition) => ({ id: condition.id, label: condition.nameTh, name: condition.name })),
   }
 }

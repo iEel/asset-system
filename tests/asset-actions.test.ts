@@ -20,6 +20,7 @@ const base: AssetActionInput = {
   ownership: "personal",
   custodianId: null,
   openCheckoutId: null,
+  conditionName: null,
   openCheckoutHandoverMode: null,
   openRepairId: null,
   openDisposalId: null,

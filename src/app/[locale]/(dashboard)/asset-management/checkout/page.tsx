@@ -14,7 +14,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
   const filters = await searchParams
   const user = await requirePagePermission(locale, "asset", "edit")
   const [options, initialAsset] = await Promise.all([
-    getAssetOperationMasterOptions({ employeeDetail: true }),
+    getAssetOperationMasterOptions({ employeeDetail: true, conditionsFor: "checkout" }),
     getAssetOperationPreselect("checkout", filters.assetId, { detail: true }),
   ])
 

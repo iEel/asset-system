@@ -1,4 +1,10 @@
-import { getAssetLifecycleTransitionError, getCheckinHandoverStatusError, isLegacyReturnEligible } from "./asset-lifecycle-policy.ts"
+import {
+  checkoutConditionBlockReasonKeys,
+  getAssetLifecycleTransitionError,
+  getCheckinHandoverStatusError,
+  getCheckoutConditionBlock,
+  isLegacyReturnEligible,
+} from "./asset-lifecycle-policy.ts"
 import type { AssetOwnershipType } from "./asset-ownership.ts"
 
 // The one rule for "can this transaction take this asset, and if not, why" (server-search spec 6.3, choice ก). Read by
@@ -17,6 +23,8 @@ export type AssetOperationFacts = {
   /** The open checkout (`isReturned: false, transactionStatus: "active"`). */
   openCheckout: { id: string; handoverMode: string | null } | null
   hasOpenRepair: boolean
+  /** The condition master's `name` ("Good", "Damaged", …); null when none is read. */
+  conditionName: string | null
 }
 
 export type AssetOperationVerdict = { eligible: true; reasonKey: null } | { eligible: false; reasonKey: string }
@@ -64,12 +72,15 @@ function ownershipRefusal(operation: AssetOperationOwnershipOperation, ownership
   return code ? no(assetOperationRefusalReasonKeys[code]) : null
 }
 
-// api/assets/[id]/checkout: the ownership, Ready, then no open handover.
+// api/assets/[id]/checkout: the ownership, Ready, no open handover, then not เสียหาย/ใช้งานไม่ได้/ซาก (group 3 spec §19.2,
+// A1-R2).
 export function getCheckoutVerdict(facts: AssetOperationFacts): AssetOperationVerdict {
   const refused = ownershipRefusal("checkout", facts.ownership)
   if (refused) return refused
   if (getAssetLifecycleTransitionError("checkout", facts.statusName)) return no("asset.transactionReasonStatusNotReady")
   if (facts.openCheckout) return no("asset.transactionReasonOpenCheckoutHandover")
+  const block = getCheckoutConditionBlock(facts.conditionName)
+  if (block) return no(checkoutConditionBlockReasonKeys[block])
   return yes
 }
 

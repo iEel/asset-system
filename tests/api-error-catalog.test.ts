@@ -142,3 +142,17 @@ test("an inactive checkout destination reads its own words under the field (grou
     ["checkoutLocationInactive", "ที่ตั้งนี้ถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น", "This location is inactive. Choose another."],
   ]) assert.deepEqual([field("th", key), field("en", key)], [th, en], key)
 })
+
+test("a broken or salvage asset refused by ส่งมอบ reads its reason under the asset field, and the toast reads the code's words (group 3 spec §19.2)", () => {
+  assert.equal(getApiErrorKey("ASSET_CHECKOUT_CONDITION_BLOCKED"), "checkoutConditionBlocked")
+  const field = (locale: "th" | "en", key: string) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors[key]
+  const reason = (locale: "th" | "en", key: string) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).asset[key]
+  assert.deepEqual([field("th", "checkoutConditionBlocked"), field("en", "checkoutConditionBlocked")], ["ส่งมอบไม่ได้เพราะสภาพของทรัพย์สิน", "This asset cannot be handed over in its condition."])
+  // Under the field the picker's own words (asset.transactionReasonCondition*).
+  for (const name of ["Damaged", "NonFunctional", "Salvage"]) {
+    for (const locale of ["th", "en"] as const) {
+      assert.equal(typeof field(locale, `checkoutCondition${name}`), "string", `${locale} ${name}`)
+      assert.equal(field(locale, `checkoutCondition${name}`), reason(locale, `transactionReasonCondition${name}`), `${locale} ${name}`)
+    }
+  }
+})

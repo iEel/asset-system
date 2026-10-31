@@ -303,6 +303,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       openCheckoutHandoverMode: openCheckout?.handoverMode ?? null,
       openRepairId: openRepairIdByAssetId.get(asset.id) ?? null,
       openDisposalId: openDisposalIdByAssetId.get(asset.id) ?? null,
+      conditionName: asset.condition.name,
       returnTo: registerReturnHref,
       can: actionPermissions,
     })

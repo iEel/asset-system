@@ -151,15 +151,54 @@ export function filterSelectableConditions<T extends AssetStateMaster>(condition
   return conditions.filter((condition) => condition.isActive !== false && allowed.has(normalizeAssetStateName(condition.name)))
 }
 
-export function getAssetOperationConditionOptions<T extends AssetStateMaster>(conditions: readonly T[]): T[] {
-  return filterSelectableConditions(conditions)
+// The conditions a transaction offers and its route accepts (group 3 spec §19.1): ส่งมอบ hands over only ใหม่/ดี/พอใช้;
+// รับคืน also takes เสียหาย/ใช้งานไม่ได้/ซาก. ยังไม่ประเมิน is never chosen on either (the asset form, the import and the
+// state review keep selectableConditionNames).
+export type AssetOperationConditionOperation = "checkout" | "checkin"
+export const checkoutConditionNames = ["New", "Good", "Fair"] as const
+export const checkinConditionNames = ["New", "Good", "Fair", "Damaged", "Non-functional", "Salvage"] as const
+
+const operationConditionNames: Record<AssetOperationConditionOperation, ReadonlySet<string>> = {
+  checkout: new Set(checkoutConditionNames.map(normalizeAssetStateName)),
+  checkin: new Set(checkinConditionNames.map(normalizeAssetStateName)),
+}
+
+/** The active masters the operation offers, in master order. */
+export function getAssetOperationConditionOptions<T extends AssetStateMaster>(
+  operation: AssetOperationConditionOperation,
+  conditions: readonly T[],
+): T[] {
+  const allowed = operationConditionNames[operation]
+  return conditions.filter((condition) => condition.isActive !== false && allowed.has(normalizeAssetStateName(condition.name)))
 }
 
 export function getAssetOperationConditionError(
+  operation: AssetOperationConditionOperation,
   condition: AssetStateMaster | null | undefined,
 ): Extract<AssetStateSelectionError, "ASSET_STATE_MASTER_NOT_FOUND" | "ASSET_CONDITION_NOT_SELECTABLE"> | null {
   if (!condition || condition.isActive === false) return "ASSET_STATE_MASTER_NOT_FOUND"
-  return filterSelectableConditions([condition]).length === 1 ? null : "ASSET_CONDITION_NOT_SELECTABLE"
+  return operationConditionNames[operation].has(normalizeAssetStateName(condition.name)) ? null : "ASSET_CONDITION_NOT_SELECTABLE"
+}
+
+// A recorded เสียหาย, ใช้งานไม่ได้ or ซาก refuses a handover (group 3 spec §19.2): the picker, the asset page and the
+// checkout route all ask this. ยังไม่ประเมิน is not refused.
+export type CheckoutConditionBlock = "damaged" | "nonFunctional" | "salvage"
+
+const checkoutConditionBlocks: ReadonlyMap<string, CheckoutConditionBlock> = new Map([
+  [normalizeAssetStateName("Damaged"), "damaged"],
+  [normalizeAssetStateName("Non-functional"), "nonFunctional"],
+  [normalizeAssetStateName("Salvage"), "salvage"],
+])
+
+export function getCheckoutConditionBlock(conditionName: string | null | undefined): CheckoutConditionBlock | null {
+  return checkoutConditionBlocks.get(normalizeAssetStateName(conditionName)) ?? null
+}
+
+/** Each block's words, full message keys. */
+export const checkoutConditionBlockReasonKeys: Readonly<Record<CheckoutConditionBlock, string>> = {
+  damaged: "asset.transactionReasonConditionDamaged",
+  nonFunctional: "asset.transactionReasonConditionNonFunctional",
+  salvage: "asset.transactionReasonConditionSalvage",
 }
 
 // The server's legacy return (api/assets/[id]/legacy-checkout) accepts exactly this: Ready or In Use,

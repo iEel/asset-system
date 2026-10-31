@@ -26,7 +26,7 @@ const somchai = { code: "EMP-0412", fullNameTh: "สมชาย ใจดี" }
 const asset: AssetOperationSearchAsset = {
   id: "asset-1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก Dell Latitude 5440", serialNumber: "SN-1", ownershipType: "personal",
   custodianId: null, currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
-  currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null,
+  condition: { name: "Good" }, currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null,
 }
 const held: AssetOperationSearchAsset = { ...asset, custodianId: "emp-1", custodian: somchai, status: { name: "In Use", nameTh: "ใช้งานอยู่" } }
 const handover: AssetOperationSearchCheckoutRecord = {
@@ -187,14 +187,14 @@ test("รับคืน: exact codes, then held rows, then code prefixes, then 
 
 test("each mode asks Task 1's verdict, so the picker, the asset page and the routes agree (spec §5, S-R1)", () => {
   const facts: AssetOperationFacts[] = [
-    { statusName: "Ready", ownership: "personal", custodianId: null, openCheckout: null, hasOpenRepair: false },
-    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: { id: "co-1", handoverMode: "permanent_assignment" }, hasOpenRepair: false },
-    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: null, hasOpenRepair: true },
-    { statusName: "Checked Out", ownership: "shared", custodianId: null, openCheckout: { id: "co-2", handoverMode: null }, hasOpenRepair: false },
-    { statusName: "Ready", ownership: "stock", custodianId: null, openCheckout: null, hasOpenRepair: false },
-    { statusName: "Ready", ownership: "component", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false },
-    { statusName: "Ready", ownership: "software_license", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false },
-    { statusName: "Disposed", ownership: "shared", custodianId: null, openCheckout: null, hasOpenRepair: false },
+    { statusName: "Ready", ownership: "personal", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null },
+    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: { id: "co-1", handoverMode: "permanent_assignment" }, hasOpenRepair: false, conditionName: null },
+    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: null, hasOpenRepair: true, conditionName: null },
+    { statusName: "Checked Out", ownership: "shared", custodianId: null, openCheckout: { id: "co-2", handoverMode: null }, hasOpenRepair: false, conditionName: null },
+    { statusName: "Ready", ownership: "stock", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null },
+    { statusName: "Ready", ownership: "component", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null },
+    { statusName: "Ready", ownership: "software_license", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null },
+    { statusName: "Disposed", ownership: "shared", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null },
   ]
   const pick = (verdict: AssetOperationVerdict) => ({ eligible: verdict.eligible, reasonKey: verdict.reasonKey })
   const verdict = (query: string, row: AssetOperationFacts) => getAssetOperationSearchVerdict(input(query), row)
@@ -220,6 +220,16 @@ test("a row carries the words the picker shows, no raw code: status nameTh, the 
   assert.deepEqual([row.placeLabel, row.locationLabel, row.eligible, row.reasonKey], ["EMP-0412 - สมชาย ใจดี", "IT-2 - ห้อง IT ชั้น 2", false, "asset.transactionReasonStatusNotReady"])
   const keys = Object.keys(buildAssetOperationSearchRow(input("mode=transfer&q=0228"), held, ctx(handover)))
   assert.deepEqual(keys.filter((key) => ["checkout", "legacy", "holderKey", "holderLabel", "holderEmployeeId"].includes(key)), [])
+})
+
+test("a row reads the asset's condition: a เสียหาย or ซาก asset is refused for ส่งมอบ with its reason, and still moves (group 3 spec §19.2)", () => {
+  const damaged = { ...asset, condition: { name: "Damaged" } }
+  const checkout = buildAssetOperationSearchRow(input("mode=checkout&q=0228"), damaged, { openCheckout: null, hasOpenRepair: false })
+  assert.deepEqual([checkout.eligible, checkout.reasonKey], [false, "asset.transactionReasonConditionDamaged"])
+  const salvage = buildAssetOperationSearchRow(input("mode=checkout&q=0228"), { ...asset, condition: { name: "Salvage" } }, { openCheckout: null, hasOpenRepair: false })
+  assert.deepEqual([salvage.eligible, salvage.reasonKey], [false, "asset.transactionReasonConditionSalvage"])
+  const moved = buildAssetOperationSearchRow(input("mode=transfer&q=0228"), damaged, { openCheckout: null, hasOpenRepair: false })
+  assert.deepEqual([moved.eligible, moved.reasonKey], [true, null])
 })
 
 test("รับคืน rows: the open handover with the panel's fields, ข้อมูลเก่า, or nothing to return (spec 6.3)", () => {

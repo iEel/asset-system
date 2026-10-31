@@ -119,7 +119,7 @@ test("the legacy count is one count over the legacy rule", async () => {
 })
 
 test("the count's ownership types and statuses are exactly those getCheckinVerdict takes on the legacy path (one rule)", () => {
-  const facts = (ownership: AssetOwnershipType, statusName: string) => ({ statusName, ownership, custodianId: "emp-1", openCheckout: null, hasOpenRepair: false })
+  const facts = (ownership: AssetOwnershipType, statusName: string) => ({ statusName, ownership, custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null })
   assert.deepEqual([...data.legacyReturnOwnershipTypes], assetOwnershipTypes.filter((ownership) => getCheckinVerdict(facts(ownership, "Ready")).eligible))
   const statuses = ["Draft", "Ready", "In Use", "Reserved", "Checked Out", "In Transit", "Under Maintenance", "Pending Repair", "Under Inspection", "Lost", "Missing", "Pending Disposal", "Disposed", "Retired"] // prisma/seed.ts:17-30
   assert.deepEqual([...data.legacyReturnStatusNames], statuses.filter((status) => getCheckinVerdict(facts("personal", status)).eligible))

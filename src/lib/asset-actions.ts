@@ -58,6 +58,8 @@ export type AssetActionInput = {
   openRepairId: string | null
   /** The open disposal request (`openDisposalRequestWhere`), from a dedicated query. */
   openDisposalId: string | null
+  /** The condition master's `name` ("Good", "Damaged", …): ส่งมอบ refuses a broken or salvage asset (group 3 spec §19.2). */
+  conditionName: string | null
   returnTo: string
   can: { assetEdit: boolean; maintenanceCreate: boolean; maintenanceView: boolean; disposalView: boolean }
 }
@@ -110,6 +112,7 @@ function factsOf(input: AssetActionInput): AssetOperationFacts {
     custodianId: input.custodianId,
     openCheckout: input.openCheckoutId ? { id: input.openCheckoutId, handoverMode: input.openCheckoutHandoverMode } : null,
     hasOpenRepair: Boolean(input.openRepairId),
+    conditionName: input.conditionName,
   }
 }
 

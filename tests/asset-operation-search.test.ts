@@ -19,7 +19,7 @@ function asset(tag: string, overrides: Partial<AssetOperationSearchAsset> = {}):
   return {
     id: `id-${tag}`, assetTag: tag, name: `ชื่อ ${tag}`, serialNumber: null, ownershipType: "personal", custodianId: null,
     currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
-    currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null, ...overrides,
+    condition: { name: "Good" }, currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" }, custodian: null, ...overrides,
   }
 }
 function detailAsset(tag: string, overrides: Partial<AssetOperationSearchDetailAsset> = {}): AssetOperationSearchDetailAsset {

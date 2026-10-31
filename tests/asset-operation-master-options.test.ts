@@ -105,6 +105,22 @@ test("with employeeDetail (ส่งมอบ) the master lists read no asset ro
     { id: true, code: true, fullNameTh: true, departmentId: true, department: { select: { code: true, name: true } }, branch: { select: { name: true } } })
 })
 
+test("the conditions follow the operation: { conditionsFor: \"checkout\" } gives ใหม่/ดี/พอใช้, the default gives รับคืน's six (group 3 spec §19.1)", async () => {
+  const saved = fixtures.assetCondition
+  fixtures.assetCondition = ["Not Assessed", "New", "Excellent", "Good", "Fair", "Poor", "Damaged", "Non-functional", "Salvage"]
+    .map((name, index) => ({ id: `c${index}`, name, nameTh: `th-${name}` }))
+  try {
+    const names = (rows: Array<{ name: string }>) => rows.map((row) => row.name)
+    assert.deepEqual(names((await options.getAssetOperationMasterOptions({ employeeDetail: true, conditionsFor: "checkout" })).conditions), ["New", "Good", "Fair"])
+    assert.deepEqual(names((await options.getAssetOperationMasterOptions({ conditionsFor: "checkout" })).conditions), ["New", "Good", "Fair"])
+    assert.deepEqual(names((await options.getAssetOperationMasterOptions()).conditions), ["New", "Good", "Fair", "Damaged", "Non-functional", "Salvage"])
+    assert.deepEqual(names((await options.getAssetOperationMasterOptions({ conditionsFor: "checkin" })).conditions), ["New", "Good", "Fair", "Damaged", "Non-functional", "Salvage"])
+    assert.deepEqual((await options.getAssetOperationMasterOptions({ conditionsFor: "checkout" })).conditions[0], { id: "c1", label: "th-New", name: "New" })
+  } finally {
+    fixtures.assetCondition = saved
+  }
+})
+
 test("?assetId= is one by-id answer under the page's rule, and no query without it (spec 6.4, S-R5)", async () => {
   const chosen = { id: "a1", assetTag: "NB-0228", name: "Notebook Dell", eligible: false, reasonKey: "asset.transactionReasonStatusNotReady" }
   state.searchCalls = []

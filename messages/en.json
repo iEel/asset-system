@@ -1332,7 +1332,10 @@
     "transactionReasonLicenseCheckin": "A License is assigned on the asset page and cannot be returned",
     "transactionReasonLicenseMove": "A License is assigned on the asset page and cannot be moved",
     "transactionReasonHandoverModeMissing": "The handover has no custody type. Ask an administrator to review the record.",
-    "transactionReasonHandoverStatusMismatch": "The asset status does not match its custody type. Ask an administrator to review it before check-in."
+    "transactionReasonHandoverStatusMismatch": "The asset status does not match its custody type. Ask an administrator to review it before check-in.",
+    "transactionReasonConditionDamaged": "Damaged. Send it for repair before handing it over.",
+    "transactionReasonConditionNonFunctional": "Not working. Send it for repair before handing it over.",
+    "transactionReasonConditionSalvage": "Salvage awaiting disposal. It cannot be handed over."
   },
   "company": {
     "title": "Companies",
@@ -4759,7 +4762,11 @@
     "checkoutDestinationInactive": "This destination is missing or inactive. Choose another one.",
     "checkoutReceiverInactive": "This employee has left or is inactive. Choose someone else.",
     "checkoutDepartmentInactive": "This department is inactive. Choose another.",
-    "checkoutLocationInactive": "This location is inactive. Choose another."
+    "checkoutLocationInactive": "This location is inactive. Choose another.",
+    "checkoutConditionBlocked": "This asset cannot be handed over in its condition.",
+    "checkoutConditionDamaged": "Damaged. Send it for repair before handing it over.",
+    "checkoutConditionNonFunctional": "Not working. Send it for repair before handing it over.",
+    "checkoutConditionSalvage": "Salvage awaiting disposal. It cannot be handed over."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

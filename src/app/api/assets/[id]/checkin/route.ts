@@ -52,7 +52,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       where: { id: input.conditionAfter },
       select: { name: true, isActive: true },
     })
-    const conditionError = getAssetOperationConditionError(returnCondition)
+    const conditionError = getAssetOperationConditionError("checkin", returnCondition)
     if (conditionError) {
       return NextResponse.json(
         { code: conditionError, error: "Invalid return condition for check-in", fieldErrors: { conditionAfter: "invalidReturnCondition" } },

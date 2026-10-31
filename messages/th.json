@@ -1332,7 +1332,10 @@
     "transactionReasonLicenseCheckin": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน รับคืนไม่ได้",
     "transactionReasonLicenseMove": "License ผูกสิทธิ์ที่หน้าทรัพย์สิน ย้ายไม่ได้",
     "transactionReasonHandoverModeMissing": "ไม่พบลักษณะการถือครองในรายการส่งมอบ กรุณาให้ผู้ดูแลตรวจสอบข้อมูล",
-    "transactionReasonHandoverStatusMismatch": "สถานะทรัพย์สินไม่ตรงกับลักษณะการถือครอง กรุณาให้ผู้ดูแลตรวจสอบก่อนรับคืน"
+    "transactionReasonHandoverStatusMismatch": "สถานะทรัพย์สินไม่ตรงกับลักษณะการถือครอง กรุณาให้ผู้ดูแลตรวจสอบก่อนรับคืน",
+    "transactionReasonConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนส่งมอบ",
+    "transactionReasonConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ",
+    "transactionReasonConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้"
   },
   "company": {
     "title": "บริษัท",
@@ -4759,7 +4762,11 @@
     "checkoutDestinationInactive": "ปลายทางนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกใหม่",
     "checkoutReceiverInactive": "พนักงานคนนี้พ้นสภาพหรือถูกปิดใช้งานแล้ว เลือกคนอื่น",
     "checkoutDepartmentInactive": "แผนกนี้ถูกปิดใช้งานแล้ว เลือกแผนกอื่น",
-    "checkoutLocationInactive": "ที่ตั้งนี้ถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น"
+    "checkoutLocationInactive": "ที่ตั้งนี้ถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น",
+    "checkoutConditionBlocked": "ส่งมอบไม่ได้เพราะสภาพของทรัพย์สิน",
+    "checkoutConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนส่งมอบ",
+    "checkoutConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ",
+    "checkoutConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

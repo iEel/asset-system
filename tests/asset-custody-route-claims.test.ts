@@ -17,6 +17,11 @@ type CustodyRouteState = {
   writes: Array<{ call: string; data: Record<string, unknown> }>
   syncChanges: Array<Record<string, unknown>>
   audits: Array<{ action: string; newValue: Record<string, unknown> }>
+  /** The asset's recorded condition name; each asset read takes the next of conditionAnswers first, if any. */
+  assetConditionName: string
+  conditionAnswers: string[]
+  /** The condition masters by id (conditionBefore); any other id reads Good. */
+  conditionMasters: Record<string, { name: string; isActive: boolean }>
 }
 
 const state: CustodyRouteState = {
@@ -32,6 +37,9 @@ const state: CustodyRouteState = {
   writes: [],
   syncChanges: [],
   audits: [],
+  assetConditionName: "Good",
+  conditionAnswers: [],
+  conditionMasters: {},
 }
 Object.assign(globalThis, { __custodyRouteState: state })
 
@@ -80,6 +88,7 @@ const mockedModuleSources = new Map<string, string>([
       departmentId: "dept-1",
       updatedAt: new Date("2026-10-01T00:00:00Z"),
       status: { name: state().assetStatusName, nameTh: state().assetStatusName },
+      condition: { name: state().conditionAnswers.length > 0 ? state().conditionAnswers.shift() : state().assetConditionName },
     })
     function model(name) {
       return new Proxy({}, {
@@ -90,7 +99,7 @@ const mockedModuleSources = new Map<string, string>([
             if (method === "updateMany") return { count: name === "asset" ? state().claimCount : 1 }
             if (name === "asset" && (method === "findFirst" || method === "findUnique")) return asset()
             if (name === "asset" && method === "update") return { ...asset(), ...(args?.data ?? {}), updatedAt: new Date("2026-10-07T03:00:00Z") }
-            if (name === "assetCondition") return { name: "Good", isActive: true }
+            if (name === "assetCondition") return state().conditionMasters[args?.where?.id] ?? { name: "Good", isActive: true }
             if (name === "assetCheckout" && method === "findFirst") return state().openCheckoutAssetIds.includes(args?.where?.assetId) ? { id: "checkout-open", handoverMode: "temporary_loan" } : null
             if (name === "employee" && method === "findFirst") {
               if (state().employeeAnswers.length > 0) return state().employeeAnswers.shift()
@@ -176,6 +185,9 @@ beforeEach(() => {
   state.writes = []
   state.syncChanges = []
   state.audits = []
+  state.assetConditionName = "Good"
+  state.conditionAnswers = []
+  state.conditionMasters = {}
 })
 
 test("a handover that loses the race for the asset returns 409 and records nothing", async () => {
@@ -335,4 +347,48 @@ test("an active employee whose department is closed still receives the asset, wi
   assert.equal((await post(checkoutRoute, checkoutBody)).status, 201)
   assert.equal(written("asset.update")[0].departmentId, "dept-closed")
   assert.equal(state.calls.includes("department.findFirst"), false, "the employee's department is not checked")
+})
+
+const conditionBlocked = (key: string) => [409, { code: "ASSET_CHECKOUT_CONDITION_BLOCKED", error: "ASSET_CHECKOUT_CONDITION_BLOCKED", fieldErrors: { assetId: key } }]
+
+test("a handover refuses an asset recorded เสียหาย, ใช้งานไม่ได้ or ซาก under the asset field, before any write (group 3 spec §19.2)", async () => {
+  for (const [conditionName, key] of [["Damaged", "checkoutConditionDamaged"], ["Non-functional", "checkoutConditionNonFunctional"], ["Salvage", "checkoutConditionSalvage"]] as const) {
+    state.assetConditionName = conditionName
+    state.calls = []
+    assert.deepEqual(await refusal(await post(checkoutRoute, checkoutBody)), conditionBlocked(key), conditionName)
+    assert.equal(state.calls.includes("asset.updateMany"), false, conditionName)
+    assert.equal(state.calls.includes("assetCheckout.create"), false, conditionName)
+  }
+  // A1-R2: the status and the open handover read their own refusals first.
+  state.assetConditionName = "Damaged"
+  state.assetStatusName = "In Use"
+  assert.deepEqual(await refusal(await post(checkoutRoute, checkoutBody)), [409, { code: "ASSET_STATUS_CHECKOUT_NOT_ALLOWED", error: "ASSET_STATUS_CHECKOUT_NOT_ALLOWED" }])
+  state.assetStatusName = "Ready"
+  state.openCheckoutAssetIds = ["asset-1"]
+  assert.equal((await post(checkoutRoute, checkoutBody)).status, 400, "the open handover first")
+})
+
+test("a ยังไม่ประเมิน asset is not refused (group 3 spec §19.2)", async () => {
+  state.assetConditionName = "Not Assessed"
+  assert.equal((await post(checkoutRoute, checkoutBody)).status, 201)
+})
+
+test("a condition that turns ใช้งานไม่ได้ after the pre-check is refused by the re-read inside the transaction, and nothing is written (group 3 spec §19.2)", async () => {
+  state.conditionAnswers = ["Good", "Non-functional"]
+  assert.deepEqual(await refusal(await post(checkoutRoute, checkoutBody)), conditionBlocked("checkoutConditionNonFunctional"))
+  assert.ok(state.calls.includes("asset.updateMany"), "the pre-check passed and the asset was claimed")
+  assert.equal(state.calls.includes("assetCheckout.create"), false)
+  assert.equal(state.calls.includes("asset.update"), false)
+  assert.equal(state.calls.includes("assetMovement.create"), false)
+  assert.equal(state.calls.includes("attachment.create"), false)
+  assert.deepEqual(state.audits, [])
+})
+
+test("a handover recorded as เสียหาย or ยังไม่ประเมิน is refused under the condition field: ส่งมอบ takes ใหม่/ดี/พอใช้ only (group 3 spec §19.1)", async () => {
+  state.conditionMasters = { "condition-damaged": { name: "Damaged", isActive: true }, "condition-unassessed": { name: "Not Assessed", isActive: true } }
+  for (const conditionBefore of ["condition-damaged", "condition-unassessed"]) {
+    state.calls = []
+    assert.deepEqual(await refusal(await post(checkoutRoute, { ...checkoutBody, conditionBefore })), [400, { code: "ASSET_CONDITION_NOT_SELECTABLE", error: "Invalid asset condition for checkout", fieldErrors: { conditionBefore: "invalidCheckoutCondition" } }], conditionBefore)
+    assert.equal(state.calls.includes("asset.updateMany"), false, conditionBefore)
+  }
 })

@@ -7,7 +7,12 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { issuesToFieldErrors } from "@/lib/field-errors"
 import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
-import { getAssetLifecycleTransitionError, getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
+import {
+  getAssetLifecycleTransitionError,
+  getAssetOperationConditionError,
+  getCheckoutConditionBlock,
+  type CheckoutConditionBlock,
+} from "@/lib/asset-lifecycle-policy"
 import { getHandoverTargetStatusName } from "@/lib/asset-handover-mode"
 import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 import { getCheckoutNextDepartmentId } from "@/lib/asset-department-rule"
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const { input, photoBefore, receiverSignature } = await parseCheckoutRequest(request)
     const asset = await prisma.asset.findFirst({
       where: { id, isActive: true },
-      include: { status: { select: { name: true, nameTh: true } } },
+      include: { status: { select: { name: true, nameTh: true } }, condition: { select: { name: true } } },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
     const ownershipRefusal = getAssetOperationOwnershipRefusal("checkout", asset.ownershipType)
@@ -57,12 +62,15 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     if (activeCheckout) {
       return NextResponse.json({ error: "Asset already has an active checkout" }, { status: 400 })
     }
+    // A recorded เสียหาย, ใช้งานไม่ได้ or ซาก asset is not handed over (group 3 spec §19.2), after the open handover (A1-R2).
+    const conditionBlock = getCheckoutConditionBlock(asset.condition?.name)
+    if (conditionBlock) return conditionBlockedResponse(conditionBlock)
 
     const checkoutCondition = await prisma.assetCondition.findUnique({
       where: { id: input.conditionBefore },
       select: { name: true, isActive: true },
     })
-    const conditionError = getAssetOperationConditionError(checkoutCondition)
+    const conditionError = getAssetOperationConditionError("checkout", checkoutCondition)
     if (conditionError) {
       return NextResponse.json(
         { code: conditionError, error: "Invalid asset condition for checkout", fieldErrors: { conditionBefore: "invalidCheckoutCondition" } },
@@ -94,9 +102,13 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
           currentLocationId: true,
           custodianId: true,
           departmentId: true,
+          condition: { select: { name: true } },
         },
       })
       if (!beforeAsset) throw new Error("Asset not found")
+      // Read again after the claim: a condition that became เสียหาย since the pre-check refuses here, before any write.
+      const blockedNow = getCheckoutConditionBlock(beforeAsset.condition?.name)
+      if (blockedNow) throw new CheckoutConditionBlockedError(blockedNow)
       const nextDepartmentId = getCheckoutNextDepartmentId({
         ownership: normalizeAssetOwnershipType(asset.ownershipType),
         checkoutType: input.checkoutType,
@@ -255,6 +267,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     return NextResponse.json(checkout, { status: 201 })
   } catch (error) {
     if (error instanceof CheckoutDestinationInactiveError) return destinationInactiveResponse(error.field)
+    if (error instanceof CheckoutConditionBlockedError) return conditionBlockedResponse(error.block)
     if (error instanceof AssetOperationConflictError) {
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
@@ -320,6 +333,33 @@ function destinationInactiveResponse(field: CheckoutDestinationField) {
       code: "ASSET_CHECKOUT_DESTINATION_INACTIVE",
       error: "ASSET_CHECKOUT_DESTINATION_INACTIVE",
       fieldErrors: { [field]: DESTINATION_INACTIVE_KEYS[field] },
+    },
+    { status: 409 },
+  )
+}
+
+// The asset field reads the block's own sentence; the code and its catalog key (checkoutConditionBlocked) are for the toast.
+const CONDITION_BLOCKED_KEYS: Record<CheckoutConditionBlock, string> = {
+  damaged: "checkoutConditionDamaged",
+  nonFunctional: "checkoutConditionNonFunctional",
+  salvage: "checkoutConditionSalvage",
+}
+
+class CheckoutConditionBlockedError extends Error {
+  readonly block: CheckoutConditionBlock
+
+  constructor(block: CheckoutConditionBlock) {
+    super("ASSET_CHECKOUT_CONDITION_BLOCKED")
+    this.block = block
+  }
+}
+
+function conditionBlockedResponse(block: CheckoutConditionBlock) {
+  return NextResponse.json(
+    {
+      code: "ASSET_CHECKOUT_CONDITION_BLOCKED",
+      error: "ASSET_CHECKOUT_CONDITION_BLOCKED",
+      fieldErrors: { assetId: CONDITION_BLOCKED_KEYS[block] },
     },
     { status: 409 },
   )

@@ -178,6 +178,7 @@ export const assetOperationSearchAssetSelect = {
   currentLocationId: true,
   conditionId: true,
   status: { select: { name: true, nameTh: true } },
+  condition: { select: { name: true } },
   currentLocation: { select: { code: true, name: true } },
   custodian: { select: { code: true, fullNameTh: true } },
 } satisfies Prisma.AssetSelect
@@ -396,6 +397,7 @@ export function buildAssetOperationSearchRow(
     custodianId: asset.custodianId,
     openCheckout: openCheckout && { id: openCheckout.id, handoverMode: openCheckout.handoverMode },
     hasOpenRepair,
+    conditionName: asset.condition?.name ?? null,
   }
   const verdict = getAssetOperationSearchVerdict(input, facts)
   const row: AssetOperationSearchRow = {
