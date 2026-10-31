@@ -143,13 +143,15 @@ Important data semantics:
 | Check-out | Handover to employee, department, or location; the department follows the receiver for บุคคล and Stock assets |
 | Check-out evidence | Before-handover photo, receiver signature pad, attachment evidence |
 | Check-out validation | Blocks duplicate active checkout and protected lifecycle statuses |
-| Check-in | Return workflow with return/receive parties, condition after, next status, next location |
+| Check-in | Return workflow with a components checklist, return/receive parties (receiver defaults to you), condition chips, next status, searchable next location; the department goes to the return department (setting, default IT) |
 | Legacy check-in backfill | Check-in page exposes searchable legacy/current-custodian candidates and creates an auditable backfilled checkout before the standard return workflow |
 | Check-in evidence | After-return photos, return signature, receive signature |
-| Check-in maintenance link | Return result "ส่งซ่อม" (`Under Maintenance`) opens an unfinished repair record in the same transaction; needs `maintenance:create` |
+| Check-in maintenance link | Return result "ส่งซ่อม" (`Under Maintenance`) opens an unfinished repair record, or joins the open one, in the same transaction, and the RT- links it; opening one needs `maintenance:create` |
+| Outstanding components | A component not returned stays with the person returning, is listed on the RT-, and is refused elsewhere (handover, transfer, bulk move, disposal) until returned |
+| Late component return | `component-return` brings it back later on the same RT-: re-attached to a parent in IT stock, or standing alone in the chosen room; a line on the RT- |
 | Transfer | Move asset location/custodian/department through controlled operation |
 | Contextual transaction shortcuts | Asset Register and Asset Detail expose Handover, Return, and Transfer without requiring users to memorize the Asset Tag; unavailable actions remain visible in a faded state with a recovery-oriented reason |
-| Reversible transactions | A user with `asset:edit` can cancel only the latest eligible Check-out, Check-in, or Transfer; the system restores the exact versioned asset/component snapshot and never asks the operator to guess a replacement status |
+| Reversible transactions | A user with `asset:edit` can cancel only the latest eligible Check-out, Check-in, or Transfer; the system restores the exact versioned asset/component snapshot and never asks the operator to guess a replacement status; cancelling a Check-in also restores the components it left out as installed |
 | VOID documents | Cancelled operation documents remain readable and printable with cancellation user/time/reason and VOID presentation instead of being deleted |
 | Cancellation safety review | Stale, downstream-dependent, non-latest, or legacy snapshot-less cancellation attempts do not mutate asset data and create/update `transaction_cancellation_blocked` in Asset State Review |
 | Bulk move | Bulk location movement for multiple assets, each typed by its code and picked from the server search |
@@ -332,7 +334,7 @@ Schedulers are intended to run through systemd timers in production. Web-configu
 
 Current API route groups include:
 
-- `api/assets` for CRUD, batch, duplicate check, import/export, labels, bulk move/update, components, purchase docs, status correction, checkout/checkin/transfer.
+- `api/assets` for CRUD, batch, duplicate check, import/export, labels, bulk move/update, components, purchase docs, status correction, checkout/checkin/transfer, component-return.
 - `api/audit-rounds`, `api/audit-items`, `api/audit-findings` for audit lifecycle, scan, exports, findings, review, attachments.
 - `api/maintenance-tickets` and `api/maintenance-plans` for repair/PM workflows.
 - `api/disposal-requests` for disposal request, attachments, decision/execution/export.

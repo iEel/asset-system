@@ -577,6 +577,26 @@ E2E covers the three conditions, the repair loop (เสียหาย refused 
 - [ ] On dev, a handover page opened before the asset became เสียหาย is refused on save with the reason under the asset field.
 - [ ] รับคืน offers every condition except ยังไม่ประเมิน.
 
+## Transactions Group 3 Plan 2 UAT (รับคืน, 2026-10-31)
+
+E2E covers the return with the return department and its history line, the ส่งซ่อม return opening its repair record from the RT-'s link, and the return into an open repair (`e2e/transactions/return.spec.ts`); a return that leaves one component out, the RT- listing it, the parent's ส่งมอบ warning (never saved), and the late return re-attaching it while the parent sits in IT stock (`e2e/transactions/return-components.spec.ts`); and the return's condition error under the field (`e2e/cross-cutting/field-errors.spec.ts`). Check by hand:
+
+- [ ] Desktop 1440, both themes: the sections; the summary rows (ผู้ถือครอง, แผนก, สถานะ, ที่ตั้ง, สภาพ, ส่วนควบ); the still-missing list; the warning lines; the footer; ยกเลิก. The header link opens the register filtered to "มีผู้ถือครองแต่ไม่มีใบส่งมอบ" with the same count, and is hidden at zero.
+- [ ] Phone (iOS Safari, Android Chrome): the condensed parts; "ผู้คืน / ผู้รับคืน: … · แก้ไข", where an error on either reveals both; the camera for photos; the footer counts.
+- [ ] A late return after the parent was handed over again: the panel says the component stands alone and asks for the room, and it lands there in IT stock with the return department. A ส่วนกลาง component standing alone keeps its own department; re-attached, any component takes the parent's. A panel left open while the parent changes is refused with a toast (409), not a field error.
+- [ ] A component marked หาไม่พบ (Missing) that comes back can be returned late. One marked สูญหาย (Lost), Disposed or Retired is refused with "สถานะปัจจุบันไม่รองรับการรับคืน".
+- [ ] ผู้คืน who is not the holder (a manager for someone who left): the component left out takes ผู้คืน and their department, and a ส่วนกลาง one keeps its department.
+- [ ] Cancelling an RT- that left a component out makes it installed again. After its late return, the RT- cannot be cancelled.
+- [ ] ถอดออก on an outstanding component ends the link, and the component keeps its holder.
+- [ ] Disposal of the parent is blocked with the tag named, and so is disposal of the outstanding component itself.
+- [ ] On dev:
+  - someone without `maintenance:create` sees no ส่งซ่อม except on an asset with an open repair (joined, no 403);
+  - without `maintenance:view`, the RT- shows the repair number as plain text;
+  - the return date: tomorrow is refused, and so is a day before the handover; a backfilled handover takes an earlier day and reads ข้อมูลเก่า for ถือมา;
+  - Settings > Organization: an unknown code is refused under the field.
+- [ ] A เสียหาย / ใช้งานไม่ได้ condition picks ส่งซ่อม, and ซาก picks รอตัดจำหน่าย (P2-R16). พร้อมใช้งาน with a broken condition shows the warning line.
+- [ ] NVDA and VoiceOver on the checklist, the chips and the summary; an English pass.
+
 ## Sign-Off
 
 | Role | Tester | Date | Result | Notes |

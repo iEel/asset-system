@@ -13,7 +13,7 @@
 - Location: `Location`
 - Classification: `AssetCategory`, `AssetBrand`, `AssetModel`
 - Reference data: `AssetStatus`, `AssetCondition`
-- Asset register: `Asset`, `AssetComponent`, custom fields, label print tracking
+- Asset register: `Asset`, `AssetComponent` (its free-text `status` gains `outstanding`, a component left out of a return and still linked; no schema change), custom fields, label print tracking
 - Procurement documents: `PurchaseDocument`, `PurchaseDocumentAsset`
 - Transactions: `AssetCheckout`, `AssetCheckin`, `AssetTransfer`, `AssetMovement`
 - Audit: `AuditRound`, `AuditItem`, `AuditFinding`, `AuditScanHistory`
@@ -25,7 +25,7 @@
 - Audit rounds treat installed component assets as first-class `AuditItem` rows. `AssetComponent` remains the relationship source; no audit-specific component relationship table is added.
 - Parent-to-component master-data sync updates only supported ownership/location fields and records `AssetMovement` rows on each component asset.
 - `DisposalRequest` stores `evidenceExceptionReason`, `evidenceExceptionGrantedBy`, and `evidenceExceptionGrantedAt` only when the controlled historical-evidence exception is used. The normal execution evidence policy remains authoritative for ordinary disposal work.
-- New Check-out, Check-in, and Transfer documents store versioned authoritative before/after snapshots for the asset and installed components. Cancellation metadata marks the source document `void` without deleting it; Check-in cancellation reopens its related Check-out, and a filtered unique index permits at most one active Check-in per Check-out.
+- New Check-out, Check-in, and Transfer documents store versioned authoritative before/after snapshots for the asset and installed components. Cancellation metadata marks the source document `void` without deleting it; Check-in cancellation reopens its related Check-out, and a filtered unique index permits at most one active Check-in per Check-out. An RT-'s after snapshot may carry `repair: { id, repairNo, joined }`, and an outstanding component's before-snapshot entry carries `relationshipReferenceType` / `relationshipReferenceId` for the cancel.
 
 ## Asset Organization And Custody Semantics
 
