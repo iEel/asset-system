@@ -63,7 +63,8 @@ const { assertCanInstallComponent } = await import(pathToFileURL("src/lib/asset-
 const candidates = await import(pathToFileURL("src/app/api/assets/component-candidates/route.ts").href)
 const removal = await import(pathToFileURL("src/app/api/assets/[id]/components/[componentId]/route.ts").href)
 const read = (file: string) => readFileSync(file, "utf8")
-const link = (status: string) => ({ id: "link-1", parentAssetId: "parent-1", componentAssetId: "comp-1", status, removedAt: null, reason: null, referenceType: "checkin", referenceId: "checkin-1", componentRole: "RAM", slotNo: null, parentAsset: { assetTag: "GRL-COM-26-0100", name: "Notebook" }, componentAsset: { id: "comp-1", assetTag: "GRL-RAM-26-0001", name: "RAM 16GB" } })
+const LINK_UPDATED_AT = new Date("2026-10-20T04:00:00Z")
+const link = (status: string, reference: Row = { referenceType: "checkin", referenceId: "checkin-1" }) => ({ id: "link-1", parentAssetId: "parent-1", componentAssetId: "comp-1", status, removedAt: null, reason: null, ...reference, updatedAt: LINK_UPDATED_AT, componentRole: "RAM", slotNo: null, parentAsset: { assetTag: "GRL-COM-26-0100", name: "Notebook" }, componentAsset: { id: "comp-1", assetTag: "GRL-RAM-26-0001", name: "RAM 16GB" } })
 const remove = () => removal.DELETE(
   new Request("http://localhost/api/assets/parent-1/components/link-1", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "ไม่ได้คืน" }) }),
   { params: Promise.resolve({ id: "parent-1", componentId: "link-1" }) },
@@ -92,18 +93,43 @@ test("the candidate list leaves an outstanding component out (spec §8.5)", asyn
   assert.deepEqual(args("asset.findMany")[0].where?.installedInLinks, { none: installedOrOutstandingLinkWhere })
 })
 
-test("ถอดออก ends an outstanding link with a guarded write, and the RT- stays the link's reference (spec §8.5, P2-R17, GP G15)", async () => {
+test("ถอดออก ends an outstanding link with a guarded write on the status and updatedAt it read, under its own reference, not the RT- (spec §8.5, P2-R17, GP G15, final review server-2, journeys-2)", async () => {
   db.answers["assetComponent.findFirst"] = link("outstanding")
   db.answers["assetComponent.findUnique"] = { ...link("removed"), removedAt: new Date() }
   assert.equal((await remove()).status, 200)
   assert.deepEqual(args("assetComponent.findFirst")[0].where, { id: "link-1", parentAssetId: "parent-1", ...installedOrOutstandingLinkWhere })
   const [write] = args("assetComponent.updateMany")
-  assert.deepEqual(write.where, { id: "link-1", parentAssetId: "parent-1", ...installedOrOutstandingLinkWhere })
+  assert.deepEqual(write.where, { id: "link-1", parentAssetId: "parent-1", ...installedOrOutstandingLinkWhere, status: "outstanding", updatedAt: LINK_UPDATED_AT })
   const written = write.data as Row
   assert.ok(written.removedAt instanceof Date)
-  assert.deepEqual([written.status, written.reason, written.referenceType, written.referenceId, written.updatedBy], ["removed", "ไม่ได้คืน", "checkin", "checkin-1", "user-1"])
+  assert.deepEqual([written.status, written.reason, written.referenceType, written.referenceId, written.updatedBy], ["removed", "ไม่ได้คืน", "asset_component", "link-1", "user-1"], "the components tab reads a manual removal, as the movements do")
   assert.equal(args("assetComponent.update").length, 0, "no unguarded write")
-  assert.deepEqual((args("assetMovement.createMany")[0].data as Row[]).map((row) => row.movementType), ["component_remove", "removed_from_parent"])
+  const rows = args("assetMovement.createMany")[0].data as Row[]
+  assert.deepEqual(rows.map((row) => [row.movementType, row.referenceType, row.referenceId]), [["component_remove", "asset_component", "link-1"], ["removed_from_parent", "asset_component", "link-1"]])
+})
+
+test("ถอดออก of a link a late return re-attached also writes its own reference; a link with any other reference keeps it (final review journeys-2)", async () => {
+  db.answers["assetComponent.findFirst"] = link("installed")
+  db.answers["assetComponent.findUnique"] = { ...link("removed"), removedAt: new Date() }
+  assert.equal((await remove()).status, 200)
+  const reattached = args("assetComponent.updateMany")[0]
+  assert.deepEqual([reattached.where?.status, (reattached.data as Row).referenceType, (reattached.data as Row).referenceId], ["installed", "asset_component", "link-1"])
+  db.calls = []
+  db.answers["assetComponent.findFirst"] = link("installed", { referenceType: "maintenance", referenceId: "ticket-1" })
+  assert.equal((await remove()).status, 200)
+  const repaired = args("assetComponent.updateMany")[0].data as Row
+  assert.deepEqual([repaired.referenceType, repaired.referenceId], ["maintenance", "ticket-1"])
+})
+
+test("a late return that re-attached the link between the read and the write is refused 409: the guard pins the status it read (final review server-2)", async () => {
+  db.answers["assetComponent.findFirst"] = link("outstanding")
+  db.answers["assetComponent.findUnique"] = { ...link("removed"), removedAt: new Date() }
+  // The link is installed again now: a write guarded on "outstanding" matches nothing, one on installed-or-outstanding would.
+  const nowInstalled = (status: unknown) => (typeof status === "string" ? status === "installed" : (status as { in: string[] }).in.includes("installed"))
+  db.answers["assetComponent.updateMany"] = (a: Args) => ({ count: nowInstalled(a.where?.status) ? 1 : 0 })
+  const response = await remove()
+  assert.deepEqual([response.status, await response.json()], [409, { code: "ASSET_CHANGED_DURING_OPERATION", error: "Asset status changed while this request was being saved. Reload the asset and try again." }])
+  assert.deepEqual([args("assetMovement.createMany").length, args("attachment.create").length], [0, 0])
 })
 
 test("a link that changed between the read and the write (a late return, another ถอดออก) is refused 409 with nothing recorded; an ended one reads 404 (GP G15)", async () => {

@@ -33,16 +33,22 @@ export async function DELETE(request: NextRequest, context: ComponentRouteContex
     }
 
     const removedAt = input.removedAt ?? new Date()
+    // A link the RT- left out, or one a late return re-attached, carries the RT- as its reference. ถอดออก is a manual
+    // removal, so it writes its own reference, as its movements do, unless the request names one (final review journeys-2).
+    const keptReference = existing.referenceType === "checkin"
+      ? { referenceType: "asset_component", referenceId: existing.id }
+      : { referenceType: existing.referenceType, referenceId: existing.referenceId }
     const component = await prisma.$transaction(async (tx) => {
-      // A guarded write: a late return or another ถอดออก since the read ends here with a 409 (GP G15, P2-R17).
+      // A guarded write on the status and updatedAt read above: a late return (re-attached or standing alone) or another
+      // ถอดออก since the read ends here with a 409 (GP G15, P2-R17).
       const ended = await tx.assetComponent.updateMany({
-        where: { id: componentId, parentAssetId, ...installedOrOutstandingLinkWhere },
+        where: { id: componentId, parentAssetId, ...installedOrOutstandingLinkWhere, status: existing.status, updatedAt: existing.updatedAt },
         data: {
           removedAt,
           status: "removed",
           reason: input.reason ?? existing.reason,
-          referenceType: input.referenceType ?? existing.referenceType,
-          referenceId: input.referenceId ?? existing.referenceId,
+          referenceType: input.referenceType ?? keptReference.referenceType,
+          referenceId: input.referenceId ?? keptReference.referenceId,
           updatedBy: user.id,
         },
       })

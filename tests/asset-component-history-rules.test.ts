@@ -90,6 +90,12 @@ test("a link a return left out reads ส่วนควบค้างคืน 
     ["o1:remove", "component_remove", "RT-202610-0001"],
     ["o1:install", "component_install", null],
   ])
+  // ถอดออก of an outstanding or re-attached link writes its own reference (final review journeys-2): a removal, no RT-.
+  const removedByHand = { ...out, status: "removed", removedAt: at("2026-10-26T02:00:00Z"), updatedAt: at("2026-10-26T02:00:00Z"), reason: "ไม่ได้คืน", referenceType: "asset_component", referenceId: "o1" }
+  assert.deepEqual(buildAssetComponentHistory([removedByHand], "A", documentOfRt).map((event) => [event.id, event.kind, event.reason, event.document?.code ?? null]), [
+    ["o1:remove", "component_remove", "ไม่ได้คืน", null],
+    ["o1:install", "component_install", null, null],
+  ])
   // Links with any other reference read as before.
   assert.equal(buildAssetComponentHistory(rows, "A", documentOf).some((event) => event.kind === "component_outstanding" || event.kind === "component_late_return"), false)
 })
