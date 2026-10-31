@@ -32,7 +32,10 @@ const mockedModuleSources = new Map<string, string>([
       count: async () => { state().calls.push(name + ".count"); return rows.length },
     })
     export const prisma = { asset: model("asset", [ready]), assetCheckout: model("assetCheckout", []), maintenanceTicket: model("maintenanceTicket", []),
-      department: model("department", []), location: model("location", []), attachment: model("attachment", []) }
+      department: model("department", []), location: model("location", []), attachment: model("attachment", []),
+      // The outstanding-link fact read (group 3 spec §8.5); none here, so no RT- read.
+      assetComponent: model("assetComponent", []) }
+
   `],
 ])
 

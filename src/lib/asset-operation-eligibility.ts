@@ -4,6 +4,7 @@ import {
   getCheckinHandoverStatusError,
   getCheckoutConditionBlock,
   isLegacyReturnEligible,
+  normalizeAssetStateName,
 } from "./asset-lifecycle-policy.ts"
 import type { AssetOwnershipType } from "./asset-ownership.ts"
 
@@ -25,10 +26,15 @@ export type AssetOperationFacts = {
   hasOpenRepair: boolean
   /** The condition master's `name` ("Good", "Damaged", …); null when none is read. */
   conditionName: string | null
+  /** The outstanding link (group 3 spec §8.5) that holds this asset as a component, from a dedicated query; null when there is none. */
+  outstanding: AssetOperationOutstandingFact | null
 }
 
+/** An outstanding link holding the asset: its id and its RT- (the link's referenceId). */
+export type AssetOperationOutstandingFact = { linkId: string; checkinId: string | null }
+
 export type AssetOperationVerdict = { eligible: true; reasonKey: null } | { eligible: false; reasonKey: string }
-export type AssetCheckinPath = "handover" | "legacy" | null
+export type AssetCheckinPath = "handover" | "legacy" | "componentReturn" | null
 export type AssetCheckinVerdict = AssetOperationVerdict & { path: AssetCheckinPath }
 
 export type AssetOperationOwnershipOperation = "checkout" | "legacyCheckin" | "move"
@@ -38,7 +44,7 @@ export type AssetOperationOwnershipRefusalCode =
   | "ASSET_COMPONENT_CHECKIN_NOT_ALLOWED"
   | "ASSET_LICENSE_CHECKIN_NOT_ALLOWED"
   | "ASSET_LICENSE_MOVE_NOT_ALLOWED"
-export type AssetOperationRefusalCode = AssetOperationOwnershipRefusalCode
+export type AssetOperationRefusalCode = AssetOperationOwnershipRefusalCode | "ASSET_COMPONENT_OUTSTANDING"
 
 // Each refusal code's words, defined only here.
 export const assetOperationRefusalReasonKeys: Readonly<Record<AssetOperationRefusalCode, string>> = {
@@ -47,6 +53,7 @@ export const assetOperationRefusalReasonKeys: Readonly<Record<AssetOperationRefu
   ASSET_COMPONENT_CHECKIN_NOT_ALLOWED: "asset.transactionReasonComponentCheckin",
   ASSET_LICENSE_CHECKIN_NOT_ALLOWED: "asset.transactionReasonLicenseCheckin",
   ASSET_LICENSE_MOVE_NOT_ALLOWED: "asset.transactionReasonLicenseMove",
+  ASSET_COMPONENT_OUTSTANDING: "asset.transactionReasonComponentOutstanding",
 }
 
 const ownershipRefusals: Record<AssetOperationOwnershipOperation, Partial<Record<AssetOwnershipType, AssetOperationOwnershipRefusalCode>>> = {
@@ -64,7 +71,11 @@ export function getAssetOperationOwnershipRefusal(
   return ownershipRefusals[operation][ownership] ?? null
 }
 
+// The statuses an outstanding component is never returned from (normalised names).
+const componentReturnRefusedStatuses = ["disposed", "retired", "lost"]
+
 const yes: AssetOperationVerdict = { eligible: true, reasonKey: null }
+
 const no = (reasonKey: string): AssetOperationVerdict => ({ eligible: false, reasonKey })
 
 function ownershipRefusal(operation: AssetOperationOwnershipOperation, ownership: AssetOwnershipType): AssetOperationVerdict | null {
@@ -75,6 +86,7 @@ function ownershipRefusal(operation: AssetOperationOwnershipOperation, ownership
 // api/assets/[id]/checkout: the ownership, Ready, no open handover, then not เสียหาย/ใช้งานไม่ได้/ซาก (group 3 spec §19.2,
 // A1-R2).
 export function getCheckoutVerdict(facts: AssetOperationFacts): AssetOperationVerdict {
+  if (facts.outstanding) return no(assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING)
   const refused = ownershipRefusal("checkout", facts.ownership)
   if (refused) return refused
   if (getAssetLifecycleTransitionError("checkout", facts.statusName)) return no("asset.transactionReasonStatusNotReady")
@@ -87,7 +99,18 @@ export function getCheckoutVerdict(facts: AssetOperationFacts): AssetOperationVe
 // api/assets/[id]/checkin against the open handover (any ownership, S-R2), or api/assets/[id]/legacy-checkout. An open
 // repair does not refuse the handover's return: the return goes into ส่งซ่อม under that repair (S-R43), and with it open a
 // permanent handover's asset may be Under Maintenance or Pending Repair (S-R48). The legacy backfill still refuses one.
+// An outstanding component is returned on its own (group 3 spec §8.6): componentReturn comes first, before the handover, legacy and ownership rules.
 export function getCheckinVerdict(facts: AssetOperationFacts): AssetCheckinVerdict {
+  if (facts.outstanding) {
+    const path = "componentReturn"
+    // Missing (หาไม่พบ) is not refused: a component brought back has been found. Lost (สูญหาย) is confirmed, so it is.
+    if (componentReturnRefusedStatuses.includes(normalizeAssetStateName(facts.statusName))) return { ...no("asset.transactionReasonStatusNotReturnable"), path }
+    if (facts.openCheckout) return { ...no("asset.transactionReasonComponentOwnHandover"), path }
+    if (facts.hasOpenRepair) return { ...no("asset.transactionReasonActiveMaintenance"), path }
+    if (!facts.outstanding.checkinId) return { ...no("asset.transactionReasonNoReturnRecord"), path }
+    return { ...yes, path }
+  }
+
   if (facts.openCheckout) {
     const path = "handover"
     const error = getCheckinHandoverStatusError(facts.openCheckout.handoverMode, facts.statusName, { hasOpenRepair: facts.hasOpenRepair })
@@ -111,6 +134,7 @@ export function getCheckinVerdict(facts: AssetOperationFacts): AssetCheckinVerdi
 // api/assets/[id]/transfer: a custodian is assign_custodian, a move without one is move_scope; then the open handover
 // (user decision 2026-10-21 Y2; S-R40: the caller says which).
 export function getTransferVerdict(facts: AssetOperationFacts, context: { assignCustodian: boolean }): AssetOperationVerdict {
+  if (facts.outstanding) return no(assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING)
   const refused = ownershipRefusal("move", facts.ownership)
   if (refused) return refused
   if (getAssetLifecycleTransitionError(context.assignCustodian ? "assign_custodian" : "move_scope", facts.statusName)) {
@@ -122,6 +146,7 @@ export function getTransferVerdict(facts: AssetOperationFacts, context: { assign
 
 // The bulk move: the ownership, the open handover, then not Disposed/Retired, in the route's order.
 export function getBulkMoveVerdict(facts: AssetOperationFacts): AssetOperationVerdict {
+  if (facts.outstanding) return no(assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING)
   const refused = ownershipRefusal("move", facts.ownership)
   if (refused) return refused
   if (facts.openCheckout) return no("asset.transactionReasonOpenCheckout")

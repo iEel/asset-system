@@ -35,6 +35,8 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "ASSET_CHECKOUT_DESTINATION_INACTIVE": "checkoutDestinationInactive",
   "ASSET_COMPONENT_CHECKIN_NOT_ALLOWED": "componentCheckinNotAllowed",
   "ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED": "componentCheckoutNotAllowed",
+  "ASSET_COMPONENT_OUTSTANDING": "componentOutstanding",
+
   "ASSET_LICENSE_CHECKIN_NOT_ALLOWED": "licenseCheckinNotAllowed",
   "ASSET_LICENSE_CHECKOUT_NOT_ALLOWED": "licenseCheckoutNotAllowed",
   "ASSET_LICENSE_MOVE_NOT_ALLOWED": "licenseMoveNotAllowed",

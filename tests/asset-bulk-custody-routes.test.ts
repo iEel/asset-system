@@ -17,9 +17,12 @@ type BulkCustodyState = {
   assets: MockAsset[]
   activeCheckoutAssetIds: string[]
   calls: Array<{ call: string; args: unknown }>
+  /** Component asset ids with an outstanding link; each `assetComponent.findMany` takes the next of `outstandingAnswers` first, if any. */
+  outstandingAssetIds: string[]
+  outstandingAnswers: string[][]
 }
 
-const state: BulkCustodyState = { assets: [], activeCheckoutAssetIds: [], calls: [] }
+const state: BulkCustodyState = { assets: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [] }
 Object.assign(globalThis, { __bulkCustodyState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -85,6 +88,10 @@ const mockedModuleSources = new Map<string, string>([
             if (name === "assetCheckout" && (method === "findFirst" || method === "count")) {
               const active = state().activeCheckoutAssetIds.includes(args?.where?.assetId)
               return method === "count" ? (active ? 1 : 0) : active ? { id: "co-" + args.where.assetId } : null
+            }
+            if (name === "assetComponent" && method === "findMany") {
+              const out = state().outstandingAnswers.length > 0 ? state().outstandingAnswers.shift() : state().outstandingAssetIds
+              return out.filter((id) => (args?.where?.componentAssetId?.in ?? []).includes(id)).map((componentAssetId) => ({ componentAssetId, componentAsset: { assetTag: componentAssetId.toUpperCase() } }))
             }
             if (name === "assetStatus") return { id: args?.where?.id, name: String(args?.where?.id ?? "").replace("status:", ""), isActive: true }
             if (name === "assetCondition") return { id: "condition-good", name: "Good", isActive: true }
@@ -153,6 +160,8 @@ beforeEach(() => {
   ]
   state.activeCheckoutAssetIds = ["loaned-1"]
   state.calls = []
+  state.outstandingAssetIds = []
+  state.outstandingAnswers = []
 })
 
 test("bulk update refuses to reassign an asset that is out on loan", async () => {
@@ -247,4 +256,24 @@ test("the register form still saves non-custody edits of an asset that is out on
 
   assert.equal(response.status, 200)
   assert.equal(assetWrites().length, 1)
+})
+
+const outstandingBlocked = (assetId: string) => ({ assetId, assetTag: assetId.toUpperCase(), code: "ASSET_COMPONENT_OUTSTANDING" })
+
+test("bulk move refuses an outstanding component first, named per asset (group 3 spec §8.5, §10.2, P2-R17)", async () => {
+  state.outstandingAssetIds = ["component-1"]
+  const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["ready-1", "component-1", "license-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), { code: "ASSET_COMPONENT_OUTSTANDING", error: "ASSET_COMPONENT_OUTSTANDING", blocked: [outstandingBlocked("component-1")] })
+  assert.deepEqual(assetWrites(), [])
+})
+
+test("a link turned outstanding while the bulk move is saved is refused by the re-read after the claims, before any movement (P2-R17)", async () => {
+  state.outstandingAnswers = [[], ["ready-1"]]
+  const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["ready-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
+  assert.equal(response.status, 409)
+  assert.deepEqual((await response.json() as { blocked: unknown }).blocked, [outstandingBlocked("ready-1")])
+  const calls = state.calls.map(({ call }) => call)
+  assert.ok(calls.lastIndexOf("assetComponent.findMany") > calls.indexOf("asset.updateMany"), "read again after the claims")
+  assert.equal(calls.includes("assetMovement.createMany"), false)
 })

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { outstandingLinkWhere } from "@/lib/asset-component-outstanding"
 import { getCheckinReturnStatuses } from "@/lib/asset-status-flow"
 import { getAssetOperationConditionOptions, type AssetOperationConditionOperation } from "@/lib/asset-lifecycle-policy"
 import type { AssetOperationMode } from "@/lib/asset-operation-eligibility"
@@ -66,8 +67,17 @@ export async function getAssetOperationMasterOptions(options?: { employeeDetail?
     employeeDetail
       ? prisma.asset.groupBy({
         by: ["custodianId"],
-        // Leaves out ส่วนควบ (spec §7.2): an asset owned as ส่วนควบ, and one installed in another whatever its ownership (it carries its parent's holder).
-        where: { isActive: true, custodianId: { not: null }, ownershipType: { not: "component" }, installedInLinks: { none: { status: "installed", removedAt: null } } },
+        // Leaves out ส่วนควบ (spec §7.2): an asset owned as ส่วนควบ, and one installed in another (it carries its parent's
+        // holder). An outstanding component counts: ผู้คืน holds it on its own (group 3 spec §8.5, P2-R17).
+        where: {
+          isActive: true,
+          custodianId: { not: null },
+          OR: [
+            { ownershipType: { not: "component" }, installedInLinks: { none: { status: "installed", removedAt: null } } },
+            { installedInLinks: { some: outstandingLinkWhere } },
+          ],
+        },
+
         _count: { _all: true },
       })
       : Promise.resolve([] as Array<{ custodianId: string | null; _count: { _all: number } }>),

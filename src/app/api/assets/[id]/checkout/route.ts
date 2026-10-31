@@ -6,7 +6,12 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { issuesToFieldErrors } from "@/lib/field-errors"
-import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
+import {
+  AssetComponentOutstandingError,
+  AssetOperationConflictError,
+  assertNoOutstandingComponentLinks,
+  claimAssetForCustodyChange,
+} from "@/lib/asset-operation-claim"
 import {
   getAssetLifecycleTransitionError,
   getAssetOperationConditionError,
@@ -50,6 +55,8 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       include: { status: { select: { name: true, nameTh: true } }, condition: { select: { name: true } } },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    // An outstanding component is returned first (group 3 spec §8.5), before the ownership rule, as the verdict.
+    await assertNoOutstandingComponentLinks(prisma, [id])
     const ownershipRefusal = getAssetOperationOwnershipRefusal("checkout", asset.ownershipType)
     if (ownershipRefusal) return NextResponse.json({ code: ownershipRefusal, error: ownershipRefusal }, { status: 409 })
     const statusError = getAssetLifecycleTransitionError("checkout", asset.status.name)
@@ -89,6 +96,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
 
     const { record: checkout, componentSync, departmentId, previousDepartmentId, conditionId, previousConditionId } = await prisma.$transaction(async (tx) => {
       await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
+      await assertNoOutstandingComponentLinks(tx, [id])
       const destination = await readActiveCheckoutDestination(tx, input)
       if (!destination) throw new CheckoutDestinationInactiveError(checkoutDestinationField(input.checkoutType))
       const beforeAsset = await tx.asset.findUnique({
@@ -291,7 +299,11 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
 
     return NextResponse.json(checkout, { status: 201 })
   } catch (error) {
+    if (error instanceof AssetComponentOutstandingError) {
+      return NextResponse.json({ code: error.code, error: error.code, fieldErrors: { assetId: "componentOutstanding" } }, { status: 409 })
+    }
     if (error instanceof CheckoutDestinationInactiveError) return destinationInactiveResponse(error.field)
+
     if (error instanceof CheckoutConditionBlockedError) return conditionBlockedResponse(error.block)
     if (error instanceof AssetOperationConflictError) {
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })

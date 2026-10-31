@@ -5,6 +5,7 @@ import test from "node:test"
 import {
   firstIdByAssetId,
   getAssetActions,
+  outstandingFactByAssetId,
   getAssetRecordRepairAction,
   openDisposalRequestWhere,
   type AssetAction,
@@ -24,7 +25,9 @@ const base: AssetActionInput = {
   openCheckoutHandoverMode: null,
   openRepairId: null,
   openDisposalId: null,
+  outstanding: null,
   returnTo: "/th/assets?search=nb&page=1&pageSize=25",
+
   can: { assetEdit: true, maintenanceCreate: true, maintenanceView: true, disposalView: true },
 }
 const actions = (overrides: Partial<AssetActionInput>) => getAssetActions({ ...base, ...overrides })
@@ -274,4 +277,24 @@ test("the action words are the spec's, and every key the rule names exists in Th
     assert.equal(typeof message("th", key), "string", `th ${key}`)
     assert.equal(typeof message("en", key), "string", `en ${key}`)
   }
+})
+
+test("an outstanding component gets รับคืน, which opens its late return by ?assetId=; its handover and transfer say why not (group 3 spec §8.5, §8.6, P2-R17)", () => {
+  const rt = `returnTo=${encodeURIComponent(base.returnTo)}`
+  const outstanding = { linkId: "link-1", checkinId: "rt-1" }
+  const component = actions({ ownership: "component", custodianId: "e-1", outstanding })
+  assert.deepEqual(brief(component.primary), ["checkin", "asset.rowActionCheckin", true, null])
+  assert.equal(component.primary?.href, `/th/asset-management/checkin?assetId=a-1&${rt}`)
+  assert.deepEqual(component.transactions.map(brief), [["manageComponents", "asset.manageComponents", true, null], ["transfer", "asset.quickMoveComponent", false, "asset.transactionReasonComponentOutstanding"]])
+  // Without the link a ส่วนควบ has no รับคืน (the legacy path refuses it, so it would sit disabled on every component).
+  assert.equal(all({ ownership: "component", custodianId: "e-1" }).some((action) => action.key === "checkin"), false)
+  const personal = actions({ custodianId: "e-1", outstanding })
+  assert.equal(personal.primary?.href, `/th/asset-management/checkin?assetId=a-1&${rt}`)
+  assert.deepEqual(personal.transactions.map(brief), [["checkout", "asset.rowActionCheckout", false, "asset.transactionReasonComponentOutstanding"], ["transfer", "asset.rowActionTransfer", false, "asset.transactionReasonComponentOutstanding"]])
+})
+
+test("the register's outstanding facts: the first link per component wins (callers order newest first)", () => {
+  assert.deepEqual([...outstandingFactByAssetId([
+    { id: "l-2", componentAssetId: "a-1", referenceId: "rt-2" }, { id: "l-1", componentAssetId: "a-1", referenceId: "rt-1" }, { id: "l-3", componentAssetId: "a-2", referenceId: null },
+  ])], [["a-1", { linkId: "l-2", checkinId: "rt-2" }], ["a-2", { linkId: "l-3", checkinId: null }]])
 })

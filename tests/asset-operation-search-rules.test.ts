@@ -15,6 +15,7 @@ import {
   splitAssetOperationSearchWords, buildAssetOperationComponentLinkWhere, buildAssetOperationRowDetail,
   type AssetOperationChosenDetail, type AssetOperationSearchDetailAsset,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
+  assetOperationOutstandingLinkSelect, type AssetOperationOutstandingLinkRecord, type AssetOperationOutstandingRead,
 } from "../src/lib/asset-operation-search-rules.ts"
 
 function input(query: string): AssetOperationSearchInput {
@@ -187,14 +188,15 @@ test("รับคืน: exact codes, then held rows, then code prefixes, then 
 
 test("each mode asks Task 1's verdict, so the picker, the asset page and the routes agree (spec §5, S-R1)", () => {
   const facts: AssetOperationFacts[] = [
-    { statusName: "Ready", ownership: "personal", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null },
-    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: { id: "co-1", handoverMode: "permanent_assignment" }, hasOpenRepair: false, conditionName: null },
-    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: null, hasOpenRepair: true, conditionName: null },
-    { statusName: "Checked Out", ownership: "shared", custodianId: null, openCheckout: { id: "co-2", handoverMode: null }, hasOpenRepair: false, conditionName: null },
-    { statusName: "Ready", ownership: "stock", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null },
-    { statusName: "Ready", ownership: "component", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null },
-    { statusName: "Ready", ownership: "software_license", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null },
-    { statusName: "Disposed", ownership: "shared", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null },
+    { statusName: "Ready", ownership: "personal", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: null },
+    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: { id: "co-1", handoverMode: "permanent_assignment" }, hasOpenRepair: false, conditionName: null, outstanding: null },
+    { statusName: "In Use", ownership: "personal", custodianId: "emp-1", openCheckout: null, hasOpenRepair: true, conditionName: null, outstanding: null },
+    { statusName: "Checked Out", ownership: "shared", custodianId: null, openCheckout: { id: "co-2", handoverMode: null }, hasOpenRepair: false, conditionName: null, outstanding: null },
+    { statusName: "Ready", ownership: "stock", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: null },
+    { statusName: "Ready", ownership: "component", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: null },
+    { statusName: "Ready", ownership: "software_license", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: null },
+    { statusName: "Disposed", ownership: "shared", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: null },
+    { statusName: "Ready", ownership: "personal", custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: { linkId: "link-1", checkinId: "rt-1" } },
   ]
   const pick = (verdict: AssetOperationVerdict) => ({ eligible: verdict.eligible, reasonKey: verdict.reasonKey })
   const verdict = (query: string, row: AssetOperationFacts) => getAssetOperationSearchVerdict(input(query), row)
@@ -208,6 +210,9 @@ test("each mode asks Task 1's verdict, so the picker, the asset page and the rou
   // By value (spec 6.3): an In Use asset on ส่งมอบ; a held component on รับคืน.
   assert.deepEqual(verdict("mode=checkout&q=ab", facts[2]), { eligible: false, reasonKey: "asset.transactionReasonStatusNotReady" })
   assert.deepEqual(verdict("mode=checkin&q=ab", facts[5]), { eligible: false, reasonKey: "asset.transactionReasonComponentCheckin" })
+  // An outstanding component (group 3 spec §8.5, §8.6): refused by ส่งมอบ, taken by รับคืน.
+  assert.deepEqual(verdict("mode=checkout&q=ab", facts[8]), { eligible: false, reasonKey: "asset.transactionReasonComponentOutstanding" })
+  assert.deepEqual(verdict("mode=checkin&q=ab", facts[8]), { eligible: true, reasonKey: null })
 })
 
 test("a row carries the words the picker shows, no raw code: status nameTh, the holder when held, else the location (spec 6.1)", () => {
@@ -299,4 +304,56 @@ test("the rules module is client-safe: relative imports, Prisma for types only, 
   }
   visit("src/lib/asset-operation-search-rules.ts")
   assert.ok(seen.has("src/lib/asset-operation-eligibility.ts"), "the verdicts are Task 1's")
+})
+
+const parentStock: AssetOperationOutstandingLinkRecord["parentAsset"] = {
+  id: "asset-p", assetTag: "NB-0017", name: "โน้ตบุ๊ก Dell", isActive: true, custodianId: null, status: { name: "Ready" }, _count: { checkouts: 0, maintenanceTickets: 0 },
+}
+const outLink = (overrides: Partial<AssetOperationOutstandingLinkRecord> = {}): AssetOperationOutstandingLinkRecord =>
+  ({ id: "link-1", componentAssetId: "asset-1", referenceId: "rt-1", parentAsset: parentStock, ...overrides })
+const rt1 = { id: "rt-1", documentNo: "RT-202610-0004", returnDate: new Date("2026-10-20T00:00:00.000Z") }
+const outRead = (link = outLink(), checkin: AssetOperationOutstandingRead["checkin"] = rt1): AssetOperationOutstandingRead => ({ link, checkin })
+const late = (outstanding: AssetOperationOutstandingRead) => buildAssetOperationSearchRow(input("mode=checkin&q=0228"), held, { ...ctx(null), outstanding })
+
+test("the outstanding link read: the link, its RT- reference, and its parent's IT-stock facts (group 3 spec §8.6, P2-R17)", () => {
+  assert.deepEqual(assetOperationOutstandingLinkSelect, {
+    id: true, componentAssetId: true, referenceId: true,
+    parentAsset: { select: {
+      id: true, assetTag: true, name: true, isActive: true, custodianId: true, status: { select: { name: true } },
+      _count: { select: {
+        checkouts: { where: { isReturned: false, transactionStatus: "active" } },
+        maintenanceTickets: { where: { isActive: true, repairStatus: { notIn: ["closed", "cancelled"] } } },
+      } },
+    } },
+  })
+})
+
+test("รับคืน: an outstanding component is a row of its own with its late return, its badge, and never ข้อมูลเก่า (group 3 spec §8.6, P2-R4, P2-R17)", () => {
+  const row = late(outRead())
+  assert.deepEqual(row.lateReturn, {
+    linkId: "link-1", checkinId: "rt-1", checkinNo: "RT-202610-0004", checkinDate: "2026-10-20T00:00:00.000Z",
+    parent: { id: "asset-p", assetTag: "NB-0017", name: "โน้ตบุ๊ก Dell" }, parentInStock: true,
+  })
+  assert.deepEqual([row.eligible, row.reasonKey, row.badge, "legacy" in row, "checkout" in row, row.holderKey, row.holderEmployeeId],
+    [true, null, "outstanding", false, false, "employee:emp-1", "emp-1"])
+  // The parent anywhere else: the panel says the component stands alone (P2-R4).
+  for (const parentAsset of [{ ...parentStock, custodianId: "emp-2" }, { ...parentStock, status: { name: "In Use" } }, { ...parentStock, isActive: false },
+    { ...parentStock, _count: { checkouts: 1, maintenanceTickets: 0 } }, { ...parentStock, _count: { checkouts: 0, maintenanceTickets: 1 } }]) {
+    assert.equal(late(outRead(outLink({ parentAsset }))).lateReturn?.parentInStock, false, JSON.stringify(parentAsset))
+  }
+  // An RT- that cannot be read keeps its id; its number and date read null.
+  assert.deepEqual([late(outRead(outLink(), null)).lateReturn?.checkinId, late(outRead(outLink(), null)).lateReturn?.checkinNo, late(outRead(outLink(), null)).lateReturn?.checkinDate], ["rt-1", null, null])
+  // A link that names no RT- is refused, with no late return.
+  const unlinked = late(outRead(outLink({ referenceId: null }), null))
+  assert.deepEqual([unlinked.eligible, unlinked.reasonKey, "lateReturn" in unlinked, unlinked.badge], [false, "asset.transactionReasonNoReturnRecord", false, "outstanding"])
+})
+
+test("the other modes refuse an outstanding component and carry no รับคืน keys; the รับคืน badge follows the row (P2-R17)", () => {
+  for (const mode of ["checkout", "transfer", "bulkMove"]) {
+    const row = buildAssetOperationSearchRow(input(`mode=${mode}&q=0228`), asset, { openCheckout: null, hasOpenRepair: false, outstanding: outRead() })
+    assert.deepEqual([row.eligible, row.reasonKey, "lateReturn" in row, "badge" in row], [false, "asset.transactionReasonComponentOutstanding", false, false], mode)
+  }
+  assert.equal(buildAssetOperationSearchRow(input("mode=checkin&q=0228"), held, ctx(handover)).badge, "handover")
+  assert.equal(buildAssetOperationSearchRow(input("mode=checkin&q=0228"), held, ctx(null)).badge, "legacy")
+  assert.equal("badge" in buildAssetOperationSearchRow(input("mode=checkin&q=0228"), asset, ctx(null)), false)
 })

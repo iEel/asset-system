@@ -1,3 +1,7 @@
+import type { Prisma } from "@prisma/client"
+
+import { outstandingLinkWhere } from "./asset-component-outstanding.ts"
+
 export class AssetOperationConflictError extends Error {
   readonly code: "ASSET_CHANGED_DURING_OPERATION" | "ASSET_ACTIVE_CHECKOUT_EXISTS" | "ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE"
 
@@ -49,4 +53,43 @@ export async function claimAssetForCustodyChange(
   if (activeCheckout) {
     throw new AssetOperationConflictError("ASSET_ACTIVE_CHECKOUT_EXISTS", "Asset already has an active checkout")
   }
+}
+
+type OutstandingLinkReader = {
+  assetComponent: {
+    findMany(args: {
+      where: Prisma.AssetComponentWhereInput
+      select: { componentAssetId: true; componentAsset: { select: { assetTag: true } } }
+    }): Promise<Array<{ componentAssetId: string; componentAsset: { assetTag: string } }>>
+  }
+}
+
+export class AssetComponentOutstandingError extends Error {
+  readonly code: "ASSET_COMPONENT_OUTSTANDING"
+  readonly blocked: Array<{ assetId: string; assetTag: string }>
+
+  constructor(blocked: Array<{ assetId: string; assetTag: string }>) {
+    super("ASSET_COMPONENT_OUTSTANDING")
+    this.name = "AssetComponentOutstandingError"
+    this.code = "ASSET_COMPONENT_OUTSTANDING"
+    this.blocked = blocked
+  }
+}
+
+// An outstanding component (group 3 spec §8.5) is not handed over, transferred, moved or backfilled on its own. The
+// routes call this before the transaction and again after the claim.
+export async function assertNoOutstandingComponentLinks(db: OutstandingLinkReader, assetIds: readonly string[]): Promise<void> {
+  const links = await db.assetComponent.findMany({
+    where: { componentAssetId: { in: [...assetIds] }, ...outstandingLinkWhere },
+    select: { componentAssetId: true, componentAsset: { select: { assetTag: true } } },
+  })
+  if (links.length === 0) return
+  const tags = new Map<string, string>()
+  for (const link of links) if (!tags.has(link.componentAssetId)) tags.set(link.componentAssetId, link.componentAsset.assetTag)
+  const blocked: Array<{ assetId: string; assetTag: string }> = []
+  for (const assetId of new Set(assetIds)) {
+    const assetTag = tags.get(assetId)
+    if (assetTag !== undefined) blocked.push({ assetId, assetTag })
+  }
+  throw new AssetComponentOutstandingError(blocked)
 }

@@ -1,6 +1,8 @@
-// The asset page frame's one read (group 1 asset detail task 8B): seven single-row reads in one round, each with
+// The asset page frame's one read (group 1 asset detail task 8B): eight single-row reads in one round, each with
 // the API's own definition of "open" (spec §5 Performance, §7.1).
 import { prisma } from "@/lib/db"
+import { outstandingLinkWhere } from "@/lib/asset-component-outstanding"
+import type { AssetOperationOutstandingFact } from "@/lib/asset-operation-eligibility"
 import type { AuditRoundRef } from "@/lib/asset-detail-frame-rules"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import { latestAuditResultAt, latestAuditResultOrderBy, latestAuditResultWhere } from "@/lib/latest-audit-result-rules"
@@ -19,12 +21,14 @@ export type AssetDetailFrame = {
   pendingAudit: { round: AuditRoundRef } | null
   latestHandover: { id: string; documentNo: string | null } | null
   disposalBlockers: DisposalReadinessBlocker[]
+  /** The outstanding link holding this asset as a component (group 3 spec §8.5): the action rule's fact. */
+  outstanding: AssetOperationOutstandingFact | null
 }
 
 const auditRoundRefSelect = { select: { id: true, auditNo: true } } as const
 
 export async function getAssetDetailFrame(assetId: string): Promise<AssetDetailFrame> {
-  const [openCheckout, openRepair, openDisposal, pendingItem, latestItem, latestHandover, readiness] = await Promise.all([
+  const [openCheckout, openRepair, openDisposal, pendingItem, latestItem, latestHandover, readiness, outstandingLink] = await Promise.all([
     prisma.assetCheckout.findFirst({
       where: { assetId, isReturned: false, transactionStatus: "active" },
       orderBy: { checkoutDate: "desc" },
@@ -55,6 +59,12 @@ export async function getAssetDetailFrame(assetId: string): Promise<AssetDetailF
       select: { id: true, documentNo: true },
     }),
     prisma.asset.findUnique({ where: { id: assetId }, select: disposalReadinessAssetSelect }),
+    // An outstanding link holding this asset (group 3 spec §8.5), the newest of duplicates (GP X1).
+    prisma.assetComponent.findFirst({
+      where: { componentAssetId: assetId, ...outstandingLinkWhere },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      select: { id: true, referenceId: true },
+    }),
   ])
 
   return {
@@ -68,5 +78,7 @@ export async function getAssetDetailFrame(assetId: string): Promise<AssetDetailF
     pendingAudit: pendingItem ? { round: pendingItem.auditRound } : null,
     latestHandover,
     disposalBlockers: readiness ? getDisposalReadinessBlockersForAsset(readiness) : [],
+    outstanding: outstandingLink ? { linkId: outstandingLink.id, checkinId: outstandingLink.referenceId } : null,
   }
+
 }

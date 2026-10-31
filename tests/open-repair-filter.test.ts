@@ -6,8 +6,9 @@ const users = [
   "src/app/api/assets/[id]/legacy-checkout/route.ts",
   "src/app/[locale]/(dashboard)/assets/page.tsx",
   "src/lib/asset-state-review-service.ts",
-  "src/lib/checkin-page-data.ts",
+  "src/lib/legacy-return-rule.ts",
 ]
+
 
 test("open repair checks use the shared filter and ignore the old [PM] prefix", () => {
   for (const file of users) {

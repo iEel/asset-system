@@ -68,6 +68,7 @@ test("the asset page asks the shared action rule, and the register's old helper 
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8").replace(/\r/g, "")
 
   assert.match(source, /getAssetActions\(actionInput\)/)
+  assert.match(source, /openDisposalId: frame\.openDisposalId,\n\s+outstanding: frame\.outstanding,/)
   assert.doesNotMatch(source, /getAssetRegisterTransactionActions|getOwnershipLifecycle|disabled: !activeCheckout/)
   assert.equal("getAssetRegisterTransactionActions" in operationPolicy, false)
 })
@@ -89,6 +90,9 @@ test("the register's rows ask the shared action rule, with the open repair and d
   assert.match(register, /prisma\.disposalRequest\.findMany\(\{\s*where: \{ \.\.\.openDisposalRequestWhere, assetId: \{ in: assetIds \} \},\s*select: \{ id: true, assetId: true \},\s*orderBy: \{ requestDate: "desc" \},?\s*\}\)/)
   assert.match(register, /maintenanceView: hasPermission\(user, "maintenance", "view"\)/)
   assert.match(register, /disposalView: hasPermission\(user, "disposal", "view"\)/)
+  assert.match(register, /prisma\.assetComponent\.findMany\(\{\s*where: \{ componentAssetId: \{ in: assetIds \}, \.\.\.outstandingLinkWhere \},\s*select: \{ id: true, componentAssetId: true, referenceId: true \},\s*orderBy: \[\{ updatedAt: "desc" \}, \{ id: "asc" \}\],?\s*\}\)/)
+  assert.match(register, /conditionName: asset\.condition\.name,\n\s+outstanding: outstandingByAssetId\.get\(asset\.id\) \?\? null,\n\s+returnTo: registerReturnHref,/)
+
   assert.doesNotMatch(register, /getAssetRegisterTransactionActions|getRowNextAction|buildAssetRegisterTransactionHref/)
   const policy = readFileSync("src/lib/asset-operation-policy.ts", "utf8")
   assert.doesNotMatch(policy, /export function getRowNextAction/)

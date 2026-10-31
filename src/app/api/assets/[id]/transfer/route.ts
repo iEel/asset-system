@@ -4,7 +4,12 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
+import {
+  AssetComponentOutstandingError,
+  AssetOperationConflictError,
+  assertNoOutstandingComponentLinks,
+  claimAssetForCustodyChange,
+} from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError, getTransferTargetStatusName } from "@/lib/asset-lifecycle-policy"
 import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
@@ -40,6 +45,8 @@ export async function POST(request: NextRequest, context: TransferContext) {
       include: { status: { select: { name: true, nameTh: true } } },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    // An outstanding component is returned first (group 3 spec §8.5), before the ownership rule, as the verdict.
+    await assertNoOutstandingComponentLinks(prisma, [id])
     const ownershipRefusal = getAssetOperationOwnershipRefusal("move", asset.ownershipType)
     if (ownershipRefusal) return NextResponse.json({ code: ownershipRefusal, error: ownershipRefusal }, { status: 409 })
     const operation = input.toCustodianId ? "assign_custodian" : "move_scope"
@@ -61,6 +68,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
 
     const { transfer, componentSync, fromSnapshot, toSnapshot } = await prisma.$transaction(async (tx) => {
       await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
+      await assertNoOutstandingComponentLinks(tx, [id])
       const beforeAsset = await tx.asset.findUnique({
         where: { id },
         select: {
@@ -185,7 +193,11 @@ export async function POST(request: NextRequest, context: TransferContext) {
 
     return NextResponse.json(transfer, { status: 201 })
   } catch (error) {
+    if (error instanceof AssetComponentOutstandingError) {
+      return NextResponse.json({ code: error.code, error: error.code, fieldErrors: { assetId: "componentOutstanding" } }, { status: 409 })
+    }
     if (error instanceof AssetOperationConflictError) {
+
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)

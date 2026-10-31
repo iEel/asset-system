@@ -110,7 +110,9 @@ test("a transaction refusal reads the picker's words for the same rule (server-s
     ASSET_COMPONENT_CHECKOUT_NOT_ALLOWED: "componentCheckoutNotAllowed", ASSET_LICENSE_CHECKOUT_NOT_ALLOWED: "licenseCheckoutNotAllowed",
     ASSET_COMPONENT_CHECKIN_NOT_ALLOWED: "componentCheckinNotAllowed", ASSET_LICENSE_CHECKIN_NOT_ALLOWED: "licenseCheckinNotAllowed",
     ASSET_LICENSE_MOVE_NOT_ALLOWED: "licenseMoveNotAllowed",
+    ASSET_COMPONENT_OUTSTANDING: "componentOutstanding",
   })
+
   // S-R43: an open repair no longer refuses a return; another next status than ส่งซ่อม is refused under that field.
   assert.equal(getApiErrorKey("ASSET_CHECKIN_REPAIR_OPEN"), null)
   assert.equal(getApiErrorKey("ASSET_CHECKIN_REPAIR_STATUS_REQUIRED"), "checkinRepairStatusRequired")

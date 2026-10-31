@@ -8,10 +8,13 @@ import {
   getTransferVerdict,
   type AssetOperationFacts,
   type AssetOperationMode,
+  type AssetOperationOutstandingFact,
   type AssetOperationVerdict,
 } from "./asset-operation-eligibility.ts"
 import { normalizeAssetOwnershipType, type AssetOwnershipType } from "./asset-ownership.ts"
 import type { AssetPhotoPreview } from "./asset-photo-preview.ts"
+import { getLateReturnOutcome } from "./component-late-return.ts"
+import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // The rules of the transaction pages' bounded asset search (server search spec 6.1-6.3): the query, the where clauses,
 // the ranking, the row and the รับคืน groups. Client-safe: the picker imports the constants, the href and the types.
@@ -207,6 +210,51 @@ export function buildAssetOperationComponentLinkWhere(parentAssetId: string): Pr
   return { parentAssetId, status: "installed", removedAt: null, componentAsset: { isActive: true } }
 }
 
+/**
+ * An outstanding link holding a found asset (group 3 spec §8.5, §8.6): the link, its RT- reference, and its parent's
+ * IT-stock facts (getLateReturnOutcome), read with the asset's own facts.
+ */
+export const assetOperationOutstandingLinkSelect = {
+  id: true,
+  componentAssetId: true,
+  referenceId: true,
+  parentAsset: {
+    select: {
+      id: true,
+      assetTag: true,
+      name: true,
+      isActive: true,
+      custodianId: true,
+      status: { select: { name: true } },
+      _count: {
+        select: {
+          checkouts: { where: openCheckoutWhere },
+          maintenanceTickets: { where: openRepairRecordWhere },
+        },
+      },
+    },
+  },
+} satisfies Prisma.AssetComponentSelect
+export type AssetOperationOutstandingLinkRecord = Prisma.AssetComponentGetPayload<{ select: typeof assetOperationOutstandingLinkSelect }>
+/** The RT- an outstanding link names (รับคืน only). */
+export const assetOperationOutstandingCheckinSelect = { id: true, documentNo: true, returnDate: true } satisfies Prisma.AssetCheckinSelect
+export type AssetOperationOutstandingRead = {
+  link: AssetOperationOutstandingLinkRecord
+  checkin: { id: string; documentNo: string | null; returnDate: Date } | null
+}
+
+/** What the late-return panel needs (P2-R4): the link, its RT-, the parent, and whether the parent is in IT stock. */
+export type AssetOperationLateReturn = {
+  linkId: string
+  checkinId: string
+  checkinNo: string | null
+  /** The RT-'s returnDate, ISO. */
+  checkinDate: string | null
+  parent: { id: string; assetTag: string; name: string }
+  parentInStock: boolean
+}
+export type AssetOperationRowBadge = "handover" | "legacy" | "outstanding"
+
 export type AssetOperationChosenComponent = { id: string; assetTag: string; name: string; travels: boolean }
 /** The chosen asset's detail on ส่งมอบ (group 3 spec §7.1, §7.3). Labels are null when there is none, never "-". */
 export type AssetOperationChosenDetail = {
@@ -283,8 +331,12 @@ export type AssetOperationSearchRow = {
   // รับคืน only (the keys are absent in the other modes):
   /** The open handover (the custody panel's fields). */
   checkout?: AssetOperationSearchCheckout
-  /** A holder and no handover: ข้อมูลเก่า. */
+  /** A holder and no handover, and not an outstanding component: ข้อมูลเก่า. */
   legacy?: true
+  /** An outstanding component whose link names its RT- (group 3 spec §8.6): the late-return panel's data. */
+  lateReturn?: AssetOperationLateReturn
+  /** The row's kind for the picker's badge: an open handover, ข้อมูลเก่า or an outstanding component. */
+  badge?: AssetOperationRowBadge
   /** The group; who returns it (the return-by prefill). */
   holderKey?: string
   holderLabel?: string | null
@@ -393,9 +445,15 @@ export function buildAssetOperationSearchRow(
     hasOpenRepair: boolean
     labels?: AssetOperationDestinationLabels
     photo?: AssetPhotoPreview | null
+    /** The outstanding link holding this asset, with its RT- on รับคืน (group 3 spec §8.5, §8.6). */
+    outstanding?: AssetOperationOutstandingRead | null
   },
 ): AssetOperationSearchRow {
   const { openCheckout, hasOpenRepair } = context
+  const outstandingRead = context.outstanding ?? null
+  const outstanding: AssetOperationOutstandingFact | null = outstandingRead
+    ? { linkId: outstandingRead.link.id, checkinId: outstandingRead.link.referenceId }
+    : null
   const facts: AssetOperationFacts = {
     statusName: asset.status.name,
     ownership: normalizeAssetOwnershipType(asset.ownershipType),
@@ -403,6 +461,7 @@ export function buildAssetOperationSearchRow(
     openCheckout: openCheckout && { id: openCheckout.id, handoverMode: openCheckout.handoverMode },
     hasOpenRepair,
     conditionName: asset.condition?.name ?? null,
+    outstanding,
   }
   const verdict = getAssetOperationSearchVerdict(input, facts)
   const row: AssetOperationSearchRow = {
@@ -424,7 +483,28 @@ export function buildAssetOperationSearchRow(
   if (input.mode !== "checkin") return row
 
   const holder = getCheckinHolder(openCheckout, asset, context.labels ?? noLabels)
-  if (openCheckout) {
+  if (outstandingRead) {
+    // An outstanding component is returned on its own: never a handover's row, never ข้อมูลเก่า.
+    row.badge = "outstanding"
+    const { link, checkin } = outstandingRead
+    if (link.referenceId) {
+      const parent = link.parentAsset
+      row.lateReturn = {
+        linkId: link.id,
+        checkinId: link.referenceId,
+        checkinNo: checkin?.documentNo ?? null,
+        checkinDate: checkin?.returnDate.toISOString() ?? null,
+        parent: { id: parent.id, assetTag: parent.assetTag, name: parent.name },
+        parentInStock: getLateReturnOutcome({
+          isActive: parent.isActive,
+          statusName: parent.status.name,
+          custodianId: parent.custodianId,
+          hasOpenCheckout: parent._count.checkouts > 0,
+          hasOpenRepair: parent._count.maintenanceTickets > 0,
+        }) === "reattached",
+      }
+    }
+  } else if (openCheckout) {
     row.checkout = {
       id: openCheckout.id,
       documentNo: openCheckout.documentNo,
@@ -436,9 +516,12 @@ export function buildAssetOperationSearchRow(
       remark: openCheckout.remark,
       destinationLabel: holder.label ?? "-",
     }
+    row.badge = "handover"
   } else if (asset.custodianId) {
     row.legacy = true
+    row.badge = "legacy"
   }
+
   row.holderKey = holder.key
   row.holderLabel = holder.label
   row.holderEmployeeId = holder.employeeId

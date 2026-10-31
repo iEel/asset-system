@@ -3,7 +3,12 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
+import {
+  AssetComponentOutstandingError,
+  AssetOperationConflictError,
+  assertNoOutstandingComponentLinks,
+  claimAssetForCustodyChange,
+} from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError } from "@/lib/asset-lifecycle-policy"
 import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
@@ -37,6 +42,8 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
       },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    // An outstanding component is returned late (group 3 spec §8.5, §8.6), never backfilled.
+    await assertNoOutstandingComponentLinks(prisma, [id])
     const ownershipRefusal = getAssetOperationOwnershipRefusal("legacyCheckin", asset.ownershipType)
     if (ownershipRefusal) return NextResponse.json({ code: ownershipRefusal, error: ownershipRefusal }, { status: 409 })
     const statusError = getAssetLifecycleTransitionError("legacy_return_backfill", asset.status.name)
@@ -70,6 +77,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
 
     const checkout = await prisma.$transaction(async (tx) => {
       await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
+      await assertNoOutstandingComponentLinks(tx, [id])
       const documentNo = await generateCheckoutDocumentNo(tx, checkoutDate)
       const record = await tx.assetCheckout.create({
         data: {
@@ -130,7 +138,11 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
 
     return NextResponse.json(checkout, { status: 201 })
   } catch (error) {
+    if (error instanceof AssetComponentOutstandingError) {
+      return NextResponse.json({ code: error.code, error: error.code }, { status: 409 })
+    }
     if (error instanceof AssetOperationConflictError) {
+
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)

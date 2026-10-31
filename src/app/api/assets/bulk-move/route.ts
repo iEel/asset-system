@@ -5,7 +5,11 @@ import { errorResponse } from "@/lib/api-response"
 import { assetBulkMoveSchema } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { getBulkCustodyChangeError } from "@/lib/asset-custody-policy"
-import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
+import {
+  AssetComponentOutstandingError,
+  AssetOperationConflictError,
+  assertNoOutstandingComponentLinks,
+} from "@/lib/asset-operation-claim"
 import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibility"
 
 export async function POST(request: NextRequest) {
@@ -31,6 +35,9 @@ export async function POST(request: NextRequest) {
     if (assets.length !== uniqueAssetIds.length) {
       return NextResponse.json({ error: "Some assets were not found" }, { status: 404 })
     }
+
+    // An outstanding component is returned first (group 3 spec §8.5), before the License refusal, as the verdict.
+    await assertNoOutstandingComponentLinks(prisma, uniqueAssetIds)
 
     // A License is bound on its asset page, never moved (server-search spec 6.5); named per asset like the written-off refusal below.
     const licenses = assets.flatMap((asset) => {
@@ -77,6 +84,7 @@ export async function POST(request: NextRequest) {
           )
         }
       }
+      await assertNoOutstandingComponentLinks(tx, assets.map((asset) => asset.id))
 
       await tx.assetMovement.createMany({
         data: assets.map((asset) => ({
@@ -130,7 +138,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    if (error instanceof AssetComponentOutstandingError) {
+      return NextResponse.json({
+        code: error.code,
+        error: error.code,
+        blocked: error.blocked.map((row) => ({ ...row, code: error.code })),
+      }, { status: 409 })
+    }
     if (error instanceof AssetOperationConflictError) {
+
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import * as nodeModule from "node:module"
 import { beforeEach, test } from "node:test"
 import { pathToFileURL } from "node:url"
 
+import { outstandingLinkWhere } from "../src/lib/asset-component-outstanding.ts"
 import { getCheckinVerdict } from "../src/lib/asset-operation-eligibility.ts"
 import { assetOwnershipTypes, type AssetOwnershipType } from "../src/lib/asset-ownership.ts"
 
@@ -113,14 +114,45 @@ test("the legacy count is one count over the legacy rule", async () => {
     status: { name: { in: ["Ready", "In Use"] } },
     checkouts: { none: { isReturned: false, transactionStatus: "active" } },
     maintenanceTickets: { none: { isActive: true, repairStatus: { notIn: ["closed", "cancelled"] } } },
+    installedInLinks: { none: outstandingLinkWhere },
   })
   assert.equal(await data.countLegacyReturns(), 42)
   assert.deepEqual(state.calls.at(-1), { call: "asset.count", args: { where: data.legacyReturnCountWhere } })
 })
 
 test("the count's ownership types and statuses are exactly those getCheckinVerdict takes on the legacy path (one rule)", () => {
-  const facts = (ownership: AssetOwnershipType, statusName: string) => ({ statusName, ownership, custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null })
+  const facts = (ownership: AssetOwnershipType, statusName: string) => ({ statusName, ownership, custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: null })
   assert.deepEqual([...data.legacyReturnOwnershipTypes], assetOwnershipTypes.filter((ownership) => getCheckinVerdict(facts(ownership, "Ready")).eligible))
   const statuses = ["Draft", "Ready", "In Use", "Reserved", "Checked Out", "In Transit", "Under Maintenance", "Pending Repair", "Under Inspection", "Lost", "Missing", "Pending Disposal", "Disposed", "Retired"] // prisma/seed.ts:17-30
   assert.deepEqual([...data.legacyReturnStatusNames], statuses.filter((status) => getCheckinVerdict(facts("personal", status)).eligible))
+})
+
+test("the legacy count, the legacy verdict and the legacy backfill leave an outstanding component out: one where, in a pure module (group 3 spec §8.5, P2-R17, P2-R20)", () => {
+  assert.deepEqual(data.legacyReturnCountWhere.installedInLinks, { none: outstandingLinkWhere })
+  const outstanding = { linkId: "link-1", checkinId: "rt-1" }
+  for (const ownership of data.legacyReturnOwnershipTypes) for (const statusName of data.legacyReturnStatusNames) {
+    const verdict = getCheckinVerdict({ statusName, ownership, custodianId: "emp-1", openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding })
+    assert.equal(verdict.path, "componentReturn", `${ownership} ${statusName}`)
+  }
+  const rule = readFileSync("src/lib/legacy-return-rule.ts", "utf8")
+  assert.doesNotMatch(rule, /from "@\/|\bprisma\./)
+  for (const line of rule.split(/\r?\n/).filter((line) => line.startsWith("import ") && !line.startsWith("import type "))) assert.match(line, /from "\.\/[\w-]+\.ts"$/, line)
+  // The backfill route's guard reads the same where, before and after the claim.
+  assert.match(readFileSync("src/lib/asset-operation-claim.ts", "utf8"), /\.\.\.outstandingLinkWhere/)
+  const route = readFileSync("src/app/api/assets/[id]/legacy-checkout/route.ts", "utf8")
+  assert.match(route, /assertNoOutstandingComponentLinks\(prisma, \[id\]\)/)
+  assert.match(route, /assertNoOutstandingComponentLinks\(tx, \[id\]\)/)
+})
+
+test("?assetId= of an outstanding component starts with its late-return row, chosen or chosen-but-blocked (group 3 spec §8.6, P2-R17)", async () => {
+  const lateRow = {
+    id: "c-2", assetTag: "NB-0017-02", eligible: true, reasonKey: null, badge: "outstanding",
+    lateReturn: { linkId: "link-1", checkinId: "rt-1", checkinNo: "RT-202610-0004", checkinDate: "2026-10-20T00:00:00.000Z", parent: { id: "asset-p", assetTag: "NB-0017", name: "โน้ตบุ๊ก Dell" }, parentInStock: true },
+  }
+  state.answer = { mode: "checkin", total: 1, rows: [lateRow] }
+  assert.deepEqual(await data.getCheckinPreselect({ assetId: "c-2" }), { row: lateRow, query: "" })
+  assert.deepEqual(state.calls.at(-1), { call: "search", args: { input: { mode: "checkin", q: "", id: "c-2", assignCustodian: false } } })
+  const blocked = { ...lateRow, eligible: false, reasonKey: "asset.transactionReasonActiveMaintenance" }
+  state.answer = { mode: "checkin", total: 1, rows: [blocked] }
+  assert.deepEqual(await data.getCheckinPreselect({ assetId: "c-2" }), { row: blocked, query: "" })
 })

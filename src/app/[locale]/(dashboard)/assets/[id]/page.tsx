@@ -334,7 +334,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     openCheckoutHandoverMode: frame.openCheckout?.handoverMode ?? null,
     openRepairId: frame.openRepairId,
     openDisposalId: frame.openDisposalId,
+    outstanding: frame.outstanding,
     conditionName: asset.condition.name,
+
     returnTo: currentAssetDetailHref,
     can: { assetEdit: canEditAsset, maintenanceCreate: canCreateMaintenance, maintenanceView: canViewMaintenance, disposalView: canViewDisposal },
   }

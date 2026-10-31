@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { AssetOperationConflictError, claimAssetForCustodyChange } from "../src/lib/asset-operation-claim.ts"
+import { outstandingLinkWhere } from "../src/lib/asset-component-outstanding.ts"
+import {
+  AssetComponentOutstandingError, AssetOperationConflictError, assertNoOutstandingComponentLinks, claimAssetForCustodyChange,
+} from "../src/lib/asset-operation-claim.ts"
 
 type Call = { model: string; method: string; args: unknown }
 
@@ -60,4 +63,17 @@ test("re-checks for an active checkout inside the transaction after claiming", a
     method: "findFirst",
     args: { where: { assetId: "asset-1", isReturned: false, transactionStatus: "active" }, select: { id: true } },
   })
+})
+
+test("an outstanding component refuses a custody save: one read of the given ids' outstanding links, each named once in the order given (group 3 spec §8.5, P2-R17)", async () => {
+  const calls: unknown[] = []
+  const db = { assetComponent: { findMany: async (args: unknown) => {
+    calls.push(args)
+    return [{ componentAssetId: "a-2", componentAsset: { assetTag: "TAG-2" } }, { componentAssetId: "a-2", componentAsset: { assetTag: "TAG-2" } }, { componentAssetId: "a-1", componentAsset: { assetTag: "TAG-1" } }]
+  } } }
+  await assert.rejects(assertNoOutstandingComponentLinks(db, ["a-1", "a-2", "a-3"]), (error) =>
+    error instanceof AssetComponentOutstandingError && error.code === "ASSET_COMPONENT_OUTSTANDING" && error.message === "ASSET_COMPONENT_OUTSTANDING"
+    && JSON.stringify(error.blocked) === JSON.stringify([{ assetId: "a-1", assetTag: "TAG-1" }, { assetId: "a-2", assetTag: "TAG-2" }]))
+  assert.deepEqual(calls, [{ where: { componentAssetId: { in: ["a-1", "a-2", "a-3"] }, ...outstandingLinkWhere }, select: { componentAssetId: true, componentAsset: { select: { assetTag: true } } } }])
+  await assertNoOutstandingComponentLinks({ assetComponent: { findMany: async () => [] } }, ["a-1"])
 })

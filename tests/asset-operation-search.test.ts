@@ -3,10 +3,12 @@ import test from "node:test"
 
 import { searchAssetOperationOptions, type AssetOperationSearchDb } from "../src/lib/asset-operation-search.ts"
 import {
-  assetOperationSearchAssetSelect, assetOperationSearchDetailAssetSelect, buildAssetOperationSearchWheres, parseAssetOperationSearch,
+  assetOperationOutstandingLinkSelect, assetOperationSearchAssetSelect, assetOperationSearchDetailAssetSelect, buildAssetOperationSearchWheres, parseAssetOperationSearch,
+  type AssetOperationOutstandingLinkRecord,
   type AssetOperationComponentLink, type AssetOperationSearchDetailAsset,
   type AssetOperationSearchAsset, type AssetOperationSearchCheckoutRecord, type AssetOperationSearchInput,
 } from "../src/lib/asset-operation-search-rules.ts"
+import { outstandingLinkWhere } from "../src/lib/asset-component-outstanding.ts"
 
 function input(query: string): AssetOperationSearchInput {
   const parsed = parseAssetOperationSearch(new URLSearchParams(query))
@@ -39,13 +41,15 @@ function checkout(overrides: Partial<AssetOperationSearchCheckoutRecord>): Asset
   }
 }
 
-type Where = { id?: string | { in: string[] }; assetId?: { in: string[] }; OR?: Array<{ assetTag?: unknown }> } & Record<string, unknown>
+type Where = { id?: string | { in: string[] }; assetId?: { in: string[] }; componentAssetId?: { in: string[] }; OR?: Array<{ assetTag?: unknown }> } & Record<string, unknown>
 type Args = { where: Where; select?: unknown; orderBy?: unknown; take?: number }
 function fakeDb(data: {
   exact?: AssetOperationSearchAsset[]; held?: AssetOperationSearchAsset[]; prefix?: AssetOperationSearchAsset[]; contains?: AssetOperationSearchAsset[]; total?: number
   checkouts?: AssetOperationSearchCheckoutRecord[]; repairAssetIds?: string[]; links?: AssetOperationComponentLink[]
   modelImages?: Array<{ id: string; referenceId: string; originalName: string; fileType: string }>
   assetImages?: Array<{ id: string; assetId: string; originalName: string; fileType: string }>
+  outstanding?: AssetOperationOutstandingLinkRecord[]
+  checkins?: Array<{ id: string; documentNo: string | null; returnDate: Date }>
 } = {}) {
   const calls: Array<{ call: string; args: Args }> = []
   const all = [...(data.exact ?? []), ...(data.held ?? []), ...(data.prefix ?? []), ...(data.contains ?? [])]
@@ -65,7 +69,19 @@ function fakeDb(data: {
       async count(args: Args) { calls.push({ call: "asset.count", args }); return data.total ?? 0 },
     },
     assetCheckout: { async findMany(args: Args) { calls.push({ call: "assetCheckout.findMany", args }); return (data.checkouts ?? []).filter((row) => args.where.assetId?.in.includes(row.assetId)) } },
-    assetComponent: { async findMany(args: Args) { calls.push({ call: "assetComponent.findMany", args }); return data.links ?? [] } },
+    assetComponent: {
+      async findMany(args: Args) {
+        calls.push({ call: "assetComponent.findMany", args })
+        if (args.where.componentAssetId) return (data.outstanding ?? []).filter((row) => args.where.componentAssetId!.in.includes(row.componentAssetId))
+        return data.links ?? []
+      },
+    },
+    assetCheckin: {
+      async findMany(args: Args) {
+        calls.push({ call: "assetCheckin.findMany", args })
+        return (data.checkins ?? []).filter((row) => (args.where.id as { in: string[] }).in.includes(row.id))
+      },
+    },
     maintenanceTicket: { async findMany(args: Args) { calls.push({ call: "maintenanceTicket.findMany", args }); return (data.repairAssetIds ?? []).map((assetId) => ({ assetId })) } },
     department: { async findMany(args: Args) { calls.push({ call: "department.findMany", args }); return [{ id: "dep-1", code: "IT", name: "ฝ่ายไอที" }] } },
     location: { async findMany(args: Args) { calls.push({ call: "location.findMany", args }); return [] } },
@@ -120,6 +136,7 @@ test("nothing found: no further reads; รับคืน answers an empty group
   const { db, calls } = fakeDb()
   assert.deepEqual(await searchAssetOperationOptions(db, input("mode=bulkMove&q=zz")), { mode: "bulkMove", total: 0, rows: [] })
   assert.equal(calls.some((call) => call.call === "assetCheckout.findMany" || call.call === "maintenanceTicket.findMany"), false)
+  assert.equal(calls.some((call) => call.call === "assetComponent.findMany"), false)
   assert.deepEqual(await searchAssetOperationOptions(fakeDb().db, input("mode=checkin&q=zz")), { mode: "checkin", total: 0, rows: [], groups: [] })
 })
 
@@ -206,16 +223,16 @@ test("by id with detail=1: the detail select, one read of the installed links an
     components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false }],
   })
   assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchDetailAssetSelect])
-  assert.deepEqual(calls.filter((call) => call.call === "assetComponent.findMany").map((call) => call.args.where), [{ parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } }])
+  assert.deepEqual(calls.filter((call) => call.call === "assetComponent.findMany").map((call) => call.args.where), [{ componentAssetId: { in: ["asset-1"] }, ...outstandingLinkWhere }, { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } }])
   assert.deepEqual(calls.filter((call) => call.call === "assetCheckout.findMany").map((call) => call.args.where.assetId?.in).sort(), [["asset-1"], ["c-1", "c-2"]])
 })
 
-test("without detail=1 the by-id read keeps the list select and reads nothing more; a parent without components reads no component handovers (P1-R5)", async () => {
+test("without detail=1 the by-id read keeps the list select and reads no installed links; a parent without components reads no component handovers (P1-R5)", async () => {
   const plain = fakeDb({ contains: [detailAsset("NB-0017", { id: "asset-1" })], links: [link("c-1", "NB-0017-01", "Adapter 65W")] })
   const [row] = (await searchAssetOperationOptions(plain.db, input("mode=checkout&id=asset-1"))).rows
   assert.equal("detail" in row, false)
   assert.deepEqual(plain.calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchAssetSelect])
-  assert.equal(plain.calls.some((call) => call.call === "assetComponent.findMany"), false)
+  assert.deepEqual(plain.calls.filter((call) => call.call === "assetComponent.findMany").map((call) => call.args.where), [{ componentAssetId: { in: ["asset-1"] }, ...outstandingLinkWhere }], "only the outstanding-link fact read")
   const bare = fakeDb({ contains: [detailAsset("CCTV-0001", { id: "asset-2", ownershipType: "shared" })] })
   const [shared] = (await searchAssetOperationOptions(bare.db, input("mode=checkout&id=asset-2&detail=1"))).rows
   assert.deepEqual([shared.detail?.ownership, shared.detail?.departmentLabel, shared.detail?.holderLabel, shared.detail?.components], ["shared", null, null, []])
@@ -242,4 +259,37 @@ test("every row carries the register's photo, one photo read per answer: the mod
   const [row] = (await searchAssetOperationOptions(chosen.db, input("mode=checkout&id=asset-1&detail=1"))).rows
   assert.deepEqual([row.photo, Boolean(row.detail)], [{ id: "img-m1", alt: "dell.jpg", fileType: "image/jpeg" }, true])
   assert.equal("modelId" in assetOperationSearchAssetSelect, true)
+})
+
+const parentInStock = { id: "asset-p", assetTag: "NB-0017", name: "โน้ตบุ๊ก Dell", isActive: true, custodianId: null, status: { name: "Ready" }, _count: { checkouts: 0, maintenanceTickets: 0 } }
+const outstandingLink = (id: string, componentAssetId: string): AssetOperationOutstandingLinkRecord => ({ id, componentAssetId, referenceId: "rt-1", parentAsset: parentInStock })
+
+test("every mode reads the found ids' outstanding links once, newest first; รับคืน reads their RT- and lists the late return; the other modes refuse it (group 3 spec §8.5, §8.6, P2-R17)", async () => {
+  const mouse = asset("NB-0017-02", { id: "c-2", custodianId: "emp-1", custodian: somchai })
+  const data = {
+    contains: [mouse, asset("A-9", { id: "a9" })], total: 2,
+    outstanding: [outstandingLink("link-2", "c-2"), outstandingLink("link-1", "c-2")],   // two links of one component (GP X1): the first wins
+    checkins: [{ id: "rt-1", documentNo: "RT-202610-0004", returnDate: new Date("2026-10-20T00:00:00.000Z") }],
+  }
+  const checkin = fakeDb(data)
+  const row = (await searchAssetOperationOptions(checkin.db, input("mode=checkin&q=0017"))).rows.find((candidate) => candidate.id === "c-2")
+  assert.deepEqual(row?.lateReturn, {
+    linkId: "link-2", checkinId: "rt-1", checkinNo: "RT-202610-0004", checkinDate: "2026-10-20T00:00:00.000Z",
+    parent: { id: "asset-p", assetTag: "NB-0017", name: "โน้ตบุ๊ก Dell" }, parentInStock: true,
+  })
+  assert.deepEqual([row?.eligible, row?.badge, row?.holderKey], [true, "outstanding", "employee:emp-1"])
+  assert.deepEqual(checkin.calls.filter((call) => call.call === "assetComponent.findMany").map((call) => [call.args.where, call.args.select, call.args.orderBy]),
+    [[{ componentAssetId: { in: ["c-2", "a9"] }, ...outstandingLinkWhere }, assetOperationOutstandingLinkSelect, [{ updatedAt: "desc" }, { id: "asc" }]]])
+  assert.deepEqual(checkin.calls.filter((call) => call.call === "assetCheckin.findMany").map((call) => [call.args.where, call.args.select]),
+    [[{ id: { in: ["rt-1"] } }, { id: true, documentNo: true, returnDate: true }]])
+  for (const mode of ["checkout", "transfer", "bulkMove"]) {
+    const other = fakeDb(data)
+    const refused = (await searchAssetOperationOptions(other.db, input(`mode=${mode}&q=0017`))).rows.find((candidate) => candidate.id === "c-2")
+    assert.deepEqual([refused?.eligible, refused?.reasonKey, refused && "lateReturn" in refused], [false, "asset.transactionReasonComponentOutstanding", false], mode)
+    assert.equal(other.calls.filter((call) => call.call === "assetComponent.findMany").length, 1, mode)
+    assert.equal(other.calls.some((call) => call.call === "assetCheckin.findMany"), false, `${mode}: no RT- read`)
+  }
+  const plain = fakeDb({ contains: [asset("A-9", { id: "a9" })], total: 1 })
+  await searchAssetOperationOptions(plain.db, input("mode=checkin&q=A-9"))
+  assert.equal(plain.calls.some((call) => call.call === "assetCheckin.findMany"), false, "no outstanding link, no RT- read")
 })

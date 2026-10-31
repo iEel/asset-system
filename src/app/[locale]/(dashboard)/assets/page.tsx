@@ -25,7 +25,8 @@ import { formatCount } from "@/lib/display-format"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { hasPermission } from "@/lib/auth-utils"
-import { firstIdByAssetId, getAssetActions, openDisposalRequestWhere } from "@/lib/asset-actions"
+import { firstIdByAssetId, getAssetActions, openDisposalRequestWhere, outstandingFactByAssetId } from "@/lib/asset-actions"
+import { outstandingLinkWhere } from "@/lib/asset-component-outstanding"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { chooseAssetPhotoPreview, type AssetPhotoPreview } from "@/lib/asset-photo-preview"
 
@@ -165,7 +166,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     new Set(assets.map((asset) => asset.model?.id).filter((modelId): modelId is string => Boolean(modelId)))
   )
   const assetIds = assets.map((asset) => asset.id)
-  const [modelPhotos, openCheckouts, openRepairRecords, openDisposalRequests] = await Promise.all([
+  const [modelPhotos, openCheckouts, openRepairRecords, openDisposalRequests, outstandingLinks] = await Promise.all([
     withPerformanceTiming<AssetModelPhotoPreview[]>(
       "assets.model-photos",
       () => modelIds.length
@@ -203,6 +204,14 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           orderBy: { requestDate: "desc" },
         })
       : Promise.resolve([]),
+    // The outstanding links holding the rows' assets (group 3 spec §8.5), newest first.
+    assetIds.length
+      ? prisma.assetComponent.findMany({
+          where: { componentAssetId: { in: assetIds }, ...outstandingLinkWhere },
+          select: { id: true, componentAssetId: true, referenceId: true },
+          orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+        })
+      : Promise.resolve([]),
   ])
   const modelPhotoByModelId = new Map<string, (typeof modelPhotos)[number]>()
   for (const photo of modelPhotos) {
@@ -218,6 +227,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   }
   const openRepairIdByAssetId = firstIdByAssetId(openRepairRecords)
   const openDisposalIdByAssetId = firstIdByAssetId(openDisposalRequests)
+  const outstandingByAssetId = outstandingFactByAssetId(outstandingLinks)
   const actionPermissions = {
     assetEdit: canEditAssets,
     maintenanceCreate: hasPermission(user, "maintenance", "create"),
@@ -309,7 +319,9 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       openRepairId: openRepairIdByAssetId.get(asset.id) ?? null,
       openDisposalId: openDisposalIdByAssetId.get(asset.id) ?? null,
       conditionName: asset.condition.name,
+      outstanding: outstandingByAssetId.get(asset.id) ?? null,
       returnTo: registerReturnHref,
+
       can: actionPermissions,
     })
 

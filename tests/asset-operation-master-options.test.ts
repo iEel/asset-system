@@ -4,6 +4,8 @@ import * as nodeModule from "node:module"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
 
+import { outstandingLinkWhere } from "../src/lib/asset-component-outstanding.ts"
+
 // The transaction pages' loader (server search Task 5): the master lists and the ?assetId= preselect, with the db and
 // the search faked, so the test reads which reads the loader makes.
 const state: { calls: string[]; args: Record<string, unknown>; searchCalls: { input: Record<string, unknown> }[]; rows: Record<string, unknown>[] } = { calls: [], args: {}, searchCalls: [], rows: [] }
@@ -95,10 +97,19 @@ test("with employeeDetail (ส่งมอบ) the master lists read no asset ro
     conditions: [{ id: "c1", label: "ดี", name: "Good" }],
   })
   assert.deepEqual([...state.calls].sort(), ["asset.groupBy", "assetCondition.findMany", "assetStatus.findMany", "department.findMany", "employee.findMany", "location.findMany"])
-  // An installed component carries its parent's holder through the sync, whatever its ownership, so it would count twice.
+  // An installed component carries its parent's holder through the sync, whatever its ownership, so it would count twice. An outstanding
+  // component is held by ผู้คืน on its own, so it counts, a ส่วนควบ included (group 3 spec §8.5, P2-R17).
   assert.deepEqual(state.args["asset.groupBy"], {
     by: ["custodianId"],
-    where: { isActive: true, custodianId: { not: null }, ownershipType: { not: "component" }, installedInLinks: { none: { status: "installed", removedAt: null } } },
+    where: {
+      isActive: true,
+      custodianId: { not: null },
+      OR: [
+        { ownershipType: { not: "component" }, installedInLinks: { none: { status: "installed", removedAt: null } } },
+        { installedInLinks: { some: outstandingLinkWhere } },
+      ],
+    },
+
     _count: { _all: true },
   })
   assert.deepEqual((state.args["employee.findMany"] as { select: unknown }).select,

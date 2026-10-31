@@ -85,6 +85,7 @@ test("every word comes from messages: the states, the count, reasons through the
     't("resultCountMore", { count: formatCount(countLine.count), shown: formatCount(countLine.shown) })',
     't("chosen")', 't("noHolderGroup")', 't("legacyLineAt", { location: detail.locationLabel })', 't("selectedTitle", { count: values.length })', 't("change")',
     't(mode === "checkin" ? "hintCheckin" : "hint")', "tAll(note.key)",
+    't("outstandingLine", { parentTag: detail.parentTag })',
   ]) assert.ok(source.includes(part), part)
   assert.match(source, /t\("handoverLine", \{ documentNo: detail\.documentNo, date: formatDate\(detail\.checkoutDate\) \}\)/)
   assert.match(source, /t\("groupCount", \{ count: section\.group\.count \}\)/)
@@ -156,6 +157,8 @@ test("the picker's words, Thai and English (glossary: ผู้ถือคร�
     groupCount: ["ถืออยู่ {count} ชิ้น", "Holds {count}"],
     handoverLine: ["ใบส่งมอบ {documentNo} · ส่งมอบ {date}", "Handover {documentNo} · {date}"],
     legacyLineAt: ["ข้อมูลเก่า (ไม่มีใบส่งมอบ) · {location}", "Legacy record (no handover) · {location}"],
+    outstandingLine: ["ส่วนควบค้างคืน ของ {parentTag}", "Outstanding component of {parentTag}"],
+
   }
   for (const [key, [thai, english]] of Object.entries(words)) {
     assert.equal(th.assetOperation?.[key], thai, `th ${key}`)

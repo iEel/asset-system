@@ -1,26 +1,12 @@
-import type { Prisma } from "@prisma/client"
-
 import { searchAssetOperationOptions, type AssetOperationSearchDb } from "@/lib/asset-operation-search"
 import type { AssetOperationSearchRow } from "@/lib/asset-operation-search-rules"
 import { prisma } from "@/lib/db"
-import { openRepairRecordWhere } from "@/lib/repair-record-policy"
+import { legacyReturnCountWhere } from "@/lib/legacy-return-rule"
 
 // The รับคืน page's bounded reads (server search spec 6.3, 6.4): at most one preselect answer and one count. The
-// register itself is never listed here; the picker asks the server search.
-
-/** The ownership types and statuses getCheckinVerdict takes on the legacy path (pinned against it, one rule). */
-export const legacyReturnOwnershipTypes = ["personal", "shared", "stock"] as const
-export const legacyReturnStatusNames = ["Ready", "In Use"] as const
-
-/** ข้อมูลเก่า: a holder, no open handover and no open repair. */
-export const legacyReturnCountWhere: Prisma.AssetWhereInput = {
-  isActive: true,
-  custodianId: { not: null },
-  ownershipType: { in: [...legacyReturnOwnershipTypes] },
-  status: { name: { in: [...legacyReturnStatusNames] } },
-  checkouts: { none: { isReturned: false, transactionStatus: "active" } },
-  maintenanceTickets: { none: { ...openRepairRecordWhere } },
-}
+// register itself is never listed here; the picker asks the server search. The legacy where lives in
+// legacy-return-rule.ts (pure), re-exported here.
+export { legacyReturnCountWhere, legacyReturnOwnershipTypes, legacyReturnStatusNames } from "@/lib/legacy-return-rule"
 
 export function countLegacyReturns(): Promise<number> {
   return prisma.asset.count({ where: legacyReturnCountWhere })
@@ -44,7 +30,8 @@ function searchById(assetId: string) {
 
 // ?checkoutId= (the handover document's link, and the backfill's own replace) starts with that open handover's row,
 // chosen or chosen-but-blocked; it wins over ?assetId=. ?assetId= fills the search with the asset's tag and chooses
-// nothing. A repeated parameter reaches the page as an array and the first counts (S-R42).
+// nothing. An outstanding component's ?assetId= starts with its late-return row, chosen or chosen-but-blocked (group 3
+// spec §8.6). A repeated parameter reaches the page as an array and the first counts (S-R42).
 export async function getCheckinPreselect(params: {
   checkoutId?: string | string[]
   assetId?: string | string[]
@@ -65,7 +52,10 @@ export async function getCheckinPreselect(params: {
 
   if (assetId) {
     const answer = await searchById(assetId)
-    return { row: null, query: answer.rows[0]?.assetTag ?? "" }
+    const row = answer.rows[0]
+    if (row?.badge === "outstanding") return { row, query: "" }
+    return { row: null, query: row?.assetTag ?? "" }
+
   }
 
   return { row: null, query: "" }

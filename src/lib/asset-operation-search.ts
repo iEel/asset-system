@@ -1,5 +1,8 @@
+import { outstandingLinkWhere } from "./asset-component-outstanding.ts"
 import {
   assetOperationComponentLinkSelect,
+  assetOperationOutstandingCheckinSelect,
+  assetOperationOutstandingLinkSelect,
   assetOperationSearchAssetSelect,
   assetOperationSearchCheckoutSelect,
   assetOperationSearchDetailAssetSelect,
@@ -14,6 +17,8 @@ import {
   rankAssetOperationMatches,
   type AssetOperationComponentLink,
   type AssetOperationDestinationLabels,
+  type AssetOperationOutstandingLinkRecord,
+  type AssetOperationOutstandingRead,
   type AssetOperationSearchAnswer,
   type AssetOperationSearchAsset,
   type AssetOperationSearchCheckoutRecord,
@@ -24,7 +29,8 @@ import { readAssetPhotoPreviews } from "./asset-photo-preview.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // The reads of the transaction pages' asset search (server search spec 6.1-6.4). Bounded: at most 5 asset reads,
-// 1 count, 2 fact reads, 2 photo reads and 2 label reads per answer, every `in` list at most 20 ids; with detail=1 (by id only): one
+// 1 count, 3 fact reads (open handovers, open repairs, outstanding links), 2 photo reads, 2 label reads and, on รับคืน
+// when an outstanding link is found, 1 RT- read per answer, every `in` list at most 20 ids; with detail=1 (by id only): one
 // read of the parent's installed links and one of their open handovers. The db is injected, as
 // searchMaintenanceOptions, so the pages call it for the preselect and the tests fake it.
 
@@ -33,6 +39,7 @@ export type AssetOperationSearchDb = {
   asset: { findMany(args: object): Promise<unknown[]>; count(args: object): Promise<number> }
   assetCheckout: { findMany(args: object): Promise<unknown[]> }
   assetComponent: { findMany(args: object): Promise<unknown[]> }
+  assetCheckin: { findMany(args: object): Promise<unknown[]> }
   maintenanceTicket: { findMany(args: object): Promise<unknown[]> }
   department: { findMany(args: object): Promise<unknown[]> }
   location: { findMany(args: object): Promise<unknown[]> }
@@ -129,7 +136,7 @@ export async function searchAssetOperationOptions(
   if (assets.length === 0) return mode === "checkin" ? { mode, total, rows: [], groups: [] } : { mode, total, rows: [] }
 
   const ids = assets.map((asset) => asset.id)
-  const [checkouts, repairs, photos] = await Promise.all([
+  const [checkouts, repairs, photos, outstandingLinks] = await Promise.all([
     db.assetCheckout.findMany({
       where: { assetId: { in: ids }, ...openCheckoutWhere },
       select: assetOperationSearchCheckoutSelect,
@@ -140,6 +147,12 @@ export async function searchAssetOperationOptions(
       select: { assetId: true },
     }) as Promise<Array<{ assetId: string }>>,
     readAssetPhotoPreviews(db, assets),
+    // An outstanding link holding a found asset (group 3 spec §8.5, §8.6), newest first.
+    db.assetComponent.findMany({
+      where: { componentAssetId: { in: ids }, ...outstandingLinkWhere },
+      select: assetOperationOutstandingLinkSelect,
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    }) as Promise<AssetOperationOutstandingLinkRecord[]>,
   ])
   // The latest open handover per asset wins, as firstIdByAssetId (asset-actions.ts).
   const openCheckoutByAssetId = new Map<string, AssetOperationSearchCheckoutRecord>()
@@ -147,14 +160,35 @@ export async function searchAssetOperationOptions(
     if (!openCheckoutByAssetId.has(checkout.assetId)) openCheckoutByAssetId.set(checkout.assetId, checkout)
   }
   const repairAssetIds = new Set(repairs.map((repair) => repair.assetId))
-  const labels = mode === "checkin" ? await readDestinationLabels(db, openCheckoutByAssetId.values()) : undefined
+  // Two outstanding links of one component (GP X1): the newest wins, as the open handover above.
+  const outstandingLinkByAssetId = new Map<string, AssetOperationOutstandingLinkRecord>()
+  for (const link of outstandingLinks) {
+    if (!outstandingLinkByAssetId.has(link.componentAssetId)) outstandingLinkByAssetId.set(link.componentAssetId, link)
+  }
+  const checkinIds = mode === "checkin"
+    ? [...new Set([...outstandingLinkByAssetId.values()].flatMap((link) => (link.referenceId ? [link.referenceId] : [])))]
+    : []
+  const [labels, outstandingCheckins] = await Promise.all([
+    mode === "checkin" ? readDestinationLabels(db, openCheckoutByAssetId.values()) : Promise.resolve(undefined),
+    checkinIds.length
+      ? db.assetCheckin.findMany({ where: { id: { in: checkinIds } }, select: assetOperationOutstandingCheckinSelect }) as Promise<NonNullable<AssetOperationOutstandingRead["checkin"]>[]>
+      : Promise.resolve([]),
+  ])
+  const checkinById = new Map(outstandingCheckins.map((checkin) => [checkin.id, checkin]))
+  const outstandingOf = (assetId: string): AssetOperationOutstandingRead | null => {
+    const link = outstandingLinkByAssetId.get(assetId)
+    if (!link) return null
+    return { link, checkin: (link.referenceId && checkinById.get(link.referenceId)) || null }
+  }
 
   const rows = assets.map((asset) => buildAssetOperationSearchRow(input, asset, {
     openCheckout: openCheckoutByAssetId.get(asset.id) ?? null,
     hasOpenRepair: repairAssetIds.has(asset.id),
     photo: photos.get(asset.id) ?? null,
+    outstanding: outstandingOf(asset.id),
     ...(labels ? { labels } : {}),
   }))
+
   if (input.detail) rows[0].detail = await readChosenDetail(db, assets[0] as AssetOperationSearchDetailAsset)
   return mode === "checkin" ? { mode, total, ...groupAssetOperationCheckinRows(rows) } : { mode, total, rows }
 }

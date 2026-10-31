@@ -1336,7 +1336,9 @@
     "transactionReasonHandoverStatusMismatch": "The asset status does not match its custody type. Ask an administrator to review it before check-in.",
     "transactionReasonConditionDamaged": "Damaged. Send it for repair before handing it over.",
     "transactionReasonConditionNonFunctional": "Not working. Send it for repair before handing it over.",
-    "transactionReasonConditionSalvage": "Salvage awaiting disposal. It cannot be handed over."
+    "transactionReasonConditionSalvage": "Salvage awaiting disposal. It cannot be handed over.",
+    "transactionReasonComponentOutstanding": "An outstanding component: return it first",
+    "transactionReasonComponentOwnHandover": "This component has its own open handover. Remove it from its parent asset first."
   },
   "company": {
     "title": "Companies",
@@ -4782,7 +4784,8 @@
     "checkinReturnDateBeforeHandover": "The return date cannot be before the handover date.",
     "checkinLocationInactive": "This location is missing or inactive. Choose another.",
     "checkinMissingComponentReturnerRequired": "A component that has not come back stays with the person returning. Choose that person from the employee list.",
-    "checkinMissingComponentInvalid": "A component in the list is no longer installed in this asset. Reload the page and try again."
+    "checkinMissingComponentInvalid": "A component in the list is no longer installed in this asset. Reload the page and try again.",
+    "componentOutstanding": "An outstanding component: return it first"
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",
@@ -4863,6 +4866,7 @@
     "summaryNotChosen": "Not chosen yet",
     "summaryKept": "{value} (unchanged)",
     "summaryCount": "{count}",
-    "sendToRepair": "Send for repair"
+    "sendToRepair": "Send for repair",
+    "outstandingLine": "Outstanding component of {parentTag}"
   }
 }

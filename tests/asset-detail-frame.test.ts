@@ -195,5 +195,9 @@ test("the frame reads one row or one count per question, in one round, with the 
   assert.match(source, /at: latestAuditResultAt\(latestItem\)/)
   assert.match(source, /select: disposalReadinessAssetSelect/)
   assert.match(source, /disposalBlockers: readiness \? getDisposalReadinessBlockersForAsset\(readiness\) : \[\]/)
+  // An outstanding link holding this asset (group 3 spec §8.5): the action rule's fact, one row.
+  assert.match(source, /prisma\.assetComponent\.findFirst\(\{\s*where: \{ componentAssetId: assetId, \.\.\.outstandingLinkWhere \},\s*orderBy: \[\{ updatedAt: "desc" \}, \{ id: "asc" \}\],\s*select: \{ id: true, referenceId: true \},?\s*\}\)/)
+  assert.match(source, /outstanding: outstandingLink \? \{ linkId: outstandingLink\.id, checkinId: outstandingLink\.referenceId \} : null/)
   assert.doesNotMatch(source, /findMany\(|"use client"/)
+
 })

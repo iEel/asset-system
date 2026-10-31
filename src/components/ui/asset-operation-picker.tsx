@@ -419,11 +419,14 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   )
 }
 
-// A row's second line, and the chosen box's: the handover document, ข้อมูลเก่า and its room, or the status and the place.
+// A row's second line, and the chosen box's: an outstanding component's parent and RT-, the handover document,
+// ข้อมูลเก่า and its room, or the status and the place.
 function RowDetail({ row }: { row: AssetOperationSearchRow }) {
   const t = useTranslations("assetOperation")
   const detail = getAssetOperationRowDetail(row)
-  if (detail.kind === "handover") return <>{t("handoverLine", { documentNo: detail.documentNo, date: formatDate(detail.checkoutDate) })}</>
+  if (detail.kind === "outstanding") return <>{[t("outstandingLine", { parentTag: detail.parentTag }), detail.documentNo].filter(Boolean).join(" · ")}</>
+  if (detail.kind === "handover")
+ return <>{t("handoverLine", { documentNo: detail.documentNo, date: formatDate(detail.checkoutDate) })}</>
   if (detail.kind === "legacy") return <>{t("legacyLineAt", { location: detail.locationLabel })}</>
   return <>{[detail.statusLabel, detail.placeLabel].join(" · ")}</>
 }

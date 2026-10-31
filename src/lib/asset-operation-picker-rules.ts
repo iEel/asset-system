@@ -81,9 +81,15 @@ export type AssetOperationRowDetail =
   | { kind: "handover"; documentNo: string; checkoutDate: string }
   | { kind: "legacy"; locationLabel: string }
   | { kind: "place"; statusLabel: string; placeLabel: string }
+  | { kind: "outstanding"; parentTag: string; documentNo: string | null }
 
-/** The second line: the handover document (only with a number, S-R22), ข้อมูลเก่า and where it is (S-R47), else status and place. */
+/**
+ * The second line: an outstanding component's parent and RT- (group 3 spec §8.6, P2-R17), the handover document (only
+ * with a number, S-R22), ข้อมูลเก่า and where it is (S-R47), else status and place.
+ */
 export function getAssetOperationRowDetail(row: AssetOperationSearchRow): AssetOperationRowDetail {
+  if (row.lateReturn) return { kind: "outstanding", parentTag: row.lateReturn.parent.assetTag, documentNo: row.lateReturn.checkinNo }
+
   if (row.checkout?.documentNo) return { kind: "handover", documentNo: row.checkout.documentNo, checkoutDate: row.checkout.checkoutDate }
   if (row.legacy) return { kind: "legacy", locationLabel: row.locationLabel }
   return { kind: "place", statusLabel: row.statusLabel, placeLabel: row.placeLabel }

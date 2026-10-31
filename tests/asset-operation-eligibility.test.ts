@@ -9,8 +9,9 @@ import {
 } from "../src/lib/asset-operation-eligibility.ts"
 
 const facts = (overrides: Partial<AssetOperationFacts>): AssetOperationFacts => ({
-  statusName: "Ready", ownership: "personal", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null, ...overrides,
+  statusName: "Ready", ownership: "personal", custodianId: null, openCheckout: null, hasOpenRepair: false, conditionName: null, outstanding: null, ...overrides,
 })
+const outstanding = { linkId: "link-1", checkinId: "rt-1" }
 const handover = (handoverMode: string | null) => ({ id: "co-1", handoverMode })
 const yes = { eligible: true, reasonKey: null }
 const no = (reasonKey: string) => ({ eligible: false, reasonKey })
@@ -41,6 +42,7 @@ test("ownership comes first: what a ส่วนควบ and a License never ta
     ASSET_COMPONENT_CHECKIN_NOT_ALLOWED: "asset.transactionReasonComponentCheckin",
     ASSET_LICENSE_CHECKIN_NOT_ALLOWED: "asset.transactionReasonLicenseCheckin",
     ASSET_LICENSE_MOVE_NOT_ALLOWED: "asset.transactionReasonLicenseMove",
+    ASSET_COMPONENT_OUTSTANDING: "asset.transactionReasonComponentOutstanding",
   })
 })
 
@@ -131,18 +133,48 @@ test("ย้ายที่ตั้งหลายรายการ: not a Lic
   assert.deepEqual(getBulkMoveVerdict(facts({ statusName: "Disposed", openCheckout: handover("temporary_loan") })), no("asset.transactionReasonOpenCheckout"), "the open handover before the status, as the route")
 })
 
+test("ส่งมอบ, โอนย้าย and the bulk move refuse an outstanding component before any other rule (group 3 spec §8.5, P2-R17)", () => {
+  const why = no("asset.transactionReasonComponentOutstanding")
+  for (const ownership of owners) for (const statusName of ["Ready", "In Use", "Disposed"]) {
+    const f = facts({ ownership, statusName, custodianId: "e-1", outstanding })
+    for (const verdict of [getCheckoutVerdict(f), getTransferVerdict(f, { assignCustodian: true }), getTransferVerdict(f, { assignCustodian: false }), getBulkMoveVerdict(f)]) {
+      assert.deepEqual(verdict, why, `${ownership} ${statusName}`)
+    }
+  }
+  assert.deepEqual(getCheckoutVerdict(facts({ openCheckout: handover("temporary_loan"), conditionName: "Salvage", outstanding })), why, "before the open handover and the condition")
+})
+
+test("รับคืน takes an outstanding component on the componentReturn path, before the handover, legacy and ownership rules (group 3 spec §8.6, P2-R17)", () => {
+  const back = (overrides: Partial<AssetOperationFacts>) => getCheckinVerdict(facts({ custodianId: "e-1", outstanding, ...overrides }))
+  const path = "componentReturn"
+  for (const ownership of owners) for (const custodianId of [null, "e-1"]) assert.deepEqual(back({ ownership, custodianId }), { ...yes, path }, `${ownership} ${custodianId}`)
+  // Missing (หาไม่พบ, being traced) is returned: a component brought back is found. Lost (สูญหาย, confirmed) is refused below.
+  for (const statusName of ["Ready", "In Use", "Under Maintenance", "Pending Repair", "Pending Disposal", "Missing"]) assert.deepEqual(back({ statusName }), { ...yes, path }, statusName)
+  for (const statusName of ["Disposed", "Retired", "Lost"]) assert.deepEqual(back({ statusName }), { ...no("asset.transactionReasonStatusNotReturnable"), path }, statusName)
+  assert.deepEqual(back({ statusName: "In Use", openCheckout: handover("permanent_assignment") }), { ...no("asset.transactionReasonComponentOwnHandover"), path })
+  assert.deepEqual(back({ hasOpenRepair: true }), { ...no("asset.transactionReasonActiveMaintenance"), path })
+  assert.deepEqual(back({ outstanding: { linkId: "link-1", checkinId: null } }), { ...no("asset.transactionReasonNoReturnRecord"), path }, "a link that names no RT-")
+  // In this order: the status, its own handover, an open repair, the RT- reference.
+  assert.deepEqual(back({ statusName: "Lost", openCheckout: handover("temporary_loan"), hasOpenRepair: true }), { ...no("asset.transactionReasonStatusNotReturnable"), path })
+  assert.deepEqual(back({ openCheckout: handover("temporary_loan"), hasOpenRepair: true, outstanding: { linkId: "link-1", checkinId: null } }), { ...no("asset.transactionReasonComponentOwnHandover"), path })
+  assert.deepEqual(back({ hasOpenRepair: true, outstanding: { linkId: "link-1", checkinId: null } }), { ...no("asset.transactionReasonActiveMaintenance"), path })
+  // Without the link the same asset takes today's paths.
+  assert.deepEqual(getCheckinVerdict(facts({ ownership: "component", custodianId: "e-1" })), { ...no("asset.transactionReasonComponentCheckin"), path: "legacy" })
+  assert.deepEqual(getCheckinVerdict(facts({ statusName: "In Use", custodianId: "e-1" })), { ...yes, path: "legacy" })
+})
+
 test("the asset page and the picker give one asset the same answer (spec §5, §8)", () => {
   const base: AssetActionInput = {
     locale: "th", assetId: "a-1", statusName: "Ready", ownership: "personal", custodianId: null, openCheckoutId: null,
-    openCheckoutHandoverMode: null, openRepairId: null, openDisposalId: null, conditionName: null, returnTo: "/th/assets",
+    openCheckoutHandoverMode: null, openRepairId: null, openDisposalId: null, conditionName: null, outstanding: null, returnTo: "/th/assets",
     can: { assetEdit: true, maintenanceCreate: true, maintenanceView: true, disposalView: true },
   }
-  for (const ownership of owners) for (const statusName of statuses) for (const openCheckout of handovers) for (const hasOpenRepair of [false, true]) for (const custodianId of [null, "e-1"]) for (const conditionName of [null, "Damaged"]) {
-    const set = getAssetActions({ ...base, ownership, statusName, custodianId, openCheckoutId: openCheckout?.id ?? null, openCheckoutHandoverMode: openCheckout?.handoverMode ?? null, openRepairId: hasOpenRepair ? "r-1" : null, conditionName })
+  for (const ownership of owners) for (const statusName of statuses) for (const openCheckout of handovers) for (const hasOpenRepair of [false, true]) for (const custodianId of [null, "e-1"]) for (const conditionName of [null, "Damaged"]) for (const outstanding of [null, { linkId: "l-1", checkinId: "rt-1" }]) {
+    const set = getAssetActions({ ...base, ownership, statusName, custodianId, openCheckoutId: openCheckout?.id ?? null, openCheckoutHandoverMode: openCheckout?.handoverMode ?? null, openRepairId: hasOpenRepair ? "r-1" : null, conditionName, outstanding })
     const list = [...(set.primary ? [set.primary] : []), ...set.transactions]
-    const f: AssetOperationFacts = { statusName, ownership, custodianId, openCheckout, hasOpenRepair, conditionName }
+    const f: AssetOperationFacts = { statusName, ownership, custodianId, openCheckout, hasOpenRepair, conditionName, outstanding }
     const verdicts = { checkout: getCheckoutVerdict(f), checkin: getCheckinVerdict(f), transfer: getTransferVerdict(f, { assignCustodian: ownership === "personal" }) }
-    const where = `${ownership} ${statusName} ${openCheckout?.handoverMode} ${hasOpenRepair} ${custodianId} ${conditionName}`
+    const where = `${ownership} ${statusName} ${openCheckout?.handoverMode} ${hasOpenRepair} ${custodianId} ${conditionName} ${outstanding?.linkId}`
     for (const key of ["checkout", "checkin", "transfer"] as const) {
       const action = list.find((item) => item.key === key)
       if (!action) continue // the ownership type has no such action on the asset page (ส่วนควบ: transfer only; License: none)
@@ -150,6 +182,7 @@ test("the asset page and the picker give one asset the same answer (spec §5, §
     }
     const checkin = list.find((item) => item.key === "checkin")
     if (checkin?.enabled) assert.equal(checkin.href?.includes("checkoutId=co-1"), verdicts.checkin.path === "handover", where)
+    if (ownership === "component") assert.equal(list.some((item) => item.key === "checkin"), outstanding !== null, where)
   }
   // S-R40: one function, two contexts. The asset page's โอนย้าย for บุคคล is an assign; the transfer page with no custodian is a move.
   const inspected = facts({ ownership: "personal", statusName: "Under Inspection" })
@@ -169,18 +202,24 @@ test("the new words are the spec's, the custody-type words are the return form's
     ["ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ", "Not working. Send it for repair before handing it over."],
     ["เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้", "Salvage awaiting disposal. It cannot be handed over."],
   ])
+  // The outstanding component (group 3 spec §8.5, §8.6, P2-R17).
+  assert.deepEqual(["ComponentOutstanding", "ComponentOwnHandover"].map((name) => [th.asset[`transactionReason${name}`], en.asset[`transactionReason${name}`]]), [
+    ["ส่วนควบค้างคืน รับคืนก่อน", "An outstanding component: return it first"],
+    ["ส่วนควบนี้มีใบส่งมอบของตัวเองค้างอยู่ ถอดออกจากเครื่องหลักก่อน", "This component has its own open handover. Remove it from its parent asset first."],
+  ])
   for (const table of [th, en]) {
     assert.equal(table.asset.transactionReasonHandoverModeMissing, table.checkin.handoverModeMissing)
     assert.equal(table.asset.transactionReasonHandoverStatusMismatch, table.checkin.handoverStatusMismatch)
   }
   const keys = new Set<string>()
-  for (const ownership of owners) for (const statusName of statuses) for (const openCheckout of handovers) for (const hasOpenRepair of [false, true]) for (const custodianId of [null, "e-1"]) for (const conditionName of conditionNames) {
-    const f = facts({ ownership, statusName, openCheckout, hasOpenRepair, custodianId, conditionName })
+  for (const ownership of owners) for (const statusName of statuses) for (const openCheckout of handovers) for (const hasOpenRepair of [false, true]) for (const custodianId of [null, "e-1"]) for (const conditionName of conditionNames) for (const outstanding of [null, { linkId: "l-1", checkinId: "rt-1" }, { linkId: "l-1", checkinId: null }]) {
+    const f = facts({ ownership, statusName, openCheckout, hasOpenRepair, custodianId, conditionName, outstanding })
     for (const verdict of [getCheckoutVerdict(f), getCheckinVerdict(f), getTransferVerdict(f, { assignCustodian: true }), getTransferVerdict(f, { assignCustodian: false }), getBulkMoveVerdict(f)]) {
       if (verdict.reasonKey) keys.add(verdict.reasonKey)
     }
   }
-  assert.deepEqual([...keys].sort(), ["ActiveMaintenance", "ComponentCheckin", "ComponentCheckout", "ConditionDamaged", "ConditionNonFunctional", "ConditionSalvage", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutHandover", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "WrittenOff"].map((name) => `asset.transactionReason${name}`))
+  assert.deepEqual([...keys].sort(), ["ActiveMaintenance", "ComponentCheckin", "ComponentCheckout", "ComponentOutstanding", "ComponentOwnHandover", "ConditionDamaged",
+ "ConditionNonFunctional", "ConditionSalvage", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutHandover", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "WrittenOff"].map((name) => `asset.transactionReason${name}`))
   for (const key of keys) for (const table of [th, en]) assert.equal(typeof table.asset[key.slice("asset.".length)], "string", key)
 })
 

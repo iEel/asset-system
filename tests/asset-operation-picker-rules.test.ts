@@ -70,13 +70,17 @@ test("a row: takeable, chosen already, or not takeable with its reason key; chos
   assert.deepEqual(getAssetOperationRowView(row({ eligible: false, reasonKey: null }), none), { selectable: false, note: null })
 })
 
-test("the second line: the handover document on รับคืน, ข้อมูลเก่า for a legacy row, else status and place (spec 6.1, 6.3)", () => {
+test("the second line: the handover document on รับคืน, ข้อมูลเก่า for a legacy row, else status and place (spec 6.1, 6.3), an outstanding component reads its parent and its RT- (group 3 spec §8.6, P2-R17)", () => {
   const checkout = { id: "c1", documentNo: "HO-2026-0151", checkoutType: "user", handoverMode: "permanent_assignment", checkoutDate: "2026-03-12T00:00:00.000Z", expectedReturnDate: null, conditionBefore: "cond-1", remark: null, destinationLabel: "EMP-0412 - สมชาย ใจดี" }
   assert.deepEqual(getAssetOperationRowDetail(row({ checkout })), { kind: "handover", documentNo: "HO-2026-0151", checkoutDate: "2026-03-12T00:00:00.000Z" })
   // S-R47: a ข้อมูลเก่า row names where the asset is.
   assert.deepEqual(getAssetOperationRowDetail(row({ legacy: true, placeLabel: "EMP-0412 - สมชาย ใจดี" })), { kind: "legacy", locationLabel: "IT-02 - ห้อง IT ชั้น 2" })
   assert.deepEqual(getAssetOperationRowDetail(row()), { kind: "place", statusLabel: "พร้อมใช้งาน", placeLabel: "IT-02 - ห้อง IT ชั้น 2" })
   assert.deepEqual(getAssetOperationRowDetail(row({ checkout: { ...checkout, documentNo: null } })), { kind: "place", statusLabel: "พร้อมใช้งาน", placeLabel: "IT-02 - ห้อง IT ชั้น 2" }, "a handover without a number reads as an ordinary row (S-R22)")
+  const lateReturn = { linkId: "link-1", checkinId: "rt-1", checkinNo: "RT-202610-0004", checkinDate: "2026-10-20T00:00:00.000Z", parent: { id: "asset-p", assetTag: "NB-0017", name: "โน้ตบุ๊ก Dell" }, parentInStock: true }
+  assert.deepEqual(getAssetOperationRowDetail(row({ lateReturn, badge: "outstanding" })), { kind: "outstanding", parentTag: "NB-0017", documentNo: "RT-202610-0004" })
+  assert.deepEqual(getAssetOperationRowDetail(row({ lateReturn: { ...lateReturn, checkinNo: null } })), { kind: "outstanding", parentTag: "NB-0017", documentNo: null })
+
 })
 
 test("sections: one flat section without groups; รับคืน follows the server's group order, drops empty groups, keeps a stray row last (spec 6.3, S-R4)", () => {

@@ -1336,7 +1336,9 @@
     "transactionReasonHandoverStatusMismatch": "สถานะทรัพย์สินไม่ตรงกับลักษณะการถือครอง กรุณาให้ผู้ดูแลตรวจสอบก่อนรับคืน",
     "transactionReasonConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนส่งมอบ",
     "transactionReasonConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ",
-    "transactionReasonConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้"
+    "transactionReasonConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้",
+    "transactionReasonComponentOutstanding": "ส่วนควบค้างคืน รับคืนก่อน",
+    "transactionReasonComponentOwnHandover": "ส่วนควบนี้มีใบส่งมอบของตัวเองค้างอยู่ ถอดออกจากเครื่องหลักก่อน"
   },
   "company": {
     "title": "บริษัท",
@@ -4782,7 +4784,8 @@
     "checkinReturnDateBeforeHandover": "วันที่คืนต้องไม่ก่อนวันที่ส่งมอบ",
     "checkinLocationInactive": "ที่ตั้งนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น",
     "checkinMissingComponentReturnerRequired": "ส่วนควบที่ยังไม่ได้คืนจะอยู่กับผู้คืน เลือกผู้คืนจากรายชื่อพนักงาน",
-    "checkinMissingComponentInvalid": "ส่วนควบบางชิ้นในรายการไม่ได้ติดอยู่กับทรัพย์สินนี้แล้ว โหลดหน้าใหม่แล้วลองอีกครั้ง"
+    "checkinMissingComponentInvalid": "ส่วนควบบางชิ้นในรายการไม่ได้ติดอยู่กับทรัพย์สินนี้แล้ว โหลดหน้าใหม่แล้วลองอีกครั้ง",
+    "componentOutstanding": "ส่วนควบค้างคืน รับคืนก่อน"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",
@@ -4863,6 +4866,7 @@
     "summaryNotChosen": "ยังไม่ได้เลือก",
     "summaryKept": "{value} (คงเดิม)",
     "summaryCount": "{count} รายการ",
-    "sendToRepair": "ส่งซ่อม"
+    "sendToRepair": "ส่งซ่อม",
+    "outstandingLine": "ส่วนควบค้างคืน ของ {parentTag}"
   }
 }

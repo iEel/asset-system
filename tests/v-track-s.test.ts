@@ -435,8 +435,10 @@ test("asset, operation, maintenance and import refusals about a field name it; t
     asset: { findFirst: () => ({ id: "asset-1", status: { name: "Ready", nameTh: "พร้อมใช้" } }) },
     assetCheckout: { findFirst: () => null },
     assetCondition: { findUnique: () => null },
+    assetComponent: { findMany: () => [] },
   })
   await expectBody(await checkout.POST(jsonRequest("POST", {
+
     handoverMode: "permanent_assignment", checkoutType: "user", custodianId: "employee-1", departmentId: "", locationId: "", parentAssetId: "",
     checkoutDate: "2026-10-17", expectedReturnDate: "", conditionBefore: "condition-gone", remark: "", receiverSignature: "",
   }), params), 400, { error: "Invalid asset condition for checkout", code: "ASSET_STATE_MASTER_NOT_FOUND", fieldErrors: { conditionBefore: "invalidCheckoutCondition" } })

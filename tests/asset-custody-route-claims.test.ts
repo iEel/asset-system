@@ -24,6 +24,9 @@ type CustodyRouteState = {
   conditionAnswers: string[]
   /** The condition masters by id (conditionBefore); any other id reads Good. */
   conditionMasters: Record<string, { name: string; isActive: boolean }>
+  /** Component asset ids with an outstanding link; each `assetComponent.findMany` takes the next of `outstandingAnswers` first, if any. */
+  outstandingAssetIds: string[]
+  outstandingAnswers: string[][]
 }
 
 const state: CustodyRouteState = {
@@ -43,6 +46,8 @@ const state: CustodyRouteState = {
   assetConditionId: "condition-good",
   conditionAnswers: [],
   conditionMasters: {},
+  outstandingAssetIds: [],
+  outstandingAnswers: [],
 }
 Object.assign(globalThis, { __custodyRouteState: state })
 
@@ -110,6 +115,10 @@ const mockedModuleSources = new Map<string, string>([
             }
             if (name === "department" && method === "findFirst") return args?.where?.isActive === true && state().activeDepartmentIds.includes(args.where.id) ? { id: args.where.id } : null
             if (name === "location" && method === "findFirst") return args?.where?.isActive === true && state().activeLocationIds.includes(args.where.id) ? { id: args.where.id } : null
+            if (name === "assetComponent" && method === "findMany") {
+              const out = state().outstandingAnswers.length > 0 ? state().outstandingAnswers.shift() : state().outstandingAssetIds
+              return out.filter((id) => (args?.where?.componentAssetId?.in ?? []).includes(id)).map((componentAssetId) => ({ componentAssetId, componentAsset: { assetTag: "GRL-COM-26-0036" } }))
+            }
             if (method === "findFirst" || method === "findUnique") return null
             if (method === "findMany") return []
             if (method === "count") return 0
@@ -192,6 +201,8 @@ beforeEach(() => {
   state.assetConditionId = "condition-good"
   state.conditionAnswers = []
   state.conditionMasters = {}
+  state.outstandingAssetIds = []
+  state.outstandingAnswers = []
 })
 
 test("a handover that loses the race for the asset returns 409 and records nothing", async () => {
@@ -421,5 +432,48 @@ test("a handover recorded as เสียหาย or ยังไม่ปร�
     state.calls = []
     assert.deepEqual(await refusal(await post(checkoutRoute, { ...checkoutBody, conditionBefore })), [400, { code: "ASSET_CONDITION_NOT_SELECTABLE", error: "Invalid asset condition for checkout", fieldErrors: { conditionBefore: "invalidCheckoutCondition" } }], conditionBefore)
     assert.equal(state.calls.includes("asset.updateMany"), false, conditionBefore)
+  }
+})
+
+const outstandingAtAsset = [409, { code: "ASSET_COMPONENT_OUTSTANDING", error: "ASSET_COMPONENT_OUTSTANDING", fieldErrors: { assetId: "componentOutstanding" } }]
+
+test("ส่งมอบ and โอนย้าย refuse an outstanding component under the asset field, before the ownership rule and any write (group 3 spec §8.5, P2-R17)", async () => {
+  state.outstandingAssetIds = ["asset-1"]
+  for (const [name, route, body] of [["checkout", checkoutRoute, checkoutBody], ["transfer", transferRoute, moveBody]] as const) {
+    for (const ownership of ["personal", "component", "software_license"]) {
+      state.assetOwnershipType = ownership
+      state.calls = []
+      assert.deepEqual(await refusal(await post(route, body)), outstandingAtAsset, `${name} ${ownership}`)
+      assert.equal(state.calls.includes("asset.updateMany"), false, `${name} ${ownership}`)
+    }
+  }
+})
+
+test("the legacy backfill refuses an outstanding component before its ownership rule, with no field (group 3 spec §8.5, P2-R17)", async () => {
+  state.assetStatusName = "In Use"
+  state.outstandingAssetIds = ["asset-1"]
+  for (const ownership of ["personal", "component"]) {
+    state.assetOwnershipType = ownership
+    state.calls = []
+    assert.deepEqual(await refusal(await post(legacyCheckoutRoute, {})), [409, { code: "ASSET_COMPONENT_OUTSTANDING", error: "ASSET_COMPONENT_OUTSTANDING" }], ownership)
+    assert.equal(state.calls.includes("assetCheckout.create"), false, ownership)
+  }
+})
+
+test("a link turned outstanding while ส่งมอบ, โอนย้าย or the legacy backfill is saved is refused by the re-read after the claim, before any record (P2-R17)", async () => {
+  for (const [name, route, body, statusName, record] of [
+    ["checkout", checkoutRoute, checkoutBody, "Ready", "assetCheckout.create"],
+    ["transfer", transferRoute, moveBody, "Ready", "assetTransfer.create"],
+    ["legacy", legacyCheckoutRoute, {}, "In Use", "assetCheckout.create"],
+  ] as const) {
+    state.assetStatusName = statusName
+    state.outstandingAnswers = [[], ["asset-1"]]
+    state.calls = []
+    const [status, answer] = await refusal(await post(route, body))
+    assert.deepEqual([status, answer.code], [409, "ASSET_COMPONENT_OUTSTANDING"], name)
+    const reads = state.calls.flatMap((call, index) => (call === "assetComponent.findMany" ? [index] : []))
+    assert.equal(reads.length, 2, name)
+    assert.ok(reads[1] > state.calls.indexOf("asset.updateMany"), `${name}: read again after the claim`)
+    assert.equal(state.calls.includes(record), false, name)
   }
 })

@@ -4,6 +4,7 @@ import {
   getCheckoutVerdict,
   getTransferVerdict,
   type AssetOperationFacts,
+  type AssetOperationOutstandingFact,
   type AssetOperationVerdict,
 } from "./asset-operation-eligibility.ts"
 import { buildAssetRegisterTransactionHref } from "./asset-operation-policy.ts"
@@ -60,6 +61,8 @@ export type AssetActionInput = {
   openDisposalId: string | null
   /** The condition master's `name` ("Good", "Damaged", …): ส่งมอบ refuses a broken or salvage asset (group 3 spec §19.2). */
   conditionName: string | null
+  /** The outstanding link holding this asset as a component (group 3 spec §8.5), from a dedicated query. */
+  outstanding: AssetOperationOutstandingFact | null
   returnTo: string
   can: { assetEdit: boolean; maintenanceCreate: boolean; maintenanceView: boolean; disposalView: boolean }
 }
@@ -78,6 +81,17 @@ export function firstIdByAssetId(rows: ReadonlyArray<{ id: string; assetId: stri
     if (!ids.has(row.assetId)) ids.set(row.assetId, row.id)
   }
   return ids
+}
+
+/** The outstanding link per component: the first row per component wins; callers order newest first. */
+export function outstandingFactByAssetId(
+  rows: ReadonlyArray<{ id: string; componentAssetId: string; referenceId: string | null }>,
+): Map<string, AssetOperationOutstandingFact> {
+  const facts = new Map<string, AssetOperationOutstandingFact>()
+  for (const row of rows) {
+    if (!facts.has(row.componentAssetId)) facts.set(row.componentAssetId, { linkId: row.id, checkinId: row.referenceId })
+  }
+  return facts
 }
 
 // Group 1 spec §7.1: the words follow the ownership type, on the register and the asset page alike. Full message keys, read through the root translator.
@@ -113,6 +127,7 @@ function factsOf(input: AssetActionInput): AssetOperationFacts {
     openCheckout: input.openCheckoutId ? { id: input.openCheckoutId, handoverMode: input.openCheckoutHandoverMode } : null,
     hasOpenRepair: Boolean(input.openRepairId),
     conditionName: input.conditionName,
+    outstanding: input.outstanding,
   }
 }
 
@@ -174,9 +189,15 @@ export function getAssetRecordRepairAction(input: AssetActionInput): AssetPrimar
 export function getAssetActions(input: AssetActionInput): AssetActionSet {
   const status = normalizeAssetStateName(input.statusName)
   // An action the person may not take is left out, never shown as unavailable.
+  // An outstanding ส่วนควบ is returned on its own: รับคืน joins its actions only while the link is out, or it would sit
+  // disabled on every component.
+  const entries: ReadonlyArray<readonly [AssetActionKey, string]> = input.ownership === "component" && input.outstanding
+    ? [...ownershipActions.component, ["checkin", "asset.rowActionCheckin"]]
+    : ownershipActions[input.ownership]
   const table = input.can.assetEdit
-    ? ownershipActions[input.ownership].map(([key, labelKey]) => buildTableAction(input, key, labelKey))
+    ? entries.map(([key, labelKey]) => buildTableAction(input, key, labelKey))
     : []
+
   const find = (key: AssetActionKey) => table.find((action) => action.key === key)
 
   // No returnTo: the repair and disposal pages go back only to their own lists.
