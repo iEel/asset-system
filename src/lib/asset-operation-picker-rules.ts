@@ -89,7 +89,6 @@ export type AssetOperationRowDetail =
  */
 export function getAssetOperationRowDetail(row: AssetOperationSearchRow): AssetOperationRowDetail {
   if (row.lateReturn) return { kind: "outstanding", parentTag: row.lateReturn.parent.assetTag, documentNo: row.lateReturn.checkinNo }
-
   if (row.checkout?.documentNo) return { kind: "handover", documentNo: row.checkout.documentNo, checkoutDate: row.checkout.checkoutDate }
   if (row.legacy) return { kind: "legacy", locationLabel: row.locationLabel }
   return { kind: "place", statusLabel: row.statusLabel, placeLabel: row.placeLabel }

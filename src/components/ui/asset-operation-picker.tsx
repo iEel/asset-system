@@ -425,8 +425,7 @@ function RowDetail({ row }: { row: AssetOperationSearchRow }) {
   const t = useTranslations("assetOperation")
   const detail = getAssetOperationRowDetail(row)
   if (detail.kind === "outstanding") return <>{[t("outstandingLine", { parentTag: detail.parentTag }), detail.documentNo].filter(Boolean).join(" · ")}</>
-  if (detail.kind === "handover")
- return <>{t("handoverLine", { documentNo: detail.documentNo, date: formatDate(detail.checkoutDate) })}</>
+  if (detail.kind === "handover") return <>{t("handoverLine", { documentNo: detail.documentNo, date: formatDate(detail.checkoutDate) })}</>
   if (detail.kind === "legacy") return <>{t("legacyLineAt", { location: detail.locationLabel })}</>
   return <>{[detail.statusLabel, detail.placeLabel].join(" · ")}</>
 }

@@ -197,7 +197,6 @@ export function getAssetActions(input: AssetActionInput): AssetActionSet {
   const table = input.can.assetEdit
     ? entries.map(([key, labelKey]) => buildTableAction(input, key, labelKey))
     : []
-
   const find = (key: AssetActionKey) => table.find((action) => action.key === key)
 
   // No returnTo: the repair and disposal pages go back only to their own lists.

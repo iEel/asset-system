@@ -142,7 +142,6 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
       return NextResponse.json({ code: error.code, error: error.code }, { status: 409 })
     }
     if (error instanceof AssetOperationConflictError) {
-
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)

@@ -521,7 +521,6 @@ export function buildAssetOperationSearchRow(
     row.legacy = true
     row.badge = "legacy"
   }
-
   row.holderKey = holder.key
   row.holderLabel = holder.label
   row.holderEmployeeId = holder.employeeId

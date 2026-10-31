@@ -55,7 +55,6 @@ export async function getCheckinPreselect(params: {
     const row = answer.rows[0]
     if (row?.badge === "outstanding") return { row, query: "" }
     return { row: null, query: row?.assetTag ?? "" }
-
   }
 
   return { row: null, query: "" }

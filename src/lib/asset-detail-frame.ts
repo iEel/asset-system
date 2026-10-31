@@ -80,5 +80,4 @@ export async function getAssetDetailFrame(assetId: string): Promise<AssetDetailF
     disposalBlockers: readiness ? getDisposalReadinessBlockersForAsset(readiness) : [],
     outstanding: outstandingLink ? { linkId: outstandingLink.id, checkinId: outstandingLink.referenceId } : null,
   }
-
 }

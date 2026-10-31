@@ -77,7 +77,6 @@ export async function getAssetOperationMasterOptions(options?: { employeeDetail?
             { installedInLinks: { some: outstandingLinkWhere } },
           ],
         },
-
         _count: { _all: true },
       })
       : Promise.resolve([] as Array<{ custodianId: string | null; _count: { _all: number } }>),

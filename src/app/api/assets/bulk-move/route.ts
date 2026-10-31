@@ -146,7 +146,6 @@ export async function POST(request: NextRequest) {
       }, { status: 409 })
     }
     if (error instanceof AssetOperationConflictError) {
-
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)

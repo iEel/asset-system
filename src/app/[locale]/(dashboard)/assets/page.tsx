@@ -321,7 +321,6 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       conditionName: asset.condition.name,
       outstanding: outstandingByAssetId.get(asset.id) ?? null,
       returnTo: registerReturnHref,
-
       can: actionPermissions,
     })
 

@@ -75,7 +75,6 @@ export function getAssetOperationOwnershipRefusal(
 const componentReturnRefusedStatuses = ["disposed", "retired", "lost"]
 
 const yes: AssetOperationVerdict = { eligible: true, reasonKey: null }
-
 const no = (reasonKey: string): AssetOperationVerdict => ({ eligible: false, reasonKey })
 
 function ownershipRefusal(operation: AssetOperationOwnershipOperation, ownership: AssetOwnershipType): AssetOperationVerdict | null {

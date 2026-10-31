@@ -197,7 +197,6 @@ export async function POST(request: NextRequest, context: TransferContext) {
       return NextResponse.json({ code: error.code, error: error.code, fieldErrors: { assetId: "componentOutstanding" } }, { status: 409 })
     }
     if (error instanceof AssetOperationConflictError) {
-
       return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)

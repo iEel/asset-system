@@ -188,7 +188,6 @@ export async function searchAssetOperationOptions(
     outstanding: outstandingOf(asset.id),
     ...(labels ? { labels } : {}),
   }))
-
   if (input.detail) rows[0].detail = await readChosenDetail(db, assets[0] as AssetOperationSearchDetailAsset)
   return mode === "checkin" ? { mode, total, ...groupAssetOperationCheckinRows(rows) } : { mode, total, rows }
 }

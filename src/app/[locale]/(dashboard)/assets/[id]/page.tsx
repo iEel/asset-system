@@ -336,7 +336,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     openDisposalId: frame.openDisposalId,
     outstanding: frame.outstanding,
     conditionName: asset.condition.name,
-
     returnTo: currentAssetDetailHref,
     can: { assetEdit: canEditAsset, maintenanceCreate: canCreateMaintenance, maintenanceView: canViewMaintenance, disposalView: canViewDisposal },
   }
