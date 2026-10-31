@@ -273,7 +273,9 @@ export async function expectFieldError(page: Page, fieldId: string, message: str
 // pointer events of type "touch", as a real finger does. The pad's clear button turns on once it holds a stroke.
 export async function signOnPad(page: Page, group: Locator, device: E2eDevice, browser: string) {
   const canvas = group.locator("canvas")
-  await canvas.scrollIntoViewIfNeeded()
+  // Centred, not just in view: on the phone the sticky footer covers the bottom of the screen, and a pad scrolled only
+  // to its edge takes the finger on the footer instead (group 3 plan 2 E2E-1031K).
+  await canvas.evaluate((element) => element.scrollIntoView({ block: "center" }))
   await canvas.evaluate((element) => {
     const seen: string[] = []
     ;(element as HTMLCanvasElement & { __e2ePointerTypes?: string[] }).__e2ePointerTypes = seen
