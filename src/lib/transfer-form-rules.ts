@@ -222,7 +222,8 @@ export function buildTransferSummaryRows(choice: TransferFormChoice, words: Tran
       label: words.components,
       now: words.count(detail.components.length + outstanding.length),
       next: outstanding.length > 0 ? `${move} · ${words.summaryComponentsOutstanding(outstanding.length)}` : move,
-      changed: travelling.length > 0,
+      // The components move only with a real change (look step): before any destination the row is plain.
+      changed: travelling.length > 0 && hasTransferChange(change.destinations),
     })
   }
   return rows

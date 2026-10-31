@@ -287,6 +287,9 @@ test("components: the line under the table lists what moves (the sync's filter),
   assert.deepEqual(buildTransferReviewDetails(withAll, words).find((detail) => detail.key === "components"), { key: "components", label: "ส่วนควบ", value: "ย้ายตาม 2 รายการ" })
   const one = choose({ toLocationId: "l2" }, { row: row({}, { components: [adapter] }) })
   assert.deepEqual(pick(buildTransferSummaryRows(one, words))[4], ["components", "1 รายการ", "ย้ายตาม 1 รายการ", true])
+  // Before any destination nothing moves yet, so the row is plain (look step).
+  const nothingYet = choose({}, { row: row({}, { components: [adapter] }) })
+  assert.deepEqual(pick(buildTransferSummaryRows(nothingYet, words))[4], ["components", "1 รายการ", "ย้ายตาม 1 รายการ", false])
   assert.deepEqual(transferComponentLines(one, words), { travelling: "ส่วนควบ 1 รายการ (Adapter 65W) ย้ายตามไปด้วย", staying: null, outstanding: null })
   const onlyOutstanding = choose({ toLocationId: "l2" }, { row: row({}, { outstandingComponents: [keyboard] }) })
   assert.deepEqual(pick(buildTransferSummaryRows(onlyOutstanding, words))[4], ["components", "1 รายการ", "ย้ายตาม 0 รายการ · ค้างคืน 1 รายการ", false])
