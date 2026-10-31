@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { installedOrOutstandingLinkWhere } from "./asset-component-outstanding.ts"
 
 export const assetOwnershipTypes = ["personal", "shared", "stock", "component", "software_license"] as const
 
@@ -34,7 +35,8 @@ export const assetMissingResponsibilityWhere: Prisma.AssetWhereInput = {
       ownershipType: "component",
       OR: [
         { departmentId: null },
-        { installedInLinks: { none: { status: "installed", removedAt: null } } },
+        // An outstanding component is still held by its parent (group 3 spec §8.5).
+        { installedInLinks: { none: installedOrOutstandingLinkWhere } },
       ],
     },
   ],

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { getCheckinNextDepartmentId, getCheckoutNextDepartmentId, getOutstandingComponentCustody } from "../src/lib/asset-department-rule.ts"
+import { getCheckinNextDepartmentId, getCheckoutNextDepartmentId, getLateReturnDepartmentId, getOutstandingComponentCustody } from "../src/lib/asset-department-rule.ts"
 import { assetOwnershipTypes, type AssetOwnershipType } from "../src/lib/asset-ownership.ts"
 
 type Input = Parameters<typeof getCheckoutNextDepartmentId>[0]
@@ -59,4 +59,15 @@ test("a component that did not come back: ผู้คืน becomes its holder 
   for (const ownership of assetOwnershipTypes) {
     assert.deepEqual(custody(ownership, "emp-returner"), { custodianId: "emp-returner", departmentId: "dept-now" }, `${ownership}, ผู้คืน already holds it`)
   }
+})
+
+test("a late return re-attached follows its parent's department; one standing alone takes the return department, a ส่วนกลาง one keeps its own (P2-R7, spec §6)", () => {
+  const late = (outcome: "reattached" | "standalone", ownership: AssetOwnershipType, overrides: { parentDepartmentId?: string | null; currentDepartmentId?: string | null } = {}) =>
+    getLateReturnDepartmentId({ outcome, ownership, parentDepartmentId: "dept-parent", returnDepartmentId: "dept-it", currentDepartmentId: "dept-returner", ...overrides })
+  for (const ownership of ["personal", "stock", "shared", "component", "software_license"] as const) {
+    assert.equal(late("reattached", ownership), "dept-parent", ownership)
+    assert.equal(late("reattached", ownership, { parentDepartmentId: null }), null, `${ownership}, a parent without a department`)
+  }
+  for (const ownership of ["personal", "stock", "component", "software_license"] as const) assert.equal(late("standalone", ownership), "dept-it", ownership)
+  assert.deepEqual([late("standalone", "shared"), late("standalone", "shared", { currentDepartmentId: null })], ["dept-returner", null])
 })

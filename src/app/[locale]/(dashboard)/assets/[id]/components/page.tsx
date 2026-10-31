@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { normalizeAssetComponentManagerReturnTo } from "@/lib/asset-return-navigation"
+import { isOutstandingLink } from "@/lib/asset-component-outstanding"
 import { AssetComponentManager } from "@/components/assets/asset-component-manager"
 
 type ComponentManagerPageProps = {
@@ -41,10 +42,12 @@ export default async function AssetComponentManagerPage({ params, searchParams }
           removedAt: true,
           status: true,
           reason: true,
+          referenceType: true,
+          referenceId: true,
           createdBy: true,
           updatedBy: true,
           componentAsset: {
-            select: { id: true, assetTag: true, name: true, serialNumber: true },
+            select: { id: true, assetTag: true, name: true, serialNumber: true, custodian: { select: { code: true, fullNameTh: true } } },
           },
         },
       },
@@ -52,6 +55,23 @@ export default async function AssetComponentManagerPage({ params, searchParams }
   })
 
   if (!asset) notFound()
+
+  // An outstanding link (group 3 spec §8.5) stays among the current components, so ถอดออก reaches it.
+  const isCurrentLink = (component: { status: string; removedAt: Date | null }) => !component.removedAt && (component.status === "installed" || isOutstandingLink(component))
+  const outstandingCheckinIds = [...new Set(asset.parentComponents
+    .filter((component) => isOutstandingLink(component) && component.referenceType === "checkin" && component.referenceId)
+    .map((component) => component.referenceId as string))]
+  const outstandingCheckins = outstandingCheckinIds.length > 0
+    ? await prisma.assetCheckin.findMany({ where: { id: { in: outstandingCheckinIds } }, select: { id: true, documentNo: true } })
+    : []
+  const checkinDocumentNos = new Map(outstandingCheckins.map((checkin) => [checkin.id, checkin.documentNo]))
+  const outstandingLineOf = (component: (typeof asset.parentComponents)[number]) => {
+    if (!isOutstandingLink(component)) return null
+    const custodian = component.componentAsset.custodian
+    const holder = custodian ? `${custodian.code} - ${custodian.fullNameTh}` : null
+    const documentNo = component.referenceType === "checkin" && component.referenceId ? checkinDocumentNos.get(component.referenceId) ?? null : null
+    return [t("componentOutstanding"), holder ? t("componentOutstandingWith", { holder }) : null, documentNo].filter(Boolean).join(" · ")
+  }
 
   const componentIds = asset.parentComponents.map((component) => component.id)
   const evidence = componentIds.length > 0
@@ -75,9 +95,11 @@ export default async function AssetComponentManagerPage({ params, searchParams }
     installedByLabel: component.createdBy,
     removedByLabel: component.updatedBy,
     evidenceCount: evidenceCounts.get(component.id) ?? 0,
+    current: isCurrentLink(component),
+    outstandingLine: outstandingLineOf(component),
   }))
-  const currentComponents = records.filter((component) => component.status === "installed" && !component.removedAt)
-  const componentHistory = records.filter((component) => component.status !== "installed" || component.removedAt)
+  const currentComponents = records.filter((component) => component.current)
+  const componentHistory = records.filter((component) => !component.current)
 
   return (
     <AssetComponentManager

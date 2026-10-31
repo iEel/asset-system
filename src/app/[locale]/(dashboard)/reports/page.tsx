@@ -28,6 +28,7 @@ import { ReportsOverviewView } from "@/components/reports/reports-overview-view"
 import { buildReportActiveFilters } from "@/lib/report-active-filters"
 import { buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -467,7 +468,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               branch: { select: { code: true, name: true } },
               department: { select: { code: true, name: true } },
               custodian: { select: { code: true, fullNameTh: true } },
-              installedInLinks: { where: { status: "installed", removedAt: null }, select: { id: true }, take: 1 },
+              installedInLinks: { where: installedOrOutstandingLinkWhere, select: { id: true }, take: 1 },
               attachments: { where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true }, select: { id: true }, take: 1 },
             },
           }),

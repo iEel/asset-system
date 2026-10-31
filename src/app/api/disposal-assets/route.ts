@@ -5,6 +5,7 @@ import { errorResponse } from "@/lib/api-response"
 import { getDisposalAssetEligibilityError } from "@/lib/disposal-policy"
 import {
   disposalReadinessAssetSelect,
+  getDisposalOutstandingComponentTags,
   getDisposalReadinessBlockersForAsset,
 } from "@/lib/disposal-readiness"
 
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest) {
           ].filter(Boolean).join(" · "),
           eligible: blockers.length === 0,
           blockers,
+          outstandingComponentTags: getDisposalOutstandingComponentTags(asset),
         }
       }),
     })

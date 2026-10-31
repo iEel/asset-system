@@ -28,6 +28,7 @@ const movementTypes = (locale: "th" | "en") =>
 const WRITERS = [
   "src/app/api/assets/[id]/checkin/route.ts",
   "src/app/api/assets/[id]/checkout/route.ts",
+  "src/app/api/assets/[id]/component-return/route.ts",
   "src/app/api/assets/[id]/components/[componentId]/route.ts",
   "src/app/api/assets/[id]/components/route.ts",
   "src/app/api/assets/[id]/legacy-checkout/route.ts",
@@ -78,7 +79,7 @@ test("the AssetMovement writers are the known ones, so a new writer is labelled 
 
 test("every movement type src writes has a Thai and an English label (spec §4: no English type on screen)", () => {
   const written = writtenMovementTypes()
-  assert.equal(written.size, 48, [...written.keys()].sort().join(", "))
+  assert.equal(written.size, 49, [...written.keys()].sort().join(", "))
   const th = movementTypes("th")
   const en = movementTypes("en")
   for (const [type, paths] of written) {

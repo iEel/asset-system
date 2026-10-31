@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { installedOrOutstandingLinkWhere, isOutstandingLink } from "@/lib/asset-component-outstanding"
 
 export async function assertCanInstallComponent(parentAssetId: string, componentAssetId: string, slotNo?: string | null) {
   if (parentAssetId === componentAssetId) {
@@ -9,12 +10,12 @@ export async function assertCanInstallComponent(parentAssetId: string, component
     prisma.asset.findFirst({ where: { id: parentAssetId, isActive: true }, select: { id: true } }),
     prisma.asset.findFirst({ where: { id: componentAssetId, isActive: true }, select: { id: true } }),
     prisma.assetComponent.findFirst({
-      where: { componentAssetId, status: "installed", removedAt: null },
-      select: { id: true, parentAsset: { select: { assetTag: true } } },
+      where: { componentAssetId, ...installedOrOutstandingLinkWhere },
+      select: { id: true, status: true, removedAt: true, parentAsset: { select: { assetTag: true } } },
     }),
     slotNo?.trim()
       ? prisma.assetComponent.findFirst({
-          where: { parentAssetId, slotNo: slotNo.trim(), status: "installed", removedAt: null },
+          where: { parentAssetId, slotNo: slotNo.trim(), ...installedOrOutstandingLinkWhere },
           select: { id: true },
         })
       : Promise.resolve(null),
@@ -24,6 +25,8 @@ export async function assertCanInstallComponent(parentAssetId: string, component
   if (!parent) throw new Error("Parent asset not found")
   if (!component) throw new Error("Component asset not found")
   if (activeComponentLink) {
+    // An outstanding component (group 3 spec §8.5) is still linked to its parent: it is returned before it goes anywhere.
+    if (isOutstandingLink(activeComponentLink)) throw new Error("ASSET_COMPONENT_OUTSTANDING")
     throw new Error(`Component is already installed in ${activeComponentLink.parentAsset.assetTag}`)
   }
   if (activeSlotLink) {
@@ -45,7 +48,8 @@ async function hasComponentPath(startParentAssetId: string, targetComponentAsset
 
     visited.add(current)
     const children = await prisma.assetComponent.findMany({
-      where: { parentAssetId: current, status: "installed", removedAt: null },
+      // An outstanding child counts, so a later re-attach cannot close a cycle.
+      where: { parentAssetId: current, ...installedOrOutstandingLinkWhere },
       select: { componentAssetId: true },
     })
     frontier.push(...children.map((child) => child.componentAssetId))

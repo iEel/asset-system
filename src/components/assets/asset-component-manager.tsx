@@ -50,6 +50,8 @@ type ComponentRecord = {
   removedByLabel?: string | null
   evidenceCount: number
   componentAsset: AssetOption
+  /** An outstanding link's line, "ค้างคืน · อยู่กับ <holder> · <RT->" (group 3 spec §8.5); null for any other link. */
+  outstandingLine?: string | null
 }
 
 type InstallStep = "identify" | "details" | "review"
@@ -580,6 +582,7 @@ function ComponentRow({ locale, component, labels, onRemove }: { locale: string;
           {component.componentRole}{component.slotNo ? ` · ${component.slotNo}` : ""} · {formatDateTime(component.installedAt)}
           {component.evidenceCount > 0 ? ` · ${labels.evidence}: ${component.evidenceCount}` : ""}
         </div>
+        {component.outstandingLine ? <div className="mt-1 text-meta font-medium text-warning">{component.outstandingLine}</div> : null}
       </div>
       {onRemove ? (
         <Button variant="danger" size="md" className="shrink-0" onClick={onRemove}>

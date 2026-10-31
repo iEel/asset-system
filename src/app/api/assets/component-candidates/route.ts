@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,12 +18,8 @@ export async function GET(request: NextRequest) {
       where: {
         isActive: true,
         id: { not: parentAssetId },
-        installedInLinks: {
-          none: {
-            status: "installed",
-            removedAt: null,
-          },
-        },
+        // An outstanding component is still linked (group 3 spec §8.5): it is not a candidate.
+        installedInLinks: { none: installedOrOutstandingLinkWhere },
         OR: [
           { assetTag: { contains: search } },
           { name: { contains: search } },

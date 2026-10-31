@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { assetHandoverModes, assertHandoverModeFields } from "../asset-handover-mode.ts"
+import { componentLateReturnOutcomes } from "../component-late-return.ts"
 import { optionalText } from "./shared.ts"
 
 const optionalDate = z.preprocess(
@@ -128,11 +129,31 @@ export const assetComponentInstallSchema = z.object({
 })
 
 export const assetComponentRemoveSchema = z.object({
-  removedAt: optionalDate,
+  // zod 4's preprocess refuses an absent key, so a JSON ถอดออก without removedAt needs the outer optional.
+  removedAt: optionalDate.optional(),
   reason: optionalText,
   referenceType: optionalText,
   referenceId: optionalText,
 })
+
+// The late return of an outstanding component (group 3 spec §8.6, P2-R3). A component standing alone needs its room.
+export const assetComponentReturnSchema = z
+  .object({
+    componentLinkId: z.string().trim().min(1).max(100),
+    checkinId: z.string().trim().min(1).max(100),
+    expectedOutcome: z.enum(componentLateReturnOutcomes),
+    returnDate: z.coerce.date(),
+    receiveByEmployeeId: optionalText,
+    receiveBy: z.string().trim().min(1).max(100),
+    conditionId: optionalText,
+    nextLocationId: optionalText,
+    remark: optionalText,
+  })
+  .superRefine((input, context) => {
+    if (input.expectedOutcome === "standalone" && !input.nextLocationId) {
+      context.addIssue({ code: "custom", path: ["nextLocationId"], message: "Location is required" })
+    }
+  })
 
 export type AssetCheckoutInput = z.infer<typeof assetCheckoutSchema>
 export type AssetCheckinInput = z.infer<typeof assetCheckinSchema>
@@ -141,3 +162,4 @@ export type AssetBulkMoveInput = z.infer<typeof assetBulkMoveSchema>
 export type AssetBulkUpdateInput = z.infer<typeof assetBulkUpdateSchema>
 export type AssetComponentInstallInput = z.infer<typeof assetComponentInstallSchema>
 export type AssetComponentRemoveInput = z.infer<typeof assetComponentRemoveSchema>
+export type AssetComponentReturnInput = z.infer<typeof assetComponentReturnSchema>

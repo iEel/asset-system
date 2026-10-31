@@ -46,7 +46,7 @@ test("the chips, and the chip of every movement type: a cancel and a component's
   assert.deepEqual(ASSET_HISTORY_CATEGORIES, ["checkout", "checkin", "transfer", "audit", "repair", "disposal", "component", "edit"])
   const expected: Record<AssetHistoryCategory, string[]> = {
     checkout: ["checkout", "checkout_cancel", "parent_checkout_sync"],
-    checkin: ["checkin", "checkin_cancel", "parent_checkin_sync", "component_outstanding"],
+    checkin: ["checkin", "checkin_cancel", "parent_checkin_sync", "component_outstanding", "component_late_return"],
     transfer: ["transfer", "transfer_cancel", "parent_transfer_sync", "bulk_location_move", "parent_bulk_move_sync"],
     audit: ["audit_correction", "audit_location_correction", "audit_custodian_correction", "audit_department_correction", "audit_condition_correction", "parent_audit_finding_sync", "parent_audit_confirmation_sync"],
     repair: ["maintenance_create", "maintenance_close", "maintenance_cancel", "maintenance_status_update", "maintenance_pm_create"],

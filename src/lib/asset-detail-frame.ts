@@ -8,6 +8,7 @@ import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import { latestAuditResultAt, latestAuditResultOrderBy, latestAuditResultWhere } from "@/lib/latest-audit-result-rules"
 import {
   disposalReadinessAssetSelect,
+  getDisposalOutstandingComponentTags,
   getDisposalReadinessBlockersForAsset,
   type DisposalReadinessBlocker,
 } from "@/lib/disposal-readiness"
@@ -21,6 +22,8 @@ export type AssetDetailFrame = {
   pendingAudit: { round: AuditRoundRef } | null
   latestHandover: { id: string; documentNo: string | null } | null
   disposalBlockers: DisposalReadinessBlocker[]
+  /** The tags the outstanding_child_components blocker names (group 3 spec §8.5). */
+  disposalOutstandingComponentTags: string[]
   /** The outstanding link holding this asset as a component (group 3 spec §8.5): the action rule's fact. */
   outstanding: AssetOperationOutstandingFact | null
 }
@@ -78,6 +81,7 @@ export async function getAssetDetailFrame(assetId: string): Promise<AssetDetailF
     pendingAudit: pendingItem ? { round: pendingItem.auditRound } : null,
     latestHandover,
     disposalBlockers: readiness ? getDisposalReadinessBlockersForAsset(readiness) : [],
+    disposalOutstandingComponentTags: readiness ? getDisposalOutstandingComponentTags(readiness) : [],
     outstanding: outstandingLink ? { linkId: outstandingLink.id, checkinId: outstandingLink.referenceId } : null,
   }
 }

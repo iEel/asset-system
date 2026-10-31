@@ -1066,7 +1066,8 @@
       "parent_audit_finding_sync": "Followed its parent's approved discrepancy",
       "parent_audit_confirmation_sync": "Followed its parent's audit result",
       "other": "Other activity",
-      "component_outstanding": "Component not returned"
+      "component_outstanding": "Component not returned",
+      "component_late_return": "Outstanding component returned"
     },
     "auditHistory": "Audit History",
     "auditRound": "Audit Round",
@@ -1338,7 +1339,9 @@
     "transactionReasonConditionNonFunctional": "Not working. Send it for repair before handing it over.",
     "transactionReasonConditionSalvage": "Salvage awaiting disposal. It cannot be handed over.",
     "transactionReasonComponentOutstanding": "An outstanding component: return it first",
-    "transactionReasonComponentOwnHandover": "This component has its own open handover. Remove it from its parent asset first."
+    "transactionReasonComponentOwnHandover": "This component has its own open handover. Remove it from its parent asset first.",
+    "componentOutstanding": "Outstanding",
+    "componentOutstandingWith": "With {holder}"
   },
   "company": {
     "title": "Companies",
@@ -3394,7 +3397,9 @@
       "installed_child_components": "Installed components remain attached",
       "installed_in_parent": "Asset is installed in another asset",
       "assigned_licenses": "Licenses are still assigned to this asset",
-      "license_assignment": "Asset is still assigned as a license"
+      "license_assignment": "Asset is still assigned as a license",
+      "outstanding_child_components": "Outstanding components not returned yet: {tags}",
+      "outstanding_in_parent": "This component is outstanding. Return it or remove it from its parent first."
     },
     "types": {
       "sell": "Sell",
@@ -4785,7 +4790,8 @@
     "checkinLocationInactive": "This location is missing or inactive. Choose another.",
     "checkinMissingComponentReturnerRequired": "A component that has not come back stays with the person returning. Choose that person from the employee list.",
     "checkinMissingComponentInvalid": "A component in the list is no longer installed in this asset. Reload the page and try again.",
-    "componentOutstanding": "An outstanding component: return it first"
+    "componentOutstanding": "An outstanding component: return it first",
+    "componentReturnDateBeforeCheckin": "The return date cannot be before the day the parent asset was returned."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

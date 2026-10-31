@@ -196,3 +196,9 @@ test("a missing-components list the server cannot honour reads its own words und
     "A component in the list is no longer installed in this asset. Reload the page and try again.",
   ])
 })
+
+test("a late component return dated before its RT- reads its own words under the date (P2-R13)", () => {
+  assert.equal(getApiErrorKey("COMPONENT_RETURN_DATE_BEFORE_CHECKIN"), "componentReturnDateBeforeCheckin")
+  const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors.componentReturnDateBeforeCheckin
+  assert.deepEqual([words("th"), words("en")], ["วันที่คืนต้องไม่ก่อนวันที่รับคืนเครื่องหลัก", "The return date cannot be before the day the parent asset was returned."])
+})

@@ -31,7 +31,7 @@ test("the actions: the shared rule's primary and pinned บันทึกซ่
   assert.match(source, /recordRepair: isAssetScanReturn && recordRepair \? \{ label: recordRepair\.label, href: recordRepair\.href \} : null,/, "from the scan page บันทึกซ่อม moves into the sheet (R21)")
   assert.doesNotMatch(source, /isLegacyReturnEligible|legacyReturnEligible|canPinRepairRecord/)
   assert.match(source, /getDisposalRequestOffer\(\{ canCreate: canCreateDisposal, status: asset\.status, openDisposalId: frame\.openDisposalId, blockers: frame\.disposalBlockers \}\)/)
-  assert.match(source, /reason: disposalOffer\.blocker \? tDisposal\(`readinessBlockers\.\$\{disposalOffer\.blocker\}`\) : null/)
+  assert.match(source, /reason: disposalOffer\.blocker \? tDisposal\(`readinessBlockers\.\$\{disposalOffer\.blocker\}`, \{ tags: frame\.disposalOutstandingComponentTags\.join\(", "\) \}\) : null/)
   assert.match(source, /statusCorrection=\{statusCorrection\}/)
   const actions = part("asset-detail-actions")
   assert.match(actions, /^"use client"/)

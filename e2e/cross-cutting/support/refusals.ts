@@ -54,6 +54,7 @@ export const VIEWER_API_REFUSALS: readonly ApiRefusal[] = [
   { method: "POST", path: `/api/assets/${NO_RECORD}/checkout`, file: "assets/[id]/checkout/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: `/api/assets/${NO_RECORD}/checkin`, file: "assets/[id]/checkin/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: `/api/assets/${NO_RECORD}/transfer`, file: "assets/[id]/transfer/route.ts", permission: "asset:edit", body: {} },
+  { method: "POST", path: `/api/assets/${NO_RECORD}/component-return`, file: "assets/[id]/component-return/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: "/api/assets/bulk-move", file: "assets/bulk-move/route.ts", permission: "asset:edit", body: {} },
   { method: "GET", path: "/api/asset-operations/search", file: "asset-operations/search/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: "/api/audit-rounds", file: "audit-rounds/route.ts", permission: "audit:create", body: {} },

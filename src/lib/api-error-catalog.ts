@@ -93,6 +93,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Component is no longer installed under the selected parent asset": "componentNotUnderParent",
   "Component is not included in this audit round": "componentNotInRound",
   "Component parent is not included in this audit round": "componentParentNotInRound",
+  "COMPONENT_RETURN_DATE_BEFORE_CHECKIN": "componentReturnDateBeforeCheckin",
   // The repair schemas' issue message for a missing condition after repair (validations/maintenance.ts).
   "conditionAfterRepairRequired": "conditionAfterRepairRequired",
   "Custodian is required": "custodianRequired",

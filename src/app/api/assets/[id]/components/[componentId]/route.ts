@@ -5,6 +5,8 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { optionalFormFile, optionalFormText, saveComponentEvidenceFile } from "@/lib/asset-component-evidence"
 import { assetComponentRemoveSchema } from "@/lib/validations/asset-operations"
+import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
+import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
 
 type ComponentRouteContext = {
   params: Promise<{ id: string; componentId: string }>
@@ -18,12 +20,8 @@ export async function DELETE(request: NextRequest, context: ComponentRouteContex
     const { id: parentAssetId, componentId } = await context.params
     const { input, removeEvidence } = await parseRemoveRequest(request)
     const existing = await prisma.assetComponent.findFirst({
-      where: {
-        id: componentId,
-        parentAssetId,
-        status: "installed",
-        removedAt: null,
-      },
+      // ถอดออก also ends an outstanding link (group 3 spec §8.5).
+      where: { id: componentId, parentAssetId, ...installedOrOutstandingLinkWhere },
       include: {
         parentAsset: { select: { assetTag: true, name: true } },
         componentAsset: { select: { id: true, assetTag: true, name: true } },
@@ -36,8 +34,9 @@ export async function DELETE(request: NextRequest, context: ComponentRouteContex
 
     const removedAt = input.removedAt ?? new Date()
     const component = await prisma.$transaction(async (tx) => {
-      const record = await tx.assetComponent.update({
-        where: { id: componentId },
+      // A guarded write: a late return or another ถอดออก since the read ends here with a 409 (GP G15, P2-R17).
+      const ended = await tx.assetComponent.updateMany({
+        where: { id: componentId, parentAssetId, ...installedOrOutstandingLinkWhere },
         data: {
           removedAt,
           status: "removed",
@@ -47,6 +46,9 @@ export async function DELETE(request: NextRequest, context: ComponentRouteContex
           updatedBy: user.id,
         },
       })
+      if (ended.count !== 1) throw changedDuringOperation()
+      const record = await tx.assetComponent.findUnique({ where: { id: componentId } })
+      if (!record) throw changedDuringOperation()
 
       if (removeEvidence) {
         await tx.attachment.create({
@@ -111,8 +113,16 @@ export async function DELETE(request: NextRequest, context: ComponentRouteContex
 
     return NextResponse.json(component)
   } catch (error) {
+    if (error instanceof AssetOperationConflictError) return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     return errorResponse(error, 400)
   }
+}
+
+function changedDuringOperation() {
+  return new AssetOperationConflictError(
+    "ASSET_CHANGED_DURING_OPERATION",
+    "Asset status changed while this request was being saved. Reload the asset and try again.",
+  )
 }
 
 async function parseRemoveRequest(request: NextRequest) {

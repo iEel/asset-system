@@ -1,8 +1,10 @@
 // The department a transaction save writes (group 3 spec §6, decisions 1, 2, 10).
 // Pure and client-safe: the checkout route and the checkout summary call getCheckoutNextDepartmentId; the checkin
-// route (and, from Task 8, the รับคืน summary) call getCheckinNextDepartmentId.
-// Plans 2-3 add the late component return and transfer rules here.
+// route (and, from Task 8, the รับคืน summary) call getCheckinNextDepartmentId; the late component return route and
+// Task 9's late-return summary call getLateReturnDepartmentId.
+// Plan 3 adds the transfer rule here.
 import type { AssetOwnershipType } from "./asset-ownership.ts"
+import type { ComponentLateReturnOutcome } from "./component-late-return.ts"
 
 export function getCheckoutNextDepartmentId(input: {
   ownership: AssetOwnershipType
@@ -27,6 +29,23 @@ export function getCheckinNextDepartmentId(input: {
   currentDepartmentId: string | null
 }): string | null {
   if (keepsOwnDepartment(input.ownership)) return input.currentDepartmentId
+  return input.returnDepartmentId
+}
+
+// The late return of an outstanding component (spec §6, §8.6, P2-R7). Re-attached, a component follows its parent
+// (spec §6 "A component follows its parent"). Standing alone, it sits in IT stock and takes the return department,
+// except a ส่วนกลาง one: ส่วนกลาง keeps its responsible department "on checkout, return and transfer" (spec §6), and a
+// late return is a return. ส่วนควบ and License standing alone take the return department, so this rule does not use
+// keepsOwnDepartment.
+export function getLateReturnDepartmentId(input: {
+  outcome: ComponentLateReturnOutcome
+  ownership: AssetOwnershipType
+  parentDepartmentId: string | null
+  returnDepartmentId: string
+  currentDepartmentId: string | null
+}): string | null {
+  if (input.outcome === "reattached") return input.parentDepartmentId
+  if (input.ownership === "shared") return input.currentDepartmentId
   return input.returnDepartmentId
 }
 

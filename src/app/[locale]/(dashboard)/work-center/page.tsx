@@ -53,6 +53,7 @@ import {
 } from "@/lib/work-center-view"
 import { cn, formatDate, formatDateTime } from "@/lib/utils"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
 
 type WorkCenterPageProps = {
   params: Promise<{ locale: string }>
@@ -215,7 +216,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         ownershipType: true,
         custodianId: true,
         departmentId: true,
-        installedInLinks: { where: { status: "installed", removedAt: null }, select: { id: true }, take: 1 },
+        installedInLinks: { where: installedOrOutstandingLinkWhere, select: { id: true }, take: 1 },
         attachments: {
           where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true },
           select: { id: true },

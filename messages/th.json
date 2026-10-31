@@ -1066,7 +1066,8 @@
       "parent_audit_finding_sync": "ปรับตามรายการไม่ตรงของทรัพย์สินหลัก",
       "parent_audit_confirmation_sync": "ปรับตามผลตรวจนับของทรัพย์สินหลัก",
       "other": "ความเคลื่อนไหวอื่น",
-      "component_outstanding": "ส่วนควบค้างคืน"
+      "component_outstanding": "ส่วนควบค้างคืน",
+      "component_late_return": "รับคืนส่วนควบค้างคืน"
     },
     "auditHistory": "ประวัติการตรวจนับ",
     "auditRound": "รอบตรวจนับ",
@@ -1338,7 +1339,9 @@
     "transactionReasonConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ",
     "transactionReasonConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้",
     "transactionReasonComponentOutstanding": "ส่วนควบค้างคืน รับคืนก่อน",
-    "transactionReasonComponentOwnHandover": "ส่วนควบนี้มีใบส่งมอบของตัวเองค้างอยู่ ถอดออกจากเครื่องหลักก่อน"
+    "transactionReasonComponentOwnHandover": "ส่วนควบนี้มีใบส่งมอบของตัวเองค้างอยู่ ถอดออกจากเครื่องหลักก่อน",
+    "componentOutstanding": "ค้างคืน",
+    "componentOutstandingWith": "อยู่กับ {holder}"
   },
   "company": {
     "title": "บริษัท",
@@ -3394,7 +3397,9 @@
       "installed_child_components": "ยังมีส่วนควบติดตั้งอยู่",
       "installed_in_parent": "ยังเป็นส่วนควบของทรัพย์สินอื่น",
       "assigned_licenses": "ยังมี License ผูกกับทรัพย์สินนี้",
-      "license_assignment": "ยังผูก License กับทรัพย์สินอื่น"
+      "license_assignment": "ยังผูก License กับทรัพย์สินอื่น",
+      "outstanding_child_components": "ยังมีส่วนควบค้างคืน: {tags}",
+      "outstanding_in_parent": "เป็นส่วนควบค้างคืน รับคืนหรือถอดส่วนควบก่อน"
     },
     "types": {
       "sell": "ขาย",
@@ -4785,7 +4790,8 @@
     "checkinLocationInactive": "ที่ตั้งนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น",
     "checkinMissingComponentReturnerRequired": "ส่วนควบที่ยังไม่ได้คืนจะอยู่กับผู้คืน เลือกผู้คืนจากรายชื่อพนักงาน",
     "checkinMissingComponentInvalid": "ส่วนควบบางชิ้นในรายการไม่ได้ติดอยู่กับทรัพย์สินนี้แล้ว โหลดหน้าใหม่แล้วลองอีกครั้ง",
-    "componentOutstanding": "ส่วนควบค้างคืน รับคืนก่อน"
+    "componentOutstanding": "ส่วนควบค้างคืน รับคืนก่อน",
+    "componentReturnDateBeforeCheckin": "วันที่คืนต้องไม่ก่อนวันที่รับคืนเครื่องหลัก"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

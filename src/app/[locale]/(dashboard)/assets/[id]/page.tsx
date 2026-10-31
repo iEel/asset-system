@@ -47,6 +47,7 @@ import { getAssetDetailCounts } from "@/lib/asset-detail-counts"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { getMissingPhotoChecklistLabels } from "@/lib/asset-detail-format"
+import { installedOrOutstandingLinkWhere, isOutstandingLink } from "@/lib/asset-component-outstanding"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -127,7 +128,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             },
           },
           installedInLinks: {
-            where: { status: "installed", removedAt: null },
+            where: installedOrOutstandingLinkWhere,
             orderBy: { installedAt: "desc" },
             include: {
               parentAsset: {
@@ -298,7 +299,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
   const currentComponentsForPanel = currentComponents
-  const installedInLinksForPanel = asset.installedInLinks.map((component) => ({
+  // hasAssetResponsibility counts an outstanding link as held; the panels still show installed parents only.
+  const installedInLinksForPanel = asset.installedInLinks.filter((link) => !isOutstandingLink(link)).map((component) => ({
     ...component,
     parentHref: appendReturnTo(`/${locale}/assets/${component.parentAsset.id}`, currentAssetDetailHref),
   }))
@@ -407,7 +409,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       ? {
           label: tDetail("requestDisposal"),
           href: `/${locale}/disposal/new?assetId=${encodedAssetId}`,
-          reason: disposalOffer.blocker ? tDisposal(`readinessBlockers.${disposalOffer.blocker}`) : null,
+          reason: disposalOffer.blocker ? tDisposal(`readinessBlockers.${disposalOffer.blocker}`, { tags: frame.disposalOutstandingComponentTags.join(", ") }) : null,
         }
       : null,
     correctStatus: statusCorrection ? t("statusCorrectionButton") : null,
