@@ -1345,7 +1345,10 @@
     "transactionReasonComponentOwnHandover": "ส่วนควบนี้มีใบส่งมอบของตัวเองค้างอยู่ ถอดออกจากเครื่องหลักก่อน",
     "componentOutstanding": "ค้างคืน",
     "componentOutstandingWith": "อยู่กับ {holder}",
-    "dataQualityNoHandover": "มีผู้ถือครองแต่ไม่มีใบส่งมอบ"
+    "dataQualityNoHandover": "มีผู้ถือครองแต่ไม่มีใบส่งมอบ",
+    "transactionReasonTransferConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
+    "transactionReasonTransferConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
+    "transactionReasonTransferConditionSalvage": "เป็นซาก รอตัดจำหน่าย โอนย้ายให้ผู้ถือครองใหม่ไม่ได้"
   },
   "company": {
     "title": "บริษัท",

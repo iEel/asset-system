@@ -1345,7 +1345,10 @@
     "transactionReasonComponentOwnHandover": "This component has its own open handover. Remove it from its parent asset first.",
     "componentOutstanding": "Outstanding",
     "componentOutstandingWith": "With {holder}",
-    "dataQualityNoHandover": "Has a holder but no handover document"
+    "dataQualityNoHandover": "Has a holder but no handover document",
+    "transactionReasonTransferConditionDamaged": "Damaged: send it for repair before giving it to a new holder",
+    "transactionReasonTransferConditionNonFunctional": "Not working: send it for repair before giving it to a new holder",
+    "transactionReasonTransferConditionSalvage": "Salvage awaiting disposal: it cannot go to a new holder"
   },
   "company": {
     "title": "Companies",

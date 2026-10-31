@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { getCheckinNextDepartmentId, getCheckoutNextDepartmentId, getLateReturnDepartmentId, getOutstandingComponentCustody } from "../src/lib/asset-department-rule.ts"
+import {
+  getCheckinNextDepartmentId, getCheckoutNextDepartmentId, getLateReturnDepartmentId, getOutstandingComponentCustody, getTransferDepartmentSource,
+  getTransferNextDepartmentId,
+} from "../src/lib/asset-department-rule.ts"
 import { assetOwnershipTypes, type AssetOwnershipType } from "../src/lib/asset-ownership.ts"
 
 type Input = Parameters<typeof getCheckoutNextDepartmentId>[0]
@@ -70,4 +73,52 @@ test("a late return re-attached follows its parent's department; one standing al
   }
   for (const ownership of ["personal", "stock", "component", "software_license"] as const) assert.equal(late("standalone", ownership), "dept-it", ownership)
   assert.deepEqual([late("standalone", "shared"), late("standalone", "shared", { currentDepartmentId: null })], ["dept-returner", null])
+})
+
+// โอนย้าย (group 3 spec §6, §9.2, call 4; group 3 plan 3, P3-R2, P3-R3). The holder ids are already normalized: a holder
+// equal to the current one reaches these rules as no new holder (tests/transfer-rules.test.ts).
+type TransferInput = Parameters<typeof getTransferNextDepartmentId>[0]
+const transferDepartment = (ownership: AssetOwnershipType, holders: { current: string | null; next: string | null }, overrides: Partial<TransferInput> = {}) =>
+  getTransferNextDepartmentId({
+    ownership, currentCustodianId: holders.current, newCustodianId: holders.next, currentDepartmentId: "dept-now",
+    currentHolderDepartmentId: "dept-holder", newHolderDepartmentId: "dept-new", chosenDepartmentId: "dept-chosen", ...overrides,
+  })
+// Held + a new holder, no holder + a new holder, held + no new holder, no holder + no new holder.
+const holderCases = [
+  { current: "emp-old", next: "emp-new" }, { current: null, next: "emp-new" }, { current: "emp-old", next: null }, { current: null, next: null },
+] as const
+
+test("โอนย้าย: where the department comes from, per ownership and holder; a ส่วนควบ moved on its own stays free like ส่วนกลาง (group 3 spec §6, §9.2; P3-R2, P3-R3)", () => {
+  const source = (ownership: AssetOwnershipType) =>
+    holderCases.map(({ current, next }) => getTransferDepartmentSource({ ownership, currentCustodianId: current, newCustodianId: next }))
+  for (const ownership of ["personal", "stock"] as const) assert.deepEqual(source(ownership), ["newHolder", "newHolder", "currentHolder", "free"], ownership)
+  for (const ownership of ["shared", "component", "software_license"] as const) assert.deepEqual(source(ownership), ["free", "free", "free", "free"], ownership)
+})
+
+test("โอนย้าย: บุคคล and Stock follow the new holder, else the current holder, else the chosen department; ส่วนกลาง and ส่วนควบ take the chosen one or keep theirs (spec §6, decision 10, P3-R2, P3-R3)", () => {
+  for (const ownership of ["personal", "stock"] as const) {
+    assert.deepEqual(holderCases.map((holders) => transferDepartment(ownership, holders)), ["dept-new", "dept-new", "dept-holder", "dept-chosen"], ownership)
+  }
+  for (const ownership of ["shared", "component", "software_license"] as const) {
+    assert.deepEqual(holderCases.map((holders) => transferDepartment(ownership, holders)), ["dept-chosen", "dept-chosen", "dept-chosen", "dept-chosen"], ownership)
+    assert.deepEqual(holderCases.map((holders) => transferDepartment(ownership, holders, { chosenDepartmentId: null })), ["dept-now", "dept-now", "dept-now", "dept-now"], `${ownership}, none chosen`)
+  }
+})
+
+test("โอนย้าย: a held asset moved only to another room takes its holder's department, which corrects a stored mismatch; a locked row ignores a chosen department (spec §6 call 4, P3-R3, Review Focus 1)", () => {
+  const roomOnly = { current: "emp-old", next: null }
+  assert.equal(transferDepartment("personal", roomOnly, { currentDepartmentId: "dept-stale" }), "dept-holder")
+  assert.equal(transferDepartment("stock", roomOnly, { currentDepartmentId: "dept-holder" }), "dept-holder", "already the holder's: no change")
+  assert.equal(transferDepartment("personal", { current: "emp-old", next: "emp-new" }, { chosenDepartmentId: "dept-other" }), "dept-new")
+  assert.equal(transferDepartment("personal", roomOnly, { chosenDepartmentId: "dept-other" }), "dept-holder")
+})
+
+test("โอนย้าย: an unread holder department falls back to the current one, and an asset with no department stays with none (P3-R3)", () => {
+  assert.equal(transferDepartment("personal", { current: null, next: "emp-new" }, { newHolderDepartmentId: null }), "dept-now", "the new holder's department unread")
+  assert.equal(transferDepartment("stock", { current: "emp-old", next: null }, { currentHolderDepartmentId: null }), "dept-now", "the current holder's row missing")
+  assert.equal(transferDepartment("personal", { current: null, next: null }, { chosenDepartmentId: null }), "dept-now", "nothing chosen")
+  const none = { currentDepartmentId: null, currentHolderDepartmentId: null, newHolderDepartmentId: null, chosenDepartmentId: null }
+  for (const ownership of ["personal", "stock", "shared", "component"] as const) {
+    assert.deepEqual(holderCases.map((holders) => transferDepartment(ownership, holders, none)), [null, null, null, null], ownership)
+  }
 })

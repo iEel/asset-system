@@ -1,8 +1,8 @@
 // The department a transaction save writes (group 3 spec §6, decisions 1, 2, 10).
 // Pure and client-safe: the checkout route and the checkout summary call getCheckoutNextDepartmentId; the checkin
-// route (and, from Task 8, the รับคืน summary) call getCheckinNextDepartmentId; the late component return route and
-// Task 9's late-return summary call getLateReturnDepartmentId.
-// Plan 3 adds the transfer rule here.
+// route and the รับคืน summary call getCheckinNextDepartmentId; the late component return route and the late-return
+// summary call getLateReturnDepartmentId; the transfer route and the โอนย้าย form's rules call
+// getTransferDepartmentSource and getTransferNextDepartmentId (group 3 plan 3, P3-R3).
 import type { AssetOwnershipType } from "./asset-ownership.ts"
 import type { ComponentLateReturnOutcome } from "./component-late-return.ts"
 
@@ -47,6 +47,42 @@ export function getLateReturnDepartmentId(input: {
   if (input.outcome === "reattached") return input.parentDepartmentId
   if (input.ownership === "shared") return input.currentDepartmentId
   return input.returnDepartmentId
+}
+
+// โอนย้าย (spec §6, §9.2, call 4; group 3 plan 3, P3-R2, P3-R3). The ids are normalized first
+// (normalizeTransferDestinations): a holder equal to the current one is not a new holder. ส่วนกลาง, ส่วนควบ and License
+// keep a free department; บุคคล and Stock follow the new holder, else the current holder (the caller reads it without
+// isActive), else the chosen department. "newHolder" and "currentHolder" lock the แผนก row.
+export type TransferDepartmentSource = "newHolder" | "currentHolder" | "free"
+
+export function getTransferDepartmentSource(input: {
+  ownership: AssetOwnershipType
+  currentCustodianId: string | null
+  newCustodianId: string | null
+}): TransferDepartmentSource {
+  if (keepsOwnDepartment(input.ownership)) return "free"
+  if (input.newCustodianId) return "newHolder"
+  if (input.currentCustodianId) return "currentHolder"
+  return "free"
+}
+
+export function getTransferNextDepartmentId(input: {
+  ownership: AssetOwnershipType
+  currentCustodianId: string | null
+  newCustodianId: string | null
+  currentDepartmentId: string | null
+  currentHolderDepartmentId: string | null
+  newHolderDepartmentId: string | null
+  chosenDepartmentId: string | null
+}): string | null {
+  switch (getTransferDepartmentSource(input)) {
+    case "newHolder":
+      return input.newHolderDepartmentId ?? input.currentDepartmentId
+    case "currentHolder":
+      return input.currentHolderDepartmentId ?? input.currentDepartmentId
+    case "free":
+      return input.chosenDepartmentId ?? input.currentDepartmentId
+  }
 }
 
 function keepsOwnDepartment(ownership: AssetOwnershipType): boolean {

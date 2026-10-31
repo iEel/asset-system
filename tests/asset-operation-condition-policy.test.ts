@@ -13,6 +13,7 @@ import {
   getRepairConditionOptions,
   repairConditionDefault,
   repairUsableConditionNames,
+  transferConditionBlockReasonKeys,
 } from "../src/lib/asset-lifecycle-policy.ts"
 
 // The 9 seeded masters (prisma/seed.ts), in master order.
@@ -80,6 +81,12 @@ test("a recorded เสียหาย, ใช้งานไม่ได้ or 
     damaged: "asset.transactionReasonConditionDamaged",
     nonFunctional: "asset.transactionReasonConditionNonFunctional",
     salvage: "asset.transactionReasonConditionSalvage",
+  })
+  // โอนย้าย to a new holder refuses the same blocks with its own words (group 3 plan 3, P3-R1).
+  assert.deepEqual(transferConditionBlockReasonKeys, {
+    damaged: "asset.transactionReasonTransferConditionDamaged",
+    nonFunctional: "asset.transactionReasonTransferConditionNonFunctional",
+    salvage: "asset.transactionReasonTransferConditionSalvage",
   })
 })
 

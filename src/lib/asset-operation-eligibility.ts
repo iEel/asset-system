@@ -5,6 +5,7 @@ import {
   getCheckoutConditionBlock,
   isLegacyReturnEligible,
   normalizeAssetStateName,
+  transferConditionBlockReasonKeys,
 } from "./asset-lifecycle-policy.ts"
 import type { AssetOwnershipType } from "./asset-ownership.ts"
 
@@ -131,7 +132,9 @@ export function getCheckinVerdict(facts: AssetOperationFacts): AssetCheckinVerdi
 }
 
 // api/assets/[id]/transfer: a custodian is assign_custodian, a move without one is move_scope; then the open handover
-// (user decision 2026-10-21 Y2; S-R40: the caller says which).
+// (user decision 2026-10-21 Y2; S-R40: the caller says which); last, a new holder never takes a เสียหาย, ใช้งานไม่ได้ or
+// ซาก asset (group 3 spec §19 recorded question; plan 3 P3-R1). A move of a broken asset stays allowed.
+// assignCustodian means a normalized new holder (normalizeTransferDestinations).
 export function getTransferVerdict(facts: AssetOperationFacts, context: { assignCustodian: boolean }): AssetOperationVerdict {
   if (facts.outstanding) return no(assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING)
   const refused = ownershipRefusal("move", facts.ownership)
@@ -140,6 +143,10 @@ export function getTransferVerdict(facts: AssetOperationFacts, context: { assign
     return no(context.assignCustodian ? "asset.transactionReasonStatusNotTransferable" : "asset.transactionReasonWrittenOff")
   }
   if (facts.openCheckout) return no("asset.transactionReasonOpenCheckout")
+  if (context.assignCustodian) {
+    const block = getCheckoutConditionBlock(facts.conditionName)
+    if (block) return no(transferConditionBlockReasonKeys[block])
+  }
   return yes
 }
 

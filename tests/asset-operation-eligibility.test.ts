@@ -65,11 +65,39 @@ test("ส่งมอบ refuses a เสียหาย, ใช้งานไ�
   assert.deepEqual(getCheckoutVerdict(facts({ statusName: "In Use", conditionName: "Damaged" })), no("asset.transactionReasonStatusNotReady"), "the status reason first")
   assert.deepEqual(getCheckoutVerdict(facts({ openCheckout: handover("temporary_loan"), conditionName: "Damaged" })), no("asset.transactionReasonOpenCheckoutHandover"), "the open handover first")
   assert.deepEqual(getCheckoutVerdict(facts({ ownership: "component", conditionName: "Salvage" })), no("asset.transactionReasonComponentCheckout"), "ownership first")
-  // The condition is ส่งมอบ's rule only: รับคืน, โอนย้าย and the bulk move do not read it (A1-R3).
+  // รับคืน and the bulk move do not read the condition; โอนย้าย reads it only for a new holder (P3-R1, which answers A1-R3).
   const broken = facts({ statusName: "In Use", custodianId: "e-1", conditionName: "Damaged" })
   assert.deepEqual(getCheckinVerdict(broken), { ...yes, path: "legacy" })
-  assert.deepEqual(getTransferVerdict(broken, { assignCustodian: true }), yes)
+  assert.deepEqual(getTransferVerdict(broken, { assignCustodian: true }), no("asset.transactionReasonTransferConditionDamaged"))
+  assert.deepEqual(getTransferVerdict(broken, { assignCustodian: false }), yes)
   assert.deepEqual(getBulkMoveVerdict(broken), yes)
+})
+
+test("โอนย้าย refuses a เสียหาย, ใช้งานไม่ได้ or ซาก asset only for a new holder, last, after the outstanding link, the ownership, the status and the open handover (group 3 spec §19 recorded question; plan 3 P3-R1)", () => {
+  const assign = { assignCustodian: true }
+  const move = { assignCustodian: false }
+  const blocks = [
+    ["Damaged", "asset.transactionReasonTransferConditionDamaged"],
+    ["Non-functional", "asset.transactionReasonTransferConditionNonFunctional"],
+    ["Salvage", "asset.transactionReasonTransferConditionSalvage"],
+  ] as const
+  for (const ownership of ["personal", "shared", "stock", "component"] as const) for (const statusName of ["Ready", "In Use"]) {
+    for (const [conditionName, reasonKey] of blocks) {
+      const where = `${ownership} ${statusName} ${conditionName}`
+      assert.deepEqual(getTransferVerdict(facts({ ownership, statusName, conditionName }), assign), no(reasonKey), where)
+      assert.deepEqual(getTransferVerdict(facts({ ownership, statusName, conditionName }), move), yes, `${where}: a room or department move stays allowed`)
+    }
+  }
+  for (const conditionName of [null, "Not Assessed", "New", "Good", "Fair"]) assert.deepEqual(getTransferVerdict(facts({ conditionName }), assign), yes, String(conditionName))
+  assert.deepEqual(getTransferVerdict(facts({ conditionName: " damaged " }), assign), no("asset.transactionReasonTransferConditionDamaged"), "the master name folded as checkout's")
+  // The condition is the last rule: every earlier refusal keeps its own reason.
+  assert.deepEqual(getTransferVerdict(facts({ conditionName: "Salvage", outstanding }), assign), no("asset.transactionReasonComponentOutstanding"), "the outstanding link first")
+  assert.deepEqual(getTransferVerdict(facts({ ownership: "software_license", conditionName: "Damaged" }), assign), no("asset.transactionReasonLicenseMove"), "ownership first")
+  assert.deepEqual(getTransferVerdict(facts({ statusName: "Pending Repair", conditionName: "Damaged" }), assign), no("asset.transactionReasonStatusNotTransferable"), "the status first")
+  assert.deepEqual(getTransferVerdict(facts({ statusName: "In Use", openCheckout: handover("permanent_assignment"), conditionName: "Damaged" }), assign), no("asset.transactionReasonOpenCheckout"), "the open handover first")
+  // A move to the repair room or IT storage: any status but Disposed/Retired, broken or not.
+  assert.deepEqual(getTransferVerdict(facts({ statusName: "Pending Repair", conditionName: "Damaged" }), move), yes)
+  assert.deepEqual(getBulkMoveVerdict(facts({ statusName: "Ready", conditionName: "Salvage" })), yes, "the bulk move does not read it")
 })
 
 test("รับคืน: an open handover of any ownership is returnable when its custody type is set and the status fits, an open repair included (spec 6.3, S-R2, S-R43)", () => {
@@ -188,6 +216,15 @@ test("the asset page and the picker give one asset the same answer (spec §5, §
   const inspected = facts({ ownership: "personal", statusName: "Under Inspection" })
   assert.deepEqual(getTransferVerdict(inspected, { assignCustodian: true }), no("asset.transactionReasonStatusNotTransferable"))
   assert.deepEqual(getTransferVerdict(inspected, { assignCustodian: false }), yes)
+  // P3-R1, the same model: the asset page asks บุคคล as an assign, so a broken บุคคล asset's โอนย้าย is disabled with the
+  // transfer words; ส่วนกลาง, Stock and ส่วนควบ move, and a room-only move of a บุคคล one starts from the menu.
+  const brokenTransfer = (ownership: AssetActionInput["ownership"]) => {
+    const set = getAssetActions({ ...base, ownership, statusName: "In Use", custodianId: "e-1", conditionName: "Damaged" })
+    const action = [...(set.primary ? [set.primary] : []), ...set.transactions].find((item) => item.key === "transfer")
+    return [action?.enabled, action?.reasonKey]
+  }
+  assert.deepEqual(brokenTransfer("personal"), [false, "asset.transactionReasonTransferConditionDamaged"])
+  for (const ownership of ["shared", "stock", "component"] as const) assert.deepEqual(brokenTransfer(ownership), [true, null], ownership)
 })
 
 test("the new words are the spec's, the custody-type words are the return form's, and every reason exists in Thai and English (spec 6.3)", () => {
@@ -201,6 +238,12 @@ test("the new words are the spec's, the custody-type words are the return form's
     ["สภาพเสียหาย ต้องส่งซ่อมก่อนส่งมอบ", "Damaged. Send it for repair before handing it over."],
     ["ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ", "Not working. Send it for repair before handing it over."],
     ["เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้", "Salvage awaiting disposal. It cannot be handed over."],
+  ])
+  // โอนย้าย to a new holder (plan 3 P3-R1): its own words; checkout's say "ก่อนส่งมอบ".
+  assert.deepEqual(["Damaged", "NonFunctional", "Salvage"].map((name) => [th.asset[`transactionReasonTransferCondition${name}`], en.asset[`transactionReasonTransferCondition${name}`]]), [
+    ["สภาพเสียหาย ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่", "Damaged: send it for repair before giving it to a new holder"],
+    ["ใช้งานไม่ได้ ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่", "Not working: send it for repair before giving it to a new holder"],
+    ["เป็นซาก รอตัดจำหน่าย โอนย้ายให้ผู้ถือครองใหม่ไม่ได้", "Salvage awaiting disposal: it cannot go to a new holder"],
   ])
   // The outstanding component (group 3 spec §8.5, §8.6, P2-R17).
   assert.deepEqual(["ComponentOutstanding", "ComponentOwnHandover"].map((name) => [th.asset[`transactionReason${name}`], en.asset[`transactionReason${name}`]]), [
@@ -219,7 +262,8 @@ test("the new words are the spec's, the custody-type words are the return form's
     }
   }
   assert.deepEqual([...keys].sort(), ["ActiveMaintenance", "ComponentCheckin", "ComponentCheckout", "ComponentOutstanding", "ComponentOwnHandover", "ConditionDamaged",
- "ConditionNonFunctional", "ConditionSalvage", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutHandover", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "WrittenOff"].map((name) => `asset.transactionReason${name}`))
+ "ConditionNonFunctional", "ConditionSalvage", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutHandover", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "TransferConditionDamaged",
+ "TransferConditionNonFunctional", "TransferConditionSalvage", "WrittenOff"].map((name) => `asset.transactionReason${name}`))
   for (const key of keys) for (const table of [th, en]) assert.equal(typeof table.asset[key.slice("asset.".length)], "string", key)
 })
 

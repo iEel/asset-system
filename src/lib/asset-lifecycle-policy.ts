@@ -212,8 +212,8 @@ export function repairConditionDefault(currentConditionId: string | null, option
   return currentConditionId && options.some((option) => option.id === currentConditionId) ? currentConditionId : ""
 }
 
-// A recorded เสียหาย, ใช้งานไม่ได้ or ซาก refuses a handover (group 3 spec §19.2): the picker, the asset page and the
-// checkout route all ask this. ยังไม่ประเมิน is not refused.
+// A recorded เสียหาย, ใช้งานไม่ได้ or ซาก refuses a handover (group 3 spec §19.2) and a transfer to a new holder (group 3
+// plan 3, P3-R1): the pickers, the asset page and the checkout and transfer routes all ask this. ยังไม่ประเมิน is not refused.
 export type CheckoutConditionBlock = "damaged" | "nonFunctional" | "salvage"
 
 const checkoutConditionBlocks: ReadonlyMap<string, CheckoutConditionBlock> = new Map([
@@ -231,6 +231,13 @@ export const checkoutConditionBlockReasonKeys: Readonly<Record<CheckoutCondition
   damaged: "asset.transactionReasonConditionDamaged",
   nonFunctional: "asset.transactionReasonConditionNonFunctional",
   salvage: "asset.transactionReasonConditionSalvage",
+}
+
+/** โอนย้าย to a new holder refuses the same blocks with its own words (group 3 plan 3, P3-R1); checkout's say "ก่อนส่งมอบ". */
+export const transferConditionBlockReasonKeys: Readonly<Record<CheckoutConditionBlock, string>> = {
+  damaged: "asset.transactionReasonTransferConditionDamaged",
+  nonFunctional: "asset.transactionReasonTransferConditionNonFunctional",
+  salvage: "asset.transactionReasonTransferConditionSalvage",
 }
 
 // The server's legacy return (api/assets/[id]/legacy-checkout) accepts exactly this: Ready or In Use,

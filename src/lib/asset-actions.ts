@@ -59,7 +59,7 @@ export type AssetActionInput = {
   openRepairId: string | null
   /** The open disposal request (`openDisposalRequestWhere`), from a dedicated query. */
   openDisposalId: string | null
-  /** The condition master's `name` ("Good", "Damaged", …): ส่งมอบ refuses a broken or salvage asset (group 3 spec §19.2). */
+  /** The condition master's `name` ("Good", "Damaged", …): ส่งมอบ refuses a broken or salvage asset, and โอนย้าย to a new holder (group 3 spec §19.2; plan 3 P3-R1). */
   conditionName: string | null
   /** The outstanding link holding this asset as a component (group 3 spec §8.5), from a dedicated query. */
   outstanding: AssetOperationOutstandingFact | null
