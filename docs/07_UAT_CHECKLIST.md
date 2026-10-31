@@ -561,11 +561,21 @@ E2E covers the department after a handover on both devices and the multi-word se
 
 - [ ] Desktop 1440, both themes: the three sections, the summary rows (bold when changed), the checklist, the footnote, the footer line and ยกเลิก; the summary's แผนก equals what is saved for a Stock asset to a department and for any asset to a room.
 - [ ] A computer with components: the "ไปด้วย" list, a component with its own handover left behind, the components' holder and department after saving; the receiver's hint counts it once.
-- [ ] The condition chips offer every selectable master condition and start on the asset's.
+- [ ] The condition chips offer ใหม่, ดี and พอใช้ only and start on the asset's (none for ยังไม่ประเมิน; spec §19.1).
 - [ ] Phone (iOS Safari, Android Chrome): the three steps, ยกเลิกและกลับ, step back, "รับในนามของ" for a department or room, landscape signing, the HO- opens.
 - [ ] On dev, a deactivated employee, department or room is refused under its field; an old ทรัพย์สินอื่น handover reads on HO-, RT-, the history and the return search; a cancelled HO- restores the department.
 - [ ] "notebook บัญชี" on ส่งมอบ, รับคืน and โอนย้าย, with a 6th word ignored.
 - [ ] NVDA and VoiceOver on the Segmented, the chips, the summary and the steps; an English pass.
+
+### Addendum: condition at handover, condition after repair, the photo (spec §19, 2026-10-31)
+
+E2E covers the three conditions, the repair loop (เสียหาย refused with ส่งซ่อม, the repair done as ใช้งานได้ + ดี, the history's เปลี่ยนสภาพ, then the handover), a ซาก asset with no link, closing as ซ่อมไม่ได้ to ซาก, and the photo in the row and the summary (`e2e/transactions/handover-condition.spec.ts`). Check by hand:
+
+- [ ] An asset recorded ใช้งานไม่ได้ reads "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ" and its ส่งซ่อม opens the repair; the repair's "ซ่อมเสร็จ" dialog asks สภาพหลังซ่อม and starts on the asset's when it is ดี or พอใช้.
+- [ ] A routine repair closed on an asset already ดี: ดี is pre-chosen and the history gets no new เปลี่ยนสภาพ row.
+- [ ] The photo on the phone's step 2 and the รูปก่อนส่งมอบ preview, in both themes; an asset with only a model photo shows the model's.
+- [ ] On dev, a handover page opened before the asset became เสียหาย is refused on save with the reason under the asset field.
+- [ ] รับคืน offers every condition except ยังไม่ประเมิน.
 
 ## Sign-Off
 

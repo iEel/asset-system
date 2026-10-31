@@ -291,7 +291,7 @@ test("the desk delivery on the phone: three steps on one form, the read-back, a 
   // Every spec of the area is pinned by this file.
   const { readdirSync } = await import("node:fs")
   assert.deepEqual(readdirSync("e2e/transactions").filter((file) => file.endsWith(".spec.ts")).sort(), [
-    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover-department.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return.spec.ts", "transfer.spec.ts",
+    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover-condition.spec.ts", "handover-department.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return.spec.ts", "transfer.spec.ts",
   ])
 })
 
@@ -365,4 +365,27 @@ test("ส่งมอบ gives a บุคคล asset the receiver's department
   assert.ok(spec.includes("const secondWord = departmentWord(second.name, [asset.assetTag, asset.name, runDepartment.name])"))
   assert.ok(spec.includes('await expectNoAssetFound(page, "checkout-asset", `${asset.name} ${secondWord}`)'))
   for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "ldap", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
+})
+
+test("ส่งมอบ refuses a broken asset with a ส่งซ่อม link until its repair closes ใช้งานได้, a salvage asset with none, closing as ซ่อมไม่ได้ makes ซาก, and the register's photo shows (group 3 spec §19, addendum task A5)", () => {
+  const spec = readTxSpec("e2e/transactions/handover-condition.spec.ts")
+  // The app's words, verbatim (spec §19.3-4).
+  for (const word of ["สภาพเสียหาย ต้องส่งซ่อมก่อนส่งมอบ", "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้", "สภาพของทรัพย์สินจะเปลี่ยนเป็น ซาก", "สภาพหลังซ่อม"]) assert.ok(spec.includes(`"${word}"`), word)
+  const th = read("messages/th.json")
+  for (const word of ["สภาพเสียหาย ต้องส่งซ่อมก่อนส่งมอบ", "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้", "สภาพของทรัพย์สินจะเปลี่ยนเป็น ซาก", "สภาพหลังซ่อม"]) assert.ok(th.includes(`"${word}"`), `messages: ${word}`)
+  // ส่งมอบ offers exactly three conditions; the link goes to a new repair for the asset.
+  assert.ok(spec.includes('for (const label of ["ใหม่", "ดี", "พอใช้"])'))
+  assert.ok(spec.includes('await expect(repairLink).toHaveAttribute("href", `/th/maintenance/new?assetId=${asset.id}`)'))
+  assert.ok(spec.includes('await expect(page.locator("[data-checkout-repair-link]")).toHaveCount(0)'))
+  // The condition changes on the asset edit form (PUT), as IT staff at the desk; the repair is recorded on its forms.
+  assert.ok(spec.includes('await visit(measure, `/th/assets/${assetId}/edit`'))
+  assert.ok(spec.includes('response.request().method() === "PUT"'))
+  assert.ok(spec.includes('await condition.getByRole("radio", { name: "ดี", exact: true }).check()'))
+  assert.ok(spec.includes('filter({ hasText: "เสียหาย → ดี" })'))
+  assert.ok(spec.includes("await saveHandoverForm(page, e2eDevice, asset.id)"))
+  assert.ok(spec.includes("await uploadPhotoByApi(page, withPhoto.id)"))
+  // The desktop runs every test; the phone the repair loop's first half only.
+  assert.equal(spec.split('test.skip(e2eDevice === "phone", DESKTOP_ONLY)').length - 1, 4)
+  assert.equal(spec.split('if (e2eDevice === "phone") return').length - 1, 1)
+  for (const banned of ["request.delete", "/api/admin/settings", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })
