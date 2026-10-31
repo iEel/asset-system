@@ -98,7 +98,7 @@ type CheckinField = keyof typeof FIELD_IDS
 const FIELD_ORDER = Object.keys(FIELD_IDS) as CheckinField[]
 
 // noValidate turns the browser's check off, so this restates the controls' required and the server's 100-character
-// limit on the two names (v-track M-R2). A missing component needs an employee as ผู้คืน (P2-R18); the return date is no
+// limit on the two names (v-track M-R2). A missing component needs an employee as ผู้คืน, in the server's words (P2-R18); the return date is no
 // later than today and no earlier than the handover, in the route's own codes (P2-R13); a row with an open repair returns
 // into ส่งซ่อม only, in the server's words (S-R43).
 function validate(
@@ -118,7 +118,7 @@ function validate(
   }
   const dateError = values.returnDate ? checkinReturnDateError({ returnDay: values.returnDate, todayDay, handoverDay }) : null
   check("checkoutId", required(values.checkoutId))
-  check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100) ?? (missingCount > 0 ? required(returnByEmployeeId) : null))
+  check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100) ?? (missingCount > 0 && !returnByEmployeeId ? "checkinMissingComponentReturnerRequired" : null))
   check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))
   check("conditionAfter", required(values.conditionAfter))
   check("returnDate", required(values.returnDate) ?? (dateError ? CHECKIN_RETURN_DATE_ERROR_KEYS[dateError] : null))

@@ -178,7 +178,7 @@ test("checkin: the return date is checked at last, errors under the field instea
   const rules = validateBody(source)
   for (const rule of [
     'check("checkoutId", required(values.checkoutId))',
-    'check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100) ?? (missingCount > 0 ? required(returnByEmployeeId) : null))',
+    'check("returnBy", required(values.returnBy) ?? maxLength(values.returnBy, 100) ?? (missingCount > 0 && !returnByEmployeeId ? "checkinMissingComponentReturnerRequired" : null))',
     'check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))',
     'check("conditionAfter", required(values.conditionAfter))',
     'check("returnDate", required(values.returnDate) ?? (dateError ? CHECKIN_RETURN_DATE_ERROR_KEYS[dateError] : null))',
