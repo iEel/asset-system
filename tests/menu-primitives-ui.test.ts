@@ -178,9 +178,9 @@ test("Kbd works in server components and uses the sans font", () => {
   assert.match(source, /"inline-flex h-5 items-center rounded-sm border border-border bg-surface px-1\.5 font-sans text-xs leading-4 font-medium whitespace-nowrap text-muted-foreground"/)
 })
 
-test("searchable select marks the chosen option with weight and a trailing check", () => {
+test("searchable select marks the chosen option with weight and a trailing check, and the current value with its word between the label and the check (group 3 plan 3, P3-R11)", () => {
   const source = read("src/components/ui/searchable-select.tsx")
   assert.match(source, /className=\{option\.id === value \? "font-medium" : undefined\}/)
-  assert.match(source, /<span className="min-w-0 truncate">\{option\.label\}<\/span>\s*\{option\.id === value \? <Check className="ml-auto size-4 text-primary" aria-hidden="true" \/> : null\}/)
+  assert.match(source, /<span className="min-w-0 truncate">\{option\.label\}<\/span>\s*\{current \? <span className="shrink-0 text-meta text-muted-foreground">\{currentMark\}<\/span> : null\}\s*\{option\.id === value \? <Check className="ml-auto size-4 text-primary" aria-hidden="true" \/> : null\}/)
   assert.doesNotMatch(source, /text-transparent/)
 })

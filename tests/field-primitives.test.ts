@@ -103,7 +103,7 @@ test("SearchField hides the WebKit clear button and keeps its spinner still for 
 
 test("SearchableSelect uses the field look, a real label, and announces the chosen value", () => {
   const source = read("src/components/ui/searchable-select.tsx")
-  assert.match(source, /<FieldLabel id=\{labelId\} htmlFor=\{triggerId\} required=\{required\}>/)
+  assert.match(source, /<FieldLabel id=\{labelId\} htmlFor=\{triggerId\} required=\{required\} visuallyHidden=\{labelVisuallyHidden\}>/)
   const trigger = source.match(/fieldControlVariants\(\{ fieldSize \}\),\n\s*"([^"]+)"/)?.[1]
   assert.ok(trigger, "trigger class string not found")
   assert.match(trigger, /aria-expanded:border-ring aria-expanded:ring-1 aria-expanded:ring-ring aria-expanded:shadow-field-focus/)

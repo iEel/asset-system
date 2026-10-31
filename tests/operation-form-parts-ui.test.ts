@@ -9,7 +9,7 @@ const RAW = /\bdark:|#[0-9a-fA-F]{3,8}\b|\brgba?\(|\b(?:bg|text|border|ring)-[a-
 
 test("OperationSummaryCard: ตอนนี้ then หลังบันทึก per row, the new value semibold only when it changes, the checklist, warnings, sticky from lg", () => {
   const source = read(`${DIR}operation-summary-card.tsx`)
-  assert.match(source, /^export function OperationSummaryCard\(\{ title, nowLabel, nextLabel, rows, checklist = \[\], warnings = \[\], footnote, photo, assetLabel \}: OperationSummaryCardProps\) \{$/m)
+  assert.match(source, /^export function OperationSummaryCard\(\{ title, nowLabel, nextLabel, rows, checklist = \[\], warnings = \[\], footnote, photo, assetLabel, lead \}: OperationSummaryCardProps\) \{$/m)
   // The asset line (group 3 spec §19.5): the register photo and the asset's label, under the title, only when given.
   assert.ok(source.includes('{photo || assetLabel ? (\n        <div data-summary-asset className="flex min-w-0 items-center gap-3 text-sm">'), "the asset line")
   for (const part of [
@@ -25,6 +25,21 @@ test("OperationSummaryCard: ตอนนี้ then หลังบันทึ�
   assert.match(source, /<div aria-hidden="true"[^>]*>\s*<span \/>\s*<span>\{nowLabel\}<\/span>\s*<span>\{nextLabel\}<\/span>/, "the column heads are visual only")
   assert.ok(source.indexOf('<div aria-hidden="true"') < source.indexOf("<dl"), "the heads sit outside the <dl> (axe definition-list)")
   assert.doesNotMatch(source, RAW)
+})
+
+test("OperationSummaryCard: an optional lead line under the asset line, above the rows (group 3 spec §9.3, plan 3 P3-R11)", () => {
+  const source = read(`${DIR}operation-summary-card.tsx`)
+  assert.ok(source.includes("  lead?: ReactNode\n"), "the prop")
+  assert.ok(source.includes('{lead ? <p data-summary-lead className="min-w-0 break-words text-sm font-medium text-foreground">{lead}</p> : null}'), "the lead, only when given")
+  const at = (text: string) => {
+    const index = source.indexOf(text)
+    assert.ok(index >= 0, text)
+    return index
+  }
+  assert.ok(at("<div data-summary-asset") < at("<p data-summary-lead") && at("<p data-summary-lead") < at("{rows.length > 0 ? ("), "the asset line, the lead, then the rows")
+  const design = read("DESIGN.md")
+  const block = design.slice(design.indexOf("- **`OperationFormFrame`**"), design.indexOf("\n### Forms: Errors Under the Field\n"))
+  assert.ok(block.includes("an optional `lead`"), "DESIGN.md names the lead")
 })
 
 test("OperationFormFrame: PageHeader with no breadcrumb (P1-R3), the audit-round grid, the summary column, the bar across both with ยกเลิก before the submit bound to formId", () => {

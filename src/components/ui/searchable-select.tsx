@@ -42,6 +42,9 @@ export function SearchableSelect({
   hint,
   error,
   fieldSize,
+  currentValue,
+  currentMark,
+  labelVisuallyHidden,
   onSearchChange,
   onChange,
 }: {
@@ -58,6 +61,11 @@ export function SearchableSelect({
   hint?: React.ReactNode
   error?: React.ReactNode
   fieldSize?: FieldSize
+  /** The id the record holds now (group 3 plan 3, P3-R11): with currentMark, that option shows the word after its label and is disabled, so it cannot be picked as a change. */
+  currentValue?: string
+  currentMark?: string
+  /** The label stays the trigger's name but only screen readers get it, where a row name on screen already says it (โอนย้าย's table). */
+  labelVisuallyHidden?: boolean
   onSearchChange?: (query: string) => void
   onChange: (value: string) => void
 }) {
@@ -73,6 +81,7 @@ export function SearchableSelect({
   const selectedOption = options.find((option) => option.id === value)
   const filteredOptions = useMemo(() => filterSearchableOptions(options, query), [options, query])
   const showClear = Boolean(value) && !required && !disabled
+  const markCurrent = Boolean(currentValue && currentMark)
 
   function setOpenState(next: boolean) {
     setOpen(next)
@@ -92,7 +101,7 @@ export function SearchableSelect({
   return (
     <div className="grid min-w-0 max-w-full content-start gap-1.5">
       {label ? (
-        <FieldLabel id={labelId} htmlFor={triggerId} required={required}>
+        <FieldLabel id={labelId} htmlFor={triggerId} required={required} visuallyHidden={labelVisuallyHidden}>
           {label}
         </FieldLabel>
       ) : null}
@@ -128,18 +137,23 @@ export function SearchableSelect({
                   aria-controls) and the empty line sits outside it, so no listbox is ever empty. */}
               <CommandEmpty>{emptyLabel}</CommandEmpty>
               <CommandList className="max-h-64" hidden={filteredOptions.length === 0}>
-                {filteredOptions.map((option) => (
-                  <CommandItem
-                    key={option.id}
-                    value={option.id}
-                    disabled={option.disabled}
-                    onSelect={() => selectValue(option.id)}
-                    className={option.id === value ? "font-medium" : undefined}
-                  >
-                    <span className="min-w-0 truncate">{option.label}</span>
-                    {option.id === value ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
-                  </CommandItem>
-                ))}
+                {filteredOptions.map((option) => {
+                  const current = markCurrent && option.id === currentValue
+                  return (
+                    <CommandItem
+                      key={option.id}
+                      value={option.id}
+                      disabled={option.disabled || current}
+                      data-searchable-current={current || undefined}
+                      onSelect={() => selectValue(option.id)}
+                      className={option.id === value ? "font-medium" : undefined}
+                    >
+                      <span className="min-w-0 truncate">{option.label}</span>
+                      {current ? <span className="shrink-0 text-meta text-muted-foreground">{currentMark}</span> : null}
+                      {option.id === value ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
+                    </CommandItem>
+                  )
+                })}
               </CommandList>
             </Command>
           </PopoverContent>
