@@ -173,6 +173,7 @@ export async function detailWriteControls(page: Page): Promise<string[]> {
 
 // A return of a handover through the checkin API, Ready in the run's room: every key of the return form's body
 // (foundation note N3: the schema reads a missing optional key as missing).
+// No missingComponentIds: every component came back (group 3 spec §8.5, P2-R1). The return writes the return department (§12), whose default, IT, must be active on dev.
 export async function returnByApi(page: Page, assetId: string, checkoutId: string, returnedBy: { id: string; fullNameTh: string }, masters: { readyStatusId: string; goodConditionId: string }) {
   const data = readRunData()
   const response = await page.request.post(`/api/assets/${assetId}/checkin`, {

@@ -75,7 +75,9 @@ test.describe("IT staff", () => {
     const data = readRunData()
     const room = await ensureSecondLocation()
     const masters = await readAssetMasters(page)
-    const asset = await createTxAsset(page, masters, testInfo.project.name, "AD2", "โน้ตบุ๊กประวัติ")
+    // ส่วนกลาง, so its department stays through the handover and the return (group 3 spec §6). A บุคคล asset's return writes
+    // its own เปลี่ยนแผนก line, and the TR-, that line and the RT- would be the latest three.
+    const asset = await createTxAsset(page, masters, testInfo.project.name, "AD2", "โน้ตบุ๊กประวัติ", { ownershipType: "shared" })
     // Three transactions after the registration, each with its document: a handover, its return and a transfer.
     const handover = await handoverByApi(page, asset.id, data.employees.receiver1.id, masters.goodConditionId)
     const checkin = await returnByApi(page, asset.id, handover.id, data.employees.receiver1, masters)

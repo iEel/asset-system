@@ -49,6 +49,9 @@ test("the asset detail spec walks the five steps through the suite's fixtures, c
   assert.ok(spec.includes("expect(detailTransactions).toEqual(registerTransactions)"), "(1) the detail's อื่น ๆ against the register's ⋯")
   assert.ok(spec.includes("expect(detailTransactions).toEqual(expected)"), "(1) with the reasons")
   assert.ok(spec.includes(`await expect(latestPanel(page).locator("tbody tr, li").filter({ visible: true })).toHaveCount(3)`), "(2) the overview shows the latest 3")
+  // AD2's asset is ส่วนกลาง (group 3 plan 2 task 11): it keeps its department through the handover and the return (group 3
+  // spec §6), so the three documents stay the latest three; a บุคคล asset's return adds its own เปลี่ยนแผนก line.
+  assert.ok(spec.includes('await createTxAsset(page, masters, testInfo.project.name, "AD2", "โน้ตบุ๊กประวัติ", { ownershipType: "shared" })'))
   assert.ok(spec.includes(`expect(page.url(), "choosing a chip does not navigate").toBe(historyUrl)`), "(2) the chips filter in place")
   assert.ok(spec.includes("fillTemplate(DETAIL_WORDS.heldDays, { days: heldDays })"), "(3) ถือมาแล้ว from the handover's date")
   assert.match(spec, /\} finally \{\n\s+const cancelled = await page\.request\.patch\(`\/api\/audit-rounds\/\$\{round\.id\}`, \{ data: \{ action: "cancel"/, "(3) the round is cancelled whatever happens")

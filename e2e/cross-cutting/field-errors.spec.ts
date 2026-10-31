@@ -4,7 +4,7 @@
 import { expect, test, asUser } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { runRecords } from "../support/run-plan.ts"
-import { fillReturn, handoverForward, isoDay, save } from "./support/forms.ts"
+import { fillReturn, handoverForward, isoDay, reviewAndSave, save } from "./support/forms.ts"
 import { createAsset, handOver, projectMarker, readAsset, readAssetChoices, returnAsset } from "./support/records.ts"
 // The transaction pages' first arrival, the shared picker's chosen asset and the condition chips (the transaction area's
 // helpers).
@@ -133,20 +133,21 @@ test("handover: no handover mode shows its error, and the corrected handover sav
   expect([saved.status.name, saved.custodianId]).toEqual(["In Use", run.employees.receiver2.id])
 })
 
-test("return: no one who receives it shows its error, and the corrected return saves", async ({ page, measure }, testInfo) => {
+test("return: no condition shows its error, and the corrected return saves", async ({ page, measure }, testInfo) => {
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-RT", name: "ฟอร์มรับคืน", ownershipType: "personal" })
   const checkout = await handOver(page.request, asset, run.employees.receiver1.id, choices)
   await measure.visit(`/th/asset-management/checkin?checkoutId=${checkout.id}`, "return form")
   await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
-  await save(page)
-  // The handover's holder starts as return-by (spec 6.3), so the first wrong field is receive-by.
-  await expectFieldError(page, "checkin-receive-by", REQUIRED)
+  await reviewAndSave(page)
+  // Return-by starts as the handover's holder and receive-by as the signed-in person (group 3 spec §8.3), so the first
+  // wrong field is the condition, which has no default: the group's error, and focus on its first chip.
+  await expectFieldError(page, "checkin-condition-after", REQUIRED, { group: true, focus: 'input[name="checkin-condition-after"] >> nth=0' })
 
   await fillReturn(page, choices)
-  await expectNoFieldError(page, "checkin-receive-by")
-  await save(page)
+  await expectNoFieldError(page, "checkin-condition-after")
+  await reviewAndSave(page)
   // The review dialog's axe is the finding M9 test's (its body fails on the phone).
   const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })
   await expect(review).toBeVisible()
@@ -187,7 +188,7 @@ test("the return's review dialog passes axe (finding M9 on the phone)", async ({
   await measure.visit(`/th/asset-management/checkin?checkoutId=${checkout.id}`, "return form (review)")
   await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag, { timeout: TRANSACTION_PAGE_ARRIVAL_MS })
   await fillReturn(page, choices)
-  await save(page)
+  await reviewAndSave(page)
   await expect(page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })).toBeVisible()
   await measure.recordPage("return review")
 })

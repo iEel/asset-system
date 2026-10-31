@@ -108,6 +108,7 @@ export async function handOver(request: APIRequestContext, asset: E2eAsset, cust
 
 // The return of a handover through the checkin API, back to Ready in the run's room; it returns the return (its id is
 // the RT- document's).
+// No missingComponentIds: every component came back (group 3 spec §8.5, P2-R1). The return writes the return department (§12), whose default, IT, must be active on dev.
 export async function returnAsset(request: APIRequestContext, asset: E2eAsset, checkoutId: string, choices: AssetChoices, run: RunData = readRunData()): Promise<{ id: string }> {
   return created<{ id: string }>(request, `/api/assets/${asset.id}/checkin`, {
     checkoutId,

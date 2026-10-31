@@ -47,6 +47,10 @@ export function chooseSecondDepartment(departments: readonly MasterDepartment[],
   return offered.find((department) => department.code === "IT") ?? [...offered].sort((left, right) => left.code.localeCompare(right.code))[0]
 }
 
+// The return department's code (group 3 spec §12): the default of the setting checkin_department_code. E2E never saves
+// settings (plan 2's settings rule), so every return in a run writes the department with this code.
+export const RETURN_DEPARTMENT_CODE = "IT"
+
 // One word of another department's name, for the multi-word search's negative: the longest word that none of the
 // asset's own texts holds, compared without case as the database's collation compares, so it could match only through
 // a department.

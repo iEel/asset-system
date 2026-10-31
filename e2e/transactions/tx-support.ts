@@ -9,7 +9,7 @@ import type { Measure } from "../support/measure.ts"
 import { ADMIN_STATE_FILE, fromRoot } from "../support/paths.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { dropKnownAxe, KNOWN_AXE } from "./known-findings.ts"
-import { bangkokDate, chooseSecondDepartment, type MasterDepartment, PHONE_KEYBOARD_OPEN, secondLocation, txAssetName, txAssetTag } from "./tx-plan.ts"
+import { bangkokDate, chooseSecondDepartment, type MasterDepartment, PHONE_KEYBOARD_OPEN, RETURN_DEPARTMENT_CODE, secondLocation, txAssetName, txAssetTag } from "./tx-plan.ts"
 import { TX_WORDS } from "./tx-words.ts"
 
 export const PHOTO_FIXTURE = fromRoot("e2e/fixtures/photo.png")
@@ -51,8 +51,9 @@ const EMPTY_ASSET_BODY = {
 
 // One E2E asset, Ready, in the run's first room, through the asset API as the signed-in user. It is personal (บุคคล) and
 // in the run's department unless the options say otherwise: the department tests (group 3 plan 1 task 8) start a
-// ส่วนกลาง asset, or one in an existing department other than the run's, to read the department back after a handover.
-export type CreateAssetOptions = { ownershipType?: "personal" | "shared"; departmentId?: string }
+// ส่วนกลาง asset, or one in an existing department other than the run's, to read the department back after a handover,
+// and a ส่วนควบ asset for the components of plan 2's return.
+export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string }
 export async function createAsset(page: Page, masters: AssetMasters, tag: string, name: string, options: CreateAssetOptions = {}): Promise<CreatedAsset> {
   const data = readRunData()
   // Every key of the form's body, as the form sends it: the schema reads a missing optional key as missing (N3).
@@ -107,6 +108,15 @@ export async function handoverByApi(page: Page, assetId: string, custodianId: st
   return (await response.json()) as { id: string; documentNo: string }
 }
 
+// A component installed in its parent through the component route (the component manager's own POST), with the keys
+// the audit's walk sends (e2e/audit/audit-data.ts). It checks no category, so a run's Notebook can be a component.
+export async function installComponentByApi(page: Page, parentId: string, componentId: string, role: string, slotNo: string): Promise<void> {
+  const response = await page.request.post(`/api/assets/${parentId}/components`, {
+    data: { componentAssetId: componentId, componentRole: role, slotNo, installedAt: null, reason: "E2E component for the return" },
+  })
+  expect(response.status(), `POST /api/assets/${parentId}/components: ${(await response.text()).slice(0, 300)}`).toBe(201)
+}
+
 export type AssetRead = {
   id: string
   assetTag: string
@@ -154,6 +164,23 @@ export async function readSecondDepartment(): Promise<{ id: string; code: string
     const chosen = chooseSecondDepartment((await response.json()) as MasterDepartment[], readRunData())
     if (!chosen) throw new Error("the dev data has no active department, other than the run's, that the asset form offers for the run's company (code IT first): the department tests need one")
     return { id: chosen.id, code: chosen.code, name: chosen.name }
+  } finally {
+    await admin.dispose()
+  }
+}
+
+// The return department (group 3 spec §12): the department whose code is RETURN_DEPARTMENT_CODE, the setting's default,
+// read as the seed admin with a GET. E2E never saves the setting and cannot read it, so a dev setting changed by hand
+// makes the department checks name this department and fail.
+export async function readReturnDepartment(): Promise<{ id: string; code: string; name: string }> {
+  const { baseURL } = readRunState()
+  const admin = await request.newContext({ baseURL, storageState: fromRoot(ADMIN_STATE_FILE) })
+  try {
+    const response = await admin.get("/api/departments")
+    if (response.status() !== 200) throw new Error(`GET /api/departments answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
+    const found = ((await response.json()) as MasterDepartment[]).find((department) => department.code === RETURN_DEPARTMENT_CODE)
+    if (!found) throw new Error(`the dev data has no active department ${RETURN_DEPARTMENT_CODE}, the return department (group 3 spec §12): every return refuses without it`)
+    return { id: found.id, code: found.code, name: found.name }
   } finally {
     await admin.dispose()
   }
@@ -225,9 +252,15 @@ export async function expectNoAssetFound(page: Page, fieldId: string, text: stri
   await expect(page.locator(`#${fieldId}-listbox`)).toHaveCount(0)
   await expect(page.getByText(TX_WORDS.searchNotFound, { exact: true }).first()).toBeVisible()
 }
-// The condition chips of ส่งมอบ (group 3 spec §7.2): one radio per master condition, by its Thai name.
-export function conditionChip(page: Page, label: string): Locator {
-  return page.locator("#checkout-condition").getByRole("radio", { name: label, exact: true })
+// The condition chips of ส่งมอบ (group 3 spec §7.2) and รับคืน (§8.3): one radio per master condition, by its Thai name,
+// in the group given (#checkout-condition by default, #checkin-condition-after on รับคืน).
+export function conditionChip(page: Page, label: string, groupId = "checkout-condition"): Locator {
+  return page.locator(`#${groupId}`).getByRole("radio", { name: label, exact: true })
+}
+// One row of รับคืน's components checklist (group 3 spec §8.2, P2-R11): the group #checkin-components, one checkbox per
+// travelling component, named with its tag.
+export function returnChecklistBox(page: Page, assetTag: string): Locator {
+  return page.locator("#checkin-components").getByRole("checkbox", { name: assetTag })
 }
 
 // The field's error under it (the V track): its text, in the element the field names with aria-describedby.
@@ -323,6 +356,38 @@ export async function saveHandoverForm(page: Page, device: E2eDevice, assetId: s
   const checkout = (await response.json()) as { id: string; documentNo: string }
   await page.waitForURL((url) => url.pathname === `/th/asset-management/checkouts/${checkout.id}`)
   return { id: checkout.id, documentNo: checkout.documentNo }
+}
+
+// Save รับคืน (group 3 spec §5, §8.6): the footer's ตรวจสอบและบันทึก, the review "ตรวจสอบก่อนรับคืน" (read by atReview),
+// then ยืนยันรับคืน. The RT- page then opens. The same on both devices, since รับคืน has no phone steps (§8.8).
+// saveLateReturn is the late return's panel, posting to the component's own route.
+export type SavedReturn = { id: string; documentNo: string; missingComponents: { assetTag: string; name: string }[]; repair: { id: string; repairNo: string; joined: boolean } | null }
+export async function saveReturnForm(page: Page, assetId: string, atReview?: (review: Locator) => Promise<void>): Promise<SavedReturn> {
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${assetId}/checkin`) && response.request().method() === "POST")
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
+  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })
+  await expect(review).toBeVisible()
+  await atReview?.(review)
+  await review.getByRole("button", { name: "ยืนยันรับคืน" }).click()
+  const response = await saved
+  expect(response.status(), `POST /api/assets/${assetId}/checkin: ${(await response.text()).slice(0, 300)}`).toBe(201)
+  const checkin = (await response.json()) as SavedReturn
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkins/${checkin.id}`)
+  return checkin
+}
+export type SavedLateReturn = { checkinId: string; documentNo: string | null; outcome: "reattached" | "standalone" }
+export async function saveLateReturn(page: Page, componentId: string, atReview?: (review: Locator) => Promise<void>): Promise<SavedLateReturn> {
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${componentId}/component-return`) && response.request().method() === "POST")
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
+  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนรับคืน" })
+  await expect(review).toBeVisible()
+  await atReview?.(review)
+  await review.getByRole("button", { name: "ยืนยันรับคืน" }).click()
+  const response = await saved
+  expect(response.status(), `POST /api/assets/${componentId}/component-return: ${(await response.text()).slice(0, 300)}`).toBe(201)
+  const late = (await response.json()) as SavedLateReturn
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/checkins/${late.checkinId}`)
+  return late
 }
 
 // The area's measured pages (spec §8). The page settles first: axe reads a toast or dialog still fading in as low

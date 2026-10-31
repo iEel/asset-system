@@ -180,7 +180,7 @@ test("a handover signed with the device's own pointer and printed, a due date be
   assert.equal(spec.split(`page.locator('[data-slot="sticky-form-footer"]').filter({ visible: true })`).length - 1, 2, "the bar that shows: from Task 7 the page also holds the phone bar")
   // The pad: the mouse on the desktop, Chromium's touch input on the phone, then the tap the emulation loses.
   const support = read("e2e/transactions/tx-support.ts")
-  assert.ok(support.includes("export function conditionChip(page: Page, label: string): Locator {"))
+  assert.ok(support.includes('export function conditionChip(page: Page, label: string, groupId = "checkout-condition"): Locator {'))
   assert.match(support, /await cdp\.send\("Input\.dispatchTouchEvent", \{ type: "touchStart", touchPoints: \[points\[0\]\] \}\)/)
   assert.match(support, /expect\(pointerTypes, "the stroke reached the pad as the device's own pointer"\)\.toEqual\(\[device === "desktop" \? "mouse" : "touch"\]\)/)
   assert.match(support, /await group\.locator\("div\[id\]"\)\.first\(\)\.tap\(\)/)
@@ -190,17 +190,39 @@ test("a handover signed with the device's own pointer and printed, a due date be
   assert.ok(!expectedFailures(read("e2e/transactions/findings.spec.ts")).includes("TX-A3"))
 })
 
-test("a return to the second room prints the RT- document, and a return sent to repair opens a repair record (e2e transactions task 3, TX3)", async () => {
+test("a return to the second room prints the RT- document and writes the return department, and a return sent to repair links its repair record from the RT- (e2e transactions task 3, TX3; group 3 plan 2 task 11)", async () => {
   const spec = readTxSpec("e2e/transactions/return.spec.ts")
-  for (const field of ["checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"]) assert.ok(spec.includes(`"${field}"`), field)
-  assert.ok(spec.includes('await expect(page.locator("#checkin-receive-by")).toBeFocused()'))
+  for (const field of ["checkin-condition-after", "checkin-next-status", "checkin-next-location"]) assert.ok(spec.includes(`"${field}"`), field)
+  // ผู้รับคืน starts as the signed-in person (group 3 spec §8.3), so the first wrong field is the condition group, which has no default.
+  assert.ok(spec.includes(`await expect(page.locator('input[name="checkin-condition-after"]').first()).toBeFocused()`))
+  assert.ok(!spec.includes('await expect(page.locator("#checkin-receive-by")).toBeFocused()'))
+  assert.equal(spec.split("await expect(page.locator(\"#checkin-receive-by\")).toContainText(`${staff.code} - ${staff.fullNameTh}`)").length - 1, 3)
+  assert.ok(!spec.includes('pickSearchable(page, "checkin-receive-by"'))
   assert.equal(spec.split('await expect(page.locator("#checkin-return-by")).toContainText(`${receiver.code} - ${receiver.fullNameTh}`)').length - 1, 2, "both returns start with the holder")
   assert.ok(!spec.includes('pickSearchable(page, "checkin-return-by"'))
   assert.ok(spec.includes('const listbox = await searchAssets(page, "checkin-checkout", receiver.code)'))
   assert.ok(spec.includes('await pickAsset(page, "checkin-checkout", asset.assetTag, asset.assetTag)'))
+  // The chips, the searchable room and the footer's ตรวจสอบและบันทึก (spec §5, §8.3, §17).
+  assert.equal(spec.split('await conditionChip(page, "ดี", "checkin-condition-after").check()').length - 1, 1)
+  assert.equal(spec.split('await conditionChip(page, "เสียหาย", "checkin-condition-after").check()').length - 1, 2)
+  assert.equal(spec.split("await pickSearchable(page, \"checkin-next-location\", room.code, `${room.code} - ${room.name}`)").length - 1, 3)
+  for (const old of ['locator("#checkin-condition-after").selectOption', 'locator("#checkin-next-location").selectOption', '{ name: "บันทึก", exact: true }']) assert.ok(!spec.includes(old), old)
+  assert.ok(spec.includes("{ name: TX_WORDS.reviewAndSave, exact: true }"))
+  assert.equal(spec.split("await saveReturnForm(page, asset.id, ").length - 1, 3)
   assert.match(spec, /await expectPrints\(page, "พิมพ์ใบรับคืน"\)/)
   assert.match(spec, /expect\(after\.currentLocationId\)\.toBe\(room\.id\)/)
+  // The return department, read from the asset (spec §6, §12): the setting's default, and its own history line.
+  assert.ok(spec.includes("expect(after.departmentId).toBe(returnDepartment.id)"))
+  assert.ok(spec.includes("expect(after.department?.code).toBe(RETURN_DEPARTMENT_CODE)"))
+  assert.ok(spec.includes('await expect(page.getByRole("main")).toContainText(TX_WORDS.departmentChange)'))
+  assert.equal(spec.split('if (e2eDevice === "desktop")').length - 1, 1, "the summary on the desktop only")
+  // ส่งซ่อม: the hint, then the RT-'s link to the record it opened or joined (spec §8.3, §8.7).
   assert.match(spec, /selectOption\(\{ label: "ส่งซ่อม" \}\)/)
+  assert.ok(spec.includes('await expect(page.getByRole("main")).toContainText(TX_WORDS.sendToRepairHint)'))
+  assert.ok(spec.includes("fillTemplate(TX_WORDS.repairOpened, { repairNo: ticket.repairNo })") && spec.includes("fillTemplate(TX_WORDS.repairJoined, { repairNo: repair.repairNo })"))
+  assert.ok(spec.includes("expect(checkin.repair).toEqual({ id: ticket.id, repairNo: ticket.repairNo, joined: false })"))
+  assert.ok(spec.includes("expect(checkin.repair).toEqual({ id: repair.id, repairNo: repair.repairNo, joined: true })"))
+  assert.ok(!spec.includes("await visit(measure, `/th/maintenance/"), "the repair record opens from the RT-'s link, not by its address")
   assert.match(spec, /page\.request\.get\(`\/api\/maintenance-tickets\?assetId=\$\{asset\.id\}`\)/)
   assert.match(spec, /expect\(after\.status\.name\)\.toBe\("Under Maintenance"\)/)
   assert.deepEqual(expectedFailures(spec), [])
@@ -216,7 +238,7 @@ test("a return to the second room prints the RT- document, and a return sent to 
   assert.match(findings, /test\.skip\(e2eDevice !== "phone", "the review dialog scrolls on the phone only"\)/)
 })
 
-test("a permanent handover whose asset went into repair is returned into ส่งซ่อม under that repair (server search addendum S-R48)", () => {
+test("a permanent handover whose asset went into repair is returned into ส่งซ่อม under that repair (server search addendum S-R48)", async () => {
   const spec = readTxSpec("e2e/transactions/return.spec.ts")
   const th = JSON.parse(read("messages/th.json"))
   const title = "a permanent handover whose asset went into repair is returned into ส่งซ่อม under that repair, with no second record and no custodian (S-R48)"
@@ -231,7 +253,10 @@ test("a permanent handover whose asset went into repair is returned into ส่�
   // The picker takes it, and the next status is ส่งซ่อม alone, with the app's own notice.
   assert.ok(body.includes('await pickAsset(page, "checkin-checkout", asset.assetTag, asset.assetTag)'))
   assert.ok(body.includes(`await expect(nextStatus).toHaveText("${th.checkin.sendToRepairOption}")`))
-  assert.ok(body.includes(th.checkin.openRepairReturnNotice), "checkin.openRepairReturnNotice")
+  // The app's notice, read through TX_WORDS (group 3 spec §8.3); Task 8 keeps its words.
+  const { TX_WORDS } = await import("../e2e/transactions/tx-words.ts")
+  assert.equal(TX_WORDS.openRepairNotice, th.checkin.openRepairReturnNotice)
+  assert.ok(body.includes('await expect(page.getByRole("main")).toContainText(TX_WORDS.openRepairNotice)'), "checkin.openRepairReturnNotice")
   // After the save: Under Maintenance, no custodian, and the one repair record still open.
   assert.match(body, /expect\(after\.status\.name\)\.toBe\("Under Maintenance"\)/)
   assert.match(body, /expect\(after\.custodianId\)\.toBeNull\(\)/)
@@ -292,7 +317,7 @@ test("the desk delivery on the phone: three steps on one form, the read-back, a 
   // Every spec of the area is pinned by this file.
   const { readdirSync } = await import("node:fs")
   assert.deepEqual(readdirSync("e2e/transactions").filter((file) => file.endsWith(".spec.ts")).sort(), [
-    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover-condition.spec.ts", "handover-department.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return.spec.ts", "transfer.spec.ts",
+    "bulk-move.spec.ts", "cancel.spec.ts", "desk-delivery.spec.ts", "findings.spec.ts", "handover-condition.spec.ts", "handover-department.spec.ts", "handover.spec.ts", "register-asset.spec.ts", "return-components.spec.ts", "return.spec.ts", "transfer.spec.ts",
   ])
 })
 
@@ -335,7 +360,7 @@ test("ส่งมอบ gives a บุคคล asset the receiver's department
   const spec = readTxSpec("e2e/transactions/handover-department.spec.ts")
   const support = read("e2e/transactions/tx-support.ts")
   for (const signature of [
-    'export type CreateAssetOptions = { ownershipType?: "personal" | "shared"; departmentId?: string }',
+    'export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string }',
     "export async function readSecondDepartment(): Promise<{ id: string; code: string; name: string }>",
     "export async function expectNoAssetFound(page: Page, fieldId: string, text: string)",
     "export async function saveHandoverForm(page: Page, device: E2eDevice, assetId: string): Promise<{ id: string; documentNo: string }>",
@@ -394,5 +419,56 @@ test("ส่งมอบ refuses a broken asset with a ส่งซ่อม lin
   // The desktop runs every test; the phone the repair loop's first half only.
   assert.equal(spec.split('test.skip(e2eDevice === "phone", DESKTOP_ONLY)').length - 1, 4)
   assert.equal(spec.split('if (e2eDevice === "phone") return').length - 1, 1)
+  for (const banned of ["request.delete", "/api/admin/settings", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
+})
+
+test("รับคืน leaves a component out and lists it on the RT-, ส่งมอบ warns of it unsaved, and its late return re-attaches it to the parent in IT stock (group 3 plan 2 task 11)", async () => {
+  const spec = readTxSpec("e2e/transactions/return-components.spec.ts")
+  const support = read("e2e/transactions/tx-support.ts")
+  const plan = await import("../e2e/transactions/tx-plan.ts")
+  // The return department E2E expects is the setting's default (spec §12): E2E never saves the setting.
+  assert.equal(plan.RETURN_DEPARTMENT_CODE, (await import("../src/lib/checkin-department.ts")).DEFAULT_CHECKIN_DEPARTMENT_CODE)
+  for (const signature of [
+    "export async function installComponentByApi(page: Page, parentId: string, componentId: string, role: string, slotNo: string): Promise<void>",
+    "export async function readReturnDepartment(): Promise<{ id: string; code: string; name: string }>",
+    "export function returnChecklistBox(page: Page, assetTag: string): Locator {",
+    "export async function saveReturnForm(page: Page, assetId: string, atReview?: (review: Locator) => Promise<void>): Promise<SavedReturn>",
+    "export async function saveLateReturn(page: Page, componentId: string, atReview?: (review: Locator) => Promise<void>): Promise<SavedLateReturn>",
+  ]) assert.ok(support.includes(signature), signature)
+  // The return department is read by its code with a GET as the seed admin; nothing makes or sets one.
+  const readStart = support.indexOf("export async function readReturnDepartment(")
+  const readReturn = support.slice(readStart, support.indexOf("\nexport ", readStart + 1))
+  assert.ok(readReturn.includes('admin.get("/api/departments")') && readReturn.includes("department.code === RETURN_DEPARTMENT_CODE"))
+  for (const [file, source] of [["tx-support.ts", support], ["return-components.spec.ts", spec]]) assert.doesNotMatch(source, /\.post\(\s*["'`]\/api\/departments/, file)
+  // Both saves set the wait first, then the footer, the review and its confirm; the RT- opens after.
+  for (const [name, route] of [["saveReturnForm", "/checkin`"], ["saveLateReturn", "/component-return`"]]) {
+    const start = support.indexOf(`export async function ${name}(`)
+    const body = support.slice(start, support.indexOf("\nexport ", start + 1))
+    const at = ["TX_WORDS.reviewAndSave", '"ตรวจสอบก่อนรับคืน"', '"ยืนยันรับคืน"'].map((word) => body.indexOf(word))
+    assert.ok(at.every((index, i) => index >= 0 && (i === 0 || index > at[i - 1])), `${name}: footer, review, confirm`)
+    assert.ok(body.indexOf("page.waitForResponse(") >= 0 && body.indexOf("page.waitForResponse(") < at[0], `${name}: the wait first`)
+    assert.ok(body.includes(route) && body.includes("/th/asset-management/checkins/"), name)
+  }
+  // The flow in its binding order (spec §17): left out, listed, warned of on an unsaved ส่งมอบ, back late and re-attached.
+  assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/)
+  assert.equal(spec.split('{ ownershipType: "component" }').length - 1, 2)
+  assert.equal(spec.split("await installComponentByApi(page, parent.id, ").length - 1, 2)
+  assert.ok(spec.includes("await returnChecklistBox(page, leftOut.assetTag).uncheck()"))
+  assert.ok(spec.includes("expect(checkin.missingComponents).toEqual([{ assetTag: leftOut.assetTag, name: leftOut.name }])"))
+  assert.ok(spec.includes(`page.locator('[data-document-line="missing"]')`) && spec.includes(`page.locator('[data-document-line="returned"]')`))
+  assert.ok(spec.includes("toEqual([receiver.id, data.locationId, data.departmentId])"), "the component left out stays with the person returning, in its room")
+  assert.ok(spec.includes("`/th/asset-management/checkout?assetId=${run.parent.id}`"))
+  for (const save of ["saveHandoverForm(", "ยืนยันส่งมอบ", "บันทึกการส่งมอบ"]) assert.ok(!spec.includes(save), `ส่งมอบ is never saved: ${save}`)
+  // ส่งมอบ's warning names its count, then the list it fills (checkout.componentsOutstanding, "…: {list}").
+  assert.ok(spec.includes(`part.locator("[data-checkout-outstanding]")`))
+  assert.ok(spec.includes('templatePattern(TX_WORDS.checkoutOutstanding, { count: "1" })'))
+  assert.ok(spec.includes("fillTemplate(TX_WORDS.checkoutSummaryOutstanding, { count: 1 })"))
+  assert.ok(spec.includes('await expect(row).not.toContainText("ข้อมูลเก่า")'))
+  assert.ok(spec.includes('for (const id of ["checkin-late-location", "checkin-components", "checkin-condition-after", "checkin-next-status", "checkin-next-location"])'))
+  assert.ok(spec.includes('expect(late).toEqual({ checkinId: checkin.id, documentNo: checkin.documentNo, outcome: "reattached" })'))
+  assert.ok(spec.includes("toEqual([null, room.id, returnDepartment.id])"))
+  // The summary card on the desktop (P2-R12); the phone's footer counts instead.
+  assert.equal(spec.split('if (e2eDevice === "desktop")').length - 1, 3)
+  assert.ok(spec.includes("TX_WORDS.phoneComponentsFooter"))
   for (const banned of ["request.delete", "/api/admin/settings", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })

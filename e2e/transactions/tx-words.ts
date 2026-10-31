@@ -21,4 +21,26 @@ export const TX_WORDS = {
   phoneCancelBack: "ยกเลิกและกลับ",
   phoneBackToCheck: "ย้อนกลับไปขั้นตรวจ",
   signOnBehalf: "รับในนามของ {destination}",
+  // รับคืน (group 3 plan 2): the footer line, the checklist, the components' counts on the summary and the review, the
+  // warning for one left out, the phone's footer, the ส่งซ่อม hint and the open-repair notice (checkin.*); ส่งมอบ's list,
+  // its warning and its summary count for one still out (checkout.*); the picker's line for it
+  // (assetOperation.outstandingLine) and the component manager's (asset.componentOutstanding*); the RT-'s lines
+  // (checkin.document*).
+  checkinFooter: "รับคืน {tag} จาก {returner}",
+  componentNotReturned: "ยังไม่ได้คืน",
+  componentsBack: "ได้คืน {returned} · ขาด {missing}",
+  missingWarning: "{component} ยังไม่ได้คืน จะอยู่กับ {returner} ที่ {room} และบันทึกเป็นอุปกรณ์ที่ขาดในใบรับคืน",
+  phoneComponentsFooter: "ส่วนควบได้คืน {returned} · ขาด {missing}",
+  sendToRepairHint: "บันทึกแล้วระบบจะเปิดใบซ่อมให้อัตโนมัติ",
+  openRepairNotice: "มีงานซ่อมที่ยังไม่ปิดอยู่ หลังรับคืนทรัพย์สินจะเข้าสถานะ ส่งซ่อม ต่อกับงานซ่อมเดิม ไม่สร้างใบซ่อมใหม่",
+  componentsTravel: "ส่วนควบที่จะส่งมอบไปด้วย {count} รายการ",
+  checkoutOutstanding: "ยังค้างคืน {count} รายการ: {list}",
+  checkoutSummaryOutstanding: "ค้างคืน {count} รายการ",
+  outstandingLine: "ส่วนควบค้างคืน ของ {parentTag}",
+  componentOutstanding: "ค้างคืน",
+  componentOutstandingWith: "อยู่กับ {holder}",
+  documentMissingHeld: "{component} · อยู่กับ {holder} ที่ {location}",
+  documentComponentReturned: "{tag} คืนแล้ว {date} · รับโดย {name}",
+  repairOpened: "เปิดใบซ่อม {repairNo}",
+  repairJoined: "ต่อใบซ่อม {repairNo}",
 } as const

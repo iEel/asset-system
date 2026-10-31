@@ -226,7 +226,7 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
     ["src/components/assets/asset-form.tsx", `check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)`, "asset-warranty-end"],
     ["src/components/assets/asset-form.tsx", `check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))`, "asset-tag"],
     ["src/components/asset-operations/checkout-form.tsx", `if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")`, "checkout-handover-mode"],
-    ["src/components/asset-operations/checkin-form.tsx", `check("receiveBy", required(values.receiveBy) ?? maxLength(values.receiveBy, 100))`, "checkin-receive-by"],
+    ["src/components/asset-operations/checkin-form.tsx", `check("conditionAfter", required(values.conditionAfter))`, "checkin-condition-after"],
     ["src/components/asset-operations/transfer-form.tsx", `check("reason", required(values.reason) ?? maxLength(values.reason, 500))`, "transfer-reason"],
     ["src/components/maintenance/repair-record-form.tsx", `check("problem", required(values.problem) ?? maxLength(values.problem, 4000))`, "repair-record-problem"],
     ["src/components/maintenance/maintenance-plan-form.tsx", `check("title", required(values.title) ?? maxLength(values.title, 200))`, "maintenance-plan-title"],
@@ -243,7 +243,7 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   const controls: Record<string, string[]> = {
     "src/components/assets/asset-form.tsx": ["asset-name", "asset-category", "asset-ownership-type", "asset-company", "asset-branch", "asset-department", "asset-current-location", "asset-status", "asset-condition", "asset-warranty-start"],
     "src/components/asset-operations/checkout-form.tsx": ["checkout-destination", "checkout-condition"],
-    "src/components/asset-operations/checkin-form.tsx": ["checkin-return-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"],
+    "src/components/asset-operations/checkin-form.tsx": ["checkin-return-by", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"],
     "src/components/maintenance/repair-record-form.tsx": ["repair-record-asset"],
     "src/components/maintenance/maintenance-plan-form.tsx": ["maintenance-plan-asset"],
     "src/components/disposal/disposal-request-form.tsx": ["disposal-request-requested-by"],
@@ -272,6 +272,18 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   assert.ok(auditRound.includes("await createButton(page).click()") && !auditRound.includes("await save(page)"))
   assert.ok(auditRound.includes("await expect(willCreate(page)).toBeVisible()") && !auditRound.includes(`{ name: "ดูตัวอย่าง" }`))
   assert.match(auditRound, /\} finally \{\n\s+if \(saved\.id\) await cancelAsItHead\(playwright\.request, baseURL, saved\.id, /)
+  // รับคืน (group 3 plan 2 task 11): ผู้รับคืน starts as the signed-in person, so the wrong entry is the condition group (no
+  // default, spec §8.3); the footer is ตรวจสอบและบันทึก; fillReturn reads both people and picks the chip and the room.
+  const returnTest = spec.slice(spec.indexOf('test("return: '), spec.indexOf("// Finding M8"))
+  assert.ok(returnTest.includes(`await expectFieldError(page, "checkin-condition-after", REQUIRED, { group: true, focus: 'input[name="checkin-condition-after"] >> nth=0' })`))
+  assert.equal(returnTest.split("await reviewAndSave(page)").length - 1, 2)
+  assert.ok(!returnTest.includes("await save(page)"))
+  assert.ok(spec.slice(spec.indexOf("// Finding M9")).includes("await reviewAndSave(page)"))
+  const fill = read("e2e/cross-cutting/support/forms.ts").split("export async function fillReturn(")[1] ?? ""
+  assert.ok(fill.includes('await expect(page.locator("#checkin-receive-by")).toContainText(run.employees.itStaff.code)'))
+  assert.ok(fill.includes('await page.locator(`input[name="checkin-condition-after"][value="${choices.goodConditionId}"]`).check()'))
+  assert.ok(fill.includes('await choose(page, "checkin-next-location", room.code, `${room.code} - ${room.name}`)'))
+  assert.ok(!fill.includes("selectOption(choices.goodConditionId)") && !fill.includes('choose(page, "checkin-receive-by"'))
   // The spec: the suite's fixtures, and findings M3, M8 and M9 expected to fail until fixed (M9 on the phone only).
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
   assert.ok(!spec.includes(`test.fail(true, "M3: `) && !spec.includes(`test.fail(true, "M8: `) && !spec.includes(`"M9: `))
