@@ -32,11 +32,12 @@ test("operation review dialog is focus-managed and mobile-safe", () => {
   assert.doesNotMatch(source, /onKeyDown=|restoreFocusRef|role="dialog"/)
 })
 
-test("the transfer form uses the shared fields and a busy save button (2C batch 1b)", () => {
+test("the transfer form uses the shared fields, and its submit is the frame's footer (2C batch 1b; group 3 plan 3 Task 6)", () => {
   const source = readFileSync("src/components/asset-operations/transfer-form.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.doesNotMatch(source, /function Field\(|<input|<textarea|Loader2/)
   assert.match(source, /<Field label=\{t\("reason"\)\} id="transfer-reason" required error=\{fieldErrors\.message\("reason"\)\}>\n\s+<Input value=\{values\.reason\} onChange=\{\(event\) => setField\("reason", event\.target\.value\)\} required maxLength=\{500\} \/>/)
-  assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
+  assert.ok(source.includes('submitLabel: tOperation("reviewAndSave"),'))
+  assert.doesNotMatch(source, /type="submit"|<Save\b|tCommon\("save"\)/)
 })
 
 test("the review dialog uses the dialog parts, keeps focus on the busy confirm, and the X names itself (2C batch 1b)", () => {

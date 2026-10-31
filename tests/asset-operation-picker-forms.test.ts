@@ -26,16 +26,19 @@ test("a custodian chosen after the asset clears it only when the answer says it 
   assert.equal(transferAssetToClear({ asset: null, toCustodianId: "emp-1" }, blocked), null, "nothing chosen")
 })
 
-test("the four pages load the master lists; ส่งมอบ and โอนย้าย start from the by-id answer, asked after the permission (spec §3, 6.4)", () => {
-  for (const [page, call] of [["checkout", 'getAssetOperationPreselect("checkout", filters.assetId, { detail: true })'], ["transfer", 'getAssetOperationPreselect("transfer", filters.assetId)']]) {
+test("the four pages load the master lists; ส่งมอบ and โอนย้าย start from the by-id answer with its detail, asked after the permission (spec §3, 6.4; group 3 P3-R9)", () => {
+  for (const [page, call, masters] of [
+    ["checkout", 'getAssetOperationPreselect("checkout", filters.assetId, { detail: true })', 'getAssetOperationMasterOptions({ employeeDetail: true, conditionsFor: "checkout" })'],
+    ["transfer", 'getAssetOperationPreselect("transfer", filters.assetId, { detail: true })', "getAssetOperationMasterOptions({ employeeDepartment: true, locationBranch: true })"],
+  ]) {
     const source = read(`${P}${page}/page.tsx`)
     const permission = source.indexOf('await requirePagePermission(locale, "asset", "edit")')
     assert.ok(permission >= 0 && permission < source.indexOf(call), page)
-    // Only ส่งมอบ asks for the employees' detail (final review M4).
-    const masters = page === "checkout" ? 'getAssetOperationMasterOptions({ employeeDetail: true, conditionsFor: "checkout" })' : "getAssetOperationMasterOptions()"
+    // ส่งมอบ alone reads the employees' detail and held count (final review M4); โอนย้าย reads their own department and the rooms' branch (P3-R9).
     assert.ok(source.includes(masters) && source.includes("initialAsset={initialAsset}"), page)
     assert.doesNotMatch(source, /getAssetOperationAssetLists|initialAssetId|assets=/, page)
   }
+  assert.doesNotMatch(read(`${P}transfer/page.tsx`), /employeeDetail/, "โอนย้าย never runs the held-count groupBy (P3-R9)")
   for (const page of ["checkout", "checkin", "transfer", "bulk-move"]) assert.doesNotMatch(read(`${P}${page}/page.tsx`), /getAssetOperationOptions\(/, page)
 })
 
@@ -52,12 +55,12 @@ test("ส่งมอบ: the asset is the shared picker; an asset that arrived 
 
 test("โอนย้าย: the asset is the shared picker under the custodian's rule; a custodian chosen after it asks again and clears it with the reason (spec 6.3, 6.4)", () => {
   const source = read(`${C}transfer-form.tsx`)
-  assert.match(source, /<AssetOperationPicker\n\s+id="transfer-asset"\n\s+label=\{t\("asset"\)\}\n\s+mode="transfer"\n\s+context=\{\{ assignCustodian: Boolean\(values\.toCustodianId\) \}\}\n\s+value=\{values\.asset\}\n\s+required\n\s+error=\{assetError\}\n\s+onChange=\{setAsset\}/)
+  assert.match(source, /<AssetOperationPicker\n\s+id="transfer-asset"\n\s+label=\{t\("asset"\)\}\n\s+mode="transfer"\n\s+context=\{\{ assignCustodian: Boolean\(transferChange\.destinations\.toCustodianId\) \}\}\n\s+value=\{values\.asset\}\n\s+required\n\s+error=\{assetError\}\n\s+onChange=\{setAsset\}\n\s+pickedBody=\{\(row\) => <TransferAssetCard row=\{row\} \/>\}\n\s+\/>/)
   assert.ok(source.includes('if (field === "toCustodianId" && value && values.asset) void recheckAssetForCustodian(values.asset.id)'))
   assert.ok(source.includes('buildAssetOperationSearchHref({ mode: "transfer", id: assetId, assignCustodian: true })'))
   assert.ok(source.includes("const cleared = transferAssetToClear(current, rechecked)"))
   assert.ok(source.includes('t("assetClearedForCustodian", { assetTag: values.clearedAsset.assetTag, reason: tAll(values.clearedAsset.reasonKey) })'))
-  assert.match(source, /\{initialAsset\?\.eligible && values\.asset\?\.id === initialAsset\.id \? \(\n\s+<div className="md:col-span-2">\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
+  assert.match(source, /\{initialAsset\?\.eligible && values\.asset\?\.id === initialAsset\.id \? \(\n\s+<FormContextBanner label=\{t\("asset"\)\} value=\{assetOperationRowLabel\(initialAsset\)\} \/>/)
   assert.doesNotMatch(source, /personalTransferEligible|availableAssets|initialAssetId|t\("selectAsset"\)/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))

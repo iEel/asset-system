@@ -170,7 +170,7 @@ test("a transfer's TR- document is reached from the asset's history (e2e fix tas
 
 test("saving a transfer opens its TR- document, as a handover and a return open theirs (user decision 2026-10-21, FX10)", () => {
   const form = read("src/components/asset-operations/transfer-form.tsx")
-  assert.ok(form.includes('import { appendReturnTo } from "@/lib/asset-return-navigation"'))
+  assert.match(form, /import \{ appendReturnTo(?:, getOperationCancelHref)? \} from "@\/lib\/asset-return-navigation"/)
   assert.ok(form.includes("const documentHref = `/${locale}/asset-management/transfers/${payload.id}`"))
   assert.ok(form.includes("router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)"))
   assert.ok(!form.includes("router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)"), "no longer back to the asset page")

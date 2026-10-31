@@ -13,8 +13,8 @@ export default async function TransferPage({ params, searchParams }: TransferPag
   const filters = await searchParams
   await requirePagePermission(locale, "asset", "edit")
   const [options, initialAsset] = await Promise.all([
-    getAssetOperationMasterOptions(),
-    getAssetOperationPreselect("transfer", filters.assetId),
+    getAssetOperationMasterOptions({ employeeDepartment: true, locationBranch: true }),
+    getAssetOperationPreselect("transfer", filters.assetId, { detail: true }),
   ])
 
   return (

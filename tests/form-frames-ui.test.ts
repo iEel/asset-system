@@ -98,11 +98,11 @@ test("the check-out form is the operation frame (group 3 plan 1 Task 6)", () => 
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
 
-test("the transfer form draws its title with PageHeader (2B-1 task 23, I13)", () => {
+test("the transfer form is the operation frame (group 3 plan 3 Task 6)", () => {
   const source = read(`${C}asset-operations/transfer-form.tsx`)
-  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "transfer-form.tsx imports PageHeader")
-  assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n/)
-  assert.doesNotMatch(source, /<h1\b|PageBackLink/)
+  assert.ok(source.includes('import { OperationFormFrame } from "@/components/asset-operations/operation-form-frame"'), "transfer-form.tsx imports OperationFormFrame")
+  assert.match(source, /<OperationFormFrame\n\s+title=\{t\("title"\)\}\n\s+description=\{t\("description"\)\}\n\s+summaryOnPhone=\{false\}\n/)
+  assert.doesNotMatch(source, /<h1\b|PageBackLink|PageHeader|ContentPanel/, "the operation forms keep having no back button (B2)")
 })
 
 test("the bulk move form shows the selected count as the header's meta (2B-1 task 23, I13)", () => {

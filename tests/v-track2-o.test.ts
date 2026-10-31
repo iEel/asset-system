@@ -215,26 +215,31 @@ test("checkin: the return date is checked at last, errors under the field instea
   }
 })
 
-test("transfer: errors under the field, the at-least-one destination under the location with the server's code, and a refusal from the review back on its field (v-track O4)", () => {
+test("transfer: errors under the field, the at-least-one change under the location with the server's code, the holder's and the department's own refusals under them, and a refusal from the review back on its field (v-track O4; group 3 plan 3 P3-R4, P3-R6)", () => {
   const source = read(`${C}asset-operations/transfer-form.tsx`)
-  const ids = { assetId: "transfer-asset", toLocationId: "transfer-to-location", reason: "transfer-reason" }
+  const ids = { assetId: "transfer-asset", toLocationId: "transfer-to-location", toCustodianId: "transfer-to-custodian", toDepartmentId: "transfer-to-department", reason: "transfer-reason" }
   assertOperationForm(source, { ids })
+  assert.match(source, /^function validate\(values: TransferFormValues, change: TransferFormChange\): Partial<Record<TransferField, string>> \{$/m)
   const rules = validateBody(source)
   for (const rule of [
     'check("assetId", required(values.asset) ?? (values.asset?.eligible === false ? "invalid" : null))',
-    'check("toLocationId", atLeastOne([values.toLocationId, values.toCustodianId, values.toDepartmentId]) && "transferDestinationRequired")',
+    'check("toLocationId", hasTransferChange(change.destinations) ? null : "transferDestinationRequired")',
     'check("reason", required(values.reason) ?? maxLength(values.reason, 500))',
   ]) assert.ok(rules.includes(rule), rule)
-  for (const key of ["toLocationId", "reason"]) assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
+  // The at-least-one rule counts real changes (P3-R4), never the picks.
+  assert.doesNotMatch(source, /atLeastOne\(/)
+  for (const key of ["toLocationId", "toCustodianId", "toDepartmentId", "reason"]) assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
   // The asset's error is its reason, the cleared-for-custodian line or the field's code, in that order (server search Task 5).
   assert.ok(source.includes("error={assetError}"))
-  // The required asset picker has an id for focus and shows its error (V4); the destination rule shows under the
-  // location select, the key the server names (O-R4).
   assert.match(source, /<AssetOperationPicker\n\s+id="transfer-asset"\n\s+label=\{t\("asset"\)\}\n[\s\S]*?error=\{assetError\}/)
-  assert.match(source, /<SearchableSelect id="transfer-to-location" label=\{t\("toLocation"\)\} [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
+  // Each destination picker is one line with its id, its hidden label and its error (P3-R6, P3-R17).
+  assert.match(source, /<SearchableSelect id="transfer-to-location" label=\{t\("toLocation"\)\} labelVisuallyHidden [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
+  assert.match(source, /<SearchableSelect id="transfer-to-custodian" label=\{t\("toCustodian"\)\} labelVisuallyHidden [^\n]*error=\{fieldErrors\.message\("toCustodianId"\)\}/)
+  assert.match(source, /<SearchableSelect id="transfer-to-department" label=\{t\("toDepartment"\)\} labelVisuallyHidden [^\n]*error=\{fieldErrors\.message\("toDepartmentId"\)\}/)
   assert.match(source, /<Field label=\{t\("reason"\)\} id="transfer-reason" required error=\{fieldErrors\.message\("reason"\)\}>/)
-  // The three destinations are one rule: a change of any clears it (spec §4.3).
+  // The three destinations are one rule: a change of any clears it (spec §4.3); a holder's or a department's own refusal clears with its field.
   assert.ok(source.includes('if (field === "toLocationId" || field === "toCustodianId" || field === "toDepartmentId") fieldErrors.clear("toLocationId")'))
+  assert.ok(source.includes('if (field !== "toLocationId" && field in FIELD_IDS) fieldErrors.clear(field as TransferField)'))
   // A refusal from the review closes it, and the field takes focus once the dialog has gone (O-R1).
   assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)
   assert.ok(source.includes("fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
