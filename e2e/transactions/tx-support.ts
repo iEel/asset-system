@@ -304,8 +304,20 @@ export async function expectFieldError(page: Page, fieldId: string, message: str
 export async function signOnPad(page: Page, group: Locator, device: E2eDevice, browser: string) {
   const canvas = group.locator("canvas")
   // Centred, not just in view: on the phone the sticky footer covers the bottom of the screen, and a pad scrolled only
-  // to its edge takes the finger on the footer instead (group 3 plan 2 E2E-1031K).
-  await canvas.evaluate((element) => element.scrollIntoView({ block: "center" }))
+  // to its edge takes the finger on the footer instead (group 3 plan 2 E2E-1031K). A picker closed just before hands
+  // focus back to its trigger a moment later, which scrolls the page again (E2E-1031M), so the pad is centred until it
+  // stays put and is the element under its own middle.
+  let lastTop: number | null = null
+  await expect.poll(async () => {
+    const { top, hit } = await canvas.evaluate((element) => {
+      element.scrollIntoView({ block: "center" })
+      const rect = element.getBoundingClientRect()
+      return { top: rect.top, hit: document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === element }
+    })
+    const settled = hit && lastTop === top
+    lastTop = top
+    return settled
+  }, { message: "the signature pad stays centred and nothing covers it", intervals: [100, 150, 250] }).toBe(true)
   await canvas.evaluate((element) => {
     const seen: string[] = []
     ;(element as HTMLCanvasElement & { __e2ePointerTypes?: string[] }).__e2ePointerTypes = seen
