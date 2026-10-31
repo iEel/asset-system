@@ -184,7 +184,7 @@ test("the รับคืน form: the late return is a branch of the one form, 
   const reread = form.indexOf("await loadRowDetail(chosen.id)", stale)
   assert.ok(reread > stale && form.indexOf('throw new Error(payload?.code ?? payload?.error ?? tCommon("error"))', reread) > reread,
     "a stale panel reads the row again before the toast (Review Focus 3)")
-  assert.ok(form.includes("{!lateReturn && travelling.length > 0 ? ("), "a late return shows no components checklist: its route takes no missingComponentIds")
+  assert.ok(form.includes("{!lateReturn && selectedCheckout && travelling.length > 0 ? ("), "a late return shows no components checklist: its route takes no missingComponentIds; nor does a row that cannot be returned (final review ui-2)")
   assert.doesNotMatch(form, /"-"|text-warning|from "next\/link"/)
 })
 

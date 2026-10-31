@@ -165,11 +165,27 @@ test("the form: the form wraps the frame with the legacy link and no summary on 
     'label: t("conditionAfter"), value: selectedCondition?.label ?? ""', 'label: t("returnDate"), value: formatCheckoutDay(values.returnDate, locale)',
   ]) assert.ok(form.includes(part), part)
   assert.equal(form.split("nextStatusId: current.nextStatusId || picked").length - 1, 2, "the damage text and the condition")
+  // The auto-pick reads the list the select shows, never every status (Review Focus 4, final review tests-2).
+  assert.equal(form.split("options: nextStatusOptions,").length - 1, 2, "setCondition and handleDamageNoteChange pass the filtered list")
+  for (const name of ["function setCondition(", "function handleDamageNoteChange("]) {
+    const start = form.indexOf(name)
+    const body = form.slice(start, form.indexOf("\n  }\n", start))
+    assert.ok(start >= 0 && body.includes("checkinAutoNextStatus(") && body.includes("options: nextStatusOptions,"), name)
+  }
   const at = (text: string) => form.indexOf(text)
   assert.ok(at("<form onSubmit=") < at("<OperationFormFrame") && at("</OperationFormFrame>") < at("</form>") && at("</form>") < at("<OperationReviewDialog"),
     "the form wraps the frame; the review follows the form")
   assert.ok(at('id="checkin-components"') < at('id="checkin-return-by"') && at('id="checkin-condition-after"') < at('id="checkin-return-date"')
     && at('id="checkin-return-date"') < at('id="checkin-next-status"') && at('id="checkin-next-status"') < at('id="checkin-next-location"'), "the spec's order (P2-R11)")
+  // A row whose detail was not ready had no checklist on screen: when the re-read brings travelling components, the
+  // review does not open; the checklist takes focus and the person saves again (final review ui-1).
+  const submit = form.slice(at("async function handleSubmit("), at("const detailFailedNotice ="))
+  const reread = submit.indexOf("const answered = await loadRowDetail(chosen.id)")
+  const travels = submit.indexOf("if (checkinComponents(answered, new Set()).travelling.length > 0) {", reread)
+  const focus = submit.indexOf("void waitForElement(FIELD_IDS.missingComponentIds).then((element) => {", travels)
+  const stop = submit.indexOf("return", focus)
+  assert.ok(reread >= 0 && reread < travels && travels < focus && focus < stop && stop < submit.lastIndexOf("setReviewOpen(true)"),
+    "the re-read with travelling components focuses the checklist and stops before the review")
   const chooseRow = form.slice(at("function chooseRow("), at("async function confirmLegacyReturn("))
   assert.ok(chooseRow.indexOf("if (!returnDepartment) {") >= 0 && chooseRow.indexOf("if (!returnDepartment) {") < chooseRow.indexOf("void confirmLegacyReturn(row)"),
     "no return department: the confirm is refused before any backfill (P2-R8)")

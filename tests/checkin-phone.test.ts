@@ -48,8 +48,9 @@ test("the form: one line opens both people fields, the footer's phone line, the 
     'const isDesktop = useMediaQuery("(min-width: 64rem)")',
     "summaryOnPhone={false}",
     "warnings={summaryWarnings}",
-    // T9's lateReturn (lateReturnOf): a blocked outstanding row keeps sections 2 and 3, and its counts (X19).
-    "const phoneFooterCounts = checkinPhoneFooterCounts({ lateReturn: lateReturn !== null, returned: travelling.length - missingComponents.length, missing: missingComponents.length })",
+    // T9's lateReturn (lateReturnOf): a blocked outstanding row keeps sections 2 and 3; a row with no returnable handover
+    // counts no components, as it shows no checklist (final review ui-2).
+    "const phoneFooterCounts = checkinPhoneFooterCounts({ lateReturn: lateReturn !== null || !selectedCheckout, returned: travelling.length - missingComponents.length, missing: missingComponents.length })",
     't("phonePeople", { returnBy: selectedReturnBy?.label ?? "", receiveBy: selectedReceiver?.label ?? "" })',
     '<Button type="button" variant="ghost" size="sm" aria-label={t("phonePeopleEdit")} onClick={openPhonePeople}>',
     'requestAnimationFrame(() => document.getElementById("checkin-return-by")?.focus())',

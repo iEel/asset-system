@@ -67,7 +67,7 @@ import { CHECKIN_RETURN_DATE_ERROR_KEYS, checkinHandoverDay, checkinReturnDateEr
 import { withCheckoutAssetDetail, type CheckoutDetailState } from "@/lib/checkout-form-rules"
 import { formatCheckoutDay } from "@/lib/checkout-phone-steps"
 import { getAssetStateTone } from "@/lib/design-system"
-import { waitForDialogToClose } from "@/lib/field-focus"
+import { focusField, waitForDialogToClose, waitForElement } from "@/lib/field-focus"
 import { cn } from "@/lib/utils"
 import { maxLength, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -647,6 +647,14 @@ export function CheckinForm({
         focusFirstError()
         return
       }
+      // The checklist was not on screen while the detail was not ready: with travelling components the review does not
+      // open. The checklist shows now and takes focus; the person checks the ticks and saves again (final review ui-1).
+      if (checkinComponents(answered, new Set()).travelling.length > 0) {
+        void waitForElement(FIELD_IDS.missingComponentIds).then((element) => {
+          if (element) focusField(element)
+        })
+        return
+      }
     }
     setReviewOpen(true)
   }
@@ -763,7 +771,7 @@ export function CheckinForm({
   const footerLine = lateReturn ? lateFooter : chosen && values.returnBy
     ? t("footerDescription", { tag: chosen.assetTag, returner: values.returnBy })
     : t("footerIncomplete")
-  const phoneFooterCounts = checkinPhoneFooterCounts({ lateReturn: lateReturn !== null, returned: travelling.length - missingComponents.length, missing: missingComponents.length })
+  const phoneFooterCounts = checkinPhoneFooterCounts({ lateReturn: lateReturn !== null || !selectedCheckout, returned: travelling.length - missingComponents.length, missing: missingComponents.length })
   const summaryWarnings = lateReturn ? lateWarnings : [...warningLines, ...(detailFailedNotice ? [detailFailedNotice] : [])]
 
   return (
@@ -851,7 +859,7 @@ export function CheckinForm({
                   />
                 </div>
               ) : null}
-              {!lateReturn && travelling.length > 0 ? (
+              {!lateReturn && selectedCheckout && travelling.length > 0 ? (
                 <FieldGroup legend={t("componentsLegend")} id="checkin-components" hint={t("componentsNote")} error={fieldErrors.message("missingComponentIds")}>
                   <div className="grid gap-2">
                     {travelling.map((component) => (
