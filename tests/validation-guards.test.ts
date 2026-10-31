@@ -133,6 +133,7 @@ const NON_VALIDATION_TOASTS: Readonly<Record<string, { count: number; why: strin
   [`${C}disposal/disposal-batch-form.tsx`]: { count: 1, why: "the batch is saved and some shared evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}disposal/disposal-request-form.tsx`]: { count: 1, why: "the request is saved and some evidence files did not upload", ruling: "v-track plan 2 D-R5" },
   [`${C}assets/asset-form.tsx`]: { count: 1, why: "the asset is saved and the page moves to it; a follow-up step that failed (install, documents, photos) can be finished there", ruling: "asset partial save fix 2026-10-19" },
+  [`${C}asset-operations/transfer-form.tsx`]: { count: 1, why: "a 409 ASSET_CHANGED_DURING_OPERATION from the save, not a field: the form has read the asset again and says so in its own words", ruling: "group 3 plan 3 final review ui-4" },
 }
 
 const SELECT_TAGS = ["SearchableSelect", "MaintenanceOptionSelect", "AuditScanCheckField", "AssetOperationPicker"]
