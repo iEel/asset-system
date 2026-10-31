@@ -1065,7 +1065,8 @@
       "parent_bulk_update_sync": "ปรับตามการอัปเดตหลายรายการของทรัพย์สินหลัก",
       "parent_audit_finding_sync": "ปรับตามรายการไม่ตรงของทรัพย์สินหลัก",
       "parent_audit_confirmation_sync": "ปรับตามผลตรวจนับของทรัพย์สินหลัก",
-      "other": "ความเคลื่อนไหวอื่น"
+      "other": "ความเคลื่อนไหวอื่น",
+      "component_outstanding": "ส่วนควบค้างคืน"
     },
     "auditHistory": "ประวัติการตรวจนับ",
     "auditRound": "รอบตรวจนับ",
@@ -4780,7 +4781,8 @@
     "checkinReturnDateInFuture": "วันที่คืนต้องไม่เกินวันนี้",
     "checkinReturnDateBeforeHandover": "วันที่คืนต้องไม่ก่อนวันที่ส่งมอบ",
     "checkinLocationInactive": "ที่ตั้งนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น",
-    "checkinMissingComponentReturnerRequired": "ส่วนควบที่ยังไม่ได้คืนจะอยู่กับผู้คืน เลือกผู้คืนจากรายชื่อพนักงาน"
+    "checkinMissingComponentReturnerRequired": "ส่วนควบที่ยังไม่ได้คืนจะอยู่กับผู้คืน เลือกผู้คืนจากรายชื่อพนักงาน",
+    "checkinMissingComponentInvalid": "ส่วนควบบางชิ้นในรายการไม่ได้ติดอยู่กับทรัพย์สินนี้แล้ว โหลดหน้าใหม่แล้วลองอีกครั้ง"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

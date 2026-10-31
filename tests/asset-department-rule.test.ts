@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { getCheckinNextDepartmentId, getCheckoutNextDepartmentId } from "../src/lib/asset-department-rule.ts"
-import type { AssetOwnershipType } from "../src/lib/asset-ownership.ts"
+import { getCheckinNextDepartmentId, getCheckoutNextDepartmentId, getOutstandingComponentCustody } from "../src/lib/asset-department-rule.ts"
+import { assetOwnershipTypes, type AssetOwnershipType } from "../src/lib/asset-ownership.ts"
 
 type Input = Parameters<typeof getCheckoutNextDepartmentId>[0]
 const types: Input["checkoutType"][] = ["user", "department", "location"]
@@ -44,4 +44,19 @@ test("รับคืน: บุคคล and Stock go to the return department;
   assert.deepEqual(ownerships.map((ownership) => back(ownership)), ["dept-it", "dept-it", "dept-now", "dept-now", "dept-now"])
   assert.deepEqual(ownerships.map((ownership) => back(ownership, null)), ["dept-it", "dept-it", null, null, null], "no department yet")
   assert.deepEqual(ownerships.map((ownership) => back(ownership, "dept-it")), ["dept-it", "dept-it", "dept-it", "dept-it", "dept-it"], "already there")
+})
+
+test("a component that did not come back: ผู้คืน becomes its holder with ผู้คืน's department, a ส่วนกลาง one keeps its department, and ผู้คืน who already holds it changes nothing (group 3 spec §8.5, call 13, P2-R7)", () => {
+  const returner = { id: "emp-returner", departmentId: "dept-returner" }
+  const custody = (ownership: AssetOwnershipType, custodianId: string | null) =>
+    getOutstandingComponentCustody({ ownership, custodianId, departmentId: "dept-now", returner })
+  for (const ownership of ["personal", "stock", "component", "software_license"] as const) {
+    assert.deepEqual(custody(ownership, "emp-holder"), { custodianId: "emp-returner", departmentId: "dept-returner" }, ownership)
+    assert.deepEqual(custody(ownership, null), { custodianId: "emp-returner", departmentId: "dept-returner" }, `${ownership}, handed to a department or a room`)
+  }
+  assert.deepEqual(custody("shared", "emp-holder"), { custodianId: "emp-returner", departmentId: "dept-now" })
+  assert.deepEqual(custody("shared", null), { custodianId: "emp-returner", departmentId: "dept-now" })
+  for (const ownership of assetOwnershipTypes) {
+    assert.deepEqual(custody(ownership, "emp-returner"), { custodianId: "emp-returner", departmentId: "dept-now" }, `${ownership}, ผู้คืน already holds it`)
+  }
 })

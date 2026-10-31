@@ -78,7 +78,7 @@ test("the AssetMovement writers are the known ones, so a new writer is labelled 
 
 test("every movement type src writes has a Thai and an English label (spec §4: no English type on screen)", () => {
   const written = writtenMovementTypes()
-  assert.equal(written.size, 47, [...written.keys()].sort().join(", "))
+  assert.equal(written.size, 48, [...written.keys()].sort().join(", "))
   const th = movementTypes("th")
   const en = movementTypes("en")
   for (const [type, paths] of written) {
@@ -105,6 +105,8 @@ test("an unknown type reads as other activity, and the labels use the glossary's
   assert.equal(th.status_correction, "แก้ไขสถานะ")
   assert.equal(th.checkout, "ส่งมอบทรัพย์สิน")
   assert.equal(movementTypes("en").maintenance_create, "Repair recorded")
+  assert.equal(th.component_outstanding, "ส่วนควบค้างคืน")
+  assert.equal(movementTypes("en").component_outstanding, "Component not returned")
 })
 
 test("the mirror rows are a component's copy of its parent's event, left out of the dashboard feed (spec §6.8)", () => {

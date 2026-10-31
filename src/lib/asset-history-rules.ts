@@ -42,7 +42,7 @@ export const ASSET_HISTORY_EXPORT_LIMIT = 5000
 // here (registration, register edits, a type without a label) counts as แก้ไขข้อมูล.
 const categoryTypes: Record<Exclude<AssetHistoryCategory, "edit">, readonly string[]> = {
   checkout: ["checkout", "checkout_cancel", "parent_checkout_sync"],
-  checkin: ["checkin", "checkin_cancel", "parent_checkin_sync"],
+  checkin: ["checkin", "checkin_cancel", "parent_checkin_sync", "component_outstanding"],
   transfer: ["transfer", "transfer_cancel", "parent_transfer_sync", "bulk_location_move", "parent_bulk_move_sync"],
   audit: [
     "audit_correction",

@@ -1065,7 +1065,8 @@
       "parent_bulk_update_sync": "Followed its parent's bulk update",
       "parent_audit_finding_sync": "Followed its parent's approved discrepancy",
       "parent_audit_confirmation_sync": "Followed its parent's audit result",
-      "other": "Other activity"
+      "other": "Other activity",
+      "component_outstanding": "Component not returned"
     },
     "auditHistory": "Audit History",
     "auditRound": "Audit Round",
@@ -4780,7 +4781,8 @@
     "checkinReturnDateInFuture": "The return date cannot be later than today.",
     "checkinReturnDateBeforeHandover": "The return date cannot be before the handover date.",
     "checkinLocationInactive": "This location is missing or inactive. Choose another.",
-    "checkinMissingComponentReturnerRequired": "A component that has not come back stays with the person returning. Choose that person from the employee list."
+    "checkinMissingComponentReturnerRequired": "A component that has not come back stays with the person returning. Choose that person from the employee list.",
+    "checkinMissingComponentInvalid": "A component in the list is no longer installed in this asset. Reload the page and try again."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

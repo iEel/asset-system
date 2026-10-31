@@ -33,3 +33,19 @@ export function getCheckinNextDepartmentId(input: {
 function keepsOwnDepartment(ownership: AssetOwnershipType): boolean {
   return ownership === "shared" || ownership === "component" || ownership === "software_license"
 }
+
+// A component that did not come back stays with ผู้คืน (spec §8.5, decision 11, call 13): ผู้คืน's department, except a
+// ส่วนกลาง one, which keeps its department (decision 10). ผู้คืน who already holds it changes nothing (D23). The room
+// never changes.
+export function getOutstandingComponentCustody(input: {
+  ownership: AssetOwnershipType
+  custodianId: string | null
+  departmentId: string | null
+  returner: { id: string; departmentId: string }
+}): { custodianId: string; departmentId: string | null } {
+  if (input.custodianId === input.returner.id) return { custodianId: input.custodianId, departmentId: input.departmentId }
+  return {
+    custodianId: input.returner.id,
+    departmentId: input.ownership === "shared" ? input.departmentId : input.returner.departmentId,
+  }
+}

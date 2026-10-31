@@ -1,7 +1,7 @@
 // The words for every AssetMovement type (group 1 spec §4, §6.8, §7.6). Pure: the dashboard's recent feed
 // and the asset-detail page read it, and tests import it directly.
 
-// The 47 types src writes, plus maintenance_status_update and maintenance_pm_create: older rows that have no writer
+// The 48 types src writes, plus maintenance_status_update and maintenance_pm_create: older rows that have no writer
 // today but still show in an asset's history.
 export const ASSET_MOVEMENT_LABELLED_TYPES = [
   "create",
@@ -31,6 +31,7 @@ export const ASSET_MOVEMENT_LABELLED_TYPES = [
   "component_remove",
   "installed_in_parent",
   "removed_from_parent",
+  "component_outstanding",
   "parent_checkout_sync",
   "parent_checkin_sync",
   "parent_transfer_sync",

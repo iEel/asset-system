@@ -4,7 +4,10 @@ import test from "node:test"
 
 import {
   createAssetTransactionSnapshot,
+  createComponentLinkTransactionSnapshot,
+  parseAssetTransactionSnapshot,
   serializeAssetComponentTransactionSnapshots,
+  serializeAssetTransactionSnapshot,
 } from "../src/lib/asset-transaction-snapshot.ts"
 
 test("normalizes database dates into a serializable transaction snapshot", () => {
@@ -90,5 +93,41 @@ test("operation routes persist complete snapshots and transfer uses a real docum
       /isReturned:\s*false[\s\S]{0,120}transactionStatus:\s*"active"|transactionStatus:\s*"active"[\s\S]{0,120}isReturned:\s*false/,
       `${path} must ignore void checkout documents`
     )
+  }
+})
+
+const componentLink = { id: "link-1", componentAssetId: "component-1", parentAssetId: "asset-1", status: "installed", updatedAt: new Date("2026-10-20T03:00:00.000Z") }
+const componentAsset = {
+  updatedAt: "2026-10-20T04:00:00.000Z", statusId: "status-ready", conditionId: "condition-good", branchId: "branch-1",
+  currentLocationId: "location-1", custodianId: "employee-1", departmentId: null,
+}
+// asset-component-sync.ts:186-213 and asset-transaction-cancellation-prisma.ts:122-135 build exactly these, in this order.
+const syncKeys = [
+  "componentLinkId", "componentAssetId", "parentAssetId", "relationshipStatus", "relationshipUpdatedAt", "assetUpdatedAt",
+  "statusId", "conditionId", "branchId", "currentLocationId", "custodianId", "departmentId",
+]
+
+test("a link's component snapshot has the sync's keys in the sync's order; a before entry adds the link's own reference last (group 3 spec §8.5, P2-R6)", () => {
+  const after = createComponentLinkTransactionSnapshot(componentLink, componentAsset)
+  assert.deepEqual(Object.keys(after), syncKeys)
+  assert.deepEqual([after.relationshipUpdatedAt, after.assetUpdatedAt], ["2026-10-20T03:00:00.000Z", "2026-10-20T04:00:00.000Z"])
+  const before = createComponentLinkTransactionSnapshot(componentLink, componentAsset, { referenceType: "purchase", referenceId: "PO-7" })
+  assert.deepEqual(Object.keys(before), [...syncKeys, "relationshipReferenceType", "relationshipReferenceId"])
+  assert.deepEqual([before.relationshipReferenceType, before.relationshipReferenceId], ["purchase", "PO-7"])
+})
+
+test("a before entry's link reference survives the round trip, null included; an empty or non-text one is refused; old snapshots still parse", () => {
+  const asset = { id: "asset-1", updatedAt: "2026-10-20T04:00:00.000Z", statusId: "s", conditionId: "c", branchId: "b", currentLocationId: "l", custodianId: null, departmentId: null }
+  const withReference = (reference: { referenceType: string | null; referenceId: string | null }) =>
+    createAssetTransactionSnapshot({ asset, components: [createComponentLinkTransactionSnapshot(componentLink, componentAsset, reference)] })
+  for (const reference of [{ referenceType: "purchase", referenceId: "PO-7" }, { referenceType: null, referenceId: null }]) {
+    const json = serializeAssetTransactionSnapshot(withReference(reference))
+    assert.equal(parseAssetTransactionSnapshot(json)?.components[0].relationshipReferenceId, reference.referenceId)
+  }
+  const old = JSON.stringify(createAssetTransactionSnapshot({ asset, components: [createComponentLinkTransactionSnapshot(componentLink, componentAsset)] }))
+  assert.equal(parseAssetTransactionSnapshot(old)?.components.length, 1)
+  for (const bad of ["", 7]) {
+    const json = JSON.stringify({ ...JSON.parse(old), components: [{ ...JSON.parse(old).components[0], relationshipReferenceType: bad }] })
+    assert.equal(parseAssetTransactionSnapshot(json), null, String(bad))
   }
 })

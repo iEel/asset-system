@@ -185,3 +185,12 @@ test("the return's date, room and returner refusals read their own words under t
   // A second save of the same HO- reads the existing words (P2-R15).
   assert.equal(getApiErrorKey("ASSET_CHANGED_DURING_OPERATION"), "assetChangedDuringOperation")
 })
+
+test("a missing-components list the server cannot honour reads its own words under its field (group 3 spec §8.5, P2-R1)", () => {
+  assert.equal(getApiErrorKey("ASSET_CHECKIN_MISSING_COMPONENT_INVALID"), "checkinMissingComponentInvalid")
+  const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors
+  assert.deepEqual([words("th").checkinMissingComponentInvalid, words("en").checkinMissingComponentInvalid], [
+    "ส่วนควบบางชิ้นในรายการไม่ได้ติดอยู่กับทรัพย์สินนี้แล้ว โหลดหน้าใหม่แล้วลองอีกครั้ง",
+    "A component in the list is no longer installed in this asset. Reload the page and try again.",
+  ])
+})

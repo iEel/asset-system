@@ -14,6 +14,11 @@ export type AssetComponentTransactionSnapshotV1 = {
   currentLocationId: string
   custodianId: string | null
   departmentId: string | null
+  // Before entries only (P2-R6): the link's own reference, which cancelling the RT- puts back. Never on an after entry,
+  // and never in `loadContext`'s rebuild: the cancel compares after entries as JSON
+  // (asset-transaction-cancellation-service.ts:143-145), so an extra key there would block every past document.
+  relationshipReferenceType?: string | null
+  relationshipReferenceId?: string | null
 }
 
 export type AssetTransactionSnapshotV1 = {
@@ -64,6 +69,8 @@ export type AssetComponentTransactionSnapshotInput = {
   currentLocationId: string
   custodianId: string | null
   departmentId: string | null
+  relationshipReferenceType?: string | null
+  relationshipReferenceId?: string | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -76,6 +83,10 @@ function isString(value: unknown): value is string {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || isString(value)
+}
+
+function isOptionalNullableString(value: unknown): value is string | null | undefined {
+  return value === undefined || isNullableString(value)
 }
 
 function isComponentSnapshot(value: unknown): value is AssetComponentTransactionSnapshotV1 {
@@ -93,7 +104,9 @@ function isComponentSnapshot(value: unknown): value is AssetComponentTransaction
     isString(value.branchId) &&
     isString(value.currentLocationId) &&
     isNullableString(value.custodianId) &&
-    isNullableString(value.departmentId)
+    isNullableString(value.departmentId) &&
+    isOptionalNullableString(value.relationshipReferenceType) &&
+    isOptionalNullableString(value.relationshipReferenceId)
   )
 }
 
@@ -155,6 +168,38 @@ export function createComponentTransactionSnapshot(
     relationshipUpdatedAt: toIsoString(input.relationshipUpdatedAt),
     assetUpdatedAt: toIsoString(input.assetUpdatedAt),
   }
+}
+
+// A link and its component as one snapshot entry, in the sync's key order (asset-component-sync.ts:186-213). `restore`
+// (before entries only, P2-R6) appends the link's own reference, which cancelling the document puts back.
+export function createComponentLinkTransactionSnapshot(
+  link: { id: string; componentAssetId: string; parentAssetId: string; status: string; updatedAt: Date | string },
+  asset: {
+    updatedAt: Date | string
+    statusId: string
+    conditionId: string
+    branchId: string
+    currentLocationId: string
+    custodianId: string | null
+    departmentId: string | null
+  },
+  restore?: { referenceType: string | null; referenceId: string | null },
+): AssetComponentTransactionSnapshotV1 {
+  return createComponentTransactionSnapshot({
+    componentLinkId: link.id,
+    componentAssetId: link.componentAssetId,
+    parentAssetId: link.parentAssetId,
+    relationshipStatus: link.status,
+    relationshipUpdatedAt: link.updatedAt,
+    assetUpdatedAt: asset.updatedAt,
+    statusId: asset.statusId,
+    conditionId: asset.conditionId,
+    branchId: asset.branchId,
+    currentLocationId: asset.currentLocationId,
+    custodianId: asset.custodianId,
+    departmentId: asset.departmentId,
+    ...(restore ? { relationshipReferenceType: restore.referenceType, relationshipReferenceId: restore.referenceId } : {}),
+  })
 }
 
 export function createAssetTransactionSnapshot(input: {

@@ -457,6 +457,7 @@ const knownMovementTypeKeys = new Set([
   "component_remove",
   "installed_in_parent",
   "removed_from_parent",
+  "component_outstanding",
   "maintenance_create",
   "maintenance_pm_create",
   "audit_correction",

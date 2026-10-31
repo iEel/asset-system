@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
+import { COMPONENT_LINK_OUTSTANDING } from "./asset-component-outstanding.ts"
 import {
   createAssetTransactionSnapshot,
   createComponentTransactionSnapshot,
@@ -36,10 +37,13 @@ export function createPrismaAssetTransactionCancellationRepository(db: PrismaCli
 }
 
 class PrismaAssetTransactionCancellationRepository implements AssetTransactionCancellationRepository {
-  constructor(
-    private readonly db: CancellationDb,
-    private readonly rootDb: PrismaClient
-  ) {}
+  private readonly db: CancellationDb
+  private readonly rootDb: PrismaClient
+
+  constructor(db: CancellationDb, rootDb: PrismaClient) {
+    this.db = db
+    this.rootDb = rootDb
+  }
 
   async transaction<T>(work: (repository: AssetTransactionCancellationRepository) => Promise<T>): Promise<T> {
     if (this.db !== this.rootDb) return work(this)
@@ -176,6 +180,43 @@ class PrismaAssetTransactionCancellationRepository implements AssetTransactionCa
         },
       })
       if (componentUpdate.count !== 1) throw new AssetTransactionCancellationServiceError("TRANSACTION_STALE")
+
+      // A component that did not come back (group 3 spec §8.5, P2-R6): its link goes back to what it was, with the
+      // link's own reference from the before entry. `current` equals the after entry here, so its updatedAt is the
+      // after snapshot's.
+      if (current.relationshipStatus === COMPONENT_LINK_OUTSTANDING && component.relationshipStatus !== COMPONENT_LINK_OUTSTANDING) {
+        const data = {
+          status: component.relationshipStatus,
+          referenceType: component.relationshipReferenceType ?? null,
+          referenceId: component.relationshipReferenceId ?? null,
+          updatedBy: input.userId,
+        }
+        const linkUpdate = await this.db.assetComponent.updateMany({
+          where: {
+            id: component.componentLinkId,
+            status: COMPONENT_LINK_OUTSTANDING,
+            referenceType: input.document.type,
+            referenceId: input.document.id,
+            removedAt: null,
+            updatedAt: new Date(current.relationshipUpdatedAt),
+          },
+          data,
+        })
+        if (linkUpdate.count !== 1) throw new AssetTransactionCancellationServiceError("TRANSACTION_STALE")
+        // The duplicate links the document turned outstanding with this one (GP X1) take the snapshot link's reference.
+        await this.db.assetComponent.updateMany({
+          where: {
+            id: { not: component.componentLinkId },
+            parentAssetId: component.parentAssetId,
+            componentAssetId: component.componentAssetId,
+            status: COMPONENT_LINK_OUTSTANDING,
+            referenceType: input.document.type,
+            referenceId: input.document.id,
+            removedAt: null,
+          },
+          data,
+        })
+      }
     }
 
     if (input.restorePlan.reopenCheckoutId) {

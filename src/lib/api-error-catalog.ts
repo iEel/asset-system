@@ -29,6 +29,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "ASSET_CHANGED_DURING_OPERATION": "assetChangedDuringOperation",
   "ASSET_CHECKIN_DEPARTMENT_UNAVAILABLE": "checkinDepartmentUnavailable",
   "ASSET_CHECKIN_LOCATION_INACTIVE": "checkinLocationInactive",
+  "ASSET_CHECKIN_MISSING_COMPONENT_INVALID": "checkinMissingComponentInvalid",
   "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED": "checkinRepairStatusRequired",
   "ASSET_CHECKOUT_CONDITION_BLOCKED": "checkoutConditionBlocked",
   "ASSET_CHECKOUT_DESTINATION_INACTIVE": "checkoutDestinationInactive",
