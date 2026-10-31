@@ -354,6 +354,28 @@ All three are answered.
 - how the RT- stores its repair link (§8.7), with a check that cancellation still works;
 - the order of tasks inside each plan.
 
+## 19. Addendum 2026-10-31: condition at handover, condition after repair, the asset's photo
+
+The user looked at plan 1's ส่งมอบ page and decided (2026-10-31):
+
+1. **Fewer conditions at handover.** สภาพก่อนส่งมอบ offers only ใหม่, ดี and พอใช้. An asset goes to a person only when it works; ยังไม่ประเมิน makes no sense while IT holds the asset. An asset recorded as ยังไม่ประเมิน (most imported ones) starts with no condition chosen, so IT assesses it at the handover. This replaces §7.2's "the condition chips from the master" for ส่งมอบ.
+2. **รับคืน drops ยังไม่ประเมิน only.** It keeps ใหม่, ดี, พอใช้, เสียหาย, ใช้งานไม่ได้ and ซาก, because a returned asset can really be broken.
+3. **A broken asset cannot be handed over.** If an asset's recorded condition is เสียหาย or ใช้งานไม่ได้, the search still finds it but refuses it with "ต้องส่งซ่อมก่อน". When IT picks it, the reason shows under the field with a **ส่งซ่อม** link that opens a new repair for that asset. ซาก is refused as "รอตัดจำหน่าย" with no link, because a salvage asset is not worth repairing. The server refuses as well.
+4. **Closing a repair sets the condition.** Otherwise a repaired asset stays เสียหาย and stays refused.
+   - The outcome ใช้งานได้ asks **สภาพหลังซ่อม** (ดี or พอใช้, required). It starts at the asset's current condition when that is ดี or พอใช้, else none.
+   - The outcome ซ่อมไม่ได้ sets the condition to ซาก by itself.
+   - Recording a repair that is already done asks the same.
+   - The history shows the change of condition.
+5. **The asset's photo from the register shows on ส่งมอบ.** The photo is the register's own rule: the model's photo first, else the newest image of the asset, which can be an audit photo. It shows:
+   - in the search rows;
+   - beside the chosen asset;
+   - in the "สรุปก่อนบันทึก" card;
+   - on the phone's step 2, so the receiver sees which asset they take.
+
+   Once รูปก่อนส่งมอบ is chosen, it shows as a small preview, and it shows in the review as well. An asset without a photo shows the register's empty frame.
+
+Recorded for later: whether โอนย้าย refuses a broken asset is plan 3's question. Audit photos are filed as the asset's own photos and tied to a round only when a finding needs them; a per-round photo history belongs to the audit page group.
+
 ## Appendix A. What the boards leave out, and stays (binding)
 
 From `ams-tx-canvas-function-gaps` (2026-10-29), checked again on 2026-10-30.
