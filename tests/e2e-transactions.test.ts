@@ -269,8 +269,10 @@ test("a permanent handover whose asset went into repair is returned into ส่�
   for (const banned of ["request.delete", "/api/admin/settings", "ldap", "import-confirm", "import-preview"]) assert.ok(!body.toLowerCase().includes(banned), banned)
 })
 
-test("a transfer to the second room and a new custodian, and its TR- document; the two gaps of the document are expected to fail (e2e transactions task 4, TX4)", async () => {
+test("โอนย้าย through the footer: the second room and a new holder whose department the asset takes, read back with its history line and the TR-'s แผนกเดิม; a held asset moved only to another room; a ส่วนกลาง asset that keeps its department; a computer whose component follows; a broken asset refused a holder (e2e transactions task 4, TX4; group 3 plan 3 task 7)", () => {
   const spec = readTxSpec("e2e/transactions/transfer.spec.ts")
+  const support = read("e2e/transactions/tx-support.ts")
+  // TR1 keeps the wrong entry, the custodian, the TR- document and its print; TX-A4, TX-A6 and the ข้อมูลเก่า row stay.
   assert.match(spec, /await expectFieldError\(page, "transfer-to-location", "เลือกปลายทางการโอนย้ายอย่างน้อย 1 รายการ"\)/)
   assert.match(spec, /await expectFieldError\(page, "transfer-reason", "กรุณาระบุข้อมูลนี้"\)/)
   assert.match(spec, /expect\(after\.custodianId\)\.toBe\(receiver\.id\)/)
@@ -280,6 +282,82 @@ test("a transfer to the second room and a new custodian, and its TR- document; t
   assert.ok(spec.includes('await expect(row).toContainText(TX_WORDS.legacyRow.replace("{location}", `${room.code} - ${room.name}`))'), "the ข้อมูลเก่า line names the room (S-R47)")
   assert.ok(!spec.includes("legacy-checkout") && !spec.includes("pickAsset("), "the ข้อมูลเก่า row is read, never picked")
   assert.match(spec, /test\.describe\.configure\(\{ mode: "serial" \}\)/)
+  assert.ok(!spec.includes("prints the status, room and department before and after"), "TX-A6's comment says what the TR- printed (P3-R8)")
+  // The footer's ตรวจสอบและบันทึก (spec §5, §17), here and in TX-A8; the other forms keep common.save.
+  for (const file of ["e2e/transactions/transfer.spec.ts", "e2e/transactions/findings.spec.ts"]) {
+    const source = read(file)
+    assert.ok(!source.includes('{ name: "บันทึก", exact: true }'), `${file}: no exact บันทึก`)
+    assert.ok(source.includes("{ name: TX_WORDS.reviewAndSave, exact: true }"), `${file}: the footer's word`)
+  }
+  // The helpers. The save sets its wait first, then the footer, the review and its confirm, and the TR- opens. A holder
+  // pick waits for the page's re-ask under the holder's rule (S-R40), so no search is in flight when a save leaves.
+  for (const signature of [
+    "export async function readConditionId(page: Page, label: string): Promise<string>",
+    'export function transferNowCell(page: Page, row: "location" | "holder" | "department"): Locator',
+    "export async function pickTransferHolder(page: Page, assetId: string, employee: { code: string; fullNameTh: string }): Promise<void>",
+    "export async function centreInView(locator: Locator): Promise<void>",
+    "export type SavedTransfer = { id: string; documentNo: string }",
+    "export async function saveTransferForm(page: Page, assetId: string, atReview?: (review: Locator) => Promise<void>): Promise<SavedTransfer>",
+  ]) assert.ok(support.includes(signature), signature)
+  const body = (name: string) => {
+    const start = support.indexOf(`export async function ${name}(`)
+    return support.slice(start, support.indexOf("\nexport ", start + 1))
+  }
+  const save = body("saveTransferForm")
+  const at = ["TX_WORDS.reviewAndSave", '"ตรวจสอบก่อนโอนย้าย"', '"ยืนยันโอนย้าย"'].map((word) => save.indexOf(word))
+  assert.ok(at.every((index, i) => index >= 0 && (i === 0 || index > at[i - 1])), "saveTransferForm: footer, review, confirm")
+  assert.ok(save.indexOf("page.waitForResponse(") >= 0 && save.indexOf("page.waitForResponse(") < at[0], "saveTransferForm: the wait first")
+  assert.ok(save.includes("/transfer`") && save.includes("/th/asset-management/transfers/"), "saveTransferForm: the route, then the TR-")
+  const holder = body("pickTransferHolder")
+  assert.ok(holder.indexOf("page.waitForResponse(") >= 0 && holder.indexOf("page.waitForResponse(") < holder.indexOf('pickSearchable(page, "transfer-to-custodian"'), "pickTransferHolder: the wait before the pick")
+  assert.ok(holder.includes('url.searchParams.get("assignCustodian") === "1"'), "pickTransferHolder: the re-ask under the holder's rule")
+  const condition = body("readConditionId")
+  assert.ok(condition.includes('page.goto("/th/assets/new")') && condition.includes('page.locator("#asset-condition option"'), "readConditionId: the new asset form's conditions")
+  // TR1 (spec §6, §9, §17): ตอนนี้, the picker's name in the table, the locked row, a chip, the summary or the footer
+  // line, the department read back from the asset, the history and the TR-.
+  for (const part of [
+    '"TR1", "โน้ตบุ๊กโอนย้าย", { departmentId: second.id })',
+    'await expect(transferNowCell(page, "department")).toContainText(`${second.code} - ${second.name}`)',
+    'await expect(page.locator("#transfer-to-custodian")).toHaveAccessibleName(/^ผู้ถือครองปลายทาง/)',
+    "await expect(department).toContainText(fillTemplate(TX_WORDS.transferFollowsHolder, { department: runDepartment.name }))",
+    'page.getByRole("group", { name: /^เหตุผลการโอนย้าย/ }).getByRole("button", { name: TX_WORDS.reasonChipUser, exact: true })',
+    "await centreInView(chip)",
+    "await expect(reason).toHaveValue(`${TX_WORDS.reasonChipUser}: `)",
+    'await expect(chip).toHaveAttribute("aria-pressed", "true")',
+    'templatePattern(TX_WORDS.transferLead, { count: "3" })',
+    "await expect(summary).not.toContainText(templatePattern(TX_WORDS.transferCrossBranch, {}))",
+    "await expect(footer).toContainText(templatePattern(TX_WORDS.transferFooter, { tag: asset.assetTag }))",
+    "await page.waitForURL(new RegExp(`/th/asset-management/transfers/${transfer.id}(?:[?#]|$)`))",
+    "expect(after.departmentId).toBe(data.departmentId)",
+    'await expect(page.getByRole("main")).toContainText(TX_WORDS.departmentChange)',
+    "await expect(valueBeside(page, TX_WORDS.fromDepartment)).toHaveText(`${second.code} - ${second.name}`)",
+  ]) assert.ok(spec.includes(part), part)
+  // TR2 (call 4), TR3 (ส่วนกลาง), TR4 (a component), TR5 (a broken asset, P3-R1).
+  for (const part of [
+    '"TR2", "โน้ตบุ๊กย้ายห้องตามผู้ถือครอง", { departmentId: second.id, custodianId: holder.id })',
+    'toEqual([room.id, holder.id, data.departmentId, "Ready"])',
+    'await expect(footer).not.toContainText(holder.fullNameTh)',
+    '"TR3", "จอส่วนกลางโอนย้าย", { ownershipType: "shared", departmentId: second.id })',
+    "await expect(department).toBeEnabled()",
+    'toEqual([receiver.id, second.id, "In Use", data.locationId])',
+    'await expect(page.getByRole("main")).not.toContainText(TX_WORDS.departmentChange)',
+    '"TR4C", "เมาส์ติดเครื่องโอนย้าย", { ownershipType: "component", departmentId: second.id })',
+    'await installComponentByApi(page, asset.id, component.id, "เมาส์", "1")',
+    'page.locator("[data-transfer-components]")',
+    'await expect(valueBeside(review, "ส่วนควบ")).toHaveText(fillTemplate(TX_WORDS.transferSummaryComponents, { count: 1 }))',
+    "toEqual([receiver.id, room.id, data.departmentId])",
+    'const damaged = await readConditionId(page, "เสียหาย")',
+    '"TR5", "โน้ตบุ๊กเสียโอนย้าย", { conditionId: damaged })',
+    "fillTemplate(TX_WORDS.assetClearedForCustodian, { assetTag: asset.assetTag, reason: TX_WORDS.reasonTransferDamaged })",
+    'toEqual([409, "ASSET_TRANSFER_CONDITION_BLOCKED", "transferConditionDamaged"])',
+    'toEqual([room.id, null, "Ready", data.departmentId])',
+    "await expect(changes).toContainText(TX_WORDS.transferKeptBoth)",
+  ]) assert.ok(spec.includes(part), part)
+  assert.equal(spec.split("await saveTransferForm(page, asset.id").length - 1, 5, "every save through the footer and the review")
+  assert.equal(spec.split("await pickTransferHolder(page, asset.id, ").length - 1, 4, "every holder pick waits for the re-ask")
+  assert.equal(spec.split("await readSecondDepartment()").length - 1, 4)
+  assert.equal(spec.split('if (e2eDevice === "desktop")').length - 1, 4, "the summary on the desktop only")
+  for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "/api/locations", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })
 
 test("three assets added on the batch form move to the second room in one bulk move, a wrong entry first (e2e transactions task 5, TX5)", async () => {
@@ -363,7 +441,7 @@ test("ส่งมอบ gives a บุคคล asset the receiver's department
   const spec = readTxSpec("e2e/transactions/handover-department.spec.ts")
   const support = read("e2e/transactions/tx-support.ts")
   for (const signature of [
-    'export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string }',
+    'export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string; custodianId?: string; conditionId?: string }',
     "export async function readSecondDepartment(): Promise<{ id: string; code: string; name: string }>",
     "export async function expectNoAssetFound(page: Page, fieldId: string, text: string)",
     "export async function saveHandoverForm(page: Page, device: E2eDevice, assetId: string): Promise<{ id: string; documentNo: string }>",

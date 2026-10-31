@@ -52,8 +52,9 @@ const EMPTY_ASSET_BODY = {
 // One E2E asset, Ready, in the run's first room, through the asset API as the signed-in user. It is personal (บุคคล) and
 // in the run's department unless the options say otherwise: the department tests (group 3 plan 1 task 8) start a
 // ส่วนกลาง asset, or one in an existing department other than the run's, to read the department back after a handover,
-// and a ส่วนควบ asset for the components of plan 2's return.
-export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string }
+// and a ส่วนควบ asset for the components of plan 2's return; a held asset (`custodianId`, a holder whose department differs
+// from the asset's: group 3 spec §14 call 4) and a broken one (`conditionId`) for plan 3's โอนย้าย.
+export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string; custodianId?: string; conditionId?: string }
 export async function createAsset(page: Page, masters: AssetMasters, tag: string, name: string, options: CreateAssetOptions = {}): Promise<CreatedAsset> {
   const data = readRunData()
   // Every key of the form's body, as the form sends it: the schema reads a missing optional key as missing (N3).
@@ -67,10 +68,11 @@ export async function createAsset(page: Page, masters: AssetMasters, tag: string
       companyId: data.companyId,
       branchId: data.branchId,
       departmentId: options.departmentId ?? data.departmentId,
+      custodianId: options.custodianId ?? "",
       currentLocationId: data.locationId,
       homeLocationId: data.locationId,
       statusId: masters.readyStatusId,
-      conditionId: masters.goodConditionId,
+      conditionId: options.conditionId ?? masters.goodConditionId,
       isActive: true,
     },
   })
@@ -83,6 +85,17 @@ export async function createAsset(page: Page, masters: AssetMasters, tag: string
 export async function createTxAsset(page: Page, masters: AssetMasters, projectName: string, key: string, label: string, options: CreateAssetOptions = {}) {
   const { runId } = readRunState()
   return createAsset(page, masters, txAssetTag(runId, projectName, key), txAssetName(runId, projectName, label), options)
+}
+
+// One condition master's id by its Thai name, as the new asset form offers it (the masters have no API of their own, as
+// readAssetMasters says): an asset registered broken, for โอนย้าย's holder rule (group 3 plan 3, P3-R1).
+export async function readConditionId(page: Page, label: string): Promise<string> {
+  await page.goto("/th/assets/new")
+  const option = page.locator("#asset-condition option", { hasText: new RegExp(`^${label}$`) })
+  await expect(option).toHaveCount(1)
+  const value = await option.getAttribute("value")
+  if (!value) throw new Error(`the new asset form offers no condition named ${label}`)
+  return value
 }
 
 // A permanent handover through the checkout API (the form's own route, JSON body), on the date given (today by default),
@@ -252,6 +265,23 @@ export async function expectNoAssetFound(page: Page, fieldId: string, text: stri
   await expect(page.locator(`#${fieldId}-listbox`)).toHaveCount(0)
   await expect(page.getByText(TX_WORDS.searchNotFound, { exact: true }).first()).toBeVisible()
 }
+
+// One ตอนนี้ cell of โอนย้าย's table (group 3 spec §9.2, P3-R17): the row's current room, holder or department as
+// "code - name", or ไม่มี. It fills from the chosen asset's detail, so a spec waits on it before a save leaves the page.
+export function transferNowCell(page: Page, row: "location" | "holder" | "department"): Locator {
+  return page.locator(`[data-transfer-row="${row}"] [data-transfer-now]`)
+}
+// โอนย้าย's ผู้ถือครองปลายทาง (group 3 spec §9.1, S-R40): choose the employee, then wait for the page's re-ask of the chosen
+// asset under the holder's rule (assignCustodian=1). A search still in flight when a later save leaves the page would be
+// a cancelled request the allow-list does not cover.
+export async function pickTransferHolder(page: Page, assetId: string, employee: { code: string; fullNameTh: string }): Promise<void> {
+  const asked = page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return url.pathname === ASSET_SEARCH_PATH && url.searchParams.get("id") === assetId && url.searchParams.get("assignCustodian") === "1"
+  })
+  await pickSearchable(page, "transfer-to-custodian", employee.code, `${employee.code} - ${employee.fullNameTh}`)
+  expect((await asked).status(), `${ASSET_SEARCH_PATH} id=${assetId} assignCustodian=1`).toBe(200)
+}
 // The condition chips of ส่งมอบ (group 3 spec §7.2) and รับคืน (§8.3): one radio per master condition, by its Thai name,
 // in the group given (#checkout-condition by default, #checkin-condition-after on รับคืน).
 export function conditionChip(page: Page, label: string, groupId = "checkout-condition"): Locator {
@@ -327,6 +357,12 @@ export async function expectReachable(locator: Locator) {
   expect(onTop, "nothing covers the control").toBe(true)
 }
 
+// A control scrolled to the middle of the screen before a click: on the phone the sticky footer covers the bottom, and a
+// control scrolled only to the edge takes the finger on the footer (group 3 plan 2 E2E-1031K, plan 3 P3-R23).
+export async function centreInView(locator: Locator): Promise<void> {
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center" }))
+}
+
 // The print page's print button calls window.print(); the stub counts the calls (headless has no print dialog).
 export async function expectPrints(page: Page, buttonName: string) {
   await page.evaluate(() => {
@@ -390,6 +426,24 @@ export async function saveLateReturn(page: Page, componentId: string, atReview?:
   const late = (await response.json()) as SavedLateReturn
   await page.waitForURL((url) => url.pathname === `/th/asset-management/checkins/${late.checkinId}`)
   return late
+}
+
+// Save โอนย้าย (group 3 spec §5, §9.3): the footer's ตรวจสอบและบันทึก (the page reads the asset again first), the review
+// "ตรวจสอบก่อนโอนย้าย" (read by atReview), then ยืนยันโอนย้าย. The TR- document then opens. The same on both devices,
+// since โอนย้าย has no phone steps (§9.4).
+export type SavedTransfer = { id: string; documentNo: string }
+export async function saveTransferForm(page: Page, assetId: string, atReview?: (review: Locator) => Promise<void>): Promise<SavedTransfer> {
+  const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${assetId}/transfer`) && response.request().method() === "POST")
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
+  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนโอนย้าย" })
+  await expect(review).toBeVisible()
+  await atReview?.(review)
+  await review.getByRole("button", { name: "ยืนยันโอนย้าย" }).click()
+  const response = await saved
+  expect(response.status(), `POST /api/assets/${assetId}/transfer: ${(await response.text()).slice(0, 300)}`).toBe(201)
+  const transfer = (await response.json()) as SavedTransfer
+  await page.waitForURL((url) => url.pathname === `/th/asset-management/transfers/${transfer.id}`)
+  return transfer
 }
 
 // The area's measured pages (spec §8). The page settles first: axe reads a toast or dialog still fading in as low

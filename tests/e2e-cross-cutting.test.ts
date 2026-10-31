@@ -284,6 +284,12 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   assert.ok(fill.includes('await page.locator(`input[name="checkin-condition-after"][value="${choices.goodConditionId}"]`).check()'))
   assert.ok(fill.includes('await choose(page, "checkin-next-location", room.code, `${room.code} - ${room.name}`)'))
   assert.ok(!fill.includes("selectOption(choices.goodConditionId)") && !fill.includes('choose(page, "checkin-receive-by"'))
+  // โอนย้าย (group 3 plan 3 task 7): the footer's ตรวจสอบและบันทึก for both presses, and the custodian picker found by its
+  // accessible name inside the page's table.
+  const transferTest = spec.slice(spec.indexOf('test("transfer: '), spec.indexOf('test("repair record: '))
+  assert.equal(transferTest.split("await reviewAndSave(page)").length - 1, 2)
+  assert.ok(!transferTest.includes("await save(page)"))
+  assert.ok(transferTest.includes('await choose(page, page.getByRole("button", { name: /^ผู้ถือครองปลายทาง/ }), run.employees.receiver1.code)'))
   // The spec: the suite's fixtures, and findings M3, M8 and M9 expected to fail until fixed (M9 on the phone only).
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`))
   assert.ok(!spec.includes(`test.fail(true, "M3: `) && !spec.includes(`test.fail(true, "M8: `) && !spec.includes(`"M9: `))

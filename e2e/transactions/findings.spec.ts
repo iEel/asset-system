@@ -4,6 +4,7 @@
 import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData } from "../support/state.ts"
 import { createTxAsset, ensureSecondLocation, handoverByApi, pickSearchable, readAssetMasters, settle, TRANSACTION_PAGE_ARRIVAL_MS } from "./tx-support.ts"
+import { TX_WORDS } from "./tx-words.ts"
 
 asUser("itStaff")
 
@@ -36,7 +37,7 @@ test("a review dialog that scrolls on the phone takes keyboard focus (finding TX
   await pickSearchable(page, "transfer-to-location", room.code, `${room.code} - ${room.name}`)
   await pickSearchable(page, page.getByRole("button", { name: /^ผู้ถือครองปลายทาง/ }), receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
   await page.locator("#transfer-reason").fill(`${asset.assetTag} ตรวจหน้าตรวจสอบบนมือถือ`)
-  await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+  await page.getByRole("button", { name: TX_WORDS.reviewAndSave, exact: true }).click()
   await expect(page.getByRole("dialog", { name: "ตรวจสอบก่อนโอนย้าย" })).toBeVisible()
   await settle(page)
   const record = await measure.recordPage("transfer review on the phone")

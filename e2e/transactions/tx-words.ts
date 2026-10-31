@@ -43,4 +43,25 @@ export const TX_WORDS = {
   documentComponentReturned: "{tag} คืนแล้ว {date} · รับโดย {name}",
   repairOpened: "เปิดใบซ่อม {repairNo}",
   repairJoined: "ต่อใบซ่อม {repairNo}",
+  // โอนย้าย (group 3 plan 3): an empty ตอนนี้ cell (assetOperation.summaryNone), the next status (transfer.inUseStatus,
+  // transfer.statusUnchanged), a row that stays (assetOperation.summaryKept), the S-R40 line with the broken asset's
+  // reason for a new holder (transfer.assetClearedForCustodian, asset.transactionReasonTransferConditionDamaged), the
+  // TR-'s แผนกเดิม (transfer.fromDepartment), and the page's own words (transfer.*): the locked แผนก row, the card's
+  // lead and its "both stay" part, the footer, the components line, the components count of the card and the review,
+  // the cross-branch line, the chip.
+  noneNow: "ไม่มี",
+  inUseStatus: "ใช้งานอยู่",
+  statusUnchanged: "คงสถานะเดิม",
+  summaryKept: "{value} (คงเดิม)",
+  assetClearedForCustodian: "นำ {assetTag} ออกแล้ว: {reason}",
+  reasonTransferDamaged: "สภาพเสียหาย ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
+  fromDepartment: "แผนกเดิม",
+  transferFollowsHolder: "ตามผู้ถือครอง: {department}",
+  transferLead: "เปลี่ยน {count} อย่าง: {list}",
+  transferKeptBoth: "ผู้ถือครองและแผนกคงเดิม",
+  transferFooter: "โอนย้าย {tag}: {changes}",
+  transferComponentsMove: "ส่วนควบ {count} รายการ ({list}) ย้ายตามไปด้วย",
+  transferSummaryComponents: "ย้ายตาม {count} รายการ",
+  transferCrossBranch: "ย้ายไปสาขาอื่น รหัสทรัพย์สินยังเป็นของ {branch} ตามเดิม",
+  reasonChipUser: "เปลี่ยนผู้ใช้งาน",
 } as const
