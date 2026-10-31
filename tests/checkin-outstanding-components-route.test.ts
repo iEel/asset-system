@@ -3,6 +3,8 @@ import { existsSync } from "node:fs"
 import * as nodeModule from "node:module"
 import { beforeEach, test } from "node:test"
 import { pathToFileURL } from "node:url"
+import { createPrismaAssetTransactionCancellationRepository } from "../src/lib/asset-transaction-cancellation-prisma.ts"
+import { cancelAssetTransaction } from "../src/lib/asset-transaction-cancellation-service.ts"
 
 type AssetRow = {
   id: string; assetTag: string; name: string; ownershipType: string; isActive: boolean; statusId: string; conditionId: string
@@ -122,6 +124,11 @@ const mockedModuleSources = new Map<string, string>([
               if (method === "findFirst") return asset && (where.isActive === undefined || asset.isActive === where.isActive) ? { ...asset } : null
               if (method === "findUnique") return asset ? { ...asset } : null
               if (method === "update") { Object.assign(asset, withoutUpdatedBy(args.data), { updatedAt: tick() }); return { ...asset } }
+              if (method === "updateMany") {
+                const rows = Object.values(world().assets).filter((row) => matches(row, where))
+                for (const row of rows) Object.assign(row, withoutUpdatedBy(args.data), { updatedAt: tick() })
+                return { count: rows.length }
+              }
             }
             if (name === "assetComponent") {
               const rows = world().links.filter((row) => matches(row, where))
@@ -208,6 +215,7 @@ const entry = (snapshot: Snapshot, componentAssetId: string) => snapshot.compone
 const place = (id: string) => [world.assets[id].currentLocationId, world.assets[id].custodianId, world.assets[id].departmentId]
 // A returned component's room and holder; its department is T1's (the return department through the sync).
 const stock = (id: string) => [world.assets[id].currentLocationId, world.assets[id].custodianId]
+const linkRow = (id: string) => world.links.find((candidate) => candidate.id === id)!
 const linkStatus = (id: string) => {
   const found = world.links.find((candidate) => candidate.id === id)!
   return [found.status, found.referenceType, found.referenceId, found.removedAt]
@@ -260,7 +268,25 @@ test("a component left out stays with ผู้คืน in its room: its link t
   assert.deepEqual([mouseAfter.componentLinkId, mouseAfter.relationshipStatus, mouseAfter.custodianId], ["link-mouse", "outstanding", "emp-holder"])
   assert.notEqual(mouseAfter.assetUpdatedAt, mouseBefore.assetUpdatedAt, "the component's row is written even when nothing changes")
   assert.notEqual(mouseAfter.relationshipUpdatedAt, mouseBefore.relationshipUpdatedAt)
+  // The cancel compares the after entry with the rows as they stand, so it must be what the request left (final review tests-1).
+  assert.deepEqual([mouseAfter.assetUpdatedAt, mouseAfter.relationshipUpdatedAt], [world.assets["mouse-1"].updatedAt.toISOString(), linkRow("link-mouse").updatedAt.toISOString()])
   assert.equal(JSON.parse(String(world.checkin?.componentSnapshotJson)).changes.length, 4)
+})
+
+test("the missing components' rows are claimed after the handover claim and before the in-transaction plan read; an empty list claims none (final review server-4)", async () => {
+  assert.equal((await post(returnBody({ missingComponentIds: ["mouse-1", "bag-1"] }))).status, 201)
+  const order = world.calls.map((entry) => entry.call)
+  const handoverClaim = order.indexOf("assetCheckout.updateMany")
+  const claim = world.calls.findIndex((entry) => entry.call === "asset.updateMany")
+  assert.deepEqual(world.calls[claim].args, { where: { id: { in: ["mouse-1", "bag-1"] }, isActive: true }, data: { updatedBy: "user-1" } })
+  const planRead = world.calls.findIndex((entry, index) => index > handoverClaim && entry.call === "assetComponent.findMany"
+    && (entry.args.where as Record<string, unknown> | undefined)?.componentAssetId !== undefined)
+  assert.ok(handoverClaim >= 0 && handoverClaim < claim && claim < planRead, `handover claim ${handoverClaim}, component claim ${claim}, plan read ${planRead}`)
+  assert.equal(order.slice(handoverClaim, claim).includes("employee.findUnique"), false, "the plan is read after the claim")
+
+  world = freshWorld()
+  assert.equal((await post(returnBody())).status, 201)
+  assert.equal(world.calls.some((entry) => entry.call === "asset.updateMany"), false)
 })
 
 test("when ผู้คืน is not the holder, a missing component's holder becomes ผู้คืน with ผู้คืน's department, a ส่วนกลาง one keeps its department, and the room never changes; the holder who has left may still be ผู้คืน (spec §8.5, §8.3, call 13, P2-R7, S-R46)", async () => {
@@ -291,6 +317,8 @@ test("a component with two installed links under the parent: both turn outstandi
   const { before, after } = snapshots()
   assert.deepEqual(entry(before, "bag-1").map((component) => component.componentLinkId), ["link-bag-a"])
   assert.deepEqual(entry(after, "bag-1").map((component) => component.componentLinkId), ["link-bag-a"])
+  const [bagAfter] = entry(after, "bag-1")
+  assert.deepEqual([bagAfter.assetUpdatedAt, bagAfter.relationshipUpdatedAt], [world.assets["bag-1"].updatedAt.toISOString(), linkRow("link-bag-a").updatedAt.toISOString()], "the after entry is the rows as the request left them (final review tests-1)")
   assert.equal(outstandingMovements().length, 1)
   assert.deepEqual(place("bag-1"), AT_DESK)
 })
@@ -345,4 +373,70 @@ test("ส่งซ่อม with a component left out: the repair problem text n
   const [status] = await answer(await post(returnBody({ missingComponentIds: ["mouse-1"], nextStatusId: "status:Under Maintenance", conditionAfter: "cond-damaged", damageNote: "จอแตก" })))
   assert.equal(status, 201)
   assert.equal(written("maintenanceTicket.create")[0].problem, "ความเสียหาย: จอแตก\nส่วนควบที่ยังไม่ได้คืน: MS-0001 - Mouse")
+})
+
+// The cancellation repository over the rows this route left (final review tests-1): only the calls it makes.
+function cancellationDb(rtUpdatedAt: Date) {
+  const checkin = world.checkin!
+  const state = { checkoutReturned: true, rtStatus: "active" }
+  const matches = (row: Record<string, unknown>, where: Record<string, unknown>) => Object.entries(where).every(([key, condition]) => {
+    const value = row[key]
+    if (condition instanceof Date) return value instanceof Date && value.getTime() === condition.getTime()
+    if (condition && typeof condition === "object" && "in" in condition) return (condition.in as unknown[]).includes(value)
+    if (condition && typeof condition === "object" && "not" in condition) return value !== condition.not
+    return value === condition
+  })
+  const write = <T extends object>(rows: T[], data: Record<string, unknown>) => {
+    const fields = { ...data }
+    delete fields.updatedBy
+    for (const row of rows) Object.assign(row, fields, { updatedAt: new Date((row as { updatedAt: Date }).updatedAt.getTime() + 60_000) })
+    return { count: rows.length }
+  }
+  const db = {
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work(db),
+    assetCheckin: {
+      findUnique: async () => ({ id: "rt-1", assetId: "laptop-1", transactionStatus: state.rtStatus, createdAt: new Date(world.clock), updatedAt: rtUpdatedAt, voidedAt: null, checkoutId: "co-1", beforeSnapshotJson: checkin.beforeSnapshotJson, afterSnapshotJson: checkin.afterSnapshotJson }),
+      count: async () => 0,
+      updateMany: async () => { state.rtStatus = "void"; return { count: 1 } },
+    },
+    asset: {
+      findUnique: async ({ where }: { where: { id: string } }) => world.assets[where.id] ?? null,
+      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) =>
+        write(Object.values(world.assets).filter((row) => matches(row, where)), data),
+    },
+    assetComponent: {
+      findMany: async ({ where }: { where: Record<string, unknown> }) =>
+        world.links.filter((row) => matches(row, where)).map((row) => ({ ...row, componentAsset: world.assets[row.componentAssetId] })),
+      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) =>
+        write(world.links.filter((row) => matches(row, where)), data),
+    },
+    assetCheckout: {
+      findUnique: async () => ({ id: "co-1", isReturned: state.checkoutReturned }),
+      count: async () => 0,
+      updateMany: async () => { state.checkoutReturned = false; return { count: 1 } },
+    },
+    assetTransfer: { count: async () => 0 },
+    assetMovement: { findMany: async () => [], create: async () => ({ id: "movement-cancel" }) },
+    systemLog: { create: async () => ({}) },
+    assetStateReview: { findFirst: async () => null, create: async () => ({ id: "review-1" }) },
+  }
+  return { db, state }
+}
+
+test("the RT- the route writes for a left-out component can be cancelled: both duplicate links go back to installed with their own reference (final review tests-1, Review Focus 2)", async () => {
+  assert.equal((await post(returnBody({ missingComponentIds: ["mouse-1", "bag-1"] }))).status, 201)
+  const rtUpdatedAt = new Date("2026-10-31T04:00:00.000Z")
+  const { db, state } = cancellationDb(rtUpdatedAt)
+  const result = await cancelAssetTransaction(
+    { type: "checkin", transactionId: "rt-1", userId: "user-9", reason: "บันทึกผิดคน", expectedUpdatedAt: rtUpdatedAt.toISOString() },
+    createPrismaAssetTransactionCancellationRepository(db as never),
+  )
+  assert.equal(result.status, "cancelled", JSON.stringify(result))
+  assert.deepEqual(["link-mouse", "link-bag-a", "link-bag-b"].map(linkStatus), [
+    ["installed", "purchase", "PO-7", null],
+    ["installed", null, null, null],
+    ["installed", null, null, null],
+  ])
+  assert.deepEqual([place("mouse-1"), place("bag-1")], [AT_DESK, AT_DESK])
+  assert.deepEqual([state.checkoutReturned, state.rtStatus], [false, "void"])
 })

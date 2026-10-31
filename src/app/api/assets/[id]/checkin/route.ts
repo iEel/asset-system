@@ -169,6 +169,12 @@ export async function POST(request: NextRequest, context: CheckinContext) {
           "Asset status changed while this request was being saved. Reload the asset and try again.",
         )
       }
+      // Claim the missing components' rows before reading their links and open handovers, in the order checkout and
+      // transfer take them (they claim the component, then read its links). A ส่งมอบ of the component that wins the lock
+      // leaves an open HO- that the plan below refuses; one that loses sees the outstanding link and refuses.
+      if (input.missingComponentIds.length > 0) {
+        await tx.asset.updateMany({ where: { id: { in: input.missingComponentIds }, isActive: true }, data: { updatedBy: user.id } })
+      }
       // A component taken since the pre-check is refused before the RT- number is taken (P2-R15). The claimed row is the
       // pre-read handover, so its holder has not changed.
       const missingPlan = await readMissingComponentPlan(tx, id, input, checkout.custodianId)
@@ -555,8 +561,8 @@ async function markComponentsOutstanding(
       departmentId: component.departmentId,
       returner,
     })
-    // Always written, even when nothing changes: the row lock makes a claim on the component wait for this RT-, and the
-    // after entry gets its assetUpdatedAt. The room is not changed (spec §8.5).
+    // Always written, even when nothing changes, so the after entry gets its assetUpdatedAt. The row was already claimed
+    // before the plan read, which is what makes another save of the component wait. The room is not changed (spec §8.5).
     const updated = await tx.asset.update({
       where: { id: link.componentAssetId },
       data: { custodianId: custody.custodianId, departmentId: custody.departmentId, updatedBy: input.userId },
