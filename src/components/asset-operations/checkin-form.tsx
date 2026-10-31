@@ -38,6 +38,7 @@ import {
 } from "@/lib/asset-operation-search-rules"
 import { appendReturnTo, getOperationCancelHref } from "@/lib/asset-return-navigation"
 import { getCheckinChoice } from "@/lib/checkin-choice"
+import { checkinPeopleOpen, checkinPhoneFooterCounts, checkinPhonePartClass } from "@/lib/checkin-phone"
 import {
   buildCheckinChecklist,
   buildCheckinSummaryRows,
@@ -67,9 +68,11 @@ import { withCheckoutAssetDetail, type CheckoutDetailState } from "@/lib/checkou
 import { formatCheckoutDay } from "@/lib/checkout-phone-steps"
 import { getAssetStateTone } from "@/lib/design-system"
 import { waitForDialogToClose } from "@/lib/field-focus"
+import { cn } from "@/lib/utils"
 import { maxLength, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { useMediaQuery } from "@/components/ui/use-media-query"
 
 type QueuedPhoto = {
   id: string
@@ -208,6 +211,10 @@ export function CheckinForm({
   const [receiveByEmployeeId, setReceiveByEmployeeId] = useState(initialReceiverId)
   // The travelling components not ticked as returned; a new pick starts with every one ticked (spec §8.2).
   const [unticked, setUnticked] = useState<ReadonlySet<string>>(new Set())
+  // The phone's people line (spec §8.8): แก้ไข or a pick in either field opens both fields, and they stay open.
+  const [phonePeopleOpen, setPhonePeopleOpen] = useState(false)
+  // The card is hidden below lg (P2-R12); its warnings show after section 3 there.
+  const isDesktop = useMediaQuery("(min-width: 64rem)")
   // The chosen row's detail=1 read: the summary and the components checklist need it. The ?checkoutId= answer arrives
   // with it; a picked row reads it. rowIdRef is the chosen id, so a late answer for a row chosen before is dropped.
   const [rowDetail, setRowDetail] = useState<CheckoutDetailState>(initialRow && !initialRow.detail ? "failed" : "ready")
@@ -436,6 +443,11 @@ export function CheckinForm({
     const closed = waitForDialogToClose()
     setReviewOpen(false)
     await closed
+  }
+  // แก้ไข on the phone's people line: both fields show, and ผู้คืน takes focus.
+  function openPhonePeople() {
+    setPhonePeopleOpen(true)
+    requestAnimationFrame(() => document.getElementById("checkin-return-by")?.focus())
   }
   const focusFirstError = () => fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })
   const focusLateError = () => lateErrors.focusFirst(LATE_FIELD_ORDER, { idFor: (key) => LATE_FIELD_IDS[key], reveal: leaveReview })
@@ -740,6 +752,20 @@ export function CheckinForm({
     }
   }
 
+  // The phone (spec §8.8): the people line folds while both are chosen with no error, and the footer counts the components.
+  const peopleOpen = checkinPeopleOpen({
+    opened: phonePeopleOpen,
+    returnBy: selectedReturnBy?.label ?? "",
+    receiveBy: selectedReceiver?.label ?? "",
+    returnByError: Boolean(fieldErrors.errors.returnBy),
+    receiveByError: Boolean(fieldErrors.errors.receiveBy),
+  })
+  const footerLine = lateReturn ? lateFooter : chosen && values.returnBy
+    ? t("footerDescription", { tag: chosen.assetTag, returner: values.returnBy })
+    : t("footerIncomplete")
+  const phoneFooterCounts = checkinPhoneFooterCounts({ lateReturn: lateReturn !== null, returned: travelling.length - missingComponents.length, missing: missingComponents.length })
+  const summaryWarnings = lateReturn ? lateWarnings : [...warningLines, ...(detailFailedNotice ? [detailFailedNotice] : [])]
+
   return (
     <>
       <form onSubmit={handleSubmit} noValidate id={CHECKIN_FORM_ID}>
@@ -754,15 +780,18 @@ export function CheckinForm({
             nextLabel={tOperation("summaryNext")}
             rows={lateReturn ? lateSummaryRows : summaryRows}
             checklist={lateReturn ? lateChecklist : checklist}
-            warnings={lateReturn ? lateWarnings : [...warningLines, ...(detailFailedNotice ? [detailFailedNotice] : [])]}
+            warnings={summaryWarnings}
             footnote={lateReturn ? lateFootnote : t("summaryFootnote")}
             photo={chosen ? <AssetThumbnail photo={chosen.photo} assetTag={chosen.assetTag} assetName={chosen.name} size={64} /> : undefined}
             assetLabel={chosen ? assetOperationRowLabel(chosen) : undefined}
           />}
           footer={{
-            description: lateReturn ? lateFooter : chosen && values.returnBy
-              ? t("footerDescription", { tag: chosen.assetTag, returner: values.returnBy })
-              : t("footerIncomplete"),
+            description: phoneFooterCounts ? (
+              <>
+                <span className="max-lg:hidden">{footerLine}</span>
+                <span className="lg:hidden">{t("phoneFooterComponents", phoneFooterCounts)}</span>
+              </>
+            ) : footerLine,
             cancelHref,
             cancelLabel: tCommon("cancel"),
             submitLabel: tOperation("reviewAndSave"),
@@ -912,32 +941,48 @@ export function CheckinForm({
             <>
               <FormSection number={2} title={t("sectionReturn")}>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <SearchableSelect
-                    id="checkin-return-by"
-                    label={t("returnBy")}
-                    value={returnByEmployeeId}
-                    required
-                    options={returnByOptions}
-                    placeholder={t("selectReturnBy")}
-                    searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                    emptyLabel={tCommon("searchSelectNoResults")}
-                    hint={returnByEmployeeId && returnByEmployeeId === choice.returnByEmployeeId ? t("returnByHolder") : undefined}
-                    error={fieldErrors.message("returnBy")}
-                    onChange={(value) => setEmployeeField("returnBy", value, value === choice.returnByEmployeeId ? choice.returnByInactiveLabel : null)}
-                  />
-                  <SearchableSelect
-                    id="checkin-receive-by"
-                    label={t("receiveBy")}
-                    value={receiveByEmployeeId}
-                    required
-                    options={employees}
-                    placeholder={t("selectReceiveBy")}
-                    searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                    emptyLabel={tCommon("searchSelectNoResults")}
-                    hint={receiveByEmployeeId && receiveByEmployeeId === currentEmployeeId ? t("receiveByYou") : undefined}
-                    error={fieldErrors.message("receiveBy")}
-                    onChange={(value) => setEmployeeField("receiveBy", value)}
-                  />
+                  <div data-checkin-people-line className={cn("flex min-w-0 items-center justify-between gap-3 md:col-span-2", checkinPhonePartClass("peopleLine", peopleOpen))}>
+                    <p className="min-w-0 break-words text-sm text-foreground">
+                      {t("phonePeople", { returnBy: selectedReturnBy?.label ?? "", receiveBy: selectedReceiver?.label ?? "" })}
+                    </p>
+                    <Button type="button" variant="ghost" size="sm" aria-label={t("phonePeopleEdit")} onClick={openPhonePeople}>
+                      {tCommon("edit")}
+                    </Button>
+                  </div>
+                  <div data-checkin-part="people" className={checkinPhonePartClass("people", peopleOpen)}>
+                    <SearchableSelect
+                      id="checkin-return-by"
+                      label={t("returnBy")}
+                      value={returnByEmployeeId}
+                      required
+                      options={returnByOptions}
+                      placeholder={t("selectReturnBy")}
+                      searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                      emptyLabel={tCommon("searchSelectNoResults")}
+                      hint={returnByEmployeeId && returnByEmployeeId === choice.returnByEmployeeId ? t("returnByHolder") : undefined}
+                      error={fieldErrors.message("returnBy")}
+                      onChange={(value) => {
+                        setPhonePeopleOpen(true)
+                        setEmployeeField("returnBy", value, value === choice.returnByEmployeeId ? choice.returnByInactiveLabel : null)
+                      }}
+                    />
+                    <SearchableSelect
+                      id="checkin-receive-by"
+                      label={t("receiveBy")}
+                      value={receiveByEmployeeId}
+                      required
+                      options={employees}
+                      placeholder={t("selectReceiveBy")}
+                      searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                      emptyLabel={tCommon("searchSelectNoResults")}
+                      hint={receiveByEmployeeId && receiveByEmployeeId === currentEmployeeId ? t("receiveByYou") : undefined}
+                      error={fieldErrors.message("receiveBy")}
+                      onChange={(value) => {
+                        setPhonePeopleOpen(true)
+                        setEmployeeField("receiveBy", value)
+                      }}
+                    />
+                  </div>
                   <div className="md:col-span-2">
                     <AssetConditionChoice
                       id="checkin-condition-after"
@@ -1058,6 +1103,15 @@ export function CheckinForm({
               </FormSection>
             </>
           )}
+          {!isDesktop && summaryWarnings.length > 0 ? (
+            <div data-checkin-phone-warnings className="grid gap-2 lg:hidden">
+              {summaryWarnings.map((warning, index) => (
+                <Notice key={index} tone="warning">
+                  {warning}
+                </Notice>
+              ))}
+            </div>
+          ) : null}
         </OperationFormFrame>
       </form>
       <OperationReviewDialog

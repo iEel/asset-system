@@ -166,10 +166,10 @@ test("the รับคืน form: the late return is a branch of the one form, 
     "onConfirm={() => void (lateReturn ? submitLateReturn() : submitCheckin())}",
     "setLate(EMPTY_LATE_RETURN_DRAFT)",
     "lateErrors.setErrors({})",
-    "warnings={lateReturn ? lateWarnings :",
+    "const summaryWarnings = lateReturn ? lateWarnings :",
     "rows={lateReturn ? lateSummaryRows :",
     "checklist={lateReturn ? lateChecklist :",
-    "description: lateReturn ? lateFooter :",
+    "const footerLine = lateReturn ? lateFooter :",
   ]) assert.ok(form.includes(part), part)
   for (const id of ["checkin-late-receive-by", "checkin-late-return-date", "checkin-late-condition", "checkin-late-location", "checkin-late-remark"]) {
     assert.equal(form.match(new RegExp(`\\bid="${id}"`, "g"))?.length, 1, id)

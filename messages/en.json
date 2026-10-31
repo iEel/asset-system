@@ -2047,7 +2047,10 @@
     "lateReviewSince": "Outstanding since",
     "lateResultReattach": "Back into {parentTag}",
     "lateResultStandalone": "Stands alone, stored at {location}",
-    "lateSuccess": "Component returned"
+    "lateSuccess": "Component returned",
+    "phonePeople": "Returned by / received by: {returnBy} / {receiveBy}",
+    "phonePeopleEdit": "Edit who returns it and who receives it",
+    "phoneFooterComponents": "Components back: {returned} · missing: {missing}"
   },
   "transfer": {
     "title": "Transfer Asset",

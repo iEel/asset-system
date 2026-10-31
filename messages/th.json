@@ -2047,7 +2047,10 @@
     "lateReviewSince": "ค้างคืนตั้งแต่",
     "lateResultReattach": "กลับเข้าเครื่องหลัก {parentTag}",
     "lateResultStandalone": "แยกเป็นทรัพย์สินเดี่ยว เก็บไว้ที่ {location}",
-    "lateSuccess": "รับคืนส่วนควบสำเร็จ"
+    "lateSuccess": "รับคืนส่วนควบสำเร็จ",
+    "phonePeople": "ผู้คืน / ผู้รับคืน: {returnBy} / {receiveBy}",
+    "phonePeopleEdit": "แก้ไขผู้คืนและผู้รับคืน",
+    "phoneFooterComponents": "ส่วนควบได้คืน {returned} · ขาด {missing}"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",
