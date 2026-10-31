@@ -213,7 +213,7 @@ test("the form's final-review fixes: the submit routes through checkoutSubmitAct
     'status={step === 1 && detailFailedNotice ? <Notice tone="warning">{detailFailedNotice}</Notice> : undefined}',
     't("detailReadFailed")', 'tCommon("tryAgain")',
     '{ label: t("expectedReturn"), value: formatCheckoutDay(values.expectedReturnDate, locale) }',
-    '{ label: t("photoBefore"), value: photoBefore ? t("reviewAttached") : t("reviewNotAttached") }',
+    '{ key: "photoBefore", label: t("photoBefore"), value: photoBefore ? t("reviewAttached") : t("reviewNotAttached") }',
     '{ label: t("receiverSignature"), value: receiverSignatureDataUrl ? t("reviewAttached") : t("reviewNotAttached") }',
     "key={`${values.checkoutType}:${destinationValue(values)}`}",
     'labelledBy="checkout-type-legend"',
@@ -224,8 +224,10 @@ test("the form's final-review fixes: the submit routes through checkoutSubmitAct
 })
 
 test("รับคืน's condition default: a picked asset recorded ยังไม่ประเมิน starts with none, now that รับคืน does not offer it (group 3 spec §19.2)", async () => {
-  const { operationConditionDefault } = await import("../src/lib/checkout-form-rules.ts")
-  const { getAssetOperationConditionOptions } = await import("../src/lib/asset-lifecycle-policy.ts")
+  // The shared default sits beside the options it reads (final review M11); ส่งมอบ keeps checkoutConditionDefault.
+  const { operationConditionDefault, getAssetOperationConditionOptions } = await import("../src/lib/asset-lifecycle-policy.ts")
+  const checkoutRules = await import("../src/lib/checkout-form-rules.ts")
+  assert.equal("operationConditionDefault" in checkoutRules, false, "one home for the rule")
   const masters = ["Not Assessed", "New", "Excellent", "Good", "Fair", "Poor", "Damaged", "Non-functional", "Salvage"].map((name) => ({ id: `c-${name}`, name }))
   const checkin = getAssetOperationConditionOptions("checkin", masters)
   assert.equal(operationConditionDefault({ conditionId: "c-Not Assessed" }, checkin), "")
@@ -234,6 +236,7 @@ test("รับคืน's condition default: a picked asset recorded ยัง�
   assert.equal(checkoutConditionDefault, operationConditionDefault, "one rule")
   const form = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8")
   assert.ok(form.includes("conditionAfter: current.conditionAfter || operationConditionDefault(row, conditions),"))
+  assert.ok(form.includes('import { operationConditionDefault } from "@/lib/asset-lifecycle-policy"'))
   assert.doesNotMatch(form, /conditionAfter: current\.conditionAfter \|\| row\.conditionId/)
 })
 
@@ -253,11 +256,25 @@ test("a condition refusal: which keys, which send for repair, and the repair lin
   assert.equal(checkoutRepairHref("th", "a b"), "/th/maintenance/new?assetId=a%20b")
 })
 
+test("ส่งซ่อม shows only to someone who may record a repair (final review I3)", async () => {
+  const { checkoutRepairLinkShown } = await import("../src/lib/checkout-form-rules.ts")
+  assert.equal(checkoutRepairLinkShown("asset.transactionReasonConditionDamaged", true), true)
+  assert.equal(checkoutRepairLinkShown("asset.transactionReasonConditionNonFunctional", true), true)
+  assert.equal(checkoutRepairLinkShown("asset.transactionReasonConditionDamaged", false), false, "no maintenance:create, no link")
+  assert.equal(checkoutRepairLinkShown("asset.transactionReasonConditionSalvage", true), false, "ซาก gets no link")
+  assert.equal(checkoutRepairLinkShown(null, true), false)
+  const page = read("src/app/[locale]/(dashboard)/asset-management/checkout/page.tsx")
+  assert.ok(page.includes('canCreateRepair={hasPermission(user, "maintenance", "create")}'), "the page passes maintenance:create")
+  const form = read("src/components/asset-operations/checkout-form.tsx")
+  assert.ok(form.includes("{values.asset && checkoutRepairLinkShown(assetReasonKey, canCreateRepair) ? ("), "the form hides the link without it")
+  assert.ok(form.includes("canCreateRepair: boolean"))
+})
+
 test("the form: a condition refusal can be picked, and ส่งซ่อม sits under the asset field for เสียหาย/ใช้งานไม่ได้ only (group 3 spec §19.3)", () => {
   const form = read("src/components/asset-operations/checkout-form.tsx")
   for (const part of [
     "pickBlocked={(row) => isCheckoutConditionReasonKey(row.reasonKey)}",
-    "{values.asset && checkoutNeedsRepairReasonKey(assetReasonKey) ? (",
+    "{values.asset && checkoutRepairLinkShown(assetReasonKey, canCreateRepair) ? (",
     "href={checkoutRepairHref(locale, values.asset.id)}",
     'buttonVariants({ variant: "outline", size: "sm" })',
     'tOperation("sendToRepair")',
@@ -270,4 +287,12 @@ test("the form: a condition refusal can be picked, and ส่งซ่อม sit
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
   assert.equal(th.assetOperation.sendToRepair, "ส่งซ่อม")
   assert.equal(en.assetOperation.sendToRepair, "Send for repair")
+})
+
+test("a save refused for the asset's condition reads the asset again before focusing the field, and ส่งซ่อม reads with the reason (final review M2, M9)", () => {
+  const form = read("src/components/asset-operations/checkout-form.tsx")
+  const refusal = 'if (payload?.code === "ASSET_CHECKOUT_CONDITION_BLOCKED" && values.asset) await loadAssetDetail(values.asset.id)'
+  assert.ok(form.includes(refusal))
+  assert.ok(form.indexOf(refusal) < form.indexOf("if (fieldErrors.applyServer(payload) && focusFirstError()) return"), "the read comes before the focus")
+  assert.ok(form.includes('aria-describedby="checkout-asset-error"'), "the link reads with the reason under the asset field")
 })

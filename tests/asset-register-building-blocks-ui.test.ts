@@ -31,7 +31,7 @@ test("asset thumbnails load the small server image lazily and fall back to an ic
   assert.match(source, /src=\{thumbnailUrl\(photo\.id\)\}/)
   assert.match(source, /loading="lazy"/)
   assert.match(source, /decoding="async"/)
-  assert.match(source, /onError=\{\(\) => setFailed\(true\)\}/)
+  assert.match(source, /onError=\{\(\) => setFailedId\(photo\.id\)\}/)
   assert.match(source, /!photo \|\| !isThumbnailable\(photo\.fileType\) \|\| failed/)
   assert.match(source, /data-no-row-click/)
   assert.match(source, /<AttachmentPreviewDialog/)

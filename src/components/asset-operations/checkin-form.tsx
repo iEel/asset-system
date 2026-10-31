@@ -30,7 +30,7 @@ import {
 } from "@/lib/asset-operation-search-rules"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { getCheckinChoice } from "@/lib/checkin-choice"
-import { operationConditionDefault } from "@/lib/checkout-form-rules"
+import { operationConditionDefault } from "@/lib/asset-lifecycle-policy"
 import { formatCount } from "@/lib/display-format"
 import { waitForDialogToClose } from "@/lib/field-focus"
 import { toLocalDateInputValue } from "@/lib/local-date"

@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
-import { getRepairConditionError, repairBeyondRepairConditionName } from "./asset-lifecycle-policy.ts"
+import { getRepairConditionError, normalizeAssetStateName, repairBeyondRepairConditionName } from "./asset-lifecycle-policy.ts"
 import { FieldRefusalError } from "./field-errors.ts"
 import { MaintenanceApiError } from "./maintenance-api-errors.ts"
 import { calculateNextMaintenanceDueDate, type MaintenancePlanFrequency } from "./preventive-maintenance.ts"
@@ -268,7 +268,10 @@ async function applyAssetStatus(tx: Prisma.TransactionClient, asset: AssetRow, n
 // The condition a finished repair sets (group 3 spec §19.4): the chosen ดี or พอใช้ for ใช้งานได้, ซาก for ซ่อมไม่ได้.
 async function resolveRepairConditionId(tx: Prisma.TransactionClient, outcome: RepairOutcome, conditionId: string | null) {
   if (outcome === "beyond_repair") {
-    const salvage = await tx.assetCondition.findFirst({ where: { name: repairBeyondRepairConditionName, isActive: true }, select: { id: true } })
+    // The active masters, matched through normalizeAssetStateName like every other condition rule (final review M8).
+    const masters = await tx.assetCondition.findMany({ where: { isActive: true }, select: { id: true, name: true } })
+    const salvageName = normalizeAssetStateName(repairBeyondRepairConditionName)
+    const salvage = masters.find((master) => normalizeAssetStateName(master.name) === salvageName)
     if (!salvage) throw new MaintenanceApiError("ASSET_STATE_MASTER_NOT_FOUND", "Salvage asset condition is not configured", 400)
     return salvage.id
   }

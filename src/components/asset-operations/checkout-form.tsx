@@ -39,9 +39,9 @@ import {
   buildCheckoutSummaryRows,
   checkoutComponents,
   checkoutConditionDefault,
-  checkoutNeedsRepairReasonKey,
   checkoutReceiverLabel,
   checkoutRepairHref,
+  checkoutRepairLinkShown,
   checkoutReceiverName,
   checkoutSubmitAction,
   isCheckoutConditionReasonKey,
@@ -145,6 +145,7 @@ export function CheckoutForm({
   initialAsset,
   returnTo,
   deliveredByLabel,
+  canCreateRepair,
 }: {
   employees: AssetOperationEmployeeOption[]
   departments: NamedOption[]
@@ -155,6 +156,8 @@ export function CheckoutForm({
   returnTo?: string
   /** ผู้ส่งมอบ on the phone's read-back: the signed-in user (spec §7.4). */
   deliveredByLabel: string
+  /** maintenance:create: the ส่งซ่อม link shows only to someone who may record a repair (final review I3). */
+  canCreateRepair: boolean
 }) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -267,7 +270,7 @@ export function CheckoutForm({
         ? [{ label: t("expectedReturn"), value: formatCheckoutDay(values.expectedReturnDate, locale) }]
         : []),
       // The photo and the signature each on its own line, so a signature that is gone shows (final review M1).
-      { label: t("photoBefore"), value: photoBefore ? t("reviewAttached") : t("reviewNotAttached") },
+      { key: "photoBefore", label: t("photoBefore"), value: photoBefore ? t("reviewAttached") : t("reviewNotAttached") },
       { label: t("receiverSignature"), value: receiverSignatureDataUrl ? t("reviewAttached") : t("reviewNotAttached") },
     ],
     labels: {
@@ -280,7 +283,7 @@ export function CheckoutForm({
   })
 
   // The review's รูปก่อนส่งมอบ line shows the chosen photo beside "แนบแล้ว" (group 3 spec §19.5).
-  const reviewDialogItems = reviewItems.map((item) => item.label === t("photoBefore") && photoBefore
+  const reviewDialogItems = reviewItems.map((item) => item.key === "photoBefore" && photoBefore
     ? {
         ...item,
         value: (
@@ -419,6 +422,9 @@ export function CheckoutForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
         // A refusal that names a field of this form closes the review and shows under it; any other keeps the toast.
+        // The asset's condition changed since the last read: read it again before the field takes focus, so the row, the
+        // checklist, the card and the ส่งซ่อม link catch up with the reason under the field (final review M2).
+        if (payload?.code === "ASSET_CHECKOUT_CONDITION_BLOCKED" && values.asset) await loadAssetDetail(values.asset.id)
         if (fieldErrors.applyServer(payload) && focusFirstError()) return
         throw new Error(getCheckoutErrorMessage(payload?.code ?? payload?.error))
       }
@@ -499,10 +505,12 @@ export function CheckoutForm({
                   // A row refused for its condition can be picked, so its reason reads under the field (spec §19.3, A1-R1).
                   pickBlocked={(row) => isCheckoutConditionReasonKey(row.reasonKey)}
                 />
-                {/* เสียหาย or ใช้งานไม่ได้: ส่งซ่อม opens a new repair for the asset, under its reason; ซาก gets none. */}
-                {values.asset && checkoutNeedsRepairReasonKey(assetReasonKey) ? (
+                {/* เสียหาย or ใช้งานไม่ได้: ส่งซ่อม opens a new repair for the asset, under its reason; ซาก gets none, and
+                    nor does someone who may not record a repair (final review I3). It reads with the reason (M9). */}
+                {values.asset && checkoutRepairLinkShown(assetReasonKey, canCreateRepair) ? (
                   <Link
                     href={checkoutRepairHref(locale, values.asset.id)}
+                    aria-describedby="checkout-asset-error"
                     data-checkout-repair-link
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), "-mt-2 justify-self-start")}
                   >

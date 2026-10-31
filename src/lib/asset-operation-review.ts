@@ -1,4 +1,6 @@
 export type OperationReviewItem = {
+  /** A caller's own name for the line, so it finds the line without reading its translated label (final review M10). */
+  key?: string
   label: string
   value: string
 }
@@ -30,7 +32,7 @@ export function buildOperationReviewSummary(input: {
   for (const detail of input.details ?? []) {
     const label = normalizeReviewValue(detail.label)
     const value = normalizeReviewValue(detail.value)
-    if (label && value) items.push({ label, value })
+    if (label && value) items.push(detail.key ? { key: detail.key, label, value } : { label, value })
   }
   if (evidenceLabel) items.push({ label: input.labels.evidence, value: evidenceLabel })
 

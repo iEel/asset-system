@@ -58,7 +58,8 @@ test("the repair form asks its two questions with ChoiceCard radios under a fiel
   assert.equal(source.match(/<ChoiceCard type="radio" name="done" /g)?.length, 2)
   assert.equal(source.match(/<ChoiceCard type="radio" name="outcome" /g)?.length, 2)
   // The two questions are FieldGroups with the star and one error each (v-track plan 2 M4).
-  assert.equal(source.match(/<FieldGroup legend=\{t\("(?:done|outcome)Question"\)\} id="repair-record-(?:done|outcome)" required error=\{fieldErrors\.message\("(?:done|outcome)"\)\}>/g)?.length, 2)
+  // The outcome group's hint says ซาก for ซ่อมไม่ได้ (final review M9).
+  assert.equal(source.match(/<FieldGroup legend=\{t\("(?:done|outcome)Question"\)\} id="repair-record-(?:done|outcome)" required (?:hint=\{values\.outcome === "beyond_repair" \? t\("conditionBecomesSalvage"\) : undefined\} )?error=\{fieldErrors\.message\("(?:done|outcome)"\)\}>/g)?.length, 2)
   assert.doesNotMatch(source, /<fieldset\b|<FieldRequiredMark \/>/)
 })
 
@@ -67,7 +68,7 @@ test("the finish-repair dialog picks the outcome with ChoiceCard radios (R3)", (
   assert.doesNotMatch(source, /accent-primary|<input\b|ml-1 text-danger/)
   assert.match(source, /<ChoiceCard key=\{outcome\} type="radio" name="outcome" checked=\{complete\.outcome === outcome\}/)
   // The outcome is a FieldGroup with the star and its error (v-track plan 2 M5).
-  assert.match(source, /<FieldGroup legend=\{t\("outcomeQuestion"\)\} id="repair-complete-outcome" required error=\{completeErrors\.message\("outcome"\)\}>/)
+  assert.match(source, /<FieldGroup legend=\{t\("outcomeQuestion"\)\} id="repair-complete-outcome" required hint=\{complete\.outcome === "beyond_repair" \? t\("conditionBecomesSalvage"\) : undefined\} error=\{completeErrors\.message\("outcome"\)\}>/)
 })
 
 test("checkout picks the handover mode with required ChoiceCard radios, and no file in src uses accent-primary (R1)", () => {

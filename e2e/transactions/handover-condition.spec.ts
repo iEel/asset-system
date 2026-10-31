@@ -14,6 +14,7 @@ import {
   createTxAsset,
   expectFieldError,
   findAssetRow,
+  PHOTO_FIXTURE,
   pickedAsset,
   pickSearchable,
   readAssetMasters,
@@ -117,12 +118,24 @@ test("the repair loop: a broken asset is refused with ส่งซ่อม; its
   await expect(page.locator("#checkout-asset-error")).toHaveCount(0)
   await expect(page.locator("[data-checkout-repair-link]")).toHaveCount(0)
   await expect(conditionChip(page, "ดี")).toBeChecked()
+  // IT assesses it at the handover as พอใช้ (spec §19.1): the handover writes that condition to the asset.
+  await conditionChip(page, "พอใช้").check()
   await pickSearchable(page, "checkout-destination", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
   await page.getByRole("radio", { name: /มอบหมายใช้งานประจำ/ }).check()
   const checkout = await saveHandoverForm(page, e2eDevice, asset.id)
   expect(checkout.documentNo).toMatch(/^HO-/)
   await expect(page.getByText(checkout.documentNo, { exact: true }).first()).toBeVisible()
-  expect((await readCondition(page, asset.id)).status.name).toBe("In Use")
+  const handedOver = await readCondition(page, asset.id)
+  expect(handedOver.status.name).toBe("In Use")
+  expect(handedOver.condition?.nameTh, "the condition chosen at the handover").toBe("พอใช้")
+
+  // The asset page shows the condition chosen at the handover, and the history's row for it names the HO- record.
+  await visitAssetPage(measure, asset.id, "asset after the handover", testInfo)
+  await expect(valueBeside(page.getByRole("main"), "สภาพ")).toContainText("พอใช้")
+  await visitAssetPage(measure, asset.id, "asset history after the handover", testInfo, "history")
+  const assessed = page.getByRole("main").getByRole("row").filter({ visible: true }).filter({ hasText: "เปลี่ยนสภาพ" }).filter({ hasText: "ดี → พอใช้" })
+  await expect(assessed).toHaveCount(1)
+  await expect(assessed).toContainText(checkout.documentNo)
 })
 
 test("a salvage asset is refused as รอตัดจำหน่าย, with no ส่งซ่อม link (spec §19.3)", async ({ page, measure, e2eDevice }, testInfo) => {
@@ -189,6 +202,28 @@ test("the register's photo shows in the picker's row and the summary card; an as
   await expect(cardImage).toHaveCount(1)
   await expect.poll(() => cardImage.evaluate((image) => (image as HTMLImageElement).naturalWidth), { message: "the card's photo loads" }).toBeGreaterThan(0)
   await record(measure, "handover form, a photo in the summary", testInfo)
+
+  // รูปก่อนส่งมอบ: the chosen photo shows under the dropzone, and the review's รูปก่อนส่งมอบ line shows it at 48 px
+  // beside แนบแล้ว (final review M5). The review is closed with ยกเลิก: nothing is saved.
+  const receiver = readRunData().employees.receiver1
+  await page.locator("form input[type=file]").setInputFiles(PHOTO_FIXTURE)
+  const chosen = page.locator('[data-slot="chosen-photo-preview"] img').filter({ visible: true })
+  await expect(chosen).toHaveCount(1)
+  await expect.poll(() => chosen.evaluate((image) => (image as HTMLImageElement).naturalWidth), { message: "the chosen photo loads" }).toBeGreaterThan(0)
+  await pickSearchable(page, "checkout-destination", receiver.code, `${receiver.code} - ${receiver.fullNameTh}`)
+  await page.getByRole("radio", { name: /มอบหมายใช้งานประจำ/ }).check()
+  await page.getByRole("button", { name: "ตรวจสอบและบันทึก", exact: true }).click()
+  const review = page.getByRole("dialog", { name: "ตรวจสอบก่อนส่งมอบ" })
+  await expect(review).toBeVisible()
+  const photoLine = review.locator("dl > div").filter({ has: page.locator("dt", { hasText: /^รูปก่อนส่งมอบ$/ }) })
+  await expect(photoLine).toContainText("แนบแล้ว")
+  const reviewPhoto = photoLine.locator('[data-slot="chosen-photo-preview"] img')
+  await expect(reviewPhoto).toHaveCount(1)
+  await expect(reviewPhoto).toHaveAttribute("width", "48")
+  await expect.poll(() => reviewPhoto.evaluate((image) => (image as HTMLImageElement).naturalWidth), { message: "the review's photo loads" }).toBeGreaterThan(0)
+  await record(measure, "handover review, the photo before the handover", testInfo)
+  await review.getByRole("button", { name: "ยกเลิก", exact: true }).click()
+  await expect(review).toBeHidden()
 
   await visit(measure, CHECKOUT_PATH, "handover form, an asset without a photo", testInfo)
   const plain = await findAssetRow(page, "checkout-asset", withoutPhoto.assetTag, withoutPhoto.assetTag)

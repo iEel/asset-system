@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { AssetConditionChoice } from "@/components/asset-operations/condition-choice"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
+import { repairConditionDefault } from "@/lib/asset-lifecycle-policy"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
@@ -112,7 +113,7 @@ export function RepairRecordForm({
   plan?: { id: string; label: string; title: string; vendor: Option | null }
   needsReporter: boolean
   // ดี and พอใช้ (getRepairConditionOptions), and initialAsset's own when offered (repairConditionDefault), else "".
-  // An asset picked here starts with none chosen: the picker carries only its id.
+  // An asset picked here gets the same default from the condition its option carries (final review M1).
   conditionOptions: Option[]
   initialConditionId: string
 }) {
@@ -225,9 +226,10 @@ export function RepairRecordForm({
           loadingLabel={tCommon("loading")}
           formatReason={(code) => getMaintenanceErrorMessage(code, tMaintenance, code)}
           error={fieldErrors.message("assetId")}
-          onChange={(value) => {
+          onChange={(value, option) => {
             setField("assetId", value)
-            setField("conditionId", value === initialAsset?.id ? initialConditionId : "")
+            // The picked asset's own condition when it is ดี or พอใช้, else none (group 3 spec §19.4, final review M1).
+            setField("conditionId", repairConditionDefault(option?.conditionId ?? null, conditionOptions))
           }}
         />
         {openRecordAssetId ? (
@@ -263,7 +265,8 @@ export function RepairRecordForm({
           </div>
         </FieldGroup>
         {values.done ? (
-          <FieldGroup legend={t("outcomeQuestion")} id="repair-record-outcome" required error={fieldErrors.message("outcome")}>
+          // ซ่อมไม่ได้: the ซาก line is the group's hint, read with it by aria-describedby (final review M9).
+          <FieldGroup legend={t("outcomeQuestion")} id="repair-record-outcome" required hint={values.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} error={fieldErrors.message("outcome")}>
             <div className="grid gap-2 sm:grid-cols-2">
               <ChoiceCard type="radio" name="outcome" checked={values.outcome === "usable"} label={t("outcome.usable")} onChange={() => setField("outcome", "usable")} />
               <ChoiceCard type="radio" name="outcome" checked={values.outcome === "beyond_repair"} label={t("outcome.beyond_repair")} onChange={() => setField("outcome", "beyond_repair")} />
@@ -280,8 +283,6 @@ export function RepairRecordForm({
             error={fieldErrors.message("conditionId")}
             onChange={(value) => setField("conditionId", value)}
           />
-        ) : values.done ? (
-          <p className="text-sm text-muted-foreground">{t("conditionBecomesSalvage")}</p>
         ) : null}
         {effectKey ? (
           <Notice tone="warning">

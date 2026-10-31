@@ -19,6 +19,8 @@ type CustodyRouteState = {
   audits: Array<{ action: string; newValue: Record<string, unknown> }>
   /** The asset's recorded condition name; each asset read takes the next of conditionAnswers first, if any. */
   assetConditionName: string
+  /** The asset's recorded condition id (the handover writes conditionBefore over it when they differ). */
+  assetConditionId: string
   conditionAnswers: string[]
   /** The condition masters by id (conditionBefore); any other id reads Good. */
   conditionMasters: Record<string, { name: string; isActive: boolean }>
@@ -38,6 +40,7 @@ const state: CustodyRouteState = {
   syncChanges: [],
   audits: [],
   assetConditionName: "Good",
+  assetConditionId: "condition-good",
   conditionAnswers: [],
   conditionMasters: {},
 }
@@ -81,7 +84,7 @@ const mockedModuleSources = new Map<string, string>([
       assetTag: "GRL-COM-26-0036",
       ownershipType: state().assetOwnershipType,
       statusId: "status-current",
-      conditionId: "condition-good",
+      conditionId: state().assetConditionId,
       branchId: "branch-1",
       currentLocationId: "location-1",
       custodianId: "emp-9",
@@ -186,6 +189,7 @@ beforeEach(() => {
   state.syncChanges = []
   state.audits = []
   state.assetConditionName = "Good"
+  state.assetConditionId = "condition-good"
   state.conditionAnswers = []
   state.conditionMasters = {}
 })
@@ -371,6 +375,33 @@ test("a handover refuses an asset recorded เสียหาย, ใช้ง�
 test("a ยังไม่ประเมิน asset is not refused (group 3 spec §19.2)", async () => {
   state.assetConditionName = "Not Assessed"
   assert.equal((await post(checkoutRoute, checkoutBody)).status, 201)
+})
+
+test("the handover assesses the asset: a ยังไม่ประเมิน asset handed over as ดี is left ดี, with one condition_change line and the log's two ids (group 3 spec §19.1, fix brief item 4)", async () => {
+  state.assetConditionName = "Not Assessed"
+  state.assetConditionId = "condition-unassessed"
+  assert.equal((await post(checkoutRoute, checkoutBody)).status, 201)
+  assert.equal(written("asset.update")[0].conditionId, "condition-good")
+  assert.deepEqual(written("assetMovement.create").filter((row) => row.movementType === "condition_change"), [{
+    assetId: "asset-1",
+    movementType: "condition_change",
+    fromValue: "condition-unassessed",
+    toValue: "condition-good",
+    reason: "Asset checkout",
+    referenceType: "checkout",
+    referenceId: "assetCheckout-new",
+    performedBy: "user-1",
+  }])
+  const [audit] = state.audits.filter((entry) => entry.action === "checkout")
+  assert.deepEqual([audit.newValue.conditionId, audit.newValue.previousConditionId], ["condition-good", "condition-unassessed"])
+})
+
+test("an asset already ดี handed over as ดี keeps its condition and writes no condition_change (fix brief item 4)", async () => {
+  assert.equal((await post(checkoutRoute, checkoutBody)).status, 201)
+  assert.equal("conditionId" in written("asset.update")[0], false, "the condition is not rewritten")
+  assert.deepEqual(written("assetMovement.create").filter((row) => row.movementType === "condition_change"), [])
+  const [audit] = state.audits.filter((entry) => entry.action === "checkout")
+  assert.deepEqual([audit.newValue.conditionId, audit.newValue.previousConditionId], ["condition-good", "condition-good"])
 })
 
 test("a condition that turns ใช้งานไม่ได้ after the pre-check is refused by the re-read inside the transaction, and nothing is written (group 3 spec §19.2)", async () => {

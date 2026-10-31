@@ -66,9 +66,9 @@ test("the repair form uses the shared fields, a busy save button and an underlin
 // shared condition chips, ซ่อมไม่ได้ says the condition becomes ซาก, and the pages pass the options and the start.
 test("the complete dialog and the record form ask the condition after a usable repair and say ซาก for one beyond repair", () => {
   const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
-  for (const [path, id, hook, usable] of [
-    ["src/components/maintenance/repair-record-actions.tsx", "repair-complete-condition", "completeErrors", 'complete.outcome === "usable"'],
-    ["src/components/maintenance/repair-record-form.tsx", "repair-create-condition", "fieldErrors", "isUsableDone(values)"],
+  for (const [path, id, hook, usable, beyond] of [
+    ["src/components/maintenance/repair-record-actions.tsx", "repair-complete-condition", "completeErrors", 'complete.outcome === "usable"', 'complete.outcome === "beyond_repair"'],
+    ["src/components/maintenance/repair-record-form.tsx", "repair-create-condition", "fieldErrors", "isUsableDone(values)", 'values.outcome === "beyond_repair"'],
   ] as const) {
     const source = read(path)
     assert.match(source, /import \{ AssetConditionChoice \} from "@\/components\/asset-operations\/condition-choice"/, path)
@@ -78,7 +78,9 @@ test("the complete dialog and the record form ask the condition after a usable r
       assert.ok(choice[1].includes(prop), `${path}: ${prop}`)
     }
     assert.ok(source.includes(`{${usable} ? (\n`), `${path}: only a usable repair asks it`)
-    assert.ok(source.includes('<p className="text-sm text-muted-foreground">{t("conditionBecomesSalvage")}</p>'), `${path}: the ซาก line`)
+    // The ซาก line is the outcome group's hint, so the group's aria-describedby reads it with the choice (final review M9).
+    assert.ok(source.includes(`hint={${beyond} ? t("conditionBecomesSalvage") : undefined}`), `${path}: the ซาก line`)
+    assert.doesNotMatch(source, /<p className="text-sm text-muted-foreground">\{t\("conditionBecomesSalvage"\)\}<\/p>/, path)
     assert.ok(source.includes("conditionOptions: Option[]\n  initialConditionId: string"), `${path}: the props`)
   }
   for (const path of ["src/app/[locale]/(dashboard)/maintenance/[id]/page.tsx", "src/app/[locale]/(dashboard)/maintenance/new/page.tsx"]) {
@@ -97,4 +99,14 @@ test("the complete dialog and the record form ask the condition after a usable r
   assert.equal(en.apiErrors.conditionAfterRepairRequired, "Choose the condition after repair.")
   assert.equal(th.apiErrors.invalidConditionAfterRepair, "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้")
   assert.equal(en.apiErrors.invalidConditionAfterRepair, "Choose Good or Fair after a repair.")
+})
+
+test("an asset picked on the record form pre-chooses ดี or พอใช้ from its own condition (final review M1)", () => {
+  const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  const form = read("src/components/maintenance/repair-record-form.tsx")
+  assert.ok(form.includes('import { repairConditionDefault } from "@/lib/asset-lifecycle-policy"'))
+  assert.ok(form.includes('setField("conditionId", repairConditionDefault(option?.conditionId ?? null, conditionOptions))'))
+  const select = read("src/components/maintenance/maintenance-option-select.tsx")
+  assert.ok(select.includes("onChange: (value: string, option?: MaintenanceOption) => void"))
+  assert.ok(select.includes("conditionId?: string"))
 })

@@ -172,6 +172,14 @@ export function getAssetOperationConditionOptions<T extends AssetStateMaster>(
   return conditions.filter((condition) => condition.isActive !== false && allowed.has(normalizeAssetStateName(condition.name)))
 }
 
+/**
+ * The asset's own condition when the page's condition options offer it (spec §7.2), else none chosen. ส่งมอบ and รับคืน
+ * both ask it: neither offers ยังไม่ประเมิน, so an asset recorded so starts with no condition (group 3 spec §19.1-2).
+ */
+export function operationConditionDefault(row: { conditionId: string } | null, conditions: readonly { id: string }[]): string {
+  return row && conditions.some((condition) => condition.id === row.conditionId) ? row.conditionId : ""
+}
+
 export function getAssetOperationConditionError(
   operation: AssetOperationConditionOperation,
   condition: AssetStateMaster | null | undefined,

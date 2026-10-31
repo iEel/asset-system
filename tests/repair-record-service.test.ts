@@ -22,6 +22,7 @@ type FakeConfig = {
   plan?: Record<string, unknown> | null
   conditionName?: string
   inactiveConditions?: string[]
+  salvageName?: string
 }
 
 // The condition masters the fake knows, by id "condition:<name>" (prisma/seed.ts names).
@@ -37,12 +38,21 @@ function fakeDb(config: FakeConfig = {}) {
     conditionId: `condition:${config.conditionName ?? "Good"}`,
     status: { name: config.statusName ?? "Ready" },
   }
-  const conditions = conditionNames.map((name) => ({ id: `condition:${name}`, name, isActive: !(config.inactiveConditions ?? []).includes(name) }))
+  const conditions = conditionNames.map((name) => ({
+    id: `condition:${name}`,
+    // A master may be stored with other spacing or case; the rules match it through normalizeAssetStateName (final review M8).
+    name: name === "Salvage" && config.salvageName ? config.salvageName : name,
+    isActive: !(config.inactiveConditions ?? []).includes(name),
+  }))
   const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     "asset.findFirst": () => asset,
     "asset.updateMany": () => ({ count: config.claimRows ?? 1 }),
     "asset.update": (args) => ({ id: "asset-1", ...(args.data as object) }),
     "assetCondition.findUnique": (args) => conditions.find((row) => row.id === (args.where as { id: string }).id) ?? null,
+    "assetCondition.findMany": (args) => {
+      const where = (args.where ?? {}) as { isActive?: boolean }
+      return conditions.filter((row) => where.isActive === undefined || row.isActive === where.isActive)
+    },
     "assetCondition.findFirst": (args) => {
       const where = args.where as { name: string; isActive?: boolean }
       return conditions.find((row) => row.name === where.name && (where.isActive === undefined || row.isActive === where.isActive)) ?? null
@@ -331,6 +341,15 @@ test("closing as ซ่อมไม่ได้ makes the condition ซาก an
   assert.equal((conditionWrites(calls)[0].args.data as Record<string, unknown>).conditionId, "condition:Salvage")
   assert.equal((movements(calls, "condition_change")[0].args.data as Record<string, unknown>).toValue, "condition:Salvage")
   assert.equal(result.conditionId, "condition:Salvage")
+})
+
+test("the ซาก master is found through normalizeAssetStateName, whatever its spacing or case (final review M8)", async () => {
+  const { db, calls } = fakeDb({ ticket: openTicket("Damaged"), salvageName: "  salvage " })
+
+  const result = await completeRepairRecord(db as never, "ticket-1", completeInput("beyond_repair", null), user)
+
+  assert.equal(result.conditionId, "condition:Salvage")
+  assert.equal(calls.some((call) => call.call === "assetCondition.findFirst"), false, "the active masters are read, not one by exact name")
 })
 
 test("closing as ซ่อมไม่ได้ without an active ซาก master is refused and writes nothing (A1-R5)", async () => {

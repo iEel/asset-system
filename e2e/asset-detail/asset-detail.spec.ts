@@ -238,7 +238,7 @@ test.describe("IT staff", () => {
     const masters = await readAssetMasters(page)
     const asset = await createTxAsset(page, masters, testInfo.project.name, "AD6", "โน้ตบุ๊กไฟล์และงานซ่อม")
     await uploadPhotoByApi(page, asset.id)
-    const repair = await recordRepairByApi(page, asset.id, readRunData().employees.itStaff.id, `${asset.assetTag} จอกะพริบ`)
+    const repair = await recordRepairByApi(page, asset.id, readRunData().employees.itStaff.id, `${asset.assetTag} จอกะพริบ`, masters.goodConditionId)
     const main = page.getByRole("main")
 
     // ไฟล์: the photo is a tile from the thumbnail route, and it loads.
@@ -268,7 +268,8 @@ test.describe("the IT head", () => {
     const [asset] = await createAssets(page, choices, roomId, [`${prefix}-1`])
     // Handed over 46 days ago: the custodian's cell counts the Bangkok days from the handover's own date.
     const handedOverOn = bangkokDate(-46)
-    await handoverByApi(page, asset.id, receiver.id, choices.conditionId, handedOverOn)
+    // Handed over as ดี: ส่งมอบ no longer takes ยังไม่ประเมิน, the asset form's first condition (spec §19.1).
+    await handoverByApi(page, asset.id, receiver.id, (await readAssetMasters(page)).goodConditionId, handedOverOn)
     const heldDays = Math.round((Date.parse(bangkokDate()) - Date.parse(handedOverOn)) / 86_400_000)
     // A round over the room, due in a week (the dashboard's one-day round, due today, still wins its pick): the asset
     // waits in it.

@@ -219,8 +219,9 @@ test("repair record: errors under the field, the asset and reporter selects chec
   assert.match(source, /<MaintenanceOptionSelect\n\s+id="repair-record-asset"\n\s+type="asset"\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("assetId"\)\}\n/)
   assert.match(source, /<MaintenanceOptionSelect\n\s+id="repair-record-reporter"\n\s+type="employee"\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("reportedById"\)\}\n/)
   // The two questions are FieldGroups (spec §7.3): the star, and an error tied to the group.
-  for (const key of ["done", "outcome"]) {
-    assert.ok(source.includes(`<FieldGroup legend={t("${key}Question")} id="repair-record-${key}" required error={fieldErrors.message("${key}")}>`), key)
+  // The outcome group's hint says ซาก for ซ่อมไม่ได้ (final review M9).
+  for (const [key, hint] of [["done", ""], ["outcome", 'hint={values.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} ']]) {
+    assert.ok(source.includes(`<FieldGroup legend={t("${key}Question")} id="repair-record-${key}" required ${hint}error={fieldErrors.message("${key}")}>`), key)
   }
   // Focus only goes to a field on screen; a field inside "more details" opens it first (spec §4.2).
   assert.match(source, /^const DETAIL_FIELDS: readonly RepairField\[\] = \["vendorId", "repairCost", "invoiceNo", "remark"\]$/m)
@@ -287,7 +288,7 @@ test("repair record actions: complete, cancel and edit show errors under the fie
   for (const hook of ["completeErrors", "editErrors"]) {
     assert.ok(source.includes(`error={${hook}.errors.repairCost ? validationMessage(${hook}.errors.repairCost, { min: 0 }) : undefined}`), `${hook}: the cost says its floor`)
   }
-  assert.ok(source.includes('<FieldGroup legend={t("outcomeQuestion")} id="repair-complete-outcome" required error={completeErrors.message("outcome")}>'))
+  assert.ok(source.includes('<FieldGroup legend={t("outcomeQuestion")} id="repair-complete-outcome" required hint={complete.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} error={completeErrors.message("outcome")}>'))
   // A field's error clears when it changes.
   assert.match(source, /setComplete\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+completeErrors\.clear\(field\)/)
   assert.match(source, /setEdit\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+editErrors\.clear\(field\)/)

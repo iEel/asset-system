@@ -40,21 +40,28 @@ function row(id: string, key: { referenceId?: string; assetId?: string }, fileTy
   return { id, referenceId: key.referenceId ?? key.assetId ?? "", assetId: key.assetId ?? null, originalName: `${id}.jpg`, fileType }
 }
 
-test("readAssetPhotoPreviews: exactly two reads, the models' images by modelId and the assets' images by assetId, active images newest first", async () => {
-  const { db, calls } = fakeDb({})
-  await readAssetPhotoPreviews(db, [{ id: "a1", modelId: "m1" }, { id: "a2", modelId: null }, { id: "a3", modelId: "m1" }])
+test("readAssetPhotoPreviews: the models' images first, then the assets' own images only for assets whose model has no photo, active images newest first (final review M3)", async () => {
+  const { db, calls } = fakeDb({ model: [row("m1-photo", { referenceId: "m1" })] })
+  await readAssetPhotoPreviews(db, [{ id: "a1", modelId: "m1" }, { id: "a2", modelId: null }, { id: "a3", modelId: "m1" }, { id: "a4", modelId: "m2" }])
   assert.deepEqual(calls, [
     {
-      where: { module: "asset_model", referenceId: { in: ["m1"] }, isActive: true, fileType: { startsWith: "image/" } },
+      where: { module: "asset_model", referenceId: { in: ["m1", "m2"] }, isActive: true, fileType: { startsWith: "image/" } },
       select: { id: true, referenceId: true, originalName: true, fileType: true },
       orderBy: { uploadedAt: "desc" },
     },
     {
-      where: { module: "asset", assetId: { in: ["a1", "a2", "a3"] }, isActive: true, fileType: { startsWith: "image/" } },
+      where: { module: "asset", assetId: { in: ["a2", "a4"] }, isActive: true, fileType: { startsWith: "image/" } },
       select: { id: true, assetId: true, originalName: true, fileType: true },
       orderBy: { uploadedAt: "desc" },
     },
-  ])
+  ], "a1 and a3 have their model's photo, so their own images are not read")
+})
+
+test("readAssetPhotoPreviews: no asset-image read when every asset has a model photo (final review M3)", async () => {
+  const { db, calls } = fakeDb({ model: [row("m1-photo", { referenceId: "m1" })], asset: [row("a1-own", { assetId: "a1" })] })
+  const photos = await readAssetPhotoPreviews(db, [{ id: "a1", modelId: "m1" }, { id: "a2", modelId: "m1" }])
+  assert.deepEqual(calls.map((call) => call.where.module), ["asset_model"])
+  assert.deepEqual([photos.get("a1")?.id, photos.get("a2")?.id], ["m1-photo", "m1-photo"])
 })
 
 test("readAssetPhotoPreviews: the newest image of a model wins; a model photo beats the asset's own; the asset's own is the fallback; an asset with nothing is absent", async () => {
@@ -90,6 +97,9 @@ test("the photo on ส่งมอบ: 40 in the picker rows (no preview, decora
   assert.ok(thumbnail.includes('const frameSize = { 40: "size-10", 44: "size-11", 64: "size-16" } as const'))
   assert.ok(thumbnail.includes('import type { AssetPhotoPreview } from "@/lib/asset-photo-preview"'))
   assert.doesNotMatch(thumbnail, /AssetThumbnailPhoto/)
+  // A failed load belongs to that photo: another photo (เปลี่ยน to another asset) loads again (final review M4).
+  assert.ok(thumbnail.includes("const [failedId, setFailedId] = useState<string | null>(null)"))
+  assert.ok(thumbnail.includes("const failed = photo !== null && failedId === photo.id"))
 
   const picker = read("src/components/ui/asset-operation-picker.tsx")
   assert.ok(picker.includes("<AssetThumbnail photo={row.photo} assetTag={row.assetTag} assetName={row.name} size={40} preview={false} />"))
@@ -122,5 +132,7 @@ test("ChosenPhotoPreview: one object URL per image file, revoked on change and u
   assert.ok(form.includes('<ChosenPhotoPreview file={photoBefore} alt={t("photoBefore")} size={96} className="mt-2" />'))
   assert.ok(form.includes('<ChosenPhotoPreview file={photoBefore} alt={t("photoBefore")} size={48} />'))
   assert.ok(form.includes("items={reviewDialogItems}"))
+  assert.ok(form.includes('reviewItems.map((item) => item.key === "photoBefore" && photoBefore'), "the photo line is found by its key (final review M10)")
+  assert.doesNotMatch(form, /item\.label === t\("photoBefore"\)/)
   assert.ok(form.indexOf("<FileDropzone") < form.indexOf("size={96}"), "the preview sits under the dropzone")
 })

@@ -48,3 +48,16 @@ test("omits optional review rows that do not have a meaningful value", () => {
     { label: "Destination", value: "คลัง IT" },
   ])
 })
+
+test("a detail's key travels with it, so a caller finds its line without reading the label (final review M10)", () => {
+  const summary = buildOperationReviewSummary({
+    assetLabel: "IT-003 - Notebook",
+    details: [{ key: "photoBefore", label: "รูปก่อนส่งมอบ", value: "แนบแล้ว" }, { label: "ลายเซ็นผู้รับ", value: "ยังไม่ได้แนบ" }],
+    labels: { asset: "ทรัพย์สิน", source: "จาก", destination: "ปลายทาง", nextStatus: "สถานะถัดไป", evidence: "หลักฐาน" },
+  })
+  assert.deepEqual(summary, [
+    { label: "ทรัพย์สิน", value: "IT-003 - Notebook" },
+    { key: "photoBefore", label: "รูปก่อนส่งมอบ", value: "แนบแล้ว" },
+    { label: "ลายเซ็นผู้รับ", value: "ยังไม่ได้แนบ" },
+  ])
+})

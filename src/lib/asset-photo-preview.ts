@@ -28,7 +28,11 @@ function firstPerKey<Row extends ImageRow>(rows: readonly Row[], key: (row: Row)
   return byKey
 }
 
-/** Two reads at most (models' images, assets' images); an asset with neither is absent from the map. */
+/**
+ * Two sequential reads at most: the models' images, then the assets' own images only for the assets whose model has no
+ * photo, so an asset whose model has one never reads its own (audit photos grow with every round, final review M3). An
+ * asset with neither is absent from the map.
+ */
 export async function readAssetPhotoPreviews(
   db: AssetPhotoPreviewDb,
   assets: readonly { id: string; modelId: string | null }[],
@@ -36,25 +40,26 @@ export async function readAssetPhotoPreviews(
   const photos = new Map<string, AssetPhotoPreview>()
   if (assets.length === 0) return photos
   const modelIds = [...new Set(assets.map((asset) => asset.modelId).filter((id): id is string => Boolean(id)))]
-  const assetIds = [...new Set(assets.map((asset) => asset.id))]
-  const [modelImages, assetImages] = await Promise.all([
-    modelIds.length
-      ? db.attachment.findMany({
-          where: { module: "asset_model", referenceId: { in: modelIds }, ...imageWhere },
-          select: { id: true, referenceId: true, originalName: true, fileType: true },
-          orderBy: newestFirst,
-        }) as Promise<Array<ImageRow & { referenceId: string }>>
-      : Promise.resolve([]),
-    db.attachment.findMany({
-      where: { module: "asset", assetId: { in: assetIds }, ...imageWhere },
-      select: { id: true, assetId: true, originalName: true, fileType: true },
-      orderBy: newestFirst,
-    }) as Promise<Array<ImageRow & { assetId: string | null }>>,
-  ])
+  const modelImages = modelIds.length
+    ? (await db.attachment.findMany({
+        where: { module: "asset_model", referenceId: { in: modelIds }, ...imageWhere },
+        select: { id: true, referenceId: true, originalName: true, fileType: true },
+        orderBy: newestFirst,
+      })) as Array<ImageRow & { referenceId: string }>
+    : []
   const byModel = firstPerKey(modelImages, (row) => row.referenceId)
+  const modelPhoto = (asset: { modelId: string | null }) => (asset.modelId ? byModel.get(asset.modelId) : undefined)
+  const assetIds = [...new Set(assets.filter((asset) => !modelPhoto(asset)).map((asset) => asset.id))]
+  const assetImages = assetIds.length
+    ? (await db.attachment.findMany({
+        where: { module: "asset", assetId: { in: assetIds }, ...imageWhere },
+        select: { id: true, assetId: true, originalName: true, fileType: true },
+        orderBy: newestFirst,
+      })) as Array<ImageRow & { assetId: string | null }>
+    : []
   const byAsset = firstPerKey(assetImages, (row) => row.assetId)
   for (const asset of assets) {
-    const photo = chooseAssetPhotoPreview(asset.modelId ? byModel.get(asset.modelId) : null, byAsset.get(asset.id))
+    const photo = chooseAssetPhotoPreview(modelPhoto(asset), byAsset.get(asset.id))
     if (photo) photos.set(asset.id, photo)
   }
   return photos

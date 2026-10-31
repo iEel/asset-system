@@ -7,6 +7,8 @@ export type MaintenanceOption = {
   label: string
   disabled?: boolean
   reason?: string
+  /** An asset's own condition, so the record form can pre-choose ดี or พอใช้ for a finished repair (final review M1). */
+  conditionId?: string
 }
 
 const writtenOffStatusNames = new Set(["disposed", "retired"])
@@ -58,10 +60,10 @@ export async function searchMaintenanceOptions(
       isActive: true,
       ...(id ? { id } : { OR: [{ assetTag: { contains: q } }, { name: { contains: q } }, { serialNumber: { contains: q } }] }),
     },
-    select: { id: true, assetTag: true, name: true, status: { select: { name: true, nameTh: true } } },
+    select: { id: true, assetTag: true, name: true, conditionId: true, status: { select: { name: true, nameTh: true } } },
     orderBy: { assetTag: "asc" },
     take: 50,
-  }) as Array<{ id: string; assetTag: string; name: string; status: { name: string; nameTh: string } }>
+  }) as Array<{ id: string; assetTag: string; name: string; conditionId: string; status: { name: string; nameTh: string } }>
   const openRecords = assets.length
     ? await db.maintenanceTicket.findMany({
         where: { ...openRepairRecordWhere, assetId: { in: assets.map((asset) => asset.id) } },
@@ -81,6 +83,7 @@ export async function searchMaintenanceOptions(
     return {
       id: asset.id,
       label: `${asset.assetTag} - ${asset.name} (${asset.status.nameTh})`,
+      conditionId: asset.conditionId,
       ...(reason ? { disabled: true, reason } : {}),
     }
   })

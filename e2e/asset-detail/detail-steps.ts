@@ -213,9 +213,9 @@ export async function uploadPhotoByApi(page: Page, assetId: string) {
   return (await response.json()) as { id: string }
 }
 
-// A repair done in one save, the asset usable after it (its status unchanged), through the repair form's route and
-// with every key of its body.
-export async function recordRepairByApi(page: Page, assetId: string, reportedById: string, problem: string) {
+// A repair done in one save, the asset usable after it (its status unchanged) in the condition given (ดี or พอใช้, which a
+// finished usable repair requires, spec §19.4), through the repair form's route and with every key of its body.
+export async function recordRepairByApi(page: Page, assetId: string, reportedById: string, problem: string, conditionId: string) {
   const response = await page.request.post("/api/maintenance-tickets", {
     data: {
       assetId,
@@ -224,6 +224,7 @@ export async function recordRepairByApi(page: Page, assetId: string, reportedByI
       reportedDate: bangkokDate(),
       done: true,
       outcome: "usable",
+      conditionId,
       reportedById,
       vendorId: null,
       repairCost: 1500,

@@ -2,7 +2,7 @@
 // detail answer, its condition default and the receiver. Pure and client-safe; the department row reads the same rule
 // the checkout route calls (asset-department-rule.ts), so the card never promises what the save does not write.
 import { getCheckoutNextDepartmentId } from "./asset-department-rule.ts"
-import { checkoutConditionBlockReasonKeys } from "./asset-lifecycle-policy.ts"
+import { checkoutConditionBlockReasonKeys, operationConditionDefault } from "./asset-lifecycle-policy.ts"
 import type { AssetHandoverMode } from "./asset-handover-mode.ts"
 import type { AssetOperationEmployeeOption, AssetOperationNamedOption } from "./asset-operation-options.ts"
 import type { AssetOperationChosenComponent, AssetOperationSearchRow } from "./asset-operation-search-rules.ts"
@@ -41,15 +41,7 @@ export type CheckoutCheck = { key: "asset" | "receiver" | "mode" | "signature"; 
 // The ownerships whose department never follows the receiver (asset-department-rule.ts): the summary never waits on them.
 const FIXED_DEPARTMENT_OWNERSHIPS: ReadonlySet<string> = new Set(["shared", "component", "software_license"])
 
-/**
- * The asset's own condition when the page's condition options offer it (spec §7.2), else none chosen. ส่งมอบ and รับคืน
- * both ask it: neither offers ยังไม่ประเมิน, so an asset recorded so starts with no condition (group 3 spec §19.1-2).
- */
-export function operationConditionDefault(row: Pick<AssetOperationSearchRow, "conditionId"> | null, conditions: readonly { id: string }[]): string {
-  return row && conditions.some((condition) => condition.id === row.conditionId) ? row.conditionId : ""
-}
-
-/** ส่งมอบ's name for operationConditionDefault. */
+/** ส่งมอบ's name for operationConditionDefault, which lives beside the operation's condition options (final review M11). */
 export const checkoutConditionDefault = operationConditionDefault
 
 /** The detail=1 answer replaces the chosen row only while it is still the chosen asset; a failed read keeps the row. */
@@ -190,6 +182,11 @@ export function isCheckoutConditionReasonKey(reasonKey: string | null | undefine
 /** เสียหาย or ใช้งานไม่ได้: the ส่งซ่อม link shows; ซาก gets none (group 3 spec §19.3). */
 export function checkoutNeedsRepairReasonKey(reasonKey: string | null | undefined): boolean {
   return typeof reasonKey === "string" && REPAIR_REASON_KEYS.has(reasonKey)
+}
+
+/** The ส่งซ่อม link shows for เสียหาย/ใช้งานไม่ได้, and only to someone who may record a repair (final review I3). */
+export function checkoutRepairLinkShown(reasonKey: string | null | undefined, canCreateRepair: boolean): boolean {
+  return canCreateRepair && checkoutNeedsRepairReasonKey(reasonKey)
 }
 
 /**

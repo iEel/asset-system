@@ -28,7 +28,9 @@ export function AssetThumbnail({
   className?: string
 }) {
   const t = useTranslations("asset")
-  const [failed, setFailed] = useState(false)
+  // A failed load belongs to that photo, so another photo (เปลี่ยน to another asset) loads again (final review M4).
+  const [failedId, setFailedId] = useState<string | null>(null)
+  const failed = photo !== null && failedId === photo.id
   const [open, setOpen] = useState(false)
   const frame = cn(
     "relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground",
@@ -54,7 +56,7 @@ export function AssetThumbnail({
       height={size}
       loading="lazy"
       decoding="async"
-      onError={() => setFailed(true)}
+      onError={() => setFailedId(photo.id)}
       className="size-full object-contain p-0.5 bg-image-stage"
     />
   )

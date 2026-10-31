@@ -384,6 +384,12 @@ test("ส่งมอบ refuses a broken asset with a ส่งซ่อม lin
   assert.ok(spec.includes('filter({ hasText: "เสียหาย → ดี" })'))
   assert.ok(spec.includes("await saveHandoverForm(page, e2eDevice, asset.id)"))
   assert.ok(spec.includes("await uploadPhotoByApi(page, withPhoto.id)"))
+  // The handover writes the condition chosen at it (fix brief item 4), and the review shows the photo before it (M5).
+  assert.ok(spec.includes('await conditionChip(page, "พอใช้").check()'))
+  assert.ok(spec.includes('expect(handedOver.condition?.nameTh, "the condition chosen at the handover").toBe("พอใช้")'))
+  assert.ok(spec.includes('filter({ hasText: "ดี → พอใช้" })') && spec.includes("await expect(assessed).toContainText(checkout.documentNo)"))
+  assert.ok(spec.includes('await page.locator("form input[type=file]").setInputFiles(PHOTO_FIXTURE)'))
+  assert.ok(spec.includes('await expect(reviewPhoto).toHaveAttribute("width", "48")'))
   // The desktop runs every test; the phone the repair loop's first half only.
   assert.equal(spec.split('test.skip(e2eDevice === "phone", DESKTOP_ONLY)').length - 1, 4)
   assert.equal(spec.split('if (e2eDevice === "phone") return').length - 1, 1)

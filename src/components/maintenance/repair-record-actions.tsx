@@ -252,7 +252,8 @@ export function RepairRecordActions({
             >
               <Input type="date" required min={details.reportedDate} value={complete.returnDate} onChange={(event) => setCompleteField("returnDate", event.target.value)} />
             </Field>
-            <FieldGroup legend={t("outcomeQuestion")} id="repair-complete-outcome" required error={completeErrors.message("outcome")}>
+            {/* ซ่อมไม่ได้: the ซาก line is the group's hint, read with it by aria-describedby (final review M9). */}
+            <FieldGroup legend={t("outcomeQuestion")} id="repair-complete-outcome" required hint={complete.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} error={completeErrors.message("outcome")}>
               <div className="grid gap-2">
                 {(["usable", "beyond_repair"] as const).map((outcome) => (
                   <ChoiceCard key={outcome} type="radio" name="outcome" checked={complete.outcome === outcome} label={t(`outcome.${outcome}`)} onChange={() => setCompleteField("outcome", outcome)} />
@@ -269,9 +270,7 @@ export function RepairRecordActions({
                 error={completeErrors.message("conditionId")}
                 onChange={(value) => setCompleteField("conditionId", value)}
               />
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("conditionBecomesSalvage")}</p>
-            )}
+            ) : null}
             <MaintenanceOptionSelect
               id="repair-complete-vendor"
               type="supplier"

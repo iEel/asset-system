@@ -87,7 +87,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const nextLocationId = input.locationId ?? asset.currentLocationId
     const nextCustodianId = input.checkoutType === "user" ? input.custodianId : asset.custodianId
 
-    const { record: checkout, componentSync, departmentId, previousDepartmentId } = await prisma.$transaction(async (tx) => {
+    const { record: checkout, componentSync, departmentId, previousDepartmentId, conditionId, previousConditionId } = await prisma.$transaction(async (tx) => {
       await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
       const destination = await readActiveCheckoutDestination(tx, input)
       if (!destination) throw new CheckoutDestinationInactiveError(checkoutDestinationField(input.checkoutType))
@@ -162,6 +162,9 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         })
       }
 
+      // Choosing the condition at the handover assesses the asset (group 3 spec §19.1): a condition that differs from the
+      // recorded one is written to the asset, with its condition_change line below (fix brief item 4).
+      const conditionChanged = input.conditionBefore !== beforeAsset.conditionId
       const afterAsset = await tx.asset.update({
         where: { id },
         data: {
@@ -169,6 +172,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
           currentLocationId: nextLocationId,
           custodianId: nextCustodianId,
           departmentId: nextDepartmentId,
+          ...(conditionChanged ? { conditionId: input.conditionBefore } : {}),
           updatedBy: user.id,
         },
         select: {
@@ -203,6 +207,20 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
             movementType: "department_change",
             fromValue: beforeAsset.departmentId,
             toValue: nextDepartmentId,
+            reason: "Asset checkout",
+            referenceType: "checkout",
+            referenceId: record.id,
+            performedBy: user.id,
+          },
+        })
+      }
+      if (conditionChanged) {
+        await tx.assetMovement.create({
+          data: {
+            assetId: id,
+            movementType: "condition_change",
+            fromValue: beforeAsset.conditionId,
+            toValue: input.conditionBefore,
             reason: "Asset checkout",
             referenceType: "checkout",
             referenceId: record.id,
@@ -251,7 +269,14 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         movements: componentSync.movements,
       }
 
-      return { record: finalizedRecord, componentSync: componentSyncSummary, departmentId: nextDepartmentId, previousDepartmentId: beforeAsset.departmentId }
+      return {
+        record: finalizedRecord,
+        componentSync: componentSyncSummary,
+        departmentId: nextDepartmentId,
+        previousDepartmentId: beforeAsset.departmentId,
+        conditionId: input.conditionBefore,
+        previousConditionId: beforeAsset.conditionId,
+      }
     })
 
     await logAudit({
@@ -260,8 +285,8 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       module: "asset",
       recordId: id,
       oldValue: asset,
-      // The department the checkout wrote, and the one it replaced (final review M9).
-      newValue: { ...input, targetStatusName, checkoutId: checkout.id, componentSync, departmentId, previousDepartmentId },
+      // The department and the condition the checkout wrote, and the ones they replaced (final review M9, fix brief item 4).
+      newValue: { ...input, targetStatusName, checkoutId: checkout.id, componentSync, departmentId, previousDepartmentId, conditionId, previousConditionId },
     })
 
     return NextResponse.json(checkout, { status: 201 })

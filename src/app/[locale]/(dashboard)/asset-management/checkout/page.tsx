@@ -1,5 +1,6 @@
 import { getAssetOperationMasterOptions, getAssetOperationPreselect } from "@/lib/asset-operation-options"
 import { requirePagePermission } from "@/lib/page-auth"
+import { hasPermission } from "@/lib/auth-utils"
 import { CheckoutForm } from "@/components/asset-operations/checkout-form"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { getUserDisplayLabel } from "@/lib/user-display"
@@ -27,6 +28,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
       initialAsset={initialAsset}
       returnTo={filters.returnTo ? normalizeAssetReturnTo(locale, filters.returnTo) : undefined}
       deliveredByLabel={getUserDisplayLabel(user)}
+      canCreateRepair={hasPermission(user, "maintenance", "create")}
     />
   )
 }

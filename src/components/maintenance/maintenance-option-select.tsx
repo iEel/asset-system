@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl"
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
 import type { MaintenanceOptionType } from "@/lib/maintenance-options"
 
-type MaintenanceOption = SearchableSelectOption & { reason?: string }
+// An asset option carries its condition (final review M1); the caller reads it from onChange's second argument.
+type MaintenanceOption = SearchableSelectOption & { reason?: string; conditionId?: string }
 
 export function MaintenanceOptionSelect({
   id,
@@ -39,7 +40,7 @@ export function MaintenanceOptionSelect({
   formatReason?: (reason: string) => string
   hint?: React.ReactNode
   error?: React.ReactNode
-  onChange: (value: string) => void
+  onChange: (value: string, option?: MaintenanceOption) => void
 }) {
   // The live line under the select reads in the page's language (plan 2D-4 open issue 10 c).
   const tCommon = useTranslations("common")
@@ -99,7 +100,7 @@ export function MaintenanceOptionSelect({
         hint={hint}
         error={error}
         onSearchChange={setQuery}
-        onChange={onChange}
+        onChange={(next) => onChange(next, options.find((option) => option.id === next) ?? (initialOption?.id === next ? initialOption : undefined))}
       />
       <span className="sr-only" aria-live="polite">
         {loading ? loadingLabel ?? tCommon("loading") : tCommon("searchSelectResultCount", { count: displayOptions.length })}

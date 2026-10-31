@@ -26,16 +26,31 @@ test("asset options block only written-off assets and assets with an unfinished 
   assert.equal(open[0]?.reason, "MAINTENANCE_OPEN_RECORD_EXISTS")
 })
 
+test("asset options carry the asset's condition, so the record form can pre-choose ดี or พอใช้ for a finished repair (final review M1)", async () => {
+  let select: Record<string, unknown> = {}
+  const db = fakeDb()
+  const findMany = db.asset.findMany
+  db.asset.findMany = async (args: { take: number; select?: object }) => {
+    select = (args.select ?? {}) as Record<string, unknown>
+    return findMany(args)
+  }
+  const [option] = await searchMaintenanceOptions(db, { type: "asset", q: "UP" })
+  assert.equal(select.conditionId, true)
+  assert.equal(option?.conditionId, "condition-good")
+  const [employee] = await searchMaintenanceOptions(fakeDb(), { type: "employee", q: "สม" })
+  assert.equal(employee && "conditionId" in employee, false, "only assets carry it")
+})
+
 function fakeDb(config: { assetStatus?: string; openRecordAssetIds?: string[] } = {}) {
   const state = { calls: 0, lastTake: 0 }
   return {
     get calls() { return state.calls },
     get lastTake() { return state.lastTake },
     asset: {
-      findMany: async ({ take }: { take: number }) => {
+      findMany: async ({ take }: { take: number; select?: object }) => {
         state.calls += 1
         state.lastTake = take
-        return [{ id: "asset-1", assetTag: "UPS-1", name: "UPS", status: { name: config.assetStatus ?? "Ready", nameTh: "พร้อมใช้งาน" } }]
+        return [{ id: "asset-1", assetTag: "UPS-1", name: "UPS", conditionId: "condition-good", status: { name: config.assetStatus ?? "Ready", nameTh: "พร้อมใช้งาน" } }]
       },
     },
     employee: {
