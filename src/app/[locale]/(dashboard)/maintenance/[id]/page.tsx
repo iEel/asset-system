@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { FileText, History, Printer, Trash2 } from "lucide-react"
+import { getRepairConditionOptions, repairConditionDefault } from "@/lib/asset-lifecycle-policy"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -49,6 +50,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           assetTag: true,
           name: true,
           purchasePrice: true,
+          conditionId: true,
           status: { select: { nameTh: true } },
           currentLocation: { select: { code: true, name: true } },
           custodian: { select: { code: true, fullNameTh: true } },
@@ -63,7 +65,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   })
   if (!ticket) notFound()
 
-  const [attachments, movements, assetRepairSummary] = await Promise.all([
+  const [attachments, movements, assetRepairSummary, conditions] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "maintenance", referenceId: ticket.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
@@ -77,7 +79,14 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
       _count: { _all: true },
       _sum: { repairCost: true },
     }),
+    prisma.assetCondition.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, nameTh: true, isActive: true },
+      orderBy: { sortOrder: "asc" },
+    }),
   ])
+  // The condition after a usable repair (group 3 spec §19.4): ดี or พอใช้, starting at the asset's own when offered.
+  const conditionOptions = getRepairConditionOptions(conditions).map((condition) => ({ id: condition.id, label: condition.nameTh }))
   const movementLabels = await getMovementDisplayLabels(movements)
   const recordStatus = toRepairRecordStatus(ticket.repairStatus)
   const isOpen = isOpenRepairStatus(ticket.repairStatus)
@@ -142,6 +151,8 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                   invoiceNo: ticket.invoiceNo ?? "",
                   remark: ticket.resolution ?? "",
                 }}
+                conditionOptions={conditionOptions}
+                initialConditionId={repairConditionDefault(ticket.asset.conditionId, conditionOptions)}
               />
             ) : null}
           </>

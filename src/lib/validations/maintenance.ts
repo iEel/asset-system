@@ -54,6 +54,10 @@ const optionalAmount = z.preprocess(
   z.coerce.number().nonnegative().nullable(),
 ).optional().transform((value) => value ?? null)
 
+// A repair that ends ใช้งานได้ names the asset's condition after it, ดี or พอใช้ (group 3 spec §19.4); the service checks
+// which condition it is. ซ่อมไม่ได้ always ends in ซาก, so it names none.
+const conditionAfterRepairRequired = "conditionAfterRepairRequired"
+
 export const repairRecordCreateSchema = z.object({
   assetId: z.string().trim().min(1),
   maintenancePlanId: optionalId,
@@ -62,11 +66,16 @@ export const repairRecordCreateSchema = z.object({
   // JSON boolean only: z.coerce.boolean() would turn the string "false" into true.
   done: z.boolean(),
   outcome: z.enum(repairOutcomes).default("usable"),
+  conditionId: optionalId,
   reportedById: optionalId,
   vendorId: optionalId,
   repairCost: optionalAmount,
   invoiceNo: optionalNote(100),
   remark: optionalNote(4000),
+}).superRefine((input, context) => {
+  if (input.done && input.outcome === "usable" && !input.conditionId) {
+    context.addIssue({ code: "custom", path: ["conditionId"], message: conditionAfterRepairRequired })
+  }
 })
 
 export type RepairRecordCreateInput = z.infer<typeof repairRecordCreateSchema>
@@ -77,6 +86,7 @@ export const repairRecordActionSchema = z.discriminatedUnion("action", [
     expectedUpdatedAt: z.coerce.date(),
     returnDate: z.coerce.date(),
     outcome: z.enum(repairOutcomes),
+    conditionId: optionalId,
     vendorId: optionalId,
     repairCost: optionalAmount,
     invoiceNo: optionalNote(100),
@@ -97,7 +107,11 @@ export const repairRecordActionSchema = z.discriminatedUnion("action", [
     invoiceNo: optionalNote(100),
     remark: optionalNote(4000),
   }),
-])
+]).superRefine((input, context) => {
+  if (input.action === "complete" && input.outcome === "usable" && !input.conditionId) {
+    context.addIssue({ code: "custom", path: ["conditionId"], message: conditionAfterRepairRequired })
+  }
+})
 
 export type RepairRecordActionInput = z.infer<typeof repairRecordActionSchema>
 export type RepairRecordCompleteInput = Extract<RepairRecordActionInput, { action: "complete" }>

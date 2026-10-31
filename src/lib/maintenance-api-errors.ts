@@ -9,6 +9,9 @@ export const maintenanceErrorCodes = [
   "MAINTENANCE_ASSET_ON_LOAN",
   "MAINTENANCE_OPEN_RECORD_EXISTS",
   "MAINTENANCE_REPORTER_REQUIRED",
+  // The condition a repair ends in (group 3 spec §19.4): the codes the asset routes already answer for a condition.
+  "ASSET_STATE_MASTER_NOT_FOUND",
+  "ASSET_CONDITION_NOT_SELECTABLE",
 ] as const
 
 export type MaintenanceErrorCode = (typeof maintenanceErrorCodes)[number]

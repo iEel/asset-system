@@ -61,3 +61,40 @@ test("the repair form uses the shared fields, a busy save button and an underlin
   assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "decoration-current"\)\}/)
   assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>\n\s+\{t\("save"\)\}/)
 })
+
+// Closing a repair sets the asset's condition (group 3 spec §19.4): ใช้งานได้ asks สภาพหลังซ่อม (ดี/พอใช้) with the
+// shared condition chips, ซ่อมไม่ได้ says the condition becomes ซาก, and the pages pass the options and the start.
+test("the complete dialog and the record form ask the condition after a usable repair and say ซาก for one beyond repair", () => {
+  const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  for (const [path, id, hook, usable] of [
+    ["src/components/maintenance/repair-record-actions.tsx", "repair-complete-condition", "completeErrors", 'complete.outcome === "usable"'],
+    ["src/components/maintenance/repair-record-form.tsx", "repair-create-condition", "fieldErrors", "isUsableDone(values)"],
+  ] as const) {
+    const source = read(path)
+    assert.match(source, /import \{ AssetConditionChoice \} from "@\/components\/asset-operations\/condition-choice"/, path)
+    const choice = source.match(/<AssetConditionChoice\n([\s\S]*?)\n\s+\/>/)
+    assert.ok(choice, path)
+    for (const prop of [`id="${id}"`, 'legend={t("conditionAfterRepair")}', "options={conditionOptions}", "required", `error={${hook}.message("conditionId")}`]) {
+      assert.ok(choice[1].includes(prop), `${path}: ${prop}`)
+    }
+    assert.ok(source.includes(`{${usable} ? (\n`), `${path}: only a usable repair asks it`)
+    assert.ok(source.includes('<p className="text-sm text-muted-foreground">{t("conditionBecomesSalvage")}</p>'), `${path}: the ซาก line`)
+    assert.ok(source.includes("conditionOptions: Option[]\n  initialConditionId: string"), `${path}: the props`)
+  }
+  for (const path of ["src/app/[locale]/(dashboard)/maintenance/[id]/page.tsx", "src/app/[locale]/(dashboard)/maintenance/new/page.tsx"]) {
+    const source = read(path)
+    assert.match(source, /getRepairConditionOptions\(/, path)
+    assert.match(source, /orderBy: \{ sortOrder: "asc" \}/, path)
+    assert.match(source, /initialConditionId=\{repairConditionDefault\(/, path)
+  }
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.repairRecord.conditionAfterRepair, "สภาพหลังซ่อม")
+  assert.equal(en.repairRecord.conditionAfterRepair, "Condition after repair")
+  assert.equal(th.repairRecord.conditionBecomesSalvage, "สภาพของทรัพย์สินจะเปลี่ยนเป็น ซาก")
+  assert.equal(en.repairRecord.conditionBecomesSalvage, "The asset's condition becomes Salvage.")
+  assert.equal(th.apiErrors.conditionAfterRepairRequired, "เลือกสภาพหลังซ่อม")
+  assert.equal(en.apiErrors.conditionAfterRepairRequired, "Choose the condition after repair.")
+  assert.equal(th.apiErrors.invalidConditionAfterRepair, "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้")
+  assert.equal(en.apiErrors.invalidConditionAfterRepair, "Choose Good or Fair after a repair.")
+})

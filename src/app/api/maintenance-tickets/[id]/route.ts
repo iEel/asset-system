@@ -35,6 +35,8 @@ export async function PATCH(request: NextRequest, context: RepairRecordContext) 
         newValue: {
           repairStatus: "closed",
           outcome: input.outcome,
+          conditionId: result.conditionId,
+          previousConditionId: result.previousConditionId,
           returnDate: input.returnDate,
           vendorId: input.vendorId,
           repairCost: input.repairCost,

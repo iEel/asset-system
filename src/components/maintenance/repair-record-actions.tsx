@@ -14,6 +14,7 @@ import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FileQueueList } from "@/components/ui/file-queue-list"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { AssetConditionChoice } from "@/components/asset-operations/condition-choice"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
@@ -27,10 +28,11 @@ type Outcome = "usable" | "beyond_repair"
 type Dialog = "complete" | "cancel" | "edit" | null
 
 // The fields of each dialog in visual order, keyed like the server's fieldErrors, with the id focus moves to
-// (v-track M-R1). The outcome is a radio group: its id is the FieldGroup's.
+// (v-track M-R1). The outcome and the condition after repair are radio groups: their id is the FieldGroup's.
 const COMPLETE_FIELD_IDS = {
   returnDate: "repair-complete-return-date",
   outcome: "repair-complete-outcome",
+  conditionId: "repair-complete-condition",
   vendorId: "repair-complete-vendor",
   repairCost: "repair-complete-cost",
   invoiceNo: "repair-complete-invoice-no",
@@ -64,6 +66,8 @@ function validate(values: Partial<Record<RepairActionField, string>>, reportedDa
     if (code) errors[key] = code
   }
   if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate))
+  // A repair that ends ใช้งานได้ names the condition after it (group 3 spec §19.4).
+  if (values.outcome === "usable") check("conditionId", values.conditionId ? null : "conditionAfterRepairRequired")
   if (values.reportedDate !== undefined) check("reportedDate", required(values.reportedDate))
   if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))
   check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))
@@ -79,12 +83,17 @@ export function RepairRecordActions({
   expectedUpdatedAt,
   isOpen,
   details,
+  conditionOptions,
+  initialConditionId,
 }: {
   recordId: string
   repairNo: string
   expectedUpdatedAt: string
   isOpen: boolean
   details: { reportedDate: string; problem: string; vendor: Option | null; repairCost: string; invoiceNo: string; remark: string }
+  // ดี and พอใช้ (getRepairConditionOptions), and the asset's own when offered (repairConditionDefault), else "".
+  conditionOptions: Option[]
+  initialConditionId: string
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -97,6 +106,7 @@ export function RepairRecordActions({
   const [complete, setComplete] = useState({
     returnDate: toLocalDateInputValue(),
     outcome: "usable" as Outcome,
+    conditionId: initialConditionId,
     vendorId: details.vendor?.id ?? "",
     repairCost: details.repairCost,
     invoiceNo: details.invoiceNo,
@@ -184,6 +194,7 @@ export function RepairRecordActions({
       action: "complete",
       returnDate: complete.returnDate,
       outcome: complete.outcome,
+      conditionId: complete.outcome === "usable" ? complete.conditionId || null : null,
       vendorId: complete.vendorId || null,
       repairCost: complete.repairCost || null,
       invoiceNo: complete.invoiceNo || null,
@@ -248,6 +259,19 @@ export function RepairRecordActions({
                 ))}
               </div>
             </FieldGroup>
+            {complete.outcome === "usable" ? (
+              <AssetConditionChoice
+                id="repair-complete-condition"
+                legend={t("conditionAfterRepair")}
+                options={conditionOptions}
+                value={complete.conditionId}
+                required
+                error={completeErrors.message("conditionId")}
+                onChange={(value) => setCompleteField("conditionId", value)}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("conditionBecomesSalvage")}</p>
+            )}
             <MaintenanceOptionSelect
               id="repair-complete-vendor"
               type="supplier"

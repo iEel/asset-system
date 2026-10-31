@@ -20,7 +20,12 @@ type FakeConfig = {
   ticket?: Record<string, unknown> | null
   ticketUpdateRows?: number
   plan?: Record<string, unknown> | null
+  conditionName?: string
+  inactiveConditions?: string[]
 }
+
+// The condition masters the fake knows, by id "condition:<name>" (prisma/seed.ts names).
+const conditionNames = ["Not Assessed", "New", "Good", "Fair", "Damaged", "Non-functional", "Salvage"]
 
 function fakeDb(config: FakeConfig = {}) {
   const calls: Call[] = []
@@ -29,11 +34,19 @@ function fakeDb(config: FakeConfig = {}) {
     statusId: `status:${config.statusName ?? "Ready"}`,
     ownershipType: config.ownershipType ?? "shared",
     custodianId: config.custodianId ?? null,
+    conditionId: `condition:${config.conditionName ?? "Good"}`,
     status: { name: config.statusName ?? "Ready" },
   }
+  const conditions = conditionNames.map((name) => ({ id: `condition:${name}`, name, isActive: !(config.inactiveConditions ?? []).includes(name) }))
   const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     "asset.findFirst": () => asset,
     "asset.updateMany": () => ({ count: config.claimRows ?? 1 }),
+    "asset.update": (args) => ({ id: "asset-1", ...(args.data as object) }),
+    "assetCondition.findUnique": (args) => conditions.find((row) => row.id === (args.where as { id: string }).id) ?? null,
+    "assetCondition.findFirst": (args) => {
+      const where = args.where as { name: string; isActive?: boolean }
+      return conditions.find((row) => row.name === where.name && (where.isActive === undefined || row.isActive === where.isActive)) ?? null
+    },
     "assetCheckout.count": () => config.activeCheckouts ?? 0,
     "maintenanceTicket.count": (args) => ((args.where as Record<string, unknown>).createdAt ? 0 : config.openRecords ?? 0),
     "maintenanceTicket.create": (args) => ({ id: "ticket-1", ...(args.data as object) }),
@@ -73,6 +86,7 @@ const baseInput = {
   reportedDate: new Date("2026-10-07T00:00:00Z"),
   done: true,
   outcome: "usable" as const,
+  conditionId: "condition:Good",
   reportedById: null,
   vendorId: null,
   repairCost: null,
@@ -181,6 +195,7 @@ test("finishing a permanently assigned asset's repair restores In Use", async ()
     expectedUpdatedAt: ticket.updatedAt,
     returnDate: new Date("2026-10-08T00:00:00Z"),
     outcome: "usable",
+    conditionId: "condition:Good",
     vendorId: null,
     repairCost: 1200,
     invoiceNo: null,
@@ -206,7 +221,7 @@ test("legacy unfinished tickets can be finished", async () => {
 
   await completeRepairRecord(db as never, "ticket-1", {
     action: "complete", expectedUpdatedAt: ticket.updatedAt, returnDate: new Date("2026-10-08T00:00:00Z"),
-    outcome: "usable", vendorId: null, repairCost: null, invoiceNo: null, remark: null,
+    outcome: "usable", conditionId: "condition:Good", vendorId: null, repairCost: null, invoiceNo: null, remark: null,
   }, user)
 
   assert.equal((find(calls, "maintenanceTicket.updateMany")!.args.where as Record<string, unknown>).repairStatus, "waiting_parts")
@@ -236,4 +251,155 @@ test("a stale edit is rejected as a conflict", async () => {
     cancelRepairRecord(db as never, "ticket-1", { action: "cancel", expectedUpdatedAt: new Date("2026-10-07T02:00:00Z"), reason: null }, user),
     (error) => error instanceof MaintenanceApiError && error.code === "MAINTENANCE_CONFLICT",
   )
+})
+
+// Closing a repair sets the asset's condition (group 3 spec §19.4, A1-R4, A1-R5).
+const openTicket = (conditionName: string, statusName = "Under Maintenance") => ({
+  id: "ticket-1",
+  repairStatus: "in_progress",
+  updatedAt: new Date("2026-10-07T03:00:00Z"),
+  assetId: "asset-1",
+  asset: {
+    id: "asset-1",
+    statusId: `status:${statusName}`,
+    ownershipType: "shared",
+    custodianId: null,
+    conditionId: `condition:${conditionName}`,
+    status: { name: statusName },
+  },
+})
+const completeInput = (outcome: "usable" | "beyond_repair", conditionId: string | null) => ({
+  action: "complete" as const,
+  expectedUpdatedAt: new Date("2026-10-07T03:00:00Z"),
+  returnDate: new Date("2026-10-08T00:00:00Z"),
+  outcome,
+  conditionId,
+  vendorId: null,
+  repairCost: null,
+  invoiceNo: null,
+  remark: null,
+})
+const conditionWrites = (calls: Call[]) =>
+  calls.filter(({ call, args }) => call === "asset.update" && (args.data as Record<string, unknown>).conditionId !== undefined)
+const movements = (calls: Call[], type: string) =>
+  calls.filter(({ call, args }) => call === "assetMovement.create" && (args.data as Record<string, unknown>).movementType === type)
+const writes = (calls: Call[]) =>
+  calls.filter(({ call }) => /\.(create|createMany|update|updateMany|upsert|delete|deleteMany)$/.test(call)).map(({ call }) => call)
+
+test("closing a repair on a เสียหาย asset as ใช้งานได้ + ดี sets ดี in the same transaction, with one condition_change movement", async () => {
+  const { db, calls } = fakeDb({ ticket: openTicket("Damaged") })
+
+  const result = await completeRepairRecord(db as never, "ticket-1", completeInput("usable", "condition:Good"), user)
+
+  assert.deepEqual(conditionWrites(calls).map(({ args }) => args), [
+    { where: { id: "asset-1" }, data: { conditionId: "condition:Good", updatedBy: "user-1" } },
+  ])
+  const changes = movements(calls, "condition_change")
+  assert.equal(changes.length, 1)
+  assert.deepEqual(changes[0].args.data, {
+    assetId: "asset-1",
+    movementType: "condition_change",
+    fromValue: "condition:Damaged",
+    toValue: "condition:Good",
+    reason: null,
+    referenceType: "maintenance",
+    referenceId: "ticket-1",
+    performedBy: "user-1",
+  })
+  assert.equal(movements(calls, "maintenance_close").length, 1)
+  assert.equal(result.previousConditionId, "condition:Damaged")
+  assert.equal(result.conditionId, "condition:Good")
+})
+
+test("a routine repair closed as ดี on an asset already ดี writes no condition change (Review Focus 3)", async () => {
+  const { db, calls } = fakeDb({ ticket: openTicket("Good") })
+
+  const result = await completeRepairRecord(db as never, "ticket-1", completeInput("usable", "condition:Good"), user)
+
+  assert.deepEqual(conditionWrites(calls), [])
+  assert.deepEqual(movements(calls, "condition_change"), [])
+  assert.equal(result.previousConditionId, "condition:Good")
+  assert.equal(result.conditionId, "condition:Good")
+})
+
+test("closing as ซ่อมไม่ได้ makes the condition ซาก and the status รอตัดจำหน่าย", async () => {
+  const { db, calls } = fakeDb({ ticket: openTicket("Damaged") })
+
+  const result = await completeRepairRecord(db as never, "ticket-1", completeInput("beyond_repair", null), user)
+
+  assert.equal((statusWrites(calls)[0].args.data as Record<string, unknown>).statusId, "status:Pending Disposal")
+  assert.equal((conditionWrites(calls)[0].args.data as Record<string, unknown>).conditionId, "condition:Salvage")
+  assert.equal((movements(calls, "condition_change")[0].args.data as Record<string, unknown>).toValue, "condition:Salvage")
+  assert.equal(result.conditionId, "condition:Salvage")
+})
+
+test("closing as ซ่อมไม่ได้ without an active ซาก master is refused and writes nothing (A1-R5)", async () => {
+  const { db, calls } = fakeDb({ ticket: openTicket("Damaged"), inactiveConditions: ["Salvage"] })
+
+  await assert.rejects(
+    completeRepairRecord(db as never, "ticket-1", completeInput("beyond_repair", null), user),
+    (error) => error instanceof MaintenanceApiError && error.code === "ASSET_STATE_MASTER_NOT_FOUND" && error.status === 400,
+  )
+  assert.deepEqual(writes(calls), [])
+})
+
+test("closing as ใช้งานได้ with a condition other than ดี or พอใช้ is refused under the condition", async () => {
+  for (const conditionId of ["condition:Damaged", "condition:New", "condition:missing"]) {
+    const { db, calls } = fakeDb({ ticket: openTicket("Damaged") })
+
+    await assert.rejects(
+      completeRepairRecord(db as never, "ticket-1", completeInput("usable", conditionId), user),
+      (error) => error instanceof MaintenanceApiError
+        && error.status === 400
+        && error.code === (conditionId === "condition:missing" ? "ASSET_STATE_MASTER_NOT_FOUND" : "ASSET_CONDITION_NOT_SELECTABLE")
+        && JSON.stringify(error.fieldErrors) === JSON.stringify({ conditionId: "invalidConditionAfterRepair" }),
+      conditionId,
+    )
+    assert.deepEqual(writes(calls), [], conditionId)
+  }
+})
+
+test("recording a repair already done as ใช้งานได้ + พอใช้ writes what closing one does", async () => {
+  const { db, calls } = fakeDb({ conditionName: "Damaged" })
+
+  const result = await createRepairRecord(db as never, { ...baseInput, conditionId: "condition:Fair" }, user)
+
+  assert.deepEqual(conditionWrites(calls).map(({ args }) => args), [
+    { where: { id: "asset-1" }, data: { conditionId: "condition:Fair", updatedBy: "user-1" } },
+  ])
+  const changes = movements(calls, "condition_change")
+  assert.equal(changes.length, 1)
+  assert.deepEqual(changes[0].args.data, {
+    assetId: "asset-1",
+    movementType: "condition_change",
+    fromValue: "condition:Damaged",
+    toValue: "condition:Fair",
+    reason: null,
+    referenceType: "maintenance",
+    referenceId: "ticket-1",
+    performedBy: "user-1",
+  })
+  assert.equal(result.ticket.id, "ticket-1")
+  assert.equal(result.previousConditionId, "condition:Damaged")
+  assert.equal(result.conditionId, "condition:Fair")
+})
+
+test("recording an unfinished repair leaves the condition alone", async () => {
+  const { db, calls } = fakeDb({ conditionName: "Damaged" })
+
+  const result = await createRepairRecord(db as never, { ...baseInput, done: false, conditionId: null }, user)
+
+  assert.deepEqual(conditionWrites(calls), [])
+  assert.deepEqual(movements(calls, "condition_change"), [])
+  assert.equal(result.conditionId, "condition:Damaged")
+})
+
+test("recording a repair already done as ใช้งานได้ with เสียหาย is refused before the record is written", async () => {
+  const { db, calls } = fakeDb({ conditionName: "Damaged" })
+
+  await assert.rejects(
+    createRepairRecord(db as never, { ...baseInput, conditionId: "condition:Damaged" }, user),
+    (error) => error instanceof MaintenanceApiError && error.code === "ASSET_CONDITION_NOT_SELECTABLE" && error.fieldErrors?.conditionId === "invalidConditionAfterRepair",
+  )
+  assert.equal(calls.some(({ call }) => call === "maintenanceTicket.create"), false)
 })

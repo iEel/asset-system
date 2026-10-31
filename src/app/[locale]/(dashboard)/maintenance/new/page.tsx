@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server"
 import { RepairRecordForm } from "@/components/maintenance/repair-record-form"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { getRepairConditionOptions, repairConditionDefault } from "@/lib/asset-lifecycle-policy"
 import { prisma } from "@/lib/db"
 import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -27,9 +28,15 @@ export default async function NewRepairRecordPage({ params, searchParams }: Prop
   const asset = assetId
     ? await prisma.asset.findFirst({
         where: { id: assetId, isActive: true },
-        select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } },
+        select: { id: true, assetTag: true, name: true, conditionId: true, status: { select: { nameTh: true } } },
       })
     : null
+  // The condition after a usable repair (group 3 spec §19.4): ดี or พอใช้, starting at the asset's own when offered.
+  const conditionOptions = getRepairConditionOptions(await prisma.assetCondition.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, nameTh: true, isActive: true },
+    orderBy: { sortOrder: "asc" },
+  })).map((condition) => ({ id: condition.id, label: condition.nameTh }))
   const initialAsset = asset ? { id: asset.id, label: `${asset.assetTag} - ${asset.name} (${asset.status.nameTh})` } : undefined
   const planOption = plan
     ? {
@@ -54,6 +61,8 @@ export default async function NewRepairRecordPage({ params, searchParams }: Prop
         initialAsset={initialAsset}
         plan={planOption}
         needsReporter={!user.employeeId}
+        conditionOptions={conditionOptions}
+        initialConditionId={repairConditionDefault(asset?.conditionId ?? null, conditionOptions)}
       />
     </div>
   )

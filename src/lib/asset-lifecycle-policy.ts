@@ -180,6 +180,30 @@ export function getAssetOperationConditionError(
   return operationConditionNames[operation].has(normalizeAssetStateName(condition.name)) ? null : "ASSET_CONDITION_NOT_SELECTABLE"
 }
 
+// The conditions a repair closed as ใช้งานได้ may end in (group 3 spec §19.4): ดี or พอใช้. ซ่อมไม่ได้ always ends in ซาก
+// (repairBeyondRepairConditionName), which nobody chooses.
+export const repairUsableConditionNames = ["Good", "Fair"] as const
+export const repairBeyondRepairConditionName = "Salvage"
+
+const repairUsableConditions: ReadonlySet<string> = new Set(repairUsableConditionNames.map(normalizeAssetStateName))
+
+/** The active ดี and พอใช้ masters, in master order. */
+export function getRepairConditionOptions<T extends AssetStateMaster>(conditions: readonly T[]): T[] {
+  return conditions.filter((condition) => condition.isActive !== false && repairUsableConditions.has(normalizeAssetStateName(condition.name)))
+}
+
+export function getRepairConditionError(
+  condition: AssetStateMaster | null | undefined,
+): Extract<AssetStateSelectionError, "ASSET_STATE_MASTER_NOT_FOUND" | "ASSET_CONDITION_NOT_SELECTABLE"> | null {
+  if (!condition || condition.isActive === false) return "ASSET_STATE_MASTER_NOT_FOUND"
+  return repairUsableConditions.has(normalizeAssetStateName(condition.name)) ? null : "ASSET_CONDITION_NOT_SELECTABLE"
+}
+
+/** The asset's own condition when the repair offers it (a routine repair on a ดี asset), else none chosen. */
+export function repairConditionDefault(currentConditionId: string | null, options: readonly { id: string }[]): string {
+  return currentConditionId && options.some((option) => option.id === currentConditionId) ? currentConditionId : ""
+}
+
 // A recorded เสียหาย, ใช้งานไม่ได้ or ซาก refuses a handover (group 3 spec §19.2): the picker, the asset page and the
 // checkout route all ask this. ยังไม่ประเมิน is not refused.
 export type CheckoutConditionBlock = "damaged" | "nonFunctional" | "salvage"

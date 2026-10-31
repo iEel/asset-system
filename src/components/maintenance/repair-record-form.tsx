@@ -18,6 +18,7 @@ import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { Input } from "@/components/ui/input"
 import { Notice } from "@/components/ui/notice"
 import { Textarea } from "@/components/ui/textarea"
+import { AssetConditionChoice } from "@/components/asset-operations/condition-choice"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
@@ -36,6 +37,7 @@ type RepairValues = {
   problem: string
   done: boolean
   outcome: Outcome
+  conditionId: string
   reportedById: string
   vendorId: string
   repairCost: string
@@ -44,13 +46,14 @@ type RepairValues = {
 }
 
 // The fields in visual order, keyed like the server's fieldErrors, with the id focus moves to (v-track M-R1). The two
-// questions are radio groups: their id is the FieldGroup's.
+// questions and the condition after repair are radio groups: their id is the FieldGroup's.
 const FIELD_IDS = {
   assetId: "repair-record-asset",
   reportedDate: "repair-record-date",
   problem: "repair-record-problem",
   done: "repair-record-done",
   outcome: "repair-record-outcome",
+  conditionId: "repair-create-condition",
   reportedById: "repair-record-reporter",
   vendorId: "repair-record-vendor",
   repairCost: "repair-record-cost",
@@ -62,9 +65,17 @@ const FIELD_ORDER = Object.keys(FIELD_IDS) as RepairField[]
 // The fields inside "more details", which opens before focus moves there (spec §4.2).
 const DETAIL_FIELDS: readonly RepairField[] = ["vendorId", "repairCost", "invoiceNo", "remark"]
 
-// The fields on screen: the outcome only when the repair is done, the reporter only for an account without an employee.
+// The fields on screen: the outcome only when the repair is done, the condition after repair only when it is done and
+// usable, the reporter only for an account without an employee.
 function fieldOrder(values: RepairValues, needsReporter: boolean) {
-  return FIELD_ORDER.filter((key) => (key !== "outcome" || values.done) && (key !== "reportedById" || needsReporter))
+  return FIELD_ORDER.filter((key) =>
+    (key !== "outcome" || values.done)
+    && (key !== "conditionId" || isUsableDone(values))
+    && (key !== "reportedById" || needsReporter))
+}
+
+function isUsableDone(values: RepairValues) {
+  return values.done && values.outcome === "usable"
 }
 
 // noValidate turns the browser's check off, so this restates the controls' required, maxLength, min and step, and the
@@ -77,6 +88,8 @@ function validate(values: RepairValues, needsReporter: boolean) {
   check("assetId", required(values.assetId))
   check("reportedDate", required(values.reportedDate))
   check("problem", required(values.problem) ?? maxLength(values.problem, 4000))
+  // A repair already done and usable names the condition after it (group 3 spec §19.4).
+  check("conditionId", isUsableDone(values) && !values.conditionId ? "conditionAfterRepairRequired" : null)
   check("reportedById", needsReporter ? required(values.reportedById) : null)
   check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))
   check("invoiceNo", maxLength(values.invoiceNo, 100))
@@ -90,12 +103,18 @@ export function RepairRecordForm({
   initialAsset,
   plan,
   needsReporter,
+  conditionOptions,
+  initialConditionId,
 }: {
   locale: string
   returnTo: string
   initialAsset?: Option
   plan?: { id: string; label: string; title: string; vendor: Option | null }
   needsReporter: boolean
+  // ดี and พอใช้ (getRepairConditionOptions), and initialAsset's own when offered (repairConditionDefault), else "".
+  // An asset picked here starts with none chosen: the picker carries only its id.
+  conditionOptions: Option[]
+  initialConditionId: string
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -113,6 +132,7 @@ export function RepairRecordForm({
     problem: plan?.title ?? "",
     done: true,
     outcome: "usable" as Outcome,
+    conditionId: initialConditionId,
     reportedById: "",
     vendorId: plan?.vendor?.id ?? "",
     repairCost: "",
@@ -161,6 +181,7 @@ export function RepairRecordForm({
           reportedDate: values.reportedDate,
           done: values.done,
           outcome: values.outcome,
+          conditionId: isUsableDone(values) ? values.conditionId || null : null,
           reportedById: needsReporter ? values.reportedById || null : null,
           vendorId: values.vendorId || null,
           repairCost: values.repairCost || null,
@@ -204,7 +225,10 @@ export function RepairRecordForm({
           loadingLabel={tCommon("loading")}
           formatReason={(code) => getMaintenanceErrorMessage(code, tMaintenance, code)}
           error={fieldErrors.message("assetId")}
-          onChange={(value) => setField("assetId", value)}
+          onChange={(value) => {
+            setField("assetId", value)
+            setField("conditionId", value === initialAsset?.id ? initialConditionId : "")
+          }}
         />
         {openRecordAssetId ? (
           <Notice tone="danger" role="alert">
@@ -245,6 +269,19 @@ export function RepairRecordForm({
               <ChoiceCard type="radio" name="outcome" checked={values.outcome === "beyond_repair"} label={t("outcome.beyond_repair")} onChange={() => setField("outcome", "beyond_repair")} />
             </div>
           </FieldGroup>
+        ) : null}
+        {isUsableDone(values) ? (
+          <AssetConditionChoice
+            id="repair-create-condition"
+            legend={t("conditionAfterRepair")}
+            options={conditionOptions}
+            value={values.conditionId}
+            required
+            error={fieldErrors.message("conditionId")}
+            onChange={(value) => setField("conditionId", value)}
+          />
+        ) : values.done ? (
+          <p className="text-sm text-muted-foreground">{t("conditionBecomesSalvage")}</p>
         ) : null}
         {effectKey ? (
           <Notice tone="warning">

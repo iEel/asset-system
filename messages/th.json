@@ -2929,7 +2929,9 @@
       "MAINTENANCE_ASSET_WRITTEN_OFF": "ทรัพย์สินนี้ออกจากทะเบียนแล้ว บันทึกซ่อมไม่ได้",
       "MAINTENANCE_ASSET_ON_LOAN": "ทรัพย์สินนี้ถูกยืมอยู่ กรุณาบันทึกคืนก่อน",
       "MAINTENANCE_OPEN_RECORD_EXISTS": "ทรัพย์สินนี้มีงานซ่อมที่ยังไม่เสร็จ กด \"ซ่อมเสร็จ\" ที่บันทึกนั้นแทน",
-      "MAINTENANCE_REPORTER_REQUIRED": "กรุณาเลือกผู้บันทึก"
+      "MAINTENANCE_REPORTER_REQUIRED": "กรุณาเลือกผู้บันทึก",
+      "ASSET_CONDITION_NOT_SELECTABLE": "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้",
+      "ASSET_STATE_MASTER_NOT_FOUND": "ไม่พบสภาพทรัพย์สินที่ยังใช้งานอยู่"
     },
     "statuses": {
       "open": "เปิดงาน",
@@ -3076,7 +3078,9 @@
     "emptyFilteredTitle": "ไม่พบบันทึกการซ่อมที่ตรงกับตัวกรอง",
     "emptyFilteredHelp": "ลองเปลี่ยนหรือล้างตัวกรอง",
     "returnDateBeforeReported": "วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม",
-    "pmDueMore": "และอีก {count} แผน"
+    "pmDueMore": "และอีก {count} แผน",
+    "conditionAfterRepair": "สภาพหลังซ่อม",
+    "conditionBecomesSalvage": "สภาพของทรัพย์สินจะเปลี่ยนเป็น ซาก"
   },
   "disposalPage": {
     "title": "ตัดจำหน่าย",
@@ -4766,7 +4770,9 @@
     "checkoutConditionBlocked": "ส่งมอบไม่ได้เพราะสภาพของทรัพย์สิน",
     "checkoutConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนส่งมอบ",
     "checkoutConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนส่งมอบ",
-    "checkoutConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้"
+    "checkoutConditionSalvage": "เป็นซาก รอตัดจำหน่าย ส่งมอบไม่ได้",
+    "conditionAfterRepairRequired": "เลือกสภาพหลังซ่อม",
+    "invalidConditionAfterRepair": "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

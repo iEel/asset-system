@@ -57,6 +57,7 @@ test("maintenance refusals about a field name it: the reporter and the vendor of
     reportedDate: new Date("2026-10-18T00:00:00Z"),
     done: true,
     outcome: "usable" as const,
+    conditionId: "condition-good",
     reportedById: null,
     vendorId: null,
     repairCost: null,
@@ -77,7 +78,7 @@ test("maintenance refusals about a field name it: the reporter and the vendor of
   )
   const noVendor = { "supplier.findFirst": () => null }
   await assert.rejects(createRepairRecord(fakeMaintenanceDb(noVendor) as never, { ...input, vendorId: "vendor-9" }, user), refusal({ vendorId: "vendorNotFound" }, "Vendor not found or inactive"))
-  const complete = { action: "complete" as const, expectedUpdatedAt: new Date("2026-10-18T00:00:00Z"), returnDate: new Date("2026-10-18T00:00:00Z"), outcome: "usable" as const, vendorId: "vendor-9", repairCost: null, invoiceNo: null, remark: null }
+  const complete = { action: "complete" as const, expectedUpdatedAt: new Date("2026-10-18T00:00:00Z"), returnDate: new Date("2026-10-18T00:00:00Z"), outcome: "usable" as const, conditionId: "condition-good", vendorId: "vendor-9", repairCost: null, invoiceNo: null, remark: null }
   await assert.rejects(completeRepairRecord(fakeMaintenanceDb(noVendor) as never, "ticket-1", complete, user), refusal({ vendorId: "vendorNotFound" }, "Vendor not found or inactive"))
   const update = { action: "update" as const, expectedUpdatedAt: new Date("2026-10-18T00:00:00Z"), reportedDate: new Date("2026-10-18T00:00:00Z"), problem: "จอไม่ติด", vendorId: "vendor-9", repairCost: null, invoiceNo: null, remark: null }
   await assert.rejects(updateRepairRecordDetails(fakeMaintenanceDb(noVendor) as never, "ticket-1", update, user), refusal({ vendorId: "vendorNotFound" }, "Vendor not found or inactive"))
@@ -190,13 +191,14 @@ test("repair record: errors under the field, the asset and reporter selects chec
       problem: "repair-record-problem",
       done: "repair-record-done",
       outcome: "repair-record-outcome",
+      conditionId: "repair-create-condition",
       reportedById: "repair-record-reporter",
       vendorId: "repair-record-vendor",
       repairCost: "repair-record-cost",
       invoiceNo: "repair-record-invoice-no",
       remark: "repair-record-remark",
     },
-    messages: ["assetId", "reportedDate", "problem", "done", "outcome", "reportedById", "vendorId", "invoiceNo", "remark"],
+    messages: ["assetId", "reportedDate", "problem", "done", "outcome", "conditionId", "reportedById", "vendorId", "invoiceNo", "remark"],
     resultToast: uploadToast,
   })
   assert.match(source, /^function validate\(values: RepairValues, needsReporter: boolean\) \{$/m)
@@ -205,6 +207,7 @@ test("repair record: errors under the field, the asset and reporter selects chec
     'check("assetId", required(values.assetId))',
     'check("reportedDate", required(values.reportedDate))',
     'check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
+    'check("conditionId", isUsableDone(values) && !values.conditionId ? "conditionAfterRepairRequired" : null)',
     'check("reportedById", needsReporter ? required(values.reportedById) : null)',
     'check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))',
     'check("invoiceNo", maxLength(values.invoiceNo, 100))',
@@ -221,7 +224,7 @@ test("repair record: errors under the field, the asset and reporter selects chec
   }
   // Focus only goes to a field on screen; a field inside "more details" opens it first (spec §4.2).
   assert.match(source, /^const DETAIL_FIELDS: readonly RepairField\[\] = \["vendorId", "repairCost", "invoiceNo", "remark"\]$/m)
-  assert.match(source, /return FIELD_ORDER\.filter\(\(key\) => \(key !== "outcome" \|\| values\.done\) && \(key !== "reportedById" \|\| needsReporter\)\)/)
+  assert.match(source, /return FIELD_ORDER\.filter\(\(key\) =>\n\s+\(key !== "outcome" \|\| values\.done\)\n\s+&& \(key !== "conditionId" \|\| isUsableDone\(values\)\)\n\s+&& \(key !== "reportedById" \|\| needsReporter\)\)/)
   assert.match(source, /reveal: \(key\) => \{\n\s+if \(DETAIL_FIELDS\.includes\(key\)\) setShowDetails\(true\)\n\s+\},/)
   // The open record keeps its Notice with the link; a refusal with a field lands under it; the rest keeps the toast.
   assert.match(source, /if \(payload\?\.code === "MAINTENANCE_OPEN_RECORD_EXISTS"\) setOpenRecordAssetId\(values\.assetId\)\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, tMaintenance, tCommon\("error"\)\)\)/)
@@ -236,6 +239,7 @@ test("repair record actions: complete, cancel and edit show errors under the fie
   const complete = {
     returnDate: "repair-complete-return-date",
     outcome: "repair-complete-outcome",
+    conditionId: "repair-complete-condition",
     vendorId: "repair-complete-vendor",
     repairCost: "repair-complete-cost",
     invoiceNo: "repair-complete-invoice-no",
@@ -250,7 +254,7 @@ test("repair record actions: complete, cancel and edit show errors under the fie
     remark: "repair-edit-remark",
   }
   for (const [name, form] of [
-    ["Complete", { ids: complete, messages: ["outcome", "vendorId", "invoiceNo", "remark"] }],
+    ["Complete", { ids: complete, messages: ["outcome", "conditionId", "vendorId", "invoiceNo", "remark"] }],
     ["Cancel", { ids: { reason: "repair-cancel-reason" } }],
     ["Edit", { ids: edit, messages: ["reportedDate", "problem", "vendorId", "invoiceNo", "remark"] }],
   ] as const) {
@@ -266,6 +270,7 @@ test("repair record actions: complete, cancel and edit show errors under the fie
   const rules = validateBody(source)
   for (const rule of [
     'if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate))',
+    'if (values.outcome === "usable") check("conditionId", values.conditionId ? null : "conditionAfterRepairRequired")',
     'if (values.reportedDate !== undefined) check("reportedDate", required(values.reportedDate))',
     'if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
     'check("repairCost", range(values.repairCost, 0) ?? decimals(values.repairCost, 2))',

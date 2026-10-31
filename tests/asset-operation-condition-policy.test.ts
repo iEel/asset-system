@@ -9,6 +9,10 @@ import {
   getAssetOperationConditionError,
   getAssetOperationConditionOptions,
   getCheckoutConditionBlock,
+  getRepairConditionError,
+  getRepairConditionOptions,
+  repairConditionDefault,
+  repairUsableConditionNames,
 } from "../src/lib/asset-lifecycle-policy.ts"
 
 // The 9 seeded masters (prisma/seed.ts), in master order.
@@ -77,4 +81,29 @@ test("a recorded เสียหาย, ใช้งานไม่ได้ or 
     nonFunctional: "asset.transactionReasonConditionNonFunctional",
     salvage: "asset.transactionReasonConditionSalvage",
   })
+})
+
+test("a repair closed as ใช้งานได้ ends in ดี or พอใช้, in master order (group 3 spec §19.4)", () => {
+  assert.deepEqual([...repairUsableConditionNames], ["Good", "Fair"])
+  assert.deepEqual(names(getRepairConditionOptions(seeded)), ["Good", "Fair"])
+  const withInactiveGood = seeded.map((row) => (row.name === "Good" ? { ...row, isActive: false } : row))
+  assert.deepEqual(names(getRepairConditionOptions(withInactiveGood)), ["Fair"])
+})
+
+test("the repair routes validate the condition after repair (group 3 spec §19.4)", () => {
+  assert.equal(getRepairConditionError(master("Good")), null)
+  assert.equal(getRepairConditionError(master("Fair")), null)
+  assert.equal(getRepairConditionError(master("Damaged")), "ASSET_CONDITION_NOT_SELECTABLE")
+  assert.equal(getRepairConditionError(master("New")), "ASSET_CONDITION_NOT_SELECTABLE")
+  assert.equal(getRepairConditionError(master("Salvage")), "ASSET_CONDITION_NOT_SELECTABLE")
+  assert.equal(getRepairConditionError(master("Good", false)), "ASSET_STATE_MASTER_NOT_FOUND")
+  assert.equal(getRepairConditionError(null), "ASSET_STATE_MASTER_NOT_FOUND")
+  assert.equal(getRepairConditionError(undefined), "ASSET_STATE_MASTER_NOT_FOUND")
+})
+
+test("the condition after repair starts at the asset's own when it is offered, else none", () => {
+  const options = getRepairConditionOptions(seeded)
+  assert.equal(repairConditionDefault("good", options), "good")
+  assert.equal(repairConditionDefault("damaged", options), "")
+  assert.equal(repairConditionDefault(null, options), "")
 })

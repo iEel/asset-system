@@ -50,8 +50,17 @@ const mockedModuleSources = new Map<string, string>([
       }
     }
     export const repairRecordInclude = {}
-    export const createRepairRecord = record("createRepairRecord", { id: "ticket-1", repairNo: "MT-20261007-0001", repairStatus: "closed" })
-    export const completeRepairRecord = record("completeRepairRecord", { ticket: { id: "ticket-1" }, previous })
+    export const createRepairRecord = record("createRepairRecord", {
+      ticket: { id: "ticket-1", repairNo: "MT-20261007-0001", repairStatus: "closed" },
+      previousConditionId: "condition-damaged",
+      conditionId: "condition-good",
+    })
+    export const completeRepairRecord = record("completeRepairRecord", {
+      ticket: { id: "ticket-1" },
+      previous,
+      previousConditionId: "condition-damaged",
+      conditionId: "condition-good",
+    })
     export const cancelRepairRecord = record("cancelRepairRecord", { ticket: { id: "ticket-1" }, previous })
     export const updateRepairRecordDetails = record("updateRepairRecordDetails", { ticket: { id: "ticket-1" }, previous })
   `],
@@ -104,14 +113,21 @@ test("recording a repair passes the signed-in employee to the service and writes
     reportedDate: "2026-10-07",
     problem: "เปลี่ยนแบตเตอรี่",
     done: true,
+    conditionId: "condition-good",
   }))
 
   assert.equal(response.status, 201, await response.clone().text())
+  assert.equal((await response.clone().json()).id, "ticket-1", "the route answers the record")
   const call = state.calls.find(({ fn }) => fn === "createRepairRecord")
   assert.ok(call)
   assert.equal((call.args[0] as { outcome: string }).outcome, "usable")
   assert.deepEqual(call.args[1], { id: "user-1", employeeId: "emp-1" })
-  assert.equal(state.calls.some(({ fn }) => fn === "logAudit"), true)
+  const audit = state.calls.find(({ fn }) => fn === "logAudit")!.args[0] as { recordId: string; newValue: Record<string, unknown> }
+  assert.equal(audit.recordId, "ticket-1")
+  assert.equal(audit.newValue.repairNo, "MT-20261007-0001")
+  // The condition the repair set, and the one before (group 3 spec §19.4).
+  assert.equal(audit.newValue.conditionId, "condition-good")
+  assert.equal(audit.newValue.previousConditionId, "condition-damaged")
 })
 
 test("repair rule errors reach the client as stable codes", async () => {
@@ -135,6 +151,7 @@ test("finishing a repair goes through the complete action", async () => {
     expectedUpdatedAt: "2026-10-07T03:00:00.000Z",
     returnDate: "2026-10-08",
     outcome: "usable",
+    conditionId: "condition-good",
   }), context)
 
   assert.equal(response.status, 200, await response.clone().text())
@@ -142,6 +159,43 @@ test("finishing a repair goes through the complete action", async () => {
   assert.ok(call)
   assert.equal(call.args[0], "ticket-1")
   assert.equal((call.args[1] as { outcome: string }).outcome, "usable")
+  assert.equal((call.args[1] as { conditionId: string }).conditionId, "condition-good")
+  const audit = state.calls.find(({ fn }) => fn === "logAudit")!.args[0] as { newValue: Record<string, unknown> }
+  assert.equal(audit.newValue.conditionId, "condition-good")
+  assert.equal(audit.newValue.previousConditionId, "condition-damaged")
+})
+
+test("a usable repair without its condition after repair is refused under the condition", async () => {
+  reset()
+  const response = await recordRoute.PATCH(jsonRequest("http://localhost/api/maintenance-tickets/ticket-1", "PATCH", {
+    action: "complete",
+    expectedUpdatedAt: "2026-10-07T03:00:00.000Z",
+    returnDate: "2026-10-08",
+    outcome: "usable",
+  }), context)
+
+  assert.equal(response.status, 400)
+  assert.deepEqual((await response.json()).fieldErrors, { conditionId: "conditionAfterRepairRequired" })
+  assert.equal(state.calls.some(({ fn }) => fn === "completeRepairRecord"), false)
+})
+
+test("a refused condition after repair reaches the client under the condition", async () => {
+  reset()
+  state.error = new MaintenanceApiError("ASSET_CONDITION_NOT_SELECTABLE", "Invalid condition after repair", 400, { conditionId: "invalidConditionAfterRepair" })
+  const response = await recordRoute.PATCH(jsonRequest("http://localhost/api/maintenance-tickets/ticket-1", "PATCH", {
+    action: "complete",
+    expectedUpdatedAt: "2026-10-07T03:00:00.000Z",
+    returnDate: "2026-10-08",
+    outcome: "usable",
+    conditionId: "condition-damaged",
+  }), context)
+
+  assert.equal(response.status, 400)
+  assert.deepEqual(await response.json(), {
+    code: "ASSET_CONDITION_NOT_SELECTABLE",
+    error: "Invalid condition after repair",
+    fieldErrors: { conditionId: "invalidConditionAfterRepair" },
+  })
 })
 
 test("users who can only record repairs cannot finish, edit or cancel them", async () => {

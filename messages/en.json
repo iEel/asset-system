@@ -2929,7 +2929,9 @@
       "MAINTENANCE_ASSET_WRITTEN_OFF": "This asset has been written off and cannot get repair records",
       "MAINTENANCE_ASSET_ON_LOAN": "This asset is on loan. Record the return first",
       "MAINTENANCE_OPEN_RECORD_EXISTS": "This asset already has an unfinished repair. Use \"Repair finished\" on that record",
-      "MAINTENANCE_REPORTER_REQUIRED": "Select who is recording this repair"
+      "MAINTENANCE_REPORTER_REQUIRED": "Select who is recording this repair",
+      "ASSET_CONDITION_NOT_SELECTABLE": "Choose Good or Fair after a repair.",
+      "ASSET_STATE_MASTER_NOT_FOUND": "No active asset condition was found"
     },
     "statuses": {
       "open": "Open",
@@ -3076,7 +3078,9 @@
     "emptyFilteredTitle": "No repair records match the filters",
     "emptyFilteredHelp": "Change or clear the filters",
     "returnDateBeforeReported": "The return date cannot be before the date the repair was reported",
-    "pmDueMore": "and {count} more"
+    "pmDueMore": "and {count} more",
+    "conditionAfterRepair": "Condition after repair",
+    "conditionBecomesSalvage": "The asset's condition becomes Salvage."
   },
   "disposalPage": {
     "title": "Disposal",
@@ -4766,7 +4770,9 @@
     "checkoutConditionBlocked": "This asset cannot be handed over in its condition.",
     "checkoutConditionDamaged": "Damaged. Send it for repair before handing it over.",
     "checkoutConditionNonFunctional": "Not working. Send it for repair before handing it over.",
-    "checkoutConditionSalvage": "Salvage awaiting disposal. It cannot be handed over."
+    "checkoutConditionSalvage": "Salvage awaiting disposal. It cannot be handed over.",
+    "conditionAfterRepairRequired": "Choose the condition after repair.",
+    "invalidConditionAfterRepair": "Choose Good or Fair after a repair."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

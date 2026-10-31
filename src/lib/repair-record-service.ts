@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
+import { getRepairConditionError, repairBeyondRepairConditionName } from "./asset-lifecycle-policy.ts"
 import { FieldRefusalError } from "./field-errors.ts"
 import { MaintenanceApiError } from "./maintenance-api-errors.ts"
 import { calculateNextMaintenanceDueDate, type MaintenancePlanFrequency } from "./preventive-maintenance.ts"
@@ -12,6 +13,7 @@ import {
   type RepairAssetContext,
   type RepairAssetEffect,
 } from "./repair-record-policy.ts"
+import type { RepairOutcome } from "./repair-record-policy.ts"
 import type {
   RepairRecordCancelInput,
   RepairRecordCompleteInput,
@@ -34,10 +36,18 @@ const assetContextSelect = {
   statusId: true,
   ownershipType: true,
   custodianId: true,
+  conditionId: true,
   status: { select: { name: true } },
 } as const
 
-type AssetRow = { id: string; statusId: string; ownershipType: string | null; custodianId: string | null; status: { name: string } }
+type AssetRow = {
+  id: string
+  statusId: string
+  ownershipType: string | null
+  custodianId: string | null
+  conditionId: string
+  status: { name: string }
+}
 
 export async function createRepairRecord(db: RepairServiceDb, input: RepairRecordCreateInput, user: RepairServiceUser) {
   const reportedById = input.reportedById ?? user.employeeId ?? null
@@ -57,6 +67,7 @@ export async function createRepairRecord(db: RepairServiceDb, input: RepairRecor
 
     await requireActiveEmployee(tx, reportedById)
     if (input.vendorId) await requireActiveSupplier(tx, input.vendorId)
+    const nextConditionId = input.done ? await resolveRepairConditionId(tx, input.outcome, input.conditionId) : null
 
     const nextStatusId = await applyAssetStatus(tx, asset, effect.nextStatusName, user)
     const ticket = await tx.maintenanceTicket.create({
@@ -94,8 +105,9 @@ export async function createRepairRecord(db: RepairServiceDb, input: RepairRecor
       },
     })
 
+    const conditionId = await applyAssetCondition(tx, asset, ticket.id, nextConditionId, input.remark, user)
     if (input.maintenancePlanId) await advancePlan(tx, input.maintenancePlanId, asset.id, input.reportedDate, user)
-    return ticket
+    return { ticket, previousConditionId: asset.conditionId, conditionId }
   }))
 }
 
@@ -105,6 +117,8 @@ export async function completeRepairRecord(db: RepairServiceDb, id: string, inpu
     const effect = getRepairRecordCompleteEffect(await loadAssetContext(tx, previous.asset, { ignoreRecordId: id }), input.outcome)
     throwIfRepairError(effect)
     if (input.vendorId) await requireActiveSupplier(tx, input.vendorId)
+    // Read before anything is written: a refused condition leaves the record and the asset as they were (A1-R5).
+    const nextConditionId = await resolveRepairConditionId(tx, input.outcome, input.conditionId)
 
     await updateTicket(tx, previous, {
       repairStatus: "closed",
@@ -117,7 +131,8 @@ export async function completeRepairRecord(db: RepairServiceDb, id: string, inpu
     }, input.expectedUpdatedAt, user)
     const nextStatusId = await applyAssetStatus(tx, previous.asset, effect.nextStatusName, user)
     await recordMovement(tx, previous, "maintenance_close", nextStatusId, input.remark, user)
-    return { ticket: await reloadTicket(tx, id), previous }
+    const conditionId = await applyAssetCondition(tx, previous.asset, previous.id, nextConditionId, input.remark, user)
+    return { ticket: await reloadTicket(tx, id), previous, previousConditionId: previous.asset.conditionId, conditionId }
   })
 }
 
@@ -248,6 +263,49 @@ async function applyAssetStatus(tx: Prisma.TransactionClient, asset: AssetRow, n
   if (!status) throw new Error(`${nextStatusName} asset status is not configured`)
   await claimAsset(tx, asset, status.id, user)
   return status.id
+}
+
+// The condition a finished repair sets (group 3 spec §19.4): the chosen ดี or พอใช้ for ใช้งานได้, ซาก for ซ่อมไม่ได้.
+async function resolveRepairConditionId(tx: Prisma.TransactionClient, outcome: RepairOutcome, conditionId: string | null) {
+  if (outcome === "beyond_repair") {
+    const salvage = await tx.assetCondition.findFirst({ where: { name: repairBeyondRepairConditionName, isActive: true }, select: { id: true } })
+    if (!salvage) throw new MaintenanceApiError("ASSET_STATE_MASTER_NOT_FOUND", "Salvage asset condition is not configured", 400)
+    return salvage.id
+  }
+  if (!conditionId) {
+    throw new MaintenanceApiError("ASSET_STATE_MASTER_NOT_FOUND", "Invalid condition after repair", 400, { conditionId: "conditionAfterRepairRequired" })
+  }
+  const condition = await tx.assetCondition.findUnique({ where: { id: conditionId }, select: { id: true, name: true, isActive: true } })
+  const error = getRepairConditionError(condition)
+  if (error) throw new MaintenanceApiError(error, "Invalid condition after repair", 400, { conditionId: "invalidConditionAfterRepair" })
+  return conditionId
+}
+
+// Sets the condition and writes its condition_change movement only when it changes (A1-R4). Returns the asset's
+// condition after.
+async function applyAssetCondition(
+  tx: Prisma.TransactionClient,
+  asset: AssetRow,
+  recordId: string,
+  nextConditionId: string | null,
+  reason: string | null,
+  user: RepairServiceUser,
+) {
+  if (!nextConditionId || nextConditionId === asset.conditionId) return asset.conditionId
+  await tx.asset.update({ where: { id: asset.id }, data: { conditionId: nextConditionId, updatedBy: user.id } })
+  await tx.assetMovement.create({
+    data: {
+      assetId: asset.id,
+      movementType: "condition_change",
+      fromValue: asset.conditionId,
+      toValue: nextConditionId,
+      reason: toMovementReason(reason),
+      referenceType: "maintenance",
+      referenceId: recordId,
+      performedBy: user.id,
+    },
+  })
+  return nextConditionId
 }
 
 async function recordMovement(

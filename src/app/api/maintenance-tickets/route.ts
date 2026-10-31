@@ -38,14 +38,15 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "maintenance", "create")
 
     const input = repairRecordCreateSchema.parse(await request.json())
-    const ticket = await createRepairRecord(prisma, input, { id: user.id, employeeId: user.employeeId })
+    const { ticket, previousConditionId, conditionId } = await createRepairRecord(prisma, input, { id: user.id, employeeId: user.employeeId })
 
     await logAudit({
       userId: user.id,
       action: "create",
       module: "maintenance",
       recordId: ticket.id,
-      newValue: { ...input, repairNo: ticket.repairNo, repairStatus: ticket.repairStatus },
+      // conditionId is the asset's condition after the record (group 3 spec §19.4), not only the one chosen.
+      newValue: { ...input, repairNo: ticket.repairNo, repairStatus: ticket.repairStatus, conditionId, previousConditionId },
     })
 
     return NextResponse.json(ticket, { status: 201 })
