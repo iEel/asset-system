@@ -2080,7 +2080,8 @@
     "reviewNoEvidence": "No evidence files are attached to this transfer.",
     "reviewConfirm": "Confirm transfer",
     "fromCustodian": "Previous Custodian",
-    "assetClearedForCustodian": "Removed {assetTag}: {reason}"
+    "assetClearedForCustodian": "Removed {assetTag}: {reason}",
+    "fromDepartment": "Previous Department"
   },
   "bulkMove": {
     "title": "Bulk Move Locations",
@@ -4851,7 +4852,12 @@
     "checkinMissingComponentReturnerRequired": "A component that has not come back stays with the person returning. Choose that person from the employee list.",
     "checkinMissingComponentInvalid": "A component in the list is no longer installed in this asset. Reload the page and try again.",
     "componentOutstanding": "An outstanding component: return it first",
-    "componentReturnDateBeforeCheckin": "The return date cannot be before the day the parent asset was returned."
+    "componentReturnDateBeforeCheckin": "The return date cannot be before the day the parent asset was returned.",
+    "transferConditionBlocked": "This asset cannot go to a new holder in its condition.",
+    "transferConditionDamaged": "Damaged: send it for repair before giving it to a new holder",
+    "transferConditionNonFunctional": "Not working: send it for repair before giving it to a new holder",
+    "transferConditionSalvage": "Salvage awaiting disposal: it cannot go to a new holder",
+    "transferDepartmentLocked": "The asset's holder has changed, so its department follows the holder. Check it and save again."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

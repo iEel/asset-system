@@ -2080,7 +2080,8 @@
     "reviewNoEvidence": "ไม่มีไฟล์หลักฐานในรายการโอนย้ายนี้",
     "reviewConfirm": "ยืนยันโอนย้าย",
     "fromCustodian": "ผู้ถือครองเดิม",
-    "assetClearedForCustodian": "นำ {assetTag} ออกแล้ว: {reason}"
+    "assetClearedForCustodian": "นำ {assetTag} ออกแล้ว: {reason}",
+    "fromDepartment": "แผนกเดิม"
   },
   "bulkMove": {
     "title": "ย้ายที่ตั้งหลายรายการ",
@@ -4851,7 +4852,12 @@
     "checkinMissingComponentReturnerRequired": "ส่วนควบที่ยังไม่ได้คืนจะอยู่กับผู้คืน เลือกผู้คืนจากรายชื่อพนักงาน",
     "checkinMissingComponentInvalid": "ส่วนควบบางชิ้นในรายการไม่ได้ติดอยู่กับทรัพย์สินนี้แล้ว โหลดหน้าใหม่แล้วลองอีกครั้ง",
     "componentOutstanding": "ส่วนควบค้างคืน รับคืนก่อน",
-    "componentReturnDateBeforeCheckin": "วันที่คืนต้องไม่ก่อนวันที่รับคืนเครื่องหลัก"
+    "componentReturnDateBeforeCheckin": "วันที่คืนต้องไม่ก่อนวันที่รับคืนเครื่องหลัก",
+    "transferConditionBlocked": "โอนย้ายให้ผู้ถือครองใหม่ไม่ได้เพราะสภาพของทรัพย์สิน",
+    "transferConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
+    "transferConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
+    "transferConditionSalvage": "เป็นซาก รอตัดจำหน่าย โอนย้ายให้ผู้ถือครองใหม่ไม่ได้",
+    "transferDepartmentLocked": "ข้อมูลผู้ถือครองของทรัพย์สินเปลี่ยนไป แผนกจึงเป็นไปตามผู้ถือครอง ตรวจสอบแล้วบันทึกอีกครั้ง"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

@@ -119,6 +119,7 @@ export default async function TransferPrintPage({ params, searchParams }: Transf
             { label: t("from"), value: formatSnapshotState(beforeSnapshot, labels) },
             { label: t("reviewDestination"), value: formatSnapshotState(afterSnapshot, labels) },
             { label: tAsset("currentLocation"), value: labelOrDash(labels, afterSnapshot?.currentLocationId) },
+            { label: t("fromDepartment"), value: labelOrDash(labels, beforeSnapshot?.departmentId) },
             { label: tAsset("department"), value: labelOrDash(labels, afterSnapshot?.departmentId) },
             { label: t("fromCustodian"), value: labelOrDash(labels, beforeSnapshot?.custodianId) },
             { label: t("toCustodian"), value: labelOrDash(labels, afterSnapshot?.custodianId) },

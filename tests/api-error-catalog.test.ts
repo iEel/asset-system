@@ -202,3 +202,23 @@ test("a late component return dated before its RT- reads its own words under the
   const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors.componentReturnDateBeforeCheckin
   assert.deepEqual([words("th"), words("en")], ["วันที่คืนต้องไม่ก่อนวันที่รับคืนเครื่องหลัก", "The return date cannot be before the day the parent asset was returned."])
 })
+
+test("โอนย้าย's own refusals read their words: the toast per code, a broken asset's reason under the asset field as the picker says it, and an inactive destination reuses ส่งมอบ's words (group 3 plan 3; P3-R1, P3-R5, P3-R6)", () => {
+  const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+  assert.equal(getApiErrorKey("ASSET_TRANSFER_CONDITION_BLOCKED"), "transferConditionBlocked")
+  assert.equal(getApiErrorKey("ASSET_TRANSFER_DEPARTMENT_LOCKED"), "transferDepartmentLocked")
+  assert.equal(getApiErrorKey("ASSET_TRANSFER_DESTINATION_INACTIVE"), "checkoutDestinationInactive")
+  for (const [key, th, en] of [
+    ["transferConditionBlocked", "โอนย้ายให้ผู้ถือครองใหม่ไม่ได้เพราะสภาพของทรัพย์สิน", "This asset cannot go to a new holder in its condition."],
+    ["transferDepartmentLocked", "ข้อมูลผู้ถือครองของทรัพย์สินเปลี่ยนไป แผนกจึงเป็นไปตามผู้ถือครอง ตรวจสอบแล้วบันทึกอีกครั้ง", "The asset's holder has changed, so its department follows the holder. Check it and save again."],
+    ["transferConditionDamaged", "สภาพเสียหาย ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่", "Damaged: send it for repair before giving it to a new holder"],
+    ["transferConditionNonFunctional", "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่", "Not working: send it for repair before giving it to a new holder"],
+    ["transferConditionSalvage", "เป็นซาก รอตัดจำหน่าย โอนย้ายให้ผู้ถือครองใหม่ไม่ได้", "Salvage awaiting disposal: it cannot go to a new holder"],
+  ]) assert.deepEqual([messages("th").apiErrors[key], messages("en").apiErrors[key]], [th, en], key)
+  // Under the asset field, the picker's own words (T1's asset.transactionReasonTransferCondition*), word for word.
+  for (const name of ["Damaged", "NonFunctional", "Salvage"]) {
+    for (const locale of ["th", "en"] as const) {
+      assert.equal(messages(locale).apiErrors[`transferCondition${name}`], messages(locale).asset[`transactionReasonTransferCondition${name}`], `${locale} ${name}`)
+    }
+  }
+})

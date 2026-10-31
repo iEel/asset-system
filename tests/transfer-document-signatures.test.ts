@@ -32,6 +32,15 @@ test("the TR- document takes its boxes from the helper, with the handover docume
   assert.doesNotMatch(read("src/lib/transfer-document-signatures.ts"), /imageSrc/)
 })
 
+test("the TR- document prints the department before the transfer above the one after it, so a room-only move that corrected the department shows both (group 3 plan 3, P3-R8)", () => {
+  const print = read("src/app/[locale]/(print)/asset-management/transfers/[id]/page.tsx").replace(/\r\n/g, "\n")
+  assert.match(print, /\{ label: t\("fromDepartment"\), value: labelOrDash\(labels, beforeSnapshot\?\.departmentId\) \},\n\s*\{ label: tAsset\("department"\), value: labelOrDash\(labels, afterSnapshot\?\.departmentId\) \},/)
+  // The before department is already among the labels read.
+  assert.match(print, /beforeSnapshot\?\.departmentId,\n/)
+  const words = (locale: "th" | "en") => JSON.parse(read(`messages/${locale}.json`)).transfer.fromDepartment
+  assert.deepEqual([words("th"), words("en")], ["แผนกเดิม", "Previous Department"])
+})
+
 function read(path: string) {
   return readFileSync(path, "utf8")
 }

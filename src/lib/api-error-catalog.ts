@@ -55,6 +55,10 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "ASSET_STATUS_EDIT_NOT_ALLOWED": "statusBlocksEdit",
   "ASSET_STATUS_MAINTENANCE_NOT_ALLOWED": "statusBlocksMaintenance",
   "ASSET_STATUS_TRANSFER_NOT_ALLOWED": "statusBlocksTransfer",
+  // โอนย้าย's own refusals (group 3 plan 3); an inactive destination reads ส่งมอบ's toast words.
+  "ASSET_TRANSFER_CONDITION_BLOCKED": "transferConditionBlocked",
+  "ASSET_TRANSFER_DEPARTMENT_LOCKED": "transferDepartmentLocked",
+  "ASSET_TRANSFER_DESTINATION_INACTIVE": "checkoutDestinationInactive",
   "At least one bulk update field is required": "bulkUpdateFieldRequired",
   "At least one integration scope is required": "integrationScopeRequired",
   "At least one transfer destination is required": "transferDestinationRequired",
