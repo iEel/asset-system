@@ -249,7 +249,7 @@ test("a condition refusal: which keys, which send for repair, and the repair lin
   assert.equal(checkoutNeedsRepairReasonKey("asset.transactionReasonConditionSalvage"), false, "ซาก gets no link")
   assert.equal(checkoutNeedsRepairReasonKey("asset.transactionReasonStatusNotReady"), false)
   assert.equal(checkoutNeedsRepairReasonKey(null), false)
-  assert.equal(checkoutRepairHref("th", "a b"), "/th/maintenance/new?assetId=a%20b&returnTo=%2Fth%2Fasset-management%2Fcheckout")
+  assert.equal(checkoutRepairHref("th", "a b"), "/th/maintenance/new?assetId=a%20b")
 })
 
 test("the form: a condition refusal can be picked, and ส่งซ่อม sits under the asset field for เสียหาย/ใช้งานไม่ได้ only (group 3 spec §19.3)", () => {

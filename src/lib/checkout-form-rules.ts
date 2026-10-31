@@ -6,7 +6,6 @@ import { checkoutConditionBlockReasonKeys } from "./asset-lifecycle-policy.ts"
 import type { AssetHandoverMode } from "./asset-handover-mode.ts"
 import type { AssetOperationEmployeeOption, AssetOperationNamedOption } from "./asset-operation-options.ts"
 import type { AssetOperationChosenComponent, AssetOperationSearchRow } from "./asset-operation-search-rules.ts"
-import { appendOperationalReturnTo } from "./operational-return-navigation.ts"
 
 export type CheckoutDestinationType = "user" | "department" | "location"
 /** The phone's three steps (spec §7.4, P1-R4): the only export of this type. */
@@ -193,7 +192,10 @@ export function checkoutNeedsRepairReasonKey(reasonKey: string | null | undefine
   return typeof reasonKey === "string" && REPAIR_REASON_KEYS.has(reasonKey)
 }
 
-/** ส่งซ่อม: a new repair for the asset, which returns to ส่งมอบ. */
+/**
+ * ส่งซ่อม: a new repair for the asset. No returnTo: the repair page keeps only its own section's way back (its first
+ * crumb reads งานซ่อม), so a checkout path would be dropped (A2 review).
+ */
 export function checkoutRepairHref(locale: string, assetId: string): string {
-  return appendOperationalReturnTo(`/${locale}/maintenance/new?assetId=${encodeURIComponent(assetId)}`, `/${locale}/asset-management/checkout`)
+  return `/${locale}/maintenance/new?assetId=${encodeURIComponent(assetId)}`
 }
