@@ -96,15 +96,18 @@ function validate(values: TransferFormValues, change: TransferFormChange): Parti
   }
   // A ?assetId= that arrived blocked stays chosen; save stops on it, and the field reads its reason (assetError).
   check("assetId", required(values.asset) ?? (values.asset?.eligible === false ? "invalid" : null))
-  check("toLocationId", hasTransferChange(change.destinations) ? null : "transferDestinationRequired")
+  // A chosen asset whose change set is not ready (its detail pending or failed) is judged after the submit's re-read, so a
+  // department-only pick reaches that read instead of stopping here (final review ui-1).
+  check("toLocationId", values.asset && !change.ready ? null : hasTransferChange(change.destinations) ? null : "transferDestinationRequired")
   check("reason", required(values.reason) ?? maxLength(values.reason, 500))
   return errors
 }
 
-// One class string for the heads and the three rows of เปลี่ยนอะไร (spec §9.2, P3-R17): stacked below lg, four columns from lg.
-const TRANSFER_ROW_CLASSES = "grid min-w-0 gap-1.5 lg:grid-cols-[8rem_minmax(0,1fr)_1rem_minmax(0,1fr)] lg:items-start lg:gap-3"
-// A pressed reason chip takes Segmented's pressed look, on a Button (P3-R16).
-const TRANSFER_CHIP_PRESSED_CLASSES = "border-primary bg-primary-soft font-semibold text-primary-hover hover:bg-primary-soft"
+// One class string for the heads and the three rows of เปลี่ยนอะไร (spec §9.2, P3-R17): stacked below xl, four columns from
+// xl, so each picker keeps room for its chosen value beside the summary column (final review ui-3).
+const TRANSFER_ROW_CLASSES = "grid min-w-0 gap-1.5 xl:grid-cols-[8rem_minmax(0,1fr)_1rem_minmax(0,1fr)] xl:items-start xl:gap-3"
+// A pressed reason chip takes Segmented's pressed look, on a Button (P3-R16), and keeps it on hover and press (ui-5).
+const TRANSFER_CHIP_PRESSED_CLASSES = "border-primary bg-primary-soft font-semibold text-primary-hover hover:border-primary hover:bg-primary-soft active:border-primary active:bg-primary-soft"
 
 export function TransferForm({
   employees,
@@ -252,6 +255,8 @@ export function TransferForm({
   function setAsset(asset: AssetOperationSearchRow | null) {
     setValues((current) => ({ ...current, asset, clearedAsset: null }))
     fieldErrors.clear("assetId")
+    // A department refusal belongs to the asset it was given for; the new asset may lock the row (ui-2).
+    fieldErrors.clear("toDepartmentId")
     assetIdRef.current = asset?.id ?? null
     setAssetDetail(asset && !asset.detail ? "loading" : "ready")
     if (asset && !asset.detail) void loadAssetDetail(asset.id, Boolean(values.toCustodianId))
@@ -337,6 +342,9 @@ export function TransferForm({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
+        // The route's no-change answer (a destination now equals the current value): the asset is read again first, so the
+        // ตอนนี้ cells and the picker's current mark show it as it is now when the error shows under ที่ตั้ง (journeys-1).
+        if (payload?.fieldErrors?.toLocationId === "transferDestinationRequired" && values.asset) await loadAssetDetail(values.asset.id, Boolean(transferChange.destinations.toCustodianId))
         // A refusal that names a field of this form closes the review and shows under it; any other keeps the toast.
         if (fieldErrors.applyServer(payload) && focusFirstError()) return
         // The holder or the asset changed under the page (P3-R5, P3-R4): the review closes and the asset is read again, so the
@@ -344,6 +352,12 @@ export function TransferForm({
         if (payload?.code === "ASSET_TRANSFER_DEPARTMENT_LOCKED" || payload?.code === "ASSET_CHANGED_DURING_OPERATION") {
           setReviewOpen(false)
           if (values.asset) await loadAssetDetail(values.asset.id, Boolean(transferChange.destinations.toCustodianId))
+          // The shared words say to reload the page; this one has just read the asset again, so it says that (ui-4).
+          // LOCKED keeps its catalog words, which already say to check and save again.
+          if (payload.code === "ASSET_CHANGED_DURING_OPERATION") {
+            toast.error(t("assetChangedReread"))
+            return
+          }
         }
         throw new Error(payload?.code ?? payload?.error ?? tCommon("error"))
       }
@@ -415,30 +429,30 @@ export function TransferForm({
           </FormSection>
           <FormSection number={2} title={<>{t("sectionChanges")} <span className="font-normal text-muted-foreground">{t("sectionChangesHint")}</span></>}>
             <div className="grid gap-4">
-              <div data-transfer-table className="grid gap-4 lg:gap-3">
-                <div aria-hidden="true" className={cn(TRANSFER_ROW_CLASSES, "text-meta text-muted-foreground max-lg:hidden")}>
+              <div data-transfer-table className="grid gap-4 xl:gap-3">
+                <div aria-hidden="true" className={cn(TRANSFER_ROW_CLASSES, "text-meta text-muted-foreground max-xl:hidden")}>
                   <span>{t("columnItem")}</span>
                   <span>{t("columnNow")}</span>
                   <span />
                   <span>{t("columnTarget")}</span>
                 </div>
                 <div data-transfer-row="location" className={TRANSFER_ROW_CLASSES}>
-                  <span className="text-sm font-medium text-foreground lg:pt-2">{tOperation("summaryLocation")}</span>
-                  <p data-transfer-now className="min-w-0 break-words text-sm text-foreground lg:pt-2"><span className="text-muted-foreground lg:sr-only">{t("columnNow")}: </span>{nowCells.location}</p>
-                  <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-lg:hidden lg:mt-2.5" />
+                  <span className="text-sm font-medium text-foreground xl:pt-2">{tOperation("summaryLocation")}</span>
+                  <p data-transfer-now className="min-w-0 break-words text-sm text-foreground xl:pt-2"><span className="text-muted-foreground xl:sr-only">{t("columnNow")}: </span>{nowCells.location}</p>
+                  <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-xl:hidden xl:mt-2.5" />
                   <SearchableSelect id="transfer-to-location" label={t("toLocation")} labelVisuallyHidden value={values.toLocationId} options={locations} currentValue={values.asset?.currentLocationId} currentMark={tOperation("summaryNow")} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toLocationId")} onChange={(value) => setField("toLocationId", value)} />
                 </div>
                 <div data-transfer-row="holder" className={TRANSFER_ROW_CLASSES}>
-                  <span className="text-sm font-medium text-foreground lg:pt-2">{tOperation("summaryHolder")}</span>
-                  <p data-transfer-now className="min-w-0 break-words text-sm text-foreground lg:pt-2"><span className="text-muted-foreground lg:sr-only">{t("columnNow")}: </span>{nowCells.holder}</p>
-                  <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-lg:hidden lg:mt-2.5" />
+                  <span className="text-sm font-medium text-foreground xl:pt-2">{tOperation("summaryHolder")}</span>
+                  <p data-transfer-now className="min-w-0 break-words text-sm text-foreground xl:pt-2"><span className="text-muted-foreground xl:sr-only">{t("columnNow")}: </span>{nowCells.holder}</p>
+                  <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-xl:hidden xl:mt-2.5" />
                   <SearchableSelect id="transfer-to-custodian" label={t("toCustodian")} labelVisuallyHidden value={values.toCustodianId} options={employees} currentValue={values.asset?.detail?.holderId ?? undefined} currentMark={tOperation("summaryNow")} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toCustodianId")} onChange={(value) => setField("toCustodianId", value)} />
                 </div>
                 <div data-transfer-row="department" className={TRANSFER_ROW_CLASSES}>
-                  <span className="text-sm font-medium text-foreground lg:pt-2">{tOperation("summaryDepartment")}</span>
-                  <p data-transfer-now className="min-w-0 break-words text-sm text-foreground lg:pt-2"><span className="text-muted-foreground lg:sr-only">{t("columnNow")}: </span>{nowCells.department}</p>
-                  <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-lg:hidden lg:mt-2.5" />
-                  <SearchableSelect id="transfer-to-department" label={t("toDepartment")} labelVisuallyHidden value={transferChange.departmentLocked ? "" : values.toDepartmentId} options={departments} currentValue={values.asset?.detail?.departmentId ?? undefined} currentMark={tOperation("summaryNow")} disabled={transferChange.departmentLocked} placeholder={lockText ?? t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toDepartmentId")} onChange={(value) => setField("toDepartmentId", value)} />
+                  <span className="text-sm font-medium text-foreground xl:pt-2">{tOperation("summaryDepartment")}</span>
+                  <p data-transfer-now className="min-w-0 break-words text-sm text-foreground xl:pt-2"><span className="text-muted-foreground xl:sr-only">{t("columnNow")}: </span>{nowCells.department}</p>
+                  <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-xl:hidden xl:mt-2.5" />
+                  <SearchableSelect id="transfer-to-department" label={t("toDepartment")} labelVisuallyHidden value={transferChange.departmentLocked ? "" : values.toDepartmentId} options={departments} currentValue={values.asset?.detail?.departmentId ?? undefined} currentMark={tOperation("summaryNow")} disabled={transferChange.departmentLocked} placeholder={lockText ?? t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={transferChange.departmentLocked ? undefined : fieldErrors.message("toDepartmentId")} onChange={(value) => setField("toDepartmentId", value)} />
                 </div>
               </div>
               {componentLines.travelling ? <p data-transfer-components className="text-sm text-muted-foreground">{componentLines.travelling}</p> : null}

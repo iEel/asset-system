@@ -2108,7 +2108,8 @@
     "summaryFootnote": "The transfer document number is issued on saving, and the document opens for printing.",
     "footerDescription": "Transfer {tag}: {changes}",
     "footerIncomplete": "Choose the asset and what changes",
-    "checkChange": "At least one change"
+    "checkChange": "At least one change",
+    "assetChangedReread": "The asset changed while saving. It has been read again; check it and save again."
   },
   "bulkMove": {
     "title": "Bulk Move Locations",

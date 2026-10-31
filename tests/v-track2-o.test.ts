@@ -80,7 +80,7 @@ function validateBody(source: string) {
 // server keys may share the one control that shows them, O-R3), each id once in the markup, validate() through the hook,
 // the server's refusal on the same fields, focus on the first wrong field, and no toast for a validation error. A
 // dialog without a <form> (O-R6) passes noValidate: false.
-function assertOperationForm(source: string, form: { ids: Record<string, string>; noValidate?: false }) {
+function assertOperationForm(source: string, form: { ids: Record<string, string>; noValidate?: false; ownToasts?: string[] }) {
   if (form.noValidate !== false) assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate[ >\n]/, "noValidate directly after onSubmit")
   assert.match(source, /import \{ useFieldErrors(?:, useValidationMessage)? \} from "@\/components\/ui\/use-field-errors"/)
   const block = source.match(/const FIELD_IDS = \{\n([\s\S]*?)\n\} as const/)
@@ -92,7 +92,9 @@ function assertOperationForm(source: string, form: { ids: Record<string, string>
   assert.match(source, /fieldErrors\.setErrors\(validate\(/, "the client's errors come from validate()")
   assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/, "the server's fieldErrors land on the same fields")
   assert.match(source, /fieldErrors\.focusFirst\(FIELD_ORDER, /, "focus goes to the first wrong field")
-  assert.doesNotMatch(source, /\btoast\.(?:error|warning)\(/, "no validation toast (the catch keeps apiError.toast)")
+  // ownToasts: a server refusal the form answers in its own words (each named exactly), never a validation toast.
+  const rest = (form.ownToasts ?? []).reduce((text, own) => text.replace(own, ""), source)
+  assert.doesNotMatch(rest, /\btoast\.(?:error|warning)\(/, "no validation toast (the catch keeps apiError.toast)")
 }
 
 const messagesOf = (locale: string) => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as Record<string, Record<string, unknown>>
@@ -218,24 +220,27 @@ test("checkin: the return date is checked at last, errors under the field instea
 test("transfer: errors under the field, the at-least-one change under the location with the server's code, the holder's and the department's own refusals under them, and a refusal from the review back on its field (v-track O4; group 3 plan 3 P3-R4, P3-R6)", () => {
   const source = read(`${C}asset-operations/transfer-form.tsx`)
   const ids = { assetId: "transfer-asset", toLocationId: "transfer-to-location", toCustodianId: "transfer-to-custodian", toDepartmentId: "transfer-to-department", reason: "transfer-reason" }
-  assertOperationForm(source, { ids })
+  // ASSET_CHANGED_DURING_OPERATION: the form has read the asset again and says so (group 3 plan 3 final review ui-4).
+  assertOperationForm(source, { ids, ownToasts: ['toast.error(t("assetChangedReread"))'] })
   assert.match(source, /^function validate\(values: TransferFormValues, change: TransferFormChange\): Partial<Record<TransferField, string>> \{$/m)
   const rules = validateBody(source)
   for (const rule of [
     'check("assetId", required(values.asset) ?? (values.asset?.eligible === false ? "invalid" : null))',
-    'check("toLocationId", hasTransferChange(change.destinations) ? null : "transferDestinationRequired")',
+    'check("toLocationId", values.asset && !change.ready ? null : hasTransferChange(change.destinations) ? null : "transferDestinationRequired")',
     'check("reason", required(values.reason) ?? maxLength(values.reason, 500))',
   ]) assert.ok(rules.includes(rule), rule)
   // The at-least-one rule counts real changes (P3-R4), never the picks.
   assert.doesNotMatch(source, /atLeastOne\(/)
-  for (const key of ["toLocationId", "toCustodianId", "toDepartmentId", "reason"]) assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
+  for (const key of ["toLocationId", "toCustodianId", "reason"]) assert.ok(source.includes(`error={fieldErrors.message("${key}")}`), key)
+  // A locked department row shows no error (final review ui-2).
+  assert.ok(source.includes('error={transferChange.departmentLocked ? undefined : fieldErrors.message("toDepartmentId")}'))
   // The asset's error is its reason, the cleared-for-custodian line or the field's code, in that order (server search Task 5).
   assert.ok(source.includes("error={assetError}"))
   assert.match(source, /<AssetOperationPicker\n\s+id="transfer-asset"\n\s+label=\{t\("asset"\)\}\n[\s\S]*?error=\{assetError\}/)
   // Each destination picker is one line with its id, its hidden label and its error (P3-R6, P3-R17).
   assert.match(source, /<SearchableSelect id="transfer-to-location" label=\{t\("toLocation"\)\} labelVisuallyHidden [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
   assert.match(source, /<SearchableSelect id="transfer-to-custodian" label=\{t\("toCustodian"\)\} labelVisuallyHidden [^\n]*error=\{fieldErrors\.message\("toCustodianId"\)\}/)
-  assert.match(source, /<SearchableSelect id="transfer-to-department" label=\{t\("toDepartment"\)\} labelVisuallyHidden [^\n]*error=\{fieldErrors\.message\("toDepartmentId"\)\}/)
+  assert.match(source, /<SearchableSelect id="transfer-to-department" label=\{t\("toDepartment"\)\} labelVisuallyHidden [^\n]*error=\{transferChange\.departmentLocked \? undefined : fieldErrors\.message\("toDepartmentId"\)\}/)
   assert.match(source, /<Field label=\{t\("reason"\)\} id="transfer-reason" required error=\{fieldErrors\.message\("reason"\)\}>/)
   // The three destinations are one rule: a change of any clears it (spec §4.3); a holder's or a department's own refusal clears with its field.
   assert.ok(source.includes('if (field === "toLocationId" || field === "toCustodianId" || field === "toDepartmentId") fieldErrors.clear("toLocationId")'))

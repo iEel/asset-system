@@ -111,9 +111,9 @@ test("the form: the form wraps the frame with no summary column on the phone; th
 test("section 1 and 2: the asset card, the components with their own handover and the outstanding ones in section 1; the heads, three rows with a ตอนนี้ cell, an arrow and a picker with a hidden label and the current value marked; the department follows the holder; the travelling line (spec §9.1, §9.2, §9.4, P3-R5, P3-R11, P3-R14, P3-R17)", () => {
   const form = read(FORM)
   has(form, [
-    'const TRANSFER_ROW_CLASSES = "grid min-w-0 gap-1.5 lg:grid-cols-[8rem_minmax(0,1fr)_1rem_minmax(0,1fr)] lg:items-start lg:gap-3"',
-    '<div data-transfer-table className="grid gap-4 lg:gap-3">',
-    '<div aria-hidden="true" className={cn(TRANSFER_ROW_CLASSES, "text-meta text-muted-foreground max-lg:hidden")}>',
+    'const TRANSFER_ROW_CLASSES = "grid min-w-0 gap-1.5 xl:grid-cols-[8rem_minmax(0,1fr)_1rem_minmax(0,1fr)] xl:items-start xl:gap-3"',
+    '<div data-transfer-table className="grid gap-4 xl:gap-3">',
+    '<div aria-hidden="true" className={cn(TRANSFER_ROW_CLASSES, "text-meta text-muted-foreground max-xl:hidden")}>',
     '<span>{t("columnItem")}</span>',
     '<span>{t("columnNow")}</span>',
     '<span>{t("columnTarget")}</span>',
@@ -121,7 +121,7 @@ test("section 1 and 2: the asset card, the components with their own handover an
     "const lockText = transferDepartmentLockText(transferChoice, transferWords)",
     '<SearchableSelect id="transfer-to-location" label={t("toLocation")} labelVisuallyHidden value={values.toLocationId} options={locations} currentValue={values.asset?.currentLocationId} currentMark={tOperation("summaryNow")} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toLocationId")} onChange={(value) => setField("toLocationId", value)} />',
     '<SearchableSelect id="transfer-to-custodian" label={t("toCustodian")} labelVisuallyHidden value={values.toCustodianId} options={employees} currentValue={values.asset?.detail?.holderId ?? undefined} currentMark={tOperation("summaryNow")} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toCustodianId")} onChange={(value) => setField("toCustodianId", value)} />',
-    '<SearchableSelect id="transfer-to-department" label={t("toDepartment")} labelVisuallyHidden value={transferChange.departmentLocked ? "" : values.toDepartmentId} options={departments} currentValue={values.asset?.detail?.departmentId ?? undefined} currentMark={tOperation("summaryNow")} disabled={transferChange.departmentLocked} placeholder={lockText ?? t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toDepartmentId")} onChange={(value) => setField("toDepartmentId", value)} />',
+    '<SearchableSelect id="transfer-to-department" label={t("toDepartment")} labelVisuallyHidden value={transferChange.departmentLocked ? "" : values.toDepartmentId} options={departments} currentValue={values.asset?.detail?.departmentId ?? undefined} currentMark={tOperation("summaryNow")} disabled={transferChange.departmentLocked} placeholder={lockText ?? t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={transferChange.departmentLocked ? undefined : fieldErrors.message("toDepartmentId")} onChange={(value) => setField("toDepartmentId", value)} />',
     "const componentLines = transferComponentLines(transferChoice, transferWords)",
     '{componentLines.staying ? <Notice tone="info" data-transfer-staying>{componentLines.staying}</Notice> : null}',
     '{componentLines.outstanding ? <Notice tone="warning" role="status" data-transfer-outstanding>{componentLines.outstanding}</Notice> : null}',
@@ -130,9 +130,9 @@ test("section 1 and 2: the asset card, the components with their own handover an
   assert.doesNotMatch(form, /checkoutComponents|checkoutOutstandingComponents|checkoutOutstandingLines/)
   const row = (key: string, label: string, id: string) => new RegExp(
     `<div data-transfer-row="${key}" className=\\{TRANSFER_ROW_CLASSES\\}>\\n\\s+` +
-    `<span className="text-sm font-medium text-foreground lg:pt-2">\\{tOperation\\("${label}"\\)\\}</span>\\n\\s+` +
-    `<p data-transfer-now className="min-w-0 break-words text-sm text-foreground lg:pt-2"><span className="text-muted-foreground lg:sr-only">\\{t\\("columnNow"\\)\\}: </span>\\{nowCells\\.${key}\\}</p>\\n\\s+` +
-    `<ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-lg:hidden lg:mt-2\\.5" />\\n\\s+` +
+    `<span className="text-sm font-medium text-foreground xl:pt-2">\\{tOperation\\("${label}"\\)\\}</span>\\n\\s+` +
+    `<p data-transfer-now className="min-w-0 break-words text-sm text-foreground xl:pt-2"><span className="text-muted-foreground xl:sr-only">\\{t\\("columnNow"\\)\\}: </span>\\{nowCells\\.${key}\\}</p>\\n\\s+` +
+    `<ArrowRight aria-hidden="true" className="size-4 text-muted-foreground max-xl:hidden xl:mt-2\\.5" />\\n\\s+` +
     `<SearchableSelect id="${id}" `,
   )
   assert.match(form, row("location", "summaryLocation", "transfer-to-location"))
@@ -154,7 +154,7 @@ test("one change set: the picker's context, validate(), the payload and the revi
   has(form, [
     "context={{ assignCustodian: Boolean(transferChange.destinations.toCustodianId) }}",
     "body: JSON.stringify({ ...transferChange.destinations, reason: values.reason, remark: values.remark }),",
-    'check("toLocationId", hasTransferChange(change.destinations) ? null : "transferDestinationRequired")',
+    'check("toLocationId", values.asset && !change.ready ? null : hasTransferChange(change.destinations) ? null : "transferDestinationRequired")',
     "const transferReviewDetails = buildTransferReviewDetails(transferChoice, transferWords)",
     'details: [...transferReviewDetails, { key: "reason", label: t("reason"), value: values.reason }],',
     'evidenceLabel: t("reviewNoEvidence"),',
@@ -209,13 +209,38 @@ test("the detail: read at the pick and again on submit with the holder the save 
   const start = at(form, "async function submitTransfer(")
   const save = form.slice(start, at(form, "\n  return (\n", start))
   inOrder(save, [
+    // The route's no-change 400 reads the asset again before its error shows under ที่ตั้ง (final review journeys-1).
+    'if (payload?.fieldErrors?.toLocationId === "transferDestinationRequired" && values.asset) await loadAssetDetail(values.asset.id, Boolean(transferChange.destinations.toCustodianId))',
     "if (fieldErrors.applyServer(payload) && focusFirstError()) return",
     'if (payload?.code === "ASSET_TRANSFER_DEPARTMENT_LOCKED" || payload?.code === "ASSET_CHANGED_DURING_OPERATION") {',
     "setReviewOpen(false)",
     "if (values.asset) await loadAssetDetail(values.asset.id, Boolean(transferChange.destinations.toCustodianId))",
+    // CHANGED toasts the form's own words (the asset was read again), not the shared "reload the page" (ui-4).
+    'if (payload.code === "ASSET_CHANGED_DURING_OPERATION") {',
+    'toast.error(t("assetChangedReread"))',
+    "return",
     'throw new Error(payload?.code ?? payload?.error ?? tCommon("error"))',
   ])
+  assert.equal(count(save, "loadAssetDetail("), 2, "the no-change 400 and the two 409s")
+  assert.equal(count(form, 'toast.error(t("assetChangedReread"))'), 1)
   assert.ok(save.includes("apiError.toast(error)"))
+  // A switched asset clears a department refusal, which may sit under a row the new asset locks (ui-2).
+  const setAsset = form.slice(at(form, "function setAsset("), at(form, "async function recheckAssetForCustodian("))
+  inOrder(setAsset, ['fieldErrors.clear("assetId")', 'fieldErrors.clear("toDepartmentId")'])
+})
+
+test("a change set that is not ready yet (a failed or pending detail) leaves the at-least-one check to the re-read, so a department-only pick reaches it (final review ui-1)", () => {
+  const form = read(FORM)
+  const validateBody = form.slice(at(form, "function validate("), at(form, "const TRANSFER_ROW_CLASSES"))
+  has(validateBody, ['check("toLocationId", values.asset && !change.ready ? null : hasTransferChange(change.destinations) ? null : "transferDestinationRequired")'])
+  // The submit's own path: the first validate passes such a pick, the re-read runs, and the re-validate on the ready answer judges it.
+  const submit = form.slice(at(form, "async function handleSubmit("), at(form, "const detailFailedNotice ="))
+  inOrder(submit, [
+    "fieldErrors.setErrors(validate(values, transferChange))",
+    "const answered = await loadAssetDetail(",
+    "if (!answered) return",
+    'getTransferFormChange({ ...transferChoice, row: answered, detail: "ready" })',
+  ])
 })
 
 test("section 3: the reason chips write their word at the start and focus the text; อื่น ๆ only focuses; the reason field and หมายเหตุ as before (spec §9.3, §9.4, P3-R16)", () => {
@@ -223,7 +248,7 @@ test("section 3: the reason chips write their word at the start and focus the te
   has(form, [
     'const chipWords: TransferChipWords = { branch: t("reasonChipBranch"), user: t("reasonChipUser"), restructure: t("reasonChipRestructure") }',
     "const pressedChip = pressedTransferReasonChip(values.reason, chipWords)",
-    'const TRANSFER_CHIP_PRESSED_CLASSES = "border-primary bg-primary-soft font-semibold text-primary-hover hover:bg-primary-soft"',
+    'const TRANSFER_CHIP_PRESSED_CLASSES = "border-primary bg-primary-soft font-semibold text-primary-hover hover:border-primary hover:bg-primary-soft active:border-primary active:bg-primary-soft"',
     '<div role="group" aria-label={t("reason")} aria-describedby="transfer-reason-chips-hint" data-transfer-reason-chips className="grid gap-2">',
     "{TRANSFER_REASON_CHIPS.map((chip) => (",
     '{pressedChip === chip ? <Check aria-hidden="true" /> : null}',
@@ -281,10 +306,11 @@ const WORDS: Record<string, { th: string; en: string }> = {
   "transfer.footerDescription": { th: "โอนย้าย {tag}: {changes}", en: "Transfer {tag}: {changes}" },
   "transfer.footerIncomplete": { th: "เลือกทรัพย์สินและสิ่งที่จะเปลี่ยน", en: "Choose the asset and what changes" },
   "transfer.checkChange": { th: "เปลี่ยนอย่างน้อย 1 อย่าง", en: "At least one change" },
+  "transfer.assetChangedReread": { th: "ข้อมูลทรัพย์สินเปลี่ยนระหว่างบันทึก อ่านข้อมูลใหม่แล้ว ตรวจสอบแล้วบันทึกอีกครั้ง", en: "The asset changed while saving. It has been read again; check it and save again." },
 }
 
 test("the words: the new transfer keys in Thai and English, and none of the keys the rulings reuse instead (spec §9, §13; Y1, Y6, Y7)", () => {
-  assert.equal(Object.keys(WORDS).length, 27)
+  assert.equal(Object.keys(WORDS).length, 28)
   for (const locale of ["th", "en"] as const) {
     const all = messages(locale)
     for (const [key, value] of Object.entries(WORDS)) {
