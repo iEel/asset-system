@@ -149,7 +149,7 @@ Important data semantics:
 | Check-in maintenance link | Return result "ส่งซ่อม" (`Under Maintenance`) opens an unfinished repair record, or joins the open one, in the same transaction, and the RT- links it; opening one needs `maintenance:create` |
 | Outstanding components | A component not returned stays with the person returning, is listed on the RT-, and is refused elsewhere (handover, transfer, bulk move, disposal) until returned |
 | Late component return | `component-return` brings it back later on the same RT-: re-attached to a parent in IT stock, or standing alone in the chosen room; a line on the RT- |
-| Transfer | Move asset location/custodian/department through controlled operation |
+| Transfer | Move an asset's location, custodian and department in one controlled operation: destinations equal to the current value are ignored, the department follows the transfer rule (the holder's for บุคคล and Stock, free for ส่วนกลาง and ส่วนควบ), inactive destinations are refused, a broken asset is not given a new holder, and the TR- prints แผนกเดิม |
 | Contextual transaction shortcuts | Asset Register and Asset Detail expose Handover, Return, and Transfer without requiring users to memorize the Asset Tag; unavailable actions remain visible in a faded state with a recovery-oriented reason |
 | Reversible transactions | A user with `asset:edit` can cancel only the latest eligible Check-out, Check-in, or Transfer; the system restores the exact versioned asset/component snapshot and never asks the operator to guess a replacement status; cancelling a Check-in also restores the components it left out as installed |
 | VOID documents | Cancelled operation documents remain readable and printable with cancellation user/time/reason and VOID presentation instead of being deleted |
@@ -167,7 +167,7 @@ Implemented status lifecycle and enforcement from docs/code:
 - Check-out sets status to `Checked Out`.
 - Check-in can return only to `Ready`, `Under Maintenance` ("ส่งซ่อม", with a repair record), or `Pending Disposal`.
 - Check-out accepts only assets in `Ready` and blocks assets with an active checkout.
-- Personal transfer accepts only `Ready` or `In Use` and blocks assets with an active checkout; location-only or department-only movement preserves the current status.
+- Personal transfer accepts only `Ready` or `In Use` and blocks assets with an active checkout; location-only or department-only movement preserves the current status. A destination equal to the current value is not a change, and a broken asset (เสียหาย, ใช้งานไม่ได้, ซาก) is not given a new holder.
 - Repair records: an unfinished record moves the asset to `Under Maintenance`; finishing ("ซ่อมเสร็จ") or cancelling returns `In Use` when an active checkout or valid personal custody remains, otherwise `Ready`; outcome `beyond_repair` moves it to `Pending Disposal`. A record saved as already finished and usable leaves the status unchanged.
 - Disposal execution only allows `Disposed` or `Retired`.
 - Generic asset edit cannot directly assign protected lifecycle statuses, and the asset form blocks these changes before submit with workflow guidance.

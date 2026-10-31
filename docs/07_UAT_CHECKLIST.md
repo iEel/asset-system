@@ -603,6 +603,26 @@ E2E covers the return with the return department and its history line, the ส�
 - [ ] For the user to decide (final review server-5): a หาไม่พบ (Missing) component returned late keeps หาไม่พบ, re-attached or standing alone, until a status correction. Should a found component become พร้อมใช้งาน on its late return?
 - [ ] NVDA and VoiceOver on the checklist, the chips and the summary; an English pass.
 
+## Transactions Group 3 Plan 3 UAT (โอนย้าย, 2026-10-31)
+
+E2E covers, in all four projects: the transfer through the footer with the locked แผนก row, a reason chip, the summary or the footer line, and the department read back with เปลี่ยนแผนก and แผนกเดิม; a held asset moved only to another room; a ส่วนกลาง asset keeping its department; a component following its computer; a broken asset removed for a holder, refused by the route, and moved room; the TR- links, its custodian and the ข้อมูลเก่า row (`e2e/transactions/transfer.spec.ts`); the empty reason under the field (`e2e/cross-cutting/field-errors.spec.ts`); and the phone's review (`e2e/transactions/findings.spec.ts`). Check by hand:
+
+- [ ] For the user to decide first (P3-R1, spec §19's question): โอนย้าย refuses a broken asset (เสียหาย, ใช้งานไม่ได้, ซาก) only when it goes to a new holder; a room-only or department-only move is allowed. The asset page then shows โอนย้าย disabled with the reason for a broken บุคคล asset, so its room move starts from the menu's โอนย้าย. Is that the rule wanted?
+- [ ] Desktop 1440, both themes: the three sections and the table (ตอนนี้ with the room's branch, × on each picker, the current option marked ตอนนี้ and not selectable); the locked แผนก row, and the chips with their pressed state and the hint; the card's lead, rows (bold when changed), status, components and footnote; the footer line, and ยกเลิก.
+- [ ] Phone (iOS Safari, Android Chrome): the rows stacked with "ตอนนี้: …"; the short ปรับโครงสร้าง chip writing the full "ปรับโครงสร้างแผนก: "; the footer line and the warnings above the bar; the chips and the reason are not hidden under the bar with the keyboard open.
+- [ ] Cross-branch, on dev: choose a room in another branch. The card (on the phone, the block above the bar) reads "ย้ายไปสาขาอื่น รหัสทรัพย์สินยังเป็นของ <สาขา> ตามเดิม". A holder from another branch with a room in the same branch shows nothing. After saving, the asset's company, branch and Asset Tag are unchanged.
+- [ ] On dev, an inactive destination: pick a room, a holder and a free department, then deactivate one of them in another tab as an admin and save. The save is refused under that field, in ส่งมอบ's words. A holder whose department is inactive is still accepted, and the asset takes that department (spec §14 call 5). Reactivate it afterwards.
+- [ ] A held asset whose holder has left: the ตอนนี้ cell reads "(พ้นสภาพ)", and the แผนก row follows that holder's department.
+- [ ] For the user to confirm (D21): a พร้อมใช้งาน asset still carrying an old holder (ข้อมูลเก่า), moved only to another room, takes that holder's department.
+- [ ] Cancel a TR- that changed the department (from the TR- page): the department, room, holder and status come back, and the history shows ยกเลิกการโอนย้าย.
+- [ ] A page left open while the asset gets a holder elsewhere: the save is refused with a toast and the page reads the asset again, with no field error.
+- [ ] A holder picked before the asset (Y8): choose ผู้ถือครองปลายทาง first, then an asset that employee already holds and that is รอซ่อม or broken. The pick is refused with its reason, as if the asset were going to a new holder. Clear the holder, or pick the asset first: it is then taken, and the holder picker shows that employee as ตอนนี้.
+- [ ] A computer with a component on its own handover, and one left out of a return: section 1 names each in its notice, and neither moves.
+- [ ] Open โอนย้าย from the menu with no asset: the แผนก row is disabled and reads "เลือกทรัพย์สินก่อน"; after picking an asset it follows the holder or becomes free.
+- [ ] The VPN dropped after the pick (the detail read failed): the card (on the phone, the block above the bar) reads "อ่านข้อมูลสรุปไม่สำเร็จ" with ลองอีกครั้ง, the แผนก row stays disabled, and the review does not open.
+- [ ] A transfer to a holder creates no handover: the asset returns through รับคืน's ข้อมูลเก่า row (P3-R22).
+- [ ] NVDA and VoiceOver on the table (each picker named ที่ตั้งปลายทาง / ผู้ถือครองปลายทาง / แผนกปลายทาง), the chips group and the card; an English pass.
+
 ## Sign-Off
 
 | Role | Tester | Date | Result | Notes |
