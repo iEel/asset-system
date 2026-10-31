@@ -9,7 +9,7 @@ import {
   type AssetOperationFacts, type AssetOperationVerdict,
 } from "../src/lib/asset-operation-eligibility.ts"
 import {
-  assetOperationSearchLimit, assetOperationSearchMaxChars, assetOperationSearchMaxWords, assetOperationSearchMinChars, assetOperationTextConditions,
+  assetOperationSearchAssetSelect, assetOperationSearchDetailAssetSelect, assetOperationSearchLimit, assetOperationSearchMaxChars, assetOperationSearchMaxWords, assetOperationSearchMinChars, assetOperationTextConditions,
   buildAssetOperationByIdWhere, buildAssetOperationSearchHref, buildAssetOperationSearchRow, buildAssetOperationSearchWheres, getAssetOperationSearchVerdict,
   getCheckinHolder, groupAssetOperationCheckinRows, isAssetOperationSearchReady, parseAssetOperationSearch, rankAssetOperationMatches,
   splitAssetOperationSearchWords, buildAssetOperationComponentLinkWhere, buildAssetOperationRowDetail,
@@ -26,6 +26,8 @@ function input(query: string): AssetOperationSearchInput {
   return parsed
 }
 const somchai = { code: "EMP-0412", fullNameTh: "สมชาย ใจดี" }
+/** The detail read's holder (plan 3 P3-R9): the active flag and the holder's own department, read through the relation. */
+const somchaiDetail = { ...somchai, isActive: true, departmentId: "dep-it", department: { name: "ฝ่ายไอที" } }
 const asset: AssetOperationSearchAsset = {
   id: "asset-1", assetTag: "SNI-EQU-25-0228", name: "โน้ตบุ๊ก Dell Latitude 5440", serialNumber: "SN-1", ownershipType: "personal",
   modelId: null, custodianId: null, currentLocationId: "loc-1", conditionId: "cond-1", status: { name: "Ready", nameTh: "พร้อมใช้งาน" },
@@ -82,24 +84,53 @@ test("the picker's href and the route's parse read the same names", () => {
   assert.equal(buildAssetOperationSearchHref({ mode: "checkout", id: "asset-1", detail: false }), "/api/asset-operations/search?mode=checkout&id=asset-1")
 })
 
-test("the chosen asset's detail: ownership, the status's English name, department and holder as 'code - name' (null when none), both branches, each installed component once by tag with whether it travels (group 3 plan 1 Task 4, spec §7.1)", () => {
-  const chosen: AssetOperationSearchDetailAsset = { ...held, ownershipType: "stock", departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
-    branch: { name: "สำนักงานใหญ่" }, currentLocation: { code: "RY-01", name: "ห้องบัญชี", branch: { name: "สาขาระยอง" } } }
+test("the chosen asset's detail: ownership, the status's English name, department and holder as 'code - name' (null when none), the holder's id, active flag and own department, the asset's branch id and both branch names, each installed component once by tag with whether it travels (group 3 plan 1 Task 4, spec §7.1; plan 3 P3-R9)", () => {
+  const chosen: AssetOperationSearchDetailAsset = { ...held, custodian: somchaiDetail, ownershipType: "stock", departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
+    branchId: "br-hq", branch: { name: "สำนักงานใหญ่" }, currentLocation: { code: "RY-01", name: "ห้องบัญชี", branch: { name: "สาขาระยอง" } } }
   const link = (id: string, assetTag: string, name: string) => ({ componentAssetId: id, componentAsset: { assetTag, name, currentLocation: { code: "RY-01", name: "ห้องบัญชี" } } })
   const links = [link("c-2", "NB-0017-02", "Mouse ไร้สาย"), link("c-1", "NB-0017-01", "Adapter 65W"), link("c-2", "NB-0017-02", "Mouse ไร้สาย")]
   const expected: AssetOperationChosenDetail = {
     ownership: "stock", statusName: "In Use", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี",
-    ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
+    holderId: "emp-1", holderActive: true, holderDepartmentId: "dep-it", holderDepartmentName: "ฝ่ายไอที",
+    ownerBranchId: "br-hq", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
     components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "RY-01 - ห้องบัญชี" }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false, locationLabel: "RY-01 - ห้องบัญชี" }],
     outstandingComponents: [],
   }
   assert.deepEqual(buildAssetOperationRowDetail(chosen, links, new Set(["c-2"]), []), expected)
   const bare = buildAssetOperationRowDetail({ ...chosen, ownershipType: "bogus", departmentId: null, department: null, custodianId: null, custodian: null }, [], new Set(), [])
   assert.deepEqual([bare.ownership, bare.departmentId, bare.departmentLabel, bare.departmentName, bare.holderLabel, bare.holderName, bare.components], ["personal", null, null, null, null, null, []])
+  assert.deepEqual([bare.holderId, bare.holderActive, bare.holderDepartmentId, bare.holderDepartmentName], [null, null, null, null], "no holder: every holder field is null")
   // The same links the sync moves with the parent (asset-component-sync.ts:115-122).
   assert.deepEqual(buildAssetOperationComponentLinkWhere("asset-1"), { parentAssetId: "asset-1", status: "installed", removedAt: null, componentAsset: { isActive: true } })
   const sync = readFileSync("src/lib/asset-component-sync.ts", "utf8")
   for (const part of ['status: "installed"', "removedAt: null", "componentAsset: { isActive: true }"]) assert.ok(sync.includes(part), part)
+})
+
+test("a holder who left: the detail keeps their id, says they left, and still names their own department, apart from the asset's (group 3 plan 3 P3-R3, P3-R9, P3-R10)", () => {
+  const leaver = { code: "EMP-0099", fullNameTh: "สมศรี ลาออก", isActive: false, departmentId: "dep-old", department: { name: "ฝ่ายขายเดิม" } }
+  const chosen: AssetOperationSearchDetailAsset = { ...held, custodianId: "emp-9", custodian: leaver, departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
+    branchId: "br-hq-2", branch: { name: "สำนักงานใหญ่" }, currentLocation: { code: "HQ-01", name: "ห้อง 101", branch: { name: "สำนักงานใหญ่" } } }
+  const detail = buildAssetOperationRowDetail(chosen, [], new Set(), [])
+  assert.deepEqual(
+    [detail.holderId, detail.holderActive, detail.holderLabel, detail.holderName, detail.holderDepartmentId, detail.holderDepartmentName, detail.departmentId, detail.departmentName],
+    ["emp-9", false, "EMP-0099 - สมศรี ลาออก", "สมศรี ลาออก", "dep-old", "ฝ่ายขายเดิม", "dep-acc", "บัญชี"],
+  )
+  // The branch is carried by id: another company's head office has the same name (Branch is unique per [companyId, code]).
+  assert.deepEqual([detail.ownerBranchId, detail.ownerBranchLabel, detail.locationBranchLabel], ["br-hq-2", "สำนักงานใหญ่", "สำนักงานใหญ่"])
+})
+
+test("the detail read adds the asset's branch id, and the holder's active flag and own department with no isActive filter; the list read keeps its select (group 3 plan 3 P3-R9; server search spec bounded reads)", () => {
+  assert.deepEqual(assetOperationSearchDetailAssetSelect, {
+    ...assetOperationSearchAssetSelect,
+    departmentId: true,
+    branchId: true,
+    department: { select: { code: true, name: true } },
+    branch: { select: { name: true } },
+    currentLocation: { select: { code: true, name: true, branch: { select: { name: true } } } },
+    custodian: { select: { code: true, fullNameTh: true, isActive: true, departmentId: true, department: { select: { name: true } } } },
+  })
+  assert.deepEqual(assetOperationSearchAssetSelect.custodian, { select: { code: true, fullNameTh: true } })
+  assert.equal("branchId" in assetOperationSearchAssetSelect, false)
 })
 
 test("the text matches 6 of the register's own conditions, then the asset's and the holder's department names (spec 6.2, §11)", () => {

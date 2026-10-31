@@ -3,7 +3,7 @@ import test from "node:test"
 
 import { searchAssetOperationOptions, type AssetOperationSearchDb } from "../src/lib/asset-operation-search.ts"
 import {
-  assetOperationOutstandingLinkSelect, assetOperationSearchAssetSelect, assetOperationSearchDetailAssetSelect, buildAssetOperationSearchWheres, parseAssetOperationSearch,
+  assetOperationOutstandingLinkSelect, assetOperationSearchAssetSelect, assetOperationSearchDetailAssetSelect, buildAssetOperationSearchHref, buildAssetOperationSearchWheres, parseAssetOperationSearch,
   type AssetOperationOutstandingLinkRecord,
   assetOperationLateReturnParentSelect, assetOperationParentOutstandingLinkSelect, type AssetOperationParentOutstandingLink,
   type AssetOperationComponentLink, type AssetOperationSearchDetailAsset,
@@ -17,6 +17,8 @@ function input(query: string): AssetOperationSearchInput {
   return parsed
 }
 const somchai = { code: "EMP-0412", fullNameTh: "สมชาย ใจดี" }
+/** The detail read's holder (plan 3 P3-R9): the active flag and the holder's own department. */
+const somchaiDetail = { ...somchai, isActive: true, departmentId: "dep-it", department: { name: "ฝ่ายไอที" } }
 const inUse = { name: "In Use", nameTh: "ใช้งานอยู่" }
 function asset(tag: string, overrides: Partial<AssetOperationSearchAsset> = {}): AssetOperationSearchAsset {
   return {
@@ -27,7 +29,7 @@ function asset(tag: string, overrides: Partial<AssetOperationSearchAsset> = {}):
 }
 function detailAsset(tag: string, overrides: Partial<AssetOperationSearchDetailAsset> = {}): AssetOperationSearchDetailAsset {
   return {
-    ...asset(tag), departmentId: null, department: null, branch: { name: "สำนักงานใหญ่" },
+    ...asset(tag), custodian: null, departmentId: null, department: null, branchId: "br-hq", branch: { name: "สำนักงานใหญ่" },
     currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2", branch: { name: "สำนักงานใหญ่" } }, ...overrides,
   }
 }
@@ -219,12 +221,13 @@ test("multi-word: the contains tier and the count read every word, the code tier
 })
 
 test("by id with detail=1: the detail select, one read of the installed links and one of their open handovers; a component with its own handover stays behind (group 3 plan 1 Task 4, P1-R5)", async () => {
-  const notebook = detailAsset("NB-0017", { id: "asset-1", custodianId: "emp-1", custodian: somchai, departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
+  const notebook = detailAsset("NB-0017", { id: "asset-1", custodianId: "emp-1", custodian: somchaiDetail, departmentId: "dep-acc", department: { code: "ACC", name: "บัญชี" },
     currentLocation: { code: "RY-01", name: "ห้องบัญชี", branch: { name: "สาขาระยอง" } } })
   const { db, calls } = fakeDb({ contains: [notebook], links: [link("c-1", "NB-0017-01", "Adapter 65W"), link("c-2", "NB-0017-02", "Mouse ไร้สาย")], checkouts: [checkout({ id: "co-9", assetId: "c-2" })] })
   const [row] = (await searchAssetOperationOptions(db, input("mode=checkout&id=asset-1&detail=1"))).rows
   assert.deepEqual(row.detail, {
-    ownership: "personal", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
+    ownership: "personal", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี", holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี",
+    holderId: "emp-1", holderActive: true, holderDepartmentId: "dep-it", holderDepartmentName: "ฝ่ายไอที", ownerBranchId: "br-hq", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สาขาระยอง",
     components: [{ id: "c-1", assetTag: "NB-0017-01", name: "Adapter 65W", travels: true, locationLabel: "RY-01 - ห้องบัญชี" }, { id: "c-2", assetTag: "NB-0017-02", name: "Mouse ไร้สาย", travels: false, locationLabel: "RY-01 - ห้องบัญชี" }],
     outstandingComponents: [],
   })
@@ -242,6 +245,7 @@ test("without detail=1 the by-id read keeps the list select and reads no install
   const bare = fakeDb({ contains: [detailAsset("CCTV-0001", { id: "asset-2", ownershipType: "shared" })] })
   const [shared] = (await searchAssetOperationOptions(bare.db, input("mode=checkout&id=asset-2&detail=1"))).rows
   assert.deepEqual([shared.detail?.ownership, shared.detail?.departmentLabel, shared.detail?.holderLabel, shared.detail?.components], ["shared", null, null, []])
+  assert.deepEqual([shared.detail?.holderId, shared.detail?.holderActive, shared.detail?.holderDepartmentId, shared.detail?.holderDepartmentName, shared.detail?.ownerBranchId], [null, null, null, null, "br-hq"])
   assert.equal(bare.calls.filter((call) => call.call === "assetCheckout.findMany").length, 1, "only the asset's own handover read")
 })
 
@@ -323,7 +327,7 @@ test("by id with detail=1: the asset's outstanding links, newest first, then the
 })
 
 test("an outstanding component's own row with detail=1 reads its parent's room and department, once (group 3 spec §8.6, P2-R7)", async () => {
-  const mouse = detailAsset("NB-0017-02", { id: "c-2", ownershipType: "component", custodianId: "emp-1", custodian: somchai })
+  const mouse = detailAsset("NB-0017-02", { id: "c-2", ownershipType: "component", custodianId: "emp-1", custodian: somchaiDetail })
   const parent = detailAsset("NB-0017", { id: "asset-p", currentLocationId: "loc-it", currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2", branch: { name: "สำนักงานใหญ่" } },
     departmentId: "dep-adm", department: { code: "ADM", name: "ธุรการ" } })
   const { db, calls } = fakeDb({ contains: [mouse, parent], outstanding: [outstandingLink("link-1", "c-2")],
@@ -333,4 +337,16 @@ test("an outstanding component's own row with detail=1 reads its parent's room a
   assert.deepEqual(row.detail?.lateReturnParent, { locationId: "loc-it", locationLabel: "IT-2 - ห้อง IT ชั้น 2", departmentId: "dep-adm", departmentName: "ธุรการ" })
   assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => [call.args.where, call.args.select]),
     [[{ isActive: true, id: "c-2" }, assetOperationSearchDetailAssetSelect], [{ id: "asset-p" }, assetOperationLateReturnParentSelect]])
+})
+
+test("โอนย้าย reads its chosen asset by id with detail=1, and with assignCustodian=1 once a holder is picked: one detail read, the verdict under the holder rule (group 3 plan 3 P3-R15)", async () => {
+  const repairing = detailAsset("NB-0228", { id: "asset-1", custodianId: "emp-1", custodian: somchaiDetail, status: { name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม" } })
+  for (const [assignCustodian, verdict] of [[false, [true, null]], [true, [false, "asset.transactionReasonStatusNotTransferable"]]] as const) {
+    const { db, calls } = fakeDb({ contains: [repairing] })
+    const href = buildAssetOperationSearchHref({ mode: "transfer", id: "asset-1", detail: true, assignCustodian })
+    const [row] = (await searchAssetOperationOptions(db, input(href.slice(href.indexOf("?") + 1)))).rows
+    assert.deepEqual([row.eligible, row.reasonKey], verdict, href)
+    assert.deepEqual([row.detail?.holderId, row.detail?.holderActive, row.detail?.holderDepartmentId, row.detail?.ownerBranchId], ["emp-1", true, "dep-it", "br-hq"], href)
+    assert.deepEqual(calls.filter((call) => call.call === "asset.findMany").map((call) => call.args.select), [assetOperationSearchDetailAssetSelect], href)
+  }
 })

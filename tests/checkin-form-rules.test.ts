@@ -23,7 +23,8 @@ function row(o: Partial<AssetOperationSearchRow> = {}, d: Partial<AssetOperation
     locationLabel: "HQ-01 - คลัง IT", currentLocationId: "l1", conditionId: "c-na", eligible: true, reasonKey: null, photo: null,
     checkout: handover, holderKey: "e1", holderLabel: "E001 - สมชาย ใจดี", holderEmployeeId: "e1",
     detail: { ownership: "personal", statusName: "In Use", departmentId: "d-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี",
-      holderLabel: "E001 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สำนักงานใหญ่", components: [], outstandingComponents: [], ...d },
+      holderLabel: "E001 - สมชาย ใจดี", holderName: "สมชาย ใจดี", holderId: "e1", holderActive: true, holderDepartmentId: "d-acc", holderDepartmentName: "บัญชี",
+      ownerBranchId: "b-hq", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สำนักงานใหญ่", components: [], outstandingComponents: [], ...d },
     ...o,
   }
 }

@@ -134,6 +134,8 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   // navigation into one waits TRANSACTION_PAGE_ARRIVAL_MS, 15 s (30 s while they loaded every asset, 13B loop 7);
   // nothing else waits longer.
   assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(options\?: \{ employeeDetail\?: false; conditionsFor\?: AssetOperationConditionOperation \}\): Promise<AssetOperationMasterOptions>/)
+  // โอนย้าย alone reads the employees' own department and the rooms' branch, with no held count (group 3 plan 3 P3-R9).
+  assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(options: \{ employeeDepartment: true; locationBranch: true; conditionsFor\?: AssetOperationConditionOperation \}\): Promise<AssetOperationMasterOptions<AssetOperationEmployeeDepartmentOption, AssetOperationLocationBranchOption>>/)
   for (const page of ["transfer", "bulk-move"]) assert.match(read(`src/app/[locale]/(dashboard)/asset-management/${page}/page.tsx`), /getAssetOperationMasterOptions\(\)/, page)
   assert.match(read("src/app/[locale]/(dashboard)/asset-management/checkin/page.tsx"), /getAssetOperationMasterOptions\(\{ conditionsFor: "checkin" \}\)/, "รับคืน names its conditions (group 3 plan 2 Task 8)")
   assert.match(read("src/app/[locale]/(dashboard)/asset-management/checkout/page.tsx"), /getAssetOperationMasterOptions\(\{ employeeDetail: true, conditionsFor: "checkout" \}\)/, "ส่งมอบ alone reads the employees' detail (final review M4) and offers the checkout conditions (group 3 spec §19.1)")

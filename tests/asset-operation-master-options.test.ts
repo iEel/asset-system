@@ -16,7 +16,7 @@ const fixtures: Record<string, Record<string, unknown>[]> = {
   ],
   asset: [{ custodianId: "e1", _count: { _all: 2 } }],
   department: [{ id: "d1", code: "IT", name: "ไอที" }],
-  location: [{ id: "l1", code: "HQ-01", name: "ห้อง 101" }],
+  location: [{ id: "l1", code: "HQ-01", name: "ห้อง 101", branchId: "b-hq", branch: { name: "สำนักงานใหญ่" } }],
   assetStatus: [{ id: "s1", name: "Ready", nameTh: "พร้อมใช้งาน" }],
   assetCondition: [{ id: "c1", name: "Good", nameTh: "ดี" }],
 }
@@ -70,7 +70,7 @@ registerHooks({
 
 const options = await import(pathToFileURL("src/lib/asset-operation-options.ts").href)
 
-test("without employeeDetail (รับคืน, โอนย้าย, ย้ายหลายรายการ) the employees carry their department id only: no department or branch read, no held-count groupBy (final review M4)", async () => {
+test("without employeeDetail (รับคืน, ย้ายหลายรายการ) the employees carry their department id only and the rooms no branch: no department or branch read, no held-count groupBy (final review M4, group 3 plan 3 P3-R9)", async () => {
   state.calls = []
   state.args = {}
   const plain = await options.getAssetOperationMasterOptions()
@@ -81,6 +81,8 @@ test("without employeeDetail (รับคืน, โอนย้าย, ย้�
   assert.deepEqual(plain.departments, [{ id: "d1", label: "IT - ไอที", name: "ไอที" }])
   assert.equal(state.calls.includes("asset.groupBy"), false)
   assert.deepEqual((state.args["employee.findMany"] as { select: unknown }).select, { id: true, code: true, fullNameTh: true, departmentId: true })
+  assert.deepEqual(plain.locations, [{ id: "l1", label: "HQ-01 - ห้อง 101", name: "ห้อง 101" }], "the row's branch is not passed on")
+  assert.deepEqual((state.args["location.findMany"] as { select: unknown }).select, { id: true, code: true, name: true })
 })
 
 test("with employeeDetail (ส่งมอบ) the master lists read no asset row, handover or repair: each employee carries its name, department, branch and held count from one groupBy that leaves out ส่วนควบ, both an asset owned as ส่วนควบ and any asset installed in another (group 3 plan 1 Task 4, spec §7.2, final review M4, look L1)", async () => {
@@ -113,6 +115,61 @@ test("with employeeDetail (ส่งมอบ) the master lists read no asset ro
   })
   assert.deepEqual((state.args["employee.findMany"] as { select: unknown }).select,
     { id: true, code: true, fullNameTh: true, departmentId: true, department: { select: { code: true, name: true } }, branch: { select: { name: true } } })
+})
+
+test("with employeeDepartment and locationBranch (โอนย้าย) each employee carries its name and its own department's name, read through the relation, so an inactive department is still named; each room carries its branch id and name; no held count (group 3 plan 3 P3-R9, spec §6 call 5, §9.3)", async () => {
+  const saved = fixtures.location
+  fixtures.location = [
+    { id: "l1", code: "HQ-01", name: "ห้อง 101", branchId: "b-hq", branch: { name: "สำนักงานใหญ่" } },
+    // Another company's head office: the same branch name, another id. The form compares branchId (P3-R13).
+    { id: "l2", code: "HQ2-01", name: "ห้องประชุม", branchId: "b-hq-2", branch: { name: "สำนักงานใหญ่" } },
+  ]
+  try {
+    state.calls = []
+    state.args = {}
+    assert.deepEqual(await options.getAssetOperationMasterOptions({ employeeDepartment: true, locationBranch: true }), {
+      // E001's department d2 is not in the active list below: its name comes from the employee's own relation.
+      employees: [
+        { id: "e1", label: "E001 - สมชาย ใจดี", departmentId: "d2", name: "สมชาย ใจดี", departmentName: "บัญชี" },
+        { id: "e2", label: "E002 - สมหญิง รักงาน", departmentId: "d1", name: "สมหญิง รักงาน", departmentName: "ไอที" },
+      ],
+      departments: [{ id: "d1", label: "IT - ไอที", name: "ไอที" }],
+      locations: [
+        { id: "l1", label: "HQ-01 - ห้อง 101", name: "ห้อง 101", branchId: "b-hq", branchName: "สำนักงานใหญ่" },
+        { id: "l2", label: "HQ2-01 - ห้องประชุม", name: "ห้องประชุม", branchId: "b-hq-2", branchName: "สำนักงานใหญ่" },
+      ],
+      statuses: [{ id: "s1", label: "พร้อมใช้งาน", name: "Ready" }],
+      conditions: [{ id: "c1", label: "ดี", name: "Good" }],
+    })
+    assert.deepEqual([...state.calls].sort(), ["assetCondition.findMany", "assetStatus.findMany", "department.findMany", "employee.findMany", "location.findMany"])
+    assert.deepEqual(state.args["employee.findMany"], {
+      where: { isActive: true },
+      select: { id: true, code: true, fullNameTh: true, departmentId: true, department: { select: { code: true, name: true } } },
+      orderBy: { code: "asc" },
+    })
+    assert.deepEqual(state.args["location.findMany"], {
+      where: { isActive: true },
+      select: { id: true, code: true, name: true, branchId: true, branch: { select: { name: true } } },
+      orderBy: { code: "asc" },
+    })
+    assert.deepEqual((state.args["department.findMany"] as { where: unknown }).where, { isActive: true }, "the destination list stays active only")
+  } finally {
+    fixtures.location = saved
+  }
+})
+
+test("each transfer flag reads only its own list: employeeDepartment leaves the rooms plain, locationBranch the employees (group 3 plan 3 P3-R9)", async () => {
+  state.calls = []
+  state.args = {}
+  const named = await options.getAssetOperationMasterOptions({ employeeDepartment: true })
+  assert.deepEqual(named.employees[0], { id: "e1", label: "E001 - สมชาย ใจดี", departmentId: "d2", name: "สมชาย ใจดี", departmentName: "บัญชี" })
+  assert.deepEqual(named.locations, [{ id: "l1", label: "HQ-01 - ห้อง 101", name: "ห้อง 101" }])
+  assert.deepEqual((state.args["location.findMany"] as { select: unknown }).select, { id: true, code: true, name: true })
+  const branched = await options.getAssetOperationMasterOptions({ locationBranch: true })
+  assert.deepEqual(branched.employees[0], { id: "e1", label: "E001 - สมชาย ใจดี", departmentId: "d2" })
+  assert.deepEqual((state.args["employee.findMany"] as { select: unknown }).select, { id: true, code: true, fullNameTh: true, departmentId: true })
+  assert.deepEqual(branched.locations, [{ id: "l1", label: "HQ-01 - ห้อง 101", name: "ห้อง 101", branchId: "b-hq", branchName: "สำนักงานใหญ่" }])
+  assert.equal(state.calls.includes("asset.groupBy"), false)
 })
 
 test("the conditions follow the operation: { conditionsFor: \"checkout\" } gives ใหม่/ดี/พอใช้, the default gives รับคืน's six (group 3 spec §19.1)", async () => {

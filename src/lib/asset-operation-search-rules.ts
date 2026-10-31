@@ -189,13 +189,20 @@ export const assetOperationSearchAssetSelect = {
 } satisfies Prisma.AssetSelect
 export type AssetOperationSearchAsset = Prisma.AssetGetPayload<{ select: typeof assetOperationSearchAssetSelect }>
 
-/** The by-id read with detail=1 (group 3 spec §7.1): the list select, plus the department and both branches. */
+/**
+ * The by-id read with detail=1 (group 3 spec §7.1, §9.2): the list select, plus the department, the asset's branch (its id
+ * too: branch names repeat across companies) and the room's branch, and the holder's active flag and own department. The
+ * holder and their department are read without isActive: a holder who left still decides a held asset's department (plan
+ * 3 P3-R3, P3-R10).
+ */
 export const assetOperationSearchDetailAssetSelect = {
   ...assetOperationSearchAssetSelect,
   departmentId: true,
+  branchId: true,
   department: { select: { code: true, name: true } },
   branch: { select: { name: true } },
   currentLocation: { select: { code: true, name: true, branch: { select: { name: true } } } },
+  custodian: { select: { code: true, fullNameTh: true, isActive: true, departmentId: true, department: { select: { name: true } } } },
 } satisfies Prisma.AssetSelect
 export type AssetOperationSearchDetailAsset = Prisma.AssetGetPayload<{ select: typeof assetOperationSearchDetailAssetSelect }>
 
@@ -304,7 +311,7 @@ export type AssetOperationRowBadge = "handover" | "legacy" | "outstanding"
 
 /** locationLabel: the component's own room, "code - name" (รับคืน's warning names where a missing one stays). */
 export type AssetOperationChosenComponent = { id: string; assetTag: string; name: string; travels: boolean; locationLabel: string }
-/** The chosen asset's detail on ส่งมอบ (group 3 spec §7.1, §7.3). Labels are null when there is none, never "-". */
+/** The chosen asset's detail on ส่งมอบ, รับคืน and โอนย้าย (group 3 spec §7.1, §7.3, §9.2). Labels are null when there is none, never "-". */
 export type AssetOperationChosenDetail = {
   ownership: AssetOwnershipType
   /** status.name, the English name getAssetStateTone reads. */
@@ -318,6 +325,16 @@ export type AssetOperationChosenDetail = {
   holderLabel: string | null
   /** fullNameTh alone, for the summary card (look L1). */
   holderName: string | null
+  /** The asset's custodianId: a holder equal to the current one is not a change (plan 3 P3-R4). */
+  holderId: string | null
+  /** The holder's Employee.isActive, null when there is no holder: false is a holder who left (P3-R10). */
+  holderActive: boolean | null
+  /** The holder's own department (Employee.departmentId), active or not: what a held asset's department follows (§6, P3-R3). */
+  holderDepartmentId: string | null
+  /** That department's name alone, active or not (look L1). */
+  holderDepartmentName: string | null
+  /** asset.branchId: the branch the asset tag belongs to, compared by id with a room's branch (P3-R13). */
+  ownerBranchId: string
   ownerBranchLabel: string
   locationBranchLabel: string
   components: AssetOperationChosenComponent[]
@@ -617,6 +634,11 @@ export function buildAssetOperationRowDetail(
     departmentName: asset.department?.name ?? null,
     holderLabel: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null,
     holderName: asset.custodian?.fullNameTh ?? null,
+    holderId: asset.custodianId,
+    holderActive: asset.custodian ? asset.custodian.isActive : null,
+    holderDepartmentId: asset.custodian?.departmentId ?? null,
+    holderDepartmentName: asset.custodian?.department.name ?? null,
+    ownerBranchId: asset.branchId,
     ownerBranchLabel: asset.branch.name,
     locationBranchLabel: asset.currentLocation.branch.name,
     components: [...components.values()].sort((a, b) => a.assetTag.localeCompare(b.assetTag)),

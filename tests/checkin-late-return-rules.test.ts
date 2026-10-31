@@ -21,7 +21,8 @@ function row(o: Partial<AssetOperationSearchRow> = {}, d: Partial<AssetOperation
     holderKey: "employee:emp-1", holderLabel: "EMP-0412 - สมชาย ใจดี", holderEmployeeId: "emp-1", badge: "outstanding", lateReturn: lateReturn(),
     detail: {
       ownership: "component", statusName: "Ready", departmentId: "dep-acc", departmentLabel: "ACC - บัญชี", departmentName: "บัญชี",
-      holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สำนักงานใหญ่",
+      holderLabel: "EMP-0412 - สมชาย ใจดี", holderName: "สมชาย ใจดี", holderId: "emp-1", holderActive: true, holderDepartmentId: "dep-acc", holderDepartmentName: "บัญชี",
+      ownerBranchId: "br-hq", ownerBranchLabel: "สำนักงานใหญ่", locationBranchLabel: "สำนักงานใหญ่",
       components: [], outstandingComponents: [],
       // A ส่วนกลาง parent in IT stock keeps its own department, so a re-attach shows it apart from the return department.
       lateReturnParent: { locationId: "loc-it", locationLabel: "IT-2 - ห้อง IT ชั้น 2", departmentId: "dep-adm", departmentName: "ธุรการ" },
