@@ -9,7 +9,7 @@ import { asUser, expect, test } from "../support/fixtures.ts"
 import { runRecords } from "../support/run-plan.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { fillTemplate, templatePattern } from "../shell/shell-words.ts"
-import { bangkokDate, thaiDay } from "./tx-plan.ts"
+import { thaiDay } from "./tx-plan.ts"
 import {
   type CreatedAsset,
   conditionChip,
@@ -186,6 +186,8 @@ test.describe("a component left out of a return", () => {
     }
     await record(measure, "late return panel, the parent in IT stock", testInfo)
 
+    // The day the panel sends, read before the save: a clock read after it could fall on the next Bangkok day.
+    const lateReturnDay = await page.locator("#checkin-late-return-date").inputValue()
     const late = await saveLateReturn(page, leftOut.id, async (review) => {
       await expect(review).toContainText(leftOut.assetTag)
       await record(measure, "late return review", testInfo)
@@ -194,7 +196,7 @@ test.describe("a component left out of a return", () => {
 
     // The RT- keeps it in its list, now followed by its late return (§8.6): no new document number.
     await expect(page.locator('[data-document-line="missing"]')).toHaveCount(1)
-    await expect(page.locator('[data-document-line="returned"]')).toHaveText(fillTemplate(TX_WORDS.documentComponentReturned, { tag: leftOut.assetTag, date: thaiDay(bangkokDate()), name: `${staff.code} - ${staff.fullNameTh}` }))
+    await expect(page.locator('[data-document-line="returned"]')).toHaveText(fillTemplate(TX_WORDS.documentComponentReturned, { tag: leftOut.assetTag, date: thaiDay(lateReturnDay), name: `${staff.code} - ${staff.fullNameTh}` }))
     await record(measure, "RT- document, the late return", testInfo)
 
     // Re-attached: the parent's room and department, no holder (P2-R7); the parent stays in IT stock.

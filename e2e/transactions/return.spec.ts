@@ -142,6 +142,8 @@ test("a return sent to repair opens an unfinished repair record, the asset is Un
   await expect(page.locator("#checkin-receive-by")).toContainText(`${staff.code} - ${staff.fullNameTh}`)
   await conditionChip(page, "เสียหาย", "checkin-condition-after").check()
   // The broken condition already picks ส่งซ่อม (P2-R16); choosing it again changes nothing.
+  const repairOption = page.locator("#checkin-next-status option").filter({ hasText: /^ส่งซ่อม$/ })
+  await expect(page.locator("#checkin-next-status")).toHaveValue((await repairOption.getAttribute("value")) ?? "missing ส่งซ่อม option")
   await page.locator("#checkin-next-status").selectOption({ label: "ส่งซ่อม" })
   await pickSearchable(page, "checkin-next-location", room.code, `${room.code} - ${room.name}`)
   await expect(page.getByRole("main")).toContainText(TX_WORDS.sendToRepairHint)
