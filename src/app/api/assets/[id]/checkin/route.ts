@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { assetCheckinSchema } from "@/lib/validations/asset-operations"
+import { assetCheckinSchema, type AssetCheckinInput } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
 import { getCheckinNextDepartmentId } from "@/lib/asset-department-rule"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { readCheckinDepartment } from "@/lib/checkin-department"
+import { CHECKIN_RETURN_DATE_ERROR_KEYS, checkinHandoverDay, checkinReturnDateError, type CheckinReturnDateErrorCode } from "@/lib/checkin-route-rules"
+import { getBangkokDateKey } from "@/lib/preventive-maintenance"
 import { getAssetOperationConditionError, getCheckinHandoverStatusError } from "@/lib/asset-lifecycle-policy"
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
 import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     requirePermission(user, "asset", "edit")
 
     const { id } = await context.params
-    const { input, photosAfter, returnSignature, receiveSignature } = await parseCheckinRequest(request)
+    const { input, evidence } = await readCheckinRequest(request)
     const asset = await prisma.asset.findFirst({ where: { id, isActive: true } })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
 
@@ -69,6 +72,15 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         { status: 400 },
       )
     }
+    // วันที่คืน is ≤ today and ≥ the handover's day, in Bangkok days; a legacy-backfilled HO- has no lower bound (P2-R13).
+    const returnDateError = checkinReturnDateError({
+      returnDay: getBangkokDateKey(input.returnDate),
+      todayDay: getBangkokDateKey(new Date()),
+      handoverDay: checkinHandoverDay(checkout),
+    })
+    if (returnDateError) return returnDateResponse(returnDateError)
+    // The room must exist and be active; the transaction reads it again (P2-R15).
+    if (!(await readActiveCheckinLocation(prisma, input.nextLocationId))) return locationInactiveResponse()
     const returnStatus = await prisma.assetStatus.findUnique({
       where: { id: input.nextStatusId },
       select: { id: true, name: true },
@@ -79,12 +91,6 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     const repairReporterId = sendsToRepair
       ? user.employeeId ?? input.receiveByEmployeeId ?? input.maintenanceReportedById ?? null
       : null
-    if (sendsToRepair) {
-      requirePermission(user, "maintenance", "create")
-      if (!repairReporterId) {
-        return NextResponse.json({ code: "MAINTENANCE_REPORTER_REQUIRED", error: "Select who is recording this repair" }, { status: 400 })
-      }
-    }
 
     // An open repair takes the return into ส่งซ่อม under that repair, so another next status is refused (S-R43, the
     // user's choice ก 2026-10-29); the repair record below is not created a second time (openRecords === 0).
@@ -92,10 +98,18 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     if (!sendsToRepair && hasOpenRepairBefore) {
       return repairStatusRequiredResponse()
     }
+    // Joining an open repair needs only asset:edit; a new repair record needs maintenance:create and a reporter
+    // (group 3 spec §5, P2-R14). The transaction asks again if the open repair closed meanwhile.
+    if (sendsToRepair && !hasOpenRepairBefore) {
+      requirePermission(user, "maintenance", "create")
+      if (!repairReporterId) return reporterRequiredResponse()
+    }
     // The return department (spec §12, P2-R8) must resolve before anything is written, ส่วนกลาง included; the
     // transaction reads it again. It stays after the last pre-check (tests/v-track2-x.test.ts stubs no department).
     await readCheckinDepartment(prisma)
 
+    // The files are saved only after every cheap check has passed (P2-R15).
+    const { photosAfter, returnSignature, receiveSignature } = await saveCheckinEvidence(evidence)
     const { record: checkin, componentSync, departmentId, previousDepartmentId } = await prisma.$transaction(async (tx) => {
       const activeCheckout = await tx.assetCheckout.findFirst({
         where: {
@@ -119,6 +133,12 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       if (!sendsToRepair && hasOpenRepair) {
         throw new Error("ASSET_CHECKIN_REPAIR_STATUS_REQUIRED")
       }
+      // A repair that closed since the pre-check turns the join into a new record: ask again (group 3 spec §5, P2-R14).
+      const createsRepair = sendsToRepair && !hasOpenRepair
+      if (createsRepair) {
+        requirePermission(user, "maintenance", "create")
+        if (!repairReporterId) throw new Error("MAINTENANCE_REPORTER_REQUIRED")
+      }
       // S-R48: a permanent handover whose asset went into repair (Under Maintenance or Pending Repair) fits while that
       // repair is open; the checkin clears the holder, so finishing the repair later restores Ready.
       const handoverStatusError = getCheckinHandoverStatusError(
@@ -128,6 +148,19 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       )
       if (handoverStatusError) throw new Error(handoverStatusError)
       const returnDepartment = await readCheckinDepartment(tx)
+      // P2-R15: the room again, then the claim on the handover, before the RT- number is taken. A second save of the
+      // same HO- loses the claim and answers 409 instead of the unique index's 500 (GP W1).
+      if (!(await readActiveCheckinLocation(tx, input.nextLocationId))) throw new CheckinLocationInactiveError()
+      const claimed = await tx.assetCheckout.updateMany({
+        where: { id: activeCheckout.id, assetId: id, isReturned: false, transactionStatus: "active" },
+        data: { isReturned: true },
+      })
+      if (claimed.count !== 1) {
+        throw new AssetOperationConflictError(
+          "ASSET_CHANGED_DURING_OPERATION",
+          "Asset status changed while this request was being saved. Reload the asset and try again.",
+        )
+      }
 
       const beforeAsset = await tx.asset.findUnique({
         where: { id },
@@ -197,11 +230,8 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         })
       }
 
-      const returnedCheckout = await tx.assetCheckout.update({
-        where: { id: activeCheckout.id },
-        data: { isReturned: true },
-        select: { id: true, isReturned: true },
-      })
+      // Closed by the claim above.
+      const returnedCheckout = { id: activeCheckout.id, isReturned: true }
 
       const afterAsset = await tx.asset.update({
         where: { id },
@@ -270,7 +300,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         captureSnapshots: true,
       })
 
-      if (sendsToRepair && repairReporterId) {
+      if (createsRepair && repairReporterId) {
         const openRecords = await tx.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } })
         if (openRecords === 0) {
           const problem = input.maintenanceProblem ?? buildMaintenanceProblem(input)
@@ -344,6 +374,8 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     return NextResponse.json(checkin, { status: 201 })
   } catch (error) {
     if (error instanceof AssetOperationConflictError) return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
+    if (error instanceof CheckinLocationInactiveError) return locationInactiveResponse()
+    if (error instanceof Error && error.message === "MAINTENANCE_REPORTER_REQUIRED") return reporterRequiredResponse()
     if (error instanceof Error && error.message === "ASSET_CHECKIN_REPAIR_STATUS_REQUIRED") return repairStatusRequiredResponse()
     if (
       error instanceof Error
@@ -366,14 +398,49 @@ function repairStatusRequiredResponse() {
   )
 }
 
-async function parseCheckinRequest(request: NextRequest) {
+async function readActiveCheckinLocation(db: Pick<Prisma.TransactionClient, "location">, locationId: string) {
+  return db.location.findFirst({ where: { id: locationId, isActive: true }, select: { id: true } })
+}
+
+class CheckinLocationInactiveError extends Error {
+  constructor() {
+    super("ASSET_CHECKIN_LOCATION_INACTIVE")
+    this.name = "CheckinLocationInactiveError"
+  }
+}
+
+function locationInactiveResponse() {
+  return NextResponse.json(
+    {
+      code: "ASSET_CHECKIN_LOCATION_INACTIVE",
+      error: "ASSET_CHECKIN_LOCATION_INACTIVE",
+      fieldErrors: { nextLocationId: "checkinLocationInactive" },
+    },
+    { status: 409 },
+  )
+}
+
+function returnDateResponse(code: CheckinReturnDateErrorCode) {
+  return NextResponse.json({ code, error: code, fieldErrors: { returnDate: CHECKIN_RETURN_DATE_ERROR_KEYS[code] } }, { status: 400 })
+}
+
+function reporterRequiredResponse() {
+  return NextResponse.json({ code: "MAINTENANCE_REPORTER_REQUIRED", error: "Select who is recording this repair" }, { status: 400 })
+}
+
+type CheckinEvidenceFiles = {
+  photos: Array<{ file: File; label: string | null }>
+  returnSignature: File | null
+  receiveSignature: File | null
+}
+
+// Reads and validates the request; saves nothing (the files are saved once the cheap checks have passed, P2-R15).
+async function readCheckinRequest(request: NextRequest): Promise<{ input: AssetCheckinInput; evidence: CheckinEvidenceFiles }> {
   const contentType = request.headers.get("content-type") ?? ""
   if (!contentType.includes("multipart/form-data")) {
     return {
       input: assetCheckinSchema.parse(await request.json()),
-      photosAfter: [],
-      returnSignature: null,
-      receiveSignature: null,
+      evidence: { photos: [], returnSignature: null, receiveSignature: null },
     }
   }
 
@@ -383,13 +450,6 @@ async function parseCheckinRequest(request: NextRequest) {
     ...optionalFormFiles(formData, "photoAfter"),
   ]
   const photoLabels = parseStringList(optionalFormText(formData, "photoAfterLabels"))
-  const returnSignatureFile = optionalFormFile(formData, "returnSignatureFile")
-  const receiveSignatureFile = optionalFormFile(formData, "receiveSignatureFile")
-  const [savedPhotos, returnSignature, receiveSignature] = await Promise.all([
-    Promise.all(photoAfterFiles.map((file) => saveOperationEvidenceFile(file, "checkin"))),
-    returnSignatureFile ? saveOperationEvidenceFile(returnSignatureFile, "checkin") : Promise.resolve(null),
-    receiveSignatureFile ? saveOperationEvidenceFile(receiveSignatureFile, "checkin") : Promise.resolve(null),
-  ])
 
   return {
     input: assetCheckinSchema.parse({
@@ -407,11 +467,28 @@ async function parseCheckinRequest(request: NextRequest) {
       remark: optionalFormText(formData, "remark"),
       maintenanceReportedById: optionalFormText(formData, "maintenanceReportedById"),
       maintenanceProblem: optionalFormText(formData, "maintenanceProblem"),
+      // The raw list: a file or a blank value is refused by the schema, never dropped (P2-R1).
+      missingComponentIds: formData.getAll("missingComponentIds"),
     }),
-    photosAfter: savedPhotos.map((file, index) => ({ file, label: photoLabels[index] ?? null })) satisfies EvidenceWithLabel[],
-    returnSignature,
-    receiveSignature,
+    evidence: {
+      photos: photoAfterFiles.map((file, index) => ({ file, label: photoLabels[index] ?? null })),
+      returnSignature: optionalFormFile(formData, "returnSignatureFile"),
+      receiveSignature: optionalFormFile(formData, "receiveSignatureFile"),
+    },
   }
+}
+
+async function saveCheckinEvidence(evidence: CheckinEvidenceFiles): Promise<{
+  photosAfter: EvidenceWithLabel[]
+  returnSignature: SavedOperationEvidence | null
+  receiveSignature: SavedOperationEvidence | null
+}> {
+  const [photosAfter, returnSignature, receiveSignature] = await Promise.all([
+    Promise.all(evidence.photos.map(async (photo) => ({ file: await saveOperationEvidenceFile(photo.file, "checkin"), label: photo.label }))),
+    evidence.returnSignature ? saveOperationEvidenceFile(evidence.returnSignature, "checkin") : Promise.resolve(null),
+    evidence.receiveSignature ? saveOperationEvidenceFile(evidence.receiveSignature, "checkin") : Promise.resolve(null),
+  ])
+  return { photosAfter, returnSignature, receiveSignature }
 }
 
 function optionalFormFiles(formData: FormData, name: string) {

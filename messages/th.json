@@ -4776,7 +4776,11 @@
     "conditionAfterRepairRequired": "เลือกสภาพหลังซ่อม",
     "invalidConditionAfterRepair": "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้",
     "checkinDepartmentUnavailable": "บันทึกรับคืนไม่ได้ เพราะแผนกที่รับคืนเข้าคลังไม่มีในระบบหรือถูกปิดใช้งาน ให้ผู้ดูแลระบบแก้ที่ ตั้งค่าระบบ > องค์กร",
-    "checkinDepartmentCodeUnknown": "ไม่มีแผนกที่ใช้งานอยู่ซึ่งใช้รหัสนี้ ตรวจรหัสที่ ข้อมูลหลัก > แผนก"
+    "checkinDepartmentCodeUnknown": "ไม่มีแผนกที่ใช้งานอยู่ซึ่งใช้รหัสนี้ ตรวจรหัสที่ ข้อมูลหลัก > แผนก",
+    "checkinReturnDateInFuture": "วันที่คืนต้องไม่เกินวันนี้",
+    "checkinReturnDateBeforeHandover": "วันที่คืนต้องไม่ก่อนวันที่ส่งมอบ",
+    "checkinLocationInactive": "ที่ตั้งนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น",
+    "checkinMissingComponentReturnerRequired": "ส่วนควบที่ยังไม่ได้คืนจะอยู่กับผู้คืน เลือกผู้คืนจากรายชื่อพนักงาน"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

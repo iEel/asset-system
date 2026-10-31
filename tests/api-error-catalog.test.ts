@@ -170,3 +170,18 @@ test("a broken return department reads words that tell an admin what to fix, and
     "No active department has this code. Check the code in Master Data > Department.",
   ])
 })
+
+test("the return's date, room and returner refusals read their own words under their fields (group 3 spec §8.3, §8.5; P2-R13, P2-R15, P2-R18)", () => {
+  const words = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors
+  for (const [code, key, th, en] of [
+    ["CHECKIN_RETURN_DATE_IN_FUTURE", "checkinReturnDateInFuture", "วันที่คืนต้องไม่เกินวันนี้", "The return date cannot be later than today."],
+    ["CHECKIN_RETURN_DATE_BEFORE_HANDOVER", "checkinReturnDateBeforeHandover", "วันที่คืนต้องไม่ก่อนวันที่ส่งมอบ", "The return date cannot be before the handover date."],
+    ["ASSET_CHECKIN_LOCATION_INACTIVE", "checkinLocationInactive", "ที่ตั้งนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกที่ตั้งอื่น", "This location is missing or inactive. Choose another."],
+    ["CHECKIN_MISSING_COMPONENT_RETURNER_REQUIRED", "checkinMissingComponentReturnerRequired", "ส่วนควบที่ยังไม่ได้คืนจะอยู่กับผู้คืน เลือกผู้คืนจากรายชื่อพนักงาน", "A component that has not come back stays with the person returning. Choose that person from the employee list."],
+  ]) {
+    assert.equal(getApiErrorKey(code), key, code)
+    assert.deepEqual([words("th")[key], words("en")[key]], [th, en], key)
+  }
+  // A second save of the same HO- reads the existing words (P2-R15).
+  assert.equal(getApiErrorKey("ASSET_CHANGED_DURING_OPERATION"), "assetChangedDuringOperation")
+})

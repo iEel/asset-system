@@ -65,6 +65,13 @@ export const assetCheckinSchema = z.object({
   remark: optionalText,
   maintenanceReportedById: optionalText,
   maintenanceProblem: optionalText,
+  missingComponentIds: z.array(z.string().trim().min(1).max(100)).max(100).default([]).transform((ids) => [...new Set(ids)]),
+}).superRefine((input, context) => {
+  // A component left out stays with ผู้คืน (spec §8.5), so ผู้คืน must be an employee (P2-R18); Task 3 checks the ids
+  // against the parent.
+  if (input.missingComponentIds.length > 0 && !input.returnByEmployeeId) {
+    context.addIssue({ code: "custom", path: ["returnBy"], message: "CHECKIN_MISSING_COMPONENT_RETURNER_REQUIRED" })
+  }
 })
 
 export const assetTransferSchema = z
