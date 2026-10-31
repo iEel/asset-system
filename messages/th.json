@@ -1996,7 +1996,14 @@
     "legacyReturnConfirmDescription": "{asset} อยู่กับ {holder} แต่ไม่มีใบส่งมอบ ระบบจะสร้างใบส่งมอบย้อนหลังพร้อมประวัติการแก้ไข แล้วไปต่อที่ฟอร์มรับคืนนี้",
     "legacyReturnConfirm": "สร้างและรับคืน",
     "openRepairReturnNotice": "มีงานซ่อมที่ยังไม่ปิดอยู่ หลังรับคืนทรัพย์สินจะเข้าสถานะ ส่งซ่อม ต่อกับงานซ่อมเดิม ไม่สร้างใบซ่อมใหม่",
-    "returnByFormer": "{name} (พ้นสภาพ)"
+    "returnByFormer": "{name} (พ้นสภาพ)",
+    "documentMissingComponents": "ส่วนควบที่ขาดตอนรับคืน",
+    "documentMissingComponentHeld": "{component} · อยู่กับ {holder} ที่ {location}",
+    "documentMissingComponentPlace": "{component} · ที่ {location}",
+    "documentComponentReturned": "{tag} คืนแล้ว {date} · รับโดย {name}",
+    "documentRepair": "ใบซ่อม",
+    "documentRepairOpened": "เปิดใบซ่อม {repairNo}",
+    "documentRepairJoined": "ต่อใบซ่อม {repairNo}"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",

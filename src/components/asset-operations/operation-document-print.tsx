@@ -29,6 +29,9 @@ type OperationDocumentPrintProps = {
   signatures: SignatureBox[]
   voidInfo?: VoidDocumentInfo | null
   toolbarActions?: React.ReactNode
+  // Document lines below the fields (group 3 plan 2 P2-R5): the RT- lists its missing components, their late returns
+  // and its repair record. They print. The HO- and TR- pages pass none.
+  lines?: React.ReactNode
 }
 
 export function OperationDocumentPrint({
@@ -41,6 +44,7 @@ export function OperationDocumentPrint({
   signatures,
   voidInfo,
   toolbarActions,
+  lines,
 }: OperationDocumentPrintProps) {
   return (
     <main className="min-h-screen bg-background text-foreground print:bg-white">
@@ -115,6 +119,8 @@ export function OperationDocumentPrint({
               </section>
             ))}
             </div>
+
+            {lines ? <div data-document-lines className="mt-5 grid grid-cols-1 gap-5">{lines}</div> : null}
 
             <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
             {signatures.map((signature) => (

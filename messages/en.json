@@ -1996,7 +1996,14 @@
     "legacyReturnConfirmDescription": "{asset} is with {holder} but has no handover document. The system creates a backdated handover with its change history, then continues on this return form.",
     "legacyReturnConfirm": "Create and return",
     "openRepairReturnNotice": "This asset has an open repair. After the return it goes to Send to repair under that repair; no new repair record is created.",
-    "returnByFormer": "{name} (former employee)"
+    "returnByFormer": "{name} (former employee)",
+    "documentMissingComponents": "Components missing at return",
+    "documentMissingComponentHeld": "{component} · with {holder} at {location}",
+    "documentMissingComponentPlace": "{component} · at {location}",
+    "documentComponentReturned": "{tag} returned {date} · received by {name}",
+    "documentRepair": "Repair ticket",
+    "documentRepairOpened": "Opened repair ticket {repairNo}",
+    "documentRepairJoined": "Joined repair ticket {repairNo}"
   },
   "transfer": {
     "title": "Transfer Asset",

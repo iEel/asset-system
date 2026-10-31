@@ -25,6 +25,7 @@ import {
   serializeAssetComponentTransactionSnapshots,
   serializeAssetTransactionSnapshot,
   type AssetComponentTransactionSnapshotChangeV1,
+  type CheckinRepairLink,
 } from "@/lib/asset-transaction-snapshot"
 import {
   optionalFormFile,
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
 
     // The files are saved only after every cheap check has passed (P2-R15).
     const { photosAfter, returnSignature, receiveSignature } = await saveCheckinEvidence(evidence)
-    const { record: checkin, componentSync, departmentId, previousDepartmentId, missingComponents } = await prisma.$transaction(async (tx) => {
+    const { record: checkin, componentSync, departmentId, previousDepartmentId, missingComponents, repair } = await prisma.$transaction(async (tx) => {
       const activeCheckout = await tx.assetCheckout.findFirst({
         where: {
           id: input.checkoutId,
@@ -314,6 +315,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         captureSnapshots: true,
       })
 
+      let repair: CheckinRepairLink | null = null
       if (createsRepair && repairReporterId) {
         const openRecords = await tx.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } })
         if (openRecords === 0) {
@@ -330,7 +332,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
               createdBy: user.id,
               updatedBy: user.id,
             },
-            select: { id: true },
+            select: { id: true, repairNo: true },
           })
 
           await tx.assetMovement.create({
@@ -346,7 +348,16 @@ export async function POST(request: NextRequest, context: CheckinContext) {
               remark: "created_from_checkin",
             },
           })
+          repair = { id: ticket.id, repairNo: ticket.repairNo, joined: false }
         }
+      }
+      if (sendsToRepair && !repair) {
+        const openRecord = await tx.maintenanceTicket.findFirst({
+          where: { ...openRepairRecordWhere, assetId: id },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, repairNo: true },
+        })
+        if (openRecord) repair = { id: openRecord.id, repairNo: openRecord.repairNo, joined: true }
       }
 
       const componentChanges = [...componentSync.componentSnapshots, ...outstanding.changes]
@@ -359,6 +370,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         asset: afterAsset,
         checkout: returnedCheckout,
         components: componentChanges.map((change) => change.after),
+        repair,
       })
       const finalizedRecord = await tx.assetCheckin.update({
         where: { id: record.id },
@@ -380,6 +392,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         departmentId: nextDepartmentId,
         previousDepartmentId: beforeAsset.departmentId,
         missingComponents: outstanding.missingComponents,
+        repair,
       }
     })
 
@@ -392,7 +405,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       newValue: { ...input, checkinId: checkin.id, componentSync, departmentId, previousDepartmentId },
     })
 
-    return NextResponse.json({ ...checkin, missingComponents }, { status: 201 })
+    return NextResponse.json({ ...checkin, missingComponents, repair }, { status: 201 })
   } catch (error) {
     if (error instanceof CheckinMissingComponentRefusalError) return missingComponentRefusalResponse(error.code)
     if (error instanceof AssetOperationConflictError) return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })

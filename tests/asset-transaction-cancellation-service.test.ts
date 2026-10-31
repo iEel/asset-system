@@ -255,3 +255,17 @@ test("cancelling an RT- that moved the asset and its components to the return de
   assert.match(source, /data: \{ \.\.\.input\.restorePlan\.asset, updatedBy: input\.userId \}/)
   assert.match(source, /departmentId: component\.departmentId,/)
 })
+
+test("an RT- whose after snapshot carries its repair link still cancels; a malformed link reads as an unsupported snapshot (group 3 spec §8.7, §18; P2-R5)", async () => {
+  const repository = new MemoryCancellationRepository()
+  repository.context!.document.afterSnapshotJson = JSON.stringify({ ...afterSnapshot, repair: { id: "mt-1", repairNo: "MT-20261031-0001", joined: true } })
+  assert.deepEqual(await previewAssetTransactionCancellation({ type: "checkin", transactionId: "checkin-1" }, repository), { eligible: true })
+  const result = await cancelAssetTransaction({ type: "checkin", transactionId: "checkin-1", userId: "user-1", reason: "บันทึกรับคืนผิดรายการ", expectedUpdatedAt: "2026-08-27T09:00:01.000Z" }, repository)
+  assert.deepEqual(result, { status: "cancelled", movementId: "movement-1", voidedAt: "2026-08-27T10:00:00.000Z" })
+  assert.deepEqual(repository.asset, beforeSnapshot)
+  assert.equal(repository.checkoutReturned, false)
+
+  const malformed = new MemoryCancellationRepository()
+  malformed.context!.document.afterSnapshotJson = JSON.stringify({ ...afterSnapshot, repair: { id: "mt-1", joined: true } })
+  assert.deepEqual(await previewAssetTransactionCancellation({ type: "checkin", transactionId: "checkin-1" }, malformed), { eligible: false, reasons: ["unsupported_snapshot"] })
+})

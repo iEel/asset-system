@@ -131,3 +131,34 @@ test("a before entry's link reference survives the round trip, null included; an
     assert.equal(parseAssetTransactionSnapshot(json), null, String(bad))
   }
 })
+
+const returnedAsset = {
+  id: "asset-1",
+  updatedAt: new Date("2026-10-31T03:00:00.000Z"),
+  statusId: "status-under-maintenance",
+  conditionId: "condition-damaged",
+  branchId: "branch-1",
+  currentLocationId: "location-1",
+  custodianId: null,
+  departmentId: "department-it",
+}
+
+test("an RT- after snapshot carries the repair record the return opened or joined, copied as { id, repairNo, joined }, and leaves the key out when there is none (group 3 spec §8.7, P2-R5)", () => {
+  const repair = { id: "mt-1", repairNo: "MT-20261031-0001", joined: false }
+  const snapshot = createAssetTransactionSnapshot({ asset: returnedAsset, checkout: { id: "checkout-1", isReturned: true }, components: [], repair })
+  assert.deepEqual(snapshot.repair, repair)
+  assert.deepEqual(parseAssetTransactionSnapshot(serializeAssetTransactionSnapshot(snapshot)), snapshot)
+  const copied = createAssetTransactionSnapshot({ asset: returnedAsset, components: [], repair: { ...repair, joined: true, note: "extra" } as never })
+  assert.deepEqual(copied.repair, { id: "mt-1", repairNo: "MT-20261031-0001", joined: true })
+  for (const none of [undefined, null]) {
+    assert.equal("repair" in createAssetTransactionSnapshot({ asset: returnedAsset, checkout: null, components: [], repair: none }), false, String(none))
+  }
+})
+
+test("a repair link that is not { id, repairNo, joined } makes the snapshot unreadable, so cancel reports it instead of guessing (P2-R5)", () => {
+  const base = createAssetTransactionSnapshot({ asset: returnedAsset, checkout: null, components: [] })
+  for (const repair of [null, {}, { id: "mt-1", repairNo: "MT-20261031-0001" }, { id: "", repairNo: "MT-20261031-0001", joined: true }, { id: "mt-1", repairNo: "MT-20261031-0001", joined: "yes" }]) {
+    assert.equal(parseAssetTransactionSnapshot(JSON.stringify({ ...base, repair })), null, JSON.stringify(repair))
+    assert.throws(() => serializeAssetTransactionSnapshot({ ...base, repair } as never), /Invalid asset transaction snapshot/, JSON.stringify(repair))
+  }
+})

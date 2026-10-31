@@ -9,6 +9,8 @@ type CheckinState = {
   calls: Array<{ call: string; args: Record<string, unknown> }>
   openRecords: number
   openRecordCounts: number[]
+  // The open repair record maintenanceTicket.findFirst answers while openRecords > 0.
+  openRepair: { id: string; repairNo: string }
   // The open handover the transaction reads; a temporary loan in Checked Out unless a test sets another.
   checkout: { handoverMode: string; statusName: string } | null
   // The asset's own fields a test changes (ownershipType, departmentId).
@@ -34,7 +36,7 @@ type CheckinState = {
 }
 const itDepartment: Department = { id: "dept-it", code: "IT", name: "Information Technology", isActive: true }
 const state: CheckinState = {
-  calls: [], openRecords: 0, openRecordCounts: [], checkout: null,
+  calls: [], openRecords: 0, openRecordCounts: [], openRepair: { id: "mt-open", repairNo: "MT-20261001-0003" }, checkout: null,
   assetOverrides: {}, checkinDepartmentSetting: null, departments: [{ ...itDepartment }], departmentAnswers: [], syncChanges: [], audits: [],
   denied: [], employeeId: "emp-1", handover: { checkoutDate: new Date("2026-10-01T03:00:00Z"), remark: null }, inactiveLocationIds: [], locationAnswers: [], closeCount: 1,
 }
@@ -104,6 +106,7 @@ const mockedModuleSources = new Map<string, string>([
             }
             if (name === "assetCheckout" && method === "updateMany") return { count: state().closeCount }
             if (method === "updateMany") return { count: 1 }
+            if (name === "maintenanceTicket" && method === "findFirst") return state().openRecords > 0 ? state().openRepair : null
             if (name === "maintenanceTicket" && method === "count") return state().openRecordCounts.shift() ?? state().openRecords
             if (name === "systemSetting" && method === "findUnique") {
               const value = state().checkinDepartmentSetting
@@ -536,4 +539,57 @@ test("the evidence files are saved once every check has passed, before the trans
   assert.ok(saves[2] < positionsOf("assetCheckout.findFirst")[1], "before the transaction")
   assert.deepEqual(state.calls.filter(({ call }) => call === "attachment.create").map(({ args }) => (args.data as Record<string, unknown>).filePath),
     ["uploads/front.jpg", "uploads/return.png", "uploads/receive.png"])
+})
+
+type CheckinAnswer = { repair?: unknown; beforeSnapshotJson: string; afterSnapshotJson: string }
+async function repairLinks(response: Response) {
+  const answer = (await response.json()) as CheckinAnswer
+  return {
+    answer: answer.repair,
+    after: JSON.parse(answer.afterSnapshotJson) as Record<string, unknown>,
+    before: JSON.parse(answer.beforeSnapshotJson) as Record<string, unknown>,
+  }
+}
+
+test("a ส่งซ่อม return that opens a repair record answers it and keeps it on the RT- after snapshot (group 3 spec §8.7, P2-R5)", async () => {
+  state.calls = []
+  state.openRecords = 0
+  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  const create = state.calls.find(({ call }) => call === "maintenanceTicket.create")?.args as { data: Record<string, unknown>; select: Record<string, unknown> }
+  assert.deepEqual(create.select, { id: true, repairNo: true })
+  const expected = { id: "maintenanceTicket-new", repairNo: create.data.repairNo, joined: false }
+  const { answer, after, before } = await repairLinks(response)
+  assert.deepEqual(answer, expected)
+  assert.deepEqual(after.repair, expected)
+  assert.equal("repair" in before, false, "the before snapshot drives the cancel's restore and never carries it")
+})
+
+test("a ส่งซ่อม return into the open repair record answers that record as joined and creates none (S-R43, P2-R5)", async () => {
+  state.calls = []
+  state.openRecords = 1
+  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  assert.equal(state.calls.some(({ call }) => call === "maintenanceTicket.create"), false)
+  const read = state.calls.filter(({ call }) => call === "maintenanceTicket.findFirst").at(-1)?.args as { where: Record<string, unknown>; select: Record<string, unknown> }
+  assert.deepEqual(read.where, { isActive: true, repairStatus: { notIn: ["closed", "cancelled"] }, assetId: "asset-1" })
+  assert.deepEqual(read.select, { id: true, repairNo: true })
+  const expected = { id: "mt-open", repairNo: "MT-20261001-0003", joined: true }
+  const { answer, after } = await repairLinks(response)
+  assert.deepEqual(answer, expected)
+  assert.deepEqual(after.repair, expected)
+  state.openRecords = 0
+})
+
+test("a return to พร้อมใช้งาน answers repair null and its RT- snapshot has no repair key (P2-R5)", async () => {
+  state.calls = []
+  state.openRecords = 0
+  const response = await route.POST(checkinRequest("status:Ready"), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  const { answer, after } = await repairLinks(response)
+  assert.equal(answer, null)
+  assert.equal("repair" in after, false)
 })

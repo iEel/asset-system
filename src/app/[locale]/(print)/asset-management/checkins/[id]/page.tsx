@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
@@ -9,6 +10,9 @@ import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { hasPermission } from "@/lib/auth-utils"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { TransactionCancelDialog } from "@/components/asset-operations/transaction-cancel-dialog"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ASSET_MOVEMENT_DOCUMENT_PERMISSION } from "@/lib/asset-movement-labels"
+import { buildCheckinDocumentLines, checkinDocumentReadIds, type CheckinDocumentLines } from "@/lib/checkin-document-lines"
 
 type CheckinPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -63,7 +67,7 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
   const beforeSnapshot = parseAssetTransactionSnapshot(checkin.beforeSnapshotJson)
   const afterSnapshot = parseAssetTransactionSnapshot(checkin.afterSnapshotJson)
 
-  const [photoAttachments, returnSignatureAttachment, receiveSignatureAttachment] = await Promise.all([
+  const [photoAttachments, returnSignatureAttachment, receiveSignatureAttachment, lateReturns] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "checkin_photo_after", referenceId: checkin.id },
       select: { id: true },
@@ -79,20 +83,39 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
       select: { id: true },
       orderBy: { uploadedAt: "desc" },
     }),
+    // The late returns of the components this RT- left out (group 3 spec §8.6, P2-R2), one line each under its component.
+    prisma.assetMovement.findMany({
+      where: { referenceType: "checkin", referenceId: checkin.id, movementType: "component_late_return" },
+      orderBy: { performedAt: "asc" },
+      select: { assetId: true, toValue: true },
+    }),
   ])
+  const lineReadIds = checkinDocumentReadIds(afterSnapshot, lateReturns)
 
-  const labels = await buildReferenceLabelMap([
-    checkin.checkout.departmentId,
-    checkin.checkout.locationId,
-    checkin.checkout.parentAssetId,
-    checkin.conditionAfter,
-    checkin.nextStatus,
-    checkin.nextLocationId,
-    beforeSnapshot?.statusId,
-    beforeSnapshot?.currentLocationId,
-    afterSnapshot?.statusId,
-    afterSnapshot?.currentLocationId,
+  const [labels, lineComponents] = await Promise.all([
+    buildReferenceLabelMap([
+      checkin.checkout.departmentId,
+      checkin.checkout.locationId,
+      checkin.checkout.parentAssetId,
+      checkin.conditionAfter,
+      checkin.nextStatus,
+      checkin.nextLocationId,
+      beforeSnapshot?.statusId,
+      beforeSnapshot?.currentLocationId,
+      afterSnapshot?.statusId,
+      afterSnapshot?.currentLocationId,
+      ...lineReadIds.labelIds,
+    ]),
+    prisma.asset.findMany({ where: { id: { in: lineReadIds.componentIds } }, select: { id: true, assetTag: true, name: true } }),
   ])
+  const documentLines = buildCheckinDocumentLines({
+    afterSnapshot,
+    lateReturns,
+    components: new Map(lineComponents.map((component) => [component.id, { assetTag: component.assetTag, name: component.name }])),
+    labels,
+    locale,
+    canViewRepair: hasPermission(user, ASSET_MOVEMENT_DOCUMENT_PERMISSION.repair.module, "view"),
+  })
   const checkoutDestination = getCheckoutDestination(checkin.checkout.checkoutType, {
     custodian: checkin.checkout.custodian ? `${checkin.checkout.custodian.code} - ${checkin.checkout.custodian.fullNameTh}` : null,
     department: labelOrDash(labels, checkin.checkout.departmentId),
@@ -170,12 +193,55 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
           ],
         },
       ]}
+      lines={documentLines.components.length > 0 || documentLines.repair ? renderCheckinDocumentLines(documentLines, t) : null}
       signatures={[
         { title: t("returnBy"), helper: t("signatureDate"), imageSrc: returnSignatureAttachment ? `/api/attachments/${returnSignatureAttachment.id}?inline=1` : null },
         { title: t("receiveBy"), helper: t("signatureDate"), imageSrc: receiveSignatureAttachment ? `/api/attachments/${receiveSignatureAttachment.id}?inline=1` : null },
         { title: t("approver"), helper: t("signatureDate") },
       ]}
     />
+  )
+}
+
+// The RT-'s lines (P2-R5) on the A4 paper; a VOID RT- shows them too, under its void banner.
+function renderCheckinDocumentLines(lines: CheckinDocumentLines, t: Awaited<ReturnType<typeof getTranslations>>) {
+  return (
+    <>
+      {lines.components.length > 0 ? (
+        <section className="break-inside-avoid">
+          <h2 className="mb-2 text-sm font-bold">{t("documentMissingComponents")}</h2>
+          <ul className="border border-border text-sm">
+            {lines.components.map((line, index) => (
+              <li
+                key={`${line.kind}-${line.componentAssetId}-${index}`}
+                data-document-line={line.kind}
+                className={line.kind === "returned" ? "border-b border-border py-2 pl-6 pr-3 last:border-b-0" : "border-b border-border px-3 py-2 last:border-b-0"}
+              >
+                {line.kind === "returned"
+                  ? t("documentComponentReturned", { tag: line.tag, date: line.day, name: line.receivedBy })
+                  : line.holder
+                    ? t("documentMissingComponentHeld", { component: line.component, holder: line.holder, location: line.location })
+                    : t("documentMissingComponentPlace", { component: line.component, location: line.location })}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {lines.repair ? (
+        <section className="break-inside-avoid">
+          <h2 className="mb-2 text-sm font-bold">{t("documentRepair")}</h2>
+          <p data-document-line="repair" className="border border-border px-3 py-2 text-sm">
+            {lines.repair.href ? (
+              <Link href={lines.repair.href} className={linkVariants({ size: "inherit" })}>
+                {t(lines.repair.key, { repairNo: lines.repair.repairNo })}
+              </Link>
+            ) : (
+              t(lines.repair.key, { repairNo: lines.repair.repairNo })
+            )}
+          </p>
+        </section>
+      ) : null}
+    </>
   )
 }
 

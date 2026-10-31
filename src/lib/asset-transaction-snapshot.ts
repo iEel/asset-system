@@ -21,6 +21,9 @@ export type AssetComponentTransactionSnapshotV1 = {
   relationshipReferenceId?: string | null
 }
 
+// The repair record a return opened or joined (group 3 spec §8.7, P2-R5). Only an RT- after snapshot carries it.
+export type CheckinRepairLink = { id: string; repairNo: string; joined: boolean }
+
 export type AssetTransactionSnapshotV1 = {
   version: typeof assetTransactionSnapshotVersion
   assetId: string
@@ -33,6 +36,7 @@ export type AssetTransactionSnapshotV1 = {
   departmentId: string | null
   checkout?: { id: string; isReturned: boolean } | null
   components: AssetComponentTransactionSnapshotV1[]
+  repair?: CheckinRepairLink
 }
 
 export type AssetComponentTransactionSnapshotChangeV1 = {
@@ -118,6 +122,10 @@ function isCheckoutSnapshot(value: unknown): value is { id: string; isReturned: 
   )
 }
 
+function isCheckinRepairLink(value: unknown): value is CheckinRepairLink {
+  return isRecord(value) && isString(value.id) && isString(value.repairNo) && typeof value.joined === "boolean"
+}
+
 function isAssetTransactionSnapshotV1(value: unknown): value is AssetTransactionSnapshotV1 {
   if (!isRecord(value) || value.version !== assetTransactionSnapshotVersion) return false
   if (!Array.isArray(value.components) || value.components.length > maxAssetTransactionSnapshotComponents) return false
@@ -132,7 +140,8 @@ function isAssetTransactionSnapshotV1(value: unknown): value is AssetTransaction
     isNullableString(value.custodianId) &&
     isNullableString(value.departmentId) &&
     isCheckoutSnapshot(value.checkout) &&
-    value.components.every(isComponentSnapshot)
+    value.components.every(isComponentSnapshot) &&
+    (value.repair === undefined || isCheckinRepairLink(value.repair))
   )
 }
 
@@ -206,6 +215,7 @@ export function createAssetTransactionSnapshot(input: {
   asset: AssetTransactionSnapshotAssetInput
   checkout?: { id: string; isReturned: boolean } | null
   components: AssetComponentTransactionSnapshotV1[]
+  repair?: CheckinRepairLink | null
 }): AssetTransactionSnapshotV1 {
   const snapshot: AssetTransactionSnapshotV1 = {
     version: assetTransactionSnapshotVersion,
@@ -219,6 +229,7 @@ export function createAssetTransactionSnapshot(input: {
     departmentId: input.asset.departmentId,
     checkout: input.checkout ?? null,
     components: input.components,
+    ...(input.repair ? { repair: { id: input.repair.id, repairNo: input.repair.repairNo, joined: input.repair.joined } } : {}),
   }
 
   if (!isAssetTransactionSnapshotV1(snapshot)) throw new Error("Invalid asset transaction snapshot input")
