@@ -595,6 +595,12 @@ E2E covers the return with the return department and its history line, the ส�
   - the return date: tomorrow is refused, and so is a day before the handover; a backfilled handover takes an earlier day and reads ข้อมูลเก่า for ถือมา;
   - Settings > Organization: an unknown code is refused under the field.
 - [ ] A เสียหาย / ใช้งานไม่ได้ condition picks ส่งซ่อม, and ซาก picks รอตัดจำหน่าย (P2-R16). พร้อมใช้งาน with a broken condition shows the warning line.
+- [ ] On dev, the return department (final review tests-3): set "แผนกที่รับคืนเข้าคลัง" (Settings > Organization) to a code with no active department, and it is refused under the field. Then, with the setting at `IT`, make the IT department inactive and open รับคืน: the summary's แผนก reads ยังไม่ได้ตั้งค่า and the warning line names the cause; a return and a late return are both refused with "บันทึกรับคืนไม่ได้ เพราะแผนกที่รับคืนเข้าคลังไม่มีในระบบหรือถูกปิดใช้งาน …"; a ข้อมูลเก่า row's confirm is refused first, and no HO- is created. Make IT active again and check that the setting reads `IT` (E2E expects the default).
+- [ ] The asset pages with an outstanding component (plan 2 Task 12), both themes, desktop and phone: the parent's ส่วนควบ tab (components lane) and overview (อุปกรณ์ส่วนควบ) list it first with "ค้างคืน · อยู่กับ <holder> · <RT->"; the component's own page names its parent in the first fact (เป็นส่วนควบของ) with the same line under it, and in its overview and parent lane. The tab count, the lane count and the summary count only fitted components.
+- [ ] For the user to decide: a parent whose components are all outstanding reads "มีส่วนควบทั้งหมด 0 รายการ" (the count means fitted now, X24). Is that the wording wanted?
+- [ ] ประวัติการติดตั้ง / ถอด reads "ส่วนควบค้างคืน" with the RT-, and after the late return "รับคืนส่วนควบค้างคืน"; the ประวัติ tab names the holder and, for the late return, who received it and กลับเข้าเครื่องหลัก or แยกเป็นทรัพย์สินเดี่ยว. A ถอดออก of an outstanding component reads as a removal with no RT- on both tabs.
+- [ ] Print an RT- that has a missing line and a late-return line: both lines are on the paper.
+- [ ] For the user to decide (final review server-5): a หาไม่พบ (Missing) component returned late keeps หาไม่พบ, re-attached or standing alone, until a status correction. Should a found component become พร้อมใช้งาน on its late return?
 - [ ] NVDA and VoiceOver on the checklist, the chips and the summary; an English pass.
 
 ## Sign-Off
