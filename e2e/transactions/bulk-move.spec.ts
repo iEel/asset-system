@@ -6,8 +6,9 @@
 //   its three installed ส่วนควบ, a second one moved alone to the room before, P4-R1), the bar's errors, the review's
 //   lines (only the ส่วนควบ that follows is counted, P4-R3), the page that stays with the result line and the refreshed
 //   list (P4-R18), the links still installed, and the assets read back with their holder, department and branch;
-// - BM2 (desktop): a tick handed over in another tab, named under the table in the row's words and taken out (P4-R4,
-//   P4-R8), the refused row disabled with its reason (P4-R22), the route's named 409 and its cap of 100 (P4-R10);
+// - BM2 (desktop): a tick handed over in another tab, named under the table in the row's words, its row read again on
+//   the same page with the reason while it stays ticked (P4-R9; final review tests-1), then taken out (P4-R4, P4-R8), the
+//   refused row disabled with its reason (P4-R22), the route's named 409 and its cap of 100 (P4-R10);
 // - the phone: only the notice and its link, and nothing fetched (P4-R19).
 // Not driven here (unit tests and the UAT list): paging with the button-mode Pagination and เลือกทั้งหมดในหน้านี้ up to
 // the cap (the run's rooms do not reliably hold more than 25 rows), the category filter, the cross-branch, อยู่ที่ตั้งนี้แล้ว
@@ -233,8 +234,11 @@ test.describe("bulk move: refusals and the phone", () => {
     await expect(review).toBeVisible()
     measure.expectRefusal({ method: "POST", url: /\/api\/assets\/bulk-move$/, status: 409, reason: "handed over in another tab after the tick (group 3 plan 4 Review Focus 3)" })
     const refused = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/bulk-move" && response.request().method() === "POST")
+    // The 409 reads the page on screen again (final review journeys-2, tests-1): the wait is set before the click.
+    const reread = bulkMoveListAnswer(page, { q: asset.assetTag })
     await review.getByRole("button", { name: TX_WORDS.bulkReviewConfirm, exact: true }).click()
     expect((await refused).status()).toBe(409)
+    expect((await reread).status()).toBe(200)
 
     // The review closes and focus goes to the remove button under the table (Z20); the list names it in the row's words.
     await expect(page.getByRole("dialog")).toHaveCount(0)
@@ -242,9 +246,14 @@ test.describe("bulk move: refusals and the phone", () => {
     await expect(page.getByRole("main")).toContainText(templatePattern(TX_WORDS.bulkBlocked, { count: "1" }))
     await expect(page.getByRole("main")).toContainText(asset.assetTag)
     await expect(page.getByRole("main")).toContainText(TX_WORDS.bulkReasonOpenCheckout)
+    // Same page, no fresh visit: the row shows its reason, and its box stays ticked and enabled so it can be unticked (P4-R9).
+    await expect(bulkMoveRow(page, asset.assetTag)).toContainText(TX_WORDS.bulkReasonOpenCheckout)
+    await expect(bulkMoveRowBox(page, asset.assetTag)).toBeChecked()
+    await expect(bulkMoveRowBox(page, asset.assetTag)).toBeEnabled()
     await record(measure, "bulk move, a refused asset named under the table", testInfo)
     await page.getByRole("button", { name: TX_WORDS.bulkRemoveBlocked, exact: true }).click()
     await expect(bulkMoveRowBox(page, asset.assetTag)).not.toBeChecked()
+    await expect(bulkMoveRowBox(page, asset.assetTag), "unticked, the refused row locks with its reason").toBeDisabled()
     await expect(page.getByRole("main")).not.toContainText(templatePattern(TX_WORDS.bulkBlocked, {}))
 
     // A fresh visit: the row is refused, its box disabled with the reason as its description, and its holder shown.

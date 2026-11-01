@@ -424,6 +424,25 @@ test("ย้ายที่ตั้งหลายรายการ: the batch
     'await expect(page.getByRole("link", { name: TX_WORDS.bulkBackToRegister, exact: true })).toHaveAttribute("href", "/th/assets")',
     'expect(asked, "nothing is fetched below md (P4-R19)").toEqual([])',
   ]) assert.ok(spec.includes(part), part)
+  // BM2 reads the refused row's reason on the same page after the 409, before any fresh visit, then takes it out (plan 4
+  // final review tests-1, journeys-2; P4-R9).
+  const bm2 = [
+    "const reread = bulkMoveListAnswer(page, { q: asset.assetTag })",
+    "await review.getByRole(\"button\", { name: TX_WORDS.bulkReviewConfirm, exact: true }).click()",
+    "expect((await reread).status()).toBe(200)",
+    "await expect(bulkMoveRow(page, asset.assetTag)).toContainText(TX_WORDS.bulkReasonOpenCheckout)",
+    "await expect(bulkMoveRowBox(page, asset.assetTag)).toBeChecked()",
+    "await expect(bulkMoveRowBox(page, asset.assetTag)).toBeEnabled()",
+    "await page.getByRole(\"button\", { name: TX_WORDS.bulkRemoveBlocked, exact: true }).click()",
+    "await expect(bulkMoveRowBox(page, asset.assetTag), \"unticked, the refused row locks with its reason\").toBeDisabled()",
+    'await visit(measure, PAGE, "bulk move, after the other tab", testInfo)',
+  ]
+  let at2 = spec.indexOf("BM2: ")
+  for (const step of bm2) {
+    const index = spec.indexOf(step, at2)
+    assert.ok(at2 >= 0 && index >= 0, `BM2 in order: ${step}`)
+    at2 = index + step.length
+  }
   // "ส่วนควบ" is no filter word: RCP and TR4 carry it with the same run id and code (Z9).
   for (const old of ["bulk-move-assets", "pickAsset(", "chosenList", "alreadyChosen", "networkidle", 'waitForURL("**/th/assets")', "${code} ส่วนควบ`"]) assert.ok(!spec.includes(old), old)
   for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "/api/locations", "ldap", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
@@ -438,7 +457,10 @@ test("ย้ายที่ตั้งหลายรายการ: the batch
   const start = support.indexOf("export async function saveBulkMove(")
   const save = support.slice(start, support.indexOf("\nexport ", start + 1))
   const confirm = save.indexOf("TX_WORDS.bulkReviewConfirm")
-  assert.ok(save.indexOf("page.waitForResponse(") < confirm && save.indexOf("bulkMoveListAnswer(page)") < confirm, "the save and the page's fetch after it are waited for from before the click")
+  // Each wait must be there before it is compared, as the searchAssets pin below does (plan 4 final review tests-4).
+  const wait = save.indexOf("page.waitForResponse(")
+  const refresh = save.indexOf("bulkMoveListAnswer(page)")
+  assert.ok(confirm >= 0 && wait >= 0 && refresh >= 0 && wait < confirm && refresh < confirm, "the save and the page's fetch after it are waited for from before the click")
   assert.deepEqual(expectedFailures(spec), [])
 })
 
