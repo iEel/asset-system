@@ -45,3 +45,5 @@ export function createUploadCleanup() {
     },
   }
 }
+
+export type UploadCleanup = ReturnType<typeof createUploadCleanup>

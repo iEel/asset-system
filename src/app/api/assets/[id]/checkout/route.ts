@@ -23,7 +23,7 @@ import { getAssetOperationOwnershipRefusal } from "@/lib/asset-operation-eligibi
 import { getCheckoutNextDepartmentId } from "@/lib/asset-department-rule"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
-import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
+import { assetCheckoutSchema, type AssetCheckoutInput } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
 import {
@@ -38,18 +38,22 @@ import {
   saveOperationEvidenceFile,
   type SavedOperationEvidence,
 } from "@/lib/asset-operation-evidence"
+import { createUploadCleanup, type UploadCleanup } from "@/lib/upload-server"
+import { validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
 type CheckoutContext = {
   params: Promise<{ id: string }>
 }
 
 export async function POST(request: NextRequest, context: CheckoutContext) {
+  // A refused or rolled-back handover removes the files it saved (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     requirePermission(user, "asset", "edit")
 
     const { id } = await context.params
-    const { input, photoBefore, receiverSignature } = await parseCheckoutRequest(request)
+    const { input, evidence } = await parseCheckoutRequest(request)
     const asset = await prisma.asset.findFirst({
       where: { id, isActive: true },
       include: { status: { select: { name: true, nameTh: true } }, condition: { select: { name: true } } },
@@ -94,6 +98,8 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const nextLocationId = input.locationId ?? asset.currentLocationId
     const nextCustodianId = input.checkoutType === "user" ? input.custodianId : asset.custodianId
 
+    // The files are saved only after every check has passed, as the return does (P2-R15, group 3 follow-up C).
+    const [photoBefore, receiverSignature] = await saveCheckoutEvidence([evidence.photoBefore, evidence.receiverSignature], uploads)
     const { record: checkout, componentSync, departmentId, previousDepartmentId, conditionId, previousConditionId } = await prisma.$transaction(async (tx) => {
       await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
       await assertNoOutstandingComponentLinks(tx, [id])
@@ -286,6 +292,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         previousConditionId: beforeAsset.conditionId,
       }
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -314,6 +321,8 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       }
     }
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }
 
@@ -401,23 +410,30 @@ function conditionBlockedResponse(block: CheckoutConditionBlock) {
   )
 }
 
-async function parseCheckoutRequest(request: NextRequest) {
+type CheckoutEvidenceFiles = {
+  photoBefore: File | null
+  receiverSignature: File | null
+}
+
+// Reads and validates the request; saves nothing. A file is still checked here, before the schema, so a refused file
+// answers first as before; it is written once the handover's checks have passed (group 3 follow-up C).
+async function parseCheckoutRequest(request: NextRequest): Promise<{ input: AssetCheckoutInput; evidence: CheckoutEvidenceFiles }> {
   const contentType = request.headers.get("content-type") ?? ""
   if (!contentType.includes("multipart/form-data")) {
     return {
       input: assetCheckoutSchema.parse(await request.json()),
-      photoBefore: null,
-      receiverSignature: null,
+      evidence: { photoBefore: null, receiverSignature: null },
     }
   }
 
   const formData = await request.formData()
   const photoBeforeFile = optionalFormFile(formData, "photoBefore")
   const receiverSignatureFile = optionalFormFile(formData, "receiverSignatureFile")
-  const [photoBefore, receiverSignature] = await Promise.all([
-    photoBeforeFile ? saveOperationEvidenceFile(photoBeforeFile, "checkout") : Promise.resolve(null),
-    receiverSignatureFile ? saveOperationEvidenceFile(receiverSignatureFile, "checkout") : Promise.resolve(null),
-  ])
+  await Promise.all([photoBeforeFile, receiverSignatureFile].map(async (file) => {
+    if (!file) return
+    validateUploadFile(file)
+    await validateUploadFileContent(file)
+  }))
 
   return {
     input: assetCheckoutSchema.parse({
@@ -432,7 +448,18 @@ async function parseCheckoutRequest(request: NextRequest) {
       remark: optionalFormText(formData, "remark"),
       receiverSignature: optionalFormText(formData, "receiverSignature"),
     }),
-    photoBefore: photoBefore as SavedOperationEvidence | null,
-    receiverSignature: receiverSignature as SavedOperationEvidence | null,
+    evidence: { photoBefore: photoBeforeFile, receiverSignature: receiverSignatureFile },
   }
+}
+
+// Every save that finished is tracked before the first failure is thrown, so a sibling's failed save does not leave the
+// other file behind (group 3 follow-up C).
+async function saveCheckoutEvidence(files: ReadonlyArray<File | null>, uploads: UploadCleanup): Promise<Array<SavedOperationEvidence | null>> {
+  const settled = await Promise.allSettled(files.map((file) => file ? saveOperationEvidenceFile(file, "checkout") : Promise.resolve(null)))
+  for (const result of settled) {
+    if (result.status === "fulfilled" && result.value) uploads.track(result.value.filePath)
+  }
+  const failed = settled.find((result) => result.status === "rejected")
+  if (failed) throw failed.reason
+  return settled.map((result) => (result.status === "fulfilled" ? result.value : null))
 }
