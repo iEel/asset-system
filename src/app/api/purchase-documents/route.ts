@@ -6,6 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { optionalFormFile, optionalFormText, requiredFormText } from "@/lib/asset-operation-evidence"
 import { purchaseDocumentSchema } from "@/lib/validations/purchase-document"
 import { savePurchaseDocumentFile } from "@/lib/purchase-documents"
+import { createUploadCleanup } from "@/lib/upload-server"
 
 export const runtime = "nodejs"
 
@@ -43,6 +44,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     requirePermission(user, "asset", "edit")
@@ -68,6 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const savedFile = parsed.file ? await savePurchaseDocumentFile(parsed.file) : null
+    if (savedFile) uploads.track(savedFile.filePath)
     const document = await prisma.$transaction(async (tx) => {
       const record = await tx.purchaseDocument.create({
         data: {
@@ -99,6 +103,7 @@ export async function POST(request: NextRequest) {
 
       return record
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -111,6 +116,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(document, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }
 

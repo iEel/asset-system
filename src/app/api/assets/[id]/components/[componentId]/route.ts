@@ -7,18 +7,22 @@ import { optionalFormFile, optionalFormText, saveComponentEvidenceFile } from "@
 import { assetComponentRemoveSchema } from "@/lib/validations/asset-operations"
 import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
 import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
+import { createUploadCleanup } from "@/lib/upload-server"
 
 type ComponentRouteContext = {
   params: Promise<{ id: string; componentId: string }>
 }
 
 export async function DELETE(request: NextRequest, context: ComponentRouteContext) {
+  // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     requirePermission(user, "asset", "edit")
 
     const { id: parentAssetId, componentId } = await context.params
     const { input, removeEvidence } = await parseRemoveRequest(request)
+    if (removeEvidence) uploads.track(removeEvidence.filePath)
     const existing = await prisma.assetComponent.findFirst({
       // ถอดออก also ends an outstanding link (group 3 spec §8.5).
       where: { id: componentId, parentAssetId, ...installedOrOutstandingLinkWhere },
@@ -107,6 +111,7 @@ export async function DELETE(request: NextRequest, context: ComponentRouteContex
 
       return record
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -121,6 +126,8 @@ export async function DELETE(request: NextRequest, context: ComponentRouteContex
   } catch (error) {
     if (error instanceof AssetOperationConflictError) return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }
 

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db"
 import { hasPermission, requireAuth } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { scanWrittenUploadFile } from "@/lib/upload-server"
+import { createUploadCleanup, scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
 export const runtime = "nodejs"
@@ -14,6 +14,8 @@ export const runtime = "nodejs"
 type DisposalBatchAttachmentContext = { params: Promise<{ id: string }> }
 
 export async function POST(request: NextRequest, context: DisposalBatchAttachmentContext) {
+  // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     if (!hasPermission(user, "disposal", "create") && !hasPermission(user, "disposal", "edit") && !hasPermission(user, "disposal", "approve")) {
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest, context: DisposalBatchAttachmen
     const bytes = Buffer.from(await file.arrayBuffer())
 
     await mkdir(uploadDir, { recursive: true })
+    uploads.track(filePath)
     await writeFile(filePath, bytes)
     await scanWrittenUploadFile(filePath)
 
@@ -53,6 +56,7 @@ export async function POST(request: NextRequest, context: DisposalBatchAttachmen
         uploadedBy: user.id,
       },
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -65,5 +69,7 @@ export async function POST(request: NextRequest, context: DisposalBatchAttachmen
     return NextResponse.json(attachment, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }

@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
 import { auditMarkNotFoundSchema, type AuditMarkNotFoundInput } from "@/lib/validations/audit"
-import { scanWrittenUploadFile } from "@/lib/upload-server"
+import { createUploadCleanup, scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
 export const runtime = "nodejs"
@@ -31,6 +31,8 @@ type PreparedEvidenceUpload = {
 }
 
 export async function POST(request: NextRequest, context: MarkNotFoundContext) {
+  // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     requirePermission(user, "audit", "edit")
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest, context: MarkNotFoundContext) {
     })
     const findingId = existingFinding?.id ?? randomUUID()
     const evidenceUpload = evidenceFile ? await prepareAuditFindingEvidenceUpload(evidenceFile) : null
+    if (evidenceUpload) uploads.track(evidenceUpload.filePath)
 
     const { updatedItem, evidenceAttachmentId } = await prisma.$transaction(async (tx) => {
       const updatedItem = await tx.auditItem.update({
@@ -119,6 +122,7 @@ export async function POST(request: NextRequest, context: MarkNotFoundContext) {
 
       return { updatedItem, evidenceAttachmentId: evidenceAttachment?.id ?? null }
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -142,6 +146,8 @@ export async function POST(request: NextRequest, context: MarkNotFoundContext) {
     return NextResponse.json({ ...updatedItem, findingId, evidenceAttachmentId })
   } catch (error) {
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }
 

@@ -34,6 +34,7 @@ import {
   saveOperationEvidenceFile,
   type SavedOperationEvidence,
 } from "@/lib/asset-operation-evidence"
+import { createUploadCleanup, type UploadCleanup } from "@/lib/upload-server"
 
 type CheckinContext = {
   params: Promise<{ id: string }>
@@ -45,6 +46,8 @@ type EvidenceWithLabel = {
 }
 
 export async function POST(request: NextRequest, context: CheckinContext) {
+  // A refused or rolled-back return removes the files it saved (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     requirePermission(user, "asset", "edit")
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     await readMissingComponentPlan(prisma, id, input, checkout.custodianId)
 
     // The files are saved only after every cheap check has passed (P2-R15).
-    const { photosAfter, returnSignature, receiveSignature } = await saveCheckinEvidence(evidence)
+    const { photosAfter, returnSignature, receiveSignature } = await saveCheckinEvidence(evidence, uploads)
     const { record: checkin, componentSync, departmentId, previousDepartmentId, missingComponents, repair } = await prisma.$transaction(async (tx) => {
       const activeCheckout = await tx.assetCheckout.findFirst({
         where: {
@@ -401,6 +404,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         repair,
       }
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -425,6 +429,8 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       return NextResponse.json({ code: error.message, error: error.message }, { status: 409 })
     }
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }
 
@@ -680,17 +686,27 @@ async function readCheckinRequest(request: NextRequest): Promise<{ input: AssetC
   }
 }
 
-async function saveCheckinEvidence(evidence: CheckinEvidenceFiles): Promise<{
+// Every save that finished is tracked before the first failure is thrown, so a sibling's failed save does not leave the
+// other files behind (group 3 follow-up C).
+async function saveCheckinEvidence(evidence: CheckinEvidenceFiles, uploads: UploadCleanup): Promise<{
   photosAfter: EvidenceWithLabel[]
   returnSignature: SavedOperationEvidence | null
   receiveSignature: SavedOperationEvidence | null
 }> {
-  const [photosAfter, returnSignature, receiveSignature] = await Promise.all([
-    Promise.all(evidence.photos.map(async (photo) => ({ file: await saveOperationEvidenceFile(photo.file, "checkin"), label: photo.label }))),
-    evidence.returnSignature ? saveOperationEvidenceFile(evidence.returnSignature, "checkin") : Promise.resolve(null),
-    evidence.receiveSignature ? saveOperationEvidenceFile(evidence.receiveSignature, "checkin") : Promise.resolve(null),
-  ])
-  return { photosAfter, returnSignature, receiveSignature }
+  const files = [...evidence.photos.map((photo) => photo.file), evidence.returnSignature, evidence.receiveSignature]
+  const settled = await Promise.allSettled(files.map((file) => file ? saveOperationEvidenceFile(file, "checkin") : Promise.resolve(null)))
+  for (const result of settled) {
+    if (result.status === "fulfilled" && result.value) uploads.track(result.value.filePath)
+  }
+  const failed = settled.find((result) => result.status === "rejected")
+  if (failed) throw failed.reason
+  const saved = settled.map((result) => (result.status === "fulfilled" ? result.value : null))
+  const photoCount = evidence.photos.length
+  return {
+    photosAfter: evidence.photos.map((photo, index) => ({ file: saved[index] as SavedOperationEvidence, label: photo.label })),
+    returnSignature: saved[photoCount],
+    receiveSignature: saved[photoCount + 1],
+  }
 }
 
 function optionalFormFiles(formData: FormData, name: string) {

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { scanWrittenUploadFile } from "@/lib/upload-server"
+import { createUploadCleanup, scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
 export const runtime = "nodejs"
@@ -16,6 +16,8 @@ type AuditFindingAttachmentContext = {
 }
 
 export async function POST(request: NextRequest, context: AuditFindingAttachmentContext) {
+  // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     requirePermission(user, "audit", "edit")
@@ -47,6 +49,7 @@ export async function POST(request: NextRequest, context: AuditFindingAttachment
     const bytes = Buffer.from(await file.arrayBuffer())
 
     await mkdir(uploadDir, { recursive: true })
+    uploads.track(filePath)
     await writeFile(filePath, bytes)
     await scanWrittenUploadFile(filePath)
 
@@ -63,6 +66,7 @@ export async function POST(request: NextRequest, context: AuditFindingAttachment
         uploadedBy: user.id,
       },
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -79,5 +83,7 @@ export async function POST(request: NextRequest, context: AuditFindingAttachment
     return NextResponse.json(attachment, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }

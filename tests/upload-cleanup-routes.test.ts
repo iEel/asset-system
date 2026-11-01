@@ -247,3 +247,61 @@ test("a handover whose one save fails discards the file its sibling saved", asyn
   assert.equal(response.status, 400)
   assert.deepEqual(world.discards, ["uploads/checkout/signature.png"])
 })
+
+test("a return whose transaction throws discards every file it saved", async () => {
+  world.mode = "checkin"
+  world.assetStatusName = "Checked Out"
+  world.failTransaction = true
+  const response = await checkinRoute.POST(checkinRequest(), context)
+  assert.equal(response.status, 400)
+  assert.deepEqual(world.saves, ["after.png", "return.png", "receive.png"])
+  assert.deepEqual(world.discards.sort(), ["uploads/checkin/after.png", "uploads/checkin/receive.png", "uploads/checkin/return.png"])
+})
+
+test("a return whose one save fails discards the files its siblings saved", async () => {
+  world.mode = "checkin"
+  world.assetStatusName = "Checked Out"
+  world.failingSaves = ["return.png"]
+  const response = await checkinRoute.POST(checkinRequest(), context)
+  assert.equal(response.status, 400)
+  assert.deepEqual(world.discards.sort(), ["uploads/checkin/after.png", "uploads/checkin/receive.png"])
+})
+
+test("a committed return answers 201 and discards nothing", async () => {
+  world.mode = "checkin"
+  world.assetStatusName = "Checked Out"
+  const response = await checkinRoute.POST(checkinRequest(), context)
+  assert.equal(response.status, 201, await response.clone().text())
+  assert.deepEqual(world.attachmentPaths, ["uploads/checkin/after.png", "uploads/checkin/return.png", "uploads/checkin/receive.png"])
+  assert.deepEqual(world.discards, [])
+})
+
+// Each other evidence route creates the tracker, tracks the file it writes, commits on the line after its transaction (or
+// its one attachment row) resolves, before logAudit, and discards in a finally.
+test("every other evidence route tracks its file, commits right after its save and discards in a finally", () => {
+  const routes: Array<[string, string]> = [
+    ["src/app/api/assets/[id]/components/route.ts", "await prisma.$transaction("],
+    ["src/app/api/assets/[id]/components/[componentId]/route.ts", "await prisma.$transaction("],
+    ["src/app/api/audit-items/[id]/mark-not-found/route.ts", "await prisma.$transaction("],
+    ["src/app/api/purchase-documents/route.ts", "await prisma.$transaction("],
+    ["src/app/api/assets/[id]/attachments/route.ts", "await prisma.attachment.create("],
+    ["src/app/api/maintenance-tickets/[id]/attachments/route.ts", "await prisma.attachment.create("],
+    ["src/app/api/disposal-requests/[id]/attachments/route.ts", "await prisma.attachment.create("],
+    ["src/app/api/disposal-batches/[id]/attachments/route.ts", "await prisma.attachment.create("],
+    ["src/app/api/audit-findings/[id]/attachments/route.ts", "await prisma.attachment.create("],
+    ["src/app/api/models/[id]/attachments/route.ts", "await prisma.attachment.create("],
+  ]
+  for (const [file, save] of routes) {
+    const source = readFileSync(file, "utf8").replace(/\r\n/g, "\n")
+    assert.match(source, /\n {2}const uploads = createUploadCleanup\(\)\n {2}try \{\n/, `${file}: the tracker is created before the try`)
+    const track = source.indexOf("uploads.track(")
+    const saveAt = source.indexOf(save)
+    const commit = source.indexOf("uploads.commit()")
+    const audit = source.indexOf("await logAudit(", saveAt)
+    assert.ok(track > 0 && track < saveAt, `${file}: the file is tracked before the save`)
+    assert.ok(commit > saveAt && commit < audit, `${file}: the commit is after the save and before logAudit`)
+    assert.equal(source.indexOf("uploads.commit()", commit + 1), -1, `${file}: one commit`)
+    assert.match(source.slice(saveAt, audit), /\n {4}\}\)\n {4}uploads\.commit\(\)\n\n {4}$/,`${file}: the commit is on the line after the save resolves`)
+    assert.match(source, /\n {2}\} finally \{\n {4}await uploads\.discardIfUncommitted\(\)\n {2}\}\n\}/, `${file}: the files are discarded in a finally`)
+  }
+})

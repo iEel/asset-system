@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { buildMaintenanceAttachmentName, normalizeMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { canAttachToRepairRecord, isOpenRepairStatus } from "@/lib/repair-record-policy"
-import { scanWrittenUploadFile } from "@/lib/upload-server"
+import { createUploadCleanup, scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
 export const runtime = "nodejs"
@@ -18,6 +18,8 @@ type MaintenanceAttachmentContext = {
 }
 
 export async function POST(request: NextRequest, context: MaintenanceAttachmentContext) {
+  // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     const canEdit = hasPermission(user, "maintenance", "edit")
@@ -55,6 +57,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
     const bytes = Buffer.from(await file.arrayBuffer())
 
     await mkdir(uploadDir, { recursive: true })
+    uploads.track(filePath)
     await writeFile(filePath, bytes)
     await scanWrittenUploadFile(filePath)
 
@@ -71,6 +74,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
         uploadedBy: user.id,
       },
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -89,5 +93,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
     return NextResponse.json(attachment, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }

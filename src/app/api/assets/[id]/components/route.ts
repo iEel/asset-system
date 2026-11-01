@@ -6,18 +6,22 @@ import { errorResponse } from "@/lib/api-response"
 import { assertCanInstallComponent } from "@/lib/asset-components"
 import { optionalFormFile, optionalFormText, saveComponentEvidenceFile } from "@/lib/asset-component-evidence"
 import { assetComponentInstallSchema } from "@/lib/validations/asset-operations"
+import { createUploadCleanup } from "@/lib/upload-server"
 
 type ComponentRouteContext = {
   params: Promise<{ id: string }>
 }
 
 export async function POST(request: NextRequest, context: ComponentRouteContext) {
+  // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
+  const uploads = createUploadCleanup()
   try {
     const user = await requireAuth()
     requirePermission(user, "asset", "edit")
 
     const { id: parentAssetId } = await context.params
     const { input, installEvidence } = await parseInstallRequest(request)
+    if (installEvidence) uploads.track(installEvidence.filePath)
     await assertCanInstallComponent(parentAssetId, input.componentAssetId, input.slotNo)
 
     const component = await prisma.$transaction(async (tx) => {
@@ -91,6 +95,7 @@ export async function POST(request: NextRequest, context: ComponentRouteContext)
 
       return record
     })
+    uploads.commit()
 
     await logAudit({
       userId: user.id,
@@ -103,6 +108,8 @@ export async function POST(request: NextRequest, context: ComponentRouteContext)
     return NextResponse.json(component, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  } finally {
+    await uploads.discardIfUncommitted()
   }
 }
 
