@@ -2159,7 +2159,8 @@
     "desktopOnlyTitle": "หน้านี้ใช้บนคอมพิวเตอร์",
     "desktopOnlyBody": "ย้ายที่ตั้งหลายรายการต้องเลือกจากตาราง เปิดหน้านี้บนคอมพิวเตอร์",
     "backToRegister": "ไปที่ทะเบียนทรัพย์สิน",
-    "blockedNotActive": "ถูกปิดใช้งานหรือลบแล้ว"
+    "blockedNotActive": "ถูกปิดใช้งานหรือลบแล้ว",
+    "clearSearch": "ล้างคำค้น"
   },
   "auditRound": {
     "title": "รอบตรวจนับ",

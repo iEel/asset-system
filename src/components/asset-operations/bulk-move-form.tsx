@@ -195,6 +195,13 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
     setQuery((current) => ({ ...current, ...patch, page: 1 }))
   }
 
+  // The search box's ×: the words and the query clear at once, without the 300 ms wait, back to page 1; the focus stays in the box.
+  function clearSearch() {
+    setSearchText("")
+    setQuery((current) => (current.q === "" ? current : { ...current, q: "", page: 1 }))
+    document.getElementById("bulk-move-search")?.focus()
+  }
+
   function setField(field: "toLocationId" | "reason" | "remark", value: string) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field in FIELD_IDS) fieldErrors.clear(field as BulkMoveField)
@@ -314,7 +321,7 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
         <div role="search" aria-label={t("searchLabel")} data-bulk-move-filters className="grid min-w-0 gap-3">
           <div className="grid min-w-0 gap-3 md:grid-cols-3">
             <Field label={t("searchLabel")} id="bulk-move-search">
-              <SearchField value={searchText} placeholder={t("searchPlaceholder")} loading={listLoading} onChange={(event) => setSearchText(event.target.value)} maxLength={assetOperationSearchMaxChars} />
+              <SearchField value={searchText} placeholder={t("searchPlaceholder")} loading={listLoading} onChange={(event) => setSearchText(event.target.value)} maxLength={assetOperationSearchMaxChars} onClear={clearSearch} clearLabel={t("clearSearch")} />
             </Field>
             <SearchableSelect id="bulk-move-filter-location" label={t("filterLocation")} value={query.locationId ?? ""} options={rooms} placeholder={t("filterAll")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => changeFilter({ locationId: value || null })} />
             <FilterSelect id="bulk-move-filter-category" label={t("filterCategory")} allLabel={t("filterAll")} options={categories.map((category) => ({ value: category.id, label: category.label }))} value={query.categoryId ?? ""} onChange={(event) => changeFilter({ categoryId: event.target.value || null })} />

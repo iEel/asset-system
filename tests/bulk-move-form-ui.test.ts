@@ -28,6 +28,10 @@ test("ย้ายที่ตั้งหลายรายการ: the filte
   const filters = form.slice(start, form.indexOf("<form onSubmit={handleSubmit} noValidate"))
   assert.match(filters, /^<div role="search" aria-label=\{t\("searchLabel"\)\} data-bulk-move-filters /)
   assert.match(filters, /<Field label=\{t\("searchLabel"\)\} id="bulk-move-search">\n\s+<SearchField value=\{searchText\} [^\n]*maxLength=\{assetOperationSearchMaxChars\}/)
+  // Its × clears the words and the query at once, back to page 1, with no 300 ms wait, and keeps the focus in the box (plan 4 leftover).
+  assert.match(filters, /<SearchField value=\{searchText\} [^\n]*onClear=\{clearSearch\} clearLabel=\{t\("clearSearch"\)\}/)
+  const clear = form.slice(form.indexOf("function clearSearch()"), form.indexOf("function clearSearch()") + 400)
+  assert.match(clear, /^function clearSearch\(\) \{\n\s+setSearchText\(""\)\n\s+setQuery\(\(current\) => \(current\.q === "" \? current : \{ \.\.\.current, q: "", page: 1 \}\)\)\n\s+document\.getElementById\("bulk-move-search"\)\?\.focus\(\)\n\s+\}/)
   const room = filters.match(/<SearchableSelect id="bulk-move-filter-location" [^\n]*/)?.[0] ?? ""
   assert.match(room, /label=\{t\("filterLocation"\)\} value=\{query\.locationId \?\? ""\} options=\{rooms\} placeholder=\{t\("filterAll"\)\}/)
   assert.doesNotMatch(room, /\brequired\b/, "not required, so its × clears to ทั้งหมด")
@@ -170,12 +174,13 @@ test("ย้ายที่ตั้งหลายรายการ: the page'
     reviewKept: "ผู้ถือครองและแผนกคงเดิม", resultMoved: "ย้ายแล้ว {count} รายการไป {room}", resultComponents: "ส่วนควบย้ายตาม {count} ชิ้น",
     resultUnchanged: "อยู่ที่ตั้งนี้แล้ว {count} รายการ", blockedAssets: "ย้ายไม่ได้ {count} รายการ: {list}", removeBlocked: "นำรายการที่ย้ายไม่ได้ออก",
     desktopOnlyTitle: "หน้านี้ใช้บนคอมพิวเตอร์", desktopOnlyBody: "ย้ายที่ตั้งหลายรายการต้องเลือกจากตาราง เปิดหน้านี้บนคอมพิวเตอร์",
-    backToRegister: "ไปที่ทะเบียนทรัพย์สิน",
+    backToRegister: "ไปที่ทะเบียนทรัพย์สิน", clearSearch: "ล้างคำค้น",
   }
   for (const [key, value] of Object.entries(words)) {
     assert.equal(th.bulkMove[key], value, `th.bulkMove.${key}`)
     assert.ok(en.bulkMove[key], `en.bulkMove.${key}`)
   }
+  assert.equal(en.bulkMove.clearSearch, "Clear search")
   for (const key of ["title", "selectLocation", "remark"]) assert.ok(th.bulkMove[key] && en.bulkMove[key], `${key} is kept`)
   for (const key of ["assets", "selectAssets", "success"]) for (const messages of [th, en]) assert.equal(messages.bulkMove[key], undefined, `bulkMove.${key} has no reader and is removed`)
 })
