@@ -254,7 +254,7 @@ test("R7 neutral fills are opaque tokens, table headers included", () => {
 
 // R2: panels and cards are flat. A shadow belongs only to floating layers (shadow-overlay, not matched here),
 // controls drawn over the camera image or a photo, paper previews, the round scan button, and the register's phone
-// bulk-action bar until phase 3.
+// bulk-action bar (group 4 spec §6.5: from md the flat DesktopSelectionBar takes its place, the phone keeps it floating).
 const SURFACE_SHADOW = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*shadow-(?:sm|md|lg|xl|2xl)(?![\w-])/g
 const SURFACE_SHADOW_EXEMPT: ExemptList = {
   "src/components/ui/scanner-text-input.tsx": { count: 2, kind: "permanent", why: "the zoom group and the torch button float over the live camera image", ruling: "2A §9.8 #6, 2D §5.3" },
@@ -263,7 +263,7 @@ const SURFACE_SHADOW_EXEMPT: ExemptList = {
   "src/components/asset-operations/operation-document-print.tsx": { count: 1, kind: "permanent", why: "the A4 page preview stands for the paper", ruling: "2A §9.8 #6, 2D-4 R17" },
   "src/components/admin/system-settings-form.tsx": { count: 1, kind: "permanent", why: "the label sample of the label settings stands for the paper", ruling: "2A §9.8 #6, 2D §5.3" },
   "src/components/layout/mobile-field-navigation.tsx": { count: 1, kind: "permanent", why: "the round scan button lifts out of the bottom bar", ruling: "phase 1 §15 #6, 2A §9.8 #9" },
-  "src/components/assets/asset-register-table.tsx": { count: 1, kind: "phase 3", why: "the phone bulk-action bar floats over the list, with its frame and place", ruling: "2D D2, 2B R-q" },
+  "src/components/assets/asset-register-table.tsx": { count: 1, kind: "permanent", why: "the phone bulk-action bar floats over the list above the bottom navigation (md:hidden; from md the flat DesktopSelectionBar)", ruling: "group 4 spec §6.5" },
 }
 
 test("R2 only floating layers, camera controls and paper previews cast a shadow", () => {
@@ -460,9 +460,9 @@ test("phase 3: every row the visual guards leave to phase 3, and their sum (spec
   const rows = phase3Rows(EXEMPT_LISTS)
   assert.deepEqual(
     rows.map(({ rule, file, count }) => `${rule} ${file}: ${count}`),
-    ["R2 src/components/assets/asset-register-table.tsx: 1", "N3 src/components/layout/global-search.tsx: 1"],
+    ["N3 src/components/layout/global-search.tsx: 1"],
   )
-  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 2)
+  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 1)
   // Every EXEMPT list this file declares is in EXEMPT_LISTS once, so the phase 3 rows of a later rule are summed here too.
   const source = read("tests/visual-foundation-guards.test.ts")
   const declared = [...source.matchAll(/^const (\w+): ExemptList = /gm)].map((match) => match[1])

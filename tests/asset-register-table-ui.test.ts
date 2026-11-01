@@ -266,11 +266,47 @@ test("leaving select mode clears the selection and the bulk bar floats above the
   assert.match(source, /function toggleSelectMode\(\) \{\s*if \(selectMode\) clearSelection\(\)\s*setSelectMode\(!selectMode\)/)
   assert.match(source, /aria-pressed=\{selectMode\}/)
   assert.match(source, /data-asset-bulk-bar/)
-  assert.match(source, /fixed inset-x-3 bottom-\[calc\(5\.25rem\+env\(safe-area-inset-bottom\)\)\][^"]*md:static/)
+  // Group 4 plan 1 Task 5 (spec §6.5): the floating bar is the phone's alone; from md the sticky DesktopSelectionBar.
+  assert.match(source, /data-asset-bulk-bar\n\s+className="fixed inset-x-3 bottom-\[calc\(5\.25rem\+env\(safe-area-inset-bottom\)\)\] z-30 flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-lg md:hidden"/)
+  assert.doesNotMatch(source, /md:static|md:bg-primary-soft|md:shadow-none/)
   assert.match(source, /reserveBulkBarSpace=\{selectedAssets\.length > 0\}/)
   assert.doesNotMatch(source, /AssetRegisterTransactionMenu|AssetRegisterMoreMenu|AssetDeleteButton|<details/)
   // Group 4 plan 1 Task 2 (spec §6.1): the desktop name now wraps to two lines (line-clamp-2), so that pin moved out.
   assert.doesNotMatch(source, /next\/image|\?inline=1/)
+})
+
+// Group 4 plan 1 Task 5 (spec §6.5): from md the selection is the shared sticky bar, after the panel (the panel clips,
+// so a bar inside it would not stick): the count on this page, ล้างรายการที่เลือก, "อื่น ๆ" and the primary พิมพ์ป้าย.
+test("the desktop selection bar: the count on this page, ล้าง, อื่น ๆ and พิมพ์ป้าย <N> รายการ last (group 4 §6.5)", () => {
+  const source = table()
+  const bar = source.slice(source.indexOf("<DesktopSelectionBar"), source.indexOf("printLabelsCount") + 120)
+
+  assert.match(source, /import \{ DesktopSelectionBar \} from "@\/components\/ui\/desktop-selection-bar"/)
+  assert.match(source, /import \{ DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger \} from "@\/components\/ui\/dropdown-menu"/)
+  assert.match(source, /\{selectedAssets\.length > 0 \? \(\n\s+<div data-asset-selection-bar className="contents">\n\s+<DesktopSelectionBar\n\s+label=\{labels\.bulkActions\}\n\s+countLabel=\{t\("selectedOnPage", \{ count: formatCount\(selectedAssets\.length\) \}\)\}\n\s+clearLabel=\{labels\.clearSelection\}\n\s+onClear=\{clearSelection\}/)
+  assert.ok(source.indexOf("data-asset-selection-bar") > source.indexOf("</DataTableFoot>"), "the bar follows the table and its pager")
+  assert.ok(source.indexOf("data-asset-selection-bar") > source.lastIndexOf("</AccessibleDialog>"), "outside the clipping panel")
+  assert.match(source, /^  return \(\n    <>\n/m, "the panel and the bar are siblings")
+  assert.match(bar, /<DropdownMenu modal=\{false\}>\n\s+<DropdownMenuTrigger asChild>\n\s+<Button ref=\{moreTriggerRef\} variant="outline" size="md">\n\s+\{t\("moreActions"\)\}\n\s+<ChevronDown aria-hidden="true" \/>/)
+  assert.match(bar, /\{permissions\.canEdit \? \(\n\s+<DropdownMenuItem onSelect=\{\(\) => \{\n\s+openingDialogRef\.current = true\n\s+openBulkUpdate\(moreTriggerRef\.current\)\n\s+\}\}>\n\s+<Edit aria-hidden="true" \/>\n\s+\{labels\.bulkUpdate\}/)
+  assert.match(bar, /<DropdownMenuItem onSelect=\{exportSelected\}>\n\s+<Download aria-hidden="true" \/>\n\s+\{labels\.exportSelected\}/)
+  assert.ok(bar.indexOf("labels.bulkUpdate") < bar.indexOf("labels.exportSelected"), "อัปเดต first, then ส่งออก")
+  assert.match(bar, /<\/DropdownMenu>\n\s+<Button size="md" onClick=\{printSelectedLabels\}>\n\s+<Printer aria-hidden="true" \/>\n\s+\{t\("printLabelsCount", \{ count: formatCount\(selectedAssets\.length\) \}\)\}/)
+  // Focus goes back to "อื่น ๆ" when the dialog opened from the menu closes; the menu does not take it first.
+  assert.match(source, /returnFocusRef=\{bulkReturnFocusRef\}/)
+  assert.match(source, /function openBulkUpdate\(opener: HTMLElement \| null = null\) \{\n\s+bulkReturnFocusRef\.current = opener/)
+  assert.match(bar, /onCloseAutoFocus=\{\(event\) => \{\n\s+if \(!openingDialogRef\.current\) return\n\s+openingDialogRef\.current = false\n\s+event\.preventDefault\(\)/)
+  // The phone bar keeps its buttons, the bulk update among them.
+  const phone = source.slice(source.indexOf("data-asset-bulk-bar"), source.indexOf("data-asset-selection-bar"))
+  for (const handler of ["printSelectedLabels", "() => openBulkUpdate()", "exportSelected", "clearSelection"]) assert.ok(phone.includes(`onClick={${handler}}`), handler)
+
+  assert.equal(messages("th").selectedOnPage, "{count} รายการที่เลือกในหน้านี้")
+  assert.equal(messages("th").moreActions, "อื่น ๆ")
+  assert.equal(messages("th").printLabelsCount, "พิมพ์ป้าย {count} รายการ")
+  for (const key of ["selectedOnPage", "moreActions", "printLabelsCount"]) {
+    assert.equal(typeof messages("en")[key], "string", key)
+    assert.doesNotMatch(messages("en")[key], /plural/, key)
+  }
 })
 
 test("select mode copy exists in Thai and English", () => {
@@ -293,10 +329,12 @@ test("mobile rows keep the tag line on one line and the summary bar adds no vert
   assert.match(source, /data-asset-register-summary className="[^"]*py-0 md:py-2/)
 })
 
-test("the floating bulk bar hides its heading on phones and the list reserves at least its height", () => {
+test("the floating bulk bar has no heading on phones and the list reserves at least its height", () => {
   const source = table()
 
-  assert.match(source, /<div className="hidden text-sm font-semibold text-foreground md:block">\{labels\.bulkActions\}<\/div>/)
+  // Group 4 plan 1 Task 5: the bar is md:hidden now, so its md-only heading went; the desktop bar's group label names it.
+  assert.doesNotMatch(source, /md:block">\{labels\.bulkActions\}/)
+  assert.match(source, /data-asset-bulk-bar\n[^\n]*\n\s+>\n\s+<div className="text-sm text-muted-foreground">\n\s+\{formatCount\(selectedAssets\.length\)\} \{labels\.selectedCount\}/)
   assert.match(mobileList(), /reserveBulkBarSpace && "pb-44"/)
 })
 

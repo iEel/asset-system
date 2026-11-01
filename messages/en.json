@@ -1362,7 +1362,10 @@
     "importFromExcel": "Import from Excel",
     "columnSetLabel": "Column set: {preset}",
     "columnSetCustom": "Custom",
-    "searchPlaceholderFields": "Search tag · name · serial · custodian · location"
+    "searchPlaceholderFields": "Search tag · name · serial · custodian · location",
+    "selectedOnPage": "{count} selected on this page",
+    "moreActions": "More",
+    "printLabelsCount": "Print labels ({count})"
   },
   "company": {
     "title": "Companies",

@@ -228,7 +228,8 @@ test("asset register bulk update: one of the two changes and the reason are erro
   assert.ok(source.includes('<Field label={labels.reason} id="asset-bulk-reason" required error={bulkErrors.message("reason")}>'))
   // The two changes are one rule and clear together; each opening starts without errors (spec §4.3).
   assert.match(source, /if \(field === "toLocationId" \|\| field === "toCustodianId"\) bulkErrors\.clear\("toLocationId", "toCustodianId"\)/)
-  assert.match(source, /function openBulkUpdate\(\) \{\n\s+bulkErrors\.setErrors\(\{\}\)/)
+  // Group 4 plan 1 Task 5: the opener comes first, so focus can go back to the desktop bar's "อื่น ๆ".
+  assert.match(source, /function openBulkUpdate\(opener: HTMLElement \| null = null\) \{\n\s+bulkReturnFocusRef\.current = opener\n\s+bulkErrors\.setErrors\(\{\}\)/)
   assert.match(source, /if \(bulkErrors\.applyServer\(payload\) && focusBulkError\(\)\) return\n\s+throw new Error\(payload\?\.error \?\? labels\.bulkUpdateFailed\)/)
 })
 

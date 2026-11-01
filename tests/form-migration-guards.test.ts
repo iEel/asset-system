@@ -166,7 +166,7 @@ const CLOSE_LABEL_IS_CANCEL: ExemptList = {}
 
 // GL1 class strings with both fixed and bottom-. No owner: each of the two shared bars is an exact row (spec 2D §5.3).
 const FIXED_BOTTOM_BARS: ExemptList = {
-  [`${C}assets/asset-register-table.tsx`]: { count: 1, kind: "phase 3", why: "the register's phone bulk-action bar", ruling: "2D D2, 2B R-q" },
+  [`${C}assets/asset-register-table.tsx`]: { count: 1, kind: "permanent", why: "the register's phone bulk-action bar (md:hidden; from md the sticky DesktopSelectionBar)", ruling: "group 4 spec §6.5" },
   [`${C}layout/mobile-field-navigation.tsx`]: { count: 1, kind: "permanent", why: "the phone bottom navigation", ruling: "2D §5.3" },
   [`${C}ui/action-bar.tsx`]: { count: 1, kind: "permanent", why: "the phone ActionBar of the four detail pages", ruling: "2C K23" },
 }
@@ -513,7 +513,6 @@ test("phase 3: every row the form guards leave to phase 3, and their sum (spec 2
     "GF2 src/components/layout/global-search.tsx: 1",
     "GF3 src/components/layout/global-search.tsx: 1",
     "GB1 src/components/layout/global-search.tsx: 2",
-    "GL1 src/components/assets/asset-register-table.tsx: 1",
   ])
-  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 5)
+  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), 4)
 })

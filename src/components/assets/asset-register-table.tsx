@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Download, Edit, MoveHorizontal, Printer, X } from "lucide-react"
+import { ChevronDown, Download, Edit, MoveHorizontal, Printer, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button"
 import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { DataTableBody, DataTableFoot, DataTableHead, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { DesktopSelectionBar } from "@/components/ui/desktop-selection-bar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Nil } from "@/components/ui/nil"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -256,6 +258,10 @@ export function AssetRegisterTable({
   const visibleColumnCount = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)).length
   const visibleColumnList = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column))
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  // The desktop bar's "อื่น ๆ": the bulk update dialog gives focus back to it, and the menu does not take it first.
+  const moreTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const bulkReturnFocusRef = useRef<HTMLElement | null>(null)
+  const openingDialogRef = useRef(false)
   const [isOverflowing, setIsOverflowing] = useState(false)
 
   // The hint line shows only while the table really overflows (DESIGN.md, asset register). The pinned actions column
@@ -411,7 +417,8 @@ export function AssetRegisterTable({
     setSelectMode(!selectMode)
   }
 
-  function openBulkUpdate() {
+  function openBulkUpdate(opener: HTMLElement | null = null) {
+    bulkReturnFocusRef.current = opener
     bulkErrors.setErrors({})
     setBulkUpdateOpen(true)
   }
@@ -518,7 +525,8 @@ export function AssetRegisterTable({
   }
 
   return (
-    // The frame carries aria-busy, so it cannot be ContentPanel: it takes the panel classes (spec 2D D9, 2D-2 R4).
+    <>
+    {/* The frame carries aria-busy, so it cannot be ContentPanel: it takes the panel classes (spec 2D D9, 2D-2 R4). */}
     <div aria-busy={isPending} className={cn(getPanelClasses(), "overflow-hidden")}>
       <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 md:px-4 py-0 md:py-2">
         <p className="text-meta text-muted-foreground num">{rangeLabel}</p>
@@ -535,21 +543,18 @@ export function AssetRegisterTable({
       {selectedAssets.length > 0 ? (
         <div
           data-asset-bulk-bar
-          className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-lg md:static md:z-auto md:rounded-none md:border-0 md:border-b md:bg-primary-soft md:px-4 md:py-3 md:shadow-none lg:flex-row lg:items-center lg:justify-between"
+          className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-lg md:hidden"
         >
-          <div>
-            <div className="hidden text-sm font-semibold text-foreground md:block">{labels.bulkActions}</div>
-            <div className="text-sm text-muted-foreground md:mt-0.5">
-              {formatCount(selectedAssets.length)} {labels.selectedCount}
-            </div>
+          <div className="text-sm text-muted-foreground">
+            {formatCount(selectedAssets.length)} {labels.selectedCount}
           </div>
-          {/* The bar keeps its place and its frame until phase 3 (spec 2B R-q); its buttons are the shared Button (§7.8.7). */}
+          {/* The phone's bar floats above the bottom navigation (group 4 spec §6.5); from md the DesktopSelectionBar below. */}
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Button size="md" onClick={printSelectedLabels} className="w-full sm:w-auto">
               <Printer aria-hidden="true" />
               {labels.printSelectedLabels}
             </Button>
-            <Button variant="outline" size="md" onClick={openBulkUpdate} className="w-full sm:w-auto">
+            <Button variant="outline" size="md" onClick={() => openBulkUpdate()} className="w-full sm:w-auto">
               <Edit aria-hidden="true" />
               {labels.bulkUpdate}
             </Button>
@@ -778,6 +783,7 @@ export function AssetRegisterTable({
 
       <AccessibleDialog
         open={bulkUpdateOpen}
+        returnFocusRef={bulkReturnFocusRef}
         title={labels.bulkUpdateTitle}
         description={`${labels.bulkUpdateDescription} (${formatCount(selectedAssets.length)} ${labels.selectedCount})`}
         busy={bulkSaving}
@@ -838,6 +844,57 @@ export function AssetRegisterTable({
         </form>
       </AccessibleDialog>
     </div>
+    {/* From md, the shared sticky bar (group 4 spec §6.5). It is the panel's sibling, because the panel clips (overflow-hidden)
+        and a bar inside it would not stick; the contents wrapper only carries the E2E hook and leaves the bar's box to the page column. */}
+    {selectedAssets.length > 0 ? (
+      <div data-asset-selection-bar className="contents">
+        <DesktopSelectionBar
+          label={labels.bulkActions}
+          countLabel={t("selectedOnPage", { count: formatCount(selectedAssets.length) })}
+          clearLabel={labels.clearSelection}
+          onClear={clearSelection}
+          actions={
+            <>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button ref={moreTriggerRef} variant="outline" size="md">
+                    {t("moreActions")}
+                    <ChevronDown aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  onCloseAutoFocus={(event) => {
+                    if (!openingDialogRef.current) return
+                    openingDialogRef.current = false
+                    event.preventDefault()
+                  }}
+                >
+                  {permissions.canEdit ? (
+                    <DropdownMenuItem onSelect={() => {
+                      openingDialogRef.current = true
+                      openBulkUpdate(moreTriggerRef.current)
+                    }}>
+                      <Edit aria-hidden="true" />
+                      {labels.bulkUpdate}
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem onSelect={exportSelected}>
+                    <Download aria-hidden="true" />
+                    {labels.exportSelected}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button size="md" onClick={printSelectedLabels}>
+                <Printer aria-hidden="true" />
+                {t("printLabelsCount", { count: formatCount(selectedAssets.length) })}
+              </Button>
+            </>
+          }
+        />
+      </div>
+    ) : null}
+    </>
   )
 }
 

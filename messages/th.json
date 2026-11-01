@@ -1362,7 +1362,10 @@
     "importFromExcel": "นำเข้าจาก Excel",
     "columnSetLabel": "ชุดคอลัมน์: {preset}",
     "columnSetCustom": "กำหนดเอง",
-    "searchPlaceholderFields": "ค้นหา รหัส · ชื่อ · Serial · ผู้ถือครอง · ที่ตั้ง"
+    "searchPlaceholderFields": "ค้นหา รหัส · ชื่อ · Serial · ผู้ถือครอง · ที่ตั้ง",
+    "selectedOnPage": "{count} รายการที่เลือกในหน้านี้",
+    "moreActions": "อื่น ๆ",
+    "printLabelsCount": "พิมพ์ป้าย {count} รายการ"
   },
   "company": {
     "title": "บริษัท",
