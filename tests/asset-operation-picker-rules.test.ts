@@ -63,13 +63,11 @@ test("the count line: the true total, and 'type more' when the server cut it at 
   assert.deepEqual(getAssetOperationCountLine({ total: 134, rows: Array.from({ length: 20 }, (_, i) => row({ id: `a${i}` })) }), { count: 134, shown: 20, more: true })
 })
 
-test("a row: takeable, chosen already, or not takeable with its reason key; chosen wins (spec 6.1)", () => {
-  const none = new Set<string>()
-  assert.deepEqual(getAssetOperationRowView(row(), none), { selectable: true, note: null })
-  assert.deepEqual(getAssetOperationRowView(row(), new Set(["a1"])), { selectable: false, note: { kind: "chosen" } })
-  assert.deepEqual(getAssetOperationRowView(row({ eligible: false, reasonKey: "asset.transactionReasonStatusNotReady" }), none), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonStatusNotReady" } })
-  assert.deepEqual(getAssetOperationRowView(row({ eligible: false, reasonKey: "asset.transactionReasonOpenCheckoutHandover" }), new Set(["a1"])), { selectable: false, note: { kind: "chosen" } })
-  assert.deepEqual(getAssetOperationRowView(row({ eligible: false, reasonKey: null }), none), { selectable: false, note: null })
+test("a row: takeable, or not takeable with its reason key; there are no chosen ids (spec 6.1; group 3 spec §10.1; P4-R24)", () => {
+  assert.deepEqual(getAssetOperationRowView(row()), { selectable: true, note: null })
+  assert.deepEqual(getAssetOperationRowView(row({ eligible: false, reasonKey: "asset.transactionReasonStatusNotReady" })), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonStatusNotReady" } })
+  assert.deepEqual(getAssetOperationRowView(row({ eligible: false, reasonKey: null })), { selectable: false, note: null })
+  assert.equal(getAssetOperationRowView.length, 2, "the row and pickBlocked")
 })
 
 test("the second line: the handover document on รับคืน, ข้อมูลเก่า for a legacy row, else status and place (spec 6.1, 6.3), an outstanding component reads its parent and its RT- (group 3 spec §8.6, P2-R17)", () => {
@@ -119,15 +117,13 @@ test("keys: the first row is active only when it can be taken; the arrows skip w
   assert.equal(moveAssetOperationActive([], -1, 1), -1)
 })
 
-test("pickBlocked: a refused row it accepts can be picked and keeps its reason; chosen still wins (group 3 spec §19.3, A1-R1)", () => {
-  const none = new Set<string>()
+test("pickBlocked: a refused row it accepts can be picked and keeps its reason (group 3 spec §19.3, A1-R1; §10.1, P4-R24)", () => {
   const damaged = row({ eligible: false, reasonKey: "asset.transactionReasonConditionDamaged" })
   const condition = (candidate: Pick<AssetOperationSearchRow, "reasonKey">) => candidate.reasonKey === "asset.transactionReasonConditionDamaged"
-  assert.deepEqual(getAssetOperationRowView(damaged, none, condition), { selectable: true, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
-  assert.deepEqual(getAssetOperationRowView(damaged, none, () => false), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
-  assert.deepEqual(getAssetOperationRowView(damaged, none), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
-  assert.deepEqual(getAssetOperationRowView(damaged, new Set(["a1"]), condition), { selectable: false, note: { kind: "chosen" } })
-  assert.deepEqual(getAssetOperationRowView(row(), none, () => true), { selectable: true, note: null }, "a takeable row is unchanged")
+  assert.deepEqual(getAssetOperationRowView(damaged, condition), { selectable: true, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
+  assert.deepEqual(getAssetOperationRowView(damaged, () => false), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
+  assert.deepEqual(getAssetOperationRowView(damaged), { selectable: false, note: { kind: "reason", key: "asset.transactionReasonConditionDamaged" } })
+  assert.deepEqual(getAssetOperationRowView(row(), () => true), { selectable: true, note: null }, "a takeable row is unchanged")
 })
 
 test("รับคืน's row badge: the handover's number, ข้อมูลเก่า or ส่วนควบค้างคืน; T4's line below it is not the badge's (group 3 spec §8.2, §8.6, P2-R17)", () => {

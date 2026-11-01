@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useRef, useState } from "react"
-import { Search, X } from "lucide-react"
+import { Search } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { Button } from "@/components/ui/button"
@@ -36,7 +36,7 @@ import { formatCount } from "@/lib/display-format"
 import { splitSearchHighlightWords } from "@/lib/search-highlight"
 import { cn, formatDate } from "@/lib/utils"
 
-type AssetOperationPickerBaseProps = {
+export type AssetOperationPickerProps = {
   /** Names the root, so a save's focusFirst reaches the search field (or "เปลี่ยน"). */
   id: string
   label: string
@@ -50,25 +50,18 @@ type AssetOperationPickerBaseProps = {
   initialQuery?: string
   /** One asset: replaces the chosen box's text (ส่งมอบ's asset card, group 3 spec §7.1); data-asset-picked and เปลี่ยน stay. */
   pickedBody?: (row: AssetOperationSearchRow) => React.ReactNode
+  value: AssetOperationSearchRow | null
+  onChange: (row: AssetOperationSearchRow | null) => void
+  /** A refused row this accepts can still be picked, so its reason reads under the field (group 3 spec §19.3, A1-R1). */
+  pickBlocked?: (row: AssetOperationSearchRow) => boolean
 }
 
-export type AssetOperationPickerProps =
-  | (AssetOperationPickerBaseProps & {
-      multiple?: false
-      value: AssetOperationSearchRow | null
-      onChange: (row: AssetOperationSearchRow | null) => void
-      /** A refused row this accepts can still be picked, so its reason reads under the field (group 3 spec §19.3, A1-R1). */
-      pickBlocked?: (row: AssetOperationSearchRow) => boolean
-    })
-  | (AssetOperationPickerBaseProps & { multiple: true; values: AssetOperationSearchRow[]; onChange: (rows: AssetOperationSearchRow[]) => void; pickBlocked?: never })
-
 const noRows: AssetOperationSearchRow[] = []
-const noIds: ReadonlySet<string> = new Set()
 
 // The asset field of the transaction pages (server search spec 6.1). It asks the bounded server search and never holds
 // a list of the register. The list sits inline under the field and closes through the root's onBlur.
 export function AssetOperationPicker(props: AssetOperationPickerProps) {
-  const { id, label, mode, context, hint, error, required, initialQuery, pickedBody } = props
+  const { id, label, mode, context, hint, error, required, initialQuery, pickedBody, value, onChange, pickBlocked } = props
   const t = useTranslations("assetOperation")
   const tCommon = useTranslations("common")
   const tAll = useTranslations()
@@ -82,7 +75,6 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   const [result, setResult] = useState<AssetOperationPickerResult | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [announcement, setAnnouncement] = useState("")
   const searchRef = useRef<HTMLInputElement>(null)
   const changeRef = useRef<HTMLButtonElement>(null)
   const focusRequest = useRef<"search" | "change" | null>(null)
@@ -90,19 +82,15 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   // Set by the arrow keys only, so a hover never scrolls the list (final review I-1).
   const keyboardMove = useRef(false)
 
-  const value = props.multiple ? null : props.value
-  const values = props.multiple ? props.values : noRows
-  const showSearch = props.multiple || !value
+  const showSearch = !value
 
   const requestUrl = buildAssetOperationSearchUrl({ mode, q: query, context })
   const state = getAssetOperationPickerState({ query, requestKey: requestUrl, result })
   const answer: AssetOperationSearchAnswer | null = state === "results" && result ? result.answer : null
   const sections = answer ? buildAssetOperationSections(answer) : []
   const flatRows = sections.flatMap((section) => section.rows)
-  const chosenIds = props.multiple ? new Set(values.map((row) => row.id)) : noIds
-  const pickBlocked = props.multiple ? undefined : props.pickBlocked
   // Whether a row can be taken, for the pointer, the arrows, Enter and the row's look alike (A1-R1).
-  const rowView = (row: AssetOperationSearchRow) => getAssetOperationRowView(row, chosenIds, pickBlocked && (() => pickBlocked(row)))
+  const rowView = (row: AssetOperationSearchRow) => getAssetOperationRowView(row, pickBlocked && (() => pickBlocked(row)))
   const selectableRows = flatRows.map((row) => ({ id: row.id, selectable: rowView(row).selectable }))
   const activeIndex = resolveAssetOperationActive(selectableRows, activeId)
   const listOpen = open && state === "results"
@@ -116,8 +104,8 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   const describedBy = [errorId, hintId].filter(Boolean).join(" ")
   const stateText =
     state === "loading" ? t("searching") : state === "empty" ? t("notFound") : state === "error" ? t("failed") : countText
-  // A pick's count is read even while the list stays open on ย้ายที่ตั้งหลายรายการ (S-R44); typing clears it.
-  const liveText = announcement || (open && state !== "hint" ? stateText : "")
+  // The polite region reads the state and the count while the list is open (spec 6.1).
+  const liveText = open && state !== "hint" ? stateText : ""
 
   // An answer is kept under the URL it answers, so an older one never shows for a newer text (Review Focus 3).
   useEffect(() => {
@@ -146,7 +134,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
     focusRequest.current = null
     if (request === "change") changeRef.current?.focus()
     else searchRef.current?.focus()
-  }, [value, values])
+  }, [value])
 
   // aria-activedescendant keeps focus in the input, so the browser never scrolls the list: bring the row the arrows reach
   // into view (final review I-1).
@@ -164,45 +152,22 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
 
   function pick(row: AssetOperationSearchRow) {
     if (!rowView(row).selectable) return
-    // Many: the text and the list stay, so several rows of one answer can be picked; the active row moves on to the
-    // next one that can still be taken (S-R44).
-    if (props.multiple) {
-      props.onChange([...values, row])
-      const picked = flatRows.indexOf(row)
-      const next = moveAssetOperationActive(
-        selectableRows.map((option) => (option.id === row.id ? { ...option, selectable: false } : option)),
-        picked,
-        1,
-      )
-      setActiveId(next >= 0 ? flatRows[next].id : null)
-      setAnnouncement(t("selectedTitle", { count: values.length + 1 }))
-      return
-    }
-    props.onChange(row)
+    onChange(row)
     setOpen(false)
     focusRequest.current = "change"
   }
 
   function change() {
-    if (props.multiple) return
-    props.onChange(null)
+    onChange(null)
     setQuery("")
     setActiveId(null)
     focusRequest.current = "search"
-  }
-
-  function remove(row: AssetOperationSearchRow) {
-    if (!props.multiple) return
-    props.onChange(values.filter((item) => item.id !== row.id))
-    setAnnouncement(t("selectedTitle", { count: values.length - 1 }))
-    searchRef.current?.focus()
   }
 
   function handleQueryChange(next: string) {
     setQuery(next)
     setOpen(true)
     setActiveId(null)
-    setAnnouncement("")
     focusRequest.current = null
   }
 
@@ -275,8 +240,8 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
             <RowDetail row={row} />
           </span>
           {note ? (
-            <span data-asset-option-reason className={cn("text-meta", note.kind === "chosen" ? "text-muted-foreground" : "text-warning")}>
-              {note.kind === "chosen" ? t("chosen") : tAll(note.key)}
+            <span data-asset-option-reason className="text-meta text-warning">
+              {tAll(note.key)}
             </span>
           ) : null}
         </span>
@@ -398,25 +363,6 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
               </p>
             </>
           )}
-        </div>
-      ) : null}
-      {props.multiple && values.length > 0 ? (
-        <div className="mt-1.5 grid min-w-0 gap-1.5">
-          <p className="text-sm font-medium text-foreground">{t("selectedTitle", { count: values.length })}</p>
-          <ul className="max-h-56 divide-y divide-border-soft overflow-y-auto rounded-md border border-border bg-surface">
-            {values.map((row) => (
-              <li key={row.id} data-asset-picked={row.id} className="flex min-h-11 min-w-0 items-center justify-between gap-2 px-3 py-2 text-sm">
-                <span className="min-w-0 break-words">
-                  <span className="tag font-medium">{row.assetTag}</span>
-                  {" · "}
-                  {row.name}
-                </span>
-                <Button variant="outline" size="icon-sm" onClick={() => remove(row)} aria-label={t("removeNamed", { tag: row.assetTag })}>
-                  <X aria-hidden="true" />
-                </Button>
-              </li>
-            ))}
-          </ul>
         </div>
       ) : null}
       <span className="sr-only" aria-live="polite">{liveText}</span>

@@ -7,17 +7,19 @@ import test from "node:test"
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const PART = "src/components/ui/asset-operation-picker.tsx"
 
-test("AssetOperationPicker: a client part, one pick or many; the field's id names its root and the search field is <id>-search", () => {
+test("AssetOperationPicker: a client part that takes one asset per field; the field's id names its root and the search field is <id>-search (group 3 spec §10.1; P4-R24)", () => {
   const source = read(PART)
   assert.match(source, /^"use client"\n/)
   assert.match(source, /^export function AssetOperationPicker\(props: AssetOperationPickerProps\) \{$/m)
   for (const part of [
-    "multiple?: false", "value: AssetOperationSearchRow | null", "onChange: (row: AssetOperationSearchRow | null) => void",
-    "multiple: true", "values: AssetOperationSearchRow[]", "onChange: (rows: AssetOperationSearchRow[]) => void",
+    "value: AssetOperationSearchRow | null", "onChange: (row: AssetOperationSearchRow | null) => void",
+    "pickBlocked?: (row: AssetOperationSearchRow) => boolean",
     "context?: AssetOperationPickerContext", "initialQuery?: string",
     "const searchId = `${id}-search`", "const listboxId = `${id}-listbox`", "const labelId = `${id}-label`",
     "const errorId = shownError ? `${id}-error` : undefined", "<FieldError id={errorId}>{shownError}</FieldError>",
   ]) assert.ok(source.includes(part), part)
+  assert.match(source, /^export type AssetOperationPickerProps = \{$/m, "one shape, no union")
+  assert.doesNotMatch(source, /\bmultiple\b|\bvalues\b|chosenIds|noIds|selectedTitle|removeNamed|t\("chosen"\)|announcement|S-R44|function remove\(/)
   assert.match(source, /<div\s+id=\{id\}\s+data-slot="asset-operation-picker"\s+data-invalid=\{shownError \? true : undefined\}\s+className="grid min-w-0 max-w-full content-start gap-1\.5"/)
   // A chosen asset that cannot be taken (the ?assetId= arrival, spec 6.4) shows its reason as the field's error.
   assert.match(source, /const shownError = error \?\? \(chosenBlockedReason \? tAll\(chosenBlockedReason\) : null\)/)
@@ -36,7 +38,7 @@ test("asks the server once the text settles; an older answer never shows for a n
   assert.doesNotMatch(source, /\bthrow\b/)
 })
 
-test("the combobox Task 8 drives: the list, the active row, rows that cannot be taken, the chosen rows, a polite live region (spec 6.1)", () => {
+test("the combobox Task 8 drives: the list, the active row, rows that cannot be taken, the chosen asset, a polite live region (spec 6.1)", () => {
   const source = read(PART)
   for (const part of [
     'role="combobox"', 'aria-autocomplete="list"', "aria-controls={listboxId}", "aria-expanded={listOpen}", 'autoComplete="off"',
@@ -55,11 +57,9 @@ test("the combobox Task 8 drives: the list, the active row, rows that cannot be 
     "const words = splitAssetOperationSearchWords(query)", "<WordsHighlight value={row.assetTag} words={words} />",
     "<WordsHighlight value={row.name} words={words} />", "<WordsHighlight value={section.group.label} words={words} />",
   ]) assert.ok(source.includes(part), part)
-  // S-R44: a pick keeps the list open, so its count is read over the list's line.
-  assert.match(source, /const liveText = announcement \|\| \(open && state !== "hint" \? stateText : ""\)/)
+  // The polite region reads the state and the count while the list is open; a pick closes it and focus names the asset.
+  assert.match(source, /const liveText = open && state !== "hint" \? stateText : ""/)
   assert.ok(source.includes('aria-live="polite">{liveText}</span>'), "the region reads nothing while the list is closed")
-  assert.ok(source.includes('setAnnouncement(t("selectedTitle", { count: values.length - 1 }))'), "a remove reads the new count")
-  assert.ok(source.includes('setAnnouncement("")'), "typing clears the old count")
 })
 
 test("keys: the arrows skip what cannot be taken, Enter picks and never submits the form, Escape closes (spec 6.1)", () => {
@@ -67,8 +67,8 @@ test("keys: the arrows skip what cannot be taken, Enter picks and never submits 
   assert.match(source, /const activeIndex = resolveAssetOperationActive\(selectableRows, activeId\)/)
   assert.match(source, /moveAssetOperationActive\(selectableRows, activeIndex, event\.key === "ArrowDown" \? 1 : -1\)/)
   // One view per row for the pointer, the arrows, Enter and the look, so a pickBlocked row is reachable by keyboard (A1-R1).
-  assert.match(source, /const rowView = \(row: AssetOperationSearchRow\) => getAssetOperationRowView\(row, chosenIds, pickBlocked && \(\(\) => pickBlocked\(row\)\)\)/)
-  assert.match(source, /const pickBlocked = props\.multiple \? undefined : props\.pickBlocked/)
+  assert.match(source, /const rowView = \(row: AssetOperationSearchRow\) => getAssetOperationRowView\(row, pickBlocked && \(\(\) => pickBlocked\(row\)\)\)/)
+  assert.match(source, /const \{ id, label, mode, context, hint, error, required, initialQuery, pickedBody, value, onChange, pickBlocked \} = props/)
   assert.match(source, /const selectableRows = flatRows\.map\(\(row\) => \(\{ id: row\.id, selectable: rowView\(row\)\.selectable \}\)\)/)
   assert.ok(source.includes("if (!rowView(row).selectable) return"), "pick takes what the row shows as takeable")
   assert.ok(source.includes("const view = rowView(row)"), "the row's look reads the same view")
@@ -83,7 +83,7 @@ test("every word comes from messages: the states, the count, reasons through the
     't("searching")', 't("notFound")', 't("failed")', 'tCommon("tryAgain")', 'tCommon("searchSelectPlaceholder")',
     'tCommon("searchSelectResultCount", { count: formatCount(countLine.count) })',
     't("resultCountMore", { count: formatCount(countLine.count), shown: formatCount(countLine.shown) })',
-    't("chosen")', 't("noHolderGroup")', 't("legacyLineAt", { location: detail.locationLabel })', 't("selectedTitle", { count: values.length })', 't("change")',
+    't("noHolderGroup")', 't("legacyLineAt", { location: detail.locationLabel })', 't("change")',
     't(mode === "checkin" ? "hintCheckin" : "hint")', "tAll(note.key)",
     't("outstandingLine", { parentTag: detail.parentTag })',
   ]) assert.ok(source.includes(part), part)
@@ -91,21 +91,16 @@ test("every word comes from messages: the states, the count, reasons through the
   assert.match(source, /t\("groupCount", \{ count: section\.group\.count \}\)/)
 })
 
-test("S-R44: a pick on ย้ายที่ตั้งหลายรายการ keeps the text and the list, and the active row moves to the next one that can be taken; a single pick is unchanged", () => {
+test("one pick: the field takes the row, the list closes and focus goes to เปลี่ยน; เปลี่ยน empties the field and focuses the search (group 3 spec §10.1; P4-R24)", () => {
   const source = read(PART)
-  const start = source.indexOf("  function pick(row: AssetOperationSearchRow) {")
-  const pick = source.slice(start, source.indexOf("\n  }\n", start))
-  const multiple = pick.slice(pick.indexOf("if (props.multiple) {"), pick.indexOf("      return\n"))
-  assert.ok(start > 0 && multiple.length > 0)
-  assert.doesNotMatch(multiple, /setQuery\(/, "the search text stays")
-  assert.doesNotMatch(multiple, /setOpen\(/, "the list stays open")
-  assert.ok(multiple.includes("props.onChange([...values, row])"))
-  assert.match(multiple, /const picked = flatRows\.indexOf\(row\)/)
-  assert.match(multiple, /const next = moveAssetOperationActive\(\s*selectableRows\.map\(\(option\) => \(option\.id === row\.id \? \{ \.\.\.option, selectable: false \} : option\)\),\s*picked,\s*1,?\s*\)/)
-  assert.match(multiple, /setActiveId\(next >= 0 \? flatRows\[next\]\.id : null\)/)
-  assert.ok(multiple.includes('setAnnouncement(t("selectedTitle", { count: values.length + 1 }))'))
-  // The single pick: the field takes the row, the list closes, focus goes to เปลี่ยน.
-  assert.match(pick, /props\.onChange\(row\)\n\s+setOpen\(false\)\n\s+focusRequest\.current = "change"/)
+  const body = (head: string) => {
+    const start = source.indexOf(head)
+    assert.ok(start > 0, head)
+    return source.slice(start, source.indexOf("\n  }\n", start))
+  }
+  assert.match(body("  function pick(row: AssetOperationSearchRow) {"), /\{\n\s+if \(!rowView\(row\)\.selectable\) return\n\s+onChange\(row\)\n\s+setOpen\(false\)\n\s+focusRequest\.current = "change"$/)
+  assert.match(body("  function change() {"), /\{\n\s+onChange\(null\)\n\s+setQuery\(""\)\n\s+setActiveId\(null\)\n\s+focusRequest\.current = "search"$/)
+  assert.match(source, /else searchRef\.current\?\.focus\(\)\n\s+\}, \[value\]\)/, "focus moves once the page has taken the pick or the change")
 })
 
 test("final review I-1: a keyboard move scrolls the active row into view through the listbox ref, never through document; a hover does not", () => {
@@ -122,11 +117,11 @@ test("final review I-1: a keyboard move scrolls the active row into view through
   assert.doesNotMatch(source.replace(/window\.(?:setTimeout|clearTimeout)\(/g, ""), /\bwindow\./)
 })
 
-test("final review M-1, M-11, M-6: the counts are grouped, เลือกแล้ว is muted while a reason stays a warning, the search text is capped", () => {
+test("final review M-1, M-6: the counts are grouped, a reason under a row reads as a warning, the search text is capped (M-11's muted เลือกแล้ว went with the multiple mode, group 3 spec §10.1; P4-R24)", () => {
   const source = read(PART)
   assert.ok(source.includes('import { formatCount } from "@/lib/display-format"'))
-  assert.ok(source.includes('className={cn("text-meta", note.kind === "chosen" ? "text-muted-foreground" : "text-warning")}'))
-  assert.doesNotMatch(source, /data-asset-option-reason className="text-meta text-warning"/)
+  assert.ok(source.includes('<span data-asset-option-reason className="text-meta text-warning">'))
+  assert.doesNotMatch(source, /note\.kind === "chosen"|text-muted-foreground" : "text-warning"/)
   assert.ok(source.includes("maxLength={assetOperationSearchMaxChars}"))
   assert.match(source, /import \{[^}]*\bassetOperationSearchMaxChars\b[^}]*\} from "@\/lib\/asset-operation-search-rules"/)
 })
@@ -148,11 +143,8 @@ test("the picker's words, Thai and English (glossary: ผู้ถือคร�
     notFound: ["ไม่พบทรัพย์สินที่ตรงกับคำค้น", "No asset matches this search"],
     failed: ["ค้นหาไม่สำเร็จ", "The search failed"],
     resultCountMore: ["พบ {count} รายการ แสดง {shown} รายการแรก พิมพ์เพิ่มเพื่อให้แคบลง", "{count} found, showing the first {shown}. Type more to narrow the list"],
-    selectedTitle: ["ที่เลือกแล้ว {count} รายการ", "Chosen: {count}"],
-    chosen: ["เลือกแล้ว", "Chosen"],
     change: ["เปลี่ยน", "Change"],
     changeNamed: ["เปลี่ยน{label} {tag}", "Change {label} {tag}"],
-    removeNamed: ["นำ {tag} ออก", "Remove {tag}"],
     noHolderGroup: ["ไม่มีผู้ถือครอง", "No holder"],
     groupCount: ["ถืออยู่ {count} ชิ้น", "Holds {count}"],
     handoverLine: ["ใบส่งมอบ {documentNo} · ส่งมอบ {date}", "Handover {documentNo} · {date}"],
@@ -170,7 +162,7 @@ test("the picker's words, Thai and English (glossary: ผู้ถือคร�
   assert.equal(th.common.tryAgain, "ลองอีกครั้ง")
 })
 
-test("DESIGN.md and docs/14 describe AssetOperationPicker, and the guards know it as a shared part with its own label", () => {
+test("DESIGN.md and docs/14 describe AssetOperationPicker, and the guards know it as a shared part with its own label (group 3 spec §10.1; P4-R24)", () => {
   const design = read("DESIGN.md")
   const start = design.indexOf("- **`AssetOperationPicker`**")
   const block = design.slice(start, design.indexOf("- **Migration:** phase 2C batch 1"))
@@ -181,10 +173,13 @@ test("DESIGN.md and docs/14 describe AssetOperationPicker, and the guards know i
     "no fill and no opacity", "`aria-disabled`", "never shown as not found", "Enter picks and never submits the form",
     "`<id>-search`", "Never inside `Field`",
   ]) assert.ok(block.includes(phrase), phrase)
+  assert.ok(!block.includes("`multiple`") && !block.includes("Many picks") && !block.includes("เลือกแล้ว"), "DESIGN.md describes one asset per field (P4-R24)")
+  assert.ok(block.includes("one asset per field"))
   const index = read("docs/14_UI_UX_DESIGN_SYSTEM.md")
   const row = index.slice(index.indexOf("\n| An asset for a transaction"), index.indexOf("\n| An action menu |"))
   assert.ok(row.length > 0 && index.indexOf("\n| An asset for a transaction") > index.indexOf("\n| A searchable picker | `SearchableSelect` |"), "the row follows SearchableSelect")
-  for (const phrase of ["`AssetOperationPicker`", "never holds a list of the register", "stays listed with its reason", "`multiple` with `values`", "never inside `Field`"]) assert.ok(row.includes(phrase), phrase)
+  for (const phrase of ["`AssetOperationPicker`", "never holds a list of the register", "stays listed with its reason", "one asset per field", "never inside `Field`"]) assert.ok(row.includes(phrase), phrase)
+  assert.ok(row.startsWith("\n| An asset for a transaction (ส่งมอบ, รับคืน, โอนย้าย) |") && !row.includes("`multiple`"), "docs/14: no multiple mode (P4-R24)")
   const listFrame = read("tests/list-frame-guards.test.ts")
   assert.match(listFrame, /const UI_NAME = \/\\bfunction \(\?:[^/]*\|Nil\|AssetOperationPicker\|DesktopSelectionBar\)\\b\/g/)
   assert.match(listFrame, /LN2: \["asset-operation-picker", "data-table", "desktop-selection-bar", "empty-note"/)
@@ -198,7 +193,7 @@ test("look step: the hint shows only with the search field, so a chosen value ne
   const source = read(PART)
   assert.ok(source.includes('{showSearch ? <FieldHint id={hintId}>{hint ?? t(mode === "checkin" ? "hintCheckin" : "hint")}</FieldHint> : null}'))
   assert.equal(source.match(/<FieldHint /g)?.length, 1)
-  assert.match(source, /const showSearch = props\.multiple \|\| !value/)
+  assert.match(source, /const showSearch = !value\n/)
   assert.match(source, /onClick=\{change\}\n\s+aria-label=\{t\("changeNamed", \{ label, tag: value\.assetTag \}\)\}\n\s+aria-describedby=\{errorId\}/)
   assert.match(source, /role="combobox"[\s\S]*?aria-describedby=\{describedBy\}/)
 })

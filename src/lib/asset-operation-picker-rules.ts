@@ -59,21 +59,17 @@ export function getAssetOperationCountLine(answer: Pick<AssetOperationSearchAnsw
   return { count: answer.total, shown, more: answer.total > shown }
 }
 
-export type AssetOperationRowNote = { kind: "chosen" } | { kind: "reason"; key: string } | null
+export type AssetOperationRowNote = { kind: "reason"; key: string } | null
 
 /**
- * Chosen already wins over the transaction's reason. A refused row that pickBlocked accepts can still be picked, so its
- * reason reads under the field (ส่งมอบ's condition refusal, group 3 spec §19.3, A1-R1); it keeps its reason note.
+ * A refused row that pickBlocked accepts can still be picked, so its reason reads under the field (ส่งมอบ's condition
+ * refusal, group 3 spec §19.3, A1-R1); it keeps its reason note. One asset per field: no row is "chosen" (plan 4 P4-R24).
  */
 export function getAssetOperationRowView(
   row: Pick<AssetOperationSearchRow, "id" | "eligible" | "reasonKey">,
-  chosenIds: ReadonlySet<string>,
   pickBlocked?: (row: Pick<AssetOperationSearchRow, "id" | "eligible" | "reasonKey">) => boolean,
 ): { selectable: boolean; note: AssetOperationRowNote } {
-  if (chosenIds.has(row.id)) return { selectable: false, note: { kind: "chosen" } }
-  if (!row.eligible) {
-    return { selectable: pickBlocked?.(row) === true, note: row.reasonKey ? { kind: "reason", key: row.reasonKey } : null }
-  }
+  if (!row.eligible) return { selectable: pickBlocked?.(row) === true, note: row.reasonKey ? { kind: "reason", key: row.reasonKey } : null }
   return { selectable: true, note: null }
 }
 
