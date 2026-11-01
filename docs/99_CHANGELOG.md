@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-11-01
+
+### รับคืนส่วนควบที่ค้างคืนซึ่งหาไม่พบ เปลี่ยนเป็นพร้อมใช้งาน
+
+Branch `feat/late-return-missing-ready` (จาก `master` `2d51164f`) · spec `docs/superpowers/specs/2026-10-30-page-group-3-transactions-design.md` §8.6 · ผู้ใช้ตัดสิน 2026-11-01 ตอบคำถาม final review server-5 ของแผน 2
+
+- `getLateReturnNextStatusName` ใน `src/lib/component-late-return.ts` เป็นกฎเดียวที่ route และแผงรับคืนเรียกใช้: สถานะ หาไม่พบ ได้ `Ready` สถานะอื่นคงเดิม
+- `POST /api/assets/[id]/component-return` เขียนสถานะ พร้อมใช้งาน ใน `tx.asset.update` เดียวกัน ทั้งกลับเข้าเครื่องหลักและแยกเป็นทรัพย์สินเดี่ยว พร้อม `status_change` (อ้างอิงใบ RT- เดิม) · `logAudit` เพิ่ม `statusId` และ `previousStatusId`
+- การ์ดสรุปก่อนบันทึกแสดงแถว "สถานะ: หาไม่พบ → พร้อมใช้งาน" เฉพาะเมื่อสถานะจะเปลี่ยน ชื่อ พร้อมใช้งาน อ่านจากตัวเลือกสถานะของหน้า
+- ไม่มีการเปลี่ยน schema หรือ migration
+
 ## 2026-10-31
 
 ### กลุ่มหน้า 3 แผน 3: หน้าโอนย้ายและแผนกของการโอนย้าย

@@ -600,7 +600,7 @@ E2E covers the return with the return department and its history line, the ส�
 - [ ] For the user to decide: a parent whose components are all outstanding reads "มีส่วนควบทั้งหมด 0 รายการ" (the count means fitted now, X24). Is that the wording wanted?
 - [ ] ประวัติการติดตั้ง / ถอด reads "ส่วนควบค้างคืน" with the RT-, and after the late return "รับคืนส่วนควบค้างคืน"; the ประวัติ tab names the holder and, for the late return, who received it and กลับเข้าเครื่องหลัก or แยกเป็นทรัพย์สินเดี่ยว. A ถอดออก of an outstanding component reads as a removal with no RT- on both tabs.
 - [ ] Print an RT- that has a missing line and a late-return line: both lines are on the paper.
-- [ ] For the user to decide (final review server-5): a หาไม่พบ (Missing) component returned late keeps หาไม่พบ, re-attached or standing alone, until a status correction. Should a found component become พร้อมใช้งาน on its late return?
+- [ ] A หาไม่พบ (Missing) component returned late (user 2026-11-01), re-attached and standing alone: the summary card shows สถานะ หาไม่พบ → พร้อมใช้งาน; after the save the component reads พร้อมใช้งาน, and its ประวัติ tab shows a เปลี่ยนสถานะ line with the RT-. A พร้อมใช้งาน component returned late shows no สถานะ row and keeps its status.
 - [ ] NVDA and VoiceOver on the checklist, the chips and the summary; an English pass.
 
 ## Transactions Group 3 Plan 3 UAT (โอนย้าย, 2026-10-31)
