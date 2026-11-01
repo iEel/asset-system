@@ -1356,7 +1356,10 @@
     "statusSumLineRest": "อื่น ๆ {count}",
     "assetColumn": "ทรัพย์สิน",
     "holderShared": "ส่วนกลาง · ไม่มีผู้ถือครอง",
-    "registerDueDate": "คืน {date}"
+    "registerDueDate": "คืน {date}",
+    "holderSharedShort": "ส่วนกลาง",
+    "registerMobileSummary": "{tab} {count} รายการ",
+    "registerMobileEnd": "แสดงครบ {shown} จาก {total} รายการ"
   },
   "company": {
     "title": "บริษัท",

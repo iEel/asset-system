@@ -193,7 +193,8 @@ test("register table and phone list: the ownership type is a name Chip, the fram
   assert.match(table, /description=\{`\$\{labels\.bulkUpdateDescription\} \(\$\{formatCount\(selectedAssets\.length\)\} \$\{labels\.selectedCount\}\)`\}/)
   assert.doesNotMatch(table, /function ownershipTypeTone\b|bg-muted px-4|StatusTone/)
   const mobile = read(`${C}assets/asset-register-mobile-list.tsx`)
-  assert.match(mobile, /<Chip className="shrink-0">\{asset\.ownershipType\.label\}<\/Chip>/)
+  // Group 4 plan 1 Task 3 (spec §6.7): the phone card's holder line says ส่วนกลาง, so its ownership Chip went.
+  assert.doesNotMatch(mobile, /<Chip\b|ownershipType/)
   assert.doesNotMatch(mobile, /tone="success"/)
 })
 

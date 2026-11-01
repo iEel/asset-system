@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
 import type { AssetRegisterRow } from "@/components/assets/asset-register-table"
-import { Chip } from "@/components/ui/chip"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getAssetStateTone } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { needsConditionAttention } from "@/lib/asset-register-row-rules"
 import { cn } from "@/lib/utils"
 
@@ -22,6 +23,11 @@ type MobileListProps = {
   cloneHref: (id: string) => string
   onNavigate: () => void
   reserveBulkBarSpace: boolean
+  // The current status tab and its count, said above the list (group 4 spec §6.7).
+  summary: { tab: string; count: number } | null
+  // On the last page the list has reached its end, so the end line says every row is shown.
+  isLastPage: boolean
+  total: number
 }
 
 type RowProps = Pick<MobileListProps, "permissions" | "detailHref" | "editHref" | "cloneHref" | "onNavigate">
@@ -32,22 +38,31 @@ export function AssetRegisterMobileList({
   selectedIds,
   onToggleAsset,
   reserveBulkBarSpace,
+  summary,
+  isLastPage,
+  total,
   ...rowProps
 }: MobileListProps) {
+  const t = useTranslations("asset")
   return (
-    <ul data-asset-mobile-list className={cn("divide-y divide-border-soft md:hidden", reserveBulkBarSpace && "pb-44")}>
-      {assets.map((asset) =>
-        selectMode ? (
-          <MobileSelectableRow key={asset.id} asset={asset} checked={selectedIds.has(asset.id)} onToggle={() => onToggleAsset(asset.id)} />
-        ) : (
-          <MobileAssetRow key={asset.id} asset={asset} {...rowProps} />
-        ),
-      )}
-    </ul>
+    <div className={cn("md:hidden", reserveBulkBarSpace && "pb-44")}>
+      {summary ? <p data-asset-mobile-summary className="num px-3 py-2 text-meta text-muted-foreground">{t("registerMobileSummary", { tab: summary.tab, count: formatCount(summary.count) })}</p> : null}
+      <ul data-asset-mobile-list className="divide-y divide-border-soft">
+        {assets.map((asset) =>
+          selectMode ? (
+            <MobileSelectableRow key={asset.id} asset={asset} checked={selectedIds.has(asset.id)} onToggle={() => onToggleAsset(asset.id)} />
+          ) : (
+            <MobileAssetRow key={asset.id} asset={asset} {...rowProps} />
+          ),
+        )}
+      </ul>
+      {isLastPage ? <p data-asset-mobile-end className="num px-3 py-3 text-center text-meta text-muted-foreground">{t("registerMobileEnd", { shown: formatCount(total), total: formatCount(total) })}</p> : null}
+    </div>
   )
 }
 
 function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, onNavigate }: RowProps & { asset: AssetRegisterRow }) {
+  const t = useTranslations("asset")
   return (
     <li data-asset-mobile-row className="relative flex min-h-20 items-center gap-3 px-3 py-2 transition-colors hover:bg-row-hover">
       <AssetThumbnail photo={asset.photo} assetTag={asset.assetTag} assetName={asset.name} size={44} className="relative z-10" />
@@ -57,21 +72,21 @@ function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, o
           onClick={onNavigate}
           className="block truncate text-sm font-semibold text-foreground before:absolute before:inset-0 before:content-[''] focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-inset focus-visible:before:ring-ring"
         >
-          <span className="tag font-medium">{asset.assetTag}</span>
+          {asset.name}
         </Link>
-        <p className="truncate text-sm text-foreground">{asset.name}</p>
         <div className="mt-0.5 flex min-w-0 flex-nowrap items-center gap-2 text-xs leading-5">
-          <span className="min-w-0 truncate text-muted-foreground">{asset.currentLocation}</span>
+          <span className="tag">{asset.assetTag}</span>
           <StatusBadge label={asset.status.label} tone={getAssetStateTone(asset.status.value)} className="shrink-0" />
-          {needsFieldAttention(asset) ? (
-            <>
-              <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} className="shrink-0" />
-              {asset.ownershipType.value === "shared" ? (
-                <Chip className="shrink-0">{asset.ownershipType.label}</Chip>
-              ) : null}
-            </>
+          {needsConditionAttention(asset.condition.value) ? (
+            <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} className="shrink-0" />
           ) : null}
         </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {[
+            asset.holder.kind === "holder" ? asset.holder.name : asset.holder.kind === "shared" ? t("holderSharedShort") : t("noCustodian"),
+            asset.location.name,
+          ].join(" · ")}
+        </p>
       </div>
       <AssetRegisterRowActions
         variant="mobile"
@@ -102,15 +117,11 @@ function MobileSelectableRow({ asset, checked, onToggle }: { asset: AssetRegiste
         />
         <AssetThumbnail photo={asset.photo} assetTag={asset.assetTag} assetName={asset.name} size={44} preview={false} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm text-foreground"><span className="tag font-medium">{asset.assetTag}</span></span>
-          <span className="block truncate text-sm text-foreground">{asset.name}</span>
-          <span className="block truncate text-xs text-muted-foreground">{asset.currentLocation}</span>
+          <span className="block truncate text-sm font-semibold text-foreground">{asset.name}</span>
+          <span className="block truncate text-xs text-muted-foreground"><span className="tag">{asset.assetTag}</span></span>
+          <span className="block truncate text-xs text-muted-foreground">{asset.location.name}</span>
         </span>
       </label>
     </li>
   )
-}
-
-function needsFieldAttention(asset: AssetRegisterRow) {
-  return needsConditionAttention(asset.condition.value) || asset.ownershipType.value === "shared"
 }

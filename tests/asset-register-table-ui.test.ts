@@ -162,13 +162,17 @@ function functionBody(source: string, name: string) {
   return source.slice(start, next === -1 ? undefined : next)
 }
 
-test("mobile rows are compact links with tag, name, location and status", () => {
+// Group 4 plan 1 Task 3 (spec §6.7): the card leads with the name (the link), then the tag, the status and the
+// condition when it needs attention, then "<holder or ส่วนกลาง> · <room>".
+test("mobile rows are compact links with name, tag, status and the holder with the room (group 4 §6.7)", () => {
   const row = functionBody(mobileList(), "MobileAssetRow")
-  const order = ["asset.assetTag", "asset.name", "asset.currentLocation", "asset.status"]
+  const order = ["asset.name", "asset.assetTag", "asset.status", "asset.condition", "asset.holder", "asset.location.name"]
 
+  // From the link on: the thumbnail above it also reads the tag and the name.
+  const card = row.slice(row.indexOf("<Link"))
   let previous = -1
   for (const value of order) {
-    const index = row.indexOf(value)
+    const index = card.indexOf(value)
     assert.ok(index > previous, `${value} must follow the previous value`)
     previous = index
   }
@@ -176,7 +180,40 @@ test("mobile rows are compact links with tag, name, location and status", () => 
   assert.match(row, /before:absolute before:inset-0/)
   assert.match(row, /<AssetThumbnail[\s\S]*?size=\{44\}[\s\S]*?className="relative z-10"/)
   assert.match(row, /<AssetRegisterRowActions\s+variant="mobile"/)
-  assert.doesNotMatch(row, /companyBranch|purchasePrice/)
+  assert.doesNotMatch(row, /companyBranch|purchasePrice|asset\.currentLocation/)
+})
+
+test("the phone card: the name is the link, the tag line carries the badges, the holder line names the room (group 4 §6.7)", () => {
+  const source = mobileList()
+  const row = functionBody(source, "MobileAssetRow")
+  const selectable = functionBody(source, "MobileSelectableRow")
+
+  assert.match(row, /focus-visible:before:ring-ring"\n\s+>\n\s+\{asset\.name\}\n\s+<\/Link>/)
+  assert.match(row, /className="block truncate text-sm font-semibold text-foreground before:absolute/)
+  assert.match(row, /<span className="tag">\{asset\.assetTag\}<\/span>\n\s+<StatusBadge label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.value\)\} className="shrink-0" \/>\n\s+\{needsConditionAttention\(asset\.condition\.value\) \? \(\n\s+<StatusBadge label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\} className="shrink-0" \/>\n\s+\) : null\}/)
+  assert.match(row, /<p className="mt-0\.5 truncate text-xs text-muted-foreground">\n\s+\{\[\n\s+asset\.holder\.kind === "holder" \? asset\.holder\.name : asset\.holder\.kind === "shared" \? t\("holderSharedShort"\) : t\("noCustodian"\),\n\s+asset\.location\.name,\n\s+\]\.join\(" · "\)\}\n\s+<\/p>/)
+  assert.doesNotMatch(source, /needsFieldAttention|<Chip\b|ownershipType/, "the holder line says ส่วนกลาง, so the chip went")
+  const selectableText = selectable.slice(selectable.indexOf('<span className="min-w-0 flex-1">'))
+  assert.ok(selectableText.indexOf("asset.name") < selectableText.indexOf("asset.assetTag"), "select mode shows the name first too")
+  assert.equal(messages("th").holderSharedShort, "ส่วนกลาง")
+  assert.equal(typeof messages("en").holderSharedShort, "string")
+})
+
+test("the phone list says the tab and its count above and the end of the list on the last page (group 4 §6.7)", () => {
+  const source = mobileList()
+  const tableSource = table()
+  const page = read("src/app/[locale]/(dashboard)/assets/page.tsx")
+
+  assert.match(source, /\{summary \? <p data-asset-mobile-summary className="num px-3 py-2 text-meta text-muted-foreground">\{t\("registerMobileSummary", \{ tab: summary\.tab, count: formatCount\(summary\.count\) \}\)\}<\/p> : null\}/)
+  assert.match(source, /\{isLastPage \? <p data-asset-mobile-end className="num px-3 py-3 text-center text-meta text-muted-foreground">\{t\("registerMobileEnd", \{ shown: formatCount\(total\), total: formatCount\(total\) \}\)\}<\/p> : null\}/)
+  assert.ok(source.indexOf("data-asset-mobile-summary") < source.indexOf("<ul data-asset-mobile-list"), "the summary sits above the list")
+  assert.ok(source.indexOf("data-asset-mobile-end") > source.indexOf("</ul>"), "the end line follows the last card")
+  assert.match(tableSource, /summary=\{currentTab\}\n\s+isLastPage=\{filters\.page >= totalPages\}\n\s+total=\{total\}/)
+  assert.match(page, /currentTab=\{currentStatusTab \? \{ tab: t\(statusTabLabelKeys\[currentStatusTab\.key\]\), count: currentStatusTab\.count \} : null\}/)
+  assert.match(page, /const currentStatusTab = statusTabs\.tabs\.find\(\(tab\) => tab\.active\)/)
+  assert.equal(messages("th").registerMobileSummary, "{tab} {count} รายการ")
+  assert.equal(messages("th").registerMobileEnd, "แสดงครบ {shown} จาก {total} รายการ")
+  for (const key of ["registerMobileSummary", "registerMobileEnd"]) assert.equal(typeof messages("en")[key], "string", key)
 })
 
 test("select mode rows only toggle the checkbox and never navigate", () => {
@@ -211,7 +248,7 @@ test("select mode copy exists in Thai and English", () => {
   assert.equal(typeof messages("en").selectModeDone, "string")
 })
 
-test("mobile rows keep line 3 on one line and the summary bar adds no vertical padding on phones", () => {
+test("mobile rows keep the tag line on one line and the summary bar adds no vertical padding on phones", () => {
   const row = functionBody(mobileList(), "MobileAssetRow")
   const source = table()
 
@@ -219,8 +256,8 @@ test("mobile rows keep line 3 on one line and the summary bar adds no vertical p
   assert.doesNotMatch(row, /flex-wrap/)
   assert.match(row, /className="relative flex min-h-20 items-center gap-3 px-3 py-2 /)
   assert.equal(row.match(/<StatusBadge [^>]*className="shrink-0"/g)?.length, 2)
-  // Plan 2D-3: "shared" is the ownership type's name, so it is the shared Chip (2D-2 R2).
-  assert.match(row, /<Chip className="shrink-0">\{asset\.ownershipType\.label\}<\/Chip>/)
+  // Group 4 plan 1 Task 3 (spec §6.7): the holder line says ส่วนกลาง, so the ownership Chip of plan 2D-3 went.
+  assert.doesNotMatch(row, /<Chip\b/)
   assert.match(source, /data-asset-register-summary className="[^"]*py-0 md:py-2/)
 })
 
@@ -306,9 +343,12 @@ test("phone rows show the asset tag as a mono tag on the soft row line, and sele
   const selectable = functionBody(source, "MobileSelectableRow")
 
   assert.match(source, /^import \{ checkboxVariants \} from "@\/components\/ui\/field-variants"$/m)
-  assert.match(source, /<ul data-asset-mobile-list className=\{cn\("divide-y divide-border-soft md:hidden", reserveBulkBarSpace && "pb-44"\)\}>/)
-  assert.match(row, /focus-visible:before:ring-ring"\n\s+>\n\s+<span className="tag font-medium">\{asset\.assetTag\}<\/span>\n\s+<\/Link>/)
-  assert.match(selectable, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{asset\.assetTag\}<\/span><\/span>/)
+  // Group 4 plan 1 Task 3 (spec §6.7): a wrapper holds the summary, the list and the end line, so md:hidden and the
+  // bulk bar space moved to it; the link is the name and the tag sits on the line under it.
+  assert.match(source, /<div className=\{cn\("md:hidden", reserveBulkBarSpace && "pb-44"\)\}>/)
+  assert.match(source, /<ul data-asset-mobile-list className="divide-y divide-border-soft">/)
+  assert.match(row, /<span className="tag">\{asset\.assetTag\}<\/span>/)
+  assert.match(selectable, /<span className="block truncate text-sm font-semibold text-foreground">\{asset\.name\}<\/span>\n\s+<span className="block truncate text-xs text-muted-foreground"><span className="tag">\{asset\.assetTag\}<\/span><\/span>/)
   assert.doesNotMatch(source, /rounded border-border|text-primary|font-semibold text-foreground">\{asset\.assetTag\}/)
 })
 

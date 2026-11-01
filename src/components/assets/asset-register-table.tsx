@@ -135,6 +135,8 @@ type AssetRegisterTableProps = {
   }
   total: number
   totalPages: number
+  // The current status tab and its count, for the phone list's summary line (group 4 spec §6.7).
+  currentTab: { tab: string; count: number } | null
   fromRow: number
   toRow: number
   bulkOptions: {
@@ -216,6 +218,7 @@ export function AssetRegisterTable({
   filters,
   total,
   totalPages,
+  currentTab,
   fromRow,
   toRow,
   bulkOptions,
@@ -580,6 +583,9 @@ export function AssetRegisterTable({
           cloneHref={buildAssetCloneHref}
           onNavigate={rememberDetailReturnScroll}
           reserveBulkBarSpace={selectedAssets.length > 0}
+          summary={currentTab}
+          isLastPage={filters.page >= totalPages}
+          total={total}
         />
       )}
 

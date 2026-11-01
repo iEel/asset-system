@@ -1356,7 +1356,10 @@
     "statusSumLineRest": "others {count}",
     "assetColumn": "Asset",
     "holderShared": "Shared · No custodian",
-    "registerDueDate": "Due {date}"
+    "registerDueDate": "Due {date}",
+    "holderSharedShort": "Shared",
+    "registerMobileSummary": "{tab} {count} items",
+    "registerMobileEnd": "Showing all {shown} of {total} items"
   },
   "company": {
     "title": "Companies",
