@@ -136,7 +136,8 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(options\?: \{ employeeDetail\?: false; conditionsFor\?: AssetOperationConditionOperation \}\): Promise<AssetOperationMasterOptions>/)
   // โอนย้าย alone reads the employees' own department and the rooms' branch, with no held count (group 3 plan 3 P3-R9).
   assert.match(read("src/lib/asset-operation-options.ts"), /export async function getAssetOperationMasterOptions\(options: \{ employeeDepartment: true; locationBranch: true; conditionsFor\?: AssetOperationConditionOperation \}\): Promise<AssetOperationMasterOptions<AssetOperationEmployeeDepartmentOption, AssetOperationLocationBranchOption>>/)
-  assert.match(read("src/app/[locale]/(dashboard)/asset-management/bulk-move/page.tsx"), /getAssetOperationMasterOptions\(\)/, "bulk-move")
+  assert.match(read("src/app/[locale]/(dashboard)/asset-management/bulk-move/page.tsx"), /readBulkMovePageOptions\(db\)/, "bulk-move reads its active rooms and categories only (group 3 spec §10.3; plan 4 P4-R12)")
+  assert.doesNotMatch(read("src/app/[locale]/(dashboard)/asset-management/bulk-move/page.tsx"), /getAssetOperationMasterOptions/, "bulk-move")
   assert.match(read("src/app/[locale]/(dashboard)/asset-management/transfer/page.tsx"), /getAssetOperationMasterOptions\(\{ employeeDepartment: true, locationBranch: true \}\)/, "โอนย้าย reads the employees' own department and the rooms' branch (group 3 plan 3 P3-R9)")
   assert.match(read("src/app/[locale]/(dashboard)/asset-management/checkin/page.tsx"), /getAssetOperationMasterOptions\(\{ conditionsFor: "checkin" \}\)/, "รับคืน names its conditions (group 3 plan 2 Task 8)")
   assert.match(read("src/app/[locale]/(dashboard)/asset-management/checkout/page.tsx"), /getAssetOperationMasterOptions\(\{ employeeDetail: true, conditionsFor: "checkout" \}\)/, "ส่งมอบ alone reads the employees' detail (final review M4) and offers the checkout conditions (group 3 spec §19.1)")
@@ -455,9 +456,10 @@ test("the transaction specs find assets on the shared picker: the helper waits f
   assert.ok(search.indexOf("page.waitForResponse(") >= 0 && search.indexOf("page.waitForResponse(") < search.indexOf(".fill(text)"), "the wait is set before the text is typed")
   const picker = read("src/components/ui/asset-operation-picker.tsx")
   for (const hook of ['role="combobox"', "-listbox", "data-asset-option=", "data-asset-option-reason", "data-asset-option-group", "data-asset-picked=", "aria-disabled"]) assert.ok(picker.includes(hook), hook)
-  for (const [file, id] of [["checkout-form.tsx", "checkout-asset"], ["checkin-form.tsx", "checkin-checkout"], ["transfer-form.tsx", "transfer-asset"], ["bulk-move-form.tsx", "bulk-move-assets"]]) {
+  for (const [file, id] of [["checkout-form.tsx", "checkout-asset"], ["checkin-form.tsx", "checkin-checkout"], ["transfer-form.tsx", "transfer-asset"]]) {
     assert.match(read(`src/components/asset-operations/${file}`), new RegExp(`<AssetOperationPicker\\s+id="${id}"`), file)
   }
+  assert.doesNotMatch(read("src/components/asset-operations/bulk-move-form.tsx"), /<AssetOperationPicker\b/, "ย้ายที่ตั้งหลายรายการ ticks rows in its table (group 3 spec §10.1)")
   const { readdirSync } = await import("node:fs")
   const specs = [...readdirSync("e2e/transactions").filter((name) => name.endsWith(".spec.ts")).map((name) => `e2e/transactions/${name}`), "e2e/cross-cutting/field-errors.spec.ts"]
   for (const file of specs) {

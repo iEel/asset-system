@@ -254,25 +254,24 @@ test("transfer: errors under the field, the at-least-one change under the locati
   }
 })
 
-test("bulk move: the destination is checked at last, and the errors show under the field and under the asset list (v-track O5)", () => {
+test("bulk move: the room and the reason in the bar are checked first, the refused assets land in the selection's place under the table in the row's words, and a refusal from the review comes back to its field (v-track O5; group 3 spec §10.2; plan 4 P4-R6, P4-R8, P4-R14)", () => {
   const source = read(`${C}asset-operations/bulk-move-form.tsx`)
-  assertOperationForm(source, { ids: { assetIds: "bulk-move-assets", toLocationId: "bulk-move-to-location", reason: "bulk-move-reason" } })
+  assertOperationForm(source, { ids: { assetIds: "bulk-move-selection", toLocationId: "bulk-move-to-location", reason: "bulk-move-reason" } })
   const rules = validateBody(source)
   for (const rule of [
     'check("assetIds", required(values.assetIds))',
     'check("toLocationId", required(values.toLocationId))',
     'check("reason", required(values.reason) ?? maxLength(values.reason, 500))',
   ]) assert.ok(rules.includes(rule), rule)
-  assert.match(source, /fieldErrors\.setErrors\(validate\(\{ \.\.\.values, assetIds \}\)\)/)
-  // The destination had the star and nothing checked it (spec §5): an id for focus and its error (V4).
-  assert.match(source, /<SearchableSelect id="bulk-move-to-location" label=\{t\("toLocation"\)\} [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
-  assert.match(source, /<Field label=\{t\("reason"\)\} id="bulk-move-reason" required error=\{fieldErrors\.message\("reason"\)\}>/)
-  // The asset picker is the field: its search carries the id focus goes to, and one error sits under it (server search Task 7).
-  assert.match(source, /<AssetOperationPicker\n\s+id="bulk-move-assets"\n/)
-  assert.ok(source.includes("error={assetsError}"))
-  assert.match(source, /fieldErrors\.errors\.assetIds === "required"\s+\? t\("selectAssets"\)\s+: fieldErrors\.errors\.assetIds === "blocked"\s+\? t\("blockedAssets", \{ count: blockedAssets\.length, list: bulkMoveBlockedList\(blockedAssets, \(code\) => apiError\.describe\(code\)\.message\) \}\)\s+: fieldErrors\.message\("assetIds"\)/)
-  assert.match(source, /function changeAssets\(rows: AssetOperationSearchRow\[\]\) \{\n\s+setAssets\(rows\)\n\s+fieldErrors\.clear\("assetIds"\)/)
-  assert.match(source, /const blocked = readBulkMoveBlocked\(payload\)\n\s+if \(blocked\.length > 0\) \{\n\s+setBlockedAssets\(blocked\)\n\s+fieldErrors\.setErrors\(\{ assetIds: "blocked" \}\)\n\s+focusFirstError\(\)\n\s+return\n\s+\}\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/)
+  assert.match(source, /fieldErrors\.setErrors\(validate\(\{ \.\.\.values, assetIds: \[\.\.\.selection\.keys\(\)\] \}\)\)/)
+  assert.match(source, /<SearchableSelect id="bulk-move-to-location" label=\{t\("toLocation"\)\} value=\{values\.toLocationId\} required options=\{rooms\} [^\n]*error=\{fieldErrors\.message\("toLocationId"\)\}/)
+  assert.match(source, /<Field label=\{t\("reason"\)\} id="bulk-move-reason" required error=\{fieldErrors\.message\("reason"\)\} className="w-80">\n\s+<Input value=\{values\.reason\} [^\n]*required maxLength=\{500\} \/>/)
+  assert.match(source, /fieldErrors\.errors\.assetIds === "blocked"\s+\? t\("blockedAssets", \{ count: formatCount\(blocked\.length\), list: bulkMoveBlockedList\(blocked, blockedReason\) \}\)\s+: fieldErrors\.errors\.assetIds === "required"\s+\? t\("nothingSelected"\)\s+: fieldErrors\.message\("assetIds"\)/)
+  assert.match(source, /const key = bulkMoveBlockedReasonKey\(code\)\n\s+return key \? tAll\(key\) : apiError\.describe\(code\)\.message/)
+  assert.match(source, /const refused = readBulkMoveBlocked\(payload\)\n\s+if \(refused\.length > 0\) \{\n\s+setBlocked\(refused\)\n\s+fieldErrors\.setErrors\(\{ assetIds: "blocked" \}\)\n\s+focusFirstError\(\)\n\s+return\n\s+\}\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/)
+  assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)
+  assert.ok(source.includes("fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
+  assert.ok(source.includes('<FieldError id="bulk-move-selection-error">{selectionError}</FieldError>'))
 })
 
 test("transaction cancel dialog: the reason's error under the field instead of the dialog Notice, and a blocked confirm says why and stays focusable (v-track O6)", () => {

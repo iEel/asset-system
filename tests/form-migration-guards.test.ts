@@ -91,7 +91,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}asset-operations/checkin-form.tsx`]: [2, 0, 0],
   [`${C}asset-operations/checkout-form.tsx`]: [3, 0, 0],
   [`${C}asset-operations/transfer-form.tsx`]: [1, 1, 0],
-  [`${C}asset-operations/bulk-move-form.tsx`]: [1, 1, 0],
+  // Group 3 plan 4 Task 6: the reason Input (required, maxLength 500) and the list search (maxLength 100).
+  [`${C}asset-operations/bulk-move-form.tsx`]: [1, 2, 0],
   // Group 3 plan 1 Task 5: the condition chips pass their caller's required to each radio.
   [`${C}asset-operations/condition-choice.tsx`]: [1, 0, 0],
   [`${C}disposal/disposal-request-form.tsx`]: [3, 1, 1],

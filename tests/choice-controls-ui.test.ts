@@ -80,12 +80,17 @@ test("checkout picks the handover mode with required ChoiceCard radios, and no f
   assert.deepEqual(readSourceFiles("src").filter((file) => /\baccent-primary\b/.test(file.source)).map((file) => file.path), [])
 })
 
-test("bulk move picks assets through the shared picker, with no checkbox row per asset (P1, server search Task 7)", () => {
-  const source = readFileSync("src/components/asset-operations/bulk-move-form.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.match(source, /<AssetOperationPicker\n\s+id="bulk-move-assets"\n\s+label=\{t\("assets"\)\}\n\s+mode="bulkMove"\n\s+multiple\n\s+values=\{assets\}\n\s+required\n/)
-  assert.doesNotMatch(source, /type="checkbox"|checkboxVariants|preventEnterSubmit|<SearchField\b|role="group"|<FieldError\b|availableAssets|toggleAsset/)
-  assert.doesNotMatch(source, /rounded border \$\{checked|<button|import \{ Check|function Field\(|Loader2/)
-  assert.match(source, /<Button type="submit" busy=\{saving\}>/)
+test("bulk move ticks rows in its table: native checkboxes in a 44px label, the header one mixed, and no picker (P1, server search Task 7; group 3 spec §10.1; plan 4 P4-R22)", () => {
+  const form = readFileSync("src/components/asset-operations/bulk-move-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  const table = readFileSync("src/components/asset-operations/bulk-move-table.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.doesNotMatch(form, /<AssetOperationPicker\b|type="checkbox"/)
+  assert.equal(table.match(/type="checkbox"/g)?.length, 2, "the header box and the row box")
+  assert.equal(table.match(/className=\{checkboxVariants\(\)\}/g)?.length, 2)
+  assert.equal(table.match(/<label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center" data-no-row-click>/g)?.length, 2)
+  assert.ok(table.includes('aria-checked={pageState === "some" ? "mixed" : pageState === "all"}'))
+  assert.ok(table.includes('input.indeterminate = pageState === "some"'))
+  for (const source of [form, table]) assert.doesNotMatch(source, /<button\b|rounded border \$\{checked|function Field\(|Loader2/)
+  assert.match(form, /<Button type="submit" size="md" busy=\{saving\}>/)
 })
 
 test("the disposal asset picker marks options with the 16px box of the menu check item (spec 7.4.5 P2)", () => {

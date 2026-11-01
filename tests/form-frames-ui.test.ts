@@ -105,11 +105,13 @@ test("the transfer form is the operation frame (group 3 plan 3 Task 6)", () => {
   assert.doesNotMatch(source, /<h1\b|PageBackLink|PageHeader|ContentPanel/, "the operation forms keep having no back button (B2)")
 })
 
-test("the bulk move form shows the selected count as the header's meta (2B-1 task 23, I13)", () => {
+test("ย้ายที่ตั้งหลายรายการ: one PageHeader with the subtitle at every width, and the count in the bar (2B-1 task 23, I13; group 3 spec §10.1, §10.2; plan 4 P4-R19)", () => {
   const source = read(`${C}asset-operations/bulk-move-form.tsx`)
   assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "bulk-move-form.tsx imports PageHeader")
-  assert.match(source, /<PageHeader title=\{t\("title"\)\} meta=\{t\("selectedCount", \{ count: assetIds\.length \}\)\} className="mb-6" \/>/)
-  assert.doesNotMatch(source, /<h1\b|PageBackLink/)
+  assert.equal(source.match(/<PageHeader\b/g)?.length, 1)
+  assert.match(source, /<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>/)
+  assert.match(source, /countLabel=\{t\("selectedCount", \{ count: formatCount\(selection\.size\) \}\)\}/)
+  assert.doesNotMatch(source, /<h1\b|PageBackLink|meta=\{t\("selectedCount"/)
 })
 
 test("the new audit round form draws its title and trail with PageHeader (2B-1 task 23, I13; group 2 spec §7)", () => {

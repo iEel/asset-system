@@ -73,7 +73,7 @@ test("review focus 5: the shared back and print buttons sit in the toolbar that 
   assert.match(toolbar, /\{toolbarActions\}/, "the cancel dialog's trigger does not print either")
 })
 
-test("check-out and transfer forms are the operation frame's numbered sections, and the bulk move's form panel is a ContentPanel whose empty answer is the picker's (spec 2D D9, M21, M25; server search Task 7; group 3 plan 3 Task 6)", () => {
+test("check-out and transfer forms are the operation frame's numbered sections, and the bulk move is a list page with no panel (spec 2D D9, M21, M25; server search Task 7; group 3 plan 3 Task 6; group 3 plan 4 P4-R19)", () => {
   const checkout = read(`${C}asset-operations/checkout-form.tsx`)
   assert.match(checkout, /<FormSection number=\{1\} title=\{t\("sectionAsset"\)\}>/)
   const transfer = read(`${C}asset-operations/transfer-form.tsx`)
@@ -84,9 +84,10 @@ test("check-out and transfer forms are the operation frame's numbered sections, 
   assert.match(transfer, /<\/form>\n\s+<OperationReviewDialog\n/, "the review dialog follows the form, as on ส่งมอบ and รับคืน")
   assert.doesNotMatch(transfer, /<ContentPanel\b/)
   const bulkMove = read(`${C}asset-operations/bulk-move-form.tsx`)
-  assert.match(bulkMove, /className="mb-6" \/>\n\s+<ContentPanel>\n\s+<form onSubmit=\{handleSubmit\}/)
-  assert.doesNotMatch(bulkMove, /<EmptyNote\b/)
-  for (const [name, source] of [["checkout", checkout], ["transfer", transfer], ["bulk move", bulkMove]]) {
+  assert.match(bulkMove, /<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>/)
+  assert.doesNotMatch(bulkMove, /<ContentPanel\b/)
+  const bulkTable = read(`${C}asset-operations/bulk-move-table.tsx`)
+  for (const [name, source] of [["checkout", checkout], ["transfer", transfer], ["bulk move", bulkMove], ["bulk move table", bulkTable]]) {
     assert.doesNotMatch(source, /<section\b|rounded-lg border|text-center text-sm text-muted-foreground/, name)
   }
 })
