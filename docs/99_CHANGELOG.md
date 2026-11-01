@@ -14,6 +14,7 @@ Branch `feat/late-return-missing-ready` (จาก `master` `2d51164f`) · spec 
 - `POST /api/assets/[id]/component-return` เขียนสถานะ พร้อมใช้งาน ใน `tx.asset.update` เดียวกัน ทั้งกลับเข้าเครื่องหลักและแยกเป็นทรัพย์สินเดี่ยว พร้อม `status_change` (อ้างอิงใบ RT- เดิม) · `logAudit` เพิ่ม `statusId` และ `previousStatusId`
 - การ์ดสรุปก่อนบันทึกแสดงแถว "สถานะ: หาไม่พบ → พร้อมใช้งาน" เฉพาะเมื่อสถานะจะเปลี่ยน ชื่อ พร้อมใช้งาน อ่านจากตัวเลือกสถานะของหน้า
 - ไม่มีการเปลี่ยน schema หรือ migration
+- E2E-1101A (`return-components.spec.ts` + `return.spec.ts` ทั้ง 4 project): 26 ผ่าน 0 ไม่ผ่าน · ส่วนควบใน E2E ไม่ใช่สถานะ หาไม่พบ จึงตรวจเฉพาะทางที่สถานะคงเดิม ทาง หาไม่พบ → พร้อมใช้งาน ตรวจด้วย unit test และรายการ UAT
 
 ## 2026-10-31
 
