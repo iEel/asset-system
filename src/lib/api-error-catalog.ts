@@ -190,6 +190,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Invalid component transaction snapshot": "invalidTransactionSnapshot",
   "Invalid condition after repair": "invalidConditionAfterRepair",
   "Invalid JSON body": "invalidRequest",
+  "Invalid list": "invalidRequest",
   "Invalid maintenance option type": "invalidMaintenanceOption",
   "Invalid notification action": "invalidNotificationAction",
   "Invalid permission selection": "invalidPermissionSelection",

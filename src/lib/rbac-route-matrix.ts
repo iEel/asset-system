@@ -59,6 +59,7 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     checks: [{ module: "role", action: "export" }],
   },
   { filePath: "src/app/api/asset-operations/search/route.ts", label: "Asset operation picker search", checks: [{ module: "asset", action: "edit" }] },
+  { filePath: "src/app/api/asset-operations/bulk-move-list/route.ts", label: "Bulk move list", checks: [{ module: "asset", action: "edit" }] },
   {
     filePath: "src/app/api/assets/route.ts",
     label: "Assets",

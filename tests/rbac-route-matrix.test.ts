@@ -59,6 +59,11 @@ test("the transaction pickers' search is registered for asset edit, as the four 
   assert.deepEqual(entry?.checks, [{ module: "asset", action: "edit" }])
 })
 
+test("the bulk-move list is registered for asset edit, as its page and the bulk-move save (group 3 spec §10.3; P4-R25)", () => {
+  const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/asset-operations/bulk-move-list/route.ts")
+  assert.deepEqual(entry?.checks, [{ module: "asset", action: "edit" }])
+})
+
 test("every API route has an explicit protection inventory classification", () => {
   const routeFiles = collectApiRouteFiles("src/app/api")
   const classifications = routeFiles.map((filePath) =>
