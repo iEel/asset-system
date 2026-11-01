@@ -151,14 +151,14 @@ test("โอนย้าย: no custodian is a move (not Disposed/Retired), a cu
   assert.deepEqual(getTransferVerdict(facts({ statusName: "Checked Out", openCheckout: handover("temporary_loan") }), assign), no("asset.transactionReasonStatusNotTransferable"), "the route's order")
 })
 
-test("ย้ายที่ตั้งหลายรายการ: not a License, no open handover, not Disposed/Retired, in the route's order (spec 6.3)", () => {
+test("ย้ายที่ตั้งหลายรายการ: not a License, no open handover (in its own words), not Disposed/Retired, in the route's order (spec 6.3; group 3 spec §10.1; P4-R7)", () => {
   for (const ownership of ["personal", "shared", "stock", "component"] as const) {
     for (const statusName of ["Ready", "In Use", "Pending Repair", "Lost"]) assert.deepEqual(getBulkMoveVerdict(facts({ ownership, statusName })), yes, `${ownership} ${statusName}`)
   }
   for (const statusName of ["Disposed", "Retired"]) assert.deepEqual(getBulkMoveVerdict(facts({ statusName })), no("asset.transactionReasonWrittenOff"), statusName)
-  assert.deepEqual(getBulkMoveVerdict(facts({ openCheckout: handover("temporary_loan") })), no("asset.transactionReasonOpenCheckout"))
+  assert.deepEqual(getBulkMoveVerdict(facts({ openCheckout: handover("temporary_loan") })), no("asset.transactionReasonOpenCheckoutBulkMove"))
   assert.deepEqual(getBulkMoveVerdict(facts({ ownership: "software_license", statusName: "Disposed", openCheckout: handover("temporary_loan") })), no("asset.transactionReasonLicenseMove"))
-  assert.deepEqual(getBulkMoveVerdict(facts({ statusName: "Disposed", openCheckout: handover("temporary_loan") })), no("asset.transactionReasonOpenCheckout"), "the open handover before the status, as the route")
+  assert.deepEqual(getBulkMoveVerdict(facts({ statusName: "Disposed", openCheckout: handover("temporary_loan") })), no("asset.transactionReasonOpenCheckoutBulkMove"), "the open handover before the status, as the route")
 })
 
 test("ส่งมอบ, โอนย้าย and the bulk move refuse an outstanding component before any other rule (group 3 spec §8.5, P2-R17)", () => {
@@ -250,6 +250,10 @@ test("the new words are the spec's, the custody-type words are the return form's
     ["ส่วนควบค้างคืน รับคืนก่อน", "An outstanding component: return it first"],
     ["ส่วนควบนี้มีใบส่งมอบของตัวเองค้างอยู่ ถอดออกจากเครื่องหลักก่อน", "This component has its own open handover. Remove it from its parent asset first."],
   ])
+  // The bulk move's open handover (group 3 spec §10.1; plan 4 P4-R7); โอนย้าย keeps "…จึงโอนย้ายได้".
+  assert.deepEqual([th.asset.transactionReasonOpenCheckoutBulkMove, en.asset.transactionReasonOpenCheckoutBulkMove], [
+    "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงย้ายได้", "A handover is open: return the asset before moving it",
+  ])
   for (const table of [th, en]) {
     assert.equal(table.asset.transactionReasonHandoverModeMissing, table.checkin.handoverModeMissing)
     assert.equal(table.asset.transactionReasonHandoverStatusMismatch, table.checkin.handoverStatusMismatch)
@@ -262,7 +266,7 @@ test("the new words are the spec's, the custody-type words are the return form's
     }
   }
   assert.deepEqual([...keys].sort(), ["ActiveMaintenance", "ComponentCheckin", "ComponentCheckout", "ComponentOutstanding", "ComponentOwnHandover", "ConditionDamaged",
- "ConditionNonFunctional", "ConditionSalvage", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutHandover", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "TransferConditionDamaged",
+ "ConditionNonFunctional", "ConditionSalvage", "HandoverModeMissing", "HandoverStatusMismatch", "LicenseCheckin", "LicenseCheckout", "LicenseMove", "NoReturnRecord", "OpenCheckout", "OpenCheckoutBulkMove", "OpenCheckoutHandover", "StatusNotReady", "StatusNotReturnable", "StatusNotTransferable", "TransferConditionDamaged",
  "TransferConditionNonFunctional", "TransferConditionSalvage", "WrittenOff"].map((name) => `asset.transactionReason${name}`))
   for (const key of keys) for (const table of [th, en]) assert.equal(typeof table.asset[key.slice("asset.".length)], "string", key)
 })

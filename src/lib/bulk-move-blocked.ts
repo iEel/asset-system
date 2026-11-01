@@ -1,7 +1,36 @@
-// The assets a ย้ายที่ตั้งหลายรายการ refusal names (server search Task 7): the 409 of /api/assets/bulk-move carries
-// `blocked: [{ assetId, assetTag, code }]` (a License, a Disposed or Retired asset), and the form shows them under the
-// asset field by tag and reason instead of a toast.
+import { assetOperationRefusalReasonKeys } from "./asset-operation-eligibility.ts"
+
+// The assets a ย้ายที่ตั้งหลายรายการ refusal names: the 409 of /api/assets/bulk-move carries `blocked: [{ assetId, assetTag,
+// code }]`, one entry per refused asset with its own code, in bulkMoveBlockedOrder (group 3 plan 4 P4-R4). The list under
+// the table words each code with the row's reason key (bulkMoveBlockedReasonKey, P4-R6), so the row and the refusal agree.
 export type BulkMoveBlockedAsset = { assetId: string; assetTag: string; code: string }
+
+/** The save's refusal codes, in getBulkMoveVerdict's order: outstanding, License, open handover, written off. */
+export type BulkMoveBlockedCode =
+  | "ASSET_COMPONENT_OUTSTANDING"
+  | "ASSET_LICENSE_MOVE_NOT_ALLOWED"
+  | "ASSET_ACTIVE_CHECKOUT_EXISTS"
+  | "ASSET_STATUS_TRANSFER_NOT_ALLOWED"
+
+export const bulkMoveBlockedOrder = [
+  "ASSET_COMPONENT_OUTSTANDING",
+  "ASSET_LICENSE_MOVE_NOT_ALLOWED",
+  "ASSET_ACTIVE_CHECKOUT_EXISTS",
+  "ASSET_STATUS_TRANSFER_NOT_ALLOWED",
+] as const satisfies readonly BulkMoveBlockedCode[]
+
+// Each code's words are the row's (getBulkMoveVerdict's reason keys), so the list under the table and the row agree.
+const bulkMoveBlockedReasonKeys: Readonly<Record<BulkMoveBlockedCode, string>> = {
+  ASSET_COMPONENT_OUTSTANDING: assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING,
+  ASSET_LICENSE_MOVE_NOT_ALLOWED: assetOperationRefusalReasonKeys.ASSET_LICENSE_MOVE_NOT_ALLOWED,
+  ASSET_ACTIVE_CHECKOUT_EXISTS: "asset.transactionReasonOpenCheckoutBulkMove",
+  ASSET_STATUS_TRANSFER_NOT_ALLOWED: "asset.transactionReasonWrittenOff",
+}
+
+/** The row's reason key for a save refusal code; null for any other code (the caller falls back to apiError.describe). */
+export function bulkMoveBlockedReasonKey(code: string): string | null {
+  return Object.hasOwn(bulkMoveBlockedReasonKeys, code) ? bulkMoveBlockedReasonKeys[code as BulkMoveBlockedCode] : null
+}
 
 export function readBulkMoveBlocked(payload: unknown): BulkMoveBlockedAsset[] {
   if (!payload || typeof payload !== "object") return []

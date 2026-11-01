@@ -1348,7 +1348,8 @@
     "dataQualityNoHandover": "Has a holder but no handover document",
     "transactionReasonTransferConditionDamaged": "Damaged: send it for repair before giving it to a new holder",
     "transactionReasonTransferConditionNonFunctional": "Not working: send it for repair before giving it to a new holder",
-    "transactionReasonTransferConditionSalvage": "Salvage awaiting disposal: it cannot go to a new holder"
+    "transactionReasonTransferConditionSalvage": "Salvage awaiting disposal: it cannot go to a new holder",
+    "transactionReasonOpenCheckoutBulkMove": "A handover is open: return the asset before moving it"
   },
   "company": {
     "title": "Companies",

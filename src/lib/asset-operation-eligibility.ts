@@ -151,12 +151,13 @@ export function getTransferVerdict(facts: AssetOperationFacts, context: { assign
   return yes
 }
 
-// The bulk move: the ownership, the open handover, then not Disposed/Retired, in the route's order.
+// The bulk move: the outstanding link, the ownership, the open handover (its own words, group 3 plan 4 P4-R7), then not
+// Disposed/Retired, in the route's order. bulkMoveBlockedReasonKey (bulk-move-blocked.ts) words the save's codes the same way.
 export function getBulkMoveVerdict(facts: AssetOperationFacts): AssetOperationVerdict {
   if (facts.outstanding) return no(assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING)
   const refused = ownershipRefusal("move", facts.ownership)
   if (refused) return refused
-  if (facts.openCheckout) return no("asset.transactionReasonOpenCheckout")
+  if (facts.openCheckout) return no("asset.transactionReasonOpenCheckoutBulkMove")
   if (getAssetLifecycleTransitionError("move_scope", facts.statusName)) return no("asset.transactionReasonWrittenOff")
   return yes
 }
