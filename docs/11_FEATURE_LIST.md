@@ -154,7 +154,7 @@ Important data semantics:
 | Reversible transactions | A user with `asset:edit` can cancel only the latest eligible Check-out, Check-in, or Transfer; the system restores the exact versioned asset/component snapshot and never asks the operator to guess a replacement status; cancelling a Check-in also restores the components it left out as installed |
 | VOID documents | Cancelled operation documents remain readable and printable with cancellation user/time/reason and VOID presentation instead of being deleted |
 | Cancellation safety review | Stale, downstream-dependent, non-latest, or legacy snapshot-less cancellation attempts do not mutate asset data and create/update `transaction_cancellation_blocked` in Asset State Review |
-| Bulk move | Bulk location movement for multiple assets, each typed by its code and picked from the server search |
+| Bulk move | Move up to 100 assets to one room from a server-paged table (desktop only): filter by words, current room and category, tick across pages and filters, review what moves with each asset (installed components follow; holder and department stay), and stay on the page with the result; refused assets are named with their reason |
 | Bulk update | API support for selected asset location/custodian updates |
 | Movement history | Every key operation creates `AssetMovement` records |
 | Operation documents | Printable handover and return documents with readable configurable document numbers |
@@ -335,6 +335,7 @@ Schedulers are intended to run through systemd timers in production. Web-configu
 Current API route groups include:
 
 - `api/assets` for CRUD, batch, duplicate check, import/export, labels, bulk move/update, components, purchase docs, status correction, checkout/checkin/transfer, component-return.
+- `api/asset-operations` for the transaction pages' asset search and the ย้ายที่ตั้งหลายรายการ list (`asset:edit`).
 - `api/audit-rounds`, `api/audit-items`, `api/audit-findings` for audit lifecycle, scan, exports, findings, review, attachments.
 - `api/maintenance-tickets` and `api/maintenance-plans` for repair/PM workflows.
 - `api/disposal-requests` for disposal request, attachments, decision/execution/export.

@@ -533,11 +533,11 @@ A person still checks:
 
 ## Transaction Asset Search UAT (2026-10-28)
 
-The automated suite covers the shared asset picker of ส่งมอบ, รับคืน, โอนย้าย and ย้ายที่ตั้งหลายรายการ in all four projects (`e2e/transactions/*.spec.ts`, `e2e/cross-cutting/field-errors.spec.ts`, `e2e/cross-cutting/roles.spec.ts`). It checks:
+The automated suite covers the shared asset picker of ส่งมอบ, รับคืน and โอนย้าย in all four projects (`e2e/transactions/*.spec.ts`, `e2e/cross-cutting/field-errors.spec.ts`, `e2e/cross-cutting/roles.spec.ts`). It checks:
 - each page's asset found by typing and picked from the answer to that text;
 - a handed-over asset opened from its page chosen but blocked, with its reason under the field, and listed faint with the same reason on an empty form, where a click chooses nothing;
 - รับคืน: a holder's name giving one group, theirs, with "ถืออยู่ N ชิ้น"; return-by starting as the holder; the transferred asset read as a ข้อมูลเก่า row under its holder (never picked, so no backfill);
-- ย้ายที่ตั้งหลายรายการ: three tags typed and picked one at a time, "ที่เลือกแล้ว 3 รายการ", and "เลือกแล้ว" on the chosen rows of a later answer;
+- ย้ายที่ตั้งหลายรายการ: no longer on the picker since group 3 plan 4 (see its own section).
 - the viewer refused the search (`GET /api/asset-operations/search`, 403) and the four pages.
 
 A person still checks:
@@ -547,7 +547,7 @@ A person still checks:
 - [ ] รับคืน: a person's name lists their assets under them; a ข้อมูลเก่า row backfills and returns; a held computer's components read "ส่วนควบรับคืนพร้อมเครื่องหลัก" and come back with it.
 - [ ] โอนย้าย: a custodian chosen after an asset that no longer fits clears it, with the reason under the field.
 - [ ] โอนย้าย: a บุคคล asset in อยู่ระหว่างตรวจสอบ is takeable with no custodian and is cleared with its reason when a custodian is chosen; the asset page shows โอนย้าย disabled for it (S-R40).
-- [ ] ย้ายที่ตั้งหลายรายการ: remove a chosen row; a failed search keeps the chosen list.
+- [ ] ย้ายที่ตั้งหลายรายการ: checked in Transactions Group 3 Plan 4 UAT.
 - [ ] A VPN drop shows "ค้นหาไม่สำเร็จ ลองอีกครั้ง", and the retry works.
 - [ ] NVDA and VoiceOver:
   - the active row is read;
@@ -623,6 +623,26 @@ E2E covers, in all four projects: the transfer through the footer with the locke
 - [ ] The VPN dropped after the pick (the detail read failed): the card (on the phone, the block above the bar) reads "อ่านข้อมูลสรุปไม่สำเร็จ" with ลองอีกครั้ง, the แผนก row stays disabled, and the review does not open.
 - [ ] A transfer to a holder creates no handover: the asset returns through รับคืน's ข้อมูลเก่า row (P3-R22).
 - [ ] NVDA and VoiceOver on the table (each picker named ที่ตั้งปลายทาง / ผู้ถือครองปลายทาง / แผนกปลายทาง), the chips group and the card; an English pass.
+
+## Transactions Group 3 Plan 4 UAT (ย้ายที่ตั้งหลายรายการ, 2026-11-01)
+
+E2E covers (`e2e/transactions/bulk-move.spec.ts`): the batch form's three assets in all four projects; on the desktop, rows gathered from two filters into one move (a held computer ticked with one of its three components, a second one moved alone first), the bar's errors, the review's lines (one ส่วนควบ that follows, ผู้ถือครองและแผนกคงเดิม), the page that stays with the result line and the refreshed list, the links still installed, and the assets read back with room, holder, department and branch; a tick handed over in another tab, named under the table in the row's words and taken out, the refused row disabled with its reason, the route's named 409 and its 400 past 100; and on the phone only the notice and its link, with nothing fetched. Check by hand:
+
+- [ ] For the user to decide first (P4-R1): a ส่วนควบ ticked alone moves alone, the link stays, and the parent's next move pulls it back.
+- [ ] Desktop 1440, both themes, and 768-1023 with the bar at the bottom: the table, status badges, "+N", "ส่วนควบของ", refused rows, the bar's picker width, and the review.
+- [ ] Paging (Review Focus 2): with ticks on page 1 under one filter and on page 2 under another, ก่อนหน้า/ถัดไป keep the ticks, and each page's header box shows only its own rows.
+- [ ] The cap (Review Focus 4): with 90 ticked, เลือกทั้งหมดในหน้านี้ stops at 100, and the rest of the boxes are disabled with "เลือกได้สูงสุด 100 รายการต่อครั้ง".
+- [ ] หมวดหมู่ filters.
+- [ ] A room in another branch: the review's line appears, and branch and tag are unchanged after the save.
+- [ ] An asset already in the room: the review's line, and "อยู่ที่ตั้งนี้แล้ว" in the result.
+- [ ] A room deactivated in another tab: refused under ย้ายไป.
+- [ ] License, written-off and outstanding rows each show their reason, and one save names all of them.
+- [ ] The VPN dropped while paging (Review Focus 5): the failed notice with ลองอีกครั้ง, and the ticks stay.
+- [ ] 100 assets with components over the VPN save inside the 60 s transaction (P4-R16).
+- [ ] The phone notice and its link on iOS Safari and Android Chrome.
+- [ ] The menu reads "ย้ายที่ตั้งหลายรายการ".
+- [ ] NVDA and VoiceOver: the box names, the reason read as a description, and the mixed header box.
+- [ ] An English pass.
 
 ## Sign-Off
 
