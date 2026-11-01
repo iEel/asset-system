@@ -563,6 +563,7 @@ E2E covers the department after a handover on both devices and the multi-word se
 - [ ] A computer with components: the "ไปด้วย" list, a component with its own handover left behind, the components' holder and department after saving; the receiver's hint counts it once.
 - [ ] The condition chips offer ใหม่, ดี and พอใช้ only and start on the asset's (none for ยังไม่ประเมิน; spec §19.1).
 - [ ] Phone (iOS Safari, Android Chrome): the three steps, ยกเลิกและกลับ, step back, "รับในนามของ" for a department or room, landscape signing, the HO- opens.
+- [ ] Phone step 2 (ให้ผู้รับตรวจ), both themes: ผู้ถือครอง and แผนก (and the room for a room handover) read as the desktop สรุปก่อนบันทึก, "ตอนนี้ → หลังบันทึก" with the new value bold when it changes and the value alone when kept; a screen reader says ตอนนี้ and หลังบันทึก (user 2026-11-01).
 - [ ] On dev, a deactivated employee, department or room is refused under its field; an old ทรัพย์สินอื่น handover reads on HO-, RT-, the history and the return search; a cancelled HO- restores the department.
 - [ ] "notebook บัญชี" on ส่งมอบ, รับคืน and โอนย้าย, with a 6th word ignored.
 - [ ] NVDA and VoiceOver on the Segmented, the chips, the summary and the steps; an English pass.

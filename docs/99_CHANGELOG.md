@@ -6,6 +6,12 @@
 
 ## 2026-11-01
 
+### กลุ่มหน้า 3 งานตามมาหลังแผน 4
+
+Branch `feat/group3-followups` (จาก `master` หลังแผน 4)
+
+- กลุ่มหน้า 3 ตามมา: ขั้นที่ 2 "ให้ผู้รับตรวจ" ของการส่งมอบบนมือถือแสดงผู้ถือครองและแผนก (และที่ตั้งเมื่อส่งมอบให้ห้อง) แบบ "ตอนนี้ → หลังบันทึก" จากแถวเดียวกับ "สรุปก่อนบันทึก" บนเดสก์ท็อป ค่าที่เปลี่ยนเป็นตัวหนา ค่าที่คงเดิมแสดงค่าเดียว (ผู้ใช้ 2026-11-01) · `checkout-phone-steps.tsx`, `checkout-form.tsx`, `tests/checkout-phone-steps.test.ts`, `e2e/transactions/desk-delivery.spec.ts`
+
 ### กลุ่มหน้า 3 แผน 4: หน้าย้ายที่ตั้งหลายรายการ
 
 Branch `feat/group3-tx-bulk-move` (จาก `master` `020a8533`) · spec `docs/superpowers/specs/2026-10-30-page-group-3-transactions-design.md` (§10, §11, §13, §17) · plan `docs/superpowers/plans/2026-11-01-group3-tx-bulk-move.md` (ข้อตัดสิน P4-R1 ถึง P4-R25 และ Z1 ถึง Z24) · แผนสุดท้ายของกลุ่มหน้า 3
