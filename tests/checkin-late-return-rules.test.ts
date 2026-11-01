@@ -226,7 +226,7 @@ test("the words of the late return and of ส่งมอบ's outstanding warni
     "checkin.lateResultReattach": ["กลับเข้าเครื่องหลัก {parentTag}", "Back into {parentTag}"],
     "checkin.lateResultStandalone": ["แยกเป็นทรัพย์สินเดี่ยว เก็บไว้ที่ {location}", "Stands alone, stored at {location}"],
     "checkin.lateSuccess": ["รับคืนส่วนควบสำเร็จ", "Component returned"],
-    "checkout.componentsOutstanding": ["ยังค้างคืน {count} รายการ: {list}", "{count, plural, one {# component is still outstanding: {list}} other {# components are still outstanding: {list}}}"],
+    "checkout.componentsOutstanding": ["ยังค้างคืน {count, number} รายการ: {list}", "{count, plural, one {# component is still outstanding: {list}} other {# components are still outstanding: {list}}}"],
     "checkout.componentsOutstandingNote": ["ชิ้นที่ค้างคืนไม่ไปกับการส่งมอบนี้ เมื่อได้คืนแล้วให้รับคืนที่หน้ารับคืนทรัพย์สิน", "An outstanding component does not go with this handover. When it comes back, return it on the Check-in Asset page."],
     "checkout.outstandingWith": ["อยู่กับ {holder}", "with {holder}"],
     "checkout.outstandingSince": ["ตั้งแต่ {documentNo}", "since {documentNo}"],

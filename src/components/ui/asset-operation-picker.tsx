@@ -97,7 +97,7 @@ export function AssetOperationPicker(props: AssetOperationPickerProps) {
   const countLine = getAssetOperationCountLine(answer ?? { total: 0, rows: noRows })
   const countText = countLine.more
     ? t("resultCountMore", { count: formatCount(countLine.count), shown: formatCount(countLine.shown) })
-    : tCommon("searchSelectResultCount", { count: formatCount(countLine.count) })
+    : tCommon("searchSelectResultCount", { count: countLine.count })
   const chosenBlockedReason = value && !value.eligible ? value.reasonKey : null
   const shownError = error ?? (chosenBlockedReason ? tAll(chosenBlockedReason) : null)
   const errorId = shownError ? `${id}-error` : undefined

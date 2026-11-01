@@ -81,7 +81,7 @@ test("every word comes from messages: the states, the count, reasons through the
   for (const part of [
     'useTranslations("assetOperation")', 'useTranslations("common")', "const tAll = useTranslations()",
     't("searching")', 't("notFound")', 't("failed")', 'tCommon("tryAgain")', 'tCommon("searchSelectPlaceholder")',
-    'tCommon("searchSelectResultCount", { count: formatCount(countLine.count) })',
+    'tCommon("searchSelectResultCount", { count: countLine.count })',
     't("resultCountMore", { count: formatCount(countLine.count), shown: formatCount(countLine.shown) })',
     't("noHolderGroup")', 't("legacyLineAt", { location: detail.locationLabel })', 't("change")',
     't(mode === "checkin" ? "hintCheckin" : "hint")', "tAll(note.key)",
@@ -164,7 +164,7 @@ test("the picker's words, Thai and English (glossary: ผู้ถือคร�
       assert.equal(messages.assetOperation?.[key], undefined, `${locale}.assetOperation.${key} has no reader and is removed`)
     }
   }
-  assert.equal(th.common.searchSelectResultCount, "พบ {count} รายการ")
+  assert.equal(th.common.searchSelectResultCount, "พบ {count, number} รายการ")
   assert.equal(th.common.tryAgain, "ลองอีกครั้ง")
 })
 

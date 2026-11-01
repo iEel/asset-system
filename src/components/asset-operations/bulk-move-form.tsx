@@ -234,17 +234,17 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
   // The lines that apply, then what stays; only ticked rows that move are counted (P4-R15, Z11).
   const reviewLines = counts
     ? [
-        counts.componentsFollow > 0 ? t("reviewComponents", { count: formatCount(counts.componentsFollow) }) : null,
+        counts.componentsFollow > 0 ? t("reviewComponents", { count: counts.componentsFollow }) : null,
         counts.alreadyThere > 0 ? t("reviewAlreadyThere", { count: formatCount(counts.alreadyThere) }) : null,
         counts.otherBranch > 0 ? t("reviewOtherBranch", { count: formatCount(counts.otherBranch) }) : null,
-        counts.componentsAlone > 0 ? t("reviewComponentsAlone", { count: formatCount(counts.componentsAlone) }) : null,
+        counts.componentsAlone > 0 ? t("reviewComponentsAlone", { count: counts.componentsAlone }) : null,
         t("reviewKept"),
       ].filter((line): line is string => line !== null)
     : []
   const resultText = result
     ? [
         t("resultMoved", { count: formatCount(result.moved), room: result.room }),
-        result.components > 0 ? t("resultComponents", { count: formatCount(result.components) }) : null,
+        result.components > 0 ? t("resultComponents", { count: result.components }) : null,
         result.unchanged > 0 ? t("resultUnchanged", { count: formatCount(result.unchanged) }) : null,
       ].filter(Boolean).join(" · ")
     : null

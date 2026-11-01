@@ -48,6 +48,6 @@ test("the queue sends only the signed-in person's checks; a 401 keeps the item a
   const bar = read("src/components/audit/audit-scan-offline-bar.tsx")
   assert.match(bar, /t\("queueHeldForUser", \{ name: entry\.name, count: entry\.count \}\)/)
   assert.doesNotMatch(bar, /onRemove\(entry\.userId\)/)
-  for (const [locale, text] of [["th", "ผลตรวจของ {name} {count} รายการ จะส่งเมื่อ {name} เข้าสู่ระบบในเครื่องนี้"], ["en", "{count, plural, one {# check} other {# checks}} by {name} will be sent when {name} signs in on this device"]])
+  for (const [locale, text] of [["th", "ผลตรวจของ {name} {count, number} รายการ จะส่งเมื่อ {name} เข้าสู่ระบบในเครื่องนี้"], ["en", "{count, plural, one {# check} other {# checks}} by {name} will be sent when {name} signs in on this device"]])
     assert.equal(JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).auditScan.queueHeldForUser, text, locale)
 })

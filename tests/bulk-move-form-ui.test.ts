@@ -70,7 +70,7 @@ test("ย้ายที่ตั้งหลายรายการ: a row sho
   assert.ok(read(FORM).includes('<div className="flex flex-wrap items-end gap-3">'))
   assert.ok(table.includes('<TableEmptyRow colSpan={6}>{tAll("asset.noResultsTitle")}</TableEmptyRow>'))
   assert.ok(table.includes("<StatusBadge label={row.statusLabel} tone={getAssetStateTone(row.statusName)} />"))
-  assert.ok(table.includes('row.travellingComponents.length > 0 ? <p data-bulk-move-follow className="text-meta text-muted-foreground">{t("componentsFollow", { count: formatCount(row.travellingComponents.length) })}</p> : null'))
+  assert.ok(table.includes('row.travellingComponents.length > 0 ? <p data-bulk-move-follow className="text-meta text-muted-foreground">{t("componentsFollow", { count: row.travellingComponents.length })}</p> : null'))
   assert.ok(table.includes('row.componentOf ? <p data-bulk-move-component-of className="text-meta text-muted-foreground">{t("componentOf", { tag: row.componentOf.parentTag })}</p> : null'))
   assert.ok(table.includes('!row.eligible && row.reasonKey ? <p id={`bulk-move-row-reason-${row.id}`} data-bulk-move-reason className="text-meta text-warning">{tAll(row.reasonKey)}</p> : null'))
   assert.ok(table.includes('{row.holderLabel ?? <span className="text-muted-foreground">{t("noHolder")}</span>}'))
@@ -114,10 +114,10 @@ test("ย้ายที่ตั้งหลายรายการ: the revie
     '{ label: t("reviewAssets"), value: t("reviewAssetsValue", { count: formatCount(counts.assets), tags: counts.tags.join(", ") }) },',
     '{ label: t("toLocation"), value: room.label },',
     '{ label: t("reason"), value: values.reason },',
-    'counts.componentsFollow > 0 ? t("reviewComponents", { count: formatCount(counts.componentsFollow) }) : null,',
+    'counts.componentsFollow > 0 ? t("reviewComponents", { count: counts.componentsFollow }) : null,',
     'counts.alreadyThere > 0 ? t("reviewAlreadyThere", { count: formatCount(counts.alreadyThere) }) : null,',
     'counts.otherBranch > 0 ? t("reviewOtherBranch", { count: formatCount(counts.otherBranch) }) : null,',
-    'counts.componentsAlone > 0 ? t("reviewComponentsAlone", { count: formatCount(counts.componentsAlone) }) : null,',
+    'counts.componentsAlone > 0 ? t("reviewComponentsAlone", { count: counts.componentsAlone }) : null,',
     't("reviewKept"),',
   ]
   lines.forEach((line, index) => {
@@ -140,7 +140,7 @@ test("ย้ายที่ตั้งหลายรายการ: after the
   assert.match(form, /<div ref=\{resultRef\} role="status" tabIndex=\{-1\} data-bulk-move-result className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">\n\s+\{resultText \? <Notice tone="success">\{resultText\}<\/Notice> : null\}/)
   for (const line of [
     't("resultMoved", { count: formatCount(result.moved), room: result.room }),',
-    'result.components > 0 ? t("resultComponents", { count: formatCount(result.components) }) : null,',
+    'result.components > 0 ? t("resultComponents", { count: result.components }) : null,',
     'result.unchanged > 0 ? t("resultUnchanged", { count: formatCount(result.unchanged) }) : null,',
   ]) assert.ok(form.includes(line), line)
   assert.match(form, /function changeSelection\(next: BulkMoveSelection\) \{\n\s+setSelection\(next\)\n\s+setResult\(null\)\n\s+setBlocked\(\[\]\)\n\s+fieldErrors\.clear\("assetIds"\)\n\s+\}/)
@@ -165,13 +165,13 @@ test("ย้ายที่ตั้งหลายรายการ: the page'
     subtitle: "เลือกทรัพย์สินที่จะย้ายไปที่ตั้งเดียวกัน ผู้ถือครองและแผนกคงเดิม", searchLabel: "ค้นหา", searchPlaceholder: "ค้นหารหัส ชื่อ หรือผู้ถือครอง",
     filterLocation: "ที่ตั้งตอนนี้", filterCategory: "หมวดหมู่", filterAll: "ทั้งหมด", foundCount: "พบ {count} รายการ", tableCaption: "ทรัพย์สินที่ย้ายได้และย้ายไม่ได้",
     colTag: "รหัส", colName: "ชื่อ", colCategory: "หมวดหมู่", colLocation: "ที่ตั้งตอนนี้", colHolder: "ผู้ถือครอง", noHolder: "ไม่มี",
-    selectPage: "เลือกทั้งหมดในหน้านี้", selectRow: "เลือก {tag}", componentsFollow: "+{count} ส่วนควบย้ายตาม", componentOf: "ส่วนควบของ {tag}",
+    selectPage: "เลือกทั้งหมดในหน้านี้", selectRow: "เลือก {tag}", componentsFollow: "+{count, number} ส่วนควบย้ายตาม", componentOf: "ส่วนควบของ {tag}",
     capReached: "เลือกได้สูงสุด {max} รายการต่อครั้ง", nothingSelected: "ยังไม่ได้เลือกทรัพย์สิน เลือกรายการในตารางเพื่อย้าย", listFailed: "โหลดรายการไม่สำเร็จ",
     selectedCount: "{count} รายการที่เลือก", clear: "ล้าง", toLocation: "ย้ายไป", reason: "เหตุผล", reviewAndMove: "ตรวจสอบและย้าย {count} รายการ",
     reviewTitle: "ตรวจสอบก่อนย้ายที่ตั้ง", reviewConfirm: "ยืนยันย้ายที่ตั้ง", reviewAssets: "ทรัพย์สิน", reviewAssetsValue: "{count} รายการ: {tags}",
-    reviewComponents: "ส่วนควบย้ายตาม {count} ชิ้น", reviewAlreadyThere: "อยู่ที่ตั้งนี้แล้ว {count} รายการ ไม่บันทึกการย้าย",
-    reviewOtherBranch: "ย้ายไปสาขาอื่น {count} รายการ รหัสยังเป็นของสาขาเดิม", reviewComponentsAlone: "ส่วนควบที่เลือกเอง {count} รายการ ย้ายแยกจากเครื่องหลัก",
-    reviewKept: "ผู้ถือครองและแผนกคงเดิม", resultMoved: "ย้ายแล้ว {count} รายการไป {room}", resultComponents: "ส่วนควบย้ายตาม {count} ชิ้น",
+    reviewComponents: "ส่วนควบย้ายตาม {count, number} ชิ้น", reviewAlreadyThere: "อยู่ที่ตั้งนี้แล้ว {count} รายการ ไม่บันทึกการย้าย",
+    reviewOtherBranch: "ย้ายไปสาขาอื่น {count} รายการ รหัสยังเป็นของสาขาเดิม", reviewComponentsAlone: "ส่วนควบที่เลือกเอง {count, number} รายการ ย้ายแยกจากเครื่องหลัก",
+    reviewKept: "ผู้ถือครองและแผนกคงเดิม", resultMoved: "ย้ายแล้ว {count} รายการไป {room}", resultComponents: "ส่วนควบย้ายตาม {count, number} ชิ้น",
     resultUnchanged: "อยู่ที่ตั้งนี้แล้ว {count} รายการ", blockedAssets: "ย้ายไม่ได้ {count} รายการ: {list}", removeBlocked: "นำรายการที่ย้ายไม่ได้ออก",
     desktopOnlyTitle: "หน้านี้ใช้บนคอมพิวเตอร์", desktopOnlyBody: "ย้ายที่ตั้งหลายรายการต้องเลือกจากตาราง เปิดหน้านี้บนคอมพิวเตอร์",
     backToRegister: "ไปที่ทะเบียนทรัพย์สิน", clearSearch: "ล้างคำค้น",

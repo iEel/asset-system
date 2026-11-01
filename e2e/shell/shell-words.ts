@@ -4,7 +4,7 @@ export const SHELL_WORDS = {
   bellLabel: "การแจ้งเตือน {count} รายการ", title: "การแจ้งเตือน", bellEmpty: "ไม่มีงานค้าง",
   groupDecide: "รอคุณตัดสิน", groupFollow: "ควรติดตาม", read: "อ่านแล้ว", markAllRead: "อ่านแล้วทั้งหมด", allRead: "อ่านครบแล้ว",
   approvalInbox: "งานรออนุมัติ", increase: "{title} เพิ่ม {count} รายการ", openWorkCenter: "เปิดศูนย์งานค้าง",
-  workCenter: "ศูนย์งานค้าง", workCenterWaiting: "มีงานรอคุณ {count} รายการ",
+  workCenter: "ศูนย์งานค้าง", workCenterWaiting: "มีงานรอคุณ {count, number} รายการ",
   skipLink: "ข้ามไปเนื้อหาหลัก", collapseMenu: "ย่อเมนู", expandMenu: "ขยายเมนู", userMenu: "เมนูผู้ใช้: {name}", languageMenu: "เปลี่ยนภาษา ({code})",
   switchToDark: "เปลี่ยนเป็นโหมดมืด", switchToLight: "เปลี่ยนเป็นโหมดสว่าง", logout: "ออกจากระบบ",
   more: "เพิ่มเติม", close: "ปิด", openMenu: "เปิดเมนู", moreLanguage: "ภาษา", moreTheme: "ธีม", themeLight: "สว่าง", themeDark: "มืด",
@@ -20,17 +20,19 @@ export const SHELL_WORDS = {
 // The global search's groups in the order the panel lists them (src/lib/global-search.ts), by their th.json labels.
 export const SEARCH_GROUP_ORDER = ["ทรัพย์สิน", "งานซ่อม", "รอบตรวจนับ", "ตัดจำหน่าย", "พนักงาน", "ที่ตั้ง", "ผู้ขาย", "บริษัท", "สาขา"] as const
 
-// A th.json template with its {name} placeholders filled, as next-intl fills a plain one.
+// A th.json template with its {name} placeholders filled, as next-intl fills a plain one; a {name, number} (the th
+// side of an en plural) is grouped as next-intl groups it ("1,234").
 export function fillTemplate(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) => (name in values ? String(values[name]) : whole))
+  return template.replace(/\{(\w+)(, number)?\}/g, (whole, name: string, asNumber?: string) =>
+    name in values ? (asNumber && typeof values[name] === "number" ? new Intl.NumberFormat("th").format(values[name]) : String(values[name])) : whole)
 }
 
-// A template as a pattern: the literal text escaped, each placeholder matching what it stands for.
+// A template as a pattern: the literal text escaped, each placeholder ({name} or {name, number}) matching what it stands for.
 export function templatePattern(template: string, placeholders: Record<string, string>, flags = ""): RegExp {
   const source = template
-    .split(/(\{\w+\})/)
+    .split(/(\{\w+(?:, number)?\})/)
     .map((part) => {
-      const name = /^\{(\w+)\}$/.exec(part)?.[1]
+      const name = /^\{(\w+)(?:, number)?\}$/.exec(part)?.[1]
       return name ? (placeholders[name] ?? "[^]*?") : part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     })
     .join("")

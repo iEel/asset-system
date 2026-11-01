@@ -32,7 +32,7 @@ test("the work center shows a dot and a hidden sentence, never a number (spec §
   assert.match(sidebar, /<span aria-hidden="true" className=\{cn\("ml-auto size-2 shrink-0 rounded-full bg-sidebar-dot"/)
   assert.match(sidebar, /<span className="sr-only">\{item\.attention\}<\/span>/)
   assert.doesNotMatch(sidebar, /formatCount|\.total\b|99\+/)
-  for (const [locale, text] of [["th", "มีงานรอคุณ {count} รายการ"], ["en", "{count, plural, one {# item waits for you} other {# items wait for you}}"]]) {
+  for (const [locale, text] of [["th", "มีงานรอคุณ {count, number} รายการ"], ["en", "{count, plural, one {# item waits for you} other {# items wait for you}}"]]) {
     assert.equal(JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav.workCenterWaiting, text)
   }
 })

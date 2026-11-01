@@ -118,7 +118,7 @@ test("the maintenance option select announces loading and its result count from 
   assert.match(source, /const tCommon = useTranslations\("common"\)/)
   assert.match(source, /<span className="sr-only" aria-live="polite">\s*\{loading \? loadingLabel \?\? tCommon\("loading"\) : tCommon\("searchSelectResultCount", \{ count: displayOptions\.length \}\)\}\s*<\/span>/)
   assert.doesNotMatch(source, /"Loading"|results`/)
-  assert.equal(messages("th").common.searchSelectResultCount, "พบ {count} รายการ")
+  assert.equal(messages("th").common.searchSelectResultCount, "พบ {count, number} รายการ")
   assert.equal(messages("en").common.searchSelectResultCount, "{count, plural, one {# result} other {# results}}")
 })
 

@@ -120,7 +120,7 @@ export function BulkMoveTable({ listPage, selection, disabled, loading, onToggle
                       <span className="min-w-0 break-words font-medium text-foreground">{row.name}</span>
                       <StatusBadge label={row.statusLabel} tone={getAssetStateTone(row.statusName)} />
                     </span>
-                    {row.travellingComponents.length > 0 ? <p data-bulk-move-follow className="text-meta text-muted-foreground">{t("componentsFollow", { count: formatCount(row.travellingComponents.length) })}</p> : null}
+                    {row.travellingComponents.length > 0 ? <p data-bulk-move-follow className="text-meta text-muted-foreground">{t("componentsFollow", { count: row.travellingComponents.length })}</p> : null}
                     {row.componentOf ? <p data-bulk-move-component-of className="text-meta text-muted-foreground">{t("componentOf", { tag: row.componentOf.parentTag })}</p> : null}
                     {!row.eligible && row.reasonKey ? <p id={`bulk-move-row-reason-${row.id}`} data-bulk-move-reason className="text-meta text-warning">{tAll(row.reasonKey)}</p> : null}
                   </div>
