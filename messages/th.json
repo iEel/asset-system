@@ -2097,7 +2097,7 @@
     "componentsStaying": "ส่วนควบที่มีใบส่งมอบของตัวเองไม่ย้ายตาม: {list}",
     "componentsOutstanding": "ส่วนควบค้างคืน {count} รายการ ไม่ย้ายตาม: {list}",
     "reasonChipBranch": "ย้ายสาขา",
-    "reasonChipUser": "เปลี่ยนผู้ใช้งาน",
+    "reasonChipUser": "เปลี่ยนผู้ถือครอง",
     "reasonChipRestructure": "ปรับโครงสร้างแผนก",
     "reasonChipRestructureShort": "ปรับโครงสร้าง",
     "reasonChipOther": "อื่น ๆ",

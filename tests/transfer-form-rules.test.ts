@@ -79,7 +79,7 @@ const words: TransferWords = {
   componentsOutstanding: (count, list) => `ส่วนควบค้างคืน ${count} รายการ ไม่ย้ายตาม: ${list}`,
   outstandingLine: { with: (holder) => `อยู่กับ ${holder}`, since: (documentNo) => `ตั้งแต่ ${documentNo}` },
 }
-const chipWords: TransferChipWords = { branch: "ย้ายสาขา", user: "เปลี่ยนผู้ใช้งาน", restructure: "ปรับโครงสร้างแผนก" }
+const chipWords: TransferChipWords = { branch: "ย้ายสาขา", user: "เปลี่ยนผู้ถือครอง", restructure: "ปรับโครงสร้างแผนก" }
 const INCOMPLETE = "เลือกทรัพย์สินและสิ่งที่จะเปลี่ยน"
 const pick = (rows: TransferSummaryRow[]) => rows.map(({ key, now, next, changed }) => [key, now, next, changed])
 const nothing = { location: false, holder: false, department: false }
@@ -164,7 +164,7 @@ test("a destination equal to the current value is not a change: not sent, not co
   assert.deepEqual([getTransferFormChange(same).destinations, getTransferFormChange(same).changed], [none, nothing])
   assert.equal(buildTransferLead(same, words), null)
   assert.equal(buildTransferFooterLine(same, words), INCOMPLETE)
-  assert.equal(buildTransferChecklist(same, "เปลี่ยนผู้ใช้งาน: ตามคำขอ", words)[1].done, false)
+  assert.equal(buildTransferChecklist(same, "เปลี่ยนผู้ถือครอง: ตามคำขอ", words)[1].done, false)
   assert.deepEqual(buildTransferReviewDetails(same, words), [{ key: "status", label: "สถานะถัดไป", value: "คงสถานะเดิม" }])
   // A พร้อมใช้งาน asset still carrying an old holder (ข้อมูลเก่า) re-picks that holder: no ใช้งานอยู่, and no assignCustodian for the picker.
   const legacy = choose({ toCustodianId: "e1" }, { row: row({ statusLabel: "พร้อมใช้งาน" }, { statusName: "Ready" }) })
@@ -341,11 +341,11 @@ test("a chip writes its full word and a colon at the start, replacing an earlier
   assert.deepEqual(TRANSFER_REASON_CHIPS, ["branch", "user", "restructure", "other"])
   assert.equal(applyTransferReasonChip("", "branch", chipWords), "ย้ายสาขา: ")
   assert.equal(applyTransferReasonChip("ไปสาขาบางนา", "branch", chipWords), "ย้ายสาขา: ไปสาขาบางนา")
-  assert.equal(applyTransferReasonChip("ย้ายสาขา: ไปสาขาบางนา", "user", chipWords), "เปลี่ยนผู้ใช้งาน: ไปสาขาบางนา")
-  assert.equal(applyTransferReasonChip("เปลี่ยนผู้ใช้งาน:ให้คุณสมหญิง", "restructure", chipWords), "ปรับโครงสร้างแผนก: ให้คุณสมหญิง")
+  assert.equal(applyTransferReasonChip("ย้ายสาขา: ไปสาขาบางนา", "user", chipWords), "เปลี่ยนผู้ถือครอง: ไปสาขาบางนา")
+  assert.equal(applyTransferReasonChip("เปลี่ยนผู้ถือครอง:ให้คุณสมหญิง", "restructure", chipWords), "ปรับโครงสร้างแผนก: ให้คุณสมหญิง")
   assert.equal(applyTransferReasonChip("ปรับโครงสร้างแผนก: รวมฝ่าย", "restructure", chipWords), "ปรับโครงสร้างแผนก: รวมฝ่าย")
   // Only a leading prefix is replaced, and the phone's short ปรับโครงสร้าง is a label, never a prefix.
-  assert.equal(applyTransferReasonChip("ตามคำขอ ย้ายสาขา: ด่วน", "user", chipWords), "เปลี่ยนผู้ใช้งาน: ตามคำขอ ย้ายสาขา: ด่วน")
+  assert.equal(applyTransferReasonChip("ตามคำขอ ย้ายสาขา: ด่วน", "user", chipWords), "เปลี่ยนผู้ถือครอง: ตามคำขอ ย้ายสาขา: ด่วน")
   assert.equal(applyTransferReasonChip("ปรับโครงสร้าง: รวมฝ่าย", "branch", chipWords), "ย้ายสาขา: ปรับโครงสร้าง: รวมฝ่าย")
   const long = "ก".repeat(495)
   assert.equal(applyTransferReasonChip(long, "restructure", chipWords), `ปรับโครงสร้างแผนก: ${long}`)
@@ -353,7 +353,7 @@ test("a chip writes its full word and a colon at the start, replacing an earlier
 
 test("the pressed chip is the one whose word and colon start the text; อื่น ๆ never writes and is never pressed (P3-R16)", () => {
   assert.equal(pressedTransferReasonChip("ย้ายสาขา: ไปบางนา", chipWords), "branch")
-  assert.equal(pressedTransferReasonChip("เปลี่ยนผู้ใช้งาน:", chipWords), "user")
+  assert.equal(pressedTransferReasonChip("เปลี่ยนผู้ถือครอง:", chipWords), "user")
   assert.equal(pressedTransferReasonChip("ปรับโครงสร้างแผนก: ", chipWords), "restructure")
   for (const text of ["", "ไปบางนา", "อื่น ๆ: ไปบางนา", " ย้ายสาขา: ไปบางนา", "ปรับโครงสร้าง: รวมฝ่าย", "ย้ายสาขา"]) assert.equal(pressedTransferReasonChip(text, chipWords), null, text)
   // @ts-expect-error อื่น ๆ only focuses the text (spec §9.3): the chip function does not take it.

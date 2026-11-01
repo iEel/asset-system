@@ -61,7 +61,7 @@ export const TX_WORDS = {
   transferComponentsMove: "ส่วนควบ {count} รายการ ({list}) ย้ายตามไปด้วย",
   transferSummaryComponents: "ย้ายตาม {count} รายการ",
   transferCrossBranch: "ย้ายไปสาขาอื่น รหัสทรัพย์สินยังเป็นของ {branch} ตามเดิม",
-  reasonChipUser: "เปลี่ยนผู้ใช้งาน",
+  reasonChipUser: "เปลี่ยนผู้ถือครอง",
   transferNoChange: "ไม่เปลี่ยนแปลง",
   // ย้ายที่ตั้งหลายรายการ (group 3 plan 4, bulkMove.* and P4-R20; bulkFound is bulkMove.foundCount)
   bulkTitle: "ย้ายที่ตั้งหลายรายการ",

@@ -2097,7 +2097,7 @@
     "componentsStaying": "Components with their own handover do not move: {list}",
     "componentsOutstanding": "{count, plural, one {# outstanding component does not move: {list}} other {# outstanding components do not move: {list}}}",
     "reasonChipBranch": "Branch move",
-    "reasonChipUser": "New user",
+    "reasonChipUser": "New holder",
     "reasonChipRestructure": "Department restructure",
     "reasonChipRestructureShort": "Restructure",
     "reasonChipOther": "Other",

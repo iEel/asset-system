@@ -293,7 +293,7 @@ const WORDS: Record<string, { th: string; en: string }> = {
   "transfer.componentsStaying": { th: "ส่วนควบที่มีใบส่งมอบของตัวเองไม่ย้ายตาม: {list}", en: "Components with their own handover do not move: {list}" },
   "transfer.componentsOutstanding": { th: "ส่วนควบค้างคืน {count} รายการ ไม่ย้ายตาม: {list}", en: "{count, plural, one {# outstanding component does not move: {list}} other {# outstanding components do not move: {list}}}" },
   "transfer.reasonChipBranch": { th: "ย้ายสาขา", en: "Branch move" },
-  "transfer.reasonChipUser": { th: "เปลี่ยนผู้ใช้งาน", en: "New user" },
+  "transfer.reasonChipUser": { th: "เปลี่ยนผู้ถือครอง", en: "New holder" },
   "transfer.reasonChipRestructure": { th: "ปรับโครงสร้างแผนก", en: "Department restructure" },
   "transfer.reasonChipRestructureShort": { th: "ปรับโครงสร้าง", en: "Restructure" },
   "transfer.reasonChipOther": { th: "อื่น ๆ", en: "Other" },

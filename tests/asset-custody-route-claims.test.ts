@@ -589,7 +589,7 @@ test("a destination equal to the asset's current value is no change: all equal i
 })
 
 test("โอนย้าย refuses a broken asset only when it goes to a new holder, under the asset field and after the outstanding, status and open-handover rules; a room-only move and its own holder re-picked still save (spec §19, P3-R1; Review Focus 4)", async () => {
-  const toNewHolder = { toCustodianId: "emp-2", reason: "เปลี่ยนผู้ใช้งาน" }
+  const toNewHolder = { toCustodianId: "emp-2", reason: "เปลี่ยนผู้ถือครอง" }
   for (const [conditionName, key] of [["Damaged", "transferConditionDamaged"], ["Non-functional", "transferConditionNonFunctional"], ["Salvage", "transferConditionSalvage"]] as const) {
     assert.deepEqual(await refusal(await transferWith({ assetConditionName: conditionName }, toNewHolder)), [409, transferConditionRefusal(key)], conditionName)
     assert.equal(wasCalled("asset.updateMany"), false, conditionName)
