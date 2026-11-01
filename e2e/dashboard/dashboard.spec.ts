@@ -212,12 +212,16 @@ test.describe("the viewer", () => {
     await expect(page.getByRole("main")).toContainText(`จาก ${custodianCount} รายการ`)
     await expect(page.getByRole("group", { name: DASHBOARD_WORDS.activeFilters }).getByRole("link", { name: new RegExp(DASHBOARD_WORDS.custodianAssigned) })).toBeVisible()
 
-    // The register opened for one status: the same count, its tab current or its chip.
+    // The register opened for one status: the same count, its tab current or its chip. A status with no tab of its own
+    // shows its chip, and สถานะอื่น is the current tab (group 4 spec §6.2, plan 1 Review Focus 5).
     const expectStatusList = async (statusName: string, statusCount: string) => {
       await expect(page.getByRole("main")).toContainText(`จาก ${statusCount} รายการ`)
       const statusChip = page.getByRole("group", { name: DASHBOARD_WORDS.activeFilters }).getByRole("link", { name: new RegExp(escapeRegExp(statusName)) })
-      const statusTab = page.getByRole("main").locator('a[aria-current="page"]').filter({ hasText: statusName })
+      const currentStatusTab = page.locator('[data-asset-status-tabs] a[aria-current="page"]')
+      const statusTab = currentStatusTab.filter({ hasText: statusName })
       await expect(statusChip.or(statusTab).filter({ visible: true }).first()).toBeVisible()
+      await expect(currentStatusTab).toHaveCount(1)
+      if ((await statusTab.count()) === 0) await expect(currentStatusTab).toHaveText(new RegExp(`^${escapeRegExp(DASHBOARD_WORDS.otherStatusTab)}`))
     }
 
     // A status row opens its status exactly, on both widths (the phone's way to a status's list).

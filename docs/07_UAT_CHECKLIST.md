@@ -645,6 +645,25 @@ E2E covers (`e2e/transactions/bulk-move.spec.ts`): the batch form's three assets
 - [ ] NVDA and VoiceOver: the box names, the reason read as a description, and the mixed header box.
 - [ ] An English pass.
 
+## กลุ่มหน้า 4 แผน 1: หน้าทะเบียนทรัพย์สิน (2026-11-02)
+
+E2E covers (`e2e/assets/register-find.spec.ts`, `e2e/assets/register-bulk-correction.spec.ts`): a person's name typed in the register's search finds the two assets they hold, each desktop row with the full name, the tag under it and the holder with the department, each phone card with "<holder> · <room>", and one opens (all four projects); an asset waiting for disposal listed under สถานะอื่น with the line under the tabs (all four projects); a saved view with its error first, kept and opened again from the row (desktop); a บุคคล and a ส่วนกลาง asset given one holder in one bulk correction, its errors first, the department line, the toast, and both read back (the บุคคล one in the holder's department, the ส่วนกลาง one in its own) with แก้ไขข้อมูลผู้ถือครอง in the history (desktop). The dashboard's status links check สถานะอื่น as the current tab for a status with no tab, and the viewer's read-only lists now include the import and export page. Check by hand:
+
+- [ ] Desktop 1440, both themes: the ทรัพย์สิน column with a long Thai name on two lines and the tag under it; the room with its branch; the holder with the department; "ส่วนกลาง · ไม่มีผู้ถือครอง"; "คืน <date>" on a temporary loan; a badge only on a condition that needs a look.
+- [ ] Long Thai holder and room names in the 200 / 180 px columns: cut with the full text on hover.
+- [ ] A column set saved before this release (with รหัส and ชื่อ) opens as the operations preset with one ทรัพย์สิน column; the picker reads "ชุดคอลัมน์: <preset>".
+- [ ] The search: a holder's name, a room's name and a serial each find the asset; the placeholder reads "ค้นหา รหัส · ชื่อ · Serial · ผู้ถือครอง · ที่ตั้ง".
+- [ ] The tabs: the counts add up to ทั้งหมด on the line under them; สถานะอื่น names its three largest statuses and "อื่น ๆ N"; a dashboard status row for รอตัดจำหน่าย opens with สถานะอื่น current and the status chip; "ล้างตัวกรองทั้งหมด" leaves สถานะอื่น.
+- [ ] The header: "ส่งออก / นำเข้า" exports the filtered list with its count; IT staff see the template and "นำเข้าจาก Excel", which opens the import and export page; the viewer sees the export only. The register shows no import wizard.
+- [ ] The footer's page sizes 10, 25, 50 and 100 keep the filters and go back to page 1.
+- [ ] The selection bar on the desktop: it sticks to the bottom while the table scrolls; "อื่น ๆ" opens อัปเดตที่ตั้ง/ผู้ถือครอง and ส่งออกรายการที่เลือก; focus comes back to "อื่น ๆ" when the dialog is cancelled; "พิมพ์ป้าย N รายการ" opens the label page. The viewer sees no อัปเดตที่ตั้ง/ผู้ถือครอง.
+- [ ] The phone: the card's name, tag and status, and "<holder> · <room>"; "<tab> N รายการ" above and "แสดงครบ N จาก N รายการ" at the end; select mode and the floating bar above the bottom navigation, on iOS Safari and Android Chrome.
+- [ ] Saved views: save, rename and delete; a name used twice and a 13th view are refused under the field; the current view is marked; the views stay after the browser restarts and differ per person; the phone's button lists them (and is absent with none).
+- [ ] The bulk correction: a held บุคคล asset given a room only takes its holder's department; a ส่วนกลาง asset keeps its own; an asset with an open handover, an outstanding ส่วนควบ or a License is named in "แก้ไขไม่ได้ N รายการ: …" with "นำรายการเหล่านี้ออกจากที่เลือก", and the others save after it; a เสียหาย asset can be given a holder; installed ส่วนควบ follow the parent's room, holder and department.
+- [ ] The history of a corrected asset: แก้ไขข้อมูลที่ตั้ง / แก้ไขข้อมูลผู้ถือครอง / แก้ไขข้อมูลแผนก with the reason, under the chip แก้ไขข้อมูล.
+- [ ] NVDA and VoiceOver: the tabs and their counts, the line under them, the saved views' ⋯ names, the selection bar's count and the refused list read as an alert.
+- [ ] An English pass (the line under the tabs names the statuses in Thai on the English site, a known minor).
+
 ## Sign-Off
 
 | Role | Tester | Date | Result | Notes |

@@ -149,7 +149,8 @@ export async function shownDocuments(scope: Locator, codes: readonly string[]): 
 
 // The register page's assets in their order on screen, each with the link its row opens (returnTo included). Read
 // from the phone list at every width: on the desktop the table's rows are clickable <tr>s with no link
-// (ClickableTableRow), and the phone list, always rendered in the table's order, is only hidden from md.
+// (ClickableTableRow), and the phone list, always rendered in the table's order, is only hidden from md. Each card has
+// one such link, its name (page group 4 plan 1, spec §6.7: the card leads with the name).
 export async function registerRows(page: Page): Promise<{ id: string; href: string }[]> {
   const hrefs = await page.locator('[data-asset-mobile-list] a[href*="returnTo="]').evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""))
   const rows: { id: string; href: string }[] = []

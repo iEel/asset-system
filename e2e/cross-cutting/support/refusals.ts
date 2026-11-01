@@ -80,10 +80,12 @@ export const APPROVE_API_REFUSALS: readonly ApiRefusal[] = [
 ]
 
 // The pages a view-only person reads (spec §6.6 "sees read-only lists"): the asset register, the run's asset, the
+// asset import and export page (where the import wizard lives since page group 4 plan 1 took it off the register), the
 // audit rounds and findings, repair records, PM plans, disposal requests and batches.
 export const READ_ONLY_LISTS: readonly string[] = [
   "/th/assets",
   "/th/assets/:asset",
+  "/th/asset-management/import-export",
   "/th/audit/rounds",
   "/th/audit/findings",
   "/th/maintenance",
@@ -105,7 +107,7 @@ export const WRITE_LINK_PATTERNS: readonly RegExp[] = [
   /^\/th\/disposal\/(?:new|batch\/new)(?:[?#]|$)/,
   /^\/th\/admin\/approvals(?:[?#]|$)/,
 ]
-// messages/th.json: asset.openImportWizard, auditFinding.approve / reject / actionPlan / closeFinding,
+// messages/th.json: asset.openImportWizard (on the import and export page only, group 4 plan 1), auditFinding.approve / reject / actionPlan / closeFinding,
 // disposalPage.reviewRequest, and the PM plan's state buttons (maintenancePage).
 export const WRITE_BUTTON_NAMES: readonly string[] = ["เปิดตัวช่วยนำเข้า", "อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง", "พิจารณาคำขอ", "พักแผน", "จบแผน", "บันทึกตัดจำหน่ายจริง"]
 // The four controls of a finding's review, which all need audit:approve.
