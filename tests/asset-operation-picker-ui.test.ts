@@ -158,6 +158,12 @@ test("the picker's words, Thai and English (glossary: ผู้ถือคร�
   // S-R47: the line without the place has no reader left.
   assert.equal(th.assetOperation?.legacyLine, undefined)
   assert.equal(en.assetOperation?.legacyLine, undefined)
+  // Group 3 plan 4 P4-R24: the picker's multiple mode was the only reader of these three (Task 7 removed it).
+  for (const key of ["selectedTitle", "chosen", "removeNamed"]) {
+    for (const [locale, messages] of [["th", th], ["en", en]] as const) {
+      assert.equal(messages.assetOperation?.[key], undefined, `${locale}.assetOperation.${key} has no reader and is removed`)
+    }
+  }
   assert.equal(th.common.searchSelectResultCount, "พบ {count} รายการ")
   assert.equal(th.common.tryAgain, "ลองอีกครั้ง")
 })

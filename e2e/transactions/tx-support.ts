@@ -2,7 +2,7 @@
 // signed-in IT staff (the asset API the form posts to), walks the workflow on the form, and reads the outcome back in
 // the UI and with GETs. The run's second room is made once, as the seed admin, through the location API (spec §7: the
 // data comes from the app's own APIs, never from SQL).
-import { request, type Locator, type Page, type TestInfo } from "@playwright/test"
+import { request, type Locator, type Page, type Response, type TestInfo } from "@playwright/test"
 import { expect } from "../support/fixtures.ts"
 import type { E2eDevice } from "../support/matrix.ts"
 import type { Measure } from "../support/measure.ts"
@@ -140,6 +140,7 @@ export type AssetRead = {
   currentLocation: { code: string; name: string } | null
   departmentId: string | null
   department: { code: string; name: string } | null
+  branchId: string
 }
 
 export async function readAsset(page: Page, assetId: string): Promise<AssetRead> {
@@ -233,7 +234,7 @@ export async function findAssetRow(page: Page, fieldId: string, text: string, as
   await expect(row).toHaveCount(1)
   return row
 }
-// Choose a takeable row; the field (or bulk-move's chosen list) then holds it. Returns the asset's id.
+// Choose a takeable row; the field then holds it. Returns the asset's id.
 export async function pickAsset(page: Page, fieldId: string, text: string, assetTag: string): Promise<string> {
   const row = await findAssetRow(page, fieldId, text, assetTag)
   await expect(row).not.toHaveAttribute("aria-disabled", "true")
@@ -291,6 +292,33 @@ export function conditionChip(page: Page, label: string, groupId = "checkout-con
 // travelling component, named with its tag.
 export function returnChecklistBox(page: Page, assetTag: string): Locator {
   return page.locator("#checkin-components").getByRole("checkbox", { name: assetTag })
+}
+
+// ย้ายที่ตั้งหลายรายการ's list (group 3 plan 4, P4-R12): the server renders the first page, and every later filter or
+// page is one client fetch of BULK_MOVE_LIST_PATH. The specs wait for each answer before the next step, so no list
+// request is in flight when a test leaves the page. A param the query names must match exactly ("" when absent); an
+// empty query matches any list answer.
+export const BULK_MOVE_LIST_PATH = "/api/asset-operations/bulk-move-list"
+export type BulkMoveListQuery = { q?: string; locationId?: string; categoryId?: string; page?: string }
+export function bulkMoveListAnswer(page: Page, query: BulkMoveListQuery = {}): Promise<Response> {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return url.pathname === BULK_MOVE_LIST_PATH && Object.entries(query).every(([key, value]) => (url.searchParams.get(key) ?? "") === value)
+  })
+}
+// One fill of the search field, one fetch 300 ms after it (P4-R11, P4-R12): the wait is set before the fill.
+export async function searchBulkMoveList(page: Page, text: string): Promise<void> {
+  const answered = bulkMoveListAnswer(page, { q: text })
+  await page.locator("#bulk-move-search").fill(text)
+  expect((await answered).status(), `${BULK_MOVE_LIST_PATH} q=${text}`).toBe(200)
+}
+// A row's box, named "เลือก <tag>" (P4-R22), and its row. The row is found by its box, not by the tag's text: a
+// component's "ส่วนควบของ <tag>" holds the parent's tag in its own element.
+export function bulkMoveRowBox(page: Page, assetTag: string): Locator {
+  return page.getByRole("checkbox", { name: TX_WORDS.bulkSelectRow.replace("{tag}", assetTag), exact: true })
+}
+export function bulkMoveRow(page: Page, assetTag: string): Locator {
+  return page.getByRole("row").filter({ has: bulkMoveRowBox(page, assetTag) })
 }
 
 // The field's error under it (the V track): its text, in the element the field names with aria-describedby.
@@ -466,6 +494,27 @@ export async function saveTransferForm(page: Page, assetId: string, atReview?: (
   return transfer
 }
 
+// Save ย้ายที่ตั้งหลายรายการ (group 3 spec §10.2; plan 4 P4-R17, P4-R18): the bar's ตรวจสอบและย้าย N รายการ, the review
+// "ตรวจสอบก่อนย้ายที่ตั้ง" (read by atReview), then ยืนยันย้ายที่ตั้ง. The page stays: the ticks clear and the list is
+// fetched again, so both the save and that fetch are waited for from before the click. The save is P4-R16's measure.
+export type SavedBulkMove = { updated: number; unchanged: number; componentSync: { updated: number; skipped: number; movements: number } }
+export async function saveBulkMove(page: Page, measure: Measure, count: number, atReview?: (review: Locator) => Promise<void>): Promise<SavedBulkMove> {
+  await page.getByRole("button", { name: TX_WORDS.bulkReviewAndMove.replace("{count}", String(count)), exact: true }).click()
+  const review = page.getByRole("dialog", { name: TX_WORDS.bulkReviewTitle })
+  await expect(review).toBeVisible()
+  await atReview?.(review)
+  const saved = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/bulk-move" && response.request().method() === "POST")
+  const refreshed = bulkMoveListAnswer(page)
+  const response = await measure.timed("bulk move save", async () => {
+    await review.getByRole("button", { name: TX_WORDS.bulkReviewConfirm, exact: true }).click()
+    return saved
+  })
+  expect(response.status(), `POST /api/assets/bulk-move: ${(await response.text()).slice(0, 300)}`).toBe(200)
+  expect((await refreshed).status(), `${BULK_MOVE_LIST_PATH} after the save`).toBe(200)
+  await expect(page.getByRole("dialog")).toHaveCount(0)
+  return (await response.json()) as SavedBulkMove
+}
+
 // The area's measured pages (spec §8). The page settles first: axe reads a toast or dialog still fading in as low
 // contrast, so it waits until no finite animation runs (a spinner's endless one does not count). Then axe, less the known
 // findings of known-findings.ts on their own elements; any other violation still fails the test.
@@ -479,11 +528,12 @@ export async function record(measure: Measure, label: string, testInfo: TestInfo
   return dropKnownAxe(await measure.recordPage(label), KNOWN_AXE, testInfo)
 }
 // The four transaction pages (checkout, checkin, transfer, bulk-move) load no asset register since the server asset
-// search: they read only their master lists (getAssetOperationMasterOptions in src/lib/asset-operation-options.ts, about
-// 770 employees and 1,100 locations) and, from the asset page, one row by id; their pickers ask the server. The first
-// arrival check after a navigation into one of them waits this long. It was 30 s while they loaded every asset (13B
-// loop 7); 15 s keeps one step above the suite's 10 s expect for the first request of a fresh build over the VPN
-// (bulk-move arrived in about 3 s even with 8,796 rows, E2E-1028C; S-R8, S-R36).
+// search. Three read only their master lists (getAssetOperationMasterOptions in src/lib/asset-operation-options.ts, about
+// 770 employees and 1,100 locations) and, from the asset page, one row by id; their pickers ask the server.
+// ย้ายที่ตั้งหลายรายการ reads its active rooms, its categories and its first 25 rows (group 3 plan 4). The first arrival
+// check after a navigation into one of them waits this long. It was 30 s while they loaded every asset (13B loop 7);
+// 15 s keeps one step above the suite's 10 s expect for the first request of a fresh build over the VPN (bulk-move
+// arrived in about 3 s even with 8,796 rows, E2E-1028C; S-R8, S-R36).
 export const TRANSACTION_PAGE_ARRIVAL_MS = 15_000
 const TRANSACTION_PAGE_PATH = /^\/th\/asset-management\/(?:checkout|checkin|transfer|bulk-move)(?:[?#]|$)/
 

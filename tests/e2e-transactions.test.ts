@@ -380,18 +380,65 @@ test("โอนย้าย through the footer: the second room and a new holder
   for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "/api/locations", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })
 
-test("three assets added on the batch form move to the second room in one bulk move, a wrong entry first (e2e transactions task 5, TX5)", async () => {
+test("ย้ายที่ตั้งหลายรายการ: the batch form's three assets and a held computer with its components gathered from two filters into one move, the bar's errors, the review's lines, the page stays with the result line; a stale tick named under the table and taken out, the refused row disabled with its reason, the route's named 409 and its cap; the phone's notice only (group 3 spec §10, §11, §17; P4-R1, P4-R3, P4-R4, P4-R8, P4-R10, P4-R18, P4-R19, P4-R22)", () => {
   const spec = readTxSpec("e2e/transactions/bulk-move.spec.ts")
   assert.match(spec, /getByRole\("button", \{ name: "เพิ่มเป็นชุด" \}\)/)
   assert.match(spec, /expect\(batch\.created\)\.toBe\(3\)/)
-  assert.match(spec, /await expectFieldError\(page, "bulk-move-assets", "กรุณาเลือกทรัพย์สินอย่างน้อย 1 รายการ"\)/)
-  assert.ok(spec.includes('for (const tag of tags) await pickAsset(page, "bulk-move-assets", tag, tag)'))
-  assert.ok(spec.includes('await expect(page.locator("#bulk-move-assets-search")).toBeFocused()'))
-  assert.ok(spec.includes('TX_WORDS.chosenList.replace("{count}", "3")'))
-  for (const old of ["input[type=checkbox]", 'getByRole("checkbox"', 'getByRole("searchbox"']) assert.ok(!spec.includes(old), old)
-  assert.match(spec, /await expectFieldError\(page, "bulk-move-to-location", "กรุณาระบุข้อมูลนี้"\)/)
-  assert.match(spec, /expect\(after\.currentLocationId, asset\.assetTag\)\.toBe\(room\.id\)/)
-  assert.match(spec, /await page\.waitForLoadState\("networkidle"\)/)
+  assert.equal(spec.split('test.skip(e2eDevice === "phone", DESKTOP_ONLY)').length - 1, 2, "BM1 and BM2 on the desktop")
+  assert.equal(spec.split('test.skip(e2eDevice !== "phone", PHONE_ONLY)').length - 1, 1, "the notice on the phone")
+  const bm1 = [
+    "await searchBulkMoveList(page, `${code} จอภาพย้ายที่ตั้ง ${runId}`)",
+    'await expect(pageBox).toHaveAttribute("aria-checked", "mixed")',
+    "const words = `${runId} ${code} ครบชุด`",
+    "await searchBulkMoveList(page, words)",
+    'await pickSearchable(page, "bulk-move-filter-location", runRoom.code, `${runRoom.code} - ${runRoom.name}`)',
+    "await expect(bulkMoveRow(page, c2.assetTag)).toHaveCount(0)",
+    "fillTemplate(TX_WORDS.bulkSelectedCount, { count: 4 })",
+    'await expectFieldError(page, "bulk-move-to-location", "กรุณาระบุข้อมูลนี้")',
+    'await expect(page.locator("#bulk-move-to-location")).toBeFocused()',
+    'await pickSearchable(page, "bulk-move-to-location", room.code, `${room.code} - ${room.name}`)',
+    "await expect(review).toContainText(fillTemplate(TX_WORDS.bulkComponentsMoved, { count: 1 }))",
+    "await expect(review).toContainText(TX_WORDS.transferKeptBoth)",
+    "expect(saved).toMatchObject({ updated: 4, unchanged: 0, componentSync: { updated: 1, skipped: 0 } })",
+    "await expect(page).toHaveURL(/\\/th\\/asset-management\\/bulk-move(?:[?#]|$)/)",
+    "await expect(result).toContainText(`${room.code} - ${room.name}`)",
+    "fillTemplate(TX_WORDS.bulkFound, { count: 0 })",
+    "await expect(bulkMoveRow(page, parent.assetTag)).toContainText(fillTemplate(TX_WORDS.bulkComponentsFollow, { count: 3 }))",
+    "expect(after.departmentId, asset.assetTag).toBe(data.departmentId)",
+    "expect(after.branchId, asset.assetTag).toBe(data.branchId)",
+    'expect((await readAsset(page, parent.id)).custodianId, "the holder stays (spec §6, §10.2)").toBe(receiver.id)',
+  ]
+  let from = 0
+  for (const step of bm1) {
+    const index = spec.indexOf(step, from)
+    assert.ok(index >= 0, `BM1 in order: ${step}`)
+    from = index + step.length
+  }
+  for (const part of [
+    'measure.expectRefusal({ method: "POST", url: /\\/api\\/assets\\/bulk-move$/, status: 409,',
+    'await expect(page.locator("#bulk-move-selection").getByRole("button", { name: TX_WORDS.bulkRemoveBlocked, exact: true })).toBeFocused()',
+    "await page.getByRole(\"button\", { name: TX_WORDS.bulkRemoveBlocked, exact: true }).click()",
+    "await expect(box).toHaveAccessibleDescription(TX_WORDS.bulkReasonOpenCheckout)",
+    'code: "ASSET_ACTIVE_CHECKOUT_EXISTS", error: "ASSET_ACTIVE_CHECKOUT_EXISTS", blocked: [{ assetId: asset.id, assetTag: asset.assetTag, code: "ASSET_ACTIVE_CHECKOUT_EXISTS" }]',
+    'fieldErrors: { assetIds: "outOfRange" }',
+    'await expect(page.getByRole("link", { name: TX_WORDS.bulkBackToRegister, exact: true })).toHaveAttribute("href", "/th/assets")',
+    'expect(asked, "nothing is fetched below md (P4-R19)").toEqual([])',
+  ]) assert.ok(spec.includes(part), part)
+  // "ส่วนควบ" is no filter word: RCP and TR4 carry it with the same run id and code (Z9).
+  for (const old of ["bulk-move-assets", "pickAsset(", "chosenList", "alreadyChosen", "networkidle", 'waitForURL("**/th/assets")', "${code} ส่วนควบ`"]) assert.ok(!spec.includes(old), old)
+  for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "/api/locations", "ldap", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
+  const support = read("e2e/transactions/tx-support.ts")
+  for (const signature of [
+    'export const BULK_MOVE_LIST_PATH = "/api/asset-operations/bulk-move-list"',
+    "export function bulkMoveListAnswer(page: Page, query: BulkMoveListQuery = {}): Promise<Response>",
+    "export async function searchBulkMoveList(page: Page, text: string): Promise<void>",
+    "export function bulkMoveRowBox(page: Page, assetTag: string): Locator",
+    "export async function saveBulkMove(page: Page, measure: Measure, count: number, atReview?: (review: Locator) => Promise<void>): Promise<SavedBulkMove>",
+  ]) assert.ok(support.includes(signature), signature)
+  const start = support.indexOf("export async function saveBulkMove(")
+  const save = support.slice(start, support.indexOf("\nexport ", start + 1))
+  const confirm = save.indexOf("TX_WORDS.bulkReviewConfirm")
+  assert.ok(save.indexOf("page.waitForResponse(") < confirm && save.indexOf("bulkMoveListAnswer(page)") < confirm, "the save and the page's fetch after it are waited for from before the click")
   assert.deepEqual(expectedFailures(spec), [])
 })
 
