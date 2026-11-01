@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export type PaginationLabels = {
@@ -19,12 +20,10 @@ export type PaginationLabels = {
 
 export type PaginationPageSize = { value: number; href: string }
 
-export type PaginationProps = {
+type PaginationBaseProps = {
   /** The page shown, already kept within 1…totalPages. */
   page: number
   totalPages: number
-  previousHref: string
-  nextHref: string
   labels: PaginationLabels
   /** The current page size; marks one of pageSizes as current. */
   pageSize?: number
@@ -33,10 +32,18 @@ export type PaginationProps = {
   className?: string
 }
 
+type PaginationLinkProps = { previousHref: string; nextHref: string; onPrevious?: never; onNext?: never }
+type PaginationButtonProps = { previousHref?: never; nextHref?: never; onPrevious: () => void; onNext: () => void; pageSizes?: never }
+
+/** Links for a server list; buttons for a client list that pages in place (ย้ายที่ตั้งหลายรายการ, group 3 plan 4). Never both. */
+export type PaginationProps = PaginationBaseProps & (PaginationLinkProps | PaginationButtonProps)
+
 // Mockup .table-foot (spec 2B §3.8): the range and the page text on the left, announced when a client navigation
 // changes them; the page sizes as links that look like Segmented; words-only outline sm buttons, 44px below md and
-// 32px from md. A disabled button is a span with the shared disabled look, so it takes no focus and never fades.
-// Server-safe: no directive and no hooks.
+// 32px from md. In link mode a disabled control is a span with the shared disabled look, so it takes no focus and
+// never fades. In button mode previous and next are `Button`s that stay focusable at either end (`aria-disabled`,
+// no handler), so keyboard paging keeps its focus. Server-safe: no directive and no hooks; a client caller passes
+// the handlers.
 const controlClasses = buttonVariants({ variant: "outline", size: "sm" })
 const pageSizeFrameClasses = "inline-flex gap-0.5 rounded-md border border-border bg-surface p-0.5"
 // The frame is 32px from md (26 + 2 × 2 padding + 2 × 1 border); every option is a 44px target below md.
@@ -44,7 +51,7 @@ const pageSizeOptionClasses = "inline-flex min-h-11 min-w-11 items-center justif
 const pageSizeCurrentClasses = "bg-primary-soft font-semibold text-primary-hover"
 const pageSizeIdleClasses = "font-medium text-muted-foreground hover:bg-background hover:text-foreground"
 
-export function Pagination({ page, totalPages, previousHref, nextHref, labels, pageSize, pageSizes, className }: PaginationProps) {
+export function Pagination({ page, totalPages, previousHref, nextHref, onPrevious, onNext, labels, pageSize, pageSizes, className }: PaginationProps) {
   return (
     <nav aria-label={labels.navigation} className={cn("flex flex-wrap items-center justify-between gap-x-3 gap-y-2", className)}>
       <p aria-live="polite" className="text-meta text-muted-foreground num">
@@ -69,8 +76,8 @@ export function Pagination({ page, totalPages, previousHref, nextHref, labels, p
             </div>
           </div>
         ) : null}
-        <PaginationControl href={previousHref} enabled={page > 1} rel="prev" label={labels.previous} />
-        <PaginationControl href={nextHref} enabled={page < totalPages} rel="next" label={labels.next} />
+        <PaginationControl href={previousHref} enabled={page > 1} rel="prev" label={labels.previous} onClick={onPrevious} />
+        <PaginationControl href={nextHref} enabled={page < totalPages} rel="next" label={labels.next} onClick={onNext} />
       </div>
     </nav>
   )
@@ -81,13 +88,23 @@ function PaginationControl({
   enabled,
   rel,
   label,
+  onClick,
 }: {
-  href: string
+  href?: string
   enabled: boolean
   rel: "prev" | "next"
   label: string
+  onClick?: () => void
 }) {
-  if (!enabled) {
+  if (onClick) {
+    return (
+      <Button variant="outline" size="sm" aria-disabled={enabled ? undefined : true} onClick={enabled ? onClick : undefined}>
+        {label}
+      </Button>
+    )
+  }
+
+  if (!enabled || href === undefined) {
     return (
       <span aria-disabled="true" className={controlClasses}>
         {label}

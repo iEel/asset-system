@@ -17,6 +17,8 @@ type OperationReviewDialogProps = {
   busy?: boolean
   onClose: () => void
   onConfirm: () => void
+  /** Under the items, inside the body: what is not one label and value (ย้ายที่ตั้งหลายรายการ's sentence lines and หมายเหตุ; group 3 plan 4 P4-R17). */
+  children?: ReactNode
 }
 
 export function OperationReviewDialog({
@@ -30,6 +32,7 @@ export function OperationReviewDialog({
   busy = false,
   onClose,
   onConfirm,
+  children,
 }: OperationReviewDialogProps) {
   const confirmButtonRef = useRef<HTMLButtonElement | null>(null)
 
@@ -53,6 +56,7 @@ export function OperationReviewDialog({
             </div>
           ))}
         </dl>
+        {children ? <div className="border-t border-border py-3">{children}</div> : null}
       </AccessibleDialogBody>
       <AccessibleDialogFooter>
         <AccessibleDialogCancel>{cancelLabel}</AccessibleDialogCancel>
