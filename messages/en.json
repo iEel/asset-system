@@ -1353,7 +1353,10 @@
     "quickFilterOther": "Other statuses",
     "statusSumLine": "{terms} = {total} · Other statuses {other} = {breakdown}",
     "statusSumLineNoOther": "{terms} = {total}",
-    "statusSumLineRest": "others {count}"
+    "statusSumLineRest": "others {count}",
+    "assetColumn": "Asset",
+    "holderShared": "Shared · No custodian",
+    "registerDueDate": "Due {date}"
   },
   "company": {
     "title": "Companies",

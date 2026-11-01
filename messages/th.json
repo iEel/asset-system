@@ -1353,7 +1353,10 @@
     "quickFilterOther": "สถานะอื่น",
     "statusSumLine": "{terms} = {total} · สถานะอื่น {other} = {breakdown}",
     "statusSumLineNoOther": "{terms} = {total}",
-    "statusSumLineRest": "อื่น ๆ {count}"
+    "statusSumLineRest": "อื่น ๆ {count}",
+    "assetColumn": "ทรัพย์สิน",
+    "holderShared": "ส่วนกลาง · ไม่มีผู้ถือครอง",
+    "registerDueDate": "คืน {date}"
   },
   "company": {
     "title": "บริษัท",

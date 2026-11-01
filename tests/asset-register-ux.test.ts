@@ -17,23 +17,22 @@ const importExportPageSource = () =>
 const assetMessages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).asset
 
 test("asset register column presets cover focused work modes and sanitize stored preferences", () => {
+  // Group 4 plan 1 Task 2 (spec §6.1, P1-R4): the tag and the name are one "asset" column.
   assert.deepEqual(assetRegisterColumnPresets.operations, [
-    "assetTag",
-    "name",
+    "asset",
     "currentLocation",
     "custodian",
     "status",
     "condition",
   ])
   assert.deepEqual(assetRegisterColumnPresets.accounting, [
-    "assetTag",
-    "name",
+    "asset",
     "companyBranch",
     "category",
     "purchasePrice",
     "status",
   ])
-  assert.deepEqual(normalizeAssetRegisterColumns(["assetTag", "bad-column", "name"]), ["assetTag", "name"])
+  assert.deepEqual(normalizeAssetRegisterColumns(["assetTag", "bad-column", "name"]), ["asset"])
   assert.deepEqual(normalizeAssetRegisterColumns(["bad-column"]), assetRegisterColumnPresets.all)
 })
 
@@ -122,10 +121,11 @@ test("asset register table starts in the operational column preset before stored
   assert.doesNotMatch(source, /useState<Set<AssetRegisterColumnKey>>\(new Set\(assetRegisterColumnPresets\.all\)\)/)
 })
 
-test("asset register desktop table pins the tag and actions columns only", () => {
+// Group 4 plan 1 Task 2 (spec §6.1): the tag is no longer a sticky first column; only the actions column is pinned.
+test("asset register desktop table pins the actions column only", () => {
   const source = registerTableSource()
 
-  assert.match(source, /assetRegisterStickyFirstColumnClasses/)
+  assert.doesNotMatch(source, /assetRegisterStickyFirstColumnClasses/)
   assert.match(source, /assetRegisterStickyActionsColumnClasses/)
   assert.doesNotMatch(source, /assetRegisterStickyNameColumnClasses|\[left:11rem\]/)
   assert.match(source, /right-0/)
@@ -211,12 +211,13 @@ test("asset register desktop table explains horizontal scroll only when it overf
   assert.match(source, /\{isOverflowing \? \(/)
 })
 
-test("asset register table keeps names on one line with the full name on hover and visible row focus", () => {
+// Group 4 plan 1 Task 2 (spec §6.1): the full name wraps to two lines (it was one), with the full name on hover.
+test("asset register table shows names on up to two lines with the full name on hover and visible row focus", () => {
   const tableSource = registerTableSource()
   const rowSource = readFileSync("src/components/ui/clickable-table-row.tsx", "utf8")
 
   assert.match(tableSource, /title=\{asset\.name\}/)
-  assert.match(tableSource, /truncate font-medium/)
+  assert.match(tableSource, /line-clamp-2 font-medium/)
   assert.match(rowSource, /focus-visible:ring-2/)
   assert.match(rowSource, /focus-visible:ring-inset/)
 })

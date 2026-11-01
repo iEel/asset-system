@@ -256,8 +256,9 @@ test("sort options map to the existing sort parameters", () => {
 })
 
 test("default columns fit a 1440px screen without horizontal scroll", () => {
-  assert.equal(assetRegisterColumnWidths.name, 200)
-  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.operations), 1116)
+  // Group 4 plan 1 Task 2 (P1-R3): the merged asset column is 280, the room 180, the holder 200.
+  assert.equal(assetRegisterColumnWidths.asset, 280)
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.operations), 1104)
   assert.ok(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.operations) <= 1117)
   assert.ok(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.all) > 1117, "the all preset scrolls")
 })
@@ -268,8 +269,8 @@ test("default columns fit a 1440px screen without horizontal scroll", () => {
 test("the actions column fits the next-step button and ⋯, and the accounting preset still fits 1440px (spec 2B I26)", () => {
   assert.equal(assetRegisterColumnWidths.actions, 172)
   assert.equal(assetRegisterColumnWidths.companyBranch, 116)
-  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.accounting), 1116)
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.accounting), 1024)
   assert.ok(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.accounting) <= 1117)
-  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.audit), 1276, "audit scrolls, as before")
-  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.all), 1632, "all scrolls, as before")
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.audit), 1264, "audit scrolls (group 4 plan 1 Task 2: 1,264)")
+  assert.equal(getAssetRegisterTableMinWidth(assetRegisterColumnPresets.all), 1620, "all scrolls (group 4 plan 1 Task 2: 1,620)")
 })

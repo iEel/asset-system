@@ -30,6 +30,9 @@ import { firstIdByAssetId, getAssetActions, openDisposalRequestWhere, outstandin
 import { outstandingLinkWhere } from "@/lib/asset-component-outstanding"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { chooseAssetPhotoPreview, type AssetPhotoPreview } from "@/lib/asset-photo-preview"
+import { getRegisterHolderLine } from "@/lib/asset-register-row-rules"
+import { formatAssetDetailDate } from "@/lib/asset-detail-frame-rules"
+import type { AssetHandoverMode } from "@/lib/asset-handover-mode"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
@@ -69,8 +72,9 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           category: { select: { code: true, name: true } },
           company: { select: { code: true, nameTh: true } },
           branch: { select: { code: true, name: true } },
-          custodian: { select: { code: true, fullNameTh: true } },
-          currentLocation: { select: { code: true, name: true } },
+          // The holder's department and the room's branch go under them in the row (group 4 spec §6.1).
+          custodian: { select: { code: true, fullNameTh: true, department: { select: { name: true } } } },
+          currentLocation: { select: { code: true, name: true, branch: { select: { name: true } } } },
           status: { select: { name: true, nameTh: true, colorCode: true } },
           condition: { select: { name: true, nameTh: true, colorCode: true } },
           attachments: {
@@ -187,7 +191,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     assetIds.length
       ? prisma.assetCheckout.findMany({
           where: { assetId: { in: assetIds }, isReturned: false, transactionStatus: "active" },
-          select: { id: true, assetId: true, handoverMode: true },
+          select: { id: true, assetId: true, handoverMode: true, expectedReturnDate: true },
           orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([]),
@@ -220,12 +224,13 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       modelPhotoByModelId.set(photo.referenceId, photo)
     }
   }
-  const openCheckoutByAssetId = new Map<string, { id: string; handoverMode: string | null }>()
+  const openCheckoutByAssetId = new Map<string, { id: string; handoverMode: string | null; expectedReturnDate: Date | null }>()
   for (const checkout of openCheckouts) {
     if (!openCheckoutByAssetId.has(checkout.assetId)) {
-      openCheckoutByAssetId.set(checkout.assetId, { id: checkout.id, handoverMode: checkout.handoverMode })
+      openCheckoutByAssetId.set(checkout.assetId, { id: checkout.id, handoverMode: checkout.handoverMode, expectedReturnDate: checkout.expectedReturnDate })
     }
   }
+  const temporaryLoan: AssetHandoverMode = "temporary_loan"
   const openRepairIdByAssetId = firstIdByAssetId(openRepairRecords)
   const openDisposalIdByAssetId = firstIdByAssetId(openDisposalRequests)
   const outstandingByAssetId = outstandingFactByAssetId(outstandingLinks)
@@ -342,6 +347,12 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       can: actionPermissions,
     })
 
+    const ownership = normalizeAssetOwnershipType(asset.ownershipType)
+    // "คืน <date>" under the holder: only an open temporary loan with an expected return date (group 4 spec §6.1).
+    const dueDate = openCheckout?.handoverMode === temporaryLoan && openCheckout.expectedReturnDate
+      ? formatAssetDetailDate(openCheckout.expectedReturnDate, locale)
+      : null
+
     return ({
     id: asset.id,
     assetTag: asset.assetTag,
@@ -351,9 +362,15 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     companyBranch: `${asset.company.code} / ${asset.branch.code}`,
     currentLocation: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
     custodian: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null,
+    location: { name: asset.currentLocation.name, branchName: asset.currentLocation.branch.name },
+    holder: getRegisterHolderLine({
+      ownership,
+      custodian: asset.custodian ? { name: asset.custodian.fullNameTh, departmentName: asset.custodian.department.name } : null,
+    }),
+    dueDate,
     ownershipType: {
-      value: normalizeAssetOwnershipType(asset.ownershipType),
-      label: t(`ownershipType_${normalizeAssetOwnershipType(asset.ownershipType)}`),
+      value: ownership,
+      label: t(`ownershipType_${ownership}`),
     },
     status: { value: asset.status.name, label: asset.status.nameTh },
     condition: { value: asset.condition.name, label: asset.condition.nameTh },
@@ -420,6 +437,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           labels={{
             actions: tCommon("actions"),
             all: tCommon("all"),
+            asset: t("assetColumn"),
             assetName: t("assetName"),
             assetTag: t("assetTag"),
             tableScrollHint: t("tableScrollHint"),

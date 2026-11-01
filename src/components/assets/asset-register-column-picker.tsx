@@ -29,8 +29,7 @@ const presetLabelKeys = {
   audit: "columnPresetAudit",
 } as const satisfies Record<AssetRegisterColumnPresetKey, string>
 const columnLabelKeys = {
-  assetTag: "assetTag",
-  name: "assetName",
+  asset: "assetColumn",
   category: "category",
   companyBranch: "company",
   currentLocation: "currentLocation",

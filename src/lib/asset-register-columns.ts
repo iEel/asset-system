@@ -1,6 +1,7 @@
+// Group 4 plan 1 Task 2 (spec §6.1): one "asset" column (photo, the full name, the tag under it) replaces the tag and
+// the name columns.
 export const assetRegisterColumnOrder = [
-  "assetTag",
-  "name",
+  "asset",
   "category",
   "companyBranch",
   "currentLocation",
@@ -19,12 +20,14 @@ export const assetRegisterColumnStorageKey = "asset-register-columns:v1"
 
 export const assetRegisterColumnPresets = {
   all: assetRegisterColumnOrder,
-  operations: ["assetTag", "name", "currentLocation", "custodian", "status", "condition"],
-  accounting: ["assetTag", "name", "companyBranch", "category", "purchasePrice", "status"],
-  audit: ["assetTag", "name", "category", "currentLocation", "custodian", "status", "condition"],
+  operations: ["asset", "currentLocation", "custodian", "status", "condition"],
+  accounting: ["asset", "companyBranch", "category", "purchasePrice", "status"],
+  audit: ["asset", "category", "currentLocation", "custodian", "status", "condition"],
 } satisfies Record<AssetRegisterColumnPresetKey, readonly AssetRegisterColumnKey[]>
 
 const assetRegisterColumnSet = new Set<AssetRegisterColumnKey>(assetRegisterColumnOrder)
+// The keys a column set stored before group 4 can hold: the tag and the name became "asset" (P1-R4).
+const legacyAssetColumnKeys = new Set(["assetTag", "name"])
 
 export function normalizeAssetRegisterColumns(value: unknown): AssetRegisterColumnKey[] {
   if (!Array.isArray(value)) return [...assetRegisterColumnPresets.all]
@@ -33,9 +36,10 @@ export function normalizeAssetRegisterColumns(value: unknown): AssetRegisterColu
   const seen = new Set<AssetRegisterColumnKey>()
 
   for (const item of value) {
-    if (!assetRegisterColumnSet.has(item as AssetRegisterColumnKey)) continue
+    const mapped = legacyAssetColumnKeys.has(item as string) ? "asset" : item
+    if (!assetRegisterColumnSet.has(mapped as AssetRegisterColumnKey)) continue
 
-    const column = item as AssetRegisterColumnKey
+    const column = mapped as AssetRegisterColumnKey
     if (seen.has(column)) continue
     seen.add(column)
     columns.push(column)
@@ -54,19 +58,19 @@ export function assetRegisterColumnsMatchPreset(
 }
 
 /**
- * Desktop widths in px. `name` is the minimum; the name column takes the remaining space.
+ * Desktop widths in px. `asset` is the minimum; the asset column takes the remaining space.
  * actions 172: the RowActions pair (next step 120 + 4 + ⋯ 32 = 156) fits between pl-1.5 pr-2 and the left line
- * (172 − 6 − 8 − 0.5 = 157.5, spec 2B I26). companyBranch 116 keeps the accounting preset at 1,116px, and operations is
- * 1,116px too: a 1440px screen leaves 1,117px, so the default columns never scroll sideways (DESIGN.md, asset register).
+ * (172 − 6 − 8 − 0.5 = 157.5, spec 2B I26). Group 4 plan 1 P1-R3: asset 280, currentLocation 180 and custodian 200 (two
+ * lines each), so operations is 44 + 280 + 180 + 200 + 132 + 96 + 172 = 1,104px and accounting 1,024px: a 1440px screen
+ * leaves 1,117px, so the default columns never scroll sideways (DESIGN.md, asset register).
  */
 export const assetRegisterColumnWidths = {
   select: 44,
-  assetTag: 172,
-  name: 200,
+  asset: 280,
   category: 160,
   companyBranch: 116,
-  currentLocation: 140,
-  custodian: 160,
+  currentLocation: 180,
+  custodian: 200,
   ownershipType: 120,
   status: 132,
   condition: 96,

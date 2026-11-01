@@ -113,19 +113,35 @@ test("the desktop table has fixed column widths that fit the default columns", (
   assert.match(source, /<colgroup>/)
   assert.match(source, /assetRegisterColumnWidths\.select/)
   assert.match(source, /assetRegisterColumnWidths\.actions/)
-  assert.match(source, /column === "name" \? undefined : \{ width: assetRegisterColumnWidths\[column\] \}/)
+  // Group 4 plan 1 Task 2 (P1-R3): the merged asset column is the flexible one.
+  assert.match(source, /column === "asset" \? undefined : \{ width: assetRegisterColumnWidths\[column\] \}/)
 })
 
-test("desktop rows use small thumbnails, one-line cells and shared status badges", () => {
+// Group 4 plan 1 Task 2 (spec §6.1): one "ทรัพย์สิน" column (photo, the full name on up to two lines, the tag under it),
+// the room with its branch, the holder with the department and the due date, the condition a badge only when it needs
+// attention.
+test("desktop rows: one asset column, the room with the branch, the holder with the department and the due date (group 4 §6.1)", () => {
   const source = table()
 
+  assert.match(source, /<DataTableHead sort=\{sortOf\("name"\)\}>\{labels\.asset\}<\/DataTableHead>/)
+  assert.doesNotMatch(source, /\{labels\.assetTag\}<\/DataTableHead>|\{labels\.assetName\}<\/DataTableHead>/)
+  assert.doesNotMatch(source, /assetRegisterStickyFirstColumnClasses/, "the tag is no longer a sticky first column")
   assert.match(source, /<AssetThumbnail photo=\{asset\.photo\} assetTag=\{asset\.assetTag\} assetName=\{asset\.name\} size=\{40\}/)
-  assert.match(source, /<div className="truncate font-medium" title=\{asset\.name\}>/)
-  assert.match(source, /title=\{asset\.currentLocation\}/)
-  assert.match(source, /title=\{asset\.custodian \?\? undefined\}/)
+  assert.match(source, /<div className="line-clamp-2 font-medium" title=\{asset\.name\}>\{asset\.name\}<\/div>\n\s+<div className="text-meta text-muted-foreground"><span className="tag">\{asset\.assetTag\}<\/span><\/div>/)
+  assert.match(source, /title=\{asset\.location\.name\}>\{asset\.location\.name\}<\/div>/)
+  assert.match(source, /title=\{asset\.location\.branchName\}>\{asset\.location\.branchName\}<\/div>/)
+  assert.match(source, /asset\.holder\.kind === "holder"/)
+  assert.match(source, /title=\{asset\.holder\.name\}>\{asset\.holder\.name\}<\/div>/)
+  assert.match(source, /title=\{asset\.holder\.department\}>\{asset\.holder\.department\}<\/div>/)
+  assert.match(source, /asset\.holder\.kind === "shared" \? t\("holderShared"\) : t\("noCustodian"\)/)
+  assert.match(source, /asset\.dueDate \? \([\s\S]*?t\("registerDueDate", \{ date: asset\.dueDate \}\)/)
   assert.match(source, /<StatusBadge label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.value\)\}/)
-  assert.match(source, /<StatusBadge label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\}/)
+  assert.match(source, /needsConditionAttention\(asset\.condition\.value\) \? \(\n\s+<StatusBadge label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\} \/>\n\s+\) : \(\n\s+asset\.condition\.label\n\s+\)/)
   assert.doesNotMatch(source, /function StatusPill/)
+  assert.equal(messages("th").assetColumn, "ทรัพย์สิน")
+  assert.equal(messages("th").holderShared, "ส่วนกลาง · ไม่มีผู้ถือครอง")
+  assert.equal(messages("th").registerDueDate, "คืน {date}")
+  for (const key of ["assetColumn", "holderShared", "registerDueDate"]) assert.equal(typeof messages("en")[key], "string", key)
 })
 
 test("the scroll hint follows real overflow and the pinned actions column has no edge shadow", () => {
@@ -184,7 +200,8 @@ test("leaving select mode clears the selection and the bulk bar floats above the
   assert.match(source, /fixed inset-x-3 bottom-\[calc\(5\.25rem\+env\(safe-area-inset-bottom\)\)\][^"]*md:static/)
   assert.match(source, /reserveBulkBarSpace=\{selectedAssets\.length > 0\}/)
   assert.doesNotMatch(source, /AssetRegisterTransactionMenu|AssetRegisterMoreMenu|AssetDeleteButton|<details/)
-  assert.doesNotMatch(source, /next\/image|\?inline=1|line-clamp-2/)
+  // Group 4 plan 1 Task 2 (spec §6.1): the desktop name now wraps to two lines (line-clamp-2), so that pin moved out.
+  assert.doesNotMatch(source, /next\/image|\?inline=1/)
 })
 
 test("select mode copy exists in Thai and English", () => {
@@ -238,7 +255,7 @@ test("the register table builds on the DataTable parts and keeps its dense rows 
   assert.match(source, /group-has-\[\[aria-expanded=true\]\]\/row:bg-row-hover/, "the pinned cells stay lit with the row while its ⋯ menu is open")
   assert.match(source, /cn\(headerClasses, "pl-1\.5 pr-2 text-right", /, "the actions column: 172 − 6 − 8 − 0.5 leaves 157.5px for the 156px RowActions pair")
   assert.match(source, /cn\(cellClasses, "pl-1\.5 pr-2", /)
-  assert.equal(source.match(/<DataTableHead\b[^>]*\bsort=\{sortOf\("(?:assetTag|name|purchasePrice)"\)\}/g)?.length, 3, "the code, name and price heads sort through DataTableHead (aria-sort and an arrow icon)")
+  assert.equal(source.match(/<DataTableHead\b[^>]*\bsort=\{sortOf\("(?:name|purchasePrice)"\)\}/g)?.length, 2, "the asset (by name) and price heads sort through DataTableHead (aria-sort and an arrow icon); group 4 plan 1 Task 2 merged the code and name heads")
   assert.match(source, /const current = filters\.sort === field \? \(filters\.direction === "asc" \? "asc" : "desc"\) : null/)
   assert.match(source, /<DataTableBody>/)
   assert.match(source, /<TableEmptyRow colSpan=\{visibleColumnCount \+ 2\} emptyState=\{emptyState\} \/>/)
@@ -251,9 +268,11 @@ test("the register table builds on the DataTable parts and keeps its dense rows 
 
 test("register cells: codes in monospace, money through formatMoney, empty values through Nil (spec 2B R-n, R-p, §7.8.2)", () => {
   const source = table()
-  assert.match(source, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
-  assert.match(source, /<span className="tag">\{asset\.serialNumber\}<\/span>/)
-  assert.match(source, /orNil\(asset\.custodian, t\("noCustodian"\)\)/)
+  // Group 4 plan 1 Task 2 (spec §6.1): the tag sits small under the name, the serial left the row (it stays in the
+  // CSV of the selected rows), and an empty holder is said in words, not a dash. The tag sizes itself under its
+  // wrapper (visual-foundation-guards: a tag sets no size of its own).
+  assert.match(source, /<div className="text-meta text-muted-foreground"><span className="tag">\{asset\.assetTag\}<\/span><\/div>/)
+  assert.match(source, /asset\.serialNumber \?\? ""/)
   assert.match(source, /formatMoney\(asset\.purchasePrice\) \?\? <Nil \/>/)
   assert.match(source, /t\("purchasePriceBaht"\)/, "the unit sits in the head, so the cells drop the ฿")
   assert.match(source, /from: formatCount\(fromRow\),/)

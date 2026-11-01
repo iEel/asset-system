@@ -7,7 +7,8 @@ import type { AssetRegisterRow } from "@/components/assets/asset-register-table"
 import { Chip } from "@/components/ui/chip"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getAssetStateTone, normalizeAssetStateValue } from "@/lib/design-system"
+import { getAssetStateTone } from "@/lib/design-system"
+import { needsConditionAttention } from "@/lib/asset-register-row-rules"
 import { cn } from "@/lib/utils"
 
 type MobileListProps = {
@@ -111,5 +112,5 @@ function MobileSelectableRow({ asset, checked, onToggle }: { asset: AssetRegiste
 }
 
 function needsFieldAttention(asset: AssetRegisterRow) {
-  return ["fair", "poor", "damaged", "non functional", "salvage"].includes(normalizeAssetStateValue(asset.condition.value)) || asset.ownershipType.value === "shared"
+  return needsConditionAttention(asset.condition.value) || asset.ownershipType.value === "shared"
 }

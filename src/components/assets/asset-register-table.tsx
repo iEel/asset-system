@@ -20,7 +20,7 @@ import { Chip } from "@/components/ui/chip"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { DataTableBody, DataTableFoot, DataTableHead, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
 import { checkboxVariants } from "@/components/ui/field-variants"
-import { Nil, orNil } from "@/components/ui/nil"
+import { Nil } from "@/components/ui/nil"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
@@ -44,6 +44,7 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import type { AssetActionSet } from "@/lib/asset-actions"
+import { needsConditionAttention, type RegisterHolderLine } from "@/lib/asset-register-row-rules"
 import { getAssetStateTone, getDesktopTableOnlyClasses, getPanelClasses } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
@@ -66,8 +67,14 @@ export type AssetRegisterRow = {
   serialNumber: string | null
   category: string
   companyBranch: string
+  // currentLocation and custodian ("code - name") stay for the CSV of the selected rows; the cells read location,
+  // holder and dueDate (group 4 spec §6.1).
   currentLocation: string
   custodian: string | null
+  location: { name: string; branchName: string }
+  holder: RegisterHolderLine
+  // The open temporary loan's expected return day, already a Bangkok date (Buddhist year in Thai).
+  dueDate: string | null
   ownershipType: { value: string; label: string }
   status: { value: string; label: string }
   condition: { value: string; label: string }
@@ -138,6 +145,7 @@ type AssetRegisterTableProps = {
   labels: {
     actions: string
     all: string
+    asset: string
     condition: string
     category: string
     company: string
@@ -190,7 +198,6 @@ type AssetRegisterTableProps = {
   }
 }
 
-const assetRegisterStickyFirstColumnClasses = "sticky left-0"
 const assetRegisterStickyActionsColumnClasses = "sticky right-0"
 const assetRegisterStickyHeaderColumnClasses = "z-30 bg-surface"
 // The pinned cells take the row fill together with the row (instant on, soft off), also while the row's ⋯ menu is
@@ -595,7 +602,7 @@ export function AssetRegisterTable({
           <colgroup>
             <col style={{ width: assetRegisterColumnWidths.select }} />
             {visibleColumnList.map((column) => (
-              <col key={column} style={column === "name" ? undefined : { width: assetRegisterColumnWidths[column] }} />
+              <col key={column} style={column === "asset" ? undefined : { width: assetRegisterColumnWidths[column] }} />
             ))}
             <col style={{ width: assetRegisterColumnWidths.actions }} />
           </colgroup>
@@ -613,15 +620,8 @@ export function AssetRegisterTable({
                   />
                 </label>
               </th>
-              {visibleColumns.has("assetTag") && (
-                <DataTableHead
-                  sort={sortOf("assetTag")}
-                  className={cn(assetRegisterStickyHeaderColumnClasses, assetRegisterStickyFirstColumnClasses, "border-r border-border")}
-                >
-                  {labels.assetTag}
-                </DataTableHead>
-              )}
-              {visibleColumns.has("name") && <DataTableHead sort={sortOf("name")}>{labels.assetName}</DataTableHead>}
+              {/* One "ทรัพย์สิน" column for the tag and the name (group 4 spec §6.1); it sorts by the name. */}
+              {visibleColumns.has("asset") && <DataTableHead sort={sortOf("name")}>{labels.asset}</DataTableHead>}
               {visibleColumns.has("category") && <th scope="col" className={`${headerClasses} truncate`}>{labels.category}</th>}
               {visibleColumns.has("companyBranch") && <th scope="col" className={`${headerClasses} truncate`}>{labels.company}</th>}
               {visibleColumns.has("currentLocation") && <th scope="col" className={`${headerClasses} truncate`}>{labels.currentLocation}</th>}
@@ -673,28 +673,43 @@ export function AssetRegisterTable({
                       />
                     </label>
                   </td>
-                  {visibleColumns.has("assetTag") && (
-                    <td className={cn(assetRegisterStickyBodyColumnClasses, assetRegisterStickyFirstColumnClasses, cellClasses, "truncate border-r border-r-border text-foreground")} title={asset.assetTag}>
-                      <span className="tag font-medium">{asset.assetTag}</span>
-                    </td>
-                  )}
-                  {visibleColumns.has("name") && (
+                  {visibleColumns.has("asset") && (
                     <td className={`${cellClasses} text-foreground`}>
-                      <div className="flex min-w-0 items-center gap-3">
+                      {/* The full name on up to two lines, the tag small under it (group 4 spec §6.1). */}
+                      <div className="flex min-w-0 items-start gap-3">
                         <AssetThumbnail photo={asset.photo} assetTag={asset.assetTag} assetName={asset.name} size={40} />
                         <div className="min-w-0">
-                          <div className="truncate font-medium" title={asset.name}>{asset.name}</div>
-                          {asset.serialNumber ? (
-                            <div className="truncate text-meta text-muted-foreground" title={asset.serialNumber}><span className="tag">{asset.serialNumber}</span></div>
-                          ) : null}
+                          <div className="line-clamp-2 font-medium" title={asset.name}>{asset.name}</div>
+                          <div className="text-meta text-muted-foreground"><span className="tag">{asset.assetTag}</span></div>
                         </div>
                       </div>
                     </td>
                   )}
                   {visibleColumns.has("category") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.category}>{asset.category}</td>}
                   {visibleColumns.has("companyBranch") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.companyBranch}>{asset.companyBranch}</td>}
-                  {visibleColumns.has("currentLocation") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.currentLocation}>{asset.currentLocation}</td>}
-                  {visibleColumns.has("custodian") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.custodian ?? undefined}>{orNil(asset.custodian, t("noCustodian"))}</td>}
+                  {visibleColumns.has("currentLocation") && (
+                    <td className={`${cellClasses} text-muted-foreground`}>
+                      <div className="truncate" title={asset.location.name}>{asset.location.name}</div>
+                      <div className="truncate text-meta" title={asset.location.branchName}>{asset.location.branchName}</div>
+                    </td>
+                  )}
+                  {visibleColumns.has("custodian") && (
+                    <td className={`${cellClasses} text-muted-foreground`}>
+                      {asset.holder.kind === "holder" ? (
+                        <>
+                          <div className="truncate" title={asset.holder.name}>{asset.holder.name}</div>
+                          {asset.holder.department ? (
+                            <div className="truncate text-meta" title={asset.holder.department}>{asset.holder.department}</div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <div className="truncate">{asset.holder.kind === "shared" ? t("holderShared") : t("noCustodian")}</div>
+                      )}
+                      {asset.dueDate ? (
+                        <div className="truncate text-meta">{t("registerDueDate", { date: asset.dueDate })}</div>
+                      ) : null}
+                    </td>
+                  )}
                   {visibleColumns.has("ownershipType") && (
                     <td className={cellClasses}>
                       {/* The ownership type is a name, not a state (2D-2 R2): the shared Chip, cut with its title in the 120px column. */}
@@ -707,8 +722,13 @@ export function AssetRegisterTable({
                     </td>
                   )}
                   {visibleColumns.has("condition") && (
-                    <td className={cellClasses}>
-                      <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
+                    <td className={`${cellClasses} truncate text-muted-foreground`}>
+                      {/* Plain words, and a badge only when the condition needs someone to look (group 4 spec §6.1). */}
+                      {needsConditionAttention(asset.condition.value) ? (
+                        <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
+                      ) : (
+                        asset.condition.label
+                      )}
                     </td>
                   )}
                   {visibleColumns.has("purchasePrice") && <td className={cn(cellClasses, "truncate text-right text-muted-foreground num")}>{formatMoney(asset.purchasePrice) ?? <Nil />}</td>}
