@@ -310,7 +310,7 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
               className="-bottom-6"
               status={selection.size >= bulkMoveMaxAssets ? t("capReached", { max: formatCount(bulkMoveMaxAssets) }) : null}
               actions={
-                <div className="flex flex-wrap items-start gap-3">
+                <div className="flex flex-wrap items-end gap-3">
                   <div className="w-72">
                     <SearchableSelect id="bulk-move-to-location" label={t("toLocation")} value={values.toLocationId} required options={rooms} placeholder={t("selectLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} error={fieldErrors.message("toLocationId")} onChange={(value) => setField("toLocationId", value)} />
                   </div>

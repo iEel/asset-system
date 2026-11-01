@@ -63,7 +63,7 @@ export function BulkMoveTable({ listPage, selection, disabled, onToggleRow, onTo
   return (
     <div className="grid min-w-0 gap-2">
       {selection.size >= bulkMoveMaxAssets ? <p id={CAP_REASON_ID} className="sr-only">{t("capReached", { max: formatCount(bulkMoveMaxAssets) })}</p> : null}
-      <DataTable caption={t("tableCaption")} footer={footer}>
+      <DataTable caption={t("tableCaption")} footer={footer} minWidth={960} scrollHint={tCommon("tableScrollHint")}>
         <DataTableHeader>
           <tr>
             <DataTableHead className="w-14 py-0">

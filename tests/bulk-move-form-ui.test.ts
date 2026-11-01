@@ -59,6 +59,10 @@ test("ย้ายที่ตั้งหลายรายการ: the list 
 test("ย้ายที่ตั้งหลายรายการ: a row shows the tag, the name with its status, what travels or whose component it is, the room, the holder or ไม่มี; a locked box says why (group 3 spec §10.1; P4-R1, P4-R2, P4-R9, P4-R10, P4-R22)", () => {
   const table = read(TABLE)
   assert.match(table, /<DataTable caption=\{t\("tableCaption"\)\}/)
+  // Look step: at 1024 the table scrolls sideways instead of squeezing its columns, and the bar's button sits on the
+  // fields' line (the filter panel's and the batch form's items-end).
+  assert.ok(table.includes('<DataTable caption={t("tableCaption")} footer={footer} minWidth={960} scrollHint={tCommon("tableScrollHint")}>'))
+  assert.ok(read(FORM).includes('<div className="flex flex-wrap items-end gap-3">'))
   assert.ok(table.includes('<TableEmptyRow colSpan={6}>{tAll("asset.noResultsTitle")}</TableEmptyRow>'))
   assert.ok(table.includes("<StatusBadge label={row.statusLabel} tone={getAssetStateTone(row.statusName)} />"))
   assert.ok(table.includes('row.travellingComponents.length > 0 ? <p data-bulk-move-follow className="text-meta text-muted-foreground">{t("componentsFollow", { count: formatCount(row.travellingComponents.length) })}</p> : null'))
