@@ -20,13 +20,13 @@ export const bulkUpdateBlockedOrder = [
   "ASSET_STATUS_TRANSFER_NOT_ALLOWED",
 ] as const satisfies readonly BulkUpdateBlockedCode[]
 
-// An open handover reads as bulk-move's ("รับคืนก่อนจึงย้ายได้"). A status that cannot take the change reads as the
+// An open handover reads as a correction's own words ("รับคืนหรือโอนย้ายก่อนจึงแก้ได้"), not bulk-move's move advice. A status that cannot take the change reads as the
 // transfer's words when the holder changes, else as bulk-move's written-off words (P1-R1).
 const bulkUpdateBlockedReasonKeys: Readonly<Record<Exclude<BulkUpdateBlockedCode, "ASSET_STATUS_TRANSFER_NOT_ALLOWED">, string>> = {
   ASSET_NOT_ACTIVE: "bulkMove.blockedNotActive",
   ASSET_COMPONENT_OUTSTANDING: assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING,
   ASSET_LICENSE_MOVE_NOT_ALLOWED: assetOperationRefusalReasonKeys.ASSET_LICENSE_MOVE_NOT_ALLOWED,
-  ASSET_ACTIVE_CHECKOUT_EXISTS: "asset.transactionReasonOpenCheckoutBulkMove",
+  ASSET_ACTIVE_CHECKOUT_EXISTS: "asset.transactionReasonOpenCheckoutCorrection",
 }
 
 /** The reason key for a save refusal code; null for any other code (the caller falls back to apiError.describe). */

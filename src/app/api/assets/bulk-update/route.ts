@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
     const input = assetBulkUpdateSchema.parse(await request.json())
     const toLocationId = input.toLocationId ?? null
     const toCustodianId = input.toCustodianId ?? null
-    const changesCustodian = Boolean(toCustodianId)
     const uniqueAssetIds = Array.from(new Set(input.assetIds))
     const assets: ReadAsset[] = await prisma.asset.findMany({
       where: { id: { in: uniqueAssetIds }, isActive: true },
@@ -99,7 +98,7 @@ export async function POST(request: NextRequest) {
     const blocked = [
       ...notActive,
       ...ordered.flatMap((asset) => {
-        const code = bulkUpdateRefusal(asset, { outstanding: outstandingIds.has(asset.id), openCheckout: openIds.has(asset.id), changesCustodian })
+        const code = bulkUpdateRefusal(asset, { outstanding: outstandingIds.has(asset.id), openCheckout: openIds.has(asset.id), changesCustodian: holderChanges(asset, toCustodianId) })
         return code ? [{ assetId: asset.id, assetTag: asset.assetTag, code }] : []
       }),
     ]
@@ -110,7 +109,8 @@ export async function POST(request: NextRequest) {
 
     await readDestinations(prisma, { toLocationId, toCustodianId })
 
-    // A new holder sets In Use only on บุคคล and Stock (spec §6.6); the other types keep their status.
+    // A new holder sets In Use only on บุคคล and Stock (spec §6.6), and only where the holder changes; the other types keep
+    // their status.
     const targetStatusName = getTransferTargetStatusName(toCustodianId)
     const targetStatusId = targetStatusName ? await getRequiredAssetStatusId(targetStatusName) : null
     // One batch reference for the movements and the component syncs of this save (P1-R5).
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
           nextLocationId: toLocationId ?? asset.currentLocationId,
           nextCustodianId: toCustodianId ?? asset.custodianId,
           nextDepartmentId,
-          nextStatusId: targetStatusId && followsHolder ? targetStatusId : asset.statusId,
+          nextStatusId: targetStatusId && followsHolder && holderChanges(asset, toCustodianId) ? targetStatusId : asset.statusId,
         }
       })
       const changing = plans.filter(planChanges)
@@ -316,6 +316,12 @@ function bulkUpdateRefusal(
   if (facts.openCheckout) return "ASSET_ACTIVE_CHECKOUT_EXISTS"
   const code = getBulkCustodyChangeError({ statusName: asset.status.name, hasActiveCheckout: false, changesCustodian: facts.changesCustodian })
   return code === "ASSET_STATUS_TRANSFER_NOT_ALLOWED" ? code : null
+}
+
+// The holder changes for this asset only when one is chosen and it is not the asset's own holder: choosing the current
+// holder (to fix the room of a person's assets) is not a holder change, so the status rule neither refuses nor moves it.
+function holderChanges(asset: { custodianId: string | null }, toCustodianId: string | null): boolean {
+  return Boolean(toCustodianId) && toCustodianId !== asset.custodianId
 }
 
 function planChanges(plan: AssetPlan): boolean {

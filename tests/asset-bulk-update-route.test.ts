@@ -305,6 +305,37 @@ test("a holder for a status that cannot take one is refused; a เสียห�
   assert.equal(world.assets["broken-1"].custodianId, "emp-b")
 })
 
+test("choosing an asset's own holder is not a holder change: a Pending Repair asset is not refused and keeps its status (final review A1)", async () => {
+  world.assets["pending-1"] = asset("pending-1", { statusName: "Pending Repair", custodianId: "emp-a", departmentId: "dept-a" })
+  const response = await post({ assetIds: ["pending-1", "personal-1"], toCustodianId: "emp-a", toLocationId: "loc-2" })
+  assert.equal(response.status, 200)
+  assert.equal(world.assets["pending-1"].currentLocationId, "loc-2")
+  assert.equal(world.assets["pending-1"].statusName, "Pending Repair")
+  assert.deepEqual(movements().map((row) => [row.assetId, row.movementType]), [
+    ["pending-1", "register_location_correction"],
+    ["personal-1", "register_location_correction"],
+  ])
+
+  // Another holder for the same Pending Repair asset is still refused.
+  world = freshWorld()
+  world.assets["pending-1"] = asset("pending-1", { statusName: "Pending Repair", custodianId: "emp-a", departmentId: "dept-a" })
+  const refused = await post({ assetIds: ["pending-1"], toCustodianId: "emp-b", toLocationId: "loc-2" })
+  assert.equal(refused.status, 409)
+  assert.deepEqual((await refused.json() as { blocked: unknown }).blocked, [blockedEntry("pending-1", "ASSET_STATUS_TRANSFER_NOT_ALLOWED")])
+})
+
+test("a Ready บุคคล asset already held by the chosen person keeps Ready; one held by another person moves to In Use (final review A1)", async () => {
+  world.assets["ready-held-1"] = asset("ready-held-1", { custodianId: "emp-a", departmentId: "dept-a" })
+  world.assets["ready-other-1"] = asset("ready-other-1", { custodianId: "emp-b", departmentId: "dept-b" })
+  const response = await post({ assetIds: ["ready-held-1", "ready-other-1"], toCustodianId: "emp-a", toLocationId: "loc-2" })
+  assert.equal(response.status, 200)
+  assert.equal(world.assets["ready-held-1"].statusName, "Ready")
+  assert.equal(world.assets["ready-other-1"].statusName, "In Use")
+  const byId = new Map(claims().map((claim) => [claim.where.id, claim.data]))
+  assert.equal("statusId" in (byId.get("ready-held-1") ?? {}), false)
+  assert.equal(byId.get("ready-other-1")?.statusId, "status:In Use")
+})
+
 test("more than 100 ids are refused 400 under assetIds before any read", async () => {
   const ids = Array.from({ length: 101 }, (_, index) => `asset-${index + 1}`)
   const response = await post({ assetIds: ids, toLocationId: "loc-2" })
@@ -398,6 +429,7 @@ test("the refusal words: the order, and a status refusal worded by whether the h
   assert.equal(bulkUpdateBlockedReasonKey("ASSET_NOT_ACTIVE", false), "bulkMove.blockedNotActive")
   assert.equal(bulkUpdateBlockedReasonKey("ASSET_COMPONENT_OUTSTANDING", true), "asset.transactionReasonComponentOutstanding")
   assert.equal(bulkUpdateBlockedReasonKey("ASSET_LICENSE_MOVE_NOT_ALLOWED", true), "asset.transactionReasonLicenseMove")
-  assert.equal(bulkUpdateBlockedReasonKey("ASSET_ACTIVE_CHECKOUT_EXISTS", true), "asset.transactionReasonOpenCheckoutBulkMove")
+  assert.equal(bulkUpdateBlockedReasonKey("ASSET_ACTIVE_CHECKOUT_EXISTS", true), "asset.transactionReasonOpenCheckoutCorrection")
+  assert.equal(bulkUpdateBlockedReasonKey("ASSET_ACTIVE_CHECKOUT_EXISTS", false), "asset.transactionReasonOpenCheckoutCorrection")
   assert.equal(bulkUpdateBlockedReasonKey("SOMETHING_ELSE", true), null)
 })

@@ -1383,7 +1383,8 @@
     "correctionReason": "เหตุผลที่แก้",
     "bulkDepartmentFollows": "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count} รายการ)",
     "bulkCorrectionBlocked": "แก้ไขไม่ได้ {count} รายการ: {list}",
-    "bulkCorrectionRemoveBlocked": "นำรายการเหล่านี้ออกจากที่เลือก"
+    "bulkCorrectionRemoveBlocked": "นำรายการเหล่านี้ออกจากที่เลือก",
+    "transactionReasonOpenCheckoutCorrection": "มีการส่งมอบค้างอยู่ รับคืนหรือโอนย้ายก่อนจึงแก้ได้"
   },
   "company": {
     "title": "บริษัท",

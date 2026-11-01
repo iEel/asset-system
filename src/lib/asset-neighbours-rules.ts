@@ -33,6 +33,7 @@ const registerFilterKeys = [
   "brandId",
   "modelId",
   "statusId",
+  "statusGroup",
   "conditionId",
   "ownershipType",
   "custodianId",

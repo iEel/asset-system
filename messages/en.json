@@ -1383,7 +1383,8 @@
     "correctionReason": "Reason for the correction",
     "bulkDepartmentFollows": "The department follows the holder: {department} ({count} assets)",
     "bulkCorrectionBlocked": "{count} cannot be corrected: {list}",
-    "bulkCorrectionRemoveBlocked": "Remove these from the selection"
+    "bulkCorrectionRemoveBlocked": "Remove these from the selection",
+    "transactionReasonOpenCheckoutCorrection": "An open handover: return or transfer it first"
   },
   "company": {
     "title": "Companies",

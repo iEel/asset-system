@@ -23,6 +23,7 @@ test("the middle crumb names the search, else says the list is filtered, else is
   const crumb = (query: string) => buildRegisterCrumbLabel(new URLSearchParams(query))
   assert.deepEqual(crumb("search=notebook&statusId=s-1&page=2"), { kind: "search", text: "notebook" })
   assert.deepEqual(crumb("statusId=s-1"), { kind: "filters" })
+  assert.deepEqual(crumb("statusGroup=other"), { kind: "filters" }, "the สถานะอื่น tab is a filter (final review A2)")
   assert.equal(crumb("search=%20%20"), null, "a blank search is no search")
   assert.equal(crumb("sort=name&direction=asc&page=3&pageSize=50"), null, "the order, the page and the page size are not filters")
   assert.equal(crumb("dataQuality=bogus&ownershipType=bogus"), null, "a value the register ignores is not a filter")
