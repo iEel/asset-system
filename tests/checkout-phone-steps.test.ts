@@ -83,3 +83,19 @@ test("the form, the frame, the pad, the focus and the page carry the steps (P1-R
   for (const part of ["signaturePadHeight(tall, window.innerWidth, window.innerHeight)", "onChangeRef.current(null)", "if (shouldDropSignature(previousWidth, width)) {", "context.drawImage(image, 0, 0, width, height)"]) assert.ok(pad.includes(part), part)
   assert.ok(read("src/app/[locale]/(dashboard)/asset-management/checkout/page.tsx").includes("deliveredByLabel={getUserDisplayLabel(user)}"))
 })
+
+test("step 2 shows ผู้ถือครอง and แผนก (and the room for a room handover) ตอนนี้ → หลังบันทึก, from the summary rows, just before the status (user 2026-11-01)", () => {
+  const form = read("src/components/asset-operations/checkout-form.tsx")
+  assert.ok(form.includes('changes={summaryRows.filter((row) => row.key === "holder" || row.key === "department" || row.key === "location")}'), "the read-back takes the desktop summary's rows")
+  const readBack = read("src/components/asset-operations/checkout-phone-steps.tsx")
+  for (const part of ['changes: ReadonlyArray<Pick<CheckoutSummaryRow, "key" | "label" | "now" | "next" | "changed">>',
+    'const tOperation = useTranslations("assetOperation")',
+    '...changes.map((row) => ({ key: row.key, label: row.label, value: row.changed ? (',
+    '<span className="sr-only">{tOperation("summaryNow")}: </span>',
+    '<span aria-hidden="true"> → </span>',
+    '<span className="sr-only">, {tOperation("summaryNext")}: </span>',
+    '<span className="font-semibold">{row.next}</span>',
+    ") : row.next })),"]) assert.ok(readBack.includes(part), part)
+  assert.ok(readBack.indexOf("...changes.map(") < readBack.indexOf('{ key: "status", label: t("resultingStatus")'), "the changes come just before the status")
+  assert.ok(readBack.indexOf('{ key: "date", label: t("checkoutDate")') < readBack.indexOf("...changes.map("), "after the date")
+})

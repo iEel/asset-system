@@ -5,7 +5,8 @@
 // and saves unsigned. Phone projects only: on the desktop the same handover is handover.spec.ts. Chromium, not WebKit
 // (ruling TX-R3): Playwright 1.61.1 draws a finger stroke only through Chromium's touch input.
 import { asUser, expect, test } from "../support/fixtures.ts"
-import { readRunData } from "../support/state.ts"
+import { runRecords } from "../support/run-plan.ts"
+import { readRunData, readRunState } from "../support/state.ts"
 import { bangkokDate } from "./tx-plan.ts"
 import {
   closePhoneKeyboard,
@@ -80,7 +81,9 @@ test("the desk delivery on the phone: step 1's checks, the read-back, a finger s
   await next.tap()
   const readBack = page.locator("[data-checkout-read-back]")
   await expect(readBack).toBeVisible()
-  for (const text of [receiver.fullNameTh, asset.assetTag, "รูปก่อนส่งมอบ 1 รูป", "มอบหมายใช้งานประจำ", "ใช้งานอยู่", remarkText]) await expect(readBack).toContainText(text)
+  // ผู้ถือครอง and แผนก as the desktop summary (user 2026-11-01): every run employee sits in the run's department, the asset's too.
+  const runDepartment = runRecords(readRunState().runId).department
+  for (const text of [receiver.fullNameTh, asset.assetTag, "รูปก่อนส่งมอบ 1 รูป", "มอบหมายใช้งานประจำ", "ใช้งานอยู่", remarkText, "ผู้ถือครอง", "แผนก", runDepartment.name]) await expect(readBack).toContainText(text)
   await expect(page.getByRole("dialog")).toHaveCount(0)
   await record(measure, "handover read-back on the phone", testInfo)
 
@@ -153,7 +156,8 @@ test("a loan to a room on the phone: the due date is checked on step 1, the read
   await next.tap()
 
   const readBack = page.locator("[data-checkout-read-back]")
-  for (const text of [room.name, "ยืมใช้ชั่วคราว", "ถูกยืม", "กำหนดคืน"]) await expect(readBack).toContainText(text)
+  // A room handover keeps the asset's department and shows the room (user 2026-11-01).
+  for (const text of [room.name, "ยืมใช้ชั่วคราว", "ถูกยืม", "กำหนดคืน", runRecords(readRunState().runId).department.name]) await expect(readBack).toContainText(text)
   await page.getByRole("button", { name: TX_WORDS.phoneAccept, exact: true }).tap()
 
   await expect(page.locator("[data-checkout-sign-statement]")).toContainText(TX_WORDS.signOnBehalf.replace("{destination}", roomLabel))

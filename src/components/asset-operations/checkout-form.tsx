@@ -484,6 +484,7 @@ export function CheckoutForm({
             components={checkoutComponents(values.asset).travelling}
             conditionLabel={selectedCondition?.label ?? ""}
             handoverModeLabel={handoverModeLabel}
+            changes={summaryRows.filter((row) => row.key === "holder" || row.key === "department" || row.key === "location")}
             statusAfterLabel={resultingStatusLabel}
             checkoutDateLabel={formatCheckoutDay(values.checkoutDate, locale)}
             dueDateLabel={values.handoverMode === "temporary_loan" ? formatCheckoutDay(values.expectedReturnDate, locale) : null}

@@ -8,7 +8,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { KeyValueList, type KeyValueItem } from "@/components/ui/key-value-list"
 import { PageBackLink } from "@/components/ui/page-header"
 import { Steps } from "@/components/ui/steps"
-import type { CheckoutPhoneStep } from "@/lib/checkout-form-rules"
+import type { CheckoutPhoneStep, CheckoutSummaryRow } from "@/lib/checkout-form-rules"
 import { getLinearStepStates } from "@/lib/step-states"
 import { cn } from "@/lib/utils"
 
@@ -59,6 +59,8 @@ export type CheckoutReadBackProps = {
   components: ReadonlyArray<{ id: string; assetTag: string; name: string }>
   conditionLabel: string
   handoverModeLabel: string
+  /** ผู้ถือครอง and แผนก (and the room for a room handover) from the desktop's สรุปก่อนบันทึก rows (user 2026-11-01). */
+  changes: ReadonlyArray<Pick<CheckoutSummaryRow, "key" | "label" | "now" | "next" | "changed">>
   statusAfterLabel: string
   checkoutDateLabel: string
   dueDateLabel: string | null
@@ -78,6 +80,7 @@ export function CheckoutReadBack({
   components,
   conditionLabel,
   handoverModeLabel,
+  changes,
   statusAfterLabel,
   checkoutDateLabel,
   dueDateLabel,
@@ -86,11 +89,22 @@ export function CheckoutReadBack({
   className,
 }: CheckoutReadBackProps) {
   const t = useTranslations("checkout")
+  const tOperation = useTranslations("assetOperation")
   const items: KeyValueItem[] = [
     { key: "condition", label: t("readBackCondition"), value: conditionLabel },
     { key: "mode", label: t("handoverMode"), value: handoverModeLabel },
     ...(dueDateLabel !== null ? [{ key: "due", label: t("expectedReturn"), value: dueDateLabel }] : []),
     { key: "date", label: t("checkoutDate"), value: checkoutDateLabel },
+    // A change reads "now → next", the next value semibold, as the desktop card; a kept value reads its next alone, never "A → A".
+    ...changes.map((row) => ({ key: row.key, label: row.label, value: row.changed ? (
+      <>
+        <span className="sr-only">{tOperation("summaryNow")}: </span>
+        {row.now}
+        <span aria-hidden="true"> → </span>
+        <span className="sr-only">, {tOperation("summaryNext")}: </span>
+        <span className="font-semibold">{row.next}</span>
+      </>
+    ) : row.next })),
     { key: "status", label: t("resultingStatus"), value: statusAfterLabel },
     ...(remark.trim() ? [{ key: "remark", label: t("remark"), value: remark }] : []),
     { key: "by", label: t("deliveredBy"), value: deliveredByLabel },
