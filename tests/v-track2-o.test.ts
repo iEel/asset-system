@@ -268,7 +268,7 @@ test("bulk move: the room and the reason in the bar are checked first, the refus
   assert.match(source, /<Field label=\{t\("reason"\)\} id="bulk-move-reason" required error=\{fieldErrors\.message\("reason"\)\} className="w-80">\n\s+<Input value=\{values\.reason\} [^\n]*required maxLength=\{500\} \/>/)
   assert.match(source, /fieldErrors\.errors\.assetIds === "blocked"\s+\? t\("blockedAssets", \{ count: formatCount\(blocked\.length\), list: bulkMoveBlockedList\(blocked, blockedReason\) \}\)\s+: fieldErrors\.errors\.assetIds === "required"\s+\? t\("nothingSelected"\)\s+: fieldErrors\.message\("assetIds"\)/)
   assert.match(source, /const key = bulkMoveBlockedReasonKey\(code\)\n\s+return key \? tAll\(key\) : apiError\.describe\(code\)\.message/)
-  assert.match(source, /const refused = readBulkMoveBlocked\(payload\)\n\s+if \(refused\.length > 0\) \{\n\s+setBlocked\(refused\)\n\s+fieldErrors\.setErrors\(\{ assetIds: "blocked" \}\)\n\s+focusFirstError\(\)\n\s+return\n\s+\}\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/)
+  assert.match(source, /const refused = readBulkMoveBlocked\(payload\)\n\s+if \(refused\.length > 0\) \{\n\s+setBlocked\(refused\)\n\s+fieldErrors\.setErrors\(\{ assetIds: "blocked" \}\)\n\s+setAttempt\(\(count\) => count \+ 1\)\n\s+focusFirstError\(\)\n\s+return\n\s+\}\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return/)
   assert.match(source, /const closed = waitForDialogToClose\(\)\n\s+setReviewOpen\(false\)\n\s+await closed\n/)
   assert.ok(source.includes("fieldErrors.focusFirst(FIELD_ORDER, { idFor: (key) => FIELD_IDS[key], reveal: leaveReview })"))
   assert.ok(source.includes('<FieldError id="bulk-move-selection-error">{selectionError}</FieldError>'))

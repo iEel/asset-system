@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { BulkMoveTable } from "@/components/asset-operations/bulk-move-table"
+import { BULK_MOVE_SELECT_PAGE_ID, BulkMoveTable } from "@/components/asset-operations/bulk-move-table"
 import { Button } from "@/components/ui/button"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { DesktopSelectionBar } from "@/components/ui/desktop-selection-bar"
@@ -75,6 +75,9 @@ function validate(values: BulkMoveFormValues): Partial<Record<BulkMoveField, str
 }
 
 type BulkMoveResult = { room: string; moved: number; components: number; unchanged: number }
+// Where focus goes when the bar unmounts with focus inside it (plan 4 final review ui-1): the result line after a save,
+// the table's header box after the selection empties.
+type BulkMoveFocusRequest = "result" | "selectPage"
 
 export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMoveRoomOption[]; categories: BulkMoveCategoryOption[]; initialPage: BulkMoveListPage }) {
   // ย้ายที่ตั้งหลายรายการ (group 3 spec §10): a server-paged table whose ticks survive pages and filters (row snapshots,
@@ -99,6 +102,8 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
   const [result, setResult] = useState<BulkMoveResult | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [focusRequest, setFocusRequest] = useState<BulkMoveFocusRequest | null>(null)
+  const resultRef = useRef<HTMLDivElement | null>(null)
   const serverPage = useRef(true)
   const href = buildBulkMoveListHref(query)
   const listFailed = failedHref === href
@@ -138,6 +143,25 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
     return () => controller.abort()
   }, [href, attempt, isDesktop, initialHref])
 
+  // The bar that held focus has unmounted, so focus moves on purpose, never to <body> (plan 4 final review ui-1). It
+  // waits for the review to finish closing: the dialog's own hand-back finds its opener gone and moves nothing, so the
+  // two never fight. A disabled header box (every row on the page locked) hands over to the search field.
+  useEffect(() => {
+    if (!focusRequest) return
+    let cancelled = false
+    void (async () => {
+      await waitForDialogToClose()
+      if (cancelled) return
+      const box = document.getElementById(BULK_MOVE_SELECT_PAGE_ID) as HTMLInputElement | null
+      const target = focusRequest === "result" ? resultRef.current : box && !box.disabled ? box : document.getElementById("bulk-move-search")
+      target?.focus()
+      setFocusRequest(null)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [focusRequest])
+
   // Every tick goes through here: the result line, the refused list and its error belong to the selection they answered.
   function changeSelection(next: BulkMoveSelection) {
     setSelection(next)
@@ -156,11 +180,14 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
 
   function clearSelection() {
     changeSelection(new Map())
+    setFocusRequest("selectPage")
   }
 
   // นำรายการที่ย้ายไม่ได้ออก: unticks every refused asset, wherever its row is (P4-R8).
   function removeBlocked() {
-    changeSelection(removeBulkMoveIds(selection, blocked.map((asset) => asset.assetId)))
+    const next = removeBulkMoveIds(selection, blocked.map((asset) => asset.assetId))
+    changeSelection(next)
+    if (next.size === 0) setFocusRequest("selectPage")
   }
 
   // A filter change goes back to page 1 (P4-R13).
@@ -242,10 +269,13 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
         // A refusal that names assets closes the review and names each under the table in the row's words (P4-R4, Z20).
+        // The page on screen is read again, so a refused row shows its reason and its box locks once it is unticked
+        // (P4-R9; plan 4 final review journeys-2, ui-2, tests-1).
         const refused = readBulkMoveBlocked(payload)
         if (refused.length > 0) {
           setBlocked(refused)
           fieldErrors.setErrors({ assetIds: "blocked" })
+          setAttempt((count) => count + 1)
           focusFirstError()
           return
         }
@@ -266,6 +296,7 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
       fieldErrors.setErrors({})
       setResult(answer ? { room: room.label, ...getBulkMoveResultParts(answer) } : null)
       setAttempt((count) => count + 1)
+      setFocusRequest("result")
     } catch (error) {
       apiError.toast(error)
     } finally {
@@ -290,16 +321,16 @@ export function BulkMoveForm({ rooms, categories, initialPage }: { rooms: BulkMo
           </div>
           <p data-bulk-move-count aria-live="polite" className="text-meta text-muted-foreground num">{t("foundCount", { count: formatCount(list.page.total) })}</p>
         </div>
-        <div role="status" data-bulk-move-result>
+        <div ref={resultRef} role="status" tabIndex={-1} data-bulk-move-result className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {resultText ? <Notice tone="success">{resultText}</Notice> : null}
         </div>
         {listFailed ? (
-          <Notice tone="warning" role="alert" data-bulk-move-list-failed action={<Button variant="outline" size="sm" onClick={() => setAttempt((count) => count + 1)}>{tCommon("tryAgain")}</Button>}>
+          <Notice tone="warning" role="alert" data-bulk-move-list-failed action={<Button variant="outline" size="sm" onClick={() => { setFailedHref(null); setAttempt((count) => count + 1) }}>{tCommon("tryAgain")}</Button>}>
             {t("listFailed")}
           </Notice>
         ) : null}
         <form onSubmit={handleSubmit} noValidate className="grid min-w-0 gap-4">
-          <BulkMoveTable listPage={list.page} selection={selection} disabled={saving} onToggleRow={toggleRow} onTogglePage={togglePage} onPage={(page) => setQuery((current) => ({ ...current, page }))} />
+          <BulkMoveTable listPage={list.page} selection={selection} disabled={saving} loading={listLoading} onToggleRow={toggleRow} onTogglePage={togglePage} onPage={(page) => setQuery((current) => ({ ...current, page }))} />
           {selection.size > 0 ? (
             <DesktopSelectionBar
               label={t("title")}

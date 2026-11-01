@@ -52,7 +52,8 @@ test("ย้ายที่ตั้งหลายรายการ: the list 
     "return () => controller.abort()",
     "const listFailed = failedHref === href",
   ]) assert.ok(form.includes(line), line)
-  assert.match(form, /<Notice tone="warning" role="alert" data-bulk-move-list-failed action=\{<Button variant="outline" size="sm" onClick=\{\(\) => setAttempt\(\(count\) => count \+ 1\)\}>\{tCommon\("tryAgain"\)\}<\/Button>\}>\n\s+\{t\("listFailed"\)\}/)
+  // ลองอีกครั้ง clears the failed state first: the spinner shows, and a second failure re-mounts the alert (final review ui-3).
+  assert.match(form, /<Notice tone="warning" role="alert" data-bulk-move-list-failed action=\{<Button variant="outline" size="sm" onClick=\{\(\) => \{ setFailedHref\(null\); setAttempt\(\(count\) => count \+ 1\) \}\}>\{tCommon\("tryAgain"\)\}<\/Button>\}>\n\s+\{t\("listFailed"\)\}/)
   assert.ok(form.includes("<BulkMoveTable listPage={list.page} "), "the last rows stay on screen while a request fails")
 })
 
@@ -61,7 +62,7 @@ test("ย้ายที่ตั้งหลายรายการ: a row sho
   assert.match(table, /<DataTable caption=\{t\("tableCaption"\)\}/)
   // Look step: at 1024 the table scrolls sideways instead of squeezing its columns, and the bar's button sits on the
   // fields' line (the filter panel's and the batch form's items-end).
-  assert.ok(table.includes('<DataTable caption={t("tableCaption")} footer={footer} minWidth={960} scrollHint={tCommon("tableScrollHint")}>'))
+  assert.ok(table.includes('<DataTable caption={t("tableCaption")} footer={footer} minWidth={960} scrollHint={tCommon("tableScrollHint")} aria-busy={loading || undefined}>'))
   assert.ok(read(FORM).includes('<div className="flex flex-wrap items-end gap-3">'))
   assert.ok(table.includes('<TableEmptyRow colSpan={6}>{tAll("asset.noResultsTitle")}</TableEmptyRow>'))
   assert.ok(table.includes("<StatusBadge label={row.statusLabel} tone={getAssetStateTone(row.statusName)} />"))
@@ -77,13 +78,13 @@ test("ย้ายที่ตั้งหลายรายการ: a row sho
   assert.ok(table.includes("const pageState = getBulkMovePageState(selection, rows)"))
   assert.ok(table.includes('onChange={() => onTogglePage(pageState !== "all")}'))
   // A page whose ticked row came back refused can still be unticked; nothing tickable at the cap is disabled (Z2).
-  assert.ok(table.includes('disabled={disabled || (pageState === "none" && rows.every((row) => getBulkMoveRowLock(selection, row) !== null))}'))
+  assert.ok(table.includes('disabled={disabled || loading || (pageState === "none" && rows.every((row) => getBulkMoveRowLock(selection, row) !== null))}'))
   assert.ok(table.includes('aria-label={t("selectPage")}'))
 })
 
 test("ย้ายที่ตั้งหลายรายการ: the pager is the shared Pagination with buttons and the register's range words (group 3 spec §10.1; P4-R12, P4-R13)", () => {
   const table = read(TABLE)
-  assert.match(table, /<Pagination\n\s+page=\{page\}\n\s+totalPages=\{totalPages\}\n\s+onPrevious=\{\(\) => onPage\(page - 1\)\}\n\s+onNext=\{\(\) => onPage\(page \+ 1\)\}\n/)
+  assert.match(table, /<Pagination\n\s+page=\{loading \? 1 : page\}\n\s+totalPages=\{loading \? 1 : totalPages\}\n\s+onPrevious=\{\(\) => onPage\(page - 1\)\}\n\s+onNext=\{\(\) => onPage\(page \+ 1\)\}\n/)
   assert.doesNotMatch(table, /previousHref|nextHref/)
   assert.ok(table.includes("const totalPages = Math.max(1, Math.ceil(total / pageSize))"))
   assert.ok(table.includes('range: tCommon("showingRange", { from: formatCount(from), to: formatCount(to), total: formatCount(total) }),'))
@@ -132,14 +133,14 @@ test("ย้ายที่ตั้งหลายรายการ: after the
   assert.ok(form.includes("const answer = readBulkMoveSaveAnswer(payload)"))
   assert.ok(form.includes("setResult(answer ? { room: room.label, ...getBulkMoveResultParts(answer) } : null)"), "the result's room reads code - name (Z20)")
   assert.match(form, /if \(payload\?\.code === "ASSET_CHANGED_DURING_OPERATION"\) \{\n\s+setReviewOpen\(false\)\n\s+setAttempt\(\(count\) => count \+ 1\)\n\s+\}\n\s+throw new Error\(payload\?\.code \?\? payload\?\.error \?\? tCommon\("error"\)\)/)
-  assert.match(form, /<div role="status" data-bulk-move-result>\n\s+\{resultText \? <Notice tone="success">\{resultText\}<\/Notice> : null\}/)
+  assert.match(form, /<div ref=\{resultRef\} role="status" tabIndex=\{-1\} data-bulk-move-result className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">\n\s+\{resultText \? <Notice tone="success">\{resultText\}<\/Notice> : null\}/)
   for (const line of [
     't("resultMoved", { count: formatCount(result.moved), room: result.room }),',
     'result.components > 0 ? t("resultComponents", { count: formatCount(result.components) }) : null,',
     'result.unchanged > 0 ? t("resultUnchanged", { count: formatCount(result.unchanged) }) : null,',
   ]) assert.ok(form.includes(line), line)
   assert.match(form, /function changeSelection\(next: BulkMoveSelection\) \{\n\s+setSelection\(next\)\n\s+setResult\(null\)\n\s+setBlocked\(\[\]\)\n\s+fieldErrors\.clear\("assetIds"\)\n\s+\}/)
-  assert.ok(form.includes("changeSelection(removeBulkMoveIds(selection, blocked.map((asset) => asset.assetId)))"))
+  assert.ok(form.includes("const next = removeBulkMoveIds(selection, blocked.map((asset) => asset.assetId))"))
   assert.ok(form.includes('<Button variant="outline" size="md" aria-describedby="bulk-move-selection-error" onClick={removeBlocked}>'))
   assert.doesNotMatch(form, /toast\.success|router\.push|useRouter|from "sonner"/)
 })
@@ -177,4 +178,34 @@ test("ย้ายที่ตั้งหลายรายการ: the page'
   }
   for (const key of ["title", "selectLocation", "remark"]) assert.ok(th.bulkMove[key] && en.bulkMove[key], `${key} is kept`)
   for (const key of ["assets", "selectAssets", "success"]) for (const messages of [th, en]) assert.equal(messages.bulkMove[key], undefined, `bulkMove.${key} has no reader and is removed`)
+})
+
+// The final review of plan 4 (journeys-2, ui-1 … ui-4, tests-1).
+test("ย้ายที่ตั้งหลายรายการ: a 409 that names refused assets reads the page on screen again, so a refused row shows its reason (plan 4 final review journeys-2, ui-2, tests-1; P4-R9)", () => {
+  const form = read(FORM)
+  assert.match(form, /if \(refused\.length > 0\) \{\n\s+setBlocked\(refused\)\n\s+fieldErrors\.setErrors\(\{ assetIds: "blocked" \}\)\n\s+setAttempt\(\(count\) => count \+ 1\)\n\s+focusFirstError\(\)\n\s+return\n\s+\}/)
+})
+
+test("ย้ายที่ตั้งหลายรายการ: focus never falls to <body> when the bar unmounts: the result line after a save, the header box after ล้าง or a นำรายการที่ย้ายไม่ได้ออก that empties the selection, once the review has closed (plan 4 final review ui-1)", () => {
+  const form = read(FORM)
+  const table = read(TABLE)
+  assert.match(table, /^export const BULK_MOVE_SELECT_PAGE_ID = "bulk-move-select-page"$/m)
+  assert.match(table, /ref=\{headerRef\}\n\s+id=\{BULK_MOVE_SELECT_PAGE_ID\}\n\s+type="checkbox"/)
+  assert.ok(form.includes("const [focusRequest, setFocusRequest] = useState<BulkMoveFocusRequest | null>(null)"))
+  assert.match(form, /useEffect\(\(\) => \{\n\s+if \(!focusRequest\) return\n\s+let cancelled = false\n\s+void \(async \(\) => \{\n\s+await waitForDialogToClose\(\)\n\s+if \(cancelled\) return\n/)
+  assert.ok(form.includes('const target = focusRequest === "result" ? resultRef.current : box && !box.disabled ? box : document.getElementById("bulk-move-search")'))
+  assert.match(form, /function clearSelection\(\) \{\n\s+changeSelection\(new Map\(\)\)\n\s+setFocusRequest\("selectPage"\)\n\s+\}/)
+  assert.match(form, /const next = removeBulkMoveIds\(selection, blocked\.map\(\(asset\) => asset\.assetId\)\)\n\s+changeSelection\(next\)\n\s+if \(next\.size === 0\) setFocusRequest\("selectPage"\)/)
+  assert.match(form, /setAttempt\(\(count\) => count \+ 1\)\n\s+setFocusRequest\("result"\)\n\s+\} catch/)
+  assert.equal(form.match(/setFocusRequest\("/g)?.length, 3, "only the three ways the bar unmounts with focus in it")
+  assert.doesNotMatch(read("src/components/ui/operation-review-dialog.tsx"), /returnFocusRef|fallbackFocusRef/, "the review's own hand-back is left as it is")
+})
+
+test("ย้ายที่ตั้งหลายรายการ: while a new query loads the table is busy and the header box and the pager wait, so the shown page never overwrites the pending query's (plan 4 final review ui-4)", () => {
+  const form = read(FORM)
+  const table = read(TABLE)
+  assert.ok(form.includes("const listLoading = isDesktop && list.href !== href && !listFailed"))
+  assert.ok(form.includes("<BulkMoveTable listPage={list.page} selection={selection} disabled={saving} loading={listLoading} "))
+  assert.ok(table.includes('scrollHint={tCommon("tableScrollHint")} aria-busy={loading || undefined}>'))
+  assert.match(table, /^\s+loading: boolean$/m)
 })

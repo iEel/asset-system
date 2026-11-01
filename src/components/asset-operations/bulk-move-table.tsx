@@ -16,6 +16,8 @@ export type BulkMoveTableProps = {
   listPage: BulkMoveListPage
   selection: BulkMoveSelection
   disabled: boolean // while saving
+  /** While another query loads: the table is busy, and the header box and the pager wait (plan 4 final review ui-4). */
+  loading: boolean
   onToggleRow: (row: BulkMoveListRow, checked: boolean) => void
   onTogglePage: (checked: boolean) => void
   onPage: (page: number) => void
@@ -23,11 +25,13 @@ export type BulkMoveTableProps = {
 
 // The one description of every box the cap locks (P4-R10); a box locked because its row is refused reads that row's reason.
 const CAP_REASON_ID = "bulk-move-cap-reason"
+/** The header box; focus lands on it when the selection empties (plan 4 final review ui-1). */
+export const BULK_MOVE_SELECT_PAGE_ID = "bulk-move-select-page"
 
 // ย้ายที่ตั้งหลายรายการ's table (group 3 spec §10.1; plan 4 P4-R1, P4-R2, P4-R9, P4-R10, P4-R22): the page's rows with a
 // native box each in a 44px label, the header box for the page (mixed while some are ticked), and the shared pager in
 // button mode. It draws only what its props say: which box is locked and why comes from Task 5's rules.
-export function BulkMoveTable({ listPage, selection, disabled, onToggleRow, onTogglePage, onPage }: BulkMoveTableProps) {
+export function BulkMoveTable({ listPage, selection, disabled, loading, onToggleRow, onTogglePage, onPage }: BulkMoveTableProps) {
   const t = useTranslations("bulkMove")
   const tCommon = useTranslations("common")
   const tAll = useTranslations()
@@ -39,9 +43,11 @@ export function BulkMoveTable({ listPage, selection, disabled, onToggleRow, onTo
   const headerRef = useRef<HTMLInputElement | null>(null)
   const footer =
     total > 0 ? (
+      // While loading, the bounds say there is no other page, so previous and next are both disabled and the displayed
+      // page never overwrites the pending query's (plan 4 final review ui-4).
       <Pagination
-        page={page}
-        totalPages={totalPages}
+        page={loading ? 1 : page}
+        totalPages={loading ? 1 : totalPages}
         onPrevious={() => onPage(page - 1)}
         onNext={() => onPage(page + 1)}
         labels={{
@@ -63,19 +69,20 @@ export function BulkMoveTable({ listPage, selection, disabled, onToggleRow, onTo
   return (
     <div className="grid min-w-0 gap-2">
       {selection.size >= bulkMoveMaxAssets ? <p id={CAP_REASON_ID} className="sr-only">{t("capReached", { max: formatCount(bulkMoveMaxAssets) })}</p> : null}
-      <DataTable caption={t("tableCaption")} footer={footer} minWidth={960} scrollHint={tCommon("tableScrollHint")}>
+      <DataTable caption={t("tableCaption")} footer={footer} minWidth={960} scrollHint={tCommon("tableScrollHint")} aria-busy={loading || undefined}>
         <DataTableHeader>
           <tr>
             <DataTableHead className="w-14 py-0">
               <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center" data-no-row-click>
                 <input
                   ref={headerRef}
+                  id={BULK_MOVE_SELECT_PAGE_ID}
                   type="checkbox"
                   className={checkboxVariants()}
                   aria-label={t("selectPage")}
                   aria-checked={pageState === "some" ? "mixed" : pageState === "all"}
                   checked={pageState === "all"}
-                  disabled={disabled || (pageState === "none" && rows.every((row) => getBulkMoveRowLock(selection, row) !== null))}
+                  disabled={disabled || loading || (pageState === "none" && rows.every((row) => getBulkMoveRowLock(selection, row) !== null))}
                   onChange={() => onTogglePage(pageState !== "all")}
                 />
               </label>
