@@ -5,22 +5,30 @@ import { assetOperationRefusalReasonKeys } from "./asset-operation-eligibility.t
 // the table words each code with the row's reason key (bulkMoveBlockedReasonKey, P4-R6), so the row and the refusal agree.
 export type BulkMoveBlockedAsset = { assetId: string; assetTag: string; code: string }
 
-/** The save's refusal codes, in getBulkMoveVerdict's order: outstanding, License, open handover, written off. */
+/**
+ * The save's refusal codes: an id that is no longer an active asset (deactivated or deleted while ticked; no row shows it,
+ * so it is named before anything else; plan 4 final review server-3), then getBulkMoveVerdict's order: outstanding,
+ * License, open handover, written off.
+ */
 export type BulkMoveBlockedCode =
+  | "ASSET_NOT_ACTIVE"
   | "ASSET_COMPONENT_OUTSTANDING"
   | "ASSET_LICENSE_MOVE_NOT_ALLOWED"
   | "ASSET_ACTIVE_CHECKOUT_EXISTS"
   | "ASSET_STATUS_TRANSFER_NOT_ALLOWED"
 
 export const bulkMoveBlockedOrder = [
+  "ASSET_NOT_ACTIVE",
   "ASSET_COMPONENT_OUTSTANDING",
   "ASSET_LICENSE_MOVE_NOT_ALLOWED",
   "ASSET_ACTIVE_CHECKOUT_EXISTS",
   "ASSET_STATUS_TRANSFER_NOT_ALLOWED",
 ] as const satisfies readonly BulkMoveBlockedCode[]
 
-// Each code's words are the row's (getBulkMoveVerdict's reason keys), so the list under the table and the row agree.
+// Each code's words are the row's (getBulkMoveVerdict's reason keys), so the list under the table and the row agree. A
+// not-active asset has no row, so it has words of its own.
 const bulkMoveBlockedReasonKeys: Readonly<Record<BulkMoveBlockedCode, string>> = {
+  ASSET_NOT_ACTIVE: "bulkMove.blockedNotActive",
   ASSET_COMPONENT_OUTSTANDING: assetOperationRefusalReasonKeys.ASSET_COMPONENT_OUTSTANDING,
   ASSET_LICENSE_MOVE_NOT_ALLOWED: assetOperationRefusalReasonKeys.ASSET_LICENSE_MOVE_NOT_ALLOWED,
   ASSET_ACTIVE_CHECKOUT_EXISTS: "asset.transactionReasonOpenCheckoutBulkMove",

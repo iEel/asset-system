@@ -2158,7 +2158,8 @@
     "removeBlocked": "Remove the assets that cannot move",
     "desktopOnlyTitle": "This page is for computers",
     "desktopOnlyBody": "Bulk move needs the table. Open this page on a computer.",
-    "backToRegister": "Go to the asset register"
+    "backToRegister": "Go to the asset register",
+    "blockedNotActive": "Deactivated or deleted"
   },
   "auditRound": {
     "title": "Audit Rounds",

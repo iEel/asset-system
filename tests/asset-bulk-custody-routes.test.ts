@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import * as nodeModule from "node:module"
 import { beforeEach, test } from "node:test"
 import { pathToFileURL } from "node:url"
@@ -11,6 +11,8 @@ type MockAsset = {
   currentLocationId: string
   departmentId: string | null
   ownershipType?: string
+  /** False for a deactivated or deleted asset; the active-asset read leaves it out (plan 4 final review server-3). */
+  isActive?: boolean
 }
 
 type BulkCustodyState = {
@@ -25,9 +27,15 @@ type BulkCustodyState = {
   locationAnswers: boolean[]
   /** Each component sync takes the next answer, else zeros. */
   syncAnswers: Array<{ updated: number; skipped: number; movements: number }>
+  /** Each `assetCheckout.findMany` takes the next of `checkoutAnswers` first (the asset ids with an open handover), if any. */
+  checkoutAnswers: string[][]
+  /** Runs when a transaction starts: another request's write that lands after the reads before it. */
+  onTransaction: (() => void) | null
+  /** Each `$transaction` throws the next of these first, if any (a deadlock victim). */
+  transactionErrors: unknown[]
 }
 
-const state: BulkCustodyState = { assets: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [], inactiveLocationIds: [], locationAnswers: [], syncAnswers: [] }
+const state: BulkCustodyState = { assets: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [], inactiveLocationIds: [], locationAnswers: [], syncAnswers: [], checkoutAnswers: [], onTransaction: null, transactionErrors: [] }
 Object.assign(globalThis, { __bulkCustodyState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -76,22 +84,32 @@ const mockedModuleSources = new Map<string, string>([
           return async (args) => {
             state().calls.push({ call: name + "." + String(method), args })
             if (name === "asset" && method === "findMany") {
-              const ids = args?.where?.id?.in ?? []
-              return state().assets.filter((asset) => ids.includes(asset.id)).map(toRow)
+              const where = args?.where ?? {}
+              const ids = where.id?.in ?? []
+              return state().assets
+                .filter((asset) => ids.includes(asset.id))
+                .filter((asset) => where.isActive === undefined || (asset.isActive ?? true) === where.isActive)
+                .filter((asset) => where.currentLocationId === undefined || asset.currentLocationId === where.currentLocationId)
+                .map(toRow)
             }
             if (name === "asset" && method === "findFirst") {
               if (args?.where?.serialNumber) return null
               const asset = state().assets.find((item) => item.id === args?.where?.id)
               return asset ? toRow(asset) : null
             }
-            if (name === "asset" && method === "updateMany") return { count: 1 }
+            if (name === "asset" && method === "updateMany") {
+              const asset = state().assets.find((item) => item.id === args?.where?.id)
+              if (asset && args?.where?.currentLocationId !== undefined && asset.currentLocationId !== args.where.currentLocationId) return { count: 0 }
+              return { count: 1 }
+            }
             if (name === "asset" && method === "update") {
               const asset = state().assets.find((item) => item.id === args?.where?.id)
               return { ...toRow(asset), ...(args?.data ?? {}) }
             }
             if (name === "assetCheckout" && method === "findMany") {
               const ids = args?.where?.assetId?.in ?? []
-              return state().activeCheckoutAssetIds.filter((id) => ids.includes(id)).map((assetId) => ({ id: "co-" + assetId, assetId }))
+              const open = state().checkoutAnswers.length > 0 ? state().checkoutAnswers.shift() : state().activeCheckoutAssetIds
+              return open.filter((id) => ids.includes(id)).map((assetId) => ({ id: "co-" + assetId, assetId }))
             }
             if (name === "assetCheckout" && (method === "findFirst" || method === "count")) {
               const active = state().activeCheckoutAssetIds.includes(args?.where?.assetId)
@@ -117,7 +135,12 @@ const mockedModuleSources = new Map<string, string>([
     }
     const client = new Proxy({}, {
       get(_target, key) {
-        if (key === "$transaction") return async (callback, options) => { state().calls.push({ call: "$transaction", args: options }); return callback(client) }
+        if (key === "$transaction") return async (callback, options) => {
+          state().calls.push({ call: "$transaction", args: options })
+          if (state().transactionErrors.length > 0) throw state().transactionErrors.shift()
+          state().onTransaction?.()
+          return callback(client)
+        }
         return model(String(key))
       },
     })
@@ -182,6 +205,9 @@ beforeEach(() => {
   state.inactiveLocationIds = []
   state.locationAnswers = []
   state.syncAnswers = []
+  state.checkoutAnswers = []
+  state.onTransaction = null
+  state.transactionErrors = []
 })
 
 test("bulk update refuses to reassign an asset that is out on loan", async () => {
@@ -336,8 +362,8 @@ test("more than 100 assets are refused 400 under assetIds before any read, and 1
   assert.deepEqual(await tooMany.json(), { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { assetIds: "outOfRange" } })
   assert.deepEqual(state.calls, [])
   const hundred = await moveBulk(ids(100))
-  assert.equal(hundred.status, 404)
-  assert.deepEqual(await hundred.json(), { error: "Some assets were not found" })
+  assert.equal(hundred.status, 409, "100 pass the schema; none of these ids is an active asset")
+  assert.equal((await hundred.json() as { blocked: unknown[] }).blocked.length, 100)
 })
 
 test("an inactive room is refused 409 under toLocationId before the transaction (group 3 spec §5, §10.3; P4-R14)", async () => {
@@ -395,4 +421,69 @@ test("every claim comes before the first component sync, writes only the room an
     ["ready-1", "bulk_location_move", "bulk_move", "bulk_move"],
     ["component-1", "bulk_location_move", "bulk_move", "bulk_move"],
   ])
+})
+
+// The final review of plan 4 (server-1 … server-4).
+test("an id that is not an active asset is named first with ASSET_NOT_ACTIVE, its tag read without the active filter, the id as the tag when no row exists; no unnamed 404 (plan 4 final review server-3, journeys-1)", async () => {
+  state.assets.push({ id: "gone-1", statusName: "Ready", custodianId: null, currentLocationId: "loc-1", departmentId: "dept-1", isActive: false })
+  const response = await moveBulk(["ready-1", "license-1", "gone-1", "no-such-id"])
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), {
+    code: "ASSET_NOT_ACTIVE", error: "ASSET_NOT_ACTIVE",
+    blocked: [
+      blockedEntry("gone-1", "ASSET_NOT_ACTIVE"),
+      { assetId: "no-such-id", assetTag: "no-such-id", code: "ASSET_NOT_ACTIVE" },
+      blockedEntry("license-1", "ASSET_LICENSE_MOVE_NOT_ALLOWED"),
+    ],
+  })
+  const reads = callsOf("asset.findMany") as Array<{ where: Record<string, unknown> }>
+  assert.deepEqual(reads[1].where, { id: { in: ["gone-1", "no-such-id"] } }, "the missing ids are read again without isActive")
+  assert.deepEqual(assetWrites(), [])
+  assert.equal(callNames().includes("$transaction"), false)
+})
+
+test("a claim matches the room read before the transaction, so an asset another request moved meanwhile fails the claim with ASSET_CHANGED_DURING_OPERATION before any movement (plan 4 final review server-1)", async () => {
+  state.onTransaction = () => { state.assets[0].currentLocationId = "loc-9" }
+  const response = await moveBulk(["ready-1"])
+  assert.equal(response.status, 409)
+  assert.equal((await response.json() as { code: string }).code, "ASSET_CHANGED_DURING_OPERATION")
+  assert.deepEqual((callsOf("asset.updateMany")[0] as { where: unknown }).where, { id: "ready-1", isActive: true, statusId: "status:Ready", currentLocationId: "loc-1" })
+  for (const call of ["assetMovement.createMany", "systemLog.createMany", "sync"]) assert.equal(callNames().includes(call), false, call)
+})
+
+test("an asset counted unchanged is read again inside the transaction; one moved out of the room meanwhile fails with ASSET_CHANGED_DURING_OPERATION (plan 4 final review server-1)", async () => {
+  state.assets[0].currentLocationId = "loc-2"
+  state.onTransaction = () => { state.assets[0].currentLocationId = "loc-7" }
+  const response = await moveBulk(["ready-1", "component-1"])
+  assert.equal(response.status, 409)
+  assert.equal((await response.json() as { code: string }).code, "ASSET_CHANGED_DURING_OPERATION")
+  const reread = (callsOf("asset.findMany") as Array<{ where: Record<string, unknown> }>).at(-1)
+  assert.deepEqual(reread?.where, { id: { in: ["ready-1"] }, isActive: true, currentLocationId: "loc-2" })
+  const calls = callNames()
+  assert.ok(calls.lastIndexOf("asset.findMany") > calls.indexOf("$transaction"), "read inside the transaction")
+  assert.equal(calls.includes("assetMovement.createMany"), false)
+})
+
+test("an open handover opened while the bulk move is saved is named by the re-read after the claims, with its tag, before any movement (plan 4 final review server-2)", async () => {
+  state.checkoutAnswers = [[], ["component-1"]]
+  const response = await moveBulk(["ready-1", "component-1"])
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), { code: "ASSET_ACTIVE_CHECKOUT_EXISTS", error: "ASSET_ACTIVE_CHECKOUT_EXISTS", blocked: [blockedEntry("component-1", "ASSET_ACTIVE_CHECKOUT_EXISTS")] })
+  const reads = callsOf("assetCheckout.findMany")
+  assert.equal(reads.length, 2)
+  assert.deepEqual(reads[1], { where: { assetId: { in: ["ready-1", "component-1"] }, isReturned: false, transactionStatus: "active" }, select: { assetId: true } })
+  const calls = callNames()
+  assert.ok(calls.lastIndexOf("assetCheckout.findMany") > calls.lastIndexOf("asset.updateMany"), "read again after the claims")
+  for (const call of ["assetMovement.createMany", "systemLog.createMany", "sync"]) assert.equal(calls.includes(call), false, call)
+})
+
+test("the claims run in id order whatever the tick order, the movements keep the request's, and a deadlock victim runs the transaction again (plan 4 final review server-4)", async () => {
+  state.transactionErrors = [{ code: "P2034" }]
+  const response = await moveBulk(["ready-1", "component-1"])
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { updated: 2, unchanged: 0, componentSync: { updated: 0, skipped: 0, movements: 0 } })
+  assert.deepEqual(callsOf("$transaction"), [{ maxWait: 10_000, timeout: 60_000 }, { maxWait: 10_000, timeout: 60_000 }])
+  assert.deepEqual(assetWrites().map(({ args }) => (args as { where: { id: string } }).where.id), ["component-1", "ready-1"])
+  assert.deepEqual((callsOf("assetMovement.createMany")[0] as { data: Array<{ assetId: string }> }).data.map((row) => row.assetId), ["ready-1", "component-1"])
+  assert.match(readFileSync("src/app/api/assets/bulk-move/route.ts", "utf8"), /await withDeadlockRetry\(\(\) => prisma\.\$transaction\(async \(tx\) => \{/)
 })

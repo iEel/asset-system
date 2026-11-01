@@ -225,7 +225,7 @@ test("โอนย้าย's own refusals read their words: the toast per code,
 })
 
 test("every answer of the bulk move reads through the catalog, and its two old texts are gone (group 3 spec §5, §10.3; P4-R4, P4-R5, P4-R14)", () => {
-  assert.deepEqual(bulkMoveBlockedOrder.map((code) => getApiErrorKey(code)), ["componentOutstanding", "licenseMoveNotAllowed", "assetActiveCheckoutExists", "statusBlocksTransfer"])
+  assert.deepEqual(bulkMoveBlockedOrder.map((code) => getApiErrorKey(code)), ["assetNotFoundOrInactive", "componentOutstanding", "licenseMoveNotAllowed", "assetActiveCheckoutExists", "statusBlocksTransfer"])
   assert.equal(getApiErrorKey("ASSET_TRANSFER_DESTINATION_INACTIVE"), "checkoutDestinationInactive")
   assert.equal(getApiErrorKey("ASSET_CHANGED_DURING_OPERATION"), "assetChangedDuringOperation")
   assert.equal(getApiErrorKey("Disposed or retired assets cannot be moved."), null)

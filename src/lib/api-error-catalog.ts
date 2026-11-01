@@ -39,6 +39,8 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "ASSET_LICENSE_CHECKIN_NOT_ALLOWED": "licenseCheckinNotAllowed",
   "ASSET_LICENSE_CHECKOUT_NOT_ALLOWED": "licenseCheckoutNotAllowed",
   "ASSET_LICENSE_MOVE_NOT_ALLOWED": "licenseMoveNotAllowed",
+  // ย้ายที่ตั้งหลายรายการ names a ticked asset deactivated or deleted meanwhile (group 3 plan 4 final review server-3).
+  "ASSET_NOT_ACTIVE": "assetNotFoundOrInactive",
   "ASSET_STATE_MASTER_NOT_FOUND": "stateReviewMasterNotFound",
   "ASSET_STATE_REVIEW_MASTER_NOT_FOUND": "stateReviewMasterNotFound",
   "ASSET_STATE_REVIEW_NOT_FOUND": "stateReviewNotFound",
