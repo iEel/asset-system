@@ -25,6 +25,12 @@ export function getLateReturnOutcome(parent: LateReturnParent): "reattached" | "
   return inStock ? "reattached" : "standalone"
 }
 
+// The component's next status on a late return (user 2026-11-01): a หาไม่พบ component brought back has been found, so it
+// becomes พร้อมใช้งาน; every other status is kept (null). The route writes it and the รับคืน panel's summary shows it.
+export function getLateReturnNextStatusName(currentStatusName: string): "Ready" | null {
+  return normalizeAssetStateName(currentStatusName) === "missing" ? "Ready" : null
+}
+
 // The outcome list and the late date bound (group 3 spec §8.6, P2-R3, P2-R13): the route and Task 9's panel read them.
 export const componentLateReturnOutcomes = ["reattached", "standalone"] as const
 export type ComponentLateReturnOutcome = (typeof componentLateReturnOutcomes)[number]

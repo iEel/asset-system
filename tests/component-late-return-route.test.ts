@@ -110,6 +110,7 @@ beforeEach(() => {
     "department.findUnique": () => world.department,
     "location.findFirst": (a: Args) => ((world.locationAnswers.length > 0 ? world.locationAnswers.shift() : true) && a.where?.isActive === true ? { id: a.where?.id } : null),
     "assetCondition.findUnique": (a: Args) => world.conditions[String(a.where?.id)] ?? null,
+    "assetStatus.findFirst": (a: Args) => (a.where?.name === "Ready" && a.where?.isActive === true ? { id: "status-ready" } : null),
   }
 })
 
@@ -253,4 +254,32 @@ test("a component no longer eligible (an open repair since the panel opened) is 
   world.component = { ...COMPONENT }; world.permissions = []; db.calls = []
   assert.equal((await post(body())).status, 403)
   assert.deepEqual(db.calls, [])
+})
+
+const MISSING = { statusId: "status-missing", status: { name: "Missing" } }
+
+test("a หาไม่พบ component returned late becomes พร้อมใช้งาน, re-attached or standing alone, with one status line on the RT- (user 2026-11-01)", async () => {
+  const statusLine = { assetId: "comp-1", movementType: "status_change", fromValue: "status-missing", toValue: "status-ready", ...moved }
+  for (const [outcome, payload] of [["reattached", body()], ["standalone", body({ expectedOutcome: "standalone", nextLocationId: "loc-store" })]] as const) {
+    world.component = { ...COMPONENT, ...MISSING }; world.parent = outcome === "reattached" ? { ...PARENT } : { ...PARENT, ...HANDED_OVER }; world.audits = []; db.calls = []
+    assert.equal((await post(payload)).status, 201, outcome)
+    assert.deepEqual(args("asset.update").length, 1, outcome)
+    assert.equal(dataOf("asset.update").statusId, "status-ready", outcome)
+    assert.deepEqual(movements().filter((row: Row) => row.movementType === "status_change"), [statusLine], outcome)
+    const update = db.calls.findIndex((entry) => entry.call === "asset.update")
+    assert.ok(db.calls.findIndex((entry) => entry.call === "assetStatus.findFirst") < update, "the Ready id is read before the write")
+    assert.deepEqual(db.calls.slice(update + 1).map((entry) => entry.call).filter((call) => call.startsWith("asset.")), [], "nothing writes the asset after the update (the RT- cancel check)")
+    const audit = world.audits[0].newValue as Row
+    assert.deepEqual([audit.statusId, audit.previousStatusId], ["status-ready", "status-missing"], outcome)
+  }
+})
+
+test("a component in any other status keeps it: no status written, no status line (user 2026-11-01)", async () => {
+  for (const status of [{}, { statusId: "status-in-use", status: { name: "In Use" } }]) {
+    world.component = { ...COMPONENT, ...status }; db.calls = []
+    assert.equal((await post(body())).status, 201)
+    assert.equal("statusId" in dataOf("asset.update"), false)
+    assert.equal(movements().some((row: Row) => row.movementType === "status_change"), false)
+    assert.equal(args("assetStatus.findFirst").length, 0, "the Ready id is not read")
+  }
 })

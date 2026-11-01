@@ -7,6 +7,7 @@ import { errorResponse } from "@/lib/api-response"
 import { getApiErrorKey } from "@/lib/api-error-catalog"
 import { assetComponentReturnSchema, type AssetComponentReturnInput } from "@/lib/validations/asset-operations"
 import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
+import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { outstandingLinkWhere } from "@/lib/asset-component-outstanding"
 import { getLateReturnDepartmentId } from "@/lib/asset-department-rule"
 import { getCheckinVerdict } from "@/lib/asset-operation-eligibility"
@@ -15,6 +16,7 @@ import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { readCheckinDepartment } from "@/lib/checkin-department"
 import {
   getLateReturnDateError,
+  getLateReturnNextStatusName,
   getLateReturnOutcome,
   type LateReturnDateError,
   type LateReturnParent,
@@ -168,6 +170,10 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
       })
       const conditionChanged = Boolean(input.conditionId) && input.conditionId !== before.conditionId
       const currentLocationId = outcome === "reattached" ? parent.currentLocationId : input.nextLocationId!
+      // A หาไม่พบ component brought back has been found: it becomes พร้อมใช้งาน (user 2026-11-01). Read before the write.
+      const nextStatusName = getLateReturnNextStatusName(before.status.name)
+      const nextStatusId = nextStatusName ? await getRequiredAssetStatusId(nextStatusName) : null
+      const statusChanged = nextStatusId !== null && nextStatusId !== before.statusId
 
       // Every outstanding link of this component under this RT- ends the same way (P2-R1); each keeps the RT- as its reference.
       await tx.assetComponent.updateMany({
@@ -183,10 +189,11 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
           : { status: "removed", removedAt: input.returnDate, updatedBy: user.id },
       })
 
-      // The status is not touched: syncs never write a component's status.
+      // Only a หาไม่พบ component's status is written (getLateReturnNextStatusName); every other status is kept.
       await tx.asset.update({
         where: { id },
         data: {
+          ...(statusChanged ? { statusId: nextStatusId } : {}),
           currentLocationId,
           custodianId: null,
           departmentId: nextDepartmentId,
@@ -220,6 +227,9 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
           remark: input.remark ?? null,
         },
       ]
+      if (statusChanged) {
+        rows.push({ assetId: id, movementType: "status_change", fromValue: before.statusId, toValue: nextStatusId, ...moved })
+      }
       if (currentLocationId !== before.currentLocationId) {
         rows.push({ assetId: id, movementType: "location_change", fromValue: before.currentLocationId, toValue: currentLocationId, ...moved })
       }
@@ -234,7 +244,15 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
       }
       await tx.assetMovement.createMany({ data: rows })
 
-      return { outcome, parentAssetId: read.parent.id, departmentId: nextDepartmentId, previousDepartmentId: before.departmentId, before }
+      return {
+        outcome,
+        parentAssetId: read.parent.id,
+        departmentId: nextDepartmentId,
+        previousDepartmentId: before.departmentId,
+        statusId: statusChanged ? nextStatusId : before.statusId,
+        previousStatusId: before.statusId,
+        before,
+      }
     })
 
     await logAudit({
@@ -251,6 +269,8 @@ export async function POST(request: NextRequest, context: ComponentReturnContext
         parentAssetId: result.parentAssetId,
         departmentId: result.departmentId,
         previousDepartmentId: result.previousDepartmentId,
+        statusId: result.statusId,
+        previousStatusId: result.previousStatusId,
       },
     })
 

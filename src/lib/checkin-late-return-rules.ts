@@ -4,7 +4,7 @@
 import { getLateReturnDepartmentId } from "./asset-department-rule.ts"
 import type { AssetOperationLateReturn, AssetOperationSearchRow } from "./asset-operation-search-rules.ts"
 import { CHECKIN_RETURN_DATE_ERROR_KEYS, checkinReturnDateError } from "./checkin-route-rules.ts"
-import { getLateReturnDateError, type ComponentLateReturnOutcome } from "./component-late-return.ts"
+import { getLateReturnDateError, getLateReturnNextStatusName, type ComponentLateReturnOutcome } from "./component-late-return.ts"
 import { getBangkokDateKey } from "./preventive-maintenance.ts"
 import { maxLength, required } from "./validation-rules.ts"
 
@@ -111,12 +111,14 @@ export type LateReturnSummaryWords = {
   kept: (value: string) => string
   outstandingOf: (parentTag: string) => string
   departmentUnavailable: string
+  status: string
 }
-export type LateReturnSummaryRow = { key: "parent" | "holder" | "location" | "department" | "condition"; label: string; now: string; next: string; changed: boolean }
+export type LateReturnSummaryRow = { key: "parent" | "holder" | "location" | "department" | "condition" | "status"; label: string; now: string; next: string; changed: boolean }
 
 /**
- * สรุปก่อนบันทึก of a late return (spec §8.6, P2-R7, P2-R8): ส่วนควบของ, ผู้ถือครอง, ที่ตั้ง, แผนก and สภาพตอนคืน. None without
- * the detail, and none for a re-attach whose parent was not read (spec §4 anti-goal).
+ * สรุปก่อนบันทึก of a late return (spec §8.6, P2-R7, P2-R8): ส่วนควบของ, ผู้ถือครอง, ที่ตั้ง, แผนก and สภาพตอนคืน, and สถานะ
+ * when the save changes it (หาไม่พบ → พร้อมใช้งาน, getLateReturnNextStatusName). None without the detail, and none for a
+ * re-attach whose parent was not read (spec §4 anti-goal).
  */
 export function buildLateReturnSummaryRows(
   input: {
@@ -125,6 +127,8 @@ export function buildLateReturnSummaryRows(
     draft: LateReturnDraft
     conditions: readonly { id: string; label: string }[]
     locations: readonly { id: string; label: string }[]
+    /** The page's status options; the next status's label is read here by its name. */
+    statuses: readonly { name: string; label: string }[]
     currentConditionLabel: string | null
     returnDepartment: { id: string; name: string } | null
   },
@@ -190,6 +194,11 @@ export function buildLateReturnSummaryRows(
     next: condition ? condition.label : words.kept(conditionNow),
     changed: condition !== null && condition.id !== row.conditionId,
   })
+
+  // A status the page does not offer is not promised; the save is refused then (getRequiredAssetStatusId).
+  const nextStatusName = getLateReturnNextStatusName(detail.statusName)
+  const nextStatus = nextStatusName ? input.statuses.find((status) => status.name === nextStatusName) ?? null : null
+  if (nextStatus) rows.push({ key: "status", label: words.status, now: row.statusLabel, next: nextStatus.label, changed: true })
   return rows
 }
 

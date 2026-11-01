@@ -33,13 +33,14 @@ function row(o: Partial<AssetOperationSearchRow> = {}, d: Partial<AssetOperation
 }
 const words: LateReturnSummaryWords = {
   parent: "ส่วนควบของ", holder: "ผู้ถือครอง", location: "ที่ตั้ง", department: "แผนก", condition: "สภาพตอนคืน", none: "ไม่มี", notChosen: "ยังไม่ได้เลือก",
-  kept: (v) => `${v} (คงเดิม)`, outstandingOf: (tag) => `${tag} (ค้างคืน)`, departmentUnavailable: "ยังไม่ได้ตั้งค่า",
+  kept: (v) => `${v} (คงเดิม)`, outstandingOf: (tag) => `${tag} (ค้างคืน)`, departmentUnavailable: "ยังไม่ได้ตั้งค่า", status: "สถานะ",
 }
+const statuses = [{ id: "s-ready", name: "Ready", label: "พร้อมใช้งาน" }, { id: "s-repair", name: "Under Maintenance", label: "ส่งซ่อม" }]
 const conditions = [{ id: "c-good", label: "ดี" }, { id: "c-fair", label: "พอใช้" }]
 const locations = [{ id: "loc-store", label: "IT-9 - คลัง IT" }, { id: "loc-acc", label: "AC-01 - ห้องบัญชี" }]
 const returnDepartment = { id: "dep-it", name: "Information Technology" }
 const summary = (r: AssetOperationSearchRow, draft: Partial<typeof EMPTY_LATE_RETURN_DRAFT> = {}, o: Partial<Parameters<typeof buildLateReturnSummaryRows>[0]> = {}) =>
-  buildLateReturnSummaryRows({ row: r, lateReturn: r.lateReturn!, draft: { ...EMPTY_LATE_RETURN_DRAFT, ...draft }, conditions, locations, currentConditionLabel: "ดี", returnDepartment, ...o }, words)
+  buildLateReturnSummaryRows({ row: r, lateReturn: r.lateReturn!, draft: { ...EMPTY_LATE_RETURN_DRAFT, ...draft }, conditions, locations, statuses, currentConditionLabel: "ดี", returnDepartment, ...o }, words)
 const pick = (rows: LateReturnSummaryRow[]) => rows.map(({ key, now, next, changed }) => [key, now, next, changed])
 const standalone = () => row({ lateReturn: lateReturn({ parentInStock: false }) })
 
@@ -120,6 +121,19 @@ test("nothing promised without the detail: no rows, none for a re-attach whose p
   assert.deepEqual(summary(row({}, { lateReturnParent: undefined })), [])
   assert.equal(summary(row({ lateReturn: lateReturn({ parentInStock: false }) }, { lateReturnParent: undefined })).length, 5, "a stand-alone return needs no parent")
   assert.deepEqual(pick(summary(row({}, { holderLabel: null, holderName: null })))[1], ["holder", "ไม่มี", "ไม่มี", false])
+})
+
+test("a หาไม่พบ component: the card shows สถานะ หาไม่พบ → พร้อมใช้งาน, as the save writes it; no status row otherwise (user 2026-11-01, spec §5)", () => {
+  const missing = (r: AssetOperationSearchRow) => ({ ...r, statusLabel: "หาไม่พบ", detail: { ...r.detail!, statusName: "Missing" } })
+  for (const r of [row(), standalone()]) {
+    const rows = summary(missing(r))
+    assert.deepEqual(pick(rows).at(-1), ["status", "หาไม่พบ", "พร้อมใช้งาน", true])
+    assert.equal(rows.at(-1)!.label, "สถานะ")
+    assert.equal(rows.length, 6)
+  }
+  assert.equal(summary(row()).some((r) => r.key === "status"), false, "พร้อมใช้งาน is kept")
+  assert.equal(summary(row({ statusLabel: "ใช้งานอยู่" }, { statusName: "In Use" })).some((r) => r.key === "status"), false)
+  assert.equal(summary(missing(row()), {}, { statuses: [] }).some((r) => r.key === "status"), false, "no พร้อมใช้งาน on the page: nothing promised, and the save is refused")
 })
 
 test("the still-missing list: the asset, ผู้รับคืน, and เก็บไว้ที่ only when it stands alone (spec §5)", () => {

@@ -354,6 +354,7 @@ export function CheckinForm({
           draft: late,
           conditions,
           locations,
+          statuses,
           // Every condition by id, so a component recorded ยังไม่ประเมิน reads its name.
           currentConditionLabel: conditionLabels[chosen.conditionId] ?? null,
           returnDepartment,
@@ -369,6 +370,7 @@ export function CheckinForm({
           kept: (value) => tOperation("summaryKept", { value }),
           outstandingOf: (parentTag) => t("lateSummaryOutstanding", { parentTag }),
           departmentUnavailable: t("lateDepartmentUnavailable"),
+          status: tOperation("summaryStatus"),
         },
       )
     : []

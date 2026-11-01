@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import test from "node:test"
-import { componentLateReturnOutcomes, getLateReturnDateError, getLateReturnOutcome } from "../src/lib/component-late-return.ts"
+import { componentLateReturnOutcomes, getLateReturnDateError, getLateReturnNextStatusName, getLateReturnOutcome } from "../src/lib/component-late-return.ts"
 
 const stock = { isActive: true, statusName: "Ready", custodianId: null, hasOpenCheckout: false, hasOpenRepair: false }
 
@@ -38,6 +38,13 @@ test("a late return has two outcomes, re-attached and standing alone, in that or
 test("a late return is dated no later than today and no earlier than its RT-'s return day, in Bangkok days (P2-R13)", () => {
   const error = (returnDay: string) => getLateReturnDateError({ returnDay, todayDay: "2026-10-31", checkinDay: "2026-10-20" })
   assert.deepEqual(["2026-10-20", "2026-10-31", "2026-11-01", "2026-10-19"].map(error), [null, null, "CHECKIN_RETURN_DATE_IN_FUTURE", "COMPONENT_RETURN_DATE_BEFORE_CHECKIN"])
+})
+
+test("a หาไม่พบ component returned late has been found: it becomes พร้อมใช้งาน; every other status is kept (user 2026-11-01)", () => {
+  for (const name of ["Missing", " missing ", "MISSING"]) assert.equal(getLateReturnNextStatusName(name), "Ready", name)
+  for (const name of ["Ready", "In Use", "Checked Out", "Pending Repair", "Under Maintenance", "Pending Disposal", "Lost", "Missing Parts", ""]) {
+    assert.equal(getLateReturnNextStatusName(name), null, name)
+  }
 })
 
 test("every parentInStock the app sets is the IT-stock rule, so the panel and the save agree (P2-R4, P2-R17)", () => {
