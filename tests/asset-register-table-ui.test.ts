@@ -86,19 +86,51 @@ test("export choices are plain download links in a menu", () => {
   assert.match(source, /<a href=\{templateHref\}/)
 })
 
+// Group 4 plan 1 Task 4 (spec §6.3): the menu is "ส่งออก / นำเข้า" in the page header. Export with the register's count;
+// the template and นำเข้าจาก Excel (a link to the import-export page) only when the page gives them (asset:create).
+test("the export menu is ส่งออก / นำเข้า: the filtered export with its count, the template and the import link (group 4 spec §6.3)", () => {
+  const source = exportMenu()
+
+  assert.match(source, /^export function AssetRegisterExportMenu\(\{ exportHref, exportCount, templateHref, importHref \}: \{ exportHref: string; exportCount: number; templateHref\?: string; importHref\?: string \}\) \{$/m)
+  assert.match(source, /<a href=\{exportHref\} download>\n\s+<FileDown aria-hidden="true" \/>\n\s+\{t\("exportFilteredCount", \{ count: formatCount\(exportCount\) \}\)\}/)
+  assert.match(source, /\{templateHref \? \(\n\s+<DropdownMenuItem asChild>\n\s+<a href=\{templateHref\} download>/)
+  assert.match(source, /\{importHref \? \(\n\s+<DropdownMenuItem asChild>\n\s+<Link href=\{importHref\}>\n\s+<Upload aria-hidden="true" \/>\n\s+\{t\("importFromExcel"\)\}/)
+  assert.doesNotMatch(source, /t\("exportMenu"\)|t\("exportFiltered"\)/)
+  for (const [locale, words] of [["th", ["ส่งออก / นำเข้า", "ส่งออกตามตัวกรอง ({count} รายการ)", "นำเข้าจาก Excel"]], ["en", ["Export / import", "Export filtered ({count} items)", "Import from Excel"]]] as const) {
+    assert.deepEqual([messages(locale).exportImportMenu, messages(locale).exportFilteredCount, messages(locale).importFromExcel], words, locale)
+  }
+})
+
+test("the register header holds ส่งออก / นำเข้า (from md) and เพิ่มทรัพย์สิน; the table bar no longer has the export menu (group 4 spec §6.3)", () => {
+  const page = read("src/app/[locale]/(dashboard)/assets/page.tsx")
+
+  assert.match(page, /actions=\{\(\n\s+<>\n\s+\{\/\* [^\n]* \*\/\}\n\s+<div className="hidden md:flex">\n\s+<AssetRegisterExportMenu\n\s+exportHref=\{`\/api\/assets\/export\?\$\{buildAssetQueryString\(filters\)\}`\}\n\s+exportCount=\{total\}\n\s+templateHref=\{canCreateAssets \? "\/api\/assets\/import-template" : undefined\}\n\s+importHref=\{canCreateAssets \? `\/\$\{locale\}\/asset-management\/import-export` : undefined\}\n\s+\/>\n\s+<\/div>\n\s+\{canCreateAssets \? \(\n\s+<Link href=\{`\/\$\{locale\}\/assets\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{t\("createTitle"\)\}/)
+  assert.doesNotMatch(page, /tCommon\("create"\)/)
+  assert.equal(messages("th").createTitle, "เพิ่มทรัพย์สิน")
+  assert.doesNotMatch(table(), /AssetRegisterExportMenu/)
+})
+
+test("the footer offers 10, 25, 50 and 100 rows per page; the filter sheet keeps its page size (group 4 spec §6.3)", () => {
+  const source = table()
+
+  assert.match(source, /<Pagination\n\s+page=\{filters\.page\}\n\s+totalPages=\{totalPages\}\n\s+pageSize=\{filters\.pageSize\}\n\s+pageSizes=\{\[10, 25, 50, 100\]\.map\(\(pageSize\) => \(\{ value: pageSize, href: `\/\$\{locale\}\/assets\?\$\{buildAssetQueryString\(filters, \{ pageSize, page: 1 \}\)\}` \}\)\)\}/)
+  assert.match(source, /pageSizeGroup: tCommon\("pageSizeLabel"\),\n\s+rowsPerPage: tCommon\("rowsPerPage"\),/)
+  assert.match(read("src/components/assets/asset-register-filter-sheet.tsx"), /\{\[10, 25, 50, 100\]\.map\(\(pageSize\) => \(/)
+})
+
 test("the table summary uses the new menus, the shared pagination and announces loading", () => {
   const source = table()
 
   assert.match(source, /data-asset-register-summary/)
   assert.match(source, /<AssetRegisterSortMenu \/>/)
-  assert.match(source, /<div className="hidden items-center gap-2 md:flex">[\s\S]*?<AssetRegisterColumnPicker[\s\S]*?<AssetRegisterExportMenu/)
+  assert.match(source, /<div className="hidden items-center gap-2 md:flex">\n\s+<AssetRegisterColumnPicker[^\n]*\/>\n\s+<\/div>/)
   assert.match(source, /<Pagination\b/)
   assert.match(source, /aria-busy=\{isPending\}/)
   assert.doesNotMatch(source, /function PaginationLink|downloadFile/)
 })
 
 test("summary and sort copy exists in Thai and English", () => {
-  const keys = ["registerRange", "sortMenu", "sortNewest", "sortOldest", "sortTagAsc", "sortTagDesc", "sortNameAsc", "sortPurchaseDateDesc", "sortPriceDesc", "exportMenu"]
+  const keys = ["registerRange", "sortMenu", "sortNewest", "sortOldest", "sortTagAsc", "sortTagDesc", "sortNameAsc", "sortPurchaseDateDesc", "sortPriceDesc", "exportImportMenu"]
   for (const locale of ["th", "en"] as const) {
     assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
   }
@@ -358,7 +390,10 @@ test("the column picker opens from the shared outline Button (spec 2B §7.8.6)",
   const source = columnPicker()
 
   assert.match(source, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
-  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Columns3 aria-hidden="true" \/>\n\s+\{t\("columns"\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
+  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Columns3 aria-hidden="true" \/>\n\s+\{t\("columnSetLabel", \{ preset: activePreset \? t\(presetLabelKeys\[activePreset\]\) : t\("columnSetCustom"\) \}\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
+  // Group 4 plan 1 Task 4 (spec §6.3): the trigger names the column set, "กำหนดเอง" when no preset matches.
+  assert.deepEqual([messages("th").columnSetLabel, messages("th").columnSetCustom], ["ชุดคอลัมน์: {preset}", "กำหนดเอง"])
+  assert.deepEqual([messages("en").columnSetLabel, messages("en").columnSetCustom], ["Column set: {preset}", "Custom"])
   assert.doesNotMatch(source, /<button\b|hover:bg-accent|focus-visible:ring/, "no hand-written trigger (N5)")
 })
 
@@ -368,7 +403,7 @@ test("the export menu opens from the shared outline Button (spec 2B §7.8.6)", (
   const source = exportMenu()
 
   assert.match(source, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
-  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Download aria-hidden="true" \/>\n\s+\{t\("exportMenu"\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
+  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Download aria-hidden="true" \/>\n\s+\{t\("exportImportMenu"\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
   assert.doesNotMatch(source, /<button\b|hover:bg-accent|focus-visible:ring/, "no hand-written trigger (N5)")
 })
 

@@ -12,7 +12,7 @@ import {
 import { buildAssetRegisterWhere } from "@/lib/asset-list-where-options"
 import { buildStatusSumLine, buildStatusTabs } from "@/lib/asset-register-status-tabs"
 import { buildAssetRegisterChips, buildAssetRegisterClearAllHref } from "@/lib/asset-register-chips"
-import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
+import { AssetRegisterExportMenu } from "@/components/assets/asset-register-export-menu"
 import { AssetRegisterNavigationProvider } from "@/components/assets/asset-register-navigation"
 import { AssetRegisterToolbar } from "@/components/assets/asset-register-toolbar"
 import { AssetRegisterStatusTabs } from "@/components/assets/asset-register-status-tabs"
@@ -391,12 +391,25 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         className="mb-4 md:mb-6"
         title={t("title")}
         meta={t("subtitle")}
-        actions={canCreateAssets ? (
-          <Link href={`/${locale}/assets/new`} className={buttonVariants({ size: "md" })}>
-            <Plus aria-hidden="true" />
-            {tCommon("create")}
-          </Link>
-        ) : undefined}
+        actions={(
+          <>
+            {/* Below md the header keeps one button beside the title (compactOnMobile); the menu shows from md. */}
+            <div className="hidden md:flex">
+              <AssetRegisterExportMenu
+                exportHref={`/api/assets/export?${buildAssetQueryString(filters)}`}
+                exportCount={total}
+                templateHref={canCreateAssets ? "/api/assets/import-template" : undefined}
+                importHref={canCreateAssets ? `/${locale}/asset-management/import-export` : undefined}
+              />
+            </div>
+            {canCreateAssets ? (
+              <Link href={`/${locale}/assets/new`} className={buttonVariants({ size: "md" })}>
+                <Plus aria-hidden="true" />
+                {t("createTitle")}
+              </Link>
+            ) : null}
+          </>
+        )}
       />
       <AssetRegisterViewMemory locale={locale} returnHref={registerReturnHref} />
 
@@ -493,52 +506,6 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           }}
         />
       </AssetRegisterNavigationProvider>
-
-      {canCreateAssets ? (
-        <AssetImportPreviewPanel
-          labels={{
-            fields: t.raw("importField") as Record<string, string>,
-            importPreview: t("importPreview"),
-            chooseFile: t("chooseImportFile"),
-            previewReady: t("previewReady"),
-            previewErrors: t("previewErrors"),
-            previewRows: t("previewRows"),
-            row: t("row"),
-            status: t("status"),
-            errors: t("errors"),
-            assetName: t("assetName"),
-            assetTag: t("assetTag"),
-            confirmImport: t("confirmImport"),
-            fileRequired: t("fileRequired"),
-            importSuccess: t("importSuccess"),
-            wizardTitle: t("importWizardTitle"),
-            wizardHelp: t("importWizardHelp"),
-            wizardStepTemplate: t("importWizardStepTemplate"),
-            wizardStepUpload: t("importWizardStepUpload"),
-            wizardStepReview: t("importWizardStepReview"),
-            wizardStepImport: t("importWizardStepImport"),
-            wizardStepComplete: t("importWizardStepComplete"),
-            selectedFile: t("selectedImportFile"),
-            issueSummaryTitle: t("importIssueSummaryTitle"),
-            issueSummaryHelp: t("importIssueSummaryHelp"),
-            affectedRows: t("affectedRows"),
-            mappingTitle: t("importMappingTitle"),
-            mappingHelp: t("importMappingHelp"),
-            mappingMatched: t("importMappingMatched"),
-            mappingMissing: t("importMappingMissing"),
-            sourceColumn: t("importSourceColumn"),
-            importBatchTitle: t("importBatchTitle"),
-            importBatchHelp: t("importBatchHelp"),
-            importBatchId: t("importBatchId"),
-            importBatchStatusReady: t("importBatchStatusReady"),
-            importBatchStatusPartial: t("importBatchStatusPartial"),
-            importBatchStatusBlocked: t("importBatchStatusBlocked"),
-            importBatchStatusEmpty: t("importBatchStatusEmpty"),
-            openImportWizard: t("openImportWizard"),
-            collapseImportWizard: t("collapseImportWizard"),
-          }}
-        />
-      ) : null}
     </div>
   )
 }

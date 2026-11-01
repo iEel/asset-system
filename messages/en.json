@@ -770,7 +770,6 @@
     "columnPresetAccounting": "Accounting",
     "columnPresetAudit": "Audit",
     "downloadTemplate": "Download Template",
-    "exportFiltered": "Export Filtered",
     "exportSelected": "Export Selected",
     "printSelectedLabels": "Print Selected Labels",
     "bulkActions": "Bulk actions for selected assets",
@@ -855,7 +854,6 @@
     "selectedCount": "selected",
     "tableScrollHint": "Scroll left/right to see more columns. Asset tag and actions stay pinned.",
     "viewPhoto": "View photo of {assetTag}",
-    "searchPlaceholder": "Search tag, name, serial, brand or model, custodian or location",
     "searchClear": "Clear search",
     "filterSheetTitle": "Filters",
     "filterSheetClear": "Clear",
@@ -881,7 +879,6 @@
     "sortNameAsc": "Name A→Z",
     "sortPurchaseDateDesc": "Latest purchase",
     "sortPriceDesc": "Price high to low",
-    "exportMenu": "Export",
     "selectMode": "Select",
     "selectModeDone": "Done",
     "printLabel": "Print Label",
@@ -1359,7 +1356,13 @@
     "registerDueDate": "Due {date}",
     "holderSharedShort": "Shared",
     "registerMobileSummary": "{tab} {count} items",
-    "registerMobileEnd": "Showing all {shown} of {total} items"
+    "registerMobileEnd": "Showing all {shown} of {total} items",
+    "exportImportMenu": "Export / import",
+    "exportFilteredCount": "Export filtered ({count} items)",
+    "importFromExcel": "Import from Excel",
+    "columnSetLabel": "Column set: {preset}",
+    "columnSetCustom": "Custom",
+    "searchPlaceholderFields": "Search tag · name · serial · custodian · location"
   },
   "company": {
     "title": "Companies",

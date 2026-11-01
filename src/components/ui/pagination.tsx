@@ -27,7 +27,7 @@ type PaginationBaseProps = {
   labels: PaginationLabels
   /** The current page size; marks one of pageSizes as current. */
   pageSize?: number
-  /** 25/50/100 for the server lists (R-k). The asset register passes none: it picks its size in the filter sheet. */
+  /** 25/50/100 for the server lists (R-k); the asset register passes 10/25/50/100, as its filter sheet offers (group 4 spec §6.3). */
   pageSizes?: readonly PaginationPageSize[]
   className?: string
 }

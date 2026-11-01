@@ -57,7 +57,7 @@ export function AssetRegisterColumnPicker({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="md">
           <Columns3 aria-hidden="true" />
-          {t("columns")}
+          {t("columnSetLabel", { preset: activePreset ? t(presetLabelKeys[activePreset]) : t("columnSetCustom") })}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

@@ -27,7 +27,7 @@ test("the import preview panel shows message labels by column key", () => {
   assert.match(panel, /fields: Record<string, string>/)
   assert.match(panel, /labels\.fields\[column\.key\] \?\? column\.label/)
   assert.doesNotMatch(panel, /\{column\.label\}/)
-  for (const page of ["src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx", "src/app/[locale]/(dashboard)/assets/page.tsx"]) {
-    assert.match(readFileSync(page, "utf8"), /fields: t\.raw\("importField"\)/, page)
-  }
+  // Group 4 plan 1 Task 4 (spec §6.3): the panel left the register; the import-export page is its one caller.
+  assert.match(readFileSync("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx", "utf8"), /fields: t\.raw\("importField"\)/)
+  assert.doesNotMatch(readFileSync("src/app/[locale]/(dashboard)/assets/page.tsx", "utf8"), /importField/)
 })

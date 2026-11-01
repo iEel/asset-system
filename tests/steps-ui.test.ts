@@ -112,7 +112,8 @@ test("the import panel shows its five steps on the shared rail, and the current-
   assert.match(panel, /const importSteps = assetImportWizardSteps\.map\(\(step, index\) => \(\{ id: step, label: wizardStepLabel\(step, labels\), state: importStates\[index\] \}\)\)/)
   assert.match(panel, /<Steps className="mt-4" label=\{labels\.wizardTitle\} steps=\{importSteps\} \/>/)
   assert.doesNotMatch(panel, /function WizardStep|currentStep|md:grid-cols-5/)
-  for (const page of ["src/app/[locale]/(dashboard)/assets/page.tsx", "src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx"]) {
+  // Group 4 plan 1 Task 4 (spec §6.3): the panel left the register; the import-export page is its one caller.
+  for (const page of ["src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx"]) {
     const source = read(page)
     assert.doesNotMatch(source, /importWizardCurrentStep|currentStep:/, page)
     assert.match(source, /wizardStepComplete: t\("importWizardStepComplete"\),\n\s+selectedFile: t\("selectedImportFile"\),/, page)

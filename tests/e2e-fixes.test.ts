@@ -77,14 +77,16 @@ test("the import template and the import wizard show only to a role with asset:c
   const page = read("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx")
   assert.match(page, /const canImport = hasPermission\(user, "asset", "create"\)/)
   assert.match(page, /\{canImport \? \(\n\s*<ActionLink\n\s*download\n\s*href="\/api\/assets\/import-template"/)
+  // Group 4 plan 1 Task 4 (spec §6.3): the import wizard left the register; it lives on the import-export page alone.
   const register = read("src/app/[locale]/(dashboard)/assets/page.tsx")
-  assert.match(register, /\{canCreateAssets \? \(\n\s*<AssetImportPreviewPanel/)
+  assert.doesNotMatch(register, /AssetImportPreviewPanel/)
+  assert.match(page, /\{canImport \? \(\n\s*<AssetImportPreviewPanel/)
   assert.ok(!read("e2e/cross-cutting/reports.spec.ts").includes(`test.fail(true, "M2: `))
 })
 
 test("a view-only role is offered no create, edit or scan link (e2e fix task FX6: M5)", () => {
   const register = read("src/app/[locale]/(dashboard)/assets/page.tsx")
-  assert.match(register, /actions=\{canCreateAssets \? \(\n\s*<Link href=\{`\/\$\{locale\}\/assets\/new`\}/)
+  assert.match(register, /\{canCreateAssets \? \(\n\s*<Link href=\{`\/\$\{locale\}\/assets\/new`\}/)
   const detail = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
   assert.doesNotMatch(detail, /healthFixHref|createHealthItem/)
   assert.match(read("src/components/assets/detail/asset-overview.tsx"), /actions=\{canEdit \? \(\s*<Link href=\{editHref\}/)

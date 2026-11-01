@@ -50,9 +50,12 @@ test("filter navigation is optimistic, replaces history and keeps the scroll pos
 })
 
 test("search copy exists in Thai and English", () => {
-  assert.equal(messages("th").searchPlaceholder, "ค้นหา รหัส · ชื่อ · Serial · ยี่ห้อ/รุ่น · ผู้ถือครอง · ที่ตั้ง")
+  // Group 4 plan 1 Task 4 (spec §6.3): the placeholder names the fields a row shows.
+  assert.equal(messages("th").searchPlaceholderFields, "ค้นหา รหัส · ชื่อ · Serial · ผู้ถือครอง · ที่ตั้ง")
   assert.equal(messages("th").searchClear, "ล้างคำค้นหา")
-  assert.equal(typeof messages("en").searchPlaceholder, "string")
+  assert.equal(messages("en").searchPlaceholderFields, "Search tag · name · serial · custodian · location")
+  assert.match(field(), /placeholder=\{t\("searchPlaceholderFields"\)\}/)
+  assert.equal(messages("th").searchPlaceholder, undefined, "the old key is gone")
   assert.equal(typeof messages("en").searchClear, "string")
 })
 

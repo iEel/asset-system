@@ -87,7 +87,7 @@ export function AssetRegisterSearchField({ locale, className }: { locale: string
         fieldSize="md"
         loading={isPending}
         aria-label={tCommon("search")}
-        placeholder={t("searchPlaceholder")}
+        placeholder={t("searchPlaceholderFields")}
         value={draft}
         onClear={clearSearch}
         clearLabel={t("searchClear")}

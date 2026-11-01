@@ -29,7 +29,6 @@ import { AssetRegisterMobileList } from "@/components/assets/asset-register-mobi
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
 import { AssetRegisterSortMenu } from "@/components/assets/asset-register-sort-menu"
 import { AssetRegisterColumnPicker } from "@/components/assets/asset-register-column-picker"
-import { AssetRegisterExportMenu } from "@/components/assets/asset-register-export-menu"
 import { Pagination } from "@/components/ui/pagination"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import {
@@ -530,7 +529,6 @@ export function AssetRegisterTable({
           </Button>
           <div className="hidden items-center gap-2 md:flex">
             <AssetRegisterColumnPicker visibleColumns={visibleColumns} onToggleColumn={toggleColumn} onApplyPreset={applyColumnPreset} />
-            <AssetRegisterExportMenu exportHref={`/api/assets/export?${buildAssetQueryString(filters)}`} templateHref={permissions.canCreate ? "/api/assets/import-template" : undefined} />
           </div>
         </div>
       </div>
@@ -762,6 +760,8 @@ export function AssetRegisterTable({
         <Pagination
           page={filters.page}
           totalPages={totalPages}
+          pageSize={filters.pageSize}
+          pageSizes={[10, 25, 50, 100].map((pageSize) => ({ value: pageSize, href: `/${locale}/assets?${buildAssetQueryString(filters, { pageSize, page: 1 })}` }))}
           previousHref={buildHref({ page: Math.max(1, filters.page - 1) })}
           nextHref={buildHref({ page: Math.min(totalPages, filters.page + 1) })}
           labels={{
@@ -770,6 +770,8 @@ export function AssetRegisterTable({
             next: labels.next,
             pageOf: tCommon("pageOf", { page: filters.page, total: totalPages }),
             range: rangeLabel,
+            pageSizeGroup: tCommon("pageSizeLabel"),
+            rowsPerPage: tCommon("rowsPerPage"),
           }}
         />
       </DataTableFoot>

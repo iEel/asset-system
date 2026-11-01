@@ -770,7 +770,6 @@
     "columnPresetAccounting": "บัญชี",
     "columnPresetAudit": "ตรวจนับ",
     "downloadTemplate": "ดาวน์โหลดแม่แบบ",
-    "exportFiltered": "ส่งออกตามตัวกรอง",
     "exportSelected": "ส่งออกรายการที่เลือก",
     "printSelectedLabels": "พิมพ์ป้ายที่เลือก",
     "bulkActions": "ดำเนินการกับรายการที่เลือก",
@@ -855,7 +854,6 @@
     "selectedCount": "รายการที่เลือก",
     "tableScrollHint": "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม คอลัมน์รหัสและการดำเนินการจะค้างตำแหน่งไว้",
     "viewPhoto": "ดูรูป {assetTag}",
-    "searchPlaceholder": "ค้นหา รหัส · ชื่อ · Serial · ยี่ห้อ/รุ่น · ผู้ถือครอง · ที่ตั้ง",
     "searchClear": "ล้างคำค้นหา",
     "filterSheetTitle": "ตัวกรอง",
     "filterSheetClear": "ล้าง",
@@ -881,7 +879,6 @@
     "sortNameAsc": "ชื่อ ก→ฮ",
     "sortPurchaseDateDesc": "ซื้อล่าสุด",
     "sortPriceDesc": "ราคาสูง→ต่ำ",
-    "exportMenu": "ส่งออก",
     "selectMode": "เลือก",
     "selectModeDone": "เสร็จ",
     "printLabel": "พิมพ์ป้าย",
@@ -1359,7 +1356,13 @@
     "registerDueDate": "คืน {date}",
     "holderSharedShort": "ส่วนกลาง",
     "registerMobileSummary": "{tab} {count} รายการ",
-    "registerMobileEnd": "แสดงครบ {shown} จาก {total} รายการ"
+    "registerMobileEnd": "แสดงครบ {shown} จาก {total} รายการ",
+    "exportImportMenu": "ส่งออก / นำเข้า",
+    "exportFilteredCount": "ส่งออกตามตัวกรอง ({count} รายการ)",
+    "importFromExcel": "นำเข้าจาก Excel",
+    "columnSetLabel": "ชุดคอลัมน์: {preset}",
+    "columnSetCustom": "กำหนดเอง",
+    "searchPlaceholderFields": "ค้นหา รหัส · ชื่อ · Serial · ผู้ถือครอง · ที่ตั้ง"
   },
   "company": {
     "title": "บริษัท",
