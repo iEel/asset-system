@@ -57,6 +57,8 @@ The Admin Storage Governance page can archive orphan files one at a time. Archiv
 
 To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UPLOAD_DIR/<relativePath>`, then refresh the Storage Governance page.
 
+A save that is refused or rolls back removes the evidence files it wrote (2026-11-01): every route that writes an upload before its database rows tracks the file, keeps it once its transaction (or its one `Attachment` row) has committed, and otherwise deletes it in a `finally` (`createUploadCleanup` and `discardUploadedFiles` in `src/lib/upload-server.ts`; only paths inside `UPLOAD_DIR` are deleted, and a failed delete is logged, never thrown). A failure after the commit, such as the audit log, keeps the file, since the committed row points at it. The handover (`POST /api/assets/[id]/checkout`) now writes its files only after its checks, as the return does. Orphan files written before this fix are still found and archived from the Storage Governance page as above.
+
 ## Application
 
 - [ ] `npm run verify` passes.
