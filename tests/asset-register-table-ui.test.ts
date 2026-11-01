@@ -92,11 +92,14 @@ test("the export menu is ส่งออก / นำเข้า: the filtered e
   const source = exportMenu()
 
   assert.match(source, /^export function AssetRegisterExportMenu\(\{ exportHref, exportCount, templateHref, importHref \}: \{ exportHref: string; exportCount: number; templateHref\?: string; importHref\?: string \}\) \{$/m)
-  assert.match(source, /<a href=\{exportHref\} download>\n\s+<FileDown aria-hidden="true" \/>\n\s+\{t\("exportFilteredCount", \{ count: formatCount\(exportCount\) \}\)\}/)
+  // Final review C6, C8: the raw count, up to the export's cap; above it the item says the first rows only.
+  assert.match(source, /<a href=\{exportHref\} download>\n\s+<FileDown aria-hidden="true" \/>\n\s+\{exportCount > ASSET_EXPORT_MAX_ROWS\n\s+\? t\("exportFilteredCapped", \{ count: ASSET_EXPORT_MAX_ROWS \}\)\n\s+: t\("exportFilteredCount", \{ count: exportCount \}\)\}/)
+  assert.match(source, /^import \{ ASSET_EXPORT_MAX_ROWS \} from "@\/lib\/asset-export-limits"$/m)
+  assert.equal(messages("th").exportFilteredCapped, "ส่งออกตามตัวกรอง ({count, number} รายการแรก)")
   assert.match(source, /\{templateHref \? \(\n\s+<DropdownMenuItem asChild>\n\s+<a href=\{templateHref\} download>/)
   assert.match(source, /\{importHref \? \(\n\s+<DropdownMenuItem asChild>\n\s+<Link href=\{importHref\}>\n\s+<Upload aria-hidden="true" \/>\n\s+\{t\("importFromExcel"\)\}/)
   assert.doesNotMatch(source, /t\("exportMenu"\)|t\("exportFiltered"\)/)
-  for (const [locale, words] of [["th", ["ส่งออก / นำเข้า", "ส่งออกตามตัวกรอง ({count} รายการ)", "นำเข้าจาก Excel"]], ["en", ["Export / import", "Export filtered ({count} items)", "Import from Excel"]]] as const) {
+  for (const [locale, words] of [["th", ["ส่งออก / นำเข้า", "ส่งออกตามตัวกรอง ({count, number} รายการ)", "นำเข้าจาก Excel"]], ["en", ["Export / import", "Export filtered ({count, plural, one {# item} other {# items}})", "Import from Excel"]]] as const) {
     assert.deepEqual([messages(locale).exportImportMenu, messages(locale).exportFilteredCount, messages(locale).importFromExcel], words, locale)
   }
 })
@@ -221,8 +224,9 @@ test("the phone card: the name is the link, the tag line carries the badges, the
   const selectable = functionBody(source, "MobileSelectableRow")
 
   assert.match(row, /focus-visible:before:ring-ring"\n\s+>\n\s+\{asset\.name\}\n\s+<\/Link>/)
-  assert.match(row, /className="block truncate text-sm font-semibold text-foreground before:absolute/)
-  assert.match(row, /<span className="tag">\{asset\.assetTag\}<\/span>\n\s+<StatusBadge label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.value\)\} className="shrink-0" \/>\n\s+\{needsConditionAttention\(asset\.condition\.value\) \? \(\n\s+<StatusBadge label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\} className="shrink-0" \/>\n\s+\) : null\}/)
+  // Final review C5: the name on up to two lines with its title; the tag shrinks so the badges stay on screen.
+  assert.match(row, /title=\{asset\.name\}\n\s+className="line-clamp-2 text-sm font-semibold text-foreground before:absolute/)
+  assert.match(row, /<span className="tag min-w-0 truncate">\{asset\.assetTag\}<\/span>\n\s+<StatusBadge label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.value\)\} className="shrink-0" \/>\n\s+\{needsConditionAttention\(asset\.condition\.value\) \? \(\n\s+<StatusBadge label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\} className="shrink-0" \/>\n\s+\) : null\}/)
   assert.match(row, /<p className="mt-0\.5 truncate text-xs text-muted-foreground">\n\s+\{\[\n\s+asset\.holder\.kind === "holder" \? asset\.holder\.name : asset\.holder\.kind === "shared" \? t\("holderSharedShort"\) : t\("noCustodian"\),\n\s+asset\.location\.name,\n\s+\]\.join\(" · "\)\}\n\s+<\/p>/)
   assert.doesNotMatch(source, /needsFieldAttention|<Chip\b|ownershipType/, "the holder line says ส่วนกลาง, so the chip went")
   const selectableText = selectable.slice(selectable.indexOf('<span className="min-w-0 flex-1">'))
@@ -231,21 +235,24 @@ test("the phone card: the name is the link, the tag line carries the badges, the
   assert.equal(typeof messages("en").holderSharedShort, "string")
 })
 
-test("the phone list says the tab and its count above and the end of the list on the last page (group 4 §6.7)", () => {
+// Final review C1 (L4): the range line above the table already says "1–6 จาก 6 รายการ" on the phone, so the list has no
+// summary line of its own (it also gave the สถานะอื่น total when one other status was open); the end line stays, with
+// the list's raw total.
+test("the phone list says no count above the cards and the end of the list on the last page (group 4 §6.7, final review C1)", () => {
   const source = mobileList()
   const tableSource = table()
   const page = read("src/app/[locale]/(dashboard)/assets/page.tsx")
 
-  assert.match(source, /\{summary \? <p data-asset-mobile-summary className="num px-3 py-2 text-meta text-muted-foreground">\{t\("registerMobileSummary", \{ tab: summary\.tab, count: formatCount\(summary\.count\) \}\)\}<\/p> : null\}/)
-  assert.match(source, /\{isLastPage \? <p data-asset-mobile-end className="num px-3 py-3 text-center text-meta text-muted-foreground">\{t\("registerMobileEnd", \{ shown: formatCount\(total\), total: formatCount\(total\) \}\)\}<\/p> : null\}/)
-  assert.ok(source.indexOf("data-asset-mobile-summary") < source.indexOf("<ul data-asset-mobile-list"), "the summary sits above the list")
+  assert.doesNotMatch(source, /data-asset-mobile-summary|registerMobileSummary|summary/)
+  assert.match(source, /\{isLastPage \? <p data-asset-mobile-end className="num px-3 py-3 text-center text-meta text-muted-foreground">\{t\("registerMobileEnd", \{ total \}\)\}<\/p> : null\}/)
   assert.ok(source.indexOf("data-asset-mobile-end") > source.indexOf("</ul>"), "the end line follows the last card")
-  assert.match(tableSource, /summary=\{currentTab\}\n\s+isLastPage=\{filters\.page >= totalPages\}\n\s+total=\{total\}/)
-  assert.match(page, /currentTab=\{currentStatusTab \? \{ tab: t\(statusTabLabelKeys\[currentStatusTab\.key\]\), count: currentStatusTab\.count \} : null\}/)
-  assert.match(page, /const currentStatusTab = statusTabs\.tabs\.find\(\(tab\) => tab\.active\)/)
-  assert.equal(messages("th").registerMobileSummary, "{tab} {count} รายการ")
-  assert.equal(messages("th").registerMobileEnd, "แสดงครบ {shown} จาก {total} รายการ")
-  for (const key of ["registerMobileSummary", "registerMobileEnd"]) assert.equal(typeof messages("en")[key], "string", key)
+  assert.match(tableSource, /reserveBulkBarSpace=\{selectedAssets\.length > 0\}\n\s+isLastPage=\{filters\.page >= totalPages\}\n\s+total=\{total\}/)
+  assert.doesNotMatch(tableSource, /currentTab/)
+  assert.doesNotMatch(page, /currentTab|currentStatusTab/)
+  assert.equal(messages("th").registerMobileSummary, undefined)
+  assert.equal(messages("en").registerMobileSummary, undefined)
+  assert.equal(messages("th").registerMobileEnd, "แสดงครบ {total, number} รายการ")
+  assert.equal(messages("en").registerMobileEnd, "{total, plural, one {# item shown} other {All # items shown}}")
 })
 
 test("select mode rows only toggle the checkbox and never navigate", () => {
@@ -283,7 +290,7 @@ test("the desktop selection bar: the count on this page, ล้าง, อื่
 
   assert.match(source, /import \{ DesktopSelectionBar \} from "@\/components\/ui\/desktop-selection-bar"/)
   assert.match(source, /import \{ DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger \} from "@\/components\/ui\/dropdown-menu"/)
-  assert.match(source, /\{selectedAssets\.length > 0 \? \(\n\s+<div data-asset-selection-bar className="contents">\n\s+<DesktopSelectionBar\n\s+label=\{labels\.bulkActions\}\n\s+countLabel=\{t\("selectedOnPage", \{ count: formatCount\(selectedAssets\.length\) \}\)\}\n\s+clearLabel=\{labels\.clearSelection\}\n\s+onClear=\{clearSelection\}/)
+  assert.match(source, /\{selectedAssets\.length > 0 \? \(\n\s+<div data-asset-selection-bar className="contents">\n\s+<DesktopSelectionBar\n\s+label=\{labels\.bulkActions\}\n\s+countLabel=\{t\("selectedOnPage", \{ count: selectedAssets\.length \}\)\}\n\s+clearLabel=\{labels\.clearSelection\}\n\s+onClear=\{clearSelection\}/)
   assert.ok(source.indexOf("data-asset-selection-bar") > source.indexOf("</DataTableFoot>"), "the bar follows the table and its pager")
   assert.ok(source.indexOf("data-asset-selection-bar") > source.lastIndexOf("</AccessibleDialog>"), "outside the clipping panel")
   assert.match(source, /^  return \(\n    <>\n/m, "the panel and the bar are siblings")
@@ -291,7 +298,7 @@ test("the desktop selection bar: the count on this page, ล้าง, อื่
   assert.match(bar, /\{permissions\.canEdit \? \(\n\s+<DropdownMenuItem onSelect=\{\(\) => \{\n\s+openingDialogRef\.current = true\n\s+openBulkUpdate\(moreTriggerRef\.current\)\n\s+\}\}>\n\s+<Edit aria-hidden="true" \/>\n\s+\{labels\.bulkUpdate\}/)
   assert.match(bar, /<DropdownMenuItem onSelect=\{exportSelected\}>\n\s+<Download aria-hidden="true" \/>\n\s+\{labels\.exportSelected\}/)
   assert.ok(bar.indexOf("labels.bulkUpdate") < bar.indexOf("labels.exportSelected"), "อัปเดต first, then ส่งออก")
-  assert.match(bar, /<\/DropdownMenu>\n\s+<Button size="md" onClick=\{printSelectedLabels\}>\n\s+<Printer aria-hidden="true" \/>\n\s+\{t\("printLabelsCount", \{ count: formatCount\(selectedAssets\.length\) \}\)\}/)
+  assert.match(bar, /<\/DropdownMenu>\n\s+<Button size="md" onClick=\{printSelectedLabels\}>\n\s+<Printer aria-hidden="true" \/>\n\s+\{t\("printLabelsCount", \{ count: selectedAssets\.length \}\)\}/)
   // Focus goes back to "อื่น ๆ" when the dialog opened from the menu closes; the menu does not take it first.
   assert.match(source, /returnFocusRef=\{bulkReturnFocusRef\}/)
   assert.match(source, /function openBulkUpdate\(opener: HTMLElement \| null = null\) \{\n\s+bulkReturnFocusRef\.current = opener/)
@@ -300,13 +307,13 @@ test("the desktop selection bar: the count on this page, ล้าง, อื่
   const phone = source.slice(source.indexOf("data-asset-bulk-bar"), source.indexOf("data-asset-selection-bar"))
   for (const handler of ["printSelectedLabels", "() => openBulkUpdate()", "exportSelected", "clearSelection"]) assert.ok(phone.includes(`onClick={${handler}}`), handler)
 
-  assert.equal(messages("th").selectedOnPage, "{count} รายการที่เลือกในหน้านี้")
+  // Final review C8: the raw count, grouped by {count, number}; the en label reads "Print 1 label".
+  assert.equal(messages("th").selectedOnPage, "{count, number} รายการที่เลือกในหน้านี้")
   assert.equal(messages("th").moreActions, "อื่น ๆ")
-  assert.equal(messages("th").printLabelsCount, "พิมพ์ป้าย {count} รายการ")
-  for (const key of ["selectedOnPage", "moreActions", "printLabelsCount"]) {
-    assert.equal(typeof messages("en")[key], "string", key)
-    assert.doesNotMatch(messages("en")[key], /plural/, key)
-  }
+  assert.equal(messages("th").printLabelsCount, "พิมพ์ป้าย {count, number} รายการ")
+  assert.equal(messages("en").selectedOnPage, "{count, number} selected on this page")
+  assert.equal(messages("en").printLabelsCount, "{count, plural, one {Print # label} other {Print # labels}}")
+  assert.equal(typeof messages("en").moreActions, "string")
 })
 
 test("select mode copy exists in Thai and English", () => {
@@ -417,7 +424,7 @@ test("phone rows show the asset tag as a mono tag on the soft row line, and sele
   // bulk bar space moved to it; the link is the name and the tag sits on the line under it.
   assert.match(source, /<div className=\{cn\("md:hidden", reserveBulkBarSpace && "pb-44"\)\}>/)
   assert.match(source, /<ul data-asset-mobile-list className="divide-y divide-border-soft">/)
-  assert.match(row, /<span className="tag">\{asset\.assetTag\}<\/span>/)
+  assert.match(row, /<span className="tag min-w-0 truncate">\{asset\.assetTag\}<\/span>/)
   assert.match(selectable, /<span className="block truncate text-sm font-semibold text-foreground">\{asset\.name\}<\/span>\n\s+<span className="block truncate text-xs text-muted-foreground"><span className="tag">\{asset\.assetTag\}<\/span><\/span>/)
   assert.doesNotMatch(source, /rounded border-border|text-primary|font-semibold text-foreground">\{asset\.assetTag\}/)
 })
@@ -511,4 +518,20 @@ test("the bulk correction dialog: refused assets named with their reason and unt
 
   const phone = source.slice(source.indexOf("data-asset-bulk-bar"), source.indexOf("data-asset-selection-bar"))
   assert.match(phone, /\{permissions\.canEdit \? \(\n\s+<Button variant="outline" size="md" onClick=\{\(\) => openBulkUpdate\(\)\}/)
+})
+
+// Final review C2-C4: the sum line only when สถานะอื่น has assets, led by an sr-only label, naming statuses in the
+// page's language; the scroll hint says only the actions column stays pinned.
+test("the sum line shows only with สถานะอื่น, with an sr-only lead and the page's language; the scroll hint names the actions column only (final review C2-C4)", () => {
+  const page = read("src/app/[locale]/(dashboard)/assets/page.tsx")
+  const tabs = read("src/components/assets/asset-register-status-tabs.tsx")
+  assert.match(page, /const statusSum = buildStatusSumLine\(statusTabs\.tabs, statusTabs\.otherBreakdown, locale\)\n\s+const statusSumLine = statusSum\.other\.count > 0\n/)
+  assert.match(page, /\.join\(" \+ "\),\n\s+\}\)\n\s+: undefined/)
+  assert.match(page, /sumLine=\{statusSumLine\}\n\s+sumLabel=\{t\("statusSumLineLabel"\)\}/)
+  assert.match(tabs, /<p data-asset-status-sum className="[^"]*">\n\s+\{sumLabel \? <span className="sr-only">\{sumLabel\} <\/span> : null\}\n\s+\{sumLine\}\n\s+<\/p>/)
+  assert.equal(messages("th").statusSumLineLabel, "สรุปจำนวนตามสถานะ:")
+  assert.equal(typeof messages("en").statusSumLineLabel, "string")
+  assert.equal(messages("th").statusSumLineNoOther, undefined)
+  assert.equal(messages("th").tableScrollHint, "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม คอลัมน์การดำเนินการจะค้างตำแหน่งไว้")
+  assert.equal(messages("en").tableScrollHint, "Scroll left/right to see more columns. The actions column stays pinned.")
 })

@@ -19,7 +19,7 @@ test("the register's specs read the app's own words (group 4 plan 1 task 8)", as
   for (const [name, text] of Object.entries(REGISTER_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
   assert.equal(REGISTER_WORDS.tabOther, th.asset.quickFilterOther)
   assert.equal(REGISTER_WORDS.sumLine, th.asset.statusSumLine)
-  assert.equal(REGISTER_WORDS.mobileSummary, th.asset.registerMobileSummary)
+  assert.equal(REGISTER_WORDS.mobileEnd, th.asset.registerMobileEnd)
   assert.equal(REGISTER_WORDS.bulkCorrectionTitle, th.asset.bulkCorrectionTitle)
   assert.equal(REGISTER_WORDS.departmentFollows, th.asset.bulkDepartmentFollows)
   assert.equal(REGISTER_WORDS.holderCorrected, th.asset.movementTypes.register_custodian_correction)

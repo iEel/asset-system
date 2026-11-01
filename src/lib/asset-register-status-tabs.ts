@@ -15,8 +15,8 @@ export type AssetRegisterStatusTab = {
   active: boolean
 }
 
-/** One status counted under สถานะอื่น; only statuses with an active row have a name. */
-export type AssetRegisterOtherStatusCount = { statusId: string; nameTh: string; count: number }
+/** One status counted under สถานะอื่น; only statuses with an active row have a name, in English and in Thai. */
+export type AssetRegisterOtherStatusCount = { statusId: string; name: string; nameTh: string; count: number }
 
 export function buildStatusTabs({
   statuses,
@@ -49,7 +49,7 @@ export function buildStatusTabs({
   const otherBreakdown: AssetRegisterOtherStatusCount[] = otherCounts
     .flatMap((item) => {
       const status = statuses.find((candidate) => candidate.id === item.statusId)
-      return status?.nameTh ? [{ statusId: item.statusId, nameTh: status.nameTh, count: item.count }] : []
+      return status?.nameTh ? [{ statusId: item.statusId, name: status.name, nameTh: status.nameTh, count: item.count }] : []
     })
     .sort((a, b) => b.count - a.count)
 
@@ -73,14 +73,16 @@ export type AssetRegisterStatusSumLine = {
 
 /**
  * The line under the tabs: each tab after ทั้งหมด adds up to ทั้งหมด, and สถานะอื่น names its three largest statuses;
- * the rest (smaller ones and statuses with no name) is summed (spec §6.2).
+ * the rest (smaller ones and statuses with no name) is summed (spec §6.2). The names are the page's language: English
+ * reads `name`, Thai `nameTh` (final review C3).
  */
 export function buildStatusSumLine(
   tabs: readonly AssetRegisterStatusTab[],
   otherBreakdown: readonly AssetRegisterOtherStatusCount[],
+  locale = "th",
 ): AssetRegisterStatusSumLine {
   const otherCount = tabs.find((tab) => tab.key === "other")?.count ?? 0
-  const top = otherBreakdown.slice(0, 3).map((item) => ({ label: item.nameTh, count: item.count }))
+  const top = otherBreakdown.slice(0, 3).map((item) => ({ label: locale === "en" ? item.name : item.nameTh, count: item.count }))
   return {
     terms: tabs.filter((tab) => tab.key !== "all").map((tab) => tab.count),
     total: tabs.find((tab) => tab.key === "all")?.count ?? 0,

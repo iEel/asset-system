@@ -73,7 +73,7 @@ test("the สถานะอื่น tab counts every status outside the five a
   const other = result.tabs.find((tab) => tab.key === "other")
 
   assert.deepEqual(other, { key: "other", statusId: "", count: 63, active: false })
-  assert.deepEqual(result.otherBreakdown[0], { statusId: "s-disposal", nameTh: "รอจำหน่าย", count: 21 })
+  assert.deepEqual(result.otherBreakdown[0], { statusId: "s-disposal", name: "Pending Disposal", nameTh: "รอจำหน่าย", count: 21 })
   assert.deepEqual(result.otherBreakdown.map((item) => item.count), [21, 18, 11, 7, 6])
   assert.equal(result.tabs.find((tab) => tab.key === "all")?.count, 842)
 
@@ -124,6 +124,16 @@ test("the sum line adds the five tabs and สถานะอื่น to the tot
     buildStatusSumLine(result.tabs, result.otherBreakdown.slice(0, 2)).other,
     { count: 63, top: [{ label: "รอจำหน่าย", count: 21 }, { label: "อยู่ระหว่างตรวจสอบ", count: 18 }], rest: 24 },
   )
+})
+
+test("the sum line names the other statuses in the page's language: English name on /en, Thai nameTh on /th (final review C3)", () => {
+  const result = buildStatusTabs({ statuses: registerStatuses, counts: registerCounts, statusId: "" })
+  assert.deepEqual(buildStatusSumLine(result.tabs, result.otherBreakdown, "en").other.top, [
+    { label: "Pending Disposal", count: 21 },
+    { label: "Under Inspection", count: 18 },
+    { label: "Missing", count: 11 },
+  ])
+  assert.deepEqual(buildStatusSumLine(result.tabs, result.otherBreakdown, "th").other.top.map((item) => item.label), ["รอจำหน่าย", "อยู่ระหว่างตรวจสอบ", "ไม่พบ"])
 })
 
 const chipLabels = {

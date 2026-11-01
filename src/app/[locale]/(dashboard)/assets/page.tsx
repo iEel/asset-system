@@ -256,14 +256,13 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     statusId: filters.statusId,
     statusGroup: filters.statusGroup,
   })
-  // The line under the tabs (group 4 spec §6.2): the tabs add up to ทั้งหมด, and สถานะอื่น names its three largest.
-  // The phone list says the current tab and its count above the cards (group 4 spec §6.7).
-  const currentStatusTab = statusTabs.tabs.find((tab) => tab.active)
-  const statusSum = buildStatusSumLine(statusTabs.tabs, statusTabs.otherBreakdown)
-  const statusSumTerms = statusSum.terms.map((count) => formatCount(count)).join(" + ")
+  // The line under the tabs (group 4 spec §6.2): the tabs add up to ทั้งหมด, and สถานะอื่น names its three largest in
+  // the page's language. With nothing under สถานะอื่น the tabs already say every count, so there is no line (final
+  // review C2, C3).
+  const statusSum = buildStatusSumLine(statusTabs.tabs, statusTabs.otherBreakdown, locale)
   const statusSumLine = statusSum.other.count > 0
     ? t("statusSumLine", {
-        terms: statusSumTerms,
+        terms: statusSum.terms.map((count) => formatCount(count)).join(" + "),
         total: formatCount(statusSum.total),
         other: formatCount(statusSum.other.count),
         breakdown: [
@@ -271,7 +270,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           ...(statusSum.other.rest > 0 ? [t("statusSumLineRest", { count: formatCount(statusSum.other.rest) })] : []),
         ].join(" + "),
       })
-    : t("statusSumLineNoOther", { terms: statusSumTerms, total: formatCount(statusSum.total) })
+    : undefined
   const statusTabLabelKeys = {
     all: "quickFilterAll",
     ready: "quickFilterReady",
@@ -441,6 +440,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
             active: tab.active,
           }))}
           sumLine={statusSumLine}
+          sumLabel={t("statusSumLineLabel")}
         />
         <AssetRegisterFilterChips
           chips={filterChips}
@@ -453,7 +453,6 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           filters={filters}
           total={total}
           totalPages={totalPages}
-          currentTab={currentStatusTab ? { tab: t(statusTabLabelKeys[currentStatusTab.key]), count: currentStatusTab.count } : null}
           fromRow={fromRow}
           toRow={toRow}
           bulkOptions={{

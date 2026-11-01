@@ -29,8 +29,8 @@ function sourceFiles(directory: string): string[] {
   })
 }
 
-test("the en plural messages are known: 21 keys, so a new one is checked by the rules below", () => {
-  assert.equal(pluralKeys.size, 21, [...pluralKeys.keys()].join(", "))
+test("the en plural messages are known: 25 keys, so a new one is checked by the rules below", () => {
+  assert.equal(pluralKeys.size, 25, [...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("common.searchSelectResultCount"), "count")
   assert.equal(pluralKeys.get("session.idleWarningSr"), "minutes")
 })

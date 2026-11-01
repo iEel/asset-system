@@ -143,8 +143,6 @@ type AssetRegisterTableProps = {
   }
   total: number
   totalPages: number
-  // The current status tab and its count, for the phone list's summary line (group 4 spec §6.7).
-  currentTab: { tab: string; count: number } | null
   fromRow: number
   toRow: number
   bulkOptions: {
@@ -226,7 +224,6 @@ export function AssetRegisterTable({
   filters,
   total,
   totalPages,
-  currentTab,
   fromRow,
   toRow,
   bulkOptions,
@@ -645,7 +642,6 @@ export function AssetRegisterTable({
           cloneHref={buildAssetCloneHref}
           onNavigate={rememberDetailReturnScroll}
           reserveBulkBarSpace={selectedAssets.length > 0}
-          summary={currentTab}
           isLastPage={filters.page >= totalPages}
           total={total}
         />
@@ -931,7 +927,7 @@ export function AssetRegisterTable({
       <div data-asset-selection-bar className="contents">
         <DesktopSelectionBar
           label={labels.bulkActions}
-          countLabel={t("selectedOnPage", { count: formatCount(selectedAssets.length) })}
+          countLabel={t("selectedOnPage", { count: selectedAssets.length })}
           clearLabel={labels.clearSelection}
           onClear={clearSelection}
           actions={
@@ -968,7 +964,7 @@ export function AssetRegisterTable({
               </DropdownMenu>
               <Button size="md" onClick={printSelectedLabels}>
                 <Printer aria-hidden="true" />
-                {t("printLabelsCount", { count: formatCount(selectedAssets.length) })}
+                {t("printLabelsCount", { count: selectedAssets.length })}
               </Button>
             </>
           }

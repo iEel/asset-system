@@ -83,7 +83,18 @@ export function addSavedView(
   // A taken or empty name is said first; a full list only once the name itself is fine.
   const error: AssetRegisterSavedViewError | null = nameError(views, trimmed) ?? (views.length >= assetRegisterSavedViewsMax ? "full" : null)
   if (error) return { views, error }
-  return { views: [...views, { id: crypto.randomUUID(), name: trimmed, query: normalizeSavedViewQuery(query) }], error: null }
+  return { views: [...views, { id: newSavedViewId(), name: trimmed, query: normalizeSavedViewQuery(query) }], error: null }
+}
+
+let savedViewIdCounter = 0
+
+// crypto.randomUUID exists only in a secure context (HTTPS or localhost); a plain-http LAN page has none, so the id falls
+// back to the time, a counter and a random part (final review C7).
+export function newSavedViewId(): string {
+  const cryptoApi = globalThis.crypto as Crypto | undefined
+  if (typeof cryptoApi?.randomUUID === "function") return cryptoApi.randomUUID()
+  savedViewIdCounter += 1
+  return `view-${Date.now().toString(36)}-${savedViewIdCounter.toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export function renameSavedView(

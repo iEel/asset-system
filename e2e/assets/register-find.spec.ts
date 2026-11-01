@@ -74,11 +74,9 @@ test("a person's assets: their name typed in the register's search finds both, e
       await expect(row.getByText(`${holder.fullNameTh} · ${run.location.name}`, { exact: true })).toBeVisible()
     }
   }
-  if (e2eDevice === "phone") {
-    // The current tab and its count above the cards (§6.7); every row the name finds is the IT head's (this spec's two
-    // a project, in up to four projects).
-    await expect(page.locator("[data-asset-mobile-summary]")).toHaveText(templatePattern(REGISTER_WORDS.mobileSummary, { tab: REGISTER_WORDS.tabAll, count: "\\d+" }))
-  }
+  // The range line above the cards and the table says the count on both devices (§6.7, final review C1); every row the
+  // name finds is the IT head's (this spec's two a project, in up to four projects).
+  await expect(page.locator("[data-asset-register-summary]")).toContainText(templatePattern(REGISTER_WORDS.range, { from: "1", to: "\\d+", total: "\\d+" }))
 
   // One opens: the row on the desktop, the name's link on the phone.
   const [first] = assets
@@ -128,8 +126,7 @@ test("the สถานะอื่น tab lists an asset waiting for disposal, a
   await expect(page.locator("[data-asset-status-sum]")).toHaveText(
     templatePattern(REGISTER_WORDS.sumLine, { terms: "(?:0 \\+ )*1", total: "1", other: "1", breakdown: escapeRegExp(`${status.nameTh} 1`) }),
   )
-  if (e2eDevice === "phone") await expect(page.locator("[data-asset-mobile-summary]")).toHaveText(fillTemplate(REGISTER_WORDS.mobileSummary, { tab: REGISTER_WORDS.tabOther, count: 1 }))
-  else await expect(page.getByRole("main")).toContainText(fillTemplate(REGISTER_WORDS.range, { from: 1, to: 1, total: 1 }))
+  await expect(page.locator("[data-asset-register-summary]")).toContainText(fillTemplate(REGISTER_WORDS.range, { from: 1, to: 1, total: 1 }))
 })
 
 test("a saved view: บันทึกมุมมองนี้ asks for a name first, then keeps the view in this browser, and the row opens it again (group 4 spec §6.4)", async ({ page, measure, e2eDevice }, testInfo) => {

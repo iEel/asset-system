@@ -8,7 +8,6 @@ import type { AssetRegisterRow } from "@/components/assets/asset-register-table"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getAssetStateTone } from "@/lib/design-system"
-import { formatCount } from "@/lib/display-format"
 import { needsConditionAttention } from "@/lib/asset-register-row-rules"
 import { cn } from "@/lib/utils"
 
@@ -23,8 +22,7 @@ type MobileListProps = {
   cloneHref: (id: string) => string
   onNavigate: () => void
   reserveBulkBarSpace: boolean
-  // The current status tab and its count, said above the list (group 4 spec §6.7).
-  summary: { tab: string; count: number } | null
+  // The range line above the table already says the count, so the list says none above the cards (final review C1).
   // On the last page the list has reached its end, so the end line says every row is shown.
   isLastPage: boolean
   total: number
@@ -38,7 +36,6 @@ export function AssetRegisterMobileList({
   selectedIds,
   onToggleAsset,
   reserveBulkBarSpace,
-  summary,
   isLastPage,
   total,
   ...rowProps
@@ -46,7 +43,6 @@ export function AssetRegisterMobileList({
   const t = useTranslations("asset")
   return (
     <div className={cn("md:hidden", reserveBulkBarSpace && "pb-44")}>
-      {summary ? <p data-asset-mobile-summary className="num px-3 py-2 text-meta text-muted-foreground">{t("registerMobileSummary", { tab: summary.tab, count: formatCount(summary.count) })}</p> : null}
       <ul data-asset-mobile-list className="divide-y divide-border-soft">
         {assets.map((asset) =>
           selectMode ? (
@@ -56,7 +52,7 @@ export function AssetRegisterMobileList({
           ),
         )}
       </ul>
-      {isLastPage ? <p data-asset-mobile-end className="num px-3 py-3 text-center text-meta text-muted-foreground">{t("registerMobileEnd", { shown: formatCount(total), total: formatCount(total) })}</p> : null}
+      {isLastPage ? <p data-asset-mobile-end className="num px-3 py-3 text-center text-meta text-muted-foreground">{t("registerMobileEnd", { total })}</p> : null}
     </div>
   )
 }
@@ -70,12 +66,13 @@ function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, o
         <Link
           href={detailHref(asset.id)}
           onClick={onNavigate}
-          className="block truncate text-sm font-semibold text-foreground before:absolute before:inset-0 before:content-[''] focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-inset focus-visible:before:ring-ring"
+          title={asset.name}
+          className="line-clamp-2 text-sm font-semibold text-foreground before:absolute before:inset-0 before:content-[''] focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-inset focus-visible:before:ring-ring"
         >
           {asset.name}
         </Link>
         <div className="mt-0.5 flex min-w-0 flex-nowrap items-center gap-2 text-xs leading-5">
-          <span className="tag">{asset.assetTag}</span>
+          <span className="tag min-w-0 truncate">{asset.assetTag}</span>
           <StatusBadge label={asset.status.label} tone={getAssetStateTone(asset.status.value)} className="shrink-0" />
           {needsConditionAttention(asset.condition.value) ? (
             <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} className="shrink-0" />

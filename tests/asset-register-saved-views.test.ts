@@ -7,6 +7,7 @@ import {
   assetRegisterSavedViewsKey,
   assetRegisterSavedViewsMax,
   deleteSavedView,
+  newSavedViewId,
   normalizeSavedViewQuery,
   readSavedViews,
   renameSavedView,
@@ -117,4 +118,22 @@ test("renaming checks the same rules but may keep its own name; deleting removes
 
   assert.deepEqual(deleteSavedView(views, "v1").map((item) => item.id), ["v2"])
   assert.deepEqual(deleteSavedView(views, "missing").map((item) => item.id), ["v1", "v2"])
+})
+
+// Final review C7: crypto.randomUUID is missing on a plain-http LAN page (not a secure context), so the id falls back.
+test("a view id comes from crypto.randomUUID when there is one, else from the time, a counter and a random part", () => {
+  assert.match(newSavedViewId(), /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+  const original = Object.getOwnPropertyDescriptor(globalThis, "crypto")
+  try {
+    Object.defineProperty(globalThis, "crypto", { value: {}, configurable: true, writable: true })
+    const first = newSavedViewId()
+    const second = newSavedViewId()
+    assert.match(first, /^view-[0-9a-z]+-[0-9a-z]+-[0-9a-z]*$/)
+    assert.notEqual(first, second)
+    assert.equal(addSavedView([], "Plain http", "").views[0].id.startsWith("view-"), true, "adding a view does not throw")
+    Object.defineProperty(globalThis, "crypto", { value: undefined, configurable: true, writable: true })
+    assert.match(newSavedViewId(), /^view-/)
+  } finally {
+    if (original) Object.defineProperty(globalThis, "crypto", original)
+  }
 })

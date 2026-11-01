@@ -7,12 +7,12 @@ export const REGISTER_WORDS = {
   search: "ค้นหา", range: "{from}–{to} จาก {total} รายการ",
   // The status tabs and the line under them (§6.2): the tabs add up to ทั้งหมด, and สถานะอื่น names its statuses.
   tabAll: "ทั้งหมด", tabOther: "สถานะอื่น", sumLine: "{terms} = {total} · สถานะอื่น {other} = {breakdown}",
-  // The phone's lines (§6.7): the tab and its count above the cards, the end of the list on the last page.
-  mobileSummary: "{tab} {count} รายการ", mobileEnd: "แสดงครบ {shown} จาก {total} รายการ",
+  // The phone's end line (§6.7): the end of the list on the last page; the range line above says the count (final review C1).
+  mobileEnd: "แสดงครบ {total, number} รายการ",
   // The header's menu (§6.3).
-  exportImportMenu: "ส่งออก / นำเข้า", exportFilteredCount: "ส่งออกตามตัวกรอง ({count} รายการ)", importFromExcel: "นำเข้าจาก Excel",
+  exportImportMenu: "ส่งออก / นำเข้า", exportFilteredCount: "ส่งออกตามตัวกรอง ({count, number} รายการ)", importFromExcel: "นำเข้าจาก Excel",
   // The selection bar (§6.5) and its "อื่น ๆ" item that opens the bulk correction.
-  selectedOnPage: "{count} รายการที่เลือกในหน้านี้", moreActions: "อื่น ๆ", printLabelsCount: "พิมพ์ป้าย {count} รายการ",
+  selectedOnPage: "{count, number} รายการที่เลือกในหน้านี้", moreActions: "อื่น ๆ", printLabelsCount: "พิมพ์ป้าย {count, number} รายการ",
   bulkUpdate: "แก้ไขข้อมูลหลายรายการ",
   // The bulk correction (§6.6, decision 11): its title, the department line, its errors, its save and its toast.
   bulkCorrectionTitle: "แก้ไขข้อมูลหลายรายการ", departmentFollows: "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count, number} รายการ)",

@@ -5,9 +5,10 @@ import { Download, FileDown, FileSpreadsheet, Upload } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { formatCount } from "@/lib/display-format"
+import { ASSET_EXPORT_MAX_ROWS } from "@/lib/asset-export-limits"
 
-// "ส่งออก / นำเข้า" in the register header (group 4 spec §6.3). exportCount is the register's total under the filters.
+// "ส่งออก / นำเข้า" in the register header (group 4 spec §6.3). exportCount is the register's total under the filters;
+// the export writes at most ASSET_EXPORT_MAX_ROWS, so above that the item says the first rows only (final review C6).
 // templateHref and importHref are given only to a role that may import (asset:create); without them the menu offers the export alone.
 export function AssetRegisterExportMenu({ exportHref, exportCount, templateHref, importHref }: { exportHref: string; exportCount: number; templateHref?: string; importHref?: string }) {
   const t = useTranslations("asset")
@@ -24,7 +25,9 @@ export function AssetRegisterExportMenu({ exportHref, exportCount, templateHref,
         <DropdownMenuItem asChild>
           <a href={exportHref} download>
             <FileDown aria-hidden="true" />
-            {t("exportFilteredCount", { count: formatCount(exportCount) })}
+            {exportCount > ASSET_EXPORT_MAX_ROWS
+              ? t("exportFilteredCapped", { count: ASSET_EXPORT_MAX_ROWS })
+              : t("exportFilteredCount", { count: exportCount })}
           </a>
         </DropdownMenuItem>
         {templateHref ? (
