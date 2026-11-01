@@ -1365,7 +1365,18 @@
     "searchPlaceholderFields": "Search tag · name · serial · custodian · location",
     "selectedOnPage": "{count} selected on this page",
     "moreActions": "More",
-    "printLabelsCount": "Print labels ({count})"
+    "printLabelsCount": "Print labels ({count})",
+    "savedViews": "Saved views",
+    "saveView": "Save this view",
+    "renameView": "Rename",
+    "renameViewTitle": "Rename view",
+    "viewName": "View name",
+    "viewNameHint": "Up to 40 characters. Kept in this browser only.",
+    "viewNameRequired": "Enter a name for the view.",
+    "viewNameTaken": "A view with this name already exists.",
+    "savedViewsFull": "You can save up to {max} views. Delete one first.",
+    "savedViewsStorageError": "Views cannot be kept in this browser.",
+    "savedViewActions": "Actions for view {name}"
   },
   "company": {
     "title": "Companies",

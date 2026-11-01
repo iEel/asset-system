@@ -3,6 +3,7 @@
 import { SlidersHorizontal } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { AssetRegisterFilterSheet, type AssetRegisterFilterOptions } from "@/components/assets/asset-register-filter-sheet"
+import { AssetRegisterSavedViewsMenu } from "@/components/assets/asset-register-saved-views"
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
 import { AssetRegisterSearchField } from "@/components/assets/asset-register-search-field"
 import { Button } from "@/components/ui/button"
@@ -16,11 +17,15 @@ export function AssetRegisterToolbar({
   options,
   tabStatusIds,
   total,
+  userId,
+  viewQuery,
 }: {
   locale: string
   options: AssetRegisterFilterOptions
   tabStatusIds: string[]
   total: number
+  userId: string
+  viewQuery: string
 }) {
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
@@ -84,6 +89,8 @@ export function AssetRegisterToolbar({
             ))}
           </FilterSelect>
         </div>
+        {/* The phone opens the saved views here; the desktop row sits under the toolbar (group 4 spec §6.7). */}
+        <AssetRegisterSavedViewsMenu locale={locale} userId={userId} viewQuery={viewQuery} className="md:hidden" />
         <AssetRegisterFilterSheet
           options={options}
           tabStatusIds={tabStatusIds}

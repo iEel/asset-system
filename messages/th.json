@@ -1365,7 +1365,18 @@
     "searchPlaceholderFields": "ค้นหา รหัส · ชื่อ · Serial · ผู้ถือครอง · ที่ตั้ง",
     "selectedOnPage": "{count} รายการที่เลือกในหน้านี้",
     "moreActions": "อื่น ๆ",
-    "printLabelsCount": "พิมพ์ป้าย {count} รายการ"
+    "printLabelsCount": "พิมพ์ป้าย {count} รายการ",
+    "savedViews": "มุมมองที่บันทึกไว้",
+    "saveView": "บันทึกมุมมองนี้",
+    "renameView": "เปลี่ยนชื่อ",
+    "renameViewTitle": "เปลี่ยนชื่อมุมมอง",
+    "viewName": "ชื่อมุมมอง",
+    "viewNameHint": "ไม่เกิน 40 ตัวอักษร · เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น",
+    "viewNameRequired": "กรุณากรอกชื่อมุมมอง",
+    "viewNameTaken": "มีมุมมองชื่อนี้แล้ว",
+    "savedViewsFull": "บันทึกได้ไม่เกิน {max} มุมมอง ลบมุมมองเดิมก่อน",
+    "savedViewsStorageError": "เก็บมุมมองในเบราว์เซอร์นี้ไม่ได้",
+    "savedViewActions": "การดำเนินการของมุมมอง {name}"
   },
   "company": {
     "title": "บริษัท",

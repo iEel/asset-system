@@ -191,6 +191,7 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
   LK1: {},
   LN1: {
     [`${D}master-data/brands/page.tsx`]: { count: 2, kind: "permanent", why: "the brand picker is a vertical list of links, where aria-current=\"page\" is right", ruling: "2B I11" },
+    [`${C}assets/asset-register-saved-views.tsx`]: { count: 2, kind: "permanent", why: "the saved views (the desktop row and the phone menu) are links to register views; the one whose query equals the page's is current", ruling: "group 4 spec §6.4, plan 1 Task 6" },
   },
   LN2: {},
   LR1: {},

@@ -12,8 +12,10 @@ import {
 import { buildAssetRegisterWhere } from "@/lib/asset-list-where-options"
 import { buildStatusSumLine, buildStatusTabs } from "@/lib/asset-register-status-tabs"
 import { buildAssetRegisterChips, buildAssetRegisterClearAllHref } from "@/lib/asset-register-chips"
+import { assetRegisterSavedViewQuery } from "@/lib/asset-register-saved-views"
 import { AssetRegisterExportMenu } from "@/components/assets/asset-register-export-menu"
 import { AssetRegisterNavigationProvider } from "@/components/assets/asset-register-navigation"
+import { AssetRegisterSavedViews } from "@/components/assets/asset-register-saved-views"
 import { AssetRegisterToolbar } from "@/components/assets/asset-register-toolbar"
 import { AssetRegisterStatusTabs } from "@/components/assets/asset-register-status-tabs"
 import { AssetRegisterFilterChips } from "@/components/assets/asset-register-filter-chips"
@@ -62,6 +64,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
   const registerReturnHref = `/${locale}/assets?${buildAssetQueryString(filters)}`
+  // A saved view is current when its query equals this one (group 4 spec §6.4): the list query without the page.
+  const savedViewQuery = assetRegisterSavedViewQuery(filters)
   const { statusCountWhere, where } = await buildAssetRegisterWhere(filters)
   const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel, statusCounts, selectedSupplier] = await withPerformanceTiming(
     "assets.initial-data",
@@ -419,7 +423,10 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           options={{ companies, branches, categories, statuses, conditions }}
           tabStatusIds={statusTabs.tabStatusIds}
           total={total}
+          userId={user.id}
+          viewQuery={savedViewQuery}
         />
+        <AssetRegisterSavedViews locale={locale} userId={user.id} viewQuery={savedViewQuery} />
         <AssetRegisterStatusTabs
           label={t("statusTabsLabel")}
           items={statusTabs.tabs.map((tab) => ({

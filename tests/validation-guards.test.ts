@@ -14,7 +14,8 @@ const C = "src/components/"
 const read = (path: string) => sources.find((file) => file.path === path)?.source ?? ""
 
 // The 51 forms of the scope list (spec §5, the recon inventory at 9e17cab), by the file that holds each form's submit
-// handler, with the number of forms in that file. Formless submits (a button and a handler) count too.
+// handler, with the number of forms in that file. Formless submits (a button and a handler) count too. 52 since the
+// register's saved-view name (group 4 plan 1 Task 6).
 const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}assets/asset-form.tsx`]: 1,
   [`${C}assets/asset-batch-form.tsx`]: 1,
@@ -23,6 +24,7 @@ const V_SCOPE: Readonly<Record<string, number>> = {
   [`${C}assets/asset-status-correction-dialog.tsx`]: 1,
   [`${C}assets/asset-import-preview-panel.tsx`]: 1,
   [`${C}assets/asset-label-print.tsx`]: 1,
+  [`${C}assets/asset-register-saved-views.tsx`]: 1,
   [`${C}asset-operations/checkout-form.tsx`]: 1,
   [`${C}asset-operations/checkin-form.tsx`]: 1,
   [`${C}asset-operations/transfer-form.tsx`]: 1,
@@ -104,6 +106,7 @@ const V_FORMS: readonly string[] = [
   `${C}assets/asset-status-correction-dialog.tsx`,
   `${C}assets/asset-import-preview-panel.tsx`,
   `${C}assets/asset-label-print.tsx`,
+  `${C}assets/asset-register-saved-views.tsx`,
   `${C}reports/report-preset-controls.tsx`,
   `${C}audit/audit-round-form.tsx`,
   `${C}audit/audit-round-cancel-button.tsx`,
@@ -170,7 +173,7 @@ test("the V readers skip comments and see a catch block, a .catch() handler and 
   assert.deepEqual(starOnlySelects(select).map((tag) => tag.line), [2, 3])
 })
 
-test("V1 the scope list names every form a person submits, 51 in all (spec §5)", () => {
+test("V1 the scope list names every form a person submits, 52 in all (spec §5)", () => {
   const exists = (path: string) => sources.some((file) => file.path === path)
   const problems: string[] = []
   for (const path of [...Object.keys(V_SCOPE), ...Object.keys(NOT_IN_SCOPE), ...V_FORMS, ...Object.keys(SELECT_STAR_ONLY)]) if (!exists(path)) problems.push(`${path} not found`)
@@ -186,7 +189,7 @@ test("V1 the scope list names every form a person submits, 51 in all (spec §5)"
     else if (forms > V_SCOPE[file.path]) problems.push(`${file.path}: ${forms} <form>, V_SCOPE counts ${V_SCOPE[file.path]}`)
   }
   assert.deepEqual(problems, [])
-  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 51)
+  assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 52)
 })
 
 test("V2 a moved form checks itself: validate() and noValidate right after onSubmit (spec §4.5)", () => {
