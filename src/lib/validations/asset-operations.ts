@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { assetHandoverModes, assertHandoverModeFields } from "../asset-handover-mode.ts"
 import { componentLateReturnOutcomes } from "../component-late-return.ts"
+import { bulkMoveMaxAssets } from "../bulk-move-list-rules.ts"
 import { optionalText } from "./shared.ts"
 
 const optionalDate = z.preprocess(
@@ -94,7 +95,8 @@ export const assetTransferSchema = z
   })
 
 export const assetBulkMoveSchema = z.object({
-  assetIds: z.array(z.string().trim().min(1)).min(1),
+  // At most 100 per move (group 3 spec §10.1; plan 4 P4-R10): one transaction, and SQL Server's parameter limit.
+  assetIds: z.array(z.string().trim().min(1)).min(1).max(bulkMoveMaxAssets),
   toLocationId: z.string().trim().min(1),
   reason: z.string().trim().min(1).max(500),
   remark: optionalText,

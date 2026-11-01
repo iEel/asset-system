@@ -5,6 +5,7 @@ import test from "node:test"
 
 import { apiErrorKeyByMessage, describeApiError, getApiErrorKey, isUnauthorizedError } from "../src/lib/api-error-catalog.ts"
 import { assetOperationRefusalReasonKeys } from "../src/lib/asset-operation-eligibility.ts"
+import { bulkMoveBlockedOrder } from "../src/lib/bulk-move-blocked.ts"
 
 const thai = { lookup: (key: string) => `TH:${key}`, unknown: "เกิดข้อผิดพลาด", empty: "เกิดข้อผิดพลาด" }
 
@@ -220,5 +221,19 @@ test("โอนย้าย's own refusals read their words: the toast per code,
     for (const locale of ["th", "en"] as const) {
       assert.equal(messages(locale).apiErrors[`transferCondition${name}`], messages(locale).asset[`transactionReasonTransferCondition${name}`], `${locale} ${name}`)
     }
+  }
+})
+
+test("every answer of the bulk move reads through the catalog, and its two old texts are gone (group 3 spec §5, §10.3; P4-R4, P4-R5, P4-R14)", () => {
+  assert.deepEqual(bulkMoveBlockedOrder.map((code) => getApiErrorKey(code)), ["componentOutstanding", "licenseMoveNotAllowed", "assetActiveCheckoutExists", "statusBlocksTransfer"])
+  assert.equal(getApiErrorKey("ASSET_TRANSFER_DESTINATION_INACTIVE"), "checkoutDestinationInactive")
+  assert.equal(getApiErrorKey("ASSET_CHANGED_DURING_OPERATION"), "assetChangedDuringOperation")
+  assert.equal(getApiErrorKey("Disposed or retired assets cannot be moved."), null)
+  assert.equal(getApiErrorKey("Some assets already have active checkouts"), null)
+  for (const locale of ["th", "en"] as const) {
+    const apiErrors = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors as Record<string, string | undefined>
+    assert.equal(apiErrors.disposedAssetCannotMove, undefined, locale)
+    assert.equal(apiErrors.someAssetsOnCheckout, undefined, locale)
+    assert.equal(typeof apiErrors.checkoutLocationInactive, "string", locale)
   }
 })

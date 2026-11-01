@@ -76,14 +76,17 @@ export class AssetComponentOutstandingError extends Error {
   }
 }
 
-// An outstanding component (group 3 spec §8.5) is not handed over, transferred, moved or backfilled on its own. The
-// routes call this before the transaction and again after the claim.
-export async function assertNoOutstandingComponentLinks(db: OutstandingLinkReader, assetIds: readonly string[]): Promise<void> {
+// The given ids that have an outstanding link, each once, in the order given; one read, never throws. The bulk move
+// reads it with its other reasons, so one answer names every refused asset (group 3 plan 4 P4-R4).
+export async function readOutstandingComponentLinks(
+  db: OutstandingLinkReader,
+  assetIds: readonly string[],
+): Promise<Array<{ assetId: string; assetTag: string }>> {
   const links = await db.assetComponent.findMany({
     where: { componentAssetId: { in: [...assetIds] }, ...outstandingLinkWhere },
     select: { componentAssetId: true, componentAsset: { select: { assetTag: true } } },
   })
-  if (links.length === 0) return
+  if (links.length === 0) return []
   const tags = new Map<string, string>()
   for (const link of links) if (!tags.has(link.componentAssetId)) tags.set(link.componentAssetId, link.componentAsset.assetTag)
   const blocked: Array<{ assetId: string; assetTag: string }> = []
@@ -91,5 +94,12 @@ export async function assertNoOutstandingComponentLinks(db: OutstandingLinkReade
     const assetTag = tags.get(assetId)
     if (assetTag !== undefined) blocked.push({ assetId, assetTag })
   }
-  throw new AssetComponentOutstandingError(blocked)
+  return blocked
+}
+
+// An outstanding component (group 3 spec §8.5) is not handed over, transferred, moved or backfilled on its own. The
+// routes call this before the transaction and again after the claim.
+export async function assertNoOutstandingComponentLinks(db: OutstandingLinkReader, assetIds: readonly string[]): Promise<void> {
+  const blocked = await readOutstandingComponentLinks(db, assetIds)
+  if (blocked.length > 0) throw new AssetComponentOutstandingError(blocked)
 }

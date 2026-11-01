@@ -20,9 +20,14 @@ type BulkCustodyState = {
   /** Component asset ids with an outstanding link; each `assetComponent.findMany` takes the next of `outstandingAnswers` first, if any. */
   outstandingAssetIds: string[]
   outstandingAnswers: string[][]
+  /** Rooms that are inactive; each `location.findFirst` takes the next of `locationAnswers` first (true = active), if any. */
+  inactiveLocationIds: string[]
+  locationAnswers: boolean[]
+  /** Each component sync takes the next answer, else zeros. */
+  syncAnswers: Array<{ updated: number; skipped: number; movements: number }>
 }
 
-const state: BulkCustodyState = { assets: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [] }
+const state: BulkCustodyState = { assets: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [], inactiveLocationIds: [], locationAnswers: [], syncAnswers: [] }
 Object.assign(globalThis, { __bulkCustodyState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -41,8 +46,11 @@ const mockedModuleSources = new Map<string, string>([
   ["@/lib/audit-log", `export async function logAudit() {}`],
   ["@/lib/asset-status-flow", `export async function getRequiredAssetStatusId(name) { return "status:" + name }`],
   ["@/lib/asset-component-sync", `
-    export async function syncInstalledComponentsWithParent() {
-      return { updated: 0, skipped: 0, movements: 0, componentSnapshots: [] }
+    export async function syncInstalledComponentsWithParent(_tx, input) {
+      const state = globalThis.__bulkCustodyState
+      state.calls.push({ call: "sync", args: input })
+      const answer = state.syncAnswers.length > 0 ? state.syncAnswers.shift() : { updated: 0, skipped: 0, movements: 0 }
+      return { ...answer, componentSnapshots: [] }
     }
   `],
   ["@/lib/db", `
@@ -95,6 +103,10 @@ const mockedModuleSources = new Map<string, string>([
             }
             if (name === "assetStatus") return { id: args?.where?.id, name: String(args?.where?.id ?? "").replace("status:", ""), isActive: true }
             if (name === "assetCondition") return { id: "condition-good", name: "Good", isActive: true }
+            if (name === "location" && method === "findFirst") {
+              const active = state().locationAnswers.length > 0 ? state().locationAnswers.shift() : !state().inactiveLocationIds.includes(args?.where?.id)
+              return active ? { id: args?.where?.id ?? "row-1" } : null
+            }
             if (method === "findFirst" || method === "findUnique") return { id: args?.where?.id ?? "row-1" }
             if (method === "findMany") return []
             if (method === "count") return 0
@@ -105,7 +117,7 @@ const mockedModuleSources = new Map<string, string>([
     }
     const client = new Proxy({}, {
       get(_target, key) {
-        if (key === "$transaction") return async (callback) => callback(client)
+        if (key === "$transaction") return async (callback, options) => { state().calls.push({ call: "$transaction", args: options }); return callback(client) }
         return model(String(key))
       },
     })
@@ -149,6 +161,11 @@ function jsonRequest(method: string, body: unknown) {
 }
 
 const assetWrites = () => state.calls.filter(({ call }) => call === "asset.update" || call === "asset.updateMany")
+const callNames = () => state.calls.map(({ call }) => call)
+const callsOf = (name: string) => state.calls.filter(({ call }) => call === name).map(({ args }) => args)
+const moveBulk = (assetIds: string[], toLocationId = "loc-2") => bulkMoveRoute.POST(jsonRequest("POST", { assetIds, toLocationId, reason: "ย้ายคลัง" }))
+const blockedEntry = (assetId: string, code: string) => ({ assetId, assetTag: assetId.toUpperCase(), code })
+const inactiveRoom = { code: "ASSET_TRANSFER_DESTINATION_INACTIVE", error: "ASSET_TRANSFER_DESTINATION_INACTIVE", fieldErrors: { toLocationId: "checkoutLocationInactive" } }
 
 beforeEach(() => {
   state.assets = [
@@ -162,6 +179,9 @@ beforeEach(() => {
   state.calls = []
   state.outstandingAssetIds = []
   state.outstandingAnswers = []
+  state.inactiveLocationIds = []
+  state.locationAnswers = []
+  state.syncAnswers = []
 })
 
 test("bulk update refuses to reassign an asset that is out on loan", async () => {
@@ -189,11 +209,11 @@ test("bulk custodian assignment moves a Ready asset into In Use like a transfer"
   assert.equal(write.data.statusId, "status:In Use")
 })
 
-test("bulk move refuses written-off assets", async () => {
+test("bulk move refuses written-off assets, the code as its error (group 3 spec §10.3; P4-R4)", async () => {
   const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["disposed-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
 
   assert.equal(response.status, 409)
-  assert.deepEqual(await response.json(), { code: "ASSET_STATUS_TRANSFER_NOT_ALLOWED", error: "Disposed or retired assets cannot be moved.", blocked: [{ assetId: "disposed-1", assetTag: "DISPOSED-1", code: "ASSET_STATUS_TRANSFER_NOT_ALLOWED" }] })
+  assert.deepEqual(await response.json(), { code: "ASSET_STATUS_TRANSFER_NOT_ALLOWED", error: "ASSET_STATUS_TRANSFER_NOT_ALLOWED", blocked: [blockedEntry("disposed-1", "ASSET_STATUS_TRANSFER_NOT_ALLOWED")] })
   assert.deepEqual(assetWrites(), [])
 })
 
@@ -207,18 +227,41 @@ test("bulk move refuses a License, named per asset as a written-off asset is (se
   assert.deepEqual(assetWrites(), [])
 })
 
-test("the License refusal comes before the open-handover and written-off ones, the picker's order", async () => {
-  const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["license-1", "loaned-1", "disposed-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
+test("one 409 names every refused asset with its own code, in the verdict's order: outstanding, License, open handover, written off (group 3 spec §10.2, §10.3; P4-R4, P4-R5)", async () => {
+  state.outstandingAssetIds = ["component-1"]
+  const response = await moveBulk(["disposed-1", "loaned-1", "ready-1", "license-1", "component-1"])
   assert.equal(response.status, 409)
-  const body = await response.json() as { code: string; blocked: Array<{ assetId: string }> }
-  assert.equal(body.code, "ASSET_LICENSE_MOVE_NOT_ALLOWED")
-  assert.deepEqual(body.blocked.map((row) => row.assetId), ["license-1"])
+  assert.deepEqual(await response.json(), {
+    code: "ASSET_COMPONENT_OUTSTANDING", error: "ASSET_COMPONENT_OUTSTANDING",
+    blocked: [
+      blockedEntry("component-1", "ASSET_COMPONENT_OUTSTANDING"),
+      blockedEntry("license-1", "ASSET_LICENSE_MOVE_NOT_ALLOWED"),
+      blockedEntry("loaned-1", "ASSET_ACTIVE_CHECKOUT_EXISTS"),
+      blockedEntry("disposed-1", "ASSET_STATUS_TRANSFER_NOT_ALLOWED"),
+    ],
+  })
+  assert.equal(callNames().filter((call) => call === "assetComponent.findMany").length, 1, "one outstanding read, no throw before the other reasons")
+  for (const call of ["$transaction", "location.findFirst", "asset.updateMany", "assetMovement.createMany"]) assert.equal(callNames().includes(call), false, call)
 })
 
-test("bulk move still moves Ready assets of the other ownership types, a ส่วนควบ included", async () => {
+test("each refused asset is named once under its first reason, request order within one code, and the first code leads the answer (group 3 spec §10.3; P4-R4)", async () => {
+  state.activeCheckoutAssetIds = ["loaned-1", "disposed-1"]
+  const response = await moveBulk(["disposed-1", "loaned-1", "license-1"])
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), {
+    code: "ASSET_LICENSE_MOVE_NOT_ALLOWED", error: "ASSET_LICENSE_MOVE_NOT_ALLOWED",
+    blocked: [
+      blockedEntry("license-1", "ASSET_LICENSE_MOVE_NOT_ALLOWED"),
+      blockedEntry("disposed-1", "ASSET_ACTIVE_CHECKOUT_EXISTS"),
+      blockedEntry("loaned-1", "ASSET_ACTIVE_CHECKOUT_EXISTS"),
+    ],
+  })
+})
+
+test("bulk move still moves Ready assets of the other ownership types, a ส่วนควบ included (group 3 spec §10.2; P4-R15)", async () => {
   const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["ready-1", "component-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
   assert.equal(response.status, 200)
-  assert.deepEqual(await response.json(), { updated: 2, componentSync: { updated: 0, skipped: 0, movements: 0 } })
+  assert.deepEqual(await response.json(), { updated: 2, unchanged: 0, componentSync: { updated: 0, skipped: 0, movements: 0 } })
 })
 
 function registerEdit(assetId: string, overrides: Record<string, unknown>) {
@@ -260,11 +303,11 @@ test("the register form still saves non-custody edits of an asset that is out on
 
 const outstandingBlocked = (assetId: string) => ({ assetId, assetTag: assetId.toUpperCase(), code: "ASSET_COMPONENT_OUTSTANDING" })
 
-test("bulk move refuses an outstanding component first, named per asset (group 3 spec §8.5, §10.2, P2-R17)", async () => {
+test("bulk move names an outstanding component first and every other refused asset after it (group 3 spec §8.5, §10.2; P2-R17, P4-R4)", async () => {
   state.outstandingAssetIds = ["component-1"]
   const response = await bulkMoveRoute.POST(jsonRequest("POST", { assetIds: ["ready-1", "component-1", "license-1"], toLocationId: "loc-2", reason: "ย้ายคลัง" }))
   assert.equal(response.status, 409)
-  assert.deepEqual(await response.json(), { code: "ASSET_COMPONENT_OUTSTANDING", error: "ASSET_COMPONENT_OUTSTANDING", blocked: [outstandingBlocked("component-1")] })
+  assert.deepEqual(await response.json(), { code: "ASSET_COMPONENT_OUTSTANDING", error: "ASSET_COMPONENT_OUTSTANDING", blocked: [outstandingBlocked("component-1"), blockedEntry("license-1", "ASSET_LICENSE_MOVE_NOT_ALLOWED")] })
   assert.deepEqual(assetWrites(), [])
 })
 
@@ -276,4 +319,80 @@ test("a link turned outstanding while the bulk move is saved is refused by the r
   const calls = state.calls.map(({ call }) => call)
   assert.ok(calls.lastIndexOf("assetComponent.findMany") > calls.indexOf("asset.updateMany"), "read again after the claims")
   assert.equal(calls.includes("assetMovement.createMany"), false)
+})
+
+test("an open handover is named in the 409 with its own code, no longer an unnamed 400 (group 3 spec §10.2, §10.3; P4-R5)", async () => {
+  const response = await moveBulk(["ready-1", "loaned-1"])
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), { code: "ASSET_ACTIVE_CHECKOUT_EXISTS", error: "ASSET_ACTIVE_CHECKOUT_EXISTS", blocked: [blockedEntry("loaned-1", "ASSET_ACTIVE_CHECKOUT_EXISTS")] })
+  assert.deepEqual(callsOf("assetCheckout.findMany"), [{ where: { assetId: { in: ["ready-1", "loaned-1"] }, isReturned: false, transactionStatus: "active" }, select: { assetId: true } }])
+  assert.deepEqual(assetWrites(), [])
+})
+
+test("more than 100 assets are refused 400 under assetIds before any read, and 100 pass the check (group 3 spec §10.1, §10.3; P4-R10)", async () => {
+  const ids = (count: number) => Array.from({ length: count }, (_, index) => `asset-${index + 1}`)
+  const tooMany = await moveBulk(ids(101))
+  assert.equal(tooMany.status, 400)
+  assert.deepEqual(await tooMany.json(), { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { assetIds: "outOfRange" } })
+  assert.deepEqual(state.calls, [])
+  const hundred = await moveBulk(ids(100))
+  assert.equal(hundred.status, 404)
+  assert.deepEqual(await hundred.json(), { error: "Some assets were not found" })
+})
+
+test("an inactive room is refused 409 under toLocationId before the transaction (group 3 spec §5, §10.3; P4-R14)", async () => {
+  state.inactiveLocationIds = ["loc-closed"]
+  const response = await moveBulk(["ready-1"], "loc-closed")
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), inactiveRoom)
+  assert.deepEqual(callsOf("location.findFirst"), [{ where: { id: "loc-closed", isActive: true }, select: { id: true } }])
+  assert.equal(callNames().includes("$transaction"), false)
+  assert.deepEqual(assetWrites(), [])
+})
+
+test("a room closed while the move is saved is refused by the read inside the transaction, before any claim (group 3 spec §10.3; P4-R14)", async () => {
+  state.locationAnswers = [true, false]
+  const response = await moveBulk(["ready-1"])
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), inactiveRoom)
+  const calls = callNames()
+  assert.ok(calls.lastIndexOf("location.findFirst") > calls.indexOf("$transaction"), "read again inside the transaction")
+  for (const call of ["asset.updateMany", "assetMovement.createMany", "systemLog.createMany"]) assert.equal(calls.includes(call), false, call)
+})
+
+test("an asset already in the room is counted unchanged and gets no claim, movement, log or sync (group 3 spec §10.2; P4-R15)", async () => {
+  state.assets[0].currentLocationId = "loc-2"
+  const response = await moveBulk(["ready-1", "component-1"])
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { updated: 1, unchanged: 1, componentSync: { updated: 0, skipped: 0, movements: 0 } })
+  assert.deepEqual(assetWrites().map(({ args }) => (args as { where: { id: string } }).where.id), ["component-1"])
+  assert.deepEqual((callsOf("assetMovement.createMany")[0] as { data: Array<{ assetId: string }> }).data.map((row) => row.assetId), ["component-1"])
+  assert.deepEqual((callsOf("systemLog.createMany")[0] as { data: Array<{ recordId: string }> }).data.map((row) => row.recordId), ["component-1"])
+  assert.deepEqual(callsOf("sync").map((args) => (args as { parentAssetId: string }).parentAssetId), ["component-1"])
+})
+
+test("a selection already all in the room answers 200 after the room check, without a transaction (group 3 spec §10.2; P4-R15)", async () => {
+  const response = await moveBulk(["ready-1", "component-1"], "loc-1")
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { updated: 0, unchanged: 2, componentSync: { updated: 0, skipped: 0, movements: 0 } })
+  assert.equal(callsOf("location.findFirst").length, 1)
+  for (const call of ["$transaction", "asset.updateMany", "assetMovement.createMany", "systemLog.createMany", "sync"]) assert.equal(callNames().includes(call), false, call)
+})
+
+test("every claim comes before the first component sync, writes only the room and who moved it, the answer sums the syncs, and the transaction allows 60 s (group 3 spec §6, §10.2; P4-R3, P4-R16)", async () => {
+  state.syncAnswers = [{ updated: 2, skipped: 1, movements: 2 }, { updated: 0, skipped: 0, movements: 0 }]
+  const response = await moveBulk(["ready-1", "component-1"])
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { updated: 2, unchanged: 0, componentSync: { updated: 2, skipped: 1, movements: 2 } })
+  const calls = callNames()
+  assert.ok(calls.lastIndexOf("asset.updateMany") < calls.indexOf("sync"), "a ticked component moves by its own claim, so its parent's sync finds it in the room")
+  // Never the holder, the department, the branch or the tag (spec §6 "Unchanged (as today)"; Z22).
+  assert.equal(assetWrites().length, 2)
+  for (const { args } of assetWrites()) assert.deepEqual(Object.keys((args as { data: Record<string, unknown> }).data).sort(), ["currentLocationId", "updatedBy"])
+  assert.deepEqual(callsOf("$transaction"), [{ maxWait: 10_000, timeout: 60_000 }])
+  const rows = (callsOf("assetMovement.createMany")[0] as { data: Array<{ assetId: string; movementType: string; referenceType: string; referenceId: string }> }).data
+  assert.deepEqual(rows.map((row) => [row.assetId, row.movementType, row.referenceType, row.referenceId]), [
+    ["ready-1", "bulk_location_move", "bulk_move", "bulk_move"],
+    ["component-1", "bulk_location_move", "bulk_move", "bulk_move"],
+  ])
 })
