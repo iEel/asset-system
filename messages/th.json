@@ -1349,7 +1349,11 @@
     "transactionReasonTransferConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
     "transactionReasonTransferConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
     "transactionReasonTransferConditionSalvage": "เป็นซาก รอตัดจำหน่าย โอนย้ายให้ผู้ถือครองใหม่ไม่ได้",
-    "transactionReasonOpenCheckoutBulkMove": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงย้ายได้"
+    "transactionReasonOpenCheckoutBulkMove": "มีการส่งมอบค้างอยู่ รับคืนก่อนจึงย้ายได้",
+    "quickFilterOther": "สถานะอื่น",
+    "statusSumLine": "{terms} = {total} · สถานะอื่น {other} = {breakdown}",
+    "statusSumLineNoOther": "{terms} = {total}",
+    "statusSumLineRest": "อื่น ๆ {count}"
   },
   "company": {
     "title": "บริษัท",

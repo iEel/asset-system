@@ -6,6 +6,7 @@ const assetRegisterViewKeys = [
   "brandId",
   "modelId",
   "statusId",
+  "statusGroup",
   "conditionId",
   "ownershipType",
   "custodianId",

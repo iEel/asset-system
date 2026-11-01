@@ -111,6 +111,7 @@ type AssetRegisterTableProps = {
     brandId: string
     modelId: string
     statusId: string
+    statusGroup: "" | "other"
     conditionId: string
     ownershipType: string
     custodianId: string
@@ -482,6 +483,7 @@ export function AssetRegisterTable({
       filters.brandId ||
       filters.modelId ||
       filters.statusId ||
+      filters.statusGroup ||
       filters.conditionId ||
       filters.ownershipType ||
       filters.custodianId ||

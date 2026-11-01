@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client"
 import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import {
   assetFiltersUseWaitingWorkRules,
+  buildAssetListStatusWhere,
   buildAssetStatusCountWhere,
   type AssetListFilters,
   type AssetWhereOptions,
@@ -18,10 +19,12 @@ export async function getAssetWhereOptions(filters: AssetListFilters, now = new 
 }
 
 // The register's own list: its filters with the settings' windows, the cross-scope narrowing, then the status. The
-// register page and the asset page's previous / next (asset-neighbours.ts) read this one where (group 1 spec §7.2).
+// register page and the asset page's previous / next (asset-neighbours.ts) read this one where (group 1 spec §7.2). The
+// status is one statusId or the สถานะอื่น group (statusGroup=other, group 4 plan 1).
 export async function buildAssetRegisterWhere(filters: AssetListFilters): Promise<{ statusCountWhere: Prisma.AssetWhereInput; where: Prisma.AssetWhereInput }> {
   const whereOptions = await getAssetWhereOptions(filters)
   const statusCountWhere = await applyAssetCrossScopeFilter(buildAssetStatusCountWhere(filters, whereOptions), filters.crossScope)
-  const where: Prisma.AssetWhereInput = filters.statusId ? { AND: [statusCountWhere, { statusId: filters.statusId }] } : statusCountWhere
+  const statusWhere = buildAssetListStatusWhere(filters)
+  const where: Prisma.AssetWhereInput = statusWhere ? { AND: [statusCountWhere, statusWhere] } : statusCountWhere
   return { statusCountWhere, where }
 }

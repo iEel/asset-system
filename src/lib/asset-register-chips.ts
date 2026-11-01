@@ -76,6 +76,7 @@ export function buildAssetRegisterClearAllHref(basePath: string, filters: AssetL
     brandId: "",
     modelId: "",
     statusId: "",
+    statusGroup: "",
     conditionId: "",
     ownershipType: "",
     custodianId: "",

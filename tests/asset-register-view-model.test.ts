@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { parseAssetListParams } from "../src/lib/asset-list-query.ts"
-import { buildStatusTabs } from "../src/lib/asset-register-status-tabs.ts"
+import { buildStatusSumLine, buildStatusTabs } from "../src/lib/asset-register-status-tabs.ts"
 import { buildAssetRegisterChips, buildAssetRegisterClearAllHref } from "../src/lib/asset-register-chips.ts"
 import { assetRegisterSortOptions, getActiveSortKey } from "../src/lib/asset-register-sort.ts"
 import {
@@ -28,19 +28,102 @@ const counts = [
 test("status tabs follow the fixed order, count every status for all, and skip statuses missing from the database", () => {
   const result = buildStatusTabs({ statuses, counts, statusId: "" })
 
-  assert.deepEqual(result.tabs.map((tab) => tab.key), ["all", "ready", "inUse", "checkedOut", "pendingRepair"])
-  assert.deepEqual(result.tabs.map((tab) => tab.count), [1637, 127, 1507, 0, 0])
-  assert.deepEqual(result.tabs.map((tab) => tab.active), [true, false, false, false, false])
+  assert.deepEqual(result.tabs.map((tab) => tab.key), ["all", "ready", "inUse", "checkedOut", "pendingRepair", "other"])
+  assert.deepEqual(result.tabs.map((tab) => tab.count), [1637, 127, 1507, 0, 0, 3])
+  assert.deepEqual(result.tabs.map((tab) => tab.active), [true, false, false, false, false, false])
   assert.deepEqual(result.tabStatusIds, ["s-ready", "s-use", "s-out", "s-pending"])
   assert.equal(result.otherStatusActive, false)
 })
 
-test("a status without a tab leaves every tab inactive", () => {
+test("a status without a tab makes สถานะอื่น the current tab (group 4 plan 1)", () => {
   const result = buildStatusTabs({ statuses, counts, statusId: "s-lost" })
 
-  assert.equal(result.tabs.some((tab) => tab.active), false)
+  assert.deepEqual(result.tabs.filter((tab) => tab.active).map((tab) => tab.key), ["other"])
   assert.equal(result.otherStatusActive, true)
   assert.equal(buildStatusTabs({ statuses, counts, statusId: "s-use" }).tabs.find((tab) => tab.active)?.key, "inUse")
+})
+
+const registerStatuses = [
+  { id: "s-ready", name: "Ready", nameTh: "พร้อมใช้งาน" },
+  { id: "s-use", name: "In Use", nameTh: "ใช้งานอยู่" },
+  { id: "s-out", name: "Checked Out", nameTh: "ถูกยืม" },
+  { id: "s-pending", name: "Pending Repair", nameTh: "รอซ่อม" },
+  { id: "s-maint", name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม" },
+  { id: "s-retired", name: "Retired", nameTh: "เลิกใช้งาน" },
+  { id: "s-disposal", name: "Pending Disposal", nameTh: "รอจำหน่าย" },
+  { id: "s-inspect", name: "Under Inspection", nameTh: "อยู่ระหว่างตรวจสอบ" },
+  { id: "s-missing", name: "Missing", nameTh: "ไม่พบ" },
+  { id: "s-lost", name: "Lost", nameTh: "สูญหาย" },
+]
+const registerCounts = [
+  { statusId: "s-ready", count: 126 },
+  { statusId: "s-use", count: 611 },
+  { statusId: "s-out", count: 27 },
+  { statusId: "s-pending", count: 6 },
+  { statusId: "s-maint", count: 9 },
+  { statusId: "s-retired", count: 7 },
+  { statusId: "s-disposal", count: 21 },
+  { statusId: "s-inspect", count: 18 },
+  { statusId: "s-missing", count: 11 },
+  { statusId: "s-lost", count: 6 },
+]
+
+test("the สถานะอื่น tab counts every status outside the five and breaks it down, largest first (group 4 plan 1)", () => {
+  const result = buildStatusTabs({ statuses: registerStatuses, counts: registerCounts, statusId: "" })
+  const other = result.tabs.find((tab) => tab.key === "other")
+
+  assert.deepEqual(other, { key: "other", statusId: "", count: 63, active: false })
+  assert.deepEqual(result.otherBreakdown[0], { statusId: "s-disposal", nameTh: "รอจำหน่าย", count: 21 })
+  assert.deepEqual(result.otherBreakdown.map((item) => item.count), [21, 18, 11, 7, 6])
+  assert.equal(result.tabs.find((tab) => tab.key === "all")?.count, 842)
+
+  const grouped = buildStatusTabs({ statuses: registerStatuses, counts: registerCounts, statusId: "", statusGroup: "other" })
+  assert.deepEqual(grouped.tabs.filter((tab) => tab.active).map((tab) => tab.key), ["other"])
+  assert.equal(grouped.otherStatusActive, false)
+})
+
+test("a dashboard link to one other status makes สถานะอื่น current (Review Focus 5)", () => {
+  const result = buildStatusTabs({ statuses: registerStatuses, counts: registerCounts, statusId: "s-disposal" })
+
+  assert.deepEqual(result.tabs.filter((tab) => tab.active).map((tab) => tab.key), ["other"])
+  assert.equal(result.otherStatusActive, true)
+  assert.equal(filters("statusId=s-disposal&statusGroup=other&exact=1").statusGroup, "", "statusId wins")
+})
+
+test("an other status with no active row is counted in สถานะอื่น but gets no name", () => {
+  const result = buildStatusTabs({
+    statuses: registerStatuses,
+    counts: [...registerCounts, { statusId: "s-inactive", count: 4 }],
+    statusId: "",
+  })
+
+  assert.equal(result.tabs.find((tab) => tab.key === "other")?.count, 67)
+  assert.equal(result.otherBreakdown.some((item) => item.statusId === "s-inactive"), false)
+  const line = buildStatusSumLine(result.tabs, result.otherBreakdown)
+  assert.deepEqual(line.other, {
+    count: 67,
+    top: [{ label: "รอจำหน่าย", count: 21 }, { label: "อยู่ระหว่างตรวจสอบ", count: 18 }, { label: "ไม่พบ", count: 11 }],
+    rest: 17,
+  })
+})
+
+test("the sum line adds the five tabs and สถานะอื่น to the total, naming the three largest other statuses (spec §6.2)", () => {
+  const result = buildStatusTabs({ statuses: registerStatuses, counts: registerCounts, statusId: "" })
+  const line = buildStatusSumLine(result.tabs, result.otherBreakdown)
+
+  assert.deepEqual(line.terms, [126, 611, 27, 6, 9, 63])
+  assert.equal(line.total, 842)
+  assert.deepEqual(line.other.top, [
+    { label: "รอจำหน่าย", count: 21 },
+    { label: "อยู่ระหว่างตรวจสอบ", count: 18 },
+    { label: "ไม่พบ", count: 11 },
+  ])
+  assert.equal(line.other.count, 63)
+  assert.equal(line.other.rest, 13)
+  assert.deepEqual(
+    buildStatusSumLine(result.tabs, result.otherBreakdown.slice(0, 2)).other,
+    { count: 63, top: [{ label: "รอจำหน่าย", count: 21 }, { label: "อยู่ระหว่างตรวจสอบ", count: 18 }], rest: 24 },
+  )
 })
 
 const chipLabels = {

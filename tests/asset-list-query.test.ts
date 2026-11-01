@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { readFileSync } from "node:fs"
 
 import {
   assetFiltersUseWaitingWorkRules,
@@ -7,6 +8,7 @@ import {
   buildAssetOrderBy,
   buildAssetQueryString,
   buildAssetSearchWhere,
+  buildAssetStatusCountWhere,
   buildAssetWhere,
   parseAssetListParams,
 } from "../src/lib/asset-list-query.ts"
@@ -206,4 +208,27 @@ test("dataQuality=noHandover lists what รับคืน's legacy count counts
   assert.deepEqual(where, { isActive: true, AND: [legacyReturnCountWhere] })
   assert.equal((where.AND as unknown[])[0], legacyReturnCountWhere, "one object")
   assert.match(buildAssetQueryString(filters), /(^|&)dataQuality=noHandover(&|$)/)
+})
+
+test("statusGroup=other lists every status outside the five tab names, and statusId wins over it (group 4 plan 1, P1-R2)", () => {
+  assert.equal(parseAssetListParams({ statusGroup: "other" }).statusGroup, "other")
+  assert.equal(parseAssetListParams({ statusGroup: "ready" }).statusGroup, "")
+  assert.equal(parseAssetListParams({}).statusGroup, "")
+  assert.equal(parseAssetListParams(new URLSearchParams("statusGroup=other")).statusGroup, "other")
+  assert.equal(parseAssetListParams({ statusId: "s1", statusGroup: "other" }).statusGroup, "")
+
+  const filters = parseAssetListParams({ statusGroup: "other" })
+  assert.deepEqual(buildAssetWhere(filters), {
+    isActive: true,
+    status: { name: { notIn: ["Ready", "In Use", "Checked Out", "Pending Repair", "Under Maintenance"] } },
+  })
+  assert.deepEqual(buildAssetStatusCountWhere(filters), { isActive: true })
+  assert.equal(buildAssetQueryString(filters), "statusGroup=other&sort=createdAt&direction=desc&page=1&pageSize=25")
+  assert.equal(buildAssetQueryString(filters, { statusGroup: "" }), "sort=createdAt&direction=desc&page=1&pageSize=25")
+})
+
+test("the export builds its where from the register's parser and buildAssetWhere, so statusGroup reaches it unchanged", () => {
+  const source = readFileSync("src/app/api/assets/export/route.ts", "utf8")
+  assert.match(source, /const filters = parseAssetListParams\(request\.nextUrl\.searchParams\)/)
+  assert.match(source, /buildAssetWhere\(filters, await getAssetWhereOptions\(filters\)\)/)
 })

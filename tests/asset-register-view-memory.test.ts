@@ -48,3 +48,8 @@ test("locationId arrives only on an exact link and is never saved as the view (g
   assert.equal(hasExplicitAssetRegisterView(new URLSearchParams("locationId=loc-1")), false)
   assert.equal(getPersistedAssetRegisterView(new URLSearchParams("locationId=loc-1&search=a")).toString(), "search=a")
 })
+
+test("the สถานะอื่น tab is remembered with the view (group 4 plan 1)", () => {
+  assert.equal(getPersistedAssetRegisterView(new URLSearchParams("statusGroup=other&page=2")).toString(), "statusGroup=other")
+  assert.equal(hasExplicitAssetRegisterView(new URLSearchParams("statusGroup=other")), true)
+})

@@ -10,7 +10,7 @@ import {
   type AssetListParams,
 } from "@/lib/asset-list-query"
 import { buildAssetRegisterWhere } from "@/lib/asset-list-where-options"
-import { buildStatusTabs } from "@/lib/asset-register-status-tabs"
+import { buildStatusSumLine, buildStatusTabs } from "@/lib/asset-register-status-tabs"
 import { buildAssetRegisterChips, buildAssetRegisterClearAllHref } from "@/lib/asset-register-chips"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
 import { AssetRegisterNavigationProvider } from "@/components/assets/asset-register-navigation"
@@ -243,7 +243,22 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     statuses,
     counts: statusCounts.map((row) => ({ statusId: row.statusId, count: row._count._all })),
     statusId: filters.statusId,
+    statusGroup: filters.statusGroup,
   })
+  // The line under the tabs (group 4 spec §6.2): the tabs add up to ทั้งหมด, and สถานะอื่น names its three largest.
+  const statusSum = buildStatusSumLine(statusTabs.tabs, statusTabs.otherBreakdown)
+  const statusSumTerms = statusSum.terms.map((count) => formatCount(count)).join(" + ")
+  const statusSumLine = statusSum.other.count > 0
+    ? t("statusSumLine", {
+        terms: statusSumTerms,
+        total: formatCount(statusSum.total),
+        other: formatCount(statusSum.other.count),
+        breakdown: [
+          ...statusSum.other.top.map((item) => `${item.label} ${formatCount(item.count)}`),
+          ...(statusSum.other.rest > 0 ? [t("statusSumLineRest", { count: formatCount(statusSum.other.rest) })] : []),
+        ].join(" + "),
+      })
+    : t("statusSumLineNoOther", { terms: statusSumTerms, total: formatCount(statusSum.total) })
   const statusTabLabelKeys = {
     all: "quickFilterAll",
     ready: "quickFilterReady",
@@ -251,6 +266,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     checkedOut: "quickFilterCheckedOut",
     pendingRepair: "quickFilterPendingRepair",
     underMaintenance: "quickFilterUnderMaintenance",
+    other: "quickFilterOther",
   } as const
   const selectedCompany = companies.find((company) => company.id === filters.companyId)
   const selectedBranch = branches.find((branch) => branch.id === filters.branchId)
@@ -378,9 +394,10 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
             key: tab.key,
             label: t(statusTabLabelKeys[tab.key]),
             count: formatCount(tab.count),
-            href: `${basePath}?${buildAssetQueryString(filters, { statusId: tab.statusId, page: 1 })}`,
+            href: `${basePath}?${buildAssetQueryString(filters, { statusId: tab.statusId, statusGroup: tab.key === "other" ? "other" : "", page: 1 })}`,
             active: tab.active,
           }))}
+          sumLine={statusSumLine}
         />
         <AssetRegisterFilterChips
           chips={filterChips}

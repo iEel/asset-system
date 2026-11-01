@@ -4,6 +4,7 @@ import { normalizeAssetCrossScopeFilter } from "./asset-cross-scope-filter.ts"
 import { getAssetCustodianStateWhere, normalizeAssetCustodianStateFilter } from "./asset-custodian-state-filter.ts"
 import { normalizeAssetDataQualityFilter } from "./asset-data-quality-filter.ts"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes } from "./asset-ownership.ts"
+import { assetRegisterStatusTabs } from "./asset-register-status-tabs.ts"
 import { legacyReturnCountWhere } from "./legacy-return-rule.ts"
 import {
   DEFAULT_WAITING_WORK_RULES,
@@ -22,6 +23,7 @@ export type AssetListParams = {
   brandId?: string
   modelId?: string
   statusId?: string
+  statusGroup?: string
   conditionId?: string
   ownershipType?: string
   custodianId?: string
@@ -52,6 +54,9 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
   const dataQuality = normalizeAssetDataQualityFilter(getValue("dataQuality"))
   const crossScope = normalizeAssetCrossScopeFilter(getValue("crossScope"))
   const activity = normalizeAssetActivityFilter(getValue("activity"))
+  const statusId = String(getValue("statusId") ?? "").trim()
+  // statusId wins: a link to one status never also carries the group (P1-R2).
+  const statusGroup: "" | "other" = !statusId && String(getValue("statusGroup") ?? "").trim() === "other" ? "other" : ""
 
   return {
     search: String(getValue("search") ?? "").trim(),
@@ -60,7 +65,8 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     categoryId: String(getValue("categoryId") ?? "").trim(),
     brandId: String(getValue("brandId") ?? "").trim(),
     modelId: String(getValue("modelId") ?? "").trim(),
-    statusId: String(getValue("statusId") ?? "").trim(),
+    statusId,
+    statusGroup,
     conditionId: String(getValue("conditionId") ?? "").trim(),
     ownershipType: assetOwnershipTypes.includes(ownershipType as (typeof assetOwnershipTypes)[number]) ? ownershipType : "",
     custodianId: String(getValue("custodianId") ?? "").trim(),
@@ -77,6 +83,18 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
   }
 }
 
+// สถานะอื่น: every status whose name is not one of the five tab names, with no status lookup (P1-R2).
+export const assetOtherStatusGroupWhere: Prisma.AssetWhereInput = {
+  status: { name: { notIn: assetRegisterStatusTabs.map((tab) => tab.statusName) } },
+}
+
+/** The list's status part: one status, the สถานะอื่น group, or none. */
+export function buildAssetListStatusWhere(filters: Pick<AssetListFilters, "statusId" | "statusGroup">): Prisma.AssetWhereInput | null {
+  if (filters.statusId) return { statusId: filters.statusId }
+  if (filters.statusGroup === "other") return assetOtherStatusGroupWhere
+  return null
+}
+
 // The day and the notification windows the warranty, licence and return filters read (group 1 spec §6.3).
 export type AssetWhereOptions = { today: Date; rules: WaitingWorkRules }
 
@@ -91,7 +109,7 @@ export function buildAssetWhere(
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
     ...(filters.brandId ? { brandId: filters.brandId } : {}),
     ...(filters.modelId ? { modelId: filters.modelId } : {}),
-    ...(filters.statusId ? { statusId: filters.statusId } : {}),
+    ...(buildAssetListStatusWhere(filters) ?? {}),
     ...(filters.conditionId ? { conditionId: filters.conditionId } : {}),
     ...(filters.ownershipType ? { ownershipType: filters.ownershipType } : {}),
     ...(filters.custodianId ? { custodianId: filters.custodianId } : {}),
@@ -157,7 +175,7 @@ export type AssetListFilters = ReturnType<typeof parseAssetListParams>
 
 /** The register's status tabs count with every filter except the status itself. */
 export function buildAssetStatusCountWhere(filters: AssetListFilters, options?: AssetWhereOptions): Prisma.AssetWhereInput {
-  return buildAssetWhere({ ...filters, statusId: "" }, options)
+  return buildAssetWhere({ ...filters, statusId: "", statusGroup: "" }, options)
 }
 
 export function buildAssetOrderBy(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetOrderByWithRelationInput[] {
@@ -173,7 +191,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "custodianState", "locationId", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "statusGroup", "conditionId", "ownershipType", "custodianId", "custodianState", "locationId", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 

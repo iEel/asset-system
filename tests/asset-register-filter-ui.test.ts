@@ -16,7 +16,9 @@ test("the page counts statuses with the list's own filters and renders the new f
   assert.match(source, /const \{ statusCountWhere, where \} = await buildAssetRegisterWhere\(filters\)/)
   const registerWhere = read("src/lib/asset-list-where-options.ts")
   assert.match(registerWhere, /const whereOptions = await getAssetWhereOptions\(filters\)\n\s+const statusCountWhere = await applyAssetCrossScopeFilter\(buildAssetStatusCountWhere\(filters, whereOptions\), filters\.crossScope\)/)
-  assert.match(registerWhere, /filters\.statusId \? \{ AND: \[statusCountWhere, \{ statusId: filters\.statusId \}\] \} : statusCountWhere/)
+  assert.match(registerWhere, /const statusWhere = buildAssetListStatusWhere\(filters\)\n\s+const where: Prisma\.AssetWhereInput = statusWhere \? \{ AND: \[statusCountWhere, statusWhere\] \} : statusCountWhere/)
+  assert.match(source, /buildAssetQueryString\(filters, \{ statusId: tab\.statusId, statusGroup: tab\.key === "other" \? "other" : "", page: 1 \}\)/, "the สถานะอื่น tab links with statusGroup=other and no statusId")
+  assert.match(source, /sumLine=\{statusSumLine\}/)
   assert.match(source, /prisma\.asset\.groupBy\(\{\s*by: \["statusId"\],\s*where: statusCountWhere,\s*_count: \{ _all: true \},?\s*\}\)/)
   assert.match(source, /<AssetRegisterNavigationProvider filters=\{filters\}>/)
   for (const component of ["AssetRegisterToolbar", "AssetRegisterStatusTabs", "AssetRegisterFilterChips", "AssetRegisterTable"]) {
