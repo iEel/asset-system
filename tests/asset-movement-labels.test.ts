@@ -79,7 +79,7 @@ test("the AssetMovement writers are the known ones, so a new writer is labelled 
 
 test("every movement type src writes has a Thai and an English label (spec §4: no English type on screen)", () => {
   const written = writtenMovementTypes()
-  assert.equal(written.size, 49, [...written.keys()].sort().join(", "))
+  assert.equal(written.size, 50, [...written.keys()].sort().join(", "))
   const th = movementTypes("th")
   const en = movementTypes("en")
   for (const [type, paths] of written) {
@@ -88,8 +88,8 @@ test("every movement type src writes has a Thai and an English label (spec §4: 
   }
   assert.deepEqual(
     [...ASSET_MOVEMENT_LABELLED_TYPES].sort(),
-    [...written.keys(), "maintenance_pm_create", "maintenance_status_update"].sort(),
-    "the labels are the written types plus the two older ones",
+    [...written.keys(), "maintenance_pm_create", "maintenance_status_update", "bulk_location_update", "bulk_custodian_update"].sort(),
+    "the labels are the written types plus the four older ones (the bulk update writes corrections since group 4 plan 1, P1-R6)",
   )
   assert.deepEqual(Object.keys(th).sort(), [...ASSET_MOVEMENT_LABELLED_TYPES, "other"].sort())
 })
@@ -108,6 +108,11 @@ test("an unknown type reads as other activity, and the labels use the glossary's
   assert.equal(movementTypes("en").maintenance_create, "Repair recorded")
   assert.equal(th.component_outstanding, "ส่วนควบค้างคืน")
   assert.equal(movementTypes("en").component_outstanding, "Component not returned")
+  // A register correction reads แก้ไขข้อมูล…, not a real move (group 4 spec §7.3, P1-R6).
+  assert.equal(th.register_location_correction, "แก้ไขข้อมูลที่ตั้ง")
+  assert.equal(th.register_custodian_correction, "แก้ไขข้อมูลผู้ถือครอง")
+  assert.equal(th.register_department_correction, "แก้ไขข้อมูลแผนก")
+  assert.equal(movementTypes("en").register_department_correction, "Department corrected")
 })
 
 test("the mirror rows are a component's copy of its parent's event, left out of the dashboard feed (spec §6.8)", () => {

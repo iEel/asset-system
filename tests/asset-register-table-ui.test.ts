@@ -464,3 +464,34 @@ test("the bulk update dialog uses the dialog parts, shared fields and a busy sub
   assert.doesNotMatch(dialog, /<button\b|<select\b|<input\b|<textarea\b|<label\b|h-10|disabled:opacity/)
   assert.doesNotMatch(source, /\bLoader2\b/, "the spinner comes from Button busy")
 })
+
+// Group 4 plan 1 Task 7 (spec §6.6, decisions 3 and 11, P1-R1): the bulk update is a data correction. Its dialog names
+// every refused asset under the form with a way to untick them, says when the department follows the holder, and the
+// phone bar offers it only with asset:edit, as the desktop menu does.
+test("the bulk correction dialog: refused assets named with their reason and unticked on request, the department line, and asset:edit on the phone bar", () => {
+  const source = table()
+  const page = read("src/app/[locale]/(dashboard)/assets/page.tsx")
+  const dialog = source.slice(source.indexOf("<AccessibleDialog\n"), source.indexOf("</AccessibleDialog>"))
+  assert.match(page, /bulkUpdateTitle: t\("bulkCorrectionTitle"\)/)
+  assert.match(page, /reason: t\("correctionReason"\)/)
+  assert.match(page, /departmentId: employee\.departmentId,\n\s+departmentName: employee\.department\.name,/)
+  assert.match(page, /departmentId: asset\.departmentId,/)
+  assert.equal(messages("th").bulkCorrectionTitle, "แก้ไขข้อมูลหลายรายการ")
+  assert.equal(messages("th").correctionReason, "เหตุผลที่แก้")
+  assert.equal(messages("th").bulkDepartmentFollows, "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count} รายการ)")
+  assert.equal(messages("th").bulkCorrectionRemoveBlocked, "นำรายการเหล่านี้ออกจากที่เลือก")
+
+  // The 409's blocked list comes first, then a field refusal, then the toast.
+  assert.match(source, /const refused = readBulkMoveBlocked\(payload\)\n\s+if \(refused\.length > 0\) \{\n\s+setBulkBlocked\(\{ assets: refused, changesCustodian: Boolean\(bulkForm\.toCustodianId\) \}\)/)
+  assert.match(source, /const key = bulkUpdateBlockedReasonKey\(code, bulkBlocked\.changesCustodian\)\n\s+return key \? tAll\(key\) : apiError\.describe\(code\)\.message/)
+  assert.match(dialog, /<FieldError id="asset-bulk-blocked-error" role="alert">\n\s+\{t\("bulkCorrectionBlocked", \{ count: formatCount\(bulkBlocked\.assets\.length\), list: bulkMoveBlockedList\(bulkBlocked\.assets, bulkBlockedReason\) \}\)\}/)
+  assert.match(dialog, /<Button id="asset-bulk-blocked-remove" type="button" variant="outline" size="md" aria-describedby="asset-bulk-blocked-error" onClick=\{removeBulkBlocked\}>\n\s+\{t\("bulkCorrectionRemoveBlocked"\)\}/)
+  assert.match(source, /setSelectedIds\(\(current\) => new Set\(\[\.\.\.current\]\.filter\(\(id\) => !refused\.has\(id\)\)\)\)/)
+
+  // The department line counts the selected บุคคล and Stock rows the chosen holder's department changes.
+  assert.match(source, /\(asset\.ownershipType\.value === "personal" \|\| asset\.ownershipType\.value === "stock"\) && asset\.departmentId !== chosenHolder\.departmentId/)
+  assert.match(dialog, /<Notice tone="info" data-asset-bulk-department>\n\s+\{t\("bulkDepartmentFollows", \{ department: departmentFollows\.department, count: formatCount\(departmentFollows\.count\) \}\)\}/)
+
+  const phone = source.slice(source.indexOf("data-asset-bulk-bar"), source.indexOf("data-asset-selection-bar"))
+  assert.match(phone, /\{permissions\.canEdit \? \(\n\s+<Button variant="outline" size="md" onClick=\{\(\) => openBulkUpdate\(\)\}/)
+})

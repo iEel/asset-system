@@ -774,7 +774,6 @@
     "printSelectedLabels": "Print Selected Labels",
     "bulkActions": "Bulk actions for selected assets",
     "bulkUpdate": "Update location/custodian",
-    "bulkUpdateTitle": "Update multiple assets",
     "bulkUpdateDescription": "Choose a new location or custodian. The system records movement history for every selected asset.",
     "clearSelection": "Clear selection",
     "noChange": "No change",
@@ -1064,7 +1063,10 @@
       "parent_audit_confirmation_sync": "Followed its parent's audit result",
       "other": "Other activity",
       "component_outstanding": "Component not returned",
-      "component_late_return": "Outstanding component returned"
+      "component_late_return": "Outstanding component returned",
+      "register_location_correction": "Location corrected",
+      "register_custodian_correction": "Holder corrected",
+      "register_department_correction": "Department corrected"
     },
     "auditHistory": "Audit History",
     "auditRound": "Audit Round",
@@ -1376,7 +1378,12 @@
     "viewNameTaken": "A view with this name already exists.",
     "savedViewsFull": "You can save up to {max} views. Delete one first.",
     "savedViewsStorageError": "Views cannot be kept in this browser.",
-    "savedViewActions": "Actions for view {name}"
+    "savedViewActions": "Actions for view {name}",
+    "bulkCorrectionTitle": "Correct multiple assets",
+    "correctionReason": "Reason for the correction",
+    "bulkDepartmentFollows": "The department follows the holder: {department} ({count} assets)",
+    "bulkCorrectionBlocked": "{count} cannot be corrected: {list}",
+    "bulkCorrectionRemoveBlocked": "Remove these from the selection"
   },
   "company": {
     "title": "Companies",

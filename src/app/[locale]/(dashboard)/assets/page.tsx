@@ -135,7 +135,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       }),
       prisma.employee.findMany({
         where: { isActive: true },
-        select: { id: true, code: true, fullNameTh: true },
+        // The department feeds the bulk update's "แผนกจะเปลี่ยนตามผู้ถือครอง" line (group 4 spec §6.6).
+        select: { id: true, code: true, fullNameTh: true, departmentId: true, department: { select: { name: true } } },
         orderBy: { code: "asc" },
       }),
       filters.brandId
@@ -378,6 +379,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       value: ownership,
       label: t(`ownershipType_${ownership}`),
     },
+    departmentId: asset.departmentId,
     status: { value: asset.status.name, label: asset.status.nameTh },
     condition: { value: asset.condition.name, label: asset.condition.nameTh },
     purchasePrice: asset.purchasePrice ? Number(asset.purchasePrice) : null,
@@ -454,7 +456,12 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           toRow={toRow}
           bulkOptions={{
             locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
-            employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
+            employees: employees.map((employee) => ({
+              id: employee.id,
+              label: `${employee.code} - ${employee.fullNameTh}`,
+              departmentId: employee.departmentId,
+              departmentName: employee.department.name,
+            })),
           }}
           permissions={{ canEdit: canEditAssets, canCreate: canCreateAssets, canDelete: canDeleteAssets }}
           labels={{
@@ -474,11 +481,12 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
             exportSelected: t("exportSelected"),
             bulkActions: t("bulkActions"),
             bulkUpdate: t("bulkUpdate"),
-            bulkUpdateTitle: t("bulkUpdateTitle"),
+            // The bulk update is a data correction (group 4 decision 11).
+            bulkUpdateTitle: t("bulkCorrectionTitle"),
             bulkUpdateDescription: t("bulkUpdateDescription"),
             clearSelection: t("clearSelection"),
             noChange: t("noChange"),
-            reason: t("reason"),
+            reason: t("correctionReason"),
             remark: t("remark"),
             applyBulkUpdate: t("applyBulkUpdate"),
             bulkUpdateSuccess: t("bulkUpdateSuccess"),

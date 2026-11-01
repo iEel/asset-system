@@ -104,7 +104,8 @@ export const assetBulkMoveSchema = z.object({
 
 export const assetBulkUpdateSchema = z
   .object({
-    assetIds: z.array(z.string().trim().min(1)).min(1),
+    // At most 100 per save, as bulk-move (group 4 spec §6.6): one transaction, and SQL Server's parameter limit.
+    assetIds: z.array(z.string().trim().min(1)).min(1).max(bulkMoveMaxAssets),
     toLocationId: optionalText,
     toCustodianId: optionalText,
     reason: z.string().trim().min(1).max(500),

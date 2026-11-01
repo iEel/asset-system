@@ -54,7 +54,7 @@ test("the chips, and the chip of every movement type: a cancel and a component's
     repair: ["maintenance_create", "maintenance_close", "maintenance_cancel", "maintenance_status_update", "maintenance_pm_create"],
     disposal: ["disposal_request", "disposal_approve", "disposal_reject", "disposal_execute"],
     component: ["component_install", "component_remove", "installed_in_parent", "removed_from_parent"],
-    edit: ["create", "import", "batch_create", "location_change", "custodian_change", "status_change", "condition_change", "department_change", "ownership_type_change", "license_total_seats_change", "license_used_seats_change", "license_assigned_asset_change", "bulk_location_update", "bulk_custodian_update", "status_correction", "state_review_resolution", "parent_register_update_sync", "parent_bulk_update_sync"],
+    edit: ["create", "import", "batch_create", "location_change", "custodian_change", "status_change", "condition_change", "department_change", "ownership_type_change", "license_total_seats_change", "license_used_seats_change", "license_assigned_asset_change", "bulk_location_update", "bulk_custodian_update", "register_location_correction", "register_custodian_correction", "register_department_correction", "status_correction", "state_review_resolution", "parent_register_update_sync", "parent_bulk_update_sync"],
   }
   assert.deepEqual(Object.values(expected).flat().sort(), [...ASSET_MOVEMENT_LABELLED_TYPES].sort(), "every labelled type has exactly one chip")
   for (const [category, types] of Object.entries(expected)) {
@@ -62,6 +62,25 @@ test("the chips, and the chip of every movement type: a cancel and a component's
   }
   assert.equal(assetHistoryCategory("something_new"), "edit", "a type without a label still has a chip")
   assert.equal(assetHistoryCategory(""), "edit")
+})
+
+test("the register corrections count under แก้ไขข้อมูล, not โอนย้าย, and show the reason typed (group 4 spec §7.3, P1-R6)", () => {
+  assert.equal(th.asset.history.types.edit, "แก้ไขข้อมูล")
+  for (const type of ["register_location_correction", "register_custodian_correction", "register_department_correction"]) {
+    assert.equal(assetHistoryCategory(type), "edit", type)
+    assert.ok(ASSET_HISTORY_REASON_TYPES.has(type), type)
+    assert.equal(assetHistoryMovementDetail(movement({ movementType: type, reason: "บันทึกผิด" }), noLookup, labels), "บันทึกผิด")
+  }
+  const { counts } = countAssetHistory(
+    [
+      { movementType: "register_location_correction", count: 2 },
+      { movementType: "register_custodian_correction", count: 1 },
+      { movementType: "register_department_correction", count: 1 },
+    ],
+    0,
+  )
+  assert.equal(counts.edit, 4)
+  assert.equal(counts.transfer, 0)
 })
 
 test("the counts per chip add up to the total; the scans that wrote no movement count as ตรวจนับ", () => {
@@ -193,7 +212,8 @@ test("a handover names who received it and how, a return who gave it back, and o
   assert.deepEqual([...ASSET_HISTORY_REASON_TYPES].sort(), [
     "bulk_custodian_update", "bulk_location_move", "bulk_location_update", "checkin_cancel", "checkout_cancel", "component_install",
     "component_remove", "disposal_approve", "disposal_execute", "disposal_reject", "disposal_request", "installed_in_parent",
-    "maintenance_cancel", "removed_from_parent", "state_review_resolution", "status_correction", "transfer", "transfer_cancel",
+    "maintenance_cancel", "register_custodian_correction", "register_department_correction", "register_location_correction",
+    "removed_from_parent", "state_review_resolution", "status_correction", "transfer", "transfer_cancel",
   ])
   // The types whose reason the system writes in English ("Asset checkout", "Audit scan correction", "Parent asset register update", …).
   for (const type of ["create", "import", "batch_create", "checkout", "checkin", "location_change", "audit_correction", "audit_location_correction", "audit_department_correction", "parent_register_update_sync", "parent_audit_confirmation_sync", "maintenance_create", "maintenance_close"]) {

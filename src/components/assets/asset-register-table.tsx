@@ -40,7 +40,8 @@ import {
   AccessibleDialogFooter,
   accessibleDialogFormClasses,
 } from "@/components/ui/accessible-dialog"
-import { Field } from "@/components/ui/field"
+import { Field, FieldError } from "@/components/ui/field"
+import { Notice } from "@/components/ui/notice"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
@@ -60,6 +61,8 @@ import {
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { atLeastOne, maxLength, required } from "@/lib/validation-rules"
+import { bulkMoveBlockedList, readBulkMoveBlocked, type BulkMoveBlockedAsset } from "@/lib/bulk-move-blocked"
+import { bulkUpdateBlockedReasonKey } from "@/lib/bulk-update-blocked"
 
 export type AssetRegisterRow = {
   id: string
@@ -77,6 +80,8 @@ export type AssetRegisterRow = {
   // The open temporary loan's expected return day, already a Bangkok date (Buddhist year in Thai).
   dueDate: string | null
   ownershipType: { value: string; label: string }
+  // The asset's own department, for the bulk update's "แผนกจะเปลี่ยนตามผู้ถือครอง" line (group 4 spec §6.6).
+  departmentId: string | null
   status: { value: string; label: string }
   condition: { value: string; label: string }
   purchasePrice: number | null
@@ -142,7 +147,7 @@ type AssetRegisterTableProps = {
   toRow: number
   bulkOptions: {
     locations: { id: string; label: string }[]
-    employees: { id: string; label: string }[]
+    employees: { id: string; label: string; departmentId: string | null; departmentName: string | null }[]
   }
   permissions: AssetRegisterRowPermissions
   labels: {
@@ -249,11 +254,26 @@ export function AssetRegisterTable({
     remark: "",
   })
   const bulkErrors = useFieldErrors<BulkField>()
+  // The assets the last save refused, each with its code (P1-R1), and whether that save changed the holder: the status
+  // refusal is worded by it.
+  const [bulkBlocked, setBulkBlocked] = useState<{ assets: BulkMoveBlockedAsset[]; changesCustodian: boolean }>({ assets: [], changesCustodian: false })
+  const tAll = useTranslations()
   const focusBulkError = () => bulkErrors.focusFirst(BULK_FIELD_ORDER, { idFor: (key) => BULK_FIELD_IDS[key] })
   const selectedAssets = useMemo(
     () => assets.filter((asset) => selectedIds.has(asset.id)),
     [assets, selectedIds]
   )
+  // The chosen holder's department, and how many selected บุคคล and Stock assets it changes (group 4 spec §6.6): the
+  // server applies getTransferNextDepartmentId, which these two types follow.
+  const chosenHolder = bulkOptions.employees.find((employee) => employee.id === bulkForm.toCustodianId) ?? null
+  const departmentFollowsCount = chosenHolder?.departmentId
+    ? selectedAssets.filter((asset) =>
+        (asset.ownershipType.value === "personal" || asset.ownershipType.value === "stock") && asset.departmentId !== chosenHolder.departmentId,
+      ).length
+    : 0
+  const departmentFollows = chosenHolder?.departmentName && departmentFollowsCount > 0
+    ? { department: chosenHolder.departmentName, count: departmentFollowsCount }
+    : null
   const allCurrentPageSelected = assets.length > 0 && assets.every((asset) => selectedIds.has(asset.id))
   const visibleColumnCount = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)).length
   const visibleColumnList = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column))
@@ -420,7 +440,23 @@ export function AssetRegisterTable({
   function openBulkUpdate(opener: HTMLElement | null = null) {
     bulkReturnFocusRef.current = opener
     bulkErrors.setErrors({})
+    setBulkBlocked({ assets: [], changesCustodian: false })
     setBulkUpdateOpen(true)
+  }
+
+  // นำรายการเหล่านี้ออกจากที่เลือก: unticks every refused asset; with none left the dialog closes.
+  function removeBulkBlocked() {
+    const refused = new Set(bulkBlocked.assets.map((asset) => asset.assetId))
+    const remaining = selectedAssets.filter((asset) => !refused.has(asset.id))
+    setSelectedIds((current) => new Set([...current].filter((id) => !refused.has(id))))
+    setBulkBlocked({ assets: [], changesCustodian: false })
+    if (remaining.length === 0) setBulkUpdateOpen(false)
+  }
+
+  // Each refusal reads in the row's words; any other code keeps the catalog's (as bulk-move, P4-R6).
+  function bulkBlockedReason(code: string) {
+    const key = bulkUpdateBlockedReasonKey(code, bulkBlocked.changesCustodian)
+    return key ? tAll(key) : apiError.describe(code).message
   }
 
   function setBulkField(field: keyof BulkUpdateValues, value: string) {
@@ -438,6 +474,7 @@ export function AssetRegisterTable({
     if (focusBulkError()) return
 
     setBulkSaving(true)
+    setBulkBlocked({ assets: [], changesCustodian: false })
     try {
       const response = await fetch("/api/assets/bulk-update", {
         method: "POST",
@@ -449,12 +486,20 @@ export function AssetRegisterTable({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
+        // A refusal that names assets lists each under the form in the row's words, with a way to untick them (P1-R1).
+        const refused = readBulkMoveBlocked(payload)
+        if (refused.length > 0) {
+          setBulkBlocked({ assets: refused, changesCustodian: Boolean(bulkForm.toCustodianId) })
+          requestAnimationFrame(() => document.getElementById("asset-bulk-blocked-remove")?.focus())
+          return
+        }
         // A refusal that names a field shows under it in the dialog; any other keeps the toast (spec §4.1).
         if (bulkErrors.applyServer(payload) && focusBulkError()) return
         throw new Error(payload?.error ?? labels.bulkUpdateFailed)
       }
 
       toast.success(labels.bulkUpdateSuccess)
+      setBulkBlocked({ assets: [], changesCustodian: false })
       setBulkUpdateOpen(false)
       setBulkForm({ toLocationId: "", toCustodianId: "", reason: "", remark: "" })
       clearSelection()
@@ -554,10 +599,12 @@ export function AssetRegisterTable({
               <Printer aria-hidden="true" />
               {labels.printSelectedLabels}
             </Button>
-            <Button variant="outline" size="md" onClick={() => openBulkUpdate()} className="w-full sm:w-auto">
-              <Edit aria-hidden="true" />
-              {labels.bulkUpdate}
-            </Button>
+            {permissions.canEdit ? (
+              <Button variant="outline" size="md" onClick={() => openBulkUpdate()} className="w-full sm:w-auto">
+                <Edit aria-hidden="true" />
+                {labels.bulkUpdate}
+              </Button>
+            ) : null}
             <Button variant="outline" size="md" onClick={exportSelected} className="w-full sm:w-auto">
               <Download aria-hidden="true" />
               {labels.exportSelected}
@@ -818,6 +865,11 @@ export function AssetRegisterTable({
                 ))}
               </NativeSelect>
             </Field>
+            {departmentFollows ? (
+              <Notice tone="info" data-asset-bulk-department>
+                {t("bulkDepartmentFollows", { department: departmentFollows.department, count: formatCount(departmentFollows.count) })}
+              </Notice>
+            ) : null}
             <Field label={labels.reason} id="asset-bulk-reason" required error={bulkErrors.message("reason")}>
               <Input
                 value={bulkForm.reason}
@@ -834,6 +886,16 @@ export function AssetRegisterTable({
                 className="min-h-24"
               />
             </Field>
+            {bulkBlocked.assets.length > 0 ? (
+              <div data-asset-bulk-blocked className="grid justify-items-start gap-2">
+                <FieldError id="asset-bulk-blocked-error" role="alert">
+                  {t("bulkCorrectionBlocked", { count: formatCount(bulkBlocked.assets.length), list: bulkMoveBlockedList(bulkBlocked.assets, bulkBlockedReason) })}
+                </FieldError>
+                <Button id="asset-bulk-blocked-remove" type="button" variant="outline" size="md" aria-describedby="asset-bulk-blocked-error" onClick={removeBulkBlocked}>
+                  {t("bulkCorrectionRemoveBlocked")}
+                </Button>
+              </div>
+            ) : null}
           </AccessibleDialogBody>
           <AccessibleDialogFooter>
             <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>

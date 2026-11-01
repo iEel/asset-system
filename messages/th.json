@@ -774,7 +774,6 @@
     "printSelectedLabels": "พิมพ์ป้ายที่เลือก",
     "bulkActions": "ดำเนินการกับรายการที่เลือก",
     "bulkUpdate": "อัปเดตที่ตั้ง/ผู้ถือครอง",
-    "bulkUpdateTitle": "อัปเดตทรัพย์สินหลายรายการ",
     "bulkUpdateDescription": "เลือกที่ตั้งหรือผู้ถือครองใหม่ ระบบจะบันทึกประวัติการเคลื่อนไหวให้ทุกรายการ",
     "clearSelection": "ล้างรายการที่เลือก",
     "noChange": "ไม่เปลี่ยนแปลง",
@@ -1064,7 +1063,10 @@
       "parent_audit_confirmation_sync": "ปรับตามผลตรวจนับของทรัพย์สินหลัก",
       "other": "ความเคลื่อนไหวอื่น",
       "component_outstanding": "ส่วนควบค้างคืน",
-      "component_late_return": "รับคืนส่วนควบค้างคืน"
+      "component_late_return": "รับคืนส่วนควบค้างคืน",
+      "register_location_correction": "แก้ไขข้อมูลที่ตั้ง",
+      "register_custodian_correction": "แก้ไขข้อมูลผู้ถือครอง",
+      "register_department_correction": "แก้ไขข้อมูลแผนก"
     },
     "auditHistory": "ประวัติการตรวจนับ",
     "auditRound": "รอบตรวจนับ",
@@ -1376,7 +1378,12 @@
     "viewNameTaken": "มีมุมมองชื่อนี้แล้ว",
     "savedViewsFull": "บันทึกได้ไม่เกิน {max} มุมมอง ลบมุมมองเดิมก่อน",
     "savedViewsStorageError": "เก็บมุมมองในเบราว์เซอร์นี้ไม่ได้",
-    "savedViewActions": "การดำเนินการของมุมมอง {name}"
+    "savedViewActions": "การดำเนินการของมุมมอง {name}",
+    "bulkCorrectionTitle": "แก้ไขข้อมูลหลายรายการ",
+    "correctionReason": "เหตุผลที่แก้",
+    "bulkDepartmentFollows": "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count} รายการ)",
+    "bulkCorrectionBlocked": "แก้ไขไม่ได้ {count} รายการ: {list}",
+    "bulkCorrectionRemoveBlocked": "นำรายการเหล่านี้ออกจากที่เลือก"
   },
   "company": {
     "title": "บริษัท",
