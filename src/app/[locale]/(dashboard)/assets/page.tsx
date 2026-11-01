@@ -77,7 +77,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           company: { select: { code: true, nameTh: true } },
           branch: { select: { code: true, name: true } },
           // The holder's department and the room's branch go under them in the row (group 4 spec §6.1).
-          custodian: { select: { code: true, fullNameTh: true, department: { select: { name: true } } } },
+          // The holder's departmentId feeds the bulk correction's department line (final review B1).
+          custodian: { select: { code: true, fullNameTh: true, departmentId: true, department: { select: { name: true } } } },
           currentLocation: { select: { code: true, name: true, branch: { select: { name: true } } } },
           status: { select: { name: true, nameTh: true, colorCode: true } },
           condition: { select: { name: true, nameTh: true, colorCode: true } },
@@ -380,6 +381,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       label: t(`ownershipType_${ownership}`),
     },
     departmentId: asset.departmentId,
+    holderDepartmentId: asset.custodian?.departmentId ?? null,
     status: { value: asset.status.name, label: asset.status.nameTh },
     condition: { value: asset.condition.name, label: asset.condition.nameTh },
     purchasePrice: asset.purchasePrice ? Number(asset.purchasePrice) : null,

@@ -773,11 +773,11 @@
     "exportSelected": "ส่งออกรายการที่เลือก",
     "printSelectedLabels": "พิมพ์ป้ายที่เลือก",
     "bulkActions": "ดำเนินการกับรายการที่เลือก",
-    "bulkUpdate": "อัปเดตที่ตั้ง/ผู้ถือครอง",
-    "bulkUpdateDescription": "เลือกที่ตั้งหรือผู้ถือครองใหม่ ระบบจะบันทึกประวัติการเคลื่อนไหวให้ทุกรายการ",
+    "bulkUpdate": "แก้ไขข้อมูลหลายรายการ",
+    "bulkUpdateDescription": "แก้ที่ตั้งหรือผู้ถือครองที่บันทึกผิด ระบบบันทึกเป็นการแก้ไขข้อมูลในประวัติของแต่ละรายการ",
     "clearSelection": "ล้างรายการที่เลือก",
     "noChange": "ไม่เปลี่ยนแปลง",
-    "applyBulkUpdate": "อัปเดตรายการที่เลือก",
+    "applyBulkUpdate": "บันทึกการแก้ไข",
     "bulkUpdateSuccess": "อัปเดตทรัพย์สินที่เลือกสำเร็จ",
     "bulkUpdateFailed": "อัปเดตทรัพย์สินที่เลือกไม่สำเร็จ",
     "importPreview": "ตรวจสอบไฟล์นำเข้า",
@@ -1381,10 +1381,11 @@
     "savedViewActions": "การดำเนินการของมุมมอง {name}",
     "bulkCorrectionTitle": "แก้ไขข้อมูลหลายรายการ",
     "correctionReason": "เหตุผลที่แก้",
-    "bulkDepartmentFollows": "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count} รายการ)",
+    "bulkDepartmentFollows": "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count, number} รายการ)",
     "bulkCorrectionBlocked": "แก้ไขไม่ได้ {count} รายการ: {list}",
     "bulkCorrectionRemoveBlocked": "นำรายการเหล่านี้ออกจากที่เลือก",
-    "transactionReasonOpenCheckoutCorrection": "มีการส่งมอบค้างอยู่ รับคืนหรือโอนย้ายก่อนจึงแก้ได้"
+    "transactionReasonOpenCheckoutCorrection": "มีการส่งมอบค้างอยู่ รับคืนหรือโอนย้ายก่อนจึงแก้ได้",
+    "bulkDepartmentFollowsHolder": "แผนกจะปรับตามผู้ถือครองปัจจุบัน ({count, number} รายการ)"
   },
   "company": {
     "title": "บริษัท",

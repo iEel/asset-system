@@ -24,3 +24,18 @@ export function getRegisterHolderLine(input: {
   if (input.custodian) return { kind: "holder", name: input.custodian.name, department: input.custodian.departmentName }
   return input.ownership === "shared" ? { kind: "shared" } : { kind: "none" }
 }
+
+// How many selected rows a bulk correction moves to another department (group 4 spec §6.6; final review B1). Only
+// บุคคล and Stock follow the holder (getTransferNextDepartmentId): with a holder chosen, a row whose department is not
+// the chosen holder's; with none chosen (a room-only save), a held row whose department is not its current holder's,
+// which the server corrects too. ส่วนกลาง, ส่วนควบ and License keep their own department and are never counted.
+export function countBulkDepartmentChanges(
+  rows: readonly { ownershipType: { value: string }; departmentId: string | null; holderDepartmentId: string | null }[],
+  chosen: { departmentId: string | null } | null,
+): number {
+  return rows.filter((row) => {
+    if (row.ownershipType.value !== "personal" && row.ownershipType.value !== "stock") return false
+    const target = chosen ? chosen.departmentId : row.holderDepartmentId
+    return target !== null && target !== row.departmentId
+  }).length
+}

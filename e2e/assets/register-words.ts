@@ -13,11 +13,11 @@ export const REGISTER_WORDS = {
   exportImportMenu: "ส่งออก / นำเข้า", exportFilteredCount: "ส่งออกตามตัวกรอง ({count} รายการ)", importFromExcel: "นำเข้าจาก Excel",
   // The selection bar (§6.5) and its "อื่น ๆ" item that opens the bulk correction.
   selectedOnPage: "{count} รายการที่เลือกในหน้านี้", moreActions: "อื่น ๆ", printLabelsCount: "พิมพ์ป้าย {count} รายการ",
-  bulkUpdate: "อัปเดตที่ตั้ง/ผู้ถือครอง",
+  bulkUpdate: "แก้ไขข้อมูลหลายรายการ",
   // The bulk correction (§6.6, decision 11): its title, the department line, its errors, its save and its toast.
-  bulkCorrectionTitle: "แก้ไขข้อมูลหลายรายการ", departmentFollows: "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count} รายการ)",
+  bulkCorrectionTitle: "แก้ไขข้อมูลหลายรายการ", departmentFollows: "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count, number} รายการ)",
   bulkFieldRequired: "เลือกข้อมูลที่จะแก้อย่างน้อย 1 รายการ", required: "กรุณาระบุข้อมูลนี้",
-  applyBulkUpdate: "อัปเดตรายการที่เลือก", bulkUpdateSuccess: "อัปเดตทรัพย์สินที่เลือกสำเร็จ",
+  applyBulkUpdate: "บันทึกการแก้ไข", bulkUpdateSuccess: "อัปเดตทรัพย์สินที่เลือกสำเร็จ",
   // The history's correction lines (P1-R6).
   holderCorrected: "แก้ไขข้อมูลผู้ถือครอง", departmentCorrected: "แก้ไขข้อมูลแผนก",
   // Saved views (§6.4).

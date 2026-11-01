@@ -773,11 +773,11 @@
     "exportSelected": "Export Selected",
     "printSelectedLabels": "Print Selected Labels",
     "bulkActions": "Bulk actions for selected assets",
-    "bulkUpdate": "Update location/custodian",
-    "bulkUpdateDescription": "Choose a new location or custodian. The system records movement history for every selected asset.",
+    "bulkUpdate": "Correct multiple assets",
+    "bulkUpdateDescription": "Fix a location or holder recorded by mistake. Each asset's history records it as a data correction.",
     "clearSelection": "Clear selection",
     "noChange": "No change",
-    "applyBulkUpdate": "Update selected assets",
+    "applyBulkUpdate": "Save correction",
     "bulkUpdateSuccess": "Selected assets updated",
     "bulkUpdateFailed": "Could not update selected assets",
     "importPreview": "Import File Validation",
@@ -1381,10 +1381,11 @@
     "savedViewActions": "Actions for view {name}",
     "bulkCorrectionTitle": "Correct multiple assets",
     "correctionReason": "Reason for the correction",
-    "bulkDepartmentFollows": "The department follows the holder: {department} ({count} assets)",
+    "bulkDepartmentFollows": "The department follows the holder: {department} ({count, plural, one {# asset} other {# assets}})",
     "bulkCorrectionBlocked": "{count} cannot be corrected: {list}",
     "bulkCorrectionRemoveBlocked": "Remove these from the selection",
-    "transactionReasonOpenCheckoutCorrection": "An open handover: return or transfer it first"
+    "transactionReasonOpenCheckoutCorrection": "An open handover: return or transfer it first",
+    "bulkDepartmentFollowsHolder": "Department follows the current holder ({count, number})"
   },
   "company": {
     "title": "Companies",

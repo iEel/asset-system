@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import type { AssetActionSet } from "@/lib/asset-actions"
-import { needsConditionAttention, type RegisterHolderLine } from "@/lib/asset-register-row-rules"
+import { countBulkDepartmentChanges, needsConditionAttention, type RegisterHolderLine } from "@/lib/asset-register-row-rules"
 import { getAssetStateTone, getDesktopTableOnlyClasses, getPanelClasses } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
@@ -80,8 +80,10 @@ export type AssetRegisterRow = {
   // The open temporary loan's expected return day, already a Bangkok date (Buddhist year in Thai).
   dueDate: string | null
   ownershipType: { value: string; label: string }
-  // The asset's own department, for the bulk update's "แผนกจะเปลี่ยนตามผู้ถือครอง" line (group 4 spec §6.6).
+  // The asset's own department and its holder's (null when no one holds it), for the bulk correction's department line
+  // (group 4 spec §6.6, final review B1).
   departmentId: string | null
+  holderDepartmentId: string | null
   status: { value: string; label: string }
   condition: { value: string; label: string }
   purchasePrice: number | null
@@ -263,21 +265,27 @@ export function AssetRegisterTable({
     () => assets.filter((asset) => selectedIds.has(asset.id)),
     [assets, selectedIds]
   )
-  // The chosen holder's department, and how many selected บุคคล and Stock assets it changes (group 4 spec §6.6): the
-  // server applies getTransferNextDepartmentId, which these two types follow.
+  // How many selected บุคคล and Stock assets the save moves to another department (group 4 spec §6.6, final review B1):
+  // the server applies getTransferNextDepartmentId, so with a holder chosen they follow that holder, and on a room-only
+  // save a held one follows its current holder.
   const chosenHolder = bulkOptions.employees.find((employee) => employee.id === bulkForm.toCustodianId) ?? null
-  const departmentFollowsCount = chosenHolder?.departmentId
-    ? selectedAssets.filter((asset) =>
-        (asset.ownershipType.value === "personal" || asset.ownershipType.value === "stock") && asset.departmentId !== chosenHolder.departmentId,
-      ).length
-    : 0
-  const departmentFollows = chosenHolder?.departmentName && departmentFollowsCount > 0
-    ? { department: chosenHolder.departmentName, count: departmentFollowsCount }
-    : null
+  const departmentFollowsCount = bulkForm.toCustodianId
+    ? countBulkDepartmentChanges(selectedAssets, { departmentId: chosenHolder?.departmentId ?? null })
+    : bulkForm.toLocationId
+      ? countBulkDepartmentChanges(selectedAssets, null)
+      : 0
+  const departmentNotice = departmentFollowsCount === 0
+    ? null
+    : bulkForm.toCustodianId
+      ? chosenHolder?.departmentName ? t("bulkDepartmentFollows", { department: chosenHolder.departmentName, count: departmentFollowsCount }) : null
+      : t("bulkDepartmentFollowsHolder", { count: departmentFollowsCount })
   const allCurrentPageSelected = assets.length > 0 && assets.every((asset) => selectedIds.has(asset.id))
   const visibleColumnCount = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)).length
   const visibleColumnList = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column))
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  // The range line above the table: focus lands here after a correction saves, when the selection bar that opened the
+  // dialog is gone (final review B3).
+  const rangeRef = useRef<HTMLParagraphElement | null>(null)
   // The desktop bar's "อื่น ๆ": the bulk update dialog gives focus back to it, and the menu does not take it first.
   const moreTriggerRef = useRef<HTMLButtonElement | null>(null)
   const bulkReturnFocusRef = useRef<HTMLElement | null>(null)
@@ -451,6 +459,8 @@ export function AssetRegisterTable({
     setSelectedIds((current) => new Set([...current].filter((id) => !refused.has(id))))
     setBulkBlocked({ assets: [], changesCustodian: false })
     if (remaining.length === 0) setBulkUpdateOpen(false)
+    // The button that had focus is gone; with assets left the dialog stays, so focus goes to its first field (B3).
+    else requestAnimationFrame(() => document.getElementById(BULK_FIELD_IDS.toLocationId)?.focus())
   }
 
   // Each refusal reads in the row's words; any other code keeps the catalog's (as bulk-move, P4-R6).
@@ -500,6 +510,8 @@ export function AssetRegisterTable({
 
       toast.success(labels.bulkUpdateSuccess)
       setBulkBlocked({ assets: [], changesCustodian: false })
+      // The selection bar that opened the dialog goes with the selection, so focus returns to the range line (B3).
+      bulkReturnFocusRef.current = rangeRef.current
       setBulkUpdateOpen(false)
       setBulkForm({ toLocationId: "", toCustodianId: "", reason: "", remark: "" })
       clearSelection()
@@ -574,7 +586,7 @@ export function AssetRegisterTable({
     {/* The frame carries aria-busy, so it cannot be ContentPanel: it takes the panel classes (spec 2D D9, 2D-2 R4). */}
     <div aria-busy={isPending} className={cn(getPanelClasses(), "overflow-hidden")}>
       <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 md:px-4 py-0 md:py-2">
-        <p className="text-meta text-muted-foreground num">{rangeLabel}</p>
+        <p ref={rangeRef} tabIndex={-1} className="rounded-sm text-meta text-muted-foreground num focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{rangeLabel}</p>
         <div className="flex items-center gap-2">
           <AssetRegisterSortMenu />
           <Button variant="ghost" size="md" aria-pressed={selectMode} onClick={toggleSelectMode} className="md:hidden">
@@ -831,6 +843,7 @@ export function AssetRegisterTable({
       <AccessibleDialog
         open={bulkUpdateOpen}
         returnFocusRef={bulkReturnFocusRef}
+        fallbackFocusRef={rangeRef}
         title={labels.bulkUpdateTitle}
         description={`${labels.bulkUpdateDescription} (${formatCount(selectedAssets.length)} ${labels.selectedCount})`}
         busy={bulkSaving}
@@ -852,24 +865,30 @@ export function AssetRegisterTable({
                 ))}
               </NativeSelect>
             </Field>
-            <Field label={labels.custodian} id="asset-bulk-custodian" error={bulkErrors.message("toCustodianId")}>
-              <NativeSelect
-                value={bulkForm.toCustodianId}
-                onChange={(event) => setBulkField("toCustodianId", event.target.value)}
-              >
-                <option value="">{labels.noChange}</option>
-                {bulkOptions.employees.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.label}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            {departmentFollows ? (
-              <Notice tone="info" data-asset-bulk-department>
-                {t("bulkDepartmentFollows", { department: departmentFollows.department, count: formatCount(departmentFollows.count) })}
-              </Notice>
-            ) : null}
+            {/* The department line sits in a status region that is always there, so a screen reader hears it when it
+                appears (final review B1); empty, it takes no space. */}
+            <div>
+              <Field label={labels.custodian} id="asset-bulk-custodian" error={bulkErrors.message("toCustodianId")}>
+                <NativeSelect
+                  value={bulkForm.toCustodianId}
+                  onChange={(event) => setBulkField("toCustodianId", event.target.value)}
+                >
+                  <option value="">{labels.noChange}</option>
+                  {bulkOptions.employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <div role="status" data-asset-bulk-department-status className="mt-4 empty:mt-0">
+                {departmentNotice ? (
+                  <Notice tone="info" data-asset-bulk-department>
+                    {departmentNotice}
+                  </Notice>
+                ) : null}
+              </div>
+            </div>
             <Field label={labels.reason} id="asset-bulk-reason" required error={bulkErrors.message("reason")}>
               <Input
                 value={bulkForm.reason}

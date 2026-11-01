@@ -475,10 +475,18 @@ test("the bulk correction dialog: refused assets named with their reason and unt
   assert.match(page, /bulkUpdateTitle: t\("bulkCorrectionTitle"\)/)
   assert.match(page, /reason: t\("correctionReason"\)/)
   assert.match(page, /departmentId: employee\.departmentId,\n\s+departmentName: employee\.department\.name,/)
-  assert.match(page, /departmentId: asset\.departmentId,/)
+  assert.match(page, /departmentId: asset\.departmentId,\n\s+holderDepartmentId: asset\.custodian\?\.departmentId \?\? null,/)
+  assert.match(page, /custodian: \{ select: \{ code: true, fullNameTh: true, departmentId: true, department: \{ select: \{ name: true \} \} \} \}/)
   assert.equal(messages("th").bulkCorrectionTitle, "แก้ไขข้อมูลหลายรายการ")
   assert.equal(messages("th").correctionReason, "เหตุผลที่แก้")
-  assert.equal(messages("th").bulkDepartmentFollows, "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count} รายการ)")
+  assert.equal(messages("th").bulkDepartmentFollows, "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count, number} รายการ)")
+  assert.equal(messages("th").bulkDepartmentFollowsHolder, "แผนกจะปรับตามผู้ถือครองปัจจุบัน ({count, number} รายการ)")
+  assert.equal(messages("en").bulkDepartmentFollowsHolder, "Department follows the current holder ({count, number})")
+  // The correction's words (final review B2): the menu item is the title, and the save says it is a correction.
+  assert.equal(messages("th").bulkUpdate, "แก้ไขข้อมูลหลายรายการ")
+  assert.equal(messages("th").bulkUpdateDescription, "แก้ที่ตั้งหรือผู้ถือครองที่บันทึกผิด ระบบบันทึกเป็นการแก้ไขข้อมูลในประวัติของแต่ละรายการ")
+  assert.equal(messages("th").applyBulkUpdate, "บันทึกการแก้ไข")
+  assert.equal(messages("en").bulkUpdate, messages("en").bulkCorrectionTitle)
   assert.equal(messages("th").bulkCorrectionRemoveBlocked, "นำรายการเหล่านี้ออกจากที่เลือก")
 
   // The 409's blocked list comes first, then a field refusal, then the toast.
@@ -488,9 +496,18 @@ test("the bulk correction dialog: refused assets named with their reason and unt
   assert.match(dialog, /<Button id="asset-bulk-blocked-remove" type="button" variant="outline" size="md" aria-describedby="asset-bulk-blocked-error" onClick=\{removeBulkBlocked\}>\n\s+\{t\("bulkCorrectionRemoveBlocked"\)\}/)
   assert.match(source, /setSelectedIds\(\(current\) => new Set\(\[\.\.\.current\]\.filter\(\(id\) => !refused\.has\(id\)\)\)\)/)
 
-  // The department line counts the selected บุคคล and Stock rows the chosen holder's department changes.
-  assert.match(source, /\(asset\.ownershipType\.value === "personal" \|\| asset\.ownershipType\.value === "stock"\) && asset\.departmentId !== chosenHolder\.departmentId/)
-  assert.match(dialog, /<Notice tone="info" data-asset-bulk-department>\n\s+\{t\("bulkDepartmentFollows", \{ department: departmentFollows\.department, count: formatCount\(departmentFollows\.count\) \}\)\}/)
+  // The department line (final review B1): countBulkDepartmentChanges with the chosen holder, else on a room-only save
+  // with each row's current holder; the raw count; in a status region that is always rendered.
+  assert.match(source, /const departmentFollowsCount = bulkForm\.toCustodianId\n\s+\? countBulkDepartmentChanges\(selectedAssets, \{ departmentId: chosenHolder\?\.departmentId \?\? null \}\)\n\s+: bulkForm\.toLocationId\n\s+\? countBulkDepartmentChanges\(selectedAssets, null\)\n\s+: 0/)
+  assert.match(source, /\? chosenHolder\?\.departmentName \? t\("bulkDepartmentFollows", \{ department: chosenHolder\.departmentName, count: departmentFollowsCount \}\) : null\n\s+: t\("bulkDepartmentFollowsHolder", \{ count: departmentFollowsCount \}\)/)
+  assert.match(dialog, /<div role="status" data-asset-bulk-department-status className="mt-4 empty:mt-0">\n\s+\{departmentNotice \? \(\n\s+<Notice tone="info" data-asset-bulk-department>\n\s+\{departmentNotice\}/)
+
+  // Focus (final review B3): after a save it returns to the range line (tabIndex -1), also as the dialog's fallback;
+  // after นำรายการเหล่านี้ออกจากที่เลือก with assets left it goes to the first field.
+  assert.match(source, /<p ref=\{rangeRef\} tabIndex=\{-1\} className="[^"]*">\{rangeLabel\}<\/p>/)
+  assert.match(source, /bulkReturnFocusRef\.current = rangeRef\.current\n\s+setBulkUpdateOpen\(false\)/)
+  assert.match(source, /returnFocusRef=\{bulkReturnFocusRef\}\n\s+fallbackFocusRef=\{rangeRef\}/)
+  assert.match(source, /if \(remaining\.length === 0\) setBulkUpdateOpen\(false\)\n[^\n]*\n\s+else requestAnimationFrame\(\(\) => document\.getElementById\(BULK_FIELD_IDS\.toLocationId\)\?\.focus\(\)\)/)
 
   const phone = source.slice(source.indexOf("data-asset-bulk-bar"), source.indexOf("data-asset-selection-bar"))
   assert.match(phone, /\{permissions\.canEdit \? \(\n\s+<Button variant="outline" size="md" onClick=\{\(\) => openBulkUpdate\(\)\}/)
