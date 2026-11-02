@@ -18,14 +18,14 @@
 - Rows and results show the name first; pickers keep "code - name" (spec §5); the outstanding line keeps its code-first holder "ค้างคืน · อยู่กับ <code> - <ชื่อ> · RT-…" (`return-components.spec.ts:117`, `:207-209`).
 - Words: `docs/19_THAI_GLOSSARY.md` rows before use; messages only through `node scripts/messages-edit.mjs <change file>` (change files in `C:/Users/Eltross/AppData/Local/Temp/claude/D--Antigravity-asset-system/f250ea8d-3040-422b-ad7a-15dd9aed94b9/scratchpad/g4/msg/p4-*.json`); Thai and English; en ICU plural with the raw number, th `{count, number}`.
 - Installing does not change the component's holder, room or department (call 20); `src/lib/asset-component-sync.ts` is not touched.
-- Every new route: `requirePermission` before any read and parse, an `rbac-route-matrix` entry with its pin; the viewer holds `asset:view`, so the scan route has no refusal row.
+- Every new route: `requirePermission` before any read and parse, an `rbac-route-matrix` entry with its pin; the viewer holds `asset:view`, so the scan route has no refusal row; the component remove POST (`asset:edit`) gets one.
 - Guards that pin a changed file move in the same task with exact counts (`assets-sweep-ui` `:116-126`, `:185-194`; `form-migration-guards` `:135`, `:175`, `:177`; `validation-guards`; `asset-forms-ui`; `asset-component-manager` tests; `asset-scan-search-tool` tests; recon `critic.md` §4).
 - CRLF files keep CRLF. Before each commit: focused tests, `npm test`, `npx tsc --noEmit`, `npm run lint` (0 errors); each commit ends with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Stable hooks: the outstanding line text; the scan page's returnTo exactly `/<locale>/asset-management/scan` (the detail page compares with `===`); `scanQueryLabel`; the label page's `scanPlaceholder` (do not change it — the scan page gets its own key).
 
 ## Rulings made while planning
 
-- **P4-R1 (E2E and DELETE):** removing a component sends `DELETE /api/assets/<id>/components/<linkId>`, which the E2E suite refuses. The E2E opens ⋯ → ถอดส่วนควบ, checks the dialog and presses **ยกเลิก**; the confirmed removal goes to the UAT checklist and the unit tests. The route stays as it is.
+- **P4-R1 (the remove route, the user's choice 2026-11-02):** removing a component only marks the link removed (status, date, reason, photo), yet it is sent as `DELETE /api/assets/<id>/components/<componentId>`, which the E2E suite refuses ("the suite deletes nothing"). The removal moves to **`POST /api/assets/<id>/components/<componentId>/remove`** with the same body (multipart reason, date, photo) and the same answer; the `DELETE` handler is removed and every caller moves. The E2E then confirms a real removal.
 - **P4-R2 (exact tag, spec §14 "as today"):** today only a QR/URL with the asset id opens the asset at once; a typed tag does not (`asset-scan-routing.ts`, pinned). That stays, and in addition **Enter** on typed text whose search has exactly one exact tag or Serial match opens that asset. Typing alone never jumps away.
 - **P4-R3 (⋯ placement):** the ⋯ sits on each **current** row of the links table (installed and outstanding), not on the relationship map's cards (the map hides cards past 5 and is shared with the asset page). Editors get "เปิดหน้าทรัพย์สิน" and "ถอดส่วนควบ"; viewers get no ⋯.
 - **P4-R4 (role field):** the install form's role becomes a `NativeSelect` of the 8 stored English values (RAM, SSD, HDD, Power Supply, Network Card, Monitor, Adapter, Other) shown with Thai labels; any other stored value (old free text) still shows as stored everywhere.
@@ -63,12 +63,14 @@
 - [ ] **Step 4: Run** focused, `npm test`, `npx tsc --noEmit`, `npm run lint`.
 - [ ] **Step 5: Commit** `feat(components,scan): role labels, the count after a removal, the last removal per component, the scan's recent list; glossary rows (group 4 plan 4)`
 
-### Task 2: Components data: the candidates' last removal and the page's rows
+### Task 2: Components data: the remove route, the candidates' last removal and the page's rows
 
 **Files:**
+- Create: `src/app/api/assets/[id]/components/[componentId]/remove/route.ts` (P4-R1: the old `DELETE` body moved into a `POST`, same checks, permission `asset:edit` before any read, same upload cleanup shape, same movements and answer)
+- Modify: `src/app/api/assets/[id]/components/[componentId]/route.ts` (the `DELETE` handler goes; keep any other handler), every caller of the old `DELETE` (grep `src` for the components path and `method: "DELETE"`), `src/lib/rbac-route-matrix.ts` + `tests/rbac-route-matrix.test.ts`, `e2e/cross-cutting/support/refusals.ts` (a POST row for the viewer, permission `asset:edit`) + its pins in `tests/e2e-cross-cutting.test.ts`, the writer list in `tests/asset-movement-labels.test.ts` and the route list in `tests/upload-cleanup-routes.test.ts` (the new file replaces the old)
 - Modify: `src/app/api/assets/component-candidates/route.ts` (adds `lastRemovalHere`), `src/app/[locale]/(dashboard)/assets/[id]/components/page.tsx` (header facts, rows)
 - Create: `src/lib/asset-component-manager-data.ts` (server loader)
-- Test: `tests/component-outstanding-paths.test.ts` (fake db, the new field), `tests/asset-component-manager-data.test.ts` (new)
+- Test: `tests/component-outstanding-paths.test.ts` (fake db, the new field and the moved removal), `tests/asset-component-manager-data.test.ts` (new)
 
 **Interfaces:**
 - Consumes: Task 1 `lastRemovalByComponent`, `componentRoleLabelKey`.
@@ -77,11 +79,11 @@
   - `type ComponentLinkRow = { id; componentAsset: { id; assetTag; name; serialNumber: string | null }; role: string /* stored */; slotNo: string | null; state: "installed" | "outstanding" | "removed"; installedOn: string; installedBy: string | null; removedOn: string | null; removedBy: string | null; reason: string | null; document: { code: string; href: string } | null; evidenceCount: number; outstandingLine: string | null }`; `loadComponentManagerRows(db, { parentAssetId, locale, can }): Promise<{ rows: ComponentLinkRow[]; installedCount: number; outstandingCount: number; removedCount: number }>` — dates formatted on the server (Buddhist calendar, Asia/Bangkok, as the asset page), user names through `assetHistoryActorLabel` (fallback the stored value), the document only with its permission (R12), photo counts from the attachments, the outstanding line from `formatOutstandingComponentLine` (unchanged), current rows first, past rows newest first, at most 100 links as today.
   - The page passes `header: { name; assetTag; holder: RegisterHolderLine; room: string | null }` (reuse `getRegisterHolderLine`).
 
-- [ ] **Step 1: Write the failing tests**: candidates answer `lastRemovalHere` for a component removed from this parent and `null` for one removed elsewhere; the loader builds an installed, an outstanding (with its line) and a removed row with names, counts and a document only when allowed.
+- [ ] **Step 1: Write the failing tests**: `POST …/components/<componentId>/remove` removes an installed link (status removed, date, reason, the photo committed) and an outstanding one exactly as the old `DELETE` did, refuses a viewer before any read, and the old path answers 405 (no `DELETE` export); candidates answer `lastRemovalHere` for a component removed from this parent and `null` for one removed elsewhere; the loader builds an installed, an outstanding (with its line) and a removed row with names, counts and a document only when allowed.
 - [ ] **Step 2: Run** — FAIL.
 - [ ] **Step 3: Implement**; keep the pinned reads the tests name (recon `components.md` §12).
 - [ ] **Step 4: Run** focused, `npm test`, `npx tsc --noEmit`, `npm run lint`.
-- [ ] **Step 5: Commit** `feat(components): the candidates say when they were last removed from this parent; the components page's rows with names, documents and photo counts (group 4 plan 4)`
+- [ ] **Step 5: Commit** `feat(components): removal is a POST (it marks the link removed, nothing is deleted); the candidates say when they were last removed from this parent; the components page's rows with names, documents and photo counts (group 4 plan 4)`
 
 ### Task 3: The components page
 
@@ -139,9 +141,9 @@
 
 **Files:**
 - Create: `e2e/assets/register-components.spec.ts`, `e2e/assets/scan-search.spec.ts`; words in `e2e/assets/register-words.ts` (pinned in `tests/e2e-register.test.ts`); `CreateAssetOptions` gains `serialNumber?` in `e2e/transactions/tx-support.ts` (additive; update its pin)
-- Docs: `docs/04_AUTH_RBAC.md` (the scan route), `docs/06_WORKFLOWS.md`, `docs/07_UAT_CHECKLIST.md` (the confirmed removal, P4-R1; Enter on an exact match; the recent list), `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DESIGN.md`, `docs/99_CHANGELOG.md` (`## 2026-11-02` block for plan 4, E2E placeholders), `DEVELOPER_HANDOFF.md` (placeholders)
+- Docs: `docs/04_AUTH_RBAC.md` (the scan route; the remove route's new method), `docs/06_WORKFLOWS.md`, `docs/07_UAT_CHECKLIST.md` (Enter on an exact match; the recent list; the removal of an outstanding link), `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DESIGN.md`, `docs/99_CHANGELOG.md` (`## 2026-11-02` block for plan 4, E2E placeholders), `DEVELOPER_HANDOFF.md` (placeholders)
 
-- [ ] **Step 1: Write the specs** (itStaff): **components, all four projects**: a parent and a component by API; open `/th/assets/<parent>/components`; the header; "ติดตั้งส่วนควบ" opens the panel; search the component, pick it (name first, "ยังไม่ได้ติดตั้ง"), choose a role, review, save; the table's current row with the Thai role and "ติดตั้งอยู่"; ⋯ → ถอดส่วนควบ opens the dialog with "ติดตั้งกับทรัพย์สินหลัก → ถอดแล้ว" and "1 → 0 รายการ"; record it; **ยกเลิก** (never confirm, P4-R1); the row is still installed. **scan, all four projects**: a held asset with a run-unique Serial and an installed component by API; type part of the Serial → one card, "ตรงกับ Serial", the facts, the components line, the action links; open it, go back, "เปิดล่าสุด" lists it, "ล้างรายการ" empties it; Enter on the full tag opens the asset. Record each new state.
+- [ ] **Step 1: Write the specs** (itStaff): **components, all four projects**: a parent and a component by API; open `/th/assets/<parent>/components`; the header; "ติดตั้งส่วนควบ" opens the panel; search the component, pick it (name first, "ยังไม่ได้ติดตั้ง"), choose a role, review, save; the table's current row with the Thai role and "ติดตั้งอยู่"; ⋯ → ถอดส่วนควบ opens the dialog with "ติดตั้งกับทรัพย์สินหลัก → ถอดแล้ว" and "1 → 0 รายการ"; record it; type a reason and **ยืนยันถอดส่วนควบ** (the `POST …/remove` answers ok, P4-R1); the row moves to the past rows with its date, the name of who removed it and the reason; "ติดตั้งส่วนควบ" again and search the same component: its candidate line reads "เคยติดตั้งกับเครื่องนี้ · ถอดออก <วันที่>". **scan, all four projects**: a held asset with a run-unique Serial and an installed component by API; type part of the Serial → one card, "ตรงกับ Serial", the facts, the components line, the action links; open it, go back, "เปิดล่าสุด" lists it, "ล้างรายการ" empties it; Enter on the full tag opens the asset. Record each new state.
 - [ ] **Step 2: Run** `npx playwright test --list` on both, `npx tsx --test tests/e2e-register.test.ts tests/e2e-transactions.test.ts`.
 - [ ] **Step 3: Write the docs**; E2E results as placeholders.
 - [ ] **Step 4: Run** `npm test`, `npx tsc --noEmit`, `npm run lint`.
