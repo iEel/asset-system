@@ -124,10 +124,6 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           skipped: t("importHistorySkipped"),
           sourceFile: t("importHistorySourceFile"),
           approvedBy: t("importHistoryApprovedBy"),
-          rollbackReady: t("importHistoryRollbackReady"),
-          rollbackBlocked: t("importHistoryRollbackBlocked"),
-          rollbackAssets: t("importHistoryRollbackAssets"),
-          moreAssets: (count: string) => t("importHistoryMoreAssets", { count }),
           statusReady: t("importBatchStatusReady"),
           statusPartial: t("importBatchStatusPartial"),
           statusBlocked: t("importBatchStatusBlocked"),
@@ -157,17 +153,14 @@ function ImportHistoryPanel({
     skipped: string
     sourceFile: string
     approvedBy: string
-    rollbackReady: string
-    rollbackBlocked: string
-    rollbackAssets: string
-    moreAssets: (count: string) => string
     statusReady: string
     statusPartial: string
     statusBlocked: string
     statusEmpty: string
   }
 }) {
-  // Spec 2D D9: the history is a ContentPanel; each batch is a quiet grouping, and its state and rollback are StatusBadges.
+  // Spec 2D D9: the history is a ContentPanel; each batch is a quiet grouping, and its state is a StatusBadge. The rollback
+  // badge and asset list are gone (group 4 plan 5, call 21): no undo exists.
   return (
     <ContentPanel title={labels.title} description={labels.help}>
       {history.length === 0 ? (
@@ -195,33 +188,7 @@ function ImportHistoryPanel({
                     ]}
                   />
                 </div>
-
-                <div className="flex shrink-0 flex-col items-start gap-1">
-                  <StatusBadge
-                    label={batch.rollbackSummary.reversible ? labels.rollbackReady : labels.rollbackBlocked}
-                    tone={batch.rollbackSummary.reversible ? "success" : "muted"}
-                  />
-                  <span className="text-meta text-muted-foreground">
-                    {labels.rollbackAssets}: {formatCount(batch.rollbackSummary.assetCount)}
-                  </span>
-                </div>
               </div>
-
-              {batch.rollbackSummary.previewAssets.length > 0 ? (
-                <div className="mt-3 border-t border-border-soft pt-3">
-                  <div className="text-meta font-medium text-muted-foreground">{labels.rollbackAssets}</div>
-                  <ul className="mt-2 grid gap-1 text-sm text-foreground md:grid-cols-2">
-                    {batch.rollbackSummary.previewAssets.map((asset) => (
-                      <li key={`${batch.id}-${asset}`} className="truncate">
-                        {asset}
-                      </li>
-                    ))}
-                  </ul>
-                  {batch.rollbackSummary.hiddenAssetCount > 0 ? (
-                    <p className="mt-2 text-meta text-muted-foreground">{labels.moreAssets(formatCount(batch.rollbackSummary.hiddenAssetCount))}</p>
-                  ) : null}
-                </div>
-              ) : null}
             </article>
           ))}
         </div>

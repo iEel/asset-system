@@ -88,6 +88,14 @@ test("the scan search is registered for asset view, as the scan page; the viewer
   assert.deepEqual(entry?.checks, [{ module: "asset", action: "view" }])
 })
 
+test("every import and export route is in the matrix: export for asset view, the template, preview and confirm for asset create (group 4 plan 5)", () => {
+  const checks = (filePath: string) => rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === filePath)?.checks
+  assert.deepEqual(checks("src/app/api/assets/export/route.ts"), [{ module: "asset", action: "view" }])
+  assert.deepEqual(checks("src/app/api/assets/import-template/route.ts"), [{ module: "asset", action: "create" }])
+  assert.deepEqual(checks("src/app/api/assets/import-preview/route.ts"), [{ module: "asset", action: "create" }])
+  assert.deepEqual(checks("src/app/api/assets/import-confirm/route.ts"), [{ module: "asset", action: "create" }])
+})
+
 test("every API route has an explicit protection inventory classification", () => {
   const routeFiles = collectApiRouteFiles("src/app/api")
   const classifications = routeFiles.map((filePath) =>

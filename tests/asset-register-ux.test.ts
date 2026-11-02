@@ -186,12 +186,10 @@ test("asset import wizard labels are passed on every import surface", () => {
   assert.match(source, /collapseImportWizard: t\("collapseImportWizard"\)/)
 })
 
-test("asset import history formats hidden asset count when rendering", () => {
+test("asset import history shows no rollback block or asset list: no undo exists (group 4 plan 5, call 21)", () => {
   const source = importExportPageSource()
 
-  assert.doesNotMatch(source, /moreAssets:\s*t\("importHistoryMoreAssets"\)/)
-  assert.match(source, /moreAssets:\s*\(count: string\) => t\("importHistoryMoreAssets", \{ count \}\)/)
-  assert.match(source, /labels\.moreAssets\(formatCount\(batch\.rollbackSummary\.hiddenAssetCount\)\)/)
+  assert.doesNotMatch(source, /rollbackSummary|importHistoryRollback|importHistoryMoreAssets|labels\.moreAssets/)
 })
 
 test("asset register reuses the authoritative activity filter type", () => {

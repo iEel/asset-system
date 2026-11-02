@@ -151,7 +151,8 @@ test("import-export page: link cards on the panel frame with download for /api, 
   assert.match(source, /<ContentPanel title=\{labels\.title\} description=\{labels\.help\}>/)
   assert.match(source, /<EmptyNote>\{labels\.empty\}<\/EmptyNote>/)
   assert.match(source, /<StatusBadge label=\{formatImportBatchStatus\(batch\.status, labels\)\} tone=\{getAssetImportBatchStatusTone\(batch\.status\)\} \/>/)
-  assert.match(source, /<StatusBadge\n\s+label=\{batch\.rollbackSummary\.reversible \? labels\.rollbackReady : labels\.rollbackBlocked\}\n\s+tone=\{batch\.rollbackSummary\.reversible \? "success" : "muted"\}/)
+  // The rollback badge went with the undo line (group 4 plan 5, call 21).
+  assert.doesNotMatch(source, /rollbackSummary|labels\.rollback/)
   assert.match(source, /<span className="break-all font-mono">\{batch\.batchId\}<\/span>/)
   assert.doesNotMatch(source, /\b(?:bg|text|border)-amber-\d|primary-soft|border-dashed|rounded-full|toLocaleString|text-lg|\btext-xs\b|\{labels\.status\}: \{batch\.status\}/)
 })

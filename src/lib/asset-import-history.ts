@@ -1,4 +1,5 @@
-import type { AssetImportBatchAuditValue, AssetImportRollbackPlan } from "@/lib/asset-import-batch"
+import type { AssetImportBatchAuditValue, AssetImportSkippedRow } from "@/lib/asset-import-batch"
+import type { AssetImportIssue } from "@/lib/asset-import-validate"
 
 export type AssetImportHistoryLog = {
   id: string
@@ -8,12 +9,9 @@ export type AssetImportHistoryLog = {
   user: { username: string; displayName: string | null } | null
 }
 
-export type AssetImportRollbackSummary = {
-  reversible: boolean
-  assetCount: number
-  previewAssets: string[]
-  hiddenAssetCount: number
-}
+// What happened to a batch, from its counts (P5-R7): every row imported, or some rows skipped. An old log's status is the
+// preview's ("ready" / "partial"), which says what was left to do, not what happened.
+export type AssetImportHistoryOutcome = "complete" | "partial"
 
 export type AssetImportHistoryItem = {
   id: string
@@ -28,13 +26,16 @@ export type AssetImportHistoryItem = {
   imported: number
   skipped: number
   status: string
-  rollbackSummary: AssetImportRollbackSummary
+  outcome: AssetImportHistoryOutcome
+  skippedRows: AssetImportSkippedRow[]
+  skippedRowsHidden: number
 }
 
 export function buildAssetImportHistory(logs: AssetImportHistoryLog[]): AssetImportHistoryItem[] {
   return logs.map((log) => {
     const value = parseImportBatchAuditValue(log.newValue)
     const batchId = getString(value?.batchId) ?? log.recordId ?? "-"
+    const skipped = getNumber(value?.skipped)
 
     return {
       id: log.id,
@@ -47,28 +48,35 @@ export function buildAssetImportHistory(logs: AssetImportHistoryLog[]): AssetImp
       readyRows: getNumber(value?.readyRows),
       errorRows: getNumber(value?.errorRows),
       imported: getNumber(value?.imported),
-      skipped: getNumber(value?.skipped),
+      skipped,
       status: getString(value?.status) ?? "unknown",
-      rollbackSummary: summarizeImportRollbackPlan(value?.rollbackPlan),
+      outcome: skipped > 0 ? "partial" : "complete",
+      // Old logs have no skipped rows (written since group 4 plan 5); a stored row that does not read is left out.
+      skippedRows: readSkippedRows(value?.skippedRows),
+      skippedRowsHidden: getNumber(value?.skippedRowsHidden),
     }
   })
 }
 
-export function summarizeImportRollbackPlan(plan: AssetImportRollbackPlan | null | undefined, previewLimit = 5): AssetImportRollbackSummary {
-  if (!plan || !Array.isArray(plan.actions)) {
-    return { reversible: false, assetCount: 0, previewAssets: [], hiddenAssetCount: 0 }
-  }
+function readSkippedRows(value: unknown): AssetImportSkippedRow[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((entry: unknown) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return []
+    const record = entry as Record<string, unknown>
+    if (typeof record.row !== "number" || !Number.isFinite(record.row)) return []
+    return [{
+      row: record.row,
+      name: getString(record.name),
+      assetTag: getString(record.assetTag),
+      issues: Array.isArray(record.issues) ? record.issues.filter(isIssue) : [],
+    }]
+  })
+}
 
-  const previewAssets = plan.actions
-    .slice(0, Math.max(0, previewLimit))
-    .map((action) => `${action.assetTag} - ${action.name}`)
-
-  return {
-    reversible: Boolean(plan.reversible) && plan.assetCount > 0,
-    assetCount: Math.max(0, plan.assetCount),
-    previewAssets,
-    hiddenAssetCount: Math.max(0, plan.actions.length - previewAssets.length),
-  }
+function isIssue(value: unknown): value is AssetImportIssue {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  return typeof record.code === "string" && typeof record.field === "string"
 }
 
 function parseImportBatchAuditValue(value: string | null): AssetImportBatchAuditValue | null {

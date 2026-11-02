@@ -492,6 +492,7 @@ test("asset, operation, maintenance and import refusals about a field name it; t
     stubDb({
       asset: { findMany: () => assets }, assetCategory: none, company: none, branch: none, department: none, location: none,
       assetStatus: none, assetCondition: none, assetBrand: none, assetModel: none, employee: none, supplier: none,
+      systemLog: { findFirst: () => null },
     })
   }
   const tooMany = await workbookFile(Array.from({ length: 1001 }, (_, index) => [`T-${index}`, `Asset ${index}`, "NB"]))
@@ -500,6 +501,9 @@ test("asset, operation, maintenance and import refusals about a field name it; t
     emptyReferences()
     const form = new FormData()
     form.append("file", tooMany)
+    // Confirm refuses a request without the preview's batch id and count before it reads the file (P5-R2).
+    form.append("batchId", "IMPORT-20261102083015-ASSETS-1A2B")
+    form.append("expectedReadyRows", "1000")
     await expectBody(await POST(new Request("http://localhost/api/test", { method: "POST", body: form }), params), 400, {
       error: "ไฟล์นำเข้าได้ไม่เกิน 1,000 แถวต่อครั้ง", fieldErrors: { _form: "outOfRange" },
     })

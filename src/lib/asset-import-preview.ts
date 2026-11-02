@@ -168,7 +168,11 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
 
 // The preview's parse: the rows without their resolved ids (P5-R4).
 export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: AssetImportReferences): Promise<AssetImportPreviewResult> {
-  const parsed = await parseAssetImportWorkbookForConfirm(buffer, references)
+  return toAssetImportPreviewResult(await parseAssetImportWorkbookForConfirm(buffer, references))
+}
+
+// Confirm's parse as the preview answers it (confirm's 409 sends the fresh preview, P5-R2).
+export function toAssetImportPreviewResult(parsed: AssetImportConfirmParseResult): AssetImportPreviewResult {
   return {
     ...parsed,
     rows: parsed.rows.map((row) => ({ rowNumber: row.rowNumber, status: row.status, issues: row.issues, values: row.values })),

@@ -1,4 +1,5 @@
 import type { AssetImportPreviewResult } from "@/lib/asset-import-preview"
+import type { AssetImportIssue } from "@/lib/asset-import-validate"
 
 export type AssetImportBatchStatus = "ready" | "partial" | "blocked" | "empty"
 
@@ -20,6 +21,32 @@ export type AssetImportBatchAuditValue = AssetImportBatchSummary & {
   skipped: number
   approvedBy: string
   rollbackPlan?: AssetImportRollbackPlan
+  // Written since group 4 plan 5 (P5-R7); older batch logs have neither, so readers treat them as optional.
+  skippedRows?: AssetImportSkippedRow[]
+  skippedRowsHidden?: number
+}
+
+// A row the confirm skipped, and why (P5-R7): the same issues the preview showed.
+export type AssetImportSkippedRow = {
+  row: number
+  name: string | null
+  assetTag: string | null
+  issues: AssetImportIssue[]
+}
+
+export type AssetImportSkippedRows = {
+  skippedRows: AssetImportSkippedRow[]
+  skippedRowsHidden: number
+}
+
+// The batch log keeps at most this many skipped rows; the rest are only counted.
+export const ASSET_IMPORT_SKIPPED_ROWS_LIMIT = 50
+
+// The server's own batch id shape (buildAssetImportBatchId); a client id in any other shape is refused (P5-R2).
+const assetImportBatchIdPattern = /^IMPORT-\d{14}-[A-Z0-9-]{1,24}-[0-9A-Z]{4}$/
+
+export function isAssetImportBatchId(value: string) {
+  return assetImportBatchIdPattern.test(value)
 }
 
 export type AssetImportRollbackPlan = {
@@ -85,12 +112,14 @@ export function buildAssetImportBatchAuditValue({
   skipped,
   approvedBy,
   rollbackPlan,
+  skippedRows,
 }: {
   batch: AssetImportBatchSummary
   imported: number
   skipped: number
   approvedBy: string
   rollbackPlan?: AssetImportRollbackPlan
+  skippedRows?: AssetImportSkippedRows
 }): AssetImportBatchAuditValue {
   return {
     ...batch,
@@ -98,7 +127,31 @@ export function buildAssetImportBatchAuditValue({
     skipped,
     approvedBy,
     ...(rollbackPlan ? { rollbackPlan } : {}),
+    ...(skippedRows ? { skippedRows: skippedRows.skippedRows, skippedRowsHidden: skippedRows.skippedRowsHidden } : {}),
   }
+}
+
+// The error rows of a parse, in file order, the first `limit` kept with their name, tag and issues (P5-R7).
+export function buildAssetImportSkippedRows(
+  rows: ReadonlyArray<{ rowNumber: number; status: string; issues: AssetImportIssue[]; values: Record<string, string | number | null> }>,
+  limit = ASSET_IMPORT_SKIPPED_ROWS_LIMIT
+): AssetImportSkippedRows {
+  const errorRows = rows.filter((row) => row.status !== "ready")
+  return {
+    skippedRows: errorRows.slice(0, limit).map((row) => ({
+      row: row.rowNumber,
+      name: textValue(row.values.name),
+      assetTag: textValue(row.values.assetTag),
+      issues: row.issues,
+    })),
+    skippedRowsHidden: Math.max(0, errorRows.length - limit),
+  }
+}
+
+function textValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return null
+  const text = String(value).trim()
+  return text.length > 0 ? text : null
 }
 
 export function buildAssetImportRollbackPlan({

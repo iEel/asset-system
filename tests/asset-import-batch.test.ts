@@ -5,8 +5,10 @@ import {
   buildAssetImportBatchAuditValue,
   buildAssetImportBatchId,
   buildAssetImportRollbackPlan,
+  buildAssetImportSkippedRows,
   createAssetImportBatchSummary,
   getAssetImportBatchStatusTone,
+  isAssetImportBatchId,
 } from "../src/lib/asset-import-batch.ts"
 
 const createdAt = new Date("2026-05-20T08:30:15.000Z")
@@ -84,4 +86,39 @@ test("a batch status badge takes the tone of what is left to do, and an unknown 
     ["ready", "partial", "blocked", "empty", "unknown"].map(getAssetImportBatchStatusTone),
     ["success", "warning", "danger", "muted", "muted"],
   )
+})
+
+test("the batch log keeps the first 50 skipped rows with their issues, and counts the rest (P5-R7)", () => {
+  const errorRows = Array.from({ length: 60 }, (_, index) => ({
+    rowNumber: index + 2,
+    status: "error" as const,
+    issues: [{ code: "notFound" as const, field: "categoryCode", value: "XX" }],
+    values: { name: index === 0 ? null : `Asset ${index}`, assetTag: index === 0 ? "T-0" : null },
+  }))
+  const readyRow = { rowNumber: 62, status: "ready" as const, issues: [], values: { name: "Ready", assetTag: "R-1" } }
+
+  const skipped = buildAssetImportSkippedRows([readyRow, ...errorRows])
+  assert.equal(skipped.skippedRows.length, 50)
+  assert.equal(skipped.skippedRowsHidden, 10)
+  assert.deepEqual(skipped.skippedRows[0], { row: 2, name: null, assetTag: "T-0", issues: [{ code: "notFound", field: "categoryCode", value: "XX" }] })
+  assert.deepEqual(skipped.skippedRows[1], { row: 3, name: "Asset 1", assetTag: null, issues: [{ code: "notFound", field: "categoryCode", value: "XX" }] })
+  assert.equal(skipped.skippedRows.some((row) => row.row === 62), false)
+
+  const batch = createAssetImportBatchSummary({
+    fileName: "legacy assets.xlsx",
+    fileSize: 2048,
+    createdAt,
+    preview: { summary: { totalRows: 61, readyRows: 1, errorRows: 60 }, rows: [], mapping: [] },
+  })
+  const value = buildAssetImportBatchAuditValue({ batch, imported: 1, skipped: 60, approvedBy: "user-1", skippedRows: skipped })
+  assert.equal(value.skippedRows?.length, 50)
+  assert.equal(value.skippedRowsHidden, 10)
+})
+
+test("a batch id from the client is used only in the shape the server builds (P5-R2)", () => {
+  assert.equal(isAssetImportBatchId(buildAssetImportBatchId({ fileName: "legacy assets.xlsx", createdAt })), true)
+  assert.equal(isAssetImportBatchId(buildAssetImportBatchId({ fileName: "ทะเบียน.xlsx", createdAt })), true)
+  for (const bad of ["", "IMPORT-1", "import-20260520083015-LEGACY-16DD", "IMPORT-20260520083015-legacy-16DD", `IMPORT-20260520083015-${"A".repeat(25)}-16DD`, "IMPORT-20260520083015-LEGACY-16DD "]) {
+    assert.equal(isAssetImportBatchId(bad), false, bad)
+  }
 })

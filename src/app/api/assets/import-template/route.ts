@@ -3,13 +3,14 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { assetImportColumns, createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { assetOwnershipTypes } from "@/lib/asset-ownership"
+import { filterAssetCreateStatuses, filterSelectableConditions, normalizeAssetStateName } from "@/lib/asset-lifecycle-policy"
 
 export async function GET() {
   try {
     const user = await requireAuth()
     requirePermission(user, "asset", "create")
 
-    const [companies, branches, departments, locations, categories, brands, models, statuses, conditions, employees, suppliers] =
+    const [companies, branches, departments, locations, categories, brands, models, activeStatuses, activeConditions, employees, suppliers] =
       await Promise.all([
         prisma.company.findMany({ where: { isActive: true }, select: { code: true, nameTh: true }, orderBy: { code: "asc" } }),
         prisma.branch.findMany({ where: { isActive: true }, select: { code: true, name: true, company: { select: { code: true } } }, orderBy: { code: "asc" } }),
@@ -28,6 +29,13 @@ export async function GET() {
         prisma.supplier.findMany({ where: { isActive: true }, select: { code: true, name: true }, orderBy: { code: "asc" } }),
       ])
 
+    // Only what an import accepts (P5-R5): ร่าง or พร้อมใช้งาน, and the conditions the asset form offers. The example
+    // row takes พร้อมใช้งาน and ดี when they are there.
+    const statuses = filterAssetCreateStatuses(activeStatuses)
+    const conditions = filterSelectableConditions(activeConditions)
+    const exampleStatus = statuses.find((status) => normalizeAssetStateName(status.name) === "ready") ?? statuses[0]
+    const exampleCondition = conditions.find((condition) => normalizeAssetStateName(condition.name) === "good") ?? conditions[0]
+
     const workbook = createWorkbook()
     const template = workbook.addWorksheet("Asset Import")
     const exampleBranch = branches[0]
@@ -38,8 +46,8 @@ export async function GET() {
       companyCode: exampleBranch?.company.code ?? companies[0]?.code ?? "COMP",
       branchCode: exampleBranch?.code ?? "HQ",
       currentLocationCode: locations[0]?.code ?? "STORE",
-      status: statuses[0]?.nameTh ?? "พร้อมใช้งาน",
-      condition: conditions[0]?.nameTh ?? "ดี",
+      status: exampleStatus?.nameTh ?? "พร้อมใช้งาน",
+      condition: exampleCondition?.nameTh ?? "ดี",
       serialNumber: "SN-EXAMPLE-001",
       ownershipType: "personal",
       purchaseDate: "2026-05-01",

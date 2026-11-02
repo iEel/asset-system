@@ -191,6 +191,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       if (preview.batch?.batchId) {
         formData.append("batchId", preview.batch.batchId)
       }
+      formData.append("expectedReadyRows", String(preview.summary.readyRows))
       const response = await fetch("/api/assets/import-confirm", {
         method: "POST",
         body: formData,

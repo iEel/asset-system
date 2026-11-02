@@ -1,10 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import {
-  buildAssetImportHistory,
-  summarizeImportRollbackPlan,
-} from "../src/lib/asset-import-history.ts"
+import { buildAssetImportHistory } from "../src/lib/asset-import-history.ts"
 
 test("builds readable import batch history from audit logs", () => {
   const history = buildAssetImportHistory([
@@ -21,6 +18,13 @@ test("builds readable import batch history from audit logs", () => {
         imported: 2,
         skipped: 1,
         status: "partial",
+        skippedRows: [
+          { row: 4, name: "Monitor", assetTag: null, issues: [{ code: "notFound", field: "categoryCode", value: "XX" }] },
+          { row: "5", name: "Bad" },
+          null,
+          { row: 6, name: 7, assetTag: "T-6", issues: "not a list" },
+        ],
+        skippedRowsHidden: 3,
         rollbackPlan: {
           batchId: "IMPORT-1",
           reversible: true,
@@ -42,11 +46,46 @@ test("builds readable import batch history from audit logs", () => {
   assert.equal(history[0].approvedByLabel, "System Admin")
   assert.equal(history[0].imported, 2)
   assert.equal(history[0].skipped, 1)
-  assert.equal(history[0].rollbackSummary.assetCount, 2)
-  assert.equal(history[0].rollbackSummary.previewAssets[0], "SNI-EQU-26-0001 - Notebook")
+  // What happened, from the counts (P5-R7); the rollback plan is still stored but never read for the page (call 21).
+  assert.equal(history[0].outcome, "partial")
+  assert.deepEqual(history[0].skippedRows, [
+    { row: 4, name: "Monitor", assetTag: null, issues: [{ code: "notFound", field: "categoryCode", value: "XX" }] },
+    { row: 6, name: null, assetTag: "T-6", issues: [] },
+  ])
+  assert.equal(history[0].skippedRowsHidden, 3)
+  assert.equal("rollbackSummary" in history[0], false)
 })
 
-test("marks malformed import batch logs as non rollbackable history rows", () => {
+test("an old batch log with no skipped rows and the preview's status still reads, its outcome from the counts (Review Focus 5)", () => {
+  const history = buildAssetImportHistory([
+    {
+      id: "log-old",
+      recordId: "IMPORT-20260101000000-OLD-0001",
+      newValue: JSON.stringify({
+        batchId: "IMPORT-20260101000000-OLD-0001",
+        fileName: "old.xlsx",
+        fileSize: 1024,
+        totalRows: 2,
+        readyRows: 2,
+        errorRows: 0,
+        imported: 2,
+        skipped: 0,
+        status: "ready",
+        approvedBy: "user-1",
+      }),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      user: { username: "admin", displayName: null },
+    },
+  ])
+
+  assert.equal(history[0].outcome, "complete")
+  assert.deepEqual(history[0].skippedRows, [])
+  assert.equal(history[0].skippedRowsHidden, 0)
+  assert.equal(history[0].status, "ready")
+  assert.equal(history[0].approvedByLabel, "admin")
+})
+
+test("a malformed import batch log still reads as a history row", () => {
   const history = buildAssetImportHistory([
     {
       id: "log-2",
@@ -60,25 +99,7 @@ test("marks malformed import batch logs as non rollbackable history rows", () =>
   assert.equal(history.length, 1)
   assert.equal(history[0].batchId, "IMPORT-BAD")
   assert.equal(history[0].fileName, "-")
-  assert.equal(history[0].rollbackSummary.reversible, false)
+  assert.equal(history[0].outcome, "complete")
+  assert.deepEqual(history[0].skippedRows, [])
   assert.equal(history[0].approvedByLabel, "-")
-})
-
-test("summarizes rollback plan preview with hidden remainder", () => {
-  const summary = summarizeImportRollbackPlan({
-    batchId: "IMPORT-1",
-    reversible: true,
-    assetCount: 4,
-    actions: [
-      { action: "deactivate_imported_asset", assetId: "asset-1", assetTag: "A-001", name: "A" },
-      { action: "deactivate_imported_asset", assetId: "asset-2", assetTag: "A-002", name: "B" },
-      { action: "deactivate_imported_asset", assetId: "asset-3", assetTag: "A-003", name: "C" },
-      { action: "deactivate_imported_asset", assetId: "asset-4", assetTag: "A-004", name: "D" },
-    ],
-  }, 2)
-
-  assert.equal(summary.reversible, true)
-  assert.equal(summary.assetCount, 4)
-  assert.deepEqual(summary.previewAssets, ["A-001 - A", "A-002 - B"])
-  assert.equal(summary.hiddenAssetCount, 2)
 })
