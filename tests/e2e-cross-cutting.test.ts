@@ -224,8 +224,8 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   assert.ok(read("e2e/cross-cutting/support/forms.ts").includes("export function handoverForward(page: Page, device: E2eDevice): Promise<void>"))
   // Each form checks the field the test leaves wrong, with the code that sentence reads (the V track's validate()).
   const forms: [string, string, string][] = [
-    ["src/components/assets/asset-form.tsx", `check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)`, "asset-warranty-end"],
-    ["src/components/assets/asset-form.tsx", `check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))`, "asset-tag"],
+    ["src/lib/asset-form-rules.ts", `check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)`, "asset-warranty-end"],
+    ["src/lib/asset-form-rules.ts", `check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))`, "asset-tag"],
     ["src/components/asset-operations/checkout-form.tsx", `if (values.checkoutType === "user") check("handoverMode", required(values.handoverMode) && "handoverModeRequired")`, "checkout-handover-mode"],
     ["src/components/asset-operations/checkin-form.tsx", `check("conditionAfter", required(values.conditionAfter))`, "checkin-condition-after"],
     ["src/components/asset-operations/transfer-form.tsx", `check("reason", required(values.reason) ?? maxLength(values.reason, 500))`, "transfer-reason"],
@@ -242,7 +242,9 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   }
   // Every other id the spec fills is a control of its form.
   const controls: Record<string, string[]> = {
-    "src/components/assets/asset-form.tsx": ["asset-name", "asset-category", "asset-ownership-type", "asset-company", "asset-branch", "asset-department", "asset-current-location", "asset-status", "asset-condition", "asset-warranty-start"],
+    "src/components/assets/asset-form.tsx": ["asset-name", "asset-category", "asset-ownership-type", "asset-company", "asset-branch", "asset-department", "asset-current-location", "asset-status", "asset-condition"],
+    // Group 4 plan 2 Task 5: the warranty dates sit in the purchase section's own file.
+    "src/components/assets/asset-form-purchase.tsx": ["asset-warranty-start"],
     "src/components/asset-operations/checkout-form.tsx": ["checkout-destination", "checkout-condition"],
     "src/components/asset-operations/checkin-form.tsx": ["checkin-return-by", "checkin-receive-by", "checkin-condition-after", "checkin-next-status", "checkin-next-location"],
     "src/components/maintenance/repair-record-form.tsx": ["repair-record-asset"],

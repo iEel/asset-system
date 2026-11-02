@@ -11,7 +11,7 @@ const C = "src/components/"
 test("buttons in a row of 40px fields stay 40px: lg for text, icon-lg for icons (spec 2D D3, D5, M2)", () => {
   const rows: Array<[string, RegExp, number]> = [
     [`${C}assets/asset-batch-form.tsx`, /variant="outline"\n\s+size="icon-lg"\n\s+onClick=\{\(\) => handleRemoveRow\(row\.clientId\)\}/g, 1],
-    [`${C}assets/asset-form.tsx`, /<Button\n\s+variant="outline"\n\s+size="icon-lg"\n\s+className="justify-self-start"\n\s+onClick=\{\(\) => removeRow\(row\.id\)\}/g, 1],
+    [`${C}assets/asset-form-custom-fields.tsx`, /<Button\n\s+variant="outline"\n\s+size="icon-lg"\n\s+className="justify-self-start"\n\s+onClick=\{\(\) => removeRow\(row\.id\)\}/g, 1],
     [`${C}master-data/asset-model-form.tsx`, /variant="danger"\n\s+size="icon-lg"\n\s+onClick=\{\(\) => removeSpecItem\(item\.id\)\}/g, 1],
     [`${C}master-data/category-form.tsx`, /variant="outline"\n\s+size="icon-lg"\n\s+onClick=\{\(\) => (?:moveItem\(index, -1\)|moveItem\(index, 1\)|duplicateItem\(index\)|removeItem\(index\))\}/g, 4],
   ]

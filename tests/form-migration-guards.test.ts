@@ -52,6 +52,15 @@ const OLD_HELPER_MARKUP = /\bfunction (?:FormStep|WizardStep|Choice|AssetStateFi
 // not a line number. Empty since the V track, which checks every starred field in its form's validate() (GF4); the
 // meta-test fails while an entry is stale.
 const STAR_ONLY = new Set<string>([])
+// The section files of a form that checks itself: they hold no <form> and no validate() of their own, so GF4 reads each
+// as a part of the form that renders it (group 4 plan 2 Task 5 split the asset form).
+const V_FORM_PARTS: Record<string, string> = {
+  [`${C}assets/asset-form-section.tsx`]: `${C}assets/asset-form.tsx`,
+  [`${C}assets/asset-form-install.tsx`]: `${C}assets/asset-form.tsx`,
+  [`${C}assets/asset-form-purchase.tsx`]: `${C}assets/asset-form.tsx`,
+  [`${C}assets/asset-form-photos.tsx`]: `${C}assets/asset-form.tsx`,
+  [`${C}assets/asset-form-custom-fields.tsx`]: `${C}assets/asset-form.tsx`,
+}
 // Files that render StickyFormFooter and the routes that show them. Every route must be a focus route (no bottom navigation).
 const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
   [`${C}assets/asset-form.tsx`]: ["/th/assets/new", "/th/assets/sample-1/edit"],
@@ -102,7 +111,12 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}audit/audit-finding-review-actions.tsx`]: [1, 2, 0],
   [`${C}audit/audit-finding-decision.tsx`]: [0, 1, 0],
   [`${C}master-data/asset-model-form.tsx`]: [3, 1, 0],
-  [`${C}assets/asset-form.tsx`]: [12, 10, 0],
+  // Group 4 plan 2 Task 5: the asset form's [12, 10, 0] went with its controls to its section files; the five rows add up to it.
+  [`${C}assets/asset-form.tsx`]: [9, 3, 0],
+  [`${C}assets/asset-form-section.tsx`]: [1, 0, 0],
+  [`${C}assets/asset-form-install.tsx`]: [0, 3, 0],
+  [`${C}assets/asset-form-purchase.tsx`]: [0, 4, 0],
+  [`${C}assets/asset-form-custom-fields.tsx`]: [2, 0, 0],
   [`${C}assets/asset-batch-form.tsx`]: [10, 5, 0],
   [`${C}assets/asset-component-manager.tsx`]: [0, 4, 0],
   // Group 4 plan 1 Task 6: the saved view's name (maxLength 40).
@@ -274,7 +288,8 @@ test("GF3 hand-written field class strings stay in the shared field classes and 
 test("GF4 a Field that shows the required star keeps native required on its control (critic risk 5)", () => {
   const problems: string[] = []
   for (const file of sources) {
-    const vTrack = /\bnoValidate\b/.test(file.source) && /\bvalidate\(/.test(file.source)
+    const checksItself = (source: string) => /\bnoValidate\b/.test(source) && /\bvalidate\(/.test(source)
+    const vTrack = checksItself(file.source) || (Object.hasOwn(V_FORM_PARTS, file.path) && checksItself(read(V_FORM_PARTS[file.path])))
     for (const field of findJsxElements(file.source, "Field")) {
       const where = `${file.path}:${field.line}`
       const children = field.children ?? ""

@@ -180,14 +180,19 @@ test("the audit check sheet says when its photos upload, before any is chosen (s
 })
 
 test("the asset form's evidence boxes lose their tinted icon squares and the repeated photo title (call sites 7 and 8)", () => {
+  // Group 4 plan 2 Task 5: the two drop zones moved with their sections, asset-form-purchase.tsx and asset-form-photos.tsx.
   const source = readFileSync("src/components/assets/asset-form.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.equal(source.match(/rounded-md bg-primary-soft text-primary/g)?.length ?? 0, 0)
-  assert.doesNotMatch(source, /\b(?:Camera|FileText)\b/)
-  assert.equal(source.match(/<Section title=\{t\(isEdit \? "assetPhotos" : "initialAssetPhotos"\)\}>/g)?.length, 1, "the photo section title shows once, as its Section heading")
-  assert.equal(source.match(/"initialAssetPhotos"/g)?.length, 1)
+  const purchase = readFileSync("src/components/assets/asset-form-purchase.tsx", "utf8").replace(/\r\n/g, "\n")
+  const photos = readFileSync("src/components/assets/asset-form-photos.tsx", "utf8").replace(/\r\n/g, "\n")
+  for (const file of [source, purchase, photos]) {
+    assert.equal(file.match(/rounded-md bg-primary-soft text-primary/g)?.length ?? 0, 0)
+    assert.doesNotMatch(file, /\b(?:Camera|FileText)\b/)
+  }
+  assert.equal(photos.match(/<Section title=\{t\(isEdit \? "assetPhotos" : "initialAssetPhotos"\)\}>/g)?.length, 1, "the photo section title shows once, as its Section heading")
+  assert.deepEqual([source, purchase, photos].map((file) => file.match(/"initialAssetPhotos"/g)?.length ?? 0), [0, 0, 1])
   // The two drop zones themselves do not change.
-  assert.match(source, /<FileDropzone\n\s*file=\{selectedPurchaseFile\}/)
-  assert.match(source, /<FileDropzone\n\s*file=\{selectedAssetPhotoFile\}/)
+  assert.match(purchase, /<FileDropzone\n\s*file=\{selectedPurchaseFile\}/)
+  assert.match(photos, /<FileDropzone\n\s*file=\{selectedAssetPhotoFile\}/)
 })
 
 test("each missing checklist photo is a compact camera drop zone named by its checklist item that says ถ่ายรูป, and อัปโหลด only while it uploads; the free zone queues several files (call sites 3 and 4)", () => {

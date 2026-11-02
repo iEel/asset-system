@@ -158,7 +158,8 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
 
   // Each money control keeps step="0.01" and its validate() restates it after min: range(v, 0) ?? decimals(v, 2).
   const money: Record<string, readonly string[]> = {
-    [`${C}assets/asset-form.tsx`]: ["values.purchasePrice", "purchaseDocument.totalAmount"],
+    // Group 4 plan 2 Task 5: the asset form's money controls sit in its purchase section, their rules in asset-form-rules.ts.
+    [`${C}assets/asset-form-purchase.tsx`]: ["values.purchasePrice", "purchaseDocument.totalAmount"],
     [`${C}assets/asset-batch-form.tsx`]: ["common.purchasePrice"],
     [`${C}disposal/disposal-request-form.tsx`]: ["values.saleValue", "values.salvageValue"],
     [`${C}disposal/disposal-batch-form.tsx`]: ["values.saleValue", "values.salvageValue"],
@@ -169,11 +170,15 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
   }
   const withMoney = readSourceFiles("src/components").filter((file) => file.source.includes('step="0.01"')).map((file) => file.path)
   assert.deepEqual(withMoney.sort(), Object.keys(money).sort(), "every money control of the forms is in the list")
+  // A control file whose validate() lives in a pure rules file, which reads validation-rules by its relative .ts path.
+  const rulesOf: Record<string, string> = { [`${C}assets/asset-form-purchase.tsx`]: "src/lib/asset-form-rules.ts" }
   for (const [path, values] of Object.entries(money)) {
-    const source = read(path)
-    for (const value of values) assert.ok(source.includes(`range(${value}, 0) ?? decimals(${value}, 2))`), `${path}: ${value}`)
-    assert.doesNotMatch(source, /step\([^)]*, 0\.01\)/, `${path}: no money step() left`)
-    assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
+    const rulesPath = rulesOf[path] ?? path
+    const source = read(rulesPath)
+    for (const value of values) assert.ok(source.includes(`range(${value}, 0) ?? decimals(${value}, 2))`), `${rulesPath}: ${value}`)
+    for (const file of [path, rulesPath]) assert.doesNotMatch(read(file), /step\([^)]*, 0\.01\)/, `${file}: no money step() left`)
+    if (rulesOf[path]) assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "\.\/validation-rules\.ts"$/m, rulesPath)
+    else assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
   }
   // Whole numbers have their own rule and sentence, wholeNumber and notWholeNumber: the PM days (v-track final task 1).
   assert.ok(read(`${C}maintenance/maintenance-plan-form.tsx`).includes("range(values.intervalDays, 1, 3650) ?? wholeNumber(values.intervalDays)"))

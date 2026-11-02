@@ -147,5 +147,5 @@ test("IT staff register a software licence on the asset form, a wrong entry firs
   ]) {
     assert.ok(th.includes(line), line)
   }
-  assert.match(read("src/components/assets/asset-form.tsx"), /Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
+  assert.match(read("src/lib/asset-form-rules.ts"), /Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
 })

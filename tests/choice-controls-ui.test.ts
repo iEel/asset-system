@@ -104,7 +104,8 @@ test("the disposal asset picker marks options with the 16px box of the menu chec
 })
 
 test("the asset form's photo types are one radio group of chips with a legend and a hint (T5)", () => {
-  const source = readFileSync("src/components/assets/asset-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  // Group 4 plan 2 Task 5: the photo section and its ids moved to asset-form-photos.tsx.
+  const source = readFileSync("src/components/assets/asset-form-photos.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(source, /const photoLabelRadioName = useId\(\)/)
   assert.match(
     source,

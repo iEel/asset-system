@@ -26,7 +26,8 @@ test("one whole-number rule: every whole-number field reads its own sentence for
   assert.equal(messages("en").common.validation.notWholeNumber, "Enter a whole number")
   // Every whole-number field writes the shared rule after its range (plan 2 P-R8's three restatements are gone).
   const sites: Record<string, readonly string[]> = {
-    [`${C}assets/asset-form.tsx`]: [
+    // The asset form's rules live in asset-form-rules.ts since group 4 plan 2 Task 5.
+    "src/lib/asset-form-rules.ts": [
       'check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? wholeNumber(values.licenseTotalSeats))',
       'check("licenseUsedSeats", range(values.licenseUsedSeats, 0) ?? wholeNumber(values.licenseUsedSeats) ?? seatsExceeded(values))',
     ],
@@ -48,7 +49,9 @@ test("one whole-number rule: every whole-number field reads its own sentence for
   for (const [path, lines] of Object.entries(sites)) {
     const text = read(path)
     for (const line of lines) assert.ok(text.includes(line), `${path}: ${line}`)
-    assert.match(text, /^import \{[^}]*\bwholeNumber\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
+    // A pure rules file that tests import reads it by its relative .ts path (asset-form-rules.ts, like transfer-form-rules.ts).
+    if (path === "src/lib/asset-form-rules.ts") assert.match(text, /^import \{[^}]*\bwholeNumber\b[^}]*\} from "\.\/validation-rules\.ts"$/m, path)
+    else assert.match(text, /^import \{[^}]*\bwholeNumber\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)
     assert.doesNotMatch(text, /pattern\(String\(|function wholeNumber\(|Number\.isInteger\(Number\(value\.trim/, `${path}: no rule of its own`)
   }
   // No form restates a whole number with step(v, 1) any more.

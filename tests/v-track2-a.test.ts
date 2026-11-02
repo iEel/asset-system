@@ -12,7 +12,7 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 
 // The body of a module-level function, up to the first line that is only "}".
 function functionBody(source: string, name = "validate") {
-  const start = source.search(new RegExp(`^function ${name}\\(`, "m"))
+  const start = source.search(new RegExp(`^(?:export )?function ${name}\\(`, "m"))
   assert.notEqual(start, -1, `a module-level function ${name}(`)
   return source.slice(start, source.indexOf("\n}\n", start))
 }
@@ -47,7 +47,13 @@ function assertMovedForm(
 
 test("asset form: validate() restates every rule the toasts said, the save gates name their reason, and the warranty pair holds (v-track A1)", () => {
   const source = read(`${C}assets/asset-form.tsx`)
-  assertMovedForm(source, {
+  // Group 4 plan 2 Task 5: the rules moved to asset-form-rules.ts and the optional sections to their own files; the
+  // form is all of them, so the table and each id once are read over the form, its rules and its sections.
+  const rulesSource = read("src/lib/asset-form-rules.ts")
+  const purchaseSource = read(`${C}assets/asset-form-purchase.tsx`)
+  const customFieldsSource = read(`${C}assets/asset-form-custom-fields.tsx`)
+  const sectionSources = [read(`${C}assets/asset-form-install.tsx`), purchaseSource, read(`${C}assets/asset-form-photos.tsx`), customFieldsSource]
+  assertMovedForm([source, rulesSource, ...sectionSources].join("\n"), {
     ids: {
       assetTag: "asset-tag",
       name: "asset-name",
@@ -81,14 +87,17 @@ test("asset form: validate() restates every rule the toasts said, the save gates
       customFieldsJson: "asset-custom-fields-json",
     },
   })
-  const rules = functionBody(source)
-  assert.match(source, /^function validate\(\{ values, original, duplicates, install, customFields, purchaseDocument \}: AssetRuleInput\): Partial<Record<AssetField, string>> \{$/m)
+  const rules = functionBody(rulesSource)
+  assert.match(rulesSource, /^export function validate\(\{ values, original, duplicates, install, customFields, purchaseDocument \}: AssetRuleInput\): Partial<Record<AssetField, string>> \{$/m)
   for (const rule of [
     'check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))',
-    'check("name", required(values.name) ?? maxLength(values.name, 200))',
-    'check("categoryId", required(values.categoryId))',
+    // The required fields are getRequiredAssetFields' list, the one the form's counter reads (group 4 plan 2 Task 5).
+    "const requiredFields: readonly AssetField[] = getRequiredAssetFields(ownershipType)",
+    "const requiredField = (key: AssetRequiredField) => (requiredFields.includes(key) ? required(values[key]) : null)",
+    'check("name", requiredField("name") ?? maxLength(values.name, 200))',
+    'check("categoryId", requiredField("categoryId"))',
     'check("serialNumber", duplicates.serialNumber ? "duplicate" : maxLength(values.serialNumber, 100))',
-    'check("departmentId", ownershipType !== "personal" && !isLicense ? required(values.departmentId) : null)',
+    'check("departmentId", requiredField("departmentId"))',
     'check("custodianId", isLicense && atLeastOne([values.departmentId, values.custodianId]) ? "licenseResponsibilityRequired" : null)',
     // The seats are whole numbers: the shared rule (v-track final task 1).
     'check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? wholeNumber(values.licenseTotalSeats))',
@@ -101,14 +110,17 @@ test("asset form: validate() restates every rule the toasts said, the save gates
     'if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))',
     'check("customFieldsJson", isValidCustomFieldsJson(values.customFieldsJson) ? null : "customFieldsJsonInvalid")',
   ]) assert.ok(rules.includes(rule), rule)
+  // The department's star reads the same list, so the star and the rule cannot drift either.
+  assert.ok(source.includes('required={requiredFields.includes("departmentId")}'))
+  assert.ok(source.includes("const requiredFields: readonly AssetField[] = getRequiredAssetFields(ownershipType)"))
   // The warranty pair on edit is checked only when one of its dates changed, so an old asset stored with reversed dates
   // still saves an unrelated change (spec §7.4); the end cannot be picked before the start (U4).
   assert.match(rules, /const warrantyChanged =\n\s+!original \|\|\n\s+\(values\.warrantyStartDate \?\? ""\) !== \(original\.warrantyStartDate \?\? ""\) \|\|\n\s+\(values\.warrantyEndDate \?\? ""\) !== \(original\.warrantyEndDate \?\? ""\)/)
-  assert.match(source, /value=\{values\.warrantyStartDate \?\? ""\}\n\s+max=\{values\.warrantyEndDate \|\| undefined\}/)
-  assert.match(source, /value=\{values\.warrantyEndDate \?\? ""\}\n\s+min=\{values\.warrantyStartDate \|\| undefined\}/)
-  assert.match(functionBody(source, "seatsExceeded"), /return Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
+  assert.match(purchaseSource, /value=\{values\.warrantyStartDate \?\? ""\}\n\s+max=\{values\.warrantyEndDate \|\| undefined\}/)
+  assert.match(purchaseSource, /value=\{values\.warrantyEndDate \?\? ""\}\n\s+min=\{values\.warrantyStartDate \|\| undefined\}/)
+  assert.match(functionBody(rulesSource, "seatsExceeded"), /return Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
   // The asset rules keep the message their toast used (spec §7.1); the server's own codes read the catalog.
-  assert.match(source, /const ASSET_MESSAGE_CODES = \[\n\s+"componentParentRequired",\n\s+"componentRoleRequired",\n\s+"licenseResponsibilityRequired",\n\s+"purchaseDocumentNoRequired",\n\s+"fileRequired",\n\s+"customFieldsJsonInvalid",\n\] as const/)
+  assert.match(rulesSource, /export const ASSET_MESSAGE_CODES = \[\n\s+"componentParentRequired",\n\s+"componentRoleRequired",\n\s+"licenseResponsibilityRequired",\n\s+"purchaseDocumentNoRequired",\n\s+"fileRequired",\n\s+"customFieldsJsonInvalid",\n\] as const/)
   assert.match(source, /return code && isAssetMessageCode\(code\) \? t\(code\) : fieldErrors\.message\(key\)/)
   // No validation toast is left; the catch keeps its toast for the server's protected-status refusal.
   assert.doesNotMatch(source, /toast\.error\(t\("(?:duplicateWarning|customFieldsJsonInvalid|customFieldRequired|componentRoleRequired|componentParentRequired|licenseResponsibilityRequired|licenseSeatUsageInvalid|purchaseDocumentNoRequired|fileRequired)"/)
@@ -133,7 +145,7 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   // The server's refusal lands on the same fields; the raw JSON opens first; the template fields are ids by place.
   assert.match(source, /if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return\n\s+throw new Error\(result\?\.error \?\? tCommon\("error"\)\)/)
   assert.match(source, /reveal: \(key\) => \{\n\s+if \(key === "customFieldsJson"\) setShowRawJson\(true\)/)
-  assert.match(source, /id=\{`asset-custom-field-\$\{index\}`\}/)
+  assert.match(customFieldsSource, /id=\{`asset-custom-field-\$\{index\}`\}/)
   // The add buttons check their own fields under the same hook; the save's errors stay.
   assert.match(source, /const documentErrors = validatePurchaseDocument\(selectedPurchaseFile, purchaseDocumentNo\)/)
   assert.match(source, /fieldErrors\.setErrors\(\{ \.\.\.fieldErrors\.errors, assetPhotoFile: "fileRequired" \}\)/)

@@ -1,19 +1,15 @@
 "use client"
 
-import { useEffect, useId, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Code2, Plus, Save, Trash2 } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
-import { ChoiceCard, ChoiceChip } from "@/components/ui/choice-card"
-import { ContentPanel } from "@/components/ui/content-panel"
-import { EmptyNote } from "@/components/ui/empty-note"
-import { Field, FieldError } from "@/components/ui/field"
-import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
-import { FileDropzone } from "@/components/ui/file-dropzone"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { orNil } from "@/components/ui/nil"
@@ -22,126 +18,50 @@ import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
-import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { AssetFormCustomFields } from "@/components/assets/asset-form-custom-fields"
+import { AssetFormInstall } from "@/components/assets/asset-form-install"
+import { AssetFormPhotos } from "@/components/assets/asset-form-photos"
+import { AssetFormPurchase } from "@/components/assets/asset-form-purchase"
+import { Section, SelectField } from "@/components/assets/asset-form-section"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
+import {
+  attachmentMatchesPhotoLabel,
+  createClientId,
+  createCustomFieldRow,
+  customFieldKey,
+  emptyAssetFormValues,
+  FIELD_IDS,
+  fieldId,
+  fieldOrder,
+  getRequiredAssetFields,
+  isAssetMessageCode,
+  legacySanitizedPhotoLabel,
+  parseCustomFieldRows,
+  serializeCustomFieldRows,
+  validate,
+  validatePurchaseDocument,
+  type AssetField,
+  type AssetFixedField,
+  type AssetFormOption as Option,
+  type AssetFormValues,
+  type AssetPhotoDraft,
+  type CloneSourceContext,
+  type CustomFieldDefinition,
+  type CustomFieldRow,
+  type ExistingAssetPhoto,
+  type PurchaseDocumentDraft,
+  type PurchaseDocumentOption,
+  type PurchaseDocumentType,
+} from "@/lib/asset-form-rules"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
-import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { formatCount } from "@/lib/display-format"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
-import { formatFileSize } from "@/lib/uploads"
 import { cn } from "@/lib/utils"
-import { atLeastOne, decimals, maxLength, notBefore, range, required, wholeNumber } from "@/lib/validation-rules"
 
-type Option = {
-  id: string
-  label: string
-  name?: string | null
-  description?: string | null
-  code?: string | null
-  companyId?: string | null
-  branchId?: string | null
-  branchCode?: string | null
-  departmentId?: string | null
-  departmentCode?: string | null
-  categoryId?: string | null
-  brandId?: string | null
-  photoChecklist?: string[]
-}
-
-type CustomFieldDefinition = {
-  id: string
-  categoryId: string
-  fieldName: string
-  fieldLabel: string
-  fieldLabelTh?: string | null
-  fieldType: string
-  options: string[]
-  isRequired: boolean
-  sortOrder: number
-}
-
-type AssetFormValues = {
-  id?: string
-  assetTag?: string | null
-  name: string
-  categoryId: string
-  brandId?: string | null
-  modelId?: string | null
-  serialNumber?: string | null
-  licenseTotalSeats?: string | number | null
-  licenseUsedSeats?: string | number | null
-  licenseAssignedAssetId?: string | null
-  companyId: string
-  branchId: string
-  ownershipType?: string | null
-  departmentId?: string | null
-  custodianId?: string | null
-  homeLocationId?: string | null
-  currentLocationId: string
-  statusId: string
-  conditionId: string
-  purchaseDate?: string | null
-  purchasePrice?: string | null
-  supplierId?: string | null
-  warrantyStartDate?: string | null
-  warrantyEndDate?: string | null
-  fixedAssetCode?: string | null
-  poNumber?: string | null
-  invoiceNumber?: string | null
-  remark?: string | null
-  customFieldsJson?: string | null
-  purchaseDocumentIds?: string[]
-  isActive: boolean
-}
-
-type CustomFieldRow = {
-  id: string
-  key: string
-  value: string
-}
-
-type PurchaseDocumentOption = {
-  id: string
-  documentType: string
-  documentNo: string
-  poNumber?: string | null
-  invoiceNumber?: string | null
-  supplierName?: string | null
-  assetCount: number
-}
-
-type PurchaseDocumentDraft = {
-  id: string
-  documentType: string
-  documentNo: string
-  documentDate: string
-  totalAmount: string
-  file: File
-}
-
-type AssetPhotoDraft = {
-  id: string
-  label: string
-  file: File
-}
-
-type ExistingAssetPhoto = {
-  id: string
-  originalName: string
-  fileType: string
-  fileSize: number
-}
-
-type CloneSourceContext = {
-  id: string
-  assetTag: string
-  name: string
-}
-
-const purchaseDocumentTypes = ["purchase_order", "invoice", "delivery_note", "warranty", "quotation", "contract", "other"] as const
 const protectedAssetWorkflowStatuses = new Set([
   "pending disposal",
   "disposed",
@@ -151,184 +71,6 @@ const protectedAssetWorkflowStatuses = new Set([
   "under maintenance",
   "pending repair",
 ])
-
-const emptyAsset: AssetFormValues = {
-  assetTag: "",
-  name: "",
-  categoryId: "",
-  brandId: "",
-  modelId: "",
-  serialNumber: "",
-  licenseTotalSeats: "",
-  licenseUsedSeats: "",
-  licenseAssignedAssetId: "",
-  companyId: "",
-  branchId: "",
-  ownershipType: defaultAssetOwnershipType,
-  departmentId: "",
-  custodianId: "",
-  homeLocationId: "",
-  currentLocationId: "",
-  statusId: "",
-  conditionId: "",
-  purchaseDate: "",
-  purchasePrice: "",
-  supplierId: "",
-  warrantyStartDate: "",
-  warrantyEndDate: "",
-  fixedAssetCode: "",
-  poNumber: "",
-  invoiceNumber: "",
-  remark: "",
-  customFieldsJson: "",
-  isActive: true,
-}
-
-// The fields in visual order, keyed like the server's fieldErrors (the asset body's keys; the install, purchase
-// document and photo keys are this form's own), with the id focus moves to (v-track M-R1). The template's custom
-// fields sit between the photo and the raw JSON: fieldOrder() puts them there and fieldId() names them.
-const FIELD_IDS = {
-  assetTag: "asset-tag",
-  name: "asset-name",
-  categoryId: "asset-category",
-  serialNumber: "asset-serial-number",
-  ownershipType: "asset-ownership-type",
-  companyId: "asset-company",
-  branchId: "asset-branch",
-  departmentId: "asset-department",
-  custodianId: "asset-custodian",
-  licenseTotalSeats: "asset-license-total-seats",
-  licenseUsedSeats: "asset-license-used-seats",
-  currentLocationId: "asset-current-location",
-  statusId: "asset-status",
-  conditionId: "asset-condition",
-  parentAssetId: "asset-install-parent",
-  componentRole: "asset-install-role",
-  slotNo: "asset-install-slot",
-  installReason: "asset-install-reason",
-  purchaseDate: "asset-purchase-date",
-  purchasePrice: "asset-purchase-price",
-  warrantyStartDate: "asset-warranty-start",
-  warrantyEndDate: "asset-warranty-end",
-  fixedAssetCode: "asset-fixed-asset-code",
-  poNumber: "asset-po-number",
-  invoiceNumber: "asset-invoice-number",
-  purchaseDocumentNo: "asset-purchase-document-no",
-  purchaseDocumentAmount: "asset-purchase-document-amount",
-  purchaseDocumentFile: "asset-purchase-document-file",
-  assetPhotoFile: "asset-photo-file",
-  customFieldsJson: "asset-custom-fields-json",
-} as const
-type AssetFixedField = keyof typeof FIELD_IDS
-type AssetField = AssetFixedField | `customFields.${string}`
-
-// The asset rules that read the message their toast used (spec §7.1); every other code reads common.validation or the
-// api-error catalog through the hook.
-const ASSET_MESSAGE_CODES = [
-  "componentParentRequired",
-  "componentRoleRequired",
-  "licenseResponsibilityRequired",
-  "purchaseDocumentNoRequired",
-  "fileRequired",
-  "customFieldsJsonInvalid",
-] as const
-type AssetMessageCode = (typeof ASSET_MESSAGE_CODES)[number]
-
-function isAssetMessageCode(code: string): code is AssetMessageCode {
-  return (ASSET_MESSAGE_CODES as readonly string[]).includes(code)
-}
-
-function customFieldKey(fieldName: string): AssetField {
-  return `customFields.${fieldName}`
-}
-
-// Visual order: the fixed fields, the template's custom fields, then the raw JSON.
-function fieldOrder(definitions: CustomFieldDefinition[]): AssetField[] {
-  const fixed = (Object.keys(FIELD_IDS) as AssetFixedField[]).filter((key) => key !== "customFieldsJson")
-  return [...fixed, ...definitions.map((definition) => customFieldKey(definition.fieldName)), "customFieldsJson"]
-}
-
-// A custom field's id is its place in the template: a field name may hold a space, which an id list cannot.
-function fieldId(key: AssetField, definitions: CustomFieldDefinition[]): string {
-  if (key in FIELD_IDS) return FIELD_IDS[key as AssetFixedField]
-  return `asset-custom-field-${definitions.findIndex((definition) => customFieldKey(definition.fieldName) === key)}`
-}
-
-type AssetRuleInput = {
-  values: AssetFormValues
-  // The stored asset on edit: the warranty pair is checked only when one of its dates changed (spec §7.4).
-  original?: AssetFormValues
-  duplicates: { assetTag: boolean; serialNumber: boolean }
-  install: { parentAssetId: string; componentRole: string; slotNo: string; reason: string }
-  customFields: { definitions: CustomFieldDefinition[]; valueOf: (fieldName: string) => string }
-  purchaseDocument: { file: File | null; documentNo: string; totalAmount: string }
-}
-
-// noValidate turns the browser's check off, so this restates the controls' required, maxLength, min and the seats'
-// step, and the rules the toasts used to say: the duplicate tag and serial, the license's assignee or department and
-// its seats, the warranty pair, the install after create, the template's required fields, the raw JSON and a chosen
-// purchase document's number (v-track M-R2, spec §7.4).
-function validate({ values, original, duplicates, install, customFields, purchaseDocument }: AssetRuleInput): Partial<Record<AssetField, string>> {
-  const errors: Partial<Record<AssetField, string>> = {}
-  const check = (key: AssetField, code: string | null) => {
-    if (code) errors[key] = code
-  }
-  const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
-  const isLicense = ownershipType === "software_license"
-  const warrantyChanged =
-    !original ||
-    (values.warrantyStartDate ?? "") !== (original.warrantyStartDate ?? "") ||
-    (values.warrantyEndDate ?? "") !== (original.warrantyEndDate ?? "")
-  check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))
-  check("name", required(values.name) ?? maxLength(values.name, 200))
-  check("categoryId", required(values.categoryId))
-  check("serialNumber", duplicates.serialNumber ? "duplicate" : maxLength(values.serialNumber, 100))
-  check("ownershipType", required(values.ownershipType))
-  check("companyId", required(values.companyId))
-  check("branchId", required(values.branchId))
-  check("departmentId", ownershipType !== "personal" && !isLicense ? required(values.departmentId) : null)
-  check("custodianId", isLicense && atLeastOne([values.departmentId, values.custodianId]) ? "licenseResponsibilityRequired" : null)
-  if (isLicense) {
-    check("licenseTotalSeats", range(values.licenseTotalSeats, 0) ?? wholeNumber(values.licenseTotalSeats))
-    check("licenseUsedSeats", range(values.licenseUsedSeats, 0) ?? wholeNumber(values.licenseUsedSeats) ?? seatsExceeded(values))
-  }
-  check("currentLocationId", required(values.currentLocationId))
-  check("statusId", required(values.statusId))
-  check("conditionId", required(values.conditionId))
-  if (!original) {
-    check("parentAssetId", ownershipType === "component" && required(install.parentAssetId) ? "componentParentRequired" : null)
-    check("componentRole", install.parentAssetId && required(install.componentRole) ? "componentRoleRequired" : maxLength(install.componentRole, 100))
-    check("slotNo", maxLength(install.slotNo, 50))
-    check("installReason", maxLength(install.reason, 500))
-  }
-  check("purchasePrice", range(values.purchasePrice, 0) ?? decimals(values.purchasePrice, 2))
-  check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)
-  check("fixedAssetCode", maxLength(values.fixedAssetCode, 50))
-  check("poNumber", maxLength(values.poNumber, 50))
-  check("invoiceNumber", maxLength(values.invoiceNumber, 50))
-  check("purchaseDocumentNo", purchaseDocument.file && required(purchaseDocument.documentNo) ? "purchaseDocumentNoRequired" : maxLength(purchaseDocument.documentNo, 100))
-  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0) ?? decimals(purchaseDocument.totalAmount, 2))
-  for (const definition of customFields.definitions) {
-    if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))
-  }
-  check("customFieldsJson", isValidCustomFieldsJson(values.customFieldsJson) ? null : "customFieldsJsonInvalid")
-  return errors
-}
-
-// The purchase document's add button: a file and its number (the number's rule matches the save's).
-function validatePurchaseDocument(file: File | null, documentNo: string): Partial<Record<AssetField, string>> {
-  const errors: Partial<Record<AssetField, string>> = {}
-  if (!file) errors.purchaseDocumentFile = "fileRequired"
-  const number = required(documentNo) ? "purchaseDocumentNoRequired" : maxLength(documentNo, 100)
-  if (number) errors.purchaseDocumentNo = number
-  return errors
-}
-
-// The server's rule (validations/asset.ts): used seats never exceed the total, when both are given.
-function seatsExceeded(values: AssetFormValues): "licenseSeatsExceeded" | null {
-  if (required(values.licenseTotalSeats) || required(values.licenseUsedSeats)) return null
-  return Number(values.licenseUsedSeats) > Number(values.licenseTotalSeats) ? "licenseSeatsExceeded" : null
-}
 
 export function AssetForm({
   asset,
@@ -374,10 +116,7 @@ export function AssetForm({
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const apiError = useApiError()
-  // The photo-type chips are one radio group (T5): one name for the group and one id for its hint.
-  const photoLabelRadioName = useId()
-  const photoLabelHintId = useId()
-  const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAsset)
+  const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAssetFormValues)
   const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>(() => parseCustomFieldRows(asset?.customFieldsJson))
   const [installAfterCreate, setInstallAfterCreate] = useState({
     parentAssetId: "",
@@ -385,7 +124,7 @@ export function AssetForm({
     slotNo: "",
     reason: "",
   })
-  const [purchaseDocumentType, setPurchaseDocumentType] = useState<(typeof purchaseDocumentTypes)[number]>("purchase_order")
+  const [purchaseDocumentType, setPurchaseDocumentType] = useState<PurchaseDocumentType>("purchase_order")
   const [purchaseDocumentNo, setPurchaseDocumentNo] = useState("")
   const [purchaseDocumentDate, setPurchaseDocumentDate] = useState("")
   const [purchaseDocumentTotalAmount, setPurchaseDocumentTotalAmount] = useState("")
@@ -411,6 +150,8 @@ export function AssetForm({
   const backHref = providedBackHref ?? `/${locale}/assets`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
   const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
+  // The department's star reads the list validate() and the counter read (asset-form-rules.ts).
+  const requiredFields: readonly AssetField[] = getRequiredAssetFields(ownershipType)
   const currentStatusId = asset?.statusId ?? ""
   const selectedStatus = statuses.find((status) => status.id === values.statusId)
   const currentStatus = statuses.find((status) => status.id === currentStatusId)
@@ -1149,7 +890,7 @@ export function AssetForm({
             label={t("department")}
             id="asset-department"
             value={values.departmentId ?? ""}
-            required={ownershipType !== "personal" && !isSoftwareLicense}
+            required={requiredFields.includes("departmentId")}
             error={errorText("departmentId")}
             onChange={(value) => setField("departmentId", value)}
           >
@@ -1311,404 +1052,72 @@ export function AssetForm({
         </Section>
 
         {!isEdit && (
-          <Section title={t("installAfterCreate")}>
-            <div className="md:col-span-2">
-              <p className="text-sm text-muted-foreground">
-                {ownershipType === "component" ? t("installAfterCreateComponentHelp") : t("installAfterCreateHelp")}
-              </p>
-            </div>
-            <SelectField
-              label={t("parentAsset")}
-              id="asset-install-parent"
-              value={installAfterCreate.parentAssetId}
-              error={errorText("parentAssetId")}
-              onChange={(value) => setInstallField("parentAssetId", value)}
-            >
-              <option value="">{t("skipInstallAfterCreate")}</option>
-              {parentAssets.map((parentAsset) => (
-                <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
-              ))}
-            </SelectField>
-            <Field
-              label={t("componentRole")}
-              id="asset-install-role"
-              required={Boolean(installAfterCreate.parentAssetId)}
-              error={errorText("componentRole")}
-            >
-              <Input
-                value={installAfterCreate.componentRole}
-                onChange={(event) => setInstallField("componentRole", event.target.value)}
-                maxLength={100}
-                placeholder="Harddisk"
-                disabled={!installAfterCreate.parentAssetId}
-              />
-            </Field>
-            <Field label={t("slotNo")} id="asset-install-slot" error={errorText("slotNo")}>
-              <Input
-                value={installAfterCreate.slotNo}
-                onChange={(event) => setInstallField("slotNo", event.target.value)}
-                maxLength={50}
-                placeholder="Slot 1"
-                disabled={!installAfterCreate.parentAssetId}
-              />
-            </Field>
-            <Field label={t("reason")} id="asset-install-reason" error={errorText("installReason")}>
-              <Input
-                value={installAfterCreate.reason}
-                onChange={(event) => setInstallField("reason", event.target.value)}
-                maxLength={500}
-                disabled={!installAfterCreate.parentAssetId}
-              />
-            </Field>
-          </Section>
+          <AssetFormInstall
+            ownershipType={ownershipType}
+            installAfterCreate={installAfterCreate}
+            parentAssets={parentAssets}
+            errorText={errorText}
+            setInstallField={setInstallField}
+          />
         )}
 
-        {/* The anchor of the asset page's "บันทึกข้อมูลการซื้อ" and "เพิ่มข้อมูล" (group 1 asset detail task 8). */}
-        <div id="purchase" className="scroll-mt-24">
-          <Section title={t("purchaseWarranty")}>
-            <Field label={t("purchaseDate")} id="asset-purchase-date" error={errorText("purchaseDate")}>
-              <Input type="date" value={values.purchaseDate ?? ""} onChange={(event) => setField("purchaseDate", event.target.value)} />
-            </Field>
-            <Field label={t("purchasePriceBaht")} id="asset-purchase-price" error={errorText("purchasePrice")}>
-              <Input type="number" min="0" step="0.01" inputMode="decimal" value={values.purchasePrice ?? ""} onChange={(event) => setField("purchasePrice", event.target.value)} />
-            </Field>
-            <SelectField label={t("supplier")} value={values.supplierId ?? ""} onChange={(value) => setField("supplierId", value)}>
-              <option value="">{t("selectSupplier")}</option>
-              {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
-            </SelectField>
-            {/* The end cannot be picked before the start (spec U4, §7.4). */}
-            <Field label={t("warrantyStart")} id="asset-warranty-start" error={errorText("warrantyStartDate")}>
-              <Input
-                type="date"
-                value={values.warrantyStartDate ?? ""}
-                max={values.warrantyEndDate || undefined}
-                onChange={(event) => setField("warrantyStartDate", event.target.value)}
-              />
-            </Field>
-            <Field label={t("warrantyEnd")} id="asset-warranty-end" error={errorText("warrantyEndDate")}>
-              <Input
-                type="date"
-                value={values.warrantyEndDate ?? ""}
-                min={values.warrantyStartDate || undefined}
-                onChange={(event) => setField("warrantyEndDate", event.target.value)}
-              />
-            </Field>
-            <Field label={t("fixedAssetCode")} id="asset-fixed-asset-code" error={errorText("fixedAssetCode")}>
-              <Input value={values.fixedAssetCode ?? ""} onChange={(event) => setField("fixedAssetCode", event.target.value)} maxLength={50} />
-            </Field>
-            <Field label={t("poNumber")} id="asset-po-number" error={errorText("poNumber")}>
-              <Input value={values.poNumber ?? ""} onChange={(event) => setField("poNumber", event.target.value)} maxLength={50} />
-            </Field>
-            <Field label={t("invoiceNumber")} id="asset-invoice-number" error={errorText("invoiceNumber")}>
-              <Input value={values.invoiceNumber ?? ""} onChange={(event) => setField("invoiceNumber", event.target.value)} maxLength={50} />
-            </Field>
-            <div className="md:col-span-2">
-              <div className="rounded-md border border-border bg-background p-4">
-                <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">{t("purchaseDocuments")}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("purchaseDocumentsHelp")}</p>
-                </div>
+        <AssetFormPurchase
+          values={values}
+          setField={setField}
+          errorText={errorText}
+          fieldErrors={fieldErrors}
+          saving={saving}
+          suppliers={suppliers}
+          purchaseDocumentOptions={purchaseDocumentOptions}
+          selectedPurchaseDocumentIds={selectedPurchaseDocumentIds}
+          togglePurchaseDocument={togglePurchaseDocument}
+          purchaseDocumentType={purchaseDocumentType}
+          setPurchaseDocumentType={setPurchaseDocumentType}
+          purchaseDocumentNo={purchaseDocumentNo}
+          setPurchaseDocumentNo={setPurchaseDocumentNo}
+          purchaseDocumentDate={purchaseDocumentDate}
+          setPurchaseDocumentDate={setPurchaseDocumentDate}
+          purchaseDocumentTotalAmount={purchaseDocumentTotalAmount}
+          setPurchaseDocumentTotalAmount={setPurchaseDocumentTotalAmount}
+          selectedPurchaseFile={selectedPurchaseFile}
+          selectPurchaseFile={selectPurchaseFile}
+          addPurchaseDocument={addPurchaseDocument}
+          newPurchaseDocuments={newPurchaseDocuments}
+          removePurchaseDocument={removePurchaseDocument}
+        />
 
-                <div className="mb-4 space-y-2">
-                  <h4 className="text-meta font-medium text-muted-foreground">{t("existingPurchaseDocuments")}</h4>
-                  {purchaseDocumentOptions.length === 0 ? (
-                    <EmptyNote>{t("noPurchaseDocuments")}</EmptyNote>
-                  ) : (
-                    // Each document is a shared ChoiceCard (spec 2D D9): Enter in it no longer submits the form.
-                    <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                      {purchaseDocumentOptions.map((document) => (
-                        <ChoiceCard
-                          key={document.id}
-                          type="checkbox"
-                          checked={selectedPurchaseDocumentIds.includes(document.id)}
-                          onChange={() => togglePurchaseDocument(document.id)}
-                          label={<>{t(`purchaseDocumentTypes.${document.documentType}`)} · <span className="tag">{document.documentNo}</span></>}
-                          description={<>{orNil(document.supplierName)} · {t("linkedAssets", { count: document.assetCount })}</>}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+        <AssetFormPhotos
+          isEdit={isEdit}
+          categoryId={values.categoryId}
+          errorText={errorText}
+          fieldErrors={fieldErrors}
+          saving={saving}
+          selectedPhotoChecklist={selectedPhotoChecklist}
+          effectivePhotoLabel={effectivePhotoLabel}
+          queuedPhotoLabels={queuedPhotoLabels}
+          existingPhotoLabels={existingPhotoLabels}
+          setPhotoLabel={setPhotoLabel}
+          selectedAssetPhotoFile={selectedAssetPhotoFile}
+          selectAssetPhotoFile={selectAssetPhotoFile}
+          existingAssetPhotos={existingAssetPhotos}
+          addAssetPhoto={addAssetPhoto}
+          newAssetPhotos={newAssetPhotos}
+          removeAssetPhoto={removeAssetPhoto}
+        />
 
-                <div className="border-t border-border pt-4">
-                  <h4 className="mb-3 text-meta font-medium text-muted-foreground">{t("createPurchaseDocument")}</h4>
-                  <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
-                    <Field label={t("documentType")}>
-                      <NativeSelect
-                        value={purchaseDocumentType}
-                        onChange={(event) => setPurchaseDocumentType(event.target.value as (typeof purchaseDocumentTypes)[number])}
-                      >
-                        {purchaseDocumentTypes.map((type) => (
-                          <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-                    <Field label={t("purchaseDocumentNo")} id="asset-purchase-document-no" error={errorText("purchaseDocumentNo")}>
-                      <Input
-                        value={purchaseDocumentNo}
-                        onChange={(event) => {
-                          setPurchaseDocumentNo(event.target.value)
-                          fieldErrors.clear("purchaseDocumentNo")
-                        }}
-                        maxLength={100}
-                      />
-                    </Field>
-                    <Field label={t("purchaseDocumentDate")}>
-                      <Input type="date" value={purchaseDocumentDate} onChange={(event) => setPurchaseDocumentDate(event.target.value)} />
-                    </Field>
-                    <Field label={t("purchaseDocumentAmountBaht")} id="asset-purchase-document-amount" error={errorText("purchaseDocumentAmount")}>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        inputMode="decimal"
-                        value={purchaseDocumentTotalAmount}
-                        onChange={(event) => {
-                          setPurchaseDocumentTotalAmount(event.target.value)
-                          fieldErrors.clear("purchaseDocumentAmount")
-                        }}
-                      />
-                    </Field>
-                  </div>
-                  {/* The drop box's title is its name, so it takes the field's id, error tie and look itself (no Field label). */}
-                  <FileDropzone
-                    file={selectedPurchaseFile}
-                    onFileChange={selectPurchaseFile}
-                    id="asset-purchase-document-file"
-                    aria-invalid={fieldErrors.errors.purchaseDocumentFile ? true : undefined}
-                    aria-describedby={fieldErrors.errors.purchaseDocumentFile ? "asset-purchase-document-file-error" : undefined}
-                    disabled={saving}
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.doc,.docx"
-                    title={t("dropPurchaseDocumentTitle")}
-                    hint={t("dropFileSelected")}
-                    browseLabel={t("dropFileHint")}
-                  />
-                  {fieldErrors.errors.purchaseDocumentFile ? (
-                    <FieldError id="asset-purchase-document-file-error" className="mt-1.5">{errorText("purchaseDocumentFile")}</FieldError>
-                  ) : null}
-                </div>
-
-                <Button variant="outline" size="md" className="mt-3" onClick={addPurchaseDocument} disabled={saving}>
-                  <Plus aria-hidden="true" />
-                  {t("addPurchaseDocument")}
-                </Button>
-
-                {newPurchaseDocuments.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {newPurchaseDocuments.map((document) => (
-                      <div key={document.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-foreground">
-                            {t(`purchaseDocumentTypes.${document.documentType}`)} · {document.documentNo} · {document.file.name}
-                          </div>
-                          <div className="mt-0.5 text-meta text-muted-foreground">{formatFileSize(document.file.size)}</div>
-                        </div>
-                        <Button
-                          variant="danger"
-                          size="icon-sm"
-                          className="shrink-0"
-                          onClick={() => removePurchaseDocument(document.id)}
-                          aria-label={t("removePurchaseDocument")}
-                          title={t("removePurchaseDocument")}
-                        >
-                          <Trash2 aria-hidden="true" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Section>
-        </div>
-
-        <Section title={t(isEdit ? "assetPhotos" : "initialAssetPhotos")}>
-          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-            <p className="mb-3 text-sm text-muted-foreground">{t(isEdit ? "assetPhotosEditHelp" : "initialAssetPhotosHelp")}</p>
-
-            {selectedPhotoChecklist.length > 0 ? (
-              <div className="mb-3">
-                <fieldset className="min-w-0" aria-describedby={photoLabelHintId}>
-                  <legend className={fieldLabelClasses}>{t("selectPhotoType")}</legend>
-                  <p id={photoLabelHintId} className="mt-1 text-meta text-faint-foreground">
-                    {t("autoPhotoLabelHint", { label: effectivePhotoLabel || t("generalPhoto") })}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {selectedPhotoChecklist.map((item) => {
-                      const isSelected = effectivePhotoLabel === item
-                      const isQueued = queuedPhotoLabels.has(item)
-                      const alreadyExists = existingPhotoLabels.has(item)
-
-                      return (
-                        <ChoiceChip
-                          key={item}
-                          type="radio"
-                          name={photoLabelRadioName}
-                          checked={isSelected}
-                          onChange={() => setPhotoLabel(item)}
-                          label={item}
-                          detail={
-                            <span className={alreadyExists || isQueued ? "text-success" : undefined}>
-                              {alreadyExists ? t("photoChecklistDone") : isQueued ? t("photoChecklistQueued") : t("photoChecklistPending")}
-                            </span>
-                          }
-                        />
-                      )
-                    })}
-                  </div>
-                </fieldset>
-              </div>
-            ) : (
-              <EmptyNote className="mb-3">
-                {values.categoryId ? t("photoChecklistEmptyForCategory") : t("photoChecklistSelectCategory")}
-              </EmptyNote>
-            )}
-
-            <FileDropzone
-              file={selectedAssetPhotoFile}
-              onFileChange={selectAssetPhotoFile}
-              id="asset-photo-file"
-              aria-invalid={fieldErrors.errors.assetPhotoFile ? true : undefined}
-              aria-describedby={fieldErrors.errors.assetPhotoFile ? "asset-photo-file-error" : undefined}
-              disabled={saving}
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
-              capture="environment"
-              title={t("dropAssetPhotoTitle")}
-              hint={t("dropFileSelected")}
-              browseLabel={t("dropAssetPhotoHint")}
-            />
-            {fieldErrors.errors.assetPhotoFile ? (
-              <FieldError id="asset-photo-file-error" className="mt-1.5">{errorText("assetPhotoFile")}</FieldError>
-            ) : null}
-
-            {existingAssetPhotos.length > 0 && (
-              <div className="mt-4">
-                <h3 className="mb-3 text-sm font-semibold text-foreground">{t("existingAssetPhotos")}</h3>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {existingAssetPhotos.map((photo) => (
-                    <a
-                      key={photo.id}
-                      href={`/api/attachments/${photo.id}?inline=1`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="overflow-hidden rounded-md border border-border bg-surface transition-colors hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <div className="flex aspect-video items-center justify-center bg-background p-2">
-                        {/* Authenticated attachment URLs render more reliably as browser-native images. */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/api/attachments/${photo.id}?inline=1`}
-                          alt={photo.originalName}
-                          width={240}
-                          height={160}
-                          loading="lazy"
-                          className="max-h-full w-full object-contain bg-image-stage"
-                        />
-                      </div>
-                      <div className="border-t border-border p-2">
-                        <div className="truncate text-meta font-medium text-foreground">{photo.originalName}</div>
-                        <div className="mt-0.5 text-meta text-muted-foreground">{formatFileSize(photo.fileSize)}</div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-            <Button variant="outline" size="md" className="mt-3" onClick={addAssetPhoto} disabled={saving}>
-              <Plus aria-hidden="true" />
-              {effectivePhotoLabel ? t("addAssetPhotoWithLabel", { label: effectivePhotoLabel }) : t("addAssetPhoto")}
-            </Button>
-
-            {newAssetPhotos.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {newAssetPhotos.map((photo) => (
-                  <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-foreground">
-                        {photo.label ? `${photo.label} · ` : ""}{photo.file.name}
-                      </div>
-                      <div className="mt-0.5 text-meta text-muted-foreground">{formatFileSize(photo.file.size)}</div>
-                    </div>
-                    <Button
-                      variant="danger"
-                      size="icon-sm"
-                      className="shrink-0"
-                      onClick={() => removeAssetPhoto(photo.id)}
-                      aria-label={t("removeAssetPhoto")}
-                      title={t("removeAssetPhoto")}
-                    >
-                      <Trash2 aria-hidden="true" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Section>
-
-        <Section title={t("customFields")}>
-          <div className="md:col-span-2">
-            <Field label={t("remark")}>
-              <Textarea value={values.remark ?? ""} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
-            </Field>
-          </div>
-          <div className="md:col-span-2">
-            <div className="space-y-4 border-t border-border pt-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">{t("customFieldsStructuredTitle")}</h3>
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("customFieldsStructuredHelp")}</p>
-                </div>
-                <Button variant="outline" size="md" onClick={() => setShowRawJson((current) => !current)}>
-                  <Code2 aria-hidden="true" />
-                  {showRawJson ? t("hideJson") : t("showJson")}
-                </Button>
-              </div>
-
-              {selectedCustomFieldDefinitions.length > 0 ? (
-                <TemplateCustomFields
-                  definitions={selectedCustomFieldDefinitions}
-                  locale={locale}
-                  getValue={getCustomFieldValue}
-                  getError={(fieldName) => errorText(customFieldKey(fieldName))}
-                  onChange={handleTemplateCustomFieldChange}
-                />
-              ) : (
-                <EmptyNote>{values.categoryId ? t("customFieldsNoTemplate") : t("customFieldsSelectCategory")}</EmptyNote>
-              )}
-
-              <div className="space-y-3 border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground">{t("customFieldsAdditional")}</h4>
-                <CustomFieldRowsEditor
-                  rows={additionalCustomFieldRows}
-                  labels={{
-                    key: t("customFieldKey"),
-                    value: t("customFieldValue"),
-                    add: t("addCustomField"),
-                    remove: t("removeCustomField"),
-                    empty: t("customFieldsEmpty"),
-                  }}
-                  onChange={handleAdditionalCustomFieldRowsChange}
-                />
-              </div>
-
-              {showRawJson && (
-                <Field label={t("customFieldsJson")} id="asset-custom-fields-json" hint={t("customFieldsJsonHelp")} error={errorText("customFieldsJson")}>
-                  <Textarea
-                    value={values.customFieldsJson ?? ""}
-                    onChange={(event) => handleRawJsonChange(event.target.value)}
-                    rows={5}
-                    className="min-h-32 font-mono"
-                  />
-                </Field>
-              )}
-            </div>
-          </div>
-          <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-            <input type="checkbox" checked={values.isActive} onChange={(event) => setField("isActive", event.target.checked)} className={checkboxVariants()} />
-            {tCommon("active")}
-          </label>
-        </Section>
+        <AssetFormCustomFields
+          values={values}
+          setField={setField}
+          errorText={errorText}
+          showRawJson={showRawJson}
+          toggleRawJson={() => setShowRawJson((current) => !current)}
+          definitions={selectedCustomFieldDefinitions}
+          getCustomFieldValue={getCustomFieldValue}
+          onTemplateCustomFieldChange={handleTemplateCustomFieldChange}
+          additionalCustomFieldRows={additionalCustomFieldRows}
+          onAdditionalCustomFieldRowsChange={handleAdditionalCustomFieldRowsChange}
+          onRawJsonChange={handleRawJsonChange}
+        />
 
         <StickyFormFooter status={duplicateState.checking ? <span id="asset-save-reason">{t("duplicateCheckPending")}</span> : undefined}>
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
@@ -1729,46 +1138,6 @@ export function AssetForm({
   )
 }
 
-// Spec 2D D9: each form section is a ContentPanel (16px title, 16/20px padding), the frame of every other panel.
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <ContentPanel title={title}>
-      <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">{children}</div>
-    </ContentPanel>
-  )
-}
-
-// Keeps the name and props it had before 2C, so its 12 call sites stay as they are. hint carries the help line
-// that used to sit in a <p> under 3 of them (spec 2C section 4.3 F6).
-function SelectField({
-  label,
-  id,
-  value,
-  required,
-  hint,
-  error,
-  onChange,
-  children,
-}: {
-  label: string
-  // The id focus moves to and the error is tied to (v-track M-R1).
-  id?: string
-  value: string
-  required?: boolean
-  hint?: React.ReactNode
-  error?: React.ReactNode
-  onChange: (value: string) => void
-  children: React.ReactNode
-}) {
-  return (
-    <Field label={label} id={id} required={required} hint={hint} error={error}>
-      <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
-        {children}
-      </NativeSelect>
-    </Field>
-  )
-}
-
 function getRemainingLicenseSeats(total?: string | number | null, used?: string | number | null) {
   const totalSeats = Number(total ?? 0)
   const usedSeats = Number(used ?? 0)
@@ -1783,158 +1152,6 @@ function isProtectedAssetWorkflowStatus(status: Option | null | undefined) {
 
 function normalizeStatusOptionName(status: Option | null | undefined) {
   return status?.name?.trim().toLowerCase() ?? ""
-}
-
-function CustomFieldRowsEditor({
-  rows,
-  labels,
-  onChange,
-}: {
-  rows: CustomFieldRow[]
-  labels: {
-    key: string
-    value: string
-    add: string
-    remove: string
-    empty: string
-  }
-  onChange: (rows: CustomFieldRow[]) => void
-}) {
-  function updateRow(id: string, field: "key" | "value", value: string) {
-    onChange(rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)))
-  }
-
-  function removeRow(id: string) {
-    onChange(rows.filter((row) => row.id !== id))
-  }
-
-  return (
-    <div className="space-y-3">
-      {rows.length === 0 ? (
-        <EmptyNote>{labels.empty}</EmptyNote>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((row) => (
-            <div key={row.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)_auto]">
-              <Field label={labels.key} hideLabel>
-                <Input value={row.key} onChange={(event) => updateRow(row.id, "key", event.target.value)} placeholder={labels.key} />
-              </Field>
-              <Field label={labels.value} hideLabel>
-                <Input value={row.value} onChange={(event) => updateRow(row.id, "value", event.target.value)} placeholder={labels.value} />
-              </Field>
-              <Button
-                variant="outline"
-                size="icon-lg"
-                className="justify-self-start"
-                onClick={() => removeRow(row.id)}
-                aria-label={labels.remove}
-                title={labels.remove}
-              >
-                <Trash2 aria-hidden="true" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Button variant="outline" size="md" onClick={() => onChange([...rows, createCustomFieldRow()])}>
-        <Plus aria-hidden="true" />
-        {labels.add}
-      </Button>
-    </div>
-  )
-}
-
-function TemplateCustomFields({
-  definitions,
-  locale,
-  getValue,
-  getError,
-  onChange,
-}: {
-  definitions: CustomFieldDefinition[]
-  locale: string
-  getValue: (fieldName: string) => string
-  getError: (fieldName: string) => string | undefined
-  onChange: (fieldName: string, value: string) => void
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {definitions.map((definition, index) => (
-        <TemplateField
-          key={definition.id}
-          id={`asset-custom-field-${index}`}
-          definition={definition}
-          label={getTemplateFieldLabel(definition, locale)}
-          value={getValue(definition.fieldName)}
-          error={getError(definition.fieldName)}
-          onChange={(value) => onChange(definition.fieldName, value)}
-        />
-      ))}
-    </div>
-  )
-}
-
-function TemplateField({
-  id,
-  definition,
-  label,
-  value,
-  error,
-  onChange,
-}: {
-  // The id fieldId() gives this field's key: its place in the template.
-  id: string
-  definition: CustomFieldDefinition
-  label: string
-  value: string
-  error?: string
-  onChange: (value: string) => void
-}) {
-  if (definition.fieldType === "boolean") {
-    // A checkbox has no Field: its error sits under the box and is tied to the checkbox.
-    return (
-      <div className="grid min-w-0 content-start gap-1.5">
-        <label className="flex min-h-10 items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-          <input
-            id={id}
-            type="checkbox"
-            checked={value === "true"}
-            onChange={(event) => onChange(event.target.checked ? "true" : "false")}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${id}-error` : undefined}
-            className={checkboxVariants()}
-          />
-          {label}
-        </label>
-        {error ? <FieldError id={`${id}-error`}>{error}</FieldError> : null}
-      </div>
-    )
-  }
-
-  if (definition.fieldType === "select") {
-    return (
-      <Field label={label} id={id} required={definition.isRequired} error={error}>
-        <NativeSelect value={value} required={definition.isRequired} onChange={(event) => onChange(event.target.value)}>
-          <option value=""></option>
-          {definition.options.map((option) => (
-            <option key={option} value={option}>{option}</option>
-          ))}
-        </NativeSelect>
-      </Field>
-    )
-  }
-
-  return (
-    <Field label={label} id={id} required={definition.isRequired} error={error}>
-      <Input
-        type={definition.fieldType === "number" ? "number" : definition.fieldType === "date" ? "date" : "text"}
-        value={value}
-        required={definition.isRequired}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </Field>
-  )
 }
 
 function shouldAllowCrossCompanyCustodianOnLoad(
@@ -1989,91 +1206,4 @@ function getLocationOptionLabel(location: Option, includeBranch: boolean, branch
   if (!includeBranch || !location.branchId) return location.label
   const branch = branches.find((item) => item.id === location.branchId)
   return branch ? `${location.label} (${branch.label})` : location.label
-}
-
-function createCustomFieldRow(key = "", value = ""): CustomFieldRow {
-  return {
-    id: createClientId(),
-    key,
-    value,
-  }
-}
-
-function createClientId() {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
-}
-
-function attachmentMatchesPhotoLabel(
-  attachment: ExistingAssetPhoto,
-  label: string,
-  legacyLabelCounts: Record<string, number>
-) {
-  const normalizedLabel = normalizePhotoLabel(label)
-  const legacyLabel = legacySanitizedPhotoLabel(label)
-  const legacyLabelIsSafeFallback = Boolean(legacyLabel) && legacyLabelCounts[legacyLabel] === 1
-
-  return [label, normalizedLabel, legacyLabelIsSafeFallback ? legacyLabel : ""]
-    .filter(Boolean)
-    .some((candidate) => attachment.originalName.startsWith(`${candidate} - `))
-}
-
-function normalizePhotoLabel(label: string) {
-  return label.replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim()
-}
-
-function legacySanitizedPhotoLabel(label: string) {
-  const normalized = label.normalize("NFKD")
-  return normalized.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, " ").trim()
-}
-
-function parseCustomFieldRows(json?: string | null): CustomFieldRow[] {
-  if (!json?.trim()) {
-    return []
-  }
-
-  try {
-    const parsed = JSON.parse(json) as unknown
-    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
-      return []
-    }
-
-    return Object.entries(parsed).map(([key, value]) =>
-      createCustomFieldRow(key, typeof value === "string" ? value : JSON.stringify(value))
-    )
-  } catch {
-    return []
-  }
-}
-
-function serializeCustomFieldRows(rows: CustomFieldRow[]) {
-  const data = rows.reduce<Record<string, string>>((current, row) => {
-    const key = row.key.trim()
-    if (key) {
-      current[key] = row.value.trim()
-    }
-    return current
-  }, {})
-
-  return Object.keys(data).length > 0 ? JSON.stringify(data, null, 2) : ""
-}
-
-function isValidCustomFieldsJson(json?: string | null) {
-  if (!json?.trim()) {
-    return true
-  }
-
-  try {
-    const parsed = JSON.parse(json) as unknown
-    return Boolean(parsed) && typeof parsed === "object" && !Array.isArray(parsed)
-  } catch {
-    return false
-  }
-}
-
-function getTemplateFieldLabel(definition: CustomFieldDefinition, locale: string) {
-  if (locale === "th" && definition.fieldLabelTh) {
-    return definition.fieldLabelTh
-  }
-
-  return definition.fieldLabel
 }

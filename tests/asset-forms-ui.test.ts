@@ -30,7 +30,8 @@ test("asset form: the duplicate tag and serial errors belong to their fields (K4
 })
 
 test("asset form: money fields carry their unit and the decimal keypad; the new purchase document row has visible labels (K26, I34)", () => {
-  const source = read("src/components/assets/asset-form.tsx")
+  // Group 4 plan 2 Task 5: the purchase section and its documents box sit in asset-form-purchase.tsx.
+  const source = read("src/components/assets/asset-form-purchase.tsx")
   assert.match(source, /<Field label=\{t\("purchasePriceBaht"\)\} id="asset-purchase-price" error=\{errorText\("purchasePrice"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
   assert.match(source, /<Field label=\{t\("purchaseDocumentAmountBaht"\)\} id="asset-purchase-document-amount" error=\{errorText\("purchaseDocumentAmount"\)\}>\n\s*<Input\n\s*type="number"\n\s*min="0"\n\s*step="0\.01"\n\s*inputMode="decimal"/)
   // The visible labels stay; the number gains its id and its error (v-track plan 2 A1).
@@ -54,10 +55,13 @@ test("asset form: money fields carry their unit and the decimal keypad; the new 
 
 test("asset form: every button is a Button, the repeater's remove button fits an auto column, and the warning link keeps its underline", () => {
   const source = read("src/components/assets/asset-form.tsx")
-  assert.doesNotMatch(source, /<button\b/)
-  assert.match(source, /sm:grid-cols-\[minmax\(0,0\.85fr\)_minmax\(0,1\.15fr\)_auto\]/)
-  assert.match(source, /<Button\n\s*variant="outline"\n\s*size="icon-lg"\n\s*className="justify-self-start"/)
-  assert.equal(source.match(/variant="danger"\n\s*size="icon-sm"/g)?.length, 2, "the 2 queued-file remove icons stay red (2A ย15)")
+  // Group 4 plan 2 Task 5: the repeater sits in asset-form-custom-fields.tsx, the queued documents and photos in theirs.
+  const parts = ["section", "install", "purchase", "photos", "custom-fields"].map((name) => read(`src/components/assets/asset-form-${name}.tsx`))
+  const [, , purchase, photos, customFields] = parts
+  for (const file of [source, ...parts]) assert.doesNotMatch(file, /<button\b/)
+  assert.match(customFields, /sm:grid-cols-\[minmax\(0,0\.85fr\)_minmax\(0,1\.15fr\)_auto\]/)
+  assert.match(customFields, /<Button\n\s*variant="outline"\n\s*size="icon-lg"\n\s*className="justify-self-start"/)
+  assert.deepEqual([source, purchase, photos].map((file) => file.match(/variant="danger"\n\s*size="icon-sm"/g)?.length ?? 0), [0, 1, 1], "the 2 queued-file remove icons stay red (2A ย15)")
   assert.match(
     source,
     /<Link href=\{repairWorkflowHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "mt-2 inline-flex decoration-current"\)\}>/,
@@ -142,12 +146,15 @@ test("asset form: the location section is named for what it holds, and the photo
   const source = read("src/components/assets/asset-form.tsx")
   assert.match(source, /const isEdit = Boolean\(asset\?\.id\)/)
   const location = source.slice(source.indexOf('<Section title={t("locationStatus")}>'))
-  const body = location.slice(0, location.indexOf("<Section", 10))
+  // The section ends at its own </Section> (the next sections are components of their own files since group 4 plan 2 Task 5).
+  const body = location.slice(0, location.indexOf("</Section>"))
   assert.match(body, /homeLocationId/); assert.match(body, /currentLocation/); assert.match(body, /t\("status"\)/); assert.match(body, /t\("condition"\)/)
   assert.doesNotMatch(body, /custodianId/)
   assert.doesNotMatch(source, /locationCustodian/)
-  assert.match(source, /<Section title=\{t\(isEdit \? "assetPhotos" : "initialAssetPhotos"\)\}>/)
-  assert.match(source, /\{t\(isEdit \? "assetPhotosEditHelp" : "initialAssetPhotosHelp"\)\}/)
+  const photos = read("src/components/assets/asset-form-photos.tsx")
+  assert.match(photos, /<Section title=\{t\(isEdit \? "assetPhotos" : "initialAssetPhotos"\)\}>/)
+  assert.match(photos, /\{t\(isEdit \? "assetPhotosEditHelp" : "initialAssetPhotosHelp"\)\}/)
+  assert.match(source, /<AssetFormPhotos\n\s+isEdit=\{isEdit\}/)
   for (const locale of ["th", "en"] as const) {
     const m = assetMessages(locale)
     assert.equal(m.locationCustodian, undefined)

@@ -132,7 +132,7 @@ test("ข้อมูลยังไม่ครบ: one quiet line on the overv
 })
 
 test("the edit form holds the purchase anchor the strip and the prompt open (spec §7.4)", () => {
-  assert.match(read("src/components/assets/asset-form.tsx"), /<div id="purchase" className="scroll-mt-24">\s*<Section title=\{t\("purchaseWarranty"\)\}>/)
+  assert.match(read("src/components/assets/asset-form-purchase.tsx"), /<div id="purchase" className="scroll-mt-24">\s*<Section title=\{t\("purchaseWarranty"\)\}>/)
   assert.match(page(), /const purchaseEditHref = `\$\{editHref\}#purchase`/)
 })
 
