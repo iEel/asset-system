@@ -1,7 +1,8 @@
 // The records of one project's field audit walk (e2e/audit/audit-plan.ts), created through the app (spec §7: no direct
 // SQL write, so the app's own rules apply):
-// - the round's department and its two rooms through the master-data APIs, as the seed admin (IT staff hold no
-//   department or location permission; the setup project creates the run's own the same way);
+// - the round's department, its two rooms and the employee who holds the personal asset through the master-data APIs,
+//   as the seed admin (IT staff hold no department, location or employee permission; the setup project creates the
+//   run's own the same way);
 // - the assets through POST /api/assets and the two components through the component install
 //   (POST /api/assets/<parent>/components), as the person who registers them (IT staff, or the IT head for their own
 //   round), so the asset rules and the install checks run.
@@ -20,6 +21,8 @@ export type AuditWalkData = {
   departmentId: string
   rooms: { roomA: string; roomB: string }
   assets: Record<AuditAssetKey, { id: string; tag: string; name: string }>
+  // The personal asset's holder, in the round's department.
+  roundHolder: { id: string; code: string; fullNameTh: string }
   masters: AuditMasterIds
 }
 
@@ -65,13 +68,25 @@ export async function readAuditMasters(page: Page): Promise<AuditMasterIds> {
   }
 }
 
-// The department and the two rooms, as the seed admin. Before the round form opens: its scope list is the server's.
+// The department, the two rooms and the personal asset's holder (an employee of that department), as the seed admin.
+// Before the round form opens: its scope list is the server's.
 export async function createAuditPlaces(admin: APIRequestContext, run: RunData, runId: string, projectName: string) {
   const records = auditRecords(runId, projectName)
   const department = await created<{ id: string }>(admin, "/api/departments", { ...records.department, companyId: run.companyId, isActive: true })
   const roomA = await created<{ id: string }>(admin, "/api/locations", { ...records.rooms.roomA, branchId: run.branchId, isActive: true })
   const roomB = await created<{ id: string }>(admin, "/api/locations", { ...records.rooms.roomB, branchId: run.branchId, isActive: true })
-  return { records, departmentId: department.id, rooms: { roomA: roomA.id, roomB: roomB.id } }
+  const holder = await created<{ id: string }>(admin, "/api/employees", {
+    ...records.roundHolder,
+    // The schema takes a missing email only when the key is there (as e2e/setup/run-data.setup.ts).
+    email: null,
+    companyId: run.companyId,
+    branchId: run.branchId,
+    departmentId: department.id,
+    employmentStatus: "active",
+    isActive: true,
+  })
+  const roundHolder = { id: holder.id, code: records.roundHolder.code, fullNameTh: records.roundHolder.fullNameTh }
+  return { records, departmentId: department.id, rooms: { roomA: roomA.id, roomB: roomB.id }, roundHolder }
 }
 
 // The walk's assets and the parent's two components, as the signed-in person of this page.
@@ -91,7 +106,7 @@ export async function createAuditAssets(
       companyId: run.companyId,
       branchId: run.branchId,
       ownershipType: plan.ownership,
-      custodianId: plan.custodian ? run.employees[plan.custodian].id : null,
+      custodianId: plan.custodian ? places[plan.custodian].id : null,
       departmentId: plan.department === "round" ? places.departmentId : run.departmentId,
       currentLocationId: places.rooms[plan.room],
       homeLocationId: places.rooms[plan.room],
@@ -119,5 +134,5 @@ export async function createAuditAssets(
       reason: `${records.round.name} (E2E)`,
     })
   }
-  return { records, departmentId: places.departmentId, rooms: places.rooms, assets, masters }
+  return { records, departmentId: places.departmentId, rooms: places.rooms, assets, roundHolder: places.roundHolder, masters }
 }

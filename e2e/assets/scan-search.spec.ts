@@ -41,11 +41,11 @@ test("part of a Serial typed finds one card that matched the Serial, with its fa
   const holder = readRunData().employees.receiver2
   const masters = await readAssetMasters(page)
   // A Serial no other asset holds, in this run and this project: the typed part is found in it and nowhere else (the
-  // tags end in -SC1/-SC2, the names hold spaces).
+  // tags end in -SCN1/-SCN2, keys of its own: e2e/transactions/findings.spec.ts holds SC1, the names hold spaces).
   const typed = `${runId}-${projectCode(testInfo.project.name)}-SCAN`
   const serial = `SN-${typed}`
-  const asset = await createTxAsset(page, masters, testInfo.project.name, "SC1", "โน้ตบุ๊กสแกนค้นหา", { serialNumber: serial })
-  const component = await createTxAsset(page, masters, testInfo.project.name, "SC2", "อะแดปเตอร์สแกนค้นหา", { ownershipType: "component" })
+  const asset = await createTxAsset(page, masters, testInfo.project.name, "SCN1", "โน้ตบุ๊กสแกนค้นหา", { serialNumber: serial })
+  const component = await createTxAsset(page, masters, testInfo.project.name, "SCN2", "อะแดปเตอร์สแกนค้นหา", { ownershipType: "component" })
   await installComponentByApi(page, asset.id, component.id, "Adapter", "1")
   const handover = await handoverByApi(page, asset.id, holder.id, masters.goodConditionId)
   const held = await readAsset(page, asset.id)

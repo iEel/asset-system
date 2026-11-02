@@ -168,7 +168,7 @@ test.describe("IT staff walk room A", () => {
     await scan.expectTabs(page, [[S.tabPending, 6], [S.tabChecked, 0], [S.tabRoom, 6]])
     await expect(scan.roomRows(page)).toHaveCount(6)
     await expect(scan.roomRows(page).filter({ hasText: assets.parent.tag })).toContainText(fillTemplate(S.componentCount, { count: 2 }))
-    await expect(scan.roomRows(page).filter({ hasText: assets.personal.tag })).toContainText(readRunData().employees.receiver1.fullNameTh)
+    await expect(scan.roomRows(page).filter({ hasText: assets.personal.tag })).toContainText(chain.roundHolder.fullNameTh)
 
     // The category chips (decision 3, P3-R6): "ทุกหมวดหมู่" first, then the room's categories by count (four desktops, two
     // components). The component chip narrows the rows to the two components. Any room change clears it: room B
@@ -265,7 +265,8 @@ test.describe("IT staff walk room A", () => {
 
     // A personal asset (P3-R15): its custodian is compared, so all four fields show. "ไม่ตรง" with nothing found chosen
     // asks for it under the field and moves focus there, sending nothing (spec §12); the save label already counts the
-    // pressed row (P3-R22). A new custodian turns the department to ไม่ตรง, that person's department (N-AU1), and the
+    // pressed row (P3-R22). Its holder sits in the round's department (group 4 spec §8); a new custodian from the run's
+    // department turns the department to ไม่ตรง, that person's department (N-AU1), and the
     // save then waits for a photo. Tapping ตรง on the custodian undoes both (P3-R8), and the asset saves as matched, so
     // the walk's findings stay the five of block 6.
     const personalPosts = scan.watchScanPosts(page, chain.roundId, assets.personal.id)

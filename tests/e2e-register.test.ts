@@ -122,7 +122,13 @@ test("the edit page's spec reads the app's own words and keeps to the correction
   // Opened from the asset page (returnTo), so the save goes back there and the spec waits for that page (final review);
   // without returnTo the edit goes to the register and the wait would never match.
   assert.ok(spec.includes("const editFromAssetPage = (assetId: string) => `/th/assets/${assetId}/edit?returnTo=${encodeURIComponent(`/th/assets/${assetId}`)}`"))
-  assert.equal(spec.split("visit(measure, editFromAssetPage(asset.id), ").length - 1, 2, "both saving tests open the edit page from the asset page")
+  assert.equal(spec.split("visitEdit(measure, editFromAssetPage(asset.id), ").length - 1, 2, "both saving tests open the edit page from the asset page")
+  // E2E-1103C: every edit page is recorded once its duplicate check has answered, so axe never reads the save button's
+  // colour fade half way.
+  assert.equal(spec.split("await visitEdit(measure, ").length - 1, 3, "the three edit pages")
+  assert.doesNotMatch(spec, /await visit\(measure, /)
+  assert.ok(spec.includes('const checked = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/duplicates")'))
+  assert.ok(spec.includes('await checked\n  await expect(page.locator("#asset-save-reason")).toHaveCount(0)\n  return record(measure, label, testInfo)'))
   assert.equal(spec.split("await page.waitForURL((url) => url.pathname === `/th/assets/${asset.id}`)").length - 1, 2)
   assert.ok(spec.includes('await pickSearchable(page, "asset-custodian", holder.code, `${holder.code} - ${holder.fullNameTh}`)'))
   assert.ok(spec.includes("await expect(department).toContainText(fillTemplate(REGISTER_WORDS.departmentFollowsHolder, { department: runDepartment.name }))"))
@@ -296,7 +302,7 @@ test("the components and scan specs read the app's own words, remove a component
   // Scan: a run-unique Serial (CreateAssetOptions.serialNumber), a component and a handover by API, the route's own
   // answer, one card that matched the Serial, its action links, the way back, the recent list cleared, Enter on the tag.
   assert.ok(scan.includes("const typed = `${runId}-${projectCode(testInfo.project.name)}-SCAN`"))
-  assert.ok(scan.includes('"SC1", "โน้ตบุ๊กสแกนค้นหา", { serialNumber: serial })'))
+  assert.ok(scan.includes('"SCN1", "โน้ตบุ๊กสแกนค้นหา", { serialNumber: serial })'))
   assert.ok(scan.includes("await installComponentByApi(page, asset.id, component.id, ") && scan.includes("await handoverByApi(page, asset.id, holder.id, masters.goodConditionId)"))
   for (const hook of [
     'const SCAN_SEARCH_PATH = "/api/assets/scan-search"',
@@ -554,4 +560,19 @@ test("the labels spec adds three run assets from the run room's queue, prints th
     "fillTemplate(LABEL_WORDS.fromRegister, { count: 2 })",
     'await expect(page.locator("[data-label-selected-row]")).toHaveCount(2)',
   ]) assert.ok(correction.includes(hook), hook)
+})
+
+// E2E-1103C: a createTxAsset key is a tag's last part (`${runId}-${projectCode}-${key}`), so two specs with one key
+// clash in the same run and project ("Asset tag already exists"). Every literal key of the suite is one spec's own.
+test("every createTxAsset key of the suite belongs to one call, so no two specs make the same tag (E2E-1103C)", () => {
+  const seen = new Map<string, string>()
+  for (const file of suiteFiles("e2e").filter((name) => name.endsWith(".ts") && !name.includes("/.state/"))) {
+    for (const match of read(file).matchAll(/createTxAsset\([^,]+,[^,]+,[^,]+,\s*"([A-Z0-9]+)"/g)) {
+      const key = match[1]
+      assert.ok(!seen.has(key), `the key ${key} is in ${seen.get(key)} and ${file}`)
+      seen.set(key, file)
+    }
+  }
+  assert.equal(seen.get("SCN1"), "e2e/assets/scan-search.spec.ts")
+  assert.equal(seen.get("SC1"), "e2e/transactions/findings.spec.ts")
 })

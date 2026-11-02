@@ -26,7 +26,6 @@ import {
   readAssetMasters,
   readSecondDepartment,
   record,
-  visit,
   visitAssetPage,
 } from "../transactions/tx-support.ts"
 import { REGISTER_WORDS } from "./register-words.ts"
@@ -37,6 +36,19 @@ const DESKTOP_ONLY = "one tag change a run is enough; the เปลี่ยน�
 const FOOTER = '[data-slot="sticky-form-footer"]'
 // The edit page opened from the asset page: a save goes back there (returnTo; without it the edit goes to the register).
 const editFromAssetPage = (assetId: string) => `/th/assets/${assetId}/edit?returnTo=${encodeURIComponent(`/th/assets/${assetId}`)}`
+// The edit page checks its tag and Serial 450 ms after it opens (the duplicate check of asset-form.tsx): บันทึกการแก้ไข
+// waits (aria-disabled, #asset-save-reason) and fades back to its primary colours (transition-colors, 150 ms) when the
+// answer comes. axe read it half way in E2E-1103C (phone-dark: color-contrast on .border-primary; the same page passed
+// once settled), as e2e/audit/settle.ts documents for the scan's save. So the page is recorded once the check has
+// answered and its wait is gone; record() then waits out the fade.
+async function visitEdit(measure: Parameters<typeof record>[0], path: string, label: string, testInfo: Parameters<typeof record>[2]) {
+  const page = measure.page
+  const checked = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/duplicates")
+  await page.goto(path, { waitUntil: "load" })
+  await checked
+  await expect(page.locator("#asset-save-reason")).toHaveCount(0)
+  return record(measure, label, testInfo)
+}
 
 test("a holder given on the edit page is a correction: แผนก follows the holder, the reason is asked first, the change list shows เดิม → ใหม่, and the history reads แก้ไขข้อมูลผู้ถือครอง with the reason (group 4 spec §7.1, §7.3, §7.5; P2-R4, P2-R5)", async ({ page, measure }, testInfo) => {
   const { runId } = readRunState()
@@ -47,7 +59,7 @@ test("a holder given on the edit page is a correction: แผนก follows the 
   const masters = await readAssetMasters(page)
   const asset = await createTxAsset(page, masters, testInfo.project.name, "RE1", "โน้ตบุ๊กแก้ไขผู้ถือครองหน้าแก้ไข", { departmentId: other.id })
 
-  await visit(measure, editFromAssetPage(asset.id), "asset edit, a บุคคล asset with no holder", testInfo)
+  await visitEdit(measure, editFromAssetPage(asset.id), "asset edit, a บุคคล asset with no holder", testInfo)
   // The header names the asset, with the way back to its page (§7.1).
   await expect(page.getByRole("heading", { level: 1, name: fillTemplate(REGISTER_WORDS.editTitleNamed, { name: asset.name }) })).toBeVisible()
   await expect(page.getByRole("main").getByRole("link", { name: REGISTER_WORDS.viewAssetPage, exact: true })).toHaveAttribute("href", new RegExp(`^/th/assets/${asset.id}(?:\\?|$)`))
@@ -117,7 +129,7 @@ test("เปลี่ยนรหัส: the dialog warns about the printed labe
   const asset = await createTxAsset(page, masters, testInfo.project.name, "RE2", "โน้ตบุ๊กเปลี่ยนรหัสหน้าแก้ไข")
   const newTag = txAssetTag(runId, testInfo.project.name, "RE2N")
 
-  await visit(measure, editFromAssetPage(asset.id), "asset edit, before a tag change", testInfo)
+  await visitEdit(measure, editFromAssetPage(asset.id), "asset edit, before a tag change", testInfo)
   // On the edit page the tag is text with เปลี่ยนรหัส beside it (§7.1).
   const tag = page.locator("#asset-tag")
   await expect(tag.locator(".tag")).toHaveText(asset.assetTag)
@@ -166,7 +178,7 @@ test("an open handover locks the holder, the room and แผนก on the edit p
   const held = await readAsset(page, asset.id)
   expect(held.custodianId, "the handover gave the asset its holder").toBe(receiver.id)
 
-  await visit(measure, `/th/assets/${asset.id}/edit`, "asset edit, an open handover", testInfo)
+  await visitEdit(measure, `/th/assets/${asset.id}/edit`, "asset edit, an open handover", testInfo)
   const main = page.getByRole("main")
   await expect(main).toContainText(fillTemplate(REGISTER_WORDS.openHandoverLock, { documentNo: handover.documentNo }))
   await expect(main.getByRole("link", { name: REGISTER_WORDS.openHandoverLink, exact: true })).toHaveAttribute("href", `/th/asset-management/checkouts/${handover.id}`)

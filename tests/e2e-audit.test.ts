@@ -57,10 +57,12 @@ test("the walk's records carry the run id and the project within the schemas' li
       outOfScope: "roomA/run",
     })
     assert.deepEqual(records.components.map((component) => component.key), ["component1", "component2"])
-    // Group 2 plan 3 (P3-R15): one personal asset, held by the run's first receiver, for the custodian step; the rest
+    // Group 2 plan 3 (P3-R15): one personal asset, held by the round department's own employee (group 4 spec §8: a held
+    // บุคคล asset takes its holder's department on create, so it stays in the round), for the custodian step; the rest
     // are shared, with no custodian. Eight round items: the round form's sample shows eight rows
     // (src/app/api/audit-rounds/preview/route.ts), so block 1 sees each of them.
-    assert.deepEqual(records.assets.filter((asset) => asset.ownership === "personal").map((asset) => [asset.key, asset.custodian]), [["personal", "receiver1"]])
+    assert.deepEqual(records.assets.filter((asset) => asset.ownership === "personal").map((asset) => [asset.key, asset.custodian]), [["personal", "roundHolder"]])
+    assert.ok(records.roundHolder.code.startsWith(prefix) && records.roundHolder.code.length <= 20 && records.roundHolder.fullNameTh.startsWith(runId), records.roundHolder.code)
     assert.ok(records.assets.filter((asset) => asset.ownership === "shared").every((asset) => asset.custodian === null))
     assert.equal(records.assets.filter((asset) => asset.department === "round").length, 8)
     assert.ok(records.round.name.startsWith(runId) && records.ownRound.name.startsWith(runId) && records.unknownTag.startsWith(prefix))
@@ -69,9 +71,10 @@ test("the walk's records carry the run id and the project within the schemas' li
 
   // Created through the app: the places as the seed admin, the assets and the component install as the person.
   const data = read("e2e/audit/audit-data.ts")
-  for (const route of [`"/api/departments"`, `"/api/locations"`, `"/api/assets"`, "/components`"]) assert.ok(data.includes(route), route)
+  for (const route of [`"/api/departments"`, `"/api/locations"`, `"/api/employees"`, `"/api/assets"`, "/components`"]) assert.ok(data.includes(route), route)
   assert.ok(!/prisma|mssql/i.test(data.replace(/^\/\/.*$/gm, "")), "no direct database access")
-  assert.ok(data.includes("ownershipType: plan.ownership,") && data.includes("custodianId: plan.custodian ? run.employees[plan.custodian].id : null,"))
+  assert.ok(data.includes("ownershipType: plan.ownership,") && data.includes("custodianId: plan.custodian ? places[plan.custodian].id : null,"))
+  assert.ok(data.includes("departmentId: department.id,"), "the holder is the round department's employee")
   // The master ids come from the asset form, on a page of its own beside the round form (group 2 plan 1 task 4: the
   // round form's conditions are chips with no select to read). Each select's options are waited for (13B loop 5).
   assert.match(data, /const form = await page\.context\(\)\.newPage\(\)\n\s*try \{\n\s*await form\.goto\("\/th\/assets\/new"\)/)
