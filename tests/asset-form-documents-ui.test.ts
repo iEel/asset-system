@@ -246,3 +246,38 @@ test("the words: ใบ for documents, the two part titles, + เพิ่มอ
   assert.equal(th.removePurchaseDocument, undefined)
   assert.equal(messages("th").apiErrors.purchaseDocumentExists, "เอกสารจัดซื้อนี้มีอยู่แล้ว")
 })
+
+test("without asset:edit (P3-R2): the create page and the clone link no documents, the section is a note, the save sends no document step", () => {
+  const create = read(NEW_PAGE)
+  assert.match(create, /const user = await requirePagePermission\(locale, "asset", "create"\)/)
+  assert.match(create, /const canLinkPurchaseDocuments = hasPermission\(user, "asset", "edit"\)/)
+  // No clone: the recent list is read only with the permission, and the flag goes to the form.
+  assert.match(create, /const recentDocuments = canLinkPurchaseDocuments \? await searchPurchaseDocuments\(purchaseDocumentDb, \{ q: "", supplierId: null \}\) : noDocuments/)
+  assert.match(create, /<AssetCreateWorkspace \{\.\.\.options\} recentDocuments=\{recentDocuments\} canLinkPurchaseDocuments=\{canLinkPurchaseDocuments\} backHref=\{returnToHref\} \/>/)
+  // A clone without the permission carries no chips and reads no documents.
+  assert.match(create, /const \[cloneDocuments, recentDocuments\] = canLinkPurchaseDocuments\n\s+\? await Promise\.all\(\[[\s\S]+?\]\)\n\s+: \[\[\], noDocuments\]/)
+  assert.match(create, /chosenDocuments=\{chosenDocuments\}\n\s+recentDocuments=\{recentDocuments\}\n\s+canLinkPurchaseDocuments=\{canLinkPurchaseDocuments\}/)
+  // The edit page needs asset:edit itself, so it always may link.
+  const edit = read(EDIT_PAGE)
+  assert.match(edit, /await requirePagePermission\(locale, "asset", "edit"\)/)
+  assert.match(edit, /recentDocuments=\{recentDocuments\}\n\s+\/\/ [^\n]+\n\s+canLinkPurchaseDocuments\n/)
+
+  const form = read(`${C}asset-form.tsx`)
+  assert.match(form, /canLinkPurchaseDocuments: boolean/)
+  // No uploads and no links: the pre-check (documentUploads.length > 0) and the document requests have nothing to send.
+  assert.match(form, /const documentUploads = canLinkPurchaseDocuments\n\s+\? listPurchaseDocumentUploads\(/)
+  assert.match(form, /\n\s+: \[\]\n\s+const documentLinks = canLinkPurchaseDocuments\n\s+\? planPurchaseDocumentLinks\([^\n]+\n\s+: NO_DOCUMENT_LINKS/)
+  assert.match(form, /const NO_DOCUMENT_LINKS = \{ linkIds: \[\], unlinkIds: \[\] \}/)
+  assert.match(form, /canLink=\{canLinkPurchaseDocuments\}/)
+  assert.match(handleSubmitBody(form), /for \(const upload of documentUploads\)/)
+  assert.match(handleSubmitBody(form), /if \(documentLinks\.linkIds\.length > 0\)/)
+
+  // The section: a quiet note in place of the picker and the upload part.
+  const section = read(`${C}asset-form-documents.tsx`)
+  const denied = section.slice(section.indexOf("if (!canLink) {"), section.indexOf("\n  return (", section.indexOf("if (!canLink) {")))
+  assert.match(denied, /<FoldedSection title=\{t\("purchaseDocuments"\)\} disclosure=\{disclosure\}>\n\s+<Notice tone="neutral" className="md:col-span-2">\{t\("purchaseDocumentsNeedEdit"\)\}<\/Notice>\n\s+<\/FoldedSection>/)
+  assert.doesNotMatch(denied, /PurchaseDocumentPicker|FileDropzone/)
+  assert.ok(section.indexOf("if (!canLink) {") < section.indexOf("<PurchaseDocumentPicker"), "the note returns before the picker and the upload")
+  assert.equal(messages("th").asset.purchaseDocumentsNeedEdit, "ผูกหรืออัปโหลดเอกสารจัดซื้อได้เมื่อมีสิทธิ์แก้ไขทรัพย์สิน")
+  assert.equal(messages("en").asset.purchaseDocumentsNeedEdit, "Linking or uploading purchase documents needs permission to edit assets")
+})

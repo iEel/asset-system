@@ -8,6 +8,7 @@ import { Field, FieldError } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
 import { FoldedSection, SelectField, type AssetFormDisclosure, type AssetFormFieldErrors } from "@/components/assets/asset-form-section"
 import { PurchaseDocumentPicker } from "@/components/assets/purchase-document-picker"
 import {
@@ -29,6 +30,7 @@ export function AssetFormDocuments({
   errorText,
   fieldErrors,
   saving,
+  canLink,
   chosen,
   recent,
   supplierId,
@@ -58,6 +60,8 @@ export function AssetFormDocuments({
   errorText: (key: AssetField) => string | undefined
   fieldErrors: AssetFormFieldErrors
   saving: boolean
+  // Creating and linking a document needs asset:edit (P3-R2): without it the section holds a note only.
+  canLink: boolean
   chosen: PurchaseDocumentSearchRow[]
   recent: PurchaseDocumentSearchAnswer
   // The asset's supplier: the picker's empty query lists its documents first.
@@ -91,6 +95,16 @@ export function AssetFormDocuments({
 }) {
   const t = useTranslations("asset")
   const supplierLabel = (id: string | null) => (id ? suppliers.find((supplier) => supplier.id === id)?.label : undefined)
+
+  if (!canLink) {
+    return (
+      <div id="documents" className="scroll-mt-24">
+        <FoldedSection title={t("purchaseDocuments")} disclosure={disclosure}>
+          <Notice tone="neutral" className="md:col-span-2">{t("purchaseDocumentsNeedEdit")}</Notice>
+        </FoldedSection>
+      </div>
+    )
+  }
 
   return (
     // The anchor of the failure landing, ?documents=failed#documents (P3-R6).

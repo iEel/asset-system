@@ -1455,7 +1455,8 @@
     "purchaseDocumentChangeAdd": "Add {number}",
     "documentsFailedTitle": "Some purchase documents were not saved",
     "documentsFailedList": "The asset is saved. Upload these documents again.",
-    "documentsFailedGeneric": "The asset is saved. Check the linked documents, then choose or upload any that are missing."
+    "documentsFailedGeneric": "The asset is saved. Check the linked documents, then choose or upload any that are missing.",
+    "purchaseDocumentsNeedEdit": "Linking or uploading purchase documents needs permission to edit assets"
   },
   "company": {
     "title": "Companies",

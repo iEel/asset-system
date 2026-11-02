@@ -143,6 +143,8 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
         }}
         chosenDocuments={chosenDocuments}
         recentDocuments={recentDocuments}
+        // The page needs asset:edit, which linking a purchase document needs (P3-R2).
+        canLinkPurchaseDocuments
         documentsFailed={documentsFailed}
         // A save that lands here again with ?documents=failed starts a fresh form with the stored links.
         key={documentsFailed ? "documents-failed" : "form"}

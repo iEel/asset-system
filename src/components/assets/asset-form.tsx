@@ -165,6 +165,8 @@ const DATE_CHANGE_FIELDS = new Set<AssetDiffField>(["purchaseDate", "warrantySta
 // Create, and the edit before anything changed: no reason, no list.
 const NO_CORRECTION = { departmentAutomatic: false, reasonNeeded: false }
 const NO_CHANGES: AssetFormChange[] = []
+// No asset:edit: the save links and unlinks nothing (P3-R2).
+const NO_DOCUMENT_LINKS = { linkIds: [], unlinkIds: [] }
 
 export function AssetForm({
   asset,
@@ -182,6 +184,7 @@ export function AssetForm({
   parentAssets,
   chosenDocuments: initialChosenDocuments,
   recentDocuments,
+  canLinkPurchaseDocuments,
   documentsFailed = false,
   customFieldDefinitions,
   existingAssetPhotos = [],
@@ -209,6 +212,9 @@ export function AssetForm({
   // inactive ones (P3-R7); and the picker's empty-query list the page rendered, so nothing is fetched on load (P3-R4).
   chosenDocuments?: PurchaseDocumentSearchRow[]
   recentDocuments: PurchaseDocumentSearchAnswer
+  // Creating and linking a purchase document needs asset:edit (P3-R2): without it the section shows a note only and the
+  // save sends no pre-check and no document step (the create page passes the person's permission, the edit page true).
+  canLinkPurchaseDocuments: boolean
   // The edit page after a failed document step (?documents=failed, P3-R6): เอกสารจัดซื้อ opens with the warning.
   documentsFailed?: boolean
   customFieldDefinitions: CustomFieldDefinition[]
@@ -281,15 +287,19 @@ export function AssetForm({
   const backHref = providedBackHref ?? `/${locale}/assets`
   // The stored links (edit only): what the save compares the chips with. A clone's documents are all new.
   const originalDocuments = isEdit ? initialChosenDocuments ?? [] : []
-  const documentUploads = listPurchaseDocumentUploads(newPurchaseDocuments, {
-    documentType: purchaseDocumentType,
-    documentNo: purchaseDocumentNo,
-    documentDate: purchaseDocumentDate,
-    totalAmount: purchaseDocumentTotalAmount,
-    supplierId: purchaseDocumentSupplierId,
-    file: selectedPurchaseFile,
-  })
-  const documentLinks = planPurchaseDocumentLinks({ originalIds: originalDocuments.map((document) => document.id), chosen: chosenDocuments, removedIds: removedDocumentIds })
+  const documentUploads = canLinkPurchaseDocuments
+    ? listPurchaseDocumentUploads(newPurchaseDocuments, {
+        documentType: purchaseDocumentType,
+        documentNo: purchaseDocumentNo,
+        documentDate: purchaseDocumentDate,
+        totalAmount: purchaseDocumentTotalAmount,
+        supplierId: purchaseDocumentSupplierId,
+        file: selectedPurchaseFile,
+      })
+    : []
+  const documentLinks = canLinkPurchaseDocuments
+    ? planPurchaseDocumentLinks({ originalIds: originalDocuments.map((document) => document.id), chosen: chosenDocuments, removedIds: removedDocumentIds })
+    : NO_DOCUMENT_LINKS
   const title = useMemo(() => (isEdit ? t("editTitleNamed", { name: asset?.name ?? "" }) : t("createTitle")), [isEdit, asset?.name, t])
   const headerEdit = isEdit && editContext ? { assetTag: asset?.assetTag ?? "", context: editContext } : undefined
   // An open handover (P2-R3): the server refuses a holder, room or แผนก change, so the three show the stored values.
@@ -1531,6 +1541,7 @@ export function AssetForm({
           errorText={errorText}
           fieldErrors={fieldErrors}
           saving={saving}
+          canLink={canLinkPurchaseDocuments}
           chosen={chosenDocuments}
           recent={recentDocuments}
           supplierId={values.supplierId || null}
