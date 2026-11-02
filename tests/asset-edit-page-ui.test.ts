@@ -84,7 +84,9 @@ test("the tag: an editable field on create; on edit text behind เปลี่�
   const dialog = read(`${C}asset-form-tag-dialog.tsx`)
   // One Field keeps the id, the live duplicate check and the error on both pages.
   assert.equal(form.match(/id="asset-tag"\n/g)?.length, 1)
-  assert.match(form, /\{isEdit \? \(\n\s+\(control\) => \(\n\s+<div id=\{control\.id\} className="flex flex-wrap items-center gap-2">\n\s+<span className="tag">\{values\.assetTag\}<\/span>\n\s+<AssetFormTagDialog currentTag=\{values\.assetTag \?\? ""\} describedBy=\{control\["aria-describedby"\]\} onConfirm=\{\(next\) => setField\("assetTag", next\)\} \/>/)
+  assert.match(form, /\{isEdit \? \(\n\s+\(control\) => \(\n\s+<div id=\{control\.id\} className="flex flex-wrap items-center gap-2">\n\s+<span className="tag">\{values\.assetTag\}<\/span>\n\s+<AssetFormTagDialog currentTag=\{values\.assetTag \?\? ""\} fieldLabel=\{t\("assetTag"\)\} describedBy=\{control\["aria-describedby"\]\} onConfirm=\{\(next\) => setField\("assetTag", next\)\} \/>/)
+  // The label points at the row, so the button's own name reads the field, the current code and เปลี่ยนรหัส (final review).
+  assert.match(read(`${C}asset-form-tag-dialog.tsx`), /<Button variant="outline" size="sm" aria-label=\{`\$\{fieldLabel\} \$\{currentTag\} \$\{t\("changeTag"\)\}`\} aria-describedby=\{describedBy\} onClick=\{openDialog\}>/)
   assert.match(form, /\) : \(\n\s+<Input\n\s+value=\{values\.assetTag \?\? ""\}/)
   // The dialog: the app's dialog, an Input, the warning, no form, no live region.
   assert.match(dialog, /from "@\/components\/ui\/accessible-dialog"/)

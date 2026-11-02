@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
-import { AssetFormChangeList, type AssetFormChangeRow } from "@/components/assets/asset-form-change-list"
+import { AssetFormChangeList, CHANGE_LIST_TRIGGER_ID, type AssetFormChangeRow } from "@/components/assets/asset-form-change-list"
 import { AssetFormChangedField, type AssetFieldChange } from "@/components/assets/asset-form-changed-field"
 import { AssetFormCustomFields } from "@/components/assets/asset-form-custom-fields"
 import { AssetFormDocuments } from "@/components/assets/asset-form-documents"
@@ -47,6 +47,7 @@ import {
   getAssetFormDepartmentLock,
   getRequiredAssetFields,
   isAssetMessageCode,
+  isCustodyFrozen,
   legacySanitizedPhotoLabel,
   parseCustomFieldRows,
   sectionOfField,
@@ -214,6 +215,9 @@ export function AssetForm({
   const [showRawJson, setShowRawJson] = useState(false)
   // The edit page's reason for a room, holder or แผนก correction (P2-R4).
   const [correctionReason, setCorrectionReason] = useState("")
+  // The room, holder and แผนก the server last asked a reason for (a PUT refused under correctionReason): the reason stays
+  // required while they stand, and no longer once one of them changes (final review).
+  const [serverReasonFor, setServerReasonFor] = useState<string | null>(null)
   // The sections that held a change at the last render: a section opens when a change first shows in it (Task 8).
   const [changedSectionsSeen, setChangedSectionsSeen] = useState<Set<AssetFormSection>>(() => new Set<AssetFormSection>())
   // The folded sections that are open (spec §8, P2-R11): เอกสารจัดซื้อ starts open; an error, the #purchase link and the
@@ -306,7 +310,9 @@ export function AssetForm({
   const correction = isEdit && asset ? getAssetEditCorrection({ original: asset, values, departmentLocked: departmentLock.locked }) : NO_CORRECTION
   const changes = isEdit && asset ? diffAssetFormValues(asset, values, { departmentAutomatic: correction.departmentAutomatic }) : NO_CHANGES
   const showChanges = isEdit && changes.length > 0
-  const showCorrectionReason = isEdit && (correction.reasonNeeded || Boolean(fieldErrors.errors.correctionReason))
+  // Required by the change itself or by the server's refusal of these same values; a change put back drops it (final review).
+  const custodyKey = [values.currentLocationId, values.custodianId, values.departmentId].join("|")
+  const showCorrectionReason = isEdit && (correction.reasonNeeded || serverReasonFor === custodyKey)
   // An open handover keeps the stored แผนก (P2-R3); when it is not the holder's, the row says it is set later (spec §7.3).
   const departmentMismatchLater =
     custodyLocked &&
@@ -571,7 +577,8 @@ export function AssetForm({
     // The ownership type decides the department, the license and the parent rules. The holder stays, except on ส่วนควบ
     // (P2-R2), and a held บุคคล or Stock asset takes the holder's department.
     fieldErrors.clear("ownershipType", "departmentId", "custodianId", "licenseTotalSeats", "licenseUsedSeats", "parentAssetId")
-    setValues((current) => withDepartmentLock(changeOwnershipType(current, nextOwnershipType), employees, asset, editContext))
+    // Under an open handover the holder is read-only, so ส่วนควบ keeps it (the server's lock refuses a change, final review).
+    setValues((current) => withDepartmentLock(changeOwnershipType(current, nextOwnershipType, { custodyLocked }), employees, asset, editContext))
     // ส่วนควบ needs its parent, which sits in the folded install section.
     if (!isEdit && normalizeAssetOwnershipType(nextOwnershipType) === "component") openSection("install")
   }
@@ -646,6 +653,7 @@ export function AssetForm({
       const result = await response.json().catch(() => null)
       if (!response.ok) {
         // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
+        if (result?.fieldErrors?.correctionReason) setServerReasonFor(custodyKey)
         if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(result?.error ?? tCommon("error"))
       }
@@ -975,20 +983,33 @@ export function AssetForm({
     }
   }
 
-  // คืนค่าเดิม: the stored value comes back, and the department lock follows (a holder put back brings its แผนก).
+  // คืนค่าเดิม: the stored value comes back, and the department lock follows (a holder put back brings its แผนก). The
+  // company or the branch brings back the rest of the asset's place with it (the branch, both rooms, the holder and แผนก),
+  // so a branch of another company is never left behind; the read-only custody stays under an open handover (final
+  // review). Focus then goes to the field, since คืนค่าเดิม itself leaves with the change.
   function restoreField(field: AssetDiffField) {
     if (!asset) return
-    const key = field as keyof AssetFormValues
-    setValues((current) => withDepartmentLock({ ...current, [key]: asset[key] ?? "" }, employees, asset, editContext))
-    if (field in FIELD_IDS) fieldErrors.clear(field as AssetFixedField)
+    const keys: (keyof AssetFormValues)[] =
+      field === "companyId" || field === "branchId"
+        ? ["companyId", "branchId", "homeLocationId", ...(custodyLocked ? [] : (["currentLocationId", "custodianId", "departmentId"] as const))]
+        : [field as keyof AssetFormValues]
+    const stored = Object.fromEntries(keys.map((key) => [key, asset[key] ?? ""]))
+    setValues((current) => withDepartmentLock({ ...current, ...stored }, employees, asset, editContext))
+    fieldErrors.clear(...keys.filter((key) => key in FIELD_IDS).map((key) => key as AssetFixedField))
+    goToField(field)
   }
 
-  // ไปที่ช่อง: the field's section opens, then the field takes focus once the list has closed.
+  // ไปที่ช่อง: the field's section opens, then the field takes focus once the list has closed. A แผนก locked to the holder
+  // has no control of its own (the holder brings it), so focus goes to the holder; the raw JSON shows first. A row with
+  // no control left (an extra custom field) gives focus back to the change list (final review).
   function goToField(field: AssetDiffField) {
-    openSection(sectionOfChange(field))
+    const target: AssetDiffField = field === "departmentId" && departmentLock.locked ? "custodianId" : field
+    if (target === "customFieldsJson") setShowRawJson(true)
+    openSection(sectionOfChange(target))
     requestAnimationFrame(() => {
-      void waitForElement(changeFieldId(field, selectedCustomFieldDefinitions)).then((element) => {
-        if (element) focusField(element)
+      void waitForElement(changeFieldId(target, selectedCustomFieldDefinitions)).then((element) => {
+        if (element && focusField(element)) return
+        document.getElementById(CHANGE_LIST_TRIGGER_ID)?.focus()
       })
     })
   }
@@ -1050,7 +1071,7 @@ export function AssetForm({
                   (control) => (
                     <div id={control.id} className="flex flex-wrap items-center gap-2">
                       <span className="tag">{values.assetTag}</span>
-                      <AssetFormTagDialog currentTag={values.assetTag ?? ""} describedBy={control["aria-describedby"]} onConfirm={(next) => setField("assetTag", next)} />
+                      <AssetFormTagDialog currentTag={values.assetTag ?? ""} fieldLabel={t("assetTag")} describedBy={control["aria-describedby"]} onConfirm={(next) => setField("assetTag", next)} />
                     </div>
                   )
                 ) : (
@@ -1523,6 +1544,8 @@ function departmentLockOf(values: AssetFormValues, employees: Option[], original
     currentCustodianId: stored?.custodianId || null,
     currentDepartmentId: stored?.departmentId || null,
     openHandover: context ? context.openHandover !== null : false,
+    // A written-off asset keeps its stored แผนก with the holder unchanged, as the server does (final review).
+    custodyFrozen: context ? isCustodyFrozen(context.statusName) : false,
   })
 }
 

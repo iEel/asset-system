@@ -15,10 +15,14 @@ import { useValidationMessage } from "@/components/ui/use-field-errors"
 // polite region of its own: the form's duplicate check watches the tag and announces a duplicate under the field.
 export function AssetFormTagDialog({
   currentTag,
+  fieldLabel,
   describedBy,
   onConfirm,
 }: {
   currentTag: string
+  // The field's label (รหัสทรัพย์สิน): the Field's label points at the row, not at this button, so the button's name reads
+  // the label and the current code before its own text (final review).
+  fieldLabel: string
   // The tag field's error and hint, so the button reads them.
   describedBy?: string
   onConfirm: (next: string) => void
@@ -49,7 +53,7 @@ export function AssetFormTagDialog({
 
   return (
     <>
-      <Button variant="outline" size="sm" aria-describedby={describedBy} onClick={openDialog}>
+      <Button variant="outline" size="sm" aria-label={`${fieldLabel} ${currentTag} ${t("changeTag")}`} aria-describedby={describedBy} onClick={openDialog}>
         {t("changeTag")}
       </Button>
       <AccessibleDialog

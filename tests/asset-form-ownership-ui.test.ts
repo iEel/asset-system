@@ -40,7 +40,8 @@ test("the holder picker shows for every type that can have a holder; ส่ว�
 test("a change of the type keeps the holder except ส่วนควบ, which also opens the install section on create", () => {
   const form = read(`${C}asset-form.tsx`)
   const handler = form.slice(form.indexOf("function handleOwnershipTypeChange("), form.indexOf("function handleCategoryChange("))
-  assert.match(handler, /setValues\(\(current\) => withDepartmentLock\(changeOwnershipType\(current, nextOwnershipType\), employees, asset, editContext\)\)/)
+  // Under an open handover the read-only holder stays on ส่วนควบ too (final review).
+  assert.match(handler, /setValues\(\(current\) => withDepartmentLock\(changeOwnershipType\(current, nextOwnershipType, \{ custodyLocked \}\), employees, asset, editContext\)\)/)
   assert.match(handler, /if \(!isEdit && normalizeAssetOwnershipType\(nextOwnershipType\) === "component"\) openSection\("install"\)/)
   assert.doesNotMatch(handler, /custodianId: nextOwnershipType === "personal"/)
 })

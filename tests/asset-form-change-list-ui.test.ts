@@ -38,8 +38,14 @@ test("a changed field: its frame, แก้แล้ว, เดิม: <old valu
   const source = read(`${C}asset-form-changed-field.tsx`)
   assert.match(source, /export type AssetFieldChange = \{ was: string; automatic: boolean; onRestore\?: \(\) => void \}/)
   assert.match(source, /export function AssetFormChangedField\(\{ change, children \}: \{ change: AssetFieldChange \| null; children: ReactNode \}\)/)
-  assert.match(source, /if \(!change\) return <>\{children\}<\/>/)
-  assert.match(source, /className="grid min-w-0 content-start gap-2 rounded-md border border-primary-border p-3"/)
+  // One wrapper element in both states (final review): a field that becomes changed keeps its DOM nodes, so the input
+  // being typed in keeps focus; only the frame's classes and the line under the field come and go.
+  assert.doesNotMatch(source, /<>\{children\}<\/>/)
+  assert.equal([...source.matchAll(/<div\n\s+data-slot="asset-changed-field"/g)].length, 1)
+  assert.equal([...source.matchAll(/\breturn \(/g)].length, 1, "one return: the same element whether changed or not")
+  assert.match(source, /data-changed=\{change \? "" : undefined\}/)
+  assert.match(source, /className=\{cn\("grid min-w-0 content-start gap-2", change && "rounded-md border border-primary-border p-3"\)\}/)
+  assert.match(source, /\{children\}\n\s+\{change \? \(/)
   assert.match(source, /<span className="font-medium text-primary">\{t\("fieldChanged"\)\}<\/span>/)
   assert.match(source, /\{t\("fieldWas", \{ value: change\.was \}\)\}/)
   assert.match(source, /change\.automatic \? \(\n\s+<span>\{t\("followsHolderFix"\)\}<\/span>\n\s+\) : change\.onRestore \? \(\n\s+<Button variant="ghost" size="sm" onClick=\{change\.onRestore\}>\n\s+\{t\("restoreField"\)\}/)
@@ -88,7 +94,17 @@ test("the footer's แก้ไข n ช่อง opens the list: a Popover on t
   assert.match(form, /\{showChanges \? <AssetFormChangeList changes=\{changeRows\} reason=\{correctionReason\.trim\(\)\} onGoToField=\{goToField\} \/> : null\}/)
   assert.match(form, /<span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span>/)
   assert.match(form, /const showChanges = isEdit && changes\.length > 0/)
-  assert.match(form, /function goToField\(field: AssetDiffField\) \{\n\s+openSection\(sectionOfChange\(field\)\)\n\s+requestAnimationFrame\(\(\) => \{\n\s+void waitForElement\(changeFieldId\(field, selectedCustomFieldDefinitions\)\)\.then\(\(element\) => \{\n\s+if \(element\) focusField\(element\)/)
+  // ไปที่ช่อง never leaves focus nowhere (final review): a แผนก locked to the holder goes to the holder, the raw JSON
+  // shows first, and a row with no control left gives focus back to the list's trigger.
+  assert.match(form, /function goToField\(field: AssetDiffField\) \{\n\s+const target: AssetDiffField = field === "departmentId" && departmentLock\.locked \? "custodianId" : field\n\s+if \(target === "customFieldsJson"\) setShowRawJson\(true\)\n\s+openSection\(sectionOfChange\(target\)\)\n\s+requestAnimationFrame\(\(\) => \{\n\s+void waitForElement\(changeFieldId\(target, selectedCustomFieldDefinitions\)\)\.then\(\(element\) => \{\n\s+if \(element && focusField\(element\)\) return\n\s+document\.getElementById\(CHANGE_LIST_TRIGGER_ID\)\?\.focus\(\)/)
+  assert.match(source, /export const CHANGE_LIST_TRIGGER_ID = "asset-change-list-trigger"/)
+  assert.match(source, /<Button id=\{CHANGE_LIST_TRIGGER_ID\} variant="outline" size="sm">/)
+  // คืนค่าเดิม moves focus to the field it restored; the company or the branch brings the asset's place back with it, so
+  // a branch of another company is never left behind, and the read-only custody stays under an open handover.
+  const restore = form.slice(form.indexOf("function restoreField("), form.indexOf("function goToField("))
+  assert.match(restore, /field === "companyId" \|\| field === "branchId"\n\s+\? \["companyId", "branchId", "homeLocationId", \.\.\.\(custodyLocked \? \[\] : \(\["currentLocationId", "custodianId", "departmentId"\] as const\)\)\]\n\s+: \[field as keyof AssetFormValues\]/)
+  assert.match(restore, /setValues\(\(current\) => withDepartmentLock\(\{ \.\.\.current, \.\.\.stored \}, employees, asset, editContext\)\)/)
+  assert.match(restore, /goToField\(field\)\n\s+\}/)
 })
 
 test("the diff reads the stored asset, a section with a change has the changed frame and opens once", () => {
@@ -103,7 +119,11 @@ test("the diff reads the stored asset, a section with a change has the changed f
 
 test("the reason: in the main card when the room, holder or แผนก is changed by the person; validate() asks for it; the PUT sends it and no isActive", () => {
   const form = read(`${C}asset-form.tsx`)
-  assert.match(form, /const showCorrectionReason = isEdit && \(correction\.reasonNeeded \|\| Boolean\(fieldErrors\.errors\.correctionReason\)\)/)
+  // Required by the change itself or by the server's refusal of the same room, holder and แผนก: an error left from an
+  // earlier save no longer keeps it required once the change is put back (final review).
+  assert.match(form, /const custodyKey = \[values\.currentLocationId, values\.custodianId, values\.departmentId\]\.join\("\|"\)\n\s+const showCorrectionReason = isEdit && \(correction\.reasonNeeded \|\| serverReasonFor === custodyKey\)/)
+  assert.match(form, /if \(result\?\.fieldErrors\?\.correctionReason\) setServerReasonFor\(custodyKey\)\n\s+if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return/)
+  assert.doesNotMatch(form, /Boolean\(fieldErrors\.errors\.correctionReason\)/)
   assert.match(form, /<Field label=\{t\("correctionReasonLabel"\)\} id="asset-correction-reason" required error=\{errorText\("correctionReason"\)\}>\n\s+<Textarea\n\s+value=\{correctionReason\}/)
   assert.match(form, /maxLength=\{500\}\n\s+required/)
   const locationGroup = form.slice(form.indexOf('<CardGroup title={t("locationStatus")}>'), form.indexOf("</CardGroup>", form.indexOf('<CardGroup title={t("locationStatus")}>')))

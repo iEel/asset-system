@@ -22,6 +22,10 @@ test("the create header: the title, the hint line and the workspace's single/bat
   assert.match(workspace, /if \(mode === "single"\) return <AssetForm \{\.\.\.props\} headerActions=\{modeSwitch\} \/>/)
   // Batch mode stays reachable: the switch shows above the batch form.
   assert.match(workspace, /\{modeSwitch\}\n\s+<AssetBatchForm \{\.\.\.props\} \/>/)
+  // The two modes draw the switch in different places: after a change focus moves to the new pressed button (final review).
+  assert.match(workspace, /useEffect\(\(\) => \{\n\s+if \(shownMode\.current === mode\) return\n\s+shownMode\.current = mode\n\s+const group = `\[data-slot="segmented"\]\[aria-label="\$\{CSS\.escape\(t\("createModeLabel"\)\)\}"\]`\n\s+document\.querySelector<HTMLElement>\(`\$\{group\} \[aria-pressed="true"\]`\)\?\.focus\(\)\n\s+\}, \[mode, t\]\)/)
+  // A written-off asset keeps its stored แผนก with the holder unchanged, as PUT does (final review).
+  assert.match(form, /custodyFrozen: context \? isCustodyFrozen\(context\.statusName\) : false,/)
   assert.equal(messages("th").asset.createRequiredHint, "กรอกช่องที่มี * ในการ์ดแรกให้ครบก็บันทึกได้ ส่วนข้อมูลเพิ่มเติมเปิดกรอกเฉพาะเรื่องที่มีข้อมูล")
   assert.equal(typeof messages("en").asset.createRequiredHint, "string")
 })

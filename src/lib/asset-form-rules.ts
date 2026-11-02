@@ -3,6 +3,7 @@
 // validate() itself, the custom-field JSON helpers and the photo-label matching. Pure and client-safe, with relative
 // imports only, so tests and the form's client components import this file.
 import { getRegisterDepartment } from "./asset-department-rule.ts"
+import { getAssetLifecycleTransitionError } from "./asset-lifecycle-policy.ts"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, ownershipMayHaveHolder, type AssetOwnershipType } from "./asset-ownership.ts"
 import { atLeastOne, decimals, maxLength, notBefore, range, required, wholeNumber } from "./validation-rules.ts"
 
@@ -306,8 +307,14 @@ export type AssetOriginalLabelField = AssetField | "brandId" | "modelId" | "supp
 // picked; the form writes it into values.departmentId, so the counter counts it and the save sends it. The register's
 // own rule decides (getRegisterDepartment, the one POST and PUT use). text is the department's name for
 // "ตามผู้ถือครอง: {department}", or null when the holder's department is not among the options. Under an open handover
-// holder, room and department are read-only (Task 7), so the lock stays off.
+// holder, room and department are read-only (Task 7), so the lock stays off; on a written-off asset (custodyFrozen) with
+// the holder unchanged it stays off too, as the server skips the automatic fix there (final review).
 export type AssetFormDepartmentLock = { locked: boolean; departmentId: string | null; text: string | null }
+
+// A written-off status (Disposed, Retired): its custody cannot move (move_scope refused), the server's own test.
+export function isCustodyFrozen(statusName: string | null | undefined): boolean {
+  return getAssetLifecycleTransitionError("move_scope", statusName) !== null
+}
 
 export function getAssetFormDepartmentLock(input: {
   ownership: AssetOwnershipType
@@ -317,6 +324,7 @@ export function getAssetFormDepartmentLock(input: {
   currentCustodianId: string | null
   currentDepartmentId: string | null
   openHandover: boolean
+  custodyFrozen?: boolean
 }): AssetFormDepartmentLock {
   const free: AssetFormDepartmentLock = { locked: false, departmentId: null, text: null }
   if (input.openHandover || !input.custodianId) return free
@@ -328,16 +336,19 @@ export function getAssetFormDepartmentLock(input: {
     chosenDepartmentId: null,
     nextHolderDepartmentId: input.holderDepartmentId,
     openHandover: false,
+    custodyFrozen: input.custodyFrozen,
   })
   if (register.source !== "holder") return free
   return { locked: true, departmentId: register.departmentId, text: input.holderDepartmentId ? input.holderDepartmentName : null }
 }
 
 // A change of the ownership type keeps the holder (P2-R2), except a change to ส่วนควบ: a component takes its parent's
-// holder through the sync.
-export function changeOwnershipType(values: AssetFormValues, next: string): AssetFormValues {
+// holder through the sync. Under an open handover (custodyLocked) the holder is read-only and the server's lock refuses
+// a change of it, so ส่วนควบ keeps it too (final review).
+export function changeOwnershipType(values: AssetFormValues, next: string, options: { custodyLocked?: boolean } = {}): AssetFormValues {
   const ownershipType = normalizeAssetOwnershipType(next)
-  return { ...values, ownershipType, custodianId: ownershipMayHaveHolder(ownershipType) ? values.custodianId : "" }
+  const keepsHolder = ownershipMayHaveHolder(ownershipType) || options.custodyLocked === true
+  return { ...values, ownershipType, custodianId: keepsHolder ? values.custodianId : "" }
 }
 
 export type AssetRuleInput = {

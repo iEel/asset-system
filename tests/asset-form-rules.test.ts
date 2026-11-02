@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import {
-  changeOwnershipType, countRequiredFilled, emptyAssetFormValues, FIELD_IDS, getAssetFormDepartmentLock, getRequiredAssetFields, sectionOfField, validate,
+  changeOwnershipType, countRequiredFilled, emptyAssetFormValues, FIELD_IDS, getAssetFormDepartmentLock, getRequiredAssetFields, isCustodyFrozen, sectionOfField, validate,
   type AssetField, type AssetFormValues,
 } from "../src/lib/asset-form-rules.ts"
 import { assetOwnershipTypes } from "../src/lib/asset-ownership.ts"
@@ -110,6 +110,15 @@ test("the department lock: บุคคล and Stock with a holder take the hold
   assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, currentCustodianId: "emp-1", currentDepartmentId: "dept-old", openHandover: true }), free)
   // On edit with the holder unchanged, the lock is the automatic fix: the holder's department.
   assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, currentCustodianId: "emp-1", currentDepartmentId: "dept-old" }), { locked: true, departmentId: "dept-holder", text: "บัญชี" })
+  // A written-off asset (Disposed, Retired) cannot move custody: with the holder unchanged the lock stays off and the
+  // stored department stays, as the server keeps it (final review); a new holder still locks (the server refuses it).
+  for (const statusName of ["Disposed", "Retired"]) {
+    const custodyFrozen = isCustodyFrozen(statusName)
+    assert.equal(custodyFrozen, true, statusName)
+    assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, currentCustodianId: "emp-1", currentDepartmentId: "dept-old", custodyFrozen }), free, statusName)
+    assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, currentCustodianId: "emp-9", currentDepartmentId: "dept-old", custodyFrozen }), { locked: true, departmentId: "dept-holder", text: "บัญชี" }, `${statusName}, a new holder`)
+  }
+  for (const statusName of ["Ready", "In Use", "Checked Out", "Pending Disposal"]) assert.equal(isCustodyFrozen(statusName), false, statusName)
   // A holder whose department is unknown (not in the options) keeps the asset's department, still locked.
   assert.deepEqual(
     getAssetFormDepartmentLock({ ...lockInput, holderDepartmentId: null, holderDepartmentName: null, currentCustodianId: "emp-1", currentDepartmentId: "dept-old" }),
@@ -122,6 +131,9 @@ test("a change of the ownership type keeps the holder, except a change to ส่
   assert.deepEqual(changeOwnershipType(held, "software_license"), { ...held, ownershipType: "software_license" })
   for (const ownership of ["shared", "stock", "software_license", "personal"]) assert.equal(changeOwnershipType(held, ownership).custodianId, "emp-1", ownership)
   assert.deepEqual(changeOwnershipType(held, "component"), { ...held, ownershipType: "component", custodianId: "" })
+  // Under an open handover the holder is read-only and the lock refuses a change, so ส่วนควบ keeps it (final review).
+  assert.deepEqual(changeOwnershipType(held, "component", { custodyLocked: true }), { ...held, ownershipType: "component" })
+  assert.deepEqual(changeOwnershipType(held, "component", { custodyLocked: false }), { ...held, ownershipType: "component", custodianId: "" })
   // An unknown value reads as the default type.
   assert.equal(changeOwnershipType(held, "bogus").ownershipType, "personal")
 })

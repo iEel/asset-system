@@ -9,6 +9,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useMediaQuery } from "@/components/ui/use-media-query"
 import type { AssetDiffField } from "@/lib/asset-form-diff"
 
+// The trigger's id: ไปที่ช่อง gives focus back to it when the row's field has no control to take it.
+export const CHANGE_LIST_TRIGGER_ID = "asset-change-list-trigger"
+
 // One row of the list: the field's label and its stored and new values as the form shows them.
 export type AssetFormChangeRow = { field: AssetDiffField; label: string; from: string; to: string; automatic: boolean }
 
@@ -36,7 +39,7 @@ export function AssetFormChangeList({ changes, reason, onGoToField }: { changes:
   }
 
   const trigger = (
-    <Button variant="outline" size="sm">
+    <Button id={CHANGE_LIST_TRIGGER_ID} variant="outline" size="sm">
       {title}
     </Button>
   )
