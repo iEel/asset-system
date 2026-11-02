@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -266,4 +267,17 @@ test("every code of the list is produced by at least one case above", () => {
   const rows = validateAssetImportRows([{ rowNumber: 2, values: { ...base, assetTag: "A" } }, { rowNumber: 3, values: { ...base, assetTag: "A" } }], references())
   for (const issue of rows[1].issues) seen.add(issue.code)
   assert.deepEqual([...seen].sort(), [...assetImportIssueCodes].sort())
+})
+
+// Group 4 plan 5 Task 3: the page writes each problem from asset.importError.<code>, so every code needs both languages.
+test("every issue code has its th and en text in asset.importError", () => {
+  for (const locale of ["th", "en"] as const) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: { importError?: Record<string, unknown> } }
+    const texts = messages.asset.importError ?? {}
+    for (const code of assetImportIssueCodes) {
+      assert.equal(typeof texts[code], "string", `${locale} asset.importError.${code}`)
+      assert.ok(String(texts[code]).trim().length > 0, `${locale} asset.importError.${code} is empty`)
+    }
+    assert.deepEqual(Object.keys(texts).sort(), [...assetImportIssueCodes].sort(), `${locale}: no text for a code that does not exist`)
+  }
 })

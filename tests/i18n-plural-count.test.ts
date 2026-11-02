@@ -29,13 +29,31 @@ function sourceFiles(directory: string): string[] {
   })
 }
 
-test("the en plural messages are known: 46 keys, so a new one is checked by the rules below", () => {
+test("the en plural messages are known: 61 keys, so a new one is checked by the rules below", () => {
   // Group 4 plan 2 Task 6a added 9: the asset form's required counter, section count, missing line and six section summaries.
   // Task 8 added the edit footer's "แก้ไข n ช่อง" (asset.changeCount).
   // Group 4 plan 3 Task 4 added 4: the purchase-document picker's footer and linked lines, and the edit badge "ผูกไว้ n ใบ".
   // Group 4 plan 4 Task 5 added 3: the scan page's heading with and without the matched field, and a card's components.
   // The final review of plan 4 added 1: the scan heading's "แสดง n รายการแรก" past 8 results.
-  assert.equal(pluralKeys.size, 46, [...pluralKeys.keys()].join(", "))
+  // Group 4 plan 5 Task 3 added 15: the import card (file line, column mapping, repeated problems, the 100-row note, the
+  // hint under the table, the footer, the confirm button, the done line and its asset list) and the export and history
+  // card (the count line, its capped variant, "10 รอบล่าสุด" and the skipped rows' "และอีก n แถว").
+  assert.equal(pluralKeys.size, 61, [...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("asset.importPage.dropzoneHint"), "count")
+  assert.equal(pluralKeys.get("asset.importPage.mappingMatched"), "total")
+  assert.equal(pluralKeys.get("asset.importPage.mappingMissingOptional"), "count")
+  assert.equal(pluralKeys.get("asset.importPage.mappingMissingRequired"), "count")
+  assert.equal(pluralKeys.get("asset.importPage.issueSummaryRows"), "count")
+  assert.equal(pluralKeys.get("asset.importPage.shownFirst"), "count")
+  assert.equal(pluralKeys.get("asset.importPage.tableHint"), "errors")
+  assert.equal(pluralKeys.get("asset.importPage.footerSummary"), "ready")
+  assert.equal(pluralKeys.get("asset.importPage.confirm"), "count")
+  assert.equal(pluralKeys.get("asset.importPage.doneSummary"), "imported")
+  assert.equal(pluralKeys.get("asset.importPage.doneMoreAssets"), "count")
+  assert.equal(pluralKeys.get("assetTools.importExportPage.exportAllCount"), "count")
+  assert.equal(pluralKeys.get("assetTools.importExportPage.exportAllCapped"), "count")
+  assert.equal(pluralKeys.get("assetTools.importExportPage.historyRecent"), "count")
+  assert.equal(pluralKeys.get("assetTools.importExportPage.skippedRowsMore"), "count")
   assert.equal(pluralKeys.get("assetTools.scanShownFirst"), "shown")
   assert.equal(pluralKeys.get("assetTools.scanFound"), "count")
   assert.equal(pluralKeys.get("assetTools.scanFoundMatch"), "count")
