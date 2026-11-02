@@ -59,7 +59,8 @@ test("the optional sections fold: each a FormDisclosure with a summary and a cou
   assert.ok(form.indexOf('<Section title={t("licenseManagement")}>') > form.indexOf("</AssetFormRequiredCard>"), "the License seats stay a plain panel after the card")
   assert.ok(form.indexOf('<Section title={t("licenseManagement")}>') < form.indexOf("<AssetFormInstall"))
   // The badge and the summary come from the pure summary of each section.
-  assert.match(form, /badge: summary\.total > 0 \? t\("sectionFilled", \{ filled: summary\.filled, total: summary\.total \}\) : undefined/)
+  // Group 4 plan 3 Task 5: เอกสารจัดซื้อ has a count of its own ("เลือกแล้ว n ใบ", "ผูกไว้ n ใบ") in place of กรอกแล้ว.
+  assert.match(form, /badge: summary\.badge\n\s+\? t\(`sectionSummary\.\$\{summary\.badge\.key\}`, \{ count: summary\.badge\.count \}\)\n\s+: summary\.total > 0 \? t\("sectionFilled", \{ filled: summary\.filled, total: summary\.total \}\) : undefined/)
   assert.match(form, /const summary = summarizeAssetFormSection\(section, summaryInput\)/)
   // Task 8: a section with a change on the edit page has the changed frame (tests/asset-form-change-list-ui.test.ts).
   assert.match(form, /tone: sectionsWithErrors\.has\(section\) \? "error" : sectionsWithChanges\.has\(section\) \? "changed" : "default"/)
@@ -73,11 +74,13 @@ test("the optional sections fold: each a FormDisclosure with a summary and a cou
 
 test("เอกสารจัดซื้อ is its own section, open at first; #purchase opens การจัดซื้อและประกัน; an error opens its section", () => {
   const form = read(`${C}asset-form.tsx`)
-  assert.match(form, /const \[openSections, setOpenSections\] = useState<Set<AssetFormSection>>\(\(\) => new Set<AssetFormSection>\(\["documents"\]\)\)/)
+  // Group 4 plan 3 Task 5 (spec §9.1): open on create, folded on edit unless the save landed there with ?documents=failed.
+  assert.match(form, /const \[openSections, setOpenSections\] = useState<Set<AssetFormSection>>\(\(\) => new Set<AssetFormSection>\(asset\?\.id && !documentsFailed \? \[\] : \["documents"\]\)\)/)
   assert.match(form, /if \(window\.location\.hash === "#purchase"\) openSectionNow\("purchase"\)/)
   assert.match(form, /reveal: \(key\) => openSection\(sectionOfField\(key\)\),/)
   const documents = read(`${C}asset-form-documents.tsx`)
-  assert.match(documents, /<FoldedSection title=\{t\("purchaseDocuments"\)\} disclosure=\{disclosure\}>/)
+  // Task 5: inside the #documents anchor of the failure landing (P3-R6).
+  assert.match(documents, /<div id="documents" className="scroll-mt-24">\n\s+<FoldedSection title=\{t\("purchaseDocuments"\)\} disclosure=\{disclosure\}>/)
   const purchase = read(`${C}asset-form-purchase.tsx`)
   assert.doesNotMatch(purchase, /purchaseDocument|FileDropzone|ChoiceCard/, "the documents box left the purchase section")
   assert.match(purchase, /<div id="purchase" className="scroll-mt-24">\s*<FoldedSection title=\{t\("purchaseWarranty"\)\} disclosure=\{disclosure\}>/)

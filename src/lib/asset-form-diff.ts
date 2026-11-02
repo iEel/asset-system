@@ -39,8 +39,10 @@ const VALUE_FIELDS = [
 
 type AssetValueField = (typeof VALUE_FIELDS)[number]
 // Brand, model, supplier, the License's asset, the remark and the custom fields' stored JSON have no FIELD_IDS row (no
-// error of their own), so a change names a wider set than AssetField.
-export type AssetDiffField = AssetValueField | AssetField | "remark" | "customFieldsJson"
+// error of their own), so a change names a wider set than AssetField. A purchase document chosen, removed or uploaded on
+// the edit page is a row of its own (group 4 plan 3 Task 5, P3-R5): purchaseDocuments.<id>, or .new.<draft id>.
+export type PurchaseDocumentDiffField = `purchaseDocuments.${string}`
+export type AssetDiffField = AssetValueField | AssetField | "remark" | "customFieldsJson" | PurchaseDocumentDiffField
 export type AssetFormChange = { field: AssetDiffField; from: string; to: string; automatic: boolean }
 
 const SEAT_FIELDS = new Set<string>(["licenseTotalSeats", "licenseUsedSeats"])
@@ -98,6 +100,32 @@ export function diffAssetFormValues(original: AssetFormValues, values: AssetForm
   return changes
 }
 
+export function isPurchaseDocumentChange(field: string): field is PurchaseDocumentDiffField {
+  return field.startsWith("purchaseDocuments.")
+}
+
+/**
+ * What the save does to the asset's purchase documents (P3-R5, spec §4 anti-goal): each newly chosen one is added
+ * (from "" to its number), each stored one marked for removal is taken off (its number to ""), and each new upload is
+ * added, in that order. The form words them "เพิ่ม <เลขที่>" and "เอา <เลขที่> ออก".
+ */
+export function diffAssetFormDocuments(input: {
+  original: readonly { id: string; documentNo: string }[]
+  chosen: readonly { id: string; documentNo: string }[]
+  removedIds: ReadonlySet<string>
+  uploads: readonly { id: string; documentNo: string }[]
+}): AssetFormChange[] {
+  const stored = new Set(input.original.map((document) => document.id))
+  const added = input.chosen
+    .filter((document) => !stored.has(document.id) && !input.removedIds.has(document.id))
+    .map((document): AssetFormChange => ({ field: `purchaseDocuments.${document.id}`, from: "", to: document.documentNo, automatic: false }))
+  const removed = input.original
+    .filter((document) => input.removedIds.has(document.id))
+    .map((document): AssetFormChange => ({ field: `purchaseDocuments.${document.id}`, from: document.documentNo, to: "", automatic: false }))
+  const uploaded = input.uploads.map((upload): AssetFormChange => ({ field: `purchaseDocuments.new.${upload.id}`, from: "", to: upload.documentNo, automatic: false }))
+  return [...added, ...removed, ...uploaded]
+}
+
 /** The automatic fix (P2-R1: the holder unchanged on บุคคล or Stock, แผนก set to the holder's; departmentLocked is the
  * form's lock, off under an open handover) and whether the save needs the reason (registerEditNeedsReason, as PUT). */
 export function getAssetEditCorrection(input: { original: AssetFormValues; values: AssetFormValues; departmentLocked: boolean }): { departmentAutomatic: boolean; reasonNeeded: boolean } {
@@ -131,10 +159,13 @@ const CHANGE_FIELD_IDS: Partial<Record<AssetDiffField, string>> = {
 
 /** The section that holds a changed field: a section with a change has the changed frame and opens. */
 export function sectionOfChange(field: AssetDiffField): AssetFormSection {
+  if (isPurchaseDocumentChange(field)) return "documents"
   return CHANGE_SECTIONS[field] ?? sectionOfField(field as AssetField)
 }
 
 /** The id ไปที่ช่อง focuses; an extra custom-field row and the stored JSON have none (the section opens). */
 export function changeFieldId(field: AssetDiffField, definitions: CustomFieldDefinition[]): string {
+  // A document row goes to the picker's search, the one control every such row shares.
+  if (isPurchaseDocumentChange(field)) return "asset-purchase-document-search"
   return CHANGE_FIELD_IDS[field] ?? fieldId(field as AssetField, definitions)
 }

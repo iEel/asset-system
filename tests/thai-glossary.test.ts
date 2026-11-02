@@ -34,6 +34,8 @@ const rules: Rule[] = [
   { term: "หมวด (ย่อ)", pattern: /หมวด(?!หมู่)/, use: "หมวดหมู่" },
   // Group 4 plan 3 (P3-R1): documents are counted in ใบ; "ฉบับสมบูรณ์" and other senses stay legal.
   { term: "ฉบับ (นับเอกสาร)", pattern: /number\}\s*ฉบับ/, use: "ใบ" },
+  // Group 4 plan 3 Task 5: the two parts of เอกสารจัดซื้อ in the asset form, and its add button.
+  { term: "เลือกเอกสารกลางที่มีอยู่ / สร้างเอกสารกลางใหม่ / เพิ่มเอกสารเข้าคิวบันทึก", pattern: /เลือกเอกสารกลางที่มีอยู่|สร้างเอกสารกลางใหม่|เพิ่มเอกสารเข้าคิวบันทึก/, use: "เลือกเอกสารที่มีอยู่ / อัปโหลดเอกสารใหม่ / + เพิ่มอีกใบ" },
 ]
 
 // Removed before matching: product names and allowed compounds.

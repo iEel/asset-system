@@ -15,7 +15,7 @@ const definition = (fieldName: string, isRequired: boolean): CustomFieldDefiniti
 const empty: AssetFormSummaryInput = {
   values: { ...emptyAssetFormValues },
   install: { parentAssetId: "", componentRole: "", slotNo: "", reason: "" },
-  documents: { selected: 0, queued: 0 },
+  documents: { mode: "create", chosen: [], queued: 0 },
   photos: { checklistTotal: 0, checklistCovered: 0, existing: 0, queued: 0 },
   customFields: { definitions: [], valueOf: () => "", extraRows: 0 },
 }
@@ -45,11 +45,18 @@ test("install, documents, photos, custom fields and the remark", () => {
   const install = { ...empty, install: { parentAssetId: "p1", componentRole: "Harddisk", slotNo: "", reason: "" }, installParentLabel: "NB-001 - Notebook" }
   assert.deepEqual(summarizeAssetFormSection("install", install), { filled: 2, total: 4, parts: [{ key: "installParent", label: "NB-001 - Notebook" }] })
 
-  const documents = { ...empty, documents: { selected: 2, queued: 1 } }
+  // Group 4 plan 3 Task 5: the chosen documents' refs, the drafts as รอบันทึก n ใบ, and the badge เลือกแล้ว n ใบ (create)
+  // in place of กรอกแล้ว (tests/asset-form-documents-ui.test.ts has the edit case).
+  const chosen = [
+    { id: "d1", documentType: "purchase_order" as const, documentNo: "PO-1" },
+    { id: "d2", documentType: "invoice" as const, documentNo: "INV-2" },
+  ]
+  const documents: AssetFormSummaryInput = { ...empty, documents: { mode: "create", chosen, queued: 1 } }
   assert.deepEqual(summarizeAssetFormSection("documents", documents), {
     filled: 0,
     total: 0,
-    parts: [{ key: "documentsSelected", count: 2 }, { key: "documentsQueued", count: 1 }],
+    parts: [{ key: "documentRefs", refs: chosen }, { key: "documentsQueued", count: 1 }],
+    badge: { key: "documentsSelected", count: 2 },
   })
 
   const photos = { ...empty, photos: { checklistTotal: 3, checklistCovered: 2, existing: 1, queued: 2 } }

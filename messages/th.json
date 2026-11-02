@@ -734,14 +734,13 @@
     "uploading": "กำลังอัปโหลด...",
     "purchaseDocuments": "เอกสารจัดซื้อ",
     "purchaseDocumentsHelp": "เลือกเอกสารจัดซื้อกลางที่มีอยู่ หรือสร้างเอกสารใหม่เพื่อใช้ร่วมกับหลายทรัพย์สิน เช่น PO/Invoice เดียวกับคอม 100 เครื่อง",
-    "existingPurchaseDocuments": "เลือกเอกสารกลางที่มีอยู่",
+    "existingPurchaseDocuments": "เลือกเอกสารที่มีอยู่",
     "noPurchaseDocuments": "ยังไม่มีเอกสารจัดซื้อกลาง",
     "linkedAssets": "ผูกแล้ว {count} ทรัพย์สิน",
-    "createPurchaseDocument": "สร้างเอกสารกลางใหม่",
+    "createPurchaseDocument": "อัปโหลดเอกสารใหม่",
     "purchaseDocumentNo": "เลขที่เอกสาร",
     "dropPurchaseDocumentTitle": "ลากเอกสารจัดซื้อมาวางที่นี่",
-    "addPurchaseDocument": "เพิ่มเอกสารเข้าคิวบันทึก",
-    "removePurchaseDocument": "ลบเอกสารจัดซื้อ",
+    "addPurchaseDocument": "เพิ่มอีกใบ",
     "purchaseDocumentNoRequired": "กรุณากรอกเลขที่เอกสารจัดซื้อ",
     "purchaseDocumentTypes": {
       "purchase_order": "ใบ PO",
@@ -1450,7 +1449,13 @@
     "purchaseDocumentRemoveNamed": "เอา {number} ออก",
     "purchaseDocumentRemoving": "จะเอาออกเมื่อบันทึก",
     "purchaseDocumentKeep": "เก็บไว้",
-    "purchaseDocumentKeepNamed": "เก็บ {number} ไว้"
+    "purchaseDocumentKeepNamed": "เก็บ {number} ไว้",
+    "purchaseDocumentQueuedList": "เอกสารที่รอบันทึก",
+    "purchaseDocumentRepeated": "เลขที่นี้ซ้ำกับเอกสารอีกใบที่รอบันทึก",
+    "purchaseDocumentChangeAdd": "เพิ่ม {number}",
+    "documentsFailedTitle": "เอกสารจัดซื้อบางใบยังไม่ได้บันทึก",
+    "documentsFailedList": "บันทึกทรัพย์สินแล้ว อัปโหลดเอกสารเหล่านี้อีกครั้ง",
+    "documentsFailedGeneric": "บันทึกทรัพย์สินแล้ว ตรวจสอบเอกสารที่ผูกไว้ แล้วเลือกหรืออัปโหลดใบที่ยังขาดอีกครั้ง"
   },
   "company": {
     "title": "บริษัท",

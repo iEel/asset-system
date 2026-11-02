@@ -27,8 +27,11 @@ test("each follow-up step is guarded and its failure label is collected", () => 
   for (const label of ["followUpInstall", "followUpDocuments", "followUpPhotos"]) {
     assert.ok(body.includes(`t("${label}")`), `t("${label}") in handleSubmit`)
   }
-  // Install, then documents, then photos.
+  // Install, then documents, then photos. Group 4 plan 3 Task 5: the documents step is each draft's create-and-link,
+  // the chosen ids' link and, on edit, the unlinks, its label pushed once after them.
   const order = ["followUpInstall", "followUpDocuments", "followUpPhotos"].map((label) => body.indexOf(`t("${label}")`))
+  const documentRequests = ["await uploadPurchaseDocument(savedId, upload)", "await linkPurchaseDocuments(savedId, documentLinks.linkIds)", "await unlinkPurchaseDocument(savedId, documentId)"].map((call) => body.indexOf(call))
+  assert.ok(documentRequests.every((at, index) => at > order[0] && at < order[1] && (index === 0 || at > documentRequests[index - 1])), documentRequests.join(","))
   assert.deepEqual([...order].sort((a, b) => a - b), order, "install, documents, photos in that order")
   // Each step sits in its own try/catch after the save.
   const afterSave = body.slice(body.indexOf("if (!response.ok)"))
@@ -38,7 +41,12 @@ test("each follow-up step is guarded and its failure label is collected", () => 
 test("with a failure the form warns and opens the saved asset; without one it keeps the success path", () => {
   const body = handleSubmitBody(read(FORM))
   assert.ok(body.includes('toast.warning(t("savedWithFollowUpErrors", { items: '), "the warning names the failed steps")
-  assert.match(body, /router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}`\)/, "pushes to the saved asset")
+  // Group 4 plan 3 Task 5 (P3-R6): a failed document step lands on the edit page with เอกสารจัดซื้อ open instead.
+  assert.match(
+    body,
+    /if \(documentStepFailed\) router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}\/edit\?documents=failed#documents`\)\n\s+else router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}`\)/,
+    "pushes to the saved asset, or to its edit page after a failed document step",
+  )
   assert.match(body, /toast\.success\(tCommon\("savedSuccess"\)\)\n\s+router\.push\(backHref\)/, "success then back")
 })
 

@@ -87,12 +87,15 @@ export type PurchaseDocumentOption = {
   assetCount: number
 }
 
+// A new purchase document waiting for the save (group 4 plan 3 Task 5): created and linked in one request after the
+// asset is saved. supplierId null follows the asset's supplier (the server's default); a chosen one is sent.
 export type PurchaseDocumentDraft = {
   id: string
-  documentType: string
+  documentType: PurchaseDocumentType
   documentNo: string
   documentDate: string
   totalAmount: string
+  supplierId: string | null
   file: File
 }
 

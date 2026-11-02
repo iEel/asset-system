@@ -5,12 +5,15 @@ import { getAssetFormOptions } from "@/lib/asset-form-options"
 import type { AssetEditContext } from "@/lib/asset-form-rules"
 import { buildAssetRegisterTransactionHref } from "@/lib/asset-operation-policy"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { readPurchaseDocumentChoices, searchPurchaseDocuments, type PurchaseDocumentSearchDb } from "@/lib/purchase-document-search"
 import { AssetForm } from "@/components/assets/asset-form"
 
 type EditAssetPageProps = {
   params: Promise<{ id: string; locale: string }>
-  searchParams: Promise<{ returnTo?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; documents?: string | string[] }>
 }
+
+const purchaseDocumentDb = prisma as unknown as PurchaseDocumentSearchDb
 
 const codeName = { select: { code: true, name: true } } as const
 
@@ -19,6 +22,8 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
   const rawSearchParams = await searchParams
   await requirePagePermission(locale, "asset", "edit")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
+  // The save's failure landing (group 4 plan 3 Task 5, P3-R6): เอกสารจัดซื้อ opens with the documents to upload again.
+  const documentsFailed = getSingleSearchParam(rawSearchParams.documents) === "failed"
 
   const asset = await prisma.asset.findFirst({
       where: { id, isActive: true },
@@ -32,7 +37,9 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
           orderBy: { uploadedAt: "desc" },
           select: { id: true, originalName: true, fileType: true, fileSize: true },
         },
+        // The chips of the picker, in the order they were linked (plan 3 Task 5).
         purchaseDocumentLinks: {
+          orderBy: { linkedAt: "asc" },
           select: { purchaseDocumentId: true },
         },
         // The header's facts and the stored label of every reference field (group 4 plan 2 Task 7), read with the
@@ -53,7 +60,7 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
     })
 
   if (!asset) notFound()
-  const [options, openHandover] = await Promise.all([
+  const [options, openHandover, chosenDocuments, recentDocuments] = await Promise.all([
     getAssetFormOptions({ currentStatusId: asset.statusId, currentConditionId: asset.conditionId }),
     // An open handover makes holder, room and แผนก read-only (P2-R3): the same where as the asset page's frame and PUT.
     prisma.assetCheckout.findFirst({
@@ -61,6 +68,10 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
       orderBy: { checkoutDate: "desc" },
       select: { id: true, documentNo: true },
     }),
+    // The linked documents by id, inactive ones too (P3-R7), and the picker's empty-query list with the asset's supplier
+    // first (P3-R4): the form fetches nothing on load.
+    readPurchaseDocumentChoices(purchaseDocumentDb, asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)),
+    searchPurchaseDocuments(purchaseDocumentDb, { q: "", supplierId: asset.supplierId }),
   ])
 
   const viewHref = appendReturnTo(`/${locale}/assets/${asset.id}`, returnToHref)
@@ -128,15 +139,24 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
           invoiceNumber: asset.invoiceNumber,
           remark: asset.remark,
           customFieldsJson: asset.customFieldsJson,
-          purchaseDocumentIds: asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId),
           isActive: asset.isActive,
         }}
+        chosenDocuments={chosenDocuments}
+        recentDocuments={recentDocuments}
+        documentsFailed={documentsFailed}
+        // A save that lands here again with ?documents=failed starts a fresh form with the stored links.
+        key={documentsFailed ? "documents-failed" : "form"}
         existingAssetPhotos={asset.attachments}
         editContext={editContext}
         backHref={returnToHref}
       />
     </div>
   )
+}
+
+function getSingleSearchParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0]
+  return value
 }
 
 function formatDateInput(date: Date | null) {

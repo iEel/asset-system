@@ -734,14 +734,13 @@
     "uploading": "Uploading...",
     "purchaseDocuments": "Purchase Documents",
     "purchaseDocumentsHelp": "Select an existing shared purchase document or create a new one for multiple assets, such as one PO/Invoice for 100 computers.",
-    "existingPurchaseDocuments": "Select existing shared documents",
+    "existingPurchaseDocuments": "Choose an existing document",
     "noPurchaseDocuments": "No shared purchase documents yet",
     "linkedAssets": "Linked to {count} assets",
-    "createPurchaseDocument": "Create new shared document",
+    "createPurchaseDocument": "Upload a new document",
     "purchaseDocumentNo": "Document No.",
     "dropPurchaseDocumentTitle": "Drag a purchase document here",
-    "addPurchaseDocument": "Add document to save queue",
-    "removePurchaseDocument": "Remove purchase document",
+    "addPurchaseDocument": "Add another",
     "purchaseDocumentNoRequired": "Please enter the purchase document number",
     "purchaseDocumentTypes": {
       "purchase_order": "Purchase Order",
@@ -1450,7 +1449,13 @@
     "purchaseDocumentRemoveNamed": "Remove {number}",
     "purchaseDocumentRemoving": "Removed when you save",
     "purchaseDocumentKeep": "Keep",
-    "purchaseDocumentKeepNamed": "Keep {number}"
+    "purchaseDocumentKeepNamed": "Keep {number}",
+    "purchaseDocumentQueuedList": "Documents waiting to save",
+    "purchaseDocumentRepeated": "Another document waiting to save has this number",
+    "purchaseDocumentChangeAdd": "Add {number}",
+    "documentsFailedTitle": "Some purchase documents were not saved",
+    "documentsFailedList": "The asset is saved. Upload these documents again.",
+    "documentsFailedGeneric": "The asset is saved. Check the linked documents, then choose or upload any that are missing."
   },
   "company": {
     "title": "Companies",

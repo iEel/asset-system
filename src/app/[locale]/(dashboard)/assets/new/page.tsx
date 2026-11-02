@@ -4,7 +4,10 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { getAssetFormOptions } from "@/lib/asset-form-options"
 import { buildAssetCloneFormState } from "@/lib/asset-clone"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { readPurchaseDocumentChoices, searchPurchaseDocuments, type PurchaseDocumentSearchDb } from "@/lib/purchase-document-search"
 import { AssetCreateWorkspace } from "@/components/assets/asset-create-workspace"
+
+const purchaseDocumentDb = prisma as unknown as PurchaseDocumentSearchDb
 
 type NewAssetPageProps = {
   params: Promise<{ locale: string }>
@@ -21,7 +24,9 @@ export default async function NewAssetPage({ params, searchParams }: NewAssetPag
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
 
   if (!cloneFrom) {
-    return <AssetCreateWorkspace {...options} backHref={returnToHref} />
+    // The purchase-document picker's empty-query list (group 4 plan 3 Task 5, P3-R4): the form fetches nothing on load.
+    const recentDocuments = await searchPurchaseDocuments(purchaseDocumentDb, { q: "", supplierId: null })
+    return <AssetCreateWorkspace {...options} recentDocuments={recentDocuments} backHref={returnToHref} />
   }
 
   await requirePagePermission(locale, "asset", "view")
@@ -74,8 +79,24 @@ export default async function NewAssetPage({ params, searchParams }: NewAssetPag
   if (!sourceAsset) notFound()
 
   const cloneState = buildAssetCloneFormState(sourceAsset, { readyStatusId: readyStatus?.id })
+  // The source's documents as chips, the active ones only (the link takes no inactive document), and the empty-query
+  // list with the source's supplier first.
+  const [cloneDocuments, recentDocuments] = await Promise.all([
+    readPurchaseDocumentChoices(purchaseDocumentDb, cloneState.asset.purchaseDocumentIds),
+    searchPurchaseDocuments(purchaseDocumentDb, { q: "", supplierId: cloneState.asset.supplierId }),
+  ])
+  const chosenDocuments = cloneDocuments.filter((document) => document.isActive)
 
-  return <AssetCreateWorkspace {...options} asset={cloneState.asset} cloneSource={cloneState.cloneSource} backHref={returnToHref} />
+  return (
+    <AssetCreateWorkspace
+      {...options}
+      asset={cloneState.asset}
+      cloneSource={cloneState.cloneSource}
+      chosenDocuments={chosenDocuments}
+      recentDocuments={recentDocuments}
+      backHref={returnToHref}
+    />
+  )
 }
 
 function getSingleSearchParam(value: string | string[] | undefined) {

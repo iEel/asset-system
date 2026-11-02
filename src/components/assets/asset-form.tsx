@@ -18,7 +18,7 @@ import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { Textarea } from "@/components/ui/textarea"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { useApiError } from "@/components/ui/use-api-error"
-import { useFieldErrors } from "@/components/ui/use-field-errors"
+import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
 import { AssetFormChangeList, CHANGE_LIST_TRIGGER_ID, type AssetFormChangeRow } from "@/components/assets/asset-form-change-list"
 import { AssetFormChangedField, type AssetFieldChange } from "@/components/assets/asset-form-changed-field"
 import { AssetFormCustomFields } from "@/components/assets/asset-form-custom-fields"
@@ -71,7 +71,30 @@ import {
   type PurchaseDocumentOption,
   type PurchaseDocumentType,
 } from "@/lib/asset-form-rules"
-import { changeFieldId, diffAssetFormValues, getAssetEditCorrection, sectionOfChange, type AssetDiffField, type AssetFormChange } from "@/lib/asset-form-diff"
+import {
+  assetPurchaseDocumentPath,
+  assetPurchaseDocumentsPath,
+  buildPurchaseDocumentUploadForm,
+  failedPurchaseDocumentsKey,
+  listPurchaseDocumentUploads,
+  mapPurchaseDocumentDuplicates,
+  parseFailedPurchaseDocuments,
+  planPurchaseDocumentLinks,
+  purchaseDocumentCheckPath,
+  type FailedPurchaseDocument,
+  type PurchaseDocumentDraftErrorCode,
+  type PurchaseDocumentDuplicateAnswer,
+} from "@/lib/asset-form-documents"
+import {
+  changeFieldId,
+  diffAssetFormDocuments,
+  diffAssetFormValues,
+  getAssetEditCorrection,
+  isPurchaseDocumentChange,
+  sectionOfChange,
+  type AssetDiffField,
+  type AssetFormChange,
+} from "@/lib/asset-form-diff"
 import { summarizeAssetFormSection, type AssetFormFoldedSection, type AssetFormSummaryInput, type AssetFormSummaryPart } from "@/lib/asset-form-summary"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { departmentFollowsHolder } from "@/lib/asset-department-rule"
@@ -80,6 +103,8 @@ import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { focusField, waitForElement } from "@/lib/field-focus"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
+import { buildPurchaseDocumentRefsSummary } from "@/lib/purchase-document-picker-rules"
+import type { PurchaseDocumentSearchAnswer, PurchaseDocumentSearchRow } from "@/lib/purchase-document-search-rules"
 import { cn, formatDate } from "@/lib/utils"
 
 const protectedAssetWorkflowStatuses = new Set([
@@ -155,7 +180,9 @@ export function AssetForm({
   conditions,
   suppliers,
   parentAssets,
-  purchaseDocuments: purchaseDocumentOptions,
+  chosenDocuments: initialChosenDocuments,
+  recentDocuments,
+  documentsFailed = false,
   customFieldDefinitions,
   existingAssetPhotos = [],
   cloneSource,
@@ -176,7 +203,14 @@ export function AssetForm({
   conditions: Option[]
   suppliers: Option[]
   parentAssets: Option[]
+  // The 300 newest documents: only the batch form reads them (its props are this form's) until plan 3 Task 6.
   purchaseDocuments: PurchaseDocumentOption[]
+  // เอกสารจัดซื้อ (group 4 plan 3 Task 5): the documents linked to the asset on edit, or a clone's, read by id with the
+  // inactive ones (P3-R7); and the picker's empty-query list the page rendered, so nothing is fetched on load (P3-R4).
+  chosenDocuments?: PurchaseDocumentSearchRow[]
+  recentDocuments: PurchaseDocumentSearchAnswer
+  // The edit page after a failed document step (?documents=failed, P3-R6): เอกสารจัดซื้อ opens with the warning.
+  documentsFailed?: boolean
   customFieldDefinitions: CustomFieldDefinition[]
   existingAssetPhotos?: ExistingAssetPhoto[]
   cloneSource?: CloneSourceContext
@@ -192,6 +226,7 @@ export function AssetForm({
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const apiError = useApiError()
+  const validationMessage = useValidationMessage()
   // A held บุคคล or Stock asset opens with its holder's department, a clone too (group 4 plan 2 Task 6b); under an open
   // handover the stored department stays (the server keeps it, Task 7).
   const [values, setValues] = useState<AssetFormValues>(() => withDepartmentLock(asset ?? emptyAssetFormValues, employees, asset, editContext))
@@ -206,9 +241,18 @@ export function AssetForm({
   const [purchaseDocumentNo, setPurchaseDocumentNo] = useState("")
   const [purchaseDocumentDate, setPurchaseDocumentDate] = useState("")
   const [purchaseDocumentTotalAmount, setPurchaseDocumentTotalAmount] = useState("")
+  // The active draft's supplier: null follows the asset's (sent as none, the server's default), else the one picked.
+  const [purchaseDocumentSupplierId, setPurchaseDocumentSupplierId] = useState<string | null>(null)
   const [selectedPurchaseFile, setSelectedPurchaseFile] = useState<File | null>(null)
   const [newPurchaseDocuments, setNewPurchaseDocuments] = useState<PurchaseDocumentDraft[]>([])
-  const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>(asset?.purchaseDocumentIds ?? [])
+  // The queued drafts the pre-check refused, by draft id (the active draft's refusal is the number's field error).
+  const [draftErrors, setDraftErrors] = useState<Record<string, PurchaseDocumentDraftErrorCode>>({})
+  // The picker's chips (group 4 plan 3 Task 5): on edit the stored links first, on a clone the source's; and on edit
+  // the stored ones marked for removal at บันทึกการแก้ไข (P3-R5).
+  const [chosenDocuments, setChosenDocuments] = useState<PurchaseDocumentSearchRow[]>(() => initialChosenDocuments ?? [])
+  const [removedDocumentIds, setRemovedDocumentIds] = useState<Set<string>>(() => new Set<string>())
+  // The failure landing's list (P3-R6), read once from sessionStorage; [] shows the generic sentence.
+  const [failedDocuments, setFailedDocuments] = useState<FailedPurchaseDocument[]>([])
   const [photoLabel, setPhotoLabel] = useState("")
   const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
@@ -219,9 +263,10 @@ export function AssetForm({
   const [serverReasonFor, setServerReasonFor] = useState<string | null>(null)
   // The sections that held a change at the last render: a section opens when a change first shows in it (Task 8).
   const [changedSectionsSeen, setChangedSectionsSeen] = useState<Set<AssetFormSection>>(() => new Set<AssetFormSection>())
-  // The folded sections that are open (spec §8, P2-R11): เอกสารจัดซื้อ starts open; an error, the #purchase link and the
-  // person's own click open the others. On edit every folded section starts folded too; one with a change opens.
-  const [openSections, setOpenSections] = useState<Set<AssetFormSection>>(() => new Set<AssetFormSection>(["documents"]))
+  // The folded sections that are open (spec §8, §9.1, P2-R11): on create เอกสารจัดซื้อ starts open; an error, the
+  // #purchase and #documents links and the person's own click open the others. On edit every folded section starts
+  // folded, เอกสารจัดซื้อ too, except after a failed document step (P3-R6); one with a change opens.
+  const [openSections, setOpenSections] = useState<Set<AssetFormSection>>(() => new Set<AssetFormSection>(asset?.id && !documentsFailed ? [] : ["documents"]))
   const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(() => shouldAllowCrossCompanyCustodianOnLoad(asset, employees, branches))
   const [allowCrossBranchLocation, setAllowCrossBranchLocation] = useState(() => shouldAllowCrossBranchLocationOnLoad(asset, locations))
   const [saving, setSaving] = useState(false)
@@ -234,6 +279,17 @@ export function AssetForm({
 
   const isEdit = Boolean(asset?.id)
   const backHref = providedBackHref ?? `/${locale}/assets`
+  // The stored links (edit only): what the save compares the chips with. A clone's documents are all new.
+  const originalDocuments = isEdit ? initialChosenDocuments ?? [] : []
+  const documentUploads = listPurchaseDocumentUploads(newPurchaseDocuments, {
+    documentType: purchaseDocumentType,
+    documentNo: purchaseDocumentNo,
+    documentDate: purchaseDocumentDate,
+    totalAmount: purchaseDocumentTotalAmount,
+    supplierId: purchaseDocumentSupplierId,
+    file: selectedPurchaseFile,
+  })
+  const documentLinks = planPurchaseDocumentLinks({ originalIds: originalDocuments.map((document) => document.id), chosen: chosenDocuments, removedIds: removedDocumentIds })
   const title = useMemo(() => (isEdit ? t("editTitleNamed", { name: asset?.name ?? "" }) : t("createTitle")), [isEdit, asset?.name, t])
   const headerEdit = isEdit && editContext ? { assetTag: asset?.assetTag ?? "", context: editContext } : undefined
   // An open handover (P2-R3): the server refuses a holder, room or แผนก change, so the three show the stored values.
@@ -307,7 +363,13 @@ export function AssetForm({
   // state, so the แผนก the form set to the holder's on load (the automatic fix) is a change of its own. The reason shows
   // when the person changed the room, the holder or แผนก (P2-R4), or when the save was refused for the lack of one.
   const correction = isEdit && asset ? getAssetEditCorrection({ original: asset, values, departmentLocked: departmentLock.locked }) : NO_CORRECTION
-  const changes = isEdit && asset ? diffAssetFormValues(asset, values, { departmentAutomatic: correction.departmentAutomatic }) : NO_CHANGES
+  // The documents the save adds, removes and uploads are rows of the list too (P3-R5).
+  const changes = isEdit && asset
+    ? [
+        ...diffAssetFormValues(asset, values, { departmentAutomatic: correction.departmentAutomatic }),
+        ...diffAssetFormDocuments({ original: originalDocuments, chosen: chosenDocuments, removedIds: removedDocumentIds, uploads: documentUploads }),
+      ]
+    : NO_CHANGES
   const showChanges = isEdit && changes.length > 0
   // Required by the change itself or by the server's refusal of these same values; a change put back drops it (final review).
   const custodyKey = [values.currentLocationId, values.custodianId, values.departmentId].join("|")
@@ -386,6 +448,8 @@ export function AssetForm({
     const code = fieldErrors.errors[key]
     // PUT answers a missing reason with fieldErrors { correctionReason: "required" }; it reads as the client's rule does.
     if (key === "correctionReason" && code === "required") return t("correctionReasonRequired")
+    // The pre-check's refusal of the active draft (its type and number twice in this save).
+    if (key === "purchaseDocumentNo" && code === "purchaseDocumentRepeated") return t("purchaseDocumentRepeated")
     return code && isAssetMessageCode(code) ? t(code) : fieldErrors.message(key)
   }
   // Under the room and the holder on edit: this page corrects what was recorded wrongly; a real move goes through โอนย้าย.
@@ -451,12 +515,30 @@ export function AssetForm({
     }
   }, [asset?.id, duplicateState.assetTagExists, duplicateState.serialNumberExists, values.assetTag, values.serialNumber])
 
+  // The failure landing (P3-R6): the save left the failed documents' type, number and file name under the asset's key;
+  // they are read once and dropped. Storage that is blocked or empty leaves the generic sentence.
+  useEffect(() => {
+    if (!documentsFailed || !asset?.id) return
+    const key = failedPurchaseDocumentsKey(asset.id)
+    const timeout = window.setTimeout(() => {
+      try {
+        const items = parseFailedPurchaseDocuments(window.sessionStorage.getItem(key))
+        window.sessionStorage.removeItem(key)
+        setFailedDocuments(items)
+      } catch {
+        // No storage: the Notice keeps its generic sentence.
+      }
+    }, 0)
+    return () => window.clearTimeout(timeout)
+  }, [documentsFailed, asset?.id])
+
   // The asset page's "บันทึกข้อมูลการซื้อ" links here with #purchase: that folded section opens (the browser has already
   // scrolled to its anchor). A later hash change does the same.
   useEffect(() => {
     const openSectionNow = (section: AssetFormSection) => setOpenSections((current) => (current.has(section) ? current : new Set(current).add(section)))
     const openFromHash = () => {
       if (window.location.hash === "#purchase") openSectionNow("purchase")
+      if (window.location.hash === "#documents") openSectionNow("documents")
     }
     const timeout = window.setTimeout(openFromHash, 0)
     window.addEventListener("hashchange", openFromHash)
@@ -640,10 +722,14 @@ export function AssetForm({
     const method = isEdit ? "PUT" : "POST"
 
     try {
+      // A new document whose type and number are already stored (an inactive one too, P3-R3), or twice in this save, is
+      // refused under its number before the asset is saved: nothing else is posted, the file and fields stay.
+      if (documentUploads.length > 0 && !(await passesPurchaseDocumentPreCheck(documentUploads))) return
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(isEdit ? assetEditBody(values, showCorrectionReason ? correctionReason : "") : values),
+        body: JSON.stringify(isEdit ? assetEditBody(values, showCorrectionReason ? correctionReason : "") : assetCreateBody(values)),
       })
 
       const result = await response.json().catch(() => null)
@@ -677,36 +763,37 @@ export function AssetForm({
         }
       }
 
-      const documentsToCreate = selectedPurchaseFile && purchaseDocumentNo.trim()
-        ? [
-            ...newPurchaseDocuments,
-            {
-              id: createClientId(),
-              documentType: purchaseDocumentType,
-              documentNo: purchaseDocumentNo,
-              documentDate: purchaseDocumentDate,
-              totalAmount: purchaseDocumentTotalAmount,
-              file: selectedPurchaseFile,
-            },
-          ]
-        : newPurchaseDocuments
-
+      let documentStepFailed = false
       if (savedId) {
-        // A failed create still links the documents already selected and those created before the failure.
-        const createdDocumentIds: string[] = []
-        let documentsFailed = false
-        try {
-          if (documentsToCreate.length > 0) await createPurchaseDocuments(documentsToCreate, createdDocumentIds)
-        } catch {
-          documentsFailed = true
+        // เอกสารจัดซื้อ (spec §9.3, P3-R5): each new document is created and linked in one multipart request, then the
+        // newly chosen ones are linked in one JSON request, then on edit each removed chip is unlinked. Each request
+        // stands alone; a failed one sends the page to the edit form with the failed drafts named (P3-R6).
+        const failedUploads: FailedPurchaseDocument[] = []
+        let linksFailed = false
+        for (const upload of documentUploads) {
+          try {
+            await uploadPurchaseDocument(savedId, upload)
+          } catch {
+            failedUploads.push({ documentType: upload.documentType, documentNo: upload.documentNo, fileName: upload.file.name })
+          }
         }
-        const purchaseDocumentIds = [...selectedPurchaseDocumentIds, ...createdDocumentIds]
         try {
-          if (purchaseDocumentIds.length > 0) await linkPurchaseDocuments(savedId, purchaseDocumentIds)
+          if (documentLinks.linkIds.length > 0) await linkPurchaseDocuments(savedId, documentLinks.linkIds)
         } catch {
-          documentsFailed = true
+          linksFailed = true
         }
-        if (documentsFailed) failedSteps.push(t("followUpDocuments"))
+        for (const documentId of documentLinks.unlinkIds) {
+          try {
+            await unlinkPurchaseDocument(savedId, documentId)
+          } catch {
+            linksFailed = true
+          }
+        }
+        if (failedUploads.length > 0 || linksFailed) {
+          documentStepFailed = true
+          failedSteps.push(t("followUpDocuments"))
+          rememberFailedDocuments(savedId, failedUploads)
+        }
 
         try {
           if (newAssetPhotos.length > 0) await uploadAssetPhotos(savedId, newAssetPhotos)
@@ -717,7 +804,9 @@ export function AssetForm({
 
       if (failedSteps.length > 0) {
         toast.warning(t("savedWithFollowUpErrors", { items: failedSteps.join(", ") }))
-        router.push(`/${locale}/assets/${savedId}`)
+        // A failed document step lands on the edit page with เอกสารจัดซื้อ open (P3-R6); any other on the asset page.
+        if (documentStepFailed) router.push(`/${locale}/assets/${savedId}/edit?documents=failed#documents`)
+        else router.push(`/${locale}/assets/${savedId}`)
         router.refresh()
         return
       }
@@ -747,6 +836,7 @@ export function AssetForm({
     fieldErrors.clear("purchaseDocumentFile", "purchaseDocumentNo")
   }
 
+  // "+ เพิ่มอีกใบ": the active draft joins the list above it and the fields empty for the next one.
   function addPurchaseDocument() {
     // The add button checks its own two fields; the errors of the save stay as they are.
     const documentErrors = validatePurchaseDocument(selectedPurchaseFile, purchaseDocumentNo)
@@ -765,6 +855,7 @@ export function AssetForm({
         documentNo: purchaseDocumentNo.trim(),
         documentDate: purchaseDocumentDate,
         totalAmount: purchaseDocumentTotalAmount,
+        supplierId: purchaseDocumentSupplierId,
         file: selectedPurchaseFile,
       },
     ])
@@ -772,10 +863,85 @@ export function AssetForm({
     setPurchaseDocumentNo("")
     setPurchaseDocumentDate("")
     setPurchaseDocumentTotalAmount("")
+    setPurchaseDocumentSupplierId(null)
+    // A refusal of the moved fields belonged to the active draft; the next save checks the row again.
+    fieldErrors.clear("purchaseDocumentNo")
   }
 
   function removePurchaseDocument(id: string) {
     setNewPurchaseDocuments((current) => current.filter((document) => document.id !== id))
+    setDraftErrors((current) => {
+      if (!(id in current)) return current
+      const next = { ...current }
+      delete next[id]
+      return next
+    })
+  }
+
+  // The picker's choice. On edit, choosing a stored document marked for removal keeps it ("เก็บไว้").
+  function chooseDocument(row: PurchaseDocumentSearchRow) {
+    if (removedDocumentIds.has(row.id)) {
+      setRemovedDocumentIds((current) => {
+        const next = new Set(current)
+        next.delete(row.id)
+        return next
+      })
+      return
+    }
+    setChosenDocuments((current) => (current.some((document) => document.id === row.id) ? current : [...current, row]))
+  }
+
+  // A chip's ×: on edit a stored document is marked for removal at the save (P3-R5); any other chip simply goes.
+  function removeDocument(id: string) {
+    if (originalDocuments.some((document) => document.id === id)) {
+      setRemovedDocumentIds((current) => new Set(current).add(id))
+      return
+    }
+    setChosenDocuments((current) => current.filter((document) => document.id !== id))
+  }
+
+  // The pre-check (Task 3) of every draft the save would upload. True when none is refused; a refusal shows under the
+  // active number or on its queued row, and focus goes to the first. A failed request throws to the save's catch.
+  async function passesPurchaseDocumentPreCheck(uploads: PurchaseDocumentDraft[]): Promise<boolean> {
+    const response = await fetch(purchaseDocumentCheckPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documents: uploads.map((upload) => ({ documentType: upload.documentType, documentNo: upload.documentNo })) }),
+    })
+    const result = await response.json().catch(() => null)
+    if (!response.ok) throw new Error(result?.error ?? tCommon("error"))
+    const duplicates: PurchaseDocumentDuplicateAnswer[] = Array.isArray(result?.duplicates) ? result.duplicates : []
+    const refused = mapPurchaseDocumentDuplicates(uploads, duplicates)
+    setDraftErrors(refused.rows)
+    if (refused.active) {
+      fieldErrors.setErrors({ ...fieldErrors.errors, purchaseDocumentNo: refused.active })
+      focusFirstError()
+      return false
+    }
+    const firstRow = uploads.find((upload) => upload.id in refused.rows)
+    if (!firstRow) return true
+    openSection("documents")
+    void waitForElement(`asset-purchase-document-draft-${firstRow.id}`).then((element) => {
+      if (element) focusField(element)
+    })
+    return false
+  }
+
+  function draftErrorText(id: string): string | undefined {
+    const code = draftErrors[id]
+    if (!code) return undefined
+    return code === "purchaseDocumentRepeated" ? t("purchaseDocumentRepeated") : validationMessage(code)
+  }
+
+  // What the edit page names after the move (P3-R6): type, number and file name, never the file. Storage that is
+  // blocked leaves the generic sentence there.
+  function rememberFailedDocuments(assetId: string, items: FailedPurchaseDocument[]) {
+    if (items.length === 0) return
+    try {
+      window.sessionStorage.setItem(failedPurchaseDocumentsKey(assetId), JSON.stringify(items))
+    } catch {
+      // The edit page shows the generic sentence.
+    }
   }
 
   // A chosen file joins the queue at once under the chosen photo type, and the next missing type is chosen (spec §8).
@@ -810,33 +976,15 @@ export function AssetForm({
     }
   }
 
-  // Pushes each created id into createdIds as it goes, so the ids created before a failure stay with the caller.
-  async function createPurchaseDocuments(documents: PurchaseDocumentDraft[], createdIds: string[]) {
-    for (const document of documents) {
-      const formData = new FormData()
-      formData.append("file", document.file)
-      formData.append("documentType", document.documentType)
-      formData.append("documentNo", document.documentNo)
-      if (document.documentType === "purchase_order") formData.append("poNumber", document.documentNo)
-      if (document.documentType === "invoice") formData.append("invoiceNumber", document.documentNo)
-      if (document.documentDate) formData.append("documentDate", document.documentDate)
-      if (document.totalAmount) formData.append("totalAmount", document.totalAmount)
-      if (values.supplierId) formData.append("supplierId", values.supplierId)
-      formData.append("currency", "THB")
-
-      const response = await fetch("/api/purchase-documents", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) throw new Error(`purchase document upload ${response.status}`)
-      const createdDocument = await response.json()
-      if (createdDocument?.id) createdIds.push(createdDocument.id)
-    }
+  // One new document, created and linked to the asset in one request (Task 3); a refusal (a file check, the virus
+  // scan, a duplicate raced in) throws, and no document or file is left behind.
+  async function uploadPurchaseDocument(assetId: string, draft: PurchaseDocumentDraft) {
+    const response = await fetch(assetPurchaseDocumentsPath(assetId), { method: "POST", body: buildPurchaseDocumentUploadForm(draft) })
+    if (!response.ok) throw new Error(`purchase document upload ${response.status}`)
   }
 
   async function linkPurchaseDocuments(assetId: string, purchaseDocumentIds: string[]) {
-    const response = await fetch(`/api/assets/${assetId}/purchase-documents`, {
+    const response = await fetch(assetPurchaseDocumentsPath(assetId), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ purchaseDocumentIds }),
@@ -844,10 +992,10 @@ export function AssetForm({
     if (!response.ok) throw new Error(`purchase document link ${response.status}`)
   }
 
-  function togglePurchaseDocument(id: string) {
-    setSelectedPurchaseDocumentIds((current) =>
-      current.includes(id) ? current.filter((documentId) => documentId !== id) : [...current, id]
-    )
+  // Edit only: the link goes, the document and its files stay (Task 3).
+  async function unlinkPurchaseDocument(assetId: string, documentId: string) {
+    const response = await fetch(assetPurchaseDocumentPath(assetId, documentId), { method: "DELETE" })
+    if (!response.ok) throw new Error(`purchase document unlink ${response.status}`)
   }
 
   function handleCustomFieldRowsChange(nextRows: CustomFieldRow[]) {
@@ -885,7 +1033,7 @@ export function AssetForm({
     values,
     install: installAfterCreate,
     installParentLabel: parentAssets.find((parentAsset) => parentAsset.id === installAfterCreate.parentAssetId)?.label,
-    documents: { selected: selectedPurchaseDocumentIds.length, queued: newPurchaseDocuments.length },
+    documents: { mode: isEdit ? "edit" : "create", chosen: chosenDocuments, removedIds: removedDocumentIds, queued: documentUploads.length },
     photos: {
       checklistTotal: selectedPhotoChecklist.length,
       checklistCovered: selectedPhotoChecklist.filter((item) => queuedPhotoLabels.has(item) || existingPhotoLabels.has(item)).length,
@@ -906,6 +1054,8 @@ export function AssetForm({
         return t("sectionSummary.installParent", { label: part.label })
       case "remarkSet":
         return t("sectionSummary.remarkSet")
+      case "documentRefs":
+        return buildPurchaseDocumentRefsSummary(part.refs, (type) => t(`purchaseDocumentTypes.${type}`))
       default:
         return t(`sectionSummary.${part.key}`, { count: part.count })
     }
@@ -940,6 +1090,7 @@ export function AssetForm({
   }
 
   function changeLabel(field: AssetDiffField): string {
+    if (isPurchaseDocumentChange(field)) return t("purchaseDocuments")
     if (field === "serialNumber" && isSoftwareLicense) return t("licenseKey")
     if (field === "custodianId" && isSoftwareLicense) return t("licenseAssignee")
     const label = CHANGE_LABELS[field]
@@ -949,11 +1100,16 @@ export function AssetForm({
     return (locale === "th" && definition?.fieldLabelTh) || definition?.fieldLabel || fieldName
   }
 
+  // A document row reads "เพิ่ม <เลขที่>" or "เอา <เลขที่> ออก" (P3-R5).
   const changeRows: AssetFormChangeRow[] = changes.map((change) => ({
     field: change.field,
     label: changeLabel(change.field),
-    from: changeValueText(change.field, change.from),
-    to: changeValueText(change.field, change.to),
+    from: isPurchaseDocumentChange(change.field) ? "" : changeValueText(change.field, change.from),
+    to: isPurchaseDocumentChange(change.field)
+      ? change.to
+        ? t("purchaseDocumentChangeAdd", { number: change.to })
+        : t("purchaseDocumentRemoveNamed", { number: change.from })
+      : changeValueText(change.field, change.to),
     automatic: change.automatic,
   }))
   const changeByField = new Map(changes.map((change) => [change.field, change]))
@@ -1006,7 +1162,9 @@ export function AssetForm({
       open: openSections.has(section),
       onOpenChange: (open) => setSectionOpen(section, open),
       summary: summary.parts.length > 0 ? summary.parts.map(summaryText).join(" · ") : undefined,
-      badge: summary.total > 0 ? t("sectionFilled", { filled: summary.filled, total: summary.total }) : undefined,
+      badge: summary.badge
+        ? t(`sectionSummary.${summary.badge.key}`, { count: summary.badge.count })
+        : summary.total > 0 ? t("sectionFilled", { filled: summary.filled, total: summary.total }) : undefined,
       tone: sectionsWithErrors.has(section) ? "error" : sectionsWithChanges.has(section) ? "changed" : "default",
     }
   }
@@ -1373,9 +1531,13 @@ export function AssetForm({
           errorText={errorText}
           fieldErrors={fieldErrors}
           saving={saving}
-          purchaseDocumentOptions={purchaseDocumentOptions}
-          selectedPurchaseDocumentIds={selectedPurchaseDocumentIds}
-          togglePurchaseDocument={togglePurchaseDocument}
+          chosen={chosenDocuments}
+          recent={recentDocuments}
+          supplierId={values.supplierId || null}
+          removedIds={isEdit ? removedDocumentIds : undefined}
+          onChoose={chooseDocument}
+          onRemove={removeDocument}
+          suppliers={suppliers}
           purchaseDocumentType={purchaseDocumentType}
           setPurchaseDocumentType={setPurchaseDocumentType}
           purchaseDocumentNo={purchaseDocumentNo}
@@ -1384,11 +1546,34 @@ export function AssetForm({
           setPurchaseDocumentDate={setPurchaseDocumentDate}
           purchaseDocumentTotalAmount={purchaseDocumentTotalAmount}
           setPurchaseDocumentTotalAmount={setPurchaseDocumentTotalAmount}
+          purchaseDocumentSupplierId={purchaseDocumentSupplierId ?? values.supplierId ?? ""}
+          setPurchaseDocumentSupplierId={setPurchaseDocumentSupplierId}
           selectedPurchaseFile={selectedPurchaseFile}
           selectPurchaseFile={selectPurchaseFile}
           addPurchaseDocument={addPurchaseDocument}
           newPurchaseDocuments={newPurchaseDocuments}
           removePurchaseDocument={removePurchaseDocument}
+          draftErrorText={draftErrorText}
+          failedNotice={
+            documentsFailed ? (
+              <Notice tone="warning" title={t("documentsFailedTitle")}>
+                {failedDocuments.length > 0 ? (
+                  <>
+                    <p>{t("documentsFailedList")}</p>
+                    <ul className="mt-1 list-disc pl-5">
+                      {failedDocuments.map((document, index) => (
+                        <li key={`${document.documentType}-${document.documentNo}-${index}`} className="break-words">
+                          {[t(`purchaseDocumentTypes.${document.documentType}`), document.documentNo, document.fileName].filter(Boolean).join(" · ")}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  t("documentsFailedGeneric")
+                )}
+              </Notice>
+            ) : null
+          }
           disclosure={disclosureFor("documents")}
         />
 
@@ -1470,10 +1655,19 @@ export function AssetForm({
   )
 }
 
-// The PUT body (P2-R4, P2-R7): the values without isActive, which the edit never sends, and the reason, trimmed, when given.
+// The POST body: the values without the chosen document ids, which the links after the save carry (plan 3 Task 5).
+function assetCreateBody(values: AssetFormValues) {
+  const body: Partial<AssetFormValues> = { ...values }
+  delete body.purchaseDocumentIds
+  return body
+}
+
+// The PUT body (P2-R4, P2-R7): the values without isActive, which the edit never sends, nor the document ids, which the
+// links and unlinks after the save carry (plan 3 Task 5), and the reason, trimmed, when given.
 function assetEditBody(values: AssetFormValues, reason: string) {
   const body: Partial<AssetFormValues> & { correctionReason?: string } = { ...values }
   delete body.isActive
+  delete body.purchaseDocumentIds
   const correctionReason = reason.trim()
   if (correctionReason) body.correctionReason = correctionReason
   return body

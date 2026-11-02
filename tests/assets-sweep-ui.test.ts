@@ -63,7 +63,7 @@ test("asset page: the sections the later tabs replace keep the panel classes; th
   for (const file of [source, ...["asset-detail-header", "asset-detail-actions", "asset-detail-fact-strip", "asset-overview"].map((name) => read(`${C}assets/detail/${name}.tsx`))]) assert.doesNotMatch(file, banned)
 })
 
-test("asset form: sections are ContentPanels, notes are Notice by meaning, empty lists EmptyNote, documents ChoiceCards with Nil, and no box in a box (spec 2D D7, D9, M21)", () => {
+test("asset form: sections are ContentPanels, notes are Notice by meaning, empty lists EmptyNote, documents by the picker, and no box in a box (spec 2D D7, D9, M21)", () => {
   const source = read(`${C}assets/asset-form.tsx`)
   // Group 4 plan 2 Task 5: Section and SelectField moved to asset-form-section.tsx, the optional sections to their files.
   // Task 6a: the documents and the other section got files of their own, and the header and the required card theirs.
@@ -83,10 +83,12 @@ test("asset form: sections are ContentPanels, notes are Notice by meaning, empty
   // Task 6b: the note stays for ส่วนควบ only; every other type shows the holder picker.
   assert.match(ownershipSource, /<Notice tone="neutral" title=\{t\("custodianNotRequired"\)\}>\n\s+\{t\("custodianNotRequiredHelp"\)\}\n\s+<\/Notice>/)
   assert.match(source, /title=\{<>\{t\("licenseRemainingSeats"\)\}: \{orNil\(getRemainingLicenseSeats\(values\.licenseTotalSeats, values\.licenseUsedSeats\)\)\}<\/>\}/)
-  assert.match(purchaseSource, /description=\{<>\{orNil\(document\.supplierName\)\} · \{t\("linkedAssets", \{ count: document\.assetCount \}\)\}<\/>\}/)
-  // The 4 EmptyNotes: the documents (purchaseSource is asset-form-documents.tsx), the photo checklist, the template fields
-  // and the extra rows.
-  assert.deepEqual([source, purchaseSource, photosSource, customFieldsSource].map((file) => file.match(/<EmptyNote\b/g)?.length ?? 0), [0, 1, 1, 2])
+  // Group 4 plan 3 Task 5: the 300 ChoiceCards went; the documents are found by PurchaseDocumentPicker, which holds the
+  // list's EmptyNote ("ไม่พบ…" or "ยังไม่มีเอกสารจัดซื้อกลาง") and names the supplier by name.
+  assert.doesNotMatch(purchaseSource, /<ChoiceCard\b|linkedAssets/)
+  assert.match(purchaseSource, /<PurchaseDocumentPicker\n/)
+  // The 3 EmptyNotes: the photo checklist, the template fields and the extra rows (purchaseSource is asset-form-documents.tsx).
+  assert.deepEqual([source, purchaseSource, photosSource, customFieldsSource].map((file) => file.match(/<EmptyNote\b/g)?.length ?? 0), [0, 0, 1, 2])
   assert.match(source, /return null\n\s+const remainingSeats = [^\n]+\n\s+return formatCount\(remainingSeats\)/)
   for (const file of [source, ...parts]) assert.doesNotMatch(file, /"-"|border-dashed|uppercase|bg-accent|bg-warning-soft|bg-info-soft|text-warning|text-lg|rounded-lg border|focus:outline-none|\btext-xs\b|toLocaleString|bg-surface p-3/)
 })

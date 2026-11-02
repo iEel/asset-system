@@ -53,7 +53,8 @@ test("asset edit form saves back to the sanitized return target", () => {
   const pageSource = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx", "utf8")
   const formSource = readFileSync("src/components/assets/asset-form.tsx", "utf8")
 
-  assert.match(pageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  // Group 4 plan 3 Task 5: the edit page also reads ?documents=failed, the save's failure landing (P3-R6).
+  assert.match(pageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; documents\?: string \| string\[\] \}>/)
   assert.match(pageSource, /normalizeAssetReturnTo\(locale, rawSearchParams\.returnTo\)/)
   assert.match(pageSource, /backHref=\{returnToHref\}/)
   assert.match(formSource, /backHref: providedBackHref/)

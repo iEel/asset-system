@@ -38,10 +38,12 @@ test("a new asset with a photo and a purchase document: no room first shows its 
   await page.locator("#asset-department").selectOption(data.departmentId)
   await page.locator("#asset-status").selectOption(masters.readyStatusId)
   await page.locator("#asset-condition").selectOption(masters.goodConditionId)
+  // เอกสารจัดซื้อ starts open on create: the search on the left, the new document's upload on the right (group 4 plan 3
+  // Task 5); the type stays ใบ PO.
   await page.locator("#asset-purchase-document-no").fill(documentNo)
   await page.locator("#asset-purchase-document-file").setInputFiles(PDF_FIXTURE)
-  // เอกสารจัดซื้อ starts open; the photo section is folded, and a chosen photo joins its queue at once (group 4 plan 2
-  // Task 6a): open it to see the queued file.
+  // The photo section is folded, and a chosen photo joins its queue at once (group 4 plan 2 Task 6a): open it to see the
+  // queued file.
   await openAssetFormSection(page, "รูปแรกเข้าทรัพย์สิน")
   await page.locator("#asset-photo-file").setInputFiles(PHOTO_FIXTURE)
   await expect(page.getByText("evidence.pdf")).toBeVisible()
@@ -75,6 +77,8 @@ test("a new asset with a photo and a purchase document: no room first shows its 
 
   const created = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets" && response.request().method() === "POST")
   const photoSaved = page.waitForResponse((response) => /\/api\/assets\/[^/]+\/attachments$/.test(new URL(response.url()).pathname) && response.request().method() === "POST")
+  // บันทึก asks the purchase-document pre-check first, then saves the asset, then creates the new document and links it in
+  // one multipart request to the asset's purchase-documents route (group 4 plan 3 Task 5).
   const documentLinked = page.waitForResponse((response) => /\/api\/assets\/[^/]+\/purchase-documents$/.test(new URL(response.url()).pathname) && response.request().method() === "POST")
   await measure.timed("asset save with its follow-ups", async () => {
     await save.click()
@@ -83,7 +87,7 @@ test("a new asset with a photo and a purchase document: no room first shows its 
   if (e2eDevice === "phone") await closePhoneKeyboard(page)
   expect((await created).status()).toBe(201)
   expect((await photoSaved).ok(), "the photo is saved").toBe(true)
-  expect((await documentLinked).ok(), "the purchase document is linked").toBe(true)
+  expect((await documentLinked).status(), "the purchase document is created and linked in one request").toBe(201)
   const asset = (await (await created).json()) as { id: string; assetTag: string }
   expect(asset.assetTag).toBe(tag)
   await expect(page.locator("[data-sonner-toast]").filter({ hasText: "บันทึกสำเร็จ" })).toBeVisible()

@@ -113,7 +113,8 @@ test("the footer's แก้ไข n ช่อง opens the list: a Popover on t
 test("the diff reads the stored asset, a section with a change has the changed frame and opens once", () => {
   const form = read(`${C}asset-form.tsx`)
   assert.match(form, /const correction = isEdit && asset \? getAssetEditCorrection\(\{ original: asset, values, departmentLocked: departmentLock\.locked \}\) : NO_CORRECTION/)
-  assert.match(form, /const changes = isEdit && asset \? diffAssetFormValues\(asset, values, \{ departmentAutomatic: correction\.departmentAutomatic \}\) : NO_CHANGES/)
+  // Group 4 plan 3 Task 5 (P3-R5): the documents the save adds, removes and uploads are rows of the same list.
+  assert.match(form, /const changes = isEdit && asset\n\s+\? \[\n\s+\.\.\.diffAssetFormValues\(asset, values, \{ departmentAutomatic: correction\.departmentAutomatic \}\),\n\s+\.\.\.diffAssetFormDocuments\(\{ original: originalDocuments, chosen: chosenDocuments, removedIds: removedDocumentIds, uploads: documentUploads \}\),\n\s+\]\n\s+: NO_CHANGES/)
   assert.match(form, /tone: sectionsWithErrors\.has\(section\) \? "error" : sectionsWithChanges\.has\(section\) \? "changed" : "default"/)
   // A section opens when a change first shows in it; the person may fold it again.
   assert.match(form, /const newlyChanged = \[\.\.\.sectionsWithChanges\]\.filter\(\(section\) => !changedSectionsSeen\.has\(section\)\)/)
@@ -134,8 +135,9 @@ test("the reason: in the main card when the room, holder or แผนก is chan
   assert.match(form, /correction: showCorrectionReason \? \{ required: true, reason: correctionReason \} : undefined,/)
   // The server's refusal (Task 3: fieldErrors { correctionReason: "required" }) reads the same words under the field.
   assert.match(form, /if \(key === "correctionReason" && code === "required"\) return t\("correctionReasonRequired"\)/)
-  assert.match(form, /body: JSON\.stringify\(isEdit \? assetEditBody\(values, showCorrectionReason \? correctionReason : ""\) : values\),/)
-  assert.match(form, /function assetEditBody\(values: AssetFormValues, reason: string\) \{\n\s+const body: Partial<AssetFormValues> & \{ correctionReason\?: string \} = \{ \.\.\.values \}\n\s+delete body\.isActive\n\s+const correctionReason = reason\.trim\(\)\n\s+if \(correctionReason\) body\.correctionReason = correctionReason\n\s+return body\n\}/)
+  // Group 4 plan 3 Task 5: neither body carries the chosen document ids; the links after the save do.
+  assert.match(form, /body: JSON\.stringify\(isEdit \? assetEditBody\(values, showCorrectionReason \? correctionReason : ""\) : assetCreateBody\(values\)\),/)
+  assert.match(form, /function assetEditBody\(values: AssetFormValues, reason: string\) \{\n\s+const body: Partial<AssetFormValues> & \{ correctionReason\?: string \} = \{ \.\.\.values \}\n\s+delete body\.isActive\n\s+delete body\.purchaseDocumentIds\n\s+const correctionReason = reason\.trim\(\)\n\s+if \(correctionReason\) body\.correctionReason = correctionReason\n\s+return body\n\}/)
   const rules = read("src/lib/asset-form-rules.ts")
   assert.match(rules, /check\("correctionReason", correction\?\.required && required\(correction\.reason\) \? "correctionReasonRequired" : maxLength\(correction\?\.reason, 500\)\)/)
 })
