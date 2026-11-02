@@ -13,6 +13,7 @@ import { assetOperationSearchMaxChars } from "@/lib/asset-operation-search-rules
 import { formatMoney } from "@/lib/display-format"
 import {
   buildPurchaseDocumentPickerUrl,
+  focusAfterChipRemoval,
   getPurchaseDocumentChipView,
   getPurchaseDocumentPickerView,
   getPurchaseDocumentResultView,
@@ -35,6 +36,8 @@ export type PurchaseDocumentPickerProps = {
   onRemove: (id: string) => void
   /** Edit: chips marked for removal at บันทึกการแก้ไข (P3-R5); "เก็บไว้" chooses the document again. */
   removedIds?: Set<string>
+  /** Edit: the stored links, whose × marks the chip for removal (it stays); a chip chosen in this visit goes away. */
+  storedIds?: ReadonlySet<string>
   disabled?: boolean
 }
 
@@ -45,7 +48,7 @@ const noRows: PurchaseDocumentSearchRow[] = []
 // types 2 characters or the supplier changes (P3-R4); the list the page rendered shows until then. The active row and
 // the arrows are the transaction picker's (asset-operation-picker-rules.ts).
 export function PurchaseDocumentPicker(props: PurchaseDocumentPickerProps) {
-  const { id, chosen, recent, supplierId, onChoose, onRemove, removedIds, disabled } = props
+  const { id, chosen, recent, supplierId, onChoose, onRemove, removedIds, storedIds, disabled } = props
   const t = useTranslations("asset")
   const tOperation = useTranslations("assetOperation")
   const tCommon = useTranslations("common")
@@ -60,6 +63,7 @@ export function PurchaseDocumentPicker(props: PurchaseDocumentPickerProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
+  const chipsRef = useRef<HTMLUListElement>(null)
   // Set by the arrow keys only, so a hover never scrolls the list.
   const keyboardMove = useRef(false)
 
@@ -112,9 +116,12 @@ export function PurchaseDocumentPicker(props: PurchaseDocumentPickerProps) {
   }
 
   function remove(row: PurchaseDocumentSearchRow) {
+    // A stored chip on edit stays with "เก็บไว้" and keeps focus; a chip that goes away hands focus to the next chip's
+    // button, else to the search, so focus never drops to the page (final review).
+    const target = focusAfterChipRemoval({ chipIds: chosen.map((document) => document.id), removedId: row.id, storedIds })
     onRemove(row.id)
-    // On create the chip goes away, so focus returns to the search; on edit it stays with "เก็บไว้".
-    if (!removedIds) searchRef.current?.focus()
+    if (target.to === "chip") chipsRef.current?.querySelector<HTMLButtonElement>(`[data-purchase-document-chip="${target.id}"] button`)?.focus()
+    else if (target.to === "search") searchRef.current?.focus()
   }
 
   function handleQueryChange(next: string) {
@@ -238,7 +245,7 @@ export function PurchaseDocumentPicker(props: PurchaseDocumentPickerProps) {
   return (
     <div id={id} data-slot="purchase-document-picker" className="grid min-w-0 max-w-full content-start gap-1.5">
       {chosen.length > 0 ? (
-        <ul aria-label={t("purchaseDocumentChosenList")} className="mb-1.5 grid min-w-0 gap-2">
+        <ul ref={chipsRef} aria-label={t("purchaseDocumentChosenList")} className="mb-1.5 grid min-w-0 gap-2">
           {chosen.map(renderChip)}
         </ul>
       ) : null}

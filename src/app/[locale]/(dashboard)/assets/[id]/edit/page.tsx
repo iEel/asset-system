@@ -10,7 +10,7 @@ import { AssetForm } from "@/components/assets/asset-form"
 
 type EditAssetPageProps = {
   params: Promise<{ id: string; locale: string }>
-  searchParams: Promise<{ returnTo?: string | string[]; documents?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; documents?: string | string[]; attempt?: string | string[] }>
 }
 
 const purchaseDocumentDb = prisma as unknown as PurchaseDocumentSearchDb
@@ -24,6 +24,8 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
   // The save's failure landing (group 4 plan 3 Task 5, P3-R6): เอกสารจัดซื้อ opens with the documents to upload again.
   const documentsFailed = getSingleSearchParam(rawSearchParams.documents) === "failed"
+  // Differs on every landing (final review): a second failure on this page remounts the form, which reads the new list.
+  const failedAttempt = getSingleSearchParam(rawSearchParams.attempt) ?? ""
 
   const asset = await prisma.asset.findFirst({
       where: { id, isActive: true },
@@ -146,8 +148,9 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
         // The page needs asset:edit, which linking a purchase document needs (P3-R2).
         canLinkPurchaseDocuments
         documentsFailed={documentsFailed}
-        // A save that lands here again with ?documents=failed starts a fresh form with the stored links.
-        key={documentsFailed ? "documents-failed" : "form"}
+        // A save that lands here with ?documents=failed starts a fresh form with the stored links, again on every landing
+        // (each has its own attempt), so no draft, removal mark or Notice of the earlier one stays.
+        key={documentsFailed ? `documents-failed-${failedAttempt}` : "form"}
         existingAssetPhotos={asset.attachments}
         editContext={editContext}
         backHref={returnToHref}

@@ -733,7 +733,7 @@
     "dropFileSelected": "File selected. Upload starts automatically.",
     "uploading": "Uploading...",
     "purchaseDocuments": "Purchase Documents",
-    "purchaseDocumentsHelp": "Select an existing shared purchase document or create a new one for multiple assets, such as one PO/Invoice for 100 computers.",
+    "purchaseDocumentsHelp": "Choose an existing document or upload a new one. One document can serve many assets, such as one PO for 100 computers.",
     "existingPurchaseDocuments": "Choose an existing document",
     "noPurchaseDocuments": "No shared purchase documents yet",
     "createPurchaseDocument": "Upload a new document",
@@ -1456,7 +1456,9 @@
     "documentsFailedList": "The asset is saved. Upload these documents again.",
     "documentsFailedGeneric": "The asset is saved. Check the linked documents, then choose or upload any that are missing.",
     "purchaseDocumentsNeedEdit": "Linking or uploading purchase documents needs permission to edit assets",
-    "batchPurchaseDocumentsHelp": "The chosen documents and the uploaded one are linked to every asset in this batch. One upload per batch."
+    "batchPurchaseDocumentsHelp": "The chosen documents and the uploaded one are linked to every asset in this batch. One upload per batch.",
+    "purchaseDocumentSupplierFollowsAsset": "Same as the asset",
+    "purchaseDocumentSupplierNone": "No supplier"
   },
   "company": {
     "title": "Companies",

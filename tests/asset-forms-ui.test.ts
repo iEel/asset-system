@@ -35,7 +35,7 @@ test("asset form: money fields carry their unit and the decimal keypad; the new 
   const purchase = read("src/components/assets/asset-form-purchase.tsx")
   const source = read("src/components/assets/asset-form-documents.tsx")
   assert.match(purchase, /<Field label=\{t\("purchasePriceBaht"\)\} id="asset-purchase-price" error=\{errorText\("purchasePrice"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
-  assert.match(source, /<Field label=\{t\("purchaseDocumentAmountBaht"\)\} id="asset-purchase-document-amount" error=\{errorText\("purchaseDocumentAmount"\)\}>\n\s*<Input\n\s*type="number"\n\s*min="0"\n\s*step="0\.01"\n\s*inputMode="decimal"/)
+  assert.match(source, /<Field label=\{t\("purchaseDocumentAmountBaht"\)\} id="asset-purchase-document-amount" error=\{errorText\("purchaseDocumentAmount"\)\}>\n\s*<Input\n\s*type="number"\n\s*min="0"\n\s*max=\{purchaseDocumentLimits\.amountMax\}\n\s*step="0\.01"\n\s*inputMode="decimal"/)
   // The visible labels stay; the number gains its id and its error (v-track plan 2 A1).
   for (const key of ["documentType", "purchaseDocumentNo", "purchaseDocumentDate"]) {
     assert.match(source, new RegExp(`<Field label=\\{t\\("${key}"\\)\\}[ >]`), key)

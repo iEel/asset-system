@@ -12,12 +12,19 @@ import { Notice } from "@/components/ui/notice"
 import { FoldedSection, SelectField, type AssetFormDisclosure, type AssetFormFieldErrors } from "@/components/assets/asset-form-section"
 import { PurchaseDocumentPicker } from "@/components/assets/purchase-document-picker"
 import {
+  purchaseDocumentLimits,
   purchaseDocumentTypes,
   type AssetField,
   type AssetFormOption as Option,
   type PurchaseDocumentDraft,
   type PurchaseDocumentType,
 } from "@/lib/asset-form-rules"
+import {
+  FOLLOW_ASSET_SUPPLIER,
+  effectivePurchaseDocumentSupplierId,
+  purchaseDocumentSupplierFromSelect,
+  purchaseDocumentSupplierSelectValue,
+} from "@/lib/asset-form-documents"
 import type { PurchaseDocumentSearchAnswer, PurchaseDocumentSearchRow } from "@/lib/purchase-document-search-rules"
 import { formatFileSize } from "@/lib/uploads"
 
@@ -35,6 +42,7 @@ export function AssetFormDocuments({
   recent,
   supplierId,
   removedIds,
+  storedIds,
   onChoose,
   onRemove,
   suppliers,
@@ -68,6 +76,8 @@ export function AssetFormDocuments({
   supplierId: string | null
   // Edit only: the stored documents marked for removal at บันทึกการแก้ไข (P3-R5).
   removedIds?: Set<string>
+  // Edit only: the stored links (a chip chosen in this visit goes away at its ×, a stored one stays marked).
+  storedIds?: ReadonlySet<string>
   onChoose: (row: PurchaseDocumentSearchRow) => void
   onRemove: (id: string) => void
   suppliers: Option[]
@@ -79,9 +89,9 @@ export function AssetFormDocuments({
   setPurchaseDocumentDate: (value: string) => void
   purchaseDocumentTotalAmount: string
   setPurchaseDocumentTotalAmount: (value: string) => void
-  // The draft's supplier as the select shows it: the asset's until the person picks another.
-  purchaseDocumentSupplierId: string
-  setPurchaseDocumentSupplierId: (value: string) => void
+  // The draft's supplier: null "ตามทรัพย์สิน" (the default, the asset's), "" "ไม่ระบุผู้ขาย", else the one picked.
+  purchaseDocumentSupplierId: string | null
+  setPurchaseDocumentSupplierId: (value: string | null) => void
   selectedPurchaseFile: File | null
   selectPurchaseFile: (file: File | null) => void
   addPurchaseDocument: () => void
@@ -95,6 +105,11 @@ export function AssetFormDocuments({
 }) {
   const t = useTranslations("asset")
   const supplierLabel = (id: string | null) => (id ? suppliers.find((supplier) => supplier.id === id)?.label : undefined)
+  // A queued draft names the supplier it will be stored with: the asset's when it follows it, or ไม่ระบุผู้ขาย.
+  const draftSupplierText = (draftSupplierId: string | null) => {
+    const effective = effectivePurchaseDocumentSupplierId(draftSupplierId, supplierId)
+    return effective ? supplierLabel(effective) : t("purchaseDocumentSupplierNone")
+  }
 
   if (!canLink) {
     return (
@@ -125,6 +140,7 @@ export function AssetFormDocuments({
                 onChoose={onChoose}
                 onRemove={onRemove}
                 removedIds={removedIds}
+                storedIds={storedIds}
                 disabled={saving}
               />
             </div>
@@ -136,7 +152,7 @@ export function AssetFormDocuments({
                 <ul aria-label={t("purchaseDocumentQueuedList")} className="grid gap-2">
                   {newPurchaseDocuments.map((document) => {
                     const rowError = draftErrorText(document.id)
-                    const supplier = supplierLabel(document.supplierId)
+                    const supplier = draftSupplierText(document.supplierId)
                     return (
                       <li key={document.id}>
                         <div
@@ -215,7 +231,7 @@ export function AssetFormDocuments({
                       setPurchaseDocumentNo(event.target.value)
                       fieldErrors.clear("purchaseDocumentNo")
                     }}
-                    maxLength={100}
+                    maxLength={purchaseDocumentLimits.documentNo}
                   />
                 </Field>
                 <Field label={t("purchaseDocumentDate")} id="asset-purchase-document-date">
@@ -225,6 +241,7 @@ export function AssetFormDocuments({
                   <Input
                     type="number"
                     min="0"
+                    max={purchaseDocumentLimits.amountMax}
                     step="0.01"
                     inputMode="decimal"
                     value={purchaseDocumentTotalAmount}
@@ -235,8 +252,14 @@ export function AssetFormDocuments({
                   />
                 </Field>
                 <div className="sm:col-span-2">
-                  <SelectField label={t("supplier")} id="asset-purchase-document-supplier" value={purchaseDocumentSupplierId} onChange={setPurchaseDocumentSupplierId}>
-                    <option value="">{t("selectSupplier")}</option>
+                  <SelectField
+                    label={t("supplier")}
+                    id="asset-purchase-document-supplier"
+                    value={purchaseDocumentSupplierSelectValue(purchaseDocumentSupplierId)}
+                    onChange={(value) => setPurchaseDocumentSupplierId(purchaseDocumentSupplierFromSelect(value))}
+                  >
+                    <option value={FOLLOW_ASSET_SUPPLIER}>{t("purchaseDocumentSupplierFollowsAsset")}</option>
+                    <option value="">{t("purchaseDocumentSupplierNone")}</option>
                     {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
                   </SelectField>
                 </div>

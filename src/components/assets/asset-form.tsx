@@ -80,6 +80,7 @@ import {
   parseFailedPurchaseDocuments,
   planPurchaseDocumentLinks,
   purchaseDocumentCheckPath,
+  purchaseDocumentFailureHref,
   type FailedPurchaseDocument,
   type PurchaseDocumentDraftErrorCode,
   type PurchaseDocumentDuplicateAnswer,
@@ -244,7 +245,8 @@ export function AssetForm({
   const [purchaseDocumentNo, setPurchaseDocumentNo] = useState("")
   const [purchaseDocumentDate, setPurchaseDocumentDate] = useState("")
   const [purchaseDocumentTotalAmount, setPurchaseDocumentTotalAmount] = useState("")
-  // The active draft's supplier: null follows the asset's (sent as none, the server's default), else the one picked.
+  // The active draft's supplier: null "ตามทรัพย์สิน" follows the asset's (nothing sent, the server's default), ""
+  // "ไม่ระบุผู้ขาย" stores none, else the one picked.
   const [purchaseDocumentSupplierId, setPurchaseDocumentSupplierId] = useState<string | null>(null)
   const [selectedPurchaseFile, setSelectedPurchaseFile] = useState<File | null>(null)
   const [newPurchaseDocuments, setNewPurchaseDocuments] = useState<PurchaseDocumentDraft[]>([])
@@ -811,8 +813,9 @@ export function AssetForm({
 
       if (failedSteps.length > 0) {
         toast.warning(t("savedWithFollowUpErrors", { items: failedSteps.join(", ") }))
-        // A failed document step lands on the edit page with เอกสารจัดซื้อ open (P3-R6); any other on the asset page.
-        if (documentStepFailed) router.push(`/${locale}/assets/${savedId}/edit?documents=failed#documents`)
+        // A failed document step lands on the edit page with เอกสารจัดซื้อ open (P3-R6), a new URL on every landing so a
+        // second failure there mounts a fresh form with the new list (final review); any other on the asset page.
+        if (documentStepFailed && savedId) router.push(purchaseDocumentFailureHref({ locale, assetId: savedId, attempt: createClientId(), returnTo: providedBackHref }))
         else router.push(`/${locale}/assets/${savedId}`)
         router.refresh()
         return
@@ -941,11 +944,12 @@ export function AssetForm({
   }
 
   // What the edit page names after the move (P3-R6): type, number and file name, never the file. Storage that is
-  // blocked leaves the generic sentence there.
+  // blocked leaves the generic sentence there. A failure of the links alone names no file: an older list left under the
+  // key is dropped, so the landing never shows it as this one's (final review).
   function rememberFailedDocuments(assetId: string, items: FailedPurchaseDocument[]) {
-    if (items.length === 0) return
     try {
-      window.sessionStorage.setItem(failedPurchaseDocumentsKey(assetId), JSON.stringify(items))
+      if (items.length === 0) window.sessionStorage.removeItem(failedPurchaseDocumentsKey(assetId))
+      else window.sessionStorage.setItem(failedPurchaseDocumentsKey(assetId), JSON.stringify(items))
     } catch {
       // The edit page shows the generic sentence.
     }
@@ -1107,18 +1111,36 @@ export function AssetForm({
     return (locale === "th" && definition?.fieldLabelTh) || definition?.fieldLabel || fieldName
   }
 
-  // A document row reads "เพิ่ม <เลขที่>" or "เอา <เลขที่> ออก" (P3-R5).
-  const changeRows: AssetFormChangeRow[] = changes.map((change) => ({
-    field: change.field,
-    label: changeLabel(change.field),
-    from: isPurchaseDocumentChange(change.field) ? "" : changeValueText(change.field, change.from),
-    to: isPurchaseDocumentChange(change.field)
-      ? change.to
-        ? t("purchaseDocumentChangeAdd", { number: change.to })
-        : t("purchaseDocumentRemoveNamed", { number: change.from })
-      : changeValueText(change.field, change.to),
-    automatic: change.automatic,
-  }))
+  // A document row reads "เพิ่ม <ประเภท> <เลขที่>" or "เอา <ประเภท> <เลขที่> ออก" alone, an action row with no
+  // "— →" (P3-R5, final review).
+  const documentTypeByChange = new Map<string, PurchaseDocumentType>([
+    ...[...originalDocuments, ...chosenDocuments].map((document) => [`purchaseDocuments.${document.id}`, document.documentType] as const),
+    ...documentUploads.map((upload) => [`purchaseDocuments.new.${upload.id}`, upload.documentType] as const),
+  ])
+  const documentChangeName = (field: string, number: string) => {
+    const type = documentTypeByChange.get(field)
+    return type ? `${t(`purchaseDocumentTypes.${type}`)} ${number}` : number
+  }
+  const changeRows: AssetFormChangeRow[] = changes.map((change) =>
+    isPurchaseDocumentChange(change.field)
+      ? {
+          field: change.field,
+          label: changeLabel(change.field),
+          from: "",
+          to: change.to
+            ? t("purchaseDocumentChangeAdd", { number: documentChangeName(change.field, change.to) })
+            : t("purchaseDocumentRemoveNamed", { number: documentChangeName(change.field, change.from) }),
+          automatic: change.automatic,
+          action: true,
+        }
+      : {
+          field: change.field,
+          label: changeLabel(change.field),
+          from: changeValueText(change.field, change.from),
+          to: changeValueText(change.field, change.to),
+          automatic: change.automatic,
+        },
+  )
   const changeByField = new Map(changes.map((change) => [change.field, change]))
 
   // A changed field's old value and คืนค่าเดิม. A แผนก locked to a new holder comes back with the holder, so it has none.
@@ -1543,6 +1565,7 @@ export function AssetForm({
           recent={recentDocuments}
           supplierId={values.supplierId || null}
           removedIds={isEdit ? removedDocumentIds : undefined}
+          storedIds={isEdit ? new Set(originalDocuments.map((document) => document.id)) : undefined}
           onChoose={chooseDocument}
           onRemove={removeDocument}
           suppliers={suppliers}
@@ -1554,7 +1577,7 @@ export function AssetForm({
           setPurchaseDocumentDate={setPurchaseDocumentDate}
           purchaseDocumentTotalAmount={purchaseDocumentTotalAmount}
           setPurchaseDocumentTotalAmount={setPurchaseDocumentTotalAmount}
-          purchaseDocumentSupplierId={purchaseDocumentSupplierId ?? values.supplierId ?? ""}
+          purchaseDocumentSupplierId={purchaseDocumentSupplierId}
           setPurchaseDocumentSupplierId={setPurchaseDocumentSupplierId}
           selectedPurchaseFile={selectedPurchaseFile}
           selectPurchaseFile={selectPurchaseFile}

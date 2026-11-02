@@ -132,3 +132,15 @@ test("the badge: create counts the chosen and the drafts (เลือกแล�
   assert.equal(countPurchaseDocumentBadge({ mode: "create", chosen: [], drafts: 0 }), null)
   assert.equal(countPurchaseDocumentBadge({ mode: "edit", chosen: [row()], removedIds: new Set(["d1"]), drafts: 0 }), null)
 })
+
+// Group 4 plan 3 final review: a chip that goes away hands focus on; a stored chip on edit keeps it.
+test("focusAfterChipRemoval: a stored chip on edit stays; any other moves focus to the next chip, else the search", async () => {
+  const { focusAfterChipRemoval } = await import("../src/lib/purchase-document-picker-rules.ts")
+  const chipIds = ["d1", "d2", "d3"]
+  const stored = new Set(["d1"])
+  assert.deepEqual(focusAfterChipRemoval({ chipIds, removedId: "d1", storedIds: stored }), { to: "stay" })
+  assert.deepEqual(focusAfterChipRemoval({ chipIds, removedId: "d2", storedIds: stored }), { to: "chip", id: "d3" }, "a newly chosen chip on edit")
+  assert.deepEqual(focusAfterChipRemoval({ chipIds, removedId: "d3", storedIds: stored }), { to: "search" })
+  assert.deepEqual(focusAfterChipRemoval({ chipIds, removedId: "d1" }), { to: "chip", id: "d2" }, "create and the batch store nothing")
+  assert.deepEqual(focusAfterChipRemoval({ chipIds: ["d1"], removedId: "d1" }), { to: "search" })
+})

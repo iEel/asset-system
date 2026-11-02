@@ -118,8 +118,38 @@ export function buildAssetBatchRequestBody(
   return { body: formData }
 }
 
+/**
+ * The upload's supplier select (final review): "ตามทรัพย์สิน" first, the default, is a draft that follows the asset's
+ * (or the batch's) supplier (null); "ไม่ระบุผู้ขาย" ("") stores none; then the suppliers. The select holds strings, so
+ * following the asset has its own value.
+ */
+export const FOLLOW_ASSET_SUPPLIER = "follow-asset"
+
+export function purchaseDocumentSupplierSelectValue(supplierId: string | null): string {
+  return supplierId ?? FOLLOW_ASSET_SUPPLIER
+}
+
+export function purchaseDocumentSupplierFromSelect(value: string): string | null {
+  return value === FOLLOW_ASSET_SUPPLIER ? null : value
+}
+
+/** The supplier a draft will be stored with: its own, none for "", or the asset's (or the batch's) for null. */
+export function effectivePurchaseDocumentSupplierId(draftSupplierId: string | null, assetSupplierId: string | null): string | null {
+  return draftSupplierId === null ? assetSupplierId || null : draftSupplierId || null
+}
+
 /** What the edit page names after a failed upload (P3-R6): never the file itself. */
 export type FailedPurchaseDocument = { documentType: PurchaseDocumentType; documentNo: string; fileName: string | null }
+
+/**
+ * The failure landing (P3-R6): the edit page with เอกสารจัดซื้อ open. `attempt` differs on every landing, so a second
+ * failure on the landing page itself is a new URL: the edit page keys the form on it, the form mounts fresh and reads the
+ * new list (final review). The returnTo the page was opened with goes along, so the fix-up save returns there.
+ */
+export function purchaseDocumentFailureHref(input: { locale: string; assetId: string; attempt: string; returnTo?: string }): string {
+  const returnTo = input.returnTo ? `&returnTo=${encodeURIComponent(input.returnTo)}` : ""
+  return `/${input.locale}/assets/${encodeURIComponent(input.assetId)}/edit?documents=failed&attempt=${encodeURIComponent(input.attempt)}${returnTo}#documents`
+}
 
 /** The sessionStorage key the save writes and the edit page reads once, per asset. */
 export function failedPurchaseDocumentsKey(assetId: string): string {

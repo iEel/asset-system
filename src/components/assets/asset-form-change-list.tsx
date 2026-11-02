@@ -12,8 +12,9 @@ import type { AssetDiffField } from "@/lib/asset-form-diff"
 // The trigger's id: ไปที่ช่อง gives focus back to it when the row's field has no control to take it.
 export const CHANGE_LIST_TRIGGER_ID = "asset-change-list-trigger"
 
-// One row of the list: the field's label and its stored and new values as the form shows them.
-export type AssetFormChangeRow = { field: AssetDiffField; label: string; from: string; to: string; automatic: boolean }
+// One row of the list: the field's label and its stored and new values as the form shows them. An action row (a purchase
+// document added or taken off, P3-R5) has no old value: it reads its `to` alone, without the dash and the arrow.
+export type AssetFormChangeRow = { field: AssetDiffField; label: string; from: string; to: string; automatic: boolean; action?: boolean }
 
 // The edit footer's "แก้ไข n ช่อง" (group 4 plan 2 Task 8, spec §7.1, §7.5): every field the save writes, เดิม → ใหม่, with
 // ไปที่ช่อง; the แผนก the save sets to the holder's says ปรับตามผู้ถือครอง; the reason shows when given. A Popover from
@@ -49,10 +50,14 @@ export function AssetFormChangeList({ changes, reason, onGoToField }: { changes:
         {changes.map((change) => (
           <li key={change.field} className="grid gap-1 border-b border-border-soft pb-3 last:border-b-0 last:pb-0">
             <span className="font-medium text-foreground">{change.label}</span>
-            <span className="min-w-0 break-words text-muted-foreground">
-              {orNil(change.from)} <span aria-hidden="true">→</span>
-              <span className="sr-only">{t("changeTo")}</span> <span className="text-foreground">{orNil(change.to)}</span>
-            </span>
+            {change.action ? (
+              <span className="min-w-0 break-words text-foreground">{change.to}</span>
+            ) : (
+              <span className="min-w-0 break-words text-muted-foreground">
+                {orNil(change.from)} <span aria-hidden="true">→</span>
+                <span className="sr-only">{t("changeTo")}</span> <span className="text-foreground">{orNil(change.to)}</span>
+              </span>
+            )}
             <span className="flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
               {change.automatic ? <span>{t("followsHolderFix")}</span> : (
                 <Button variant="ghost" size="sm" onClick={() => goTo(change.field)}>

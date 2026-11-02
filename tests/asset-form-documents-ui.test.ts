@@ -157,7 +157,7 @@ test("the section: the picker on the left, the upload on the right (stacked belo
   const picker = source.indexOf("<PurchaseDocumentPicker")
   const upload = source.indexOf('{t("createPurchaseDocument")}')
   assert.ok(picker > 0 && upload > picker, "the picker comes first in the DOM, the upload second")
-  assert.match(source, /<PurchaseDocumentPicker\n\s+id="asset-purchase-document"\n\s+chosen=\{chosen\}\n\s+recent=\{recent\}\n\s+supplierId=\{supplierId\}\n\s+onChoose=\{onChoose\}\n\s+onRemove=\{onRemove\}\n\s+removedIds=\{removedIds\}\n\s+disabled=\{saving\}/)
+  assert.match(source, /<PurchaseDocumentPicker\n\s+id="asset-purchase-document"\n\s+chosen=\{chosen\}\n\s+recent=\{recent\}\n\s+supplierId=\{supplierId\}\n\s+onChoose=\{onChoose\}\n\s+onRemove=\{onRemove\}\n\s+removedIds=\{removedIds\}\n\s+storedIds=\{storedIds\}\n\s+disabled=\{saving\}/)
   // The upload part's order: the drop zone, ประเภทเอกสาร, เลขที่เอกสาร, วันที่เอกสาร, ยอดรวม (บาท), ผู้ขาย, + เพิ่มอีกใบ.
   const order = ["<FileDropzone", 'label={t("documentType")}', 'label={t("purchaseDocumentNo")}', 'label={t("purchaseDocumentDate")}', 'label={t("purchaseDocumentAmountBaht")}', 'label={t("supplier")}', '{t("addPurchaseDocument")}'].map((needle) => source.indexOf(needle))
   assert.ok(order.every((at, index) => at > upload && (index === 0 || at > order[index - 1])), order.join(","))
@@ -178,9 +178,15 @@ test("the form: create opens เอกสารจัดซื้อ, edit folds
   // The badge of เอกสารจัดซื้อ comes from the summary; the other sections keep กรอกแล้ว n จาก m ช่อง.
   assert.match(form, /badge: summary\.badge\n\s+\? t\(`sectionSummary\.\$\{summary\.badge\.key\}`, \{ count: summary\.badge\.count \}\)\n\s+: summary\.total > 0 \? t\("sectionFilled", \{ filled: summary\.filled, total: summary\.total \}\) : undefined/)
   const edit = read(EDIT_PAGE)
-  assert.match(edit, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; documents\?: string \| string\[\] \}>/)
+  assert.match(edit, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; documents\?: string \| string\[\]; attempt\?: string \| string\[\] \}>/)
   assert.match(edit, /const documentsFailed = getSingleSearchParam\(rawSearchParams\.documents\) === "failed"/)
   assert.match(edit, /documentsFailed=\{documentsFailed\}/)
+  // Final review: every landing has its own attempt, so a second failure on the landing page mounts a fresh form (no
+  // draft, removal mark or Notice of the earlier one) and reads the new list.
+  assert.match(edit, /const failedAttempt = getSingleSearchParam\(rawSearchParams\.attempt\) \?\? ""/)
+  assert.match(edit, /key=\{documentsFailed \? `documents-failed-\$\{failedAttempt\}` : "form"\}/)
+  // A failure of the links alone drops an older list, so the landing never shows it as this one's.
+  assert.match(form, /if \(items\.length === 0\) window\.sessionStorage\.removeItem\(failedPurchaseDocumentsKey\(assetId\)\)\n\s+else window\.sessionStorage\.setItem\(failedPurchaseDocumentsKey\(assetId\), JSON\.stringify\(items\)\)/)
 })
 
 test("บันทึก: the pre-check first, then the asset, then each draft, the chosen link, the unlinks, the photos (P3-R5, Review Focus 1, 4)", () => {
@@ -206,7 +212,7 @@ test("บันทึก: the pre-check first, then the asset, then each draft, 
   // A refused pre-check returns before the asset is posted: nothing else is sent, the file and fields stay.
   assert.match(body, /if \(documentUploads\.length > 0 && !\(await passesPurchaseDocumentPreCheck\(documentUploads\)\)\) return/)
   // A failed document step lands on the edit page with เอกสารจัดซื้อ open; any other failed step on the asset page.
-  assert.match(body, /if \(documentStepFailed\) router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}\/edit\?documents=failed#documents`\)\n\s+else router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}`\)/)
+  assert.match(body, /if \(documentStepFailed && savedId\) router\.push\(purchaseDocumentFailureHref\(\{ locale, assetId: savedId, attempt: createClientId\(\), returnTo: providedBackHref \}\)\)\n\s+else router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}`\)/)
   // One request each: a multipart POST per draft, a JSON link, a DELETE per removed chip.
   assert.match(form, /fetch\(assetPurchaseDocumentsPath\(assetId\), \{ method: "POST", body: buildPurchaseDocumentUploadForm\(draft\) \}\)/)
   assert.match(form, /fetch\(assetPurchaseDocumentPath\(assetId, documentId\), \{ method: "DELETE" \}\)/)
@@ -282,4 +288,83 @@ test("without asset:edit (P3-R2): the create page and the clone link no document
   assert.ok(section.indexOf("if (!canLink) {") < section.indexOf("<PurchaseDocumentPicker"), "the note returns before the picker and the upload")
   assert.equal(messages("th").asset.purchaseDocumentsNeedEdit, "ผูกหรืออัปโหลดเอกสารจัดซื้อได้เมื่อมีสิทธิ์แก้ไขทรัพย์สิน")
   assert.equal(messages("en").asset.purchaseDocumentsNeedEdit, "Linking or uploading purchase documents needs permission to edit assets")
+})
+
+// Group 4 plan 3 final review (client fixes).
+test("the failure landing has a new attempt each time and keeps the returnTo (final review)", async () => {
+  const { purchaseDocumentFailureHref } = await import("../src/lib/asset-form-documents.ts")
+  assert.equal(
+    purchaseDocumentFailureHref({ locale: "th", assetId: "a-1", attempt: "17", returnTo: "/th/asset-management/scan" }),
+    "/th/assets/a-1/edit?documents=failed&attempt=17&returnTo=%2Fth%2Fasset-management%2Fscan#documents",
+  )
+  assert.equal(purchaseDocumentFailureHref({ locale: "en", assetId: "a-1", attempt: "18" }), "/en/assets/a-1/edit?documents=failed&attempt=18#documents")
+  assert.notEqual(
+    purchaseDocumentFailureHref({ locale: "th", assetId: "a-1", attempt: "1" }),
+    purchaseDocumentFailureHref({ locale: "th", assetId: "a-1", attempt: "2" }),
+    "a second failure on the landing page is a new URL, so the edit page remounts the form",
+  )
+})
+
+test("the upload's supplier: ตามทรัพย์สิน (the default) follows the asset, ไม่ระบุผู้ขาย stores none (final review)", async () => {
+  const lib = await import("../src/lib/asset-form-documents.ts")
+  assert.equal(lib.purchaseDocumentSupplierSelectValue(null), lib.FOLLOW_ASSET_SUPPLIER)
+  assert.equal(lib.purchaseDocumentSupplierSelectValue(""), "")
+  assert.equal(lib.purchaseDocumentSupplierSelectValue("s1"), "s1")
+  assert.equal(lib.purchaseDocumentSupplierFromSelect(lib.FOLLOW_ASSET_SUPPLIER), null)
+  assert.equal(lib.purchaseDocumentSupplierFromSelect(""), "")
+  assert.equal(lib.purchaseDocumentSupplierFromSelect("s1"), "s1")
+  // A queued row names the supplier the document will be stored with.
+  assert.equal(lib.effectivePurchaseDocumentSupplierId(null, "s-asset"), "s-asset")
+  assert.equal(lib.effectivePurchaseDocumentSupplierId(null, null), null)
+  assert.equal(lib.effectivePurchaseDocumentSupplierId("", "s-asset"), null)
+  assert.equal(lib.effectivePurchaseDocumentSupplierId("s1", "s-asset"), "s1")
+
+  const single = read(`${C}asset-form-documents.tsx`)
+  const batch = read(`${C}asset-batch-form.tsx`)
+  for (const source of [single, batch]) {
+    assert.match(source, /<option value=\{FOLLOW_ASSET_SUPPLIER\}>\{t\("purchaseDocumentSupplierFollowsAsset"\)\}<\/option>\n\s+<option value="">\{t\("purchaseDocumentSupplierNone"\)\}<\/option>/)
+  }
+  assert.match(single, /value=\{purchaseDocumentSupplierSelectValue\(purchaseDocumentSupplierId\)\}\n\s+onChange=\{\(value\) => setPurchaseDocumentSupplierId\(purchaseDocumentSupplierFromSelect\(value\)\)\}/)
+  assert.doesNotMatch(single, /selectSupplier/, "the empty เลือกผู้ขาย is gone from the upload")
+  assert.match(single, /const supplier = draftSupplierText\(document\.supplierId\)/)
+  assert.match(batch, /value=\{purchaseDocumentSupplierSelectValue\(documentDraft\.supplierId\)\}/)
+  assert.match(batch, /onChange=\{\(value\) => setDocumentField\("supplierId", purchaseDocumentSupplierFromSelect\(value\)\)\}/)
+  assert.match(read(`${C}asset-form.tsx`), /purchaseDocumentSupplierId=\{purchaseDocumentSupplierId\}\n/)
+  assert.equal(messages("th").asset.purchaseDocumentSupplierFollowsAsset, "ตามทรัพย์สิน")
+  assert.equal(messages("th").asset.purchaseDocumentSupplierNone, "ไม่ระบุผู้ขาย")
+  assert.equal(messages("en").asset.purchaseDocumentSupplierFollowsAsset, "Same as the asset")
+  assert.equal(messages("en").asset.purchaseDocumentSupplierNone, "No supplier")
+})
+
+test("the change list's document rows are actions: เพิ่ม <ประเภท> <เลขที่> alone, without — → (final review)", () => {
+  const list = read(`${C}asset-form-change-list.tsx`)
+  assert.match(list, /export type AssetFormChangeRow = \{ field: AssetDiffField; label: string; from: string; to: string; automatic: boolean; action\?: boolean \}/)
+  assert.match(list, /\{change\.action \? \(\n\s+<span className="min-w-0 break-words text-foreground">\{change\.to\}<\/span>\n\s+\) : \(/)
+  const form = read(`${C}asset-form.tsx`)
+  assert.match(form, /to: change\.to\n\s+\? t\("purchaseDocumentChangeAdd", \{ number: documentChangeName\(change\.field, change\.to\) \}\)\n\s+: t\("purchaseDocumentRemoveNamed", \{ number: documentChangeName\(change\.field, change\.from\) \}\),\n\s+automatic: change\.automatic,\n\s+action: true,/)
+  assert.match(form, /return type \? `\$\{t\(`purchaseDocumentTypes\.\$\{type\}`\)\} \$\{number\}` : number/)
+})
+
+test("the section help names the two parts as they read (final review)", () => {
+  assert.equal(messages("th").asset.purchaseDocumentsHelp, "เลือกเอกสารที่มีอยู่ หรืออัปโหลดเอกสารใหม่ เอกสารใบเดียวใช้กับหลายทรัพย์สินได้ เช่น ใบ PO ใบเดียวสำหรับคอม 100 เครื่อง")
+  assert.equal(messages("en").asset.purchaseDocumentsHelp, "Choose an existing document or upload a new one. One document can serve many assets, such as one PO for 100 computers.")
+  for (const locale of ["th", "en"] as const) assert.doesNotMatch(String(messages(locale).asset.purchaseDocumentsHelp), /สร้างเอกสารใหม่|PO\/Invoice|create a new one/)
+})
+
+test("the batch draft: a file with no number reads กรุณากรอกเลขที่เอกสารจัดซื้อ, and the amount has the server's bound (final review)", () => {
+  const batch = read(`${C}asset-batch-form.tsx`)
+  assert.match(batch, /const documentErrorText = \(field: DocumentField\) => \{\n\s+const code = documentErrors\.errors\[field\]\n\s+return code && isAssetMessageCode\(code\) \? t\(code\) : documentErrors\.message\(field\)\n\s+\}/)
+  assert.match(batch, /id=\{DOCUMENT_FIELD_IDS\.purchaseDocumentNo\} error=\{documentErrorText\("purchaseDocumentNo"\)\}/)
+  assert.match(batch, /const amount = purchaseDocumentAmountError\(draft\.totalAmount\)/)
+  assert.match(batch, /min="0"\n\s+max=\{purchaseDocumentLimits\.amountMax\}\n\s+step="0\.01"/)
+  assert.equal(messages("th").asset.purchaseDocumentNoRequired, "กรุณากรอกเลขที่เอกสารจัดซื้อ")
+})
+
+test("the amount rule refuses past the column, as the server does (final review)", async () => {
+  const { purchaseDocumentAmountError } = await import("../src/lib/asset-form-rules.ts")
+  assert.equal(purchaseDocumentAmountError("9999999999999.99"), null)
+  assert.equal(purchaseDocumentAmountError("10000000000000"), "outOfRange")
+  assert.equal(purchaseDocumentAmountError("-1"), "outOfRange")
+  assert.equal(purchaseDocumentAmountError("1.005"), "tooManyDecimals")
+  assert.equal(purchaseDocumentAmountError(""), null)
 })

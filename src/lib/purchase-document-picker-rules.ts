@@ -134,6 +134,22 @@ export function buildPurchaseDocumentRefsSummary(
 }
 
 /**
+ * Where focus goes after a chip's × (final review). A stored document on edit stays as a chip marked for removal, so
+ * focus stays on its button (now "เก็บไว้"); any other chip goes away, so focus moves to the next chip, else the search.
+ */
+export function focusAfterChipRemoval(input: {
+  chipIds: readonly string[]
+  removedId: string
+  /** The edit page's stored links: their × marks them and the chip stays. Create and the batch have none. */
+  storedIds?: ReadonlySet<string>
+}): { to: "stay" } | { to: "chip"; id: string } | { to: "search" } {
+  if (input.storedIds?.has(input.removedId)) return { to: "stay" }
+  const index = input.chipIds.indexOf(input.removedId)
+  const next = index >= 0 ? input.chipIds[index + 1] : undefined
+  return next ? { to: "chip", id: next } : { to: "search" }
+}
+
+/**
  * The section badge: on create "เลือกแล้ว n ใบ" counts the chosen documents and the drafts (both are linked at the
  * save); on edit "ผูกไว้ n ใบ" counts the chosen documents not marked for removal, inactive ones too (P3-R7). null at 0.
  */

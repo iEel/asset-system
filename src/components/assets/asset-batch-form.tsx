@@ -38,11 +38,21 @@ import {
   type AssetBatchEditableRow,
 } from "@/lib/asset-batch-create"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
-import { purchaseDocumentTypes, type PurchaseDocumentDraft, type PurchaseDocumentType } from "@/lib/asset-form-rules"
+import {
+  isAssetMessageCode,
+  purchaseDocumentAmountError,
+  purchaseDocumentLimits,
+  purchaseDocumentTypes,
+  type PurchaseDocumentDraft,
+  type PurchaseDocumentType,
+} from "@/lib/asset-form-rules"
 import {
   ACTIVE_PURCHASE_DOCUMENT_DRAFT,
+  FOLLOW_ASSET_SUPPLIER,
   buildAssetBatchRequestBody,
   purchaseDocumentCheckPath,
+  purchaseDocumentSupplierFromSelect,
+  purchaseDocumentSupplierSelectValue,
   type PurchaseDocumentDuplicateAnswer,
 } from "@/lib/asset-form-documents"
 import type { PurchaseDocumentSearchRow } from "@/lib/purchase-document-search-rules"
@@ -183,7 +193,8 @@ const DOCUMENT_FIELD_IDS = {
 type DocumentField = keyof typeof DOCUMENT_FIELD_IDS
 const DOCUMENT_FIELD_ORDER = Object.keys(DOCUMENT_FIELD_IDS) as DocumentField[]
 
-// The upload draft. supplierId null follows the batch's supplier (sent as none, the server's default).
+// The upload draft. supplierId null follows the batch's supplier ("ตามทรัพย์สิน", no supplierId key, the server's
+// default); "" is "ไม่ระบุผู้ขาย" (sent empty, stored as none).
 type BatchDocumentDraft = Omit<PurchaseDocumentDraft, "id" | "file"> & { file: File | null }
 
 const emptyDocumentDraft: BatchDocumentDraft = {
@@ -198,9 +209,9 @@ const emptyDocumentDraft: BatchDocumentDraft = {
 // The draft's rules, as the single form's: a file needs its number; a number without a file is not uploaded.
 function validateDocumentDraft(draft: BatchDocumentDraft): Partial<Record<DocumentField, string>> {
   const errors: Partial<Record<DocumentField, string>> = {}
-  const number = draft.file && required(draft.documentNo) ? "purchaseDocumentNoRequired" : maxLength(draft.documentNo, 100)
+  const number = draft.file && required(draft.documentNo) ? "purchaseDocumentNoRequired" : maxLength(draft.documentNo, purchaseDocumentLimits.documentNo)
   if (number) errors.purchaseDocumentNo = number
-  const amount = range(draft.totalAmount, 0) ?? decimals(draft.totalAmount, 2)
+  const amount = purchaseDocumentAmountError(draft.totalAmount)
   if (amount) errors.purchaseDocumentAmount = amount
   return errors
 }
@@ -296,6 +307,12 @@ export function AssetBatchForm({
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
   const fieldErrors = useFieldErrors<BatchField>()
   const documentErrors = useFieldErrors<DocumentField>()
+  // The asset namespace's own sentences ("กรุณากรอกเลขที่เอกสารจัดซื้อ"), as the single form's errorText reads them;
+  // every other code through the shared catalog (final review).
+  const documentErrorText = (field: DocumentField) => {
+    const code = documentErrors.errors[field]
+    return code && isAssetMessageCode(code) ? t(code) : documentErrors.message(field)
+  }
   // The new document the save sends: a file and a number (P3-R8, one per batch).
   const documentNo = documentDraft.documentNo.trim()
   const documentUpload: PurchaseDocumentDraft | null =
@@ -1123,8 +1140,8 @@ export function AssetBatchForm({
                         ))}
                       </NativeSelect>
                     </Field>
-                    <Field label={t("purchaseDocumentNo")} id={DOCUMENT_FIELD_IDS.purchaseDocumentNo} error={documentErrors.message("purchaseDocumentNo")}>
-                      <Input value={documentDraft.documentNo} onChange={(event) => setDocumentField("documentNo", event.target.value)} maxLength={100} />
+                    <Field label={t("purchaseDocumentNo")} id={DOCUMENT_FIELD_IDS.purchaseDocumentNo} error={documentErrorText("purchaseDocumentNo")}>
+                      <Input value={documentDraft.documentNo} onChange={(event) => setDocumentField("documentNo", event.target.value)} maxLength={purchaseDocumentLimits.documentNo} />
                     </Field>
                     <Field label={t("purchaseDocumentDate")} id="asset-batch-purchase-document-date">
                       <Input type="date" value={documentDraft.documentDate} onChange={(event) => setDocumentField("documentDate", event.target.value)} />
@@ -1133,6 +1150,7 @@ export function AssetBatchForm({
                       <Input
                         type="number"
                         min="0"
+                        max={purchaseDocumentLimits.amountMax}
                         step="0.01"
                         inputMode="decimal"
                         value={documentDraft.totalAmount}
@@ -1143,11 +1161,12 @@ export function AssetBatchForm({
                       <SelectField
                         label={t("supplier")}
                         id={DOCUMENT_FIELD_IDS.purchaseDocumentSupplierId}
-                        value={documentDraft.supplierId ?? common.supplierId}
+                        value={purchaseDocumentSupplierSelectValue(documentDraft.supplierId)}
                         error={documentErrors.message("purchaseDocumentSupplierId")}
-                        onChange={(value) => setDocumentField("supplierId", value)}
+                        onChange={(value) => setDocumentField("supplierId", purchaseDocumentSupplierFromSelect(value))}
                       >
-                        <option value="">{t("selectSupplier")}</option>
+                        <option value={FOLLOW_ASSET_SUPPLIER}>{t("purchaseDocumentSupplierFollowsAsset")}</option>
+                        <option value="">{t("purchaseDocumentSupplierNone")}</option>
                         {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
                       </SelectField>
                     </div>

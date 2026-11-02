@@ -54,7 +54,8 @@ test("asset edit form saves back to the sanitized return target", () => {
   const formSource = readFileSync("src/components/assets/asset-form.tsx", "utf8")
 
   // Group 4 plan 3 Task 5: the edit page also reads ?documents=failed, the save's failure landing (P3-R6).
-  assert.match(pageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; documents\?: string \| string\[\] \}>/)
+  // The final review's attempt: a new one on every failure landing remounts the form.
+  assert.match(pageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; documents\?: string \| string\[\]; attempt\?: string \| string\[\] \}>/)
   assert.match(pageSource, /normalizeAssetReturnTo\(locale, rawSearchParams\.returnTo\)/)
   assert.match(pageSource, /backHref=\{returnToHref\}/)
   assert.match(formSource, /backHref: providedBackHref/)

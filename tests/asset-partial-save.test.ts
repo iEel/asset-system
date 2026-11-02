@@ -44,7 +44,7 @@ test("with a failure the form warns and opens the saved asset; without one it ke
   // Group 4 plan 3 Task 5 (P3-R6): a failed document step lands on the edit page with เอกสารจัดซื้อ open instead.
   assert.match(
     body,
-    /if \(documentStepFailed\) router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}\/edit\?documents=failed#documents`\)\n\s+else router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}`\)/,
+    /if \(documentStepFailed && savedId\) router\.push\(purchaseDocumentFailureHref\(\{ locale, assetId: savedId, attempt: createClientId\(\), returnTo: providedBackHref \}\)\)\n\s+else router\.push\(`\/\$\{locale\}\/assets\/\$\{savedId\}`\)/,
     "pushes to the saved asset, or to its edit page after a failed document step",
   )
   assert.match(body, /toast\.success\(tCommon\("savedSuccess"\)\)\n\s+router\.push\(backHref\)/, "success then back")

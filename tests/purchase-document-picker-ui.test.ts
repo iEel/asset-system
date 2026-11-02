@@ -87,3 +87,14 @@ test("the words (P3-R1): documents counted in ใบ, linked assets in เคร
   assert.match(glossary, /\| นับเอกสารจัดซื้อ \| \*\*ใบ\*\*/)
   assert.match(glossary, /\| นับทรัพย์สินที่ผูกกับเอกสารจัดซื้อ \| \*\*เครื่อง\*\*/)
 })
+
+test("removing a chip that goes away moves focus to the next chip or the search, never to the page (final review)", () => {
+  const source = read(PART)
+  assert.ok(source.includes("storedIds?: ReadonlySet<string>"))
+  assert.match(source, /const target = focusAfterChipRemoval\(\{ chipIds: chosen\.map\(\(document\) => document\.id\), removedId: row\.id, storedIds \}\)\n\s+onRemove\(row\.id\)\n\s+if \(target\.to === "chip"\) chipsRef\.current\?\.querySelector<HTMLButtonElement>\(`\[data-purchase-document-chip="\$\{target\.id\}"\] button`\)\?\.focus\(\)\n\s+else if \(target\.to === "search"\) searchRef\.current\?\.focus\(\)/)
+  assert.match(source, /<ul ref=\{chipsRef\} aria-label=\{t\("purchaseDocumentChosenList"\)\}/)
+  assert.doesNotMatch(source, /if \(!removedIds\) searchRef\.current\?\.focus\(\)/)
+  // The edit page passes its stored links; create and the batch pass none.
+  const form = read("src/components/assets/asset-form.tsx")
+  assert.match(form, /storedIds=\{isEdit \? new Set\(originalDocuments\.map\(\(document\) => document\.id\)\) : undefined\}/)
+})
