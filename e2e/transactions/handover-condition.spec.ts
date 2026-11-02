@@ -48,7 +48,7 @@ async function setConditionOnEditForm(page: Page, measure: Measure, assetId: str
   await expect(select.locator("option", { hasText: new RegExp(`^${label}$`) })).toHaveCount(1)
   await select.selectOption({ label })
   const saved = page.waitForResponse((response) => response.url().endsWith(`/api/assets/${assetId}`) && response.request().method() === "PUT")
-  await page.getByRole("button", { name: "บันทึก", exact: true }).filter({ visible: true }).click()
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).filter({ visible: true }).click()
   const response = await saved
   expect(response.status(), `PUT /api/assets/${assetId}: ${(await response.text()).slice(0, 300)}`).toBe(200)
   await page.waitForURL((url) => !url.pathname.endsWith("/edit"))

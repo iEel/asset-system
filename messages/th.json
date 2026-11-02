@@ -1418,7 +1418,21 @@
       "customExtraRows": "เพิ่มเอง {count, number} ช่อง",
       "remarkSet": "มีหมายเหตุ"
     },
-    "useHomeLocation": "ใช้ที่ตั้งประจำ"
+    "useHomeLocation": "ใช้ที่ตั้งประจำ",
+    "editTitleNamed": "แก้ไข {name}",
+    "editHolderLine": "ผู้ถือครอง {name} · {department}",
+    "editHolderOnly": "ผู้ถือครอง {name}",
+    "viewAssetPage": "ดูหน้าทรัพย์สิน",
+    "mainCardTitle": "ข้อมูลหลัก",
+    "changeTag": "เปลี่ยนรหัส",
+    "changeTagTitle": "เปลี่ยนรหัสทรัพย์สิน",
+    "changeTagNew": "รหัสใหม่",
+    "changeTagConfirm": "ใช้รหัสนี้",
+    "changeTagWarning": "ป้ายที่พิมพ์ไว้จะยังแสดงรหัสเดิม และค้นด้วยรหัสเดิมจะไม่พบ ป้าย QR ยังเปิดทรัพย์สินนี้ได้",
+    "openHandoverLock": "ใบส่งมอบ {documentNo} ยังเปิดอยู่ ถ้าผู้ถือครองหรือที่ตั้งผิด ให้ยกเลิกใบส่งมอบแล้วส่งมอบใหม่ หรือรับคืน",
+    "openHandoverLink": "เปิดใบส่งมอบ",
+    "correctionHint": "ใช้แก้ข้อมูลที่บันทึกผิด ถ้าย้ายเครื่องหรือเปลี่ยนคนใช้จริง ใช้ <link>โอนย้ายทรัพย์สิน</link> เพื่อให้มีใบโอนย้ายและประวัติครบ",
+    "saveCorrection": "บันทึกการแก้ไข"
   },
   "company": {
     "title": "บริษัท",

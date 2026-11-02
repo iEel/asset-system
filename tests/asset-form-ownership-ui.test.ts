@@ -40,7 +40,7 @@ test("the holder picker shows for every type that can have a holder; ส่ว�
 test("a change of the type keeps the holder except ส่วนควบ, which also opens the install section on create", () => {
   const form = read(`${C}asset-form.tsx`)
   const handler = form.slice(form.indexOf("function handleOwnershipTypeChange("), form.indexOf("function handleCategoryChange("))
-  assert.match(handler, /setValues\(\(current\) => withDepartmentLock\(changeOwnershipType\(current, nextOwnershipType\), employees, asset\)\)/)
+  assert.match(handler, /setValues\(\(current\) => withDepartmentLock\(changeOwnershipType\(current, nextOwnershipType\), employees, asset, editContext\)\)/)
   assert.match(handler, /if \(!isEdit && normalizeAssetOwnershipType\(nextOwnershipType\) === "component"\) openSection\("install"\)/)
   assert.doesNotMatch(handler, /custodianId: nextOwnershipType === "personal"/)
 })
@@ -62,14 +62,16 @@ test("แผนก follows the holder: the form writes the locked department and
   const form = read(`${C}asset-form.tsx`)
   const ownership = read(`${C}asset-form-ownership.tsx`)
   // On load (a clone is locked too), on the holder pick and on the type change.
-  assert.match(form, /useState<AssetFormValues>\(\(\) => withDepartmentLock\(asset \?\? emptyAssetFormValues, employees, asset\)\)/)
-  assert.match(form, /setValues\(\(current\) => withDepartmentLock\(\{ \.\.\.current, custodianId \}, employees, asset\)\)/)
-  assert.match(form, /const departmentLock = departmentLockOf\(values, employees, asset\)/)
+  assert.match(form, /useState<AssetFormValues>\(\(\) => withDepartmentLock\(asset \?\? emptyAssetFormValues, employees, asset, editContext\)\)/)
+  assert.match(form, /setValues\(\(current\) => withDepartmentLock\(\{ \.\.\.current, custodianId \}, employees, asset, editContext\)\)/)
+  assert.match(form, /const departmentLock = departmentLockOf\(values, employees, asset, editContext\)/)
   const lockOf = form.slice(form.indexOf("function departmentLockOf("), form.indexOf("function withDepartmentLock("))
   assert.match(lockOf, /return getAssetFormDepartmentLock\(\{/)
-  assert.match(lockOf, /holderDepartmentName: holder\?\.departmentName \?\? null,/)
-  assert.match(lockOf, /openHandover: false,/)
-  assert.match(ownership, /disabled=\{departmentLock\.locked\}/)
+  // Task 7: an inactive stored holder takes its department from the edit page; an open handover frees the lock (the
+  // stored department stays) and makes แผนก read-only.
+  assert.match(lockOf, /holderDepartmentName: holder\?\.departmentName \?\? \(storedHolder \? context\?\.holder\?\.departmentName \?\? null : null\),/)
+  assert.match(lockOf, /openHandover: context \? context\.openHandover !== null : false,/)
+  assert.match(ownership, /disabled=\{departmentLock\.locked \|\| custodyLocked\}/)
   assert.match(ownership, /tTransfer\("followsHolder", \{ department: departmentLockText \}\)/)
   assert.match(read(`${C}asset-form-section.tsx`), /<NativeSelect value=\{value\} required=\{required\} disabled=\{disabled\} onChange=\{\(event\) => onChange\(event\.target\.value\)\}>/)
   assert.equal(messages("th").transfer.followsHolder, "ตามผู้ถือครอง: {department}")
@@ -82,7 +84,7 @@ test("แผนก follows the holder: the form writes the locked department and
 test("ใช้ที่ตั้งประจำ copies the home location to the current one; the home location has its id", () => {
   const form = read(`${C}asset-form.tsx`)
   assert.match(form, /label=\{t\("homeLocation"\)\}\n\s+id="asset-home-location"/)
-  assert.match(form, /\{values\.homeLocationId && values\.homeLocationId !== values\.currentLocationId \? \(/)
+  assert.match(form, /\{!custodyLocked && values\.homeLocationId && values\.homeLocationId !== values\.currentLocationId \? \(/)
   assert.match(form, /<Button variant="outline" size="sm" onClick=\{\(\) => setField\("currentLocationId", values\.homeLocationId \?\? ""\)\}>\n\s+\{t\("useHomeLocation"\)\}/)
   assert.equal(messages("th").asset.useHomeLocation, "ใช้ที่ตั้งประจำ")
   assert.equal(messages("en").asset.useHomeLocation, "Use home location")

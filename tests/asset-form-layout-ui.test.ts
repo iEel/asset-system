@@ -12,10 +12,11 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 
 test("the create header: the title, the hint line and the workspace's single/batch switch in its actions", () => {
   const header = read(`${C}asset-form-header.tsx`)
-  assert.match(header, /export function AssetFormHeader\(\{ mode, title, backHref, actions \}: \{ mode: "create" \| "edit"; title: string; backHref: string; actions\?: ReactNode \}\)/)
-  assert.match(header, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{mode === "create" \? t\("createRequiredHint"\) : t\("subtitle"\)\}\n\s+actions=\{actions\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
+  // Task 7 adds the edit variant (edit: the code, status, holder, room and the asset page link).
+  assert.match(header, /export function AssetFormHeader\(\{\n\s+mode,\n\s+title,\n\s+backHref,\n\s+actions,\n\s+edit,\n\}: \{\n\s+mode: "create" \| "edit"\n\s+title: string\n\s+backHref: string\n\s+actions\?: ReactNode\n\s+edit\?: \{ assetTag: string; context: AssetEditContext \}\n\}\)/)
+  assert.match(header, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{mode === "create" \? t\("createRequiredHint"\) : edit \? <AssetFormEditMeta assetTag=\{edit\.assetTag\} context=\{edit\.context\} \/> : t\("subtitle"\)\}\n\s+actions=\{actions\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
   const form = read(`${C}asset-form.tsx`)
-  assert.match(form, /<AssetFormHeader mode=\{isEdit \? "edit" : "create"\} title=\{title\} backHref=\{backHref\} actions=\{headerActions\} \/>/)
+  assert.match(form, /<AssetFormHeader mode=\{isEdit \? "edit" : "create"\} title=\{title\} backHref=\{backHref\} actions=\{headerActions\} edit=\{headerEdit\} \/>/)
   const workspace = read(`${C}asset-create-workspace.tsx`)
   assert.match(workspace, /const modeSwitch = \(\n\s+<Segmented\n\s+aria-label=\{t\("createModeLabel"\)\}/)
   assert.match(workspace, /if \(mode === "single"\) return <AssetForm \{\.\.\.props\} headerActions=\{modeSwitch\} \/>/)
@@ -30,7 +31,8 @@ test("the required card: its title, the counter and a bar with no pace mark", ()
   assert.match(card, /const counterText = counter \? t\("requiredFilled", \{ filled: counter\.filled, total: counter\.total \}\) : null/)
   assert.match(card, /<PaceBar value=\{counter\.total > 0 \? counter\.filled \/ counter\.total : 0\} pace=\{null\} label=\{counterText \?\? ""\} behind=\{false\} \/>/)
   const form = read(`${C}asset-form.tsx`)
-  assert.match(form, /<AssetFormRequiredCard title=\{t\("requiredCardTitle"\)\} counter=\{requiredProgress\}>/)
+  // Task 7: on edit the card is ข้อมูลหลัก with no counter.
+  assert.match(form, /<AssetFormRequiredCard title=\{isEdit \? t\("mainCardTitle"\) : t\("requiredCardTitle"\)\} counter=\{isEdit \? null : requiredProgress\}>/)
   assert.match(form, /const requiredProgress = countRequiredFilled\(values, ownershipType\)/)
   // The three groups of the card, in order. Task 6b: the ownership group is its own file (asset-form-ownership.tsx).
   const order = ['<CardGroup title={t("basicInfo")}>', "<AssetFormOwnership", '<CardGroup title={t("locationStatus")}>'].map((tag) => form.indexOf(tag))

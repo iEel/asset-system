@@ -48,8 +48,9 @@ test("the asset form and the component manager: PageHeader, and the component he
   // line that says only the first card is needed, and its actions hold the workspace's single/batch switch.
   const form = read(`${C}assets/asset-form-header.tsx`)
   assert.ok(form.includes(HEADER_IMPORT), "asset-form-header.tsx imports PageHeader and PageBackLink")
-  assert.match(form, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{mode === "create" \? t\("createRequiredHint"\) : t\("subtitle"\)\}\n\s+actions=\{actions\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
-  assert.match(read(`${C}assets/asset-form.tsx`), /<AssetFormHeader mode=\{isEdit \? "edit" : "create"\}/)
+  // Task 7: on edit the meta names the asset's code, status, holder and room, with a link to the asset page.
+  assert.match(form, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{mode === "create" \? t\("createRequiredHint"\) : edit \? <AssetFormEditMeta assetTag=\{edit\.assetTag\} context=\{edit\.context\} \/> : t\("subtitle"\)\}\n\s+actions=\{actions\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
+  assert.match(read(`${C}assets/asset-form.tsx`), /<AssetFormHeader mode=\{isEdit \? "edit" : "create"\} title=\{title\} backHref=\{backHref\} actions=\{headerActions\} edit=\{headerEdit\} \/>/)
   assert.doesNotMatch(read(`${C}assets/asset-form.tsx`), /<h1\b|\bArrowLeft\b/)
   const manager = read(`${C}assets/asset-component-manager.tsx`)
   assert.ok(manager.includes(HEADER_IMPORT), "asset-component-manager.tsx imports PageHeader and PageBackLink")

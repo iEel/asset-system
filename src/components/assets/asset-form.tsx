@@ -28,6 +28,7 @@ import { AssetFormPhotos } from "@/components/assets/asset-form-photos"
 import { AssetFormPurchase } from "@/components/assets/asset-form-purchase"
 import { AssetFormRequiredCard } from "@/components/assets/asset-form-required-card"
 import { CardGroup, Section, SelectField, type AssetFormDisclosure } from "@/components/assets/asset-form-section"
+import { AssetFormTagDialog } from "@/components/assets/asset-form-tag-dialog"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import {
   attachmentMatchesPhotoLabel,
@@ -49,6 +50,7 @@ import {
   serializeCustomFieldRows,
   validate,
   validatePurchaseDocument,
+  type AssetEditContext,
   type AssetField,
   type AssetFixedField,
   type AssetFormOption as Option,
@@ -115,6 +117,7 @@ export function AssetForm({
   cloneSource,
   backHref: providedBackHref,
   headerActions,
+  editContext,
 }: {
   asset?: AssetFormValues
   companies: Option[]
@@ -136,14 +139,18 @@ export function AssetForm({
   backHref?: string
   // The create page's own switch (เพิ่มทีละรายการ / เพิ่มเป็นชุด), shown in the header's actions.
   headerActions?: ReactNode
+  // The edit page's facts (group 4 plan 2 Task 7): the header, the open handover, the links. Its originalLabels are
+  // passed through for Task 8's "เดิม:" and not read here yet.
+  editContext?: AssetEditContext
 }) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const apiError = useApiError()
-  // A held บุคคล or Stock asset opens with its holder's department, a clone too (group 4 plan 2 Task 6b).
-  const [values, setValues] = useState<AssetFormValues>(() => withDepartmentLock(asset ?? emptyAssetFormValues, employees, asset))
+  // A held บุคคล or Stock asset opens with its holder's department, a clone too (group 4 plan 2 Task 6b); under an open
+  // handover the stored department stays (the server keeps it, Task 7).
+  const [values, setValues] = useState<AssetFormValues>(() => withDepartmentLock(asset ?? emptyAssetFormValues, employees, asset, editContext))
   const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>(() => parseCustomFieldRows(asset?.customFieldsJson))
   const [installAfterCreate, setInstallAfterCreate] = useState({
     parentAssetId: "",
@@ -177,7 +184,12 @@ export function AssetForm({
 
   const isEdit = Boolean(asset?.id)
   const backHref = providedBackHref ?? `/${locale}/assets`
-  const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
+  const title = useMemo(() => (isEdit ? t("editTitleNamed", { name: asset?.name ?? "" }) : t("createTitle")), [isEdit, asset?.name, t])
+  const headerEdit = isEdit && editContext ? { assetTag: asset?.assetTag ?? "", context: editContext } : undefined
+  // An open handover (P2-R3): the server refuses a holder, room or แผนก change, so the three show the stored values.
+  const openHandover = editContext?.openHandover ?? null
+  const custodyLocked = openHandover !== null
+  const originalLabels = editContext?.originalLabels ?? {}
   const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
   // The department's star reads the list validate() and the counter read (asset-form-rules.ts).
   const requiredFields: readonly AssetField[] = getRequiredAssetFields(ownershipType)
@@ -239,7 +251,7 @@ export function AssetForm({
   )
   const selectedCustodian = employees.find((employee) => employee.id === values.custodianId)
   // แผนก follows the holder on บุคคล and Stock (P2-R1); its text is the holder's department, else the option's label.
-  const departmentLock = departmentLockOf(values, employees, asset)
+  const departmentLock = departmentLockOf(values, employees, asset, editContext)
   const departmentLockText = departmentLock.text ?? departments.find((department) => department.id === departmentLock.departmentId)?.label ?? ""
   const hasCrossCompanyCustodian = Boolean(
     selectedCustodian?.companyId &&
@@ -304,6 +316,13 @@ export function AssetForm({
     const code = fieldErrors.errors[key]
     return code && isAssetMessageCode(code) ? t(code) : fieldErrors.message(key)
   }
+  // Under the room and the holder on edit: this page corrects what was recorded wrongly; a real move goes through โอนย้าย.
+  // Not under an open handover, where โอนย้าย refuses the asset and the notice names the way out (P2-R3).
+  const correctionHint = isEdit && editContext && !custodyLocked ? (
+    t.rich("correctionHint", {
+      link: (chunks) => <Link href={editContext.transferHref} className={linkVariants({ size: "inherit" })}>{chunks}</Link>,
+    })
+  ) : null
 
   useEffect(() => {
     const assetTag = values.assetTag?.trim() ?? ""
@@ -419,14 +438,13 @@ export function AssetForm({
 
   function handleCompanyChange(companyId: string) {
     fieldErrors.clear("companyId", "branchId", "departmentId", "custodianId", "currentLocationId")
+    // Under an open handover the holder, แผนก and the room stay: they are read-only (P2-R3).
     setValues((current) => ({
       ...current,
       companyId,
       branchId: "",
-      departmentId: "",
-      custodianId: "",
+      ...(custodyLocked ? {} : { departmentId: "", custodianId: "", currentLocationId: "" }),
       homeLocationId: "",
-      currentLocationId: "",
     }))
   }
 
@@ -435,15 +453,14 @@ export function AssetForm({
     setValues((current) => ({
       ...current,
       branchId,
-      custodianId: "",
+      ...(custodyLocked ? {} : { custodianId: "", currentLocationId: "" }),
       homeLocationId: "",
-      currentLocationId: "",
     }))
   }
 
   function handleCrossCompanyCustodianToggle(checked: boolean) {
     setAllowCrossCompanyCustodian(checked)
-    if (checked) return
+    if (checked || custodyLocked) return
 
     setValues((current) => {
       const custodian = employees.find((employee) => employee.id === current.custodianId)
@@ -455,7 +472,7 @@ export function AssetForm({
   // A holder on บุคคล or Stock brings its department (the lock); a cleared holder frees แผนก, which keeps its value.
   function handleCustodianChange(custodianId: string) {
     fieldErrors.clear("custodianId", "departmentId")
-    setValues((current) => withDepartmentLock({ ...current, custodianId }, employees, asset))
+    setValues((current) => withDepartmentLock({ ...current, custodianId }, employees, asset, editContext))
   }
 
   function handleCrossBranchLocationToggle(checked: boolean) {
@@ -466,7 +483,7 @@ export function AssetForm({
       const homeLocation = locations.find((location) => location.id === current.homeLocationId)
       const currentLocation = locations.find((location) => location.id === current.currentLocationId)
       const nextHomeLocationId = locationMatchesAssetBranch(homeLocation, current.branchId) ? current.homeLocationId : ""
-      const nextCurrentLocationId = locationMatchesAssetBranch(currentLocation, current.branchId) ? current.currentLocationId : ""
+      const nextCurrentLocationId = custodyLocked || locationMatchesAssetBranch(currentLocation, current.branchId) ? current.currentLocationId : ""
 
       if (nextHomeLocationId === current.homeLocationId && nextCurrentLocationId === current.currentLocationId) {
         return current
@@ -484,7 +501,7 @@ export function AssetForm({
     // The ownership type decides the department, the license and the parent rules. The holder stays, except on ส่วนควบ
     // (P2-R2), and a held บุคคล or Stock asset takes the holder's department.
     fieldErrors.clear("ownershipType", "departmentId", "custodianId", "licenseTotalSeats", "licenseUsedSeats", "parentAssetId")
-    setValues((current) => withDepartmentLock(changeOwnershipType(current, nextOwnershipType), employees, asset))
+    setValues((current) => withDepartmentLock(changeOwnershipType(current, nextOwnershipType), employees, asset, editContext))
     // ส่วนควบ needs its parent, which sits in the folded install section.
     if (!isEdit && normalizeAssetOwnershipType(nextOwnershipType) === "component") openSection("install")
   }
@@ -841,7 +858,7 @@ export function AssetForm({
 
   return (
     <div className="mx-auto max-w-6xl">
-      <AssetFormHeader mode={isEdit ? "edit" : "create"} title={title} backHref={backHref} actions={headerActions} />
+      <AssetFormHeader mode={isEdit ? "edit" : "create"} title={title} backHref={backHref} actions={headerActions} edit={headerEdit} />
 
       {/* Spec 2D D7: where this new asset comes from is information, an inline info Notice (no warning box, no icon tile). */}
       {cloneSource ? (
@@ -856,21 +873,45 @@ export function AssetForm({
       ) : null}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        <AssetFormRequiredCard title={t("requiredCardTitle")} counter={requiredProgress}>
+        {/* Edit (Task 7): ข้อมูลหลัก, with no counter; every field there already holds the stored value. */}
+        <AssetFormRequiredCard title={isEdit ? t("mainCardTitle") : t("requiredCardTitle")} counter={isEdit ? null : requiredProgress}>
+          {openHandover ? (
+            <Notice
+              tone="warning"
+              action={
+                <Link href={openHandover.href} className={linkVariants({ size: "inherit" })}>
+                  {t("openHandoverLink")}
+                </Link>
+              }
+            >
+              {t("openHandoverLock", { documentNo: openHandover.documentNo ?? "" })}
+            </Notice>
+          ) : null}
           <CardGroup title={t("basicInfo")}>
-            {/* The duplicate check stays live (spec U8); a save that finds it focuses the field and shows the same line. */}
+            {/* The duplicate check stays live (spec U8); a save that finds it focuses the field and shows the same line.
+                On edit the code is text behind เปลี่ยนรหัส (P2-R6); the field's id sits on the row, so an error focuses
+                the button and the live check still reads values.assetTag. */}
             <Field
               label={t("assetTag")}
               id="asset-tag"
               liveError={duplicateState.assetTagExists ? t("duplicateAssetTag") : null}
               error={duplicateState.assetTagExists ? t("duplicateAssetTag") : errorText("assetTag")}
             >
-              <Input
-                value={values.assetTag ?? ""}
-                onChange={(event) => setField("assetTag", event.target.value)}
-                maxLength={50}
-                placeholder={t("autoTagHint")}
-              />
+              {isEdit ? (
+                (control) => (
+                  <div id={control.id} className="flex flex-wrap items-center gap-2">
+                    <span className="tag">{values.assetTag}</span>
+                    <AssetFormTagDialog currentTag={values.assetTag ?? ""} describedBy={control["aria-describedby"]} onConfirm={(next) => setField("assetTag", next)} />
+                  </div>
+                )
+              ) : (
+                <Input
+                  value={values.assetTag ?? ""}
+                  onChange={(event) => setField("assetTag", event.target.value)}
+                  maxLength={50}
+                  placeholder={t("autoTagHint")}
+                />
+              )}
             </Field>
             <div className="grid min-w-0 gap-2">
               <Field label={t("assetName")} id="asset-name" required hint={t("assetNameHelp")} error={errorText("name")}>
@@ -951,12 +992,14 @@ export function AssetForm({
             requiredFields={requiredFields}
             companies={companies}
             branches={filteredBranches}
-            departments={filteredDepartments}
-            employees={filteredEmployees}
+            departments={custodyLocked ? withStoredOption(filteredDepartments, values.departmentId, originalLabels.departmentId) : filteredDepartments}
+            employees={custodyLocked ? withStoredOption(filteredEmployees, values.custodianId, originalLabels.custodianId) : filteredEmployees}
             departmentLock={departmentLock}
             departmentLockText={departmentLockText}
             allowCrossCompanyCustodian={allowCrossCompanyCustodian}
             hasCrossCompanyCustodian={hasCrossCompanyCustodian}
+            custodyLocked={custodyLocked}
+            correctionHint={correctionHint}
             errorText={errorText}
             onOwnershipTypeChange={handleOwnershipTypeChange}
             onCompanyChange={handleCompanyChange}
@@ -1000,14 +1043,16 @@ export function AssetForm({
                 id="asset-current-location"
                 value={values.currentLocationId}
                 required
+                disabled={custodyLocked}
+                hint={correctionHint}
                 error={errorText("currentLocationId")}
                 onChange={(value) => setField("currentLocationId", value)}
               >
                 <option value="">{t("selectLocation")}</option>
-                {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
+                {(custodyLocked ? withStoredOption(filteredLocations, values.currentLocationId, originalLabels.currentLocationId) : filteredLocations).map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
               </SelectField>
-              {/* ใช้ที่ตั้งประจำ: the asset is back in its home room (group 4 plan 2 Task 6b). */}
-              {values.homeLocationId && values.homeLocationId !== values.currentLocationId ? (
+              {/* ใช้ที่ตั้งประจำ: the asset is back in its home room (group 4 plan 2 Task 6b); not while the room is locked. */}
+              {!custodyLocked && values.homeLocationId && values.homeLocationId !== values.currentLocationId ? (
                 <div>
                   <Button variant="outline" size="sm" onClick={() => setField("currentLocationId", values.homeLocationId ?? "")}>
                     {t("useHomeLocation")}
@@ -1212,7 +1257,7 @@ export function AssetForm({
             aria-describedby={saveBlockedBy ?? undefined}
           >
             <Save aria-hidden="true" />
-            {tCommon("save")}
+            {isEdit ? t("saveCorrection") : tCommon("save")}
           </Button>
         </StickyFormFooter>
       </form>
@@ -1255,26 +1300,36 @@ function employeeMatchesAssetScope(employee: Option | undefined, current: AssetF
 }
 
 // The department lock of these values (asset-form-rules.ts). original is the stored asset on edit: its holder and
-// department are the current ones; on create (a clone included) there are none. No open handover yet: Task 7 passes it.
-function departmentLockOf(values: AssetFormValues, employees: Option[], original: AssetFormValues | undefined) {
+// department are the current ones; on create (a clone included) there are none. context is the edit page's: the stored
+// holder's department (an inactive holder is not among the options) and the open handover, which leaves the stored
+// department as it is (Task 7, P2-R3).
+function departmentLockOf(values: AssetFormValues, employees: Option[], original: AssetFormValues | undefined, context?: AssetEditContext) {
   const holder = employees.find((employee) => employee.id === values.custodianId)
   const stored = original?.id ? original : undefined
+  const storedHolder = !holder && Boolean(stored?.custodianId) && values.custodianId === stored?.custodianId
   return getAssetFormDepartmentLock({
     ownership: normalizeAssetOwnershipType(values.ownershipType),
     custodianId: values.custodianId || null,
-    holderDepartmentId: holder?.departmentId ?? null,
-    holderDepartmentName: holder?.departmentName ?? null,
+    holderDepartmentId: holder?.departmentId ?? (storedHolder ? context?.holderDepartmentId ?? null : null),
+    holderDepartmentName: holder?.departmentName ?? (storedHolder ? context?.holder?.departmentName ?? null : null),
     currentCustodianId: stored?.custodianId || null,
     currentDepartmentId: stored?.departmentId || null,
-    openHandover: false,
+    openHandover: context ? context.openHandover !== null : false,
   })
 }
 
 // Writes the locked department into the values, so the counter counts it and the save sends it.
-function withDepartmentLock(values: AssetFormValues, employees: Option[], original: AssetFormValues | undefined): AssetFormValues {
-  const lock = departmentLockOf(values, employees, original)
+function withDepartmentLock(values: AssetFormValues, employees: Option[], original: AssetFormValues | undefined, context?: AssetEditContext): AssetFormValues {
+  const lock = departmentLockOf(values, employees, original, context)
   if (!lock.locked || !lock.departmentId || lock.departmentId === values.departmentId) return values
   return { ...values, departmentId: lock.departmentId }
+}
+
+// A read-only control shows the stored value even when the record is no longer among the active options (its label
+// comes with the asset, editContext.originalLabels).
+function withStoredOption(options: Option[], id: string | null | undefined, label: string | undefined): Option[] {
+  if (!id || !label || options.some((option) => option.id === id)) return options
+  return [...options, { id, label }]
 }
 
 function shouldAllowCrossBranchLocationOnLoad(current: AssetFormValues | undefined, locations: Option[]) {

@@ -1418,7 +1418,21 @@
       "customExtraRows": "{count, plural, one {# extra field} other {# extra fields}}",
       "remarkSet": "Has a remark"
     },
-    "useHomeLocation": "Use home location"
+    "useHomeLocation": "Use home location",
+    "editTitleNamed": "Edit {name}",
+    "editHolderLine": "Holder {name} · {department}",
+    "editHolderOnly": "Holder {name}",
+    "viewAssetPage": "View asset page",
+    "mainCardTitle": "Main details",
+    "changeTag": "Change code",
+    "changeTagTitle": "Change the asset code",
+    "changeTagNew": "New code",
+    "changeTagConfirm": "Use this code",
+    "changeTagWarning": "Printed labels keep showing the old code, and a search by the old code will not find it. The QR label still opens this asset.",
+    "openHandoverLock": "Handover {documentNo} is still open. If the holder or location is wrong, cancel the handover and hand over again, or check it in.",
+    "openHandoverLink": "Open the handover",
+    "correctionHint": "Use this to fix data recorded wrongly. If the asset really moved or changed hands, use <link>Transfer asset</link> so there is a transfer document and full history.",
+    "saveCorrection": "Save changes"
   },
   "company": {
     "title": "Companies",

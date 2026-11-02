@@ -605,6 +605,9 @@ test("ส่งมอบ refuses a broken asset with a ส่งซ่อม lin
   // The condition changes on the asset edit form (PUT), as IT staff at the desk; the repair is recorded on its forms.
   assert.ok(spec.includes('await visit(measure, `/th/assets/${assetId}/edit`'))
   assert.ok(spec.includes('response.request().method() === "PUT"'))
+  // Group 4 plan 2 Task 7: the edit page's primary reads บันทึกการแก้ไข (create keeps บันทึก).
+  assert.ok(spec.includes('await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).filter({ visible: true }).click()'))
+  assert.equal(JSON.parse(read("messages/th.json")).asset.saveCorrection, "บันทึกการแก้ไข")
   assert.ok(spec.includes('await condition.getByRole("radio", { name: "ดี", exact: true }).check()'))
   assert.ok(spec.includes('filter({ hasText: "เสียหาย → ดี" })'))
   assert.ok(spec.includes("await saveHandoverForm(page, e2eDevice, asset.id)"))

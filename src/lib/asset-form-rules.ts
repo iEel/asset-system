@@ -280,6 +280,24 @@ export function sectionOfField(field: AssetField): AssetFormSection {
   return field in FIELD_SECTIONS ? FIELD_SECTIONS[field as AssetFixedField] : "customFields"
 }
 
+// What the edit page reads with the asset for the form (group 4 plan 2 Task 7, spec §7.1-§7.3): the header's facts, the
+// links to the asset page and to โอนย้าย, the open handover (holder, room and แผนก read-only, P2-R3), the stored holder's
+// department (an inactive holder is not among the options) and the stored label of every reference field, so "เดิม:"
+// reads for an inactive record too (Task 8).
+export type AssetEditContext = {
+  statusName: string
+  statusNameTh: string
+  holder: { name: string; departmentName: string | null } | null
+  locationLine: string | null
+  viewHref: string
+  transferHref: string
+  openHandover: { id: string; documentNo: string | null; href: string } | null
+  holderDepartmentId: string | null
+  originalLabels: Partial<Record<AssetOriginalLabelField, string>>
+}
+// Brand, model and supplier have no FIELD_IDS entry (no error of their own) but do have a stored label.
+export type AssetOriginalLabelField = AssetField | "brandId" | "modelId" | "supplierId"
+
 // The form's department lock (spec §7.3, P2-R1): on บุคคล and Stock with a holder, แผนก is the holder's and cannot be
 // picked; the form writes it into values.departmentId, so the counter counts it and the save sends it. The register's
 // own rule decides (getRegisterDepartment, the one POST and PUT use). text is the department's name for

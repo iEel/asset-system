@@ -121,6 +121,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   // Task 6b: the ownership type (the phone's select), the owner company, branch and แผนก went to asset-form-ownership.tsx.
   [`${C}assets/asset-form.tsx`]: [5, 3, 0],
   [`${C}assets/asset-form-ownership.tsx`]: [4, 0, 0],
+  // Task 7: the เปลี่ยนรหัส dialog's new code (required, maxLength 50, as the create page's tag).
+  [`${C}assets/asset-form-tag-dialog.tsx`]: [1, 1, 0],
   [`${C}assets/asset-form-section.tsx`]: [1, 0, 0],
   [`${C}assets/asset-form-install.tsx`]: [0, 3, 0],
   [`${C}assets/asset-form-purchase.tsx`]: [0, 3, 0],

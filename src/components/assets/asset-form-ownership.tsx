@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { FieldGroup } from "@/components/ui/field-group"
 import { checkboxVariants } from "@/components/ui/field-variants"
@@ -16,7 +17,8 @@ import { cn } from "@/lib/utils"
 // as buttons from 768 px and the native select below (one rendered at a time, so #asset-ownership-type is the phone's
 // control and the desktop's error focus lands on the group), the owner company and branch, แผนก (locked to the holder's
 // on บุคคล and Stock), and the holder for every type that can have one, with the cross-company toggle. The state and the
-// handlers stay in asset-form.tsx.
+// handlers stay in asset-form.tsx. On edit (Task 7, P2-R3) an open handover makes the holder and แผนก read-only, and
+// without one the holder carries the hint that a real change goes through โอนย้าย.
 export function AssetFormOwnership({
   values,
   ownershipType,
@@ -29,6 +31,8 @@ export function AssetFormOwnership({
   departmentLockText,
   allowCrossCompanyCustodian,
   hasCrossCompanyCustodian,
+  custodyLocked,
+  correctionHint,
   errorText,
   onOwnershipTypeChange,
   onCompanyChange,
@@ -50,6 +54,10 @@ export function AssetFormOwnership({
   departmentLockText: string
   allowCrossCompanyCustodian: boolean
   hasCrossCompanyCustodian: boolean
+  // An open handover: the server refuses a holder, room or แผนก change (409), so they show the stored values only.
+  custodyLocked: boolean
+  // ใช้แก้ข้อมูลที่บันทึกผิด … โอนย้ายทรัพย์สิน, on edit without an open handover.
+  correctionHint: ReactNode
   errorText: (key: AssetField) => string | undefined
   onOwnershipTypeChange: (value: string) => void
   onCompanyChange: (value: string) => void
@@ -130,7 +138,7 @@ export function AssetFormOwnership({
         id="asset-department"
         value={values.departmentId ?? ""}
         required={requiredFields.includes("departmentId")}
-        disabled={departmentLock.locked}
+        disabled={departmentLock.locked || custodyLocked}
         error={departmentLock.locked ? undefined : errorText("departmentId")}
         onChange={onDepartmentChange}
       >
@@ -153,13 +161,16 @@ export function AssetFormOwnership({
             placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
             searchPlaceholder={tCommon("searchSelectPlaceholder")}
             emptyLabel={tCommon("searchSelectNoResults")}
+            hint={correctionHint}
             error={errorText("custodianId")}
+            disabled={custodyLocked}
             onChange={onCustodianChange}
           />
           <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
             <input
               type="checkbox"
               checked={allowCrossCompanyCustodian}
+              disabled={custodyLocked}
               onChange={(event) => onCrossCompanyCustodianToggle(event.target.checked)}
               className={cn(checkboxVariants(), "mt-0.5")}
             />
