@@ -21,7 +21,7 @@ Branch `feat/group4-components-scan` (จาก `master` `2ebb4502`) · spec `do
   - `e2e/assets/scan-search.spec.ts` (ทั้งสี่ชุด): Serial ที่ไม่ซ้ำต่อรอบ การ์ดเดียว "ตรงกับ Serial" ข้อมูลและลิงก์การกระทำ เปิดแล้วกลับ "เปิดล่าสุด" "ล้างรายการ" และ Enter ที่รหัสเต็ม
   - `CreateAssetOptions` รับ `serialNumber` · คำใน `e2e/assets/register-words.ts` (`COMPONENT_WORDS`, `SCAN_WORDS`) · pin ใน `tests/e2e-register.test.ts` และ `tests/e2e-transactions.test.ts`
   - เอกสาร: `docs/04_AUTH_RBAC.md`, `docs/06_WORKFLOWS.md`, `docs/07_UAT_CHECKLIST.md`, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DESIGN.md`, `DEVELOPER_HANDOFF.md`
-  - E2E: `<E2E run id>` (register-components, scan-search, return-components, asset-detail, bulk-move, roles; สี่ชุด) ผ่าน <passed> ไม่ผ่าน <failed> ข้าม <skipped> · ดูหน้าจอ 1440, 1024, 390 ทั้งสองธีม: <result>
+  - E2E: `E2E-1102J` (register-components, scan-search, return-components, asset-detail, bulk-move, roles; สี่ชุด) ผ่าน 86 ไม่ผ่าน 2 (desktop-dark ตอนเครื่องพักหน้าจอ) · ตรวจทั้งสาขา (opus) ไม่มีข้อสำคัญ แก้ข้อเล็ก 10 ข้อ · รันซ้ำ `E2E-1102K` ผ่าน 88 ไม่ผ่าน 0 ข้าม 6 · แก้ระยะห่างในการ์ดสแกนแล้ว `E2E-1102L` ผ่าน 6 · ดูหน้าจอ 1440, 1024, 390 ทั้งสองธีม: ถูกต้องหลังแก้ระยะห่างในการ์ดผลสแกน
 - ยังไม่ deploy · ไม่มี migration
 
 ### กลุ่มหน้า 4 แผน 3: เอกสารจัดซื้อในฟอร์มทรัพย์สิน
