@@ -312,6 +312,30 @@ describe("listLabelPrintQueue", () => {
     for (const call of calls.slice(1)) assert.equal(((call.args.where as Where).id as { in: string[] }).in.length, 2000)
   })
 
+  test("over the cap, ต้องพิมพ์ใหม่ keeps the first 2,000 in the queue's sort, not by tag (final review)", async () => {
+    // 2,001 matches; the newest (created last) has the highest tag, so a tag-ordered cap would drop it.
+    const assets = numbered(2001, (index) => ({
+      createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, index)),
+      labelPrints: [printed("p", "OLD", "2026-10-01T00:00:00.000Z")],
+      movements: [tagChange],
+    }))
+    const { db, calls } = fakeDb(assets)
+    const answer = await listLabelPrintQueue(db, viewer, params({ mode: "reprint", sort: "created_desc" }))
+    assert.deepEqual(calls[0].args.orderBy, [{ createdAt: "desc" }, { assetTag: "asc" }])
+    assert.equal(answer.reprintCapped, true)
+    assert.equal(answer.ids[0], "2001", "the newest re-tag stays in")
+    const kept = ((calls[1].args.where as Where).id as { in: string[] }).in
+    assert.equal(kept.includes("0001"), false, "the oldest is the one cut")
+  })
+
+  test("ต้องพิมพ์ใหม่ reads its candidates in the requested sort", async () => {
+    for (const sort of ["asset_tag", "location", "category", "created_desc"] as const) {
+      const { db, calls } = fakeDb([fakeAsset("a", { labelPrints: [printed("p", "OLD", "2026-10-01T00:00:00.000Z")], movements: [tagChange] })])
+      await listLabelPrintQueue(db, viewer, params({ mode: "reprint", sort }))
+      assert.deepEqual(calls[0].args.orderBy, calls[1].args.orderBy, sort)
+    }
+  })
+
   test("2,000 matches exactly is not capped", async () => {
     const assets = numbered(2000, () => ({ labelPrints: [printed("p", "OLD", "2026-10-01T00:00:00.000Z")], movements: [tagChange] }))
     const { db } = fakeDb(assets)

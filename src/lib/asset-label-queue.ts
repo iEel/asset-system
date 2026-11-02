@@ -168,8 +168,9 @@ function assertCanViewLabelQueue(user: LabelQueueUser) {
 
 // ต้องพิมพ์ใหม่ (P6-R6): the active, printed assets inside the filters that have an asset_tag_change movement, then the
 // latest print's tag compared with today's in code with !==, so a change of case counts too. One asset is one row
-// however many times it was re-tagged. Tag changes from before plan 2 have no movement and are not found.
-async function findReprintIds(db: LabelQueueDb, filters: LabelPrintQueueFilters) {
+// however many times it was re-tagged. Tag changes from before plan 2 have no movement and are not found. The candidates
+// are read in the queue's own sort, so over the cap the 2,000 kept are the first 2,000 the user would see (final review).
+async function findReprintIds(db: LabelQueueDb, filters: LabelPrintQueueFilters, sort: LabelQueueParams["sort"]) {
   const where = {
     ...buildAssetLabelPrintQueueWhere("printed", filters),
     movements: { some: { movementType: "asset_tag_change" } },
@@ -181,7 +182,7 @@ async function findReprintIds(db: LabelQueueDb, filters: LabelPrintQueueFilters)
       assetTag: true,
       labelPrints: { orderBy: latestPrintOrder, take: 1, select: { assetTag: true } },
     } satisfies Prisma.AssetSelect,
-    orderBy: [{ assetTag: "asc" }] satisfies Prisma.AssetOrderByWithRelationInput[],
+    orderBy: buildAssetLabelPrintQueueOrderBy(sort),
   }) as ReprintCandidate[]
   const matched = candidates
     .filter((asset) => {
@@ -200,7 +201,7 @@ export async function listLabelPrintQueue(db: LabelQueueDb, user: LabelQueueUser
 
   let reprint: { ids: string[]; capped: boolean } | null = null
   if (params.mode === "reprint") {
-    reprint = await findReprintIds(db, params.filters)
+    reprint = await findReprintIds(db, params.filters, params.sort)
     if (reprint.ids.length === 0) return { rows: [], total: 0, ids: [], reprintCapped: reprint.capped }
   }
 

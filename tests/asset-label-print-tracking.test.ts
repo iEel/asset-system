@@ -11,6 +11,7 @@ import {
   normalizeLabelPrintQueueFilters,
   normalizeLabelPrintQueueMode,
   normalizeLabelPrintQueuePageSize,
+  LABEL_PRINT_QUEUE_SKIP_MAX,
   normalizeLabelPrintQueueSkip,
   normalizeLabelPrintQueueSort,
   normalizeLabelPrintAssetIds,
@@ -124,6 +125,12 @@ test("the page size is 1 to 100 with 20 when missing, and skip is a whole number
   assert.equal(normalizeLabelPrintQueueSkip("-5"), 0)
   assert.equal(normalizeLabelPrintQueueSkip("3.9"), 3)
   assert.equal(normalizeLabelPrintQueueSkip("10"), 10)
+  // A hand-made huge skip is clamped to a whole number Prisma's Int takes, so the page is empty, never a hidden 500
+  // (final review).
+  assert.equal(normalizeLabelPrintQueueSkip("1e20"), LABEL_PRINT_QUEUE_SKIP_MAX)
+  assert.equal(normalizeLabelPrintQueueSkip("99999999999999999999"), LABEL_PRINT_QUEUE_SKIP_MAX)
+  assert.equal(LABEL_PRINT_QUEUE_SKIP_MAX, 1_000_000)
+  assert.equal(normalizeLabelPrintQueueSkip("1000000"), 1_000_000)
 })
 
 test("every queue sort ends on the unique asset tag, so skip pages are stable (P6-R7)", () => {

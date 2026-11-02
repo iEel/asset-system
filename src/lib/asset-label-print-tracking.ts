@@ -142,11 +142,15 @@ export function normalizeLabelPrintQueuePageSize(value: string | null | undefine
   return Math.min(Math.max(Math.trunc(parsed), 1), LABEL_PRINT_BATCH_MAX)
 }
 
-// How many queue rows the page already holds ("แสดงอีก 10 รายการ", P6-R7): a whole number from 0.
+// The highest skip the queue reads. The client sends the rows it holds; a hand-made 1e20 would overflow Prisma's Int
+// and answer a hidden 500, so it is clamped and the page is simply empty (final review).
+export const LABEL_PRINT_QUEUE_SKIP_MAX = 1_000_000
+
+// How many queue rows the page already holds ("แสดงอีก 10 รายการ", P6-R7): a whole number from 0 to 1,000,000.
 export function normalizeLabelPrintQueueSkip(value: string | null | undefined) {
   const parsed = Number(value ?? 0)
   if (!Number.isFinite(parsed)) return 0
-  return Math.max(Math.trunc(parsed), 0)
+  return Math.min(Math.max(Math.trunc(parsed), 0), LABEL_PRINT_QUEUE_SKIP_MAX)
 }
 
 // Every sort ends on the unique assetTag, so the order is total and skip pages neither repeat nor miss a row (P6-R7).
