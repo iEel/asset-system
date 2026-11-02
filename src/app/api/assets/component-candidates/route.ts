@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { installedOrOutstandingLinkWhere } from "@/lib/asset-component-outstanding"
+import { lastRemovalByComponent } from "@/lib/asset-component-links"
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +33,21 @@ export async function GET(request: NextRequest) {
       take: 20,
     })
 
-    return NextResponse.json({ data: candidates })
+    // When each was last removed from this parent (P4-R5): one read of at most 20 ids, the removal date only.
+    const removals = candidates.length === 0
+      ? []
+      : await prisma.assetComponent.findMany({
+          where: { parentAssetId, componentAssetId: { in: candidates.map((candidate) => candidate.id) }, status: "removed", removedAt: { not: null } },
+          select: { componentAssetId: true, removedAt: true },
+        })
+    const lastRemoval = lastRemovalByComponent(removals)
+
+    return NextResponse.json({
+      data: candidates.map((candidate) => {
+        const removedAt = lastRemoval.get(candidate.id)
+        return { ...candidate, lastRemovalHere: removedAt ? { removedAt: removedAt.toISOString() } : null }
+      }),
+    })
   } catch (error) {
     return errorResponse(error)
   }

@@ -9,7 +9,7 @@ import { getApiErrorKey } from "../src/lib/api-error-catalog.ts"
 
 type Row = Record<string, unknown>
 type Args = { where?: Record<string, unknown>; data?: unknown }
-const db: { calls: Array<{ call: string; args: Args }>; answers: Record<string, unknown> } = { calls: [], answers: {} }
+const db: { calls: Array<{ call: string; args: Args }>; answers: Record<string, unknown>; refuse: boolean; uploads: string[] } = { calls: [], answers: {}, refuse: false, uploads: [] }
 Object.assign(globalThis, { __fakeDb: db })
 
 const FAKE_DB = `
@@ -37,11 +37,17 @@ const mocks = new Map<string, string>([
   ["@/lib/auth-utils", `export async function requireAuth() { return { id: "user-1", roles: [], permissions: [], employeeId: "emp-1" } }
     export function hasRole() {}
     export function hasPermission() { return true }
-    export function requirePermission() {}`],
+    export function requirePermission() { if (globalThis.__fakeDb.refuse) throw new Error("Forbidden: insufficient permissions") }`],
   ["@/lib/audit-log", `export async function logAudit() {}`],
-  ["@/lib/asset-component-evidence", `export function optionalFormFile() { return null }
-    export function optionalFormText() { return null }
-    export async function saveComponentEvidenceFile() { return null }`],
+  ["@/lib/asset-component-evidence", `export function optionalFormFile(formData, key) { const value = formData.get(key); return value instanceof File && value.size > 0 ? value : null }
+    export function optionalFormText(formData, key) { const value = formData.get(key); return typeof value === "string" && value.trim() ? value.trim() : null }
+    export async function saveComponentEvidenceFile(file) { globalThis.__fakeDb.uploads.push("save:" + file.name); return { fileName: "saved.png", originalName: file.name, fileType: file.type, fileSize: file.size, filePath: "uploads/asset-components/saved.png" } }`],
+  ["@/lib/upload-server", `export function createUploadCleanup() {
+      const uploads = globalThis.__fakeDb.uploads
+      let committed = false
+      let tracked = 0
+      return { track(path) { tracked += 1; uploads.push("track:" + path) }, commit() { committed = true; uploads.push("commit") }, async discardIfUncommitted() { if (!committed && tracked > 0) uploads.push("discard") } }
+    }`],
   ["@/lib/db", FAKE_DB],
 ])
 const registerHooks = (nodeModule as unknown as { registerHooks(options: { resolve(specifier: string, context: unknown, nextResolve: (specifier: string, context: unknown) => unknown): unknown }): void }).registerHooks
@@ -61,15 +67,24 @@ const args = (call: string) => db.calls.filter((entry) => entry.call === call).m
 
 const { assertCanInstallComponent } = await import(pathToFileURL("src/lib/asset-components.ts").href)
 const candidates = await import(pathToFileURL("src/app/api/assets/component-candidates/route.ts").href)
-const removal = await import(pathToFileURL("src/app/api/assets/[id]/components/[componentId]/route.ts").href)
+// P4-R1: ถอดส่วนควบ is POST …/components/<componentId>/remove; the old DELETE route is gone.
+const removal = await import(pathToFileURL("src/app/api/assets/[id]/components/[componentId]/remove/route.ts").href)
 const read = (file: string) => readFileSync(file, "utf8")
 const LINK_UPDATED_AT = new Date("2026-10-20T04:00:00Z")
 const link = (status: string, reference: Row = { referenceType: "checkin", referenceId: "checkin-1" }) => ({ id: "link-1", parentAssetId: "parent-1", componentAssetId: "comp-1", status, removedAt: null, reason: null, ...reference, updatedAt: LINK_UPDATED_AT, componentRole: "RAM", slotNo: null, parentAsset: { assetTag: "GRL-COM-26-0100", name: "Notebook" }, componentAsset: { id: "comp-1", assetTag: "GRL-RAM-26-0001", name: "RAM 16GB" } })
-const remove = () => removal.DELETE(
-  new Request("http://localhost/api/assets/parent-1/components/link-1", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "ไม่ได้คืน" }) }),
-  { params: Promise.resolve({ id: "parent-1", componentId: "link-1" }) },
+const removeContext = { params: Promise.resolve({ id: "parent-1", componentId: "link-1" }) }
+const remove = () => removal.POST(
+  new Request("http://localhost/api/assets/parent-1/components/link-1/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "ไม่ได้คืน" }) }),
+  removeContext,
 )
-beforeEach(() => { db.calls = []; db.answers = { "asset.findFirst": { id: "found" } } })
+const removeWithPhoto = () => {
+  const form = new FormData()
+  form.set("reason", "เปลี่ยนเป็น 32GB")
+  form.set("removedAt", "2026-11-01")
+  form.set("removeEvidence", new File([new Uint8Array([137, 80, 78, 71])], "removed.png", { type: "image/png" }))
+  return removal.POST(new Request("http://localhost/api/assets/parent-1/components/link-1/remove", { method: "POST", body: form }), removeContext)
+}
+beforeEach(() => { db.calls = []; db.answers = { "asset.findFirst": { id: "found" } }; db.refuse = false; db.uploads = [] })
 
 test("installing an outstanding component anywhere is refused with its own words; an installed one keeps today's refusal (spec §8.5)", async () => {
   db.answers["assetComponent.findFirst"] = (a: Args) => (a.where?.componentAssetId ? { id: "link-9", status: "outstanding", removedAt: null, parentAsset: { assetTag: "GRL-COM-26-0100" } } : null)
@@ -91,6 +106,62 @@ test("the candidate list leaves an outstanding component out (spec §8.5)", asyn
   const url = "http://localhost/api/assets/component-candidates?parentAssetId=parent-1&search=RAM"
   assert.equal((await candidates.GET(Object.assign(new Request(url), { nextUrl: new URL(url) }))).status, 200)
   assert.deepEqual(args("asset.findMany")[0].where?.installedInLinks, { none: installedOrOutstandingLinkWhere })
+})
+
+test("each candidate says when it was last removed from this parent, null when never or only elsewhere: one read of its ids, removedAt only (group 4 plan 4, P4-R5)", async () => {
+  const url = "http://localhost/api/assets/component-candidates?parentAssetId=parent-1&search=RAM"
+  db.answers["asset.findMany"] = [
+    { id: "comp-1", assetTag: "GRL-RAM-26-0001", name: "RAM 16GB", serialNumber: "S1" },
+    { id: "comp-2", assetTag: "GRL-RAM-26-0002", name: "RAM 32GB", serialNumber: null },
+  ]
+  // The read names this parent, so a removal from another parent never comes back; comp-2 was removed only elsewhere.
+  db.answers["assetComponent.findMany"] = (a: Args) => a.where?.parentAssetId === "parent-1"
+    ? [{ componentAssetId: "comp-1", removedAt: new Date("2026-10-30T03:00:00Z") }, { componentAssetId: "comp-1", removedAt: new Date("2026-09-01T03:00:00Z") }]
+    : [{ componentAssetId: "comp-2", removedAt: new Date("2026-10-31T03:00:00Z") }]
+  const response = await candidates.GET(Object.assign(new Request(url), { nextUrl: new URL(url) }))
+  assert.deepEqual(await response.json(), { data: [
+    { id: "comp-1", assetTag: "GRL-RAM-26-0001", name: "RAM 16GB", serialNumber: "S1", lastRemovalHere: { removedAt: "2026-10-30T03:00:00.000Z" } },
+    { id: "comp-2", assetTag: "GRL-RAM-26-0002", name: "RAM 32GB", serialNumber: null, lastRemovalHere: null },
+  ] })
+  const [removals] = args("assetComponent.findMany") as Array<Args & { select?: unknown }>
+  assert.deepEqual(removals.where, { parentAssetId: "parent-1", componentAssetId: { in: ["comp-1", "comp-2"] }, status: "removed", removedAt: { not: null } })
+  assert.deepEqual(removals.select, { componentAssetId: true, removedAt: true })
+  db.calls = []
+  db.answers["asset.findMany"] = []
+  await candidates.GET(Object.assign(new Request(url), { nextUrl: new URL(url) }))
+  assert.equal(args("assetComponent.findMany").length, 0, "no candidates, no second read")
+})
+
+test("POST …/remove ends an installed link as the old DELETE did: status removed, the date and reason sent, the photo saved and committed (P4-R1)", async () => {
+  db.answers["assetComponent.findFirst"] = link("installed", { referenceType: null, referenceId: null })
+  db.answers["assetComponent.findUnique"] = { ...link("removed"), removedAt: new Date("2026-11-01") }
+  const response = await removeWithPhoto()
+  assert.equal(response.status, 200, await response.clone().text())
+  const [write] = args("assetComponent.updateMany")
+  assert.deepEqual(write.where, { id: "link-1", parentAssetId: "parent-1", ...installedOrOutstandingLinkWhere, status: "installed", updatedAt: LINK_UPDATED_AT })
+  const written = write.data as Row
+  assert.deepEqual([written.status, written.reason, written.updatedBy, written.referenceType, written.referenceId], ["removed", "เปลี่ยนเป็น 32GB", "user-1", null, null])
+  assert.equal((written.removedAt as Date).toISOString().slice(0, 10), "2026-11-01")
+  const photo = args("attachment.create")[0].data as Row
+  assert.deepEqual([photo.module, photo.referenceId, photo.filePath], ["asset_component_remove", "link-1", "uploads/asset-components/saved.png"])
+  assert.deepEqual(db.uploads, ["save:removed.png", "track:uploads/asset-components/saved.png", "commit"], "the photo is kept: committed after the save, nothing discarded")
+  const rows = args("assetMovement.createMany")[0].data as Row[]
+  assert.deepEqual(rows.map((row) => [row.movementType, row.assetId, row.reason]), [["component_remove", "parent-1", "เปลี่ยนเป็น 32GB"], ["removed_from_parent", "comp-1", "เปลี่ยนเป็น 32GB"]])
+})
+
+test("POST …/remove refuses a viewer before any read or upload; the old components/<componentId> route has no DELETE and nothing sends one (P4-R1)", async () => {
+  db.refuse = true
+  const response = await removeWithPhoto()
+  assert.equal(response.status, 403)
+  assert.deepEqual([db.calls.length, db.uploads], [0, []], "nothing read, no photo saved")
+  const source = read("src/app/api/assets/[id]/components/[componentId]/remove/route.ts")
+  assert.ok(source.indexOf('requirePermission(user, "asset", "edit")') < source.indexOf("parseRemoveRequest(request)"))
+  assert.doesNotMatch(source, /export async function DELETE/)
+  const old = "src/app/api/assets/[id]/components/[componentId]/route.ts"
+  assert.ok(!existsSync(old) || !/export async function DELETE/.test(read(old)), "the old path answers no DELETE")
+  const manager = read("src/components/assets/asset-component-manager.tsx")
+  assert.ok(manager.includes("fetch(`/api/assets/${assetId}/components/${component.id}/remove`, { method: \"POST\", body: formData })"))
+  assert.doesNotMatch(manager, /method: "DELETE"/)
 })
 
 test("ถอดออก ends an outstanding link with a guarded write on the status and updatedAt it read, under its own reference, not the RT- (spec §8.5, P2-R17, GP G15, final review server-2, journeys-2)", async () => {

@@ -77,6 +77,12 @@ test("the purchase-document pre-check is asset create or edit; create-and-link a
   assert.deepEqual(checks("src/app/api/assets/[id]/purchase-documents/[documentId]/route.ts"), [{ module: "asset", action: "edit" }])
 })
 
+test("the component removal is a POST registered for asset edit, with a viewer refusal row (group 4 plan 4 P4-R1)", () => {
+  const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/assets/[id]/components/[componentId]/remove/route.ts")
+  assert.deepEqual(entry?.checks, [{ module: "asset", action: "edit" }])
+  assert.ok(!rbacRoutePermissionMatrix.some((candidate) => candidate.filePath === "src/app/api/assets/[id]/components/[componentId]/route.ts"))
+})
+
 test("every API route has an explicit protection inventory classification", () => {
   const routeFiles = collectApiRouteFiles("src/app/api")
   const classifications = routeFiles.map((filePath) =>

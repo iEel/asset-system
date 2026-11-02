@@ -30,6 +30,8 @@ import { cn, formatDateTime } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { maxLength, required } from "@/lib/validation-rules"
+import type { ComponentManagerRows } from "@/lib/asset-component-manager-data"
+import type { RegisterHolderLine } from "@/lib/asset-register-row-rules"
 
 type AssetOption = {
   id: string
@@ -172,6 +174,9 @@ export function AssetComponentManager({
   canEdit: boolean
   returnToHref: string
   labels: ManagerLabels
+  // The page's header facts and the one links table's rows (group 4 plan 4 Task 2); Task 3 renders them.
+  header?: { name: string; assetTag: string; holder: RegisterHolderLine; room: string | null }
+  linkRows?: ComponentManagerRows
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -293,7 +298,7 @@ export function AssetComponentManager({
       if (removeReason) formData.set("reason", removeReason)
       if (removeEvidence) formData.set("removeEvidence", removeEvidence)
 
-      const response = await fetch(`/api/assets/${assetId}/components/${component.id}`, { method: "DELETE", body: formData })
+      const response = await fetch(`/api/assets/${assetId}/components/${component.id}/remove`, { method: "POST", body: formData })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? labels.error)
 

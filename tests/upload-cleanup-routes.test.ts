@@ -282,7 +282,7 @@ test("a committed return answers 201 and discards nothing", async () => {
 test("every other evidence route tracks its file, commits right after its save and discards in a finally", () => {
   const routes: Array<[string, string]> = [
     ["src/app/api/assets/[id]/components/route.ts", "await prisma.$transaction("],
-    ["src/app/api/assets/[id]/components/[componentId]/route.ts", "await prisma.$transaction("],
+    ["src/app/api/assets/[id]/components/[componentId]/remove/route.ts", "await prisma.$transaction("],
     ["src/app/api/audit-items/[id]/mark-not-found/route.ts", "await prisma.$transaction("],
     ["src/app/api/purchase-documents/route.ts", "await prisma.$transaction("],
     ["src/app/api/assets/[id]/purchase-documents/route.ts", "await prisma.$transaction("],

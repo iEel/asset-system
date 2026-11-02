@@ -134,7 +134,8 @@ test("roles and permissions: each refused page and request needs a permission th
     const call = requireCall(refusal.permission)
     assert.ok(handler.includes(call), `${refusal.file} ${refusal.method}: ${call}`)
     assert.ok(handler.indexOf("prisma.") < 0 || handler.indexOf(call) < handler.indexOf("prisma."), `${refusal.file} ${refusal.method}: the permission before any read`)
-    assert.equal(refusal.path, `/api/${refusal.file.replace(/\/route\.ts$/, "").replace("[id]", refusals.NO_RECORD)}`, `${refusal.file}: its path`)
+    // Every [segment] is NO_RECORD (the component removal has two, group 4 plan 4 P4-R1).
+    assert.equal(refusal.path, `/api/${refusal.file.replace(/\/route\.ts$/, "").replace(/\[[^\]]+\]/g, refusals.NO_RECORD)}`, `${refusal.file}: its path`)
   }
   // The transaction pickers' search and the bulk-move list need asset:edit like their pages (server asset search; group 3
   // spec §10.3, §17), and the purchase-document search asset:create or asset:edit (group 4 plan 3 P3-R2): the viewer's
@@ -145,6 +146,8 @@ test("roles and permissions: each refused page and request needs a permission th
   const purchaseRows = refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.file.includes("purchase-documents") && refusal.method === "POST")
   assert.deepEqual(purchaseRows.map((refusal) => refusal.path), ["/api/purchase-documents/check-duplicates", `/api/assets/${refusals.NO_RECORD}/purchase-documents`])
   assert.ok(refusals.VIEWER_API_REFUSALS.every((refusal) => !refusal.file.includes("[documentId]")))
+  // The component removal is a POST since group 4 plan 4 (P4-R1), so the viewer's refusal is driven like any other.
+  assert.deepEqual(refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.file.includes("[componentId]")).map((refusal) => [refusal.method, refusal.path, refusal.permission]), [["POST", `/api/assets/${refusals.NO_RECORD}/components/${refusals.NO_RECORD}/remove`, "asset:edit"]])
   assert.ok(read("e2e/cross-cutting/support/roles-ui.ts").includes('refusal.method === "GET" ? { method: "GET" } : { method: refusal.method, data: refusal.body }'))
   // The disposal decision picks its permission from the body: "decision" (any action but execute) is approve.
   assert.match(handlerBody(read("src/app/api/disposal-requests/[id]/route.ts"), "PATCH"), /if \(action === "execute"\) \{\n\s+requirePermission\(user, "disposal", "edit"\)\n\s+\} else \{\n\s+requirePermission\(user, "disposal", "approve"\)/)

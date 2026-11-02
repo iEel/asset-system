@@ -5,6 +5,9 @@ import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { normalizeAssetComponentManagerReturnTo } from "@/lib/asset-return-navigation"
 import { formatOutstandingComponentLine, isOutstandingLink } from "@/lib/asset-component-outstanding"
+import { loadComponentManagerRows } from "@/lib/asset-component-manager-data"
+import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { getRegisterHolderLine } from "@/lib/asset-register-row-rules"
 import { AssetComponentManager } from "@/components/assets/asset-component-manager"
 
 type ComponentManagerPageProps = {
@@ -31,6 +34,10 @@ export default async function AssetComponentManagerPage({ params, searchParams }
       assetTag: true,
       name: true,
       serialNumber: true,
+      ownershipType: true,
+      // The header's holder and room (group 4 plan 4 Task 2): the parent's own, name first.
+      custodian: { select: { fullNameTh: true, department: { select: { name: true } } } },
+      currentLocation: { select: { name: true } },
       parentComponents: {
         orderBy: { installedAt: "desc" },
         take: 100,
@@ -99,6 +106,17 @@ export default async function AssetComponentManagerPage({ params, searchParams }
   }))
   const currentComponents = records.filter((component) => component.current)
   const componentHistory = records.filter((component) => !component.current)
+  // The one links table's rows and the header's facts (group 4 plan 4 Task 2); the manager renders them from Task 3.
+  const componentRows = await loadComponentManagerRows(prisma, { parentAssetId: asset.id, locale, can: (module, action) => hasPermission(user, module, action) })
+  const header = {
+    name: asset.name,
+    assetTag: asset.assetTag,
+    holder: getRegisterHolderLine({
+      ownership: normalizeAssetOwnershipType(asset.ownershipType),
+      custodian: asset.custodian ? { name: asset.custodian.fullNameTh, departmentName: asset.custodian.department.name } : null,
+    }),
+    room: asset.currentLocation.name,
+  }
 
   return (
     <AssetComponentManager
@@ -109,6 +127,8 @@ export default async function AssetComponentManagerPage({ params, searchParams }
       componentHistory={componentHistory}
       canEdit={canEdit}
       returnToHref={returnToHref}
+      header={header}
+      linkRows={componentRows}
       labels={{
         title: t("manageComponents"),
         subtitle: t("componentSummaryHelp"),

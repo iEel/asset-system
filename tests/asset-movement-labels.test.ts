@@ -30,7 +30,7 @@ const WRITERS = [
   "src/app/api/assets/[id]/checkin/route.ts",
   "src/app/api/assets/[id]/checkout/route.ts",
   "src/app/api/assets/[id]/component-return/route.ts",
-  "src/app/api/assets/[id]/components/[componentId]/route.ts",
+  "src/app/api/assets/[id]/components/[componentId]/remove/route.ts",
   "src/app/api/assets/[id]/components/route.ts",
   "src/app/api/assets/[id]/legacy-checkout/route.ts",
   "src/app/api/assets/[id]/route.ts",

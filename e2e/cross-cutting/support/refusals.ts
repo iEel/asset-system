@@ -55,6 +55,8 @@ export const VIEWER_API_REFUSALS: readonly ApiRefusal[] = [
   { method: "POST", path: `/api/assets/${NO_RECORD}/checkin`, file: "assets/[id]/checkin/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: `/api/assets/${NO_RECORD}/transfer`, file: "assets/[id]/transfer/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: `/api/assets/${NO_RECORD}/component-return`, file: "assets/[id]/component-return/route.ts", permission: "asset:edit", body: {} },
+  // ถอดส่วนควบ is a POST since group 4 plan 4 (P4-R1): it marks the link removed, nothing is deleted.
+  { method: "POST", path: `/api/assets/${NO_RECORD}/components/${NO_RECORD}/remove`, file: "assets/[id]/components/[componentId]/remove/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: "/api/assets/bulk-move", file: "assets/bulk-move/route.ts", permission: "asset:edit", body: {} },
   { method: "GET", path: "/api/asset-operations/search", file: "asset-operations/search/route.ts", permission: "asset:edit", body: {} },
   { method: "GET", path: "/api/asset-operations/bulk-move-list", file: "asset-operations/bulk-move-list/route.ts", permission: "asset:edit", body: {} },

@@ -13,7 +13,9 @@ type ComponentRouteContext = {
   params: Promise<{ id: string; componentId: string }>
 }
 
-export async function DELETE(request: NextRequest, context: ComponentRouteContext) {
+// ถอดส่วนควบ marks the link removed (status, date, reason, photo); nothing is deleted, so it is a POST, not a DELETE
+// (group 4 plan 4 P4-R1: the E2E suite sends no DELETE, and this lets it confirm a real removal).
+export async function POST(request: NextRequest, context: ComponentRouteContext) {
   // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
   const uploads = createUploadCleanup()
   try {
