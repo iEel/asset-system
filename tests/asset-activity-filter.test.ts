@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { getAssetActivityWhere, getIdleAssetCutoff, normalizeAssetActivityFilter } from "../src/lib/asset-activity-filter.ts"
+import { ASSET_MOVEMENT_NOT_ACTIVITY_TYPES } from "../src/lib/asset-movement-labels.ts"
 
 test("normalizes only the supported idle activity filter", () => {
   assert.equal(normalizeAssetActivityFilter("idle_180d"), "idle_180d")
@@ -11,8 +12,12 @@ test("builds the exact 180-day no-movement predicate", () => {
   const now = new Date("2026-07-15T00:00:00.000Z")
   assert.equal(getIdleAssetCutoff(now).toISOString(), "2026-01-16T00:00:00.000Z")
   assert.deepEqual(getAssetActivityWhere("idle_180d", now), {
-    movements: { none: { performedAt: { gte: new Date("2026-01-16T00:00:00.000Z") } } },
+    movements: { none: { performedAt: { gte: new Date("2026-01-16T00:00:00.000Z") }, movementType: { notIn: ["register_field_correction", "asset_tag_change"] } } },
   })
+})
+
+test("a typing fix on the asset edit is not activity: the shared list of the rows the idle filter leaves out (final review)", () => {
+  assert.deepEqual([...ASSET_MOVEMENT_NOT_ACTIVITY_TYPES], ["register_field_correction", "asset_tag_change"])
 })
 
 test("does not build a predicate without an activity filter", () => {

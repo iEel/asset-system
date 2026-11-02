@@ -8,12 +8,13 @@ import { writeAuditLog } from "@/lib/audit-log-writer"
 import { errorResponse } from "@/lib/api-response"
 import { FieldRefusalError } from "@/lib/field-errors"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
-import { getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
+import { getAssetLifecycleTransitionError, getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
 import { getRegisterCustodyChangeError, type AssetCustodyChangeError } from "@/lib/asset-custody-policy"
 import { departmentFollowsHolder, getRegisterDepartment } from "@/lib/asset-department-rule"
 import { normalizeAssetOwnershipType, type AssetOwnershipType } from "@/lib/asset-ownership"
 import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
 import { planRegisterEditMovements, registerEditNeedsReason } from "@/lib/asset-register-edit"
+import { isPrismaUniqueConstraintError } from "@/lib/prisma-unique-retry"
 import { withDeadlockRetry } from "@/lib/transaction-retry"
 import { assetUpdateSchema, type AssetUpdateInput } from "@/lib/validations/asset"
 
@@ -108,7 +109,10 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
     const nextCustodianId = input.custodianId === undefined ? existing.custodianId : input.custodianId
     const chosenDepartmentId = input.departmentId === undefined ? existing.departmentId : input.departmentId
     const correctionReason = input.correctionReason ? input.correctionReason : null
-    const facts = { ownership, currentCustodianId: existing.custodianId, currentDepartmentId: existing.departmentId, nextCustodianId, chosenDepartmentId }
+    // A written-off asset cannot move custody (move_scope refused), so the automatic fix is skipped, as under an open
+    // handover: an unrelated edit is never refused because of it (spec §7.3, final review).
+    const custodyFrozen = getAssetLifecycleTransitionError("move_scope", existing.status.name) !== null
+    const facts = { ownership, currentCustodianId: existing.custodianId, currentDepartmentId: existing.departmentId, nextCustodianId, chosenDepartmentId, custodyFrozen }
 
     const openHandover = await hasOpenHandover(prisma, id)
     const department = await planRegisterDepartment(prisma, { ...facts, openHandover })
@@ -139,7 +143,9 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
     // One reference for the movements and the component sync of this save (P2-R5).
     const referenceId = randomUUID()
 
-    // A deadlock victim was rolled back whole, so it runs again (as the bulk update).
+    // A deadlock victim was rolled back whole, so it runs again (as the bulk update). A typed tag that lost the race on
+    // the unique index is the tag's field error (as POST, P2-R8).
+    const tagChanged = updateData.assetTag !== existing.assetTag
     const asset = await withDeadlockRetry(() => prisma.$transaction(async (tx) => {
       // The holder and the open handover read again: a holder who left, or a handover opened meanwhile, changes the plan.
       const openNow = await hasOpenHandover(tx, id)
@@ -199,7 +205,12 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
       })
 
       return asset
-    }, registerEditTransactionOptions))
+    }, registerEditTransactionOptions)).catch((error: unknown) => {
+      if (tagChanged && isPrismaUniqueConstraintError(error)) {
+        throw new FieldRefusalError("Asset tag already exists", { assetTag: "duplicate" })
+      }
+      throw error
+    })
 
     return NextResponse.json(asset)
   } catch (error) {
@@ -241,6 +252,7 @@ async function planRegisterDepartment(
     currentDepartmentId: string | null
     chosenDepartmentId: string | null
     openHandover: boolean
+    custodyFrozen: boolean
   },
 ) {
   let nextHolderDepartmentId: string | null = null

@@ -64,6 +64,10 @@ export const ASSET_MOVEMENT_LABELLED_TYPES = [
   "disposal_execute",
 ] as const
 
+// A typing fix on the asset edit (group 4 plan 2, P2-R5): history, but nothing happened to the asset, so the idle-180-day
+// register filter and the audit's stale_movement preset do not count these rows as activity (final review).
+export const ASSET_MOVEMENT_NOT_ACTIVITY_TYPES = ["register_field_correction", "asset_tag_change"] as const
+
 // A component's copy of its parent's event. The parent's own row records the same event, so the dashboard feed leaves these out.
 export const ASSET_MOVEMENT_MIRROR_TYPES = [
   "installed_in_parent",

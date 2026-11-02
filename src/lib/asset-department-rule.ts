@@ -98,7 +98,10 @@ export function departmentFollowsHolder(ownership: AssetOwnershipType): boolean 
 // plan 2, P2-R1, P2-R2). Unlike โอนย้าย, a null next holder means the holder was cleared, so the department is free.
 // "holder" locks the แผนก row. With the holder unchanged, taking the holder's department is the automatic fix
 // (automatic: true only when it changes the department; no reason needed), skipped while a handover is open ("kept").
-// An unread holder department falls back to the current one, then (on create) to the chosen one.
+// custodyFrozen is a written-off status (move_scope refused): its custody cannot move, so the fix is skipped too and the
+// department the save sends stays ("kept"); the custody lock then refuses only a department the person changed (spec
+// §7.3: an unrelated edit is never refused because of the fix). An unread holder department falls back to the current
+// one, then (on create) to the chosen one.
 export type RegisterDepartmentSource = "holder" | "kept" | "free"
 
 export function getRegisterDepartment(input: {
@@ -109,6 +112,7 @@ export function getRegisterDepartment(input: {
   chosenDepartmentId: string | null
   nextHolderDepartmentId: string | null
   openHandover: boolean
+  custodyFrozen?: boolean
 }): { departmentId: string | null; source: RegisterDepartmentSource; automatic: boolean } {
   if (!departmentFollowsHolder(input.ownership) || !input.nextCustodianId) {
     return { departmentId: input.chosenDepartmentId, source: "free", automatic: false }
@@ -116,6 +120,9 @@ export function getRegisterDepartment(input: {
   const holderUnchanged = input.currentCustodianId === input.nextCustodianId
   if (holderUnchanged && input.openHandover) {
     return { departmentId: input.currentDepartmentId, source: "kept", automatic: false }
+  }
+  if (holderUnchanged && input.custodyFrozen) {
+    return { departmentId: input.chosenDepartmentId, source: "kept", automatic: false }
   }
   const departmentId = input.nextHolderDepartmentId ?? input.currentDepartmentId ?? input.chosenDepartmentId
   return { departmentId, source: "holder", automatic: holderUnchanged && departmentId !== input.currentDepartmentId }

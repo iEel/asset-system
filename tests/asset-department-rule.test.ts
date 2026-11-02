@@ -142,6 +142,15 @@ test("register: บุคคล and Stock with the holder unchanged take the hol
   }
 })
 
+test("register: a written-off asset (custody frozen) skips the automatic fix and keeps the department the save sends, so the custody lock refuses only a real change (final review)", () => {
+  for (const ownership of ["personal", "stock"] as const) {
+    assert.deepEqual(register(ownership, { custodyFrozen: true }), { departmentId: "d2", source: "kept", automatic: false }, ownership)
+    assert.deepEqual(register(ownership, { custodyFrozen: true, chosenDepartmentId: "d7" }), { departmentId: "d7", source: "kept", automatic: false }, `${ownership}, a chosen department reaches the lock`)
+    assert.deepEqual(register(ownership, { custodyFrozen: false }), { departmentId: "d1", source: "holder", automatic: true }, `${ownership}, not frozen`)
+  }
+  assert.deepEqual(register("shared", { custodyFrozen: true, chosenDepartmentId: "d5" }), { departmentId: "d5", source: "free", automatic: false }, "ส่วนกลาง stays free")
+})
+
 test("register: บุคคล and Stock with a new holder take the new holder's department (no automatic fix)", () => {
   for (const ownership of ["personal", "stock"] as const) {
     assert.deepEqual(register(ownership, { nextCustodianId: "e2", nextHolderDepartmentId: "d3" }), { departmentId: "d3", source: "holder", automatic: false }, ownership)

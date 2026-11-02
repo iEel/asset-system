@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import type { AuditRoundScopeInput } from "./validations/audit.ts"
+import { ASSET_MOVEMENT_NOT_ACTIVITY_TYPES } from "./asset-movement-labels.ts"
 
 export const CLOSED_AUDIT_STATUS_NAMES = ["Disposed", "Retired"] as const
 export const CLOSED_AUDIT_STATUS_NAMES_TH = ["ตัดจำหน่ายแล้ว", "ปลดระวาง"] as const
@@ -84,7 +85,8 @@ function buildAuditRiskWhere(riskPreset: AuditRoundScopeInput["riskPreset"]): Pr
   }
 
   if (riskPreset === "stale_movement") {
-    return { movements: { none: { performedAt: { gte: staleSince } } } }
+    // A typing fix on the asset edit is not movement (asset-movement-labels.ts).
+    return { movements: { none: { performedAt: { gte: staleSince }, movementType: { notIn: [...ASSET_MOVEMENT_NOT_ACTIVITY_TYPES] } } } }
   }
 
   if (riskPreset === "repair_history") {

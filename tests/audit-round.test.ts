@@ -31,6 +31,11 @@ test("audit round all-status scope excludes disposed and retired assets by defau
   })
 })
 
+test("the stale_movement preset does not count a typing fix on the asset edit as movement (group 4 plan 2 final review)", () => {
+  const where = buildAuditAssetWhere({ ...baseInput, riskPreset: "stale_movement" }) as { movements: { none: { movementType: unknown } } }
+  assert.deepEqual(where.movements.none.movementType, { notIn: ["register_field_correction", "asset_tag_change"] })
+})
+
 test("audit round can include disposed and retired assets when explicitly requested", () => {
   const where = buildAuditAssetWhere({ ...baseInput, includeClosedAssets: true })
 

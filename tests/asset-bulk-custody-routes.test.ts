@@ -37,9 +37,11 @@ type BulkCustodyState = {
   onTransaction: (() => void) | null
   /** Each `$transaction` throws the next of these first, if any (a deadlock victim). */
   transactionErrors: unknown[]
+  /** Each `asset.updateMany` throws the next of these first, if any (a lost race on the unique tag). */
+  updateManyErrors: unknown[]
 }
 
-const state: BulkCustodyState = { assets: [], employees: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [], inactiveLocationIds: [], locationAnswers: [], syncAnswers: [], checkoutAnswers: [], onTransaction: null, transactionErrors: [] }
+const state: BulkCustodyState = { assets: [], employees: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [], inactiveLocationIds: [], locationAnswers: [], syncAnswers: [], checkoutAnswers: [], onTransaction: null, transactionErrors: [], updateManyErrors: [] }
 Object.assign(globalThis, { __bulkCustodyState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -102,6 +104,7 @@ const mockedModuleSources = new Map<string, string>([
               return asset ? toRow(asset) : null
             }
             if (name === "asset" && method === "updateMany") {
+              if (state().updateManyErrors.length > 0) throw state().updateManyErrors.shift()
               const asset = state().assets.find((item) => item.id === args?.where?.id)
               if (asset && args?.where?.currentLocationId !== undefined && asset.currentLocationId !== args.where.currentLocationId) return { count: 0 }
               return { count: 1 }
@@ -223,6 +226,7 @@ beforeEach(() => {
   state.checkoutAnswers = []
   state.onTransaction = null
   state.transactionErrors = []
+  state.updateManyErrors = []
 })
 
 test("bulk update refuses to reassign an asset that is out on loan", async () => {
@@ -417,6 +421,40 @@ test("an inactive or unknown new holder is refused 409 under custodianId", async
     assert.deepEqual((await response.json() as { fieldErrors: unknown }).fieldErrors, { custodianId: "checkoutReceiverInactive" }, custodianId)
   }
   assert.deepEqual(assetWrites(), [])
+})
+
+// A written-off asset (Disposed or Retired) cannot move custody: the automatic department fix is skipped like an open
+// handover, so an unrelated edit of a held asset whose department differs from its holder's still saves (final review).
+for (const statusName of ["Disposed", "Retired"]) {
+  test(`a ${statusName} held asset whose department differs from its holder's saves a Serial change, the department kept`, async () => {
+    state.assets.push({ id: "written-off-1", statusName, custodianId: "emp-5", currentLocationId: "loc-1", departmentId: "dept-1" })
+    const response = await registerEdit("written-off-1", { statusId: `status:${statusName}`, custodianId: "emp-5", departmentId: "dept-1", serialNumber: "SN-NEW" })
+    assert.equal(response.status, 200)
+    assert.equal(writeData().departmentId, "dept-1")
+    const rows = (callsOf("assetMovement.createMany")[0] as { data: Array<{ movementType: string }> }).data
+    assert.equal(rows.some((row) => row.movementType === "register_department_correction"), false)
+  })
+
+  test(`a ${statusName} held asset still refuses a department the person changed (409)`, async () => {
+    state.assets.push({ id: "written-off-1", statusName, custodianId: "emp-5", currentLocationId: "loc-1", departmentId: "dept-1" })
+    const response = await registerEdit("written-off-1", { statusId: `status:${statusName}`, custodianId: "emp-5", departmentId: "dept-9", correctionReason: "ผิดแผนก" })
+    assert.equal(response.status, 409)
+    assert.equal((await response.json() as { code: string }).code, "ASSET_STATUS_TRANSFER_NOT_ALLOWED")
+    assert.deepEqual(assetWrites(), [])
+  })
+}
+
+test("a typed tag that loses the race on the unique index answers the tag's field error, not a 500 (final review)", async () => {
+  state.updateManyErrors = [Object.assign(new Error("Unique constraint failed"), { name: "PrismaClientKnownRequestError", code: "P2002" })]
+  const response = await editReady({ assetTag: "IT-9999" })
+  assert.equal(response.status, 400)
+  assert.deepEqual((await response.json() as { fieldErrors: unknown }).fieldErrors, { assetTag: "duplicate" })
+})
+
+test("a unique refusal of a save that kept its tag stays a server error", async () => {
+  state.updateManyErrors = [Object.assign(new Error("Unique constraint failed"), { name: "PrismaClientKnownRequestError", code: "P2002" })]
+  const response = await editReady({ assetTag: "READY-1", name: "Laptop 2" })
+  assert.equal(response.status, 500)
 })
 
 test("PUT ignores isActive: a body with isActive false writes no isActive", async () => {
