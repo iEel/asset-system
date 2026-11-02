@@ -87,6 +87,10 @@ Transaction cancellation follows the existing permissions instead of adding a ne
   - `GET /api/assets/export` needs `asset:view`; the viewer may export, and the import and export page shows a viewer the export card and the import history (read only, no file input, template or confirm).
   - `GET /api/assets/import-template`, `POST /api/assets/import-preview` and `POST /api/assets/import-confirm` need `asset:create`, checked before the multipart body is read. The two POSTs are viewer refusal rows in `e2e/cross-cutting/support/refusals.ts` (403), and the viewer sweep catches a template link on a read-only page by its href (`WRITE_LINK_PATTERNS`).
   - Confirm refuses a missing or malformed `batchId` or `expectedReadyRows` with 400 `VALIDATION_FAILED` before any read, and answers 409 with `code` `previewChanged` (with the fresh preview), `batchUsed` or `changedDuringImport`; nothing is written on any refusal.
+- Labels (group 4 plan 6, spec §15 call 19): listing the label queue and recording a print stay `asset:view`, so a viewer may prepare and print labels. `src/lib/rbac-route-matrix.ts` gained the row "Asset label queue and print record" for `src/app/api/assets/label-prints/route.ts` (`asset:view`), pinned in `tests/rbac-route-matrix.test.ts`; there is no viewer refusal row, because the viewer holds `asset:view`.
+  - `GET /api/assets/label-prints` (the queue, and the lookup with `?ids=`) runs `requireAuth`, then `requirePermission(user, "asset", "view")`, before the query is parsed or anything is read: 401 without a session, 403 without the permission. A lookup of more than 100 distinct ids answers 400 `{ error: "Invalid request data" }` with nothing read. `listLabelPrintQueue` repeats the `asset:view` check (or `system_admin`) before its first read.
+  - `POST /api/assets/label-prints` (one print record, 1 to 100 ids, a reason of at most 500 characters) checks `asset:view` before the body is read.
+  - The labels page (`/[locale]/asset-management/labels`) and both print routes (`/[locale]/assets/labels`, `/[locale]/assets/[id]/label`) call `requirePagePermission(locale, "asset", "view")`.
 
 ## Dashboard Navigation And Unauthorized Pages
 
