@@ -7,6 +7,7 @@ import {
   assetImportIssueCodes,
   assetImportModelKey,
   assetImportScopedKey,
+  parseImportDate,
   validateAssetImportRows,
   type AssetImportIssue,
   type AssetImportReferences,
@@ -104,10 +105,11 @@ function issuesOf(values: Record<string, AssetImportCellValue>) {
   return one(values).issues
 }
 
-test("the cap is 1,000 rows and there are exactly the 15 codes of P5-R4", () => {
+// The 15 codes of P5-R4, and cellError (an Excel error value) from the plan 5 final review.
+test("the cap is 1,000 rows and there are exactly the 16 codes", () => {
   assert.equal(ASSET_IMPORT_MAX_ROWS, 1000)
   assert.deepEqual([...assetImportIssueCodes].sort(), [
-    "buddhistYear", "conditionNotAllowed", "duplicateExisting", "duplicateInFile", "invalidDate", "invalidInteger",
+    "buddhistYear", "cellError", "conditionNotAllowed", "duplicateExisting", "duplicateInFile", "invalidDate", "invalidInteger",
     "invalidNumber", "invalidOwnership", "licenceOnlyForLicence", "notFound", "notUnder", "required", "seatsOverTotal",
     "statusNotAllowed", "tooLong",
   ])
@@ -134,6 +136,7 @@ test("a clean row is ready, has no issues and carries its resolved ids", () => {
     homeLocationId: "loc-hq-1",
     supplierId: "sup-1",
     licenseAssignedAssetId: null,
+    ownershipType: "personal",
   })
 })
 
@@ -261,7 +264,7 @@ test("every code of the list is produced by at least one case above", () => {
     { name: "" }, { categoryCode: "XX" }, { currentLocationCode: "CM-1" }, { assetTag: "NB-0001" }, { purchaseDate: "1890-01-01" },
     { purchaseDate: "2569-01-01" }, { purchasePrice: "x" }, { ownershipType: "software_license", licenseTotalSeats: "x" },
     { ownershipType: "software_license", licenseTotalSeats: 1, licenseUsedSeats: 2 }, { licenseTotalSeats: 1 }, { ownershipType: "x" },
-    { status: "In Use" }, { condition: "Lost" }, { name: "x".repeat(201) },
+    { status: "In Use" }, { condition: "Lost" }, { name: "x".repeat(201) }, { remark: "#N/A" },
   ]
   for (const sample of samples) for (const issue of issuesOf(sample)) seen.add(issue.code)
   const rows = validateAssetImportRows([{ rowNumber: 2, values: { ...base, assetTag: "A" } }, { rowNumber: 3, values: { ...base, assetTag: "A" } }], references())
@@ -280,4 +283,58 @@ test("every issue code has its th and en text in asset.importError", () => {
     }
     assert.deepEqual(Object.keys(texts).sort(), [...assetImportIssueCodes].sort(), `${locale}: no text for a code that does not exist`)
   }
+})
+
+// Group 4 plan 5 final review: the ownership type is checked without case, and the checked lower-case value is the one
+// confirm writes, so "Shared" stays ส่วนกลาง and takes the department rule of a ส่วนกลาง row.
+test("the ownership type is matched without case and carried lower-case in resolved", () => {
+  const shared = one({ ownershipType: "Shared", departmentCode: "IT", custodianCode: "E001" })
+  assert.equal(shared.status, "ready")
+  assert.equal(shared.resolved.ownershipType, "shared")
+  const licence = one({ ownershipType: "Software_License", licenseTotalSeats: 10, licenseUsedSeats: 3 })
+  assert.deepEqual(licence.issues, [])
+  assert.equal(licence.resolved.ownershipType, "software_license")
+  assert.equal(one({}).resolved.ownershipType, "personal")
+  assert.equal(one({ ownershipType: "rented" }).resolved.ownershipType, null)
+})
+
+// Group 4 plan 5 final review: a text date is read only as yyyy-m-d or d/m/yyyy (the Thai day-then-month order), and a
+// day the month does not have is refused; Excel's own dates (serial numbers) still read as before.
+test("text dates are strict: yyyy-m-d and d/m/yyyy only, checked day by day", () => {
+  assert.equal(parseImportDate("05/01/2024")?.toISOString(), "2024-01-05T00:00:00.000Z")
+  assert.equal(parseImportDate("5/1/2024")?.toISOString(), "2024-01-05T00:00:00.000Z")
+  assert.equal(parseImportDate("2024-1-5")?.toISOString(), "2024-01-05T00:00:00.000Z")
+  assert.equal(parseImportDate("2026-05-01")?.toISOString(), "2026-05-01T00:00:00.000Z")
+  assert.equal(parseImportDate(45000)?.toISOString(), "2023-03-15T00:00:00.000Z")
+  for (const bad of ["2024-02-30", "31/04/2024", "N/A 5", "Asset 1", "2024/01/05", "01-05-2024", "2024-01-05T10:00:00Z", "13/13/2024"]) {
+    assert.equal(parseImportDate(bad), null, bad)
+  }
+  assert.deepEqual(issuesOf({ purchaseDate: "05/01/2024" }), [])
+  assert.deepEqual(issuesOf({ purchaseDate: "2024-02-30" }), [{ code: "invalidDate", field: "purchaseDate", value: "2024-02-30" }])
+  assert.deepEqual(issuesOf({ warrantyEndDate: "N/A 5" }), [{ code: "invalidDate", field: "warrantyEndDate", value: "N/A 5" }])
+  // The Buddhist-year rule holds for both text shapes.
+  assert.deepEqual(issuesOf({ purchaseDate: "05/01/2567" }), [{ code: "buddhistYear", field: "purchaseDate", value: "05/01/2567" }])
+})
+
+// Group 4 plan 5 final review: a price or seat count the database column cannot hold is refused at preview, not by a
+// 500 at confirm (purchasePrice Decimal(18,2), seats Int).
+test("a price of 1e16 or more, a non-finite price and seats above 2,147,483,647 are refused", () => {
+  assert.deepEqual(issuesOf({ purchasePrice: "Infinity" }), [{ code: "invalidNumber", field: "purchasePrice", value: "Infinity" }])
+  assert.deepEqual(issuesOf({ purchasePrice: 1e16 }), [{ code: "invalidNumber", field: "purchasePrice", value: 1e16 }])
+  assert.deepEqual(issuesOf({ purchasePrice: 9999999999999998 }), [])
+  assert.deepEqual(issuesOf({ ownershipType: "software_license", licenseTotalSeats: 3000000000 }), [
+    { code: "invalidInteger", field: "licenseTotalSeats", value: 3000000000 },
+  ])
+  assert.deepEqual(issuesOf({ ownershipType: "software_license", licenseTotalSeats: 2147483647 }), [])
+})
+
+// Group 4 plan 5 final review: an Excel error value (a failed VLOOKUP's #N/A, #REF! …) is its own problem on its field,
+// never imported as text; a required field holding one is not also called blank.
+test("cellError: an Excel error value in any column is refused with its value", () => {
+  assert.deepEqual(issuesOf({ name: "#N/A" }), [{ code: "cellError", field: "name", value: "#N/A" }])
+  assert.deepEqual(issuesOf({ serialNumber: "#REF!" }), [{ code: "cellError", field: "serialNumber", value: "#REF!" }])
+  assert.deepEqual(issuesOf({ custodianCode: "#VALUE!" }), [{ code: "cellError", field: "custodianCode", value: "#VALUE!" }])
+  assert.deepEqual(issuesOf({ purchaseDate: "#DIV/0!" }), [{ code: "cellError", field: "purchaseDate", value: "#DIV/0!" }])
+  assert.deepEqual(issuesOf({ remark: "#NAME?" }), [{ code: "cellError", field: "remark", value: "#NAME?" }])
+  assert.deepEqual(issuesOf({ remark: "#hashtag" }), [])
 })

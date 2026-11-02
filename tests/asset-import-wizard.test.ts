@@ -10,6 +10,7 @@ import {
   defaultImportFilter,
   filterImportRows,
   getAssetImportWizardStep,
+  importIssueSummaryProblem,
   splitImportMapping,
   summarizeAssetImportPreviewIssues,
 } from "../src/lib/asset-import-wizard.ts"
@@ -28,6 +29,7 @@ const words: Record<string, string> = {
   "importIssue.usedByInactive": "ใช้อยู่กับ {tag} ที่ปิดใช้งานแล้ว",
   "importIssue.separator": " · ",
   "importIssue.fileForm": "ทั้งไฟล์",
+  "importPage.issueSummaryDuplicateInFile": "ซ้ำกับแถวอื่นในไฟล์",
 }
 function t(key: string, values: Record<string, string | number> = {}) {
   const text = words[key]
@@ -152,4 +154,17 @@ test("the client copies of the row cap and the required columns match the server
     [...assetImportRequiredColumnKeys].sort(),
     assetImportColumns.filter((column) => "required" in column && column.required).map((column) => column.key).sort(),
   )
+})
+
+// Plan 5 final review: a duplicateInFile group can hold rows that repeat different earlier rows (3 and 10), so the
+// summary words it without a row; every other code keeps the sample's words, as the row does.
+test("the repeated-problem summary words duplicateInFile without a row number", () => {
+  const summary = summarizeAssetImportPreviewIssues([
+    { issues: [{ field: "serialNumber", code: "duplicateInFile", value: "A", conflict: { row: 3 } } as AssetImportIssue] },
+    { issues: [{ field: "serialNumber", code: "duplicateInFile", value: "B", conflict: { row: 10 } } as AssetImportIssue] },
+    { issues: [{ field: "assetTag", code: "tooLong", value: "x", max: 50 } as AssetImportIssue] },
+  ])
+  const words = Object.fromEntries(summary.map((item) => [item.code, importIssueSummaryProblem(item, t, fields)]))
+  assert.equal(words.duplicateInFile, "ซ้ำกับแถวอื่นในไฟล์")
+  assert.equal(words.tooLong, "ยาวเกิน 50 ตัวอักษร")
 })

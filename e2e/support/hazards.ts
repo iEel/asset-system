@@ -3,8 +3,10 @@
 // the instance Production shares. fixtures.ts stops each of these in every test's browser context (aborted before it
 // leaves, and the test fails); tests/e2e-review.test.ts checks that no file of the suite names one, which also covers
 // the API calls of page.request and request.newContext that a browser route never sees. Excel import was one until
-// 2026-11-02, when the user allowed the suite to import on the dev database (group 4 plan 5 P5-R1): only the import
-// spec drives it, and the source guard still keeps the route names out of every other file. Pure: imports nothing.
+// 2026-11-02, when the user allowed the suite to import on the dev database (group 4 plan 5 P5-R1): only
+// e2e/assets/import-export.spec.ts imports. The viewer's refusal rows in e2e/cross-cutting/support/refusals.ts also name
+// the two routes; roles.spec.ts and the import spec's viewer test send them, and the viewer gets 403 before the form
+// is read. The source guard keeps the route names out of every other file. Pure: imports nothing.
 export type Hazard = {
   id: string
   reason: string

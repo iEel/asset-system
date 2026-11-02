@@ -99,10 +99,13 @@ export function getAssetImportBatchStatusTone(status: string): "success" | "warn
   return "muted"
 }
 
-export function buildAssetImportBatchId({ fileName, createdAt }: { fileName: string; createdAt: Date }) {
+// The id is the double-confirm key (P5-R2): the last part mixes in a random nonce, so two people who check a file of
+// the same name in the same second get different ids (plan 5 final review). An empty nonce gives the old checksum.
+export function buildAssetImportBatchId({ fileName, createdAt, nonce = globalThis.crypto.randomUUID() }: { fileName: string; createdAt: Date; nonce?: string }) {
   const timestamp = createdAt.toISOString().replace(/\D/g, "").slice(0, 14)
   const slug = sanitizeFileSlug(fileName)
-  const checksum = simpleChecksum(`${fileName}:${timestamp}`).toString(36).toUpperCase().padStart(4, "0")
+  const seed = nonce ? `${fileName}:${timestamp}:${nonce}` : `${fileName}:${timestamp}`
+  const checksum = simpleChecksum(seed).toString(36).toUpperCase().padStart(4, "0")
   return `IMPORT-${timestamp}-${slug}-${checksum}`
 }
 

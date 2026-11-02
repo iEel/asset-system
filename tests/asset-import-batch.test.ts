@@ -14,7 +14,19 @@ import {
 const createdAt = new Date("2026-05-20T08:30:15.000Z")
 
 test("builds readable import batch id from timestamp and file name", () => {
-  assert.equal(buildAssetImportBatchId({ fileName: "legacy assets.xlsx", createdAt }), "IMPORT-20260520083015-LEGACY-ASSETS-16DD")
+  assert.equal(buildAssetImportBatchId({ fileName: "legacy assets.xlsx", createdAt, nonce: "" }), "IMPORT-20260520083015-LEGACY-ASSETS-16DD")
+})
+
+// Group 4 plan 5 final review: the id is the double-confirm key (P5-R2), so two people checking files of the same name
+// in the same second must not share it: the last part mixes in a random value, and the shape stays the same.
+test("two batch ids of the same file name and second differ", () => {
+  const ids = new Set(Array.from({ length: 20 }, () => buildAssetImportBatchId({ fileName: "asset-import-template.xlsx", createdAt })))
+  assert.ok(ids.size > 1)
+  for (const id of ids) {
+    assert.match(id, /^IMPORT-20260520083015-ASSET-IMPORT-TEMPLATE-[0-9A-Z]{4}$/)
+    assert.equal(isAssetImportBatchId(id), true)
+  }
+  assert.notEqual(buildAssetImportBatchId({ fileName: "a.xlsx", createdAt, nonce: "one" }), buildAssetImportBatchId({ fileName: "a.xlsx", createdAt, nonce: "two" }))
 })
 
 test("summarizes import batch readiness and mapping coverage", () => {

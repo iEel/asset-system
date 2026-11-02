@@ -173,7 +173,7 @@ test("import-export page: the history unfolds the first 3 skipped rows, name fir
   assert.match(source, /const moreRows = Math\.max\(0, batch\.skipped - shownRows\.length\)/)
   assert.match(source, /\{shownRows\.length > 0 \? \(\n\s+<details className="group\/skipped mt-2">/)
   assert.match(source, /\{tTools\("importExportPage\.skippedRowsToggle", \{ count: batch\.skipped \}\)\}/)
-  assert.match(source, /<div className="break-words text-foreground">\{orNil\(row\.name\)\}<\/div>\n\s+\{row\.assetTag \? \(\n\s+<div className="tag text-muted-foreground">\{row\.assetTag\}<\/div>/)
+  assert.match(source, /<div className="break-words text-foreground">\{orNil\(row\.name\)\}<\/div>\n\s+\{row\.assetTag \? \(\n\s+<div className="tag break-words text-muted-foreground">\{row\.assetTag\}<\/div>/)
   assert.match(source, /\{tTools\("importExportPage\.skippedRowsMore", \{ count: moreRows \}\)\}/)
   // The words come from the preview's pure helper, not a copy of it.
   assert.match(source, /import \{ buildImportIssueParts, type AssetImportTranslate \} from "@\/lib\/asset-import-wizard"/)

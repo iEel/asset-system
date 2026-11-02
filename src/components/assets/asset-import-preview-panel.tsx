@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
@@ -13,7 +13,7 @@ import {
   filterImportRows,
   getAssetImportWizardStep,
   importIssueFieldName,
-  importIssueProblem,
+  importIssueSummaryProblem,
   splitImportMapping,
   summarizeAssetImportPreviewIssues,
   type AssetImportFilter,
@@ -110,6 +110,12 @@ export function AssetImportPreviewPanel() {
   const [preview, setPreview] = useState<PreviewResult | null>(null)
   const [filter, setFilter] = useState<AssetImportFilter>("all")
   const [result, setResult] = useState<ImportResult | null>(null)
+  // Where a refusal shows (plan 5 final review): the dropzone's own under the dropzone, confirm's inside the footer the
+  // user pressed, which takes focus; after a successful import the done notice takes it, so it is announced.
+  const [refusalAt, setRefusalAt] = useState<"file" | "confirm">("file")
+  const [focus, setFocus] = useState<{ target: "refusal" | "done"; tick: number } | null>(null)
+  const refusalRef = useRef<HTMLDivElement | null>(null)
+  const doneRef = useRef<HTMLDivElement | null>(null)
   const wizardStep = getAssetImportWizardStep({
     hasSelectedFile: Boolean(selectedFile),
     hasPreview: Boolean(preview),
@@ -131,6 +137,15 @@ export function AssetImportPreviewPanel() {
   const noReadyRows = preview?.summary.readyRows === 0
   const fieldNames = (keys: string[]) => keys.map((key) => fields[key] ?? key).join(" · ")
 
+  useEffect(() => {
+    if (!focus) return
+    ;(focus.target === "done" ? doneRef.current : refusalRef.current)?.focus()
+  }, [focus])
+
+  function requestFocus(target: "refusal" | "done") {
+    setFocus((current) => ({ target, tick: (current?.tick ?? 0) + 1 }))
+  }
+
   async function handleFile(file?: File) {
     if (validate(file) || !file) {
       setNotice("fileRequired")
@@ -140,6 +155,7 @@ export function AssetImportPreviewPanel() {
     setIsLoading(true)
     setError(null)
     setNotice(null)
+    setRefusalAt("file")
 
     try {
       // The bytes are read once, at pick (P5-R2): an edit to the file on disk after the check cannot change what
@@ -172,11 +188,13 @@ export function AssetImportPreviewPanel() {
   }
 
   async function confirmImport() {
-    if (!selectedFile || !preview || preview.summary.readyRows === 0) return
+    // While a newly picked file is checked, the preview on screen is the old file's (P5-R8): confirm waits.
+    if (!selectedFile || !preview || preview.summary.readyRows === 0 || isLoading) return
 
     setIsImporting(true)
     setError(null)
     setNotice(null)
+    setRefusalAt("confirm")
 
     try {
       const formData = new FormData()
@@ -195,10 +213,14 @@ export function AssetImportPreviewPanel() {
         setPreview(payload.preview)
         setFilter(defaultImportFilter(payload.preview.summary))
         setNotice("previewChanged")
+        requestFocus("refusal")
         return
       }
       if (response.status === 409 && (confirmRefusalCodes as readonly string[]).includes(payload?.code)) {
         setNotice(payload.code)
+        // The batch is in the register already (a lost answer, or another tab): the history shows it.
+        if (payload.code === "batchUsed") router.refresh()
+        requestFocus("refusal")
         return
       }
       if (!response.ok) {
@@ -206,8 +228,10 @@ export function AssetImportPreviewPanel() {
       }
       setResult({ batchId: payload.batchId, imported: payload.imported, skipped: payload.skipped, assets: payload.assets ?? [], fileName: selectedFile.name })
       router.refresh()
+      requestFocus("done")
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Import failed")
+      requestFocus("refusal")
     } finally {
       setIsImporting(false)
     }
@@ -219,6 +243,7 @@ export function AssetImportPreviewPanel() {
     setSelectedFile(null)
     setError(null)
     setNotice(null)
+    setRefusalAt("file")
     setFilter("all")
   }
 
@@ -238,7 +263,7 @@ export function AssetImportPreviewPanel() {
             <li key={`${issue.field}:${issue.code}:${index}`}>
               <p className="text-danger">{parts.line}</p>
               {parts.value || parts.usedBy ? (
-                <p className="text-meta text-muted-foreground">
+                <p className="break-words text-meta text-muted-foreground">
                   {parts.value}
                   {parts.usedBy ? (
                     <>
@@ -263,10 +288,31 @@ export function AssetImportPreviewPanel() {
     return (
       <>
         <div className="break-words text-foreground">{orNil(row.values.name)}</div>
-        {row.values.assetTag ? <div className="tag text-muted-foreground">{row.values.assetTag}</div> : <div className="text-meta text-muted-foreground">{t("importPage.autoTag")}</div>}
+        {row.values.assetTag ? <div className="tag break-words text-muted-foreground">{row.values.assetTag}</div> : <div className="text-meta text-muted-foreground">{t("importPage.autoTag")}</div>}
       </>
     )
   }
+
+  // A refusal: the card's own words for the codes it knows (a used batch offers a fresh start), any other answer as sent.
+  const refusal = (
+    <>
+      {notice ? (
+        <Notice
+          tone={notice === "previewChanged" ? "warning" : "danger"}
+          role="alert"
+          action={notice === "batchUsed" ? <Button onClick={startOver}>{t("importPage.importAnother")}</Button> : undefined}
+        >
+          {noticeText(notice)}
+        </Notice>
+      ) : null}
+
+      {error ? (
+        <Notice tone="danger" role="alert">
+          <ApiErrorText error={error} />
+        </Notice>
+      ) : null}
+    </>
+  )
 
   const batchBadge = preview?.batch && !result ? (
     <StatusBadge label={t(batchStatusKeys[preview.batch.status])} tone={getAssetImportBatchStatusTone(preview.batch.status)} />
@@ -280,10 +326,12 @@ export function AssetImportPreviewPanel() {
 
       {result ? (
         <div className="space-y-4 px-4 py-4 md:px-5">
-          <Notice tone="success" role="status" title={t("importPage.doneSummary", { imported: result.imported, skipped: result.skipped })}>
-            <span className="block break-words">{result.fileName}</span>
-            <span className="block break-all">{t("importPage.batchLine", { batchId: result.batchId })}</span>
-          </Notice>
+          <div ref={doneRef} tabIndex={-1} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Notice tone="success" role="status" title={t("importPage.doneSummary", { imported: result.imported, skipped: result.skipped })}>
+              <span className="block break-words">{result.fileName}</span>
+              <span className="block break-all">{t("importPage.batchLine", { batchId: result.batchId })}</span>
+            </Notice>
+          </div>
           {result.assets.length > 0 ? (
             <div>
               <h3 className="text-sm font-semibold text-foreground">{t("importPage.doneAssets")}</h3>
@@ -336,23 +384,12 @@ export function AssetImportPreviewPanel() {
               }
               description={selectedFile ? t("importPage.dropzoneDescription") : t("importPage.dropzoneEmptyDescription", { max: ASSET_IMPORT_ROW_CAP })}
             />
-            {isLoading ? (
-              <p role="status" className="text-meta text-muted-foreground">
-                {t("importPage.checking")}
-              </p>
-            ) : null}
+            {/* One status region, always mounted, filled while the check runs (so it is announced). */}
+            <p role="status" className={isLoading ? "text-meta text-muted-foreground" : "sr-only"}>
+              {isLoading ? t("importPage.checking") : null}
+            </p>
 
-            {notice ? (
-              <Notice tone={notice === "previewChanged" ? "warning" : "danger"} role="alert">
-                {noticeText(notice)}
-              </Notice>
-            ) : null}
-
-            {error ? (
-              <Notice tone="danger" role="alert">
-                <ApiErrorText error={error} />
-              </Notice>
-            ) : null}
+            {refusalAt === "file" ? refusal : null}
 
             {preview ? (
               <section aria-labelledby="asset-import-result-title" className="space-y-4">
@@ -388,7 +425,7 @@ export function AssetImportPreviewPanel() {
                     <ul className="mt-1 list-disc pl-5">
                       {issueSummary.map((item) => (
                         <li key={`${item.field}:${item.code}`}>
-                          {t("importPage.issueSummaryItem", { field: importIssueFieldName(item.field, t, fields), problem: importIssueProblem(item.sample, t, fields) })} ·{" "}
+                          {t("importPage.issueSummaryItem", { field: importIssueFieldName(item.field, t, fields), problem: importIssueSummaryProblem(item, t, fields) })} ·{" "}
                           {t("importPage.issueSummaryRows", { count: item.count })}
                         </li>
                       ))}
@@ -464,23 +501,37 @@ export function AssetImportPreviewPanel() {
                 </p>
               </div>
               {/* The footer stays in the card: sticky from lg, where no bottom navigation covers it, in flow below (K4).
-                  It never leaves the card for the window (tests/form-migration-guards.test.ts GL1). */}
-              <div className="flex flex-col gap-3 rounded-b-lg border-t border-border bg-surface px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5 lg:sticky lg:bottom-0 lg:z-10">
-                <p id="asset-import-ready-summary" className="text-sm text-muted-foreground">
-                  {t("importPage.footerSummary", { ready: preview.summary.readyRows, skipped: preview.summary.errorRows })}
-                </p>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <label htmlFor="asset-import-file" className={buttonVariants({ variant: "outline" })}>
-                    {t("importPage.uploadFixed")}
-                  </label>
-                  <Button
-                    busy={isImporting}
-                    aria-disabled={noReadyRows || undefined}
-                    aria-describedby={noReadyRows ? "asset-import-ready-summary" : undefined}
-                    onClick={() => void confirmImport()}
-                  >
-                    {t("importPage.confirm", { count: preview.summary.readyRows })}
-                  </Button>
+                  It never leaves the card for the window (tests/form-migration-guards.test.ts GL1).
+                  Confirm's refusals show here, by the button the user pressed (plan 5 final review). */}
+              <div className="rounded-b-lg border-t border-border bg-surface lg:sticky lg:bottom-0 lg:z-10">
+                {refusalAt === "confirm" && (notice || error) ? (
+                  <div ref={refusalRef} tabIndex={-1} data-import-refusal className="space-y-3 rounded-md px-4 pt-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:px-5">
+                    {refusal}
+                  </div>
+                ) : null}
+                <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">
+                  <div className="min-w-0">
+                    <p id="asset-import-ready-summary" className="text-sm text-muted-foreground">
+                      {t("importPage.footerSummary", { ready: preview.summary.readyRows, skipped: preview.summary.errorRows })}
+                    </p>
+                    {isLoading || isImporting ? (
+                      <p className="text-meta text-muted-foreground">{isLoading ? t("importPage.checking") : t("importPage.importing")}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {/* The input is disabled while a file is checked or imported; the label looks it. */}
+                    <label htmlFor="asset-import-file" aria-disabled={isLoading || isImporting || undefined} className={buttonVariants({ variant: "outline" })}>
+                      {t("importPage.uploadFixed")}
+                    </label>
+                    <Button
+                      busy={isImporting || isLoading}
+                      aria-disabled={noReadyRows || undefined}
+                      aria-describedby={noReadyRows ? "asset-import-ready-summary" : undefined}
+                      onClick={() => void confirmImport()}
+                    >
+                      {t("importPage.confirm", { count: preview.summary.readyRows })}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>

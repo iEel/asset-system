@@ -9,12 +9,16 @@ export function getNextAssetTagRunningNumber({
   sequenceSuffix?: string
   runningDigits: number
 }) {
-  const maxRunning = existingAssetTags.reduce((max, assetTag) => {
-    if (!assetTag.startsWith(sequencePrefix) || !assetTag.endsWith(sequenceSuffix)) return max
+  // Tags compare without case, as SQL Server's unique index does (plan 5 final review: a typed "ast-it-00012").
+  const prefix = sequencePrefix.toUpperCase()
+  const suffix = sequenceSuffix.toUpperCase()
+  const maxRunning = existingAssetTags.reduce((max, existingTag) => {
+    const assetTag = existingTag.toUpperCase()
+    if (!assetTag.startsWith(prefix) || !assetTag.endsWith(suffix)) return max
 
     const runningText = assetTag.slice(
-      sequencePrefix.length,
-      sequenceSuffix ? -sequenceSuffix.length : undefined
+      prefix.length,
+      suffix ? -suffix.length : undefined
     )
     if (!new RegExp(`^\\d{${runningDigits}}$`).test(runningText)) return max
 
@@ -42,7 +46,7 @@ export function reserveAssetTagRunningNumbers({
 }) {
   const reserved: string[] = []
   const knownAssetTags = [...existingAssetTags, ...reservedAssetTags]
-  const known = new Set(knownAssetTags)
+  const known = new Set(knownAssetTags.map((assetTag) => assetTag.toUpperCase()))
   let nextRunning = getNextAssetTagRunningNumber({
     existingAssetTags: knownAssetTags,
     sequencePrefix,
@@ -53,9 +57,9 @@ export function reserveAssetTagRunningNumbers({
   while (reserved.length < count) {
     const running = String(nextRunning).padStart(runningDigits, "0")
     const assetTag = `${sequencePrefix}${running}${sequenceSuffix}`
-    if (!known.has(assetTag)) {
+    if (!known.has(assetTag.toUpperCase())) {
       reserved.push(running)
-      known.add(assetTag)
+      known.add(assetTag.toUpperCase())
     }
     nextRunning += 1
   }

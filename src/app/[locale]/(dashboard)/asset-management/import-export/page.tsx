@@ -163,7 +163,7 @@ function ImportHistoryRow({
                 <div className="min-w-0">
                   <div className="break-words text-foreground">{orNil(row.name)}</div>
                   {row.assetTag ? (
-                    <div className="tag text-muted-foreground">{row.assetTag}</div>
+                    <div className="tag break-words text-muted-foreground">{row.assetTag}</div>
                   ) : (
                     <div className="text-meta text-muted-foreground">{tTools("importExportPage.skippedRowNoTag")}</div>
                   )}
@@ -202,7 +202,7 @@ function SkippedRowIssues({
           <li key={`${issue.field}:${issue.code}:${index}`}>
             <p className="text-danger">{parts.line}</p>
             {parts.value || parts.usedBy ? (
-              <p className="text-meta text-muted-foreground">
+              <p className="break-words text-meta text-muted-foreground">
                 {parts.value}
                 {parts.usedBy ? (
                   <>

@@ -118,16 +118,26 @@ export function readAssetImportRowByMapping(row: RowReader, mapping: AssetImport
   ) as Record<string, AssetImportCellValue>
 }
 
+// ExcelJS cell values as text or a number. An error cell ({ error }, also as a formula's saved result) reads as its
+// error text, which the validator refuses (cellError); a formula with no saved result reads as blank; a hyperlink's
+// text may itself be rich text; a date past JavaScript's range reads as "Invalid Date", which no date check accepts,
+// instead of throwing for the whole file (plan 5 final review). Any other object reads as blank, never "[object Object]".
 export function normalizeImportCell(value: unknown): AssetImportCellValue {
   if (value == null) return null
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? "Invalid Date" : value.toISOString().slice(0, 10)
   if (typeof value === "object") {
-    if ("text" in value && value.text) return String(value.text).trim()
-    if ("result" in value && value.result != null) return normalizeImportCell(value.result)
-    if ("richText" in value && Array.isArray(value.richText)) {
-      return value.richText.map((part) => part.text).join("").trim()
+    if ("error" in value && value.error != null) return String(value.error).trim()
+    if ("text" in value && value.text) {
+      const text = normalizeImportCell(value.text)
+      if (text != null && text !== "") return text
     }
-    return String(value).trim()
+    if ("formula" in value || "sharedFormula" in value || "result" in value) {
+      return "result" in value && value.result != null ? normalizeImportCell(value.result) : null
+    }
+    if ("richText" in value && Array.isArray(value.richText)) {
+      return value.richText.map((part: { text?: unknown }) => (part?.text == null ? "" : String(part.text))).join("").trim()
+    }
+    return null
   }
   if (typeof value === "string") return value.trim()
   if (typeof value === "number") return value

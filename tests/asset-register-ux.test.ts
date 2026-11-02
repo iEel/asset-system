@@ -182,11 +182,11 @@ test("the import card snapshots the picked file's bytes and confirms with that c
 test("on 409 previewChanged the fresh preview replaces the shown one with its notice; batchUsed and changedDuringImport show their own words", () => {
   const source = importPanelSource().replace(/\r\n/g, "\n")
 
-  assert.match(source, /if \(response\.status === 409 && payload\?\.code === "previewChanged" && payload\.preview\) \{\n(?:\s+\/\/.*\n)*\s+setPreview\(payload\.preview\)\n\s+setFilter\(defaultImportFilter\(payload\.preview\.summary\)\)\n\s+setNotice\("previewChanged"\)\n\s+return/)
+  assert.match(source, /if \(response\.status === 409 && payload\?\.code === "previewChanged" && payload\.preview\) \{\n(?:\s+\/\/.*\n)*\s+setPreview\(payload\.preview\)\n\s+setFilter\(defaultImportFilter\(payload\.preview\.summary\)\)\n\s+setNotice\("previewChanged"\)\n\s+requestFocus\("refusal"\)\n\s+return/)
   assert.match(source, /const confirmRefusalCodes = \["batchUsed", "changedDuringImport"\] as const/)
   assert.match(source, /if \(response\.status === 409 && \(confirmRefusalCodes as readonly string\[\]\)\.includes\(payload\?\.code\)\) \{\n\s+setNotice\(payload\.code\)/)
   assert.match(source, /return t\(`importPage\.\$\{code\}`\)/)
-  assert.match(source, /<Notice tone=\{notice === "previewChanged" \? "warning" : "danger"\} role="alert">/)
+  assert.match(source, /<Notice\n\s+tone=\{notice === "previewChanged" \? "warning" : "danger"\}\n\s+role="alert"/)
 })
 
 test("the import card: FileDropzone with the stable id, the filter and row hooks, the template link, the done state", () => {
@@ -211,10 +211,13 @@ test("the import card: FileDropzone with the stable id, the filter and row hooks
 // Notice that is announced. The only file input is FileDropzone's (tests/file-evidence-ui.test.ts).
 test("the import card's footer: the upload-again label and the counted confirm Button, sticky from lg only, never fixed (P5-R8, K4)", () => {
   const source = importPanelSource().replace(/\r\n/g, "\n")
-  assert.match(source, /<label htmlFor="asset-import-file" className=\{buttonVariants\(\{ variant: "outline" \}\)\}>\n\s+\{t\("importPage\.uploadFixed"\)\}\n\s+<\/label>/)
+  // Plan 5 final review: the label looks disabled while its input is (a check or an import runs), and confirm is busy then.
+  assert.match(source, /<label htmlFor="asset-import-file" aria-disabled=\{isLoading \|\| isImporting \|\| undefined\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>\n\s+\{t\("importPage\.uploadFixed"\)\}\n\s+<\/label>/)
   // v-track plan 2 A6: with no ready row the import waits focusable, tied to the counts beside it.
-  assert.match(source, /<Button\n\s+busy=\{isImporting\}\n\s+aria-disabled=\{noReadyRows \|\| undefined\}\n\s+aria-describedby=\{noReadyRows \? "asset-import-ready-summary" : undefined\}\n\s+onClick=\{\(\) => void confirmImport\(\)\}\n\s+>\n\s+\{t\("importPage\.confirm", \{ count: preview\.summary\.readyRows \}\)\}\n\s+<\/Button>/)
-  assert.match(source, /className="flex flex-col gap-3 rounded-b-lg border-t border-border bg-surface px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5 lg:sticky lg:bottom-0 lg:z-10"/)
+  assert.match(source, /<Button\n\s+busy=\{isImporting \|\| isLoading\}\n\s+aria-disabled=\{noReadyRows \|\| undefined\}\n\s+aria-describedby=\{noReadyRows \? "asset-import-ready-summary" : undefined\}\n\s+onClick=\{\(\) => void confirmImport\(\)\}\n\s+>\n\s+\{t\("importPage\.confirm", \{ count: preview\.summary\.readyRows \}\)\}\n\s+<\/Button>/)
+  // Plan 5 final review: the sticky frame holds confirm's refusals above the summary-and-buttons row.
+  assert.match(source, /<div className="rounded-b-lg border-t border-border bg-surface lg:sticky lg:bottom-0 lg:z-10">/)
+  assert.match(source, /<div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">/)
   assert.match(source, /<Notice tone="danger" role="alert">\n\s+<ApiErrorText error=\{error\} \/>\n\s+<\/Notice>/)
   assert.doesNotMatch(source, /<button\b|type="file"|\bfixed\b|StickyFormFooter|disabled:opacity|border-danger-border bg-danger-soft|labels\./)
 })

@@ -306,6 +306,21 @@ test("a confirm writes every asset, movement and log and the batch log in one tr
   assert.deepEqual(batchValue.skippedRows[0].issues.map((issue) => [issue.code, issue.field]), [["notFound", "categoryCode"]])
 })
 
+// Group 4 plan 5 final review: "Shared" passes the check without case, so it is written as shared (not personal) and
+// keeps the file's department although the row names a holder (the ส่วนกลาง rule, P5-R6).
+test("a capitalised ownership type is written as the checked lower-case value, with its department rule", async (t) => {
+  t.mock.method(console, "error", () => {})
+  const { POST } = await loadConfirm()
+  const writes = stubDb()
+  const rows = [["IMP-9", "Shared printer", "NB", "GL", "HQ", "STORE", "พร้อมใช้งาน", "ดี", "SN-9", "Shared", "IT", "E001"]]
+  const response = await POST(await confirmRequest({ file: await workbookFile(rows), batchId, expectedReadyRows: "1" }))
+  assert.equal(response.status, 200)
+  assert.equal(writes.assets.length, 1)
+  assert.equal(writes.assets[0].ownershipType, "shared")
+  assert.equal(writes.assets[0].departmentId, "d-file")
+  assert.equal(writes.assets[0].custodianId, "e1")
+})
+
 test("the template lists only importable statuses and conditions, and its example row uses them (P5-R5)", async (t) => {
   t.mock.method(console, "error", () => {})
   const { GET } = await (import(pathToFileURL("src/app/api/assets/import-template/route.ts").href) as Promise<{ GET(): Promise<Response> }>)

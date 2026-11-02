@@ -64,3 +64,30 @@ test("reserved running numbers also skip manual tags typed in the same batch", (
     ["0004", "0005"]
   )
 })
+
+// Group 4 plan 5 final review: SQL Server compares tags without case, so a typed "ast-it-00012" holds AST-IT-00012 and
+// a generated tag skips it (a clash there failed the whole import with 409 on every retry).
+test("reserved and existing tags count without case", () => {
+  assert.deepEqual(
+    reserveAssetTagRunningNumbers({
+      existingAssetTags: ["AST-IT-00011"],
+      reservedAssetTags: ["ast-it-00012"],
+      sequencePrefix: "AST-IT-",
+      runningDigits: 5,
+      count: 1,
+    }),
+    ["00013"]
+  )
+  assert.equal(getNextAssetTagRunningNumber({ existingAssetTags: ["sni-equ-26-0007"], sequencePrefix: "SNI-EQU-26-", runningDigits: 4 }), 8)
+  assert.deepEqual(
+    reserveAssetTagRunningNumbers({
+      existingAssetTags: ["AST-IT-00001"],
+      reservedAssetTags: ["ast-it-00003-x"],
+      sequencePrefix: "AST-IT-",
+      sequenceSuffix: "-X",
+      runningDigits: 5,
+      count: 1,
+    }),
+    ["00004"]
+  )
+})

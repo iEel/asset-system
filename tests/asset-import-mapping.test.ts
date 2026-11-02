@@ -6,6 +6,7 @@ import { assetImportColumns } from "../src/lib/asset-excel.ts"
 
 import {
   buildAssetImportColumnMapping,
+  normalizeImportCell,
   readAssetImportRowByMapping,
 } from "../src/lib/asset-import-mapping.ts"
 
@@ -79,4 +80,21 @@ test("exactly the seven required columns carry required: true", () => {
     assetImportColumns.filter((entry) => "required" in entry && entry.required).map((entry) => entry.key),
     ["name", "categoryCode", "companyCode", "branchCode", "currentLocationCode", "status", "condition"]
   )
+})
+
+// Group 4 plan 5 final review: the ExcelJS cell shapes that used to read as "[object Object]". An error value (on its own
+// or as a formula's saved result) reads as its error text, which the validator refuses (cellError); a formula with no
+// saved result reads as blank; a hyperlink whose text is rich text reads as that text; a date past JavaScript's range
+// reads as text no date parser accepts (invalidDate on its row) instead of throwing for the whole file.
+test("error cells, formulas with no result, rich-text hyperlinks and invalid dates read safely", () => {
+  assert.equal(normalizeImportCell({ error: "#N/A" }), "#N/A")
+  assert.equal(normalizeImportCell({ formula: "VLOOKUP(A2,B:C,2,0)", result: { error: "#N/A" } }), "#N/A")
+  assert.equal(normalizeImportCell({ formula: "A1*2" }), null)
+  assert.equal(normalizeImportCell({ sharedFormula: "A2", result: 7 }), 7)
+  assert.equal(normalizeImportCell({ formula: "A1", result: "SN-9 " }), "SN-9")
+  assert.equal(normalizeImportCell({ text: { richText: [{ text: "NB-" }, { text: "0001" }] }, hyperlink: "https://x" }), "NB-0001")
+  assert.equal(normalizeImportCell({ text: "Link text", hyperlink: "https://x" }), "Link text")
+  assert.equal(normalizeImportCell(new Date(Number.NaN)), "Invalid Date")
+  assert.equal(normalizeImportCell(new Date("2024-01-05T00:00:00Z")), "2024-01-05")
+  assert.equal(normalizeImportCell({ unknown: true }), null)
 })

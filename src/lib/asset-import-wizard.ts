@@ -80,6 +80,17 @@ export function importIssueProblem(issue: Pick<AssetImportIssue, "code" | "paren
   return t(`importError.${issue.code}`, values)
 }
 
+// The problem as the repeated-problem summary words it: a duplicateInFile group can hold rows that repeat different
+// earlier rows, so it names no row (plan 5 final review); every other code reads like the row's own line.
+export function importIssueSummaryProblem(
+  item: { code: string; sample: Pick<AssetImportIssue, "code" | "parent" | "conflict" | "max"> },
+  t: AssetImportTranslate,
+  fields: Record<string, string>
+) {
+  if (item.code === "duplicateInFile") return t("importPage.issueSummaryDuplicateInFile")
+  return importIssueProblem(item.sample, t, fields)
+}
+
 // One issue as the two lines the table shows (P5-R4): the field and the problem, then the file value and, for a clash
 // with an asset in the register, the tag that holds it.
 export function buildImportIssueParts(issue: AssetImportIssue, t: AssetImportTranslate, context: { fields: Record<string, string>; locale: string }): AssetImportIssueParts {

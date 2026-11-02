@@ -321,7 +321,7 @@ test("import wizard: a picked file is its one rule, and the import waits for a r
   assert.match(source, /<p id="asset-import-ready-summary" className="text-sm text-muted-foreground">/)
   assert.match(source, /aria-disabled=\{noReadyRows \|\| undefined\}\n\s+aria-describedby=\{noReadyRows \? "asset-import-ready-summary" : undefined\}/)
   assert.doesNotMatch(source, /disabled=\{preview\.summary\.readyRows === 0\}/)
-  assert.match(source, /if \(!selectedFile \|\| !preview \|\| preview\.summary\.readyRows === 0\) return/)
+  assert.match(source, /if \(!selectedFile \|\| !preview \|\| preview\.summary\.readyRows === 0 \|\| isLoading\) return/)
 })
 
 test("label print: the toolbar is a form whose reason shows its error under the row, and the queue's created dates hold their order (v-track A7)", () => {

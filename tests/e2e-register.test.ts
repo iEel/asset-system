@@ -79,7 +79,9 @@ test("the specs the register's change moved: the dashboard's status list reads �
   const th = JSON.parse(read("messages/th.json"))
   assert.equal(th.asset.openImportWizard, undefined)
   assert.ok(!refusals.WRITE_BUTTON_NAMES.includes("เปิดตัวช่วยนำเข้า"))
-  assert.equal(refusals.WRITE_BUTTON_NAMES[0], th.asset.importPage.templateDownload)
+  // The template link is a link, caught by its pattern (writeControls reads buttons by name only): plan 5 final review.
+  assert.ok(!refusals.WRITE_BUTTON_NAMES.includes(th.asset.importPage.templateDownload))
+  assert.ok(refusals.isWriteLink("/api/assets/import-template"))
   assert.ok(read("src/components/assets/asset-import-preview-panel.tsx").includes('<a href="/api/assets/import-template" download className={buttonVariants({ variant: "outline" })}>\n                <Download aria-hidden="true" />\n                {t("importPage.templateDownload")}'))
   assert.doesNotMatch(read("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx"), /templateDownload|import-template/)
   assert.doesNotMatch(read("src/app/[locale]/(dashboard)/assets/page.tsx"), /AssetImportPreviewPanel/)

@@ -46,6 +46,8 @@ test("the en plural messages are known: 61 keys, so a new one is checked by the 
   assert.equal(pluralKeys.get("asset.importPage.issueSummaryRows"), "count")
   assert.equal(pluralKeys.get("asset.importPage.shownFirst"), "count")
   assert.equal(pluralKeys.get("asset.importPage.tableHint"), "errors")
+  // Its ready count is a plural too, so one ready row reads "the 1 ready row" (plan 5 final review).
+  assert.match(en.get("asset.importPage.tableHint") ?? "", /\{ready, plural, one \{the # ready row\} other \{the # ready rows\}\}/)
   assert.equal(pluralKeys.get("asset.importPage.footerSummary"), "ready")
   assert.equal(pluralKeys.get("asset.importPage.confirm"), "count")
   assert.equal(pluralKeys.get("asset.importPage.doneSummary"), "imported")

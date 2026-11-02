@@ -1498,7 +1498,8 @@
       "invalidOwnership": "Not a supported ownership type",
       "statusNotAllowed": "Import only allows the Draft or Ready status",
       "conditionNotAllowed": "This condition cannot be used on import",
-      "tooLong": "Longer than {max} characters"
+      "tooLong": "Longer than {max} characters",
+      "cellError": "An Excel error value"
     },
     "importIssue": {
       "line": "{field}: {problem}",
@@ -1548,7 +1549,7 @@
       "autoTag": "Tag generated automatically",
       "noRows": "No rows for this choice",
       "shownFirst": "Showing the first {shown, number} of {count, plural, one {# row} other {# rows}}",
-      "tableHint": "Fix {errors, plural, one {this # row} other {these # rows}} in the file and upload it again, or import only the {ready, number} ready rows. Rows with errors are skipped and listed in the import history.",
+      "tableHint": "Fix {errors, plural, one {this # row} other {these # rows}} in the file and upload it again, or import only {ready, plural, one {the # ready row} other {the # ready rows}}. Rows with errors are skipped and listed in the import history.",
       "tableHintAllReady": "Every row is ready. Check the list, then confirm the import.",
       "tableHintNoneReady": "No row is ready yet. Fix the file and upload it again.",
       "footerSummary": "Import {ready, plural, one {# ready row} other {# ready rows}} · skip {skipped, number} with errors",
@@ -1563,7 +1564,8 @@
       "previewChanged": "The data changed after the file was checked. Check the new result below and confirm again.",
       "batchUsed": "This import batch has already been imported.",
       "changedDuringImport": "Asset data changed during the import, so nothing was imported. Check the file again and retry.",
-      "tooManyRows": "A file can import at most {max, number} rows at a time."
+      "tooManyRows": "A file can import at most {max, number} rows at a time.",
+      "issueSummaryDuplicateInFile": "Repeats another row in the file"
     }
   },
   "company": {

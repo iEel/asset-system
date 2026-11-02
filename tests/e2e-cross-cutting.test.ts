@@ -161,12 +161,15 @@ test("roles and permissions: each refused page and request needs a permission th
     const handler = handlerBody(read(`src/app/api/assets/${route}/route.ts`), "POST")
     assert.ok(handler.indexOf('requirePermission(user, "asset", "create")') < handler.indexOf("request.formData()"), `${route}: the permission before the form`)
   }
-  // The write controls are the app's own words. The first is the import card's template link, which only a person with
-  // asset:create sees on arrival (group 4 plan 5: the card opens on arrival, so "เปิดตัวช่วยนำเข้า" went).
+  // The write controls are the app's own words. The import card's template link, which only a person with asset:create
+  // sees (group 4 plan 5: the card opens on arrival, so "เปิดตัวช่วยนำเข้า" went), is a link: writeControls reads only
+  // buttons by name, so the link pattern below catches it (plan 5 final review), not a button name.
   const messages = thai as Record<string, Record<string, Record<string, string> | string>>
   assert.equal(messages.asset.openImportWizard, undefined)
+  assert.ok(!refusals.WRITE_BUTTON_NAMES.includes((messages.asset.importPage as Record<string, string>).templateDownload))
+  assert.ok(refusals.isWriteLink("/api/assets/import-template") && refusals.isWriteLink("/api/assets/import-template?x=1"))
+  assert.ok(!refusals.isWriteLink("/api/assets/import-templates") && !refusals.isWriteLink("/api/assets/export"))
   const words = [
-    (messages.asset.importPage as Record<string, string>).templateDownload,
     messages.auditFinding.approve,
     messages.auditFinding.reject,
     messages.auditFinding.actionPlan,
@@ -177,7 +180,7 @@ test("roles and permissions: each refused page and request needs a permission th
     messages.disposalPage.executeDisposal,
   ]
   assert.deepEqual([...refusals.WRITE_BUTTON_NAMES], words)
-  assert.deepEqual([...refusals.REVIEW_BUTTON_NAMES], words.slice(1, 5))
+  assert.deepEqual([...refusals.REVIEW_BUTTON_NAMES], words.slice(0, 4))
   assert.ok(refusals.isWriteLink("/th/assets/abc/edit?returnTo=%2Fth%2Fassets") && refusals.isWriteLink("/th/audit/rounds/abc/scan"))
   assert.ok(!refusals.isWriteLink("/th/assets/abc") && !refusals.isWriteLink("/th/audit/rounds/new-look") && !refusals.isWriteLink("/th/asset-management/scan"))
   // The screens a refusal ends on (their titles are plain text: findings, note N13).

@@ -116,12 +116,14 @@ export const WRITE_LINK_PATTERNS: readonly RegExp[] = [
   /^\/th\/maintenance\/pm\/[^/?#]+\/edit(?:[?#]|$)/,
   /^\/th\/disposal\/(?:new|batch\/new)(?:[?#]|$)/,
   /^\/th\/admin\/approvals(?:[?#]|$)/,
+  // The import card's template link, which only a person with asset:create sees (the import page and the register's
+  // import menu); a link, so writeControls catches it here and not by its name (plan 5 final review).
+  /^\/api\/assets\/import-template(?:[?#]|$)/,
 ]
-// messages/th.json: asset.importPage.templateDownload (the import card's template link, which only a person with
-// asset:create sees on arrival since group 4 plan 5 opened the card on arrival; "เปิดตัวช่วยนำเข้า" went with the
-// toggle), auditFinding.approve / reject / actionPlan / closeFinding, disposalPage.reviewRequest, and the PM plan's state
-// buttons (maintenancePage).
-export const WRITE_BUTTON_NAMES: readonly string[] = ["ดาวน์โหลดแม่แบบ", "อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง", "พิจารณาคำขอ", "พักแผน", "จบแผน", "บันทึกตัดจำหน่ายจริง"]
+// messages/th.json: auditFinding.approve / reject / actionPlan / closeFinding, disposalPage.reviewRequest, and the PM
+// plan's state buttons (maintenancePage). The import card has no button a viewer could see by name since group 4 plan 5
+// opened it on arrival ("เปิดตัวช่วยนำเข้า" went with the toggle); its template link is in WRITE_LINK_PATTERNS.
+export const WRITE_BUTTON_NAMES: readonly string[] = ["อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง", "พิจารณาคำขอ", "พักแผน", "จบแผน", "บันทึกตัดจำหน่ายจริง"]
 // The four controls of a finding's review, which all need audit:approve.
 export const REVIEW_BUTTON_NAMES: readonly string[] = ["อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง"]
 

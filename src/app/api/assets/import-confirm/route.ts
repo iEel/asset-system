@@ -250,7 +250,8 @@ function buildAssetInput(row: AssetImportValidatedRow) {
     brandId: nullableText(row.resolved.brandId),
     modelId: nullableText(row.resolved.modelId),
     serialNumber: nullableText(row.values.serialNumber),
-    ownershipType: normalizeAssetOwnershipType(nullableText(row.values.ownershipType) ?? defaultAssetOwnershipType),
+    // The validator's checked lower-case value: the raw cell ("Shared") would fall back to personal (final review).
+    ownershipType: normalizeAssetOwnershipType(nullableText(row.resolved.ownershipType) ?? defaultAssetOwnershipType),
     licenseTotalSeats: parseOptionalInteger(row.values.licenseTotalSeats),
     licenseUsedSeats: parseOptionalInteger(row.values.licenseUsedSeats),
     licenseAssignedAssetId: nullableText(row.resolved.licenseAssignedAssetId),

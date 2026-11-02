@@ -21,7 +21,9 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   const at = (pathname: string) => `http://localhost:3100${pathname}`
   // Spec §4, §5, §11: LDAP, the settings save, a sender, the integration API, stored files, a sign-in from a test, and any
   // DELETE. Excel import left the list on 2026-11-02 (the user, group 4 plan 5 P5-R1): the suite may import on the dev
-  // database; only the import spec may (the source ban below and tests/e2e-register.test.ts).
+  // database; only the import spec imports. The viewer's refusal rows (refusals.ts) name the routes too, and
+  // roles.spec.ts and the import spec's viewer test send them for a 403 (the source ban below and
+  // tests/e2e-register.test.ts).
   const refused: [string, string, string][] = [
     ["POST", "/api/admin/settings/ldap-sync", "ldap"],
     ["GET", "/api/admin/settings/ldap-test", "ldap"],

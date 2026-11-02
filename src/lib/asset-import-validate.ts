@@ -24,6 +24,8 @@ export const assetImportIssueCodes = [
   "statusNotAllowed",
   "conditionNotAllowed",
   "tooLong",
+  // An Excel error value (#N/A from a failed VLOOKUP, #REF! ...), never imported as text (plan 5 final review).
+  "cellError",
 ] as const
 
 export type AssetImportIssueCode = (typeof assetImportIssueCodes)[number]
@@ -92,6 +94,13 @@ export function assetImportModelKey(brandId: string, name: string | number | nul
   return `${brandId}|${assetImportLookupKey(name)}`
 }
 
+// The error values Excel writes into a cell; ExcelJS gives them as { error } (asset-import-mapping.ts reads it as text).
+const excelErrorPattern = /^#(?:N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NULL!|NUM!|SPILL!|CALC!|GETTING_DATA)$/
+
+export function isExcelErrorValue(value: AssetImportCellValue | undefined) {
+  return typeof value === "string" && excelErrorPattern.test(value.trim())
+}
+
 export function validateAssetImportRows(
   rows: Array<{ rowNumber: number; values: Record<string, AssetImportCellValue> }>,
   references: AssetImportReferences
@@ -104,11 +113,16 @@ export function validateAssetImportRows(
   const firstRowByTag = new Map<string, number>()
   const firstRowBySerial = new Map<string, number>()
 
-  return rows.map(({ rowNumber, values }) => {
+  return rows.map(({ rowNumber, values: fileValues }) => {
     const issues: AssetImportIssue[] = []
     const add = (code: AssetImportIssueCode, field: string, extra: Partial<AssetImportIssue> = {}) => {
-      issues.push({ code, field, value: cellValue(values[field]), ...extra })
+      issues.push({ code, field, value: cellValue(fileValues[field]), ...extra })
     }
+    // An error value is its own problem; every other check reads that cell as blank, so it is not also "required".
+    const errorFields = new Set(Object.keys(fileValues).filter((field) => isExcelErrorValue(fileValues[field])))
+    for (const field of errorFields) add("cellError", field)
+    const values: Record<string, AssetImportCellValue> =
+      errorFields.size === 0 ? fileValues : Object.fromEntries(Object.entries(fileValues).map(([field, value]) => [field, errorFields.has(field) ? null : value]))
     const resolved: Record<string, string | null> = {
       categoryId: null,
       companyId: null,
@@ -124,11 +138,13 @@ export function validateAssetImportRows(
       homeLocationId: null,
       supplierId: null,
       licenseAssignedAssetId: null,
+      // The checked ownership type, lower-case; confirm writes this one (null when the file's value is not supported).
+      ownershipType: null,
     }
     const lookup = (field: string) => assetImportLookupKey(values[field])
 
     for (const field of requiredFields) {
-      if (!lookup(field)) add("required", field)
+      if (!lookup(field) && !errorFields.has(field)) add("required", field)
     }
 
     resolved.categoryId = resolveCode(lookup("categoryCode"), references.categories, () => add("notFound", "categoryCode"))
@@ -179,6 +195,7 @@ export function validateAssetImportRows(
     const ownershipValid = (assetOwnershipTypes as readonly string[]).includes(ownershipLookup)
     if (!ownershipValid) add("invalidOwnership", "ownershipType")
     const ownershipType = ownershipValid ? ownershipLookup : defaultAssetOwnershipType
+    resolved.ownershipType = ownershipValid ? ownershipLookup : null
 
     const assignedTag = lookup("licenseAssignedAssetTag")
     if (assignedTag) {
@@ -225,12 +242,14 @@ export function validateAssetImportRows(
     const price = nullableText(values.purchasePrice)
     if (price != null) {
       const parsed = Number(price)
-      if (Number.isNaN(parsed) || parsed < 0) add("invalidNumber", "purchasePrice")
+      // purchasePrice is Decimal(18,2): 16 digits before the point.
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed >= 1e16) add("invalidNumber", "purchasePrice")
     }
     const totalSeats = parseOptionalInteger(values.licenseTotalSeats)
     const usedSeats = parseOptionalInteger(values.licenseUsedSeats)
     for (const [field, parsed] of [["licenseTotalSeats", totalSeats], ["licenseUsedSeats", usedSeats]] as const) {
-      if (parsed != null && (!Number.isInteger(parsed) || parsed < 0)) add("invalidInteger", field)
+      // The seat columns are Int (32-bit).
+      if (parsed != null && (!Number.isInteger(parsed) || parsed < 0 || parsed > 2147483647)) add("invalidInteger", field)
     }
     if (totalSeats != null && usedSeats != null && usedSeats > totalSeats) add("seatsOverTotal", "licenseUsedSeats")
     if (ownershipType !== "software_license") {
@@ -243,7 +262,7 @@ export function validateAssetImportRows(
       rowNumber,
       status: issues.length === 0 ? "ready" : "error",
       issues,
-      values,
+      values: fileValues,
       resolved,
     }
   })
@@ -308,13 +327,25 @@ export function nullableText(value: string | number | null | undefined) {
   return normalized.length === 0 ? null : normalized
 }
 
+// An Excel serial number, or text in one of two shapes only: yyyy-m-d (as a date cell reads, asset-import-mapping.ts)
+// and d/m/yyyy, day first as Thai users write it. The day must exist in its month (2024-02-30 is refused), and any
+// other text is not a date (plan 5 final review: the loose Date parser read 05/01/2024 as 1 May and "N/A 5" as 2001).
 export function parseImportDate(value: string | number | null | undefined) {
   const normalized = nullableText(value)
   if (!normalized) return null
   if (typeof value === "number") {
     return new Date(Math.round((value - 25569) * 86400 * 1000))
   }
-  return new Date(normalized)
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(normalized)
+  const thai = iso ? null : /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(normalized)
+  const parts = iso ? { year: iso[1], month: iso[2], day: iso[3] } : thai ? { year: thai[3], month: thai[2], day: thai[1] } : null
+  if (!parts) return null
+  const year = Number(parts.year)
+  const month = Number(parts.month)
+  const day = Number(parts.day)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null
+  return date
 }
 
 export function parseImportMoney(value: string | number | null | undefined) {
