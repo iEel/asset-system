@@ -180,7 +180,16 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
   for (const [path, values] of Object.entries(money)) {
     const rulesPath = rulesOf[path] ?? path
     const source = read(rulesPath)
-    for (const value of values) assert.ok(source.includes(`range(${value}, 0) ?? decimals(${value}, 2))`), `${rulesPath}: ${value}`)
+    for (const value of values) {
+      // The new purchase document's amount also has the column's upper bound, in one helper the batch's draft shares
+      // (group 4 plan 3 final review).
+      if (value === "purchaseDocument.totalAmount") {
+        assert.ok(source.includes('check("purchaseDocumentAmount", purchaseDocumentAmountError(purchaseDocument.totalAmount))'), rulesPath)
+        assert.ok(source.includes("return range(totalAmount, 0, purchaseDocumentLimits.amountMax) ?? decimals(totalAmount, 2)"), rulesPath)
+        continue
+      }
+      assert.ok(source.includes(`range(${value}, 0) ?? decimals(${value}, 2))`), `${rulesPath}: ${value}`)
+    }
     for (const file of [path, rulesPath]) assert.doesNotMatch(read(file), /step\([^)]*, 0\.01\)/, `${file}: no money step() left`)
     if (rulesOf[path]) assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "\.\/validation-rules\.ts"$/m, rulesPath)
     else assert.match(source, /^import \{[^}]*\bdecimals\b[^}]*\} from "@\/lib\/validation-rules"$/m, path)

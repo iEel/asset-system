@@ -70,7 +70,8 @@ export function planPurchaseDocumentLinks(input: {
 
 /**
  * One draft's multipart body (parseMultipartPurchaseDocument): the PO or invoice number copies the document number as
- * before; a draft that follows the asset's supplier sends none, so the server takes the asset's while it is active.
+ * before; a draft that follows the asset's supplier (null) sends no supplierId part, so the server takes the asset's
+ * while it is active; "ไม่ระบุผู้ขาย" ("") sends the part empty, so the server stores none.
  */
 export function buildPurchaseDocumentUploadForm(draft: PurchaseDocumentDraft): FormData {
   const formData = new FormData()
@@ -81,7 +82,7 @@ export function buildPurchaseDocumentUploadForm(draft: PurchaseDocumentDraft): F
   if (draft.documentType === "invoice") formData.append("invoiceNumber", draft.documentNo)
   if (draft.documentDate) formData.append("documentDate", draft.documentDate)
   if (draft.totalAmount) formData.append("totalAmount", draft.totalAmount)
-  if (draft.supplierId) formData.append("supplierId", draft.supplierId)
+  if (draft.supplierId !== null) formData.append("supplierId", draft.supplierId)
   formData.append("currency", "THB")
   return formData
 }
@@ -90,7 +91,8 @@ export function buildPurchaseDocumentUploadForm(draft: PurchaseDocumentDraft): F
  * The batch POST's body (group 4 plan 3 Task 6, P3-R8): the JSON batch as before when there is no new document, so the
  * batch without one sends what bulk-move.spec waits for; with the one draft, multipart: `payload` (the same JSON),
  * `newDocument` (its fields, the PO or invoice number copied as the asset's upload does) and `file`. A draft that
- * follows the batch's supplier sends none, so the server takes the batch's while it is active.
+ * follows the batch's supplier (null) sends no supplierId key, so the server takes the batch's while it is active;
+ * "ไม่ระบุผู้ขาย" ("") sends it empty, so the server stores none.
  */
 export function buildAssetBatchRequestBody(
   payload: unknown,
@@ -108,7 +110,7 @@ export function buildAssetBatchRequestBody(
       invoiceNumber: draft.documentType === "invoice" ? draft.documentNo : "",
       documentDate: draft.documentDate,
       totalAmount: draft.totalAmount,
-      supplierId: draft.supplierId ?? "",
+      ...(draft.supplierId === null ? {} : { supplierId: draft.supplierId }),
       currency: "THB",
     }),
   )

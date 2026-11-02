@@ -96,6 +96,8 @@ test("each draft is one multipart body: type, number, the PO or invoice copy, da
   assert.equal(invoice.get("supplierId"), null)
   assert.equal(invoice.get("documentDate"), null)
   assert.equal(invoice.get("totalAmount"), null)
+  // "ไม่ระบุผู้ขาย" sends the part empty, so the server stores none instead of the asset's (final review).
+  assert.equal(buildPurchaseDocumentUploadForm(draft({ supplierId: "" })).get("supplierId"), "")
 })
 
 test("the failure hand-off names type, number and file name only, under a key with the asset id (P3-R6)", () => {

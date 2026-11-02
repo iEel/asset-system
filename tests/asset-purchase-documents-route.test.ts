@@ -25,6 +25,7 @@ type World = {
   stored: Array<{ id: string; documentType: string; documentNo: string; isActive: boolean }>
   link: { id: string; purchaseDocument: { documentType: string; documentNo: string } } | null
   failCreate: Error | null
+  failDelete: Error | null
 }
 
 const world: World = freshWorld()
@@ -45,6 +46,7 @@ function freshWorld(): World {
     stored: [],
     link: null,
     failCreate: null,
+    failDelete: null,
   }
 }
 
@@ -123,7 +125,10 @@ const mockedModuleSources = new Map<string, string>([
       purchaseDocumentAsset: {
         create: async (args) => ({ id: "link-new", ...args.data }),
         findUnique: async () => world().link,
-        delete: async (args) => ({ id: args.where.id }),
+        delete: async (args) => {
+          if (world().failDelete) throw world().failDelete
+          return { id: args.where.id }
+        },
         findMany: async () => [],
         createMany: async (args) => ({ count: args.data.length }),
       },
@@ -354,4 +359,46 @@ test("the unlink handler checks asset:edit before any read (source)", () => {
   const permission = source.indexOf('requirePermission(user, "asset", "edit")')
   assert.ok(permission > 0 && permission < source.indexOf("prisma."))
   assert.ok(source.indexOf("writeAuditLog(tx,") > source.indexOf("await prisma.$transaction("), "the audit is written inside the transaction")
+})
+
+test("a link removed between the read and the delete (P2025) answers the same 404, not a hidden 500 (final review)", async () => {
+  world.link = { id: "link-9", purchaseDocument: { documentType: "invoice", documentNo: "INV-9" } }
+  world.failDelete = Object.assign(new Error("Record to delete does not exist."), { name: "PrismaClientKnownRequestError", code: "P2025" })
+  const response = await linkRoute.DELETE(new Request("http://localhost/x", { method: "DELETE" }), linkContext("pd-9"))
+  assert.equal(response.status, 404)
+  assert.deepEqual(await response.json(), { code: "PURCHASE_DOCUMENT_LINK_NOT_FOUND", error: "Purchase document link not found" })
+  assert.deepEqual(world.audits, [])
+})
+
+test("an explicit empty supplier stores none; an absent one still follows the asset's (final review)", async () => {
+  const none = await assetRoute.POST(multipartRequest({ ...draft, supplierId: "" }, false), assetContext)
+  assert.equal(none.status, 201, await none.clone().text())
+  assert.equal((world.calls.find((call) => call.name === "purchaseDocument.create")?.args as { data: { supplierId: unknown } }).data.supplierId, null)
+  assert.equal(world.calls.some((call) => call.name === "supplier.findFirst"), false, "no fallback lookup when none was chosen")
+
+  Object.assign(world, freshWorld())
+  assert.equal((await assetRoute.POST(multipartRequest(draft, false), assetContext)).status, 201)
+  assert.equal((world.calls.find((call) => call.name === "purchaseDocument.create")?.args as { data: { supplierId: unknown } }).data.supplierId, "sup-asset")
+})
+
+test("upload fields past their limits answer field errors before any read or file save (final review)", async () => {
+  const cases: Array<[Record<string, string>, Record<string, string>]> = [
+    [{ poNumber: "P".repeat(101) }, { poNumber: "tooLong" }],
+    [{ invoiceNumber: "I".repeat(101) }, { invoiceNumber: "tooLong" }],
+    [{ currency: "THBTHBTHBTHB" }, { currency: "tooLong" }],
+    [{ remark: "r".repeat(501) }, { remark: "tooLong" }],
+    [{ totalAmount: "10000000000000" }, { totalAmount: "outOfRange" }],
+    [{ totalAmount: "-1" }, { totalAmount: "outOfRange" }],
+    [{ totalAmount: "12.345" }, { totalAmount: "invalidNumber" }],
+    [{ documentDate: "not-a-date" }, { documentDate: "invalidDate" }],
+    [{ documentDate: "1800-01-01" }, { documentDate: "outOfRange" }],
+  ]
+  for (const [fields, fieldErrors] of cases) {
+    Object.assign(world, freshWorld())
+    const response = await assetRoute.POST(multipartRequest({ ...draft, ...fields }), assetContext)
+    assert.equal(response.status, 400, JSON.stringify(fields))
+    assert.deepEqual((await response.json() as { fieldErrors: unknown }).fieldErrors, fieldErrors, JSON.stringify(fields))
+    assert.deepEqual(savedFiles(), [])
+    assert.deepEqual(names("tx"), [])
+  }
 })

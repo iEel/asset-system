@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { fieldErrorResponse } from "@/lib/field-error-response"
+import { FORM_ERROR_KEY } from "@/lib/field-errors"
 import { generateAssetTags } from "@/lib/asset-tag"
 import { buildCustodianScopeAudit } from "@/lib/asset-custodian-scope"
 import { isPrismaUniqueConstraintError } from "@/lib/prisma-unique-retry"
@@ -54,6 +55,10 @@ export async function POST(request: Request) {
     requirePermission(user, "asset", "create")
 
     const body = await readBatchRequest(request)
+    // Text that is not JSON (the body, `payload` or `newDocument`) is refused as invalid data, before any read or file.
+    if (!body) {
+      return fieldErrorResponse({ status: 400, error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { [FORM_ERROR_KEY]: "invalid" } })
+    }
     if (body.newDocument !== null) requirePermission(user, "asset", "edit")
     if (body.fileCount > 1) {
       return NextResponse.json({ error: "Only one purchase document file per batch" }, { status: 400 })
@@ -124,11 +129,12 @@ export async function POST(request: Request) {
     }
 
     if (parsedDocument) {
-      // The supplier chosen in the upload part; without one, the batch's while it is active. A chosen supplier that is
-      // unknown or closed is refused under its field (never an FK error), as the asset's own upload does.
+      // The supplier chosen in the upload part; with no supplierId key, the batch's while it is active; a key sent empty
+      // is "ไม่ระบุผู้ขาย", stored as none with no fallback. A chosen supplier that is unknown or closed is refused under
+      // its field (never an FK error), as the asset's own upload does.
       const supplierId = parsedDocument.supplierId
         ? await activeSupplierId(parsedDocument.supplierId)
-        : input.common.supplierId ? await activeSupplierId(input.common.supplierId) : null
+        : parsedDocument.supplierId === undefined && input.common.supplierId ? await activeSupplierId(input.common.supplierId) : null
       if (parsedDocument.supplierId && !supplierId) {
         return fieldErrorResponse({ status: 400, error: "Supplier not found or inactive", fieldErrors: { supplierId: "purchaseDocumentSupplierInactive" } })
       }
@@ -283,17 +289,34 @@ type BatchRequest = { payload: unknown; newDocument: unknown | null; file: File 
 
 // JSON stays accepted (the batch without a new document, bulk-move.spec's request); multipart carries the same JSON in
 // `payload`, the new document in `newDocument` and its file in `file`. Every file part is counted, so a second is refused.
-async function readBatchRequest(request: Request): Promise<BatchRequest> {
+// null: a part (or the JSON body) that does not parse, which the handler answers 400 instead of a hidden 500.
+async function readBatchRequest(request: Request): Promise<BatchRequest | null> {
   if (!(request.headers.get("content-type") ?? "").includes("multipart/form-data")) {
-    return { payload: await request.json(), newDocument: null, file: null, fileCount: 0 }
+    const text = await request.text()
+    const payload = parseJson(text)
+    return payload === invalidJson ? null : { payload, newDocument: null, file: null, fileCount: 0 }
   }
   const formData = await request.formData()
-  const newDocument = formData.get("newDocument")
+  const payloadPart = formData.get("payload")
+  const newDocumentPart = formData.get("newDocument")
+  const payload = typeof payloadPart === "string" ? parseJson(payloadPart) : invalidJson
+  const newDocument = typeof newDocumentPart === "string" ? parseJson(newDocumentPart) : null
+  if (payload === invalidJson || newDocument === invalidJson) return null
   return {
-    payload: JSON.parse(String(formData.get("payload"))),
-    newDocument: typeof newDocument === "string" ? JSON.parse(newDocument) : null,
+    payload,
+    newDocument,
     file: optionalFormFile(formData, "file"),
     fileCount: [...formData.values()].filter((value) => value instanceof File).length,
+  }
+}
+
+const invalidJson = Symbol("invalid JSON")
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return invalidJson
   }
 }
 

@@ -31,10 +31,10 @@ export async function DELETE(_request: NextRequest, context: AssetPurchaseDocume
       select: { id: true, purchaseDocument: { select: { documentType: true, documentNo: true } } },
     })
 
-    if (!link) {
-      return NextResponse.json({ code: "PURCHASE_DOCUMENT_LINK_NOT_FOUND", error: "Purchase document link not found" }, { status: 404 })
-    }
+    if (!link) return linkNotFound()
 
+    // Another request (a second tab saving the same removal) can remove the row between the read and the delete: Prisma's
+    // record-not-found (P2025) then answers the same 404, the transaction rolls back and no audit entry is written.
     await prisma.$transaction(async (tx) => {
       await tx.purchaseDocumentAsset.delete({ where: { id: link.id } })
       await writeAuditLog(tx, {
@@ -52,6 +52,15 @@ export async function DELETE(_request: NextRequest, context: AssetPurchaseDocume
 
     return NextResponse.json({ unlinkedId: documentId })
   } catch (error) {
+    if (isPrismaRecordNotFoundError(error)) return linkNotFound()
     return errorResponse(error, 400)
   }
+}
+
+function linkNotFound() {
+  return NextResponse.json({ code: "PURCHASE_DOCUMENT_LINK_NOT_FOUND", error: "Purchase document link not found" }, { status: 404 })
+}
+
+function isPrismaRecordNotFoundError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2025")
 }

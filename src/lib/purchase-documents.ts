@@ -53,7 +53,8 @@ export async function parseMultipartPurchaseDocument(request: Request): Promise<
       poNumber: optionalFormText(formData, "poNumber"),
       invoiceNumber: optionalFormText(formData, "invoiceNumber"),
       documentDate: optionalFormText(formData, "documentDate"),
-      supplierId: optionalFormText(formData, "supplierId"),
+      // Absent follows the asset's supplier; a part sent empty is "ไม่ระบุผู้ขาย" (null), which the routes honour.
+      supplierId: formData.has("supplierId") ? optionalFormText(formData, "supplierId") : undefined,
       totalAmount: optionalFormText(formData, "totalAmount"),
       currency: optionalFormText(formData, "currency"),
       remark: optionalFormText(formData, "remark"),

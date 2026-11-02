@@ -78,7 +78,8 @@ export type CustomFieldRow = {
 }
 
 // A new purchase document waiting for the save (group 4 plan 3 Task 5): created and linked in one request after the
-// asset is saved. supplierId null follows the asset's supplier (the server's default); a chosen one is sent.
+// asset is saved. supplierId null follows the asset's supplier (nothing sent, the server's default); "" is
+// "ไม่ระบุผู้ขาย" (sent empty, so the server stores none); a chosen one is sent.
 export type PurchaseDocumentDraft = {
   id: string
   documentType: PurchaseDocumentType
@@ -110,6 +111,26 @@ export type CloneSourceContext = {
 
 export const purchaseDocumentTypes = ["purchase_order", "invoice", "delivery_note", "warranty", "quotation", "contract", "other"] as const
 export type PurchaseDocumentType = (typeof purchaseDocumentTypes)[number]
+
+// A new purchase document's limits, one list for the form and the server's schema (validations/purchase-document.ts),
+// so both refuse the same values (final review). The texts fit their columns (NVarChar(100), (10)); the amount is the
+// largest Decimal(18,2) value whose cents a JS number still holds exactly; the date is one SQL Server stores.
+export const purchaseDocumentLimits = {
+  documentNo: 100,
+  poNumber: 100,
+  invoiceNumber: 100,
+  currency: 10,
+  remark: 500,
+  amountMax: 9_999_999_999_999.99,
+  amountDecimals: 2,
+  dateMin: "1900-01-01",
+  dateMax: "9999-12-31",
+} as const
+
+/** The new document's amount rule (the single form's and the batch's draft): 0 to amountMax, at most 2 decimals. */
+export function purchaseDocumentAmountError(totalAmount: string): string | null {
+  return range(totalAmount, 0, purchaseDocumentLimits.amountMax) ?? decimals(totalAmount, 2)
+}
 
 export const emptyAssetFormValues: AssetFormValues = {
   assetTag: "",
@@ -400,7 +421,7 @@ export function validate({ values, original, duplicates, install, customFields, 
   check("poNumber", maxLength(values.poNumber, 50))
   check("invoiceNumber", maxLength(values.invoiceNumber, 50))
   check("purchaseDocumentNo", purchaseDocument.file && required(purchaseDocument.documentNo) ? "purchaseDocumentNoRequired" : maxLength(purchaseDocument.documentNo, 100))
-  check("purchaseDocumentAmount", range(purchaseDocument.totalAmount, 0) ?? decimals(purchaseDocument.totalAmount, 2))
+  check("purchaseDocumentAmount", purchaseDocumentAmountError(purchaseDocument.totalAmount))
   for (const definition of customFields.definitions) {
     if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))
   }

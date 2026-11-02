@@ -191,7 +191,8 @@ const common = {
   isActive: true,
 }
 const payload = { common, rows: [{ clientId: "row-1" }, { clientId: "row-2" }], purchaseDocumentIds: ["pd-chosen"] }
-const newDocument = { documentType: "invoice", documentNo: "INV-88", invoiceNumber: "INV-88", documentDate: "2026-10-01", totalAmount: "15000", supplierId: "", currency: "THB" }
+// No supplierId key: the draft follows the batch's supplier (an empty one is "ไม่ระบุผู้ขาย", final review).
+const newDocument = { documentType: "invoice", documentNo: "INV-88", invoiceNumber: "INV-88", documentDate: "2026-10-01", totalAmount: "15000", currency: "THB" }
 
 function jsonRequest(body: unknown) {
   return new Request("http://localhost/api/assets/batch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
@@ -328,8 +329,57 @@ test("buildAssetBatchRequestBody: JSON without a draft (bulk-move.spec's request
   assert.ok(multipart.body instanceof FormData)
   assert.equal(multipart.body.get("payload"), JSON.stringify(payload))
   assert.deepEqual(JSON.parse(String(multipart.body.get("newDocument"))), {
-    documentType: "purchase_order", documentNo: "PO-9", poNumber: "PO-9", invoiceNumber: "", documentDate: "", totalAmount: "", supplierId: "", currency: "THB",
-  })
+    documentType: "purchase_order", documentNo: "PO-9", poNumber: "PO-9", invoiceNumber: "", documentDate: "", totalAmount: "", currency: "THB",
+  }, "a draft that follows the batch sends no supplierId key")
   assert.equal((multipart.body.get("file") as File).name, "invoice.png")
   assert.equal(multipart.body.getAll("file").length, 1)
+
+  const none = buildAssetBatchRequestBody(payload, { ...draft, supplierId: "" })
+  assert.equal(JSON.parse(String((none.body as FormData).get("newDocument"))).supplierId, "", "ไม่ระบุผู้ขาย sends an empty supplierId")
+})
+
+test("a new document sent with an empty supplierId stores none: no fallback to the batch's supplier (final review)", async () => {
+  const response = await batchRoute.POST(multipartRequest({ document: { ...newDocument, supplierId: "" } }))
+  assert.equal(response.status, 201, await response.clone().text())
+  const created = world.calls.find((call) => call.name === "purchaseDocument.create")?.args as { data: Record<string, unknown> }
+  assert.equal(created.data.supplierId, null)
+  assert.ok(!names().includes("supplier.findFirst"), "no supplier lookup when none was chosen")
+})
+
+test("text that is not JSON in payload, newDocument or the JSON body answers 400 invalid data before any read or file (final review)", async () => {
+  const invalidBody = { error: "Invalid request data", code: "VALIDATION_FAILED", fieldErrors: { _form: "invalid" } }
+  const requests = [
+    (() => {
+      const form = new FormData()
+      form.set("payload", "{not json")
+      form.set("newDocument", JSON.stringify(newDocument))
+      form.append("file", new File([pngBytes], "invoice.png", { type: "image/png" }))
+      return new Request("http://localhost/api/assets/batch", { method: "POST", body: form })
+    })(),
+    (() => {
+      const form = new FormData()
+      form.set("payload", JSON.stringify(payload))
+      form.set("newDocument", "{\"documentType\":")
+      form.append("file", new File([pngBytes], "invoice.png", { type: "image/png" }))
+      return new Request("http://localhost/api/assets/batch", { method: "POST", body: form })
+    })(),
+    new Request("http://localhost/api/assets/batch", { method: "POST", headers: { "content-type": "application/json" }, body: "{oops" }),
+  ]
+  for (const request of requests) {
+    Object.assign(world, freshWorld())
+    const response = await batchRoute.POST(request)
+    assert.equal(response.status, 400)
+    assert.deepEqual(await response.json(), invalidBody)
+    assert.deepEqual(world.calls, [])
+    assert.deepEqual(world.events, [])
+    assert.deepEqual(savedFiles(), [])
+  }
+})
+
+test("a new document's amount past its limit answers its field error before the tags and the file (final review)", async () => {
+  const response = await batchRoute.POST(multipartRequest({ document: { ...newDocument, totalAmount: "10000000000000" } }))
+  assert.equal(response.status, 400)
+  assert.deepEqual((await response.json() as { fieldErrors: unknown }).fieldErrors, { totalAmount: "outOfRange" })
+  assert.deepEqual(world.events, [])
+  assert.deepEqual(savedFiles(), [])
 })

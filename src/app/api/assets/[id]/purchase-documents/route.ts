@@ -51,11 +51,12 @@ export async function POST(request: NextRequest, context: AssetPurchaseDocuments
     }
 
     const parsed = await parseMultipartPurchaseDocument(request)
-    // The supplier chosen in the upload part; without one, the asset's while it is active. A chosen supplier that is
-    // unknown or closed is refused under its field (never an FK error), before anything is written.
+    // The supplier chosen in the upload part; with no supplierId part, the asset's while it is active; a part sent empty is
+    // "ไม่ระบุผู้ขาย", stored as none with no fallback. A chosen supplier that is unknown or closed is refused under its
+    // field (never an FK error), before anything is written.
     const supplierId = parsed.input.supplierId
       ? await activeSupplierId(parsed.input.supplierId)
-      : asset.supplierId ? await activeSupplierId(asset.supplierId) : null
+      : parsed.input.supplierId === undefined && asset.supplierId ? await activeSupplierId(asset.supplierId) : null
     if (parsed.input.supplierId && !supplierId) {
       return fieldErrorResponse({ status: 400, error: "Supplier not found or inactive", fieldErrors: { supplierId: "purchaseDocumentSupplierInactive" } })
     }

@@ -165,3 +165,21 @@ test("a link request names at most 50 documents", async () => {
   assert.equal(purchaseDocumentLinkSchema.safeParse({ purchaseDocumentIds: ids(50) }).success, true)
   assert.equal(purchaseDocumentLinkSchema.safeParse({ purchaseDocumentIds: ids(51) }).success, false)
 })
+
+test("the form's amount rule and the server's schema refuse the same amounts (final review)", async () => {
+  const { purchaseDocumentSchema } = await import(pathToFileURL("src/lib/validations/purchase-document.ts").href) as { purchaseDocumentSchema: { safeParse(input: unknown): { success: boolean } } }
+  const { purchaseDocumentAmountError, purchaseDocumentLimits } = await import(pathToFileURL("src/lib/asset-form-rules.ts").href) as typeof import("../src/lib/asset-form-rules.ts")
+  // The parts every client sends (an absent date or amount is refused, as before).
+  const base = { documentType: "invoice", documentNo: "INV-1", documentDate: "", totalAmount: "" }
+  for (const amount of ["0", "0.07", "19.99", "1500.5", "9999999999999.99", "10000000000000", "-1", "12.345", "abc"]) {
+    const server = purchaseDocumentSchema.safeParse({ ...base, totalAmount: amount }).success
+    assert.equal(server, purchaseDocumentAmountError(amount) === null, amount)
+  }
+  assert.equal(purchaseDocumentLimits.amountMax, 9_999_999_999_999.99)
+  const text = (field: string, length: number) => purchaseDocumentSchema.safeParse({ ...base, [field]: "x".repeat(length) }).success
+  assert.equal(text("documentNo", purchaseDocumentLimits.documentNo), true)
+  assert.equal(text("documentNo", purchaseDocumentLimits.documentNo + 1), false)
+  assert.equal(text("poNumber", purchaseDocumentLimits.poNumber), true, "a 100-character document number copied into the PO number still fits")
+  assert.equal(text("poNumber", purchaseDocumentLimits.poNumber + 1), false)
+  assert.equal(text("currency", purchaseDocumentLimits.currency + 1), false)
+})
