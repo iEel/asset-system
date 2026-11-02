@@ -60,6 +60,8 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
   },
   { filePath: "src/app/api/asset-operations/search/route.ts", label: "Asset operation picker search", checks: [{ module: "asset", action: "edit" }] },
   { filePath: "src/app/api/asset-operations/bulk-move-list/route.ts", label: "Bulk move list", checks: [{ module: "asset", action: "edit" }] },
+  // The viewer holds asset:view, so this route has no viewer refusal row (group 4 plan 4).
+  { filePath: "src/app/api/assets/scan-search/route.ts", label: "Asset scan search", checks: [{ module: "asset", action: "view" }] },
   {
     filePath: "src/app/api/purchase-documents/search/route.ts",
     label: "Purchase document picker search",

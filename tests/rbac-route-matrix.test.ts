@@ -83,6 +83,11 @@ test("the component removal is a POST registered for asset edit, with a viewer r
   assert.ok(!rbacRoutePermissionMatrix.some((candidate) => candidate.filePath === "src/app/api/assets/[id]/components/[componentId]/route.ts"))
 })
 
+test("the scan search is registered for asset view, as the scan page; the viewer holds it, so it has no refusal row (group 4 plan 4)", () => {
+  const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/assets/scan-search/route.ts")
+  assert.deepEqual(entry?.checks, [{ module: "asset", action: "view" }])
+})
+
 test("every API route has an explicit protection inventory classification", () => {
   const routeFiles = collectApiRouteFiles("src/app/api")
   const classifications = routeFiles.map((filePath) =>
