@@ -483,7 +483,16 @@ test("the labels spec adds three run assets from the run room's queue, prints th
     "fillTemplate(CHIP, { label: LABEL_WORDS.filterLocation, value: runRoom.name })",
     'await page.getByRole("menuitemradio", { name: LABEL_WORDS.sortNewest, exact: true }).click()',
     "await queueRequests.idle()",
+    // A chip by its role and name (E2E-1103A: Radix's trigger replaced the part's data-slot, so no chip was found).
+    '.getByRole("button", { name: new RegExp(`^${escapeRegExp(label)}: `) })',
+    // On arrival axe waits for the queue's answer and the add-all button's fade from waiting to ready (E2E-1103A:
+    // color-contrast on the button read half way through its transition-colors).
+    "await expect(page.getByText(LABEL_WORDS.queueLoading, { exact: true })).toHaveCount(0)",
   ]) assert.ok(spec.includes(hook), hook)
+  assert.equal(LABEL_WORDS.queueLoading, labels.queueLoading)
+  assert.ok(!spec.includes('[data-slot="filter-menu-chip"]'), "the chip is found by role, not by a slot the trigger may replace")
+  // openLabels navigates, awaits the first page, then records (settled), so axe never reads the button mid-fade.
+  assert.match(spec, /async function openLabels[^]*?await page\.goto\(LABELS_PATH[^]*?await firstPage[^]*?queueLoading[^]*?await record\(measure, label, testInfo\)[^]*?\n\}/)
   // The add-all line by its relation (P6-R3, critic §5.1): a is read from the page, never pinned.
   for (const hook of [
     'expect(line.c, "c = min(a, 100) − b").toBe(Math.min(line.a, 100) - line.b)',

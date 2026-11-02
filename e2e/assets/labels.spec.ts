@@ -69,20 +69,24 @@ function trackQueueRequests(page: Page) {
   return { idle: () => expect.poll(() => pending, { message: "the labels page's queue requests have answered" }).toBe(0) }
 }
 
-// The labels page, recorded on arrival, with the queue's first page answered.
+// The labels page, recorded on arrival once the queue's first page has answered and shows. Axe waits for that: the
+// add-all button waits while the queue loads and fades to ready (transition-colors) when it answers, and axe read it
+// half way (E2E-1103A, color-contrast on the button; axe skips it while it is aria-disabled). record settles the fade.
 async function openLabels(page: Page, measure: Measure, label: string, testInfo: TestInfo) {
   const firstPage = queueAnswer(page, () => true)
-  await visit(measure, LABELS_PATH, label, testInfo)
+  await page.goto(LABELS_PATH, { waitUntil: "load" })
   expect((await firstPage).status(), "the queue's first page").toBe(200)
   await expect(page.getByRole("heading", { level: 1, name: LABEL_WORDS.title })).toBeVisible()
+  await expect(page.getByText(LABEL_WORDS.queueLoading, { exact: true })).toHaveCount(0)
+  await record(measure, label, testInfo)
 }
 
-// One filter chip by its filter's name.
+// One filter chip by its filter's name: a button in the chips' group named "<ชื่อตัวกรอง>: <ชื่อ>" (by role: in
+// E2E-1103A Radix's trigger had replaced the part's data-slot).
 function chip(page: Page, label: string): Locator {
   return page
     .getByRole("group", { name: LABEL_WORDS.filtersLabel, exact: true })
-    .locator('[data-slot="filter-menu-chip"]')
-    .filter({ hasText: new RegExp(`^${escapeRegExp(label)}: `) })
+    .getByRole("button", { name: new RegExp(`^${escapeRegExp(label)}: `) })
 }
 
 // The run room through the room chip's search (its code finds it; the option reads "… / code - name"), then the queue

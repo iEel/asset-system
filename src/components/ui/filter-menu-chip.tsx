@@ -63,15 +63,16 @@ const chipIdleClasses = "border-border bg-surface font-medium text-foreground ho
 
 // The one trigger of the three variants. Radix's Trigger (asChild) adds aria-haspopup ("menu" or "dialog"),
 // aria-expanded, the open state and the keyboard (Enter, Space, ArrowDown open; Escape closes and returns focus here).
-// The visible text is the button's name: "บริษัท: ทั้งหมด".
+// The visible text is the button's name: "บริษัท: ทั้งหมด". The Trigger also hands down its own data-slot
+// ("popover-trigger", "dropdown-menu-trigger"), so the part's marker comes after the spread (E2E-1103A).
 function ChipButton({ text, active, className, ...props }: React.ComponentProps<"button"> & { text: string; active: boolean }) {
   return (
     <button
       type="button"
-      data-slot="filter-menu-chip"
       data-active={active || undefined}
       className={cn(chipClasses, active ? chipActiveClasses : chipIdleClasses, className)}
       {...props}
+      data-slot="filter-menu-chip"
     >
       <span className="min-w-0 truncate">{text}</span>
       <ChevronDown aria-hidden="true" className="size-3.5 shrink-0" />
@@ -134,7 +135,9 @@ function SearchChip({ label, options, value, onValueChange, searchPlaceholder, e
       </PopoverTrigger>
       <PopoverContent align="start" aria-label={label} className="w-80 max-w-[calc(100vw-2rem)] p-0">
         {/* cmdk: the search box keeps focus, arrow keys move through the options (loop), Enter chooses. */}
-        <Command shouldFilter={false} loop label={label}>
+        {/* No cmdk label: its hidden <label> would name the search box ("ที่ตั้ง") through aria-labelledby over the
+            placeholder's aria-label. The dialog is named by PopoverContent's aria-label (final review). */}
+        <Command shouldFilter={false} loop>
           <CommandInput value={query} onValueChange={setQuery} placeholder={searchPlaceholder} aria-label={searchPlaceholder} />
           {/* With no option the list is hidden and the empty line sits outside it, so no listbox is ever empty. */}
           <CommandEmpty>{emptyLabel}</CommandEmpty>

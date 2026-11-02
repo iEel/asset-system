@@ -8,6 +8,8 @@ export const LABEL_WORDS = {
   // The filter chips (P6-R4): the group, the room chip and its search, the sort chip and its newest-first option.
   filtersLabel: "ตัวกรองคิวป้าย", filterLocation: "ที่ตั้ง", filterSort: "เรียงคิว", sortNewest: "สร้างล่าสุด",
   locationSearch: "ค้นหาที่ตั้งด้วยรหัสหรือชื่อ",
+  // The queue while its first page loads (the arrival waits for it to go).
+  queueLoading: "กำลังโหลดคิวป้าย",
   // The add-all box (P6-R3): the line a · b · c and the button's three wordings, and what is left past the first 100.
   addAllSummary: "ตรงตัวกรอง {matched, number} รายการ · อยู่ในรายการพิมพ์แล้ว {listed, number} · จะเพิ่มใหม่ {added, number}",
   addAll: "เพิ่มทั้งหมด {count, number} รายการ", addSome: "เพิ่ม {count, number} รายการ", addFirst100: "เพิ่ม 100 รายการแรก",

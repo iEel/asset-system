@@ -43,7 +43,10 @@ test("the trigger is one chip button: the text is its name, the chevron is hidde
   const source = chip()
   assert.match(source, /^"use client"/)
   assert.equal(source.match(/<button\b/g)?.length, 1, "one raw button: the chip trigger, shared by the three variants")
-  assert.match(source, /<button\n?\s*type="button"\n?\s*data-slot="filter-menu-chip"/)
+  // Radix's Trigger (asChild) hands the chip its own data-slot ("popover-trigger", "dropdown-menu-trigger"), so the
+  // part's marker comes after the spread and survives (E2E-1103A found no chip by it).
+  assert.match(source, /\{\.\.\.props\}\n\s*data-slot="filter-menu-chip"\n\s*>/)
+  assert.doesNotMatch(source, /data-slot="filter-menu-chip"[^>]*\{\.\.\.props\}/)
   assert.match(source, /<span className="min-w-0 truncate">\{text\}<\/span>/)
   assert.match(source, /<ChevronDown aria-hidden="true" className="size-3\.5 shrink-0" \/>/)
   assert.match(source, /min-h-11/)
@@ -68,7 +71,10 @@ test("the searchable variant: a Popover named by the filter, a search box named 
   const source = chip()
   assert.match(source, /<PopoverTrigger asChild>\n\s*<ChipButton text=\{text\} active=\{active\} className=\{className\} \/>\n\s*<\/PopoverTrigger>/)
   assert.match(source, /<PopoverContent align="start" aria-label=\{label\} className="w-80 max-w-\[calc\(100vw-2rem\)\] p-0">/)
-  assert.match(source, /<Command shouldFilter=\{false\} loop label=\{label\}>/)
+  // No cmdk label: its hidden <label> would name the box through aria-labelledby ("ที่ตั้ง") over the placeholder's
+  // aria-label (final review, Important); the PopoverContent's aria-label names the dialog. SearchableSelect does the same.
+  assert.match(source, /<Command shouldFilter=\{false\} loop>/)
+  assert.doesNotMatch(source, /<Command\s[^>]*\slabel=/)
   assert.match(source, /<CommandInput value=\{query\} onValueChange=\{setQuery\} placeholder=\{searchPlaceholder\} aria-label=\{searchPlaceholder\} \/>/)
   assert.match(source, /const matches = useMemo\(\(\) => filterMenuChipMatches\(options, query\), \[options, query\]\)/)
   assert.match(source, /<CommandEmpty>\{emptyLabel\}<\/CommandEmpty>/)
