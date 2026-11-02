@@ -19,15 +19,14 @@ function filesUnder(directory: string): string[] {
 test("the hazards are stopped in code: the browser aborts a hazard's request, the app's webhook is blank, no file of the suite names one, one helper signs in, and the secret scan is in the repo (e2e review task HZ1)", async () => {
   const { HAZARDS, hazardOf, isHazardPath } = await import("../e2e/support/hazards.ts")
   const at = (pathname: string) => `http://localhost:3100${pathname}`
-  // Spec §4, §5, §11: LDAP, the settings save, Excel import, a sender, the integration API, stored files, a sign-in from
-  // a test, and any DELETE.
+  // Spec §4, §5, §11: LDAP, the settings save, a sender, the integration API, stored files, a sign-in from a test, and any
+  // DELETE. Excel import left the list on 2026-11-02 (the user, group 4 plan 5 P5-R1): the suite may import on the dev
+  // database; only the import spec may (the source ban below and tests/e2e-register.test.ts).
   const refused: [string, string, string][] = [
     ["POST", "/api/admin/settings/ldap-sync", "ldap"],
     ["GET", "/api/admin/settings/ldap-test", "ldap"],
     ["PUT", "/api/admin/settings", "settings-save"],
     ["POST", "/api/admin/settings", "settings-save"],
-    ["POST", "/api/assets/import-preview", "excel-import"],
-    ["POST", "/api/assets/import-confirm", "excel-import"],
     ["POST", "/api/notifications/digest", "notification-digest"],
     ["GET", "/api/integrations/v1/assets", "integrations"],
     ["POST", "/api/admin/integration-clients", "integrations"],
@@ -40,6 +39,8 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   for (const [method, pathname] of [
     ["GET", "/api/admin/settings"],
     ["GET", "/api/assets/import-template"],
+    ["POST", "/api/assets/import-preview"],
+    ["POST", "/api/assets/import-confirm"],
     ["GET", "/api/auth/session"],
     ["POST", "/api/assets"],
     ["PUT", "/api/assets/00000000-0000-0000-0000-000000000000"],
@@ -58,20 +59,20 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   assert.equal(isHazardPath(at("/api/admin/settings/ldap-sync")), true)
   assert.equal(isHazardPath(at("/api/assets/00000000-0000-0000-0000-000000000000")), false)
   assert.equal(isHazardPath(at("/th/assets")), false)
+  assert.equal(isHazardPath(at("/api/assets/import-preview")), false)
+  assert.equal(isHazardPath(at("/api/assets/import-confirm")), false)
   // Every route a hazard names is a route of the app, so a renamed route cannot slip past the list.
   for (const route of [
     "src/app/api/admin/settings/route.ts",
     "src/app/api/admin/settings/ldap-sync/route.ts",
     "src/app/api/admin/settings/ldap-test/route.ts",
-    "src/app/api/assets/import-preview/route.ts",
-    "src/app/api/assets/import-confirm/route.ts",
     "src/app/api/notifications/digest/route.ts",
     "src/app/api/admin/integration-clients/route.ts",
     "src/app/api/admin/storage/archive-orphan/route.ts",
   ]) {
     assert.ok(existsSync(route), route)
   }
-  assert.deepEqual(HAZARDS.map((hazard) => hazard.id), ["ldap", "settings-save", "excel-import", "notification-digest", "integrations", "stored-files", "sign-in", "delete"])
+  assert.deepEqual(HAZARDS.map((hazard) => hazard.id), ["ldap", "settings-save", "notification-digest", "integrations", "stored-files", "sign-in", "delete"])
   for (const hazard of HAZARDS) assert.ok(hazard.reason.length > 20, hazard.id)
 
   // The browser side: every test's context aborts a hazard before it leaves and fails the test after it.
@@ -102,10 +103,16 @@ test("the hazards are stopped in code: the browser aborts a hazard's request, th
   ]
   // The two guards name what they stop: the env guard stops on Production by name, the fixtures catch a DELETE.
   const guards: Record<string, string> = { "e2e/support/env-guard.ts": "the Production database", "e2e/support/fixtures.ts": "a DELETE" }
+  // The import routes (user 2026-11-02, group 4 plan 5 P5-R1): only the import spec, its file helper and the viewer's
+  // refusal rows may name them; every other file of the suite still may not.
+  const importAllowed = ["e2e/assets/import-export.spec.ts", "e2e/assets/import-file.ts", "e2e/cross-cutting/support/refusals.ts"]
+  for (const file of importAllowed) assert.ok(sources.includes(file), `${file} is a file of the suite`)
+  assert.deepEqual(sources.filter((file) => /import-(?:preview|confirm)/.test(read(file))).sort(), ["e2e/assets/import-export.spec.ts", "e2e/cross-cutting/support/refusals.ts"])
   for (const file of sources) {
     const source = read(file)
     for (const [what, pattern] of banned) {
       if (guards[file] === what) continue
+      if (what === "Excel import" && importAllowed.includes(file)) continue
       assert.doesNotMatch(source, pattern, `${file}: ${what}`)
     }
     // The settings are read with a GET only (the global setup's approval check).

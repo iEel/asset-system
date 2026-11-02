@@ -151,10 +151,22 @@ test("roles and permissions: each refused page and request needs a permission th
   assert.ok(read("e2e/cross-cutting/support/roles-ui.ts").includes('refusal.method === "GET" ? { method: "GET" } : { method: refusal.method, data: refusal.body }'))
   // The disposal decision picks its permission from the body: "decision" (any action but execute) is approve.
   assert.match(handlerBody(read("src/app/api/disposal-requests/[id]/route.ts"), "PATCH"), /if \(action === "execute"\) \{\n\s+requirePermission\(user, "disposal", "edit"\)\n\s+\} else \{\n\s+requirePermission\(user, "disposal", "approve"\)/)
-  // The write controls are the app's own words.
+  // The Excel import's two routes refuse the viewer (group 4 plan 5, P5-R1: the suite may name them since 2026-11-02);
+  // each checks asset:create before it reads the form.
+  assert.deepEqual(
+    refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.file.startsWith("assets/import-")).map((refusal) => [refusal.method, refusal.path, refusal.permission, JSON.stringify(refusal.body)]),
+    [["POST", "/api/assets/import-preview", "asset:create", "{}"], ["POST", "/api/assets/import-confirm", "asset:create", "{}"]],
+  )
+  for (const route of ["import-preview", "import-confirm"]) {
+    const handler = handlerBody(read(`src/app/api/assets/${route}/route.ts`), "POST")
+    assert.ok(handler.indexOf('requirePermission(user, "asset", "create")') < handler.indexOf("request.formData()"), `${route}: the permission before the form`)
+  }
+  // The write controls are the app's own words. The first is the import card's template link, which only a person with
+  // asset:create sees on arrival (group 4 plan 5: the card opens on arrival, so "เปิดตัวช่วยนำเข้า" went).
   const messages = thai as Record<string, Record<string, Record<string, string> | string>>
+  assert.equal(messages.asset.openImportWizard, undefined)
   const words = [
-    messages.asset.openImportWizard,
+    (messages.asset.importPage as Record<string, string>).templateDownload,
     messages.auditFinding.approve,
     messages.auditFinding.reject,
     messages.auditFinding.actionPlan,

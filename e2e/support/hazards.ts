@@ -2,7 +2,9 @@
 // company AD and hold the LDAP bind password copied from Production; the dev database is a copy of Production's data on
 // the instance Production shares. fixtures.ts stops each of these in every test's browser context (aborted before it
 // leaves, and the test fails); tests/e2e-review.test.ts checks that no file of the suite names one, which also covers
-// the API calls of page.request and request.newContext that a browser route never sees. Pure: imports nothing.
+// the API calls of page.request and request.newContext that a browser route never sees. Excel import was one until
+// 2026-11-02, when the user allowed the suite to import on the dev database (group 4 plan 5 P5-R1): only the import
+// spec drives it, and the source guard still keeps the route names out of every other file. Pure: imports nothing.
 export type Hazard = {
   id: string
   reason: string
@@ -22,11 +24,6 @@ export const HAZARDS: readonly Hazard[] = [
     reason: "the settings save writes the LDAP configuration copied from Production, with its bind password (spec §5)",
     path: /^\/api\/admin\/settings\/?$/,
     methods: ["POST", "PUT", "PATCH", "DELETE"],
-  },
-  {
-    id: "excel-import",
-    reason: "Excel import is not run on the dev database (spec §4, wiki #36)",
-    path: /^\/api\/assets\/import-(?:preview|confirm)(?:\/|$)/,
   },
   {
     id: "notification-digest",

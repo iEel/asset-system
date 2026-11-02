@@ -69,7 +69,7 @@ The checks so far have been unit tests, source-reading tests and read-only brows
 - Testing company systems (HR, SMF, HIP).
 - Integration API v1 clients.
 - The settings page's save (see §6).
-- Excel asset import on the dev database (wiki #36).
+- ~~Excel asset import on the dev database (wiki #36).~~ Allowed by the user on 2026-11-02 (page group 4 plan 5, P5-R1): `e2e/assets/import-export.spec.ts` imports a file it builds itself, with run-marked tags, on the dev database only. It never fetches the template (its employee sheet would land in a failure's trace). Every other non-goal here stays.
 - Firefox.
 - A CI pipeline. The suite runs on the development machine.
 - A separate throwaway test database. The user decided against it (§5).
@@ -92,7 +92,7 @@ The checks so far have been unit tests, source-reading tests and read-only brows
 These are never touched:
 - LDAP login and LDAP sync. The dev settings point at the real company AD. The test users are local accounts (§7).
 - **The settings page's save.** It writes the LDAP configuration copied from Production, including the bind password. The settings form is covered by the V-track tests and its intercepted dev-app checks.
-- Excel import.
+- ~~Excel import.~~ Lifted by the user on 2026-11-02 (page group 4 plan 5, P5-R1) for the dev database only: the browser hazard `excel-import` is gone; the source guard still keeps the import routes out of every file but the import spec and the viewer's refusal rows, and only the import spec may drive `#asset-import-file` (`tests/e2e-review.test.ts`, `tests/e2e-register.test.ts`). LDAP, the settings save, a sign-in, a DELETE and master-data changes stay banned.
 - Anything that sends mail or reaches a company system. Check the code for mail or notification senders first, and stub them if any are found.
 
 **Existing data that blocks a workflow:**

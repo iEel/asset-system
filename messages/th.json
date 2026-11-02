@@ -807,7 +807,6 @@
     "bulkUpdateFailed": "อัปเดตทรัพย์สินที่เลือกไม่สำเร็จ",
     "row": "แถว",
     "errors": "ข้อผิดพลาด",
-    "openImportWizard": "เปิดตัวช่วยนำเข้า",
     "importBatchStatusReady": "พร้อมนำเข้าทั้งหมด",
     "importBatchStatusPartial": "นำเข้าได้บางส่วน",
     "importBatchStatusBlocked": "ต้องแก้ก่อนนำเข้า",

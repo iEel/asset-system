@@ -807,7 +807,6 @@
     "bulkUpdateFailed": "Could not update selected assets",
     "row": "Row",
     "errors": "Errors",
-    "openImportWizard": "Open import helper",
     "importBatchStatusReady": "Ready",
     "importBatchStatusPartial": "Partial import",
     "importBatchStatusBlocked": "Needs fixes",

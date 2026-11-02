@@ -29,9 +29,10 @@ export const test = base.extend<SuiteTestOptions & { measure: Measure }, E2eWork
   context: async ({ context, e2eTheme, baseURL }, provide) => {
     if (!baseURL) throw new Error("playwright.config.ts sets use.baseURL")
     await context.addCookies([{ name: "theme", value: e2eTheme, url: baseURL }])
-    // The hazards (hazards.ts: LDAP, the settings save, Excel import, a sender, the integration API, stored files, a
-    // sign-in, a DELETE) are stopped here: a request to a hazard's path is aborted before it leaves the browser, a
-    // DELETE is caught as it is sent, and either fails the test after it (spec §5, §11).
+    // The hazards (hazards.ts: LDAP, the settings save, a sender, the integration API, stored files, a sign-in, a
+    // DELETE) are stopped here: a request to a hazard's path is aborted before it leaves the browser, a DELETE is caught
+    // as it is sent, and either fails the test after it (spec §5, §11). Excel import left the list on 2026-11-02 (the
+    // user, group 4 plan 5 P5-R1): the import spec runs it on the dev database.
     const hazards: string[] = []
     await context.route((url) => isHazardPath(url.href), async (route) => {
       const request = route.request()

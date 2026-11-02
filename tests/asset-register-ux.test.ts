@@ -285,7 +285,6 @@ test("asset register UX messages exist in Thai and English", () => {
     "quickFilterGroupCrossScope",
     "advancedFilters",
     "advancedFiltersHelp",
-    "openImportWizard",
     "columnPresets",
     "columnPresetAll",
     "columnPresetOperations",

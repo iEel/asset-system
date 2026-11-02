@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync, statSync } from "node:fs"
+import path from "node:path"
 import test from "node:test"
 
 // The register's E2E specs of page group 4 plan 1 (plan docs/superpowers/plans/2026-11-01-group4-register.md, Task 8;
@@ -72,9 +73,15 @@ test("the specs the register's change moved: the dashboard's status list reads �
   const { DASHBOARD_WORDS } = await import("../e2e/dashboard/dashboard-words.ts")
   assert.equal(DASHBOARD_WORDS.otherStatusTab, JSON.parse(read("messages/th.json")).asset.quickFilterOther)
   const refusals = await import("../e2e/cross-cutting/support/refusals.ts")
-  // The import wizard left the register (Task 4); the viewer reads its page, where เปิดตัวช่วยนำเข้า must not show.
+  // The import wizard left the register (Task 4); the viewer reads its page. Since group 4 plan 5 the import card opens
+  // on arrival (no "เปิดตัวช่วยนำเข้า"), and the control only an importer sees there is the template link.
   assert.ok(refusals.READ_ONLY_LISTS.includes("/th/asset-management/import-export"))
-  assert.ok(refusals.WRITE_BUTTON_NAMES.includes("เปิดตัวช่วยนำเข้า"))
+  const th = JSON.parse(read("messages/th.json"))
+  assert.equal(th.asset.openImportWizard, undefined)
+  assert.ok(!refusals.WRITE_BUTTON_NAMES.includes("เปิดตัวช่วยนำเข้า"))
+  assert.equal(refusals.WRITE_BUTTON_NAMES[0], th.asset.importPage.templateDownload)
+  assert.ok(read("src/components/assets/asset-import-preview-panel.tsx").includes('<a href="/api/assets/import-template" download className={buttonVariants({ variant: "outline" })}>\n                <Download aria-hidden="true" />\n                {t("importPage.templateDownload")}'))
+  assert.doesNotMatch(read("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx"), /templateDownload|import-template/)
   assert.doesNotMatch(read("src/app/[locale]/(dashboard)/assets/page.tsx"), /AssetImportPreviewPanel/)
 })
 
@@ -306,4 +313,122 @@ test("the components and scan specs read the app's own words, remove a component
   const tool = read("src/components/assets/asset-scan-search-tool.tsx")
   for (const hook of ['id="asset-scan-query"', 'aria-labelledby="asset-scan-results-title"', 'aria-labelledby="asset-scan-recent-title"', 'role="group" aria-label={t("scanNextActions")}']) assert.ok(tool.includes(hook), hook)
   assert.ok(read("src/lib/asset-scan-search-rules.ts").includes('export const assetScanSearchPath = "/api/assets/scan-search"'))
+})
+
+// Group 4 plan 5 Task 6 (P5-R1, the user 2026-11-02: the suite may run the Excel import on the dev database; every
+// other ban stays): the import spec reads the app's own words, imports a file it builds itself as IT staff, with a
+// run-marked tag on every row, never fetches the template (it lists every active employee of a Production copy, and a
+// failure's trace keeps network bodies), changes no master data, deletes nothing, and is the only file of the suite that
+// drives the import's file input.
+function suiteFiles(directory: string): string[] {
+  return readdirSync(directory).flatMap((entry) => {
+    const full = path.join(directory, entry)
+    return statSync(full).isDirectory() ? suiteFiles(full) : [full.replaceAll("\\", "/")]
+  })
+}
+
+test("the import spec imports a file of its own as IT staff on the dev database, reads the app's words and touches no master data; the viewer gets the export only (group 4 plan 5 task 6)", async () => {
+  const { IMPORT_WORDS } = await import("../e2e/assets/import-export-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(IMPORT_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  const page = th.asset.importPage
+  const issue = th.asset.importIssue
+  const tools = th.assetTools.importExportPage
+  assert.deepEqual(
+    [IMPORT_WORDS.pageTitle, IMPORT_WORDS.cardTitle, IMPORT_WORDS.templateDownload, IMPORT_WORDS.resultTitle, IMPORT_WORDS.statRows, IMPORT_WORDS.statReady, IMPORT_WORDS.statErrors],
+    [th.assetTools.importExportTitle, page.title, page.templateDownload, page.resultTitle, page.statRows, page.statReady, page.statErrors],
+  )
+  assert.deepEqual(
+    [IMPORT_WORDS.filterErrors, IMPORT_WORDS.filterReady, IMPORT_WORDS.filterAll, IMPORT_WORDS.rowReady, IMPORT_WORDS.footerSummary, IMPORT_WORDS.confirm, IMPORT_WORDS.doneSummary, IMPORT_WORDS.doneAssets],
+    [page.filterErrors, page.filterReady, page.filterAll, page.rowReady, page.footerSummary, page.confirm, page.doneSummary, page.doneAssets],
+  )
+  assert.deepEqual(
+    [IMPORT_WORDS.issueLine, IMPORT_WORDS.issueValue, IMPORT_WORDS.issueSeparator, IMPORT_WORDS.usedBy, IMPORT_WORDS.fieldCurrentLocation, IMPORT_WORDS.fieldSerial, IMPORT_WORDS.notFound, IMPORT_WORDS.duplicateExisting],
+    [issue.line, issue.value, issue.separator, issue.usedBy, th.asset.importField.currentLocationCode, th.asset.importField.serialNumber, th.asset.importError.notFound, th.asset.importError.duplicateExisting],
+  )
+  assert.deepEqual(
+    [IMPORT_WORDS.historyTitle, IMPORT_WORDS.historyCounts, IMPORT_WORDS.outcomePartial, IMPORT_WORDS.exportAll, IMPORT_WORDS.exportAllCount],
+    [tools.historyTitle, tools.historyCounts, tools.outcomePartial, tools.exportAll, tools.exportAllCount],
+  )
+
+  const spec = read("e2e/assets/import-export.spec.ts")
+  const file = read("e2e/assets/import-file.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  const lines = spec.split("\n").map((line) => line.trim())
+  assert.ok(lines.includes(`asUser("itStaff")`) && lines.includes(`asUser("viewer")`), "IT staff import; the viewer reads")
+  assert.ok(!spec.includes("test.skip("), "all four projects")
+  // The Serial holder is an asset of its own; every tag in the file is run-marked and never blank, so the confirm never
+  // takes a number from a company's sequence (critic R3); Serials and the file name carry the run and the project.
+  assert.ok(spec.includes('await createTxAsset(page, masters, testInfo.project.name, "IMPS", '), "the Serial holder")
+  assert.ok(spec.includes("{ serialNumber: holderSerial }"))
+  for (const key of ["IMP1", "IMP2", "IMP3"]) assert.ok(spec.includes(`assetTag: txAssetTag(runId, testInfo.project.name, "${key}")`), key)
+  assert.equal(spec.split("assetTag:").length - 1, 3, "three rows, each with its run-marked tag")
+  assert.ok(spec.includes("const serialPrefix = `SN-${runId}-${code}-IMP`"))
+  assert.ok(spec.includes("const holderSerial = `${serialPrefix}S`"))
+  assert.ok(spec.includes("const fileName = `${runId}-${code}-import.xlsx`"))
+  assert.ok(spec.includes("const missingRoom = `${runId}-${code}-NOLOC`"))
+  assert.ok(file.includes("if (!row.assetTag?.trim()) throw new Error("), "the helper refuses a blank tag")
+  // The file is built in memory from the template's own columns, as an .xlsx the upload check takes.
+  assert.ok(file.includes('import { assetImportColumns } from "../../src/lib/asset-excel.ts"'))
+  assert.ok(file.includes('export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"'))
+  assert.ok(file.includes('workbook.addWorksheet("Asset Import")'))
+  assert.doesNotMatch(file, /writeFile|saveAs|import-(?:preview|confirm|template)/, "in memory, and the helper sends nothing")
+  // Never the template's body: the link is checked by its href and download attribute only.
+  assert.equal(spec.split("import-template").length - 1, spec.split('a[href="/api/assets/import-template"]').length - 1, "import-template only in the link's locator")
+  assert.doesNotMatch(spec, /waitForEvent\("download"\)|downloadBy\(|templateDownload[^\n]*\.click\(|saveAs\(/)
+  assert.ok(spec.includes('await expect(template).toHaveAttribute("download", "")'))
+  // No master data, no sign-in, nothing deleted; the codes come from the asset form's option labels.
+  assert.doesNotMatch(spec, /\/api\/(?:locations|departments|employees|admin|companies|branches|categories)|createRoom\(|signInOnce\(|request\.delete|DELETE/)
+  assert.doesNotMatch(file, /\/api\/|DELETE/)
+  for (const select of ["#asset-company", "#asset-branch", "#asset-category"]) assert.ok(spec.includes(select), select)
+  // Only this spec drives the import's file input (critic X7): the browser no longer stops the import routes.
+  const drivers = suiteFiles("e2e").filter((name) => /\.(?:ts|mjs|js)$/.test(name) && read(name).includes("asset-import-file"))
+  assert.deepEqual(drivers, ["e2e/assets/import-export.spec.ts"])
+  // The steps: the upload and its answer, the tiles, the two Thai lines with the holder's tag, the filter, the honest
+  // confirm, the done state, the history row by the file name, the asset opened; axe on review and done.
+  for (const hook of [
+    'await page.locator("#asset-import-file").setInputFiles(file)',
+    "url.pathname === IMPORT_PREVIEW_PATH",
+    "url.pathname === IMPORT_CONFIRM_PATH",
+    "const filterButton = (value: string) => page.locator(`button:has([data-import-filter=\"${value}\"])`)",
+    "page.locator(`[data-import-row=\"${rowNumber}\"]`).filter({ visible: true })",
+    'await expect(stat(IMPORT_WORDS.statRows)).toHaveText("3")',
+    'await expect(stat(IMPORT_WORDS.statReady)).toHaveText("1")',
+    'await expect(stat(IMPORT_WORDS.statErrors)).toHaveText("2")',
+    "fillTemplate(IMPORT_WORDS.usedBy, { tag: holder.assetTag })",
+    'toHaveAttribute("href", `/th/assets/${holder.id}`)',
+    "fillTemplate(IMPORT_WORDS.confirm, { count: 1 })",
+    "fillTemplate(IMPORT_WORDS.doneSummary, { imported: 1, skipped: 2 })",
+    "fillTemplate(IMPORT_WORDS.historyCounts, { imported: 1, total: 3, skipped: 2 })",
+    'page.getByRole("heading", { level: 3, name: fileName, exact: true })',
+    "await page.waitForURL((url) => url.pathname === `/th/assets/${imported.id}`)",
+  ]) assert.ok(spec.includes(hook), hook)
+  assert.ok(spec.includes('await record(measure, "import, the file checked (review)", testInfo)'))
+  assert.ok(spec.includes('await record(measure, "import, done", testInfo)'))
+  // The viewer: the export card and its count line (never a fixed number: dev grows), no dropzone, no template, no
+  // confirm, and both import routes refused.
+  assert.ok(spec.includes('templatePattern(IMPORT_WORDS.exportAllCount, { count: "[\\\\d,]+" })'))
+  assert.ok(spec.includes("await expect(main.locator('input[type=\"file\"]')).toHaveCount(0)"))
+  assert.ok(spec.includes('await expectRefused(page.request, VIEWER_API_REFUSALS.filter((refusal) => refusal.file.startsWith("assets/import-")))'))
+
+  // The hooks the spec stands on are the app's.
+  const panel = read("src/components/assets/asset-import-preview-panel.tsx")
+  for (const hook of [
+    'id="asset-import-file"',
+    '<span data-import-filter="error">',
+    '<span data-import-filter="ready">',
+    '<span data-import-filter="all">',
+    "data-import-row={row.rowNumber}",
+    't("importPage.confirm", { count: preview.summary.readyRows })',
+    'section aria-labelledby="asset-import-result-title"',
+    "<Link href={`/${locale}/assets/${asset.id}`}",
+  ]) assert.ok(panel.includes(hook), hook)
+  assert.equal(panel.split("data-import-row={row.rowNumber}").length - 1, 2, "the desktop row and the phone row")
+  assert.ok(read("src/components/ui/file-dropzone.tsx").includes("id={inputId}"))
+  assert.ok(read("src/components/ui/segmented.tsx").includes("aria-pressed={pressed}"))
+  const importExportPage = read("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx")
+  assert.ok(importExportPage.includes('href="/api/assets/export"'))
+  assert.ok(importExportPage.includes("{batch.fileName}</h3>"))
+  for (const route of ["import-preview", "import-confirm"]) assert.ok(read(`src/app/api/assets/${route}/route.ts`).includes('requirePermission(user, "asset", "create")'), route)
 })

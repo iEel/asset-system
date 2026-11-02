@@ -58,6 +58,10 @@ export const VIEWER_API_REFUSALS: readonly ApiRefusal[] = [
   // ถอดส่วนควบ is a POST since group 4 plan 4 (P4-R1): it marks the link removed, nothing is deleted.
   { method: "POST", path: `/api/assets/${NO_RECORD}/components/${NO_RECORD}/remove`, file: "assets/[id]/components/[componentId]/remove/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: "/api/assets/bulk-move", file: "assets/bulk-move/route.ts", permission: "asset:edit", body: {} },
+  // The Excel import's check and confirm (group 4 plan 5, P5-R1: the suite may name them since 2026-11-02). Each checks
+  // asset:create before it reads the form, so the empty body never reaches the parser.
+  { method: "POST", path: "/api/assets/import-preview", file: "assets/import-preview/route.ts", permission: "asset:create", body: {} },
+  { method: "POST", path: "/api/assets/import-confirm", file: "assets/import-confirm/route.ts", permission: "asset:create", body: {} },
   { method: "GET", path: "/api/asset-operations/search", file: "asset-operations/search/route.ts", permission: "asset:edit", body: {} },
   { method: "GET", path: "/api/asset-operations/bulk-move-list", file: "asset-operations/bulk-move-list/route.ts", permission: "asset:edit", body: {} },
   // asset:create or asset:edit (P3-R2); the viewer has neither, and the route names asset:edit.
@@ -113,9 +117,11 @@ export const WRITE_LINK_PATTERNS: readonly RegExp[] = [
   /^\/th\/disposal\/(?:new|batch\/new)(?:[?#]|$)/,
   /^\/th\/admin\/approvals(?:[?#]|$)/,
 ]
-// messages/th.json: asset.openImportWizard (on the import and export page only, group 4 plan 1), auditFinding.approve / reject / actionPlan / closeFinding,
-// disposalPage.reviewRequest, and the PM plan's state buttons (maintenancePage).
-export const WRITE_BUTTON_NAMES: readonly string[] = ["เปิดตัวช่วยนำเข้า", "อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง", "พิจารณาคำขอ", "พักแผน", "จบแผน", "บันทึกตัดจำหน่ายจริง"]
+// messages/th.json: asset.importPage.templateDownload (the import card's template link, which only a person with
+// asset:create sees on arrival since group 4 plan 5 opened the card on arrival; "เปิดตัวช่วยนำเข้า" went with the
+// toggle), auditFinding.approve / reject / actionPlan / closeFinding, disposalPage.reviewRequest, and the PM plan's state
+// buttons (maintenancePage).
+export const WRITE_BUTTON_NAMES: readonly string[] = ["ดาวน์โหลดแม่แบบ", "อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง", "พิจารณาคำขอ", "พักแผน", "จบแผน", "บันทึกตัดจำหน่ายจริง"]
 // The four controls of a finding's review, which all need audit:approve.
 export const REVIEW_BUTTON_NAMES: readonly string[] = ["อนุมัติ", "ปฏิเสธ", "แผนแก้ไข", "ปิดรายการไม่ตรง"]
 
