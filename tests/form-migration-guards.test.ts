@@ -130,6 +130,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}assets/asset-form-documents.tsx`]: [0, 1, 0],
   [`${C}assets/asset-form-custom-fields.tsx`]: [2, 0, 0],
   [`${C}assets/asset-batch-form.tsx`]: [10, 5, 0],
+  // Group 4 plan 3 Task 4: the purchase-document picker's search (maxLength 100).
+  [`${C}assets/purchase-document-picker.tsx`]: [0, 1, 0],
   [`${C}assets/asset-component-manager.tsx`]: [0, 4, 0],
   // Group 4 plan 1 Task 6: the saved view's name (maxLength 40).
   [`${C}assets/asset-register-saved-views.tsx`]: [0, 1, 0],

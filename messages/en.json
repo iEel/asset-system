@@ -1410,7 +1410,8 @@
       "photosQueued": "{count, plural, one {# photo to save} other {# photos to save}}",
       "customRequiredMissing": "{count, plural, one {# required field missing} other {# required fields missing}}",
       "customExtraRows": "{count, plural, one {# extra field} other {# extra fields}}",
-      "remarkSet": "Has a remark"
+      "remarkSet": "Has a remark",
+      "documentsLinked": "{count, plural, one {# document linked} other {# documents linked}}"
     },
     "useHomeLocation": "Use home location",
     "editTitleNamed": "Edit {name}",
@@ -1437,7 +1438,19 @@
     "correctionReasonLabel": "Reason for the correction",
     "correctionReasonRequired": "Enter the reason for the correction",
     "departmentMismatchLater": "The department does not match the holder's. It is set when the asset is checked in or transferred.",
-    "requiredMissingFields": "· {fields}"
+    "requiredMissingFields": "· {fields}",
+    "purchaseDocumentSearchLabel": "Search purchase documents",
+    "purchaseDocumentSearchFooter": "{count, plural, one {# document found} other {# documents found}} of {total, plural, one {# shared document} other {# shared documents}} · Search by document no., PO no., invoice no., supplier, or the model of a linked asset",
+    "purchaseDocumentSearchEmpty": "No purchase document matches the search",
+    "purchaseDocumentLinkedNames": "{count, plural, one {Linked to # asset} other {Linked to # assets}}: {names}",
+    "purchaseDocumentLinkedCount": "{count, plural, one {Linked to # asset} other {Linked to # assets}}",
+    "purchaseDocumentChosen": "Chosen",
+    "purchaseDocumentInactive": "Inactive",
+    "purchaseDocumentChosenList": "Chosen purchase documents",
+    "purchaseDocumentRemoveNamed": "Remove {number}",
+    "purchaseDocumentRemoving": "Removed when you save",
+    "purchaseDocumentKeep": "Keep",
+    "purchaseDocumentKeepNamed": "Keep {number}"
   },
   "company": {
     "title": "Companies",

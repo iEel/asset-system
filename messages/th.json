@@ -1404,13 +1404,14 @@
       "purchasePrice": "ราคา {amount}",
       "warrantyEnd": "หมดประกัน {date}",
       "installParent": "ติดตั้งกับ {label}",
-      "documentsSelected": "เลือกแล้ว {count, number} ฉบับ",
-      "documentsQueued": "รอบันทึก {count, number} ฉบับ",
+      "documentsSelected": "เลือกแล้ว {count, number} ใบ",
+      "documentsQueued": "รอบันทึก {count, number} ใบ",
       "photosExisting": "มีแล้ว {count, number} รูป",
       "photosQueued": "รอบันทึก {count, number} รูป",
       "customRequiredMissing": "ยังขาด {count, number} ช่องที่ต้องกรอก",
       "customExtraRows": "เพิ่มเอง {count, number} ช่อง",
-      "remarkSet": "มีหมายเหตุ"
+      "remarkSet": "มีหมายเหตุ",
+      "documentsLinked": "ผูกไว้ {count, number} ใบ"
     },
     "useHomeLocation": "ใช้ที่ตั้งประจำ",
     "editTitleNamed": "แก้ไข {name}",
@@ -1437,7 +1438,19 @@
     "correctionReasonLabel": "เหตุผลที่แก้",
     "correctionReasonRequired": "ระบุเหตุผลที่แก้",
     "departmentMismatchLater": "แผนกไม่ตรงกับผู้ถือครอง จะปรับเมื่อรับคืนหรือโอนย้าย",
-    "requiredMissingFields": "· {fields}"
+    "requiredMissingFields": "· {fields}",
+    "purchaseDocumentSearchLabel": "ค้นหาเอกสารจัดซื้อ",
+    "purchaseDocumentSearchFooter": "พบ {count, number} ใบ จากเอกสารกลาง {total, number} ใบ · ค้นหาได้ด้วยเลขที่เอกสาร เลข PO เลขใบกำกับ ผู้ขาย หรือชื่อรุ่นของเครื่องที่ผูกไว้",
+    "purchaseDocumentSearchEmpty": "ไม่พบเอกสารจัดซื้อที่ตรงกับคำค้น",
+    "purchaseDocumentLinkedNames": "ผูกกับ {count, number} เครื่อง: {names}",
+    "purchaseDocumentLinkedCount": "ผูกกับ {count, number} เครื่อง",
+    "purchaseDocumentChosen": "เลือกแล้ว",
+    "purchaseDocumentInactive": "ปิดใช้งาน",
+    "purchaseDocumentChosenList": "เอกสารจัดซื้อที่เลือกไว้",
+    "purchaseDocumentRemoveNamed": "เอา {number} ออก",
+    "purchaseDocumentRemoving": "จะเอาออกเมื่อบันทึก",
+    "purchaseDocumentKeep": "เก็บไว้",
+    "purchaseDocumentKeepNamed": "เก็บ {number} ไว้"
   },
   "company": {
     "title": "บริษัท",

@@ -32,6 +32,8 @@ const rules: Rule[] = [
   { term: "เบิกใช้งานชั่วคราว / ถูกเบิก", pattern: /เบิกใช้งานชั่วคราว|ถูกเบิก/, use: "ยืมใช้ชั่วคราว / ถูกยืม" },
   { term: "ตรวจทาน", pattern: /ตรวจทาน/, use: "พิจารณา" },
   { term: "หมวด (ย่อ)", pattern: /หมวด(?!หมู่)/, use: "หมวดหมู่" },
+  // Group 4 plan 3 (P3-R1): documents are counted in ใบ; "ฉบับสมบูรณ์" and other senses stay legal.
+  { term: "ฉบับ (นับเอกสาร)", pattern: /number\}\s*ฉบับ/, use: "ใบ" },
 ]
 
 // Removed before matching: product names and allowed compounds.
