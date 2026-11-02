@@ -44,9 +44,13 @@ test("the user and role forms: PageHeader and PageBackLink, and the role create 
 })
 
 test("the asset form and the component manager: PageHeader, and the component header no longer sticks (2B-1 task 22, I32)", () => {
-  const form = read(`${C}assets/asset-form.tsx`)
-  assert.ok(form.includes(HEADER_IMPORT), "asset-form.tsx imports PageHeader and PageBackLink")
-  assert.match(form, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{t\("subtitle"\)\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
+  // Group 4 plan 2 Task 6a: the asset form's header is AssetFormHeader (asset-form-header.tsx); on create its meta is the
+  // line that says only the first card is needed, and its actions hold the workspace's single/batch switch.
+  const form = read(`${C}assets/asset-form-header.tsx`)
+  assert.ok(form.includes(HEADER_IMPORT), "asset-form-header.tsx imports PageHeader and PageBackLink")
+  assert.match(form, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{mode === "create" \? t\("createRequiredHint"\) : t\("subtitle"\)\}\n\s+actions=\{actions\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{backHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
+  assert.match(read(`${C}assets/asset-form.tsx`), /<AssetFormHeader mode=\{isEdit \? "edit" : "create"\}/)
+  assert.doesNotMatch(read(`${C}assets/asset-form.tsx`), /<h1\b|\bArrowLeft\b/)
   const manager = read(`${C}assets/asset-component-manager.tsx`)
   assert.ok(manager.includes(HEADER_IMPORT), "asset-component-manager.tsx imports PageHeader and PageBackLink")
   // The page title is the page's name; the parent asset's code and name are its first facts (spec §4.3.3 rule 6).

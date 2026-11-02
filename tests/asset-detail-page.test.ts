@@ -132,7 +132,8 @@ test("ข้อมูลยังไม่ครบ: one quiet line on the overv
 })
 
 test("the edit form holds the purchase anchor the strip and the prompt open (spec §7.4)", () => {
-  assert.match(read("src/components/assets/asset-form-purchase.tsx"), /<div id="purchase" className="scroll-mt-24">\s*<Section title=\{t\("purchaseWarranty"\)\}>/)
+  // Group 4 plan 2 Task 6a: the section folds, and the form opens it on #purchase (tests/asset-form-layout-ui.test.ts).
+  assert.match(read("src/components/assets/asset-form-purchase.tsx"), /<div id="purchase" className="scroll-mt-24">\s*<FoldedSection title=\{t\("purchaseWarranty"\)\} disclosure=\{disclosure\}>/)
   assert.match(page(), /const purchaseEditHref = `\$\{editHref\}#purchase`/)
 })
 

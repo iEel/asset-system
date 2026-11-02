@@ -52,8 +52,11 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   const rulesSource = read("src/lib/asset-form-rules.ts")
   const purchaseSource = read(`${C}assets/asset-form-purchase.tsx`)
   const customFieldsSource = read(`${C}assets/asset-form-custom-fields.tsx`)
-  const sectionSources = [read(`${C}assets/asset-form-install.tsx`), purchaseSource, read(`${C}assets/asset-form-photos.tsx`), customFieldsSource]
+  // Task 6a: the documents box and the remark with the raw JSON (asset-form-other.tsx) are sections of their own.
+  const otherSource = read(`${C}assets/asset-form-other.tsx`)
+  const sectionSources = [read(`${C}assets/asset-form-install.tsx`), purchaseSource, read(`${C}assets/asset-form-documents.tsx`), read(`${C}assets/asset-form-photos.tsx`), customFieldsSource, otherSource]
   assertMovedForm([source, rulesSource, ...sectionSources].join("\n"), {
+    // Task 6a: the License seats sit after the required card, so they follow the condition.
     ids: {
       assetTag: "asset-tag",
       name: "asset-name",
@@ -64,11 +67,11 @@ test("asset form: validate() restates every rule the toasts said, the save gates
       branchId: "asset-branch",
       departmentId: "asset-department",
       custodianId: "asset-custodian",
-      licenseTotalSeats: "asset-license-total-seats",
-      licenseUsedSeats: "asset-license-used-seats",
       currentLocationId: "asset-current-location",
       statusId: "asset-status",
       conditionId: "asset-condition",
+      licenseTotalSeats: "asset-license-total-seats",
+      licenseUsedSeats: "asset-license-used-seats",
       parentAssetId: "asset-install-parent",
       componentRole: "asset-install-role",
       slotNo: "asset-install-slot",
@@ -130,7 +133,9 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.match(source, /event\.preventDefault\(\)\n\s+if \(saveBlockedBy\) return\n\s+fieldErrors\.setErrors\(/)
   assert.match(source, /aria-disabled=\{saveBlockedBy \? true : undefined\}\n\s+aria-describedby=\{saveBlockedBy \?\? undefined\}/)
   assert.match(source, /<Notice id="asset-status-protected" tone="warning" className="mt-2" title=\{t\("protectedStatusEditBlocked"\)\}>/)
-  assert.ok(source.includes('<StickyFormFooter status={duplicateState.checking ? <span id="asset-save-reason">{t("duplicateCheckPending")}</span> : undefined}>'))
+  // Group 4 plan 2 Task 6a: the footer's status also holds the create form's missing line
+  // (tests/asset-form-layout-ui.test.ts); the duplicate check's reason keeps its id.
+  assert.match(source, /<StickyFormFooter\n\s+status=\{\n\s+duplicateState\.checking \|\| showMissing \? \(\n\s+<span className="grid gap-1">\n\s+\{duplicateState\.checking \? <span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span> : null\}/)
   assert.doesNotMatch(source, /disabled=\{isProtectedStatusChange/)
   for (const locale of ["th", "en"] as const) {
     assert.equal(typeof messages(locale).asset.duplicateCheckPending, "string", `${locale} asset.duplicateCheckPending`)
@@ -144,11 +149,13 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.ok(source.includes('<Field label={t("licenseTotalSeats")} id="asset-license-total-seats" error={errorText("licenseTotalSeats")}>'))
   // The server's refusal lands on the same fields; the raw JSON opens first; the template fields are ids by place.
   assert.match(source, /if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return\n\s+throw new Error\(result\?\.error \?\? tCommon\("error"\)\)/)
-  assert.match(source, /reveal: \(key\) => \{\n\s+if \(key === "customFieldsJson"\) setShowRawJson\(true\)/)
+  // Task 6a: reveal also opens the folded section that holds the field.
+  assert.match(source, /reveal: \(key\) => \{\n\s+if \(key === "customFieldsJson"\) setShowRawJson\(true\)\n\s+openSection\(sectionOfField\(key\)\)/)
   assert.match(customFieldsSource, /id=\{`asset-custom-field-\$\{index\}`\}/)
-  // The add buttons check their own fields under the same hook; the save's errors stay.
+  // The document add button checks its own fields under the same hook; the save's errors stay. A chosen photo joins the
+  // queue at once (group 4 plan 2 Task 6a, spec §8), so the photo has no add button and no "fileRequired" of its own.
   assert.match(source, /const documentErrors = validatePurchaseDocument\(selectedPurchaseFile, purchaseDocumentNo\)/)
-  assert.match(source, /fieldErrors\.setErrors\(\{ \.\.\.fieldErrors\.errors, assetPhotoFile: "fileRequired" \}\)/)
+  assert.doesNotMatch(source, /assetPhotoFile: "fileRequired"/)
   // A pair or a group clears together (spec §4.3).
   assert.match(source, /if \(field === "warrantyStartDate"\) fieldErrors\.clear\("warrantyEndDate"\)/)
   assert.match(source, /if \(field === "licenseTotalSeats"\) fieldErrors\.clear\("licenseUsedSeats"\)/)

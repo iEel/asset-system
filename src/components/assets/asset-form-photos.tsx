@@ -2,19 +2,20 @@
 
 import { useId } from "react"
 import { useTranslations } from "next-intl"
-import { Plus, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChoiceChip } from "@/components/ui/choice-card"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { FieldError } from "@/components/ui/field"
 import { fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
-import { Section, type AssetFormFieldErrors } from "@/components/assets/asset-form-section"
+import { FoldedSection, type AssetFormDisclosure, type AssetFormFieldErrors } from "@/components/assets/asset-form-section"
 import type { AssetField, AssetPhotoDraft, ExistingAssetPhoto } from "@/lib/asset-form-rules"
 import { formatFileSize } from "@/lib/uploads"
 
 // รูปทรัพย์สิน: the category's checklist, the drop zone, the photos already kept and the queued ones (group 4 plan 2
-// Task 5 moved it out of asset-form.tsx; the queue and the upload stay there).
+// Task 5 moved it out of asset-form.tsx; the queue and the upload stay there). Folded since Task 6a, where a chosen
+// file joins the queue at once under the chosen photo type (spec §8: no add button), and the drop zone empties for the next.
 export function AssetFormPhotos({
   isEdit,
   categoryId,
@@ -26,12 +27,11 @@ export function AssetFormPhotos({
   queuedPhotoLabels,
   existingPhotoLabels,
   setPhotoLabel,
-  selectedAssetPhotoFile,
-  selectAssetPhotoFile,
   existingAssetPhotos,
   addAssetPhoto,
   newAssetPhotos,
   removeAssetPhoto,
+  disclosure,
 }: {
   isEdit: boolean
   categoryId: string
@@ -43,12 +43,11 @@ export function AssetFormPhotos({
   queuedPhotoLabels: Set<string>
   existingPhotoLabels: Set<string>
   setPhotoLabel: (label: string) => void
-  selectedAssetPhotoFile: File | null
-  selectAssetPhotoFile: (file: File | null) => void
   existingAssetPhotos: ExistingAssetPhoto[]
-  addAssetPhoto: () => void
+  addAssetPhoto: (file: File | null) => void
   newAssetPhotos: AssetPhotoDraft[]
   removeAssetPhoto: (id: string) => void
+  disclosure: AssetFormDisclosure
 }) {
   const t = useTranslations("asset")
   // The photo-type chips are one radio group (T5): one name for the group and one id for its hint.
@@ -56,7 +55,7 @@ export function AssetFormPhotos({
   const photoLabelHintId = useId()
 
   return (
-    <Section title={t(isEdit ? "assetPhotos" : "initialAssetPhotos")}>
+    <FoldedSection title={t(isEdit ? "assetPhotos" : "initialAssetPhotos")} disclosure={disclosure}>
       <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
         <p className="mb-3 text-sm text-muted-foreground">{t(isEdit ? "assetPhotosEditHelp" : "initialAssetPhotosHelp")}</p>
 
@@ -99,8 +98,8 @@ export function AssetFormPhotos({
         )}
 
         <FileDropzone
-          file={selectedAssetPhotoFile}
-          onFileChange={selectAssetPhotoFile}
+          file={null}
+          onFileChange={addAssetPhoto}
           id="asset-photo-file"
           aria-invalid={fieldErrors.errors.assetPhotoFile ? true : undefined}
           aria-describedby={fieldErrors.errors.assetPhotoFile ? "asset-photo-file-error" : undefined}
@@ -108,7 +107,6 @@ export function AssetFormPhotos({
           accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
           capture="environment"
           title={t("dropAssetPhotoTitle")}
-          hint={t("dropFileSelected")}
           browseLabel={t("dropAssetPhotoHint")}
         />
         {fieldErrors.errors.assetPhotoFile ? (
@@ -148,10 +146,6 @@ export function AssetFormPhotos({
             </div>
           </div>
         )}
-        <Button variant="outline" size="md" className="mt-3" onClick={addAssetPhoto} disabled={saving}>
-          <Plus aria-hidden="true" />
-          {effectivePhotoLabel ? t("addAssetPhotoWithLabel", { label: effectivePhotoLabel }) : t("addAssetPhoto")}
-        </Button>
 
         {newAssetPhotos.length > 0 && (
           <div className="mt-4 space-y-2">
@@ -178,6 +172,6 @@ export function AssetFormPhotos({
           </div>
         )}
       </div>
-    </Section>
+    </FoldedSection>
   )
 }

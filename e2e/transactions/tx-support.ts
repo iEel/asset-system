@@ -326,6 +326,16 @@ export async function expectFieldError(page: Page, fieldId: string, message: str
   await expect(page.locator(`#${fieldId}-error`)).toHaveText(message)
 }
 
+// The asset form folds its optional sections (group 4 plan 2 Task 6a, spec §8): fill and click wait for a visible field,
+// so a spec opens the section by its summary row, named by the section's title, before it types there. An open section
+// stays open.
+export async function openAssetFormSection(page: Page, name: string) {
+  const summary = page.locator("summary").filter({ has: page.getByRole("heading", { name, exact: true }) })
+  const section = page.locator("details").filter({ has: summary })
+  if (!(await section.evaluate((element) => (element as HTMLDetailsElement).open))) await summary.click()
+  await expect(section).toHaveAttribute("open", "")
+}
+
 // One stroke on a signature pad: the mouse on the desktop, a finger on the phone (spec §6.1.2). Playwright 1.61.1 has
 // no touch drag, so the finger is Chromium's own touch input (CDP Input.dispatchTouchEvent); it reaches the pad as
 // pointer events of type "touch", as a real finger does. The pad's clear button turns on once it holds a stroke.

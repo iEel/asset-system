@@ -29,8 +29,12 @@ function sourceFiles(directory: string): string[] {
   })
 }
 
-test("the en plural messages are known: 25 keys, so a new one is checked by the rules below", () => {
-  assert.equal(pluralKeys.size, 25, [...pluralKeys.keys()].join(", "))
+test("the en plural messages are known: 34 keys, so a new one is checked by the rules below", () => {
+  // Group 4 plan 2 Task 6a added 9: the asset form's required counter, section count, missing line and six section summaries.
+  assert.equal(pluralKeys.size, 34, [...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("asset.requiredFilled"), "total")
+  assert.equal(pluralKeys.get("asset.sectionFilled"), "total")
+  assert.equal(pluralKeys.get("asset.requiredMissing"), "count")
   assert.equal(pluralKeys.get("common.searchSelectResultCount"), "count")
   assert.equal(pluralKeys.get("session.idleWarningSr"), "minutes")
 })

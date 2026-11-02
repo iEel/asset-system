@@ -66,9 +66,13 @@ test("asset page: the sections the later tabs replace keep the panel classes; th
 test("asset form: sections are ContentPanels, notes are Notice by meaning, empty lists EmptyNote, documents ChoiceCards with Nil, and no box in a box (spec 2D D7, D9, M21)", () => {
   const source = read(`${C}assets/asset-form.tsx`)
   // Group 4 plan 2 Task 5: Section and SelectField moved to asset-form-section.tsx, the optional sections to their files.
-  const parts = ["section", "install", "purchase", "photos", "custom-fields"].map((name) => read(`${C}assets/asset-form-${name}.tsx`))
-  const [sectionSource, , purchaseSource, photosSource, customFieldsSource] = parts
+  // Task 6a: the documents and the other section got files of their own, and the header and the required card theirs.
+  const parts = ["section", "install", "purchase", "documents", "photos", "custom-fields", "other", "header", "required-card"].map((name) => read(`${C}assets/asset-form-${name}.tsx`))
+  const [sectionSource, , , purchaseSource, photosSource, customFieldsSource] = parts
   assert.match(sectionSource, /export function Section\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<ContentPanel title=\{title\}>/)
+  // The required card is a ContentPanel; the folded sections are FormDisclosures (a <details> cannot be ContentPanel).
+  assert.match(parts[8], /<ContentPanel title=\{title\}>/)
+  assert.match(sectionSource, /<FormDisclosure id=\{id\} title=\{title\} \{\.\.\.disclosure\}>/)
   assert.match(source, /<Notice\n\s+tone="info"\n\s+className="mb-5"\n\s+title=\{t\("cloneBannerTitle", \{ assetTag: cloneSource\.assetTag \}\)\}/)
   assert.equal(source.match(/<Notice tone="warning" className="mt-2">/g)?.length, 2, "the cross-company and cross-branch warnings")
   assert.match(source, /<Notice id="asset-status-protected" tone="warning" className="mt-2" title=\{t\("protectedStatusEditBlocked"\)\}>/)
@@ -76,7 +80,8 @@ test("asset form: sections are ContentPanels, notes are Notice by meaning, empty
   assert.match(source, /<Notice tone="neutral" title=\{t\("custodianNotRequired"\)\}>\n\s+\{t\("custodianNotRequiredHelp"\)\}\n\s+<\/Notice>/)
   assert.match(source, /title=\{<>\{t\("licenseRemainingSeats"\)\}: \{orNil\(getRemainingLicenseSeats\(values\.licenseTotalSeats, values\.licenseUsedSeats\)\)\}<\/>\}/)
   assert.match(purchaseSource, /description=\{<>\{orNil\(document\.supplierName\)\} · \{t\("linkedAssets", \{ count: document\.assetCount \}\)\}<\/>\}/)
-  // The 4 EmptyNotes: the documents, the photo checklist, the template fields and the extra rows.
+  // The 4 EmptyNotes: the documents (purchaseSource is asset-form-documents.tsx), the photo checklist, the template fields
+  // and the extra rows.
   assert.deepEqual([source, purchaseSource, photosSource, customFieldsSource].map((file) => file.match(/<EmptyNote\b/g)?.length ?? 0), [0, 1, 1, 2])
   assert.match(source, /return null\n\s+const remainingSeats = [^\n]+\n\s+return formatCount\(remainingSeats\)/)
   for (const file of [source, ...parts]) assert.doesNotMatch(file, /"-"|border-dashed|uppercase|bg-accent|bg-warning-soft|bg-info-soft|text-warning|text-lg|rounded-lg border|focus:outline-none|\btext-xs\b|toLocaleString|bg-surface p-3/)

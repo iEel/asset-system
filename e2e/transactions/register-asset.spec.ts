@@ -9,6 +9,7 @@ import {
   closePhoneKeyboard,
   expectFieldError,
   expectReachable,
+  openAssetFormSection,
   openPhoneKeyboard,
   PDF_FIXTURE,
   PHOTO_FIXTURE,
@@ -39,6 +40,9 @@ test("a new asset with a photo and a purchase document: no room first shows its 
   await page.locator("#asset-condition").selectOption(masters.goodConditionId)
   await page.locator("#asset-purchase-document-no").fill(documentNo)
   await page.locator("#asset-purchase-document-file").setInputFiles(PDF_FIXTURE)
+  // เอกสารจัดซื้อ starts open; the photo section is folded, and a chosen photo joins its queue at once (group 4 plan 2
+  // Task 6a): open it to see the queued file.
+  await openAssetFormSection(page, "รูปแรกเข้าทรัพย์สิน")
   await page.locator("#asset-photo-file").setInputFiles(PHOTO_FIXTURE)
   await expect(page.getByText("evidence.pdf")).toBeVisible()
   await expect(page.getByText("photo.png")).toBeVisible()

@@ -1,119 +1,80 @@
 "use client"
 
 import { useLocale, useTranslations } from "next-intl"
-import { Code2, Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Field, FieldError } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
-import { Textarea } from "@/components/ui/textarea"
-import { Section } from "@/components/assets/asset-form-section"
+import { FoldedSection, type AssetFormDisclosure } from "@/components/assets/asset-form-section"
 import {
   createCustomFieldRow,
   customFieldKey,
   type AssetField,
-  type AssetFormValues,
   type CustomFieldDefinition,
   type CustomFieldRow,
 } from "@/lib/asset-form-rules"
 
-// The remark, the template's custom fields, the extra rows, the raw JSON and the active box (group 4 plan 2 Task 5
-// moved them out of asset-form.tsx; the rows and their JSON stay in its state).
+// รายละเอียดเฉพาะทรัพย์สิน: the category template's fields and the extra rows (group 4 plan 2 Task 5 moved them out of
+// asset-form.tsx; the rows and their JSON stay in its state). Folded since Task 6a; the remark and the raw JSON are the
+// next section, asset-form-other.tsx, and the active box left the form (P2-R7).
 export function AssetFormCustomFields({
-  values,
-  setField,
+  categoryId,
   errorText,
-  showRawJson,
-  toggleRawJson,
   definitions,
   getCustomFieldValue,
   onTemplateCustomFieldChange,
   additionalCustomFieldRows,
   onAdditionalCustomFieldRowsChange,
-  onRawJsonChange,
+  disclosure,
 }: {
-  values: AssetFormValues
-  setField: <K extends keyof AssetFormValues>(field: K, value: AssetFormValues[K]) => void
+  categoryId: string
   errorText: (key: AssetField) => string | undefined
-  showRawJson: boolean
-  toggleRawJson: () => void
   definitions: CustomFieldDefinition[]
   getCustomFieldValue: (fieldName: string) => string
   onTemplateCustomFieldChange: (fieldName: string, value: string) => void
   additionalCustomFieldRows: CustomFieldRow[]
   onAdditionalCustomFieldRowsChange: (rows: CustomFieldRow[]) => void
-  onRawJsonChange: (value: string) => void
+  disclosure: AssetFormDisclosure
 }) {
   const locale = useLocale()
   const t = useTranslations("asset")
-  const tCommon = useTranslations("common")
 
   return (
-    <Section title={t("customFields")}>
-      <div className="md:col-span-2">
-        <Field label={t("remark")}>
-          <Textarea value={values.remark ?? ""} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
-        </Field>
-      </div>
-      <div className="md:col-span-2">
-        <div className="space-y-4 border-t border-border pt-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">{t("customFieldsStructuredTitle")}</h3>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("customFieldsStructuredHelp")}</p>
-            </div>
-            <Button variant="outline" size="md" onClick={toggleRawJson}>
-              <Code2 aria-hidden="true" />
-              {showRawJson ? t("hideJson") : t("showJson")}
-            </Button>
-          </div>
+    <FoldedSection title={t("customFieldsStructuredTitle")} disclosure={disclosure}>
+      <div className="space-y-4 md:col-span-2">
+        <p className="max-w-2xl text-sm text-muted-foreground">{t("customFieldsStructuredHelp")}</p>
 
-          {definitions.length > 0 ? (
-            <TemplateCustomFields
-              definitions={definitions}
-              locale={locale}
-              getValue={getCustomFieldValue}
-              getError={(fieldName) => errorText(customFieldKey(fieldName))}
-              onChange={onTemplateCustomFieldChange}
-            />
-          ) : (
-            <EmptyNote>{values.categoryId ? t("customFieldsNoTemplate") : t("customFieldsSelectCategory")}</EmptyNote>
-          )}
+        {definitions.length > 0 ? (
+          <TemplateCustomFields
+            definitions={definitions}
+            locale={locale}
+            getValue={getCustomFieldValue}
+            getError={(fieldName) => errorText(customFieldKey(fieldName))}
+            onChange={onTemplateCustomFieldChange}
+          />
+        ) : (
+          <EmptyNote>{categoryId ? t("customFieldsNoTemplate") : t("customFieldsSelectCategory")}</EmptyNote>
+        )}
 
-          <div className="space-y-3 border-t border-border pt-4">
-            <h4 className="text-sm font-semibold text-foreground">{t("customFieldsAdditional")}</h4>
-            <CustomFieldRowsEditor
-              rows={additionalCustomFieldRows}
-              labels={{
-                key: t("customFieldKey"),
-                value: t("customFieldValue"),
-                add: t("addCustomField"),
-                remove: t("removeCustomField"),
-                empty: t("customFieldsEmpty"),
-              }}
-              onChange={onAdditionalCustomFieldRowsChange}
-            />
-          </div>
-
-          {showRawJson && (
-            <Field label={t("customFieldsJson")} id="asset-custom-fields-json" hint={t("customFieldsJsonHelp")} error={errorText("customFieldsJson")}>
-              <Textarea
-                value={values.customFieldsJson ?? ""}
-                onChange={(event) => onRawJsonChange(event.target.value)}
-                rows={5}
-                className="min-h-32 font-mono"
-              />
-            </Field>
-          )}
+        <div className="space-y-3 border-t border-border pt-4">
+          <h3 className="text-sm font-semibold text-foreground">{t("customFieldsAdditional")}</h3>
+          <CustomFieldRowsEditor
+            rows={additionalCustomFieldRows}
+            labels={{
+              key: t("customFieldKey"),
+              value: t("customFieldValue"),
+              add: t("addCustomField"),
+              remove: t("removeCustomField"),
+              empty: t("customFieldsEmpty"),
+            }}
+            onChange={onAdditionalCustomFieldRowsChange}
+          />
         </div>
       </div>
-      <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-        <input type="checkbox" checked={values.isActive} onChange={(event) => setField("isActive", event.target.checked)} className={checkboxVariants()} />
-        {tCommon("active")}
-      </label>
-    </Section>
+    </FoldedSection>
   )
 }
 

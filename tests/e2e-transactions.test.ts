@@ -112,6 +112,9 @@ test("an asset registered on the form with a photo and a purchase document, a wr
   assert.match(spec, /expect\(posted, "the wrong entry posts nothing"\)\.toBe\(0\)/)
   assert.match(spec, /setInputFiles\(PDF_FIXTURE\)/)
   assert.match(spec, /setInputFiles\(PHOTO_FIXTURE\)/)
+  // Group 4 plan 2 Task 6a: the photo section is folded, so the spec opens it before it checks the queued photo.
+  assert.match(spec, /await openAssetFormSection\(page, "รูปแรกเข้าทรัพย์สิน"\)\n\s+await page\.locator\("#asset-photo-file"\)\.setInputFiles\(PHOTO_FIXTURE\)/)
+  assert.equal(JSON.parse(readFileSync("messages/th.json", "utf8")).asset.initialAssetPhotos, "รูปแรกเข้าทรัพย์สิน", "the create form's photo section title")
   assert.match(spec, /if \(e2eDevice === "phone"\) await openPhoneKeyboard\(page\)/)
   assert.match(spec, /await expectReachable\(save\)/)
   // Every measured page of the area goes through the settle and the known list, never the bare Measure calls.

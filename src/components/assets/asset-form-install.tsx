@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Section, SelectField } from "@/components/assets/asset-form-section"
+import { FoldedSection, SelectField, type AssetFormDisclosure } from "@/components/assets/asset-form-section"
 import type { AssetFormOption as Option, AssetField } from "@/lib/asset-form-rules"
 import type { AssetOwnershipType } from "@/lib/asset-ownership"
 
@@ -14,24 +14,27 @@ export type AssetInstallAfterCreate = {
   reason: string
 }
 
-// ติดตั้งเป็นส่วนควบ, on create only (group 4 plan 2 Task 5 moved it out of asset-form.tsx; the state stays there).
+// ติดตั้งเป็นส่วนควบ, on create only (group 4 plan 2 Task 5 moved it out of asset-form.tsx; the state stays there). Folded
+// since Task 6a.
 export function AssetFormInstall({
   ownershipType,
   installAfterCreate,
   parentAssets,
   errorText,
   setInstallField,
+  disclosure,
 }: {
   ownershipType: AssetOwnershipType
   installAfterCreate: AssetInstallAfterCreate
   parentAssets: Option[]
   errorText: (key: AssetField) => string | undefined
   setInstallField: (field: keyof AssetInstallAfterCreate, value: string) => void
+  disclosure: AssetFormDisclosure
 }) {
   const t = useTranslations("asset")
 
   return (
-    <Section title={t("installAfterCreate")}>
+    <FoldedSection title={t("installAfterCreate")} disclosure={disclosure}>
       <div className="md:col-span-2">
         <p className="text-sm text-muted-foreground">
           {ownershipType === "component" ? t("installAfterCreateComponentHelp") : t("installAfterCreateHelp")}
@@ -80,6 +83,6 @@ export function AssetFormInstall({
           disabled={!installAfterCreate.parentAssetId}
         />
       </Field>
-    </Section>
+    </FoldedSection>
   )
 }

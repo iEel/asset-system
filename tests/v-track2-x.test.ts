@@ -158,8 +158,10 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
 
   // Each money control keeps step="0.01" and its validate() restates it after min: range(v, 0) ?? decimals(v, 2).
   const money: Record<string, readonly string[]> = {
-    // Group 4 plan 2 Task 5: the asset form's money controls sit in its purchase section, their rules in asset-form-rules.ts.
-    [`${C}assets/asset-form-purchase.tsx`]: ["values.purchasePrice", "purchaseDocument.totalAmount"],
+    // Group 4 plan 2 Task 5: the asset form's money controls sit in its purchase section, their rules in asset-form-rules.ts;
+    // Task 6a: the document's amount went with the documents box to its own section.
+    [`${C}assets/asset-form-purchase.tsx`]: ["values.purchasePrice"],
+    [`${C}assets/asset-form-documents.tsx`]: ["purchaseDocument.totalAmount"],
     [`${C}assets/asset-batch-form.tsx`]: ["common.purchasePrice"],
     [`${C}disposal/disposal-request-form.tsx`]: ["values.saleValue", "values.salvageValue"],
     [`${C}disposal/disposal-batch-form.tsx`]: ["values.saleValue", "values.salvageValue"],
@@ -171,7 +173,10 @@ test("one money rule: every money field of plan 2's forms refuses more than 2 de
   const withMoney = readSourceFiles("src/components").filter((file) => file.source.includes('step="0.01"')).map((file) => file.path)
   assert.deepEqual(withMoney.sort(), Object.keys(money).sort(), "every money control of the forms is in the list")
   // A control file whose validate() lives in a pure rules file, which reads validation-rules by its relative .ts path.
-  const rulesOf: Record<string, string> = { [`${C}assets/asset-form-purchase.tsx`]: "src/lib/asset-form-rules.ts" }
+  const rulesOf: Record<string, string> = {
+    [`${C}assets/asset-form-purchase.tsx`]: "src/lib/asset-form-rules.ts",
+    [`${C}assets/asset-form-documents.tsx`]: "src/lib/asset-form-rules.ts",
+  }
   for (const [path, values] of Object.entries(money)) {
     const rulesPath = rulesOf[path] ?? path
     const source = read(rulesPath)

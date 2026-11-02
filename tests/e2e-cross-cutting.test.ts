@@ -194,6 +194,13 @@ test("roles and permissions: each refused page and request needs a permission th
 
 test("errors under the field in the real flow: each form's wrong entry, its field id, its sentence and where its save lands (e2e cross-cutting task 3, EM3)", () => {
   const spec = read("e2e/cross-cutting/field-errors.spec.ts")
+  // Group 4 plan 2 Task 6a: the warranty pair sits in a folded section, opened by its title before the fill; the helper
+  // clicks the section's summary row only when it is closed.
+  assert.match(spec, /await openAssetFormSection\(page, "การจัดซื้อและประกัน"\)\n\s+await page\.locator\("#asset-warranty-start"\)\.fill\("2026-02-01"\)/)
+  assert.equal((thai.asset as Record<string, string>).purchaseWarranty, "การจัดซื้อและประกัน")
+  const support = read("e2e/transactions/tx-support.ts")
+  assert.ok(support.includes("export async function openAssetFormSection(page: Page, name: string) {"))
+  assert.ok(support.includes(`if (!(await section.evaluate((element) => (element as HTMLDetailsElement).open))) await summary.click()`))
   const common = thai.common as Record<string, Record<string, string> | string>
   const validation = common.validation as Record<string, string>
   const section = (name: string) => thai[name] as Record<string, string>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
@@ -14,20 +14,24 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { orNil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
-import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { AssetFormCustomFields } from "@/components/assets/asset-form-custom-fields"
+import { AssetFormDocuments } from "@/components/assets/asset-form-documents"
+import { AssetFormHeader } from "@/components/assets/asset-form-header"
 import { AssetFormInstall } from "@/components/assets/asset-form-install"
+import { AssetFormOther } from "@/components/assets/asset-form-other"
 import { AssetFormPhotos } from "@/components/assets/asset-form-photos"
 import { AssetFormPurchase } from "@/components/assets/asset-form-purchase"
-import { Section, SelectField } from "@/components/assets/asset-form-section"
+import { AssetFormRequiredCard } from "@/components/assets/asset-form-required-card"
+import { CardGroup, Section, SelectField, type AssetFormDisclosure } from "@/components/assets/asset-form-section"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import {
   attachmentMatchesPhotoLabel,
+  countRequiredFilled,
   createClientId,
   createCustomFieldRow,
   customFieldKey,
@@ -39,14 +43,17 @@ import {
   isAssetMessageCode,
   legacySanitizedPhotoLabel,
   parseCustomFieldRows,
+  sectionOfField,
   serializeCustomFieldRows,
   validate,
   validatePurchaseDocument,
   type AssetField,
   type AssetFixedField,
   type AssetFormOption as Option,
+  type AssetFormSection,
   type AssetFormValues,
   type AssetPhotoDraft,
+  type AssetRequiredField,
   type CloneSourceContext,
   type CustomFieldDefinition,
   type CustomFieldRow,
@@ -55,12 +62,13 @@ import {
   type PurchaseDocumentOption,
   type PurchaseDocumentType,
 } from "@/lib/asset-form-rules"
+import { summarizeAssetFormSection, type AssetFormFoldedSection, type AssetFormSummaryInput, type AssetFormSummaryPart } from "@/lib/asset-form-summary"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
-import { formatCount } from "@/lib/display-format"
+import { formatCount, formatMoney } from "@/lib/display-format"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 
 const protectedAssetWorkflowStatuses = new Set([
   "pending disposal",
@@ -71,6 +79,19 @@ const protectedAssetWorkflowStatuses = new Set([
   "under maintenance",
   "pending repair",
 ])
+
+// The words of each required field, as its label reads (the footer's "ยังขาด n ช่องที่ต้องกรอก · <fields>").
+const REQUIRED_FIELD_LABELS: Record<AssetRequiredField, string> = {
+  name: "assetName",
+  categoryId: "category",
+  ownershipType: "ownershipType",
+  companyId: "assetOwnerCompany",
+  branchId: "assetOwnerBranch",
+  departmentId: "department",
+  currentLocationId: "currentLocation",
+  statusId: "status",
+  conditionId: "condition",
+}
 
 export function AssetForm({
   asset,
@@ -91,6 +112,7 @@ export function AssetForm({
   existingAssetPhotos = [],
   cloneSource,
   backHref: providedBackHref,
+  headerActions,
 }: {
   asset?: AssetFormValues
   companies: Option[]
@@ -110,6 +132,8 @@ export function AssetForm({
   existingAssetPhotos?: ExistingAssetPhoto[]
   cloneSource?: CloneSourceContext
   backHref?: string
+  // The create page's own switch (เพิ่มทีละรายการ / เพิ่มเป็นชุด), shown in the header's actions.
+  headerActions?: ReactNode
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -132,10 +156,12 @@ export function AssetForm({
   const [newPurchaseDocuments, setNewPurchaseDocuments] = useState<PurchaseDocumentDraft[]>([])
   const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>(asset?.purchaseDocumentIds ?? [])
   const [photoLabel, setPhotoLabel] = useState("")
-  const [selectedAssetPhotoFile, setSelectedAssetPhotoFile] = useState<File | null>(null)
   const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
   const [showRawJson, setShowRawJson] = useState(false)
+  // The folded sections that are open (spec §8, P2-R11): เอกสารจัดซื้อ starts open; an error, the #purchase link and the
+  // person's own click open the others. On edit every folded section starts folded too (Task 8 opens a changed one).
+  const [openSections, setOpenSections] = useState<Set<AssetFormSection>>(() => new Set<AssetFormSection>(["documents"]))
   const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(() => shouldAllowCrossCompanyCustodianOnLoad(asset, employees, branches, departments))
   const [allowCrossBranchLocation, setAllowCrossBranchLocation] = useState(() => shouldAllowCrossBranchLocationOnLoad(asset, locations))
   const [saving, setSaving] = useState(false)
@@ -152,6 +178,9 @@ export function AssetForm({
   const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
   // The department's star reads the list validate() and the counter read (asset-form-rules.ts).
   const requiredFields: readonly AssetField[] = getRequiredAssetFields(ownershipType)
+  // The card's counter and the footer's missing line read the same list (asset-form-rules.ts).
+  const requiredProgress = countRequiredFilled(values, ownershipType)
+  const showMissing = !isEdit && requiredProgress.missing.length > 0
   const currentStatusId = asset?.statusId ?? ""
   const selectedStatus = statuses.find((status) => status.id === values.statusId)
   const currentStatus = statuses.find((status) => status.id === currentStatusId)
@@ -260,9 +289,10 @@ export function AssetForm({
   const focusFirstError = () =>
     fieldErrors.focusFirst(fieldOrder(selectedCustomFieldDefinitions), {
       idFor: (key) => fieldId(key, selectedCustomFieldDefinitions),
-      // The raw JSON shows only after its toggle.
+      // The raw JSON shows only after its toggle, and a folded section opens before its field takes focus.
       reveal: (key) => {
         if (key === "customFieldsJson") setShowRawJson(true)
+        openSection(sectionOfField(key))
       },
     })
   // A rule with a message of its own reads it from the asset messages; any other code reads the hook's message.
@@ -325,6 +355,41 @@ export function AssetForm({
       window.clearTimeout(timeout)
     }
   }, [asset?.id, duplicateState.assetTagExists, duplicateState.serialNumberExists, values.assetTag, values.serialNumber])
+
+  // The asset page's "บันทึกข้อมูลการซื้อ" links here with #purchase: that folded section opens (the browser has already
+  // scrolled to its anchor). A later hash change does the same.
+  useEffect(() => {
+    const openSectionNow = (section: AssetFormSection) => setOpenSections((current) => (current.has(section) ? current : new Set(current).add(section)))
+    const openFromHash = () => {
+      if (window.location.hash === "#purchase") openSectionNow("purchase")
+    }
+    const timeout = window.setTimeout(openFromHash, 0)
+    window.addEventListener("hashchange", openFromHash)
+    return () => {
+      window.clearTimeout(timeout)
+      window.removeEventListener("hashchange", openFromHash)
+    }
+  }, [])
+
+  function openSection(section: AssetFormSection) {
+    setOpenSections((current) => (current.has(section) ? current : new Set(current).add(section)))
+  }
+
+  function setSectionOpen(section: AssetFormSection, open: boolean) {
+    setOpenSections((current) => {
+      if (current.has(section) === open) return current
+      const next = new Set(current)
+      if (open) next.add(section)
+      else next.delete(section)
+      return next
+    })
+  }
+
+  // "ไปช่องแรกที่ยังขาด": each missing required field shows its error, and focus goes to the first one.
+  function goToFirstMissing() {
+    fieldErrors.setErrors({ ...fieldErrors.errors, ...Object.fromEntries(requiredProgress.missing.map((field) => [field, "required"])) })
+    focusFirstError()
+  }
 
   function setField<K extends keyof AssetFormValues>(field: K, value: AssetFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -542,11 +607,8 @@ export function AssetForm({
         }
         if (documentsFailed) failedSteps.push(t("followUpDocuments"))
 
-        const photosToUpload = selectedAssetPhotoFile
-          ? [...newAssetPhotos, { id: createClientId(), label: effectivePhotoLabel, file: selectedAssetPhotoFile }]
-          : newAssetPhotos
         try {
-          if (photosToUpload.length > 0) await uploadAssetPhotos(savedId, photosToUpload)
+          if (newAssetPhotos.length > 0) await uploadAssetPhotos(savedId, newAssetPhotos)
         } catch {
           failedSteps.push(t("followUpPhotos"))
         }
@@ -584,11 +646,6 @@ export function AssetForm({
     fieldErrors.clear("purchaseDocumentFile", "purchaseDocumentNo")
   }
 
-  function selectAssetPhotoFile(file: File | null) {
-    setSelectedAssetPhotoFile(file)
-    fieldErrors.clear("assetPhotoFile")
-  }
-
   function addPurchaseDocument() {
     // The add button checks its own two fields; the errors of the save stay as they are.
     const documentErrors = validatePurchaseDocument(selectedPurchaseFile, purchaseDocumentNo)
@@ -620,27 +677,16 @@ export function AssetForm({
     setNewPurchaseDocuments((current) => current.filter((document) => document.id !== id))
   }
 
-  function addAssetPhoto() {
-    if (!selectedAssetPhotoFile) {
-      fieldErrors.setErrors({ ...fieldErrors.errors, assetPhotoFile: "fileRequired" })
-      focusFirstError()
-      return
-    }
+  // A chosen file joins the queue at once under the chosen photo type, and the next missing type is chosen (spec §8).
+  function addAssetPhoto(file: File | null) {
+    fieldErrors.clear("assetPhotoFile")
+    if (!file) return
 
-    const label = effectivePhotoLabel
-    const nextPhotos = [
-      ...newAssetPhotos,
-      {
-        id: createClientId(),
-        label,
-        file: selectedAssetPhotoFile,
-      },
-    ]
+    const nextPhotos = [...newAssetPhotos, { id: createClientId(), label: effectivePhotoLabel, file }]
     const nextQueuedLabels = new Set(nextPhotos.map((photo) => photo.label).filter(Boolean))
     const nextMissingLabel = selectedPhotoChecklist.find((item) => !nextQueuedLabels.has(item)) ?? ""
 
     setNewAssetPhotos(nextPhotos)
-    setSelectedAssetPhotoFile(null)
     setPhotoLabel(nextMissingLabel)
   }
 
@@ -736,14 +782,57 @@ export function AssetForm({
     }
   }
 
+  // The folded sections (spec §8, P2-R11): each one's summary line, its "กรอกแล้ว n จาก m ช่อง" count and its frame. A
+  // section that holds an error has the error frame; the first error's section opens through focusFirstError's reveal.
+  const sectionsWithErrors = new Set(
+    Object.keys(fieldErrors.errors)
+      .filter((key) => key in FIELD_IDS || key.startsWith("customFields."))
+      .map((key) => sectionOfField(key as AssetField)),
+  )
+  const summaryInput: AssetFormSummaryInput = {
+    values,
+    install: installAfterCreate,
+    installParentLabel: parentAssets.find((parentAsset) => parentAsset.id === installAfterCreate.parentAssetId)?.label,
+    documents: { selected: selectedPurchaseDocumentIds.length, queued: newPurchaseDocuments.length },
+    photos: {
+      checklistTotal: selectedPhotoChecklist.length,
+      checklistCovered: selectedPhotoChecklist.filter((item) => queuedPhotoLabels.has(item) || existingPhotoLabels.has(item)).length,
+      existing: existingAssetPhotos.length,
+      queued: newAssetPhotos.length,
+    },
+    customFields: { definitions: selectedCustomFieldDefinitions, valueOf: getCustomFieldValue, extraRows: additionalCustomFieldRows.length },
+  }
+
+  function summaryText(part: AssetFormSummaryPart) {
+    switch (part.key) {
+      case "purchaseDate":
+      case "warrantyEnd":
+        return t(`sectionSummary.${part.key}`, { date: formatDate(part.date) })
+      case "purchasePrice":
+        return t("sectionSummary.purchasePrice", { amount: formatMoney(part.amount, { unit: tCommon("baht") }) })
+      case "installParent":
+        return t("sectionSummary.installParent", { label: part.label })
+      case "remarkSet":
+        return t("sectionSummary.remarkSet")
+      default:
+        return t(`sectionSummary.${part.key}`, { count: part.count })
+    }
+  }
+
+  function disclosureFor(section: AssetFormFoldedSection): AssetFormDisclosure {
+    const summary = summarizeAssetFormSection(section, summaryInput)
+    return {
+      open: openSections.has(section),
+      onOpenChange: (open) => setSectionOpen(section, open),
+      summary: summary.parts.length > 0 ? summary.parts.map(summaryText).join(" · ") : undefined,
+      badge: summary.total > 0 ? t("sectionFilled", { filled: summary.filled, total: summary.total }) : undefined,
+      tone: sectionsWithErrors.has(section) ? "error" : "default",
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader
-        title={title}
-        meta={t("subtitle")}
-        className="mb-6"
-        back={<PageBackLink href={backHref} label={tCommon("back")} />}
-      />
+      <AssetFormHeader mode={isEdit ? "edit" : "create"} title={title} backHref={backHref} actions={headerActions} />
 
       {/* Spec 2D D7: where this new asset comes from is information, an inline info Notice (no warning box, no icon tile). */}
       {cloneSource ? (
@@ -758,180 +847,260 @@ export function AssetForm({
       ) : null}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        <Section title={t("basicInfo")}>
-          {/* The duplicate check stays live (spec U8); a save that finds it focuses the field and shows the same line. */}
-          <Field
-            label={t("assetTag")}
-            id="asset-tag"
-            liveError={duplicateState.assetTagExists ? t("duplicateAssetTag") : null}
-            error={duplicateState.assetTagExists ? t("duplicateAssetTag") : errorText("assetTag")}
-          >
-            <Input
-              value={values.assetTag ?? ""}
-              onChange={(event) => setField("assetTag", event.target.value)}
-              maxLength={50}
-              placeholder={t("autoTagHint")}
-            />
-          </Field>
-          <div className="grid min-w-0 gap-2">
-            <Field label={t("assetName")} id="asset-name" required hint={t("assetNameHelp")} error={errorText("name")}>
+        <AssetFormRequiredCard title={t("requiredCardTitle")} counter={requiredProgress}>
+          <CardGroup title={t("basicInfo")}>
+            {/* The duplicate check stays live (spec U8); a save that finds it focuses the field and shows the same line. */}
+            <Field
+              label={t("assetTag")}
+              id="asset-tag"
+              liveError={duplicateState.assetTagExists ? t("duplicateAssetTag") : null}
+              error={duplicateState.assetTagExists ? t("duplicateAssetTag") : errorText("assetTag")}
+            >
               <Input
-                value={values.name}
-                onChange={(event) => {
-                  setNameManuallyEdited(true)
-                  setField("name", event.target.value)
-                }}
-                maxLength={200}
-                required
+                value={values.assetTag ?? ""}
+                onChange={(event) => setField("assetTag", event.target.value)}
+                maxLength={50}
+                placeholder={t("autoTagHint")}
               />
             </Field>
-            {suggestedAssetName && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-meta text-muted-foreground">
-                  {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
-                </span>
-                {values.name !== suggestedAssetName && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setNameManuallyEdited(false)
-                      setField("name", suggestedAssetName)
-                    }}
-                  >
-                    {t("useSuggestedName")}
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-          <SelectField label={t("category")} id="asset-category" value={values.categoryId} required error={errorText("categoryId")} onChange={handleCategoryChange}>
-            <option value="">{t("selectCategory")}</option>
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
-          </SelectField>
-          <SelectField label={t("brand")} value={values.brandId ?? ""} onChange={handleBrandChange}>
-            <option value="">{t("selectBrand")}</option>
-            {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
-          </SelectField>
-          <SelectField label={t("model")} value={values.modelId ?? ""} onChange={handleModelChange}>
-            <option value="">{t("selectModel")}</option>
-            {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
-          </SelectField>
-          <Field
-            label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")}
-            id="asset-serial-number"
-            liveError={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : null}
-            error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : errorText("serialNumber")}
-          >
-            <ScannerTextInput
-              value={values.serialNumber ?? ""}
-              onChange={(value) => setField("serialNumber", value)}
-              maxLength={100}
-              disabled={saving}
-              labels={{
-                start: t("scanSerialNumber"),
-                stop: t("stopSerialScan"),
-                title: t("serialScannerTitle"),
-                help: t("serialScannerHelp"),
-                cameraUnsupported: t("cameraUnsupported"),
-                cameraNotFound: t("cameraNotFound"),
-                cameraError: t("cameraError"),
-                cameraDevice: t("cameraDevice"),
-                cameraDeviceFallback: t("cameraDeviceFallback"),
-                cameraRear: t("cameraRear"),
-                scanning: t("serialScannerRunning"),
-                scanned: t("serialScanned"),
-              }}
-            />
-          </Field>
-        </Section>
-
-        <Section title={t("ownership")}>
-          <div className="md:col-span-2">
-            <SelectField
-              label={t("ownershipType")}
-              id="asset-ownership-type"
-              value={ownershipType}
-              required
-              hint={t(`ownershipType_${ownershipType}_help`)}
-              error={errorText("ownershipType")}
-              onChange={handleOwnershipTypeChange}
-            >
-              {assetOwnershipTypes.map((type) => (
-                <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
-              ))}
+            <div className="grid min-w-0 gap-2">
+              <Field label={t("assetName")} id="asset-name" required hint={t("assetNameHelp")} error={errorText("name")}>
+                <Input
+                  value={values.name}
+                  onChange={(event) => {
+                    setNameManuallyEdited(true)
+                    setField("name", event.target.value)
+                  }}
+                  maxLength={200}
+                  required
+                />
+              </Field>
+              {suggestedAssetName && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-meta text-muted-foreground">
+                    {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
+                  </span>
+                  {values.name !== suggestedAssetName && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setNameManuallyEdited(false)
+                        setField("name", suggestedAssetName)
+                      }}
+                    >
+                      {t("useSuggestedName")}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+            <SelectField label={t("category")} id="asset-category" value={values.categoryId} required error={errorText("categoryId")} onChange={handleCategoryChange}>
+              <option value="">{t("selectCategory")}</option>
+              {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
             </SelectField>
-          </div>
-          <SelectField
-            label={t("assetOwnerCompany")}
-            id="asset-company"
-            value={values.companyId}
-            required
-            hint={t("assetOwnerCompanyHelp")}
-            error={errorText("companyId")}
-            onChange={handleCompanyChange}
-          >
-            <option value="">{t("selectCompany")}</option>
-            {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
-          </SelectField>
-          <SelectField
-            label={t("assetOwnerBranch")}
-            id="asset-branch"
-            value={values.branchId}
-            required
-            hint={t("assetOwnerBranchHelp")}
-            error={errorText("branchId")}
-            onChange={handleBranchChange}
-          >
-            <option value="">{t("selectBranch")}</option>
-            {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
-          </SelectField>
-          <SelectField
-            label={t("department")}
-            id="asset-department"
-            value={values.departmentId ?? ""}
-            required={requiredFields.includes("departmentId")}
-            error={errorText("departmentId")}
-            onChange={(value) => setField("departmentId", value)}
-          >
-            <option value="">{t("selectDepartment")}</option>
-            {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
-          </SelectField>
-          {ownershipType === "personal" || isSoftwareLicense ? (
-            <div>
-              <SearchableSelect
-                id="asset-custodian"
-                label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
-                value={values.custodianId ?? ""}
-                options={filteredEmployees}
-                placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
-                searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                emptyLabel={tCommon("searchSelectNoResults")}
-                error={errorText("custodianId")}
-                onChange={(value) => setField("custodianId", value)}
+            <SelectField label={t("brand")} value={values.brandId ?? ""} onChange={handleBrandChange}>
+              <option value="">{t("selectBrand")}</option>
+              {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
+            </SelectField>
+            <SelectField label={t("model")} value={values.modelId ?? ""} onChange={handleModelChange}>
+              <option value="">{t("selectModel")}</option>
+              {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
+            </SelectField>
+            <Field
+              label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")}
+              id="asset-serial-number"
+              liveError={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : null}
+              error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : errorText("serialNumber")}
+            >
+              <ScannerTextInput
+                value={values.serialNumber ?? ""}
+                onChange={(value) => setField("serialNumber", value)}
+                maxLength={100}
+                disabled={saving}
+                labels={{
+                  start: t("scanSerialNumber"),
+                  stop: t("stopSerialScan"),
+                  title: t("serialScannerTitle"),
+                  help: t("serialScannerHelp"),
+                  cameraUnsupported: t("cameraUnsupported"),
+                  cameraNotFound: t("cameraNotFound"),
+                  cameraError: t("cameraError"),
+                  cameraDevice: t("cameraDevice"),
+                  cameraDeviceFallback: t("cameraDeviceFallback"),
+                  cameraRear: t("cameraRear"),
+                  scanning: t("serialScannerRunning"),
+                  scanned: t("serialScanned"),
+                }}
               />
-              <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
+            </Field>
+          </CardGroup>
+
+          <CardGroup title={t("ownership")}>
+            <div className="md:col-span-2">
+              <SelectField
+                label={t("ownershipType")}
+                id="asset-ownership-type"
+                value={ownershipType}
+                required
+                hint={t(`ownershipType_${ownershipType}_help`)}
+                error={errorText("ownershipType")}
+                onChange={handleOwnershipTypeChange}
+              >
+                {assetOwnershipTypes.map((type) => (
+                  <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
+                ))}
+              </SelectField>
+            </div>
+            <SelectField
+              label={t("assetOwnerCompany")}
+              id="asset-company"
+              value={values.companyId}
+              required
+              hint={t("assetOwnerCompanyHelp")}
+              error={errorText("companyId")}
+              onChange={handleCompanyChange}
+            >
+              <option value="">{t("selectCompany")}</option>
+              {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
+            </SelectField>
+            <SelectField
+              label={t("assetOwnerBranch")}
+              id="asset-branch"
+              value={values.branchId}
+              required
+              hint={t("assetOwnerBranchHelp")}
+              error={errorText("branchId")}
+              onChange={handleBranchChange}
+            >
+              <option value="">{t("selectBranch")}</option>
+              {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
+            </SelectField>
+            <SelectField
+              label={t("department")}
+              id="asset-department"
+              value={values.departmentId ?? ""}
+              required={requiredFields.includes("departmentId")}
+              error={errorText("departmentId")}
+              onChange={(value) => setField("departmentId", value)}
+            >
+              <option value="">{t("selectDepartment")}</option>
+              {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
+            </SelectField>
+            {ownershipType === "personal" || isSoftwareLicense ? (
+              <div>
+                <SearchableSelect
+                  id="asset-custodian"
+                  label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
+                  value={values.custodianId ?? ""}
+                  options={filteredEmployees}
+                  placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
+                  searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                  emptyLabel={tCommon("searchSelectNoResults")}
+                  error={errorText("custodianId")}
+                  onChange={(value) => setField("custodianId", value)}
+                />
+                <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={allowCrossCompanyCustodian}
+                    onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
+                    className={cn(checkboxVariants(), "mt-0.5")}
+                  />
+                  <span>
+                    <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
+                    <span>{t("allowCrossCompanyCustodianHelp")}</span>
+                  </span>
+                </label>
+                {hasCrossCompanyCustodian ? (
+                  <Notice tone="warning" className="mt-2">{t("crossCompanyCustodianWarning")}</Notice>
+                ) : null}
+              </div>
+            ) : (
+              <Notice tone="neutral" title={t("custodianNotRequired")}>
+                {t("custodianNotRequiredHelp")}
+              </Notice>
+            )}
+          </CardGroup>
+
+          <CardGroup title={t("locationStatus")}>
+            <div className="md:col-span-2">
+              <label className="flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
                 <input
                   type="checkbox"
-                  checked={allowCrossCompanyCustodian}
-                  onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
+                  checked={allowCrossBranchLocation}
+                  onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
                   className={cn(checkboxVariants(), "mt-0.5")}
                 />
                 <span>
-                  <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
-                  <span>{t("allowCrossCompanyCustodianHelp")}</span>
+                  <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
+                  <span>{t("allowCrossBranchLocationHelp")}</span>
                 </span>
               </label>
-              {hasCrossCompanyCustodian ? (
-                <Notice tone="warning" className="mt-2">{t("crossCompanyCustodianWarning")}</Notice>
+              {hasCrossBranchLocation ? (
+                <Notice tone="warning" className="mt-2">{t("crossBranchLocationWarning")}</Notice>
               ) : null}
             </div>
-          ) : (
-            <Notice tone="neutral" title={t("custodianNotRequired")}>
-              {t("custodianNotRequiredHelp")}
-            </Notice>
-          )}
-        </Section>
+            <SelectField label={t("homeLocation")} value={values.homeLocationId ?? ""} onChange={(value) => setField("homeLocationId", value)}>
+              <option value="">{t("selectLocation")}</option>
+              {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
+            </SelectField>
+            <SelectField
+              label={t("currentLocation")}
+              id="asset-current-location"
+              value={values.currentLocationId}
+              required
+              error={errorText("currentLocationId")}
+              onChange={(value) => setField("currentLocationId", value)}
+            >
+              <option value="">{t("selectLocation")}</option>
+              {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
+            </SelectField>
+            <div>
+              <Field
+                label={t("status")}
+                id="asset-status"
+                required
+                labelAction={<AssetStateHelpPopover {...assetStatusHelp} />}
+                hint={selectedStatus?.description}
+                error={errorText("statusId")}
+              >
+                <NativeSelect value={values.statusId} required onChange={(event) => setField("statusId", event.target.value)}>
+                  <option value="">{t("selectStatus")}</option>
+                  {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+                </NativeSelect>
+              </Field>
+              {/* The save's reason while this change is blocked: the save names it with aria-describedby. */}
+              {isProtectedStatusChange && (
+                <Notice id="asset-status-protected" tone="warning" className="mt-2" title={t("protectedStatusEditBlocked")}>
+                  {protectedStatusHelp ? (
+                    <>
+                      <p>{protectedStatusHelp}</p>
+                      {isSelectedRepairStatus && repairWorkflowHref && (
+                        <Link href={repairWorkflowHref} className={cn(linkVariants({ size: "inherit" }), "mt-2 inline-flex decoration-current")}>
+                          {t("openRepairWorkflow")}
+                        </Link>
+                      )}
+                    </>
+                  ) : null}
+                </Notice>
+              )}
+            </div>
+            <Field
+              label={t("condition")}
+              id="asset-condition"
+              required
+              labelAction={<AssetStateHelpPopover {...assetConditionHelp} />}
+              hint={conditions.find((condition) => condition.id === values.conditionId)?.description}
+              error={errorText("conditionId")}
+            >
+              <NativeSelect value={values.conditionId} required onChange={(event) => setField("conditionId", event.target.value)}>
+                <option value="">{t("selectCondition")}</option>
+                {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
+              </NativeSelect>
+            </Field>
+          </CardGroup>
+        </AssetFormRequiredCard>
 
         {isSoftwareLicense && (
           <Section title={t("licenseManagement")}>
@@ -973,84 +1142,6 @@ export function AssetForm({
           </Section>
         )}
 
-        <Section title={t("locationStatus")}>
-          <div className="md:col-span-2">
-            <label className="flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={allowCrossBranchLocation}
-                onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
-                className={cn(checkboxVariants(), "mt-0.5")}
-              />
-              <span>
-                <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
-                <span>{t("allowCrossBranchLocationHelp")}</span>
-              </span>
-            </label>
-            {hasCrossBranchLocation ? (
-              <Notice tone="warning" className="mt-2">{t("crossBranchLocationWarning")}</Notice>
-            ) : null}
-          </div>
-          <SelectField label={t("homeLocation")} value={values.homeLocationId ?? ""} onChange={(value) => setField("homeLocationId", value)}>
-            <option value="">{t("selectLocation")}</option>
-            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
-          </SelectField>
-          <SelectField
-            label={t("currentLocation")}
-            id="asset-current-location"
-            value={values.currentLocationId}
-            required
-            error={errorText("currentLocationId")}
-            onChange={(value) => setField("currentLocationId", value)}
-          >
-            <option value="">{t("selectLocation")}</option>
-            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
-          </SelectField>
-          <div>
-            <Field
-              label={t("status")}
-              id="asset-status"
-              required
-              labelAction={<AssetStateHelpPopover {...assetStatusHelp} />}
-              hint={selectedStatus?.description}
-              error={errorText("statusId")}
-            >
-              <NativeSelect value={values.statusId} required onChange={(event) => setField("statusId", event.target.value)}>
-                <option value="">{t("selectStatus")}</option>
-                {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-              </NativeSelect>
-            </Field>
-            {/* The save's reason while this change is blocked: the save names it with aria-describedby. */}
-            {isProtectedStatusChange && (
-              <Notice id="asset-status-protected" tone="warning" className="mt-2" title={t("protectedStatusEditBlocked")}>
-                {protectedStatusHelp ? (
-                  <>
-                    <p>{protectedStatusHelp}</p>
-                    {isSelectedRepairStatus && repairWorkflowHref && (
-                      <Link href={repairWorkflowHref} className={cn(linkVariants({ size: "inherit" }), "mt-2 inline-flex decoration-current")}>
-                        {t("openRepairWorkflow")}
-                      </Link>
-                    )}
-                  </>
-                ) : null}
-              </Notice>
-            )}
-          </div>
-          <Field
-            label={t("condition")}
-            id="asset-condition"
-            required
-            labelAction={<AssetStateHelpPopover {...assetConditionHelp} />}
-            hint={conditions.find((condition) => condition.id === values.conditionId)?.description}
-            error={errorText("conditionId")}
-          >
-            <NativeSelect value={values.conditionId} required onChange={(event) => setField("conditionId", event.target.value)}>
-              <option value="">{t("selectCondition")}</option>
-              {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
-            </NativeSelect>
-          </Field>
-        </Section>
-
         {!isEdit && (
           <AssetFormInstall
             ownershipType={ownershipType}
@@ -1058,6 +1149,7 @@ export function AssetForm({
             parentAssets={parentAssets}
             errorText={errorText}
             setInstallField={setInstallField}
+            disclosure={disclosureFor("install")}
           />
         )}
 
@@ -1065,9 +1157,14 @@ export function AssetForm({
           values={values}
           setField={setField}
           errorText={errorText}
+          suppliers={suppliers}
+          disclosure={disclosureFor("purchase")}
+        />
+
+        <AssetFormDocuments
+          errorText={errorText}
           fieldErrors={fieldErrors}
           saving={saving}
-          suppliers={suppliers}
           purchaseDocumentOptions={purchaseDocumentOptions}
           selectedPurchaseDocumentIds={selectedPurchaseDocumentIds}
           togglePurchaseDocument={togglePurchaseDocument}
@@ -1084,6 +1181,7 @@ export function AssetForm({
           addPurchaseDocument={addPurchaseDocument}
           newPurchaseDocuments={newPurchaseDocuments}
           removePurchaseDocument={removePurchaseDocument}
+          disclosure={disclosureFor("documents")}
         />
 
         <AssetFormPhotos
@@ -1097,29 +1195,54 @@ export function AssetForm({
           queuedPhotoLabels={queuedPhotoLabels}
           existingPhotoLabels={existingPhotoLabels}
           setPhotoLabel={setPhotoLabel}
-          selectedAssetPhotoFile={selectedAssetPhotoFile}
-          selectAssetPhotoFile={selectAssetPhotoFile}
           existingAssetPhotos={existingAssetPhotos}
           addAssetPhoto={addAssetPhoto}
           newAssetPhotos={newAssetPhotos}
           removeAssetPhoto={removeAssetPhoto}
+          disclosure={disclosureFor("photos")}
         />
 
         <AssetFormCustomFields
-          values={values}
-          setField={setField}
+          categoryId={values.categoryId}
           errorText={errorText}
-          showRawJson={showRawJson}
-          toggleRawJson={() => setShowRawJson((current) => !current)}
           definitions={selectedCustomFieldDefinitions}
           getCustomFieldValue={getCustomFieldValue}
           onTemplateCustomFieldChange={handleTemplateCustomFieldChange}
           additionalCustomFieldRows={additionalCustomFieldRows}
           onAdditionalCustomFieldRowsChange={handleAdditionalCustomFieldRowsChange}
-          onRawJsonChange={handleRawJsonChange}
+          disclosure={disclosureFor("customFields")}
         />
 
-        <StickyFormFooter status={duplicateState.checking ? <span id="asset-save-reason">{t("duplicateCheckPending")}</span> : undefined}>
+        <AssetFormOther
+          values={values}
+          setField={setField}
+          errorText={errorText}
+          showRawJson={showRawJson}
+          toggleRawJson={() => setShowRawJson((current) => !current)}
+          onRawJsonChange={handleRawJsonChange}
+          disclosure={disclosureFor("other")}
+        />
+
+        {/* The save stays enabled while fields are missing: validate() shows each error and focuses the first one. */}
+        <StickyFormFooter
+          status={
+            duplicateState.checking || showMissing ? (
+              <span className="grid gap-1">
+                {duplicateState.checking ? <span id="asset-save-reason">{t("duplicateCheckPending")}</span> : null}
+                {showMissing ? (
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="min-w-0 break-words">
+                      {t("requiredMissing", { count: requiredProgress.missing.length, fields: requiredProgress.missing.map((field) => t(REQUIRED_FIELD_LABELS[field])).join(", ") })}
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={goToFirstMissing}>
+                      {t("goToFirstMissing")}
+                    </Button>
+                  </span>
+                ) : null}
+              </span>
+            ) : undefined
+          }
+        >
           <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>

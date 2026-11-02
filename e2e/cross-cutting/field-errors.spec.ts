@@ -8,7 +8,7 @@ import { fillReturn, handoverForward, isoDay, reviewAndSave, save } from "./supp
 import { createAsset, handOver, projectMarker, readAsset, readAssetChoices, returnAsset } from "./support/records.ts"
 // The transaction pages' first arrival, the shared picker's chosen asset and the condition chips (the transaction area's
 // helpers).
-import { conditionChip, pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
+import { conditionChip, openAssetFormSection, pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
 import { TX_WORDS } from "../transactions/tx-words.ts"
 import { choose, expectFieldError, expectNoFieldError } from "./support/ui.ts"
 // The round form's steps (group 2 spec §7): its conditions as chips, its own submit, the live count and the sample.
@@ -40,6 +40,8 @@ test("asset register: a warranty that ends before it starts shows its error, and
   await page.locator("#asset-current-location").selectOption(run.locationId)
   await page.locator("#asset-status").selectOption(choices.readyStatusId)
   await page.locator("#asset-condition").selectOption(choices.goodConditionId)
+  // The warranty pair sits in the folded การจัดซื้อและประกัน (group 4 plan 2 Task 6a).
+  await openAssetFormSection(page, "การจัดซื้อและประกัน")
   await page.locator("#asset-warranty-start").fill("2026-02-01")
   await page.locator("#asset-warranty-end").fill("2026-01-01")
   await save(page)
