@@ -29,11 +29,15 @@ function sourceFiles(directory: string): string[] {
   })
 }
 
-test("the en plural messages are known: 42 keys, so a new one is checked by the rules below", () => {
+test("the en plural messages are known: 45 keys, so a new one is checked by the rules below", () => {
   // Group 4 plan 2 Task 6a added 9: the asset form's required counter, section count, missing line and six section summaries.
   // Task 8 added the edit footer's "แก้ไข n ช่อง" (asset.changeCount).
   // Group 4 plan 3 Task 4 added 4: the purchase-document picker's footer and linked lines, and the edit badge "ผูกไว้ n ใบ".
-  assert.equal(pluralKeys.size, 42, [...pluralKeys.keys()].join(", "))
+  // Group 4 plan 4 Task 5 added 3: the scan page's heading with and without the matched field, and a card's components.
+  assert.equal(pluralKeys.size, 45, [...pluralKeys.keys()].join(", "))
+  assert.equal(pluralKeys.get("assetTools.scanFound"), "count")
+  assert.equal(pluralKeys.get("assetTools.scanFoundMatch"), "count")
+  assert.equal(pluralKeys.get("assetTools.scanComponentsValue"), "count")
   // Group 4 plan 4 Task 3: the components page's count line, photo count and the remove dialog's count.
   assert.equal(pluralKeys.get("asset.componentHistoryCount"), "total")
   assert.equal(pluralKeys.get("asset.componentPhotoCount"), "count")

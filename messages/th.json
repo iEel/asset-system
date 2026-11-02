@@ -343,7 +343,26 @@
     "exportAllDescription": "ส่งออกทะเบียนทรัพย์สินทั้งหมดตามสิทธิ์การเข้าถึงปัจจุบัน สูงสุด {max} รายการ",
     "exportWithFilters": "เลือกตัวกรองในทะเบียนแล้วส่งออก",
     "exportWithFiltersDescription": "กลับไปที่หน้าทะเบียนเพื่อเลือกตัวกรองก่อนส่งออก",
-    "exportAll": "ส่งออกทั้งหมด (Excel)"
+    "exportAll": "ส่งออกทั้งหมด (Excel)",
+    "scanPagePlaceholder": "รหัสทรัพย์สิน, Serial หรือชื่อ",
+    "scanHint": "ป้าย QR ยังติดไม่ครบ พิมพ์รหัสบางส่วน, Serial ใต้เครื่อง หรือชื่อแทนได้",
+    "scanFound": "พบ {count, number} รายการ",
+    "scanFoundMatch": "พบ {count, number} รายการ · ตรงกับ {field}",
+    "scanCardMatch": "ตรงกับ {field}",
+    "scanMatchFields": {
+      "tag": "รหัสทรัพย์สิน",
+      "serial": "Serial",
+      "name": "ชื่อ",
+      "holder": "ผู้ถือครอง",
+      "room": "ที่ตั้ง",
+      "model": "รุ่น"
+    },
+    "scanCondition": "สภาพ {condition}",
+    "scanComponents": "ส่วนควบ",
+    "scanComponentsValue": "{count, number} รายการ · {names}",
+    "scanNextActions": "ทำต่อกับทรัพย์สินนี้",
+    "scanRecent": "เปิดล่าสุด",
+    "scanRecentClear": "ล้างรายการ"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",

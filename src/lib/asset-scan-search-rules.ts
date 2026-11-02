@@ -198,3 +198,17 @@ export type AssetScanSearchAnswer = {
   total: number
   rows: AssetScanRow[]
 }
+
+// The page's two choices over an answer (group 4 plan 4 Task 5). Enter opens an asset only when exactly one card is an
+// exact tag or Serial match (P4-R2); typing alone never opens anything.
+export function getAssetScanEnterTarget<T extends { exact: boolean }>(rows: readonly T[]): T | null {
+  const exact = rows.filter((row) => row.exact)
+  return exact.length === 1 ? exact[0] : null
+}
+
+// The heading names the field only when every card matched the same one; otherwise each card names its own (P4-R7).
+export function getAssetScanSharedMatchField<F extends string>(rows: readonly { match: { field: F } }[]): F | null {
+  const field = rows[0]?.match.field
+  if (field === undefined) return null
+  return rows.every((row) => row.match.field === field) ? field : null
+}

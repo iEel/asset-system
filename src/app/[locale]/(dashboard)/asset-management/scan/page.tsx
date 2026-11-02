@@ -8,25 +8,24 @@ type AssetScanPageProps = {
 
 export default async function AssetScanPage({ params }: AssetScanPageProps) {
   const { locale } = await params
-  await requirePagePermission(locale, "asset", "view")
+  const user = await requirePagePermission(locale, "asset", "view")
   const t = await getTranslations("assetTools")
   const tGlobalSearch = await getTranslations("globalSearch")
-  const tAsset = await getTranslations("asset")
 
   return (
     <AssetScanSearchTool
       locale={locale}
+      userId={user.id}
       labels={{
         title: t("scanTitle"),
         subtitle: t("scanSubtitle"),
         queryLabel: t("scanQueryLabel"),
-        placeholder: t("scanPlaceholder"),
+        placeholder: t("scanPagePlaceholder"),
+        hint: t("scanHint"),
         openAsset: t("openAsset"),
         noResults: tGlobalSearch("noResults"),
         minChars: tGlobalSearch("minChars"),
         loading: tGlobalSearch("loading"),
-        serial: tGlobalSearch("serial"),
-        custodian: tAsset("custodian"),
         scanner: {
           start: t("scannerStart"),
           stop: t("scannerStop"),
