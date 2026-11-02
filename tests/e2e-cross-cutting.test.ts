@@ -137,8 +137,9 @@ test("roles and permissions: each refused page and request needs a permission th
     assert.equal(refusal.path, `/api/${refusal.file.replace(/\/route\.ts$/, "").replace("[id]", refusals.NO_RECORD)}`, `${refusal.file}: its path`)
   }
   // The transaction pickers' search and the bulk-move list need asset:edit like their pages (server asset search; group 3
-  // spec §10.3, §17): the viewer's GETs are refused.
-  assert.deepEqual(refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.method === "GET").map((refusal) => refusal.path), ["/api/asset-operations/search", "/api/asset-operations/bulk-move-list"])
+  // spec §10.3, §17), and the purchase-document search asset:create or asset:edit (group 4 plan 3 P3-R2): the viewer's
+  // GETs are refused.
+  assert.deepEqual(refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.method === "GET").map((refusal) => refusal.path), ["/api/asset-operations/search", "/api/asset-operations/bulk-move-list", "/api/purchase-documents/search"])
   assert.ok(read("e2e/cross-cutting/support/roles-ui.ts").includes('refusal.method === "GET" ? { method: "GET" } : { method: refusal.method, data: refusal.body }'))
   // The disposal decision picks its permission from the body: "decision" (any action but execute) is approve.
   assert.match(handlerBody(read("src/app/api/disposal-requests/[id]/route.ts"), "PATCH"), /if \(action === "execute"\) \{\n\s+requirePermission\(user, "disposal", "edit"\)\n\s+\} else \{\n\s+requirePermission\(user, "disposal", "approve"\)/)

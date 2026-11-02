@@ -58,6 +58,8 @@ export const VIEWER_API_REFUSALS: readonly ApiRefusal[] = [
   { method: "POST", path: "/api/assets/bulk-move", file: "assets/bulk-move/route.ts", permission: "asset:edit", body: {} },
   { method: "GET", path: "/api/asset-operations/search", file: "asset-operations/search/route.ts", permission: "asset:edit", body: {} },
   { method: "GET", path: "/api/asset-operations/bulk-move-list", file: "asset-operations/bulk-move-list/route.ts", permission: "asset:edit", body: {} },
+  // asset:create or asset:edit (P3-R2); the viewer has neither, and the route names asset:edit.
+  { method: "GET", path: "/api/purchase-documents/search", file: "purchase-documents/search/route.ts", permission: "asset:edit", body: {} },
   { method: "POST", path: "/api/audit-rounds", file: "audit-rounds/route.ts", permission: "audit:create", body: {} },
   { method: "POST", path: `/api/audit-rounds/${NO_RECORD}/scan`, file: "audit-rounds/[id]/scan/route.ts", permission: "audit:edit", body: {} },
   { method: "POST", path: "/api/maintenance-tickets", file: "maintenance-tickets/route.ts", permission: "maintenance:create", body: {} },
