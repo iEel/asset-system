@@ -6,13 +6,13 @@
 import { asUser, expect, test } from "../support/fixtures.ts"
 import { readRunData, readRunState } from "../support/state.ts"
 import { txAssetName, txAssetTag } from "../transactions/tx-plan.ts"
-import { expectFieldError, readAssetMasters, record, visit, visitAssetPage } from "../transactions/tx-support.ts"
+import { chooseOwnershipType, expectFieldError, readAssetMasters, record, visit, visitAssetPage } from "../transactions/tx-support.ts"
 import { factCell } from "../asset-detail/detail-steps.ts"
 import { DETAIL_WORDS } from "../asset-detail/detail-words.ts"
 
 asUser("itStaff")
 
-test("a software licence: more seats used than bought shows its error under the field; corrected, it saves with its seats and its page shows the seats left", async ({ page, measure }, testInfo) => {
+test("a software licence: more seats used than bought shows its error under the field; corrected, it saves with its seats and its page shows the seats left", async ({ page, measure, e2eDevice }, testInfo) => {
   const { runId } = readRunState()
   const data = readRunData()
   const masters = await readAssetMasters(page)
@@ -22,7 +22,8 @@ test("a software licence: more seats used than bought shows its error under the 
   await visit(measure, "/th/assets/new", "new asset form for a software licence", testInfo)
   await page.locator("#asset-tag").fill(tag)
   await page.locator("#asset-category").selectOption(masters.categoryId)
-  await page.locator("#asset-ownership-type").selectOption("software_license")
+  // Buttons on the desktop, the native select on the phone (group 4 plan 2 Task 6b).
+  await chooseOwnershipType(page, e2eDevice, "software_license", "ซอฟต์แวร์/License")
   await expect(page.locator("#asset-license-total-seats")).toBeVisible()
   await page.locator("#asset-company").selectOption(data.companyId)
   await page.locator("#asset-branch").selectOption(data.branchId)

@@ -54,9 +54,12 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   const customFieldsSource = read(`${C}assets/asset-form-custom-fields.tsx`)
   // Task 6a: the documents box and the remark with the raw JSON (asset-form-other.tsx) are sections of their own.
   const otherSource = read(`${C}assets/asset-form-other.tsx`)
-  const sectionSources = [read(`${C}assets/asset-form-install.tsx`), purchaseSource, read(`${C}assets/asset-form-documents.tsx`), read(`${C}assets/asset-form-photos.tsx`), customFieldsSource, otherSource]
+  // Task 6b: the ownership block (asset-form-ownership.tsx) is its own file too.
+  const ownershipSource = read(`${C}assets/asset-form-ownership.tsx`)
+  const sectionSources = [ownershipSource, read(`${C}assets/asset-form-install.tsx`), purchaseSource, read(`${C}assets/asset-form-documents.tsx`), read(`${C}assets/asset-form-photos.tsx`), customFieldsSource, otherSource]
   assertMovedForm([source, rulesSource, ...sectionSources].join("\n"), {
-    // Task 6a: the License seats sit after the required card, so they follow the condition.
+    // Task 6a: the License seats sit after the required card, so they follow the condition. Task 6b: the home location
+    // has its id, before the current location.
     ids: {
       assetTag: "asset-tag",
       name: "asset-name",
@@ -67,6 +70,7 @@ test("asset form: validate() restates every rule the toasts said, the save gates
       branchId: "asset-branch",
       departmentId: "asset-department",
       custodianId: "asset-custodian",
+      homeLocationId: "asset-home-location",
       currentLocationId: "asset-current-location",
       statusId: "asset-status",
       conditionId: "asset-condition",
@@ -114,7 +118,7 @@ test("asset form: validate() restates every rule the toasts said, the save gates
     'check("customFieldsJson", isValidCustomFieldsJson(values.customFieldsJson) ? null : "customFieldsJsonInvalid")',
   ]) assert.ok(rules.includes(rule), rule)
   // The department's star reads the same list, so the star and the rule cannot drift either.
-  assert.ok(source.includes('required={requiredFields.includes("departmentId")}'))
+  assert.ok(ownershipSource.includes('required={requiredFields.includes("departmentId")}'))
   assert.ok(source.includes("const requiredFields: readonly AssetField[] = getRequiredAssetFields(ownershipType)"))
   // The warranty pair on edit is checked only when one of its dates changed, so an old asset stored with reversed dates
   // still saves an unrelated change (spec §7.4); the end cannot be picked before the start (U4).

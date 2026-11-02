@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import {
-  countRequiredFilled, emptyAssetFormValues, FIELD_IDS, getRequiredAssetFields, sectionOfField, validate,
+  changeOwnershipType, countRequiredFilled, emptyAssetFormValues, FIELD_IDS, getAssetFormDepartmentLock, getRequiredAssetFields, sectionOfField, validate,
   type AssetField, type AssetFormValues,
 } from "../src/lib/asset-form-rules.ts"
 import { assetOwnershipTypes } from "../src/lib/asset-ownership.ts"
@@ -60,7 +60,7 @@ test("validate() asks exactly the required list on an empty form, for every owne
 test("each field has its section: the folded ones open on an error (Task 6a reveals them)", () => {
   const expected: Record<string, string> = {
     assetTag: "main", name: "main", categoryId: "main", serialNumber: "main", ownershipType: "main", companyId: "main", branchId: "main",
-    departmentId: "main", custodianId: "main", currentLocationId: "main", statusId: "main", conditionId: "main",
+    departmentId: "main", custodianId: "main", homeLocationId: "main", currentLocationId: "main", statusId: "main", conditionId: "main",
     licenseTotalSeats: "license", licenseUsedSeats: "license",
     parentAssetId: "install", componentRole: "install", slotNo: "install", installReason: "install",
     purchaseDate: "purchase", purchasePrice: "purchase", warrantyStartDate: "purchase", warrantyEndDate: "purchase",
@@ -83,4 +83,50 @@ test("the rules file stays pure: relative .ts imports, no React, no client compo
   for (const line of source.split("\n").filter((line) => line.startsWith("import "))) assert.match(line, /from "\.\/[\w-]+\.ts"$/, line)
   // validate() reads its required fields from the same list as the counter.
   assert.match(source, /const requiredFields: readonly AssetField\[\] = getRequiredAssetFields\(ownershipType\)/)
+})
+
+// Group 4 plan 2 Task 6b (spec §7.3, P2-R1, P2-R2): the department follows the holder on บุคคล and Stock, and a change of
+// the ownership type keeps the holder except a change to ส่วนควบ.
+const lockInput = {
+  ownership: "personal" as const,
+  custodianId: "emp-1",
+  holderDepartmentId: "dept-holder",
+  holderDepartmentName: "บัญชี",
+  currentCustodianId: null,
+  currentDepartmentId: null,
+  openHandover: false,
+}
+
+test("the department lock: บุคคล and Stock with a holder take the holder's department; the others and no holder stay free", () => {
+  assert.deepEqual(getAssetFormDepartmentLock(lockInput), { locked: true, departmentId: "dept-holder", text: "บัญชี" })
+  assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, ownership: "stock" }), { locked: true, departmentId: "dept-holder", text: "บัญชี" })
+  const free = { locked: false, departmentId: null, text: null }
+  for (const ownership of ["shared", "component", "software_license"] as const) assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, ownership }), free, ownership)
+  assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, ownership: "stock", custodianId: null }), free, "Stock with no holder")
+  assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, custodianId: "" }), free, "an empty pick is no holder")
+  // Under an open handover the holder, room and department are read-only (Task 7); the lock stays off.
+  assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, currentCustodianId: "emp-1", currentDepartmentId: "dept-old", openHandover: true }), free)
+  // On edit with the holder unchanged, the lock is the automatic fix: the holder's department.
+  assert.deepEqual(getAssetFormDepartmentLock({ ...lockInput, currentCustodianId: "emp-1", currentDepartmentId: "dept-old" }), { locked: true, departmentId: "dept-holder", text: "บัญชี" })
+  // A holder whose department is unknown (not in the options) keeps the asset's department, still locked.
+  assert.deepEqual(
+    getAssetFormDepartmentLock({ ...lockInput, holderDepartmentId: null, holderDepartmentName: null, currentCustodianId: "emp-1", currentDepartmentId: "dept-old" }),
+    { locked: true, departmentId: "dept-old", text: null },
+  )
+})
+
+test("a change of the ownership type keeps the holder, except a change to ส่วนควบ (P2-R2)", () => {
+  const held: AssetFormValues = { ...emptyAssetFormValues, ownershipType: "personal", custodianId: "emp-1", departmentId: "dept-1" }
+  assert.deepEqual(changeOwnershipType(held, "software_license"), { ...held, ownershipType: "software_license" })
+  for (const ownership of ["shared", "stock", "software_license", "personal"]) assert.equal(changeOwnershipType(held, ownership).custodianId, "emp-1", ownership)
+  assert.deepEqual(changeOwnershipType(held, "component"), { ...held, ownershipType: "component", custodianId: "" })
+  // An unknown value reads as the default type.
+  assert.equal(changeOwnershipType(held, "bogus").ownershipType, "personal")
+})
+
+test("the home location has its id, in visual order before the current location", () => {
+  const keys = Object.keys(FIELD_IDS)
+  assert.equal(FIELD_IDS.homeLocationId, "asset-home-location")
+  assert.equal(keys.indexOf("homeLocationId"), keys.indexOf("currentLocationId") - 1)
+  assert.ok(keys.indexOf("homeLocationId") > keys.indexOf("custodianId"))
 })

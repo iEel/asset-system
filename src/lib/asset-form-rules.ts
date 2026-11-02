@@ -2,7 +2,8 @@
 // the ids focus moves to, the required list behind validate() and the form's counter, the section each field sits in,
 // validate() itself, the custom-field JSON helpers and the photo-label matching. Pure and client-safe, with relative
 // imports only, so tests and the form's client components import this file.
-import { defaultAssetOwnershipType, normalizeAssetOwnershipType, type AssetOwnershipType } from "./asset-ownership.ts"
+import { getRegisterDepartment } from "./asset-department-rule.ts"
+import { defaultAssetOwnershipType, normalizeAssetOwnershipType, ownershipMayHaveHolder, type AssetOwnershipType } from "./asset-ownership.ts"
 import { atLeastOne, decimals, maxLength, notBefore, range, required, wholeNumber } from "./validation-rules.ts"
 
 export type AssetFormOption = {
@@ -16,6 +17,8 @@ export type AssetFormOption = {
   branchCode?: string | null
   departmentId?: string | null
   departmentCode?: string | null
+  // An employee's department name: the department lock's "ตามผู้ถือครอง: {department}" (group 4 plan 2 Task 6b).
+  departmentName?: string | null
   categoryId?: string | null
   brandId?: string | null
   photoChecklist?: string[]
@@ -159,6 +162,7 @@ export const FIELD_IDS = {
   branchId: "asset-branch",
   departmentId: "asset-department",
   custodianId: "asset-custodian",
+  homeLocationId: "asset-home-location",
   currentLocationId: "asset-current-location",
   statusId: "asset-status",
   conditionId: "asset-condition",
@@ -248,6 +252,7 @@ const FIELD_SECTIONS: Record<AssetFixedField, AssetFormSection> = {
   branchId: "main",
   departmentId: "main",
   custodianId: "main",
+  homeLocationId: "main",
   currentLocationId: "main",
   statusId: "main",
   conditionId: "main",
@@ -273,6 +278,44 @@ const FIELD_SECTIONS: Record<AssetFixedField, AssetFormSection> = {
 
 export function sectionOfField(field: AssetField): AssetFormSection {
   return field in FIELD_SECTIONS ? FIELD_SECTIONS[field as AssetFixedField] : "customFields"
+}
+
+// The form's department lock (spec §7.3, P2-R1): on บุคคล and Stock with a holder, แผนก is the holder's and cannot be
+// picked; the form writes it into values.departmentId, so the counter counts it and the save sends it. The register's
+// own rule decides (getRegisterDepartment, the one POST and PUT use). text is the department's name for
+// "ตามผู้ถือครอง: {department}", or null when the holder's department is not among the options. Under an open handover
+// holder, room and department are read-only (Task 7), so the lock stays off.
+export type AssetFormDepartmentLock = { locked: boolean; departmentId: string | null; text: string | null }
+
+export function getAssetFormDepartmentLock(input: {
+  ownership: AssetOwnershipType
+  custodianId: string | null
+  holderDepartmentId: string | null
+  holderDepartmentName: string | null
+  currentCustodianId: string | null
+  currentDepartmentId: string | null
+  openHandover: boolean
+}): AssetFormDepartmentLock {
+  const free: AssetFormDepartmentLock = { locked: false, departmentId: null, text: null }
+  if (input.openHandover || !input.custodianId) return free
+  const register = getRegisterDepartment({
+    ownership: input.ownership,
+    currentCustodianId: input.currentCustodianId,
+    nextCustodianId: input.custodianId,
+    currentDepartmentId: input.currentDepartmentId,
+    chosenDepartmentId: null,
+    nextHolderDepartmentId: input.holderDepartmentId,
+    openHandover: false,
+  })
+  if (register.source !== "holder") return free
+  return { locked: true, departmentId: register.departmentId, text: input.holderDepartmentId ? input.holderDepartmentName : null }
+}
+
+// A change of the ownership type keeps the holder (P2-R2), except a change to ส่วนควบ: a component takes its parent's
+// holder through the sync.
+export function changeOwnershipType(values: AssetFormValues, next: string): AssetFormValues {
+  const ownershipType = normalizeAssetOwnershipType(next)
+  return { ...values, ownershipType, custodianId: ownershipMayHaveHolder(ownershipType) ? values.custodianId : "" }
 }
 
 export type AssetRuleInput = {

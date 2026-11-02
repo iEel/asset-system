@@ -1417,7 +1417,8 @@
       "customRequiredMissing": "ยังขาด {count, number} ช่องที่ต้องกรอก",
       "customExtraRows": "เพิ่มเอง {count, number} ช่อง",
       "remarkSet": "มีหมายเหตุ"
-    }
+    },
+    "useHomeLocation": "ใช้ที่ตั้งประจำ"
   },
   "company": {
     "title": "บริษัท",

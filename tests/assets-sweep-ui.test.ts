@@ -67,17 +67,21 @@ test("asset form: sections are ContentPanels, notes are Notice by meaning, empty
   const source = read(`${C}assets/asset-form.tsx`)
   // Group 4 plan 2 Task 5: Section and SelectField moved to asset-form-section.tsx, the optional sections to their files.
   // Task 6a: the documents and the other section got files of their own, and the header and the required card theirs.
-  const parts = ["section", "install", "purchase", "documents", "photos", "custom-fields", "other", "header", "required-card"].map((name) => read(`${C}assets/asset-form-${name}.tsx`))
+  // Task 6b: the ownership block too (parts[9]).
+  const parts = ["section", "install", "purchase", "documents", "photos", "custom-fields", "other", "header", "required-card", "ownership"].map((name) => read(`${C}assets/asset-form-${name}.tsx`))
+  const ownershipSource = parts[9]
   const [sectionSource, , , purchaseSource, photosSource, customFieldsSource] = parts
   assert.match(sectionSource, /export function Section\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<ContentPanel title=\{title\}>/)
   // The required card is a ContentPanel; the folded sections are FormDisclosures (a <details> cannot be ContentPanel).
   assert.match(parts[8], /<ContentPanel title=\{title\}>/)
   assert.match(sectionSource, /<FormDisclosure id=\{id\} title=\{title\} \{\.\.\.disclosure\}>/)
   assert.match(source, /<Notice\n\s+tone="info"\n\s+className="mb-5"\n\s+title=\{t\("cloneBannerTitle", \{ assetTag: cloneSource\.assetTag \}\)\}/)
-  assert.equal(source.match(/<Notice tone="warning" className="mt-2">/g)?.length, 2, "the cross-company and cross-branch warnings")
+  // The cross-branch warning in the form, the cross-company one with the holder in the ownership block.
+  assert.deepEqual([source, ownershipSource].map((file) => file.match(/<Notice tone="warning" className="mt-2">/g)?.length ?? 0), [1, 1], "the cross-company and cross-branch warnings")
   assert.match(source, /<Notice id="asset-status-protected" tone="warning" className="mt-2" title=\{t\("protectedStatusEditBlocked"\)\}>/)
   assert.match(source, /: null\n\s+const assetStatusHelp = \{/, "the blocked sentence is the Notice title, so the help is not the same sentence again")
-  assert.match(source, /<Notice tone="neutral" title=\{t\("custodianNotRequired"\)\}>\n\s+\{t\("custodianNotRequiredHelp"\)\}\n\s+<\/Notice>/)
+  // Task 6b: the note stays for ส่วนควบ only; every other type shows the holder picker.
+  assert.match(ownershipSource, /<Notice tone="neutral" title=\{t\("custodianNotRequired"\)\}>\n\s+\{t\("custodianNotRequiredHelp"\)\}\n\s+<\/Notice>/)
   assert.match(source, /title=\{<>\{t\("licenseRemainingSeats"\)\}: \{orNil\(getRemainingLicenseSeats\(values\.licenseTotalSeats, values\.licenseUsedSeats\)\)\}<\/>\}/)
   assert.match(purchaseSource, /description=\{<>\{orNil\(document\.supplierName\)\} · \{t\("linkedAssets", \{ count: document\.assetCount \}\)\}<\/>\}/)
   // The 4 EmptyNotes: the documents (purchaseSource is asset-form-documents.tsx), the photo checklist, the template fields

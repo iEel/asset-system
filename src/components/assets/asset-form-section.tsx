@@ -49,6 +49,7 @@ export function SelectField({
   id,
   value,
   required,
+  disabled,
   hint,
   error,
   onChange,
@@ -59,6 +60,8 @@ export function SelectField({
   id?: string
   value: string
   required?: boolean
+  // The department locked to the holder's (group 4 plan 2 Task 6b).
+  disabled?: boolean
   hint?: React.ReactNode
   error?: React.ReactNode
   onChange: (value: string) => void
@@ -66,7 +69,7 @@ export function SelectField({
 }) {
   return (
     <Field label={label} id={id} required={required} hint={hint} error={error}>
-      <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
+      <NativeSelect value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         {children}
       </NativeSelect>
     </Field>

@@ -8,7 +8,7 @@ import { fillReturn, handoverForward, isoDay, reviewAndSave, save } from "./supp
 import { createAsset, handOver, projectMarker, readAsset, readAssetChoices, returnAsset } from "./support/records.ts"
 // The transaction pages' first arrival, the shared picker's chosen asset and the condition chips (the transaction area's
 // helpers).
-import { conditionChip, openAssetFormSection, pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
+import { chooseOwnershipType, conditionChip, openAssetFormSection, pickedAsset, TRANSACTION_PAGE_ARRIVAL_MS } from "../transactions/tx-support.ts"
 import { TX_WORDS } from "../transactions/tx-words.ts"
 import { choose, expectFieldError, expectNoFieldError } from "./support/ui.ts"
 // The round form's steps (group 2 spec §7): its conditions as chips, its own submit, the live count and the sample.
@@ -22,7 +22,7 @@ const END_BEFORE_START = "วันสิ้นสุดต้องไม่ก
 const HANDOVER_MODE_REQUIRED = "กรุณาเลือกลักษณะการส่งมอบก่อนดำเนินการต่อ"
 const DUPLICATE_TAG = "รหัสทรัพย์สินนี้ถูกใช้งานแล้ว"
 
-test("asset register: a warranty that ends before it starts shows its error, and the corrected asset saves", async ({ page, measure }, testInfo) => {
+test("asset register: a warranty that ends before it starts shows its error, and the corrected asset saves", async ({ page, measure, e2eDevice }, testInfo) => {
   const run = readRunData()
   const choices = await readAssetChoices(page, measure)
   const tag = `${projectMarker(testInfo)}-FE-ASSET`
@@ -33,7 +33,8 @@ test("asset register: a warranty that ends before it starts shows its error, and
   await page.locator("#asset-tag").fill(tag)
   await page.locator("#asset-name").fill(`${projectMarker(testInfo)} ฟอร์มทะเบียน`)
   await page.locator("#asset-category").selectOption(choices.categoryId)
-  await page.locator("#asset-ownership-type").selectOption("shared")
+  // Buttons on the desktop, the native select on the phone (group 4 plan 2 Task 6b).
+  await chooseOwnershipType(page, e2eDevice, "shared", "ส่วนกลาง")
   await page.locator("#asset-company").selectOption(run.companyId)
   await page.locator("#asset-branch").selectOption(run.branchId)
   await page.locator("#asset-department").selectOption(run.departmentId)

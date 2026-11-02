@@ -63,6 +63,8 @@ const V_FORM_PARTS: Record<string, string> = {
   // Task 6a: the documents box and ข้อมูลอื่น ๆ และขั้นสูง left their sections for files of their own.
   [`${C}assets/asset-form-documents.tsx`]: `${C}assets/asset-form.tsx`,
   [`${C}assets/asset-form-other.tsx`]: `${C}assets/asset-form.tsx`,
+  // Task 6b: the ownership block.
+  [`${C}assets/asset-form-ownership.tsx`]: `${C}assets/asset-form.tsx`,
 }
 // Files that render StickyFormFooter and the routes that show them. Every route must be a focus route (no bottom navigation).
 const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
@@ -116,7 +118,9 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}master-data/asset-model-form.tsx`]: [3, 1, 0],
   // Group 4 plan 2 Task 5: the asset form's [12, 10, 0] went with its controls to its section files; the rows add up to it.
   // Task 6a: the document number's maxLength went with the documents box to asset-form-documents.tsx.
-  [`${C}assets/asset-form.tsx`]: [9, 3, 0],
+  // Task 6b: the ownership type (the phone's select), the owner company, branch and แผนก went to asset-form-ownership.tsx.
+  [`${C}assets/asset-form.tsx`]: [5, 3, 0],
+  [`${C}assets/asset-form-ownership.tsx`]: [4, 0, 0],
   [`${C}assets/asset-form-section.tsx`]: [1, 0, 0],
   [`${C}assets/asset-form-install.tsx`]: [0, 3, 0],
   [`${C}assets/asset-form-purchase.tsx`]: [0, 3, 0],

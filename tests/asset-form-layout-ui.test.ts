@@ -32,9 +32,10 @@ test("the required card: its title, the counter and a bar with no pace mark", ()
   const form = read(`${C}asset-form.tsx`)
   assert.match(form, /<AssetFormRequiredCard title=\{t\("requiredCardTitle"\)\} counter=\{requiredProgress\}>/)
   assert.match(form, /const requiredProgress = countRequiredFilled\(values, ownershipType\)/)
-  // The three groups of the card, in order.
-  const order = ["basicInfo", "ownership", "locationStatus"].map((key) => form.indexOf(`<CardGroup title={t("${key}")}>`))
+  // The three groups of the card, in order. Task 6b: the ownership group is its own file (asset-form-ownership.tsx).
+  const order = ['<CardGroup title={t("basicInfo")}>', "<AssetFormOwnership", '<CardGroup title={t("locationStatus")}>'].map((tag) => form.indexOf(tag))
   assert.ok(order.every((at) => at > 0) && order[0] < order[1] && order[1] < order[2], "basic info, ownership, location and status")
+  assert.match(read(`${C}asset-form-ownership.tsx`), /<CardGroup title=\{t\("ownership"\)\}>/)
   const th = messages("th").asset
   assert.equal(th.requiredCardTitle, "ข้อมูลที่ต้องกรอก")
   assert.equal(th.requiredFilled, "กรอกแล้ว {filled, number} จาก {total, number} ช่องที่ต้องกรอก")

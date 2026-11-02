@@ -1417,7 +1417,8 @@
       "customRequiredMissing": "{count, plural, one {# required field missing} other {# required fields missing}}",
       "customExtraRows": "{count, plural, one {# extra field} other {# extra fields}}",
       "remarkSet": "Has a remark"
-    }
+    },
+    "useHomeLocation": "Use home location"
   },
   "company": {
     "title": "Companies",

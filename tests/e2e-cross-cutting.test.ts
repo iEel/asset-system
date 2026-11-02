@@ -201,6 +201,14 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   const support = read("e2e/transactions/tx-support.ts")
   assert.ok(support.includes("export async function openAssetFormSection(page: Page, name: string) {"))
   assert.ok(support.includes(`if (!(await section.evaluate((element) => (element as HTMLDetailsElement).open))) await summary.click()`))
+  // Task 6b: the ownership type is buttons on the desktop and the native select on the phone; the helper picks by device.
+  assert.match(spec, /await chooseOwnershipType\(page, e2eDevice, "shared", "ส่วนกลาง"\)/)
+  assert.doesNotMatch(spec, /#asset-ownership-type/)
+  assert.equal((thai.asset as Record<string, string>).ownershipType_shared, "ส่วนกลาง")
+  assert.ok(support.includes("export async function chooseOwnershipType(page: Page, device: E2eDevice, value: string, label: string) {"))
+  assert.ok(support.includes(`page.getByRole("group", { name: "ประเภทการถือครอง", exact: true }).getByRole("button", { name: label, exact: true })`))
+  assert.ok(support.includes(`await page.locator("#asset-ownership-type").selectOption(value)`))
+  assert.equal((thai.asset as Record<string, string>).ownershipType, "ประเภทการถือครอง")
   const common = thai.common as Record<string, Record<string, string> | string>
   const validation = common.validation as Record<string, string>
   const section = (name: string) => thai[name] as Record<string, string>
@@ -249,7 +257,9 @@ test("errors under the field in the real flow: each form's wrong entry, its fiel
   }
   // Every other id the spec fills is a control of its form.
   const controls: Record<string, string[]> = {
-    "src/components/assets/asset-form.tsx": ["asset-name", "asset-category", "asset-ownership-type", "asset-company", "asset-branch", "asset-department", "asset-current-location", "asset-status", "asset-condition"],
+    "src/components/assets/asset-form.tsx": ["asset-name", "asset-category", "asset-current-location", "asset-status", "asset-condition"],
+    // Task 6b: the ownership block (the phone's type select, the owner company and branch, แผนก) is its own file.
+    "src/components/assets/asset-form-ownership.tsx": ["asset-ownership-type", "asset-company", "asset-branch", "asset-department"],
     // Group 4 plan 2 Task 5: the warranty dates sit in the purchase section's own file.
     "src/components/assets/asset-form-purchase.tsx": ["asset-warranty-start"],
     "src/components/asset-operations/checkout-form.tsx": ["checkout-destination", "checkout-condition"],

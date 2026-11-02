@@ -15,19 +15,23 @@ test("asset create forms label asset owner scope separately from custodian scope
 
 test("single asset form can opt into cross-company custodians with a visible warning", () => {
   const source = readFileSync("src/components/assets/asset-form.tsx", "utf8")
+  // Group 4 plan 2 Task 6b: the ownership block (the owner company and branch, the holder, its toggle and warning) is
+  // its own file; the employee list is still filtered in the form.
+  const ownership = readFileSync("src/components/assets/asset-form-ownership.tsx", "utf8")
 
   assert.match(source, /allowCrossCompanyCustodian/)
   assert.match(source, /allowCrossCompanyCustodian \? employees : employees\.filter/)
-  assert.match(source, /crossCompanyCustodianWarning/)
-  assert.match(source, /assetOwnerCompany/)
-  assert.match(source, /assetOwnerBranch/)
+  assert.match(ownership, /crossCompanyCustodianWarning/)
+  assert.match(ownership, /assetOwnerCompany/)
+  assert.match(ownership, /assetOwnerBranch/)
 })
 
 test("edit asset form opens cross-company custodian mode when the saved custodian is outside the owner scope", () => {
   const source = readFileSync("src/components/assets/asset-form.tsx", "utf8")
 
-  assert.match(source, /shouldAllowCrossCompanyCustodianOnLoad\(asset, employees, branches, departments\)/)
-  assert.match(source, /useState\(\(\) => shouldAllowCrossCompanyCustodianOnLoad\(asset, employees, branches, departments\)\)/)
+  // Group 4 plan 2 Task 6b: the holder's scope is company and branch, so the departments are no longer read.
+  assert.match(source, /shouldAllowCrossCompanyCustodianOnLoad\(asset, employees, branches\)/)
+  assert.match(source, /useState\(\(\) => shouldAllowCrossCompanyCustodianOnLoad\(asset, employees, branches\)\)/)
 })
 
 test("batch asset form can opt into cross-company custodians for common and row custodians", () => {

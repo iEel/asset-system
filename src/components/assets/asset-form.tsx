@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { orNil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
-import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -24,6 +23,7 @@ import { AssetFormDocuments } from "@/components/assets/asset-form-documents"
 import { AssetFormHeader } from "@/components/assets/asset-form-header"
 import { AssetFormInstall } from "@/components/assets/asset-form-install"
 import { AssetFormOther } from "@/components/assets/asset-form-other"
+import { AssetFormOwnership } from "@/components/assets/asset-form-ownership"
 import { AssetFormPhotos } from "@/components/assets/asset-form-photos"
 import { AssetFormPurchase } from "@/components/assets/asset-form-purchase"
 import { AssetFormRequiredCard } from "@/components/assets/asset-form-required-card"
@@ -31,6 +31,7 @@ import { CardGroup, Section, SelectField, type AssetFormDisclosure } from "@/com
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import {
   attachmentMatchesPhotoLabel,
+  changeOwnershipType,
   countRequiredFilled,
   createClientId,
   createCustomFieldRow,
@@ -39,6 +40,7 @@ import {
   FIELD_IDS,
   fieldId,
   fieldOrder,
+  getAssetFormDepartmentLock,
   getRequiredAssetFields,
   isAssetMessageCode,
   legacySanitizedPhotoLabel,
@@ -65,7 +67,7 @@ import {
 import { summarizeAssetFormSection, type AssetFormFoldedSection, type AssetFormSummaryInput, type AssetFormSummaryPart } from "@/lib/asset-form-summary"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
-import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { formatCount, formatMoney } from "@/lib/display-format"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { cn, formatDate } from "@/lib/utils"
@@ -140,7 +142,8 @@ export function AssetForm({
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const apiError = useApiError()
-  const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAssetFormValues)
+  // A held บุคคล or Stock asset opens with its holder's department, a clone too (group 4 plan 2 Task 6b).
+  const [values, setValues] = useState<AssetFormValues>(() => withDepartmentLock(asset ?? emptyAssetFormValues, employees, asset))
   const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>(() => parseCustomFieldRows(asset?.customFieldsJson))
   const [installAfterCreate, setInstallAfterCreate] = useState({
     parentAssetId: "",
@@ -162,7 +165,7 @@ export function AssetForm({
   // The folded sections that are open (spec §8, P2-R11): เอกสารจัดซื้อ starts open; an error, the #purchase link and the
   // person's own click open the others. On edit every folded section starts folded too (Task 8 opens a changed one).
   const [openSections, setOpenSections] = useState<Set<AssetFormSection>>(() => new Set<AssetFormSection>(["documents"]))
-  const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(() => shouldAllowCrossCompanyCustodianOnLoad(asset, employees, branches, departments))
+  const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(() => shouldAllowCrossCompanyCustodianOnLoad(asset, employees, branches))
   const [allowCrossBranchLocation, setAllowCrossBranchLocation] = useState(() => shouldAllowCrossBranchLocationOnLoad(asset, locations))
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
@@ -225,18 +228,19 @@ export function AssetForm({
     (department) => !department.companyId || department.companyId === values.companyId
   )
   const selectedBranch = branches.find((branch) => branch.id === values.branchId)
-  const selectedDepartment = departments.find((department) => department.id === values.departmentId)
+  // The holder is picked by company and branch, not by แผนก: แผนก follows the holder (spec §7.3).
   const filteredEmployees = allowCrossCompanyCustodian ? employees : employees.filter(
     (employee) =>
       optionMatchesOrganizationScope(employee, {
         companyId: values.companyId,
         branchId: values.branchId,
         branchCode: selectedBranch?.code,
-        departmentId: values.departmentId,
-        departmentCode: selectedDepartment?.code,
       })
   )
   const selectedCustodian = employees.find((employee) => employee.id === values.custodianId)
+  // แผนก follows the holder on บุคคล and Stock (P2-R1); its text is the holder's department, else the option's label.
+  const departmentLock = departmentLockOf(values, employees, asset)
+  const departmentLockText = departmentLock.text ?? departments.find((department) => department.id === departmentLock.departmentId)?.label ?? ""
   const hasCrossCompanyCustodian = Boolean(
     selectedCustodian?.companyId &&
     values.companyId &&
@@ -443,9 +447,15 @@ export function AssetForm({
 
     setValues((current) => {
       const custodian = employees.find((employee) => employee.id === current.custodianId)
-      if (employeeMatchesAssetScope(custodian, current, branches, departments)) return current
+      if (employeeMatchesAssetScope(custodian, current, branches)) return current
       return { ...current, custodianId: "" }
     })
+  }
+
+  // A holder on บุคคล or Stock brings its department (the lock); a cleared holder frees แผนก, which keeps its value.
+  function handleCustodianChange(custodianId: string) {
+    fieldErrors.clear("custodianId", "departmentId")
+    setValues((current) => withDepartmentLock({ ...current, custodianId }, employees, asset))
   }
 
   function handleCrossBranchLocationToggle(checked: boolean) {
@@ -471,13 +481,12 @@ export function AssetForm({
   }
 
   function handleOwnershipTypeChange(nextOwnershipType: string) {
-    // The ownership type decides the department, the license and the parent rules.
+    // The ownership type decides the department, the license and the parent rules. The holder stays, except on ส่วนควบ
+    // (P2-R2), and a held บุคคล or Stock asset takes the holder's department.
     fieldErrors.clear("ownershipType", "departmentId", "custodianId", "licenseTotalSeats", "licenseUsedSeats", "parentAssetId")
-    setValues((current) => ({
-      ...current,
-      ownershipType: normalizeAssetOwnershipType(nextOwnershipType),
-      custodianId: nextOwnershipType === "personal" ? current.custodianId : "",
-    }))
+    setValues((current) => withDepartmentLock(changeOwnershipType(current, nextOwnershipType), employees, asset))
+    // ส่วนควบ needs its parent, which sits in the folded install section.
+    if (!isEdit && normalizeAssetOwnershipType(nextOwnershipType) === "component") openSection("install")
   }
 
   function handleCategoryChange(categoryId: string) {
@@ -936,92 +945,26 @@ export function AssetForm({
             </Field>
           </CardGroup>
 
-          <CardGroup title={t("ownership")}>
-            <div className="md:col-span-2">
-              <SelectField
-                label={t("ownershipType")}
-                id="asset-ownership-type"
-                value={ownershipType}
-                required
-                hint={t(`ownershipType_${ownershipType}_help`)}
-                error={errorText("ownershipType")}
-                onChange={handleOwnershipTypeChange}
-              >
-                {assetOwnershipTypes.map((type) => (
-                  <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
-                ))}
-              </SelectField>
-            </div>
-            <SelectField
-              label={t("assetOwnerCompany")}
-              id="asset-company"
-              value={values.companyId}
-              required
-              hint={t("assetOwnerCompanyHelp")}
-              error={errorText("companyId")}
-              onChange={handleCompanyChange}
-            >
-              <option value="">{t("selectCompany")}</option>
-              {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
-            </SelectField>
-            <SelectField
-              label={t("assetOwnerBranch")}
-              id="asset-branch"
-              value={values.branchId}
-              required
-              hint={t("assetOwnerBranchHelp")}
-              error={errorText("branchId")}
-              onChange={handleBranchChange}
-            >
-              <option value="">{t("selectBranch")}</option>
-              {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
-            </SelectField>
-            <SelectField
-              label={t("department")}
-              id="asset-department"
-              value={values.departmentId ?? ""}
-              required={requiredFields.includes("departmentId")}
-              error={errorText("departmentId")}
-              onChange={(value) => setField("departmentId", value)}
-            >
-              <option value="">{t("selectDepartment")}</option>
-              {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
-            </SelectField>
-            {ownershipType === "personal" || isSoftwareLicense ? (
-              <div>
-                <SearchableSelect
-                  id="asset-custodian"
-                  label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
-                  value={values.custodianId ?? ""}
-                  options={filteredEmployees}
-                  placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
-                  searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                  emptyLabel={tCommon("searchSelectNoResults")}
-                  error={errorText("custodianId")}
-                  onChange={(value) => setField("custodianId", value)}
-                />
-                <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={allowCrossCompanyCustodian}
-                    onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
-                    className={cn(checkboxVariants(), "mt-0.5")}
-                  />
-                  <span>
-                    <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
-                    <span>{t("allowCrossCompanyCustodianHelp")}</span>
-                  </span>
-                </label>
-                {hasCrossCompanyCustodian ? (
-                  <Notice tone="warning" className="mt-2">{t("crossCompanyCustodianWarning")}</Notice>
-                ) : null}
-              </div>
-            ) : (
-              <Notice tone="neutral" title={t("custodianNotRequired")}>
-                {t("custodianNotRequiredHelp")}
-              </Notice>
-            )}
-          </CardGroup>
+          <AssetFormOwnership
+            values={values}
+            ownershipType={ownershipType}
+            requiredFields={requiredFields}
+            companies={companies}
+            branches={filteredBranches}
+            departments={filteredDepartments}
+            employees={filteredEmployees}
+            departmentLock={departmentLock}
+            departmentLockText={departmentLockText}
+            allowCrossCompanyCustodian={allowCrossCompanyCustodian}
+            hasCrossCompanyCustodian={hasCrossCompanyCustodian}
+            errorText={errorText}
+            onOwnershipTypeChange={handleOwnershipTypeChange}
+            onCompanyChange={handleCompanyChange}
+            onBranchChange={handleBranchChange}
+            onDepartmentChange={(value) => setField("departmentId", value)}
+            onCustodianChange={handleCustodianChange}
+            onCrossCompanyCustodianToggle={handleCrossCompanyCustodianToggle}
+          />
 
           <CardGroup title={t("locationStatus")}>
             <div className="md:col-span-2">
@@ -1041,21 +984,37 @@ export function AssetForm({
                 <Notice tone="warning" className="mt-2">{t("crossBranchLocationWarning")}</Notice>
               ) : null}
             </div>
-            <SelectField label={t("homeLocation")} value={values.homeLocationId ?? ""} onChange={(value) => setField("homeLocationId", value)}>
-              <option value="">{t("selectLocation")}</option>
-              {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
-            </SelectField>
             <SelectField
-              label={t("currentLocation")}
-              id="asset-current-location"
-              value={values.currentLocationId}
-              required
-              error={errorText("currentLocationId")}
-              onChange={(value) => setField("currentLocationId", value)}
+              label={t("homeLocation")}
+              id="asset-home-location"
+              value={values.homeLocationId ?? ""}
+              error={errorText("homeLocationId")}
+              onChange={(value) => setField("homeLocationId", value)}
             >
               <option value="">{t("selectLocation")}</option>
               {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
             </SelectField>
+            <div className="grid min-w-0 gap-2">
+              <SelectField
+                label={t("currentLocation")}
+                id="asset-current-location"
+                value={values.currentLocationId}
+                required
+                error={errorText("currentLocationId")}
+                onChange={(value) => setField("currentLocationId", value)}
+              >
+                <option value="">{t("selectLocation")}</option>
+                {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
+              </SelectField>
+              {/* ใช้ที่ตั้งประจำ: the asset is back in its home room (group 4 plan 2 Task 6b). */}
+              {values.homeLocationId && values.homeLocationId !== values.currentLocationId ? (
+                <div>
+                  <Button variant="outline" size="sm" onClick={() => setField("currentLocationId", values.homeLocationId ?? "")}>
+                    {t("useHomeLocation")}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
             <div>
               <Field
                 label={t("status")}
@@ -1277,34 +1236,45 @@ function normalizeStatusOptionName(status: Option | null | undefined) {
   return status?.name?.trim().toLowerCase() ?? ""
 }
 
-function shouldAllowCrossCompanyCustodianOnLoad(
-  current: AssetFormValues | undefined,
-  employees: Option[],
-  branches: Option[],
-  departments: Option[]
-) {
+function shouldAllowCrossCompanyCustodianOnLoad(current: AssetFormValues | undefined, employees: Option[], branches: Option[]) {
   if (!current?.custodianId) return false
   const custodian = employees.find((employee) => employee.id === current.custodianId)
-  return !employeeMatchesAssetScope(custodian, current, branches, departments)
+  return !employeeMatchesAssetScope(custodian, current, branches)
 }
 
-function employeeMatchesAssetScope(
-  employee: Option | undefined,
-  current: AssetFormValues,
-  branches: Option[],
-  departments: Option[]
-) {
+// The holder's scope is the owner company and branch; แผนก follows the holder, so it is not part of it (spec §7.3).
+function employeeMatchesAssetScope(employee: Option | undefined, current: AssetFormValues, branches: Option[]) {
   if (!employee) return true
   const branch = branches.find((item) => item.id === current.branchId)
-  const department = departments.find((item) => item.id === current.departmentId)
 
   return optionMatchesOrganizationScope(employee, {
     companyId: current.companyId,
     branchId: current.branchId,
     branchCode: branch?.code,
-    departmentId: current.departmentId,
-    departmentCode: department?.code,
   })
+}
+
+// The department lock of these values (asset-form-rules.ts). original is the stored asset on edit: its holder and
+// department are the current ones; on create (a clone included) there are none. No open handover yet: Task 7 passes it.
+function departmentLockOf(values: AssetFormValues, employees: Option[], original: AssetFormValues | undefined) {
+  const holder = employees.find((employee) => employee.id === values.custodianId)
+  const stored = original?.id ? original : undefined
+  return getAssetFormDepartmentLock({
+    ownership: normalizeAssetOwnershipType(values.ownershipType),
+    custodianId: values.custodianId || null,
+    holderDepartmentId: holder?.departmentId ?? null,
+    holderDepartmentName: holder?.departmentName ?? null,
+    currentCustodianId: stored?.custodianId || null,
+    currentDepartmentId: stored?.departmentId || null,
+    openHandover: false,
+  })
+}
+
+// Writes the locked department into the values, so the counter counts it and the save sends it.
+function withDepartmentLock(values: AssetFormValues, employees: Option[], original: AssetFormValues | undefined): AssetFormValues {
+  const lock = departmentLockOf(values, employees, original)
+  if (!lock.locked || !lock.departmentId || lock.departmentId === values.departmentId) return values
+  return { ...values, departmentId: lock.departmentId }
 }
 
 function shouldAllowCrossBranchLocationOnLoad(current: AssetFormValues | undefined, locations: Option[]) {

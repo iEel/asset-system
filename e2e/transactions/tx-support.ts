@@ -336,6 +336,19 @@ export async function openAssetFormSection(page: Page, name: string) {
   await expect(section).toHaveAttribute("open", "")
 }
 
+// The asset form's ownership type (group 4 plan 2 Task 6b, P2-R11): buttons in the group "ประเภทการถือครอง" from 768 px,
+// the native #asset-ownership-type on the phone. The desktop shows the buttons once the page hydrates (useMediaQuery),
+// so the click waits for them; value is the select's option, label the button's name.
+export async function chooseOwnershipType(page: Page, device: E2eDevice, value: string, label: string) {
+  if (device === "phone") {
+    await page.locator("#asset-ownership-type").selectOption(value)
+    return
+  }
+  const option = page.getByRole("group", { name: "ประเภทการถือครอง", exact: true }).getByRole("button", { name: label, exact: true })
+  await option.click()
+  await expect(option).toHaveAttribute("aria-pressed", "true")
+}
+
 // One stroke on a signature pad: the mouse on the desktop, a finger on the phone (spec §6.1.2). Playwright 1.61.1 has
 // no touch drag, so the finger is Chromium's own touch input (CDP Input.dispatchTouchEvent); it reaches the pad as
 // pointer events of type "touch", as a real finger does. The pad's clear button turns on once it holds a stroke.

@@ -48,7 +48,7 @@ export async function getAssetFormOptions(context?: { currentStatusId?: string |
         branchId: true,
         departmentId: true,
         branch: { select: { code: true } },
-        department: { select: { code: true } },
+        department: { select: { code: true, name: true } },
       },
       orderBy: { code: "asc" },
     }),
@@ -162,6 +162,8 @@ export async function getAssetFormOptions(context?: { currentStatusId?: string |
       branchCode: employee.branch.code,
       departmentId: employee.departmentId,
       departmentCode: employee.department.code,
+      // The department lock's "ตามผู้ถือครอง: {department}" on the asset form (group 4 plan 2 Task 6b).
+      departmentName: employee.department.name,
     })),
     locations: locations.map((location) => ({
       id: location.id,

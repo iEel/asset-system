@@ -132,12 +132,13 @@ test("IT staff register a software licence on the asset form, a wrong entry firs
   assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's test")
   assert.ok(spec.split("\n").includes(`asUser("itStaff")`), "as IT staff")
   assert.ok(!spec.includes("runPhoneOnWebKit()"), "the phone on Chromium (spec §8: WebKit for the audit walk and the desk delivery)")
-  assert.match(spec, /#asset-ownership-type"\)\.selectOption\("software_license"\)/)
+  // Group 4 plan 2 Task 6b: buttons on the desktop, the native select on the phone (tx-support's chooseOwnershipType).
+  assert.match(spec, /await chooseOwnershipType\(page, e2eDevice, "software_license", "ซอฟต์แวร์\/License"\)/)
   assert.match(spec, /fill\("5"\)[\s\S]*fill\("7"\)[\s\S]*expectFieldError\(page, "asset-license-used-seats", "จำนวนสิทธิ์ที่ใช้ต้องไม่เกินจำนวนสิทธิ์ทั้งหมด"\)[\s\S]*toBeFocused\(\)[\s\S]*expect\(posted, "the wrong entry posts nothing"\)\.toBe\(0\)/)
   assert.match(spec, /toEqual\(\["software_license", 5, 2, data\.departmentId, null\]\)/)
   assert.match(spec, /await expect\(factCell\(page, DETAIL_WORDS\.seatsCell\)\)\.toContainText\("ใช้แล้ว 2\/5 คงเหลือ 3"\)/)
   // Measured through the transactions area's helpers (TX-R5, TX-R6): the known findings and the settle before axe.
-  assert.match(spec, /import \{ expectFieldError, readAssetMasters, record, visit, visitAssetPage \} from "\.\.\/transactions\/tx-support\.ts"/)
+  assert.match(spec, /import \{ chooseOwnershipType, expectFieldError, readAssetMasters, record, visit, visitAssetPage \} from "\.\.\/transactions\/tx-support\.ts"/)
   // The sentences the test reads are the app's own.
   const th = read("messages/th.json")
   for (const line of [
