@@ -31,6 +31,7 @@ import {
   labelQueueOldTag,
   labelQueueRowHolder,
   labelRowNameKey,
+  lookupMissingCount,
   type LabelQueueFilters,
 } from "@/lib/asset-label-queue-rules"
 import { cn, formatDate } from "@/lib/utils"
@@ -107,9 +108,13 @@ export function AssetLabelSearchCard({ locale, selectedIds, onAdd }: { locale: L
   const t = useTranslations("assetTools.labelsPage")
   const tTools = useTranslations("assetTools")
   const tSearch = useTranslations("globalSearch")
+  const tCommon = useTranslations("common")
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<LabelQueueRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [searchError, setSearchError] = useState(false)
+  // "ลองอีกครั้ง" runs the same search again.
+  const [searchAttempt, setSearchAttempt] = useState(0)
   const trimmedQuery = query.trim()
   const visibleResults = useMemo(() => (trimmedQuery.length < 2 ? [] : results), [results, trimmedQuery])
   const duplicateNames = useMemo(() => labelDuplicateNames(visibleResults), [visibleResults])
@@ -120,6 +125,7 @@ export function AssetLabelSearchCard({ locale, selectedIds, onAdd }: { locale: L
     const controller = new AbortController()
     const timeout = window.setTimeout(async () => {
       setLoading(true)
+      setSearchError(false)
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}&locale=${locale}&scope=asset`, {
           signal: controller.signal,
@@ -131,6 +137,7 @@ export function AssetLabelSearchCard({ locale, selectedIds, onAdd }: { locale: L
       } catch (error) {
         if (isAbort(error)) return
         setResults([])
+        setSearchError(true)
       } finally {
         if (!controller.signal.aborted) setLoading(false)
       }
@@ -140,7 +147,11 @@ export function AssetLabelSearchCard({ locale, selectedIds, onAdd }: { locale: L
       controller.abort()
       window.clearTimeout(timeout)
     }
-  }, [locale, trimmedQuery])
+  }, [locale, trimmedQuery, searchAttempt])
+
+  function retrySearch() {
+    setSearchAttempt((attempt) => attempt + 1)
+  }
 
   return (
     <ContentPanel>
@@ -152,6 +163,16 @@ export function AssetLabelSearchCard({ locale, selectedIds, onAdd }: { locale: L
         <div className="mt-3 overflow-hidden rounded-md border border-border">
           {loading ? (
             <LoadingLine label={tSearch("loading")} />
+          ) : searchError ? (
+            // A failed search or lookup says so under the search, never "ไม่พบผลลัพธ์".
+            <Notice
+              tone="danger"
+              role="alert"
+              className="rounded-none border-0"
+              action={<Button variant="outline" size="md" onClick={retrySearch}>{tCommon("tryAgain")}</Button>}
+            >
+              {tSearch("failed")}
+            </Notice>
           ) : visibleResults.length === 0 ? (
             <EmptyNote padded>{tSearch("noResults")}</EmptyNote>
           ) : (
@@ -184,12 +205,19 @@ export function AssetLabelQueueCard({
   onAdd: AddRows
 }) {
   const t = useTranslations("assetTools.labelsPage")
-  const tSearch = useTranslations("globalSearch")
+  const tCommon = useTranslations("common")
   const [queueFilters, setQueueFilters] = useState<LabelQueueFilters>(defaultLabelQueueFilters)
   const [queue, setQueue] = useState<QueueState>(emptyQueue)
   const [queueLoading, setQueueLoading] = useState(false)
   const [moreLoading, setMoreLoading] = useState(false)
   const [addAllBusy, setAddAllBusy] = useState(false)
+  // Each request that can fail says so beside its control, with "ลองอีกครั้ง" (Task 4 review).
+  const [queueError, setQueueError] = useState(false)
+  const [queueReload, setQueueReload] = useState(0)
+  const [moreError, setMoreError] = useState(false)
+  const [addAllError, setAddAllError] = useState(false)
+  // Assets add-all could not add: the lookup no longer returns them (deactivated since the queue loaded).
+  const [addAllSkipped, setAddAllSkipped] = useState(0)
   const [createdOpen, setCreatedOpen] = useState(false)
   const firstPageSearch = useMemo(
     () => buildLabelQueueSearch(queueFilters, { pageSize: LABEL_QUEUE_FIRST_PAGE, skip: 0, locale }),
@@ -221,8 +249,8 @@ export function AssetLabelQueueCard({
   // P6-R3: the number on the button is what will be added.
   const addAll = addAllCounts({ total: queue.total, matchIds: queue.ids, selectedIds, room })
   const addAllButtonKey = labelButtonKey(addAll)
-  const addAllNote = queueLoading ? null : addAllNoteKey(addAll, room)
-  const addAllWaits = queueLoading || addAll.c === 0
+  const addAllNote = addAllNoteKey(addAll, room)
+  const addAllWaits = queueLoading || queueError || addAll.c === 0
 
   useEffect(() => {
     const controller = new AbortController()
@@ -230,11 +258,16 @@ export function AssetLabelQueueCard({
 
     async function loadQueue() {
       setQueueLoading(true)
+      setQueueError(false)
+      setMoreError(false)
+      setAddAllError(false)
+      setAddAllSkipped(0)
       try {
         setQueue(await fetchQueuePage(firstPageSearch, controller.signal))
       } catch (error) {
         if (isAbort(error)) return
         setQueue(emptyQueue)
+        setQueueError(true)
       } finally {
         if (!controller.signal.aborted) setQueueLoading(false)
       }
@@ -245,7 +278,11 @@ export function AssetLabelQueueCard({
     return () => {
       controller.abort()
     }
-  }, [firstPageSearch])
+  }, [firstPageSearch, queueReload])
+
+  function retryQueue() {
+    setQueueReload((attempt) => attempt + 1)
+  }
 
   function updateQueueFilter<Key extends keyof LabelQueueFilters>(key: Key, value: LabelQueueFilters[Key]) {
     setQueueFilters((current) => ({ ...current, [key]: value }))
@@ -279,12 +316,13 @@ export function AssetLabelQueueCard({
     if (moreLoading) return
     const search = firstPageSearch
     setMoreLoading(true)
+    setMoreError(false)
     try {
       const page = await fetchQueuePage(buildLabelQueueSearch(queueFilters, { pageSize: LABEL_QUEUE_MORE_STEP, skip: queue.rows.length, locale }))
       if (currentSearch.current !== search) return
       setQueue((current) => ({ ...page, rows: appendQueueRows(current.rows, page.rows) }))
     } catch {
-      // The rows shown stay; the button can be pressed again.
+      if (currentSearch.current === search) setMoreError(true)
     } finally {
       setMoreLoading(false)
     }
@@ -294,10 +332,14 @@ export function AssetLabelQueueCard({
     // Nothing to add is a reason beside the button, not a field: the button waits and the line says why (spec §4.4).
     if (addAllWaits || addAllBusy) return
     setAddAllBusy(true)
+    setAddAllError(false)
+    setAddAllSkipped(0)
     try {
-      onAdd(await fetchLabelRows(addAll.addIds, locale))
+      const rows = await fetchLabelRows(addAll.addIds, locale)
+      onAdd(rows)
+      setAddAllSkipped(lookupMissingCount(addAll.addIds, rows))
     } catch {
-      // Nothing was added; the numbers still say what the button would add.
+      setAddAllError(true)
     } finally {
       setAddAllBusy(false)
     }
@@ -323,6 +365,7 @@ export function AssetLabelQueueCard({
       : addAllNote
         ? t(addAllNote)
         : null
+  const addAllReason = queueLoading ? t("queueLoading") : queueError ? t("queueLoadFailed") : addAllNoteText
 
   return (
     <ContentPanel
@@ -441,19 +484,23 @@ export function AssetLabelQueueCard({
               <Chip>{queueScopeSummary.label}</Chip>
               {queueScopeSummary.detail ? <span className="min-w-0 break-words font-semibold text-foreground">{queueScopeSummary.detail}</span> : null}
             </div>
-            <p className="mt-1 text-muted-foreground tabular-nums">
-              {t("addAllSummary", { matched: addAll.a, listed: addAll.b, added: addAll.c })}
+            {/* While the queue loads or failed, its numbers are not known: the status line says which. */}
+            {queueLoading || queueError ? null : (
+              <>
+                <p className="mt-1 text-muted-foreground tabular-nums">
+                  {t("addAllSummary", { matched: addAll.a, listed: addAll.b, added: addAll.c })}
+                </p>
+                {addAll.left > 0 ? <p className="mt-1 text-muted-foreground tabular-nums">{t("addRemaining", { count: addAll.left })}</p> : null}
+              </>
+            )}
+            {addAllSkipped > 0 ? <p role="status" className="mt-1 text-muted-foreground">{t("addAllSkipped", { count: addAllSkipped })}</p> : null}
+            <p id="asset-label-add-all-reason" role="status" className="mt-1 text-muted-foreground empty:hidden">
+              {addAllReason}
             </p>
-            {addAll.left > 0 ? <p className="mt-1 text-muted-foreground tabular-nums">{t("addRemaining", { count: addAll.left })}</p> : null}
-            {addAllNoteText ? (
-              <p id="asset-label-add-all-reason" className="mt-1 text-muted-foreground">
-                {addAllNoteText}
-              </p>
-            ) : null}
           </div>
           <Button
             aria-disabled={addAllWaits || undefined}
-            aria-describedby={addAllNoteText ? "asset-label-add-all-reason" : undefined}
+            aria-describedby={addAllReason ? "asset-label-add-all-reason" : undefined}
             busy={addAllBusy}
             onClick={addAllMatching}
             className="w-full shrink-0 sm:w-auto"
@@ -463,6 +510,16 @@ export function AssetLabelQueueCard({
           </Button>
         </div>
 
+        {addAllError ? (
+          <Notice
+            tone="danger"
+            role="alert"
+            action={<Button variant="outline" size="md" onClick={addAllMatching}>{tCommon("tryAgain")}</Button>}
+          >
+            {t("addAllFailed")}
+          </Notice>
+        ) : null}
+
         {queueFilters.mode === "reprint" && queue.reprintCapped ? (
           <Notice tone="warning">{t("reprintCap", { max: LABEL_REPRINT_CANDIDATE_CAP })}</Notice>
         ) : null}
@@ -471,7 +528,17 @@ export function AssetLabelQueueCard({
       {/* P6-R7: the queue scrolls with the page; "แสดงอีก 10 รายการ" appends. */}
       <div className="border-t border-border">
         {queueLoading ? (
-          <LoadingLine label={tSearch("loading")} />
+          <LoadingLine label={t("queueLoading")} />
+        ) : queueError ? (
+          <div className="px-4 py-4 md:px-5">
+            <Notice
+              tone="danger"
+              role="alert"
+              action={<Button variant="outline" size="md" onClick={retryQueue}>{tCommon("tryAgain")}</Button>}
+            >
+              {t("queueLoadFailed")}
+            </Notice>
+          </div>
         ) : queue.rows.length === 0 ? (
           <EmptyNote padded>{t("queueEmpty")}</EmptyNote>
         ) : (
@@ -492,6 +559,17 @@ export function AssetLabelQueueCard({
               {t("showMore")}
             </Button>
           ) : null}
+        </div>
+      ) : null}
+      {!queueLoading && moreError ? (
+        <div className="border-t border-border px-4 py-3 md:px-5">
+          <Notice
+            tone="danger"
+            role="alert"
+            action={<Button variant="outline" size="md" onClick={showMoreQueue}>{tCommon("tryAgain")}</Button>}
+          >
+            {t("showMoreFailed")}
+          </Notice>
         </div>
       ) : null}
     </ContentPanel>

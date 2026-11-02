@@ -455,7 +455,12 @@
       "testPrint": "Test print 1 label",
       "print": "{count, plural, one {Print # label} other {Print # labels}}",
       "clearList": "Clear the print list",
-      "testPrintNote": "Test print"
+      "testPrintNote": "Test print",
+      "queueLoading": "Loading the label queue",
+      "queueLoadFailed": "The label queue did not load",
+      "showMoreFailed": "More rows did not load",
+      "addAllFailed": "The assets were not added to the print list",
+      "addAllSkipped": "{count, plural, one {# deactivated asset was not added} other {# deactivated assets were not added}}"
     }
   },
   "auth": {

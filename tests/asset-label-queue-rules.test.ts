@@ -14,6 +14,7 @@ import {
   labelQueueOldTag,
   labelQueueRowHolder,
   labelRowNameKey,
+  lookupMissingCount,
   mergeIntoPrintList,
   printListRoom,
   printListStatusKey,
@@ -103,6 +104,13 @@ test("P6-R3: nothing to add says why", () => {
   assert.equal(addAllNoteKey(full, 0), "listFull")
   // A negative room (a list that came in over the cap) counts as none.
   assert.equal(addAllCounts({ total: 3, matchIds: ids("m", 3), selectedIds: new Set(), room: -4 }).c, 0)
+})
+
+test("add-all counts the assets the lookup no longer returns (deactivated since the queue loaded)", () => {
+  assert.equal(lookupMissingCount(["a", "b", "c"], rowsOf(["a", "c"])), 1)
+  assert.equal(lookupMissingCount(["a", "b"], rowsOf(["b", "a"])), 0)
+  assert.equal(lookupMissingCount(["a", "b"], []), 2)
+  assert.equal(lookupMissingCount([], []), 0)
 })
 
 test("P6-R2: the print list refuses adds past 100 from every source, keeps its order and never adds a row twice", () => {

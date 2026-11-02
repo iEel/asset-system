@@ -455,7 +455,12 @@
       "testPrint": "พิมพ์ทดสอบ 1 ดวง",
       "print": "พิมพ์ป้าย {count, number} ดวง",
       "clearList": "ล้างรายการพิมพ์",
-      "testPrintNote": "พิมพ์ทดสอบ"
+      "testPrintNote": "พิมพ์ทดสอบ",
+      "queueLoading": "กำลังโหลดคิวป้าย",
+      "queueLoadFailed": "โหลดคิวป้ายไม่สำเร็จ",
+      "showMoreFailed": "โหลดรายการเพิ่มไม่สำเร็จ",
+      "addAllFailed": "เพิ่มเข้ารายการพิมพ์ไม่สำเร็จ",
+      "addAllSkipped": "ไม่ได้เพิ่ม {count, number} รายการที่ปิดใช้งานแล้ว"
     }
   },
   "auth": {

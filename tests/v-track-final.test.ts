@@ -64,10 +64,10 @@ test("the print queue's three buttons wait with their reason beside them (v-trac
   const source = read(`${C}assets/asset-label-print-list.tsx`)
   // Add-all (P6-R3): one label, the number it adds; aria-disabled while it would add nothing (or the queue loads), tied
   // to the line that says why; the handler returns first (spec §4.4; plan 2 open issue 16).
-  assert.match(queue, /<Button\n\s+aria-disabled=\{addAllWaits \|\| undefined\}\n\s+aria-describedby=\{addAllNoteText \? "asset-label-add-all-reason" : undefined\}\n\s+busy=\{addAllBusy\}\n\s+onClick=\{addAllMatching\}\n\s+className="w-full shrink-0 sm:w-auto"\n\s+>\n\s+<Plus aria-hidden="true" \/>\n\s+\{addAllButtonText\}\n\s+<\/Button>/)
-  assert.match(queue, /\{addAllNoteText \? \(\n\s+<p id="asset-label-add-all-reason" className="mt-1 text-muted-foreground">\n\s+\{addAllNoteText\}\n\s+<\/p>\n\s+\) : null\}\n\s+<\/div>\n\s+<Button\n/)
+  assert.match(queue, /<Button\n\s+aria-disabled=\{addAllWaits \|\| undefined\}\n\s+aria-describedby=\{addAllReason \? "asset-label-add-all-reason" : undefined\}\n\s+busy=\{addAllBusy\}\n\s+onClick=\{addAllMatching\}\n\s+className="w-full shrink-0 sm:w-auto"\n\s+>\n\s+<Plus aria-hidden="true" \/>\n\s+\{addAllButtonText\}\n\s+<\/Button>/)
+  assert.match(queue, /<p id="asset-label-add-all-reason" role="status" className="mt-1 text-muted-foreground empty:hidden">\n\s+\{addAllReason\}\n\s+<\/p>\n\s+<\/div>\n\s+<Button\n/)
   assert.match(queue, /async function addAllMatching\(\) \{\n(?:\s+\/\/[^\n]*\n)+\s+if \(addAllWaits \|\| addAllBusy\) return\n/)
-  assert.match(queue, /const addAllWaits = queueLoading \|\| addAll\.c === 0\n/)
+  assert.match(queue, /const addAllWaits = queueLoading \|\| queueError \|\| addAll\.c === 0\n/)
   assert.doesNotMatch(queue, /\bdisabled=\{addAllWaits\}/)
   // The two print buttons: aria-disabled with nothing selected, tied to the empty note under them; both handlers already
   // return first.
@@ -78,7 +78,7 @@ test("the print queue's three buttons wait with their reason beside them (v-trac
   assert.match(source, /function printFirstLabel\(\) \{\n\s+const \[firstAsset\] = selectedForPrint\n\s+if \(!firstAsset\) return\n/)
   // No plain disabled gate is left on the three, and the add button no longer swaps its label for the reason.
   assert.doesNotMatch(source, /\bdisabled=\{selectedForPrint\.length === 0\}/)
-  assert.doesNotMatch(queue, /addAllNoteText \?\? addAllButtonText|addAllWaits \? addAllNoteText/)
+  assert.doesNotMatch(queue, /addAllReason \?\? addAllButtonText|addAllWaits \? addAllReason/)
 })
 
 test("a live field's polite region reads only its live check; a save's or the server's error is read once, by focus (v-track final task 3, VF3)", () => {

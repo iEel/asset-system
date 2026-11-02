@@ -200,7 +200,8 @@ test("the label batch tool uses PageHeader, shared fields and Button (2C batch 4
   assert.equal(source.match(/<Field label=\{t\("created\.(?:from|to)Label"\)\}>\n\s+<Input\n\s+type="date"/g)?.length, 2)
   assert.match(list, /<Field label=\{<span className="inline-flex items-center gap-1"><ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" \/>\{labels\.selectedSortLabel\}<\/span>\}>\n\s+<NativeSelect value=\{selectedSort\}/)
   assert.equal(source.match(/<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" \/>/g)?.length, 1, "one loading line part for the search and the queue")
-  assert.equal(source.match(/<LoadingLine label=\{tSearch\("loading"\)\} \/>/g)?.length, 2)
+  assert.match(source, /<LoadingLine label=\{tSearch\("loading"\)\} \/>/)
+  assert.match(source, /<LoadingLine label=\{t\("queueLoading"\)\} \/>/)
   assert.match(source, /<Button variant="ghost" size="sm" onClick=\{resetQueueFilters\}>/)
   assert.match(source, /<Button variant="outline" size="sm" busy=\{moreLoading\} onClick=\{showMoreQueue\} className="ml-auto">/)
   assert.match(list, /<Button\n\s+variant="outline"\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printFirstLabel\}\n\s+className="w-full"\n\s+>/)
@@ -388,7 +389,7 @@ test("search results come through the lookup, so they show their real print stat
   assert.match(queue, /setResults\(await fetchLabelRows\(\(payload\?\.results \?\? \[\]\)\.map\(\(result\) => result\.id\), locale, controller\.signal\)\)/)
   assert.match(queue, /fetch\(`\$\{labelPrintsApi\}\?\$\{buildLabelLookupSearch\(ids, locale\)\}`, \{ signal \}\)/)
   // Add-all fetches the rows of the ids it adds, from the queue's matching ids (P6-R3).
-  assert.match(queue, /onAdd\(await fetchLabelRows\(addAll\.addIds, locale\)\)/)
+  assert.match(queue, /const rows = await fetchLabelRows\(addAll\.addIds, locale\)\n\s+onAdd\(rows\)/)
   assert.match(queue, /const addAll = addAllCounts\(\{ total: queue\.total, matchIds: queue\.ids, selectedIds, room \}\)/)
 })
 
@@ -437,4 +438,43 @@ test("the print list never passes 100 and says so in its status line (P6-R2)", (
   const page = readLf("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx")
   assert.match(page, /const preselectedIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\)\)/)
   assert.match(page, /preselectedRows=\{preselected\.rows\}/)
+})
+
+// Task 4 review (fix round 1): no silent failure. Each failed request says so beside the control that failed, with a
+// "ลองอีกครั้ง" that runs it again; add-all says how many deactivated assets it could not add; the add-all box shows the
+// queue's loading state instead of a button that waits with no reason.
+test("the queue says when a load, add-all, show-more or a search add fails, with retry (Task 4 review)", () => {
+  const queue = readLf(QUEUE_PART)
+  const retry = (handler: string) => new RegExp(`<Notice\\n\\s+tone="danger"\\n\\s+role="alert"\\n(?:\\s+className="[^"]+"\\n)?\\s+action=\\{<Button variant="outline" size="md" onClick=\\{${handler}\\}>\\{tCommon\\("tryAgain"\\)\\}</Button>\\}\\n\\s+>`)
+  // The search (and its lookup): an error line under the search, not "ไม่พบผลลัพธ์".
+  assert.match(queue, /setSearchError\(true\)/)
+  assert.match(queue, retry("retrySearch"))
+  assert.match(queue, /\{tSearch\("failed"\)\}/)
+  assert.match(queue, /\}, \[locale, trimmedQuery, searchAttempt\]\)/)
+  // The queue load.
+  assert.match(queue, /setQueueError\(true\)/)
+  assert.match(queue, retry("retryQueue"))
+  assert.match(queue, /\{t\("queueLoadFailed"\)\}/)
+  assert.match(queue, /\}, \[firstPageSearch, queueReload\]\)/)
+  // Show more.
+  assert.match(queue, /setMoreError\(true\)/)
+  assert.match(queue, retry("showMoreQueue"))
+  assert.match(queue, /\{t\("showMoreFailed"\)\}/)
+  // Add-all, and the assets the lookup no longer returns.
+  assert.match(queue, /setAddAllError\(true\)/)
+  assert.match(queue, retry("addAllMatching"))
+  assert.match(queue, /\{t\("addAllFailed"\)\}/)
+  assert.match(queue, /setAddAllSkipped\(lookupMissingCount\(addAll\.addIds, rows\)\)/)
+  assert.match(queue, /\{addAllSkipped > 0 \? <p role="status" className="mt-1 text-muted-foreground">\{t\("addAllSkipped", \{ count: addAllSkipped \}\)\}<\/p> : null\}/)
+  assert.doesNotMatch(queue, /catch \{\n\s+\/\/[^\n]*\n\s+\}/, "no catch swallows a failure")
+  // While the queue loads (or failed), the box says so in a status line the button points at.
+  assert.match(queue, /const addAllReason = queueLoading \? t\("queueLoading"\) : queueError \? t\("queueLoadFailed"\) : addAllNoteText\n/)
+  assert.match(queue, /const addAllWaits = queueLoading \|\| queueError \|\| addAll\.c === 0\n/)
+  assert.match(queue, /<p id="asset-label-add-all-reason" role="status" className="mt-1 text-muted-foreground empty:hidden">\n\s+\{addAllReason\}\n\s+<\/p>/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).assetTools.labelsPage
+  assert.equal(th.queueLoading, "กำลังโหลดคิวป้าย")
+  assert.equal(th.queueLoadFailed, "โหลดคิวป้ายไม่สำเร็จ")
+  assert.equal(th.showMoreFailed, "โหลดรายการเพิ่มไม่สำเร็จ")
+  assert.equal(th.addAllFailed, "เพิ่มเข้ารายการพิมพ์ไม่สำเร็จ")
+  assert.equal(th.addAllSkipped, "ไม่ได้เพิ่ม {count, number} รายการที่ปิดใช้งานแล้ว")
 })

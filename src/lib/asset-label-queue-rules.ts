@@ -65,6 +65,12 @@ export function appendQueueRows<T extends { id: string }>(current: readonly T[],
   return next
 }
 
+/** Ids the lookup did not return (deactivated since the queue loaded): add-all says how many it could not add. */
+export function lookupMissingCount(ids: readonly string[], rows: readonly { id: string }[]) {
+  const found = new Set(rows.map((row) => row.id))
+  return ids.filter((id) => !found.has(id)).length
+}
+
 /** How many more labels the print list takes (P6-R2): 100 less what it holds, never below 0. */
 export function printListRoom(size: number, max = LABEL_PRINT_BATCH_MAX) {
   return Math.max(0, max - size)
