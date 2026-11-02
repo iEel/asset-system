@@ -18,27 +18,35 @@ type RowReader = {
   getCell: (index: number) => CellReader
 }
 
+// Each key also lists its Thai field label from messages asset.importField (P5-R5), so a file headed with the app's own
+// labels maps; the English template headers match first.
 const headerAliases: Record<string, string[]> = {
   assetTag: ["รหัสทรัพย์สิน", "เลขที่ทรัพย์สิน", "รหัสครุภัณฑ์", "asset no", "asset number", "asset code"],
   name: ["ชื่อทรัพย์สิน", "รายละเอียด", "รายการ", "description", "item", "item name"],
   serialNumber: ["serial", "s/n", "sn", "s/n:", "serial no", "serial number", "เลข serial", "หมายเลข serial"],
+  ownershipType: ["ประเภทการถือครอง", "ownership"],
+  licenseTotalSeats: ["จำนวนสิทธิ์ทั้งหมด", "total seats"],
+  licenseUsedSeats: ["จำนวนสิทธิ์ที่ใช้งานแล้ว", "used seats"],
+  licenseAssignedAssetTag: ["รหัสทรัพย์สินที่ผูก License", "assigned asset tag"],
   categoryCode: ["category", "หมวดหมู่", "รหัสหมวดหมู่"],
   companyCode: ["company", "บริษัท", "รหัสบริษัท"],
   branchCode: ["branch", "สาขา", "รหัสสาขา"],
-  currentLocationCode: ["location", "current location", "ตำแหน่ง", "สถานที่", "พื้นที่", "ที่ตั้ง", "รหัสตำแหน่ง", "รหัสที่ตั้ง"],
+  currentLocationCode: ["location", "current location", "ตำแหน่ง", "สถานที่", "พื้นที่", "ที่ตั้ง", "รหัสตำแหน่ง", "รหัสที่ตั้ง", "รหัสที่ตั้งปัจจุบัน"],
   status: ["สถานะ"],
   condition: ["สภาพ", "สภาพทรัพย์สิน"],
   brand: ["ยี่ห้อ"],
   model: ["รุ่น"],
   departmentCode: ["department", "แผนก", "รหัสแผนก"],
   custodianCode: ["custodian", "holder", "owner", "ผู้ถือครอง", "รหัสผู้ถือครอง", "พนักงาน", "รหัสพนักงาน"],
-  homeLocationCode: ["home location", "พื้นที่ประจำ", "ที่ตั้งประจำ", "ตำแหน่งประจำ"],
+  homeLocationCode: ["home location", "พื้นที่ประจำ", "ที่ตั้งประจำ", "ตำแหน่งประจำ", "รหัสที่ตั้งประจำ"],
   purchaseDate: ["วันที่ซื้อ", "purchase"],
   purchasePrice: ["ราคา", "ราคาซื้อ", "มูลค่า"],
   supplierCode: ["supplier", "vendor", "ผู้ขาย", "รหัสผู้ขาย"],
-  fixedAssetCode: ["fixed asset", "fixed asset no", "รหัสบัญชีทรัพย์สิน"],
+  warrantyStartDate: ["เริ่มประกัน", "วันเริ่มประกัน", "warranty start date"],
+  warrantyEndDate: ["หมดประกัน", "วันหมดประกัน", "warranty end date"],
+  fixedAssetCode: ["fixed asset", "fixed asset no", "รหัสบัญชีทรัพย์สิน", "รหัสทรัพย์สินทางบัญชี"],
   poNumber: ["po", "po no", "เลข po", "เลขที่ po"],
-  invoiceNumber: ["invoice", "invoice no", "เลข invoice", "เลขที่ invoice"],
+  invoiceNumber: ["invoice", "invoice no", "เลข invoice", "เลขที่ invoice", "เลขใบกำกับ"],
   remark: ["หมายเหตุ", "note", "notes"],
 }
 

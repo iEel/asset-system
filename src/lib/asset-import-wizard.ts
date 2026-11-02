@@ -10,7 +10,7 @@ export type AssetImportWizardState = {
 }
 
 export type AssetImportPreviewIssueSource = {
-  errors: string[]
+  issues: Array<{ field: string; code: string }>
 }
 
 export function getAssetImportWizardStep(state: AssetImportWizardState): AssetImportWizardStep {
@@ -21,19 +21,25 @@ export function getAssetImportWizardStep(state: AssetImportWizardState): AssetIm
   return "template"
 }
 
+// The repeated problems (group 4 plan 5, P5-R4): rows are counted once per field and code, whatever the file value.
 export function summarizeAssetImportPreviewIssues(rows: AssetImportPreviewIssueSource[], limit = 5) {
-  const counts = new Map<string, number>()
+  const counts = new Map<string, { field: string; code: string; count: number }>()
   for (const row of rows) {
-    for (const error of row.errors) {
-      counts.set(error, (counts.get(error) ?? 0) + 1)
+    const seen = new Set<string>()
+    for (const issue of row.issues) {
+      const key = `${issue.field}:${issue.code}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const entry = counts.get(key) ?? { field: issue.field, code: issue.code, count: 0 }
+      entry.count += 1
+      counts.set(key, entry)
     }
   }
 
-  return Array.from(counts.entries())
-    .map(([message, count]) => ({ message, count }))
+  return Array.from(counts.values())
     .sort((a, b) => {
       if (b.count !== a.count) return b.count - a.count
-      return a.message.localeCompare(b.message)
+      return `${a.field}:${a.code}`.localeCompare(`${b.field}:${b.code}`)
     })
     .slice(0, limit)
 }

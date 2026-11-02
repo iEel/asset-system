@@ -29,7 +29,7 @@ import { required } from "@/lib/validation-rules"
 type PreviewRow = {
   rowNumber: number
   status: "ready" | "error"
-  errors: string[]
+  issues: Array<{ field: string; code: string }>
   values: Record<string, string | number | null>
 }
 
@@ -120,6 +120,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
   )
   const importSteps = assetImportWizardSteps.map((step, index) => ({ id: step, label: wizardStepLabel(step, labels), state: importStates[index] }))
   const issueSummary = preview ? summarizeAssetImportPreviewIssues(preview.rows) : []
+  // A plain line per issue until group 4 plan 5 Task 4 builds the sentence from asset.importError.
+  const issueText = (issue: { field: string; code: string }) => `${labels.fields[issue.field] ?? issue.field}: ${issue.code}`
   const mappedColumns = preview?.mapping?.filter((column) => column.sourceColumn != null) ?? []
   const missingColumns = preview?.mapping?.filter((column) => column.sourceColumn == null) ?? []
   // A prerequisite, not a field (spec §4.4): with no ready row the import waits, focusable, and the counts beside it say why.
@@ -321,8 +323,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
               <p>{labels.issueSummaryHelp}</p>
               <ul className="mt-1 list-disc pl-5">
                 {issueSummary.map((issue) => (
-                  <li key={issue.message}>
-                    {issue.message} · {formatCount(issue.count)} {labels.affectedRows}
+                  <li key={`${issue.field}:${issue.code}`}>
+                    {issueText(issue)} · {formatCount(issue.count)} {labels.affectedRows}
                   </li>
                 ))}
               </ul>
@@ -351,7 +353,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
                   </DataTableCell>
                   <DataTableCell className="min-w-56 text-foreground">{orNil(row.values.name)}</DataTableCell>
                   <DataTableCell className="min-w-80 text-muted-foreground">
-                    {row.errors.length === 0 ? <Nil /> : row.errors.join(", ")}
+                    {row.issues.length === 0 ? <Nil /> : row.issues.map(issueText).join(", ")}
                   </DataTableCell>
                 </DataTableRow>
               ))}

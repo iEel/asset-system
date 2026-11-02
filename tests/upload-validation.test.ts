@@ -95,13 +95,14 @@ test("upload routes keep metadata and content validation before writing bytes, t
 })
 
 test("asset import routes validate workbook content before parsing", () => {
-  const routes = [
-    "src/app/api/assets/import-preview/route.ts",
-    "src/app/api/assets/import-confirm/route.ts",
+  // The preview parses without resolved ids; confirm keeps them (group 4 plan 5, P5-R4).
+  const routes: Array<[string, RegExp]> = [
+    ["src/app/api/assets/import-preview/route.ts", /await validateUploadFileContent\(file\)[\s\S]*parseAssetImportWorkbook\(/],
+    ["src/app/api/assets/import-confirm/route.ts", /await validateUploadFileContent\(file\)[\s\S]*parseAssetImportWorkbookForConfirm\(/],
   ]
 
-  for (const route of routes) {
+  for (const [route, pattern] of routes) {
     const source = readFileSync(route, "utf8")
-    assert.match(source, /await validateUploadFileContent\(file\)[\s\S]*parseAssetImportWorkbook/, route)
+    assert.match(source, pattern, route)
   }
 })

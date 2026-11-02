@@ -1,22 +1,31 @@
 import ExcelJS from "exceljs"
 import { prisma } from "@/lib/db"
-import { assetOwnershipTypes, defaultAssetOwnershipType } from "@/lib/asset-ownership"
+import { FieldRefusalError } from "@/lib/field-errors"
 import { filterAssetCreateStatuses, filterSelectableConditions } from "@/lib/asset-lifecycle-policy"
 import {
   buildAssetImportColumnMapping,
   buildTemplateAssetImportColumnMapping,
   hasRecognizedAssetImportHeaders,
   readAssetImportRowByMapping,
+  type AssetImportCellValue,
   type AssetImportColumnMapping,
 } from "@/lib/asset-import-mapping"
+import {
+  ASSET_IMPORT_MAX_ROWS,
+  assetImportLookupKey,
+  assetImportModelKey,
+  assetImportScopedKey,
+  validateAssetImportRows,
+  type AssetImportIssue,
+  type AssetImportReferences,
+  type AssetImportValidatedRow,
+} from "@/lib/asset-import-validate"
 
-export type AssetImportPreviewRow = {
-  rowNumber: number
-  status: "ready" | "error"
-  errors: string[]
-  values: Record<string, string | number | null>
-  resolved: Record<string, string | null>
-}
+export type { AssetImportIssue, AssetImportReferences, AssetImportValidatedRow }
+export { nullableText, parseImportDate, parseImportMoney, parseOptionalInteger } from "@/lib/asset-import-validate"
+
+// What the preview answers per row (P5-R4): no resolved ids; confirm keeps its own copy (parseAssetImportWorkbookForConfirm).
+export type AssetImportPreviewRow = Omit<AssetImportValidatedRow, "resolved">
 
 export type AssetImportPreviewSummary = {
   totalRows: number
@@ -30,22 +39,15 @@ export type AssetImportPreviewResult = {
   mapping: AssetImportColumnMapping[]
 }
 
-export type AssetImportReferences = {
-  assetTags: Set<string>
-  assetsByTag: Map<string, string>
-  serialNumbers: Set<string>
-  categories: Map<string, string>
-  companies: Map<string, string>
-  branches: Map<string, { id: string; companyId: string }>
-  departments: Map<string, { id: string; companyId: string | null }>
-  locations: Map<string, { id: string; branchId: string }>
-  statuses: Map<string, string>
-  conditions: Map<string, string>
-  brands: Map<string, string>
-  models: Map<string, { id: string; brandId: string | null; categoryId: string | null }>
-  employees: Map<string, string>
-  suppliers: Map<string, string>
+// Confirm's parse: the same rows with the resolved ids (and the holder's department) it writes.
+export type AssetImportConfirmParseResult = {
+  summary: AssetImportPreviewSummary
+  rows: AssetImportValidatedRow[]
+  mapping: AssetImportColumnMapping[]
 }
+
+// The row cap's own message (P5-R3); the field error is _form: outOfRange.
+export const assetImportTooManyRowsMessage = "ไฟล์นำเข้าได้ไม่เกิน 1,000 แถวต่อครั้ง"
 
 export async function getAssetImportReferences(): Promise<AssetImportReferences> {
   const [
@@ -62,9 +64,11 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
     employees,
     suppliers,
   ] = await Promise.all([
+    // Every asset, active or not: the tag is unique over all rows (P5-R5). Oldest first, so a Serial two active assets
+    // already share names the oldest (Review Focus 1).
     prisma.asset.findMany({
-      where: { isActive: true },
-      select: { id: true, assetTag: true, serialNumber: true },
+      select: { id: true, assetTag: true, serialNumber: true, isActive: true, createdAt: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
     prisma.assetCategory.findMany({
       where: { isActive: true },
@@ -104,7 +108,7 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
     }),
     prisma.employee.findMany({
       where: { isActive: true },
-      select: { id: true, code: true },
+      select: { id: true, code: true, departmentId: true },
     }),
     prisma.supplier.findMany({
       where: { isActive: true },
@@ -112,52 +116,71 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
     }),
   ])
 
+  const assetsByTag: AssetImportReferences["assetsByTag"] = new Map()
+  const assetsBySerial: AssetImportReferences["assetsBySerial"] = new Map()
+  for (const asset of [...assets].sort(byCreatedAt)) {
+    const tag = assetImportLookupKey(asset.assetTag)
+    const heldTag = assetsByTag.get(tag)
+    if (!heldTag || (!heldTag.active && asset.isActive)) {
+      assetsByTag.set(tag, { id: asset.id, assetTag: asset.assetTag, active: asset.isActive })
+    }
+    const serial = assetImportLookupKey(asset.serialNumber)
+    if (asset.isActive && serial && !assetsBySerial.has(serial)) {
+      assetsBySerial.set(serial, { id: asset.id, assetTag: asset.assetTag })
+    }
+  }
+
   return {
-    assetTags: new Set(assets.map((asset) => asset.assetTag.trim().toLowerCase())),
-    assetsByTag: new Map(assets.map((asset) => [asset.assetTag.trim().toLowerCase(), asset.id])),
-    serialNumbers: new Set(
-      assets.flatMap((asset) => (asset.serialNumber ? [asset.serialNumber.trim().toLowerCase()] : []))
-    ),
-    categories: new Map(categories.map((category) => [category.code.trim().toLowerCase(), category.id])),
-    companies: new Map(companies.map((company) => [company.code.trim().toLowerCase(), company.id])),
+    assetsByTag,
+    assetsBySerial,
+    categories: new Map(categories.map((category) => [assetImportLookupKey(category.code), category.id])),
+    companies: new Map(companies.map((company) => [assetImportLookupKey(company.code), company.id])),
     branches: new Map(
       branches.map((branch) => [
-        scopedKey(branch.companyId, branch.code),
+        assetImportScopedKey(branch.companyId, branch.code),
         { id: branch.id, companyId: branch.companyId },
       ])
     ),
     departments: new Map(
       departments.map((department) => [
-        department.code.trim().toLowerCase(),
+        assetImportLookupKey(department.code),
         { id: department.id, companyId: department.companyId },
       ])
     ),
-    locations: new Map(locations.map((location) => [location.code.trim().toLowerCase(), { id: location.id, branchId: location.branchId }])),
-    statuses: new Map(
-      filterAssetCreateStatuses(statuses).flatMap((status) => [
-        [status.name.trim().toLowerCase(), status.id] as const,
-        [status.nameTh.trim().toLowerCase(), status.id] as const,
-      ])
-    ),
-    conditions: new Map(
-      filterSelectableConditions(conditions).flatMap((condition) => [
-        [condition.name.trim().toLowerCase(), condition.id] as const,
-        [condition.nameTh.trim().toLowerCase(), condition.id] as const,
-      ])
-    ),
-    brands: new Map(brands.map((brand) => [brand.name.trim().toLowerCase(), brand.id])),
+    locations: new Map(locations.map((location) => [assetImportLookupKey(location.code), { id: location.id, branchId: location.branchId }])),
+    statuses: nameMap(statuses),
+    importableStatuses: new Set(filterAssetCreateStatuses(statuses).map((status) => status.id)),
+    conditions: nameMap(conditions),
+    importableConditions: new Set(filterSelectableConditions(conditions).map((condition) => condition.id)),
+    brands: new Map(brands.map((brand) => [assetImportLookupKey(brand.name), brand.id])),
     models: new Map(
       models.map((model) => [
-        model.name.trim().toLowerCase(),
+        assetImportModelKey(model.brandId, model.name),
         { id: model.id, brandId: model.brandId, categoryId: model.categoryId },
       ])
     ),
-    employees: new Map(employees.map((employee) => [employee.code.trim().toLowerCase(), employee.id])),
-    suppliers: new Map(suppliers.map((supplier) => [supplier.code.trim().toLowerCase(), supplier.id])),
+    employees: new Map(
+      employees.map((employee) => [assetImportLookupKey(employee.code), { id: employee.id, departmentId: employee.departmentId }])
+    ),
+    suppliers: new Map(suppliers.map((supplier) => [assetImportLookupKey(supplier.code), supplier.id])),
   }
 }
 
-export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: AssetImportReferences) {
+// The preview's parse: the rows without their resolved ids (P5-R4).
+export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: AssetImportReferences): Promise<AssetImportPreviewResult> {
+  const parsed = await parseAssetImportWorkbookForConfirm(buffer, references)
+  return {
+    ...parsed,
+    rows: parsed.rows.map((row) => ({ rowNumber: row.rowNumber, status: row.status, issues: row.issues, values: row.values })),
+  }
+}
+
+// Confirm's parse (group 4 plan 5 Task 2 reads it): each row keeps the resolved ids beside its values. A file with more
+// than ASSET_IMPORT_MAX_ROWS data rows is refused as a whole, as a _form error (P5-R3).
+export async function parseAssetImportWorkbookForConfirm(
+  buffer: ArrayBuffer,
+  references: AssetImportReferences
+): Promise<AssetImportConfirmParseResult> {
   const workbook = new ExcelJS.Workbook()
   await workbook.xlsx.load(buffer)
   const worksheet = workbook.getWorksheet("Asset Import") ?? workbook.worksheets[0]
@@ -165,9 +188,6 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
     throw new Error("ไม่พบ worksheet สำหรับนำเข้าข้อมูล")
   }
 
-  const seenAssetTags = new Set<string>()
-  const seenSerialNumbers = new Set<string>()
-  const rows: AssetImportPreviewRow[] = []
   const headerRow = worksheet.getRow(1)
   const headerColumnCount = Math.max(worksheet.columnCount, headerRow.cellCount)
   const detectedMapping = buildAssetImportColumnMapping(
@@ -176,133 +196,23 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
   const hasHeaderRow = hasRecognizedAssetImportHeaders(detectedMapping)
   const mapping = hasHeaderRow ? detectedMapping : buildTemplateAssetImportColumnMapping()
 
+  const dataRows: Array<{ rowNumber: number; values: Record<string, AssetImportCellValue> }> = []
+  let tooMany = false
   worksheet.eachRow((row, rowNumber) => {
-    if (hasHeaderRow && rowNumber === 1) return
-
+    if (tooMany || (hasHeaderRow && rowNumber === 1)) return
     const values = readAssetImportRowByMapping(row, mapping)
     if (isEmptyRow(values)) return
-
-    const errors: string[] = []
-    const resolved: Record<string, string | null> = {
-      categoryId: null,
-      companyId: null,
-      branchId: null,
-      currentLocationId: null,
-      statusId: null,
-      conditionId: null,
-      brandId: null,
-      modelId: null,
-      departmentId: null,
-      custodianId: null,
-      homeLocationId: null,
-      supplierId: null,
-      licenseAssignedAssetId: null,
+    if (dataRows.length >= ASSET_IMPORT_MAX_ROWS) {
+      tooMany = true
+      return
     }
-
-    requireValue(values.name, "Asset Name", errors)
-    requireValue(values.categoryCode, "Category Code", errors)
-    requireValue(values.companyCode, "Company Code", errors)
-    requireValue(values.branchCode, "Branch Code", errors)
-    requireValue(values.currentLocationCode, "Current Location Code", errors)
-    requireValue(values.status, "Status", errors)
-    requireValue(values.condition, "Condition", errors)
-
-    resolveMap(values.categoryCode, references.categories, "Category Code", errors, (id) => {
-      resolved.categoryId = id
-    })
-    resolveMap(values.companyCode, references.companies, "Company Code", errors, (id) => {
-      resolved.companyId = id
-    })
-    const branch = resolved.companyId
-      ? resolveObjectMap(scopedKey(resolved.companyId, values.branchCode), references.branches, "Branch Code + Company Code", errors)
-      : null
-    if (branch) resolved.branchId = branch.id
-    const currentLocation = resolveObjectMap(values.currentLocationCode, references.locations, "Current Location Code", errors)
-    if (currentLocation) resolved.currentLocationId = currentLocation.id
-    resolveMap(values.status, references.statuses, "Status", errors, (id) => {
-      resolved.statusId = id
-    })
-    resolveMap(values.condition, references.conditions, "Condition", errors, (id) => {
-      resolved.conditionId = id
-    })
-
-    if (values.brand) {
-      resolveMap(values.brand, references.brands, "Brand", errors, (id) => {
-        resolved.brandId = id
-      })
-    }
-    const model = values.model ? resolveObjectMap(values.model, references.models, "Model", errors) : null
-    if (model) resolved.modelId = model.id
-    const department = values.departmentCode
-      ? resolveObjectMap(values.departmentCode, references.departments, "Department Code", errors)
-      : null
-    if (department) resolved.departmentId = department.id
-    if (values.custodianCode) {
-      resolveMap(values.custodianCode, references.employees, "Custodian Code", errors, (id) => {
-        resolved.custodianId = id
-      })
-    }
-    const homeLocation = values.homeLocationCode
-      ? resolveObjectMap(values.homeLocationCode, references.locations, "Home Location Code", errors)
-      : null
-    if (homeLocation) resolved.homeLocationId = homeLocation.id
-    if (values.supplierCode) {
-      resolveMap(values.supplierCode, references.suppliers, "Supplier Code", errors, (id) => {
-        resolved.supplierId = id
-      })
-    }
-    const ownershipType = resolveOwnershipType(values.ownershipType, errors)
-    if (values.licenseAssignedAssetTag) {
-      resolveMap(values.licenseAssignedAssetTag, references.assetsByTag, "License Assigned Asset Tag", errors, (id) => {
-        resolved.licenseAssignedAssetId = id
-      })
-    }
-
-    if (branch && resolved.companyId && branch.companyId !== resolved.companyId) {
-      errors.push("Branch Code ไม่อยู่ภายใต้ Company Code ที่ระบุ")
-    }
-    if (currentLocation && branch && currentLocation.branchId !== branch.id) {
-      errors.push("Current Location Code ไม่อยู่ภายใต้ Branch Code ที่ระบุ")
-    }
-    if (homeLocation && branch && homeLocation.branchId !== branch.id) {
-      errors.push("Home Location Code ไม่อยู่ภายใต้ Branch Code ที่ระบุ")
-    }
-    if (department && resolved.companyId && department.companyId && department.companyId !== resolved.companyId) {
-      errors.push("Department Code ไม่อยู่ภายใต้ Company Code ที่ระบุ")
-    }
-    if (model && resolved.brandId && model.brandId && model.brandId !== resolved.brandId) {
-      errors.push("Model ไม่อยู่ภายใต้ Brand ที่ระบุ")
-    }
-    if (model && resolved.categoryId && model.categoryId && model.categoryId !== resolved.categoryId) {
-      errors.push("Model ไม่อยู่ภายใต้ Category Code ที่ระบุ")
-    }
-
-    validateDuplicate(values.assetTag, references.assetTags, seenAssetTags, "Asset Tag", errors)
-    validateDuplicate(values.serialNumber, references.serialNumbers, seenSerialNumbers, "Serial Number", errors)
-    validateDate(values.purchaseDate, "Purchase Date", errors)
-    validateDate(values.warrantyStartDate, "Warranty Start", errors)
-    validateDate(values.warrantyEndDate, "Warranty End", errors)
-    validateMoney(values.purchasePrice, "Purchase Price", errors)
-    validateInteger(values.licenseTotalSeats, "License Total Seats", errors)
-    validateInteger(values.licenseUsedSeats, "License Used Seats", errors)
-    const licenseTotalSeats = parseOptionalInteger(values.licenseTotalSeats)
-    const licenseUsedSeats = parseOptionalInteger(values.licenseUsedSeats)
-    if (licenseTotalSeats != null && licenseUsedSeats != null && licenseUsedSeats > licenseTotalSeats) {
-      errors.push("License Used Seats ต้องไม่เกิน License Total Seats")
-    }
-    if (ownershipType !== "software_license" && (licenseTotalSeats != null || licenseUsedSeats != null || values.licenseAssignedAssetTag)) {
-      errors.push("ข้อมูล License ใช้ได้เฉพาะ Ownership Type = software_license")
-    }
-
-    rows.push({
-      rowNumber,
-      status: errors.length === 0 ? "ready" : "error",
-      errors,
-      values,
-      resolved,
-    })
+    dataRows.push({ rowNumber, values })
   })
+  if (tooMany) {
+    throw new FieldRefusalError(assetImportTooManyRowsMessage, { _form: "outOfRange" })
+  }
 
+  const rows = validateAssetImportRows(dataRows, references)
   const readyRows = rows.filter((row) => row.status === "ready").length
   return {
     summary: {
@@ -312,116 +222,23 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
     },
     rows,
     mapping,
-  } satisfies AssetImportPreviewResult
+  }
 }
 
 function isEmptyRow(values: Record<string, string | number | null>) {
   return Object.values(values).every((value) => value == null || String(value).trim() === "")
 }
 
-function key(value: string | number | null | undefined) {
-  return value == null ? "" : String(value).trim().toLowerCase()
+function byCreatedAt(left: { createdAt: Date; id: string }, right: { createdAt: Date; id: string }) {
+  const difference = left.createdAt.getTime() - right.createdAt.getTime()
+  return difference !== 0 ? difference : left.id.localeCompare(right.id)
 }
 
-function scopedKey(scope: string | number | null | undefined, value: string | number | null | undefined) {
-  return `${key(scope)}:${key(value)}`
-}
-
-function requireValue(value: string | number | null, label: string, errors: string[]) {
-  if (!key(value)) errors.push(`${label} จำเป็นต้องระบุ`)
-}
-
-function resolveMap(
-  value: string | number | null,
-  map: Map<string, string>,
-  label: string,
-  errors: string[],
-  onResolve: (id: string) => void
-) {
-  const lookup = key(value)
-  if (!lookup) return
-  const id = map.get(lookup)
-  if (!id) errors.push(`${label} ไม่พบในข้อมูลอ้างอิง`)
-  else onResolve(id)
-}
-
-function resolveObjectMap<T>(value: string | number | null, map: Map<string, T>, label: string, errors: string[]) {
-  const lookup = key(value)
-  if (!lookup) return null
-  const record = map.get(lookup)
-  if (!record) {
-    errors.push(`${label} ไม่พบในข้อมูลอ้างอิง`)
-    return null
-  }
-  return record
-}
-
-function validateDuplicate(
-  value: string | number | null,
-  existingValues: Set<string>,
-  seenValues: Set<string>,
-  label: string,
-  errors: string[]
-) {
-  const lookup = key(value)
-  if (!lookup) return
-  if (existingValues.has(lookup)) errors.push(`${label} ซ้ำกับข้อมูลที่มีอยู่แล้ว`)
-  if (seenValues.has(lookup)) errors.push(`${label} ซ้ำภายในไฟล์นำเข้า`)
-  seenValues.add(lookup)
-}
-
-function validateDate(value: string | number | null, label: string, errors: string[]) {
-  const lookup = key(value)
-  if (!lookup) return
-  if (typeof value === "number") return
-  const parsed = new Date(String(value))
-  if (Number.isNaN(parsed.getTime())) errors.push(`${label} ต้องเป็นวันที่ที่ถูกต้อง`)
-}
-
-function validateMoney(value: string | number | null, label: string, errors: string[]) {
-  const lookup = key(value)
-  if (!lookup) return
-  const parsed = Number(value)
-  if (Number.isNaN(parsed) || parsed < 0) errors.push(`${label} ต้องเป็นตัวเลข 0 ขึ้นไป`)
-}
-
-function resolveOwnershipType(value: string | number | null, errors: string[]) {
-  const lookup = key(value) || defaultAssetOwnershipType
-  if (!assetOwnershipTypes.includes(lookup as (typeof assetOwnershipTypes)[number])) {
-    errors.push("Ownership Type ต้องเป็น personal, shared, stock, component หรือ software_license")
-    return defaultAssetOwnershipType
-  }
-  return lookup
-}
-
-function validateInteger(value: string | number | null, label: string, errors: string[]) {
-  const parsed = parseOptionalInteger(value)
-  if (parsed == null) return
-  if (!Number.isInteger(parsed) || parsed < 0) errors.push(`${label} ต้องเป็นจำนวนเต็ม 0 ขึ้นไป`)
-}
-
-export function parseOptionalInteger(value: string | number | null | undefined) {
-  const normalized = nullableText(value)
-  if (normalized == null) return null
-  const parsed = Number(normalized)
-  return Number.isFinite(parsed) ? parsed : Number.NaN
-}
-
-export function nullableText(value: string | number | null | undefined) {
-  const normalized = value == null ? "" : String(value).trim()
-  return normalized.length === 0 ? null : normalized
-}
-
-export function parseImportDate(value: string | number | null | undefined) {
-  const normalized = nullableText(value)
-  if (!normalized) return null
-  if (typeof value === "number") {
-    return new Date(Math.round((value - 25569) * 86400 * 1000))
-  }
-  return new Date(normalized)
-}
-
-export function parseImportMoney(value: string | number | null | undefined) {
-  const normalized = nullableText(value)
-  return normalized == null ? null : Number(normalized)
+function nameMap(records: Array<{ id: string; name: string; nameTh: string }>) {
+  return new Map(
+    records.flatMap((record) => [
+      [assetImportLookupKey(record.name), record.id] as const,
+      [assetImportLookupKey(record.nameTh), record.id] as const,
+    ])
+  )
 }

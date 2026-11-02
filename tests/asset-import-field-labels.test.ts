@@ -20,6 +20,11 @@ test("every import column and alias key has a th (Thai) and en field label", () 
   }
   assert.equal(th.currentLocationCode, "รหัสที่ตั้งปัจจุบัน")
   assert.equal(th.homeLocationCode, "รหัสที่ตั้งประจำ")
+  // Group 4 plan 5 (P5-R5): every column has aliases, and each lists its Thai field label.
+  assert.deepEqual([...new Set(aliasKeys)].sort(), assetImportColumns.map((column) => column.key).sort())
+  for (const column of assetImportColumns) {
+    assert.ok(mappingSource.toLowerCase().includes(`"${th[column.key].toLowerCase()}"`), `alias ${column.key}: ${th[column.key]}`)
+  }
 })
 
 test("the import preview panel shows message labels by column key", () => {

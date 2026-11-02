@@ -1,5 +1,8 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
+
+import { assetImportColumns } from "../src/lib/asset-excel.ts"
 
 import {
   buildAssetImportColumnMapping,
@@ -53,4 +56,27 @@ test("old and new Thai location headers both map after the glossary rename", () 
     const column = buildAssetImportColumnMapping([header]).find((entry) => entry.key === "homeLocationCode")
     assert.equal(column?.sourceColumn, 1, header)
   }
+})
+
+test("the app's own Thai field labels map as headers, and the English template headers still do (P5-R5)", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).asset.importField as Record<string, string>
+  const column = (header: string, key: string) => buildAssetImportColumnMapping([header]).find((entry) => entry.key === key)
+  assert.equal(column("รหัสที่ตั้งปัจจุบัน", "currentLocationCode")?.sourceColumn, 1)
+  for (const [key, label] of Object.entries(th)) {
+    assert.equal(column(label, key)?.sourceColumn, 1, `${key}: ${label}`)
+  }
+  for (const entry of assetImportColumns) {
+    assert.equal(column(entry.header, entry.key)?.confidence, "template", entry.header)
+  }
+  // A whole header row of Thai labels maps every column to its own place.
+  const labels = assetImportColumns.map((entry) => th[entry.key])
+  const mapping = buildAssetImportColumnMapping(labels)
+  assert.deepEqual(mapping.map((entry) => entry.sourceColumn), assetImportColumns.map((_, index) => index + 1))
+})
+
+test("exactly the seven required columns carry required: true", () => {
+  assert.deepEqual(
+    assetImportColumns.filter((entry) => "required" in entry && entry.required).map((entry) => entry.key),
+    ["name", "categoryCode", "companyCode", "branchCode", "currentLocationCode", "status", "condition"]
+  )
 })

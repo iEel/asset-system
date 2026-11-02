@@ -476,6 +476,48 @@ test("asset, operation, maintenance and import refusals about a field name it; t
     await expectBody(await upload(new File([new Uint8Array(10 * 1024 * 1024 + 1)], "assets.xlsx")), 400, { error: "ไฟล์ต้องมีขนาดไม่เกิน 10 MB", fieldErrors: { _form: "outOfRange" } })
     await expectBody(await upload(new File(["a,b"], "assets.csv")), 400, { error: "รองรับเฉพาะไฟล์ .xlsx", fieldErrors: { _form: "invalidFormat" } })
   }
+
+  // Group 4 plan 5 (P5-R3, Review Focus 3): a sheet with 1,001 data rows is refused as a whole with the cap's own
+  // message, and no row comes back. Both routes parse through the same reader.
+  const { default: ExcelJS } = await import("exceljs")
+  const workbookFile = async (rows: Array<Array<string | null>>) => {
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet("Asset Import")
+    sheet.addRow(["Asset Tag", "Asset Name", "Category Code"])
+    for (const row of rows) sheet.addRow(row)
+    return new File([await workbook.xlsx.writeBuffer()], "assets.xlsx")
+  }
+  const emptyReferences = (assets: unknown[] = []) => {
+    const none = { findMany: () => [] }
+    stubDb({
+      asset: { findMany: () => assets }, assetCategory: none, company: none, branch: none, department: none, location: none,
+      assetStatus: none, assetCondition: none, assetBrand: none, assetModel: none, employee: none, supplier: none,
+    })
+  }
+  const tooMany = await workbookFile(Array.from({ length: 1001 }, (_, index) => [`T-${index}`, `Asset ${index}`, "NB"]))
+  for (const path of ["src/app/api/assets/import-preview/route.ts", "src/app/api/assets/import-confirm/route.ts"]) {
+    const { POST } = await load<{ POST: Handler }>(path)
+    emptyReferences()
+    const form = new FormData()
+    form.append("file", tooMany)
+    await expectBody(await POST(new Request("http://localhost/api/test", { method: "POST", body: form }), params), 400, {
+      error: "ไฟล์นำเข้าได้ไม่เกิน 1,000 แถวต่อครั้ง", fieldErrors: { _form: "outOfRange" },
+    })
+  }
+
+  // The preview answers structured issues and no resolved ids (P5-R4); a tag held by an inactive asset is a clash.
+  const preview = await load<{ POST: Handler }>("src/app/api/assets/import-preview/route.ts")
+  emptyReferences([{ id: "asset-old", assetTag: "OLD-1", serialNumber: null, isActive: false, createdAt: new Date(0) }])
+  const form = new FormData()
+  form.append("file", await workbookFile(Array.from({ length: 1000 }, (_, index) => [index === 0 ? "old-1" : `T-${index}`, `Asset ${index}`, "NB"])))
+  const response = await preview.POST(new Request("http://localhost/api/test", { method: "POST", body: form }), params)
+  assert.equal(response.status, 200)
+  const body = await response.json() as { summary: { totalRows: number }; rows: Array<Record<string, unknown> & { issues: Array<Record<string, unknown>> }> }
+  assert.equal(body.summary.totalRows, 1000)
+  assert.equal(body.rows.some((row) => "resolved" in row), false)
+  assert.deepEqual(body.rows[0].issues.find((issue) => issue.field === "assetTag"), {
+    code: "duplicateExisting", field: "assetTag", value: "old-1", conflict: { assetId: "asset-old", assetTag: "OLD-1", inactive: true },
+  })
 })
 
 test("the last duplicates and the employee's user account land under their field: role rename, inactive branch code, custom field names, client id (V spec §6.2)", async (t) => {

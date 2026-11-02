@@ -14,15 +14,18 @@ test("resolves import wizard step from UI state", () => {
   assert.equal(getAssetImportWizardStep({ hasSuccess: true }), "complete")
 })
 
-test("summarizes repeated import preview issues", () => {
+test("summarizes repeated import preview issues by field and code, each row once", () => {
   const summary = summarizeAssetImportPreviewIssues([
-    { errors: ["Missing Category", "Missing Company"] },
-    { errors: ["Missing Category"] },
-    { errors: [] },
+    { issues: [{ field: "categoryCode", code: "required" }, { field: "companyCode", code: "notFound" }] },
+    { issues: [{ field: "categoryCode", code: "required" }] },
+    // The same field and code twice on one row counts the row once.
+    { issues: [{ field: "licenseTotalSeats", code: "licenceOnlyForLicence" }, { field: "licenseTotalSeats", code: "licenceOnlyForLicence" }] },
+    { issues: [] },
   ])
 
   assert.deepEqual(summary, [
-    { message: "Missing Category", count: 2 },
-    { message: "Missing Company", count: 1 },
+    { field: "categoryCode", code: "required", count: 2 },
+    { field: "companyCode", code: "notFound", count: 1 },
+    { field: "licenseTotalSeats", code: "licenceOnlyForLicence", count: 1 },
   ])
 })

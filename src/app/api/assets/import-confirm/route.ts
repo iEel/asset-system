@@ -7,7 +7,7 @@ import { generateAssetTag } from "@/lib/asset-tag"
 import {
   getAssetImportReferences,
   nullableText,
-  parseAssetImportWorkbook,
+  parseAssetImportWorkbookForConfirm,
   parseImportDate,
   parseImportMoney,
   parseOptionalInteger,
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     await validateUploadFileContent(file)
 
     const references = await getAssetImportReferences()
-    const preview = await parseAssetImportWorkbook(await file.arrayBuffer(), references)
+    const preview = await parseAssetImportWorkbookForConfirm(await file.arrayBuffer(), references)
     const requestedBatchId = normalizeFormText(formData.get("batchId"))
     const batch = {
       ...createAssetImportBatchSummary({
