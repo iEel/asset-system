@@ -35,6 +35,8 @@ asUser("itStaff")
 
 const DESKTOP_ONLY = "one tag change a run is enough; the เปลี่ยนรหัส dialog is the same on the phone (group 4 spec §7.1)"
 const FOOTER = '[data-slot="sticky-form-footer"]'
+// The edit page opened from the asset page: a save goes back there (returnTo; without it the edit goes to the register).
+const editFromAssetPage = (assetId: string) => `/th/assets/${assetId}/edit?returnTo=${encodeURIComponent(`/th/assets/${assetId}`)}`
 
 test("a holder given on the edit page is a correction: แผนก follows the holder, the reason is asked first, the change list shows เดิม → ใหม่, and the history reads แก้ไขข้อมูลผู้ถือครอง with the reason (group 4 spec §7.1, §7.3, §7.5; P2-R4, P2-R5)", async ({ page, measure }, testInfo) => {
   const { runId } = readRunState()
@@ -45,7 +47,7 @@ test("a holder given on the edit page is a correction: แผนก follows the 
   const masters = await readAssetMasters(page)
   const asset = await createTxAsset(page, masters, testInfo.project.name, "RE1", "โน้ตบุ๊กแก้ไขผู้ถือครองหน้าแก้ไข", { departmentId: other.id })
 
-  await visit(measure, `/th/assets/${asset.id}/edit`, "asset edit, a บุคคล asset with no holder", testInfo)
+  await visit(measure, editFromAssetPage(asset.id), "asset edit, a บุคคล asset with no holder", testInfo)
   // The header names the asset, with the way back to its page (§7.1).
   await expect(page.getByRole("heading", { level: 1, name: fillTemplate(REGISTER_WORDS.editTitleNamed, { name: asset.name }) })).toBeVisible()
   await expect(page.getByRole("main").getByRole("link", { name: REGISTER_WORDS.viewAssetPage, exact: true })).toHaveAttribute("href", new RegExp(`^/th/assets/${asset.id}(?:\\?|$)`))
@@ -115,11 +117,12 @@ test("เปลี่ยนรหัส: the dialog warns about the printed labe
   const asset = await createTxAsset(page, masters, testInfo.project.name, "RE2", "โน้ตบุ๊กเปลี่ยนรหัสหน้าแก้ไข")
   const newTag = txAssetTag(runId, testInfo.project.name, "RE2N")
 
-  await visit(measure, `/th/assets/${asset.id}/edit`, "asset edit, before a tag change", testInfo)
+  await visit(measure, editFromAssetPage(asset.id), "asset edit, before a tag change", testInfo)
   // On the edit page the tag is text with เปลี่ยนรหัส beside it (§7.1).
   const tag = page.locator("#asset-tag")
   await expect(tag.locator(".tag")).toHaveText(asset.assetTag)
-  await tag.getByRole("button", { name: REGISTER_WORDS.changeTag, exact: true }).click()
+  // The button's name reads the field and the current code before เปลี่ยนรหัส (its label points at the row).
+  await tag.getByRole("button", { name: `${REGISTER_WORDS.assetTagLabel} ${asset.assetTag} ${REGISTER_WORDS.changeTag}`, exact: true }).click()
   const dialog = page.getByRole("dialog", { name: REGISTER_WORDS.changeTagTitle })
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText(REGISTER_WORDS.changeTagWarning)

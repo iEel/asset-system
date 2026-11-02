@@ -30,7 +30,7 @@ export const REGISTER_WORDS = {
   // A real move's history line, which a correction never writes.
   holderChanged: "เปลี่ยนผู้ถือครอง",
   // เปลี่ยนรหัส (P2-R6): the dialog, its warning and confirm, and the history line.
-  changeTag: "เปลี่ยนรหัส", changeTagTitle: "เปลี่ยนรหัสทรัพย์สิน", changeTagConfirm: "ใช้รหัสนี้",
+  assetTagLabel: "รหัสทรัพย์สิน", changeTag: "เปลี่ยนรหัส", changeTagTitle: "เปลี่ยนรหัสทรัพย์สิน", changeTagConfirm: "ใช้รหัสนี้",
   changeTagWarning: "ป้ายที่พิมพ์ไว้จะยังแสดงรหัสเดิม และค้นด้วยรหัสเดิมจะไม่พบ ป้าย QR ยังเปิดทรัพย์สินนี้ได้", tagChanged: "เปลี่ยนรหัสทรัพย์สิน",
   // An open handover locks the holder, the room and แผนก (P2-R3): the notice and its link to the document.
   openHandoverLock: "ใบส่งมอบ {documentNo} ยังเปิดอยู่ ถ้าผู้ถือครองหรือที่ตั้งผิด ให้ยกเลิกใบส่งมอบแล้วส่งมอบใหม่ หรือรับคืน", openHandoverLink: "เปิดใบส่งมอบ",

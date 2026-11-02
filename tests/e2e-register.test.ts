@@ -110,6 +110,11 @@ test("the edit page's spec reads the app's own words and keeps to the correction
   // (a) both devices: a บุคคล asset in another department, a holder picked, แผนก locked, the reason asked first with no
   // PUT, the change list as a dialog (popover or sheet), read back with the holder's department, the history's lines.
   assert.ok(spec.includes('"RE1", "โน้ตบุ๊กแก้ไขผู้ถือครองหน้าแก้ไข", { departmentId: other.id })'))
+  // Opened from the asset page (returnTo), so the save goes back there and the spec waits for that page (final review);
+  // without returnTo the edit goes to the register and the wait would never match.
+  assert.ok(spec.includes("const editFromAssetPage = (assetId: string) => `/th/assets/${assetId}/edit?returnTo=${encodeURIComponent(`/th/assets/${assetId}`)}`"))
+  assert.equal(spec.split("visit(measure, editFromAssetPage(asset.id), ").length - 1, 2, "both saving tests open the edit page from the asset page")
+  assert.equal(spec.split("await page.waitForURL((url) => url.pathname === `/th/assets/${asset.id}`)").length - 1, 2)
   assert.ok(spec.includes('await pickSearchable(page, "asset-custodian", holder.code, `${holder.code} - ${holder.fullNameTh}`)'))
   assert.ok(spec.includes("await expect(department).toContainText(fillTemplate(REGISTER_WORDS.departmentFollowsHolder, { department: runDepartment.name }))"))
   assert.ok(spec.includes('await expectFieldError(page, "asset-correction-reason", REGISTER_WORDS.correctionReasonRequired)'))
@@ -120,6 +125,7 @@ test("the edit page's spec reads the app's own words and keeps to the correction
   // (b) desktop only: the tag dialog, its error, the new tag saved and its history line.
   assert.ok(spec.includes('test.skip(e2eDevice === "phone", DESKTOP_ONLY)'))
   assert.ok(spec.includes('await expectFieldError(page, "asset-tag-new", REGISTER_WORDS.required)'))
+  assert.ok(spec.includes("name: `${REGISTER_WORDS.assetTagLabel} ${asset.assetTag} ${REGISTER_WORDS.changeTag}`, exact: true"), "the tag button's name")
   assert.ok(spec.includes("expect((await readAsset(page, asset.id)).assetTag).toBe(newTag)"))
   assert.ok(spec.includes('await expect(page.getByRole("main")).toContainText(REGISTER_WORDS.tagChanged)'))
   // (c) an open handover: the notice and its link to the document, never โอนย้าย; the three controls read-only.
