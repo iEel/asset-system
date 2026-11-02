@@ -59,10 +59,29 @@ const LINKS = [
   { id: "link-gone", componentRole: "เครื่องอ่านบัตร", slotNo: null, installedAt: new Date("2026-08-01T03:00:00Z"), removedAt: new Date("2026-10-30T03:00:00Z"), status: "removed", reason: null, referenceType: "asset_component", referenceId: "link-gone", createdBy: null, updatedBy: "user-1", componentAsset: component("c3", "GRL-CRD-26-0001", "Card reader") },
 ]
 
+// The fake answers the two link reads (current: installed or outstanding; past: NOT that) and the three counts by where.
+type FakeLink = { status: string; removedAt: Date | null }
+const isCurrent = (link: FakeLink) => link.removedAt === null && (link.status === "installed" || link.status === "outstanding")
+function linksAnswer(links: FakeLink[]) {
+  return (args: Args) => {
+    const past = Boolean(args.where?.NOT)
+    const rows = links.filter((link) => isCurrent(link) !== past)
+    return typeof args.take === "number" ? rows.slice(0, args.take) : rows
+  }
+}
+function countAnswer(links: FakeLink[]) {
+  return (args: Args) => {
+    const where = args.where ?? {}
+    if (where.NOT) return links.filter((link) => !isCurrent(link)).length
+    return links.filter((link) => link.removedAt === null && link.status === where.status).length
+  }
+}
+
 beforeEach(() => {
   db.calls = []
   db.answers = {
-    "assetComponent.findMany": LINKS,
+    "assetComponent.findMany": linksAnswer(LINKS),
+    "assetComponent.count": countAnswer(LINKS),
     "assetCheckin.findMany": [{ id: "rt-1", documentNo: "RT-2026-0012" }],
     "maintenanceTicket.findMany": [{ id: "mr-1", repairNo: "MR-2026-0031" }],
     "attachment.findMany": [{ referenceId: "link-in" }, { referenceId: "link-in" }, { referenceId: "link-gone" }],
@@ -108,15 +127,21 @@ test("the loader builds installed, outstanding and removed rows: current first, 
   assert.deepEqual([old.installedBy, old.removedBy, old.document, old.evidenceCount], ["legacy import", "IT Two (it02)", { code: "MR-2026-0031", href: "/th/maintenance/mr-1" }, 0])
 })
 
-test("the loader's reads: the links as today (take 100, newest installed first), names in one bounded read, photos of both kinds", async () => {
+test("the loader's reads: every current link (no cap), past links capped at 100 newest removal first, totals from counts, names in one bounded read, photos of both kinds", async () => {
   await loadComponentManagerRows(prisma, { parentAssetId: "parent-1", locale: "en", can: canAll })
-  const [links] = args("assetComponent.findMany")
-  assert.deepEqual([links.where, links.orderBy, links.take], [{ parentAssetId: "parent-1" }, { installedAt: "desc" }, 100])
+  const [current, past] = args("assetComponent.findMany")
+  assert.deepEqual([current.where, current.orderBy, current.take], [{ parentAssetId: "parent-1", status: { in: ["installed", "outstanding"] }, removedAt: null }, { installedAt: "desc" }, undefined])
+  assert.deepEqual([past.where, past.orderBy, past.take], [{ parentAssetId: "parent-1", NOT: { status: { in: ["installed", "outstanding"] }, removedAt: null } }, [{ removedAt: "desc" }, { installedAt: "desc" }], 100])
+  assert.deepEqual(args("assetComponent.count").map((entry) => entry.where), [
+    { parentAssetId: "parent-1", status: "installed", removedAt: null },
+    { parentAssetId: "parent-1", status: "outstanding", removedAt: null },
+    { parentAssetId: "parent-1", NOT: { status: { in: ["installed", "outstanding"] }, removedAt: null } },
+  ])
   const [users] = args("user.findMany")
   assert.deepEqual(new Set((users.where?.id as { in: string[] }).in), new Set(["user-1", "user-2", "legacy import"]))
   assert.deepEqual(users.select, { id: true, username: true, displayName: true, email: true, employee: { select: { code: true, fullNameTh: true } } })
   const [photos] = args("attachment.findMany")
-  assert.deepEqual(photos.where, { isActive: true, module: { in: ["asset_component_install", "asset_component_remove"] }, referenceId: { in: ["link-out", "link-old", "link-in", "link-gone"] } })
+  assert.deepEqual(photos.where, { isActive: true, module: { in: ["asset_component_install", "asset_component_remove"] }, referenceId: { in: ["link-out", "link-in", "link-old", "link-gone"] } })
 })
 
 test("a document shows only with its page's permission: no code and no link without it (R12)", async () => {
@@ -131,7 +156,29 @@ test("a parent with no links reads nothing more", async () => {
   db.answers["assetComponent.findMany"] = []
   const result = await loadComponentManagerRows(prisma, { parentAssetId: "parent-1", locale: "th", can: canAll })
   assert.deepEqual(result, { rows: [], installedCount: 0, outstandingCount: 0, removedCount: 0 })
-  assert.deepEqual(db.calls.map((entry) => entry.call), ["assetComponent.findMany"])
+  assert.deepEqual(db.calls.map((entry) => entry.call), ["assetComponent.findMany", "assetComponent.findMany"])
+})
+
+test("an installed link older than 100 newer removed links still gets its row, and the counts are totals (final review)", async () => {
+  const removed = Array.from({ length: 130 }, (_, index) => ({
+    id: `link-r${index}`, componentRole: "RAM", slotNo: null,
+    installedAt: new Date(Date.UTC(2026, 5, 1, 0, index)), removedAt: new Date(Date.UTC(2026, 6, 1, 0, index)),
+    status: "removed", reason: null, referenceType: null, referenceId: null, createdBy: null, updatedBy: null,
+    componentAsset: component(`r${index}`, `GRL-RAM-26-${String(index).padStart(4, "0")}`, `RAM ${index}`),
+  }))
+  // Newest removal first, as the past read asks; the installed link is the oldest of all.
+  removed.reverse()
+  const oldInstalled = { id: "link-ancient", componentRole: "Power Supply", slotNo: null, installedAt: new Date("2020-01-01T03:00:00Z"), removedAt: null, status: "installed", reason: null, referenceType: null, referenceId: null, createdBy: null, updatedBy: null, componentAsset: component("c-old", "GRL-PSU-20-0001", "PSU 500W") }
+  // As the old single read saw them: newest installed first, so the installed link is last.
+  const links = [...removed, oldInstalled]
+  db.answers["assetComponent.findMany"] = linksAnswer(links)
+  db.answers["assetComponent.count"] = countAnswer(links)
+  const result = await loadComponentManagerRows(prisma, { parentAssetId: "parent-1", locale: "th", can: canAll })
+  assert.deepEqual([result.installedCount, result.outstandingCount, result.removedCount], [1, 0, 130])
+  assert.equal(result.rows[0].id, "link-ancient")
+  assert.equal(result.rows[0].state, "installed")
+  assert.equal(result.rows.length, 101, "the current link plus the 100 newest past links")
+  assert.equal(result.rows[1].id, "link-r129")
 })
 
 test("the components page passes the loader's rows, the header facts and the map to the manager (Task 3 removed the old reads)", () => {

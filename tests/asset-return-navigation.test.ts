@@ -88,6 +88,17 @@ test("the component manager also returns to the register that opened it, with it
   assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "https://evil.example/th/assets?search=nb"), fallback)
 })
 
+test("the component manager returns to the scan page that opened it, keeping its query and hash (group 4 plan 4 final review)", () => {
+  const fallback = normalizeAssetComponentManagerReturnTo("th", "a-1", undefined)
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/th/asset-management/scan"), "/th/asset-management/scan")
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/th/asset-management/scan?q=SN1#r"), "/th/asset-management/scan?q=SN1#r")
+  assert.equal(normalizeAssetComponentManagerReturnTo("en", "a-1", "/en/asset-management/scan"), "/en/asset-management/scan")
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/en/asset-management/scan"), fallback)
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "/th/asset-management/scan/other"), fallback)
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "https://evil.example/th/asset-management/scan"), fallback)
+  assert.equal(normalizeAssetComponentManagerReturnTo("th", "a-1", "//evil.example/th/asset-management/scan"), fallback)
+})
+
 test("ยกเลิก on the transaction pages goes to the normalized returnTo, else the register (group 3 spec §5)", () => {
   assert.equal(getOperationCancelHref("th", undefined), "/th/assets")
   assert.equal(getOperationCancelHref("th", ""), "/th/assets")

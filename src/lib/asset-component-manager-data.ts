@@ -3,7 +3,7 @@
 // permission (R12), its photo count and the outstanding line. It never writes.
 import { getTranslations } from "next-intl/server"
 import type { prisma as prismaClient } from "@/lib/db"
-import { formatOutstandingComponentLine, isOutstandingLink } from "@/lib/asset-component-outstanding"
+import { formatOutstandingComponentLine, installedOrOutstandingLinkWhere, isOutstandingLink, outstandingLinkWhere } from "@/lib/asset-component-outstanding"
 import { formatAssetDetailDate } from "@/lib/asset-detail-frame-rules"
 import { assetHistoryActorLabel } from "@/lib/asset-history-rules"
 import { assetDocumentAccess } from "@/lib/asset-history-view"
@@ -39,34 +39,47 @@ export type ComponentManagerRows = {
 
 type ComponentManagerDb = Pick<typeof prismaClient, "assetComponent" | "attachment" | "user">
 
-// As the page read them before: at most 100 links, newest installed first.
-const LINK_LIMIT = 100
+// Current links (installed and outstanding) are read in full, so none drops off the page; past links keep the cap the
+// page always had (at most 100, newest removal first). The three counts are totals from count reads, not the rows read.
+const PAST_LINK_LIMIT = 100
+
+const LINK_SELECT = {
+  id: true,
+  componentRole: true,
+  slotNo: true,
+  installedAt: true,
+  removedAt: true,
+  status: true,
+  reason: true,
+  referenceType: true,
+  referenceId: true,
+  createdBy: true,
+  updatedBy: true,
+  componentAsset: {
+    select: { id: true, assetTag: true, name: true, serialNumber: true, custodian: { select: { code: true, fullNameTh: true } } },
+  },
+} as const
 
 export async function loadComponentManagerRows(
   db: ComponentManagerDb,
   input: { parentAssetId: string; locale: string; can: (module: string, action: "view") => boolean },
 ): Promise<ComponentManagerRows> {
-  const links = await db.assetComponent.findMany({
-    where: { parentAssetId: input.parentAssetId },
-    orderBy: { installedAt: "desc" },
-    take: LINK_LIMIT,
-    select: {
-      id: true,
-      componentRole: true,
-      slotNo: true,
-      installedAt: true,
-      removedAt: true,
-      status: true,
-      reason: true,
-      referenceType: true,
-      referenceId: true,
-      createdBy: true,
-      updatedBy: true,
-      componentAsset: {
-        select: { id: true, assetTag: true, name: true, serialNumber: true, custodian: { select: { code: true, fullNameTh: true } } },
-      },
-    },
-  })
+  const parentWhere = { parentAssetId: input.parentAssetId }
+  const pastWhere = { ...parentWhere, NOT: installedOrOutstandingLinkWhere }
+  const [currentLinks, pastLinks] = await Promise.all([
+    db.assetComponent.findMany({
+      where: { ...parentWhere, ...installedOrOutstandingLinkWhere },
+      orderBy: { installedAt: "desc" },
+      select: LINK_SELECT,
+    }),
+    db.assetComponent.findMany({
+      where: pastWhere,
+      orderBy: [{ removedAt: "desc" }, { installedAt: "desc" }],
+      take: PAST_LINK_LIMIT,
+      select: LINK_SELECT,
+    }),
+  ])
+  const links = [...currentLinks, ...pastLinks]
   if (links.length === 0) return { rows: [], installedCount: 0, outstandingCount: 0, removedCount: 0 }
 
   // updatedBy names who removed a link only once it is removed; on a current link it is whoever touched it last.
@@ -76,7 +89,7 @@ export async function loadComponentManagerRows(
     if (link.removedAt && link.updatedBy) userIds.add(link.updatedBy)
   }
   const linkIds = links.map((link) => link.id)
-  const [t, documentOf, users, evidence] = await Promise.all([
+  const [t, documentOf, users, evidence, installedCount, outstandingCount, removedCount] = await Promise.all([
     getTranslations({ locale: input.locale, namespace: "asset" }),
     resolveAssetMovementDocuments(links),
     userIds.size > 0
@@ -93,6 +106,9 @@ export async function loadComponentManagerRows(
       },
       select: { referenceId: true },
     }),
+    db.assetComponent.count({ where: { ...parentWhere, status: "installed", removedAt: null } }),
+    db.assetComponent.count({ where: { ...parentWhere, ...outstandingLinkWhere } }),
+    db.assetComponent.count({ where: pastWhere }),
   ])
 
   const access = assetDocumentAccess(input.can)
@@ -145,6 +161,5 @@ export async function loadComponentManagerRows(
     .filter((entry) => entry.row.state === "removed")
     .sort((left, right) => right.endedAt.getTime() - left.endedAt.getTime())
     .map((entry) => entry.row)
-  const count = (state: ComponentLinkState) => built.filter((entry) => entry.row.state === state).length
-  return { rows: [...current, ...past], installedCount: count("installed"), outstandingCount: count("outstanding"), removedCount: count("removed") }
+  return { rows: [...current, ...past], installedCount, outstandingCount, removedCount }
 }

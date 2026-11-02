@@ -31,12 +31,15 @@ export function normalizeAssetComponentManagerReturnTo(locale: string, assetId: 
   const allowedPath = `/${locale}/assets/${encodeURIComponent(assetId)}`
   const fallback = `${allowedPath}?view=components`
   const registerPath = `/${locale}/assets`
+  // A scan card's จัดการส่วนควบ carries the scan page as its returnTo (group 4 plan 4 final review).
+  const scanPath = `/${locale}/asset-management/scan`
+  const allowedPaths = new Set([allowedPath, registerPath, scanPath])
   const raw = Array.isArray(value) ? value[0] : value
   if (!raw) return fallback
 
   try {
     const url = new URL(raw, "http://asset.local")
-    if (url.origin !== "http://asset.local" || (url.pathname !== allowedPath && url.pathname !== registerPath)) return fallback
+    if (url.origin !== "http://asset.local" || !allowedPaths.has(url.pathname)) return fallback
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
     return fallback
