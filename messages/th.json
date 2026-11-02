@@ -1402,7 +1402,7 @@
     "requiredCardTitle": "ข้อมูลที่ต้องกรอก",
     "requiredFilled": "กรอกแล้ว {filled, number} จาก {total, number} ช่องที่ต้องกรอก",
     "sectionFilled": "กรอกแล้ว {filled, number} จาก {total, number} ช่อง",
-    "requiredMissing": "ยังขาด {count, number} ช่องที่ต้องกรอก · {fields}",
+    "requiredMissing": "ยังขาด {count, number} ช่องที่ต้องกรอก",
     "goToFirstMissing": "ไปช่องแรกที่ยังขาด",
     "otherAdvanced": "ข้อมูลอื่น ๆ และขั้นสูง",
     "sectionSummary": {
@@ -1443,7 +1443,8 @@
     "changeListReason": "เหตุผลที่แก้: {reason}",
     "correctionReasonLabel": "เหตุผลที่แก้",
     "correctionReasonRequired": "ระบุเหตุผลที่แก้",
-    "departmentMismatchLater": "แผนกไม่ตรงกับผู้ถือครอง จะปรับเมื่อรับคืนหรือโอนย้าย"
+    "departmentMismatchLater": "แผนกไม่ตรงกับผู้ถือครอง จะปรับเมื่อรับคืนหรือโอนย้าย",
+    "requiredMissingFields": "· {fields}"
   },
   "company": {
     "title": "บริษัท",

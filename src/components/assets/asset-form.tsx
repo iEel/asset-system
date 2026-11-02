@@ -1446,16 +1446,18 @@ export function AssetForm({
         />
 
         {/* The save stays enabled while fields are missing: validate() shows each error and focuses the first one. On edit
-            the status holds "แก้ไข n ช่อง", which opens the list of changes (Task 8). */}
+            the status holds "แก้ไข n ช่อง", which opens the list of changes (Task 8). The status grid starts its items, so that
+            trigger is as wide as its text; the missing line names the fields from sm only, so a phone's footer stays short. */}
         <StickyFormFooter
           status={
             duplicateState.checking || showMissing || showChanges ? (
-              <span className="grid gap-1">
+              <span className="grid justify-items-start gap-1">
                 {duplicateState.checking ? <span id="asset-save-reason">{t("duplicateCheckPending")}</span> : null}
                 {showMissing ? (
                   <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="min-w-0 break-words">
-                      {t("requiredMissing", { count: requiredProgress.missing.length, fields: requiredProgress.missing.map((field) => t(REQUIRED_FIELD_LABELS[field])).join(", ") })}
+                      {t("requiredMissing", { count: requiredProgress.missing.length })}
+                      <span className="hidden sm:inline"> {t("requiredMissingFields", { fields: requiredProgress.missing.map((field) => t(REQUIRED_FIELD_LABELS[field])).join(", ") })}</span>
                     </span>
                     <Button variant="ghost" size="sm" onClick={goToFirstMissing}>
                       {t("goToFirstMissing")}

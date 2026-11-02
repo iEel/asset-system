@@ -77,6 +77,9 @@ test("the footer's แก้ไข n ช่อง opens the list: a Popover on t
   assert.match(source, /const title = t\("changeCount", \{ count: changes\.length \}\)/)
   assert.match(source, /<SheetContent side="bottom"/)
   assert.match(source, /<PopoverContent align="start"/)
+  // Look step L1: the trigger is the shared Button at its own width; the status grid in asset-form.tsx starts its items.
+  assert.match(source, /<Button id=\{CHANGE_LIST_TRIGGER_ID\} variant="outline" size="sm">/)
+  assert.match(read(`${C}asset-form.tsx`), /<span className="grid justify-items-start gap-1">/)
   // ไปที่ช่อง closes the list without handing focus back to the trigger, then the form opens the section and focuses the field.
   assert.match(source, /onCloseAutoFocus=\{keepFocusOnField\}/)
   assert.match(source, /\{t\("goToField"\)\}/)

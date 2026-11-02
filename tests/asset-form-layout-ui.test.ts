@@ -83,7 +83,8 @@ test("เอกสารจัดซื้อ is its own section, open at first;
 
 test("the create footer: what is missing, a way to the first one, and the duplicate check's reason while it runs", () => {
   const form = read(`${C}asset-form.tsx`)
-  assert.match(form, /t\("requiredMissing", \{ count: requiredProgress\.missing\.length, fields: requiredProgress\.missing\.map\(\(field\) => t\(REQUIRED_FIELD_LABELS\[field\]\)\)\.join\(", "\) \}\)/)
+  // Look step L2: the field names show from sm only, so a 390 px phone's footer stays short; the count is one text.
+  assert.match(form, /\{t\("requiredMissing", \{ count: requiredProgress\.missing\.length \}\)\}\r?\n\s+<span className="hidden sm:inline"> \{t\("requiredMissingFields", \{ fields: requiredProgress\.missing\.map\(\(field\) => t\(REQUIRED_FIELD_LABELS\[field\]\)\)\.join\(", "\) \}\)\}<\/span>/)
   assert.match(form, /<Button variant="ghost" size="sm" onClick=\{goToFirstMissing\}>\n\s+\{t\("goToFirstMissing"\)\}/)
   assert.match(form, /function goToFirstMissing\(\) \{\n\s+fieldErrors\.setErrors\(\{ \.\.\.fieldErrors\.errors, \.\.\.Object\.fromEntries\(requiredProgress\.missing\.map\(\(field\) => \[field, "required"\]\)\) \}\)\n\s+focusFirstError\(\)\n\s+\}/)
   assert.match(form, /<span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span>/)
@@ -91,7 +92,10 @@ test("the create footer: what is missing, a way to the first one, and the duplic
   assert.match(form, /const showMissing = !isEdit && requiredProgress\.missing\.length > 0/)
   assert.doesNotMatch(form, /disabled=\{[^}]*requiredProgress/)
   const th = messages("th").asset
-  assert.equal(th.requiredMissing, "ยังขาด {count, number} ช่องที่ต้องกรอก · {fields}")
+  assert.equal(th.requiredMissing, "ยังขาด {count, number} ช่องที่ต้องกรอก")
+  assert.equal(th.requiredMissingFields, "· {fields}")
+  assert.equal(messages("en").asset.requiredMissingFields, "· {fields}")
+  assert.doesNotMatch(String(messages("en").asset.requiredMissing), /\{fields\}/)
   assert.equal(th.goToFirstMissing, "ไปช่องแรกที่ยังขาด")
 })
 

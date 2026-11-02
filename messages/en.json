@@ -1402,7 +1402,7 @@
     "requiredCardTitle": "Required details",
     "requiredFilled": "{filled, number} of {total, plural, one {# required field} other {# required fields}} filled",
     "sectionFilled": "{filled, number} of {total, plural, one {# field} other {# fields}} filled",
-    "requiredMissing": "{count, plural, one {# required field} other {# required fields}} missing · {fields}",
+    "requiredMissing": "{count, plural, one {# required field} other {# required fields}} missing",
     "goToFirstMissing": "Go to the first missing field",
     "otherAdvanced": "Other and advanced",
     "sectionSummary": {
@@ -1443,7 +1443,8 @@
     "changeListReason": "Reason: {reason}",
     "correctionReasonLabel": "Reason for the correction",
     "correctionReasonRequired": "Enter the reason for the correction",
-    "departmentMismatchLater": "The department does not match the holder's. It is set when the asset is checked in or transferred."
+    "departmentMismatchLater": "The department does not match the holder's. It is set when the asset is checked in or transferred.",
+    "requiredMissingFields": "· {fields}"
   },
   "company": {
     "title": "Companies",

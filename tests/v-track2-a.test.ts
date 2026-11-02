@@ -143,8 +143,9 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.match(source, /<Notice id="asset-status-protected" tone="warning" className="mt-2" title=\{t\("protectedStatusEditBlocked"\)\}>/)
   // Group 4 plan 2 Task 6a: the footer's status also holds the create form's missing line
   // (tests/asset-form-layout-ui.test.ts); the duplicate check's reason keeps its id. Task 8: and the edit page's
-  // "แก้ไข n ช่อง" with its list (tests/asset-form-change-list-ui.test.ts).
-  assert.match(source, /<StickyFormFooter\n\s+status=\{\n\s+duplicateState\.checking \|\| showMissing \|\| showChanges \? \(\n\s+<span className="grid gap-1">\n\s+\{duplicateState\.checking \? <span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span> : null\}/)
+  // "แก้ไข n ช่อง" with its list (tests/asset-form-change-list-ui.test.ts). Look step L1: justify-items-start keeps that
+  // trigger as wide as its text instead of the whole status area.
+  assert.match(source, /<StickyFormFooter\n\s+status=\{\n\s+duplicateState\.checking \|\| showMissing \|\| showChanges \? \(\n\s+<span className="grid justify-items-start gap-1">\n\s+\{duplicateState\.checking \? <span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span> : null\}/)
   assert.match(source, /\) : null\}\n\s+\{showChanges \? <AssetFormChangeList changes=\{changeRows\} reason=\{correctionReason\.trim\(\)\} onGoToField=\{goToField\} \/> : null\}\n\s+<\/span>\n\s+\) : undefined\n\s+\}/)
   assert.doesNotMatch(source, /disabled=\{isProtectedStatusChange/)
   for (const locale of ["th", "en"] as const) {
