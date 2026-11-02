@@ -134,12 +134,13 @@ test("a parent with no links reads nothing more", async () => {
   assert.deepEqual(db.calls.map((entry) => entry.call), ["assetComponent.findMany"])
 })
 
-test("the components page passes the loader's rows and the header facts to the manager, which keeps today's props", () => {
+test("the components page passes the loader's rows, the header facts and the map to the manager (Task 3 removed the old reads)", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/components/page.tsx", "utf8")
   assert.match(page, /loadComponentManagerRows\(prisma, \{ parentAssetId: asset\.id, locale, can: \(module, action\) => hasPermission\(user, module, action\) \}\)/)
   assert.match(page, /holder: getRegisterHolderLine\(\{/)
   assert.match(page, /room: asset\.currentLocation\.name,/)
   assert.match(page, /linkRows=\{componentRows\}/)
   assert.match(page, /header=\{header\}/)
-  assert.match(page, /currentComponents=\{currentComponents\}/)
+  assert.match(page, /relationshipMap=\{relationshipMap\}/)
+  assert.doesNotMatch(page, /currentComponents|componentHistory=|parentAsset=\{asset\}/)
 })

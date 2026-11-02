@@ -8,6 +8,7 @@ import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Nil } from "@/components/ui/nil"
 import { assetComponentHistoryColumn, type AssetComponentHistoryEvent } from "@/lib/asset-component-history-rules"
+import { componentRoleLabelKey } from "@/lib/asset-component-roles"
 import { formatAssetDetailDate } from "@/lib/asset-detail-frame-rules"
 import { assetMovementLabelKey, buildAssetMovementDocumentHref, type AssetMovementDocumentKind } from "@/lib/asset-movement-labels"
 
@@ -45,14 +46,22 @@ export async function AssetComponentsTab({
   // The movement labels are full message keys.
   const tAll = await getTranslations()
 
+  // A stored role shows its label, older free text as stored (group 4 plan 4, P4-R4).
+  const roleText = (stored: string) => {
+    const key = componentRoleLabelKey(stored)
+    return key ? t(key) : stored
+  }
   // The deleted summary's slot moves into the role chip.
-  const toLink = (item: AssetRelationshipAsset): RelationshipLink => ({
-    id: item.id,
-    href: item.href,
-    label: `${item.assetTag} - ${item.name}`,
-    role: item.slotNo ? t("componentsTab.roleWithSlot", { role: item.role, slot: item.slotNo }) : item.role,
-    note: item.outstandingLine ?? null,
-  })
+  const toLink = (item: AssetRelationshipAsset): RelationshipLink => {
+    const shown = { ...item, role: roleText(item.role) }
+    return {
+      id: item.id,
+      href: item.href,
+      label: `${item.assetTag} - ${item.name}`,
+      role: shown.slotNo ? t("componentsTab.roleWithSlot", { role: shown.role, slot: shown.slotNo }) : shown.role,
+      note: item.outstandingLine ?? null,
+    }
+  }
   // What is fitted now (group 3 spec §8.5, X24): an outstanding component is listed with its line but not counted, as the
   // tab's own count.
   const installedCount = components.filter((item) => !item.outstandingLine).length

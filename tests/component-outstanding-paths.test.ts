@@ -229,17 +229,21 @@ test("the responsibility rule and the pages that feed it count an outstanding co
 test("the parent's component manager keeps an outstanding link among the current ones, with its line, so ถอดออก reaches it (spec §8.5)", () => {
   const page = read("src/app/[locale]/(dashboard)/assets/[id]/components/page.tsx")
   const manager = read("src/components/assets/asset-component-manager.tsx")
-  assert.match(page, /referenceType: true,\s+referenceId: true,/)
-  assert.match(page, /custodian: \{ select: \{ code: true, fullNameTh: true \} \}/)
-  assert.match(page, /const isCurrentLink = \(component: \{ status: string; removedAt: Date \| null \}\) => !component\.removedAt && \(component\.status === "installed" \|\| isOutstandingLink\(component\)\)/)
-  assert.match(page, /prisma\.assetCheckin\.findMany\(\{ where: \{ id: \{ in: outstandingCheckinIds \} \}, select: \{ id: true, documentNo: true \} \}\)/)
+  const loader = read("src/lib/asset-component-manager-data.ts")
+  // Group 4 plan 4 Task 3: the links come from the loader alone (Task 2), which builds the line with the component's
+  // holder (code first); the page reads only its own parent links' RT- numbers, for the map's parent lane.
+  assert.match(loader, /referenceType: true,\s+referenceId: true,/)
+  assert.match(loader, /custodian: \{ select: \{ code: true, fullNameTh: true \} \}/)
+  assert.match(loader, /formatOutstandingComponentLine\(\{ holder: link\.componentAsset\.custodian, documentNo: document\?\.kind === "checkin" \? document\.code : null \}, outstandingWords\)/)
+  assert.match(loader, /const current = built\.filter\(\(entry\) => entry\.row\.state !== "removed"\)/)
+  assert.match(page, /prisma\.assetCheckin\.findMany\(\{ where: \{ id: \{ in: ownCheckinIds \} \}, select: \{ id: true, documentNo: true \} \}\)/)
   // One formatter for the line on every page (Task 12).
   assert.match(page, /const outstandingWords = \{ outstanding: t\("componentOutstanding"\), withHolder: \(holder: string\) => t\("componentOutstandingWith", \{ holder \}\) \}/)
-  assert.match(page, /formatOutstandingComponentLine\(\{ holder: component\.componentAsset\.custodian, documentNo/)
+  assert.match(page, /formatOutstandingComponentLine\(\{\s+holder: asset\.custodian \? \{ code: asset\.custodian\.code, fullNameTh: asset\.custodian\.fullNameTh \} : null,/)
   assert.doesNotMatch(page, /\.filter\(Boolean\)\.join\(" · "\)/)
-  assert.doesNotMatch(page, /component\.status !== "installed" \|\| component\.removedAt/)
-  assert.match(manager, /outstandingLine\?: string \| null/)
-  assert.match(manager, /\{component\.outstandingLine \? <div className="mt-1 text-meta font-medium text-warning">\{component\.outstandingLine\}<\/div> : null\}/)
+  assert.doesNotMatch(page, /isCurrentLink|parentComponents/)
+  assert.match(manager, /const showMenu = \(row: ComponentLinkRow\) => canEdit && row\.state !== "removed"/)
+  assert.match(manager, /\{row\.outstandingLine \? <div className="mt-1 text-meta font-medium text-warning">\{row\.outstandingLine\}<\/div> : null\}/)
   for (const [locale, words] of [["th", ["ค้างคืน", "อยู่กับ {holder}"]], ["en", ["Outstanding", "With {holder}"]]] as const) {
     const asset = JSON.parse(read(`messages/${locale}.json`)).asset
     assert.deepEqual([asset.componentOutstanding, asset.componentOutstandingWith], words, locale)

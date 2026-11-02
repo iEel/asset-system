@@ -4,11 +4,13 @@ import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { normalizeAssetComponentManagerReturnTo } from "@/lib/asset-return-navigation"
-import { formatOutstandingComponentLine, isOutstandingLink } from "@/lib/asset-component-outstanding"
+import { formatOutstandingComponentLine, installedOrOutstandingLinkWhere, isOutstandingLink } from "@/lib/asset-component-outstanding"
 import { loadComponentManagerRows } from "@/lib/asset-component-manager-data"
+import { componentRoleLabelKey } from "@/lib/asset-component-roles"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { getRegisterHolderLine } from "@/lib/asset-register-row-rules"
 import { AssetComponentManager } from "@/components/assets/asset-component-manager"
+import { AssetRelationshipMap, type RelationshipLink } from "@/components/assets/detail/asset-relationship-map"
 
 type ComponentManagerPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -33,29 +35,24 @@ export default async function AssetComponentManagerPage({ params, searchParams }
       id: true,
       assetTag: true,
       name: true,
-      serialNumber: true,
       ownershipType: true,
-      // The header's holder and room (group 4 plan 4 Task 2): the parent's own, name first.
-      custodian: { select: { fullNameTh: true, department: { select: { name: true } } } },
+      // The header's holder and room (group 4 plan 4 Task 2): the parent's own, name first. The code is for the
+      // outstanding line of this asset's own parent link (code-first holder, group 3 spec §8.5).
+      custodian: { select: { code: true, fullNameTh: true, department: { select: { name: true } } } },
       currentLocation: { select: { name: true } },
-      parentComponents: {
+      // The map's parent lane, as the asset page reads it: the links this asset is installed or outstanding in.
+      installedInLinks: {
+        where: installedOrOutstandingLinkWhere,
         orderBy: { installedAt: "desc" },
-        take: 100,
         select: {
           id: true,
           componentRole: true,
           slotNo: true,
-          installedAt: true,
-          removedAt: true,
           status: true,
-          reason: true,
+          removedAt: true,
           referenceType: true,
           referenceId: true,
-          createdBy: true,
-          updatedBy: true,
-          componentAsset: {
-            select: { id: true, assetTag: true, name: true, serialNumber: true, custodian: { select: { code: true, fullNameTh: true } } },
-          },
+          parentAsset: { select: { id: true, assetTag: true, name: true } },
         },
       },
     },
@@ -63,51 +60,18 @@ export default async function AssetComponentManagerPage({ params, searchParams }
 
   if (!asset) notFound()
   const outstandingWords = { outstanding: t("componentOutstanding"), withHolder: (holder: string) => t("componentOutstandingWith", { holder }) }
-
-  // An outstanding link (group 3 spec §8.5) stays among the current components, so ถอดออก reaches it.
-  const isCurrentLink = (component: { status: string; removedAt: Date | null }) => !component.removedAt && (component.status === "installed" || isOutstandingLink(component))
-  const outstandingCheckinIds = [...new Set(asset.parentComponents
-    .filter((component) => isOutstandingLink(component) && component.referenceType === "checkin" && component.referenceId)
-    .map((component) => component.referenceId as string))]
-  const outstandingCheckins = outstandingCheckinIds.length > 0
-    ? await prisma.assetCheckin.findMany({ where: { id: { in: outstandingCheckinIds } }, select: { id: true, documentNo: true } })
-    : []
-  const checkinDocumentNos = new Map(outstandingCheckins.map((checkin) => [checkin.id, checkin.documentNo]))
-  const outstandingLineOf = (component: (typeof asset.parentComponents)[number]) => {
-    if (!isOutstandingLink(component)) return null
-    const documentNo = component.referenceType === "checkin" && component.referenceId ? checkinDocumentNos.get(component.referenceId) ?? null : null
-    return formatOutstandingComponentLine({ holder: component.componentAsset.custodian, documentNo }, outstandingWords)
-  }
-
-  const componentIds = asset.parentComponents.map((component) => component.id)
-  const evidence = componentIds.length > 0
-    ? await prisma.attachment.findMany({
-        where: {
-          isActive: true,
-          module: { in: ["asset_component_install", "asset_component_remove"] },
-          referenceId: { in: componentIds },
-        },
-        select: { referenceId: true },
-      })
-    : []
-  const evidenceCounts = new Map<string, number>()
-  for (const attachment of evidence) {
-    evidenceCounts.set(attachment.referenceId, (evidenceCounts.get(attachment.referenceId) ?? 0) + 1)
-  }
-  const records = asset.parentComponents.map((component) => ({
-    ...component,
-    installedAt: component.installedAt.toISOString(),
-    removedAt: component.removedAt?.toISOString() ?? null,
-    installedByLabel: component.createdBy,
-    removedByLabel: component.updatedBy,
-    evidenceCount: evidenceCounts.get(component.id) ?? 0,
-    current: isCurrentLink(component),
-    outstandingLine: outstandingLineOf(component),
-  }))
-  const currentComponents = records.filter((component) => component.current)
-  const componentHistory = records.filter((component) => !component.current)
-  // The one links table's rows and the header's facts (group 4 plan 4 Task 2); the manager renders them from Task 3.
-  const componentRows = await loadComponentManagerRows(prisma, { parentAssetId: asset.id, locale, can: (module, action) => hasPermission(user, module, action) })
+  // The RT- numbers of this asset's own outstanding links: one bounded read, of the ids the links name only.
+  const ownCheckinIds = [...new Set(asset.installedInLinks
+    .filter((link) => isOutstandingLink(link) && link.referenceType === "checkin" && link.referenceId)
+    .map((link) => link.referenceId as string))]
+  // The one links table's rows (group 4 plan 4 Task 2): every link of this parent, the only read of them on this page.
+  const [componentRows, ownCheckins] = await Promise.all([
+    loadComponentManagerRows(prisma, { parentAssetId: asset.id, locale, can: (module, action) => hasPermission(user, module, action) }),
+    ownCheckinIds.length > 0
+      ? prisma.assetCheckin.findMany({ where: { id: { in: ownCheckinIds } }, select: { id: true, documentNo: true } })
+      : Promise.resolve([]),
+  ])
+  const ownCheckinDocumentNos = new Map(ownCheckins.map((checkin) => [checkin.id, checkin.documentNo]))
   const header = {
     name: asset.name,
     assetTag: asset.assetTag,
@@ -118,24 +82,82 @@ export default async function AssetComponentManagerPage({ params, searchParams }
     room: asset.currentLocation.name,
   }
 
+  // The relationship map as the asset page draws it (P4-R3: unchanged, no menu); a stored role shows its label (P4-R4).
+  const roleText = (stored: string) => {
+    const key = componentRoleLabelKey(stored)
+    return key ? t(key) : stored
+  }
+  const roleWithSlot = (role: string, slotNo: string | null) => (slotNo ? t("componentsTab.roleWithSlot", { role: roleText(role), slot: slotNo }) : roleText(role))
+  const parentLinks: RelationshipLink[] = asset.installedInLinks.map((link) => ({
+    id: link.id,
+    href: `/${locale}/assets/${link.parentAsset.id}`,
+    label: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
+    role: roleWithSlot(link.componentRole, link.slotNo),
+    note: isOutstandingLink(link)
+      ? formatOutstandingComponentLine({
+          holder: asset.custodian ? { code: asset.custodian.code, fullNameTh: asset.custodian.fullNameTh } : null,
+          documentNo: link.referenceType === "checkin" && link.referenceId ? ownCheckinDocumentNos.get(link.referenceId) ?? null : null,
+        }, outstandingWords)
+      : null,
+  }))
+  const currentLinkCount = componentRows.installedCount + componentRows.outstandingCount
+  const parentTag = parentLinks.length > 0 ? asset.installedInLinks[0].parentAsset.assetTag : ""
+  const holderValue = header.holder.kind === "holder" ? header.holder.name : header.holder.kind === "shared" ? t("holderSharedShort") : t("noCustodian")
+  const relationshipMap = (
+    <AssetRelationshipMap
+      title={t("relationshipMap")}
+      subtitle={t("relationshipMapHelp")}
+      parentLaneTitle={t("relationshipParentLane")}
+      currentTitle={t("relationshipCurrentViewing")}
+      componentsTitle={t("relationshipComponentsLane")}
+      componentsCountLabel={t("relationshipComponentsCount", { count: componentRows.installedCount })}
+      moreItemsLabel={t("relationshipMoreItems", { count: Math.max(currentLinkCount - 5, 0) })}
+      licenseAssignedTitle={t("relationshipLicenseAssignedAsset")}
+      assignedLicensesTitle={t("relationshipAssignedLicenses")}
+      assetTag={asset.assetTag}
+      assetName={asset.name}
+      currentMetaLabel={t("custodian")}
+      currentMetaValue={holderValue}
+      parentLinks={parentLinks}
+      childLinks={componentRows.rows.filter((row) => row.state !== "removed").map((row) => ({
+        id: row.id,
+        href: `/${locale}/assets/${row.componentAsset.id}`,
+        label: `${row.componentAsset.assetTag} - ${row.componentAsset.name}`,
+        role: roleWithSlot(row.role, row.slotNo),
+        note: row.outstandingLine,
+      }))}
+      licenseAssignedLinks={[]}
+      assignedLicenseLinks={[]}
+      emptyLabel={t("relationshipMapEmpty")}
+      summaryParent={t("relationshipSummaryParent", { count: componentRows.installedCount })}
+      summaryComponent={t("relationshipSummaryComponent", { parent: parentTag })}
+      summaryParentAndComponent={t("relationshipSummaryParentAndComponent", { parent: parentTag, count: componentRows.installedCount })}
+      summaryStandalone={t("relationshipSummaryStandalone")}
+      roleParentLabel={t("relationshipRoleParent")}
+      roleComponentLabel={t("relationshipRoleComponent")}
+      roleParentAndComponentLabel={t("relationshipRoleParentAndComponent")}
+      roleStandaloneLabel={t("relationshipRoleStandalone")}
+      parentEmptyTitle={t("relationshipNoParent")}
+      parentEmptyHelp={t("relationshipNoParentHelp")}
+      componentsEmptyTitle={t("relationshipNoComponents")}
+      componentsEmptyHelp={t("relationshipNoComponentsHelp")}
+      noteLabel={t("relationshipNote")}
+    />
+  )
+
   return (
     <AssetComponentManager
       locale={locale}
       assetId={asset.id}
-      parentAsset={asset}
-      currentComponents={currentComponents}
-      componentHistory={componentHistory}
-      canEdit={canEdit}
-      returnToHref={returnToHref}
       header={header}
       linkRows={componentRows}
+      relationshipMap={relationshipMap}
+      canEdit={canEdit}
+      returnToHref={returnToHref}
       labels={{
         title: t("manageComponents"),
-        subtitle: t("componentSummaryHelp"),
         back: tCommon("back"),
-        current: t("currentComponents"),
         history: t("componentHistory"),
-        noCurrent: t("noCurrentComponents"),
         noHistory: t("noComponentHistory"),
         scanOrSearch: t("componentSearchPlaceholder"),
         candidateHelp: t("componentSearchHelp"),
@@ -165,8 +187,9 @@ export default async function AssetComponentManagerPage({ params, searchParams }
         close: tCommon("close"),
         error: tCommon("error"),
         status: t("componentStatus"),
+        installedState: t("componentInstalled"),
+        outstandingState: t("componentOutstanding"),
         serial: t("serialNumber"),
-        evidence: t("viewEvidence"),
         loadMore: t("componentLoadMore"),
         scanner: {
           start: tAssetTools("scannerStart"),

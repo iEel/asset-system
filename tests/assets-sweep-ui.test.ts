@@ -115,10 +115,12 @@ test("asset batch form: ContentPanel sections, three DataTables, Notice by meani
 
 test("component manager: ContentPanels, a success Notice, EmptyNote, a KeyValueList review, codes as tag and text links (spec 2D D7, D9, M21, M33, D19)", () => {
   const source = read(`${C}assets/asset-component-manager.tsx`)
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 3)
-  assert.match(source, /<ContentPanel title=\{labels\.scanOrSearch\} description=\{labels\.candidateHelp\}>/)
+  // Group 4 plan 4 Task 3: the install panel and the one links table (the map brings its own panel from the page).
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 2)
+  assert.match(source, /<ContentPanel title=\{t\("componentInstallPanelStep", \{ step: installStepOrder\.indexOf\(installStep\) \+ 1, total: installStepOrder\.length \}\)\} description=\{labels\.candidateHelp\}>/)
   assert.match(source, /<Notice\n\s+tone="success"\n\s+action=\{/)
-  assert.equal(source.match(/<EmptyNote\b/g)?.length, 4)
+  // No candidates, the search hint, and the empty table (the current and past panels became one).
+  assert.equal(source.match(/<EmptyNote\b/g)?.length, 3)
   assert.match(source, /\{ key: "installedAt", label: labels\.installedAt, value: installedAt \? formatDateTime\(installedAt\) : null \}/)
   assert.equal(source.match(/<span className="tag font-medium">/g)?.length, 3, "the candidate, the selected component and the component row")
   assert.match(source, /className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "inline-flex min-h-11 items-center text-sm md:min-h-0"\)\}/)

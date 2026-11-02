@@ -132,7 +132,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}assets/asset-batch-form.tsx`]: [10, 5, 0],
   // Group 4 plan 3 Task 4: the purchase-document picker's search (maxLength 100).
   [`${C}assets/purchase-document-picker.tsx`]: [0, 1, 0],
-  [`${C}assets/asset-component-manager.tsx`]: [0, 4, 0],
+  // Group 4 plan 4 Task 3: the role is a NativeSelect of the 8 stored values (P4-R4), so its Input's maxLength 100 goes.
+  [`${C}assets/asset-component-manager.tsx`]: [0, 3, 0],
   // Group 4 plan 1 Task 6: the saved view's name (maxLength 40).
   [`${C}assets/asset-register-saved-views.tsx`]: [0, 1, 0],
   [`${C}admin/system-settings-form.tsx`]: [0, 1, 0],

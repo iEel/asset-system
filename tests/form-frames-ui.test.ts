@@ -54,8 +54,9 @@ test("the asset form and the component manager: PageHeader, and the component he
   assert.doesNotMatch(read(`${C}assets/asset-form.tsx`), /<h1\b|\bArrowLeft\b/)
   const manager = read(`${C}assets/asset-component-manager.tsx`)
   assert.ok(manager.includes(HEADER_IMPORT), "asset-component-manager.tsx imports PageHeader and PageBackLink")
-  // The page title is the page's name; the parent asset's code and name are its first facts (spec §4.3.3 rule 6).
-  assert.match(manager, /<PageHeader\n\s+title=\{labels\.title\}\n\s+meta=\{\n\s+<>\n\s+<span className="tag">\{parentAsset\.assetTag\}<\/span>\n\s+<span className="min-w-0 break-words">\{parentAsset\.name\}<\/span>\n\s+<\/>\n\s+\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{returnToHref\} label=\{labels\.back\} \/>\}\n\s+\/>/)
+  // The page title is the page's name; the parent asset's name, code, holder and room are its facts (spec §4.3.3 rule 6;
+  // group 4 plan 4 Task 3: name first, and the editor's primary ติดตั้งส่วนควบ in the actions).
+  assert.match(manager, /<PageHeader\n\s+title=\{labels\.title\}\n\s+meta=\{\n\s+<>\n\s+<span className="min-w-0 break-words">\{header\.name\}<\/span>\n\s+<span className="tag">\{header\.assetTag\}<\/span>\n\s+<span>\{holderText\}<\/span>\n\s+\{header\.room \? <span>\{header\.room\}<\/span> : null\}\n\s+<\/>\n\s+\}\n\s+className="mb-6"\n\s+back=\{<PageBackLink href=\{returnToHref\} label=\{labels\.back\} \/>\}\n\s+actions=\{/)
   assert.doesNotMatch(manager, /sticky top-0/, "the header of the component page scrolls with the page, like every other header")
   for (const source of [form, manager]) assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b/)
 })
