@@ -114,7 +114,8 @@ test("the finish-repair dialog picks files the same way, and src has no raw file
   assert.match(source, /setFiles\(\(current\) => \[\.\.\.current, \.\.\.next\]\)/)
   assert.match(source, /uploadRepairFiles\(recordId, files, "after_repair"\)/)
   const rawFileInputs = readSourceFiles("src").filter((file) => /type="file"/.test(file.source)).map((file) => file.path)
-  assert.deepEqual(rawFileInputs.sort(), ["src/components/assets/asset-import-preview-panel.tsx", "src/components/ui/file-dropzone.tsx"])
+  // Group 4 plan 5 Task 4: the import card picks its file with FileDropzone too.
+  assert.deepEqual(rawFileInputs.sort(), ["src/components/ui/file-dropzone.tsx"])
 })
 
 test("the check-in photo picker explains itself before a pick and lists the queue with FileQueueList (2C batch 1b)", () => {

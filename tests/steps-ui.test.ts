@@ -109,19 +109,21 @@ test("the import panel shows its five steps on the shared rail, and the current-
   assert.match(panel, /import \{ Steps \} from "@\/components\/ui\/steps"/)
   assert.match(panel, /import \{ getLinearStepStates \} from "@\/lib\/step-states"/)
   assert.match(panel, /const importStates = getLinearStepStates\(\n\s+assetImportWizardSteps\.length,\n\s+assetImportWizardSteps\.indexOf\(wizardStep\),\n\s+wizardStep === "complete" \? "complete" : "in_progress",\n\s+\)/)
-  assert.match(panel, /const importSteps = assetImportWizardSteps\.map\(\(step, index\) => \(\{ id: step, label: wizardStepLabel\(step, labels\), state: importStates\[index\] \}\)\)/)
-  assert.match(panel, /<Steps className="mt-4" label=\{labels\.wizardTitle\} steps=\{importSteps\} \/>/)
+  assert.match(panel, /const importSteps = assetImportWizardSteps\.map\(\(step, index\) => \(\{ id: step, label: t\(importStepKeys\[step\]\), state: importStates\[index\] \}\)\)/)
+  assert.match(panel, /<Steps label=\{t\("importPage\.steps"\)\} steps=\{importSteps\} \/>/)
+  assert.match(panel, /complete: "importPage\.stepDone",/)
   assert.doesNotMatch(panel, /function WizardStep|currentStep|md:grid-cols-5/)
   // Group 4 plan 1 Task 4 (spec §6.3): the panel left the register; the import-export page is its one caller.
   for (const page of ["src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx"]) {
     const source = read(page)
-    assert.doesNotMatch(source, /importWizardCurrentStep|currentStep:/, page)
-    assert.match(source, /wizardStepComplete: t\("importWizardStepComplete"\),\n\s+selectedFile: t\("selectedImportFile"\),/, page)
+    assert.doesNotMatch(source, /importWizardCurrentStep|currentStep:|wizardStep/, page)
   }
   for (const locale of ["th", "en"]) {
-    const asset = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, unknown> }).asset
+    const asset = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, Record<string, unknown>> }).asset
     assert.equal(asset.importWizardCurrentStep, undefined, `${locale}: the word comes from common.stepCurrent now`)
-    assert.equal(typeof asset.importWizardStepComplete, "string", locale)
+    // Group 4 plan 5 Task 4: the step words moved to asset.importPage; the old keys are gone.
+    assert.equal(asset.importWizardStepComplete, undefined, locale)
+    assert.equal(typeof asset.importPage.stepDone, "string", locale)
   }
 })
 

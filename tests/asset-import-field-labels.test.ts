@@ -29,10 +29,11 @@ test("every import column and alias key has a th (Thai) and en field label", () 
 
 test("the import preview panel shows message labels by column key", () => {
   const panel = readFileSync("src/components/assets/asset-import-preview-panel.tsx", "utf8")
-  assert.match(panel, /fields: Record<string, string>/)
-  assert.match(panel, /labels\.fields\[column\.key\] \?\? column\.label/)
+  // Group 4 plan 5 Task 4: the panel reads asset.importField itself; issue lines and missing columns name fields by key.
+  assert.match(panel, /const fields = t\.raw\("importField"\) as Record<string, string>/)
+  assert.match(panel, /keys\.map\(\(key\) => fields\[key\] \?\? key\)/)
+  assert.match(panel, /buildImportIssueParts\(issue, t, \{ fields, locale \}\)/)
   assert.doesNotMatch(panel, /\{column\.label\}/)
-  // Group 4 plan 1 Task 4 (spec §6.3): the panel left the register; the import-export page is its one caller.
-  assert.match(readFileSync("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx", "utf8"), /fields: t\.raw\("importField"\)/)
+  assert.doesNotMatch(readFileSync("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx", "utf8"), /fields: t\.raw\("importField"\)/)
   assert.doesNotMatch(readFileSync("src/app/[locale]/(dashboard)/assets/page.tsx", "utf8"), /importField/)
 })

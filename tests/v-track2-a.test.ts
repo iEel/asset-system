@@ -314,7 +314,8 @@ test("import wizard: a picked file is its one rule, and the import waits for a r
   const source = read(`${C}assets/asset-import-preview-panel.tsx`)
   // No field a person types: validate() states the wizard's prerequisite; the file's own rules stay the server's (_form).
   assert.match(functionBody(source), /^function validate\(file: File \| undefined\): string \| null \{\n\s+return required\(file\)$/)
-  assert.match(source, /if \(validate\(file\) \|\| !file\) \{\n\s+setError\(labels\.fileRequired\)/)
+  assert.match(source, /if \(validate\(file\) \|\| !file\) \{\n\s+setNotice\("fileRequired"\)/)
+  assert.match(source, /if \(code === "fileRequired"\) return t\("fileRequired"\)/)
   // A prerequisite keeps its gate and says why (spec §4.4): aria-disabled, tied to the counts beside the button.
   assert.match(source, /const noReadyRows = preview\?\.summary\.readyRows === 0\n/)
   assert.match(source, /<p id="asset-import-ready-summary" className="text-sm text-muted-foreground">/)

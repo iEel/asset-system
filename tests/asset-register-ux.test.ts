@@ -156,34 +156,74 @@ test("asset register keeps table utility controls out of the mobile-first path",
   assert.match(registerTableSource(), /<div className="hidden items-center gap-2 md:flex">\s*<AssetRegisterColumnPicker/)
 })
 
-test("asset register import wizard starts collapsed and expands on demand", () => {
+// Group 4 plan 5 Task 4 (spec §13, P5-R2, P5-R8): the import card is open on arrival, with no toggle.
+test("the import card is open on arrival: no toggle, one divided panel titled นำเข้าทรัพย์สินจาก Excel", () => {
   const source = importPanelSource()
 
-  assert.match(source, /const \[isOpen, setIsOpen\] = useState\(false\)/)
-  assert.match(source, /aria-expanded=\{isOpen\}/)
-  assert.match(source, /openImportWizard/)
-  assert.match(source, /if \(!isOpen\)/)
+  assert.doesNotMatch(source, /isOpen|aria-expanded|openImportWizard|collapseImportWizard|ChevronDown|ChevronUp/)
+  assert.equal(source.match(/<ContentPanel\b/g)?.length, 1)
+  assert.match(source, /<ContentPanel divided flush title=\{t\("importPage\.title"\)\} actions=\{batchBadge\}>/)
+  assert.match(source, /const t = useTranslations\("asset"\)/)
+})
+
+test("the import card snapshots the picked file's bytes and confirms with that copy, the batch id and the promised count (P5-R2)", () => {
+  const source = importPanelSource().replace(/\r\n/g, "\n")
+
+  assert.match(source, /const snapshot = new File\(\[await file\.arrayBuffer\(\)\], file\.name, \{ type: file\.type \}\)\n\s+const formData = new FormData\(\)\n\s+formData\.append\("file", snapshot\)/)
+  assert.match(source, /setSelectedFile\(snapshot\)\n\s+setPreview\(payload\)\n\s+setFilter\(defaultImportFilter\(payload\.summary\)\)/)
+  // A new pick keeps the old result until the new one arrives: nothing clears the preview before the request.
+  const handleFile = source.slice(source.indexOf("async function handleFile"), source.indexOf("async function confirmImport"))
+  assert.doesNotMatch(handleFile, /setPreview\(null\)|setSelectedFile\(null\)/)
+  assert.match(source, /formData\.append\("file", selectedFile\)/)
+  assert.match(source, /formData\.append\("batchId", preview\.batch\.batchId\)/)
+  assert.match(source, /formData\.append\("expectedReadyRows", String\(preview\.summary\.readyRows\)\)/)
+})
+
+test("on 409 previewChanged the fresh preview replaces the shown one with its notice; batchUsed and changedDuringImport show their own words", () => {
+  const source = importPanelSource().replace(/\r\n/g, "\n")
+
+  assert.match(source, /if \(response\.status === 409 && payload\?\.code === "previewChanged" && payload\.preview\) \{\n(?:\s+\/\/.*\n)*\s+setPreview\(payload\.preview\)\n\s+setFilter\(defaultImportFilter\(payload\.preview\.summary\)\)\n\s+setNotice\("previewChanged"\)\n\s+return/)
+  assert.match(source, /const confirmRefusalCodes = \["batchUsed", "changedDuringImport"\] as const/)
+  assert.match(source, /if \(response\.status === 409 && \(confirmRefusalCodes as readonly string\[\]\)\.includes\(payload\?\.code\)\) \{\n\s+setNotice\(payload\.code\)/)
+  assert.match(source, /return t\(`importPage\.\$\{code\}`\)/)
+  assert.match(source, /<Notice tone=\{notice === "previewChanged" \? "warning" : "danger"\} role="alert">/)
+})
+
+test("the import card: FileDropzone with the stable id, the filter and row hooks, the template link, the done state", () => {
+  const source = importPanelSource().replace(/\r\n/g, "\n")
+
+  assert.match(source, /<FileDropzone\n\s+id="asset-import-file"\n\s+file=\{selectedFile\}/)
+  assert.match(source, /accept="\.xlsx"\n\s+optimizeImages=\{false\}/)
+  for (const filter of ["error", "ready", "all"]) assert.match(source, new RegExp(`<span data-import-filter="${filter}">`))
+  assert.equal(source.match(/data-import-row=\{row\.rowNumber\}/g)?.length, 2, "the table row and the phone row")
+  assert.match(source, /<a href="\/api\/assets\/import-template" download className=\{buttonVariants\(\{ variant: "outline" \}\)\}>/)
+  assert.match(source, /const shown = preview \? filterImportRows\(preview\.rows, filter\) : null/)
+  assert.match(source, /<Notice tone="success" role="status" title=\{t\("importPage\.doneSummary", \{ imported: result\.imported, skipped: result\.skipped \}\)\}>/)
+  assert.match(source, /<Button onClick=\{startOver\}>\{t\("importPage\.importAnother"\)\}<\/Button>/)
+  assert.match(source, /result\.assets\.slice\(0, 5\)/)
 })
 
 // Phase 2C batch 4 (spec 2C §8.9 row asset-import-preview-panel.tsx, O13, §6.4.2, §6.5.2, I35): the panel's three
 // buttons are Button; choose-file and import stay in place with busy and keep their labels (K13), and the error box is
 // a danger Notice that is announced (role="alert"). The hidden .xlsx input stays (tests/file-evidence-ui.test.ts).
-test("the import panel uses Button with busy for choose and import, and a danger Notice for errors (2C batch 4, O13)", () => {
+// Phase 2C batch 4 (O13), moved by group 4 plan 5 Task 4: the footer's two actions are the "อัปโหลดไฟล์ที่แก้แล้ว" label
+// for the dropzone's input (styled as a button) and the confirm Button with its count; server errors are a danger
+// Notice that is announced. The only file input is FileDropzone's (tests/file-evidence-ui.test.ts).
+test("the import card's footer: the upload-again label and the counted confirm Button, sticky from lg only, never fixed (P5-R8, K4)", () => {
   const source = importPanelSource().replace(/\r\n/g, "\n")
-  assert.match(source, /<Button variant="outline" onClick=\{\(\) => setIsOpen\(\(current\) => !current\)\} aria-expanded=\{isOpen\}>\n\s+\{isOpen \? <ChevronUp aria-hidden="true" \/> : <ChevronDown aria-hidden="true" \/>\}/)
-  assert.match(source, /<Button variant="outline" busy=\{isLoading\} disabled=\{isImporting\} onClick=\{\(\) => inputRef\.current\?\.click\(\)\}>\n\s+<Upload aria-hidden="true" \/>\n\s+\{labels\.chooseFile\}\n\s+<\/Button>/)
+  assert.match(source, /<label htmlFor="asset-import-file" className=\{buttonVariants\(\{ variant: "outline" \}\)\}>\n\s+\{t\("importPage\.uploadFixed"\)\}\n\s+<\/label>/)
   // v-track plan 2 A6: with no ready row the import waits focusable, tied to the counts beside it.
-  assert.match(source, /<Button\n\s+busy=\{isImporting\}\n\s+aria-disabled=\{noReadyRows \|\| undefined\}\n\s+aria-describedby=\{noReadyRows \? "asset-import-ready-summary" : undefined\}\n\s+onClick=\{\(\) => void confirmImport\(\)\}\n\s+>\n\s+\{labels\.confirmImport\}\n\s+<\/Button>/)
-  assert.match(source, /<Notice tone="danger" role="alert" className="mt-4">\n\s+<ApiErrorText error=\{error\} \/>\n\s+<\/Notice>/)
-  assert.match(source, /type="file"\n\s+accept="\.xlsx"\n\s+className="hidden"/)
-  assert.doesNotMatch(source, /<button\b|labels\.importing|\$\{labels\.chooseFile\}\.\.\.|disabled:opacity|border-danger-border bg-danger-soft/)
+  assert.match(source, /<Button\n\s+busy=\{isImporting\}\n\s+aria-disabled=\{noReadyRows \|\| undefined\}\n\s+aria-describedby=\{noReadyRows \? "asset-import-ready-summary" : undefined\}\n\s+onClick=\{\(\) => void confirmImport\(\)\}\n\s+>\n\s+\{t\("importPage\.confirm", \{ count: preview\.summary\.readyRows \}\)\}\n\s+<\/Button>/)
+  assert.match(source, /className="flex flex-col gap-3 rounded-b-lg border-t border-border bg-surface px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5 lg:sticky lg:bottom-0 lg:z-10"/)
+  assert.match(source, /<Notice tone="danger" role="alert">\n\s+<ApiErrorText error=\{error\} \/>\n\s+<\/Notice>/)
+  assert.doesNotMatch(source, /<button\b|type="file"|\bfixed\b|StickyFormFooter|disabled:opacity|border-danger-border bg-danger-soft|labels\./)
 })
 
-test("asset import wizard labels are passed on every import surface", () => {
+test("the import card translates itself; the page passes no labels (ui.md D13)", () => {
   const source = importExportPageSource()
 
-  assert.match(source, /openImportWizard: t\("openImportWizard"\)/)
-  assert.match(source, /collapseImportWizard: t\("collapseImportWizard"\)/)
+  assert.match(source, /<AssetImportPreviewPanel \/>/)
+  assert.doesNotMatch(source, /openImportWizard|collapseImportWizard|importWizard|importField/)
 })
 
 test("asset import history shows no rollback block or asset list: no undo exists (group 4 plan 5, call 21)", () => {
@@ -245,7 +285,6 @@ test("asset register UX messages exist in Thai and English", () => {
     "advancedFilters",
     "advancedFiltersHelp",
     "openImportWizard",
-    "collapseImportWizard",
     "columnPresets",
     "columnPresetAll",
     "columnPresetOperations",
