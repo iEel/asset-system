@@ -184,7 +184,7 @@ test("placeholders take their color from the base rule only", () => {
 // Use text-meta (13px) or text-metric (28px). The thermal label keeps its own px sizes.
 const MOCKUP_TYPE_PX = /text-\[(?:13|28)px\]/g
 const MOCKUP_TYPE_PX_EXEMPT: ExemptList = {
-  "src/components/assets/asset-label-print.tsx": { count: 1, kind: "permanent", why: "the thermal label's name line on the large tape prints at its physical size", ruling: "2A §9.5" },
+  "src/components/assets/asset-label-sheet.tsx": { count: 1, kind: "permanent", why: "the thermal label's name line on the large tape prints at its physical size (the shared label, group 4 plan 6 Task 2)", ruling: "2A §9.5" },
 }
 
 test("the mockup type sizes and the 6px radius are used through their tokens", () => {
@@ -259,7 +259,7 @@ const SURFACE_SHADOW = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*shadow-(?:sm|md|lg|xl|2xl
 const SURFACE_SHADOW_EXEMPT: ExemptList = {
   "src/components/ui/scanner-text-input.tsx": { count: 2, kind: "permanent", why: "the zoom group and the torch button float over the live camera image", ruling: "2A §9.8 #6, 2D §5.3" },
   "src/components/audit/audit-scan-check-form.tsx": { count: 1, kind: "permanent", why: "the remove button floats over a photo thumbnail", ruling: "2A §9.8 #6, 2D §5.3" },
-  "src/components/assets/asset-label-print.tsx": { count: 1, kind: "permanent", why: "the label sheet preview stands for the paper", ruling: "2A §9.8 #6, 2D §5.3" },
+  "src/components/assets/asset-label-sheet.tsx": { count: 1, kind: "permanent", why: "the print route's label sheet stands for the paper (the shared sheet, group 4 plan 6 Task 2)", ruling: "2A §9.8 #6, 2D §5.3" },
   "src/components/asset-operations/operation-document-print.tsx": { count: 1, kind: "permanent", why: "the A4 page preview stands for the paper", ruling: "2A §9.8 #6, 2D-4 R17" },
   "src/components/admin/system-settings-form.tsx": { count: 1, kind: "permanent", why: "the label sample of the label settings stands for the paper", ruling: "2A §9.8 #6, 2D §5.3" },
   "src/components/layout/mobile-field-navigation.tsx": { count: 1, kind: "permanent", why: "the round scan button lifts out of the bottom bar", ruling: "phase 1 §15 #6, 2A §9.8 #9" },
@@ -290,7 +290,7 @@ test("the shared segmented control marks the chosen option with primary-soft and
 // R3: the thermal label prints at its physical size, so it keeps its own type scale. On screen the floor is text-xs (12px).
 const SMALL_TEXT = /text-\[(?:\d|1[01])(?:\.\d+)?px\]/g
 const SMALL_TEXT_EXEMPT: ExemptList = {
-  "src/components/assets/asset-label-print.tsx": { count: 3, kind: "permanent", why: "the thermal label's name and detail lines print at their physical size", ruling: "2A §9.5" },
+  "src/components/assets/asset-label-sheet.tsx": { count: 3, kind: "permanent", why: "the thermal label's name and detail lines print at their physical size (the shared label, group 4 plan 6 Task 2)", ruling: "2A §9.5" },
 }
 // leading-4 (16px) is below the Thai minimum of 1.44 × 12px; without it text-xs gets calc(18 / 12) on Thai pages.
 // Counted in class strings, so a comment that names it does not count.
@@ -333,7 +333,8 @@ const RAW_COLOR = new RegExp(
 const RAW_COLOR_EXEMPT: ExemptList = {
   "src/components/asset-operations/operation-document-print.tsx": { count: 19, kind: "permanent", why: "the A4 paper: slate ink and lines on white, and the red void watermark", ruling: "2D §5.3, 2D-4 R17" },
   "src/components/asset-operations/signature-pad.tsx": { count: 1, kind: "permanent", why: "the signature canvas is white paper, and the signature prints", ruling: "2D-4 R17" },
-  "src/components/assets/asset-label-print.tsx": { count: 12, kind: "permanent", why: "the label sheet prints black on white at its physical size", ruling: "2D §5.3, 2A §9.5" },
+  "src/components/assets/asset-label-print.tsx": { count: 1, kind: "permanent", why: "the print page's body prints on white (print:bg-white); the label itself is the shared sheet's", ruling: "2D §5.3, group 4 plan 6 Task 2" },
+  "src/components/assets/asset-label-sheet.tsx": { count: 12, kind: "permanent", why: "the label prints black on white at its physical size, on the print route's sheet and in the labels page's preview", ruling: "2D §5.3, 2A §9.5, group 4 plan 6 Task 2" },
   "src/components/audit/audit-scan-camera.tsx": { count: 12, kind: "permanent", why: "the zoom, torch and stop controls on the camera image: a dark fill with white ink", ruling: "2D §5.3, 2D-4 R17" },
   "src/components/audit/audit-scan-panels.tsx": { count: 5, kind: "permanent", why: "the scan frame on the camera image: its dim surround and white corners", ruling: "2D §5.3, 2D-4 R17" },
   "src/components/ui/attachment-preview-dialog.tsx": { count: 2, kind: "permanent", why: "the preview stage: black around a photo, white paper under a PDF page", ruling: "2D §5.3, 2D-5 NG-R2" },

@@ -2,8 +2,9 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { assetLabelSettingKeys, parseAssetLabelTemplates } from "@/lib/asset-label-template"
-import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
+import { normalizeLabelPrintAssetIds } from "@/lib/asset-label-print-tracking"
+import { loadAssetLabelPrintSettings } from "@/lib/asset-label-print-settings"
+import { buildAssetQrValue } from "@/lib/asset-qr"
 import { AssetLabelPrint } from "@/components/assets/asset-label-print"
 
 type AssetLabelsPageProps = {
@@ -32,17 +33,13 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
         currentLocation: { select: { code: true, name: true } },
       },
     }),
-    prisma.systemSetting.findMany({
-      where: { key: { in: [...assetLabelSettingKeys, assetQrPublicBaseUrlKey] } },
-      select: { key: true, value: true },
-    }),
+    loadAssetLabelPrintSettings(),
   ])
 
   if (assets.length === 0) notFound()
 
   const assetMap = new Map(assets.map((asset) => [asset.id, asset]))
   const orderedAssets = ids.map((id) => assetMap.get(id)).filter((asset) => asset != null)
-  const settingValues = Object.fromEntries(labelSettings.map((setting) => [setting.key, setting.value]))
 
   return (
     <AssetLabelPrint
@@ -56,15 +53,11 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
           company: asset.company.code,
           branch: asset.branch.code,
           location: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
-          qrValue: buildAssetQrValue({
-            assetId: asset.id,
-            publicBaseUrl: settingValues[assetQrPublicBaseUrlKey],
-            fallbackBaseUrl: process.env.AUTH_URL,
-          }),
+          qrValue: buildAssetQrValue({ assetId: asset.id, publicBaseUrl: labelSettings.qrBaseUrl }),
         }
       })}
-      backHref={`/${locale}/assets`}
-      labelTemplates={parseAssetLabelTemplates(settingValues)}
+      backHref={`/${locale}/asset-management/labels`}
+      labelTemplates={labelSettings.templates}
       translations={{
         title: t("printLabelsTitle"),
         preview: t("printLabelsPreview"),
@@ -94,6 +87,7 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
   )
 }
 
+// The URL order, without repeats, at most the first 100 (P6-R2): the print record takes 100, so more could never print.
 function normalizeIds(searchParams: { id?: string | string[]; ids?: string }) {
   const repeatedIds = Array.isArray(searchParams.id)
     ? searchParams.id
@@ -102,11 +96,5 @@ function normalizeIds(searchParams: { id?: string | string[]; ids?: string }) {
       : []
   const commaIds = searchParams.ids?.split(",") ?? []
 
-  return Array.from(
-    new Set(
-      [...repeatedIds, ...commaIds]
-        .map((id) => id.trim())
-        .filter(Boolean)
-    )
-  )
+  return normalizeLabelPrintAssetIds([...repeatedIds, ...commaIds])
 }

@@ -73,15 +73,26 @@ test("the A4 paper is a forced-light scope, so its void banner keeps the light d
 })
 
 test("the label sheet and the settings label sample are forced-light scopes, so labels look printed on a dark page (dark mode P-R3)", () => {
+  // The print route draws the shared sheet (group 4 plan 6 Task 2): its toolbar and title, before it, follow the theme.
   const print = read(`${C}assets/asset-label-print.tsx`)
-  const sheet = print.match(/<div data-theme="light" className="asset-label-sheet [^"]*">/)
-  assert.ok(sheet, "the sheet carries the scope")
-  assert.match(sheet[0], / rounded-md bg-white p-3 text-slate-950 /, "its own paper colors stay")
-  const sheetAt = print.indexOf(sheet[0])
+  const sheetAt = print.indexOf("<AssetLabelSheet\n")
+  assert.ok(sheetAt > 0, "the print route draws the shared sheet")
   assert.ok(print.indexOf('<div className="asset-label-toolbar') < sheetAt, "the toolbar and its notices follow the theme")
   assert.ok(print.indexOf('<section className="asset-label-title') < sheetAt, "so does the title")
-  assert.ok(print.indexOf("<AssetLabelItem") > sheetAt, "every label sits on the sheet")
-  assert.equal(print.match(/data-theme=/g)?.length, 1)
+  assert.doesNotMatch(print, /data-theme=|<AssetLabelItem/)
+  // The shared file has two scopes: the print route's sheet and the labels page's one-label preview. Every label sits in one.
+  const shared = read(`${C}assets/asset-label-sheet.tsx`)
+  const sheet = shared.match(/<div data-theme="light" className="asset-label-sheet [^"]*">/)
+  assert.ok(sheet, "the sheet carries the scope")
+  assert.match(sheet[0], / rounded-md bg-white p-3 text-slate-950 /, "its own paper colors stay")
+  const sheetBody = shared.slice(shared.indexOf("export function AssetLabelSheet("), shared.indexOf("export function AssetLabelPreview("))
+  assert.ok(sheetBody.indexOf("<AssetLabelItem") > sheetBody.indexOf(sheet[0]), "every label of the sheet sits on it")
+  const previewBody = shared.slice(shared.indexOf("export function AssetLabelPreview("))
+  const frame = previewBody.match(/<div\n\s+data-theme="light"\n\s+role=\{label \? "group" : undefined\}\n\s+aria-label=\{label\}\n\s+className="([^"]+)"\n\s+>/)
+  assert.ok(frame, "the preview's frame carries the scope")
+  assert.match(frame[1], /\bbg-muted\b/, "the frame is light paper from the tokens, read inside the scope")
+  assert.ok(previewBody.indexOf("<AssetLabelItem") > previewBody.indexOf(frame[0]), "the previewed label sits in the frame")
+  assert.equal(shared.match(/data-theme=/g)?.length, 2)
   // The sample keeps its tokens (no raw colors, no N1 row): inside the scope they are the light ones, so the QR box, the
   // label body and its lines look as they do in light today; the panel around the sample follows the theme.
   const settings = read(`${C}admin/system-settings-form.tsx`)
@@ -97,13 +108,14 @@ test("the label sheet and the settings label sample are forced-light scopes, so 
   assert.match(scope.slice(0, scope.indexOf("}")), /--surface: var\(--card\);/)
 })
 
-// The forced-light scope sits on paper only (spec §4.4): the A4 sheet, the label sheet, the settings label sample and
+// The forced-light scope sits on paper only (spec §4.4): the A4 sheet, the label sheet and the labels page's label preview
+// (both in the shared label file, group 4 plan 6 Task 2), the settings label sample and
 // the signature canvas. No part forces dark; the attribute on <html> is the root layout's expression, not a literal.
 const LIGHT_SCOPES: Record<string, number> = {
   [`${C}admin/system-settings-form.tsx`]: 1,
   [`${C}asset-operations/operation-document-print.tsx`]: 1,
   [`${C}asset-operations/signature-pad.tsx`]: 1,
-  [`${C}assets/asset-label-print.tsx`]: 1,
+  [`${C}assets/asset-label-sheet.tsx`]: 2,
 }
 
 test("the signature canvas is a forced-light scope, and the scope sits on paper only (dark mode P-R4, P-R5)", () => {
@@ -126,7 +138,7 @@ test("the signature canvas is a forced-light scope, and the scope sits on paper 
   assert.deepEqual(solidWhite.sort(), [
     `${C}asset-operations/operation-document-print.tsx`,
     `${C}asset-operations/signature-pad.tsx`,
-    `${C}assets/asset-label-print.tsx`,
+    `${C}assets/asset-label-sheet.tsx`,
     `${C}audit/audit-scan-camera.tsx`,
     `${C}ui/attachment-preview-dialog.tsx`,
     `${C}ui/scanner-text-input.tsx`,

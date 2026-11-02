@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
+import * as nodeModule from "node:module"
 import test from "node:test"
 
 test("label print page exposes QR target safety messaging", () => {
@@ -11,9 +12,10 @@ test("label print page exposes QR target safety messaging", () => {
 })
 
 test("label print typography uses high-contrast black text for thermal tape", () => {
-  const source = readFileSync("src/components/assets/asset-label-print.tsx", "utf8")
+  // The label moved into the shared sheet (group 4 plan 6 Task 2); it keeps its exact print colors inline.
+  const source = readFileSync("src/components/assets/asset-label-sheet.tsx", "utf8")
 
-  assert.match(source, /print-color-adjust: exact/)
+  assert.match(source, /printColorAdjust: "exact"/)
   assert.match(source, /text-black/)
   assert.match(source, /secondaryClass[\s\S]+font-black/)
   assert.doesNotMatch(source, /text-slate-600|text-slate-700/)
@@ -230,4 +232,143 @@ test("the label search placeholder names only what the asset search finds (criti
   assert.match(page, /searchPlaceholder: t\("scanPlaceholder"\)/)
   assert.doesNotMatch(page, /searchPlaceholder: tGlobalSearch\("placeholder"\)/)
   assert.match(readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8"), /&scope=asset`/)
+})
+
+// Group 4 plan 6 Task 2 (P6-R2, P6-R9, Review Focus 4-5, recon X1, X4, X6, X11): one self-sized label part, one settings
+// loader, tape and note from the hash, at most 100 labels.
+const readLf = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const SHEET = "src/components/assets/asset-label-sheet.tsx"
+const PRINT = "src/components/assets/asset-label-print.tsx"
+const BATCH_PAGE = "src/app/[locale]/(print)/assets/labels/page.tsx"
+const SINGLE_PAGE = "src/app/[locale]/(print)/assets/[id]/label/page.tsx"
+
+test("the print hash carries tape and note; unknown or missing values fall back to the defaults (P6-R9)", async () => {
+  const { buildAssetLabelPrintHash, parseAssetLabelPrintHash, LABEL_PRINT_NOTE_MAX } = await import("../src/lib/asset-label-print-hash.ts")
+  assert.equal(LABEL_PRINT_NOTE_MAX, 500)
+  assert.equal(buildAssetLabelPrintHash({ tapeSize: "18", note: "ชั้น 2 & ห้อง #3" }), `#tape=18&note=${encodeURIComponent("ชั้น 2 & ห้อง #3")}`)
+  assert.equal(buildAssetLabelPrintHash({ tapeSize: "custom", note: "" }), "#tape=custom&note=")
+  assert.deepEqual(parseAssetLabelPrintHash(buildAssetLabelPrintHash({ tapeSize: "24", note: "ชั้น 2 & ห้อง #3 + 50%" }), "18"), { tapeSize: "24", note: "ชั้น 2 & ห้อง #3 + 50%" })
+  for (const tape of ["12", "18", "24", "custom"] as const) assert.equal(parseAssetLabelPrintHash(`#tape=${tape}`, "18").tapeSize, tape)
+  assert.deepEqual(parseAssetLabelPrintHash("", "12"), { tapeSize: "12", note: "" })
+  assert.deepEqual(parseAssetLabelPrintHash("#", "24"), { tapeSize: "24", note: "" })
+  assert.deepEqual(parseAssetLabelPrintHash("#tape=36&note=", "18"), { tapeSize: "18", note: "" })
+  assert.deepEqual(parseAssetLabelPrintHash("#tape=CUSTOM&note=%E0%B8", "12"), { tapeSize: "12", note: "" }, "a broken escape is no note")
+  assert.deepEqual(parseAssetLabelPrintHash("#purchase", "18"), { tapeSize: "18", note: "" })
+  // Review Focus 4: a 500-character Thai note rides the hash whole; a longer one is cut to the field's 500.
+  const thai = "ก".repeat(500)
+  assert.equal(parseAssetLabelPrintHash(buildAssetLabelPrintHash({ tapeSize: "18", note: thai }), "18").note, thai)
+  assert.equal(parseAssetLabelPrintHash(`#note=${encodeURIComponent("ข".repeat(600))}`, "18").note, "ข".repeat(500))
+})
+
+test("the print route fills tape and note from the hash and never prints or records on load (P6-R9, Review Focus 5)", () => {
+  const source = readLf(PRINT)
+  assert.match(source, /import \{ parseAssetLabelPrintHash \} from "@\/lib\/asset-label-print-hash"/)
+  const effect = source.match(/useEffect\(\(\) => \{\n([\s\S]*?)\n {2}\}, \[labelTemplates\.defaultTapeSize\]\)/)
+  assert.ok(effect, "one effect reads the hash")
+  assert.match(effect[1], /parseAssetLabelPrintHash\(window\.location\.hash, labelTemplates\.defaultTapeSize\)/)
+  assert.match(effect[1], /setTapeSize\(prefill\.tapeSize\)/)
+  assert.match(effect[1], /setPrintReason\(prefill\.note\)/)
+  assert.doesNotMatch(effect[1], /fetch\(|print\(|requestSubmit|handlePrint|submit/)
+  // The one record and the one window.print sit in the submit handler only.
+  assert.equal(source.match(/\bfetch\(/g)?.length, 1)
+  assert.equal(source.match(/window\.print\(\)/g)?.length, 1)
+  const handler = source.slice(source.indexOf("async function handlePrint("), source.indexOf("\n  return (\n"))
+  assert.match(handler, /fetch\("\/api\/assets\/label-prints"/)
+  assert.match(handler, /window\.print\(\)/)
+  assert.doesNotMatch(source, /autoFocus|\.requestSubmit\(|\.submit\(\)/)
+})
+
+test("the print route takes at most the first 100 ids and goes back to the labels page (P6-R2, recon X4)", async () => {
+  const batch = readLf(BATCH_PAGE)
+  assert.match(batch, /normalizeLabelPrintAssetIds\(\[\.\.\.repeatedIds, \.\.\.commaIds\]\)/)
+  assert.doesNotMatch(batch, /new Set\(/)
+  assert.match(batch, /backHref=\{`\/\$\{locale\}\/asset-management\/labels`\}/)
+  const { normalizeLabelPrintAssetIds } = await import("../src/lib/asset-label-print-tracking.ts")
+  const ids = Array.from({ length: 105 }, (_, index) => `asset-${index}`)
+  const normalized = normalizeLabelPrintAssetIds([" asset-3 ", "asset-3", ...ids])
+  assert.equal(normalized.length, 100)
+  assert.deepEqual(normalized.slice(0, 3), ["asset-3", "asset-0", "asset-1"])
+  assert.equal(normalized.at(-1), "asset-99", "asset-3 is not counted twice")
+})
+
+test("both print routes read the settings through the one loader (recon X11)", () => {
+  for (const path of [BATCH_PAGE, SINGLE_PAGE]) {
+    const source = readLf(path)
+    assert.match(source, /import \{ loadAssetLabelPrintSettings \} from "@\/lib\/asset-label-print-settings"/, path)
+    assert.match(source, /loadAssetLabelPrintSettings\(\)/, path)
+    assert.match(source, /labelTemplates=\{labelSettings\.templates\}/, path)
+    assert.match(source, /buildAssetQrValue\(\{ assetId: asset\.id, publicBaseUrl: labelSettings\.qrBaseUrl \}\)/, path)
+    assert.doesNotMatch(source, /systemSetting|process\.env|assetLabelSettingKeys|parseAssetLabelTemplates/, path)
+  }
+})
+
+test("the settings loader reads the label keys and resolves the QR base on the server (AUTH_URL fallback)", async () => {
+  const state = globalThis as unknown as { __labelSettingsRows: { key: string; value: string }[]; __labelSettingsArgs: unknown[] }
+  state.__labelSettingsArgs = []
+  const registerHooks = (nodeModule as unknown as {
+    registerHooks(options: {
+      resolve(specifier: string, context: unknown, nextResolve: (specifier: string, context: unknown) => unknown): unknown
+    }): void
+  }).registerHooks
+  const fakeDb = `export const prisma = { systemSetting: { findMany: async (args) => { globalThis.__labelSettingsArgs.push(args); return globalThis.__labelSettingsRows } } }`
+  registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if (specifier === "@/lib/db") return { url: `data:text/javascript;charset=utf-8,${encodeURIComponent(fakeDb)}`, shortCircuit: true }
+      return nextResolve(specifier, context)
+    },
+  })
+  const { loadAssetLabelPrintSettings } = await import("../src/lib/asset-label-print-settings.ts")
+  const { assetLabelSettingKeys } = await import("../src/lib/asset-label-template.ts")
+  const savedAuthUrl = process.env.AUTH_URL
+  try {
+    state.__labelSettingsRows = [
+      { key: "asset_label_default_tape_size", value: "24" },
+      { key: "asset_label_24_width_mm", value: "90" },
+      { key: "asset_qr_public_base_url", value: "https://assets.example.com/" },
+    ]
+    process.env.AUTH_URL = "http://localhost:3000"
+    const settings = await loadAssetLabelPrintSettings()
+    assert.equal(settings.defaultTapeSize, "24")
+    assert.equal(settings.templates.defaultTapeSize, "24")
+    assert.equal(settings.templates.tapes["24"].widthMm, 90)
+    assert.equal(settings.qrBaseUrl, "https://assets.example.com")
+    assert.deepEqual(state.__labelSettingsArgs, [{
+      where: { key: { in: [...assetLabelSettingKeys, "asset_qr_public_base_url"] } },
+      select: { key: true, value: true },
+    }])
+
+    state.__labelSettingsRows = []
+    process.env.AUTH_URL = "https://app.example.com/login?x=1"
+    const fallback = await loadAssetLabelPrintSettings()
+    assert.equal(fallback.qrBaseUrl, "https://app.example.com/login")
+    assert.equal(fallback.defaultTapeSize, "18")
+
+    delete process.env.AUTH_URL
+    assert.equal((await loadAssetLabelPrintSettings()).qrBaseUrl, "")
+  } finally {
+    if (savedAuthUrl === undefined) delete process.env.AUTH_URL
+    else process.env.AUTH_URL = savedAuthUrl
+  }
+})
+
+test("the label sizes itself in mm from its template, prints black on white and names its QR (recon X1, X4 axe svg-img-alt)", () => {
+  const sheet = readLf(SHEET)
+  assert.match(sheet, /^"use client"/)
+  assert.match(sheet, /export function AssetLabelItem\(/)
+  assert.match(sheet, /export function AssetLabelSheet\(/)
+  assert.match(sheet, /export function AssetLabelPreview\(/)
+  assert.match(sheet, /<QRCodeSVG value=\{asset\.qrValue\} title=\{asset\.assetTag\} size=\{template\.qrSize\} level="M" includeMargin=\{false\} \/>/)
+  assert.match(sheet, /width: `\$\{template\.widthMm\}mm`,\n\s+height: `\$\{template\.heightMm\}mm`,/)
+  assert.match(sheet, /printColorAdjust: "exact"/)
+  assert.match(sheet, /WebkitPrintColorAdjust: "exact"/)
+  assert.match(sheet, /className="asset-label-item overflow-hidden rounded border border-slate-300 bg-white text-black"/)
+  // The page's preview never gets the print route's page or print rules.
+  assert.doesNotMatch(sheet, /@page|@media print|<style|jsx global/)
+  // The print route keeps the one @page rule; the label's size, ink and preview scale left its global block.
+  const print = readLf(PRINT)
+  assert.match(print, /@page \{\n\s+size: \$\{pageSize\};\n\s+margin: 0;\n\s+\}/)
+  assert.equal(print.match(/@page/g)?.length, 1)
+  assert.doesNotMatch(print, /\.asset-label-item \{\n\s+width:|color: #000000|--asset-label-preview-scale|<QRCodeSVG|function AssetLabelItem/)
+  assert.match(print, /import \{ AssetLabelSheet, type AssetLabelSheetAsset \} from "@\/components\/assets\/asset-label-sheet"/)
+  assert.match(print, /<AssetLabelSheet\n\s+assets=\{assets\}\n\s+template=\{config\}/)
 })
