@@ -69,6 +69,16 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     ],
   },
   {
+    filePath: "src/app/api/purchase-documents/check-duplicates/route.ts",
+    label: "Purchase document duplicate pre-check",
+    checks: [
+      { module: "asset", action: "create" },
+      { module: "asset", action: "edit" },
+    ],
+  },
+  { filePath: "src/app/api/assets/[id]/purchase-documents/route.ts", label: "Asset purchase document create and link", checks: [{ module: "asset", action: "edit" }] },
+  { filePath: "src/app/api/assets/[id]/purchase-documents/[documentId]/route.ts", label: "Asset purchase document unlink", checks: [{ module: "asset", action: "edit" }] },
+  {
     filePath: "src/app/api/assets/route.ts",
     label: "Assets",
     checks: [

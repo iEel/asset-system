@@ -140,6 +140,11 @@ test("roles and permissions: each refused page and request needs a permission th
   // spec §10.3, §17), and the purchase-document search asset:create or asset:edit (group 4 plan 3 P3-R2): the viewer's
   // GETs are refused.
   assert.deepEqual(refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.method === "GET").map((refusal) => refusal.path), ["/api/asset-operations/search", "/api/asset-operations/bulk-move-list", "/api/purchase-documents/search"])
+  // The purchase-document pre-check and create-and-link (group 4 plan 3 Task 3) refuse the viewer; the unlink DELETE has
+  // no row (the suite sends no DELETE, e2e-review), its unit test pins its check before any read.
+  const purchaseRows = refusals.VIEWER_API_REFUSALS.filter((refusal) => refusal.file.includes("purchase-documents") && refusal.method === "POST")
+  assert.deepEqual(purchaseRows.map((refusal) => refusal.path), ["/api/purchase-documents/check-duplicates", `/api/assets/${refusals.NO_RECORD}/purchase-documents`])
+  assert.ok(refusals.VIEWER_API_REFUSALS.every((refusal) => !refusal.file.includes("[documentId]")))
   assert.ok(read("e2e/cross-cutting/support/roles-ui.ts").includes('refusal.method === "GET" ? { method: "GET" } : { method: refusal.method, data: refusal.body }'))
   // The disposal decision picks its permission from the body: "decision" (any action but execute) is approve.
   assert.match(handlerBody(read("src/app/api/disposal-requests/[id]/route.ts"), "PATCH"), /if \(action === "execute"\) \{\n\s+requirePermission\(user, "disposal", "edit"\)\n\s+\} else \{\n\s+requirePermission\(user, "disposal", "approve"\)/)

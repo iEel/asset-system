@@ -4174,7 +4174,9 @@
     "value_auditRound_status_draft": "Draft",
     "value_auditRound_status_open": "Open",
     "value_auditRound_status_closed": "Closed",
-    "value_auditRound_status_cancelled": "Cancelled"
+    "value_auditRound_status_cancelled": "Cancelled",
+    "action_link_purchase_documents": "Link purchase documents",
+    "action_unlink_purchase_documents": "Unlink purchase document"
   },
   "adminUsersPage": {
     "title": "User Management",
@@ -5011,7 +5013,9 @@
     "transferConditionNonFunctional": "Not working: send it for repair before giving it to a new holder",
     "transferConditionSalvage": "Salvage awaiting disposal: it cannot go to a new holder",
     "transferDepartmentLocked": "The asset's holder has changed, so its department follows the holder. Check it and save again.",
-    "correctionReasonRequired": "Enter the reason for the correction"
+    "correctionReasonRequired": "Enter the reason for the correction",
+    "purchaseDocumentLinkNotFound": "This purchase document is not linked to this asset.",
+    "purchaseDocumentSupplierInactive": "This supplier does not exist or is inactive. Choose another."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

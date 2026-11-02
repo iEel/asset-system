@@ -4174,7 +4174,9 @@
     "value_auditRound_status_draft": "ร่าง",
     "value_auditRound_status_open": "เปิดตรวจ",
     "value_auditRound_status_closed": "ปิดรอบแล้ว",
-    "value_auditRound_status_cancelled": "ยกเลิก"
+    "value_auditRound_status_cancelled": "ยกเลิก",
+    "action_link_purchase_documents": "ผูกเอกสารจัดซื้อ",
+    "action_unlink_purchase_documents": "เอาเอกสารจัดซื้อออก"
   },
   "adminUsersPage": {
     "title": "จัดการผู้ใช้",
@@ -5011,7 +5013,9 @@
     "transferConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
     "transferConditionSalvage": "เป็นซาก รอตัดจำหน่าย โอนย้ายให้ผู้ถือครองใหม่ไม่ได้",
     "transferDepartmentLocked": "ข้อมูลผู้ถือครองของทรัพย์สินเปลี่ยนไป แผนกจึงเป็นไปตามผู้ถือครอง ตรวจสอบแล้วบันทึกอีกครั้ง",
-    "correctionReasonRequired": "ระบุเหตุผลที่แก้"
+    "correctionReasonRequired": "ระบุเหตุผลที่แก้",
+    "purchaseDocumentLinkNotFound": "เอกสารจัดซื้อนี้ไม่ได้ผูกกับทรัพย์สินนี้",
+    "purchaseDocumentSupplierInactive": "ผู้ขายนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกผู้ขายรายอื่น"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

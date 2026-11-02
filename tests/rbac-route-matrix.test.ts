@@ -69,6 +69,14 @@ test("the purchase-document search is registered for asset create or edit, as th
   assert.deepEqual(entry?.checks, [{ module: "asset", action: "create" }, { module: "asset", action: "edit" }])
 })
 
+test("the purchase-document pre-check is asset create or edit; create-and-link and unlink are asset edit (group 4 plan 3 P3-R2)", () => {
+  const checks = (filePath: string) => rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === filePath)?.checks
+  assert.deepEqual(checks("src/app/api/purchase-documents/check-duplicates/route.ts"), [{ module: "asset", action: "create" }, { module: "asset", action: "edit" }])
+  assert.deepEqual(checks("src/app/api/assets/[id]/purchase-documents/route.ts"), [{ module: "asset", action: "edit" }])
+  // The DELETE has no viewer refusal row (the E2E suite sends no DELETE); its unit test pins the check before any read.
+  assert.deepEqual(checks("src/app/api/assets/[id]/purchase-documents/[documentId]/route.ts"), [{ module: "asset", action: "edit" }])
+})
+
 test("every API route has an explicit protection inventory classification", () => {
   const routeFiles = collectApiRouteFiles("src/app/api")
   const classifications = routeFiles.map((filePath) =>

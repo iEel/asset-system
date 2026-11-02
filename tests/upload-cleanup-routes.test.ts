@@ -284,6 +284,7 @@ test("every other evidence route tracks its file, commits right after its save a
     ["src/app/api/assets/[id]/components/[componentId]/route.ts", "await prisma.$transaction("],
     ["src/app/api/audit-items/[id]/mark-not-found/route.ts", "await prisma.$transaction("],
     ["src/app/api/purchase-documents/route.ts", "await prisma.$transaction("],
+    ["src/app/api/assets/[id]/purchase-documents/route.ts", "await prisma.$transaction("],
     ["src/app/api/assets/[id]/attachments/route.ts", "await prisma.attachment.create("],
     ["src/app/api/maintenance-tickets/[id]/attachments/route.ts", "await prisma.attachment.create("],
     ["src/app/api/disposal-requests/[id]/attachments/route.ts", "await prisma.attachment.create("],
