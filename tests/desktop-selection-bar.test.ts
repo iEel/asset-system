@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { readSourceFiles } from "./helpers/source-files.ts"
 
 // Group 2 plan 4 Task 5 (spec §10, P4-R15): DesktopSelectionBar, the bar of a desktop list whose rows take ticks.
 // Server-safe (no directive, no hook): its client caller passes the handlers. Sources read with LF line endings.
@@ -20,6 +21,25 @@ test("DesktopSelectionBar: the count, ล้าง, then the actions with the pr
   // A live region added together with its text is not read: the line is always rendered, hidden while it is empty.
   assert.match(source, /<p role="status" className=\{cn\("text-meta text-muted-foreground", !status && "sr-only"\)\}>\{status\}<\/p>\n\s+\{children\}/)
   assert.match(source, /^export type DesktopSelectionBarProps = \{\n  label: string\n  countLabel: string \| null\n  clearLabel: string\n  onClear: \(\) => void\n  clearDisabled\?: boolean\n  actions\?: React\.ReactNode\n  status\?: React\.ReactNode\n  className\?: string\n  children\?: React\.ReactNode\n\}$/m)
+})
+
+// Group 4 plan 6 Task 5 (P6-R10): the labels page is the fourth caller, its bar the page's last child while the print
+// list holds a label; no fixed phone bar comes with it.
+test("DesktopSelectionBar's callers: three lists with ticks and the labels page's print bar (P6-R10)", () => {
+  const callers = readSourceFiles("src").filter((file) => file.source.includes("<DesktopSelectionBar")).map((file) => file.path).sort()
+  assert.deepEqual(callers, [
+    "src/components/asset-operations/bulk-move-form.tsx",
+    "src/components/assets/asset-label-batch-tool.tsx",
+    "src/components/assets/asset-register-table.tsx",
+    "src/components/audit/audit-findings-batch-actions.tsx",
+  ])
+  const shell = read("src/components/assets/asset-label-batch-tool.tsx")
+  assert.equal(shell.match(/<DesktopSelectionBar\n/g)?.length, 1)
+  assert.match(shell, /\{ordered\.length > 0 \? \(\n\s+<DesktopSelectionBar\n/)
+  assert.ok(shell.trimEnd().endsWith(") : null}\n    </div>\n  )\n}"), "the bar closes the page wrapper")
+  const design = read("DESIGN.md")
+  const block = design.slice(design.indexOf("**`DesktopSelectionBar`**"), design.indexOf("**Asset register pattern (2026-10-07).**"))
+  for (const phrase of ["**The labels page**", "the page wrapper's last child", "\"ล้างรายการพิมพ์\"", "there is no phone bar", "`overflow-x-clip`"]) assert.ok(block.includes(phrase), phrase)
 })
 
 test("DESIGN.md and docs/14 describe DesktopSelectionBar, and the guards know it as a shared part (P4-R15)", () => {

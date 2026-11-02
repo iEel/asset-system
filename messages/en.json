@@ -296,17 +296,7 @@
     "zoomCamera": "Zoom {level}x",
     "zoomUnsupported": "This device does not support browser camera zoom control",
     "globalScanShortcut": "Scan Asset",
-    "labelsTitle": "Print Asset Labels",
-    "labelsSubtitle": "Search and select multiple assets, then print their labels in one batch",
-    "selectedLabelsTitle": "Labels to print",
     "removeSelectedAsset": "Remove from list",
-    "noSelectedLabels": "No assets selected yet",
-    "queueSortAssetTag": "Asset Tag",
-    "queueSortLocation": "Location",
-    "queueSortCategory": "Category",
-    "selectedSortLabel": "Print order",
-    "selectedSortManual": "Selected order",
-    "printFirstLabel": "Test print 1 label",
     "importExportTitle": "Import / Export Assets",
     "scanPagePlaceholder": "Asset tag, Serial or name",
     "scanHint": "Not every asset has its QR label yet. Type part of the tag, the Serial under the device, or the name instead.",
@@ -460,7 +450,8 @@
       "queueLoadFailed": "The label queue did not load",
       "showMoreFailed": "More rows did not load",
       "addAllFailed": "The assets were not added to the print list",
-      "addAllSkipped": "{count, plural, one {# deactivated asset was not added} other {# deactivated assets were not added}}"
+      "addAllSkipped": "{count, plural, one {# deactivated asset was not added} other {# deactivated assets were not added}}",
+      "listRefreshFailed": "The print list's latest print states did not load"
     }
   },
   "auth": {

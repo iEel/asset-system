@@ -65,6 +65,11 @@ export function appendQueueRows<T extends { id: string }>(current: readonly T[],
   return next
 }
 
+/** P6-R13: on coming back to the page the queue asks again from the top for as many rows as it shows (20 to 100). */
+export function queueRefreshPageSize(shown: number) {
+  return Math.min(Math.max(shown, LABEL_QUEUE_FIRST_PAGE), LABEL_PRINT_BATCH_MAX)
+}
+
 /** Ids the lookup did not return (deactivated since the queue loaded): add-all says how many it could not add. */
 export function lookupMissingCount(ids: readonly string[], rows: readonly { id: string }[]) {
   const found = new Set(rows.map((row) => row.id))

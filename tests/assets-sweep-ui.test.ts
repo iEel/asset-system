@@ -196,10 +196,14 @@ test("label batch tool: ContentPanels, print-state StatusBadges, formatCount (M2
   const list = read(`${C}assets/asset-label-print-list.tsx`)
   assert.equal(shell.match(/<ContentPanel\b/g)?.length ?? 0, 0)
   assert.equal(queue.match(/<ContentPanel\b/g)?.length, 2)
-  assert.equal(list.match(/<ContentPanel\b/g)?.length, 1)
+  assert.equal(list.match(/<ContentPanel\b/g)?.length, 2, "the print list and the settings (group 4 plan 6 Task 5)")
   // The queue card: the board's head (title, the mode's help line, ล้างตัวกรอง) over a flush body.
   assert.match(queue, /<ContentPanel\n\s+divided\n\s+flush\n\s+title=\{t\("queueTitle"\)\}\n\s+description=\{t\(`queueHelp\.\$\{queueFilters\.mode\}`\)\}\n\s+actions=\{\(\n\s+<Button variant="ghost" size="sm" onClick=\{resetQueueFilters\}>/)
-  assert.match(list, /<ContentPanel\n\s+title=\{labels\.selectedTitle\}\n\s+description=\{`\$\{formatCount\(selected\.length\)\} \$\{labels\.selectedCount\}`\}\n\s+className="xl:sticky xl:top-20 xl:self-start"/)
+  // The print list (Task 5): "รายการที่จะพิมพ์" with the "{n} ดวง" badge and the order in its head, over numbered rows;
+  // the right column no longer sticks (the bar holds the actions from md).
+  assert.match(list, /<ContentPanel\n\s+divided\n\s+flush\n\s+title=\{t\("listTitle"\)\}\n\s+actions=\{\n\s+<>\n\s+<StatusBadge label=\{t\("listCount", \{ count: rows\.length \}\)\} tone="info" \/>/)
+  assert.match(list, /<span aria-hidden="true" className="num w-6 shrink-0 text-meta text-muted-foreground">\{formatCount\(index \+ 1\)\}<\/span>/)
+  assert.doesNotMatch(list, /xl:sticky/)
   // A row shows its print state, never the asset state (a queue row carries none, P6-R11); ป้ายเดิม when the label's tag
   // is not today's (P6-R6); อยู่ในรายการพิมพ์ once listed.
   assert.match(queue, /<StatusBadge label=\{row\.lastPrint \? t\("badgePrinted"\) : t\("badgeUnprinted"\)\} tone=\{row\.lastPrint \? "success" : "muted"\} \/>/)

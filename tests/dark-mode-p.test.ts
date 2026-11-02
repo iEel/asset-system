@@ -93,6 +93,11 @@ test("the label sheet and the settings label sample are forced-light scopes, so 
   assert.match(frame[1], /\bbg-muted\b/, "the frame is light paper from the tokens, read inside the scope")
   assert.ok(previewBody.indexOf("<AssetLabelItem") > previewBody.indexOf(frame[0]), "the previewed label sits in the frame")
   assert.equal(shared.match(/data-theme=/g)?.length, 2)
+  // The labels page (group 4 plan 6 Task 5) draws its preview through the shared part only: no scope, paper or label
+  // drawing of its own, so the counts below do not change.
+  const printList = read(`${C}assets/asset-label-print-list.tsx`)
+  assert.equal(printList.match(/<AssetLabelPreview\n/g)?.length, 1)
+  assert.doesNotMatch(printList, /data-theme=|<AssetLabelItem|<AssetLabelSheet|<QRCodeSVG|(?<![\w:-])bg-white(?![\w/-])|\btext-black\b/)
   // The sample keeps its tokens (no raw colors, no N1 row): inside the scope they are the light ones, so the QR box, the
   // label body and its lines look as they do in light today; the panel around the sample follows the theme.
   const settings = read(`${C}admin/system-settings-form.tsx`)

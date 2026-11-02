@@ -192,6 +192,15 @@ test("V1 the scope list names every form a person submits, 52 in all (spec §5)"
   assert.equal(Object.values(V_SCOPE).reduce((sum, count) => sum + count, 0), 52)
 })
 
+// Group 4 plan 6 Task 5: the labels page's note and print actions are no form. Print opens the print route, whose one
+// form (in V_SCOPE) checks the note and records the print; on the page the note's 500 is the control's own maxLength.
+test("the labels page's note is no form: the print route's form checks it (group 4 plan 6 Task 5)", () => {
+  for (const path of [`${C}assets/asset-label-print-list.tsx`, `${C}assets/asset-label-batch-tool.tsx`]) assert.equal(formTags(read(path)).length, 0, path)
+  assert.match(read(`${C}assets/asset-label-print-list.tsx`), /maxLength=\{LABEL_PRINT_NOTE_MAX\}/)
+  assert.equal(V_SCOPE[`${C}assets/asset-label-print.tsx`], 1)
+  assert.ok(V_FORMS.includes(`${C}assets/asset-label-print.tsx`))
+})
+
 test("V2 a moved form checks itself: validate() and noValidate right after onSubmit (spec §4.5)", () => {
   const problems: string[] = []
   for (const path of V_FORMS) {

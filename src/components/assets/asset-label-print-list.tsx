@@ -1,150 +1,255 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ArrowDownAZ, Printer, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Printer, X } from "lucide-react"
+import { useTranslations } from "next-intl"
+import { AssetLabelPreview } from "@/components/assets/asset-label-sheet"
 import { Button } from "@/components/ui/button"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
+import { Segmented } from "@/components/ui/segmented"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
+import { LABEL_PRINT_NOTE_MAX } from "@/lib/asset-label-print-hash"
+import {
+  labelPreviewIndex,
+  labelPrintOrders,
+  labelSheetAsset,
+  labelTapeText,
+  type LabelPrintOrder,
+} from "@/lib/asset-label-print-list-rules"
+import type { AssetLabelPrintSettings as AssetLabelPrintSettingsData } from "@/lib/asset-label-print-settings"
 import type { LabelQueueRow } from "@/lib/asset-label-queue"
+import { assetLabelTapeSizes, getAssetLabelTapePrinterSize, type AssetLabelTapeSize } from "@/lib/asset-label-template"
+import { isLikelyLocalAssetQrValue } from "@/lib/asset-qr"
 
-// The labels page's right column: the print list, its order and the two print buttons. Group 4 plan 6 Task 4 moved
-// it here from the tool unchanged in what it does (rows are LabelQueueRow now); Task 5 rebuilds it (P6-R1, R8-R10).
+// The labels page's right column (group 4 plan 6 Task 5, spec §11, board AR-Labels): the numbered print list with its
+// count and order, then the settings (tape and note) with a label-by-label preview. The shell holds the state. The two
+// print actions sit in the page's bar from md (P6-R10) and at the end of the list card below md, where there is no bar.
 
-type SelectedSort = "manual" | "asset_tag" | "location" | "category"
+/**
+ * "พิมพ์ทดสอบ 1 ดวง" then "พิมพ์ป้าย {n} ดวง", the primary last. With an empty list both wait and point at the list's
+ * empty note, the reason (spec §4.4); the handlers return first.
+ */
+export function AssetLabelPrintActions({
+  count,
+  onTestPrint,
+  onPrint,
+  className,
+}: {
+  count: number
+  onTestPrint: () => void
+  onPrint: () => void
+  className?: string
+}) {
+  const t = useTranslations("assetTools.labelsPage")
+  const waits = count === 0
 
-export type AssetLabelPrintListLabels = {
-  selectedTitle: string
-  selectedCount: string
-  print: string
-  remove: string
-  noSelected: string
-  selectedSortLabel: string
-  selectedSortManual: string
-  queueSortAssetTag: string
-  queueSortLocation: string
-  queueSortCategory: string
-  printFirstLabel: string
+  return (
+    <div className={className}>
+      <Button
+        variant="outline"
+        size="md"
+        aria-disabled={waits || undefined}
+        aria-describedby={waits ? "asset-label-print-reason" : undefined}
+        onClick={onTestPrint}
+      >
+        {t("testPrint")}
+      </Button>
+      <Button
+        size="md"
+        aria-disabled={waits || undefined}
+        aria-describedby={waits ? "asset-label-print-reason" : undefined}
+        onClick={onPrint}
+      >
+        <Printer aria-hidden="true" />
+        {t("print", { count })}
+      </Button>
+    </div>
+  )
 }
 
 export function AssetLabelPrintList({
-  locale,
-  selected,
+  rows,
+  order,
+  onOrderChange,
   status,
-  labels,
+  fromRegisterCount,
+  summary,
   onRemove,
+  onTestPrint,
+  onPrint,
 }: {
-  locale: string
-  selected: LabelQueueRow[]
-  // The list's status line (P6-R2): what an add could not take, or that the list is full.
+  // In print order, at most 100 (P6-R2).
+  rows: LabelQueueRow[]
+  order: LabelPrintOrder
+  onOrderChange: (order: LabelPrintOrder) => void
+  // The list's status line (P6-R2): what an add could not take, that the list is full, or that a refresh failed.
   status: string | null
-  labels: AssetLabelPrintListLabels
+  // How many came from the register's selection (P6-R1); 0 hides the line.
+  fromRegisterCount: number
+  // "{n} ดวงที่จะพิมพ์ · เทป {size}", the bar's line, over the actions below md.
+  summary: string
   onRemove: (id: string) => void
+  onTestPrint: () => void
+  onPrint: () => void
 }) {
-  const [selectedSort, setSelectedSort] = useState<SelectedSort>("manual")
-  const selectedForPrint = useMemo(() => sortSelectedAssets(selected, selectedSort), [selected, selectedSort])
-
-  function removeAsset(id: string) {
-    onRemove(id)
-  }
-
-  function printLabels() {
-    if (selectedForPrint.length === 0) return
-    window.open(buildPrintUrl(locale, selectedForPrint), "_blank", "noopener,noreferrer")
-  }
-
-  function printFirstLabel() {
-    const [firstAsset] = selectedForPrint
-    if (!firstAsset) return
-    window.open(buildPrintUrl(locale, [firstAsset]), "_blank", "noopener,noreferrer")
-  }
+  const t = useTranslations("assetTools.labelsPage")
 
   return (
     <ContentPanel
-      title={labels.selectedTitle}
-      description={`${formatCount(selected.length)} ${labels.selectedCount}`}
-      className="xl:sticky xl:top-20 xl:self-start"
-    >
-      <div className="mb-4 flex flex-col gap-3">
-        <Field label={<span className="inline-flex items-center gap-1"><ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" />{labels.selectedSortLabel}</span>}>
-          <NativeSelect value={selectedSort} onChange={(event) => setSelectedSort(event.target.value as SelectedSort)}>
-            <option value="manual">{labels.selectedSortManual}</option>
-            <option value="asset_tag">{labels.queueSortAssetTag}</option>
-            <option value="location">{labels.queueSortLocation}</option>
-            <option value="category">{labels.queueSortCategory}</option>
+      divided
+      flush
+      title={t("listTitle")}
+      actions={
+        <>
+          <StatusBadge label={t("listCount", { count: rows.length })} tone="info" />
+          <NativeSelect
+            aria-label={t("orderLabel")}
+            fieldSize="md"
+            value={order}
+            onChange={(event) => onOrderChange(event.target.value as LabelPrintOrder)}
+            className="w-auto"
+          >
+            {labelPrintOrders.map((value) => (
+              <option key={value} value={value}>{t(`order.${value}`)}</option>
+            ))}
           </NativeSelect>
-        </Field>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-          <Button
-            variant="outline"
-            aria-disabled={selectedForPrint.length === 0 || undefined}
-            aria-describedby={selectedForPrint.length === 0 ? "asset-label-print-reason" : undefined}
-            onClick={printFirstLabel}
-            className="w-full"
-          >
-            <Printer aria-hidden="true" />
-            {labels.printFirstLabel}
-          </Button>
-          <Button
-            aria-disabled={selectedForPrint.length === 0 || undefined}
-            aria-describedby={selectedForPrint.length === 0 ? "asset-label-print-reason" : undefined}
-            onClick={printLabels}
-            className="w-full"
-          >
-            <Printer aria-hidden="true" />
-            {labels.print}
-          </Button>
-        </div>
-        <p role="status" className="text-meta text-muted-foreground empty:hidden">{status}</p>
-      </div>
-
-      {selectedForPrint.length === 0 ? (
-        <EmptyNote id="asset-label-print-reason">{labels.noSelected}</EmptyNote>
+        </>
+      }
+    >
+      {rows.length === 0 ? (
+        <EmptyNote id="asset-label-print-reason" padded>{t("listEmpty")}</EmptyNote>
       ) : (
-        <div className="max-h-[44rem] space-y-2 overflow-y-auto pr-1">
-          {selectedForPrint.map((asset) => (
-            <div key={asset.id} data-label-selected-row={asset.id} className="flex min-w-0 items-start gap-3 rounded-md border border-border bg-background px-3 py-2">
+        <ol aria-label={t("listTitle")} className="divide-y divide-border-soft">
+          {rows.map((asset, index) => (
+            <li key={asset.id} data-label-selected-row={asset.id} className="flex min-h-14 min-w-0 items-center gap-2.5 py-2 pr-2 pl-4 md:pl-5">
+              <span aria-hidden="true" className="num w-6 shrink-0 text-meta text-muted-foreground">{formatCount(index + 1)}</span>
               <span className="min-w-0 flex-1">
                 <span className="block break-words text-sm font-medium text-foreground">{asset.name}</span>
                 <span className="block text-meta text-muted-foreground">
                   <span className="tag">{asset.assetTag}</span>
                 </span>
               </span>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => removeAsset(asset.id)}
-                className="shrink-0"
-                title={labels.remove}
-                aria-label={labels.remove}
-              >
+              <Button variant="ghost" size="icon-sm" onClick={() => onRemove(asset.id)} aria-label={t("remove", { tag: asset.assetTag })}>
                 <X aria-hidden="true" />
               </Button>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       )}
+      <p role="status" className="border-t border-border-soft px-4 py-2.5 text-meta text-muted-foreground empty:hidden md:px-5">{status}</p>
+      {fromRegisterCount > 0 ? (
+        <p className="border-t border-border-soft px-4 py-2.5 text-meta text-muted-foreground md:px-5">{t("fromRegister", { count: fromRegisterCount })}</p>
+      ) : null}
+      <div className="grid gap-2 border-t border-border-soft px-4 py-3 md:hidden">
+        {rows.length > 0 ? <p className="text-meta text-muted-foreground">{summary}</p> : null}
+        <AssetLabelPrintActions count={rows.length} onTestPrint={onTestPrint} onPrint={onPrint} className="grid gap-2 sm:grid-cols-2" />
+      </div>
     </ContentPanel>
   )
 }
 
-function buildPrintUrl(locale: string, assets: LabelQueueRow[]) {
-  const params = new URLSearchParams()
-  assets.forEach((asset) => params.append("id", asset.id))
-  return `/${locale}/assets/labels?${params.toString()}`
-}
+export function AssetLabelPrintSettings({
+  rows,
+  settings,
+  tapeSize,
+  onTapeSizeChange,
+  note,
+  onNoteChange,
+  previewIndex,
+  onPreviewIndexChange,
+}: {
+  // In print order: the preview steps through them.
+  rows: LabelQueueRow[]
+  settings: Pick<AssetLabelPrintSettingsData, "templates" | "qrBaseUrl">
+  tapeSize: AssetLabelTapeSize
+  onTapeSizeChange: (size: AssetLabelTapeSize) => void
+  note: string
+  onNoteChange: (note: string) => void
+  previewIndex: number
+  onPreviewIndexChange: (index: number) => void
+}) {
+  const t = useTranslations("assetTools.labelsPage")
+  const tAsset = useTranslations("asset")
+  const index = labelPreviewIndex(previewIndex, rows.length)
+  const shown = rows[index]
+  // The QR as it will print, built from the base the server resolved (recon X11).
+  const sheetAsset = shown ? labelSheetAsset(shown, settings.qrBaseUrl) : null
+  const tapeText = labelTapeText(tapeSize, t("tapeCustom"))
 
-function codeName(value: { code: string; name: string } | null) {
-  return value ? `${value.code} - ${value.name}` : ""
-}
-
-function sortSelectedAssets(assets: LabelQueueRow[], selectedSort: SelectedSort) {
-  if (selectedSort === "manual") return assets
-
-  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
-  const valueOf = (asset: LabelQueueRow) =>
-    selectedSort === "asset_tag" ? asset.assetTag : selectedSort === "location" ? codeName(asset.location) : codeName(asset.category)
-  return [...assets].sort((left, right) => collator.compare(valueOf(left), valueOf(right)) || collator.compare(left.assetTag, right.assetTag))
+  return (
+    <ContentPanel divided title={t("settingsTitle")}>
+      <div className="grid gap-4">
+        <div className="grid gap-1.5">
+          <span id="asset-label-tape-size" className="text-sm font-medium text-foreground">{t("tapeSize")}</span>
+          <Segmented
+            labelledBy="asset-label-tape-size"
+            fill
+            value={tapeSize}
+            onValueChange={onTapeSizeChange}
+            options={assetLabelTapeSizes.map((size) => ({ value: size, label: labelTapeText(size, t("tapeCustom")) }))}
+          />
+        </div>
+        <Field label={t("note")} hint={t("noteHint", { max: LABEL_PRINT_NOTE_MAX })}>
+          <Input
+            value={note}
+            onChange={(event) => onNoteChange(event.target.value)}
+            maxLength={LABEL_PRINT_NOTE_MAX}
+            placeholder={t("notePlaceholder")}
+          />
+        </Field>
+        {sheetAsset ? (
+          <div className="grid gap-1.5">
+            <div className="flex min-w-0 items-center gap-1">
+              <span className="text-sm font-medium text-foreground">{t("previewTitle")}</span>
+              <span className="num ml-auto text-meta text-muted-foreground">{t("previewPosition", { index: index + 1, total: rows.length })}</span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("previewPrevious")}
+                aria-disabled={index === 0 || undefined}
+                onClick={() => {
+                  if (index > 0) onPreviewIndexChange(index - 1)
+                }}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("previewNext")}
+                aria-disabled={index >= rows.length - 1 || undefined}
+                onClick={() => {
+                  if (index < rows.length - 1) onPreviewIndexChange(index + 1)
+                }}
+              >
+                <ChevronRight aria-hidden="true" />
+              </Button>
+            </div>
+            {/* The shared part is the forced-light paper: the label looks printed on either theme (dark mode P-R3). */}
+            <AssetLabelPreview
+              asset={sheetAsset}
+              template={settings.templates.tapes[tapeSize]}
+              scanHint={tAsset("scanToOpenDetail")}
+              compactAssetNameEnabled={settings.templates.compactAssetNameEnabled}
+              label={t("previewName", { size: tapeText, tag: sheetAsset.assetTag })}
+            />
+          </div>
+        ) : null}
+        <Notice tone="neutral">{t("brotherHint", { size: getAssetLabelTapePrinterSize(tapeSize) })}</Notice>
+        {sheetAsset ? (
+          <>
+            <p className="text-meta text-muted-foreground">
+              {t("qrTarget")} <span className="break-all font-mono text-foreground">{sheetAsset.qrValue}</span>
+            </p>
+            {isLikelyLocalAssetQrValue(sheetAsset.qrValue) ? <Notice tone="warning">{tAsset("labelQrLocalWarning")}</Notice> : null}
+          </>
+        ) : null}
+      </div>
+    </ContentPanel>
+  )
 }

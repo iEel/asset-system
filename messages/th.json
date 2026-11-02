@@ -296,17 +296,7 @@
     "zoomCamera": "ซูม {level} เท่า",
     "zoomUnsupported": "อุปกรณ์นี้ไม่รองรับการซูมกล้องจากเบราว์เซอร์",
     "globalScanShortcut": "สแกนทรัพย์สิน",
-    "labelsTitle": "พิมพ์ป้ายทรัพย์สิน",
-    "labelsSubtitle": "ค้นหาและเลือกหลายทรัพย์สิน แล้วพิมพ์ป้ายเป็นชุดเดียว",
-    "selectedLabelsTitle": "รายการที่จะพิมพ์",
     "removeSelectedAsset": "เอาออกจากรายการ",
-    "noSelectedLabels": "ยังไม่ได้เลือกทรัพย์สิน",
-    "queueSortAssetTag": "รหัสทรัพย์สิน",
-    "queueSortLocation": "ที่ตั้ง",
-    "queueSortCategory": "หมวดหมู่",
-    "selectedSortLabel": "ลำดับพิมพ์",
-    "selectedSortManual": "ตามลำดับที่เลือก",
-    "printFirstLabel": "พิมพ์ทดสอบ 1 ดวง",
     "importExportTitle": "นำเข้า / ส่งออกทรัพย์สิน",
     "scanPagePlaceholder": "รหัสทรัพย์สิน, Serial หรือชื่อ",
     "scanHint": "ป้าย QR ยังติดไม่ครบ พิมพ์รหัสบางส่วน, Serial ใต้เครื่อง หรือชื่อแทนได้",
@@ -460,7 +450,8 @@
       "queueLoadFailed": "โหลดคิวป้ายไม่สำเร็จ",
       "showMoreFailed": "โหลดรายการเพิ่มไม่สำเร็จ",
       "addAllFailed": "เพิ่มเข้ารายการพิมพ์ไม่สำเร็จ",
-      "addAllSkipped": "ไม่ได้เพิ่ม {count, number} รายการที่ปิดใช้งานแล้ว"
+      "addAllSkipped": "ไม่ได้เพิ่ม {count, number} รายการที่ปิดใช้งานแล้ว",
+      "listRefreshFailed": "โหลดสถานะล่าสุดของรายการพิมพ์ไม่สำเร็จ"
     }
   },
   "auth": {

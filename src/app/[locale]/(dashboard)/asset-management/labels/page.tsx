@@ -1,27 +1,27 @@
-import { getTranslations } from "next-intl/server"
 import { requirePagePermission } from "@/lib/page-auth"
 import { prisma } from "@/lib/db"
+import { loadAssetLabelPrintSettings } from "@/lib/asset-label-print-settings"
 import { normalizeLabelPrintAssetIds } from "@/lib/asset-label-print-tracking"
 import { lookupLabelPrintRows, type LabelQueueDb } from "@/lib/asset-label-queue"
 import { AssetLabelBatchTool } from "@/components/assets/asset-label-batch-tool"
 
 type AssetLabelsToolPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ assetIds?: string }>
+  searchParams: Promise<{ assetIds?: string; from?: string }>
 }
 
 export default async function AssetLabelsToolPage({ params, searchParams }: AssetLabelsToolPageProps) {
   const { locale } = await params
-  const { assetIds } = await searchParams
+  const { assetIds, from } = await searchParams
   await requirePagePermission(locale, "asset", "view")
-  const t = await getTranslations("assetTools")
-  const tAsset = await getTranslations("asset")
   const queueLocale = locale === "en" ? "en" : "th"
   // The incoming ids keep their order, once each, at most 100 (P6-R2); their rows come from the queue's lookup, so they
-  // carry their real print state like every other row (P6-R11).
+  // carry their real print state like every other row (P6-R11). The register adds from=register (P6-R1). The label
+  // settings come through the one loader, so the page's preview and the print route draw the same label (recon X11).
   const preselectedIds = normalizeLabelPrintAssetIds((assetIds ?? "").split(","))
-  const [preselected, companies, branches, categories, locations] = await Promise.all([
+  const [preselected, labelSettings, companies, branches, categories, locations] = await Promise.all([
     lookupLabelPrintRows(prisma as unknown as LabelQueueDb, preselectedIds, queueLocale),
+    loadAssetLabelPrintSettings(),
     prisma.company.findMany({
       where: { isActive: true },
       select: { id: true, code: true, nameTh: true, nameEn: true },
@@ -77,21 +77,8 @@ export default async function AssetLabelsToolPage({ params, searchParams }: Asse
         })),
       }}
       preselectedRows={preselected.rows}
-      labels={{
-        title: t("labelsTitle"),
-        subtitle: t("labelsSubtitle"),
-        selectedTitle: t("selectedLabelsTitle"),
-        selectedCount: tAsset("selectedCount"),
-        print: tAsset("printSelectedLabels"),
-        remove: t("removeSelectedAsset"),
-        noSelected: t("noSelectedLabels"),
-        selectedSortLabel: t("selectedSortLabel"),
-        selectedSortManual: t("selectedSortManual"),
-        queueSortAssetTag: t("queueSortAssetTag"),
-        queueSortLocation: t("queueSortLocation"),
-        queueSortCategory: t("queueSortCategory"),
-        printFirstLabel: t("printFirstLabel"),
-      }}
+      fromRegister={from === "register"}
+      settings={labelSettings}
     />
   )
 }

@@ -134,6 +134,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   [`${C}assets/purchase-document-picker.tsx`]: [0, 1, 0],
   // Group 4 plan 4 Task 3: the role is a NativeSelect of the 8 stored values (P4-R4), so its Input's maxLength 100 goes.
   [`${C}assets/asset-component-manager.tsx`]: [0, 3, 0],
+  // Group 4 plan 6 Task 5: the labels page's note (maxLength 500, the print record's reason, P6-R9).
+  [`${C}assets/asset-label-print-list.tsx`]: [0, 1, 0],
   // Group 4 plan 1 Task 6: the saved view's name (maxLength 40).
   [`${C}assets/asset-register-saved-views.tsx`]: [0, 1, 0],
   [`${C}admin/system-settings-form.tsx`]: [0, 1, 0],

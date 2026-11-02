@@ -90,8 +90,9 @@ test("label batch tool exposes queue filters and print-order controls", () => {
   const list = readFileSync(PRINT_LIST_PART, "utf8")
 
   assert.match(queue, /queueFilters/)
-  assert.match(list, /selectedSort/)
-  assert.match(list, /printFirstLabel/)
+  // Group 4 plan 6 Task 5: the order sits in the list card's head; test print is the preview's label (P6-R8).
+  assert.match(list, /onOrderChange\(event\.target\.value as LabelPrintOrder\)/)
+  assert.match(list, /onClick=\{onTestPrint\}/)
   assert.match(queue, /showMoreQueue/)
   assert.match(queue, /pageSize: LABEL_QUEUE_MORE_STEP, skip: queue\.rows\.length/)
 })
@@ -155,10 +156,14 @@ test("label tool messages include queue filter and print ordering labels", () =>
     assert.equal(typeof messages.labelsPage.filtersLabel, "string")
     assert.equal(typeof messages.labelsPage.filter.company, "string")
     assert.equal(typeof messages.labelsPage.created.fromLabel, "string")
-    assert.equal(typeof messages.selectedSortLabel, "string")
-    assert.equal(typeof messages.printFirstLabel, "string")
-    // The old queue words lost their last reader in group 4 plan 6 Task 4 (P6-C1).
-    for (const key of ["labelQueueFiltersTitle", "queueFilterCompany", "queueFilterCreatedFrom", "labelPrintedBadge", "labelUnprintedBadge", "queueModeLabel", "resetQueueFilters", "loadMoreQueue", "addFilteredQueue", "scanPlaceholder"]) {
+    assert.equal(typeof messages.labelsPage.orderLabel, "string")
+    for (const key of ["selected", "assetTag", "location", "category"]) assert.equal(typeof messages.labelsPage.order[key], "string", key)
+    assert.equal(typeof messages.labelsPage.testPrint, "string")
+    // The old queue words lost their last reader in group 4 plan 6 Task 4, the right column's in Task 5 (P6-C1).
+    for (const key of [
+      "labelQueueFiltersTitle", "queueFilterCompany", "queueFilterCreatedFrom", "labelPrintedBadge", "labelUnprintedBadge", "queueModeLabel", "resetQueueFilters", "loadMoreQueue", "addFilteredQueue", "scanPlaceholder",
+      "labelsTitle", "labelsSubtitle", "selectedLabelsTitle", "noSelectedLabels", "selectedSortLabel", "selectedSortManual", "queueSortAssetTag", "queueSortLocation", "queueSortCategory", "printFirstLabel",
+    ]) {
       assert.equal(messages[key], undefined, key)
     }
   }
@@ -195,18 +200,18 @@ test("the label batch tool uses PageHeader, shared fields and Button (2C batch 4
   const shell = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8").replace(/\r\n/g, "\n")
   const source = readFileSync(QUEUE_PART, "utf8").replace(/\r\n/g, "\n")
   const list = readFileSync(PRINT_LIST_PART, "utf8").replace(/\r\n/g, "\n")
-  assert.match(shell, /<PageHeader title=\{labels\.title\} meta=\{labels\.subtitle\} \/>/)
+  assert.match(shell, /<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>/)
   assert.match(source, /<Field label=\{t\("searchLabel"\)\} hint=\{t\("searchHint"\)\}>\n\s+<SearchField value=\{query\} onChange=\{\(event\) => setQuery\(event\.target\.value\)\} placeholder=\{tTools\("labelSearchPlaceholder"\)\} \/>\n\s+<\/Field>/)
   assert.equal(source.match(/<Field label=\{t\("created\.(?:from|to)Label"\)\}>\n\s+<Input\n\s+type="date"/g)?.length, 2)
-  assert.match(list, /<Field label=\{<span className="inline-flex items-center gap-1"><ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" \/>\{labels\.selectedSortLabel\}<\/span>\}>\n\s+<NativeSelect value=\{selectedSort\}/)
+  assert.match(list, /<Field label=\{t\("note"\)\} hint=\{t\("noteHint", \{ max: LABEL_PRINT_NOTE_MAX \}\)\}>\n\s+<Input\n/)
   assert.equal(source.match(/<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" \/>/g)?.length, 1, "one loading line part for the search and the queue")
   assert.match(source, /<LoadingLine label=\{tSearch\("loading"\)\} \/>/)
   assert.match(source, /<LoadingLine label=\{t\("queueLoading"\)\} \/>/)
   assert.match(source, /<Button variant="ghost" size="sm" onClick=\{resetQueueFilters\}>/)
   assert.match(source, /<Button variant="outline" size="sm" busy=\{moreLoading\} onClick=\{showMoreQueue\} className="ml-auto">/)
-  assert.match(list, /<Button\n\s+variant="outline"\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printFirstLabel\}\n\s+className="w-full"\n\s+>/)
-  assert.match(list, /<Button\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printLabels\}\n\s+className="w-full"\n\s+>/)
-  assert.match(list, /<Button\n\s+variant="outline"\n\s+size="icon-sm"\n\s+onClick=\{\(\) => removeAsset\(asset\.id\)\}\n\s+className="shrink-0"\n\s+title=\{labels\.remove\}\n\s+aria-label=\{labels\.remove\}/)
+  assert.match(list, /<Button\n\s+variant="outline"\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onTestPrint\}\n\s+>/)
+  assert.match(list, /<Button\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onPrint\}\n\s+>/)
+  assert.match(list, /<Button variant="ghost" size="icon-sm" onClick=\{\(\) => onRemove\(asset\.id\)\} aria-label=\{t\("remove", \{ tag: asset\.assetTag \}\)\}>/)
   assert.equal(source.match(/<button\b/g)?.length, 1, "only the search and queue row part stays a list button (2D)")
   for (const file of [shell, source, list]) {
     if (file !== source) assert.equal(file.match(/<button\b/g)?.length ?? 0, 0)
@@ -422,18 +427,18 @@ test("queue rows: the stable hook, the board's names, ป้ายเดิม, 
   assert.match(queue, /setQueue\(\(current\) => \(\{ \.\.\.page, rows: appendQueueRows\(current\.rows, page\.rows\) \}\)\)/)
   assert.match(queue, /if \(currentSearch\.current !== search\) return/, "an answer for older filters is dropped")
   assert.doesNotMatch(queue, /overflow-y-auto/, "the queue scrolls with the page")
-  // The selected rows carry their hook too (Task 5 builds on it).
-  assert.match(readLf(PRINT_LIST_PART), /<div key=\{asset\.id\} data-label-selected-row=\{asset\.id\}/)
+  // The selected rows carry their hook too (Task 5: numbered list items).
+  assert.match(readLf(PRINT_LIST_PART), /<li key=\{asset\.id\} data-label-selected-row=\{asset\.id\}/)
 })
 
 test("the print list never passes 100 and says so in its status line (P6-R2)", () => {
   const shell = readLf("src/components/assets/asset-label-batch-tool.tsx")
   assert.match(shell, /const incoming = mergeIntoPrintList\(\[\], preselectedRows\)/)
   assert.match(shell, /setPrintList\(\(current\) => \{\n\s+const result = mergeIntoPrintList\(current\.rows, rows\)/)
-  assert.match(shell, /const room = printListRoom\(selected\.length\)/)
+  assert.match(shell, /const room = printListRoom\(ordered\.length\)/)
   assert.match(shell, /<AssetLabelQueueCard locale=\{locale\} filterOptions=\{filterOptions\} selectedIds=\{selectedIds\} room=\{room\} onAdd=\{addRows\} \/>/)
   assert.match(shell, /<AssetLabelSearchCard locale=\{locale\} selectedIds=\{selectedIds\} onAdd=\{addRows\} \/>/)
-  assert.match(readLf(PRINT_LIST_PART), /<p role="status" className="text-meta text-muted-foreground empty:hidden">\{status\}<\/p>/)
+  assert.match(readLf(PRINT_LIST_PART), /<p role="status" className="border-t border-border-soft px-4 py-2\.5 text-meta text-muted-foreground empty:hidden md:px-5">\{status\}<\/p>/)
   // The incoming ids: in their order, once each, at most 100, through the lookup.
   const page = readLf("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx")
   assert.match(page, /const preselectedIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\)\)/)
@@ -477,4 +482,192 @@ test("the queue says when a load, add-all, show-more or a search add fails, with
   assert.equal(th.showMoreFailed, "โหลดรายการเพิ่มไม่สำเร็จ")
   assert.equal(th.addAllFailed, "เพิ่มเข้ารายการพิมพ์ไม่สำเร็จ")
   assert.equal(th.addAllSkipped, "ไม่ได้เพิ่ม {count, number} รายการที่ปิดใช้งานแล้ว")
+})
+
+// Group 4 plan 6 Task 5 (P6-R1, R2, R8, R9, R10, R13; Review Focus 3 and 4): the numbered print list, tape and note, the
+// label-by-label preview, the print bar and the refetch after a print in the other tab.
+const SHELL = "src/components/assets/asset-label-batch-tool.tsx"
+const LABELS_PAGE = "src/app/[locale]/(dashboard)/asset-management/labels/page.tsx"
+const PRINT_LIST_RULES = "../src/lib/asset-label-print-list-rules.ts"
+const uuid = (index: number) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`
+
+test("the print URL holds at most 100 ids in its query; tape and note ride only in its hash (P6-R9, Review Focus 4)", async () => {
+  const { buildLabelPrintUrl } = await import(PRINT_LIST_RULES)
+  const { parseAssetLabelPrintHash } = await import("../src/lib/asset-label-print-hash.ts")
+  const ids = [uuid(7), uuid(7), ...Array.from({ length: 104 }, (_, index) => uuid(index))]
+  const note = "ก".repeat(500)
+  const href = buildLabelPrintUrl({ locale: "th", ids, tapeSize: "24", note })
+  const url = new URL(href, "https://assets.example.test")
+  assert.equal(url.pathname, "/th/assets/labels")
+  assert.deepEqual([...new Set(url.searchParams.keys())], ["id"], "the query holds the ids only")
+  const queryIds = url.searchParams.getAll("id")
+  assert.equal(queryIds.length, 100)
+  assert.deepEqual(queryIds.slice(0, 3), [uuid(7), uuid(0), uuid(1)], "the list order, once each")
+  assert.equal(new Set(queryIds).size, 100)
+  assert.ok(!url.search.includes(encodeURIComponent("ก")) && !url.search.includes("note"), "no note in the query")
+  // Well under Nginx's 8 KB request line: the hash never reaches the server.
+  assert.ok(href.split("#")[0].length < 4200)
+  assert.deepEqual(parseAssetLabelPrintHash(url.hash, "18"), { tapeSize: "24", note })
+  // A longer note is cut to the record's 500; the spaces around it go.
+  const long = new URL(buildLabelPrintUrl({ locale: "en", ids: [uuid(1)], tapeSize: "custom", note: `  ${"ข".repeat(600)}  ` }), "https://assets.example.test")
+  assert.equal(long.pathname, "/en/assets/labels")
+  assert.deepEqual(parseAssetLabelPrintHash(long.hash, "18"), { tapeSize: "custom", note: "ข".repeat(500) })
+  // The shell opens it in a new tab, as before.
+  const shell = readLf(SHELL)
+  assert.match(shell, /window\.open\(buildLabelPrintUrl\(\{ locale, ids, tapeSize, note: printNote \}\), "_blank", "noopener,noreferrer"\)/)
+  assert.match(shell, /function printLabels\(\) \{\n\s+if \(ordered\.length === 0\) return\n\s+openPrint\(ordered\.map\(\(asset\) => asset\.id\), note\)/)
+})
+
+test("the incoming ids keep the register's order, once each, and say they came from the register (P6-R1, Review Focus 3)", async () => {
+  const { normalizeLabelPrintAssetIds } = await import("../src/lib/asset-label-print-tracking.ts")
+  const { mergeIntoPrintList } = await import("../src/lib/asset-label-queue-rules.ts")
+  // The register sends 100 ids with duplicates: each asset once, in the register's order.
+  const sent = Array.from({ length: 100 }, (_, index) => uuid(index % 60))
+  const ids = normalizeLabelPrintAssetIds(sent)
+  assert.deepEqual(ids, Array.from({ length: 60 }, (_, index) => uuid(index)))
+  const merged = mergeIntoPrintList([], ids.map((id) => ({ id })))
+  assert.deepEqual(merged.next.map((row) => row.id), ids)
+  assert.equal(merged.added, 60)
+  const page = readLf(LABELS_PAGE)
+  assert.match(page, /searchParams: Promise<\{ assetIds\?: string; from\?: string \}>/)
+  assert.match(page, /const \{ assetIds, from \} = await searchParams/)
+  assert.match(page, /const preselectedIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\)\)/)
+  assert.match(page, /loadAssetLabelPrintSettings\(\),/)
+  assert.match(page, /fromRegister=\{from === "register"\}/)
+  assert.match(page, /settings=\{labelSettings\}/)
+  assert.doesNotMatch(page, /getTranslations|systemSetting|process\.env/)
+  // The line shows only with from=register: the count is what came in, and clearing the list forgets it.
+  const shell = readLf(SHELL)
+  assert.match(shell, /fromRegister: fromRegister \? incoming\.next\.length : 0/)
+  assert.match(shell, /setPrintList\(\{ rows: \[\], lastAdd: null, fromRegister: 0 \}\)/)
+  const list = readLf(PRINT_LIST_PART)
+  assert.match(list, /\{fromRegisterCount > 0 \? \(\n\s+<p className="border-t border-border-soft px-4 py-2\.5 text-meta text-muted-foreground md:px-5">\{t\("fromRegister", \{ count: fromRegisterCount \}\)\}<\/p>\n\s+\) : null\}/)
+})
+
+test("test print sends the label shown in the preview, with พิมพ์ทดสอบ when no note was typed (P6-R8)", async () => {
+  const { labelTestPrint, labelPreviewIndex } = await import(PRINT_LIST_RULES)
+  const rows = [{ id: "a" }, { id: "b" }, { id: "c" }]
+  assert.deepEqual(labelTestPrint(rows, 1, "", "พิมพ์ทดสอบ"), { ids: ["b"], note: "พิมพ์ทดสอบ" })
+  assert.deepEqual(labelTestPrint(rows, 2, "   ", "พิมพ์ทดสอบ"), { ids: ["c"], note: "พิมพ์ทดสอบ" })
+  assert.deepEqual(labelTestPrint(rows, 0, "ลองเทปใหม่", "พิมพ์ทดสอบ"), { ids: ["a"], note: "ลองเทปใหม่" })
+  // An index past the end (a row was removed) is the last label, the one the preview shows.
+  assert.deepEqual(labelTestPrint(rows, 9, "", "พิมพ์ทดสอบ"), { ids: ["c"], note: "พิมพ์ทดสอบ" })
+  assert.equal(labelTestPrint([], 0, "", "พิมพ์ทดสอบ"), null)
+  assert.equal(labelPreviewIndex(5, 3), 2)
+  assert.equal(labelPreviewIndex(-1, 3), 0)
+  assert.equal(labelPreviewIndex(4, 0), 0)
+  const shell = readLf(SHELL)
+  assert.match(shell, /function testPrint\(\) \{\n(?:\s+\/\/[^\n]*\n)*\s+const request = labelTestPrint\(ordered, previewIndex, note, t\("testPrintNote"\)\)\n\s+if \(!request\) return\n\s+openPrint\(request\.ids, request\.note\)/)
+  // The preview shows the same index, clamped the same way.
+  assert.match(readLf(PRINT_LIST_PART), /const index = labelPreviewIndex\(previewIndex, rows\.length\)\n\s+const shown = rows\[index\]/)
+})
+
+test("the print order, the preview's label data and the refreshed rows (P6-R11, P6-R13)", async () => {
+  const { sortLabelPrintList, labelSheetAsset, labelTapeText, refreshLabelRows, labelPrintOrders } = await import(PRINT_LIST_RULES)
+  const { queueRefreshPageSize } = await import("../src/lib/asset-label-queue-rules.ts")
+  const row = (id: string, assetTag: string, location: string | null, category: string) => ({
+    id,
+    assetTag,
+    name: `name ${id}`,
+    ownershipType: "personal",
+    holder: null,
+    location: location ? { code: location, name: `room ${location}` } : null,
+    company: { code: "GRL", name: "Glink" },
+    branch: { code: "HQ", name: "Head office" },
+    category: { code: category, name: `cat ${category}` },
+    lastPrint: null,
+  })
+  const rows = [row("1", "A-10", "R2", "C1"), row("2", "A-9", null, "C2"), row("3", "A-11", "R1", "C1")]
+  const ids = (list: { id: string }[]) => list.map((item) => item.id)
+  assert.deepEqual(labelPrintOrders, ["selected", "assetTag", "location", "category"])
+  assert.deepEqual(ids(sortLabelPrintList(rows, "selected")), ["1", "2", "3"])
+  assert.deepEqual(ids(sortLabelPrintList(rows, "assetTag")), ["2", "1", "3"], "numeric order")
+  assert.deepEqual(ids(sortLabelPrintList(rows, "location")), ["2", "3", "1"])
+  assert.deepEqual(ids(sortLabelPrintList(rows, "category")), ["1", "3", "2"])
+  // The preview draws what the print route draws: codes for company and branch, "code - name" for category and room.
+  assert.deepEqual(labelSheetAsset(rows[0], "https://assets.example.test"), {
+    id: "1",
+    assetTag: "A-10",
+    name: "name 1",
+    serialNumber: null,
+    category: "C1 - cat C1",
+    company: "GRL",
+    branch: "HQ",
+    location: "R2 - room R2",
+    qrValue: "https://assets.example.test/q/a/1",
+  })
+  assert.equal(labelSheetAsset(rows[1], "").location, "")
+  assert.equal(labelSheetAsset(rows[1], "").qrValue, "/q/a/2")
+  assert.equal(labelTapeText("18", "กำหนดเอง"), "18 mm")
+  assert.equal(labelTapeText("custom", "กำหนดเอง"), "กำหนดเอง")
+  // The refetch replaces each listed row with today's, in the list's order; a row the lookup did not return stays.
+  const fresh = { ...rows[2], assetTag: "A-12", lastPrint: { printedAt: "2026-11-02T00:00:00.000Z", assetTag: "A-11" } }
+  assert.deepEqual(refreshLabelRows(rows, [fresh]).map((item: { assetTag: string }) => item.assetTag), ["A-10", "A-9", "A-12"])
+  // The queue asks again for as many rows as it shows, from the top: at least the first page, at most 100.
+  assert.equal(queueRefreshPageSize(0), 20)
+  assert.equal(queueRefreshPageSize(40), 40)
+  assert.equal(queueRefreshPageSize(130), 100)
+})
+
+test("the print list card: numbered rows with the hook, the count badge and the order in the head, the cap line (board, P6-R2)", () => {
+  const list = readLf(PRINT_LIST_PART)
+  assert.match(list, /<ContentPanel\n\s+divided\n\s+flush\n\s+title=\{t\("listTitle"\)\}\n\s+actions=\{\n\s+<>\n\s+<StatusBadge label=\{t\("listCount", \{ count: rows\.length \}\)\} tone="info" \/>\n\s+<NativeSelect\n\s+aria-label=\{t\("orderLabel"\)\}/)
+  assert.match(list, /\{labelPrintOrders\.map\(\(value\) => \(\n\s+<option key=\{value\} value=\{value\}>\n?\s*\{t\(`order\.\$\{value\}`\)\}/)
+  assert.match(list, /<ol aria-label=\{t\("listTitle"\)\} className="divide-y divide-border-soft">/)
+  assert.match(list, /<li key=\{asset\.id\} data-label-selected-row=\{asset\.id\} className="[^"]+">\n\s+<span aria-hidden="true" className="num w-6 shrink-0 text-meta text-muted-foreground">\n?\s*\{formatCount\(index \+ 1\)\}/)
+  assert.match(list, /<span className="block break-words text-sm font-medium text-foreground">\{asset\.name\}<\/span>\n\s+<span className="block text-meta text-muted-foreground">\n\s+<span className="tag">\{asset\.assetTag\}<\/span>/)
+  assert.match(list, /<Button variant="ghost" size="icon-sm" onClick=\{\(\) => onRemove\(asset\.id\)\} aria-label=\{t\("remove", \{ tag: asset\.assetTag \}\)\}>/)
+  assert.match(list, /<EmptyNote id="asset-label-print-reason" padded>\n?\s*\{t\("listEmpty"\)\}/)
+  assert.match(list, /<p role="status" className="border-t border-border-soft px-4 py-2\.5 text-meta text-muted-foreground empty:hidden md:px-5">\n?\s*\{status\}/)
+  assert.doesNotMatch(list, /<form\b|labels\.|selectedSort|printFirstLabel|max-h-\[/)
+})
+
+test("the settings card: tape as Segmented, a note of at most 500, the preview label by label, the Brother hint and the QR (board, P6-R9, recon X11)", () => {
+  const list = readLf(PRINT_LIST_PART)
+  assert.match(list, /<ContentPanel divided title=\{t\("settingsTitle"\)\}>/)
+  assert.match(list, /<span id="asset-label-tape-size" className="text-sm font-medium text-foreground">\n?\s*\{t\("tapeSize"\)\}\n?\s*<\/span>\n\s+<Segmented\n\s+labelledBy="asset-label-tape-size"\n\s+fill\n\s+value=\{tapeSize\}\n\s+onValueChange=\{onTapeSizeChange\}\n\s+options=\{assetLabelTapeSizes\.map\(\(size\) => \(\{ value: size, label: labelTapeText\(size, t\("tapeCustom"\)\) \}\)\)\}/)
+  assert.match(list, /<Field label=\{t\("note"\)\} hint=\{t\("noteHint", \{ max: LABEL_PRINT_NOTE_MAX \}\)\}>\n\s+<Input\n\s+value=\{note\}\n\s+onChange=\{\(event\) => onNoteChange\(event\.target\.value\)\}\n\s+maxLength=\{LABEL_PRINT_NOTE_MAX\}\n\s+placeholder=\{t\("notePlaceholder"\)\}/)
+  assert.match(list, /\{t\("previewPosition", \{ index: index \+ 1, total: rows\.length \}\)\}/)
+  assert.match(list, /aria-label=\{t\("previewPrevious"\)\}\n\s+aria-disabled=\{index === 0 \|\| undefined\}/)
+  assert.match(list, /aria-label=\{t\("previewNext"\)\}\n\s+aria-disabled=\{index >= rows\.length - 1 \|\| undefined\}/)
+  assert.match(list, /<AssetLabelPreview\n\s+asset=\{sheetAsset\}\n\s+template=\{settings\.templates\.tapes\[tapeSize\]\}\n\s+scanHint=\{tAsset\("scanToOpenDetail"\)\}\n\s+compactAssetNameEnabled=\{settings\.templates\.compactAssetNameEnabled\}\n\s+label=\{t\("previewName", \{ size: tapeText, tag: sheetAsset\.assetTag \}\)\}/)
+  assert.match(list, /const sheetAsset = shown \? labelSheetAsset\(shown, settings\.qrBaseUrl\) : null/)
+  assert.match(list, /<Notice tone="neutral">\{t\("brotherHint", \{ size: getAssetLabelTapePrinterSize\(tapeSize\) \}\)\}<\/Notice>/)
+  assert.match(list, /\{t\("qrTarget"\)\} <span className="break-all font-mono text-foreground">\{sheetAsset\.qrValue\}<\/span>/)
+  assert.match(list, /\{isLikelyLocalAssetQrValue\(sheetAsset\.qrValue\) \? <Notice tone="warning">\{tAsset\("labelQrLocalWarning"\)\}<\/Notice> : null\}/)
+  // The label stays light inside the shared part: no scope, paper or raw color of its own here.
+  assert.doesNotMatch(list, /data-theme|bg-white|text-black|#[0-9a-fA-F]{3,6}\b|rgba?\(|\bdark:/)
+})
+
+test("the print bar: DesktopSelectionBar last on the page from md while the list holds a label; inline actions below md (P6-R10)", () => {
+  const shell = readLf(SHELL)
+  const list = readLf(PRINT_LIST_PART)
+  assert.match(shell, /\{ordered\.length > 0 \? \(\n\s+<DesktopSelectionBar\n\s+label=\{t\("listTitle"\)\}\n\s+countLabel=\{summary\}\n\s+clearLabel=\{t\("clearList"\)\}\n\s+onClear=\{clearList\}\n\s+actions=\{<AssetLabelPrintActions count=\{ordered\.length\} onTestPrint=\{testPrint\} onPrint=\{printLabels\} className="contents" \/>\}\n\s+\/>\n\s+\) : null\}\n\s+<\/div>\n\s+\)\n\}/, "the bar is the wrapper's last child")
+  assert.match(shell, /const summary = t\("barSummary", \{ count: ordered\.length, size: labelTapeText\(tapeSize, t\("tapeCustom"\)\) \}\)/)
+  // overflow-x-clip, not hidden: a sticky bar needs no scroll container between it and main (DESIGN.md).
+  assert.match(shell, /<div className="mx-auto max-w-7xl space-y-5 overflow-x-clip">/)
+  assert.doesNotMatch(shell, /overflow-x-hidden|StickyFormFooter|\bfixed\b/)
+  // Below md the two actions sit at the end of the list card, waiting with their reason while the list is empty.
+  assert.match(list, /<div className="grid gap-2 border-t border-border-soft px-4 py-3 md:hidden">\n\s+\{rows\.length > 0 \? <p className="text-meta text-muted-foreground">\{summary\}<\/p> : null\}\n\s+<AssetLabelPrintActions count=\{rows\.length\} onTestPrint=\{onTestPrint\} onPrint=\{onPrint\} className="grid gap-2 sm:grid-cols-2" \/>/)
+  // The stable names: "พิมพ์ทดสอบ 1 ดวง" and "พิมพ์ป้าย {count} ดวง", the primary last.
+  assert.match(list, /<Button\n\s+variant="outline"\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onTestPrint\}\n\s+>\n\s+\{t\("testPrint"\)\}\n\s+<\/Button>\n\s+<Button\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onPrint\}\n\s+>\n\s+<Printer aria-hidden="true" \/>\n\s+\{t\("print", \{ count \}\)\}/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8")).assetTools.labelsPage
+  assert.equal(th.print, "พิมพ์ป้าย {count, number} ดวง")
+  assert.equal(th.testPrint, "พิมพ์ทดสอบ 1 ดวง")
+  assert.equal(th.clearList, "ล้างรายการพิมพ์")
+  assert.equal(th.barSummary, "{count, number} ดวงที่จะพิมพ์ · เทป {size}")
+})
+
+test("after a print in the other tab, the page asks again for the queue and the list's rows when it is visible (P6-R13)", () => {
+  const shell = readLf(SHELL)
+  const queue = readLf(QUEUE_PART)
+  for (const source of [shell, queue]) {
+    assert.match(source, /if \(document\.visibilityState !== "visible"/)
+    assert.match(source, /document\.addEventListener\("visibilitychange", refresh(?:List|Queue)\)\n\s+return \(\) => document\.removeEventListener\("visibilitychange", refresh(?:List|Queue)\)/)
+  }
+  assert.match(shell, /const rows = await fetchLabelRows\(listIds, locale\)\n\s+setPrintList\(\(current\) => \(\{ \.\.\.current, rows: refreshLabelRows\(current\.rows, rows\) \}\)\)/)
+  assert.match(shell, /setRefreshFailed\(true\)/)
+  assert.match(queue, /export async function fetchLabelRows\(/)
+  assert.match(queue, /const page = await fetchQueuePage\(buildLabelQueueSearch\(queueFilters, \{ pageSize: queueRefreshPageSize\(shownRows\), skip: 0, locale \}\)\)\n\s+if \(currentSearch\.current !== search\) return\n\s+setQueue\(page\)/)
+  assert.equal(JSON.parse(readFileSync("messages/th.json", "utf8")).assetTools.labelsPage.listRefreshFailed, "โหลดสถานะล่าสุดของรายการพิมพ์ไม่สำเร็จ")
 })

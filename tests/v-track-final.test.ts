@@ -69,15 +69,17 @@ test("the print queue's three buttons wait with their reason beside them (v-trac
   assert.match(queue, /async function addAllMatching\(\) \{\n(?:\s+\/\/[^\n]*\n)+\s+if \(addAllWaits \|\| addAllBusy\) return\n/)
   assert.match(queue, /const addAllWaits = queueLoading \|\| queueError \|\| addAll\.c === 0\n/)
   assert.doesNotMatch(queue, /\bdisabled=\{addAllWaits\}/)
-  // The two print buttons: aria-disabled with nothing selected, tied to the empty note under them; both handlers already
-  // return first.
-  assert.match(source, /<Button\n\s+variant="outline"\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printFirstLabel\}\n\s+className="w-full"\n\s+>/)
-  assert.match(source, /<Button\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printLabels\}\n\s+className="w-full"\n\s+>/)
-  assert.ok(source.includes('<EmptyNote id="asset-label-print-reason">{labels.noSelected}</EmptyNote>'))
-  assert.match(source, /function printLabels\(\) \{\n\s+if \(selectedForPrint\.length === 0\) return\n/)
-  assert.match(source, /function printFirstLabel\(\) \{\n\s+const \[firstAsset\] = selectedForPrint\n\s+if \(!firstAsset\) return\n/)
+  // The two print actions (group 4 plan 6 Task 5): aria-disabled with an empty list, tied to the list's empty note; the
+  // shell's handlers return first. From md they show only in the bar, which shows only with a label (P6-R10).
+  const shell = read(`${C}assets/asset-label-batch-tool.tsx`)
+  assert.match(source, /<Button\n\s+variant="outline"\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onTestPrint\}\n\s+>/)
+  assert.match(source, /<Button\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onPrint\}\n\s+>/)
+  assert.match(source, /const waits = count === 0\n/)
+  assert.ok(source.includes('<EmptyNote id="asset-label-print-reason" padded>{t("listEmpty")}</EmptyNote>'))
+  assert.match(shell, /function printLabels\(\) \{\n\s+if \(ordered\.length === 0\) return\n/)
+  assert.match(shell, /function testPrint\(\) \{\n(?:\s+\/\/[^\n]*\n)*\s+const request = labelTestPrint\([^\n]*\n\s+if \(!request\) return\n/)
   // No plain disabled gate is left on the three, and the add button no longer swaps its label for the reason.
-  assert.doesNotMatch(source, /\bdisabled=\{selectedForPrint\.length === 0\}/)
+  assert.doesNotMatch(source, /\bdisabled=\{(?:waits|count === 0)\}/)
   assert.doesNotMatch(queue, /addAllReason \?\? addAllButtonText|addAllWaits \? addAllReason/)
 })
 

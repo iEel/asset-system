@@ -32,6 +32,7 @@ import {
   labelQueueRowHolder,
   labelRowNameKey,
   lookupMissingCount,
+  queueRefreshPageSize,
   type LabelQueueFilters,
 } from "@/lib/asset-label-queue-rules"
 import { cn, formatDate } from "@/lib/utils"
@@ -75,8 +76,8 @@ const emptyQueue: QueueState = { rows: [], total: 0, ids: [], reprintCapped: fal
 
 const labelPrintsApi = "/api/assets/label-prints"
 
-/** Queue-shaped rows for given ids (the lookup, P6-R11), in their order. */
-async function fetchLabelRows(ids: readonly string[], locale: LabelQueueLocale, signal?: AbortSignal): Promise<LabelQueueRow[]> {
+/** Queue-shaped rows for given ids (the lookup, P6-R11), in their order. The print list refreshes through it too. */
+export async function fetchLabelRows(ids: readonly string[], locale: LabelQueueLocale, signal?: AbortSignal): Promise<LabelQueueRow[]> {
   if (ids.length === 0) return []
   const response = await fetch(`${labelPrintsApi}?${buildLabelLookupSearch(ids, locale)}`, { signal })
   const payload = (await response.json().catch(() => null)) as { rows?: LabelQueueRow[] } | null
@@ -279,6 +280,27 @@ export function AssetLabelQueueCard({
       controller.abort()
     }
   }, [firstPageSearch, queueReload])
+
+  // P6-R13: the print route records in another tab. When this tab is visible again, the queue asks again for the rows it
+  // shows (the same filters, from the top, as many as are on screen), so their print states are today's.
+  const shownRows = queue.rows.length
+  useEffect(() => {
+    async function refreshQueue() {
+      if (document.visibilityState !== "visible") return
+      const search = firstPageSearch
+      try {
+        const page = await fetchQueuePage(buildLabelQueueSearch(queueFilters, { pageSize: queueRefreshPageSize(shownRows), skip: 0, locale }))
+        if (currentSearch.current !== search) return
+        setQueue(page)
+        setQueueError(false)
+      } catch {
+        if (currentSearch.current === search) setQueueError(true)
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshQueue)
+    return () => document.removeEventListener("visibilitychange", refreshQueue)
+  }, [firstPageSearch, locale, queueFilters, shownRows])
 
   function retryQueue() {
     setQueueReload((attempt) => attempt + 1)
