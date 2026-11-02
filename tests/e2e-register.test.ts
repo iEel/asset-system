@@ -209,3 +209,101 @@ test("the purchase-document spec reads the app's own words, finds a document by 
   for (const id of ["asset-batch-purchase-document", "asset-batch-purchase-document-file", "asset-batch-purchase-document-type"]) assert.ok(batch.includes(`id="${id}"`), id)
   assert.ok(batch.includes('purchaseDocumentNo: "asset-batch-purchase-document-no"'))
 })
+
+test("the components and scan specs read the app's own words, remove a component through POST …/remove and find a card by a run-unique Serial (group 4 plan 4 task 6)", async () => {
+  const { COMPONENT_WORDS, SCAN_WORDS } = await import("../e2e/assets/register-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of [...Object.entries(COMPONENT_WORDS), ...Object.entries(SCAN_WORDS)]) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  const a = th.asset
+  assert.deepEqual(
+    [COMPONENT_WORDS.title, COMPONENT_WORDS.installAction, COMPONENT_WORDS.installPanelStep, COMPONENT_WORDS.notInstalled, COMPONENT_WORDS.removedHere, COMPONENT_WORDS.roleAdapter],
+    [a.manageComponents, a.componentInstallAction, a.componentInstallPanelStep, a.componentCandidateNotInstalled, a.componentCandidateRemovedHere, a.componentRoles.adapter],
+  )
+  assert.deepEqual(
+    [COMPONENT_WORDS.continueReview, COMPONENT_WORDS.confirmInstall, COMPONENT_WORDS.installSuccess, COMPONENT_WORDS.history, COMPONENT_WORDS.historyCount, COMPONENT_WORDS.stillInstalled, COMPONENT_WORDS.photoCount],
+    [a.componentContinueReview, a.componentConfirmInstall, a.componentInstallSuccess, a.componentHistory, a.componentHistoryCount, a.componentStillInstalled, a.componentPhotoCount],
+  )
+  assert.deepEqual(
+    [COMPONENT_WORDS.moreActionsFor, COMPONENT_WORDS.openAsset, COMPONENT_WORDS.remove, COMPONENT_WORDS.removeTitle, COMPONENT_WORDS.removeNow, COMPONENT_WORDS.removeAfter, COMPONENT_WORDS.status],
+    [th.common.moreActionsFor, a.componentOpenAsset, a.removeComponent, a.componentRemoveTitle, a.componentRemoveNow, a.componentRemoveAfter, a.componentStatus],
+  )
+  assert.deepEqual(
+    [COMPONENT_WORDS.installedState, COMPONENT_WORDS.removedState, COMPONENT_WORDS.countHere, COMPONENT_WORDS.countValue, COMPONENT_WORDS.evidenceChosen, COMPONENT_WORDS.confirmRemove, COMPONENT_WORDS.noCustodian],
+    [a.componentInstalled, a.componentStateRemoved, a.componentCountHere, a.componentCountValue, a.componentEvidenceSelected, a.componentConfirmRemove, a.noCustodian],
+  )
+  const tools = th.assetTools
+  assert.deepEqual(
+    [SCAN_WORDS.title, SCAN_WORDS.queryLabel, SCAN_WORDS.foundMatch, SCAN_WORDS.matchSerial, SCAN_WORDS.condition, SCAN_WORDS.components, SCAN_WORDS.componentsValue],
+    [tools.scanTitle, tools.scanQueryLabel, tools.scanFoundMatch, tools.scanMatchFields.serial, tools.scanCondition, tools.scanComponents, tools.scanComponentsValue],
+  )
+  assert.deepEqual(
+    [SCAN_WORDS.openAsset, SCAN_WORDS.nextActions, SCAN_WORDS.checkin, SCAN_WORDS.recordRepair, SCAN_WORDS.printLabel, SCAN_WORDS.recent, SCAN_WORDS.recentClear],
+    [tools.openAsset, tools.scanNextActions, a.rowActionCheckin, a.quickMaintenance, a.printLabel, tools.scanRecent, tools.scanRecentClear],
+  )
+
+  const components = read("e2e/assets/register-components.spec.ts")
+  const scan = read("e2e/assets/scan-search.spec.ts")
+  for (const [file, spec] of [["register-components", components], ["scan-search", scan]] as const) {
+    assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), `${file}: the suite's fixtures`)
+    assert.ok(spec.split("\n").some((line) => line.trim() === `asUser("itStaff")`), `${file}: IT staff`)
+    assert.ok(spec.includes("await createTxAsset(page, masters, testInfo.project.name, "), `${file}: its own assets`)
+    // No master data, no sign-in, no DELETE: the removal is a POST (P4-R1).
+    assert.doesNotMatch(spec, /\/api\/(?:locations|departments|employees|admin)|createRoom\(|signInOnce\(|request\.delete|DELETE/, `${file}: no master data, nothing deleted`)
+    // Not limited to a device: all four projects.
+    assert.ok(!spec.includes("test.skip("), `${file}: all four projects`)
+  }
+  // Components: the panel from the header's button, the search's own answer, the role by its Thai label (P4-R4), the
+  // install POST, the row's ⋯ by its name (P4-R3), the dialog's before/after rows, the POST …/remove answering 200
+  // with a reason and a photo, the past row, and the candidate's line about this parent (P4-R5).
+  for (const hook of [
+    'main.getByRole("button", { name: COMPONENT_WORDS.installAction, exact: true })',
+    'await expect(page.locator("#component-install")).toHaveCount(0)',
+    'url.pathname === CANDIDATES_PATH && url.searchParams.get("search") === text',
+    'await page.locator("#component-install-role").selectOption({ label: COMPONENT_WORDS.roleAdapter })',
+    'expect((await installed).status(), "the install").toBe(201)',
+    "fillTemplate(COMPONENT_WORDS.moreActionsFor, { code: assetTag })",
+    "await menuItem(menu, COMPONENT_WORDS.remove).click()",
+    ".toHaveText([COMPONENT_WORDS.status, COMPONENT_WORDS.installedState, COMPONENT_WORDS.removedState])",
+    "fillTemplate(COMPONENT_WORDS.countValue, { count: 1 }), fillTemplate(COMPONENT_WORDS.countValue, { count: 0 })",
+    'response.request().method() === "POST" && url.pathname.startsWith(`/api/assets/${parent.id}/components/`) && url.pathname.endsWith("/remove")',
+    'expect((await removed).status(), "the removal").toBe(200)',
+    'await dialog.locator("input[type=file]").setInputFiles(PHOTO_FIXTURE)',
+    "await expect(rowMenuTrigger(page, component.assetTag)).toHaveCount(0)",
+    "fillTemplate(COMPONENT_WORDS.removedHere, { date: removedOn })",
+  ]) assert.ok(components.includes(hook), hook)
+  // The hooks the components spec stands on are the app's.
+  const manager = read("src/components/assets/asset-component-manager.tsx")
+  for (const hook of [
+    'const INSTALL_SEARCH_ID = "component-install-search"',
+    'id="component-install"',
+    'id="component-install-role"',
+    'id="component-install-slot"',
+    'id="component-remove-reason"',
+    'menuLabel={tCommon("moreActionsFor", { code: row.componentAsset.assetTag })}',
+    "/api/assets/component-candidates?",
+    '/components/${component.id}/remove`, { method: "POST"',
+  ]) assert.ok(manager.includes(hook), hook)
+  // Scan: a run-unique Serial (CreateAssetOptions.serialNumber), a component and a handover by API, the route's own
+  // answer, one card that matched the Serial, its action links, the way back, the recent list cleared, Enter on the tag.
+  assert.ok(scan.includes("const typed = `${runId}-${projectCode(testInfo.project.name)}-SCAN`"))
+  assert.ok(scan.includes('"SC1", "โน้ตบุ๊กสแกนค้นหา", { serialNumber: serial })'))
+  assert.ok(scan.includes("await installComponentByApi(page, asset.id, component.id, ") && scan.includes("await handoverByApi(page, asset.id, holder.id, masters.goodConditionId)"))
+  for (const hook of [
+    'const SCAN_SEARCH_PATH = "/api/assets/scan-search"',
+    'url.pathname === SCAN_SEARCH_PATH && url.searchParams.get("q") === text',
+    "fillTemplate(SCAN_WORDS.foundMatch, { count: 1, field: SCAN_WORDS.matchSerial })",
+    "await expect(cards).toHaveCount(1)",
+    "fillTemplate(SCAN_WORDS.componentsValue, { count: 1, names: component.name })",
+    "toHaveText([SCAN_WORDS.checkin, SCAN_WORDS.recordRepair, SCAN_WORDS.printLabel])",
+    'toEqual(["/th/asset-management/checkin", handover.id, SCAN_PATH])',
+    'url.searchParams.get("returnTo") === SCAN_PATH',
+    'getByRole("link", { name: SCAN_WORDS.backToScan, exact: true })',
+    'await page.getByRole("button", { name: SCAN_WORDS.recentClear, exact: true }).click()',
+    'await page.locator("#asset-scan-query").fill(asset.assetTag)',
+  ]) assert.ok(scan.includes(hook), hook)
+  assert.equal(scan.split('await page.locator("#asset-scan-query").press("Enter")').length - 1, 2, "Enter on a part (stays) and on the full tag (opens)")
+  const tool = read("src/components/assets/asset-scan-search-tool.tsx")
+  for (const hook of ['id="asset-scan-query"', 'aria-labelledby="asset-scan-results-title"', 'aria-labelledby="asset-scan-recent-title"', 'role="group" aria-label={t("scanNextActions")}']) assert.ok(tool.includes(hook), hook)
+  assert.ok(read("src/lib/asset-scan-search-rules.ts").includes('export const assetScanSearchPath = "/api/assets/scan-search"'))
+})

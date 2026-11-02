@@ -559,8 +559,9 @@ test("ส่งมอบ gives a บุคคล asset the receiver's department
   const spec = readTxSpec("e2e/transactions/handover-department.spec.ts")
   const support = read("e2e/transactions/tx-support.ts")
   for (const signature of [
-    // Group 4 plan 3 Task 7: an existing model with its brand and category, for the purchase-document search by model.
-    'export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string; custodianId?: string; conditionId?: string; categoryId?: string; brandId?: string; modelId?: string }',
+    // Group 4 plan 3 Task 7: an existing model with its brand and category, for the purchase-document search by model;
+    // group 4 plan 4 Task 6: a run-unique Serial, for the scan page's search by part of it.
+    'export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string; custodianId?: string; conditionId?: string; categoryId?: string; brandId?: string; modelId?: string; serialNumber?: string }',
     "export async function readSecondDepartment(): Promise<{ id: string; code: string; name: string }>",
     "export async function expectNoAssetFound(page: Page, fieldId: string, text: string)",
     "export async function saveHandoverForm(page: Page, device: E2eDevice, assetId: string): Promise<{ id: string; documentNo: string }>",

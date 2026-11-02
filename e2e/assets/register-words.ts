@@ -47,3 +47,32 @@ export const REGISTER_WORDS = {
   createModeBatch: "เพิ่มเป็นชุด", batchSubmit: "บันทึกทั้งชุด", batchReviewTitle: "ตรวจสอบก่อนบันทึก", batchReviewConfirm: "ยืนยันและบันทึกทั้งชุด",
   batchCreatedTitle: "สร้างทรัพย์สินเป็นชุดสำเร็จ",
 } as const
+
+// The components page (group 4 plan 4, spec §12, P4-R1..R5): the header and its install button, the install panel's
+// step title, the candidate's lines (name first), the role's Thai label, the review and its save, the one table (its
+// title, count line, ติดตั้งอยู่ and a photo count), each current row's ⋯ and its items, and the removal dialog's
+// ตอนนี้ | หลังยืนยัน rows, its save and its toast.
+export const COMPONENT_WORDS = {
+  title: "จัดการส่วนควบ", noCustodian: "ไม่มีผู้ถือครอง", installAction: "ติดตั้งส่วนควบ",
+  installPanelStep: "ติดตั้งส่วนควบ ขั้น {step, number} จาก {total, number}",
+  notInstalled: "ยังไม่ได้ติดตั้ง", removedHere: "เคยติดตั้งกับเครื่องนี้ · ถอดออก {date}",
+  roleAdapter: "อะแดปเตอร์", continueReview: "ตรวจสอบก่อนบันทึก", confirmInstall: "ยืนยันติดตั้ง", installSuccess: "ติดตั้งส่วนควบสำเร็จ",
+  history: "ประวัติส่วนควบ", historyCount: "{total, number} รายการ · ติดตั้งอยู่ {installed, number} · ถอดแล้ว {removed, number}",
+  stillInstalled: "ติดตั้งอยู่", photoCount: "{count, number} รูป",
+  moreActionsFor: "การดำเนินการของ {code}", openAsset: "เปิดหน้าทรัพย์สิน", remove: "ถอดส่วนควบ",
+  removeTitle: "ถอดส่วนควบ", removeNow: "ตอนนี้", removeAfter: "หลังยืนยัน", status: "สถานะส่วนควบ",
+  installedState: "ติดตั้งกับทรัพย์สินหลัก", removedState: "ถอดแล้ว", countHere: "ส่วนควบของเครื่องนี้", countValue: "{count, number} รายการ",
+  evidenceChosen: "เลือกไฟล์แล้ว ระบบจะบันทึกพร้อมรายการ", confirmRemove: "ยืนยันถอดส่วนควบ", removeSuccess: "ถอดส่วนควบสำเร็จ",
+} as const
+
+// The scan page (group 4 plan 4, spec §14, P4-R2, P4-R7): its title and field, the heading over the cards, the card's
+// facts and its actions, the recent list, and the asset page's way back to the scan.
+export const SCAN_WORDS = {
+  title: "สแกน / ค้นหาทรัพย์สิน", queryLabel: "ค้นหาหรือสแกนรหัสทรัพย์สิน",
+  foundMatch: "พบ {count, number} รายการ · ตรงกับ {field}", matchSerial: "Serial",
+  condition: "สภาพ {condition}", holder: "ผู้ถือครอง", room: "ที่ตั้ง",
+  components: "ส่วนควบ", componentsValue: "{count, number} รายการ · {names}",
+  openAsset: "เปิดรายละเอียดทรัพย์สิน", nextActions: "ทำต่อกับทรัพย์สินนี้",
+  checkin: "รับคืน", recordRepair: "บันทึกซ่อม", printLabel: "พิมพ์ป้าย",
+  recent: "เปิดล่าสุด", recentClear: "ล้างรายการ", backToScan: "กลับไปสแกน",
+} as const

@@ -55,8 +55,9 @@ const EMPTY_ASSET_BODY = {
 // and a ส่วนควบ asset for the components of plan 2's return; a held asset (`custodianId`: group 3 spec §14 call 4; a held
 // บุคคล asset takes its holder's department since group 4 plan 2, P2-R9) and a broken one (`conditionId`) for plan 3's โอนย้าย;
 // an existing model with its brand and category (`categoryId`, `brandId`, `modelId`, read by the seed admin) for the
-// purchase-document search by a linked asset's model (group 4 plan 3).
-export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string; custodianId?: string; conditionId?: string; categoryId?: string; brandId?: string; modelId?: string }
+// purchase-document search by a linked asset's model (group 4 plan 3); a run-unique Serial (`serialNumber`) for the scan
+// page's search by part of it (group 4 plan 4).
+export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string; custodianId?: string; conditionId?: string; categoryId?: string; brandId?: string; modelId?: string; serialNumber?: string }
 export async function createAsset(page: Page, masters: AssetMasters, tag: string, name: string, options: CreateAssetOptions = {}): Promise<CreatedAsset> {
   const data = readRunData()
   // Every key of the form's body, as the form sends it: the schema reads a missing optional key as missing (N3).
@@ -68,6 +69,7 @@ export async function createAsset(page: Page, masters: AssetMasters, tag: string
       categoryId: options.categoryId ?? masters.categoryId,
       brandId: options.brandId ?? "",
       modelId: options.modelId ?? "",
+      serialNumber: options.serialNumber ?? "",
       ownershipType: options.ownershipType ?? "personal",
       companyId: data.companyId,
       branchId: data.branchId,

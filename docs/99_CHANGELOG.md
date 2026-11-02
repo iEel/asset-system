@@ -6,6 +6,23 @@
 
 ## 2026-11-02
 
+### กลุ่มหน้า 4 แผน 4: หน้าส่วนควบและหน้าสแกน
+
+Branch `feat/group4-components-scan` (จาก `master` `2ebb4502`) · spec `docs/superpowers/specs/2026-11-01-page-group-4-register-form-design.md` (§12 ส่วนควบ, §14 สแกน, §17) · plan `docs/superpowers/plans/2026-11-02-group4-components-scan.md` (ข้อตัดสิน P4-R1..R8)
+
+- **คำและกฎ (Task 1, P4-R6):** `src/lib/asset-component-roles.ts` (บทบาท 8 ค่ากับคำไทย), `src/lib/asset-component-links.ts` (จำนวนหลังถอด การถอดครั้งล่าสุดต่อชิ้น), `src/lib/asset-scan-recent.ts` (รายการเปิดล่าสุด 10 รายการต่อผู้ใช้และภาษา) · อภิธานศัพท์: "เครื่องนี้" ใช้ได้ในหน้าส่วนควบ · ปุ่มซ่อมคือ "บันทึกซ่อม" ("ใบแจ้งซ่อม" และสถานะ "แจ้งซ่อม" คงเดิม)
+- **ถอดเป็น POST (Task 2, P4-R1, P4-R8):** `POST /api/assets/<id>/components/<componentId>/remove` (`asset:edit` ตรวจก่อนอ่าน) แทน `DELETE` เดิม (ไฟล์เดิมลบแล้ว ทางเดิมตอบ 404) · ถอดแค่ทำเครื่องหมายว่าถอดแล้ว ไม่ลบอะไร · ผู้สมัครติดตั้งมี `lastRemovalHere` · `loadComponentManagerRows` อ่านแถวของหน้าในครั้งเดียว
+- **หน้าส่วนควบ (Task 3, P4-R3..R5):** หัวหน้ามีชื่อ รหัส ผู้ถือครอง ห้อง และปุ่มหลัก "ติดตั้งส่วนควบ" · แผงติดตั้งปิดไว้ตอนเปิดหน้า · ผู้สมัครขึ้นชื่อก่อน "ยังไม่ได้ติดตั้ง" และ "เคยติดตั้งกับเครื่องนี้ · ถอดออก <วันที่>" · บทบาทเป็นตัวเลือก 8 ค่า · ตารางเดียวทั้งที่ติดตั้งอยู่และที่ถอดแล้ว · ⋯ ที่แถวปัจจุบัน · ช่องถอดเทียบ ตอนนี้ | หลังยืนยัน
+- **ค้นหาของหน้าสแกน (Task 4, P4-R7):** `GET /api/assets/scan-search` (`asset:view`) ค้นรหัส Serial ชื่อ ผู้ถือครอง ที่ตั้ง รุ่น · ไม่เกิน 8 แถว · อ่านไม่เกิน 9 ครั้งต่อคำตอบ · การกระทำตามสิทธิ์ของผู้ถาม
+- **หน้าสแกน (Task 5, P4-R2, P4-R7):** การ์ดผลลัพธ์ "พบ n รายการ · ตรงกับ <ช่อง>" พร้อมข้อมูล ส่วนควบ และการกระทำที่ทำได้ตอนนี้ · Enter เปิดเมื่อมีรหัสหรือ Serial ตรงพอดี 1 รายการ · "เปิดล่าสุด" พร้อม "ล้างรายการ" · QR ยังเปิดทันทีเหมือนเดิม
+- **E2E และเอกสาร (Task 6):**
+  - `e2e/assets/register-components.spec.ts` (ทั้งสี่ชุด): ติดตั้งจากปุ่มหัวหน้า ถอดจาก ⋯ ผ่านช่องถอด (POST …/remove ตอบ 200 พร้อมเหตุผลและรูป) แถวที่ถอดแล้ว และผู้สมัครที่ "เคยติดตั้งกับเครื่องนี้"
+  - `e2e/assets/scan-search.spec.ts` (ทั้งสี่ชุด): Serial ที่ไม่ซ้ำต่อรอบ การ์ดเดียว "ตรงกับ Serial" ข้อมูลและลิงก์การกระทำ เปิดแล้วกลับ "เปิดล่าสุด" "ล้างรายการ" และ Enter ที่รหัสเต็ม
+  - `CreateAssetOptions` รับ `serialNumber` · คำใน `e2e/assets/register-words.ts` (`COMPONENT_WORDS`, `SCAN_WORDS`) · pin ใน `tests/e2e-register.test.ts` และ `tests/e2e-transactions.test.ts`
+  - เอกสาร: `docs/04_AUTH_RBAC.md`, `docs/06_WORKFLOWS.md`, `docs/07_UAT_CHECKLIST.md`, `docs/14_UI_UX_DESIGN_SYSTEM.md`, `DESIGN.md`, `DEVELOPER_HANDOFF.md`
+  - E2E: `<E2E run id>` (register-components, scan-search, return-components, asset-detail, bulk-move, roles; สี่ชุด) ผ่าน <passed> ไม่ผ่าน <failed> ข้าม <skipped> · ดูหน้าจอ 1440, 1024, 390 ทั้งสองธีม: <result>
+- ยังไม่ deploy · ไม่มี migration
+
 ### กลุ่มหน้า 4 แผน 3: เอกสารจัดซื้อในฟอร์มทรัพย์สิน
 
 Branch `feat/group4-purchase-docs` (จาก `master` `636fe540`) · spec `docs/superpowers/specs/2026-11-01-page-group-4-register-form-design.md` (§8 เพิ่มเป็นชุด, §9 เอกสารจัดซื้อ, §16.1, §17) · plan `docs/superpowers/plans/2026-11-02-group4-purchase-documents.md` (ข้อตัดสิน P3-R1 ถึง P3-R9)
