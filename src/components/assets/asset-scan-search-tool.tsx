@@ -12,6 +12,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
 import { KeyValueList } from "@/components/ui/key-value-list"
+import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -34,7 +35,7 @@ import {
 import {
   buildAssetScanSearchHref,
   getAssetScanEnterTarget,
-  getAssetScanSharedMatchField,
+  getAssetScanHeading,
   type AssetScanRow,
   type AssetScanSearchAnswer,
 } from "@/lib/asset-scan-search-rules"
@@ -56,6 +57,9 @@ type AssetScanSearchToolProps = {
     noResults: string
     minChars: string
     loading: string
+    /** A request that failed (a 500, a dropped VPN): never shown as "no results". */
+    searchFailed: string
+    retry: string
     scanner: {
       start: string
       stop: string
@@ -81,6 +85,23 @@ type AssetScanSearchToolProps = {
 
 /** The answer of the scan route, with the text it answers, so an answer for older text is never shown as current. */
 type ScanAnswer = AssetScanSearchAnswer & { q: string }
+
+type AssetToolsTranslator = ReturnType<typeof useTranslations<"assetTools">>
+
+// "พบ n รายการ · ตรงกับ <field>" only when every result is shown and all matched the same field; past 8 results a
+// second line says the first n are shown, and each card names its own field (P4-R7, final review).
+function scanHeadingLines(t: AssetToolsTranslator, answer: ScanAnswer) {
+  const heading = getAssetScanHeading(answer)
+  return {
+    field: heading.field,
+    found: heading.field
+      ? t("scanFoundMatch", { count: answer.total, field: t(`scanMatchFields.${heading.field}`) })
+      : t("scanFound", { count: answer.total }),
+    shown: heading.shown !== null ? t("scanShownFirst", { shown: heading.shown }) : null,
+  }
+}
+
+type ScanHeadingLines = ReturnType<typeof scanHeadingLines>
 
 const queryInputId = "asset-scan-query"
 
@@ -146,6 +167,9 @@ export function AssetScanSearchTool({ locale, userId, labels }: AssetScanSearchT
   const t = useTranslations("assetTools")
   const [query, setQuery] = useState("")
   const [answer, setAnswer] = useState<ScanAnswer | null>(null)
+  // The text whose request failed, and a counter that asks again for the same text (ลองอีกครั้ง).
+  const [failedQuery, setFailedQuery] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   // The text Enter was pressed on before its answer came: the answer opens the single exact match when it arrives.
   const pendingEnterRef = useRef<string | null>(null)
   const scanReturnHref = `/${locale}/asset-management/scan`
@@ -155,6 +179,19 @@ export function AssetScanSearchTool({ locale, userId, labels }: AssetScanSearchT
   const directAssetHref = buildDirectAssetHrefFromScanValue(trimmedQuery, locale)
   const searchable = isAssetOperationSearchReady(trimmedQuery) && !isAssetOperationSearchTooLong(trimmedQuery)
   const currentAnswer = answer && answer.q === trimmedQuery ? answer : null
+  const failed = !currentAnswer && failedQuery === trimmedQuery
+  const headingLines = currentAnswer ? scanHeadingLines(t, currentAnswer) : null
+  // One polite live region tells a screen reader what the area below the field now shows.
+  const statusText =
+    directAssetHref || trimmedQuery.length < 2
+      ? ""
+      : !searchable || (currentAnswer && currentAnswer.rows.length === 0)
+        ? labels.noResults
+        : headingLines
+          ? [headingLines.found, headingLines.shown].filter(Boolean).join(" · ")
+          : failed
+            ? labels.searchFailed
+            : labels.loading
 
   const recentRaw = useSyncExternalStore(subscribeRecent, () => readStoredRecent(recentKey), () => null)
   const recent = readAssetScanRecent({ getItem: () => recentRaw }, recentKey)
@@ -180,8 +217,12 @@ export function AssetScanSearchTool({ locale, userId, labels }: AssetScanSearchT
         next = { ...payload.data, q: trimmedQuery }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return
-        next = { q: trimmedQuery, total: 0, rows: [] }
+        // A failure is not an answer: the page says so with ลองอีกครั้ง, and an Enter that waited is dropped.
+        setFailedQuery(trimmedQuery)
+        if (pendingEnterRef.current === trimmedQuery) pendingEnterRef.current = null
+        return
       }
+      setFailedQuery(null)
       setAnswer(next)
       if (pendingEnterRef.current === next.q) {
         pendingEnterRef.current = null
@@ -197,11 +238,16 @@ export function AssetScanSearchTool({ locale, userId, labels }: AssetScanSearchT
       controller.abort()
       window.clearTimeout(timeout)
     }
-  }, [directAssetHref, recentKey, router, scanReturnHref, searchLocale, trimmedQuery])
+  }, [attempt, directAssetHref, recentKey, router, scanReturnHref, searchLocale, trimmedQuery])
 
   function changeQuery(value: string) {
     pendingEnterRef.current = null
     setQuery(value)
+  }
+
+  function retrySearch() {
+    setFailedQuery(null)
+    setAttempt((current) => current + 1)
   }
 
   function openAsset(href: string) {
@@ -263,6 +309,10 @@ export function AssetScanSearchTool({ locale, userId, labels }: AssetScanSearchT
         {!directAssetHref && trimmedQuery.length < 2 ? <EmptyNote className="mt-2">{labels.minChars}</EmptyNote> : null}
       </ContentPanel>
 
+      <p role="status" aria-live="polite" className="sr-only">
+        {statusText}
+      </p>
+
       {/* Spec 2D D9: a found code is one Button, no tinted box. Typed text gets result cards (group 4 plan 4, P4-R7). */}
       {directAssetHref ? (
         <div>
@@ -275,15 +325,26 @@ export function AssetScanSearchTool({ locale, userId, labels }: AssetScanSearchT
         <ContentPanel divided flush className="overflow-hidden">
           <EmptyNote padded>{labels.noResults}</EmptyNote>
         </ContentPanel>
-      ) : !currentAnswer ? (
+      ) : headingLines && currentAnswer ? (
+        <ScanResults answer={currentAnswer} lines={headingLines} openAssetLabel={labels.openAsset} scanReturnHref={scanReturnHref} onOpen={rememberRecent} />
+      ) : failed ? (
+        <Notice
+          tone="danger"
+          action={
+            <Button variant="outline" size="md" onClick={retrySearch}>
+              {labels.retry}
+            </Button>
+          }
+        >
+          {labels.searchFailed}
+        </Notice>
+      ) : (
         <ContentPanel divided flush className="overflow-hidden">
           <p className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground md:px-5">
             <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             {labels.loading}
           </p>
         </ContentPanel>
-      ) : (
-        <ScanResults answer={currentAnswer} openAssetLabel={labels.openAsset} scanReturnHref={scanReturnHref} onOpen={rememberRecent} />
       )}
 
       {recent.length > 0 ? (
@@ -323,35 +384,36 @@ export function AssetScanSearchTool({ locale, userId, labels }: AssetScanSearchT
   )
 }
 
-// "พบ n รายการ · ตรงกับ <field>" when every card matched the same field, else "พบ n รายการ" and the field on each card.
+// The heading from scanHeadingLines; the field on each card when the heading names none.
 function ScanResults({
   answer,
+  lines,
   openAssetLabel,
   scanReturnHref,
   onOpen,
 }: {
   answer: ScanAnswer
+  lines: ScanHeadingLines
   openAssetLabel: string
   scanReturnHref: string
   onOpen: (item: AssetScanRecentItem) => void
 }) {
-  const t = useTranslations("assetTools")
-  const sharedField = getAssetScanSharedMatchField(answer.rows)
   const words = splitAssetOperationSearchWords(answer.q)
 
   return (
     <section aria-labelledby="asset-scan-results-title" className="space-y-3">
-      <h2 id="asset-scan-results-title" className="text-sm font-semibold text-foreground num">
-        {sharedField
-          ? t("scanFoundMatch", { count: answer.total, field: t(`scanMatchFields.${sharedField}`) })
-          : t("scanFound", { count: answer.total })}
-      </h2>
+      <div>
+        <h2 id="asset-scan-results-title" className="text-sm font-semibold text-foreground num">
+          {lines.found}
+        </h2>
+        {lines.shown ? <p className="text-meta text-muted-foreground num">{lines.shown}</p> : null}
+      </div>
       {answer.rows.map((row) => (
         <ScanResultCard
           key={row.id}
           row={row}
           words={words}
-          showMatch={sharedField === null}
+          showMatch={lines.field === null}
           openAssetLabel={openAssetLabel}
           scanReturnHref={scanReturnHref}
           rememberRecent={onOpen}

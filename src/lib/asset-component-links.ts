@@ -18,3 +18,13 @@ export function lastRemovalByComponent(rows: Array<{ componentAssetId: string; r
   }
   return latest
 }
+
+/**
+ * After a removal, focus goes to the ⋯ of the current row that followed the removed one, else the one before it
+ * (final review of group 4 plan 4); null when no other current row is left, so the caller falls back.
+ */
+export function componentFocusAfterRemoval(currentIds: readonly string[], removedId: string): string | null {
+  const index = currentIds.indexOf(removedId)
+  if (index === -1) return null
+  return currentIds[index + 1] ?? currentIds[index - 1] ?? null
+}

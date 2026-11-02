@@ -362,7 +362,8 @@
     "scanComponentsValue": "{count, plural, one {# component} other {# components}} · {names}",
     "scanNextActions": "Next steps for this asset",
     "scanRecent": "Recently opened",
-    "scanRecentClear": "Clear list"
+    "scanRecentClear": "Clear list",
+    "scanShownFirst": "{shown, plural, one {Showing the first # result} other {Showing the first # results}}"
   },
   "auth": {
     "login": "Sign In",
@@ -927,7 +928,6 @@
     "expectedReturnDate": "Expected Return",
     "returnDate": "Return Date",
     "handoverReturned": "Returned",
-    "viewEvidence": "View evidence",
     "checkoutPhotoBefore": "Before-handover photo",
     "receiverSignature": "Receiver signature",
     "checkinPhotoAfter": "Return photos",
@@ -1122,7 +1122,6 @@
     "installedAt": "Installed At",
     "installedBy": "Installed By",
     "removedBy": "Removed By",
-    "componentSummaryHelp": "Review installed components, install/remove history, photo evidence, and parent asset relationships",
     "componentMissingSerial": "Missing Serial",
     "installedInParent": "This asset is installed in",
     "componentInstallEvidence": "Installation evidence photo",
@@ -1130,9 +1129,7 @@
     "componentEvidenceHelp": "Take or choose an image, such as the serial number or installation position",
     "componentEvidenceSelected": "File selected. It will be saved with the record.",
     "removeComponent": "Remove component",
-    "currentComponents": "Current components",
     "componentHistory": "Component history",
-    "noCurrentComponents": "No components are currently installed",
     "noComponentHistory": "No component history yet",
     "componentInstallSuccess": "Component installed",
     "componentRemoveSuccess": "Component removed",

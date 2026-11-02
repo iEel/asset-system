@@ -212,3 +212,15 @@ export function getAssetScanSharedMatchField<F extends string>(rows: readonly { 
   if (field === undefined) return null
   return rows.every((row) => row.match.field === field) ? field : null
 }
+
+/**
+ * The results heading (final review of group 4 plan 4): the shared field only when every result is shown, since the
+ * unseen ones may have matched another field; `shown` is the number of cards when the total is larger, else null.
+ */
+export function getAssetScanHeading<F extends string>(answer: { total: number; rows: readonly { match: { field: F } }[] }): {
+  field: F | null
+  shown: number | null
+} {
+  const all = answer.total <= answer.rows.length
+  return { field: all ? getAssetScanSharedMatchField(answer.rows) : null, shown: all ? null : answer.rows.length }
+}

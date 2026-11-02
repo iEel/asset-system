@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { buildDirectAssetHrefFromScanValue } from "../src/lib/asset-scan-routing.ts"
-import { getAssetScanEnterTarget, getAssetScanSharedMatchField } from "../src/lib/asset-scan-search-rules.ts"
+import { getAssetScanEnterTarget, getAssetScanHeading, getAssetScanSharedMatchField } from "../src/lib/asset-scan-search-rules.ts"
 
 const toolPath = "src/components/assets/asset-scan-search-tool.tsx"
 const pagePath = "src/app/[locale]/(dashboard)/asset-management/scan/page.tsx"
@@ -112,8 +112,8 @@ test("the heading names the matched field when every card matched the same one, 
   assert.equal(getAssetScanSharedMatchField([]), null)
 
   const tool = readTool()
-  assert.match(tool, /const sharedField = getAssetScanSharedMatchField\(answer\.rows\)/)
-  assert.match(tool, /t\("scanFoundMatch", \{ count: answer\.total, field: t\(`scanMatchFields\.\$\{sharedField\}`\) \}\)/)
+  assert.match(tool, /const heading = getAssetScanHeading\(answer\)/)
+  assert.match(tool, /t\("scanFoundMatch", \{ count: answer\.total, field: t\(`scanMatchFields\.\$\{heading\.field\}`\) \}\)/)
   assert.match(tool, /t\("scanFound", \{ count: answer\.total \}\)/)
   assert.match(tool, /t\("scanCardMatch", \{ field: t\(`scanMatchFields\.\$\{row\.match\.field\}`\) \}\)/)
 
@@ -175,4 +175,43 @@ test("เปิดล่าสุด: kept per user and locale after mount, adde
   assert.equal(th().assetTools.scanRecentClear, "ล้างรายการ")
   assert.equal(typeof en().assetTools.scanRecent, "string")
   assert.equal(typeof en().assetTools.scanRecentClear, "string")
+})
+
+test("the heading names the field only when every result is shown; past 8 it says the first n are shown (final review)", () => {
+  const rows = (count: number, field: "tag" | "name" = "name") => Array.from({ length: count }, () => ({ match: { field } }))
+  assert.deepEqual(getAssetScanHeading({ total: 3, rows: rows(3) }), { field: "name", shown: null })
+  assert.deepEqual(getAssetScanHeading({ total: 8, rows: rows(8) }), { field: "name", shown: null })
+  // 30 found, 8 shown, all 8 by name: the 22 unseen may have matched another field, so the heading names none.
+  assert.deepEqual(getAssetScanHeading({ total: 30, rows: rows(8) }), { field: null, shown: 8 })
+  assert.deepEqual(getAssetScanHeading({ total: 2, rows: [{ match: { field: "tag" } }, { match: { field: "name" } }] }), { field: null, shown: null })
+
+  const tool = readTool()
+  assert.match(tool, /showMatch=\{lines\.field === null\}/)
+  assert.match(tool, /shown: heading\.shown !== null \? t\("scanShownFirst", \{ shown: heading\.shown \}\) : null/)
+  assert.match(tool, /\{lines\.shown \? <p className="text-meta text-muted-foreground num">\{lines\.shown\}<\/p> : null\}/)
+  assert.equal(th().assetTools.scanShownFirst, "แสดง {shown, number} รายการแรก")
+  assert.equal(en().assetTools.scanShownFirst, "{shown, plural, one {Showing the first # result} other {Showing the first # results}}")
+})
+
+test("one polite live region announces loading, the count line, no results and a failed search (final review)", () => {
+  const tool = readTool()
+  assert.match(tool, /<p role="status" aria-live="polite" className="sr-only">\n\s+\{statusText\}\n\s+<\/p>/)
+  assert.equal(tool.match(/role="status"/g)?.length, 1)
+  assert.match(tool, /directAssetHref \|\| trimmedQuery\.length < 2\n\s+\? ""/)
+  assert.match(tool, /\(currentAnswer && currentAnswer\.rows\.length === 0\)\n\s+\? labels\.noResults/)
+  assert.match(tool, /\? \[headingLines\.found, headingLines\.shown\]\.filter\(Boolean\)\.join\(" · "\)/)
+  assert.match(tool, /: failed\n\s+\? labels\.searchFailed\n\s+: labels\.loading/)
+})
+
+test("a failed search shows an inline error with retry, never no results, and drops a waiting Enter (final review)", () => {
+  const tool = readTool()
+  const page = readPage()
+  assert.match(tool, /setFailedQuery\(trimmedQuery\)/)
+  assert.doesNotMatch(tool, /next = \{ q: trimmedQuery, total: 0, rows: \[\] \}/, "a failure is not an empty answer")
+  assert.match(tool, /if \(pendingEnterRef\.current === trimmedQuery\) pendingEnterRef\.current = null/)
+  assert.match(tool, /const failed = !currentAnswer && failedQuery === trimmedQuery/)
+  assert.match(tool, /<Notice\s+tone="danger"\s+action=\{\s*<Button variant="outline" size="md" onClick=\{retrySearch\}>/)
+  assert.match(tool, /function retrySearch\(\) \{\n\s+setFailedQuery\(null\)\n\s+setAttempt\(\(current\) => current \+ 1\)/)
+  assert.match(page, /searchFailed: tGlobalSearch\("failed"\)/)
+  assert.match(page, /retry: tCommon\("tryAgain"\)/)
 })

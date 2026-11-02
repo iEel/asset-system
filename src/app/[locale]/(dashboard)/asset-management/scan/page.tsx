@@ -11,6 +11,7 @@ export default async function AssetScanPage({ params }: AssetScanPageProps) {
   const user = await requirePagePermission(locale, "asset", "view")
   const t = await getTranslations("assetTools")
   const tGlobalSearch = await getTranslations("globalSearch")
+  const tCommon = await getTranslations("common")
 
   return (
     <AssetScanSearchTool
@@ -26,6 +27,8 @@ export default async function AssetScanPage({ params }: AssetScanPageProps) {
         noResults: tGlobalSearch("noResults"),
         minChars: tGlobalSearch("minChars"),
         loading: tGlobalSearch("loading"),
+        searchFailed: tGlobalSearch("failed"),
+        retry: tCommon("tryAgain"),
         scanner: {
           start: t("scannerStart"),
           stop: t("scannerStop"),

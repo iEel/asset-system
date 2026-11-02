@@ -180,3 +180,24 @@ test("the page feeds the manager from the loader alone, with the map built from 
   assert.match(page, /licenseAssignedLinks=\{\[\]\}/)
   assert.doesNotMatch(page, /\?\? "-"/)
 })
+
+test("after a successful removal, focus goes to the next current row's ⋯, else the install button, else the links heading (final review)", () => {
+  const manager = readText(MANAGER)
+  assert.match(manager, /focusAfterRemovalRef\.current = \{ removedId: component\.id, order: currentRows\.map\(\(row\) => row\.id\) \}\n\s+setRemoveTarget\(null\)\n\s+router\.refresh\(\)/)
+  // It waits for the refreshed rows: while the removed row is still current, nothing moves.
+  assert.match(manager, /if \(stillCurrent\.has\(pending\.removedId\)\) return/)
+  assert.match(manager, /componentFocusAfterRemoval\(/)
+  assert.match(manager, /const target = \(targetId \? visibleRowMenu\(targetId\) : null\) \?\? installButtonRef\.current \?\? panelHeading\(historyPanelRef\.current\)/)
+  // Both layouts mark their rows; the hidden layout's ⋯ is skipped.
+  assert.equal(manager.match(/data-component-link=\{row\.id\}/g)?.length, 2)
+  assert.match(manager, /getClientRects\(\)\.length > 0/)
+  assert.match(manager, /<div ref=\{historyPanelRef\}>\n\s+<ContentPanel divided flush title=\{labels\.history\}/)
+  assert.match(manager, /if \(heading\) heading\.tabIndex = -1/)
+})
+
+test("the four component messages the one-table rewrite left unread are gone (final review)", () => {
+  for (const locale of ["th", "en"] as const) {
+    const words = assetWords(locale)
+    for (const key of ["currentComponents", "noCurrentComponents", "viewEvidence", "componentSummaryHelp"]) assert.equal(words[key], undefined, `${locale} asset.${key}`)
+  }
+})

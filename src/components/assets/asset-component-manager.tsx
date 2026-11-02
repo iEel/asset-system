@@ -36,7 +36,7 @@ import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
 import { maxLength, required } from "@/lib/validation-rules"
 import { COMPONENT_ROLE_VALUES, componentRoleLabelKey } from "@/lib/asset-component-roles"
-import { componentCountAfterRemoval } from "@/lib/asset-component-links"
+import { componentCountAfterRemoval, componentFocusAfterRemoval } from "@/lib/asset-component-links"
 import { formatAssetDetailDate } from "@/lib/asset-detail-frame-rules"
 import type { ComponentLinkRow, ComponentManagerRows } from "@/lib/asset-component-manager-data"
 import type { RegisterHolderLine } from "@/lib/asset-register-row-rules"
@@ -143,6 +143,23 @@ function validate(values: { componentRole: string; slotNo: string; reason: strin
   return errors
 }
 
+// The ⋯ of a row in the layout on screen: the table (md and up) and the phone list both mark their rows.
+function visibleRowMenu(linkId: string): HTMLElement | null {
+  const rows = document.querySelectorAll<HTMLElement>(`[data-component-link="${CSS.escape(linkId)}"]`)
+  for (const row of rows) {
+    const trigger = row.querySelector<HTMLElement>("button")
+    if (trigger && trigger.getClientRects().length > 0) return trigger
+  }
+  return null
+}
+
+// The links panel's heading, made focusable only when focus has nowhere else to go.
+function panelHeading(panel: HTMLElement | null): HTMLElement | null {
+  const heading = panel?.querySelector<HTMLElement>("h2") ?? null
+  if (heading) heading.tabIndex = -1
+  return heading
+}
+
 function validateRemoval(reason: string): Partial<Record<"reason", string>> {
   const code = maxLength(reason, 500)
   return code ? { reason: code } : {}
@@ -194,6 +211,9 @@ export function AssetComponentManager({
   const focusInstallPendingRef = useRef(false)
   // RowActions points this at the ⋯ that opened the removal, so the dialog gives focus back to it.
   const removeOpenerRef = useRef<HTMLElement | null>(null)
+  // A removal that succeeded: once the refreshed rows arrive its ⋯ is gone, so focus moves on (final review).
+  const focusAfterRemovalRef = useRef<{ removedId: string; order: string[] } | null>(null)
+  const historyPanelRef = useRef<HTMLDivElement | null>(null)
   const installErrors = useFieldErrors<InstallField>()
   // A server refusal at the review goes back to the details step that owns the field (spec §4.2).
   const focusInstallError = () =>
@@ -217,6 +237,20 @@ export function AssetComponentManager({
   const assetHref = (row: ComponentLinkRow) => `/${locale}/assets/${row.componentAsset.id}`
   // ⋯ only for an editor, only on a current row (installed or outstanding, P4-R3).
   const showMenu = (row: ComponentLinkRow) => canEdit && row.state !== "removed"
+
+  // After a removal: the ⋯ of the next current row, else the install button, else the links heading. It waits for the
+  // refreshed rows; until then the removed row is still current and the dialog has given focus back to its ⋯.
+  useEffect(() => {
+    const pending = focusAfterRemovalRef.current
+    if (!pending) return
+    const stillCurrent = new Set(linkRows.rows.filter((row) => row.state !== "removed").map((row) => row.id))
+    if (stillCurrent.has(pending.removedId)) return
+    focusAfterRemovalRef.current = null
+    const order = pending.order.filter((id) => id === pending.removedId || stillCurrent.has(id))
+    const targetId = componentFocusAfterRemoval(order, pending.removedId)
+    const target = (targetId ? visibleRowMenu(targetId) : null) ?? installButtonRef.current ?? panelHeading(historyPanelRef.current)
+    target?.focus()
+  }, [linkRows])
 
   useEffect(() => {
     if (!canSearchCandidates) return
@@ -340,6 +374,7 @@ export function AssetComponentManager({
       if (!response.ok) throw new Error(payload?.error ?? labels.error)
 
       toast.success(labels.removeSuccess)
+      focusAfterRemovalRef.current = { removedId: component.id, order: currentRows.map((row) => row.id) }
       setRemoveTarget(null)
       router.refresh()
     } catch (error) {
@@ -584,84 +619,86 @@ export function AssetComponentManager({
         </div>
       ) : null}
 
-      <ContentPanel divided flush title={labels.history} description={t("componentHistoryCount", { total: linkRows.rows.length, installed: linkRows.installedCount, removed: linkRows.removedCount })}>
-        {linkRows.rows.length === 0 ? (
-          <EmptyNote padded>{labels.noHistory}</EmptyNote>
-        ) : (
-          <>
-            <DataTable framed={false} className="hidden md:block" caption={labels.history} scrollHint={tCommon("tableScrollHint")}>
-              <DataTableHeader>
-                <tr>
-                  <DataTableHead>{t("componentColumnComponent")}</DataTableHead>
-                  <DataTableHead>{t("componentColumnRoleSlot")}</DataTableHead>
-                  <DataTableHead>{t("componentColumnInstalled")}</DataTableHead>
-                  <DataTableHead>{t("componentColumnRemoved")}</DataTableHead>
-                  <DataTableHead>{t("componentColumnReason")}</DataTableHead>
-                  <DataTableHead>{t("componentColumnEvidence")}</DataTableHead>
-                  {canEdit ? <DataTableHead hideLabel>{tCommon("actions")}</DataTableHead> : null}
-                </tr>
-              </DataTableHeader>
-              <DataTableBody>
+      <div ref={historyPanelRef}>
+        <ContentPanel divided flush title={labels.history} description={t("componentHistoryCount", { total: linkRows.rows.length, installed: linkRows.installedCount, removed: linkRows.removedCount })}>
+          {linkRows.rows.length === 0 ? (
+            <EmptyNote padded>{labels.noHistory}</EmptyNote>
+          ) : (
+            <>
+              <DataTable framed={false} className="hidden md:block" caption={labels.history} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{t("componentColumnComponent")}</DataTableHead>
+                    <DataTableHead>{t("componentColumnRoleSlot")}</DataTableHead>
+                    <DataTableHead>{t("componentColumnInstalled")}</DataTableHead>
+                    <DataTableHead>{t("componentColumnRemoved")}</DataTableHead>
+                    <DataTableHead>{t("componentColumnReason")}</DataTableHead>
+                    <DataTableHead>{t("componentColumnEvidence")}</DataTableHead>
+                    {canEdit ? <DataTableHead hideLabel>{tCommon("actions")}</DataTableHead> : null}
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {visibleRows.map((row) => (
+                    <DataTableRow key={row.id} data-component-link={row.id}>
+                      <DataTableCell className="min-w-48">
+                        <div className="break-words font-medium text-foreground">{row.componentAsset.name}</div>
+                        <Link href={assetHref(row)} className={cn(linkVariants({ size: "inherit" }), "text-meta")}>
+                          <span className="tag">{row.componentAsset.assetTag}</span>
+                        </Link>
+                      </DataTableCell>
+                      <DataTableCell className="text-muted-foreground">{roleSlotText(row)}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap">
+                        <div className="num text-foreground">{row.installedOn}</div>
+                        <div className="text-meta text-muted-foreground">{row.installedBy ?? <Nil />}</div>
+                      </DataTableCell>
+                      <DataTableCell className="min-w-40">{renderRemoved(row)}</DataTableCell>
+                      <DataTableCell className="min-w-48 text-muted-foreground">{renderReason(row)}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{renderEvidence(row)}</DataTableCell>
+                      {canEdit ? <DataTableCell>{showMenu(row) ? renderRowActions(row) : null}</DataTableCell> : null}
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
+              <ContentPanelRows className="md:hidden">
                 {visibleRows.map((row) => (
-                  <DataTableRow key={row.id}>
-                    <DataTableCell className="min-w-48">
+                  <li key={row.id} data-component-link={row.id} className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1 space-y-1 text-sm">
                       <div className="break-words font-medium text-foreground">{row.componentAsset.name}</div>
-                      <Link href={assetHref(row)} className={cn(linkVariants({ size: "inherit" }), "text-meta")}>
-                        <span className="tag">{row.componentAsset.assetTag}</span>
+                      <Link href={assetHref(row)} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm md:min-h-0")}>
+                        <span className="tag font-medium">{row.componentAsset.assetTag}</span>
                       </Link>
-                    </DataTableCell>
-                    <DataTableCell className="text-muted-foreground">{roleSlotText(row)}</DataTableCell>
-                    <DataTableCell className="whitespace-nowrap">
-                      <div className="num text-foreground">{row.installedOn}</div>
-                      <div className="text-meta text-muted-foreground">{row.installedBy ?? <Nil />}</div>
-                    </DataTableCell>
-                    <DataTableCell className="min-w-40">{renderRemoved(row)}</DataTableCell>
-                    <DataTableCell className="min-w-48 text-muted-foreground">{renderReason(row)}</DataTableCell>
-                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{renderEvidence(row)}</DataTableCell>
-                    {canEdit ? <DataTableCell>{showMenu(row) ? renderRowActions(row) : null}</DataTableCell> : null}
-                  </DataTableRow>
+                      <div className="text-meta text-muted-foreground">{roleSlotText(row)}</div>
+                      <div className="text-meta text-muted-foreground">
+                        {t("componentColumnInstalled")} <span className="num">{row.installedOn}</span>
+                        {row.installedBy ? ` · ${row.installedBy}` : null}
+                      </div>
+                      <div className="text-meta text-muted-foreground">
+                        {row.removedOn ? (
+                          <>
+                            {t("componentColumnRemoved")} <span className="num">{row.removedOn}</span>
+                            {row.removedBy ? ` · ${row.removedBy}` : null}
+                          </>
+                        ) : row.state === "installed" ? t("componentStillInstalled") : null}
+                      </div>
+                      {row.outstandingLine ? <div className="text-meta font-medium text-warning">{row.outstandingLine}</div> : null}
+                      {row.reason || row.document ? <div className="text-meta text-muted-foreground">{renderReason(row)}</div> : null}
+                      {row.evidenceCount > 0 ? <div className="text-meta text-muted-foreground">{renderEvidence(row)}</div> : null}
+                    </div>
+                    {showMenu(row) ? renderRowActions(row) : null}
+                  </li>
                 ))}
-              </DataTableBody>
-            </DataTable>
-            <ContentPanelRows className="md:hidden">
-              {visibleRows.map((row) => (
-                <li key={row.id} className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1 space-y-1 text-sm">
-                    <div className="break-words font-medium text-foreground">{row.componentAsset.name}</div>
-                    <Link href={assetHref(row)} className={cn(linkVariants({ size: "inherit" }), "inline-flex min-h-11 items-center text-sm md:min-h-0")}>
-                      <span className="tag font-medium">{row.componentAsset.assetTag}</span>
-                    </Link>
-                    <div className="text-meta text-muted-foreground">{roleSlotText(row)}</div>
-                    <div className="text-meta text-muted-foreground">
-                      {t("componentColumnInstalled")} <span className="num">{row.installedOn}</span>
-                      {row.installedBy ? ` · ${row.installedBy}` : null}
-                    </div>
-                    <div className="text-meta text-muted-foreground">
-                      {row.removedOn ? (
-                        <>
-                          {t("componentColumnRemoved")} <span className="num">{row.removedOn}</span>
-                          {row.removedBy ? ` · ${row.removedBy}` : null}
-                        </>
-                      ) : row.state === "installed" ? t("componentStillInstalled") : null}
-                    </div>
-                    {row.outstandingLine ? <div className="text-meta font-medium text-warning">{row.outstandingLine}</div> : null}
-                    {row.reason || row.document ? <div className="text-meta text-muted-foreground">{renderReason(row)}</div> : null}
-                    {row.evidenceCount > 0 ? <div className="text-meta text-muted-foreground">{renderEvidence(row)}</div> : null}
-                  </div>
-                  {showMenu(row) ? renderRowActions(row) : null}
-                </li>
-              ))}
-            </ContentPanelRows>
-          </>
-        )}
-        {hasMoreHistory ? (
-          <div className="border-t border-border-soft px-4 py-3 md:px-5">
-            <Button variant="outline" onClick={() => setHistoryVisibleCount((current) => current + 10)}>
-              {labels.loadMore}
-            </Button>
-          </div>
-        ) : null}
-      </ContentPanel>
+              </ContentPanelRows>
+            </>
+          )}
+          {hasMoreHistory ? (
+            <div className="border-t border-border-soft px-4 py-3 md:px-5">
+              <Button variant="outline" onClick={() => setHistoryVisibleCount((current) => current + 10)}>
+                {labels.loadMore}
+              </Button>
+            </div>
+          ) : null}
+        </ContentPanel>
+      </div>
 
       <ComponentRemovalDialog
         key={removeTarget?.id ?? "closed"}

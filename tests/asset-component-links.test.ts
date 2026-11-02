@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { componentCountAfterRemoval, lastRemovalByComponent } from "../src/lib/asset-component-links.ts"
+import { componentCountAfterRemoval, componentFocusAfterRemoval, lastRemovalByComponent } from "../src/lib/asset-component-links.ts"
 
 test("removing an installed link counts one fewer; an outstanding link was not counted (Review Focus 2)", () => {
   assert.equal(componentCountAfterRemoval({ status: "installed" }, 2), 1)
@@ -30,4 +30,13 @@ test("the last removal per component is the latest date; rows not removed are sk
 
 test("no rows give an empty map", () => {
   assert.equal(lastRemovalByComponent([]).size, 0)
+})
+
+test("after a removal, focus goes to the current row that followed it, else the one before it, else none (final review)", () => {
+  assert.equal(componentFocusAfterRemoval(["a", "b", "c"], "b"), "c")
+  assert.equal(componentFocusAfterRemoval(["a", "b", "c"], "c"), "b")
+  assert.equal(componentFocusAfterRemoval(["a"], "a"), null)
+  assert.equal(componentFocusAfterRemoval([], "a"), null)
+  // A row that is not among the current ones gives no target from the list.
+  assert.equal(componentFocusAfterRemoval(["a", "b"], "z"), null)
 })

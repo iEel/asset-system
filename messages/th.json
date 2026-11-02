@@ -362,7 +362,8 @@
     "scanComponentsValue": "{count, number} รายการ · {names}",
     "scanNextActions": "ทำต่อกับทรัพย์สินนี้",
     "scanRecent": "เปิดล่าสุด",
-    "scanRecentClear": "ล้างรายการ"
+    "scanRecentClear": "ล้างรายการ",
+    "scanShownFirst": "แสดง {shown, number} รายการแรก"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",
@@ -927,7 +928,6 @@
     "expectedReturnDate": "กำหนดคืน",
     "returnDate": "วันที่รับคืน",
     "handoverReturned": "รับคืนแล้ว",
-    "viewEvidence": "ดูหลักฐาน",
     "checkoutPhotoBefore": "รูปก่อนส่งมอบ",
     "receiverSignature": "ลายเซ็นผู้รับมอบ",
     "checkinPhotoAfter": "รูปตอนรับคืน",
@@ -1122,7 +1122,6 @@
     "installedAt": "วันที่ติดตั้ง",
     "installedBy": "ผู้ติดตั้ง/ผู้ทำรายการ",
     "removedBy": "ผู้ถอด/ผู้ทำรายการ",
-    "componentSummaryHelp": "ดูส่วนควบที่ติดตั้งอยู่ ประวัติการถอด/ติดตั้ง หลักฐานรูปถ่าย และความสัมพันธ์กับทรัพย์สินหลัก",
     "componentMissingSerial": "ไม่มี Serial",
     "installedInParent": "ทรัพย์สินนี้เป็นส่วนควบของ",
     "componentInstallEvidence": "รูปหลักฐานตอนติดตั้ง",
@@ -1130,9 +1129,7 @@
     "componentEvidenceHelp": "ถ่ายรูปหรือเลือกไฟล์ภาพ เช่น Serial Number หรือตำแหน่งติดตั้ง",
     "componentEvidenceSelected": "เลือกไฟล์แล้ว ระบบจะบันทึกพร้อมรายการ",
     "removeComponent": "ถอดส่วนควบ",
-    "currentComponents": "ส่วนควบที่ติดตั้งอยู่",
     "componentHistory": "ประวัติส่วนควบ",
-    "noCurrentComponents": "ยังไม่มีส่วนควบที่ติดตั้งอยู่",
     "noComponentHistory": "ยังไม่มีประวัติส่วนควบ",
     "componentInstallSuccess": "ติดตั้งส่วนควบสำเร็จ",
     "componentRemoveSuccess": "ถอดส่วนควบสำเร็จ",
