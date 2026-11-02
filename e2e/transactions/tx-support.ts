@@ -52,8 +52,8 @@ const EMPTY_ASSET_BODY = {
 // One E2E asset, Ready, in the run's first room, through the asset API as the signed-in user. It is personal (บุคคล) and
 // in the run's department unless the options say otherwise: the department tests (group 3 plan 1 task 8) start a
 // ส่วนกลาง asset, or one in an existing department other than the run's, to read the department back after a handover,
-// and a ส่วนควบ asset for the components of plan 2's return; a held asset (`custodianId`, a holder whose department differs
-// from the asset's: group 3 spec §14 call 4) and a broken one (`conditionId`) for plan 3's โอนย้าย.
+// and a ส่วนควบ asset for the components of plan 2's return; a held asset (`custodianId`: group 3 spec §14 call 4; a held
+// บุคคล asset takes its holder's department since group 4 plan 2, P2-R9) and a broken one (`conditionId`) for plan 3's โอนย้าย.
 export type CreateAssetOptions = { ownershipType?: "personal" | "shared" | "component"; departmentId?: string; custodianId?: string; conditionId?: string }
 export async function createAsset(page: Page, masters: AssetMasters, tag: string, name: string, options: CreateAssetOptions = {}): Promise<CreatedAsset> {
   const data = readRunData()

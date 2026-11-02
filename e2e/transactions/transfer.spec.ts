@@ -217,22 +217,21 @@ test.describe("transfer", () => {
 // Group 3 plan 3 (spec §6, §9.2, §14 call 4, and §19's question, answered by P3-R1). Each test makes its own assets, so
 // these are not serial: one failing skips none of the others.
 test.describe("transfer: the department rule, ส่วนกลาง, a component and a broken asset", () => {
-  test("a held asset moved only to another room takes its holder's department: the row is locked from the start, the summary shows the change, and the holder and the status stay (spec §6, §14 call 4)", async ({ page, measure, e2eDevice }, testInfo) => {
+  test("a held asset moved only to another room keeps its holder's department: the row is locked from the start, the summary shows one change, and the holder, the department and the status stay (spec §6, §14 call 4; group 4 plan 2 P2-R9)", async ({ page, measure, e2eDevice }, testInfo) => {
     const data = readRunData()
     const holder = data.employees.receiver1
     const runDepartment = runRecords(readRunState().runId).department
     const room = await ensureSecondLocation()
-    const second = await readSecondDepartment()
-    // A Ready asset with a holder and a department other than theirs (an old mismatch), made in one call: the asset API
-    // creates only Draft or Ready, so this is the ข้อมูลเก่า shape (D21); the rule is the same for an In Use holder.
-    const asset = await createTxAsset(page, await readAssetMasters(page), testInfo.project.name, "TR2", "โน้ตบุ๊กย้ายห้องตามผู้ถือครอง", { departmentId: second.id, custodianId: holder.id })
+    // A Ready asset with a holder, made in one call: the asset API gives a held บุคคล asset its holder's department
+    // (group 4 plan 2, P2-R9), so an old mismatch can no longer be seeded here; tests/transfer-rules.test.ts covers it.
+    const asset = await createTxAsset(page, await readAssetMasters(page), testInfo.project.name, "TR2", "โน้ตบุ๊กย้ายห้องตามผู้ถือครอง", { custodianId: holder.id })
     const before = await readAsset(page, asset.id)
-    expect([before.custodianId, before.departmentId, before.status.name]).toEqual([holder.id, second.id, "Ready"])
+    expect([before.custodianId, before.departmentId, before.status.name]).toEqual([holder.id, data.departmentId, "Ready"])
 
-    await visit(measure, `/th/asset-management/transfer?assetId=${asset.id}`, "transfer form, a held asset in another department", testInfo)
+    await visit(measure, `/th/asset-management/transfer?assetId=${asset.id}`, "transfer form, a held asset", testInfo)
     await expect(pickedAsset(page, asset.id)).toContainText(asset.assetTag)
     await expect(transferNowCell(page, "holder")).toContainText(`${holder.code} - ${holder.fullNameTh}`)
-    await expect(transferNowCell(page, "department")).toContainText(`${second.code} - ${second.name}`)
+    await expect(transferNowCell(page, "department")).toContainText(`${runDepartment.code} - ${runDepartment.name}`)
     // The asset has a holder: the แผนก row follows them before anything is chosen.
     const department = page.locator("#transfer-to-department")
     await expect(department).toBeDisabled()
@@ -242,33 +241,33 @@ test.describe("transfer: the department rule, ส่วนกลาง, a compon
     await page.locator("#transfer-reason").fill(`${asset.assetTag} ย้ายห้องอย่างเดียว`)
     const footer = page.locator('[data-slot="sticky-form-footer"]').filter({ visible: true })
     if (e2eDevice === "desktop") {
-      // Two changes: the room, and the department the holder's corrects. The holder and the status stay.
+      // One change: the room. The holder, the department (already the holder's) and the status stay.
       const summary = page.locator('[data-slot="operation-summary-card"]')
-      await expect(summary.locator("[data-summary-lead]")).toContainText(templatePattern(TX_WORDS.transferLead, { count: "2" }))
-      await expect(summary.locator('[data-summary-row="department"]')).toContainText(second.name)
-      await expect(summary.locator('[data-summary-row="department"]')).toContainText(runDepartment.name)
+      await expect(summary.locator("[data-summary-lead]")).toContainText(templatePattern(TX_WORDS.transferLead, { count: "1" }))
+      await expect(summary.locator("[data-summary-lead]")).toContainText(TX_WORDS.transferKeptBoth)
+      await expect(summary.locator('[data-summary-row="department"]')).toContainText(fillTemplate(TX_WORDS.summaryKept, { value: runDepartment.name }))
       await expect(summary.locator('[data-summary-row="holder"]')).toContainText(fillTemplate(TX_WORDS.summaryKept, { value: holder.fullNameTh }))
       await expect(summary.locator('[data-summary-row="status"]')).toContainText(TX_WORDS.statusUnchanged)
       // The footer names the changed rows only (P3-R12).
       await expect(footer).toContainText(templatePattern(TX_WORDS.transferFooter, { tag: asset.assetTag }))
-      await expect(footer).toContainText(runDepartment.name)
+      await expect(footer).not.toContainText(runDepartment.name)
       await expect(footer).not.toContainText(holder.fullNameTh)
     } else {
-      await expect(footer).toContainText(templatePattern(TX_WORDS.transferLead, { count: "2" }))
+      await expect(footer).toContainText(templatePattern(TX_WORDS.transferLead, { count: "1" }))
     }
     await record(measure, "transfer form, a held asset moved only to another room", testInfo)
 
     await saveTransferForm(page, asset.id, async (review) => {
-      // Real changes only (P3-R18): the room and the department, not the holder who stays.
+      // Real changes only (P3-R18): the room, not the department or the holder that stay.
       await expect(review).toContainText(room.code)
-      await expect(review).toContainText(runDepartment.name)
+      await expect(review).not.toContainText(runDepartment.name)
       await expect(review).toContainText(TX_WORDS.statusUnchanged)
       await expect(review).not.toContainText(holder.fullNameTh)
     })
     const after = await readAsset(page, asset.id)
     expect([after.currentLocationId, after.custodianId, after.departmentId, after.status.name]).toEqual([room.id, holder.id, data.departmentId, "Ready"])
     await visitAssetPage(measure, asset.id, "asset history after a room-only transfer", testInfo, "history")
-    await expect(page.getByRole("main")).toContainText(TX_WORDS.departmentChange)
+    await expect(page.getByRole("main")).not.toContainText(TX_WORDS.departmentChange)
   })
 
   test("a ส่วนกลาง asset given a holder keeps its own department: the row stays free, and the save writes no department and no เปลี่ยนแผนก line (spec §6, Q1)", async ({ page, measure, e2eDevice }, testInfo) => {

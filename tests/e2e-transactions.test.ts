@@ -333,9 +333,14 @@ test("โอนย้าย through the footer: the second room and a new holder
     'await expect(page.getByRole("main")).toContainText(TX_WORDS.departmentChange)',
     "await expect(valueBeside(page, TX_WORDS.fromDepartment)).toHaveText(`${second.code} - ${second.name}`)",
   ]) assert.ok(spec.includes(part), part)
-  // TR2 (call 4), TR3 (ส่วนกลาง), TR4 (a component), TR5 (a broken asset, P3-R1).
+  // TR2 (call 4; group 4 plan 2 P2-R9: seeded with its holder's department, a room-only transfer is one change),
+  // TR3 (ส่วนกลาง), TR4 (a component), TR5 (a broken asset, P3-R1).
   for (const part of [
-    '"TR2", "โน้ตบุ๊กย้ายห้องตามผู้ถือครอง", { departmentId: second.id, custodianId: holder.id })',
+    '"TR2", "โน้ตบุ๊กย้ายห้องตามผู้ถือครอง", { custodianId: holder.id })',
+    'expect([before.custodianId, before.departmentId, before.status.name]).toEqual([holder.id, data.departmentId, "Ready"])',
+    'templatePattern(TX_WORDS.transferLead, { count: "1" })',
+    "await expect(summary.locator('[data-summary-row=\"department\"]')).toContainText(fillTemplate(TX_WORDS.summaryKept, { value: runDepartment.name }))",
+    "await expect(review).not.toContainText(runDepartment.name)",
     'toEqual([room.id, holder.id, data.departmentId, "Ready"])',
     'await expect(footer).not.toContainText(holder.fullNameTh)',
     '"TR3", "จอส่วนกลางโอนย้าย", { ownershipType: "shared", departmentId: second.id })',
@@ -375,7 +380,8 @@ test("โอนย้าย through the footer: the second room and a new holder
     assert.ok(index >= 0, `TR1 in order: ${step}`)
     from = index + step.length
   }
-  assert.equal(spec.split("await readSecondDepartment()").length - 1, 4)
+  assert.equal(spec.split("await readSecondDepartment()").length - 1, 3, "TR1, TR3 and TR4 (TR2 needs no second department)")
+  assert.ok(!spec.includes("departmentId: second.id, custodianId: holder.id"), "no seeded mismatch (P2-R9)")
   assert.equal(spec.split('if (e2eDevice === "desktop")').length - 1, 4, "the summary on the desktop only")
   for (const banned of ["request.delete", "/api/admin/settings", "/api/departments", "/api/locations", "ldap", "import-confirm", "isactive: false"]) assert.ok(!spec.toLowerCase().includes(banned), banned)
 })
