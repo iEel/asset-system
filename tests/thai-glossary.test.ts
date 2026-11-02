@@ -38,6 +38,9 @@ const rules: Rule[] = [
   // Group 4 plan 3 Task 6: the batch's old checkbox list went; assets linked to a document are counted in เครื่อง (P3-R1).
   { term: "ผูกแล้ว n ทรัพย์สิน", pattern: /ผูกแล้ว\s*(?:\d+\s*)?ทรัพย์สิน/, use: "ผูกกับ n เครื่อง" },
   { term: "เลือกเอกสารกลางที่มีอยู่ / สร้างเอกสารกลางใหม่ / เพิ่มเอกสารเข้าคิวบันทึก", pattern: /เลือกเอกสารกลางที่มีอยู่|สร้างเอกสารกลางใหม่|เพิ่มเอกสารเข้าคิวบันทึก/, use: "เลือกเอกสารที่มีอยู่ / อัปโหลดเอกสารใหม่ / + เพิ่มอีกใบ" },
+  // Group 4 plan 4 (P4-R6): the repair action reads บันทึกซ่อม. Narrow on purpose: only a value that starts with the
+  // word (a button or action label); "ใบแจ้งซ่อม", "วันที่แจ้งซ่อม" and the like inside a sentence stay legal.
+  { term: "แจ้งซ่อม (ชื่อปุ่มหรือการกระทำ)", pattern: /^\s*แจ้งซ่อม/, use: "บันทึกซ่อม" },
 ]
 
 // Removed before matching: product names and allowed compounds.
@@ -48,6 +51,7 @@ const keyExceptions: Record<string, string> = {
   "productionReadinessPage.check_publicQrBaseUrl_description": "\"asset\" is the example host name in https://asset.company.com, not a word for readers",
   "systemSettingsPage.publicQrBaseUrlDescription": "\"asset\" is the example host name in https://asset.company.com, not a word for readers",
   "systemSettingsPage.publicQrBaseUrlPlaceholder": "the value is the example URL https://asset.company.com shown in an empty input, not a word for readers",
+  "maintenancePage.statuses.reported": "the record status แจ้งซ่อม (reported) is a state of the repair record, not the repair action (P4-R6)",
 }
 
 // Bare ICU arguments like {label} are code names, not text a reader sees. Plural/select blocks
@@ -92,6 +96,15 @@ test("placeholder names are ignored but the words around them are still checked"
   assert.deepEqual(brokenRules("พิมพ์ Label"), ["Label"])
   assert.deepEqual(brokenRules("พิมพ์ Label {label}"), ["Label"])
   assert.deepEqual(brokenRules("{count, plural, other {# Label}}"), ["Label"])
+})
+
+test("the repair rule flags แจ้งซ่อม as an action only, never ใบแจ้งซ่อม or the word inside a sentence (P4-R6)", () => {
+  assert.deepEqual(brokenRules("แจ้งซ่อม"), ["แจ้งซ่อม (ชื่อปุ่มหรือการกระทำ)"])
+  assert.deepEqual(brokenRules("แจ้งซ่อม {tag}"), ["แจ้งซ่อม (ชื่อปุ่มหรือการกระทำ)"])
+  assert.deepEqual(brokenRules("บันทึกซ่อม"), [])
+  assert.deepEqual(brokenRules("ยกเลิกใบแจ้งซ่อม"), [])
+  assert.deepEqual(brokenRules("ไม่พบใบแจ้งซ่อมนี้"), [])
+  assert.deepEqual(brokenRules("วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม"), [])
 })
 
 test("every glossary exception points at a real key and explains itself", () => {
