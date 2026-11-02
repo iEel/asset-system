@@ -223,7 +223,8 @@ test("the import card translates itself; the page passes no labels (ui.md D13)",
   const source = importExportPageSource()
 
   assert.match(source, /<AssetImportPreviewPanel \/>/)
-  assert.doesNotMatch(source, /openImportWizard|collapseImportWizard|importWizard|importField/)
+  // Group 4 plan 5 Task 5: the page reads asset.importField for the history's skipped-row lines, never to hand it to the panel.
+  assert.doesNotMatch(source, /openImportWizard|collapseImportWizard|importWizard|fields: t\.raw\("importField"\)/)
 })
 
 test("asset import history shows no rollback block or asset list: no undo exists (group 4 plan 5, call 21)", () => {
@@ -312,14 +313,16 @@ test("asset activity filter messages are equivalent in Thai and English", () => 
   assert.equal(assetMessages("en").activityIdle180d, "No movement in the latest 180 days")
 })
 
-// Plan 2B-3 Task 14 (spec 2B §7.11, §10.4 table C row LK1, N7): the import-export page header is PageHeader and the import
-// history facts are one KeyValueList. This file reads the page raw (CRLF), so these regexes hold no line break.
-test("the import-export page header is PageHeader and the import history facts are a KeyValueList (spec 2B §7.11)", () => {
+// Plan 2B-3 Task 14 (spec 2B §7.11, §10.4 table C row LK1, N7): the import-export page header is PageHeader. Group 4 plan 5
+// Task 5 (board, P5-R7): a history row is its file name, a counts line and "<ชื่อ> · <วันที่>", not a KeyValueList with the
+// file size. This file reads the page raw (CRLF), so these regexes hold no line break.
+test("the import-export page header is PageHeader and a history row is the file name, its counts and who · when (spec 2B §7.11, group 4 plan 5)", () => {
   const source = importExportPageSource()
 
-  assert.match(source, /<div className="mx-auto max-w-6xl space-y-6">\s*<PageHeader title=\{tTools\("importExportTitle"\)\} meta=\{tTools\("importExportSubtitle"\)\} \/>/)
+  assert.match(source, /<div className="mx-auto max-w-6xl space-y-6">\s*<PageHeader title=\{tTools\("importExportTitle"\)\} meta=\{tTools\("importExportPage\.subtitle"\)\} \/>/)
   assert.doesNotMatch(source, /<h1\b|font-bold/)
-  assert.match(source, /<KeyValueList\s+className="mt-3"\s+items=\{\[/)
-  assert.match(source, /\{ key: "sourceFile", label: labels\.sourceFile, value: `\$\{batch\.fileName\} \(\$\{formatFileSize\(batch\.fileSize\)\}\)` \}/)
+  assert.match(source, /\{batch\.fileName\}<\/h3>/)
+  assert.match(source, /tTools\("importExportPage\.historyCounts", \{ imported: batch\.imported, total: batch\.totalRows, skipped: batch\.skipped \}\)/)
+  assert.doesNotMatch(source, /KeyValueList|formatFileSize|labels\.sourceFile/)
   assert.doesNotMatch(source, /function Info\b|<Info\b/)
 })

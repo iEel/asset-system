@@ -145,19 +145,48 @@ test("import panel (M15): one divided ContentPanel, a head StatusBadge, a Distri
   assert.doesNotMatch(source, /function (?:SummaryItem|SummaryPill|getBatchStatusClass|formatFileSize)\b|"-"|toLocaleString|<table\b|<th\b|uppercase|bg-muted\/|rounded-full|primary-soft|info-soft|success-soft|warning-soft|\btext-xs\b|text-lg font-bold|<Chip\b|KeyValueList|max-h-80|\bdark:|#[0-9a-fA-F]{6}\b|rgba?\(/)
 })
 
-test("import-export page: link cards on the panel frame with download for /api, the history a ContentPanel with StatusBadges, EmptyNote and no raw colors (spec 2D D9, M22, M29, M31)", () => {
+test("import-export page: the export card and the history are ContentPanels, the history titled by file name with an outcome StatusBadge, EmptyNote and no raw colors (group 4 plan 5 Task 5, P5-R7, P5-R10)", () => {
   const source = read(`${D}asset-management/import-export/page.tsx`)
-  assert.equal(source.match(/<ActionLink\n\s+download\n/g)?.length, 2, "the template and the export are files")
-  assert.match(source, /<a href=\{href\} download className=\{actionCardClasses\}>/)
-  assert.match(source, /<Link href=\{href\} className=\{actionCardClasses\}>/)
-  assert.match(source, /const actionCardClasses = cn\(getPanelClasses\(\), "block p-4 transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-5"\)/)
-  assert.match(source, /<ContentPanel title=\{labels\.title\} description=\{labels\.help\}>/)
-  assert.match(source, /<EmptyNote>\{labels\.empty\}<\/EmptyNote>/)
-  assert.match(source, /<StatusBadge label=\{formatImportBatchStatus\(batch\.status, labels\)\} tone=\{getAssetImportBatchStatusTone\(batch\.status\)\} \/>/)
-  // The rollback badge went with the undo line (group 4 plan 5, call 21).
-  assert.doesNotMatch(source, /rollbackSummary|labels\.rollback/)
-  assert.match(source, /<span className="break-all font-mono">\{batch\.batchId\}<\/span>/)
-  assert.doesNotMatch(source, /\b(?:bg|text|border)-amber-\d|primary-soft|border-dashed|rounded-full|toLocaleString|text-lg|\btext-xs\b|\{labels\.status\}: \{batch\.status\}/)
+  // The three link cards and their frame went; the template lives in the import card (Task 4).
+  assert.doesNotMatch(source, /ActionLink|actionCardClasses|import-template|getPanelClasses/)
+  assert.match(source, /<ContentPanel divided flush title=\{tTools\("importExportPage\.exportTitle"\)\}>/)
+  assert.match(source, /<a href="\/api\/assets\/export" download className=\{exportRowClasses\}>/)
+  // The register's export menu is desktop only, so the way to it is too (recon export.md D6); the arrow is an icon.
+  assert.match(source, /<Link href=\{`\/\$\{locale\}\/assets`\} className=\{cn\(exportRowClasses, "hidden md:flex"\)\}>/)
+  assert.match(source, /\{tTools\("importExportPage\.exportFiltered"\)\}\n\s+<ArrowRight aria-hidden="true" className="size-4 shrink-0" \/>/)
+  assert.match(source, /title=\{tTools\("importExportPage\.historyTitle"\)\}\n\s+actions=\{<span className="num text-meta text-muted-foreground">\{tTools\("importExportPage\.historyRecent", \{ count: IMPORT_HISTORY_LIMIT \}\)\}<\/span>\}/)
+  assert.match(source, /const IMPORT_HISTORY_LIMIT = 10\n/)
+  assert.match(source, /take: IMPORT_HISTORY_LIMIT,/)
+  assert.match(source, /<EmptyNote padded>\{tTools\("importExportPage\.historyEmpty"\)\}<\/EmptyNote>/)
+  assert.match(source, /<ContentPanelRows>\n\s+\{importHistory\.map\(/)
+  assert.match(source, /<h3 className="min-w-0 break-words font-semibold text-foreground">\{batch\.fileName\}<\/h3>/)
+  assert.match(source, /label=\{tTools\(batch\.outcome === "complete" \? "importExportPage\.outcomeComplete" : "importExportPage\.outcomePartial"\)\}\n\s+tone=\{batch\.outcome === "complete" \? "success" : "warning"\}/)
+  // The preview's status, the batch id and the file size leave the history row (board; P5-R7). No undo line (call 21).
+  assert.doesNotMatch(source, /batch\.status\b|batch\.batchId|batch\.fileSize|formatImportBatchStatus|getAssetImportBatchStatusTone|rollbackSummary|labels\.rollback/)
+  assert.doesNotMatch(source, /\b(?:bg|text|border)-amber-\d|primary-soft|border-dashed|rounded-full|toLocaleString|text-lg|\btext-xs\b|\bdark:|#[0-9a-fA-F]{6}\b|rgba?\(|\b(?:bg|text|border|ring)-[a-z-]+\/\d+|<button\b/)
+})
+
+test("import-export page: the history unfolds the first 3 skipped rows, name first and tag under it, with the preview's issue lines (P5-R4, P5-R7)", () => {
+  const source = read(`${D}asset-management/import-export/page.tsx`)
+  assert.match(source, /const HISTORY_SKIPPED_ROWS_SHOWN = 3\n/)
+  assert.match(source, /const shownRows = batch\.skippedRows\.slice\(0, HISTORY_SKIPPED_ROWS_SHOWN\)/)
+  assert.match(source, /const moreRows = Math\.max\(0, batch\.skipped - shownRows\.length\)/)
+  assert.match(source, /\{shownRows\.length > 0 \? \(\n\s+<details className="group\/skipped mt-2">/)
+  assert.match(source, /\{tTools\("importExportPage\.skippedRowsToggle", \{ count: batch\.skipped \}\)\}/)
+  assert.match(source, /<div className="break-words text-foreground">\{orNil\(row\.name\)\}<\/div>\n\s+\{row\.assetTag \? \(\n\s+<div className="tag text-muted-foreground">\{row\.assetTag\}<\/div>/)
+  assert.match(source, /\{tTools\("importExportPage\.skippedRowsMore", \{ count: moreRows \}\)\}/)
+  // The words come from the preview's pure helper, not a copy of it.
+  assert.match(source, /import \{ buildImportIssueParts, type AssetImportTranslate \} from "@\/lib\/asset-import-wizard"/)
+  assert.match(source, /const parts = buildImportIssueParts\(issue, t as AssetImportTranslate, \{ fields, locale \}\)/)
+  assert.doesNotMatch(source, /importError\.|importIssue\./)
+  assert.match(source, /tTools\("importExportPage\.historyMeta", \{ name: batch\.approvedByLabel, date: formatDateTime\(batch\.createdAt\) \}\)/)
+  assert.match(source, /tTools\("importExportPage\.historyCounts", \{ imported: batch\.imported, total: batch\.totalRows, skipped: batch\.skipped \}\)/)
+})
+
+test("import-export page: two columns from lg for an importer; a viewer gets the export card and the history in one column (P5-R8, P5-R9)", () => {
+  const source = read(`${D}asset-management/import-export/page.tsx`)
+  assert.match(source, /<div className=\{cn\("grid items-start gap-6", canImport && "lg:grid-cols-\[minmax\(0,1fr\)_350px\]"\)\}>\n\s+\{canImport \? \(\n\s+<AssetImportPreviewPanel \/>\n\s+\) : null\}\n\s+<div className="grid min-w-0 gap-6">/)
+  assert.doesNotMatch(source, /tCommon|buttonVariants/)
 })
 
 test("label batch tool: ContentPanels, StatusBadges from status.name (M23), formatCount (M27), a scope Chip, EmptyNote, and list rows without opacity (spec 2D D9, M21, M22)", () => {
@@ -230,28 +259,34 @@ test("my assets: the phone card facts are a KeyValueList (D19), the card is a qu
   assert.doesNotMatch(source, /function MobileField\b|import type React|\btext-xs\b/)
 })
 
-test("import-export: the unfiltered export is named export all; the register link names the filter step (critique 2026-10-20 B1)", () => {
+test("import-export: the export-all row counts what the file holds, with no filter, and names the cap above it (P5-R10)", () => {
   const source = read(`${D}asset-management/import-export/page.tsx`)
-  assert.match(source, /href="\/api\/assets\/export"\n\s+icon=\{<FileDown className="h-5 w-5" \/>\}\n\s+title=\{tTools\("exportAll"\)\}\n\s+description=\{tTools\("exportAllDescription", \{ max: formatCount\(ASSET_EXPORT_MAX_ROWS\) \}\)\}/)
-  assert.doesNotMatch(source, /t\("exportFiltered"\)/)
+  assert.match(source, /prisma\.asset\.count\(\{ where: assetExportAllWhere\(\) \}\)/)
+  assert.match(source, /\{tTools\(`importExportPage\.\$\{exportAllCountKey\(exportCount\)\}`, \{ count: exportCount, max: ASSET_EXPORT_MAX_ROWS \}\)\}/)
+  assert.match(source, /\{tTools\("importExportPage\.exportAll"\)\}/)
+  assert.match(source, /\{tTools\("importExportPage\.exportAllDescription"\)\}/)
   assert.match(read(`${C}assets/asset-register-export-menu.tsx`), /: t\("exportFilteredCount", \{ count: exportCount \}\)\}/)
   const th = JSON.parse(read("messages/th.json")).assetTools, en = JSON.parse(read("messages/en.json")).assetTools
-  assert.equal(th.exportAll, "ส่งออกทั้งหมด (Excel)"); assert.equal(en.exportAll, "Export all (Excel)")
-  assert.equal(th.exportWithFilters, "เลือกตัวกรองในทะเบียนแล้วส่งออก"); assert.equal(en.exportWithFilters, "Filter in the register, then export")
+  assert.equal(th.importExportPage.exportAll, "ส่งออกทั้งหมด (Excel)"); assert.equal(en.importExportPage.exportAll, "Export all (Excel)")
+  assert.equal(th.importExportPage.exportFiltered, "ส่งออกตามตัวกรองในทะเบียน")
+  assert.equal(th.importExportPage.exportAllCount, "{count, number} รายการ · ไม่ใช้ตัวกรอง")
+  // The old link-card words went with the cards (P5-C2).
+  for (const key of ["importExportSubtitle", "downloadTemplateDescription", "exportAll", "exportAllDescription", "exportWithFilters", "exportWithFiltersDescription"]) {
+    assert.equal(th[key], undefined, key); assert.equal(en[key], undefined, key)
+  }
 })
 
-test("import-export: the export-all card says its 5,000-row limit, from the one constant the route caps with (user decision 2026-10-21 Y1)", async () => {
+test("import-export: the export cap comes from the one constant the route caps with, and no export word says ตามสิทธิ์ (user decision 2026-10-21 Y1, spec §13)", async () => {
   const { ASSET_EXPORT_MAX_ROWS } = await import("../src/lib/asset-export-limits.ts")
   assert.equal(ASSET_EXPORT_MAX_ROWS, 5000)
   const route = read("src/app/api/assets/export/route.ts")
   assert.match(route, /import \{ ASSET_EXPORT_MAX_ROWS \} from "@\/lib\/asset-export-limits"/)
   assert.match(route, /take: ASSET_EXPORT_MAX_ROWS,/)
   assert.doesNotMatch(route, /take: 5000/)
-  assert.match(read(`${D}asset-management/import-export/page.tsx`), /import \{ ASSET_EXPORT_MAX_ROWS \} from "@\/lib\/asset-export-limits"/)
-  const th = JSON.parse(read("messages/th.json")).assetTools, en = JSON.parse(read("messages/en.json")).assetTools
-  assert.equal(th.exportAllDescription, "ส่งออกทะเบียนทรัพย์สินทั้งหมดตามสิทธิ์การเข้าถึงปัจจุบัน สูงสุด {max} รายการ")
-  assert.equal(en.exportAllDescription, "Export all asset records available to your current access permissions, up to {max} rows")
-  const max = new Intl.NumberFormat("en-US").format(ASSET_EXPORT_MAX_ROWS)
-  assert.match(th.exportAllDescription.replace("{max}", max), /สูงสุด 5,000 รายการ/)
-  assert.match(en.exportAllDescription.replace("{max}", max), /up to 5,000 rows/)
+  assert.match(read(`${D}asset-management/import-export/page.tsx`), /import \{ ASSET_EXPORT_MAX_ROWS, assetExportAllWhere, exportAllCountKey \} from "@\/lib\/asset-export-limits"/)
+  const th = JSON.parse(read("messages/th.json")).assetTools.importExportPage, en = JSON.parse(read("messages/en.json")).assetTools.importExportPage
+  assert.equal(th.exportAllCapped, "{count, number} รายการ · ไม่ใช้ตัวกรอง · ไฟล์มี {max, number} รายการที่เพิ่มล่าสุด")
+  assert.match(en.exportAllCapped, /\{max, number\} most recently added/)
+  assert.doesNotMatch(JSON.stringify(th), /ตามสิทธิ์/)
+  assert.doesNotMatch(JSON.stringify(en), /access permissions/)
 })

@@ -1,27 +1,29 @@
 import Link from "next/link"
-import type { ReactNode } from "react"
 import { getTranslations } from "next-intl/server"
-import { Download, FileDown, FileSpreadsheet } from "lucide-react"
+import { ArrowRight, ChevronDown, FileDown, ListFilter } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
-import { getAssetImportBatchStatusTone } from "@/lib/asset-import-batch"
 import { buildAssetImportHistory, type AssetImportHistoryItem } from "@/lib/asset-import-history"
-import { getPanelClasses } from "@/lib/design-system"
-import { formatCount } from "@/lib/display-format"
-import { ASSET_EXPORT_MAX_ROWS } from "@/lib/asset-export-limits"
+import { buildImportIssueParts, type AssetImportTranslate } from "@/lib/asset-import-wizard"
+import { ASSET_EXPORT_MAX_ROWS, assetExportAllWhere, exportAllCountKey } from "@/lib/asset-export-limits"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
-import { ContentPanel } from "@/components/ui/content-panel"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ContentPanel, ContentPanelRows } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
-import { KeyValueList } from "@/components/ui/key-value-list"
+import { orNil } from "@/components/ui/nil"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { buttonVariants } from "@/components/ui/button-variants"
 import { cn, formatDateTime } from "@/lib/utils"
 
 type AssetImportExportPageProps = {
   params: Promise<{ locale: string }>
 }
+
+// Appendix A: the history holds the last 10 batches.
+const IMPORT_HISTORY_LIMIT = 10
+// P5-R7: a history row unfolds its first 3 skipped rows; the rest is a count.
+const HISTORY_SKIPPED_ROWS_SHOWN = 3
 
 export default async function AssetImportExportPage({ params }: AssetImportExportPageProps) {
   const { locale } = await params
@@ -30,181 +32,193 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
   const canImport = hasPermission(user, "asset", "create")
   const t = await getTranslations("asset")
   const tTools = await getTranslations("assetTools")
-  const tCommon = await getTranslations("common")
-  const importLogs = await prisma.systemLog.findMany({
-    where: { module: "asset", action: "import_batch" },
-    include: { user: { select: { username: true, displayName: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  })
+  const [importLogs, exportCount] = await Promise.all([
+    prisma.systemLog.findMany({
+      where: { module: "asset", action: "import_batch" },
+      include: { user: { select: { username: true, displayName: true } } },
+      orderBy: { createdAt: "desc" },
+      take: IMPORT_HISTORY_LIMIT,
+    }),
+    // P5-R10: the count the unfiltered export writes from, from the same where as the route.
+    prisma.asset.count({ where: assetExportAllWhere() }),
+  ])
   const importHistory = buildAssetImportHistory(importLogs)
+  // The Thai field names the skipped rows' issue lines use, as the preview does.
+  const fields = t.raw("importField") as Record<string, string>
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <PageHeader title={tTools("importExportTitle")} meta={tTools("importExportSubtitle")} />
+      <PageHeader title={tTools("importExportTitle")} meta={tTools("importExportPage.subtitle")} />
 
-      <section className="grid gap-3 md:grid-cols-3">
+      {/* P5-R8: the import card on the left and a 350px column from lg. P5-R9: a viewer has no import card, so the
+          export card and the history are the one column. */}
+      <div className={cn("grid items-start gap-6", canImport && "lg:grid-cols-[minmax(0,1fr)_350px]")}>
         {canImport ? (
-          <ActionLink
-            download
-            href="/api/assets/import-template"
-            icon={<FileSpreadsheet className="h-5 w-5" />}
-            title={t("downloadTemplate")}
-            description={tTools("downloadTemplateDescription")}
-          />
+          <AssetImportPreviewPanel />
         ) : null}
-        <ActionLink
-          download
-          href="/api/assets/export"
-          icon={<FileDown className="h-5 w-5" />}
-          title={tTools("exportAll")}
-          description={tTools("exportAllDescription", { max: formatCount(ASSET_EXPORT_MAX_ROWS) })}
-        />
-        <ActionLink
-          href={`/${locale}/assets`}
-          icon={<Download className="h-5 w-5" />}
-          title={tTools("exportWithFilters")}
-          description={tTools("exportWithFiltersDescription")}
-        />
-      </section>
+        <div className="grid min-w-0 gap-6">
+          <ContentPanel divided flush title={tTools("importExportPage.exportTitle")}>
+            <div className="divide-y divide-border-soft">
+              {/* A file from an /api route: a plain <a download> (spec 2D M31). */}
+              <a href="/api/assets/export" download className={exportRowClasses}>
+                <span aria-hidden="true" className={exportIconClasses}>
+                  <FileDown className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold text-primary">{tTools("importExportPage.exportAll")}</span>
+                  <span className="block text-sm text-muted-foreground">{tTools("importExportPage.exportAllDescription")}</span>
+                  <span className="num block text-meta text-muted-foreground">
+                    {tTools(`importExportPage.${exportAllCountKey(exportCount)}`, { count: exportCount, max: ASSET_EXPORT_MAX_ROWS })}
+                  </span>
+                </span>
+              </a>
+              {/* The register's export menu shows from md only, so the way to it does too (recon export.md D6). */}
+              <Link href={`/${locale}/assets`} className={cn(exportRowClasses, "hidden md:flex")}>
+                <span aria-hidden="true" className={exportIconClasses}>
+                  <ListFilter className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1 font-semibold text-primary">
+                    {tTools("importExportPage.exportFiltered")}
+                    <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
+                  </span>
+                  <span className="block text-sm text-muted-foreground">{tTools("importExportPage.exportFilteredDescription")}</span>
+                </span>
+              </Link>
+            </div>
+          </ContentPanel>
 
-      {canImport ? (
-        <AssetImportPreviewPanel />
-      ) : null}
-
-      <ImportHistoryPanel
-        history={importHistory}
-        labels={{
-          title: t("importHistoryTitle"),
-          help: t("importHistoryHelp"),
-          empty: t("importHistoryEmpty"),
-          imported: t("importHistoryImported"),
-          skipped: t("importHistorySkipped"),
-          sourceFile: t("importHistorySourceFile"),
-          approvedBy: t("importHistoryApprovedBy"),
-          statusReady: t("importBatchStatusReady"),
-          statusPartial: t("importBatchStatusPartial"),
-          statusBlocked: t("importBatchStatusBlocked"),
-          statusEmpty: t("importBatchStatusEmpty"),
-        }}
-      />
-
-      <div>
-        <Link href={`/${locale}/assets`} className={buttonVariants({ variant: "outline", size: "md" })}>
-          {tCommon("back")}
-        </Link>
+          <ContentPanel
+            divided
+            flush
+            title={tTools("importExportPage.historyTitle")}
+            actions={<span className="num text-meta text-muted-foreground">{tTools("importExportPage.historyRecent", { count: IMPORT_HISTORY_LIMIT })}</span>}
+          >
+            {importHistory.length === 0 ? (
+              <EmptyNote padded>{tTools("importExportPage.historyEmpty")}</EmptyNote>
+            ) : (
+              <ContentPanelRows>
+                {importHistory.map((batch) => (
+                  <ImportHistoryRow key={batch.id} batch={batch} t={t} tTools={tTools} fields={fields} locale={locale} />
+                ))}
+              </ContentPanelRows>
+            )}
+          </ContentPanel>
+        </div>
       </div>
     </div>
   )
 }
 
-function ImportHistoryPanel({
-  history,
-  labels,
+// A row of the export card: the whole row is the link, with the row hover and an inset focus ring (the panel's edge).
+const exportRowClasses = "flex min-h-11 gap-3 px-4 py-3.5 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:px-5"
+const exportIconClasses = "flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground"
+
+type Translate = Awaited<ReturnType<typeof getTranslations>>
+
+function ImportHistoryRow({
+  batch,
+  t,
+  tTools,
+  fields,
+  locale,
 }: {
-  history: AssetImportHistoryItem[]
-  labels: {
-    title: string
-    help: string
-    empty: string
-    imported: string
-    skipped: string
-    sourceFile: string
-    approvedBy: string
-    statusReady: string
-    statusPartial: string
-    statusBlocked: string
-    statusEmpty: string
-  }
+  batch: AssetImportHistoryItem
+  t: Translate
+  tTools: Translate
+  fields: Record<string, string>
+  locale: string
 }) {
-  // Spec 2D D9: the history is a ContentPanel; each batch is a quiet grouping, and its state is a StatusBadge. The rollback
-  // badge and asset list are gone (group 4 plan 5, call 21): no undo exists.
+  const shownRows = batch.skippedRows.slice(0, HISTORY_SKIPPED_ROWS_SHOWN)
+  const moreRows = Math.max(0, batch.skipped - shownRows.length)
+
+  // P5-R7: titled by the file name; the badge says what happened (every row imported, or some skipped), not the preview's
+  // status. An old log with no skipped rows still reads from its counts.
   return (
-    <ContentPanel title={labels.title} description={labels.help}>
-      {history.length === 0 ? (
-        <EmptyNote>{labels.empty}</EmptyNote>
-      ) : (
-        <div className="grid gap-3">
-          {history.map((batch) => (
-            <article key={batch.id} className="rounded-md border border-border bg-background p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+    <li className="min-w-0 text-sm">
+      <div className="flex items-start gap-2">
+        <h3 className="min-w-0 break-words font-semibold text-foreground">{batch.fileName}</h3>
+        <StatusBadge
+          className="ms-auto shrink-0"
+          label={tTools(batch.outcome === "complete" ? "importExportPage.outcomeComplete" : "importExportPage.outcomePartial")}
+          tone={batch.outcome === "complete" ? "success" : "warning"}
+        />
+      </div>
+      <p className="num text-muted-foreground">
+        {tTools("importExportPage.historyCounts", { imported: batch.imported, total: batch.totalRows, skipped: batch.skipped })}
+      </p>
+      <p className="text-meta text-muted-foreground">
+        {tTools("importExportPage.historyMeta", { name: batch.approvedByLabel, date: formatDateTime(batch.createdAt) })}
+      </p>
+      {shownRows.length > 0 ? (
+        <details className="group/skipped mt-2">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-primary md:min-h-0">
+            {tTools("importExportPage.skippedRowsToggle", { count: batch.skipped })}
+            <ChevronDown aria-hidden="true" className="size-4 shrink-0 motion-safe:transition-transform group-open/skipped:rotate-180" />
+          </summary>
+          <ul className="mt-2 space-y-3 border-t border-border-soft pt-3">
+            {shownRows.map((row) => (
+              <li key={row.row} className="flex min-w-0 gap-2">
+                <span className="num shrink-0 text-muted-foreground">{tTools("importExportPage.skippedRowLabel", { row: row.row })}</span>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* The batch id is long and must wrap, so it keeps font-mono with break-all (2D-2 R3). */}
-                    <h3 className="min-w-0 text-sm font-medium text-foreground">
-                      <span className="break-all font-mono">{batch.batchId}</span>
-                    </h3>
-                    <StatusBadge label={formatImportBatchStatus(batch.status, labels)} tone={getAssetImportBatchStatusTone(batch.status)} />
-                  </div>
-                  <KeyValueList
-                    className="mt-3"
-                    items={[
-                      { key: "sourceFile", label: labels.sourceFile, value: `${batch.fileName} (${formatFileSize(batch.fileSize)})` },
-                      { key: "imported", label: labels.imported, value: `${formatCount(batch.imported)}/${formatCount(batch.totalRows)}` },
-                      { key: "skipped", label: labels.skipped, value: formatCount(batch.skipped) },
-                      { key: "approvedBy", label: labels.approvedBy, value: `${batch.approvedByLabel} · ${formatDateTime(batch.createdAt)}` },
-                    ]}
-                  />
+                  <div className="break-words text-foreground">{orNil(row.name)}</div>
+                  {row.assetTag ? (
+                    <div className="tag text-muted-foreground">{row.assetTag}</div>
+                  ) : (
+                    <div className="text-meta text-muted-foreground">{tTools("importExportPage.skippedRowNoTag")}</div>
+                  )}
+                  <SkippedRowIssues row={row} t={t} fields={fields} locale={locale} />
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </ContentPanel>
+              </li>
+            ))}
+            {moreRows > 0 ? (
+              <li className="text-meta text-muted-foreground">{tTools("importExportPage.skippedRowsMore", { count: moreRows })}</li>
+            ) : null}
+          </ul>
+        </details>
+      ) : null}
+    </li>
   )
 }
 
-// A status code from the audit log always goes through a label; an unknown code shows as it is (docs/19 glossary).
-function formatImportBatchStatus(status: string, labels: { statusReady: string; statusPartial: string; statusBlocked: string; statusEmpty: string }) {
-  if (status === "ready") return labels.statusReady
-  if (status === "partial") return labels.statusPartial
-  if (status === "blocked") return labels.statusBlocked
-  if (status === "empty") return labels.statusEmpty
-  return status
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes <= 0) return "-"
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
-// A link card in a page grid is not a ContentPanel, so it takes the panel frame (2D-2 R4) with the link-card hover.
-const actionCardClasses = cn(getPanelClasses(), "block p-4 transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-5")
-
-function ActionLink({
-  href,
-  icon,
-  title,
-  description,
-  download = false,
+// The same two lines the preview table shows (P5-R4), from the same pure helper, so the words cannot drift apart.
+function SkippedRowIssues({
+  row,
+  t,
+  fields,
+  locale,
 }: {
-  href: string
-  icon: ReactNode
-  title: string
-  description: string
-  /** A file from an /api route: a plain <a download> (spec 2D M31); a page in the app is a Link. */
-  download?: boolean
+  row: AssetImportHistoryItem["skippedRows"][number]
+  t: Translate
+  fields: Record<string, string>
+  locale: string
 }) {
-  const content = (
-    <>
-      <span aria-hidden="true" className="mb-3 flex text-muted-foreground">
-        {icon}
-      </span>
-      <div className="font-semibold text-foreground">{title}</div>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-    </>
-  )
-
-  return download ? (
-    <a href={href} download className={actionCardClasses}>
-      {content}
-    </a>
-  ) : (
-    <Link href={href} className={actionCardClasses}>
-      {content}
-    </Link>
+  if (row.issues.length === 0) return null
+  return (
+    <ul className="mt-1 space-y-1">
+      {row.issues.map((issue, index) => {
+        const parts = buildImportIssueParts(issue, t as AssetImportTranslate, { fields, locale })
+        return (
+          <li key={`${issue.field}:${issue.code}:${index}`}>
+            <p className="text-danger">{parts.line}</p>
+            {parts.value || parts.usedBy ? (
+              <p className="text-meta text-muted-foreground">
+                {parts.value}
+                {parts.usedBy ? (
+                  <>
+                    {parts.value ? parts.separator : null}
+                    {parts.usedBy.before}
+                    <Link href={parts.usedBy.href} className={cn(linkVariants({ size: "inherit" }), "tag")}>
+                      {parts.usedBy.tag}
+                    </Link>
+                    {parts.usedBy.after}
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

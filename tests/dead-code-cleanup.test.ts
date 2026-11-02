@@ -16,14 +16,14 @@ test("the error page retries with Button, and ActionButton is gone (spec 2D M3)"
   assert.equal(existsSync(`${C}ui/action-button.tsx`), false)
 })
 
-test("the readiness and import-export links are outline md links, not the old safe-link helpers (spec 2D M5)", () => {
+test("the readiness links are outline md links and import-export has no back link, neither on the old safe-link helpers (spec 2D M5, group 4 plan 5)", () => {
   const readiness = read(`${D}admin/readiness/page.tsx`)
   assert.match(readiness, /<Link\n\s+href=\{`\/\$\{locale\}\$\{check\.href\}`\}\n\s+className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}\n\s+aria-label=\{`\$\{labels\.action\}: \$\{labels\.title\}`\}\n\s+>\n\s+\{labels\.action\}\n\s+<ArrowRight aria-hidden="true" \/>\n\s+<\/Link>/)
+  assert.match(readiness, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
+  // Group 4 plan 5 Task 5 (board): the import-export page's "กลับ" link went; the sidebar and the register's menu lead there.
   const importExport = read(`${D}asset-management/import-export/page.tsx`)
-  assert.match(importExport, /<div>\n\s+<Link href=\{`\/\$\{locale\}\/assets`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>\n\s+\{tCommon\("back"\)\}\n\s+<\/Link>\n\s+<\/div>/)
+  assert.doesNotMatch(importExport, /tCommon\("back"\)|buttonVariants/)
   for (const source of [readiness, importExport]) {
-    assert.match(source, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
-    // Plan 2D-3: import-export takes getPanelClasses for its link cards, so only the deleted helpers are banned.
     assert.doesNotMatch(source, /getSafeActionLinkClasses|getResponsiveActionRowClasses/)
   }
 })

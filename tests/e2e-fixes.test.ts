@@ -76,7 +76,9 @@ test("the audit exports show only to a role with audit:export (e2e fix task FX4:
 test("the import template and the import wizard show only to a role with asset:create (e2e fix task FX5: M2)", () => {
   const page = read("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx")
   assert.match(page, /const canImport = hasPermission\(user, "asset", "create"\)/)
-  assert.match(page, /\{canImport \? \(\n\s*<ActionLink\n\s*download\n\s*href="\/api\/assets\/import-template"/)
+  // Group 4 plan 5 (Tasks 4-5): the template link moved into the import card, which only an importer gets.
+  assert.doesNotMatch(page, /import-template/)
+  assert.match(read("src/components/assets/asset-import-preview-panel.tsx"), /<a href="\/api\/assets\/import-template" download /)
   // Group 4 plan 1 Task 4 (spec §6.3): the import wizard left the register; it lives on the import-export page alone.
   const register = read("src/app/[locale]/(dashboard)/assets/page.tsx")
   assert.doesNotMatch(register, /AssetImportPreviewPanel/)
