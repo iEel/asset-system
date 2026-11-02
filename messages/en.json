@@ -1066,7 +1066,9 @@
       "component_late_return": "Outstanding component returned",
       "register_location_correction": "Location corrected",
       "register_custodian_correction": "Holder corrected",
-      "register_department_correction": "Department corrected"
+      "register_department_correction": "Department corrected",
+      "register_field_correction": "Asset details corrected",
+      "asset_tag_change": "Asset code changed"
     },
     "auditHistory": "Audit History",
     "auditRound": "Audit Round",
@@ -1395,7 +1397,7 @@
     "bulkDepartmentFollows": "The department follows the holder: {department} ({count, plural, one {# asset} other {# assets}})",
     "bulkCorrectionBlocked": "{count} cannot be corrected: {list}",
     "bulkCorrectionRemoveBlocked": "Remove these from the selection",
-    "transactionReasonOpenCheckoutCorrection": "An open handover: return or transfer it first",
+    "transactionReasonOpenCheckoutCorrection": "An open handover: return it or cancel the handover first",
     "bulkDepartmentFollowsHolder": "Department follows the current holder ({count, number})",
     "statusSumLineLabel": "Count by status:",
     "exportFilteredCapped": "Export filtered (first {count, plural, one {# item} other {# items}})"
@@ -4971,7 +4973,8 @@
     "transferConditionDamaged": "Damaged: send it for repair before giving it to a new holder",
     "transferConditionNonFunctional": "Not working: send it for repair before giving it to a new holder",
     "transferConditionSalvage": "Salvage awaiting disposal: it cannot go to a new holder",
-    "transferDepartmentLocked": "The asset's holder has changed, so its department follows the holder. Check it and save again."
+    "transferDepartmentLocked": "The asset's holder has changed, so its department follows the holder. Check it and save again.",
+    "correctionReasonRequired": "Enter the reason for the correction"
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

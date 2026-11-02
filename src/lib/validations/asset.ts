@@ -49,20 +49,33 @@ export const assetBaseSchema = z.object({
     isActive: z.boolean().default(true),
   })
 
-export const assetSchema = assetBaseSchema
-  .superRefine((input, context) => {
-    if (
-      input.ownershipType === "software_license" &&
-      input.licenseTotalSeats != null &&
-      input.licenseUsedSeats != null &&
-      input.licenseUsedSeats > input.licenseTotalSeats
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["licenseUsedSeats"],
-        message: "Used license seats cannot exceed total seats",
-      })
-    }
-  })
+function refineLicenseSeats(
+  input: { ownershipType: string; licenseTotalSeats?: number | null; licenseUsedSeats?: number | null },
+  context: z.RefinementCtx,
+) {
+  if (
+    input.ownershipType === "software_license" &&
+    input.licenseTotalSeats != null &&
+    input.licenseUsedSeats != null &&
+    input.licenseUsedSeats > input.licenseTotalSeats
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["licenseUsedSeats"],
+      message: "Used license seats cannot exceed total seats",
+    })
+  }
+}
+
+export const assetSchema = assetBaseSchema.superRefine(refineLicenseSeats)
 
 export type AssetInput = z.infer<typeof assetSchema>
+
+// The asset edit (PUT, group 4 plan 2, P2-R4, P2-R7): no isActive (a sent value is ignored; deactivating is DELETE's,
+// under its own permission), and the reason for a room, holder or department correction.
+export const assetUpdateSchema = assetBaseSchema
+  .omit({ isActive: true })
+  .extend({ correctionReason: z.string().trim().max(500).optional() })
+  .superRefine(refineLicenseSeats)
+
+export type AssetUpdateInput = z.infer<typeof assetUpdateSchema>

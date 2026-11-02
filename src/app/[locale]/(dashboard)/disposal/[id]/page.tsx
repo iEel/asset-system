@@ -456,6 +456,8 @@ const knownMovementTypeKeys = new Set([
   "register_location_correction",
   "register_custodian_correction",
   "register_department_correction",
+  "register_field_correction",
+  "asset_tag_change",
   "component_install",
   "component_remove",
   "installed_in_parent",

@@ -67,31 +67,30 @@ test("bulk update component sync only includes changed optional fields", () => {
   assert.match(source, /changes:\s*componentSyncChanges/)
 })
 
-test("register update component sync preserves omitted nullable fields", () => {
+test("register update component sync takes the computed department and holder, never the client's department (group 4 plan 2, P2-R3)", () => {
   const source = readFileSync("src/app/api/assets/[id]/route.ts", "utf8")
+  const syncCall = source.match(/syncInstalledComponentsWithParent\(tx, \{[\s\S]*?movementType:\s*"parent_register_update_sync"[\s\S]*?\}\)/)?.[0]
 
-  assert.doesNotMatch(
-    source,
-    /departmentId:\s*input\.departmentId\s*\?\?\s*null/,
-    "register update should not coerce omitted departmentId to null for component sync"
-  )
-  assert.doesNotMatch(
-    source,
-    /custodianId:\s*input\.custodianId\s*\?\?\s*null/,
-    "register update should not coerce omitted custodianId to null for component sync"
-  )
-  assert.match(source, /changes:\s*buildRegisterComponentSyncChanges\(input\)/)
-  assert.match(source, /hasOwnNullableField\(input,\s*"departmentId"\)/)
-  assert.match(source, /hasOwnNullableField\(input,\s*"custodianId"\)/)
+  assert.ok(syncCall, "the edit should sync installed components")
+  assert.match(syncCall, /departmentId:\s*nextDepartmentId/)
+  assert.match(syncCall, /custodianId:\s*nextCustodianId/)
+  assert.doesNotMatch(syncCall, /input\.departmentId/)
+  assert.match(syncCall, /referenceType:\s*"register_edit"/)
+  assert.match(syncCall, /reason:\s*correctionReason \?\? "Parent asset register update"/)
 })
 
-test("register update movement rows ignore omitted nullable fields", () => {
-  const source = readFileSync("src/app/api/assets/[id]/route.ts", "utf8")
+test("register update writes the register corrections, never location_change, custodian_change or department_change (group 4 plan 2, P2-R5)", () => {
+  const route = readFileSync("src/app/api/assets/[id]/route.ts", "utf8")
+  const planner = readFileSync("src/lib/asset-register-edit.ts", "utf8")
 
-  assert.doesNotMatch(source, /\["department_change",\s*existing\.departmentId,\s*input\.departmentId\s*\?\?\s*null\]/)
-  assert.doesNotMatch(source, /\["custodian_change",\s*existing\.custodianId,\s*input\.custodianId\s*\?\?\s*null\]/)
-  assert.match(source, /buildNullableMovementCandidate\("department_change",\s*existing\.departmentId,\s*input,\s*"departmentId"\)/)
-  assert.match(source, /buildNullableMovementCandidate\("custodian_change",\s*existing\.custodianId,\s*input,\s*"custodianId"\)/)
+  for (const type of ["location_change", "custodian_change", "department_change", "ownership_type_change"]) {
+    assert.doesNotMatch(route, new RegExp(`"${type}"`), `PUT should not write ${type}`)
+    assert.doesNotMatch(planner, new RegExp(`"${type}"`), `the planner should not write ${type}`)
+  }
+  for (const type of ["register_location_correction", "register_custodian_correction", "register_department_correction", "register_field_correction", "asset_tag_change"]) {
+    assert.match(planner, new RegExp(`movementType: "${type}"`), type)
+  }
+  assert.match(route, /planRegisterEditMovements\(/)
 })
 
 test("checkin component sync excludes status and condition fields", () => {

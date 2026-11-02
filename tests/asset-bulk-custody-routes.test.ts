@@ -15,8 +15,12 @@ type MockAsset = {
   isActive?: boolean
 }
 
+type MockEmployee = { id: string; departmentId: string | null; isActive: boolean }
+
 type BulkCustodyState = {
   assets: MockAsset[]
+  /** The employees an `employee.findFirst` / `findUnique` reads; an active read leaves out an inactive one. */
+  employees: MockEmployee[]
   activeCheckoutAssetIds: string[]
   calls: Array<{ call: string; args: unknown }>
   /** Component asset ids with an outstanding link; each `assetComponent.findMany` takes the next of `outstandingAnswers` first, if any. */
@@ -35,7 +39,7 @@ type BulkCustodyState = {
   transactionErrors: unknown[]
 }
 
-const state: BulkCustodyState = { assets: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [], inactiveLocationIds: [], locationAnswers: [], syncAnswers: [], checkoutAnswers: [], onTransaction: null, transactionErrors: [] }
+const state: BulkCustodyState = { assets: [], employees: [], activeCheckoutAssetIds: [], calls: [], outstandingAssetIds: [], outstandingAnswers: [], inactiveLocationIds: [], locationAnswers: [], syncAnswers: [], checkoutAnswers: [], onTransaction: null, transactionErrors: [] }
 Object.assign(globalThis, { __bulkCustodyState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -121,6 +125,11 @@ const mockedModuleSources = new Map<string, string>([
             }
             if (name === "assetStatus") return { id: args?.where?.id, name: String(args?.where?.id ?? "").replace("status:", ""), isActive: true }
             if (name === "assetCondition") return { id: "condition-good", name: "Good", isActive: true }
+            if (name === "employee" && (method === "findFirst" || method === "findUnique")) {
+              const employee = state().employees.find((item) => item.id === args?.where?.id)
+              if (!employee || (args?.where?.isActive === true && !employee.isActive)) return null
+              return { id: employee.id, departmentId: employee.departmentId, isActive: employee.isActive }
+            }
             if (name === "location" && method === "findFirst") {
               const active = state().locationAnswers.length > 0 ? state().locationAnswers.shift() : !state().inactiveLocationIds.includes(args?.where?.id)
               return active ? { id: args?.where?.id ?? "row-1" } : null
@@ -197,6 +206,12 @@ beforeEach(() => {
     { id: "disposed-1", statusName: "Disposed", custodianId: null, currentLocationId: "loc-yard", departmentId: "dept-1" },
     { id: "license-1", statusName: "Ready", custodianId: null, currentLocationId: "loc-1", departmentId: "dept-1", ownershipType: "software_license" },
     { id: "component-1", statusName: "Ready", custodianId: null, currentLocationId: "loc-1", departmentId: "dept-1", ownershipType: "component" },
+  ]
+  state.employees = [
+    { id: "emp-2", departmentId: "dept-2", isActive: true },
+    { id: "emp-5", departmentId: "dept-5", isActive: true },
+    { id: "emp-9", departmentId: "dept-9", isActive: true },
+    { id: "emp-gone", departmentId: "dept-9", isActive: false },
   ]
   state.activeCheckoutAssetIds = ["loaned-1"]
   state.calls = []
@@ -325,6 +340,89 @@ test("the register form still saves non-custody edits of an asset that is out on
 
   assert.equal(response.status, 200)
   assert.equal(assetWrites().length, 1)
+})
+
+// The asset edit (group 4 plan 2, P2-R3, P2-R4, P2-R7, P2-R10).
+const writeData = () => (assetWrites()[0]?.args as { data: Record<string, unknown> }).data
+const editReady = (overrides: Record<string, unknown>) => registerEdit("ready-1", { statusId: "status:Ready", ...overrides })
+
+test("a holder change without a reason is refused 400 under correctionReason, before any write", async () => {
+  const response = await editReady({ custodianId: "emp-2" })
+  assert.equal(response.status, 400)
+  const body = await response.json() as { error: string; fieldErrors: unknown }
+  assert.deepEqual(body.fieldErrors, { correctionReason: "required" })
+  assert.equal(body.error, "Correction reason is required")
+  assert.deepEqual(assetWrites(), [])
+  assert.equal(callNames().includes("$transaction"), false)
+})
+
+test("a holder change with a reason saves the holder's department whatever the body sent, the movements and the sync under one reference", async () => {
+  const response = await editReady({ custodianId: "emp-2", departmentId: "dept-1", correctionReason: "  ผิดคน  " })
+  assert.equal(response.status, 200)
+  assert.equal(assetWrites().length, 1)
+  const write = assetWrites()[0].args as { where: Record<string, unknown>; data: Record<string, unknown> }
+  assert.deepEqual(write.where, { id: "ready-1", isActive: true, statusId: "status:Ready", currentLocationId: "loc-1", custodianId: null, departmentId: "dept-1" })
+  assert.equal(write.data.custodianId, "emp-2")
+  assert.equal(write.data.departmentId, "dept-2")
+  assert.equal("correctionReason" in write.data, false)
+  const rows = (callsOf("assetMovement.createMany")[0] as { data: Array<{ movementType: string; reason: string | null; referenceType: string; referenceId: string }> }).data
+  const corrections = rows.filter((row) => row.movementType.startsWith("register_") && row.movementType !== "register_field_correction")
+  assert.deepEqual(corrections.map((row) => [row.movementType, row.reason]), [
+    ["register_custodian_correction", "ผิดคน"],
+    ["register_department_correction", "ผิดคน"],
+  ])
+  const referenceIds = new Set(rows.map((row) => row.referenceId))
+  assert.equal(referenceIds.size, 1)
+  assert.ok(rows.every((row) => row.referenceType === "register_edit"))
+  const sync = callsOf("sync")[0] as { changes: Record<string, unknown>; referenceType: string; referenceId: string; reason: string; movementType: string }
+  assert.equal(sync.movementType, "parent_register_update_sync")
+  assert.equal(sync.changes.departmentId, "dept-2")
+  assert.equal(sync.changes.custodianId, "emp-2")
+  assert.equal(sync.referenceType, "register_edit")
+  assert.equal(sync.referenceId, [...referenceIds][0])
+  assert.equal(sync.reason, "ผิดคน")
+  assert.deepEqual(callsOf("$transaction"), [{ maxWait: 10_000, timeout: 60_000 }])
+  assert.equal(callsOf("systemLog.create").length, 1, "the admin log is written inside the transaction")
+})
+
+test("under an open handover a Serial change on an asset whose department differs from its holder's saves, the department kept (Review Focus 2)", async () => {
+  const response = await registerEdit("loaned-1", { custodianId: "emp-5", departmentId: "dept-5", serialNumber: "SN-NEW" })
+  assert.equal(response.status, 200)
+  assert.equal(writeData().departmentId, "dept-1")
+  assert.equal(writeData().custodianId, "emp-5")
+  const rows = (callsOf("assetMovement.createMany")[0] as { data: Array<{ movementType: string }> }).data
+  assert.equal(rows.some((row) => row.movementType === "register_department_correction"), false)
+})
+
+test("the automatic fix: a held asset's stale department follows its holder with no reason asked", async () => {
+  state.assets[0].custodianId = "emp-5"
+  const response = await editReady({ custodianId: "emp-5", serialNumber: "SN-NEW" })
+  assert.equal(response.status, 200)
+  assert.equal(writeData().departmentId, "dept-5")
+  const rows = (callsOf("assetMovement.createMany")[0] as { data: Array<{ movementType: string; reason: string | null }> }).data
+  assert.deepEqual(rows.filter((row) => row.movementType === "register_department_correction").map((row) => row.reason), [null])
+})
+
+test("under an open handover a new holder without a reason is refused by the custody lock (409) before the reason (400)", async () => {
+  const response = await registerEdit("loaned-1", { custodianId: "emp-9" })
+  assert.equal(response.status, 409)
+  assert.equal((await response.json() as { code: string }).code, "ASSET_CUSTODY_LOCKED_BY_CHECKOUT")
+  assert.deepEqual(assetWrites(), [])
+})
+
+test("an inactive or unknown new holder is refused 409 under custodianId", async () => {
+  for (const custodianId of ["emp-gone", "emp-unknown"]) {
+    const response = await editReady({ custodianId, correctionReason: "ผิดคน" })
+    assert.equal(response.status, 409, custodianId)
+    assert.deepEqual((await response.json() as { fieldErrors: unknown }).fieldErrors, { custodianId: "checkoutReceiverInactive" }, custodianId)
+  }
+  assert.deepEqual(assetWrites(), [])
+})
+
+test("PUT ignores isActive: a body with isActive false writes no isActive", async () => {
+  const response = await editReady({ isActive: false, name: "Laptop 2" })
+  assert.equal(response.status, 200)
+  assert.equal("isActive" in writeData(), false)
 })
 
 const outstandingBlocked = (assetId: string) => ({ assetId, assetTag: assetId.toUpperCase(), code: "ASSET_COMPONENT_OUTSTANDING" })

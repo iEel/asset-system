@@ -102,6 +102,8 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "COMPONENT_RETURN_DATE_BEFORE_CHECKIN": "componentReturnDateBeforeCheckin",
   // The repair schemas' issue message for a missing condition after repair (validations/maintenance.ts).
   "conditionAfterRepairRequired": "conditionAfterRepairRequired",
+  // The asset edit's room, holder or department correction (group 4 plan 2, P2-R4).
+  "Correction reason is required": "correctionReasonRequired",
   "Custodian is required": "custodianRequired",
   "Custodian not found": "custodianNotFound",
   "Custom field names must be unique in a category": "customFieldNameDuplicate",

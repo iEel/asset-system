@@ -1066,7 +1066,9 @@
       "component_late_return": "รับคืนส่วนควบค้างคืน",
       "register_location_correction": "แก้ไขข้อมูลที่ตั้ง",
       "register_custodian_correction": "แก้ไขข้อมูลผู้ถือครอง",
-      "register_department_correction": "แก้ไขข้อมูลแผนก"
+      "register_department_correction": "แก้ไขข้อมูลแผนก",
+      "register_field_correction": "แก้ไขข้อมูลทรัพย์สิน",
+      "asset_tag_change": "เปลี่ยนรหัสทรัพย์สิน"
     },
     "auditHistory": "ประวัติการตรวจนับ",
     "auditRound": "รอบตรวจนับ",
@@ -1395,7 +1397,7 @@
     "bulkDepartmentFollows": "แผนกจะเปลี่ยนตามผู้ถือครอง: {department} ({count, number} รายการ)",
     "bulkCorrectionBlocked": "แก้ไขไม่ได้ {count} รายการ: {list}",
     "bulkCorrectionRemoveBlocked": "นำรายการเหล่านี้ออกจากที่เลือก",
-    "transactionReasonOpenCheckoutCorrection": "มีการส่งมอบค้างอยู่ รับคืนหรือโอนย้ายก่อนจึงแก้ได้",
+    "transactionReasonOpenCheckoutCorrection": "มีการส่งมอบค้างอยู่ รับคืนหรือยกเลิกใบส่งมอบก่อนจึงแก้ได้",
     "bulkDepartmentFollowsHolder": "แผนกจะปรับตามผู้ถือครองปัจจุบัน ({count, number} รายการ)",
     "statusSumLineLabel": "สรุปจำนวนตามสถานะ:",
     "exportFilteredCapped": "ส่งออกตามตัวกรอง ({count, number} รายการแรก)"
@@ -4971,7 +4973,8 @@
     "transferConditionDamaged": "สภาพเสียหาย ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
     "transferConditionNonFunctional": "ใช้งานไม่ได้ ต้องส่งซ่อมก่อนโอนย้ายให้ผู้ถือครองใหม่",
     "transferConditionSalvage": "เป็นซาก รอตัดจำหน่าย โอนย้ายให้ผู้ถือครองใหม่ไม่ได้",
-    "transferDepartmentLocked": "ข้อมูลผู้ถือครองของทรัพย์สินเปลี่ยนไป แผนกจึงเป็นไปตามผู้ถือครอง ตรวจสอบแล้วบันทึกอีกครั้ง"
+    "transferDepartmentLocked": "ข้อมูลผู้ถือครองของทรัพย์สินเปลี่ยนไป แผนกจึงเป็นไปตามผู้ถือครอง ตรวจสอบแล้วบันทึกอีกครั้ง",
+    "correctionReasonRequired": "ระบุเหตุผลที่แก้"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

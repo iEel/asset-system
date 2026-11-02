@@ -54,7 +54,7 @@ test("the chips, and the chip of every movement type: a cancel and a component's
     repair: ["maintenance_create", "maintenance_close", "maintenance_cancel", "maintenance_status_update", "maintenance_pm_create"],
     disposal: ["disposal_request", "disposal_approve", "disposal_reject", "disposal_execute"],
     component: ["component_install", "component_remove", "installed_in_parent", "removed_from_parent"],
-    edit: ["create", "import", "batch_create", "location_change", "custodian_change", "status_change", "condition_change", "department_change", "ownership_type_change", "license_total_seats_change", "license_used_seats_change", "license_assigned_asset_change", "bulk_location_update", "bulk_custodian_update", "register_location_correction", "register_custodian_correction", "register_department_correction", "status_correction", "state_review_resolution", "parent_register_update_sync", "parent_bulk_update_sync"],
+    edit: ["create", "import", "batch_create", "location_change", "custodian_change", "status_change", "condition_change", "department_change", "ownership_type_change", "license_total_seats_change", "license_used_seats_change", "license_assigned_asset_change", "bulk_location_update", "bulk_custodian_update", "register_location_correction", "register_custodian_correction", "register_department_correction", "register_field_correction", "asset_tag_change", "status_correction", "state_review_resolution", "parent_register_update_sync", "parent_bulk_update_sync"],
   }
   assert.deepEqual(Object.values(expected).flat().sort(), [...ASSET_MOVEMENT_LABELLED_TYPES].sort(), "every labelled type has exactly one chip")
   for (const [category, types] of Object.entries(expected)) {

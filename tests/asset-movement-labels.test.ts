@@ -24,7 +24,8 @@ const sources = walk("src").map((path) => ({ path, source: readFileSync(path, "u
 const movementTypes = (locale: "th" | "en") =>
   JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).asset.movementTypes as Record<string, string>
 
-// Every file that writes AssetMovement rows. A new writer joins this list once its movement types have labels.
+// Every file that writes AssetMovement rows, or builds them for a route to write (the asset edit's planner, group 4 plan 2).
+// A new writer joins this list once its movement types have labels.
 const WRITERS = [
   "src/app/api/assets/[id]/checkin/route.ts",
   "src/app/api/assets/[id]/checkout/route.ts",
@@ -46,6 +47,7 @@ const WRITERS = [
   "src/app/api/disposal-requests/[id]/route.ts",
   "src/app/api/disposal-requests/route.ts",
   "src/lib/asset-component-sync.ts",
+  "src/lib/asset-register-edit.ts",
   "src/lib/asset-state-review-service.ts",
   "src/lib/asset-transaction-cancellation-prisma.ts",
   "src/lib/disposal-approval-service.ts",
@@ -73,13 +75,13 @@ function writtenMovementTypes(): Map<string, string[]> {
 }
 
 test("the AssetMovement writers are the known ones, so a new writer is labelled before it ships (spec §7.6)", () => {
-  const writers = sources.filter(({ source }) => /assetMovement\.create(?:Many)?\(/.test(source)).map(({ path }) => path)
+  const writers = sources.filter(({ source }) => /assetMovement\.create(?:Many)?\(|AssetMovementCreateManyInput\[\]/.test(source)).map(({ path }) => path)
   assert.deepEqual(writers.sort(), [...WRITERS].sort())
 })
 
 test("every movement type src writes has a Thai and an English label (spec §4: no English type on screen)", () => {
   const written = writtenMovementTypes()
-  assert.equal(written.size, 50, [...written.keys()].sort().join(", "))
+  assert.equal(written.size, 51, [...written.keys()].sort().join(", "))
   const th = movementTypes("th")
   const en = movementTypes("en")
   for (const [type, paths] of written) {
@@ -88,8 +90,8 @@ test("every movement type src writes has a Thai and an English label (spec §4: 
   }
   assert.deepEqual(
     [...ASSET_MOVEMENT_LABELLED_TYPES].sort(),
-    [...written.keys(), "maintenance_pm_create", "maintenance_status_update", "bulk_location_update", "bulk_custodian_update"].sort(),
-    "the labels are the written types plus the four older ones (the bulk update writes corrections since group 4 plan 1, P1-R6)",
+    [...written.keys(), "maintenance_pm_create", "maintenance_status_update", "bulk_location_update", "bulk_custodian_update", "ownership_type_change"].sort(),
+    "the labels are the written types plus the five older ones (the bulk update writes corrections since group 4 plan 1, P1-R6; the edit writes an ownership change as a field correction since plan 2, P2-R5)",
   )
   assert.deepEqual(Object.keys(th).sort(), [...ASSET_MOVEMENT_LABELLED_TYPES, "other"].sort())
 })
@@ -113,6 +115,11 @@ test("an unknown type reads as other activity, and the labels use the glossary's
   assert.equal(th.register_custodian_correction, "แก้ไขข้อมูลผู้ถือครอง")
   assert.equal(th.register_department_correction, "แก้ไขข้อมูลแผนก")
   assert.equal(movementTypes("en").register_department_correction, "Department corrected")
+  // The edit's field corrections and a new tag (group 4 plan 2, P2-R5).
+  assert.equal(th.register_field_correction, "แก้ไขข้อมูลทรัพย์สิน")
+  assert.equal(th.asset_tag_change, "เปลี่ยนรหัสทรัพย์สิน")
+  assert.equal(movementTypes("en").register_field_correction, "Asset details corrected")
+  assert.equal(movementTypes("en").asset_tag_change, "Asset code changed")
 })
 
 test("the mirror rows are a component's copy of its parent's event, left out of the dashboard feed (spec §6.8)", () => {

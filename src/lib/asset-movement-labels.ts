@@ -1,9 +1,10 @@
 // The words for every AssetMovement type (group 1 spec §4, §6.8, §7.6). Pure: the dashboard's recent feed
 // and the asset-detail page read it, and tests import it directly.
 
-// The 50 types src writes, plus maintenance_status_update, maintenance_pm_create, bulk_location_update and
-// bulk_custodian_update: older rows that have no writer today but still show in an asset's history (the register bulk
-// update writes the register_*_correction types since group 4 plan 1, P1-R6).
+// The 51 types src writes, plus maintenance_status_update, maintenance_pm_create, bulk_location_update,
+// bulk_custodian_update and ownership_type_change: older rows that have no writer today but still show in an asset's
+// history (the register bulk update writes the register_*_correction types since group 4 plan 1, P1-R6; the asset edit
+// writes them, register_field_correction and asset_tag_change since plan 2, P2-R5).
 export const ASSET_MOVEMENT_LABELLED_TYPES = [
   "create",
   "import",
@@ -55,6 +56,8 @@ export const ASSET_MOVEMENT_LABELLED_TYPES = [
   "register_location_correction",
   "register_custodian_correction",
   "register_department_correction",
+  "register_field_correction",
+  "asset_tag_change",
   "disposal_request",
   "disposal_approve",
   "disposal_reject",
