@@ -51,7 +51,8 @@ test("the recent feed reads asset movements only, without the mirror rows (spec 
   const source = read("src/lib/dashboard-recent.ts")
   assert.match(source, /export async function getRecentAssetEvents\(take: number\): Promise<RecentAssetEvent\[\]>/)
   assert.match(source, /prisma\.assetMovement\.findMany\(\{/)
-  assert.match(source, /movementType: \{ notIn: \[\.\.\.ASSET_MOVEMENT_MIRROR_TYPES\] \}/)
+  // A register field correction (group 4 plan 2, P2-R5) is a typing fix, not an event the feed shows.
+  assert.match(source, /movementType: \{ notIn: \[\.\.\.ASSET_MOVEMENT_MIRROR_TYPES, "register_field_correction"\] \}/)
   assert.match(source, /asset: \{ isActive: true \}/)
   assert.match(source, /orderBy: \[\{ performedAt: "desc" \}, \{ id: "desc" \}\]/)
   assert.match(source, /const documentOf = await resolveAssetMovementDocuments\(movements\)/)

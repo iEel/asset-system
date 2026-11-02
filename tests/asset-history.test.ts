@@ -55,6 +55,21 @@ test("one history: the movements as its spine, the scans that wrote no movement,
   assert.match(read("src/lib/movement-labels.ts"), /export async function getMovementValueLookup\(ids: string\[\]\): Promise<Map<string, string>>/)
 })
 
+test("the history lookup names a category, a brand and a model, so a field correction never shows an id (group 4 plan 2, P2-R5)", () => {
+  const source = read("src/lib/movement-labels.ts")
+  assert.match(source, /prisma\.assetCategory\.findMany\(\{\n\s*where: \{ id: \{ in: ids \} \},\n\s*select: \{ id: true, code: true, name: true \},/)
+  assert.match(source, /prisma\.assetBrand\.findMany\(\{\n\s*where: \{ id: \{ in: ids \} \},\n\s*select: \{ id: true, name: true \},/)
+  assert.match(source, /prisma\.assetModel\.findMany\(\{\n\s*where: \{ id: \{ in: ids \} \},\n\s*select: \{ id: true, name: true \},/)
+  assert.ok(source.includes("for (const item of categories) lookup.set(item.id.toLowerCase(), `${item.code} - ${item.name}`)"))
+  assert.ok(source.includes("for (const item of brands) lookup.set(item.id.toLowerCase(), item.name)"))
+  assert.ok(source.includes("for (const item of models) lookup.set(item.id.toLowerCase(), item.name)"))
+  // The history labels every field a snapshot may carry, the 14 asset columns of a field correction among them.
+  const history = read("src/lib/asset-history.ts")
+  for (const field of ["name", "serialNumber", "category", "brand", "model", "company", "ownershipType", "purchaseDate", "purchasePrice", "warrantyStart", "warrantyEnd", "poNumber", "invoiceNumber"]) {
+    assert.ok(history.includes(`  "${field}",\n`), field)
+  }
+})
+
 test("the history's Excel: every event of one asset, with asset:view, in the page's language (spec §7.6)", () => {
   const route = read(ROUTE)
   assert.match(route, /const user = await requireAuth\(\)\n\s*requirePermission\(user, "asset", "view"\)/)

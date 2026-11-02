@@ -36,6 +36,19 @@ const historyFields: readonly AssetHistoryField[] = [
   "parent",
   "role",
   "slot",
+  "name",
+  "serialNumber",
+  "category",
+  "brand",
+  "model",
+  "company",
+  "ownershipType",
+  "purchaseDate",
+  "purchasePrice",
+  "warrantyStart",
+  "warrantyEnd",
+  "poNumber",
+  "invoiceNumber",
 ]
 
 const ownershipTypes = ["personal", "shared", "stock", "component", "software_license"] as const

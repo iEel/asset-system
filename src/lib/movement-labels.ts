@@ -60,7 +60,8 @@ export async function getMovementDisplayLabels(movements: MovementValue[]) {
   )
 }
 
-// The id lookup on its own (locations, statuses, conditions, departments, employees, assets, companies, branches),
+// The id lookup on its own (locations, statuses, conditions, departments, employees, assets, companies, branches,
+// categories, brands, models),
 // keyed by lower-case id: the asset history reads its changes through it (group 1 asset detail task 3).
 export async function getMovementValueLookup(ids: string[]): Promise<Map<string, string>> {
   return buildMovementLookup(ids.map((id) => id.toLowerCase()))
@@ -84,7 +85,7 @@ async function buildMovementLookup(ids: string[]) {
   if (ids.length === 0) return lookup
   const { prisma } = await import("@/lib/db")
 
-  const [locations, statuses, conditions, departments, employees, assets, companies, branches] = await Promise.all([
+  const [locations, statuses, conditions, departments, employees, assets, companies, branches, categories, brands, models] = await Promise.all([
     prisma.location.findMany({
       where: { id: { in: ids } },
       select: { id: true, code: true, name: true },
@@ -117,6 +118,19 @@ async function buildMovementLookup(ids: string[]) {
       where: { id: { in: ids } },
       select: { id: true, code: true, name: true },
     }),
+    // A register field correction's category, brand and model (group 4 plan 2, P2-R5).
+    prisma.assetCategory.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, code: true, name: true },
+    }),
+    prisma.assetBrand.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true },
+    }),
+    prisma.assetModel.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true },
+    }),
   ])
 
   for (const item of locations) lookup.set(item.id.toLowerCase(), `${item.code} - ${item.name}`)
@@ -127,6 +141,9 @@ async function buildMovementLookup(ids: string[]) {
   for (const item of assets) lookup.set(item.id.toLowerCase(), `${item.assetTag} - ${item.name}`)
   for (const item of companies) lookup.set(item.id.toLowerCase(), `${item.code} - ${item.nameTh}`)
   for (const item of branches) lookup.set(item.id.toLowerCase(), `${item.code} - ${item.name}`)
+  for (const item of categories) lookup.set(item.id.toLowerCase(), `${item.code} - ${item.name}`)
+  for (const item of brands) lookup.set(item.id.toLowerCase(), item.name)
+  for (const item of models) lookup.set(item.id.toLowerCase(), item.name)
 
   return lookup
 }

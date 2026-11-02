@@ -14,8 +14,9 @@ export type RecentAssetEvent = {
 
 export async function getRecentAssetEvents(take: number): Promise<RecentAssetEvent[]> {
   const movements = await prisma.assetMovement.findMany({
-    // An inactive asset's page answers 404; the parent's own row records a mirror row's event.
-    where: { movementType: { notIn: [...ASSET_MOVEMENT_MIRROR_TYPES] }, asset: { isActive: true } },
+    // An inactive asset's page answers 404; the parent's own row records a mirror row's event; a register field
+    // correction (group 4 plan 2, P2-R5) is a typing fix, not an event the feed shows.
+    where: { movementType: { notIn: [...ASSET_MOVEMENT_MIRROR_TYPES, "register_field_correction"] }, asset: { isActive: true } },
     orderBy: [{ performedAt: "desc" }, { id: "desc" }],
     take,
     select: {

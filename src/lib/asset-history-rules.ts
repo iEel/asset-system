@@ -106,6 +106,19 @@ export type AssetHistoryField =
   | "parent"
   | "role"
   | "slot"
+  | "name"
+  | "serialNumber"
+  | "category"
+  | "brand"
+  | "model"
+  | "company"
+  | "ownershipType"
+  | "purchaseDate"
+  | "purchasePrice"
+  | "warrantyStart"
+  | "warrantyEnd"
+  | "poNumber"
+  | "invoiceNumber"
 
 export type AssetHistoryLabels = {
   fields: Record<AssetHistoryField, string>
@@ -136,6 +149,8 @@ export type AssetHistoryMovementInput = {
 }
 
 // A snapshot's fields, in the order they read, each with the keys the writers use for it. Any other key is left out.
+// A register field correction (group 4 plan 2, P2-R5) is one asset column per row, keyed by the column's name: a date
+// as stored (YYYY-MM-DD), a price as text, an id through the lookup, an ownership code through its word.
 const snapshotFields: readonly (readonly [AssetHistoryField, readonly string[]])[] = [
   ["location", ["locationId", "currentLocationId"]],
   ["custodian", ["custodianId"]],
@@ -147,6 +162,19 @@ const snapshotFields: readonly (readonly [AssetHistoryField, readonly string[]])
   ["parent", ["parentAssetTag"]],
   ["role", ["componentRole"]],
   ["slot", ["slotNo"]],
+  ["name", ["name"]],
+  ["serialNumber", ["serialNumber"]],
+  ["category", ["categoryId"]],
+  ["brand", ["brandId"]],
+  ["model", ["modelId"]],
+  ["company", ["companyId"]],
+  ["ownershipType", ["ownershipType"]],
+  ["purchaseDate", ["purchaseDate"]],
+  ["purchasePrice", ["purchasePrice"]],
+  ["warrantyStart", ["warrantyStartDate"]],
+  ["warrantyEnd", ["warrantyEndDate"]],
+  ["poNumber", ["poNumber"]],
+  ["invoiceNumber", ["invoiceNumber"]],
 ]
 
 const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi

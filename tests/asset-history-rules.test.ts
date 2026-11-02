@@ -278,3 +278,30 @@ test("a component left out of a return and its late return read in words: who ho
   assert.equal(late("later", null), "later", "a code without a word shows as stored")
   assert.equal(assetHistoryMovementDetail(movement({ movementType: "component_late_return", toValue: null }), noLookup, labels), null)
 })
+
+test("a field correction reads as <field>: old → new, an id by its name and an ownership code in words (group 4 spec §7.4, P2-R5)", () => {
+  const withShared: AssetHistoryLabels = { ...labels, ownershipTypes: { ...labels.ownershipTypes, shared: th.asset.ownershipType_shared } }
+  const lookup = new Map([["c1", "NB - โน้ตบุ๊ก"], ["c2", "PC - คอมพิวเตอร์"], ["b1", "Dell"], ["m1", "Latitude 5440"]])
+  const correction = (from: Record<string, unknown>, to: Record<string, unknown>) =>
+    assetHistoryMovementDetail(movement({ movementType: "register_field_correction", fromValue: JSON.stringify(from), toValue: JSON.stringify(to) }), lookup, withShared)
+  assert.equal(correction({ serialNumber: "SN-1" }, { serialNumber: "SN-2" }), `${h.fields.serialNumber}: SN-1 → SN-2`)
+  assert.equal(correction({ categoryId: "c1" }, { categoryId: "c2" }), `${h.fields.category}: NB - โน้ตบุ๊ก → PC - คอมพิวเตอร์`)
+  assert.equal(correction({ brandId: null }, { brandId: "b1" }), `${h.fields.brand}: ${h.none} → Dell`)
+  assert.equal(correction({ modelId: "m1" }, { modelId: null }), `${h.fields.model}: Latitude 5440 → ${h.none}`)
+  assert.equal(correction({ ownershipType: "personal" }, { ownershipType: "shared" }), `${h.fields.ownershipType}: ${th.asset.ownershipType_personal} → ${th.asset.ownershipType_shared}`)
+  // Dates as stored, a price as text, the branch with the label it already had.
+  assert.equal(correction({ purchaseDate: null }, { purchaseDate: "2026-01-05" }), `${h.fields.purchaseDate}: ${h.none} → 2026-01-05`)
+  assert.equal(correction({ purchasePrice: "1500" }, { purchasePrice: "1750.5" }), `${h.fields.purchasePrice}: 1500 → 1750.5`)
+  assert.equal(correction({ branchId: "c1" }, { branchId: "c2" }), `${h.fields.branch}: NB - โน้ตบุ๊ก → PC - คอมพิวเตอร์`)
+  // Every one of the 14 asset columns has a word, in Thai and English.
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  const columns = ["name", "serialNumber", "categoryId", "brandId", "modelId", "companyId", "branchId", "ownershipType", "purchaseDate", "purchasePrice", "warrantyStartDate", "warrantyEndDate", "poNumber", "invoiceNumber"]
+  for (const column of columns) {
+    const text = correction({ [column]: "old" }, { [column]: "new" })
+    assert.ok(text && /^[^:]+: old → new$/.test(text), `${column} reads with a word: ${text}`)
+    const field = text.slice(0, text.indexOf(":"))
+    const key = Object.entries(h.fields).find(([, word]) => word === field)?.[0]
+    assert.ok(key && typeof en.asset.history.fields[key] === "string", `${column} has an English word`)
+  }
+  assert.equal(new Set(columns.map((column) => correction({ [column]: "old" }, { [column]: "new" })?.split(":")[0])).size, 14, "one word each")
+})
