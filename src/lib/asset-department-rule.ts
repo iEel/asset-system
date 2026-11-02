@@ -89,6 +89,38 @@ function keepsOwnDepartment(ownership: AssetOwnershipType): boolean {
   return ownership === "shared" || ownership === "component" || ownership === "software_license"
 }
 
+// บุคคล and Stock take their holder's department (spec §6, decision 1); the others keep a free one.
+export function departmentFollowsHolder(ownership: AssetOwnershipType): boolean {
+  return !keepsOwnDepartment(ownership)
+}
+
+// The register's department: the asset edit page (PUT), the create form (POST) and the form's department lock (group 4
+// plan 2, P2-R1, P2-R2). Unlike โอนย้าย, a null next holder means the holder was cleared, so the department is free.
+// "holder" locks the แผนก row. With the holder unchanged, taking the holder's department is the automatic fix
+// (automatic: true only when it changes the department; no reason needed), skipped while a handover is open ("kept").
+// An unread holder department falls back to the current one, then (on create) to the chosen one.
+export type RegisterDepartmentSource = "holder" | "kept" | "free"
+
+export function getRegisterDepartment(input: {
+  ownership: AssetOwnershipType
+  currentCustodianId: string | null
+  nextCustodianId: string | null
+  currentDepartmentId: string | null
+  chosenDepartmentId: string | null
+  nextHolderDepartmentId: string | null
+  openHandover: boolean
+}): { departmentId: string | null; source: RegisterDepartmentSource; automatic: boolean } {
+  if (!departmentFollowsHolder(input.ownership) || !input.nextCustodianId) {
+    return { departmentId: input.chosenDepartmentId, source: "free", automatic: false }
+  }
+  const holderUnchanged = input.currentCustodianId === input.nextCustodianId
+  if (holderUnchanged && input.openHandover) {
+    return { departmentId: input.currentDepartmentId, source: "kept", automatic: false }
+  }
+  const departmentId = input.nextHolderDepartmentId ?? input.currentDepartmentId ?? input.chosenDepartmentId
+  return { departmentId, source: "holder", automatic: holderUnchanged && departmentId !== input.currentDepartmentId }
+}
+
 // A component that did not come back stays with ผู้คืน (spec §8.5, decision 11, call 13): ผู้คืน's department, except a
 // ส่วนกลาง one, which keeps its department (decision 10). ผู้คืน who already holds it changes nothing (D23). The room
 // never changes.

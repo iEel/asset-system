@@ -22,6 +22,12 @@ export function requiresResponsibleDepartment(ownershipType?: string | null) {
   return normalized === "shared" || normalized === "stock" || normalized === "component"
 }
 
+// The types a holder may be set on (group 4 plan 2, P2-R2): the ones checkout allows, and License (its assignee).
+// ส่วนควบ takes its parent's holder through the sync.
+export function ownershipMayHaveHolder(ownership: AssetOwnershipType): boolean {
+  return ownership !== "component"
+}
+
 export function requiresParentAsset(ownershipType?: string | null) {
   return normalizeAssetOwnershipType(ownershipType) === "component"
 }

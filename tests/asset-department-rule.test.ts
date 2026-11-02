@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import {
-  getCheckinNextDepartmentId, getCheckoutNextDepartmentId, getLateReturnDepartmentId, getOutstandingComponentCustody, getTransferDepartmentSource,
-  getTransferNextDepartmentId,
+  departmentFollowsHolder, getCheckinNextDepartmentId, getCheckoutNextDepartmentId, getLateReturnDepartmentId, getOutstandingComponentCustody,
+  getRegisterDepartment, getTransferDepartmentSource, getTransferNextDepartmentId,
 } from "../src/lib/asset-department-rule.ts"
 import { assetOwnershipTypes, type AssetOwnershipType } from "../src/lib/asset-ownership.ts"
 
@@ -121,4 +121,59 @@ test("โอนย้าย: an unread holder department falls back to the curre
   for (const ownership of ["personal", "stock", "shared", "component"] as const) {
     assert.deepEqual(holderCases.map((holders) => transferDepartment(ownership, holders, none)), [null, null, null, null], ownership)
   }
+})
+
+// The edit page, the create form and the form's department lock (group 4 plan 2, P2-R1, P2-R2). Unlike โอนย้าย, a null
+// next holder means the holder was cleared, which frees the department.
+type RegisterInput = Parameters<typeof getRegisterDepartment>[0]
+const register = (ownership: AssetOwnershipType, overrides: Partial<RegisterInput> = {}) =>
+  getRegisterDepartment({
+    ownership, currentCustodianId: "e1", nextCustodianId: "e1", currentDepartmentId: "d2", chosenDepartmentId: "d2",
+    nextHolderDepartmentId: "d1", openHandover: false, ...overrides,
+  })
+
+test("register: บุคคล and Stock with the holder unchanged take the holder's department as the automatic fix, skipped while a handover is open (P2-R1)", () => {
+  for (const ownership of ["personal", "stock"] as const) {
+    assert.deepEqual(register(ownership), { departmentId: "d1", source: "holder", automatic: true }, ownership)
+    assert.deepEqual(register(ownership, { openHandover: true }), { departmentId: "d2", source: "kept", automatic: false }, `${ownership}, handover open`)
+    assert.deepEqual(register(ownership, { currentDepartmentId: "d1" }), { departmentId: "d1", source: "holder", automatic: false }, `${ownership}, already the holder's`)
+    assert.deepEqual(register(ownership, { nextHolderDepartmentId: null }), { departmentId: "d2", source: "holder", automatic: false }, `${ownership}, the holder's department unread`)
+    assert.deepEqual(register(ownership, { chosenDepartmentId: "d7" }), { departmentId: "d1", source: "holder", automatic: true }, `${ownership}, a chosen department is ignored`)
+  }
+})
+
+test("register: บุคคล and Stock with a new holder take the new holder's department (no automatic fix)", () => {
+  for (const ownership of ["personal", "stock"] as const) {
+    assert.deepEqual(register(ownership, { nextCustodianId: "e2", nextHolderDepartmentId: "d3" }), { departmentId: "d3", source: "holder", automatic: false }, ownership)
+    assert.deepEqual(register(ownership, { currentCustodianId: null, nextCustodianId: "e2", nextHolderDepartmentId: "d3" }), { departmentId: "d3", source: "holder", automatic: false }, `${ownership}, no holder before`)
+  }
+})
+
+test("register: a cleared holder frees the department, unlike โอนย้าย (P2-R1)", () => {
+  for (const ownership of ["personal", "stock"] as const) {
+    assert.deepEqual(register(ownership, { nextCustodianId: null, nextHolderDepartmentId: null, chosenDepartmentId: "d4" }), { departmentId: "d4", source: "free", automatic: false }, ownership)
+    assert.deepEqual(register(ownership, { nextCustodianId: null, nextHolderDepartmentId: null, chosenDepartmentId: null }), { departmentId: null, source: "free", automatic: false }, `${ownership}, none chosen`)
+  }
+})
+
+test("register: ส่วนกลาง, ส่วนควบ and License keep a free department even with a holder (P2-R2)", () => {
+  for (const ownership of ["shared", "component", "software_license"] as const) {
+    assert.deepEqual(register(ownership, { chosenDepartmentId: "d5" }), { departmentId: "d5", source: "free", automatic: false }, ownership)
+    assert.deepEqual(register(ownership, { nextCustodianId: "e2", nextHolderDepartmentId: "d3", chosenDepartmentId: "d5" }), { departmentId: "d5", source: "free", automatic: false }, `${ownership}, new holder`)
+    assert.deepEqual(register(ownership, { chosenDepartmentId: null }), { departmentId: null, source: "free", automatic: false }, `${ownership}, none chosen`)
+  }
+})
+
+test("register: create (no current holder or department) takes the holder's department over the chosen one for บุคคล and Stock", () => {
+  const create = { currentCustodianId: null, currentDepartmentId: null, nextCustodianId: "e1", nextHolderDepartmentId: "d1", chosenDepartmentId: "d9" }
+  assert.deepEqual(register("personal", create), { departmentId: "d1", source: "holder", automatic: false })
+  assert.deepEqual(register("stock", create), { departmentId: "d1", source: "holder", automatic: false })
+  assert.deepEqual(register("shared", create), { departmentId: "d9", source: "free", automatic: false })
+  assert.deepEqual(register("personal", { ...create, nextHolderDepartmentId: null }), { departmentId: "d9", source: "holder", automatic: false }, "the holder's department unread")
+})
+
+test("departmentFollowsHolder: true only for บุคคล and Stock", () => {
+  assert.deepEqual(assetOwnershipTypes.map((ownership) => [ownership, departmentFollowsHolder(ownership)]), [
+    ["personal", true], ["shared", false], ["stock", true], ["component", false], ["software_license", false],
+  ])
 })
