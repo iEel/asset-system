@@ -1432,7 +1432,18 @@
     "openHandoverLock": "Handover {documentNo} is still open. If the holder or location is wrong, cancel the handover and hand over again, or check it in.",
     "openHandoverLink": "Open the handover",
     "correctionHint": "Use this to fix data recorded wrongly. If the asset really moved or changed hands, use <link>Transfer asset</link> so there is a transfer document and full history.",
-    "saveCorrection": "Save changes"
+    "saveCorrection": "Save changes",
+    "fieldChanged": "Changed",
+    "fieldWas": "Was: {value}",
+    "restoreField": "Restore",
+    "changeCount": "{count, plural, one {# field changed} other {# fields changed}}",
+    "changeTo": "changed to",
+    "goToField": "Go to field",
+    "followsHolderFix": "Set to the holder's",
+    "changeListReason": "Reason: {reason}",
+    "correctionReasonLabel": "Reason for the correction",
+    "correctionReasonRequired": "Enter the reason for the correction",
+    "departmentMismatchLater": "The department does not match the holder's. It is set when the asset is checked in or transferred."
   },
   "company": {
     "title": "Companies",

@@ -74,6 +74,8 @@ test("asset form: validate() restates every rule the toasts said, the save gates
       currentLocationId: "asset-current-location",
       statusId: "asset-status",
       conditionId: "asset-condition",
+      // Task 8: the edit page's reason for a room, holder or แผนก correction, under the room and status rows (P2-R4).
+      correctionReason: "asset-correction-reason",
       licenseTotalSeats: "asset-license-total-seats",
       licenseUsedSeats: "asset-license-used-seats",
       parentAssetId: "asset-install-parent",
@@ -95,7 +97,7 @@ test("asset form: validate() restates every rule the toasts said, the save gates
     },
   })
   const rules = functionBody(rulesSource)
-  assert.match(rulesSource, /^export function validate\(\{ values, original, duplicates, install, customFields, purchaseDocument \}: AssetRuleInput\): Partial<Record<AssetField, string>> \{$/m)
+  assert.match(rulesSource, /^export function validate\(\{ values, original, duplicates, install, customFields, purchaseDocument, correction \}: AssetRuleInput\): Partial<Record<AssetField, string>> \{$/m)
   for (const rule of [
     'check("assetTag", duplicates.assetTag ? "duplicate" : maxLength(values.assetTag, 50))',
     // The required fields are getRequiredAssetFields' list, the one the form's counter reads (group 4 plan 2 Task 5).
@@ -116,6 +118,8 @@ test("asset form: validate() restates every rule the toasts said, the save gates
     'check("purchaseDocumentNo", purchaseDocument.file && required(purchaseDocument.documentNo) ? "purchaseDocumentNoRequired" : maxLength(purchaseDocument.documentNo, 100))',
     'if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))',
     'check("customFieldsJson", isValidCustomFieldsJson(values.customFieldsJson) ? null : "customFieldsJsonInvalid")',
+    // Group 4 plan 2 Task 8: the edit page's reason, asked while its field shows (P2-R4).
+    'check("correctionReason", correction?.required && required(correction.reason) ? "correctionReasonRequired" : maxLength(correction?.reason, 500))',
   ]) assert.ok(rules.includes(rule), rule)
   // The department's star reads the same list, so the star and the rule cannot drift either.
   assert.ok(ownershipSource.includes('required={requiredFields.includes("departmentId")}'))
@@ -127,7 +131,7 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.match(purchaseSource, /value=\{values\.warrantyEndDate \?\? ""\}\n\s+min=\{values\.warrantyStartDate \|\| undefined\}/)
   assert.match(functionBody(rulesSource, "seatsExceeded"), /return Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
   // The asset rules keep the message their toast used (spec §7.1); the server's own codes read the catalog.
-  assert.match(rulesSource, /export const ASSET_MESSAGE_CODES = \[\n\s+"componentParentRequired",\n\s+"componentRoleRequired",\n\s+"licenseResponsibilityRequired",\n\s+"purchaseDocumentNoRequired",\n\s+"fileRequired",\n\s+"customFieldsJsonInvalid",\n\] as const/)
+  assert.match(rulesSource, /export const ASSET_MESSAGE_CODES = \[\n\s+"componentParentRequired",\n\s+"componentRoleRequired",\n\s+"licenseResponsibilityRequired",\n\s+"purchaseDocumentNoRequired",\n\s+"fileRequired",\n\s+"customFieldsJsonInvalid",\n\s+"correctionReasonRequired",\n\] as const/)
   assert.match(source, /return code && isAssetMessageCode\(code\) \? t\(code\) : fieldErrors\.message\(key\)/)
   // No validation toast is left; the catch keeps its toast for the server's protected-status refusal.
   assert.doesNotMatch(source, /toast\.error\(t\("(?:duplicateWarning|customFieldsJsonInvalid|customFieldRequired|componentRoleRequired|componentParentRequired|licenseResponsibilityRequired|licenseSeatUsageInvalid|purchaseDocumentNoRequired|fileRequired)"/)
@@ -138,8 +142,10 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.match(source, /aria-disabled=\{saveBlockedBy \? true : undefined\}\n\s+aria-describedby=\{saveBlockedBy \?\? undefined\}/)
   assert.match(source, /<Notice id="asset-status-protected" tone="warning" className="mt-2" title=\{t\("protectedStatusEditBlocked"\)\}>/)
   // Group 4 plan 2 Task 6a: the footer's status also holds the create form's missing line
-  // (tests/asset-form-layout-ui.test.ts); the duplicate check's reason keeps its id.
-  assert.match(source, /<StickyFormFooter\n\s+status=\{\n\s+duplicateState\.checking \|\| showMissing \? \(\n\s+<span className="grid gap-1">\n\s+\{duplicateState\.checking \? <span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span> : null\}/)
+  // (tests/asset-form-layout-ui.test.ts); the duplicate check's reason keeps its id. Task 8: and the edit page's
+  // "แก้ไข n ช่อง" with its list (tests/asset-form-change-list-ui.test.ts).
+  assert.match(source, /<StickyFormFooter\n\s+status=\{\n\s+duplicateState\.checking \|\| showMissing \|\| showChanges \? \(\n\s+<span className="grid gap-1">\n\s+\{duplicateState\.checking \? <span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span> : null\}/)
+  assert.match(source, /\) : null\}\n\s+\{showChanges \? <AssetFormChangeList changes=\{changeRows\} reason=\{correctionReason\.trim\(\)\} onGoToField=\{goToField\} \/> : null\}\n\s+<\/span>\n\s+\) : undefined\n\s+\}/)
   assert.doesNotMatch(source, /disabled=\{isProtectedStatusChange/)
   for (const locale of ["th", "en"] as const) {
     assert.equal(typeof messages(locale).asset.duplicateCheckPending, "string", `${locale} asset.duplicateCheckPending`)

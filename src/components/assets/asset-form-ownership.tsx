@@ -8,7 +8,9 @@ import { Notice } from "@/components/ui/notice"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Segmented } from "@/components/ui/segmented"
 import { useMediaQuery } from "@/components/ui/use-media-query"
+import { AssetFormChangedField, type AssetFieldChange } from "@/components/assets/asset-form-changed-field"
 import { CardGroup, SelectField } from "@/components/assets/asset-form-section"
+import type { AssetDiffField } from "@/lib/asset-form-diff"
 import { FIELD_IDS, type AssetField, type AssetFormDepartmentLock, type AssetFormOption as Option, type AssetFormValues } from "@/lib/asset-form-rules"
 import { assetOwnershipTypes, ownershipMayHaveHolder, type AssetOwnershipType } from "@/lib/asset-ownership"
 import { cn } from "@/lib/utils"
@@ -18,7 +20,8 @@ import { cn } from "@/lib/utils"
 // control and the desktop's error focus lands on the group), the owner company and branch, แผนก (locked to the holder's
 // on บุคคล and Stock), and the holder for every type that can have one, with the cross-company toggle. The state and the
 // handlers stay in asset-form.tsx. On edit (Task 7, P2-R3) an open handover makes the holder and แผนก read-only, and
-// without one the holder carries the hint that a real change goes through โอนย้าย.
+// without one the holder carries the hint that a real change goes through โอนย้าย. Task 8: a changed field shows its old
+// value (asset-form-changed-field.tsx), and under an open handover a แผนก that does not match the holder says so.
 export function AssetFormOwnership({
   values,
   ownershipType,
@@ -33,6 +36,8 @@ export function AssetFormOwnership({
   hasCrossCompanyCustodian,
   custodyLocked,
   correctionHint,
+  departmentMismatchLater,
+  changeOf,
   errorText,
   onOwnershipTypeChange,
   onCompanyChange,
@@ -58,6 +63,10 @@ export function AssetFormOwnership({
   custodyLocked: boolean
   // ใช้แก้ข้อมูลที่บันทึกผิด … โอนย้ายทรัพย์สิน, on edit without an open handover.
   correctionHint: ReactNode
+  // An open handover keeps a แผนก that does not match the holder; it is set at the check-in or the transfer (spec §7.3).
+  departmentMismatchLater: boolean
+  // The edit page's change of a field (its old value and คืนค่าเดิม), null on create or without a change.
+  changeOf: (field: AssetDiffField) => AssetFieldChange | null
   errorText: (key: AssetField) => string | undefined
   onOwnershipTypeChange: (value: string) => void
   onCompanyChange: (value: string) => void
@@ -75,97 +84,108 @@ export function AssetFormOwnership({
   return (
     <CardGroup title={t("ownership")}>
       <div className="md:col-span-2">
-        {isDesktop ? (
-          <FieldGroup
-            legend={t("ownershipType")}
-            id={FIELD_IDS.ownershipType}
-            required
-            hint={t(`ownershipType_${ownershipType}_help`)}
-            error={errorText("ownershipType")}
-          >
-            <Segmented
-              labelledBy={`${FIELD_IDS.ownershipType}-legend`}
-              showCheck
+        <AssetFormChangedField change={changeOf("ownershipType")}>
+          {isDesktop ? (
+            <FieldGroup
+              legend={t("ownershipType")}
+              id={FIELD_IDS.ownershipType}
+              required
+              hint={t(`ownershipType_${ownershipType}_help`)}
+              error={errorText("ownershipType")}
+            >
+              <Segmented
+                labelledBy={`${FIELD_IDS.ownershipType}-legend`}
+                showCheck
+                value={ownershipType}
+                options={assetOwnershipTypes.map((type) => ({ value: type, label: t(`ownershipType_${type}`) }))}
+                onValueChange={onOwnershipTypeChange}
+                className="max-w-full flex-wrap"
+              />
+            </FieldGroup>
+          ) : (
+            <SelectField
+              label={t("ownershipType")}
+              id="asset-ownership-type"
               value={ownershipType}
-              options={assetOwnershipTypes.map((type) => ({ value: type, label: t(`ownershipType_${type}`) }))}
-              onValueChange={onOwnershipTypeChange}
-              className="max-w-full flex-wrap"
-            />
-          </FieldGroup>
-        ) : (
-          <SelectField
-            label={t("ownershipType")}
-            id="asset-ownership-type"
-            value={ownershipType}
-            required
-            hint={t(`ownershipType_${ownershipType}_help`)}
-            error={errorText("ownershipType")}
-            onChange={onOwnershipTypeChange}
-          >
-            {assetOwnershipTypes.map((type) => (
-              <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
-            ))}
-          </SelectField>
-        )}
+              required
+              hint={t(`ownershipType_${ownershipType}_help`)}
+              error={errorText("ownershipType")}
+              onChange={onOwnershipTypeChange}
+            >
+              {assetOwnershipTypes.map((type) => (
+                <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
+              ))}
+            </SelectField>
+          )}
+        </AssetFormChangedField>
       </div>
-      <SelectField
-        label={t("assetOwnerCompany")}
-        id="asset-company"
-        value={values.companyId}
-        required
-        hint={t("assetOwnerCompanyHelp")}
-        error={errorText("companyId")}
-        onChange={onCompanyChange}
-      >
-        <option value="">{t("selectCompany")}</option>
-        {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
-      </SelectField>
-      <SelectField
-        label={t("assetOwnerBranch")}
-        id="asset-branch"
-        value={values.branchId}
-        required
-        hint={t("assetOwnerBranchHelp")}
-        error={errorText("branchId")}
-        onChange={onBranchChange}
-      >
-        <option value="">{t("selectBranch")}</option>
-        {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
-      </SelectField>
+      <AssetFormChangedField change={changeOf("companyId")}>
+        <SelectField
+          label={t("assetOwnerCompany")}
+          id="asset-company"
+          value={values.companyId}
+          required
+          hint={t("assetOwnerCompanyHelp")}
+          error={errorText("companyId")}
+          onChange={onCompanyChange}
+        >
+          <option value="">{t("selectCompany")}</option>
+          {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
+        </SelectField>
+      </AssetFormChangedField>
+      <AssetFormChangedField change={changeOf("branchId")}>
+        <SelectField
+          label={t("assetOwnerBranch")}
+          id="asset-branch"
+          value={values.branchId}
+          required
+          hint={t("assetOwnerBranchHelp")}
+          error={errorText("branchId")}
+          onChange={onBranchChange}
+        >
+          <option value="">{t("selectBranch")}</option>
+          {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
+        </SelectField>
+      </AssetFormChangedField>
       {/* Locked to the holder's on บุคคล and Stock: the one option reads "ตามผู้ถือครอง: <แผนก>", as โอนย้าย's แผนก row. */}
-      <SelectField
-        label={t("department")}
-        id="asset-department"
-        value={values.departmentId ?? ""}
-        required={requiredFields.includes("departmentId")}
-        disabled={departmentLock.locked || custodyLocked}
-        error={departmentLock.locked ? undefined : errorText("departmentId")}
-        onChange={onDepartmentChange}
-      >
-        {departmentLock.locked ? (
-          <option value={values.departmentId ?? ""}>{tTransfer("followsHolder", { department: departmentLockText })}</option>
-        ) : (
-          <>
-            <option value="">{t("selectDepartment")}</option>
-            {departments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
-          </>
-        )}
-      </SelectField>
+      <AssetFormChangedField change={changeOf("departmentId")}>
+        <SelectField
+          label={t("department")}
+          id="asset-department"
+          value={values.departmentId ?? ""}
+          required={requiredFields.includes("departmentId")}
+          disabled={departmentLock.locked || custodyLocked}
+          hint={departmentMismatchLater ? t("departmentMismatchLater") : undefined}
+          error={departmentLock.locked ? undefined : errorText("departmentId")}
+          onChange={onDepartmentChange}
+        >
+          {departmentLock.locked ? (
+            <option value={values.departmentId ?? ""}>{tTransfer("followsHolder", { department: departmentLockText })}</option>
+          ) : (
+            <>
+              <option value="">{t("selectDepartment")}</option>
+              {departments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
+            </>
+          )}
+        </SelectField>
+      </AssetFormChangedField>
       {ownershipMayHaveHolder(ownershipType) ? (
         <div>
-          <SearchableSelect
-            id="asset-custodian"
-            label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
-            value={values.custodianId ?? ""}
-            options={employees}
-            placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
-            searchPlaceholder={tCommon("searchSelectPlaceholder")}
-            emptyLabel={tCommon("searchSelectNoResults")}
-            hint={correctionHint}
-            error={errorText("custodianId")}
-            disabled={custodyLocked}
-            onChange={onCustodianChange}
-          />
+          <AssetFormChangedField change={changeOf("custodianId")}>
+            <SearchableSelect
+              id="asset-custodian"
+              label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
+              value={values.custodianId ?? ""}
+              options={employees}
+              placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
+              searchPlaceholder={tCommon("searchSelectPlaceholder")}
+              emptyLabel={tCommon("searchSelectNoResults")}
+              hint={correctionHint}
+              error={errorText("custodianId")}
+              disabled={custodyLocked}
+              onChange={onCustodianChange}
+            />
+          </AssetFormChangedField>
           <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-meta text-muted-foreground">
             <input
               type="checkbox"

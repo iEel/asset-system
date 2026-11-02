@@ -61,6 +61,8 @@ test("each field has its section: the folded ones open on an error (Task 6a reve
   const expected: Record<string, string> = {
     assetTag: "main", name: "main", categoryId: "main", serialNumber: "main", ownershipType: "main", companyId: "main", branchId: "main",
     departmentId: "main", custodianId: "main", homeLocationId: "main", currentLocationId: "main", statusId: "main", conditionId: "main",
+    // Task 8: the edit page's reason sits in the main card, under the room and status rows.
+    correctionReason: "main",
     licenseTotalSeats: "license", licenseUsedSeats: "license",
     parentAssetId: "install", componentRole: "install", slotNo: "install", installReason: "install",
     purchaseDate: "purchase", purchasePrice: "purchase", warrantyStartDate: "purchase", warrantyEndDate: "purchase",

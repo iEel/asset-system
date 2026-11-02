@@ -151,7 +151,8 @@ export const emptyAssetFormValues: AssetFormValues = {
 
 // The fields in visual order, keyed like the server's fieldErrors (the asset body's keys; the install, purchase
 // document and photo keys are this form's own), with the id focus moves to (v-track M-R1). The template's custom
-// fields sit between the photo and the raw JSON: fieldOrder() puts them there and fieldId() names them.
+// fields sit between the photo and the raw JSON: fieldOrder() puts them there and fieldId() names them. correctionReason
+// is the edit page's reason for a room, holder or แผนก correction (group 4 plan 2 Task 8, P2-R4), under those rows.
 export const FIELD_IDS = {
   assetTag: "asset-tag",
   name: "asset-name",
@@ -166,6 +167,7 @@ export const FIELD_IDS = {
   currentLocationId: "asset-current-location",
   statusId: "asset-status",
   conditionId: "asset-condition",
+  correctionReason: "asset-correction-reason",
   licenseTotalSeats: "asset-license-total-seats",
   licenseUsedSeats: "asset-license-used-seats",
   parentAssetId: "asset-install-parent",
@@ -197,6 +199,7 @@ export const ASSET_MESSAGE_CODES = [
   "purchaseDocumentNoRequired",
   "fileRequired",
   "customFieldsJsonInvalid",
+  "correctionReasonRequired",
 ] as const
 export type AssetMessageCode = (typeof ASSET_MESSAGE_CODES)[number]
 
@@ -256,6 +259,7 @@ const FIELD_SECTIONS: Record<AssetFixedField, AssetFormSection> = {
   currentLocationId: "main",
   statusId: "main",
   conditionId: "main",
+  correctionReason: "main",
   licenseTotalSeats: "license",
   licenseUsedSeats: "license",
   parentAssetId: "install",
@@ -344,13 +348,15 @@ export type AssetRuleInput = {
   install: { parentAssetId: string; componentRole: string; slotNo: string; reason: string }
   customFields: { definitions: CustomFieldDefinition[]; valueOf: (fieldName: string) => string }
   purchaseDocument: { file: File | null; documentNo: string; totalAmount: string }
+  // The edit page's reason (P2-R4), passed while its field shows: the room, the holder or แผนก changed by hand.
+  correction?: { required: boolean; reason: string }
 }
 
 // noValidate turns the browser's check off, so this restates the controls' required, maxLength, min and the seats'
 // step, and the rules the toasts used to say: the duplicate tag and serial, the license's assignee or department and
 // its seats, the warranty pair, the install after create, the template's required fields, the raw JSON and a chosen
 // purchase document's number (v-track M-R2, spec §7.4).
-export function validate({ values, original, duplicates, install, customFields, purchaseDocument }: AssetRuleInput): Partial<Record<AssetField, string>> {
+export function validate({ values, original, duplicates, install, customFields, purchaseDocument, correction }: AssetRuleInput): Partial<Record<AssetField, string>> {
   const errors: Partial<Record<AssetField, string>> = {}
   const check = (key: AssetField, code: string | null) => {
     if (code) errors[key] = code
@@ -380,6 +386,7 @@ export function validate({ values, original, duplicates, install, customFields, 
   check("currentLocationId", requiredField("currentLocationId"))
   check("statusId", requiredField("statusId"))
   check("conditionId", requiredField("conditionId"))
+  check("correctionReason", correction?.required && required(correction.reason) ? "correctionReasonRequired" : maxLength(correction?.reason, 500))
   if (!original) {
     check("parentAssetId", ownershipType === "component" && required(install.parentAssetId) ? "componentParentRequired" : null)
     check("componentRole", install.parentAssetId && required(install.componentRole) ? "componentRoleRequired" : maxLength(install.componentRole, 100))

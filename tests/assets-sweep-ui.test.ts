@@ -67,8 +67,8 @@ test("asset form: sections are ContentPanels, notes are Notice by meaning, empty
   const source = read(`${C}assets/asset-form.tsx`)
   // Group 4 plan 2 Task 5: Section and SelectField moved to asset-form-section.tsx, the optional sections to their files.
   // Task 6a: the documents and the other section got files of their own, and the header and the required card theirs.
-  // Task 6b: the ownership block too (parts[9]).
-  const parts = ["section", "install", "purchase", "documents", "photos", "custom-fields", "other", "header", "required-card", "ownership"].map((name) => read(`${C}assets/asset-form-${name}.tsx`))
+  // Task 6b: the ownership block too (parts[9]). Task 8: the changed-field frame and the change list (appended).
+  const parts = ["section", "install", "purchase", "documents", "photos", "custom-fields", "other", "header", "required-card", "ownership", "changed-field", "change-list"].map((name) => read(`${C}assets/asset-form-${name}.tsx`))
   const ownershipSource = parts[9]
   const [sectionSource, , , purchaseSource, photosSource, customFieldsSource] = parts
   assert.match(sectionSource, /export function Section\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<ContentPanel title=\{title\}>/)

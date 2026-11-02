@@ -119,7 +119,8 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
   // Group 4 plan 2 Task 5: the asset form's [12, 10, 0] went with its controls to its section files; the rows add up to it.
   // Task 6a: the document number's maxLength went with the documents box to asset-form-documents.tsx.
   // Task 6b: the ownership type (the phone's select), the owner company, branch and แผนก went to asset-form-ownership.tsx.
-  [`${C}assets/asset-form.tsx`]: [5, 3, 0],
+  // Task 8: the edit page's เหตุผลที่แก้ (required, maxLength 500) adds one of each.
+  [`${C}assets/asset-form.tsx`]: [6, 4, 0],
   [`${C}assets/asset-form-ownership.tsx`]: [4, 0, 0],
   // Task 7: the เปลี่ยนรหัส dialog's new code (required, maxLength 50, as the create page's tag).
   [`${C}assets/asset-form-tag-dialog.tsx`]: [1, 1, 0],

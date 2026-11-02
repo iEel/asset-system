@@ -57,7 +57,8 @@ test("the optional sections fold: each a FormDisclosure with a summary and a cou
   // The badge and the summary come from the pure summary of each section.
   assert.match(form, /badge: summary\.total > 0 \? t\("sectionFilled", \{ filled: summary\.filled, total: summary\.total \}\) : undefined/)
   assert.match(form, /const summary = summarizeAssetFormSection\(section, summaryInput\)/)
-  assert.match(form, /tone: sectionsWithErrors\.has\(section\) \? "error" : "default"/)
+  // Task 8: a section with a change on the edit page has the changed frame (tests/asset-form-change-list-ui.test.ts).
+  assert.match(form, /tone: sectionsWithErrors\.has\(section\) \? "error" : sectionsWithChanges\.has\(section\) \? "changed" : "default"/)
   const th = messages("th").asset
   assert.equal(th.sectionFilled, "กรอกแล้ว {filled, number} จาก {total, number} ช่อง")
   assert.equal(th.otherAdvanced, "ข้อมูลอื่น ๆ และขั้นสูง")
