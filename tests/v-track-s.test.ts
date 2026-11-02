@@ -425,7 +425,7 @@ test("asset, operation, maintenance and import refusals about a field name it; t
   }
 
   const purchaseDocuments = await load<{ POST: Handler }>("src/app/api/purchase-documents/route.ts")
-  stubDb({ purchaseDocument: { findFirst: () => ({ id: "pd-1" }) } })
+  stubDb({ purchaseDocument: { findMany: () => [{ id: "pd-1", documentType: "invoice", documentNo: "INV-1", isActive: true }] } })
   await expectBody(await purchaseDocuments.POST(jsonRequest("POST", { documentType: "invoice", documentNo: "INV-1", documentDate: "", totalAmount: "" }), params), 409, {
     error: "Purchase document already exists", id: "pd-1", code: "DUPLICATE", fieldErrors: { documentNo: "duplicate" },
   })

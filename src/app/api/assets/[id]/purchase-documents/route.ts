@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, context: AssetPurchaseDocuments
     }
 
     const input = purchaseDocumentLinkSchema.parse(await request.json())
-    const linkedIds = await linkPurchaseDocumentsToAsset({
+    const linkedIds = await linkPurchaseDocumentsToAsset(prisma, {
       assetId: asset.id,
       purchaseDocumentIds: input.purchaseDocumentIds,
       userId: user.id,

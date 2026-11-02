@@ -21,6 +21,8 @@ export const purchaseDocumentTypes = [
   "other",
 ] as const
 
+export type PurchaseDocumentType = (typeof purchaseDocumentTypes)[number]
+
 export const purchaseDocumentSchema = z.object({
   documentType: z.enum(purchaseDocumentTypes),
   documentNo: z.string().trim().min(1).max(100),
@@ -34,7 +36,7 @@ export const purchaseDocumentSchema = z.object({
 })
 
 export const purchaseDocumentLinkSchema = z.object({
-  purchaseDocumentIds: z.array(z.string().trim().min(1)).default([]),
+  purchaseDocumentIds: z.array(z.string().trim().min(1)).max(50).default([]),
 })
 
 export type PurchaseDocumentInput = z.infer<typeof purchaseDocumentSchema>

@@ -3,47 +3,22 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { optionalFormFile, optionalFormText, requiredFormText } from "@/lib/asset-operation-evidence"
-import { purchaseDocumentSchema } from "@/lib/validations/purchase-document"
-import { savePurchaseDocumentFile } from "@/lib/purchase-documents"
+import { isPrismaUniqueConstraintError } from "@/lib/prisma-unique-retry"
+import { purchaseDocumentSchema, type PurchaseDocumentInput } from "@/lib/validations/purchase-document"
+import {
+  createPurchaseDocumentRecord,
+  findPurchaseDocumentDuplicates,
+  parseMultipartPurchaseDocument,
+  purchaseDocumentDuplicateResponse,
+  savePurchaseDocumentFile,
+} from "@/lib/purchase-documents"
 import { createUploadCleanup } from "@/lib/upload-server"
 
 export const runtime = "nodejs"
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await requireAuth()
-    requirePermission(user, "asset", "view")
-
-    const q = request.nextUrl.searchParams.get("q")?.trim()
-    const documents = await prisma.purchaseDocument.findMany({
-      where: {
-        isActive: true,
-        ...(q
-          ? {
-              OR: [
-                { documentNo: { contains: q } },
-                { poNumber: { contains: q } },
-                { invoiceNumber: { contains: q } },
-              ],
-            }
-          : {}),
-      },
-      include: {
-        supplier: { select: { code: true, name: true } },
-        assetLinks: { select: { assetId: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-    })
-
-    return NextResponse.json(documents)
-  } catch (error) {
-    return errorResponse(error)
-  }
-}
-
 export async function POST(request: NextRequest) {
+  // Kept for the catch: a P2002 on type + number answers the duplicate body with the stored row's id (P3-R3).
+  let input: PurchaseDocumentInput | null = null
   // A refused or rolled-back save removes the file it wrote (group 3 follow-up C).
   const uploads = createUploadCleanup()
   try {
@@ -54,54 +29,15 @@ export async function POST(request: NextRequest) {
     const parsed = contentType.includes("multipart/form-data")
       ? await parseMultipartPurchaseDocument(request)
       : { input: purchaseDocumentSchema.parse(await request.json()), file: null }
+    input = parsed.input
 
-    const existing = await prisma.purchaseDocument.findFirst({
-      where: {
-        isActive: true,
-        documentType: parsed.input.documentType,
-        documentNo: parsed.input.documentNo,
-      },
-      select: { id: true },
-    })
-    if (existing) {
-      return NextResponse.json(
-        { error: "Purchase document already exists", id: existing.id, code: "DUPLICATE", fieldErrors: { documentNo: "duplicate" } },
-        { status: 409 },
-      )
-    }
+    const [duplicate] = await findPurchaseDocumentDuplicates(prisma, [parsed.input])
+    if (duplicate) return purchaseDocumentDuplicateResponse(duplicate.id)
 
     const savedFile = parsed.file ? await savePurchaseDocumentFile(parsed.file) : null
     if (savedFile) uploads.track(savedFile.filePath)
     const document = await prisma.$transaction(async (tx) => {
-      const record = await tx.purchaseDocument.create({
-        data: {
-          ...parsed.input,
-          currency: parsed.input.currency ?? "THB",
-          createdBy: user.id,
-          updatedBy: user.id,
-        },
-        include: {
-          supplier: { select: { code: true, name: true } },
-          assetLinks: { select: { assetId: true } },
-        },
-      })
-
-      if (savedFile) {
-        await tx.attachment.create({
-          data: {
-            module: "purchase_document",
-            referenceId: record.id,
-            fileName: savedFile.fileName,
-            originalName: savedFile.originalName,
-            fileType: savedFile.fileType,
-            fileSize: savedFile.fileSize,
-            filePath: savedFile.filePath,
-            uploadedBy: user.id,
-          },
-        })
-      }
-
-      return record
+      return createPurchaseDocumentRecord(tx, { input: parsed.input, savedFile, userId: user.id })
     })
     uploads.commit()
 
@@ -115,26 +51,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(document, { status: 201 })
   } catch (error) {
+    if (input && isPrismaUniqueConstraintError(error)) return duplicateAfterUniqueError(input)
     return errorResponse(error, 400)
   } finally {
     await uploads.discardIfUncommitted()
   }
 }
 
-async function parseMultipartPurchaseDocument(request: NextRequest) {
-  const formData = await request.formData()
-  return {
-    input: purchaseDocumentSchema.parse({
-      documentType: requiredFormText(formData, "documentType"),
-      documentNo: requiredFormText(formData, "documentNo"),
-      poNumber: optionalFormText(formData, "poNumber"),
-      invoiceNumber: optionalFormText(formData, "invoiceNumber"),
-      documentDate: optionalFormText(formData, "documentDate"),
-      supplierId: optionalFormText(formData, "supplierId"),
-      totalAmount: optionalFormText(formData, "totalAmount"),
-      currency: optionalFormText(formData, "currency"),
-      remark: optionalFormText(formData, "remark"),
-    }),
-    file: optionalFormFile(formData, "file"),
-  }
+// Another request stored the same type + number between the check and the create: answer the same 409, naming the row.
+async function duplicateAfterUniqueError(input: PurchaseDocumentInput) {
+  const [duplicate] = await findPurchaseDocumentDuplicates(prisma, [input]).catch(() => [])
+  return purchaseDocumentDuplicateResponse(duplicate?.id ?? null)
 }
