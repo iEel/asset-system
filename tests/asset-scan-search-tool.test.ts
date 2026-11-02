@@ -158,6 +158,16 @@ test("a card: name first, tag and Serial with the typed words marked, status and
   assert.match(en().assetTools.scanComponentsValue, /^\{count, plural, one \{# component\} other \{# components\}\} · \{names\}$/)
 })
 
+test("a card: the blocks (head, facts, open link, next actions) sit space-y-3 apart; ContentPanel wraps its children in a div, so the gap lives on an inner div, not the panel (group 4 plan 4 look step)", () => {
+  const tool = readTool()
+  const card = tool.slice(tool.indexOf("function ScanResultCard"))
+  assert.doesNotMatch(card, /<ContentPanel className="[^"]*space-y/, "a space-y on the panel never reaches the card's blocks")
+  assert.match(card, /<ContentPanel>\r?\n\s+<div className="space-y-3">\r?\n\s+<div className="min-w-0">/)
+  // The facts end and the open link follows inside the same spaced div, so the link never sits against the facts.
+  assert.match(card, /\]\}\r?\n\s+\/>\r?\n\r?\n\s+<Link\r?\n\s+href=\{appendReturnTo\(row\.href, scanReturnHref\)\}/)
+  assert.match(card, /<\/div>\r?\n\s+<\/div>\r?\n\s+<\/ContentPanel>/)
+})
+
 test("เปิดล่าสุด: kept per user and locale after mount, added when a card opens or Enter/QR opens an asset, emptied by ล้างรายการ (group 4 plan 4)", () => {
   const tool = readTool()
   const page = readPage()

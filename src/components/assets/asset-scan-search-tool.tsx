@@ -464,79 +464,81 @@ function ScanResultCard({
   const actionLinkClasses = cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full whitespace-normal text-center")
 
   return (
-    <ContentPanel className="space-y-3">
-      <div className="min-w-0">
-        <h3 className="break-words text-base font-semibold text-foreground">
-          <Highlighted value={row.name} words={words} />
-        </h3>
-        <p className="mt-0.5 break-words text-meta text-muted-foreground">
-          <span className="tag">
-            <Highlighted value={row.assetTag} words={words} />
-          </span>
-          {row.serialNumber ? (
-            <>
-              {" · "}
-              {tDetail("serialPrefix")}{" "}
-              <span className="tag">
-                <Highlighted value={row.serialNumber} words={words} />
-              </span>
-            </>
-          ) : null}
-        </p>
-        {showMatch ? (
-          <p className="mt-0.5 text-meta text-muted-foreground">
-            {t("scanCardMatch", { field: t(`scanMatchFields.${row.match.field}`) })}
+    <ContentPanel>
+      <div className="space-y-3">
+        <div className="min-w-0">
+          <h3 className="break-words text-base font-semibold text-foreground">
+            <Highlighted value={row.name} words={words} />
+          </h3>
+          <p className="mt-0.5 break-words text-meta text-muted-foreground">
+            <span className="tag">
+              <Highlighted value={row.assetTag} words={words} />
+            </span>
+            {row.serialNumber ? (
+              <>
+                {" · "}
+                {tDetail("serialPrefix")}{" "}
+                <span className="tag">
+                  <Highlighted value={row.serialNumber} words={words} />
+                </span>
+              </>
+            ) : null}
           </p>
-        ) : null}
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <StatusBadge label={row.status.label} tone={getAssetStateTone(row.status.name)} />
-          <StatusBadge
-            label={t("scanCondition", { condition: row.condition.label })}
-            tone={needsConditionAttention(row.condition.name) ? getAssetStateTone(row.condition.name) : "muted"}
-          />
+          {showMatch ? (
+            <p className="mt-0.5 text-meta text-muted-foreground">
+              {t("scanCardMatch", { field: t(`scanMatchFields.${row.match.field}`) })}
+            </p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <StatusBadge label={row.status.label} tone={getAssetStateTone(row.status.name)} />
+            <StatusBadge
+              label={t("scanCondition", { condition: row.condition.label })}
+              tone={needsConditionAttention(row.condition.name) ? getAssetStateTone(row.condition.name) : "muted"}
+            />
+          </div>
         </div>
-      </div>
 
-      <KeyValueList
-        className="border-t border-border-soft pt-3"
-        items={[
-          { key: "holder", label: tAsset("custodian"), value: holderText },
-          { key: "room", label: tAsset("location"), value: roomText },
-          ...(row.components.count > 0
-            ? [
-                {
-                  key: "components",
-                  label: t("scanComponents"),
-                  value: t("scanComponentsValue", { count: row.components.count, names: componentNames(row.components) }),
-                },
-              ]
-            : []),
-        ]}
-      />
+        <KeyValueList
+          className="border-t border-border-soft pt-3"
+          items={[
+            { key: "holder", label: tAsset("custodian"), value: holderText },
+            { key: "room", label: tAsset("location"), value: roomText },
+            ...(row.components.count > 0
+              ? [
+                  {
+                    key: "components",
+                    label: t("scanComponents"),
+                    value: t("scanComponentsValue", { count: row.components.count, names: componentNames(row.components) }),
+                  },
+                ]
+              : []),
+          ]}
+        />
 
-      <Link
-        href={appendReturnTo(row.href, scanReturnHref)}
-        onClick={() => rememberRecent(row)}
-        className={cn(buttonVariants({ size: "lg" }), "w-full")}
-      >
-        {openAssetLabel}
-        <ArrowRight aria-hidden="true" />
-      </Link>
-
-      <div role="group" aria-label={t("scanNextActions")} className="grid grid-cols-2 gap-2">
-        {cardActions(row).map((action) => {
-          const Icon = assetActionIcons[action.key]
-          return (
-            <Link key={action.key} href={action.href} onClick={() => rememberRecent(row)} className={actionLinkClasses}>
-              <Icon aria-hidden="true" className="text-primary" />
-              {tAll(action.labelKey)}
-            </Link>
-          )
-        })}
-        <Link href={row.printLabelHref} onClick={() => rememberRecent(row)} className={actionLinkClasses}>
-          <Printer aria-hidden="true" className="text-primary" />
-          {tAsset("printLabel")}
+        <Link
+          href={appendReturnTo(row.href, scanReturnHref)}
+          onClick={() => rememberRecent(row)}
+          className={cn(buttonVariants({ size: "lg" }), "w-full")}
+        >
+          {openAssetLabel}
+          <ArrowRight aria-hidden="true" />
         </Link>
+
+        <div role="group" aria-label={t("scanNextActions")} className="grid grid-cols-2 gap-2">
+          {cardActions(row).map((action) => {
+            const Icon = assetActionIcons[action.key]
+            return (
+              <Link key={action.key} href={action.href} onClick={() => rememberRecent(row)} className={actionLinkClasses}>
+                <Icon aria-hidden="true" className="text-primary" />
+                {tAll(action.labelKey)}
+              </Link>
+            )
+          })}
+          <Link href={row.printLabelHref} onClick={() => rememberRecent(row)} className={actionLinkClasses}>
+            <Printer aria-hidden="true" className="text-primary" />
+            {tAsset("printLabel")}
+          </Link>
+        </div>
       </div>
     </ContentPanel>
   )
