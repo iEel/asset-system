@@ -12,6 +12,7 @@ export const LABEL_WORDS = {
   queueLoading: "กำลังโหลดคิวป้าย",
   // The add-all box (P6-R3): the line a · b · c and the button's three wordings, and what is left past the first 100.
   addAllSummary: "ตรงตัวกรอง {matched, number} รายการ · อยู่ในรายการพิมพ์แล้ว {listed, number} · จะเพิ่มใหม่ {added, number}",
+  addAllSummaryFirst100: "ตรงตัวกรอง {matched, number} รายการ · อยู่ในรายการพิมพ์แล้ว {listed, number} (จาก 100 รายการแรก) · จะเพิ่มใหม่ {added, number}",
   addAll: "เพิ่มทั้งหมด {count, number} รายการ", addSome: "เพิ่ม {count, number} รายการ", addFirst100: "เพิ่ม 100 รายการแรก",
   addRemaining: "เหลืออีก {count, number} รายการ",
   // A queue row once listed, a printed row's state, and the queue with no match.

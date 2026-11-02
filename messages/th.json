@@ -424,7 +424,6 @@
       },
       "remove": "เอาออกจากรายการ: {tag}",
       "fromRegister": "{count, number} รายการนี้มาจากที่เลือกในทะเบียนทรัพย์สิน",
-      "listCapNote": "รายการพิมพ์รับได้สูงสุด {max, number} ดวง",
       "listFull": "รายการพิมพ์เต็ม {max, number} ดวงแล้ว",
       "listRefused": "เพิ่มได้ {added, number} จาก {requested, number} รายการ เพราะรายการพิมพ์รับได้สูงสุด {max, number} ดวง",
       "listEmpty": "ยังไม่มีป้ายที่จะพิมพ์ เพิ่มจากผลค้นหาหรือคิวป้าย",
@@ -451,7 +450,8 @@
       "showMoreFailed": "โหลดรายการเพิ่มไม่สำเร็จ",
       "addAllFailed": "เพิ่มเข้ารายการพิมพ์ไม่สำเร็จ",
       "addAllSkipped": "ไม่ได้เพิ่ม {count, number} รายการที่ปิดใช้งานแล้ว",
-      "listRefreshFailed": "โหลดสถานะล่าสุดของรายการพิมพ์ไม่สำเร็จ"
+      "listRefreshFailed": "โหลดสถานะล่าสุดของรายการพิมพ์ไม่สำเร็จ",
+      "addAllSummaryFirst100": "ตรงตัวกรอง {matched, number} รายการ · อยู่ในรายการพิมพ์แล้ว {listed, number} (จาก 100 รายการแรก) · จะเพิ่มใหม่ {added, number}"
     }
   },
   "auth": {

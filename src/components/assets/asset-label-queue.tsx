@@ -22,6 +22,7 @@ import {
   LABEL_QUEUE_MORE_STEP,
   addAllCounts,
   addAllNoteKey,
+  addAllSummaryKey,
   appendQueueRows,
   buildLabelLookupSearch,
   buildLabelQueueSearch,
@@ -33,6 +34,7 @@ import {
   labelRowNameKey,
   lookupMissingCount,
   queueRefreshPageSize,
+  queueRequestAborted,
   type LabelQueueFilters,
 } from "@/lib/asset-label-queue-rules"
 import { cn, formatDate } from "@/lib/utils"
@@ -81,6 +83,8 @@ export async function fetchLabelRows(ids: readonly string[], locale: LabelQueueL
   if (ids.length === 0) return []
   const response = await fetch(`${labelPrintsApi}?${buildLabelLookupSearch(ids, locale)}`, { signal })
   const payload = (await response.json().catch(() => null)) as { rows?: LabelQueueRow[] } | null
+  // An abort after the headers fails the body read with a plain error: rethrow it as the abort it is (final review).
+  signal?.throwIfAborted()
   if (!response.ok) throw new Error("Label lookup failed")
   return payload?.rows ?? []
 }
@@ -88,12 +92,9 @@ export async function fetchLabelRows(ids: readonly string[], locale: LabelQueueL
 async function fetchQueuePage(search: string, signal?: AbortSignal): Promise<QueueState> {
   const response = await fetch(`${labelPrintsApi}?${search}`, { signal })
   const payload = (await response.json().catch(() => null)) as LabelQueueAnswer | null
+  signal?.throwIfAborted()
   if (!response.ok || !payload) throw new Error("Queue failed")
   return { rows: payload.rows, total: payload.total, ids: payload.ids, reprintCapped: payload.reprintCapped === true }
-}
-
-function isAbort(error: unknown) {
-  return error instanceof DOMException && error.name === "AbortError"
 }
 
 function LoadingLine({ label }: { label: string }) {
@@ -136,7 +137,7 @@ export function AssetLabelSearchCard({ locale, selectedIds, onAdd }: { locale: L
         // The search finds the assets; the lookup gives them the queue's row, with their real print state (P6-R11).
         setResults(await fetchLabelRows((payload?.results ?? []).map((result) => result.id), locale, controller.signal))
       } catch (error) {
-        if (isAbort(error)) return
+        if (queueRequestAborted(error, controller.signal)) return
         setResults([])
         setSearchError(true)
       } finally {
@@ -263,10 +264,14 @@ export function AssetLabelQueueCard({
       setMoreError(false)
       setAddAllError(false)
       setAddAllSkipped(0)
+      // A load the next one replaced says nothing: neither its rows nor its error (final review).
       try {
-        setQueue(await fetchQueuePage(firstPageSearch, controller.signal))
+        const page = await fetchQueuePage(firstPageSearch, controller.signal)
+        if (controller.signal.aborted) return
+        setQueue(page)
+        setQueueError(false)
       } catch (error) {
-        if (isAbort(error)) return
+        if (queueRequestAborted(error, controller.signal)) return
         setQueue(emptyQueue)
         setQueueError(true)
       } finally {
@@ -510,7 +515,7 @@ export function AssetLabelQueueCard({
             {queueLoading || queueError ? null : (
               <>
                 <p className="mt-1 text-muted-foreground tabular-nums">
-                  {t("addAllSummary", { matched: addAll.a, listed: addAll.b, added: addAll.c })}
+                  {t(addAllSummaryKey(addAll), { matched: addAll.a, listed: addAll.b, added: addAll.c })}
                 </p>
                 {addAll.left > 0 ? <p className="mt-1 text-muted-foreground tabular-nums">{t("addRemaining", { count: addAll.left })}</p> : null}
               </>
@@ -600,7 +605,8 @@ export function AssetLabelQueueCard({
 
 // One row of the search or the queue (board): the name, then "tag · holder or ส่วนกลาง · room", the print state, and
 // + or ✓. It stays one list button (plan 2D-3 R5): the whole row adds the asset to the print list. Its name is the
-// board's; the second line and the state describe it. A listed row keeps the shared disabled look with a check.
+// board's; the second line and the state describe it. A listed row keeps the shared disabled look with a check; it is
+// aria-disabled, not disabled, so the keyboard focus that added it stays on it (final review).
 function LabelQueueRowButton({
   row,
   source,
@@ -626,11 +632,13 @@ function LabelQueueRowButton({
     <button
       type="button"
       {...hook}
-      disabled={listed}
+      aria-disabled={listed || undefined}
       aria-label={t(name.key, name.values)}
       aria-describedby={`${metaId} ${stateId}`}
-      onClick={() => onAdd([row])}
-      className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:bg-background md:px-5"
+      onClick={() => {
+        if (!listed) onAdd([row])
+      }}
+      className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset aria-disabled:cursor-not-allowed aria-disabled:bg-background md:px-5"
     >
       <span
         aria-hidden="true"

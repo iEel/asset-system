@@ -424,7 +424,6 @@
       },
       "remove": "Remove from the list: {tag}",
       "fromRegister": "{count, plural, one {This # asset came from the selection in the asset register} other {These # assets came from the selection in the asset register}}",
-      "listCapNote": "The print list holds {max, number} labels at most",
       "listFull": "The print list is full ({max, number} labels)",
       "listRefused": "Added {added, number} of {requested, number}: the print list holds {max, number} labels at most",
       "listEmpty": "Nothing to print yet. Add assets from the search or the label queue",
@@ -451,7 +450,8 @@
       "showMoreFailed": "More rows did not load",
       "addAllFailed": "The assets were not added to the print list",
       "addAllSkipped": "{count, plural, one {# deactivated asset was not added} other {# deactivated assets were not added}}",
-      "listRefreshFailed": "The print list's latest print states did not load"
+      "listRefreshFailed": "The print list's latest print states did not load",
+      "addAllSummaryFirst100": "{matched, plural, one {# matches the filters} other {# match the filters}} · {listed, number} of the first 100 already in the print list · {added, number} to add"
     }
   },
   "auth": {

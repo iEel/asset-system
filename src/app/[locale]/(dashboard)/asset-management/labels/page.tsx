@@ -1,7 +1,7 @@
 import { requirePagePermission } from "@/lib/page-auth"
 import { prisma } from "@/lib/db"
 import { loadAssetLabelPrintSettings } from "@/lib/asset-label-print-settings"
-import { normalizeLabelPrintAssetIds } from "@/lib/asset-label-print-tracking"
+import { LABEL_PRINT_BATCH_MAX, normalizeLabelPrintAssetIds } from "@/lib/asset-label-print-tracking"
 import { lookupLabelPrintRows, type LabelQueueDb } from "@/lib/asset-label-queue"
 import { AssetLabelBatchTool } from "@/components/assets/asset-label-batch-tool"
 
@@ -15,12 +15,13 @@ export default async function AssetLabelsToolPage({ params, searchParams }: Asse
   const { assetIds, from } = await searchParams
   await requirePagePermission(locale, "asset", "view")
   const queueLocale = locale === "en" ? "en" : "th"
-  // The incoming ids keep their order, once each, at most 100 (P6-R2); their rows come from the queue's lookup, so they
-  // carry their real print state like every other row (P6-R11). The register adds from=register (P6-R1). The label
-  // settings come through the one loader, so the page's preview and the print route draw the same label (recon X11).
-  const preselectedIds = normalizeLabelPrintAssetIds((assetIds ?? "").split(","))
+  // The incoming ids keep their order, once each; the first 100 are looked up and the rest are refused in the list's
+  // status line (P6-R2, final review). Their rows come from the queue's lookup, so they carry their real print state
+  // like every other row (P6-R11). The register adds from=register (P6-R1). The label settings come through the one
+  // loader, so the page's preview and the print route draw the same label (recon X11).
+  const incomingIds = normalizeLabelPrintAssetIds((assetIds ?? "").split(","), Number.POSITIVE_INFINITY)
   const [preselected, labelSettings, companies, branches, categories, locations] = await Promise.all([
-    lookupLabelPrintRows(prisma as unknown as LabelQueueDb, preselectedIds, queueLocale),
+    lookupLabelPrintRows(prisma as unknown as LabelQueueDb, incomingIds.slice(0, LABEL_PRINT_BATCH_MAX), queueLocale),
     loadAssetLabelPrintSettings(),
     prisma.company.findMany({
       where: { isActive: true },
@@ -77,6 +78,7 @@ export default async function AssetLabelsToolPage({ params, searchParams }: Asse
         })),
       }}
       preselectedRows={preselected.rows}
+      incomingCount={incomingIds.length}
       fromRegister={from === "register"}
       settings={labelSettings}
     />

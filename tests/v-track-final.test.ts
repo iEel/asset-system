@@ -75,7 +75,7 @@ test("the print queue's three buttons wait with their reason beside them (v-trac
   assert.match(source, /<Button\n\s+variant="outline"\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onTestPrint\}\n\s+>/)
   assert.match(source, /<Button\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onPrint\}\n\s+>/)
   assert.match(source, /const waits = count === 0\n/)
-  assert.ok(source.includes('<EmptyNote id="asset-label-print-reason" padded>{t("listEmpty")}</EmptyNote>'))
+  assert.ok(source.includes('<EmptyNote id="asset-label-print-reason" tabIndex={-1} padded className="outline-none">{t("listEmpty")}</EmptyNote>'))
   assert.match(shell, /function printLabels\(\) \{\n\s+if \(ordered\.length === 0\) return\n/)
   assert.match(shell, /function testPrint\(\) \{\n(?:\s+\/\/[^\n]*\n)*\s+const request = labelTestPrint\([^\n]*\n\s+if \(!request\) return\n/)
   // No plain disabled gate is left on the three, and the add button no longer swaps its label for the reason.

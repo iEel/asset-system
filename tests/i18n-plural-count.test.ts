@@ -29,7 +29,7 @@ function sourceFiles(directory: string): string[] {
   })
 }
 
-test("the en plural messages are known: 72 keys, so a new one is checked by the rules below", () => {
+test("the en plural messages are known: 73 keys, so a new one is checked by the rules below", () => {
   // Group 4 plan 2 Task 6a added 9: the asset form's required counter, section count, missing line and six section summaries.
   // Task 8 added the edit footer's "แก้ไข n ช่อง" (asset.changeCount).
   // Group 4 plan 3 Task 4 added 4: the purchase-document picker's footer and linked lines, and the edit badge "ผูกไว้ n ใบ".
@@ -41,9 +41,10 @@ test("the en plural messages are known: 72 keys, so a new one is checked by the 
   // Group 4 plan 6 Task 3 added 10: the labels page's add-all line and its three counts on buttons and the rest line,
   // the room the print list has left, the queue list's name, the print list's "n ดวง", the from-register line, and the
   // bar's summary and print button. The Task 4 review added 1: the add-all line that says how many deactivated assets
-  // were not added.
-  assert.equal(pluralKeys.size, 72,[...pluralKeys.keys()].join(", "))
+  // were not added. The plan 6 final review added 1: the add-all line past 100 matches, whose b counts the first 100.
+  assert.equal(pluralKeys.size, 73,[...pluralKeys.keys()].join(", "))
   assert.equal(pluralKeys.get("assetTools.labelsPage.addAllSummary"), "matched")
+  assert.equal(pluralKeys.get("assetTools.labelsPage.addAllSummaryFirst100"), "matched")
   assert.equal(pluralKeys.get("assetTools.labelsPage.addAll"), "count")
   assert.equal(pluralKeys.get("assetTools.labelsPage.addSome"), "count")
   assert.equal(pluralKeys.get("assetTools.labelsPage.addRemaining"), "count")

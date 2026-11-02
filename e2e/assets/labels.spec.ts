@@ -37,6 +37,8 @@ const BAR = '[data-slot="desktop-selection-bar"]'
 const CHIP = "{label}: {value}"
 const NUMBER = "([\\d,]+)"
 const ADD_ALL_LINE = templatePattern(LABEL_WORDS.addAllSummary, { matched: NUMBER, listed: NUMBER, added: NUMBER })
+// Past 100 matches the line says b counts the first 100 only (plan 6 final review).
+const ADD_ALL_LINE_FIRST_100 = templatePattern(LABEL_WORDS.addAllSummaryFirst100, { matched: NUMBER, listed: NUMBER, added: NUMBER })
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -111,12 +113,14 @@ async function chooseRunRoom(page: Page) {
 // The add-all line (P6-R3) read from the page: a (ตรงตัวกรอง) is whatever the run room holds now; b and c follow from it
 // and the list. The button names c, in the wording P6-R3 gives it.
 async function readAddAll(page: Page): Promise<AddAllLine> {
-  const text = page.getByText(ADD_ALL_LINE)
+  const text = page.getByText(ADD_ALL_LINE).or(page.getByText(ADD_ALL_LINE_FIRST_100))
   await expect(text).toHaveCount(1)
-  const match = ADD_ALL_LINE.exec((await text.textContent()) ?? "")
+  const content = (await text.textContent()) ?? ""
+  const match = ADD_ALL_LINE.exec(content) ?? ADD_ALL_LINE_FIRST_100.exec(content)
   if (!match) throw new Error("the add-all line reads ตรงตัวกรอง a · อยู่ในรายการพิมพ์แล้ว b · จะเพิ่มใหม่ c")
   const [a, b, c] = match.slice(1, 4).map((value) => Number(value.replaceAll(",", "")))
   const line = { a, b, c }
+  expect(ADD_ALL_LINE_FIRST_100.test(content), "the line names the first 100 exactly when more than 100 match").toBe(line.a > 100)
   expect(line.c, "c = min(a, 100) − b").toBe(Math.min(line.a, 100) - line.b)
   const button = line.a > 100 && line.b === 0 ? LABEL_WORDS.addFirst100 : fillTemplate(line.b === 0 ? LABEL_WORDS.addAll : LABEL_WORDS.addSome, { count: line.c })
   await expect(page.getByRole("button", { name: button, exact: true })).toBeVisible()

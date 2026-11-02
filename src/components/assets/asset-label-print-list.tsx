@@ -122,7 +122,8 @@ export function AssetLabelPrintList({
       }
     >
       {rows.length === 0 ? (
-        <EmptyNote id="asset-label-print-reason" padded>{t("listEmpty")}</EmptyNote>
+        // tabIndex -1: focus lands here after the list's last row goes or the list is cleared (final review).
+        <EmptyNote id="asset-label-print-reason" tabIndex={-1} padded className="outline-none">{t("listEmpty")}</EmptyNote>
       ) : (
         <ol aria-label={t("listTitle")} className="divide-y divide-border-soft">
           {rows.map((asset, index) => (
@@ -134,7 +135,7 @@ export function AssetLabelPrintList({
                   <span className="tag">{asset.assetTag}</span>
                 </span>
               </span>
-              <Button variant="ghost" size="icon-sm" onClick={() => onRemove(asset.id)} aria-label={t("remove", { tag: asset.assetTag })}>
+              <Button variant="ghost" size="icon-sm" data-label-remove={asset.id} onClick={() => onRemove(asset.id)} aria-label={t("remove", { tag: asset.assetTag })}>
                 <X aria-hidden="true" />
               </Button>
             </li>

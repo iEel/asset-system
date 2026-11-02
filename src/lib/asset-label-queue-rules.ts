@@ -99,6 +99,49 @@ export function mergeIntoPrintList<T extends { id: string }>(current: readonly T
   return { next: [...current, ...taken], added: taken.length, requested: fresh.length }
 }
 
+/**
+ * The print list's first state (P6-R1, P6-R2): the incoming rows once each, in their order. `incomingCount` is how many
+ * distinct ids the URL asked for; the page looks up only the first 100, so the ones past 100 are refused in the list's
+ * status line, never cut in silence (an id the lookup dropped as inactive is no refusal). With from=register the
+ * register's ids are kept, so its line counts only those still listed.
+ */
+export function initialPrintList<T extends { id: string }>(
+  incoming: readonly T[],
+  { incomingCount, fromRegister }: { incomingCount: number; fromRegister: boolean },
+  max = LABEL_PRINT_BATCH_MAX,
+): { rows: T[]; lastAdd: { added: number; requested: number } | null; registerIds: ReadonlySet<string> } {
+  const merged = mergeIntoPrintList([], incoming, max)
+  const refused = Math.max(0, incomingCount - max) + (merged.requested - merged.added)
+  return {
+    rows: merged.next,
+    lastAdd: refused > 0 ? { added: merged.added, requested: merged.added + refused } : null,
+    registerIds: new Set(fromRegister ? merged.next.map((row) => row.id) : []),
+  }
+}
+
+/** "<n> รายการนี้มาจากที่เลือกในทะเบียนทรัพย์สิน": the register's rows still in the list; 0 hides the line. */
+export function fromRegisterCount(rows: readonly { id: string }[], registerIds: ReadonlySet<string>) {
+  return rows.filter((row) => registerIds.has(row.id)).length
+}
+
+/**
+ * Where focus goes when a row's X removes it (its button unmounts): the next row's X, else the previous one's, else
+ * null for the list's empty note. Never <body> (final review).
+ */
+export function printListFocusAfterRemove(ids: readonly string[], removedId: string): string | null {
+  const index = ids.indexOf(removedId)
+  if (index < 0) return null
+  return ids[index + 1] ?? ids[index - 1] ?? null
+}
+
+/**
+ * A queue or lookup request that is stale: its signal aborted, or it failed as an abort. An abort between the headers
+ * and the end of the body fails the body read with a plain error, so the signal decides (final review).
+ */
+export function queueRequestAborted(error: unknown, signal?: AbortSignal) {
+  return signal?.aborted === true || (error instanceof DOMException && error.name === "AbortError")
+}
+
 export type PrintListStatus = { key: "listRefused"; values: { added: number; requested: number; max: number } } | { key: "listFull" } | null
 
 /** The print list's status line: what an add could not take, or that the list is full. */
@@ -154,6 +197,14 @@ export function labelButtonKey({ b, c, capped, left }: Pick<AddAllCounts, "b" | 
   if (left > 0 && c === LABEL_PRINT_BATCH_MAX) return "addFirst100"
   if (b === 0 && !capped) return "addAll"
   return "addSome"
+}
+
+/**
+ * The add-all line's words: with more than 100 matches, b counts only the first 100 (the ids the queue answers), and
+ * the line says so: "อยู่ในรายการพิมพ์แล้ว {b} (จาก 100 รายการแรก)" (final review).
+ */
+export function addAllSummaryKey({ left }: Pick<AddAllCounts, "left">): "addAllSummary" | "addAllSummaryFirst100" {
+  return left > 0 ? "addAllSummaryFirst100" : "addAllSummary"
 }
 
 /** The line under the add-all numbers: why nothing is added, or that the room cut it. */

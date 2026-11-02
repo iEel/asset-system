@@ -5,10 +5,13 @@ import {
   LABEL_QUEUE_MORE_STEP,
   addAllCounts,
   addAllNoteKey,
+  addAllSummaryKey,
   appendQueueRows,
   buildLabelLookupSearch,
   buildLabelQueueSearch,
   defaultLabelQueueFilters,
+  fromRegisterCount,
+  initialPrintList,
   labelButtonKey,
   labelDuplicateNames,
   labelQueueOldTag,
@@ -16,8 +19,10 @@ import {
   labelRowNameKey,
   lookupMissingCount,
   mergeIntoPrintList,
+  printListFocusAfterRemove,
   printListRoom,
   printListStatusKey,
+  queueRequestAborted,
 } from "../src/lib/asset-label-queue-rules.ts"
 import type { LabelQueueRow } from "../src/lib/asset-label-queue.ts"
 
@@ -171,4 +176,56 @@ test("rows: holder or ส่วนกลาง, the old tag and the board's name
   assert.deepEqual(labelRowNameKey(rows[1], { listed: false, duplicateNames: duplicates }), { key: "rowAddWithTag", values: { name: "Monitor Dell P2422H", tag: "GRL-MON-25-0043" } })
   assert.deepEqual(labelRowNameKey(rows[2], { listed: false, duplicateNames: duplicates }), { key: "rowAdd", values: { name: "HP ProDesk" } })
   assert.deepEqual(labelRowNameKey(rows[0], { listed: true, duplicateNames: duplicates }), { key: "rowListed", values: { name: "Monitor Dell P2422H" } })
+})
+
+// Group 4 plan 6 final review: the fixes of the whole-branch review, as pure rules.
+
+test("the add-all line says b counts only the first 100 when more than 100 match", () => {
+  const ids = Array.from({ length: 100 }, (_, index) => `id-${index}`)
+  const over = addAllCounts({ total: 150, matchIds: ids, selectedIds: new Set(), room: 100 })
+  assert.equal(addAllSummaryKey(over), "addAllSummaryFirst100")
+  const within = addAllCounts({ total: 100, matchIds: ids, selectedIds: new Set(), room: 100 })
+  assert.equal(addAllSummaryKey(within), "addAllSummary")
+  assert.equal(addAllSummaryKey(addAllCounts({ total: 0, matchIds: [], selectedIds: new Set(), room: 100 })), "addAllSummary")
+})
+
+test("the incoming ids past 100 are refused in the list's status line (P6-R2), not cut in silence", () => {
+  const rows = Array.from({ length: 100 }, (_, index) => ({ id: `a-${index}` }))
+  // 120 asked for: the first 100 looked up, the 20 past them refused.
+  const over = initialPrintList(rows, { incomingCount: 120, fromRegister: true })
+  assert.equal(over.rows.length, 100)
+  assert.deepEqual(over.lastAdd, { added: 100, requested: 120 })
+  assert.deepEqual(printListStatusKey(over.rows.length, over.lastAdd), { key: "listRefused", values: { added: 100, requested: 120, max: 100 } })
+  assert.equal(over.registerIds.size, 100)
+  // Within 100 nothing is refused; an id the lookup dropped (inactive) is no refusal either.
+  const within = initialPrintList(rows.slice(0, 3), { incomingCount: 4, fromRegister: false })
+  assert.equal(within.lastAdd, null)
+  assert.equal(within.registerIds.size, 0)
+  // Duplicates are listed once.
+  assert.deepEqual(initialPrintList([{ id: "x" }, { id: "x" }], { incomingCount: 1, fromRegister: true }).rows, [{ id: "x" }])
+})
+
+test("the from-register line counts the register's rows still listed: removing them lowers it, to 0 that hides it", () => {
+  const registerIds = new Set(["a", "b", "c"])
+  assert.equal(fromRegisterCount([{ id: "a" }, { id: "b" }, { id: "c" }], registerIds), 3)
+  assert.equal(fromRegisterCount([{ id: "a" }, { id: "z" }], registerIds), 1)
+  assert.equal(fromRegisterCount([], registerIds), 0)
+})
+
+test("after a row's remove, focus goes to the next row's X, else the previous one's, else the empty note", () => {
+  const ids = ["a", "b", "c"]
+  assert.equal(printListFocusAfterRemove(ids, "a"), "b")
+  assert.equal(printListFocusAfterRemove(ids, "b"), "c")
+  assert.equal(printListFocusAfterRemove(ids, "c"), "b")
+  assert.equal(printListFocusAfterRemove(["a"], "a"), null)
+  assert.equal(printListFocusAfterRemove(ids, "missing"), null)
+})
+
+test("a queue request is stale once its signal aborted, even when the body read failed with a plain error", () => {
+  const controller = new AbortController()
+  assert.equal(queueRequestAborted(new Error("Queue failed"), controller.signal), false)
+  assert.equal(queueRequestAborted(new DOMException("Aborted", "AbortError"), controller.signal), true)
+  controller.abort()
+  assert.equal(queueRequestAborted(new Error("Queue failed"), controller.signal), true)
+  assert.equal(queueRequestAborted(new Error("Queue failed")), false)
 })

@@ -490,6 +490,9 @@ test("the labels spec adds three run assets from the run room's queue, prints th
     "await expect(page.getByText(LABEL_WORDS.queueLoading, { exact: true })).toHaveCount(0)",
   ]) assert.ok(spec.includes(hook), hook)
   assert.equal(LABEL_WORDS.queueLoading, labels.queueLoading)
+  // Past 100 matches the add-all line names the first 100 (final review); the spec reads either wording.
+  assert.equal(LABEL_WORDS.addAllSummaryFirst100, labels.addAllSummaryFirst100)
+  assert.ok(spec.includes("page.getByText(ADD_ALL_LINE).or(page.getByText(ADD_ALL_LINE_FIRST_100))"))
   assert.ok(!spec.includes('[data-slot="filter-menu-chip"]'), "the chip is found by role, not by a slot the trigger may replace")
   // openLabels navigates, awaits the first page, then records (settled), so axe never reads the button mid-fade.
   assert.match(spec, /async function openLabels[^]*?await page\.goto\(LABELS_PATH[^]*?await firstPage[^]*?queueLoading[^]*?await record\(measure, label, testInfo\)[^]*?\n\}/)

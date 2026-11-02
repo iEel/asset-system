@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AssetLabelPrintActions, AssetLabelPrintList, AssetLabelPrintSettings } from "@/components/assets/asset-label-print-list"
 import { AssetLabelQueueCard, AssetLabelSearchCard, fetchLabelRows, type LabelFilterOptions } from "@/components/assets/asset-label-queue"
@@ -18,7 +18,14 @@ import type { AssetLabelPrintSettings as AssetLabelPrintSettingsData } from "@/l
 import { LABEL_PRINT_BATCH_MAX } from "@/lib/asset-label-print-tracking"
 import type { AssetLabelTapeSize } from "@/lib/asset-label-template"
 import type { LabelQueueLocale, LabelQueueRow } from "@/lib/asset-label-queue"
-import { mergeIntoPrintList, printListRoom, printListStatusKey } from "@/lib/asset-label-queue-rules"
+import {
+  fromRegisterCount,
+  initialPrintList,
+  mergeIntoPrintList,
+  printListFocusAfterRemove,
+  printListRoom,
+  printListStatusKey,
+} from "@/lib/asset-label-queue-rules"
 
 // The labels page (group 4 plan 6, spec §11, board AR-Labels): the shell that holds the print list, its order, the tape,
 // the note and the previewed label. The left column is asset-label-queue.tsx (search and queue); the right column is
@@ -27,8 +34,10 @@ import { mergeIntoPrintList, printListRoom, printListStatusKey } from "@/lib/ass
 
 type AssetLabelBatchToolProps = {
   locale: LabelQueueLocale
-  // The incoming ids' rows (?assetIds=), in their order, once each (P6-R1, P6-R11).
+  // The incoming ids' rows (?assetIds=), in their order, once each, the first 100 (P6-R1, P6-R11).
   preselectedRows?: LabelQueueRow[]
+  // How many distinct ids the URL asked for: past 100 they are refused in the list's status line (P6-R2).
+  incomingCount?: number
   // ?from=register: the rows came from the register's selection (P6-R1).
   fromRegister?: boolean
   filterOptions: LabelFilterOptions
@@ -39,37 +48,39 @@ type AssetLabelBatchToolProps = {
 type PrintListState = {
   rows: LabelQueueRow[]
   lastAdd: { added: number; requested: number } | null
-  // How many came from the register; 0 once the list is cleared.
-  fromRegister: number
+  // The register's ids (from=register); the line counts those still listed, none once the list is cleared.
+  registerIds: ReadonlySet<string>
 }
 
-export function AssetLabelBatchTool({ locale, preselectedRows = [], fromRegister = false, filterOptions, settings }: AssetLabelBatchToolProps) {
+// Where focus goes once a removed row's X or the cleared bar has unmounted: a row's X, or the list's empty note.
+type FocusRequest = { to: "row"; id: string } | { to: "empty" } | null
+
+export function AssetLabelBatchTool({ locale, preselectedRows = [], incomingCount = 0, fromRegister = false, filterOptions, settings }: AssetLabelBatchToolProps) {
   const t = useTranslations("assetTools.labelsPage")
   // P6-R2: the print list holds at most 100 labels, from every source (the incoming ids, search, a row, add-all).
   const [printList, setPrintList] = useState<PrintListState>(() => {
-    const incoming = mergeIntoPrintList([], preselectedRows)
-    return {
-      rows: incoming.next,
-      lastAdd: incoming.added < incoming.requested ? incoming : null,
-      fromRegister: fromRegister ? incoming.next.length : 0,
-    }
+    const incoming = initialPrintList(preselectedRows, { incomingCount, fromRegister })
+    return { rows: incoming.rows, lastAdd: incoming.lastAdd, registerIds: incoming.registerIds }
   })
   const [order, setOrder] = useState<LabelPrintOrder>("selected")
   const [tapeSize, setTapeSize] = useState<AssetLabelTapeSize>(settings.defaultTapeSize)
   const [note, setNote] = useState("")
   const [previewIndex, setPreviewIndex] = useState(0)
   const [refreshFailed, setRefreshFailed] = useState(false)
+  const focusRequest = useRef<FocusRequest>(null)
   const ordered = useMemo(() => sortLabelPrintList(printList.rows, order), [printList.rows, order])
   const listIds = useMemo(() => printList.rows.map((asset) => asset.id), [printList.rows])
   const selectedIds = useMemo(() => new Set(listIds), [listIds])
   const room = printListRoom(ordered.length)
+  const registerCount = fromRegisterCount(ordered, printList.registerIds)
   const listStatus = printListStatusKey(ordered.length, printList.lastAdd)
   const listStatusText = listStatus?.key === "listRefused"
     ? t("listRefused", listStatus.values)
     : listStatus?.key === "listFull"
       ? t("listFull", { max: LABEL_PRINT_BATCH_MAX })
       : null
-  const status = [listStatusText, refreshFailed ? t("listRefreshFailed") : null].filter(Boolean).join(" · ") || null
+  // A failed refresh is about the rows listed: with none left the line goes too (final review).
+  const status = [listStatusText, refreshFailed && ordered.length > 0 ? t("listRefreshFailed") : null].filter(Boolean).join(" · ") || null
   const summary = t("barSummary", { count: ordered.length, size: labelTapeText(tapeSize, t("tapeCustom")) })
 
   // P6-R13: the print route records in another tab. When this tab is visible again, the list's rows are asked again
@@ -90,6 +101,18 @@ export function AssetLabelBatchTool({ locale, preselectedRows = [], fromRegister
     return () => document.removeEventListener("visibilitychange", refreshList)
   }, [listIds, locale])
 
+  // The X that held focus, or the bar with its clear button, has unmounted: focus moves on purpose, never to <body>
+  // (final review; the bulk-move pattern).
+  useEffect(() => {
+    const request = focusRequest.current
+    if (!request) return
+    focusRequest.current = null
+    const target = request.to === "row"
+      ? document.querySelector<HTMLElement>(`[data-label-remove="${CSS.escape(request.id)}"]`)
+      : document.getElementById("asset-label-print-reason")
+    target?.focus()
+  }, [ordered])
+
   function addRows(rows: LabelQueueRow[]) {
     if (rows.length === 0) return
     setPrintList((current) => {
@@ -99,12 +122,16 @@ export function AssetLabelBatchTool({ locale, preselectedRows = [], fromRegister
   }
 
   function removeRow(id: string) {
+    const next = printListFocusAfterRemove(ordered.map((asset) => asset.id), id)
     setPrintList((current) => ({ ...current, rows: current.rows.filter((asset) => asset.id !== id), lastAdd: null }))
+    focusRequest.current = next ? { to: "row", id: next } : { to: "empty" }
   }
 
   function clearList() {
-    setPrintList({ rows: [], lastAdd: null, fromRegister: 0 })
+    setPrintList({ rows: [], lastAdd: null, registerIds: new Set() })
     setPreviewIndex(0)
+    setRefreshFailed(false)
+    focusRequest.current = { to: "empty" }
   }
 
   // The print route opens in a new tab (P6-R9): the ids in the query, tape and note in the hash. It records nothing
@@ -141,7 +168,7 @@ export function AssetLabelBatchTool({ locale, preselectedRows = [], fromRegister
             order={order}
             onOrderChange={setOrder}
             status={status}
-            fromRegisterCount={printList.fromRegister}
+            fromRegisterCount={registerCount}
             summary={summary}
             onRemove={removeRow}
             onTestPrint={testPrint}

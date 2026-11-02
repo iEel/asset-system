@@ -185,11 +185,12 @@ test("label queue presents company and branch print scope before location filter
   assert.match(source, /getQueueScopeSummary/)
   // By name, no codes (board): the branch and the room of a location.
   assert.match(source, /\[location\.branchName, location\.name\]\.filter\(Boolean\)\.join\(" \/ "\)/)
-  assert.match(source, /t\("addAllSummary", \{ matched: addAll\.a, listed: addAll\.b, added: addAll\.c \}\)/)
+  // Past 100 matches the line says b counts the first 100 only (final review).
+  assert.match(source, /t\(addAllSummaryKey\(addAll\), \{ matched: addAll\.a, listed: addAll\.b, added: addAll\.c \}\)/)
 
   for (const messages of [th.assetTools.labelsPage, en.assetTools.labelsPage]) {
     for (const key of ["company", "branch", "location", "all"]) assert.equal(typeof messages.scope[key], "string", key)
-    for (const key of ["addAllSummary", "addAll", "addSome", "addFirst100", "addRemaining", "addAllRoom", "addAllNone"]) assert.equal(typeof messages[key], "string", key)
+    for (const key of ["addAllSummary", "addAllSummaryFirst100", "addAll", "addSome", "addFirst100", "addRemaining", "addAllRoom", "addAllNone"]) assert.equal(typeof messages[key], "string", key)
   }
 })
 
@@ -211,7 +212,7 @@ test("the label batch tool uses PageHeader, shared fields and Button (2C batch 4
   assert.match(source, /<Button variant="outline" size="sm" busy=\{moreLoading\} onClick=\{showMoreQueue\} className="ml-auto">/)
   assert.match(list, /<Button\n\s+variant="outline"\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onTestPrint\}\n\s+>/)
   assert.match(list, /<Button\n\s+size="md"\n\s+aria-disabled=\{waits \|\| undefined\}\n\s+aria-describedby=\{waits \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{onPrint\}\n\s+>/)
-  assert.match(list, /<Button variant="ghost" size="icon-sm" onClick=\{\(\) => onRemove\(asset\.id\)\} aria-label=\{t\("remove", \{ tag: asset\.assetTag \}\)\}>/)
+  assert.match(list, /<Button variant="ghost" size="icon-sm" data-label-remove=\{asset\.id\} onClick=\{\(\) => onRemove\(asset\.id\)\} aria-label=\{t\("remove", \{ tag: asset\.assetTag \}\)\}>/)
   assert.equal(source.match(/<button\b/g)?.length, 1, "only the search and queue row part stays a list button (2D)")
   for (const file of [shell, source, list]) {
     if (file !== source) assert.equal(file.match(/<button\b/g)?.length ?? 0, 0)
@@ -419,7 +420,10 @@ test("the queue: four modes as Segmented from md and a select below, the chips, 
 test("queue rows: the stable hook, the board's names, ป้ายเดิม, and paging with the page (P6-R7)", () => {
   const queue = readLf(QUEUE_PART)
   assert.match(queue, /const hook = source === "queue" \? \{ "data-label-queue-row": row\.id \} : \{ "data-label-search-row": row\.id \}/)
-  assert.match(queue, /<button\n\s+type="button"\n\s+\{\.\.\.hook\}\n\s+disabled=\{listed\}\n\s+aria-label=\{t\(name\.key, name\.values\)\}\n\s+aria-describedby=\{`\$\{metaId\} \$\{stateId\}`\}\n\s+onClick=\{\(\) => onAdd\(\[row\]\)\}/)
+  // A listed row is aria-disabled, not disabled, so the keyboard focus that added it stays on it (final review).
+  assert.match(queue, /<button\n\s+type="button"\n\s+\{\.\.\.hook\}\n\s+aria-disabled=\{listed \|\| undefined\}\n\s+aria-label=\{t\(name\.key, name\.values\)\}\n\s+aria-describedby=\{`\$\{metaId\} \$\{stateId\}`\}\n\s+onClick=\{\(\) => \{\n\s+if \(!listed\) onAdd\(\[row\]\)\n\s+\}\}/)
+  assert.doesNotMatch(queue, /disabled=\{listed\}|\sdisabled:/)
+  assert.match(queue, /aria-disabled:cursor-not-allowed aria-disabled:bg-background/)
   assert.match(queue, /const name = labelRowNameKey\(row, \{ listed, duplicateNames \}\)/)
   assert.match(queue, /const holder = labelQueueRowHolder\(row, t\("sharedOwner"\)\)/)
   assert.match(queue, /const oldTag = labelQueueOldTag\(row\)/)
@@ -435,7 +439,7 @@ test("queue rows: the stable hook, the board's names, ป้ายเดิม, 
 
 test("the print list never passes 100 and says so in its status line (P6-R2)", () => {
   const shell = readLf("src/components/assets/asset-label-batch-tool.tsx")
-  assert.match(shell, /const incoming = mergeIntoPrintList\(\[\], preselectedRows\)/)
+  assert.match(shell, /const incoming = initialPrintList\(preselectedRows, \{ incomingCount, fromRegister \}\)/)
   assert.match(shell, /setPrintList\(\(current\) => \{\n\s+const result = mergeIntoPrintList\(current\.rows, rows\)/)
   assert.match(shell, /const room = printListRoom\(ordered\.length\)/)
   assert.match(shell, /<AssetLabelQueueCard locale=\{locale\} filterOptions=\{filterOptions\} selectedIds=\{selectedIds\} room=\{room\} onAdd=\{addRows\} \/>/)
@@ -443,8 +447,10 @@ test("the print list never passes 100 and says so in its status line (P6-R2)", (
   assert.match(readLf(PRINT_LIST_PART), /<p role="status" className="border-t border-border-soft px-4 py-2\.5 text-meta text-muted-foreground empty:hidden md:px-5">\{status\}<\/p>/)
   // The incoming ids: in their order, once each, at most 100, through the lookup.
   const page = readLf("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx")
-  assert.match(page, /const preselectedIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\)\)/)
-  assert.match(page, /preselectedRows=\{preselected\.rows\}/)
+  // All the ids are counted, the first 100 looked up: the ones past 100 are refused in the status line (final review).
+  assert.match(page, /const incomingIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\), Number\.POSITIVE_INFINITY\)/)
+  assert.match(page, /lookupLabelPrintRows\(prisma as unknown as LabelQueueDb, incomingIds\.slice\(0, LABEL_PRINT_BATCH_MAX\), queueLocale\)/)
+  assert.match(page, /preselectedRows=\{preselected\.rows\}\n\s+incomingCount=\{incomingIds\.length\}/)
 })
 
 // Task 4 review (fix round 1): no silent failure. Each failed request says so beside the control that failed, with a
@@ -533,15 +539,18 @@ test("the incoming ids keep the register's order, once each, and say they came f
   const page = readLf(LABELS_PAGE)
   assert.match(page, /searchParams: Promise<\{ assetIds\?: string; from\?: string \}>/)
   assert.match(page, /const \{ assetIds, from \} = await searchParams/)
-  assert.match(page, /const preselectedIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\)\)/)
+  assert.match(page, /const incomingIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\), Number\.POSITIVE_INFINITY\)/)
   assert.match(page, /loadAssetLabelPrintSettings\(\),/)
   assert.match(page, /fromRegister=\{from === "register"\}/)
   assert.match(page, /settings=\{labelSettings\}/)
   assert.doesNotMatch(page, /getTranslations|systemSetting|process\.env/)
-  // The line shows only with from=register: the count is what came in, and clearing the list forgets it.
+  // The line shows only with from=register and counts the register's rows still listed: removing them lowers it,
+  // clearing the list forgets it (final review).
   const shell = readLf(SHELL)
-  assert.match(shell, /fromRegister: fromRegister \? incoming\.next\.length : 0/)
-  assert.match(shell, /setPrintList\(\{ rows: \[\], lastAdd: null, fromRegister: 0 \}\)/)
+  assert.match(shell, /registerIds: incoming\.registerIds/)
+  assert.match(shell, /const registerCount = fromRegisterCount\(ordered, printList\.registerIds\)/)
+  assert.match(shell, /fromRegisterCount=\{registerCount\}/)
+  assert.match(shell, /setPrintList\(\{ rows: \[\], lastAdd: null, registerIds: new Set\(\) \}\)/)
   const list = readLf(PRINT_LIST_PART)
   assert.match(list, /\{fromRegisterCount > 0 \? \(\n\s+<p className="border-t border-border-soft px-4 py-2\.5 text-meta text-muted-foreground md:px-5">\{t\("fromRegister", \{ count: fromRegisterCount \}\)\}<\/p>\n\s+\) : null\}/)
 })
@@ -622,8 +631,8 @@ test("the print list card: numbered rows with the hook, the count badge and the 
   assert.match(list, /<ol aria-label=\{t\("listTitle"\)\} className="divide-y divide-border-soft">/)
   assert.match(list, /<li key=\{asset\.id\} data-label-selected-row=\{asset\.id\} className="[^"]+">\n\s+<span aria-hidden="true" className="num w-6 shrink-0 text-meta text-muted-foreground">\n?\s*\{formatCount\(index \+ 1\)\}/)
   assert.match(list, /<span className="block break-words text-sm font-medium text-foreground">\{asset\.name\}<\/span>\n\s+<span className="block text-meta text-muted-foreground">\n\s+<span className="tag">\{asset\.assetTag\}<\/span>/)
-  assert.match(list, /<Button variant="ghost" size="icon-sm" onClick=\{\(\) => onRemove\(asset\.id\)\} aria-label=\{t\("remove", \{ tag: asset\.assetTag \}\)\}>/)
-  assert.match(list, /<EmptyNote id="asset-label-print-reason" padded>\n?\s*\{t\("listEmpty"\)\}/)
+  assert.match(list, /<Button variant="ghost" size="icon-sm" data-label-remove=\{asset\.id\} onClick=\{\(\) => onRemove\(asset\.id\)\} aria-label=\{t\("remove", \{ tag: asset\.assetTag \}\)\}>/)
+  assert.match(list, /<EmptyNote id="asset-label-print-reason" tabIndex=\{-1\} padded className="outline-none">\n?\s*\{t\("listEmpty"\)\}/)
   assert.match(list, /<p role="status" className="border-t border-border-soft px-4 py-2\.5 text-meta text-muted-foreground empty:hidden md:px-5">\n?\s*\{status\}/)
   assert.doesNotMatch(list, /<form\b|labels\.|selectedSort|printFirstLabel|max-h-\[/)
 })
@@ -717,4 +726,34 @@ test("the page preview and the print route feed the label the same fields, seria
   for (const path of [BATCH_PAGE, SINGLE_PAGE, PRINT_LIST_PART]) {
     assert.match(readLf(path), /import \{ toAssetLabelData \} from "@\/lib\/asset-label-data"/, path)
   }
+})
+
+// Group 4 plan 6 final review: a load aborted mid-body is no failure, the list's lines follow its rows, and focus never
+// falls to <body> after a remove or a clear.
+test("an aborted queue load never shows its error over the next load's rows (final review)", () => {
+  const queue = readLf(QUEUE_PART)
+  // The body read of an aborted request fails with a plain error, so the fetches rethrow the abort and the load asks
+  // the signal.
+  assert.equal(queue.match(/signal\?\.throwIfAborted\(\)/g)?.length, 2, "fetchLabelRows and fetchQueuePage")
+  assert.match(queue, /const page = await fetchQueuePage\(firstPageSearch, controller\.signal\)\n\s+if \(controller\.signal\.aborted\) return\n\s+setQueue\(page\)\n\s+setQueueError\(false\)/)
+  assert.match(queue, /\} catch \(error\) \{\n\s+if \(queueRequestAborted\(error, controller\.signal\)\) return\n\s+setQueue\(emptyQueue\)\n\s+setQueueError\(true\)/)
+  assert.doesNotMatch(queue, /function isAbort\(/)
+})
+
+test("the refresh-failed line goes with the list's last row and with a clear (final review)", () => {
+  const shell = readLf(SHELL)
+  assert.match(shell, /refreshFailed && ordered\.length > 0 \? t\("listRefreshFailed"\) : null/)
+  assert.match(shell, /function clearList\(\) \{\n\s+setPrintList\(\{ rows: \[\], lastAdd: null, registerIds: new Set\(\) \}\)\n\s+setPreviewIndex\(0\)\n\s+setRefreshFailed\(false\)\n\s+focusRequest\.current = \{ to: "empty" \}\n\s+\}/)
+})
+
+test("after a remove or a clear focus moves on purpose: the next or previous row's X, else the list's empty note (final review)", () => {
+  const shell = readLf(SHELL)
+  assert.match(shell, /const next = printListFocusAfterRemove\(ordered\.map\(\(asset\) => asset\.id\), id\)/)
+  assert.match(shell, /focusRequest\.current = next \? \{ to: "row", id: next \} : \{ to: "empty" \}/)
+  assert.match(shell, /const request = focusRequest\.current\n\s+if \(!request\) return\n\s+focusRequest\.current = null/)
+  assert.match(shell, /document\.querySelector<HTMLElement>\(`\[data-label-remove="\$\{CSS\.escape\(request\.id\)\}"\]`\)/)
+  assert.match(shell, /document\.getElementById\("asset-label-print-reason"\)/)
+  const list = readLf(PRINT_LIST_PART)
+  assert.match(list, /<EmptyNote id="asset-label-print-reason" tabIndex=\{-1\} padded className="outline-none">\{t\("listEmpty"\)\}<\/EmptyNote>/)
+  assert.match(list, /data-label-remove=\{asset\.id\}/)
 })

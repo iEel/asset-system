@@ -212,7 +212,7 @@ test("label batch tool: ContentPanels, print-state StatusBadges, formatCount (M2
   assert.match(queue, /<Chip>\{queueScopeSummary\.label\}<\/Chip>/)
   assert.equal(queue.match(/<EmptyNote\b/g)?.length, 2)
   assert.equal(list.match(/<EmptyNote\b/g)?.length, 1)
-  assert.equal(queue.match(/disabled:cursor-not-allowed disabled:bg-background/g)?.length, 1, "an added row keeps the shared disabled look, with a check instead of the plus")
+  assert.equal(queue.match(/aria-disabled:cursor-not-allowed aria-disabled:bg-background/g)?.length, 1, "an added row keeps the shared disabled look (aria-disabled, so focus stays: plan 6 final review), with a check instead of the plus")
   // Names first (spec §5): the name, then "tag · holder or ส่วนกลาง · room".
   assert.match(queue, /<span className="block break-words text-sm font-medium text-foreground">\{row\.name\}<\/span>\n\s+<span id=\{metaId\} className="block break-words text-meta text-muted-foreground">\n\s+<span className="tag">\{row\.assetTag\}<\/span>\n\s+\{holder \? ` · \$\{holder\}` : null\}\n\s+\{row\.location \? ` · \$\{row\.location\.name\}` : null\}/)
   for (const source of [shell, queue, list]) {
