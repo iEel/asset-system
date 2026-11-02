@@ -68,7 +68,6 @@ import {
   type CustomFieldRow,
   type ExistingAssetPhoto,
   type PurchaseDocumentDraft,
-  type PurchaseDocumentOption,
   type PurchaseDocumentType,
 } from "@/lib/asset-form-rules"
 import {
@@ -206,8 +205,6 @@ export function AssetForm({
   conditions: Option[]
   suppliers: Option[]
   parentAssets: Option[]
-  // The 300 newest documents: only the batch form reads them (its props are this form's) until plan 3 Task 6.
-  purchaseDocuments: PurchaseDocumentOption[]
   // เอกสารจัดซื้อ (group 4 plan 3 Task 5): the documents linked to the asset on edit, or a clone's, read by id with the
   // inactive ones (P3-R7); and the picker's empty-query list the page rendered, so nothing is fetched on load (P3-R4).
   chosenDocuments?: PurchaseDocumentSearchRow[]

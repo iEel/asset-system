@@ -736,7 +736,6 @@
     "purchaseDocumentsHelp": "Select an existing shared purchase document or create a new one for multiple assets, such as one PO/Invoice for 100 computers.",
     "existingPurchaseDocuments": "Choose an existing document",
     "noPurchaseDocuments": "No shared purchase documents yet",
-    "linkedAssets": "Linked to {count} assets",
     "createPurchaseDocument": "Upload a new document",
     "purchaseDocumentNo": "Document No.",
     "dropPurchaseDocumentTitle": "Drag a purchase document here",
@@ -1456,7 +1455,8 @@
     "documentsFailedTitle": "Some purchase documents were not saved",
     "documentsFailedList": "The asset is saved. Upload these documents again.",
     "documentsFailedGeneric": "The asset is saved. Check the linked documents, then choose or upload any that are missing.",
-    "purchaseDocumentsNeedEdit": "Linking or uploading purchase documents needs permission to edit assets"
+    "purchaseDocumentsNeedEdit": "Linking or uploading purchase documents needs permission to edit assets",
+    "batchPurchaseDocumentsHelp": "The chosen documents and the uploaded one are linked to every asset in this batch. One upload per batch."
   },
   "company": {
     "title": "Companies",
@@ -5034,7 +5034,8 @@
     "transferDepartmentLocked": "The asset's holder has changed, so its department follows the holder. Check it and save again.",
     "correctionReasonRequired": "Enter the reason for the correction",
     "purchaseDocumentLinkNotFound": "This purchase document is not linked to this asset.",
-    "purchaseDocumentSupplierInactive": "This supplier does not exist or is inactive. Choose another."
+    "purchaseDocumentSupplierInactive": "This supplier does not exist or is inactive. Choose another.",
+    "batchOneDocumentFile": "A batch takes one purchase document file."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

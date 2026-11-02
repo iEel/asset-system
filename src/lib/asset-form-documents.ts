@@ -86,6 +86,36 @@ export function buildPurchaseDocumentUploadForm(draft: PurchaseDocumentDraft): F
   return formData
 }
 
+/**
+ * The batch POST's body (group 4 plan 3 Task 6, P3-R8): the JSON batch as before when there is no new document, so the
+ * batch without one sends what bulk-move.spec waits for; with the one draft, multipart: `payload` (the same JSON),
+ * `newDocument` (its fields, the PO or invoice number copied as the asset's upload does) and `file`. A draft that
+ * follows the batch's supplier sends none, so the server takes the batch's while it is active.
+ */
+export function buildAssetBatchRequestBody(
+  payload: unknown,
+  draft: PurchaseDocumentDraft | null,
+): { body: string | FormData; headers?: Record<string, string> } {
+  if (!draft) return { body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } }
+  const formData = new FormData()
+  formData.append("payload", JSON.stringify(payload))
+  formData.append(
+    "newDocument",
+    JSON.stringify({
+      documentType: draft.documentType,
+      documentNo: draft.documentNo,
+      poNumber: draft.documentType === "purchase_order" ? draft.documentNo : "",
+      invoiceNumber: draft.documentType === "invoice" ? draft.documentNo : "",
+      documentDate: draft.documentDate,
+      totalAmount: draft.totalAmount,
+      supplierId: draft.supplierId ?? "",
+      currency: "THB",
+    }),
+  )
+  formData.append("file", draft.file)
+  return { body: formData }
+}
+
 /** What the edit page names after a failed upload (P3-R6): never the file itself. */
 export type FailedPurchaseDocument = { documentType: PurchaseDocumentType; documentNo: string; fileName: string | null }
 

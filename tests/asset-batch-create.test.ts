@@ -285,3 +285,10 @@ test("buildAssetBatchReceiptCsv exports created assets as CSV", () => {
     "Asset Tag,Asset Name,Asset ID\r\nSNI-COM-26-0001,Desktop Dell,asset-1\r\nSNI-COM-26-0002,Desktop HP,asset-2"
   )
 })
+
+test("assetBatchCreateSchema takes up to 50 chosen purchase documents (group 4 plan 3 Task 6)", () => {
+  const rows = [{ clientId: "row-1" }, { clientId: "row-2" }]
+  const ids = (count: number) => Array.from({ length: count }, (_, index) => `doc-${index + 1}`)
+  assert.equal(assetBatchCreateSchema.parse({ common: validCommonInput, rows, purchaseDocumentIds: ids(50) }).purchaseDocumentIds.length, 50)
+  assert.throws(() => assetBatchCreateSchema.parse({ common: validCommonInput, rows, purchaseDocumentIds: ids(51) }))
+})

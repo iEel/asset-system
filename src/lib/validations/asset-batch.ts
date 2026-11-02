@@ -23,7 +23,8 @@ export const assetBatchCreateSchema = z.object({
     .array(assetBatchRowSchema)
     .min(2, "Batch create requires at least 2 rows")
     .max(100, "Batch create supports up to 100 rows"),
-  purchaseDocumentIds: z.array(z.string().trim().min(1)).default([]),
+  // The chosen documents, as many as one asset may link at a time (group 4 plan 3 Task 6).
+  purchaseDocumentIds: z.array(z.string().trim().min(1)).max(50).default([]),
 })
 
 export type AssetBatchCreateInput = z.infer<typeof assetBatchCreateSchema>

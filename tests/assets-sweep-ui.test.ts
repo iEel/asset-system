@@ -93,7 +93,7 @@ test("asset form: sections are ContentPanels, notes are Notice by meaning, empty
   for (const file of [source, ...parts]) assert.doesNotMatch(file, /"-"|border-dashed|uppercase|bg-accent|bg-warning-soft|bg-info-soft|text-warning|text-lg|rounded-lg border|focus:outline-none|\btext-xs\b|toLocaleString|bg-surface p-3/)
 })
 
-test("asset batch form: ContentPanel sections, three DataTables, Notice by meaning, ChoiceCard documents, a KeyValueList review and Nil (spec 2D D7, D9, M21, D19)", () => {
+test("asset batch form: ContentPanel sections, three DataTables, Notice by meaning, the purchase-document picker, a KeyValueList review and Nil (spec 2D D7, D9, M21, D19)", () => {
   const source = read(`${C}assets/asset-batch-form.tsx`)
   assert.match(source, /function Section\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<ContentPanel title=\{title\}>/)
   assert.equal(source.match(/<ContentPanel\b/g)?.length, 3, "Section, the review and the created batch")
@@ -101,8 +101,11 @@ test("asset batch form: ContentPanel sections, three DataTables, Notice by meani
   // The duplicate box went under the rows as each row's error (v-track plan 2 A2, spec U8).
   assert.doesNotMatch(source, /\{t\("duplicateWarning"\)\}/)
   assert.match(source, /<Notice\n\s+tone=\{duplicateCheckStatus === "clean" \? "success" : duplicateCheckStatus === "duplicate" \? "warning" : "danger"\}\n\s+className="md:col-span-2"/)
-  assert.match(source, /<EmptyNote className="mt-3">\{t\("noPurchaseDocuments"\)\}<\/EmptyNote>/)
-  assert.match(source, /<ChoiceCard\n\s+key=\{document\.id\}\n\s+type="checkbox"/)
+  // Group 4 plan 3 Task 6: the checkbox list of documents (ChoiceCards and its EmptyNote) gave way to the shared picker,
+  // which holds the empty list's EmptyNote; without asset:edit the section is a neutral Notice.
+  assert.doesNotMatch(source, /<ChoiceCard\b|<EmptyNote\b/)
+  assert.match(source, /<PurchaseDocumentPicker\n\s+id="asset-batch-purchase-document"/)
+  assert.match(source, /<Notice tone="neutral" className="md:col-span-2">\{t\("purchaseDocumentsNeedEdit"\)\}<\/Notice>/)
   assert.match(source, /\{ key: "count", label: t\("batchRows"\), value: formatCount\(rows\.length\) \}/)
   assert.equal(source.match(/<DataTable framed=\{false\}/g)?.length, 3)
   assert.equal(source.match(/\{orNil\(/g)?.length, 6, "the six review cells that can be empty")

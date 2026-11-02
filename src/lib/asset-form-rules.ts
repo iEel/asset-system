@@ -77,16 +77,6 @@ export type CustomFieldRow = {
   value: string
 }
 
-export type PurchaseDocumentOption = {
-  id: string
-  documentType: string
-  documentNo: string
-  poNumber?: string | null
-  invoiceNumber?: string | null
-  supplierName?: string | null
-  assetCount: number
-}
-
 // A new purchase document waiting for the save (group 4 plan 3 Task 5): created and linked in one request after the
 // asset is saved. supplierId null follows the asset's supplier (the server's default); a chosen one is sent.
 export type PurchaseDocumentDraft = {

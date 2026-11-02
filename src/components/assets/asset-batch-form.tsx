@@ -7,11 +7,11 @@ import { Copy, Download, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { AssetForm } from "@/components/assets/asset-form"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { ChoiceCard, ChoiceChip } from "@/components/ui/choice-card"
+import { ChoiceChip } from "@/components/ui/choice-card"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
-import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { KeyValueList } from "@/components/ui/key-value-list"
@@ -21,6 +21,7 @@ import { Notice } from "@/components/ui/notice"
 import { PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { PurchaseDocumentPicker } from "@/components/assets/purchase-document-picker"
 import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
@@ -37,6 +38,14 @@ import {
   type AssetBatchEditableRow,
 } from "@/lib/asset-batch-create"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
+import { purchaseDocumentTypes, type PurchaseDocumentDraft, type PurchaseDocumentType } from "@/lib/asset-form-rules"
+import {
+  ACTIVE_PURCHASE_DOCUMENT_DRAFT,
+  buildAssetBatchRequestBody,
+  purchaseDocumentCheckPath,
+  type PurchaseDocumentDuplicateAnswer,
+} from "@/lib/asset-form-documents"
+import type { PurchaseDocumentSearchRow } from "@/lib/purchase-document-search-rules"
 import { atLeastOne, decimals, maxLength, notBefore, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors } from "@/components/ui/use-field-errors"
@@ -164,6 +173,47 @@ function rowKey(index: number, field: RowField): BatchField {
   return `rows.${index}.${field}`
 }
 
+// The batch's one new purchase document (group 4 plan 3 Task 6, P3-R8, spec §8): the fields its errors show under, in
+// visual order. The server's refusals name documentNo (a duplicate, P3-R3) and supplierId (a closed supplier).
+const DOCUMENT_FIELD_IDS = {
+  purchaseDocumentNo: "asset-batch-purchase-document-no",
+  purchaseDocumentAmount: "asset-batch-purchase-document-amount",
+  purchaseDocumentSupplierId: "asset-batch-purchase-document-supplier",
+} as const
+type DocumentField = keyof typeof DOCUMENT_FIELD_IDS
+const DOCUMENT_FIELD_ORDER = Object.keys(DOCUMENT_FIELD_IDS) as DocumentField[]
+
+// The upload draft. supplierId null follows the batch's supplier (sent as none, the server's default).
+type BatchDocumentDraft = Omit<PurchaseDocumentDraft, "id" | "file"> & { file: File | null }
+
+const emptyDocumentDraft: BatchDocumentDraft = {
+  documentType: "purchase_order",
+  documentNo: "",
+  documentDate: "",
+  totalAmount: "",
+  supplierId: null,
+  file: null,
+}
+
+// The draft's rules, as the single form's: a file needs its number; a number without a file is not uploaded.
+function validateDocumentDraft(draft: BatchDocumentDraft): Partial<Record<DocumentField, string>> {
+  const errors: Partial<Record<DocumentField, string>> = {}
+  const number = draft.file && required(draft.documentNo) ? "purchaseDocumentNoRequired" : maxLength(draft.documentNo, 100)
+  if (number) errors.purchaseDocumentNo = number
+  const amount = range(draft.totalAmount, 0) ?? decimals(draft.totalAmount, 2)
+  if (amount) errors.purchaseDocumentAmount = amount
+  return errors
+}
+
+// A refusal of the new document after the pre-check (a duplicate raced in, P3-R3; a closed supplier), as its field's error.
+function readDocumentRefusal(result: unknown): Partial<Record<DocumentField, string>> | null {
+  if (!result || typeof result !== "object") return null
+  const body = result as { code?: unknown; fieldErrors?: { supplierId?: unknown } }
+  if (body.code === "DUPLICATE") return { purchaseDocumentNo: "purchaseDocumentExists" }
+  if (typeof body.fieldErrors?.supplierId === "string") return { purchaseDocumentSupplierId: body.fieldErrors.supplierId }
+  return null
+}
+
 // A row's control in the table (from md) or in its card (below md): both are rendered, one is hidden.
 function rowFieldId(index: number, field: RowField, view: "row" | "card") {
   return `asset-batch-${view}-${index}-${field === "assetTag" ? "tag" : "serial"}`
@@ -219,7 +269,8 @@ export function AssetBatchForm({
   statuses,
   conditions,
   suppliers,
-  purchaseDocuments,
+  recentDocuments,
+  canLinkPurchaseDocuments,
 }: AssetBatchFormProps) {
   const locale = useLocale()
   const apiError = useApiError()
@@ -230,7 +281,10 @@ export function AssetBatchForm({
   const [common, setCommon] = useState<BatchCommonValues>(emptyCommon)
   const [rows, setRows] = useState<BatchRow[]>(() => createAssetBatchRows())
   const [visibleRowColumns, setVisibleRowColumns] = useState<Record<BatchOptionalColumnKey, boolean>>(emptyRowColumns)
-  const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>([])
+  // เอกสารจัดซื้อ for the whole batch (P3-R8): the chosen documents as chips, and one new document. Without asset:edit
+  // the section is a note and the batch sends neither (P3-R2).
+  const [chosenDocuments, setChosenDocuments] = useState<PurchaseDocumentSearchRow[]>([])
+  const [documentDraft, setDocumentDraft] = useState<BatchDocumentDraft>(emptyDocumentDraft)
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
   const [reviewing, setReviewing] = useState(false)
   const [checkingDuplicates, setCheckingDuplicates] = useState(false)
@@ -241,6 +295,13 @@ export function AssetBatchForm({
   const [saving, setSaving] = useState(false)
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
   const fieldErrors = useFieldErrors<BatchField>()
+  const documentErrors = useFieldErrors<DocumentField>()
+  // The new document the save sends: a file and a number (P3-R8, one per batch).
+  const documentNo = documentDraft.documentNo.trim()
+  const documentUpload: PurchaseDocumentDraft | null =
+    canLinkPurchaseDocuments && documentDraft.file && documentNo
+      ? { ...documentDraft, id: ACTIVE_PURCHASE_DOCUMENT_DRAFT, documentNo, file: documentDraft.file }
+      : null
   const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
   const isSoftwareLicense = ownershipType === "software_license"
   const filteredBranches = branches.filter((branch) => branch.companyId === common.companyId)
@@ -327,6 +388,11 @@ export function AssetBatchForm({
         const tableId = rowFieldId(Number(row[1]), row[2] as RowField, "row")
         return document.getElementById(tableId)?.getClientRects().length ? tableId : rowFieldId(Number(row[1]), row[2] as RowField, "card")
       },
+      reveal: () => setReviewing(false),
+    })
+  const focusFirstDocumentError = () =>
+    documentErrors.focusFirst(DOCUMENT_FIELD_ORDER, {
+      idFor: (key) => DOCUMENT_FIELD_IDS[key],
       reveal: () => setReviewing(false),
     })
   const errorText = (key: BatchField) => {
@@ -615,11 +681,46 @@ export function AssetBatchForm({
     clearDuplicateCheck()
   }
 
-  function togglePurchaseDocument(id: string) {
+  // A change to the documents leaves the review and the result, as any other change does.
+  function resetAfterDocumentChange() {
     setCreatedBatch(null)
     setReviewing(false)
     clearDuplicateCheck()
-    setSelectedPurchaseDocumentIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
+  }
+
+  function chooseDocument(row: PurchaseDocumentSearchRow) {
+    resetAfterDocumentChange()
+    setChosenDocuments((current) => (current.some((document) => document.id === row.id) ? current : [...current, row]))
+  }
+
+  function removeDocument(id: string) {
+    resetAfterDocumentChange()
+    setChosenDocuments((current) => current.filter((document) => document.id !== id))
+  }
+
+  function setDocumentField<K extends keyof BatchDocumentDraft>(field: K, value: BatchDocumentDraft[K]) {
+    resetAfterDocumentChange()
+    setDocumentDraft((current) => ({ ...current, [field]: value }))
+    // The number's rule depends on the file, and the pre-check's refusal is of the type and the number together.
+    if (field === "file" || field === "documentNo" || field === "documentType") documentErrors.clear("purchaseDocumentNo")
+    if (field === "totalAmount") documentErrors.clear("purchaseDocumentAmount")
+    if (field === "supplierId") documentErrors.clear("purchaseDocumentSupplierId")
+  }
+
+  // The new document's pre-check (Task 3) before the batch is posted: a stored document of its type and number, active or
+  // not (P3-R3), shows under the number and nothing is posted. A failed request throws to the save's catch.
+  async function passesBatchDocumentPreCheck(upload: PurchaseDocumentDraft): Promise<boolean> {
+    const response = await fetch(purchaseDocumentCheckPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documents: [{ documentType: upload.documentType, documentNo: upload.documentNo }] }),
+    })
+    const result = (await response.json().catch(() => null)) as { duplicates?: PurchaseDocumentDuplicateAnswer[]; error?: string } | null
+    if (!response.ok) throw new Error(getErrorMessage(result) ?? tCommon("error"))
+    if (!Array.isArray(result?.duplicates) || result.duplicates.length === 0) return true
+    documentErrors.setErrors({ purchaseDocumentNo: "purchaseDocumentExists" })
+    focusFirstDocumentError()
+    return false
   }
 
   async function handleCheckDuplicates() {
@@ -634,7 +735,7 @@ export function AssetBatchForm({
         body: JSON.stringify({
           common,
           rows,
-          purchaseDocumentIds: selectedPurchaseDocumentIds,
+          purchaseDocumentIds: chosenDocuments.map((document) => document.id),
         }),
       })
       const result = (await response.json().catch(() => null)) as DuplicateCheckResult | { error?: string } | null
@@ -710,23 +811,32 @@ export function AssetBatchForm({
     fieldErrors.setErrors(validate(common, rows))
     if (focusFirstError()) return
     if (!reviewing) {
+      documentErrors.setErrors(canLinkPurchaseDocuments ? validateDocumentDraft(documentDraft) : {})
+      if (focusFirstDocumentError()) return
       setReviewing(true)
       return
     }
 
     setSaving(true)
     try {
+      // The one new document's pre-check comes before the batch is posted (P3-R8); without a draft the batch posts JSON
+      // as before.
+      if (documentUpload && !(await passesBatchDocumentPreCheck(documentUpload))) return
+      const request = buildAssetBatchRequestBody({ common, rows, purchaseDocumentIds: chosenDocuments.map((document) => document.id) }, documentUpload)
       const response = await fetch("/api/assets/batch", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          common,
-          rows,
-          purchaseDocumentIds: selectedPurchaseDocumentIds,
-        }),
+        headers: request.headers,
+        body: request.body,
       })
       const result = (await response.json().catch(() => null)) as CreatedBatch | { error?: string } | null
       if (!response.ok) {
+        // The new document's refusal (a duplicate raced in, a closed supplier) shows under its field.
+        const documentRefusal = documentUpload ? readDocumentRefusal(result) : null
+        if (documentRefusal) {
+          documentErrors.setErrors(documentRefusal)
+          focusFirstDocumentError()
+          return
+        }
         // A refusal that names a field leaves the review and shows under it (spec §4.2); any other keeps the toast.
         if (fieldErrors.applyServer(result) && focusFirstError()) return
         throw new Error(getErrorMessage(result) ?? tCommon("error"))
@@ -734,6 +844,8 @@ export function AssetBatchForm({
       if (!isCreatedBatch(result)) throw new Error(tCommon("error"))
       setCreatedBatch(result)
       setReviewing(false)
+      // The new document now exists: a next batch chooses it in the search.
+      if (documentUpload) setDocumentDraft(emptyDocumentDraft)
       toast.success(t("batchSubmitSuccess", { count: result.created }))
     } catch (error) {
       apiError.toast(error)
@@ -965,27 +1077,87 @@ export function AssetBatchForm({
           <Field label={t("remark")}>
             <Input value={common.remark} onChange={(event) => setCommonField("remark", event.target.value)} />
           </Field>
-          <div className="md:col-span-2">
-            <h3 className="text-sm font-medium text-foreground">{t("existingPurchaseDocuments")}</h3>
-            <p className="mt-1 text-meta text-muted-foreground">{t("purchaseDocumentsHelp")}</p>
-            {purchaseDocuments.length === 0 ? (
-              <EmptyNote className="mt-3">{t("noPurchaseDocuments")}</EmptyNote>
-            ) : (
-              // Each document is a shared ChoiceCard (spec 2D D9), as in the single asset form.
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
-                {purchaseDocuments.map((document) => (
-                  <ChoiceCard
-                    key={document.id}
-                    type="checkbox"
-                    checked={selectedPurchaseDocumentIds.includes(document.id)}
-                    onChange={() => togglePurchaseDocument(document.id)}
-                    label={<span className="tag">{document.documentNo}</span>}
-                    description={<>{document.supplierName ?? document.documentType} · {t("linkedAssets", { count: document.assetCount })}</>}
+        </Section>
+
+        {/* เอกสารจัดซื้อ (group 4 plan 3 Task 6, spec §8, P3-R8): one search and ONE upload for the whole batch, both
+            linked to every asset in the batch transaction. Without asset:edit the section is a note (P3-R2). */}
+        <Section title={t("purchaseDocuments")}>
+          {canLinkPurchaseDocuments ? (
+            <div className="grid min-w-0 gap-4 md:col-span-2">
+              <p className="text-sm text-muted-foreground">{t("batchPurchaseDocumentsHelp")}</p>
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className="grid min-w-0 content-start gap-3">
+                  <h3 className="text-meta font-medium text-muted-foreground">{t("existingPurchaseDocuments")}</h3>
+                  <PurchaseDocumentPicker
+                    id="asset-batch-purchase-document"
+                    chosen={chosenDocuments}
+                    recent={recentDocuments}
+                    supplierId={common.supplierId || null}
+                    onChoose={chooseDocument}
+                    onRemove={removeDocument}
+                    disabled={saving}
                   />
-                ))}
+                </div>
+
+                <div className="grid min-w-0 content-start gap-3 border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                  <h3 className="text-meta font-medium text-muted-foreground">{t("createPurchaseDocument")}</h3>
+                  {/* The drop box's title is its name, so it takes the field's id itself (no Field label). */}
+                  <FileDropzone
+                    file={documentDraft.file}
+                    onFileChange={(file) => setDocumentField("file", file)}
+                    id="asset-batch-purchase-document-file"
+                    disabled={saving}
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.doc,.docx"
+                    title={t("dropPurchaseDocumentTitle")}
+                    hint={t("dropFileSelected")}
+                    browseLabel={t("dropFileHint")}
+                  />
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Field label={t("documentType")} id="asset-batch-purchase-document-type">
+                      <NativeSelect
+                        value={documentDraft.documentType}
+                        onChange={(event) => setDocumentField("documentType", event.target.value as PurchaseDocumentType)}
+                      >
+                        {purchaseDocumentTypes.map((type) => (
+                          <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    <Field label={t("purchaseDocumentNo")} id={DOCUMENT_FIELD_IDS.purchaseDocumentNo} error={documentErrors.message("purchaseDocumentNo")}>
+                      <Input value={documentDraft.documentNo} onChange={(event) => setDocumentField("documentNo", event.target.value)} maxLength={100} />
+                    </Field>
+                    <Field label={t("purchaseDocumentDate")} id="asset-batch-purchase-document-date">
+                      <Input type="date" value={documentDraft.documentDate} onChange={(event) => setDocumentField("documentDate", event.target.value)} />
+                    </Field>
+                    <Field label={t("purchaseDocumentAmountBaht")} id={DOCUMENT_FIELD_IDS.purchaseDocumentAmount} error={documentErrors.message("purchaseDocumentAmount")}>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={documentDraft.totalAmount}
+                        onChange={(event) => setDocumentField("totalAmount", event.target.value)}
+                      />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <SelectField
+                        label={t("supplier")}
+                        id={DOCUMENT_FIELD_IDS.purchaseDocumentSupplierId}
+                        value={documentDraft.supplierId ?? common.supplierId}
+                        error={documentErrors.message("purchaseDocumentSupplierId")}
+                        onChange={(value) => setDocumentField("supplierId", value)}
+                      >
+                        <option value="">{t("selectSupplier")}</option>
+                        {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
+                      </SelectField>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <Notice tone="neutral" className="md:col-span-2">{t("purchaseDocumentsNeedEdit")}</Notice>
+          )}
         </Section>
 
         <Section title={t("batchRows")}>

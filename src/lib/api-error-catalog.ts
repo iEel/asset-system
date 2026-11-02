@@ -237,6 +237,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Notification digest failed": "notificationDigestFailed",
   "Notification rule days must be an integer between 0 and 365": "notificationDaysRange",
   "One or more assets were not found": "someAssetsNotFound",
+  "Only one purchase document file per batch": "batchOneDocumentFile",
   "Only pending audit items can be marked as not found": "auditItemNotPending",
   "Operation document running digits must be between 1 and 12": "documentRunningDigitsRange",
   "Operation document template must include {running} and only use supported tokens": "documentTemplateInvalid",

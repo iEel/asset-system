@@ -277,7 +277,8 @@ test("a committed return answers 201 and discards nothing", async () => {
 })
 
 // Each other evidence route creates the tracker, tracks the file it writes, commits on the line after its transaction (or
-// its one attachment row) resolves, before logAudit, and discards in a finally.
+// its one attachment row) resolves, before logAudit, and discards in a finally. A transaction may end with its options
+// (`}, options)`), and the logAudit after the commit may sit behind one condition (`if (created.documentId) await logAudit(`).
 test("every other evidence route tracks its file, commits right after its save and discards in a finally", () => {
   const routes: Array<[string, string]> = [
     ["src/app/api/assets/[id]/components/route.ts", "await prisma.$transaction("],
@@ -285,6 +286,8 @@ test("every other evidence route tracks its file, commits right after its save a
     ["src/app/api/audit-items/[id]/mark-not-found/route.ts", "await prisma.$transaction("],
     ["src/app/api/purchase-documents/route.ts", "await prisma.$transaction("],
     ["src/app/api/assets/[id]/purchase-documents/route.ts", "await prisma.$transaction("],
+    // Group 4 plan 3 Task 6: the batch's transaction ends with its options, and it audits only a new document.
+    ["src/app/api/assets/batch/route.ts", "await prisma.$transaction("],
     ["src/app/api/assets/[id]/attachments/route.ts", "await prisma.attachment.create("],
     ["src/app/api/maintenance-tickets/[id]/attachments/route.ts", "await prisma.attachment.create("],
     ["src/app/api/disposal-requests/[id]/attachments/route.ts", "await prisma.attachment.create("],
@@ -302,7 +305,7 @@ test("every other evidence route tracks its file, commits right after its save a
     assert.ok(track > 0 && track < saveAt, `${file}: the file is tracked before the save`)
     assert.ok(commit > saveAt && commit < audit, `${file}: the commit is after the save and before logAudit`)
     assert.equal(source.indexOf("uploads.commit()", commit + 1), -1, `${file}: one commit`)
-    assert.match(source.slice(saveAt, audit), /\n {4}\}\)\n {4}uploads\.commit\(\)\n\n {4}$/,`${file}: the commit is on the line after the save resolves`)
+    assert.match(source.slice(saveAt, audit), /\n {4}\}(?:, \w+)?\)\n {4}uploads\.commit\(\)\n\n {4}(?:if \(\w+(?:\.\w+)*\) )?$/,`${file}: the commit is on the line after the save resolves`)
     assert.match(source, /\n {2}\} finally \{\n {4}await uploads\.discardIfUncommitted\(\)\n {2}\}\n\}/, `${file}: the files are discarded in a finally`)
   }
 })

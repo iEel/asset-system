@@ -69,3 +69,21 @@ function assertOrdered(source: string, snippets: string[], context: string) {
     cursor = nextIndex
   }
 }
+
+// Group 4 plan 3 Task 6 (P3-R8, spec §8): one purchase-document search and one upload for the whole batch.
+test("batch form: the purchase-document picker and one upload draft, gated on asset:edit, multipart only with a draft", () => {
+  const source = readFileSync("src/components/assets/asset-batch-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<PurchaseDocumentPicker\n\s+id="asset-batch-purchase-document"/)
+  assert.equal(source.match(/<FileDropzone\b/g)?.length, 1, "one upload")
+  // The 300-document checkbox list and its prop went (getAssetFormOptions no longer reads them).
+  assert.doesNotMatch(source, /addPurchaseDocument|<ChoiceCard\b|linkedAssets|\bpurchaseDocuments,|purchaseDocuments\.(?:length|map)|selectedPurchaseDocumentIds/)
+  assert.match(source, /canLinkPurchaseDocuments \?/)
+  assert.match(source, /\{t\("purchaseDocumentsNeedEdit"\)\}/)
+  for (const id of ["type", "no", "date", "amount", "supplier", "file"]) {
+    assert.equal(source.match(new RegExp(`"asset-batch-purchase-document-${id}"`, "g"))?.length, 1, id)
+  }
+  // The draft's pre-check runs before the batch POST; the body is multipart only when a draft exists.
+  const submit = source.slice(source.indexOf("async function handleSubmit"))
+  assert.ok(submit.indexOf("passesBatchDocumentPreCheck(") > 0 && submit.indexOf("passesBatchDocumentPreCheck(") < submit.indexOf('fetch("/api/assets/batch"'))
+  assert.match(source, /buildAssetBatchRequestBody\(\{ common, rows, purchaseDocumentIds: chosenDocuments\.map\(\(document\) => document\.id\) \}, documentUpload\)/)
+})
