@@ -197,7 +197,8 @@ test("label batch tool: ContentPanels, StatusBadges from status.name (M23), form
   assert.match(source, /<StatusBadge label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.name\)\} \/>/)
   assert.match(source, /<StatusBadge label=\{printBadge\} tone=\{printCount > 0 \? "success" : "muted"\} \/>/)
   assert.match(source, /printLabels\.labelPrintedBadge\.replace\("COUNT", formatCount\(printCount\)\)/)
-  assert.match(source, /status: \{\n\s+name: asset\.status\?\.name \?\? null,\n\s+label:/, "the queue rows carry status.name too")
+  // The queue answer carries no state (group 4 plan 6 Task 1); its rows are shown compact, so no state badge is drawn.
+  assert.match(source, /status: \{ name: null, label: "-", colorCode: null \}/, "a queue row has no state")
   assert.match(source, /<Chip>\{queueScopeSummary\.label\}<\/Chip>/)
   assert.equal(source.match(/<EmptyNote\b/g)?.length, 3)
   assert.equal(source.match(/disabled:cursor-not-allowed disabled:bg-background/g)?.length, 2, "an added row keeps the shared disabled look, with a check instead of the plus")

@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { buildAssetLabelSubtitle } from "@/lib/asset-label-display"
 import { getAssetStateTone } from "@/lib/design-system"
 import { formatCount } from "@/lib/display-format"
+import type { LabelQueueRow } from "@/lib/asset-label-queue"
 
 type SelectOption = {
   id: string
@@ -27,7 +28,8 @@ type SelectOption = {
 }
 
 type LabelPrintInfo = {
-  count: number
+  // null: printed, how often is not known (a queue row carries only the latest print, group 4 plan 6 Task 1).
+  count: number | null
   batchId: string | null
   tapeSize: string | null
   printedAt: string | null
@@ -218,9 +220,9 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
         const response = await fetch(queueRequestUrl, {
           signal: controller.signal,
         })
-        const payload = (await response.json().catch(() => null)) as { data?: AssetApiRow[] } | null
+        const payload = (await response.json().catch(() => null)) as { rows?: LabelQueueRow[] } | null
         if (!response.ok) throw new Error("Queue failed")
-        setRecentAssets((payload?.data ?? []).map((asset) => toSearchResult(asset, locale)))
+        setRecentAssets((payload?.rows ?? []).map((asset) => toSearchResult(asset, locale)))
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return
         setRecentAssets([])
@@ -558,44 +560,27 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
   )
 }
 
-type AssetApiRow = {
-  id: string
-  assetTag: string
-  name: string
-  serialNumber: string | null
-  createdAt?: string | null
-  company: { code: string; nameTh: string; nameEn?: string | null } | null
-  branch: { code: string; name: string } | null
-  category: { code: string; name: string } | null
-  brand: { name: string } | null
-  model: { name: string } | null
-  currentLocation: { code: string; name: string } | null
-  custodian: { code: string; fullNameTh: string } | null
-  status: { name: string; nameTh: string; colorCode: string | null } | null
-  labelPrint?: LabelPrintInfo
-}
-
-function toSearchResult(asset: AssetApiRow, locale: string): SearchResult {
-  const category = asset.category ? `${asset.category.code} - ${asset.category.name}` : "-"
+// A queue row as the list shows it until the queue is rebuilt (group 4 plan 6 Task 4). Queue rows are shown compact, so
+// the status they do not carry is never drawn.
+function toSearchResult(asset: LabelQueueRow, locale: string): SearchResult {
+  const category = `${asset.category.code} - ${asset.category.name}`
 
   return {
     id: asset.id,
     title: asset.assetTag,
     subtitle: buildAssetLabelSubtitle(asset, category),
     href: `/${locale}/assets/${asset.id}`,
-    serialNumber: asset.serialNumber,
-    createdAt: asset.createdAt ?? null,
-    labelPrint: asset.labelPrint,
-    status: {
-      name: asset.status?.name ?? null,
-      label: locale === "th" ? asset.status?.nameTh ?? asset.status?.name ?? "-" : asset.status?.name ?? asset.status?.nameTh ?? "-",
-      colorCode: asset.status?.colorCode ?? null,
-    },
+    serialNumber: null,
+    createdAt: null,
+    labelPrint: asset.lastPrint
+      ? { count: null, batchId: null, tapeSize: null, printedAt: asset.lastPrint.printedAt, printedBy: null }
+      : { count: 0, batchId: null, tapeSize: null, printedAt: null, printedBy: null },
+    status: { name: null, label: "-", colorCode: null },
     meta: {
-      custodian: asset.custodian?.fullNameTh ?? null,
-      company: asset.company ? `${asset.company.code} - ${locale === "th" ? asset.company.nameTh : asset.company.nameEn ?? asset.company.nameTh}` : "-",
-      branch: asset.branch ? `${asset.branch.code} - ${asset.branch.name}` : "-",
-      location: asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : "-",
+      custodian: asset.holder?.name ?? null,
+      company: `${asset.company.code} - ${asset.company.name}`,
+      branch: `${asset.branch.code} - ${asset.branch.name}`,
+      location: asset.location ? `${asset.location.code} - ${asset.location.name}` : "-",
       category,
     },
   }
@@ -749,12 +734,15 @@ function AssetLabelSearchResult({
 }: {
   asset: SearchResult
   serialLabel: string
-  printLabels: Pick<AssetLabelBatchToolProps["labels"], "labelPrintedBadge" | "labelUnprintedBadge">
+  printLabels: Pick<AssetLabelBatchToolProps["labels"], "labelPrintedBadge" | "labelUnprintedBadge" | "queueModePrinted">
   compact?: boolean
 }) {
-  const printCount = asset.labelPrint ? asset.labelPrint.count : 0
+  // A queue row knows only that it was printed (count null), not how often.
+  const printCount = asset.labelPrint ? asset.labelPrint.count ?? 1 : 0
   const printBadge = printCount > 0
-    ? printLabels.labelPrintedBadge.replace("COUNT", formatCount(printCount))
+    ? asset.labelPrint?.count === null
+      ? printLabels.queueModePrinted
+      : printLabels.labelPrintedBadge.replace("COUNT", formatCount(printCount))
     : printLabels.labelUnprintedBadge
 
   // Spec 2D M23: the state is the shared StatusBadge toned from status.name; database colors are not shown.

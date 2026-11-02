@@ -88,6 +88,11 @@ test("the scan search is registered for asset view, as the scan page; the viewer
   assert.deepEqual(entry?.checks, [{ module: "asset", action: "view" }])
 })
 
+test("the label queue and the print record are registered for asset view (spec call 19); the viewer holds it, so no refusal row (group 4 plan 6)", () => {
+  const entry = rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === "src/app/api/assets/label-prints/route.ts")
+  assert.deepEqual(entry?.checks, [{ module: "asset", action: "view" }])
+})
+
 test("every import and export route is in the matrix: export for asset view, the template, preview and confirm for asset create (group 4 plan 5)", () => {
   const checks = (filePath: string) => rbacRoutePermissionMatrix.find((candidate) => candidate.filePath === filePath)?.checks
   assert.deepEqual(checks("src/app/api/assets/export/route.ts"), [{ module: "asset", action: "view" }])

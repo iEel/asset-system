@@ -127,7 +127,9 @@ test("label queue location filter follows company and branch hierarchy", () => {
 })
 
 test("label queue API consumes operational filters and sort order", () => {
-  const source = readFileSync("src/app/api/assets/label-prints/route.ts", "utf8")
+  // The route's GET calls the queue lib, which reads the filters and the sort (group 4 plan 6 Task 1).
+  assert.match(readFileSync("src/app/api/assets/label-prints/route.ts", "utf8"), /parseLabelQueueRequest\(/)
+  const source = readFileSync("src/lib/asset-label-queue.ts", "utf8")
 
   assert.match(source, /normalizeLabelPrintQueueFilters/)
   assert.match(source, /buildAssetLabelPrintQueueOrderBy/)

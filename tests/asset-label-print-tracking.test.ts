@@ -2,9 +2,16 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  LABEL_PRINT_BATCH_MAX,
   buildAssetLabelPrintQueueOrderBy,
   buildAssetLabelPrintQueueWhere,
+  buildLabelPrintActiveAssetsWhere,
+  labelPrintQueueModes,
+  labelPrintQueueSorts,
   normalizeLabelPrintQueueFilters,
+  normalizeLabelPrintQueueMode,
+  normalizeLabelPrintQueuePageSize,
+  normalizeLabelPrintQueueSkip,
   normalizeLabelPrintQueueSort,
   normalizeLabelPrintAssetIds,
   normalizeLabelTapeSize,
@@ -87,4 +94,45 @@ test("normalizes and builds label print queue sort order", () => {
     { category: { code: "asc" } },
     { assetTag: "asc" },
   ])
+})
+
+test("the reprint mode keeps only printed assets and the matched ids (group 4 plan 6, P6-R6)", () => {
+  assert.equal(normalizeLabelPrintQueueMode("reprint"), "reprint")
+  assert.ok(labelPrintQueueModes.includes("reprint"))
+  assert.deepEqual(buildAssetLabelPrintQueueWhere("reprint", { companyId: "company-1" }, ["asset-2", "asset-1"]), {
+    isActive: true,
+    labelPrints: { some: {} },
+    id: { in: ["asset-2", "asset-1"] },
+    companyId: "company-1",
+  })
+  // No match is an empty id list, which matches nothing, never every printed asset.
+  assert.deepEqual(buildAssetLabelPrintQueueWhere("reprint"), { isActive: true, labelPrints: { some: {} }, id: { in: [] } })
+  // The ids belong to the reprint mode only.
+  assert.deepEqual(buildAssetLabelPrintQueueWhere("printed", {}, ["asset-1"]), { isActive: true, labelPrints: { some: {} } })
+})
+
+test("the page size is 1 to 100 with 20 when missing, and skip is a whole number from 0 (P6-R7)", () => {
+  assert.equal(LABEL_PRINT_BATCH_MAX, 100)
+  assert.equal(normalizeLabelPrintQueuePageSize(null), 20)
+  assert.equal(normalizeLabelPrintQueuePageSize(""), 20)
+  assert.equal(normalizeLabelPrintQueuePageSize("abc"), 20)
+  assert.equal(normalizeLabelPrintQueuePageSize("0"), 1)
+  assert.equal(normalizeLabelPrintQueuePageSize("15.7"), 15)
+  assert.equal(normalizeLabelPrintQueuePageSize("250"), 100)
+  assert.equal(normalizeLabelPrintQueueSkip(null), 0)
+  assert.equal(normalizeLabelPrintQueueSkip("abc"), 0)
+  assert.equal(normalizeLabelPrintQueueSkip("-5"), 0)
+  assert.equal(normalizeLabelPrintQueueSkip("3.9"), 3)
+  assert.equal(normalizeLabelPrintQueueSkip("10"), 10)
+})
+
+test("every queue sort ends on the unique asset tag, so skip pages are stable (P6-R7)", () => {
+  for (const sort of labelPrintQueueSorts) {
+    const orderBy = buildAssetLabelPrintQueueOrderBy(sort)
+    assert.deepEqual(orderBy.at(-1), { assetTag: "asc" }, sort)
+  }
+})
+
+test("the print record and the lookup read the same active-assets where", () => {
+  assert.deepEqual(buildLabelPrintActiveAssetsWhere(["asset-1", "asset-2"]), { id: { in: ["asset-1", "asset-2"] }, isActive: true })
 })

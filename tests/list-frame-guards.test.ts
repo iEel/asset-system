@@ -167,7 +167,7 @@ const EXEMPT: Readonly<Record<string, ExemptList>> = {
     [`${C}asset-operations/operation-document-print.tsx`]: { count: 1, kind: "permanent", why: "an empty field on the A4 document", ruling: "2D-4 R17" },
     [`${C}asset-operations/void-document-banner.tsx`]: { count: 3, kind: "permanent", why: "the void banner prints on the A4 document", ruling: "2D-4 R17" },
     [`${C}assets/detail/asset-components-tab.tsx`]: { count: 2, kind: "permanent", why: "translated-sentence arguments: the parent's tag in the two relationship summaries", ruling: "2B R-n" },
-    [`${C}assets/asset-label-batch-tool.tsx`]: { count: 6, kind: "permanent", why: "label data: the category, state, company, branch and location the label prints", ruling: "2B R-n" },
+    [`${C}assets/asset-label-batch-tool.tsx`]: { count: 2, kind: "permanent", why: "label data: the state and the location of a queue row (group 4 plan 6 Task 1: the queue answers codes and names, never empty)", ruling: "2B R-n" },
     [`${C}audit/audit-scan-check-form.tsx`]: { count: 3, kind: "permanent", why: "translated-sentence arguments: the checker's name and the check time", ruling: "2B R-n" },
     [`${C}audit/audit-scan-offline-bar.tsx`]: { count: 1, kind: "permanent", why: "the sync error inside a translated sentence", ruling: "2B R-n" },
     // src/lib and the API, counted since plan 2D-5: server-built text, logs, the PDF and settings defaults.

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client"
 
-export const labelPrintQueueModes = ["unprinted", "printed", "recent"] as const
+// reprint = ต้องพิมพ์ใหม่: the latest print's tag differs from today's (group 4 plan 6, P6-R6).
+export const labelPrintQueueModes = ["unprinted", "printed", "recent", "reprint"] as const
 export type LabelPrintQueueMode = (typeof labelPrintQueueModes)[number]
 
 export const labelPrintQueueSorts = ["created_desc", "asset_tag", "location", "category"] as const
@@ -18,9 +19,15 @@ export type LabelPrintQueueFilters = {
   createdTo?: string
 }
 
-type LabelPrintQueueWhere = {
+// One print batch, one queue page, the queue's matching ids and one lookup hold at most this many assets (P6-R2).
+export const LABEL_PRINT_BATCH_MAX = 100
+export const LABEL_PRINT_QUEUE_DEFAULT_PAGE_SIZE = 20
+
+export type LabelPrintQueueWhere = {
   isActive: true
+  id?: { in: string[] }
   labelPrints?: { none: Record<string, never> } | { some: Record<string, never> }
+  movements?: { some: { movementType: "asset_tag_change" } }
   companyId?: string
   branchId?: string
   categoryId?: string
@@ -31,7 +38,7 @@ type LabelPrintQueueWhere = {
   }
 }
 
-export function normalizeLabelPrintAssetIds(assetIds: unknown, maxItems = 100) {
+export function normalizeLabelPrintAssetIds(assetIds: unknown, maxItems = LABEL_PRINT_BATCH_MAX) {
   if (!Array.isArray(assetIds)) return []
 
   const seen = new Set<string>()
@@ -89,15 +96,24 @@ export function normalizeLabelPrintQueueFilters(values: Record<string, unknown>)
   return filters
 }
 
-export function buildAssetLabelPrintQueueWhere(modeValue: unknown, filters: LabelPrintQueueFilters = {}): LabelPrintQueueWhere {
+// reprintIds are the matches found in code (asset-label-queue.ts); they belong to the reprint mode only, and none is an
+// empty list, which matches nothing.
+export function buildAssetLabelPrintQueueWhere(
+  modeValue: unknown,
+  filters: LabelPrintQueueFilters = {},
+  reprintIds: readonly string[] = [],
+): LabelPrintQueueWhere {
   const mode = normalizeLabelPrintQueueMode(modeValue)
   const where: LabelPrintQueueWhere = { isActive: true }
 
   if (mode === "unprinted") {
     where.labelPrints = { none: {} }
   }
-  if (mode === "printed") {
+  if (mode === "printed" || mode === "reprint") {
     where.labelPrints = { some: {} }
+  }
+  if (mode === "reprint") {
+    where.id = { in: [...reprintIds] }
   }
 
   if (filters.companyId) where.companyId = filters.companyId
@@ -113,6 +129,27 @@ export function buildAssetLabelPrintQueueWhere(modeValue: unknown, filters: Labe
   return where
 }
 
+// The assets one print records, and one lookup returns.
+export function buildLabelPrintActiveAssetsWhere(assetIds: readonly string[]) {
+  return { id: { in: [...assetIds] }, isActive: true as const }
+}
+
+// A missing or unreadable size is the default 20; otherwise a whole number from 1 to 100.
+export function normalizeLabelPrintQueuePageSize(value: string | null | undefined) {
+  if (value == null || value.trim() === "") return LABEL_PRINT_QUEUE_DEFAULT_PAGE_SIZE
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return LABEL_PRINT_QUEUE_DEFAULT_PAGE_SIZE
+  return Math.min(Math.max(Math.trunc(parsed), 1), LABEL_PRINT_BATCH_MAX)
+}
+
+// How many queue rows the page already holds ("แสดงอีก 10 รายการ", P6-R7): a whole number from 0.
+export function normalizeLabelPrintQueueSkip(value: string | null | undefined) {
+  const parsed = Number(value ?? 0)
+  if (!Number.isFinite(parsed)) return 0
+  return Math.max(Math.trunc(parsed), 0)
+}
+
+// Every sort ends on the unique assetTag, so the order is total and skip pages neither repeat nor miss a row (P6-R7).
 export function buildAssetLabelPrintQueueOrderBy(sortValue: unknown): Prisma.AssetOrderByWithRelationInput[] {
   const sort = normalizeLabelPrintQueueSort(sortValue)
   if (sort === "asset_tag") return [{ assetTag: "asc" }]
