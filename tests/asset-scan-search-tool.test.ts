@@ -57,9 +57,9 @@ test("asset scan page labels only the native input; its own placeholder and the 
   assert.match(page, /placeholder: t\("scanPagePlaceholder"\)/)
   assert.match(page, /hint: t\("scanHint"\)/)
   assert.doesNotMatch(page, /placeholder: tGlobalSearch\("placeholder"\)|t\("scanPlaceholder"\)/)
-  // The label page still reads scanPlaceholder (tests/asset-label-print-ui.test.ts), so its words stay as they were.
-  assert.equal(th().assetTools.scanPlaceholder, "ค้นหาด้วยรหัสทรัพย์สิน, Serial Number, ผู้ถือครอง หรือที่ตั้ง")
-  assert.equal(en().assetTools.scanPlaceholder, "Search by Asset Tag, Serial Number, custodian, or location")
+  // The label page has its own placeholder now (group 4 plan 6 P6-R12), so scanPlaceholder lost its last reader and is gone.
+  assert.equal(th().assetTools.scanPlaceholder, undefined)
+  assert.equal(en().assetTools.scanPlaceholder, undefined)
   assert.equal(th().assetTools.scanPagePlaceholder, "รหัสทรัพย์สิน, Serial หรือชื่อ")
   assert.equal(th().assetTools.scanHint, "ป้าย QR ยังติดไม่ครบ พิมพ์รหัสบางส่วน, Serial ใต้เครื่อง หรือชื่อแทนได้")
   assert.equal(typeof en().assetTools.scanPagePlaceholder, "string")

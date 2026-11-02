@@ -371,7 +371,7 @@ const RAW_BUTTON_OWNERS = ["src/components/ui/filter-menu-chip.tsx", "src/compon
 const RAW_BUTTON_EXEMPT: ExemptList = {
   "src/components/assets/asset-attachments.tsx": { count: 1, kind: "permanent", why: "the photo is the control: a photo of the files tab opens its preview", ruling: "2D-3 R5; group 1 asset detail task 11" },
   "src/components/assets/asset-component-manager.tsx": { count: 1, kind: "permanent", why: "a candidate row: a pressed list option of two lines", ruling: "2D-3 R5" },
-  "src/components/assets/asset-label-batch-tool.tsx": { count: 2, kind: "permanent", why: "the search result and recent queue rows: two lines that add the asset to the print list", ruling: "2D-3 R5" },
+  "src/components/assets/asset-label-queue.tsx": { count: 1, kind: "permanent", why: "a search result or label queue row (one row part): two lines that add the asset to the print list", ruling: "2D-3 R5; group 4 plan 6 Task 4" },
   "src/components/assets/asset-photo-frame.tsx": { count: 1, kind: "permanent", why: "the card photo is the control that opens the original in the preview dialog", ruling: "2D-3 R5, group 1 asset detail task 4" },
   "src/components/assets/asset-state-help-popover.tsx": { count: 1, kind: "permanent", why: "the 24px help circle in a field label row or a table head, with a 44px hit area below md", ruling: "2D-3 R5, the user 2026-10-16" },
   "src/components/assets/asset-thumbnail.tsx": { count: 1, kind: "permanent", why: "the thumbnail image is the control that opens the photo", ruling: "2D-3 R5" },

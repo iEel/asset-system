@@ -336,7 +336,8 @@ test("label print: the toolbar is a form whose reason shows its error under the 
   assert.ok(source.includes('{fieldErrors.errors.reason ? <FieldError id="asset-label-print-reason-error">{fieldErrors.message("reason")}</FieldError> : null}'))
   assert.match(source, /if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\("Unable to record label print"\)/)
   // The print queue's filter: the end cannot be picked before the start (spec U4, §7.4); a filter has no validate().
-  const queue = read(`${C}assets/asset-label-batch-tool.tsx`)
+  // The two dates sit in the สร้างเมื่อ chip of the queue part since group 4 plan 6 Task 4.
+  const queue = read(`${C}assets/asset-label-queue.tsx`)
   assert.match(queue, /value=\{queueFilters\.createdFrom\}\n\s+max=\{queueFilters\.createdTo \|\| undefined\}/)
   assert.match(queue, /value=\{queueFilters\.createdTo\}\n\s+min=\{queueFilters\.createdFrom \|\| undefined\}/)
 })

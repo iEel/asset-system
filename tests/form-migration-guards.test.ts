@@ -174,7 +174,7 @@ const LOADER2: ExemptList = {
   [`${C}admin/IntegrationClientManager.tsx`]: { count: 1, kind: "permanent", why: "the loading status in the client list head", ruling: "2C I27" },
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: { count: 1, kind: "permanent", why: "the loading line in the dialog body", ruling: "2C I27" },
   [`${C}assets/asset-component-manager.tsx`]: { count: 1, kind: "permanent", why: "the searching status line", ruling: "2C I27" },
-  [`${C}assets/asset-label-batch-tool.tsx`]: { count: 2, kind: "permanent", why: "the loading lines of the search results and of the recent queue", ruling: "2C I27" },
+  [`${C}assets/asset-label-queue.tsx`]: { count: 1, kind: "permanent", why: "the loading line of the search results and of the label queue (one LoadingLine part, group 4 plan 6 Task 4)", ruling: "2C I27" },
   [`${C}assets/asset-scan-search-tool.tsx`]: { count: 1, kind: "permanent", why: "the loading line of the results", ruling: "2C I27" },
   [`${C}audit/audit-scan-camera.tsx`]: { count: 1, kind: "permanent", why: "the spinner on the camera box while the camera starts", ruling: "2C I27" },
   [`${C}audit/audit-scan-check-form.tsx`]: { count: 1, kind: "permanent", why: "the components loading line of the check sheet", ruling: "2C I27" },

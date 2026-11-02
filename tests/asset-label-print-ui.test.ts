@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import * as nodeModule from "node:module"
 import test from "node:test"
 
@@ -79,31 +79,37 @@ test("label print template settings expose compact printable asset names", () =>
   assert.equal(en.systemSettingsPage.compactLabelAssetNameFull, "Full name")
 })
 
-test("label batch tool exposes queue filters and print-order controls", () => {
-  const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
+// Group 4 plan 6 Task 4: the tool is the shell; the search and the queue are asset-label-queue.tsx, the right column
+// asset-label-print-list.tsx.
+const QUEUE_PART = "src/components/assets/asset-label-queue.tsx"
+const PRINT_LIST_PART = "src/components/assets/asset-label-print-list.tsx"
+const QUEUE_RULES = "src/lib/asset-label-queue-rules.ts"
 
-  assert.match(source, /queueFilters/)
-  assert.match(source, /selectedSort/)
-  assert.match(source, /labelPrint\.count/)
-  assert.match(source, /printFirstLabel/)
-  assert.match(source, /loadMoreQueue/)
+test("label batch tool exposes queue filters and print-order controls", () => {
+  const queue = readFileSync(QUEUE_PART, "utf8")
+  const list = readFileSync(PRINT_LIST_PART, "utf8")
+
+  assert.match(queue, /queueFilters/)
+  assert.match(list, /selectedSort/)
+  assert.match(list, /printFirstLabel/)
+  assert.match(queue, /showMoreQueue/)
+  assert.match(queue, /pageSize: LABEL_QUEUE_MORE_STEP, skip: queue\.rows\.length/)
 })
 
-test("label queue display name de-duplicates asset brand and model text", () => {
+test("label rows show the queue row's own name; the brand and model subtitle helper left with its last reader", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
-  const component = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
-  const helper = readFileSync("src/lib/asset-label-display.ts", "utf8")
+  const queue = readFileSync(QUEUE_PART, "utf8")
 
-  assert.match(page, /buildAssetLabelSubtitle/)
-  assert.match(component, /buildAssetLabelSubtitle/)
-  assert.match(helper, /isRedundantLabelPart/)
-  assert.doesNotMatch(page, /\[asset\.name,\s*asset\.brand\?\.name,\s*asset\.model\?\.name\]/)
-  assert.doesNotMatch(component, /\[asset\.name,\s*asset\.brand\?\.name,\s*asset\.model\?\.name\]/)
+  assert.equal(existsSync("src/lib/asset-label-display.ts"), false)
+  for (const source of [page, queue, readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8"), readFileSync(PRINT_LIST_PART, "utf8")]) {
+    assert.doesNotMatch(source, /buildAssetLabelSubtitle|asset-label-display/)
+  }
+  assert.match(queue, /\{row\.name\}/)
 })
 
 test("label queue branch filter stays scoped to the selected company", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
-  const component = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
+  const component = readFileSync(QUEUE_PART, "utf8")
 
   assert.match(page, /select:\s*{\s*id:\s*true,\s*code:\s*true,\s*name:\s*true,\s*companyId:\s*true,\s*company:\s*{\s*select:\s*{\s*code:\s*true\s*}/)
   assert.match(page, /branches:\s*branches\.map\(\(branch\)\s*=>\s*\(\{[\s\S]*label:\s*`\$\{branch\.company\.code\} \/ \$\{branch\.code\} - \$\{branch\.name\}`[\s\S]*companyId:\s*branch\.companyId/)
@@ -115,7 +121,7 @@ test("label queue branch filter stays scoped to the selected company", () => {
 
 test("label queue location filter follows company and branch hierarchy", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
-  const component = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
+  const component = readFileSync(QUEUE_PART, "utf8")
 
   assert.match(page, /select:\s*{\s*id:\s*true,\s*code:\s*true,\s*name:\s*true,\s*branchId:\s*true,\s*branch:\s*{\s*select:\s*{\s*code:\s*true,\s*name:\s*true,\s*companyId:\s*true,\s*company:\s*{\s*select:\s*{\s*code:\s*true\s*}/)
   assert.match(page, /locations:\s*locations\.map\(\(location\)\s*=>\s*\(\{[\s\S]*label:\s*`\$\{location\.branch\.company\.code\} \/ \$\{location\.branch\.code\} \/ \$\{location\.code\} - \$\{location\.name\}`[\s\S]*branchId:\s*location\.branchId[\s\S]*companyId:\s*location\.branch\.companyId/)
@@ -125,7 +131,8 @@ test("label queue location filter follows company and branch hierarchy", () => {
   assert.match(component, /location\.branchId === queueFilters\.branchId/)
   assert.match(component, /location\.companyId === queueFilters\.companyId/)
   assert.match(component, /isLocationInScope/)
-  assert.match(component, /locationId:\s*"all"/)
+  assert.match(component, /updateQueueFilter\("locationId", "all"\)/)
+  assert.match(readFileSync(QUEUE_RULES, "utf8"), /locationId:\s*"all"/)
 })
 
 test("label queue API consumes operational filters and sort order", () => {
@@ -145,66 +152,65 @@ test("label tool messages include queue filter and print ordering labels", () =>
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   for (const messages of [th.assetTools, en.assetTools]) {
-    assert.equal(typeof messages.labelQueueFiltersTitle, "string")
-    assert.equal(typeof messages.queueFilterCompany, "string")
-    assert.equal(typeof messages.queueFilterCreatedFrom, "string")
+    assert.equal(typeof messages.labelsPage.filtersLabel, "string")
+    assert.equal(typeof messages.labelsPage.filter.company, "string")
+    assert.equal(typeof messages.labelsPage.created.fromLabel, "string")
     assert.equal(typeof messages.selectedSortLabel, "string")
     assert.equal(typeof messages.printFirstLabel, "string")
-    assert.equal(typeof messages.labelPrintedBadge, "string")
+    // The old queue words lost their last reader in group 4 plan 6 Task 4 (P6-C1).
+    for (const key of ["labelQueueFiltersTitle", "queueFilterCompany", "queueFilterCreatedFrom", "labelPrintedBadge", "labelUnprintedBadge", "queueModeLabel", "resetQueueFilters", "loadMoreQueue", "addFilteredQueue", "scanPlaceholder"]) {
+      assert.equal(messages[key], undefined, key)
+    }
   }
 })
 
-test("label search pre-query guidance stays compact under the input", () => {
-  const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
+test("label search guidance always sits under the input (board)", () => {
+  const source = readFileSync(QUEUE_PART, "utf8")
 
-  assert.match(source, /hint=\{trimmedQuery\.length < 2 \? labels\.minChars : undefined\}/)
-  assert.doesNotMatch(source, /<div className="p-6 text-center text-sm text-muted-foreground">\{labels\.minChars\}<\/div>/)
+  assert.match(source, /<Field label=\{t\("searchLabel"\)\} hint=\{t\("searchHint"\)\}>/)
+  assert.doesNotMatch(source, /<div className="p-6 text-center text-sm text-muted-foreground">/)
 })
 
 test("label queue presents company and branch print scope before location filtering", () => {
-  const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
-  const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
+  const source = readFileSync(QUEUE_PART, "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   assert.match(source, /queueScopeSummary/)
   assert.match(source, /getQueueScopeSummary/)
-  assert.match(source, /addFilteredQueue/)
-  assert.match(source, /addFilteredQueueUnavailable/)
-  assert.match(page, /queueScopeTitle:\s*t\("queueScopeTitle"\)/)
+  // By name, no codes (board): the branch and the room of a location.
+  assert.match(source, /\[location\.branchName, location\.name\]\.filter\(Boolean\)\.join\(" \/ "\)/)
+  assert.match(source, /t\("addAllSummary", \{ matched: addAll\.a, listed: addAll\.b, added: addAll\.c \}\)/)
 
-  for (const messages of [th.assetTools, en.assetTools]) {
-    assert.equal(typeof messages.queueScopeTitle, "string")
-    assert.equal(typeof messages.queueScopeHelp, "string")
-    assert.equal(typeof messages.queueScopeCompany, "string")
-    assert.equal(typeof messages.queueScopeBranch, "string")
-    assert.equal(typeof messages.queueScopeLocation, "string")
-    assert.equal(typeof messages.queueScopeAll, "string")
-    assert.equal(typeof messages.addFilteredQueue, "string")
-    assert.equal(typeof messages.addFilteredQueueUnavailable, "string")
+  for (const messages of [th.assetTools.labelsPage, en.assetTools.labelsPage]) {
+    for (const key of ["company", "branch", "location", "all"]) assert.equal(typeof messages.scope[key], "string", key)
+    for (const key of ["addAllSummary", "addAll", "addSome", "addFirst100", "addRemaining", "addAllRoom", "addAllNone"]) assert.equal(typeof messages[key], "string", key)
   }
 })
 
 // Phase 2C batch 4 (spec 2C §8.9 O19, §4.5, §4.9, §6.4.2; 2B spec I13): the label batch tool's header, fields and
-// buttons on the shared parts. The result and queue rows stay list buttons (2D); the two status-line spinners stay and
-// stop for users who reduce motion (I27).
+// buttons on the shared parts. The result and queue rows stay list buttons (2D); the status-line spinner stays and
+// stops for users who reduce motion (I27). Group 4 plan 6 Task 4 split the tool into the shell and two parts.
 test("the label batch tool uses PageHeader, shared fields and Button (2C batch 4)", () => {
-  const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8").replace(/\r\n/g, "\n")
-  assert.match(source, /<PageHeader title=\{labels\.title\} meta=\{labels\.subtitle\} \/>/)
-  assert.match(source, /<Field label=\{labels\.searchLabel\} hint=\{trimmedQuery\.length < 2 \? labels\.minChars : undefined\}>\n\s+<SearchField value=\{query\} onChange=\{\(event\) => setQuery\(event\.target\.value\)\} placeholder=\{labels\.searchPlaceholder\} \/>\n\s+<\/Field>/)
-  assert.match(source, /<Field label=\{icon \? <span className="inline-flex items-center gap-1">\{icon\}\{label\}<\/span> : label\}>\n\s+<NativeSelect value=\{value\} onChange=\{\(event\) => onChange\(event\.target\.value\)\}>/)
-  assert.equal(source.match(/<Field label=\{labels\.queueFilterCreated(?:From|To)\}>\n\s+<Input\n\s+type="date"/g)?.length, 2)
-  assert.match(source, /icon=\{<ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" \/>\}/)
-  assert.equal(source.match(/<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" \/>/g)?.length, 2)
-  // The three gates of the queue stay focusable and say why (v-track final task 2).
-  assert.match(source, /<Button\n\s+aria-disabled=\{recentAssets\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{recentAssets\.length === 0 \? "asset-label-add-filtered-reason" : undefined\}\n\s+onClick=\{addRecentAssets\}\n\s+className="w-full shrink-0 sm:w-auto"\n\s+>/)
-  assert.match(source, /<Button variant="outline" onClick=\{resetQueueFilters\}>/)
-  assert.match(source, /<Button variant="outline" onClick=\{loadMoreQueue\} className="mt-3 w-full">/)
-  assert.match(source, /<Button\n\s+variant="outline"\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printFirstLabel\}\n\s+className="w-full"\n\s+>/)
-  assert.match(source, /<Button\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printLabels\}\n\s+className="w-full"\n\s+>/)
-  assert.match(source, /<Button\n\s+variant="outline"\n\s+size="icon-sm"\n\s+onClick=\{\(\) => removeAsset\(asset\.id\)\}\n\s+className="shrink-0"\n\s+title=\{labels\.remove\}\n\s+aria-label=\{labels\.remove\}/)
-  assert.equal(source.match(/<button\b/g)?.length, 2, "only the result and queue rows stay list buttons (2D)")
-  assert.doesNotMatch(source, /<h1\b|<select\b|<input\b|<label\b|mb-1\.5 block text-sm font-medium|focus:border-ring/)
+  const shell = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8").replace(/\r\n/g, "\n")
+  const source = readFileSync(QUEUE_PART, "utf8").replace(/\r\n/g, "\n")
+  const list = readFileSync(PRINT_LIST_PART, "utf8").replace(/\r\n/g, "\n")
+  assert.match(shell, /<PageHeader title=\{labels\.title\} meta=\{labels\.subtitle\} \/>/)
+  assert.match(source, /<Field label=\{t\("searchLabel"\)\} hint=\{t\("searchHint"\)\}>\n\s+<SearchField value=\{query\} onChange=\{\(event\) => setQuery\(event\.target\.value\)\} placeholder=\{tTools\("labelSearchPlaceholder"\)\} \/>\n\s+<\/Field>/)
+  assert.equal(source.match(/<Field label=\{t\("created\.(?:from|to)Label"\)\}>\n\s+<Input\n\s+type="date"/g)?.length, 2)
+  assert.match(list, /<Field label=\{<span className="inline-flex items-center gap-1"><ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" \/>\{labels\.selectedSortLabel\}<\/span>\}>\n\s+<NativeSelect value=\{selectedSort\}/)
+  assert.equal(source.match(/<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" \/>/g)?.length, 1, "one loading line part for the search and the queue")
+  assert.equal(source.match(/<LoadingLine label=\{tSearch\("loading"\)\} \/>/g)?.length, 2)
+  assert.match(source, /<Button variant="ghost" size="sm" onClick=\{resetQueueFilters\}>/)
+  assert.match(source, /<Button variant="outline" size="sm" busy=\{moreLoading\} onClick=\{showMoreQueue\} className="ml-auto">/)
+  assert.match(list, /<Button\n\s+variant="outline"\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printFirstLabel\}\n\s+className="w-full"\n\s+>/)
+  assert.match(list, /<Button\n\s+aria-disabled=\{selectedForPrint\.length === 0 \|\| undefined\}\n\s+aria-describedby=\{selectedForPrint\.length === 0 \? "asset-label-print-reason" : undefined\}\n\s+onClick=\{printLabels\}\n\s+className="w-full"\n\s+>/)
+  assert.match(list, /<Button\n\s+variant="outline"\n\s+size="icon-sm"\n\s+onClick=\{\(\) => removeAsset\(asset\.id\)\}\n\s+className="shrink-0"\n\s+title=\{labels\.remove\}\n\s+aria-label=\{labels\.remove\}/)
+  assert.equal(source.match(/<button\b/g)?.length, 1, "only the search and queue row part stays a list button (2D)")
+  for (const file of [shell, source, list]) {
+    if (file !== source) assert.equal(file.match(/<button\b/g)?.length ?? 0, 0)
+    assert.doesNotMatch(file, /<h1\b|<select\b|<input\b|<label\b|mb-1\.5 block text-sm font-medium|focus:border-ring/)
+  }
 })
 
 // Phase 2C batch 4 (spec 2C §4.9 K21, §4.18 item 9, §6.4.2, K13): the print toolbar keeps its boxed labels with the
@@ -225,13 +231,6 @@ test("the label print toolbar keeps its boxed fields with a focus ring and a bus
   assert.doesNotMatch(source, /Loader2|translations\.recordingPrint|disabled=\{recordingPrint\}/)
   assert.match(source, /<h1 className="text-2xl font-bold">\{translations\.title\}<\/h1>/, "the print heading stays 700")
   assert.match(source, /maxLength=\{500\}/)
-})
-
-test("the label search placeholder names only what the asset search finds (critique 2026-10-20 B2)", () => {
-  const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
-  assert.match(page, /searchPlaceholder: t\("scanPlaceholder"\)/)
-  assert.doesNotMatch(page, /searchPlaceholder: tGlobalSearch\("placeholder"\)/)
-  assert.match(readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8"), /&scope=asset`/)
 })
 
 // Group 4 plan 6 Task 2 (P6-R2, P6-R9, Review Focus 4-5, recon X1, X4, X6, X11): one self-sized label part, one settings
@@ -371,4 +370,71 @@ test("the label sizes itself in mm from its template, prints black on white and 
   assert.doesNotMatch(print, /\.asset-label-item \{\n\s+width:|color: #000000|--asset-label-preview-scale|<QRCodeSVG|function AssetLabelItem/)
   assert.match(print, /import \{ AssetLabelSheet, type AssetLabelSheetAsset \} from "@\/components\/assets\/asset-label-sheet"/)
   assert.match(print, /<AssetLabelSheet\n\s+assets=\{assets\}\n\s+template=\{config\}/)
+})
+
+test("the label search placeholder names only what the asset search finds (critique 2026-10-20 B2, P6-R12)", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
+  const queue = readFileSync(QUEUE_PART, "utf8")
+  assert.doesNotMatch(page, /scanPlaceholder|searchPlaceholder: tGlobalSearch\("placeholder"\)/)
+  assert.match(queue, /placeholder=\{tTools\("labelSearchPlaceholder"\)\}/)
+  assert.match(queue, /&scope=asset`/)
+  assert.equal(JSON.parse(readFileSync("messages/th.json", "utf8")).assetTools.labelSearchPlaceholder, "รหัสทรัพย์สิน ชื่อ Serial ผู้ถือครอง หรือที่ตั้ง")
+})
+
+// Group 4 plan 6 Task 4 (P6-R2..R7, R11, the stable hooks): search rows through the lookup, the four modes, the chips,
+// rows with their hooks and the board's names, the paging, and the 100 cap in the shell.
+test("search results come through the lookup, so they show their real print state (P6-R11)", () => {
+  const queue = readLf(QUEUE_PART)
+  assert.match(queue, /setResults\(await fetchLabelRows\(\(payload\?\.results \?\? \[\]\)\.map\(\(result\) => result\.id\), locale, controller\.signal\)\)/)
+  assert.match(queue, /fetch\(`\$\{labelPrintsApi\}\?\$\{buildLabelLookupSearch\(ids, locale\)\}`, \{ signal \}\)/)
+  // Add-all fetches the rows of the ids it adds, from the queue's matching ids (P6-R3).
+  assert.match(queue, /onAdd\(await fetchLabelRows\(addAll\.addIds, locale\)\)/)
+  assert.match(queue, /const addAll = addAllCounts\(\{ total: queue\.total, matchIds: queue\.ids, selectedIds, room \}\)/)
+})
+
+test("the queue: four modes as Segmented from md and a select below, the chips, and the reprint cap (P6-R4, P6-R5, P6-R6)", () => {
+  const queue = readLf(QUEUE_PART)
+  assert.match(queue, /const queueModes: readonly LabelPrintQueueMode\[\] = \["unprinted", "printed", "recent", "reprint"\]/)
+  assert.match(queue, /<div className="hidden items-center gap-3 md:flex">\n\s+<span id="asset-label-queue-mode"[^\n]*\n\s+<Segmented\n\s+labelledBy="asset-label-queue-mode"/)
+  assert.match(queue, /label: <span data-label-mode=\{mode\}>\{t\(`mode\.\$\{mode\}`\)\}<\/span>/)
+  assert.match(queue, /<Field label=\{t\("queueModeLabel"\)\} className="md:hidden">\n\s+<NativeSelect/)
+  assert.match(queue, /<option key=\{mode\} value=\{mode\} data-label-mode=\{mode\}>/)
+  assert.match(queue, /<div role="group" aria-label=\{t\("filtersLabel"\)\} className="flex flex-wrap gap-1\.5">/)
+  assert.equal(queue.match(/<FilterMenuChip\n/g)?.length, 6)
+  for (const key of ["company", "branch", "location", "category", "created", "sort"]) assert.ok(queue.includes(`label={t("filter.${key}")}`), key)
+  assert.match(queue, /label=\{t\("filter\.location"\)\}\n\s+searchable\n/)
+  assert.match(queue, /label=\{t\("filter\.sort"\)\}[\s\S]*?active=\{false\}/)
+  assert.match(queue, /queueFilters\.mode === "reprint" && queue\.reprintCapped \? \(\n\s+<Notice tone="warning">\{t\("reprintCap", \{ max: LABEL_REPRINT_CANDIDATE_CAP \}\)\}<\/Notice>/)
+  assert.doesNotMatch(queue, /\bFilterSelect\b|\bLabeledSelect\b|\bFilter\(/)
+})
+
+test("queue rows: the stable hook, the board's names, ป้ายเดิม, and paging with the page (P6-R7)", () => {
+  const queue = readLf(QUEUE_PART)
+  assert.match(queue, /const hook = source === "queue" \? \{ "data-label-queue-row": row\.id \} : \{ "data-label-search-row": row\.id \}/)
+  assert.match(queue, /<button\n\s+type="button"\n\s+\{\.\.\.hook\}\n\s+disabled=\{listed\}\n\s+aria-label=\{t\(name\.key, name\.values\)\}\n\s+aria-describedby=\{`\$\{metaId\} \$\{stateId\}`\}\n\s+onClick=\{\(\) => onAdd\(\[row\]\)\}/)
+  assert.match(queue, /const name = labelRowNameKey\(row, \{ listed, duplicateNames \}\)/)
+  assert.match(queue, /const holder = labelQueueRowHolder\(row, t\("sharedOwner"\)\)/)
+  assert.match(queue, /const oldTag = labelQueueOldTag\(row\)/)
+  assert.match(queue, /<ul aria-label=\{t\("queueListLabel", \{ count: queue\.total \}\)\} className="divide-y divide-border-soft">/)
+  assert.match(queue, /\{t\("shownOf", \{ shown: queue\.rows\.length, total: queue\.total \}\)\}/)
+  assert.match(queue, /\{queue\.rows\.length < queue\.total \? \(/)
+  assert.match(queue, /setQueue\(\(current\) => \(\{ \.\.\.page, rows: appendQueueRows\(current\.rows, page\.rows\) \}\)\)/)
+  assert.match(queue, /if \(currentSearch\.current !== search\) return/, "an answer for older filters is dropped")
+  assert.doesNotMatch(queue, /overflow-y-auto/, "the queue scrolls with the page")
+  // The selected rows carry their hook too (Task 5 builds on it).
+  assert.match(readLf(PRINT_LIST_PART), /<div key=\{asset\.id\} data-label-selected-row=\{asset\.id\}/)
+})
+
+test("the print list never passes 100 and says so in its status line (P6-R2)", () => {
+  const shell = readLf("src/components/assets/asset-label-batch-tool.tsx")
+  assert.match(shell, /const incoming = mergeIntoPrintList\(\[\], preselectedRows\)/)
+  assert.match(shell, /setPrintList\(\(current\) => \{\n\s+const result = mergeIntoPrintList\(current\.rows, rows\)/)
+  assert.match(shell, /const room = printListRoom\(selected\.length\)/)
+  assert.match(shell, /<AssetLabelQueueCard locale=\{locale\} filterOptions=\{filterOptions\} selectedIds=\{selectedIds\} room=\{room\} onAdd=\{addRows\} \/>/)
+  assert.match(shell, /<AssetLabelSearchCard locale=\{locale\} selectedIds=\{selectedIds\} onAdd=\{addRows\} \/>/)
+  assert.match(readLf(PRINT_LIST_PART), /<p role="status" className="text-meta text-muted-foreground empty:hidden">\{status\}<\/p>/)
+  // The incoming ids: in their order, once each, at most 100, through the lookup.
+  const page = readLf("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx")
+  assert.match(page, /const preselectedIds = normalizeLabelPrintAssetIds\(\(assetIds \?\? ""\)\.split\(","\)\)/)
+  assert.match(page, /preselectedRows=\{preselected\.rows\}/)
 })

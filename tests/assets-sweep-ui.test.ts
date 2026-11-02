@@ -189,21 +189,31 @@ test("import-export page: two columns from lg for an importer; a viewer gets the
   assert.doesNotMatch(source, /tCommon|buttonVariants/)
 })
 
-test("label batch tool: ContentPanels, StatusBadges from status.name (M23), formatCount (M27), a scope Chip, EmptyNote, and list rows without opacity (spec 2D D9, M21, M22)", () => {
-  const source = read(`${C}assets/asset-label-batch-tool.tsx`)
-  assert.equal(source.match(/<ContentPanel\b/g)?.length, 3)
-  assert.match(source, /<ContentPanel title=\{labels\.recentQueueTitle\} description=\{labels\.recentQueueHelp\}>/)
-  assert.match(source, /<ContentPanel\n\s+title=\{labels\.selectedTitle\}\n\s+description=\{`\$\{formatCount\(selected\.length\)\} \$\{labels\.selectedCount\}`\}\n\s+className="xl:sticky xl:top-20 xl:self-start"/)
-  assert.match(source, /<StatusBadge label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.name\)\} \/>/)
-  assert.match(source, /<StatusBadge label=\{printBadge\} tone=\{printCount > 0 \? "success" : "muted"\} \/>/)
-  assert.match(source, /printLabels\.labelPrintedBadge\.replace\("COUNT", formatCount\(printCount\)\)/)
-  // The queue answer carries no state (group 4 plan 6 Task 1); its rows are shown compact, so no state badge is drawn.
-  assert.match(source, /status: \{ name: null, label: "-", colorCode: null \}/, "a queue row has no state")
-  assert.match(source, /<Chip>\{queueScopeSummary\.label\}<\/Chip>/)
-  assert.equal(source.match(/<EmptyNote\b/g)?.length, 3)
-  assert.equal(source.match(/disabled:cursor-not-allowed disabled:bg-background/g)?.length, 2, "an added row keeps the shared disabled look, with a check instead of the plus")
-  assert.match(source, /<span className="tag font-medium text-foreground">\{asset\.title\}<\/span>/)
-  assert.doesNotMatch(source, /disabled:opacity|toLocaleString|status\.colorCode \?|rounded-full|primary-soft|border-dashed|hover:bg-accent|\btext-xs\b|rounded-lg border/)
+test("label batch tool: ContentPanels, print-state StatusBadges, formatCount (M27), a scope Chip, EmptyNote, and list rows without opacity (spec 2D D9, M21, M22; group 4 plan 6 Task 4)", () => {
+  // The shell holds the print list; the search and the queue are one part, the right column another (group 4 plan 6 Task 4).
+  const shell = read(`${C}assets/asset-label-batch-tool.tsx`)
+  const queue = read(`${C}assets/asset-label-queue.tsx`)
+  const list = read(`${C}assets/asset-label-print-list.tsx`)
+  assert.equal(shell.match(/<ContentPanel\b/g)?.length ?? 0, 0)
+  assert.equal(queue.match(/<ContentPanel\b/g)?.length, 2)
+  assert.equal(list.match(/<ContentPanel\b/g)?.length, 1)
+  // The queue card: the board's head (title, the mode's help line, ล้างตัวกรอง) over a flush body.
+  assert.match(queue, /<ContentPanel\n\s+divided\n\s+flush\n\s+title=\{t\("queueTitle"\)\}\n\s+description=\{t\(`queueHelp\.\$\{queueFilters\.mode\}`\)\}\n\s+actions=\{\(\n\s+<Button variant="ghost" size="sm" onClick=\{resetQueueFilters\}>/)
+  assert.match(list, /<ContentPanel\n\s+title=\{labels\.selectedTitle\}\n\s+description=\{`\$\{formatCount\(selected\.length\)\} \$\{labels\.selectedCount\}`\}\n\s+className="xl:sticky xl:top-20 xl:self-start"/)
+  // A row shows its print state, never the asset state (a queue row carries none, P6-R11); ป้ายเดิม when the label's tag
+  // is not today's (P6-R6); อยู่ในรายการพิมพ์ once listed.
+  assert.match(queue, /<StatusBadge label=\{row\.lastPrint \? t\("badgePrinted"\) : t\("badgeUnprinted"\)\} tone=\{row\.lastPrint \? "success" : "muted"\} \/>/)
+  assert.match(queue, /<StatusBadge label=\{t\("oldTag", \{ tag: oldTag \}\)\} tone="warning" \/>/)
+  assert.match(queue, /<span className="text-meta font-medium text-success">\{t\("badgeListed"\)\}<\/span>/)
+  assert.match(queue, /<Chip>\{queueScopeSummary\.label\}<\/Chip>/)
+  assert.equal(queue.match(/<EmptyNote\b/g)?.length, 2)
+  assert.equal(list.match(/<EmptyNote\b/g)?.length, 1)
+  assert.equal(queue.match(/disabled:cursor-not-allowed disabled:bg-background/g)?.length, 1, "an added row keeps the shared disabled look, with a check instead of the plus")
+  // Names first (spec §5): the name, then "tag · holder or ส่วนกลาง · room".
+  assert.match(queue, /<span className="block break-words text-sm font-medium text-foreground">\{row\.name\}<\/span>\n\s+<span id=\{metaId\} className="block break-words text-meta text-muted-foreground">\n\s+<span className="tag">\{row\.assetTag\}<\/span>\n\s+\{holder \? ` · \$\{holder\}` : null\}\n\s+\{row\.location \? ` · \$\{row\.location\.name\}` : null\}/)
+  for (const source of [shell, queue, list]) {
+    assert.doesNotMatch(source, /disabled:opacity|toLocaleString|colorCode|rounded-full|primary-soft|border-dashed|hover:bg-accent|\btext-xs\b|rounded-lg border|max-h-\[32rem\]/)
+  }
 })
 
 test("label print toolbar: PageBackLink, a tape box that keeps its width at 1440 (M27), and the guidance and results as Notice (spec 2D D7, M27)", () => {
