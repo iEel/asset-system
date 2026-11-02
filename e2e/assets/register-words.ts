@@ -34,4 +34,16 @@ export const REGISTER_WORDS = {
   changeTagWarning: "ป้ายที่พิมพ์ไว้จะยังแสดงรหัสเดิม และค้นด้วยรหัสเดิมจะไม่พบ ป้าย QR ยังเปิดทรัพย์สินนี้ได้", tagChanged: "เปลี่ยนรหัสทรัพย์สิน",
   // An open handover locks the holder, the room and แผนก (P2-R3): the notice and its link to the document.
   openHandoverLock: "ใบส่งมอบ {documentNo} ยังเปิดอยู่ ถ้าผู้ถือครองหรือที่ตั้งผิด ให้ยกเลิกใบส่งมอบแล้วส่งมอบใหม่ หรือรับคืน", openHandoverLink: "เปิดใบส่งมอบ",
+  // เอกสารจัดซื้อ (group 4 plan 3, spec §9, P3-R1): the section, the picker's result line and footer, the chosen mark, the
+  // section's badges (create and edit), a chip's × (never clicked on the edit page: it sends the unlink at the save), the
+  // duplicate under the number, the three types the specs use, and the save's toast.
+  purchaseDocuments: "เอกสารจัดซื้อ", purchaseDocumentLinkedNames: "ผูกกับ {count, number} เครื่อง: {names}",
+  purchaseDocumentLinkedCount: "ผูกกับ {count, number} เครื่อง", purchaseDocumentChosen: "เลือกแล้ว",
+  purchaseDocumentSearchFooter: "พบ {count, number} ใบ จากเอกสารกลาง {total, number} ใบ · ค้นหาได้ด้วยเลขที่เอกสาร เลข PO เลขใบกำกับ ผู้ขาย หรือชื่อรุ่นของเครื่องที่ผูกไว้",
+  documentsSelected: "เลือกแล้ว {count, number} ใบ", documentsLinked: "ผูกไว้ {count, number} ใบ", purchaseDocumentRemoveNamed: "เอา {number} ออก",
+  purchaseDocumentExists: "เอกสารจัดซื้อนี้มีอยู่แล้ว", typePurchaseOrder: "ใบ PO", typeInvoice: "ใบกำกับ", typeDeliveryNote: "ใบส่งของ",
+  savedSuccess: "บันทึกสำเร็จ",
+  // The batch form (spec §8): its mode button, its save, the review and its confirm, and the result.
+  createModeBatch: "เพิ่มเป็นชุด", batchSubmit: "บันทึกทั้งชุด", batchReviewTitle: "ตรวจสอบก่อนบันทึก", batchReviewConfirm: "ยืนยันและบันทึกทั้งชุด",
+  batchCreatedTitle: "สร้างทรัพย์สินเป็นชุดสำเร็จ",
 } as const

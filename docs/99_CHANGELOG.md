@@ -6,6 +6,23 @@
 
 ## 2026-11-02
 
+### กลุ่มหน้า 4 แผน 3: เอกสารจัดซื้อในฟอร์มทรัพย์สิน
+
+Branch `feat/group4-purchase-docs` (จาก `master` `636fe540`) · spec `docs/superpowers/specs/2026-11-01-page-group-4-register-form-design.md` (§8 เพิ่มเป็นชุด, §9 เอกสารจัดซื้อ, §16.1, §17) · plan `docs/superpowers/plans/2026-11-02-group4-purchase-documents.md` (ข้อตัดสิน P3-R1 ถึง P3-R9)
+
+- **ตัวช่วยกลาง (Task 1, P3-R3, P3-R9):** `src/lib/purchase-documents.ts` มี `findPurchaseDocumentDuplicates` (ประเภท + เลขที่ซ้ำ ทั้งเอกสารที่ใช้งานอยู่และปิดใช้งาน หรือซ้ำกันเองในการบันทึกเดียวกัน) · `createPurchaseDocumentRecord` · `linkPurchaseDocumentsToAsset(db, …)` ใช้ในธุรกรรมได้ · ทุกทางที่สร้างเอกสารตอบซ้ำเป็น 409 `{ error: "Purchase document already exists", id, code: "DUPLICATE", fieldErrors: { documentNo: "duplicate" } }` · เอา `GET /api/purchase-documents` (300 ใบพร้อมทุกลิงก์ ไม่มีผู้เรียก) ออก
+- **ค้นหา (Task 2, P3-R2):** `GET /api/purchase-documents/search` ต้องมี `asset:create` หรือ `asset:edit` ตรวจก่อนอ่านคำค้น · ทุกคำต้องตรงกับเลขที่เอกสาร เลข PO เลขใบกำกับ รหัสหรือชื่อผู้ขาย หรือรหัส ชื่อ **ชื่อรุ่น** ของทรัพย์สินที่ผูกไว้ · ตอบไม่เกิน 20 ใบ (ไม่มีคำค้น 10 ใบล่าสุด ผู้ขายของฟอร์มก่อน) พร้อม `total` `activeTotal` และแต่ละใบมี `linkedAssetCount` กับชื่อ 3 เครื่องแรก
+- **ตรวจซ้ำก่อนบันทึก สร้างและผูก เอาออก (Task 3, P3-R2):** `POST /api/purchase-documents/check-duplicates` (`asset:create` หรือ `asset:edit`) · `POST /api/assets/<id>/purchase-documents` แบบ multipart สร้างและผูกในคำขอเดียว ตอบ 201 `{ document, linkedIds }` (JSON ยังผูกเอกสารที่มีอยู่ ไม่เกิน 50 ใบ) · `DELETE /api/assets/<id>/purchase-documents/<documentId>` เอาลิงก์ออกพร้อม audit `unlink_purchase_documents` เอกสารและไฟล์อยู่ครบ · ทั้งหมดต้องมี `asset:edit` · ผู้ขายที่เลือกต้องใช้งานอยู่ ไม่เลือกใช้ผู้ขายของทรัพย์สินเมื่อยังใช้งานอยู่
+- **ช่องค้นหา (Task 4, P3-R1, P3-R7):** `PurchaseDocumentPicker` ชิปของเอกสารที่เลือก ช่องค้นหากลางเป็น combobox รายการอยู่ใต้ช่อง แถวอ่าน "ผูกกับ n เครื่อง: <ชื่อ 3 เครื่องแรก>" ท้ายรายการ "พบ n ใบ จากเอกสารกลาง N ใบ" · นับเอกสารด้วย "ใบ" นับทรัพย์สินที่ผูกด้วย "เครื่อง" · เอกสารที่ปิดใช้งานแล้วยังเป็นชิป ป้าย "ปิดใช้งาน" แต่ค้นไม่เจอ · ไม่ขอข้อมูลตอนเปิดหน้า (P3-R4) พิมพ์ 2 ตัวอักษรแล้วถามหลัง 300 ms
+- **ฟอร์มทีละรายการ (Task 5, P3-R5, P3-R6):** สองส่วน "เลือกเอกสารที่มีอยู่" และ "อัปโหลดเอกสารใหม่" (เคียงกันตั้งแต่ 1024 px) · หน้าเพิ่มเปิดไว้ หน้าแก้ไขพับไว้พร้อมสรุป "ใบ PO … · ใบกำกับ …" และ "ผูกไว้ n ใบ" · กดบันทึกแล้วตรวจซ้ำก่อน เลขที่ซ้ำขึ้นใต้ช่องเลขที่ ไม่บันทึกอะไร ไฟล์ยังอยู่ · บันทึกทรัพย์สินแล้วสร้างและผูกใบใหม่ทีละใบ ผูกใบที่เลือกในคำขอเดียว · หน้าแก้ไขเอาออกและผูกเมื่อกด "บันทึกการแก้ไข" รายการสิ่งที่แก้อ่าน "เพิ่ม <เลขที่>" / "เอา <เลขที่> ออก" · ขั้นเอกสารไม่สำเร็จไปหน้าแก้ไข `?documents=failed#documents` พร้อมรายชื่อใบที่ต้องอัปโหลดใหม่ (ส่งผ่าน sessionStorage ไม่ส่งไฟล์) · ผู้ที่มีแค่ `asset:create` เห็นข้อความ "ผูกหรืออัปโหลดเอกสารจัดซื้อได้เมื่อมีสิทธิ์แก้ไขทรัพย์สิน" และการบันทึกไม่ส่งขั้นเอกสาร · การคัดลอกทรัพย์สินพาเฉพาะเอกสารที่ยังใช้งาน
+- **เพิ่มเป็นชุด (Task 6, P3-R8):** ค้นหาครั้งเดียวและอัปโหลด **1 ใบ** ต่อทั้งชุด · ตรวจซ้ำตอน "ยืนยันและบันทึกทั้งชุด" · `POST /api/assets/batch` เป็น multipart (`payload` `newDocument` `file`) เมื่อมีใบใหม่ สร้างเอกสารและผูกกับทุกเครื่องในธุรกรรมของชุด (`maxWait 10 s`, `timeout 60 s`) · ใบใหม่ต้องมี `asset:edit` ชุดเองยังเป็น `asset:create` · ไฟล์เกิน 1 ไฟล์ตอบ 400 · ตัวเลือกของฟอร์มไม่โหลดเอกสาร 300 ใบแล้ว
+- **E2E และเอกสาร (Task 7):**
+  - `e2e/assets/register-purchase-documents.spec.ts`: PD1 (ทั้งสี่ชุด) ทรัพย์สิน A มีรุ่นที่มีอยู่แล้ว (อ่านด้วย seed admin ไม่สร้างข้อมูลหลัก) และ PO ที่ผูกผ่าน API · ค้น "<ชื่อรุ่น> <รหัส A>" ได้ PO ใบเดียวพร้อม "ผูกกับ 1 เครื่อง: <ชื่อ A>" และท้ายรายการ · เลือกแล้ว "เลือกแล้ว 1 ใบ" · อัปโหลดเลขที่ซ้ำขึ้นใต้ช่องก่อน ไม่ส่ง POST ไฟล์ยังอยู่ · เปลี่ยนเป็นใบกำกับแล้วบันทึก (สร้างและผูก แล้วผูก PO) · PO ผูก 2 เครื่อง · หน้าแก้ไขพับไว้พร้อมสรุปและ "ผูกไว้ 2 ใบ" เปิดแล้วเห็นชิป 2 ใบ (ไม่กด ×) · PD2 (บนคอม) เพิ่มเป็นชุด 2 แถว เลือก PO และอัปโหลดใบส่งของ 1 ใบ สร้าง 2 เครื่อง PO ผูก 4 ใบส่งของผูก 2
+  - ตัวช่วย `e2e/assets/purchase-steps.ts` (`readOneModel`, `createPurchaseDocumentByApi`, `searchPurchaseDocuments`, `readPurchaseDocument`) · `CreateAssetOptions` รับ `categoryId` `brandId` `modelId` · คำใน `e2e/assets/register-words.ts` · pin ใน `tests/e2e-register.test.ts`
+  - เอกสาร: `docs/04_AUTH_RBAC.md`, `docs/06_WORKFLOWS.md`, `docs/07_UAT_CHECKLIST.md` (เอาออกตอนบันทึก หน้าแก้ไขหลังอัปโหลดไม่สำเร็จ อัปโหลดในชุด ผู้ที่มีแค่สิทธิ์เพิ่ม ซึ่ง E2E ทำไม่ได้), `docs/14_UI_UX_DESIGN_SYSTEM.md`, DESIGN.md (เอกสารจัดซื้อสองส่วน และ `PurchaseDocumentPicker`), `DEVELOPER_HANDOFF.md`
+  - E2E: `<E2E run id>` ผ่าน <passed> ไม่ผ่าน <failed> ข้าม <skipped> (`register-purchase-documents`, `register-asset`, `bulk-move`, `asset-detail`, `register-edit-correction`, `field-errors`, `roles` สี่ project) · ดูหน้าจริงที่ 1440 1024 และ 390 สองธีม: <ผล>
+- ยังไม่ deploy · ไม่มี migration
+
 ### กลุ่มหน้า 4 แผน 2: หน้าเพิ่มและหน้าแก้ไขทรัพย์สิน
 
 Branch `feat/group4-form` (จาก `master` `adf68fca`) · spec `docs/superpowers/specs/2026-11-01-page-group-4-register-form-design.md` (§7, §8 ยกเว้นเอกสารจัดซื้อที่เป็นแผน 3, §15 ข้อ 8-16 และ 24, §17) · plan `docs/superpowers/plans/2026-11-02-group4-form.md` (ข้อตัดสิน P2-R1 ถึง P2-R11)
@@ -2225,8 +2242,11 @@ Current AD mapping rules:
 | Maintenance Attachment API | `POST /api/maintenance-tickets/{ticketId}/attachments` |
 | Maintenance Ticket Export | `GET /api/maintenance-tickets/export` |
 | Asset Model Photo API | `POST /api/models/{modelId}/attachments` |
-| Purchase Documents API | `GET/POST /api/purchase-documents` |
-| Asset Purchase Document Link API | `POST /api/assets/{assetId}/purchase-documents` |
+| Purchase Documents API | `POST /api/purchase-documents` (the `GET` was removed on 2026-11-02, group 4 plan 3) |
+| Purchase Document Search API | `GET /api/purchase-documents/search?q=&supplierId=` (2026-11-02) |
+| Purchase Document Duplicate Pre-check API | `POST /api/purchase-documents/check-duplicates` (2026-11-02) |
+| Asset Purchase Document Link API | `POST /api/assets/{assetId}/purchase-documents` (JSON: link; multipart: create and link, since 2026-11-02) |
+| Asset Purchase Document Unlink API | `DELETE /api/assets/{assetId}/purchase-documents/{documentId}` (2026-11-02) |
 | Asset Component Install API | `POST /api/assets/{assetId}/components` |
 | Asset Component Remove API | `DELETE /api/assets/{assetId}/components/{componentId}` |
 | Disposal Requests | `http://localhost:3000/th/disposal` |
