@@ -115,6 +115,8 @@ test("the labels page words have glossary rows before use, and the page's fixed 
   assert.match(glossary, /\| ทรัพย์สินที่เปลี่ยนรหัสหลังพิมพ์ป้ายครั้งล่าสุด \| \*\*ต้องพิมพ์ใหม่\*\*/)
   assert.match(glossary, /\| ทรัพย์สินที่เพิ่มเข้ารายการพิมพ์แล้ว \| \*\*อยู่ในรายการพิมพ์\*\*/)
   assert.match(glossary, /\| รหัสที่ป้ายซึ่งติดอยู่ยังแสดง \(พิมพ์ก่อนเปลี่ยนรหัส\) \| \*\*ป้ายเดิม <รหัส>\*\*/)
+  // The row shows it whenever the printed tag differs, in every mode and in search results (plan 6 final review).
+  assert.match(glossary, /\*\*ป้ายเดิม <รหัส>\*\* ในแถวคิวและผลค้นหาเมื่อรหัสบนป้ายต่างจากรหัสปัจจุบัน \(เช่นในคิว "ต้องพิมพ์ใหม่"\) \|/)
   assert.deepEqual(brokenRules("พิมพ์ซ้ำ"), ["พิมพ์ซ้ำ"])
 
   const tools = th.assetTools as Record<string, unknown>
