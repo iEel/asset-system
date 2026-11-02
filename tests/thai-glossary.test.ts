@@ -41,6 +41,8 @@ const rules: Rule[] = [
   // Group 4 plan 4 (P4-R6): the repair action reads บันทึกซ่อม. Narrow on purpose: only a value that starts with the
   // word (a button or action label); "ใบแจ้งซ่อม", "วันที่แจ้งซ่อม" and the like inside a sentence stay legal.
   { term: "แจ้งซ่อม (ชื่อปุ่มหรือการกระทำ)", pattern: /^\s*แจ้งซ่อม/, use: "บันทึกซ่อม" },
+  // Group 4 plan 6 (P6-R6): an asset whose tag changed after its last print is ต้องพิมพ์ใหม่, never "พิมพ์ซ้ำ".
+  { term: "พิมพ์ซ้ำ", pattern: /พิมพ์ซ้ำ/, use: "ต้องพิมพ์ใหม่" },
 ]
 
 // Removed before matching: product names and allowed compounds.
@@ -105,6 +107,41 @@ test("the repair rule flags แจ้งซ่อม as an action only, never �
   assert.deepEqual(brokenRules("ยกเลิกใบแจ้งซ่อม"), [])
   assert.deepEqual(brokenRules("ไม่พบใบแจ้งซ่อมนี้"), [])
   assert.deepEqual(brokenRules("วันที่ซ่อมเสร็จต้องไม่ก่อนวันที่แจ้งซ่อม"), [])
+})
+
+test("the labels page words have glossary rows before use, and the page's fixed names read as the plan rules (plan 6)", () => {
+  const glossary = readFileSync("docs/19_THAI_GLOSSARY.md", "utf8")
+  assert.match(glossary, /\| นับป้ายในหน้าพิมพ์ป้าย \| \*\*ดวง\*\*/)
+  assert.match(glossary, /\| ทรัพย์สินที่เปลี่ยนรหัสหลังพิมพ์ป้ายครั้งล่าสุด \| \*\*ต้องพิมพ์ใหม่\*\*/)
+  assert.match(glossary, /\| ทรัพย์สินที่เพิ่มเข้ารายการพิมพ์แล้ว \| \*\*อยู่ในรายการพิมพ์\*\*/)
+  assert.match(glossary, /\| รหัสที่ป้ายซึ่งติดอยู่ยังแสดง \(พิมพ์ก่อนเปลี่ยนรหัส\) \| \*\*ป้ายเดิม <รหัส>\*\*/)
+  assert.deepEqual(brokenRules("พิมพ์ซ้ำ"), ["พิมพ์ซ้ำ"])
+
+  const tools = th.assetTools as Record<string, unknown>
+  const page = tools.labelsPage as Record<string, unknown>
+  assert.equal(tools.labelSearchPlaceholder, "รหัสทรัพย์สิน ชื่อ Serial ผู้ถือครอง หรือที่ตั้ง", "P6-R12")
+  // Stable hooks (plan Global Constraints) and P6-R3, P6-R8, P6-R10.
+  assert.equal(page.print, "พิมพ์ป้าย {count, number} ดวง")
+  assert.equal(page.testPrint, "พิมพ์ทดสอบ 1 ดวง")
+  assert.equal(page.testPrintNote, "พิมพ์ทดสอบ")
+  assert.equal(page.clearList, "ล้างรายการพิมพ์")
+  assert.equal(page.barSummary, "{count, number} ดวงที่จะพิมพ์ · เทป {size}")
+  assert.equal(page.addAllSummary, "ตรงตัวกรอง {matched, number} รายการ · อยู่ในรายการพิมพ์แล้ว {listed, number} · จะเพิ่มใหม่ {added, number}")
+  assert.equal(page.addAll, "เพิ่มทั้งหมด {count, number} รายการ")
+  assert.equal(page.addSome, "เพิ่ม {count, number} รายการ")
+  assert.equal(page.addFirst100, "เพิ่ม 100 รายการแรก")
+  assert.equal(page.addRemaining, "เหลืออีก {count, number} รายการ")
+  // The board's names (recon critic X7).
+  assert.equal(page.queueListLabel, "คิวป้าย {count, number} รายการ")
+  assert.equal(page.filtersLabel, "ตัวกรองคิวป้าย")
+  assert.equal(page.previewName, "ตัวอย่างป้ายเทป {size} ของ {tag}")
+  assert.equal(page.previewPrevious, "ดวงก่อนหน้า")
+  assert.equal(page.previewNext, "ดวงถัดไป")
+  assert.equal(page.previewPosition, "ดวงที่ {index, number} จาก {total, number}")
+  assert.equal(page.rowListed, "อยู่ในรายการพิมพ์แล้ว: {name}")
+  assert.equal(page.oldTag, "ป้ายเดิม {tag}")
+  // P6-R5: four modes.
+  assert.deepEqual(page.mode, { unprinted: "ยังไม่เคยพิมพ์", printed: "เคยพิมพ์แล้ว", recent: "ทั้งหมดล่าสุด", reprint: "ต้องพิมพ์ใหม่" })
 })
 
 test("every glossary exception points at a real key and explains itself", () => {

@@ -364,10 +364,10 @@ test("N2 a dashed or dotted line is drawn only by the drop zone and the signatur
 })
 
 // N3: commands are Button, or buttonVariants on a link. A raw <button> stays only in the shared part that is that
-// control (OWNERS: the row next step and sheet menu, the search clear, the combobox trigger and clear, the segmented
-// options) or where the whole row, the image or a control on the camera image is the button (EXEMPT, each with a comment
+// control (OWNERS: the filter chip with its menu (group 4 plan 6, P6-R4), the row next step and sheet menu, the search
+// clear, the combobox trigger and clear, the segmented options) or where the whole row, the image or a control on the camera image is the button (EXEMPT, each with a comment
 // at the site where the plan that kept it wrote one).
-const RAW_BUTTON_OWNERS = ["src/components/ui/row-actions.tsx", "src/components/ui/search-field.tsx", "src/components/ui/searchable-select.tsx", "src/components/ui/segmented.tsx"]
+const RAW_BUTTON_OWNERS = ["src/components/ui/filter-menu-chip.tsx", "src/components/ui/row-actions.tsx", "src/components/ui/search-field.tsx", "src/components/ui/searchable-select.tsx", "src/components/ui/segmented.tsx"]
 const RAW_BUTTON_EXEMPT: ExemptList = {
   "src/components/assets/asset-attachments.tsx": { count: 1, kind: "permanent", why: "the photo is the control: a photo of the files tab opens its preview", ruling: "2D-3 R5; group 1 asset detail task 11" },
   "src/components/assets/asset-component-manager.tsx": { count: 1, kind: "permanent", why: "a candidate row: a pressed list option of two lines", ruling: "2D-3 R5" },
