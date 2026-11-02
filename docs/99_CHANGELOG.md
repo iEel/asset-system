@@ -15,6 +15,7 @@ Branch `feat/group4-components-scan` (จาก `master` `2ebb4502`) · spec `do
 - **หน้าส่วนควบ (Task 3, P4-R3..R5):** หัวหน้ามีชื่อ รหัส ผู้ถือครอง ห้อง และปุ่มหลัก "ติดตั้งส่วนควบ" · แผงติดตั้งปิดไว้ตอนเปิดหน้า · ผู้สมัครขึ้นชื่อก่อน "ยังไม่ได้ติดตั้ง" และ "เคยติดตั้งกับเครื่องนี้ · ถอดออก <วันที่>" · บทบาทเป็นตัวเลือก 8 ค่า · ตารางเดียวทั้งที่ติดตั้งอยู่และที่ถอดแล้ว · ⋯ ที่แถวปัจจุบัน · ช่องถอดเทียบ ตอนนี้ | หลังยืนยัน
 - **ค้นหาของหน้าสแกน (Task 4, P4-R7):** `GET /api/assets/scan-search` (`asset:view`) ค้นรหัส Serial ชื่อ ผู้ถือครอง ที่ตั้ง รุ่น · ไม่เกิน 8 แถว · อ่านไม่เกิน 9 ครั้งต่อคำตอบ · การกระทำตามสิทธิ์ของผู้ถาม
 - **หน้าสแกน (Task 5, P4-R2, P4-R7):** การ์ดผลลัพธ์ "พบ n รายการ · ตรงกับ <ช่อง>" พร้อมข้อมูล ส่วนควบ และการกระทำที่ทำได้ตอนนี้ · Enter เปิดเมื่อมีรหัสหรือ Serial ตรงพอดี 1 รายการ · "เปิดล่าสุด" พร้อม "ล้างรายการ" · QR ยังเปิดทันทีเหมือนเดิม
+- **แก้ตามรีวิวรวม:** หน้าส่วนควบรับ returnTo `/<locale>/asset-management/scan` (การ์ดของส่วนควบ "จัดการส่วนควบ" กลับหน้าสแกนได้) · `loadComponentManagerRows` อ่านส่วนควบที่ติดตั้งอยู่และค้างคืนครบทุกแถว จำกัด 100 แถวเฉพาะที่ถอดแล้ว (ถอดล่าสุดก่อน) และนับ ติดตั้งอยู่ ค้างคืน ถอดแล้ว จาก count จึงเป็นยอดจริง · ถอดสำเร็จแล้วโฟกัสไป ⋯ ของแถวปัจจุบันถัดไป ถ้าไม่มีไปปุ่ม "ติดตั้งส่วนควบ" ถ้าไม่มีไปหัวตาราง · หน้าสแกนมีบรรทัดสถานะสำหรับโปรแกรมอ่านหน้าจอ (กำลังโหลด หัวผลลัพธ์ ไม่พบ) · ค้นหาไม่สำเร็จแสดง "ค้นหาไม่สำเร็จ ลองอีกครั้ง" พร้อมปุ่ม "ลองอีกครั้ง" ไม่แสดงเป็น "ไม่พบ" · หัวผลลัพธ์บอก "ตรงกับ <ช่อง>" เฉพาะเมื่อแสดงครบทุกรายการ เกิน 8 รายการมีบรรทัด "แสดง 8 รายการแรก" (`assetTools.scanShownFirst`) · ลบคำที่ไม่มีใครใช้ 4 คำ (`asset.currentComponents`, `noCurrentComponents`, `viewEvidence`, `componentSummaryHelp`) · plural keys 45 → 46 · เอกสารบอกว่าลิงก์ไหนกลับหน้าสแกน (บันทึกซ่อม และ พิมพ์ป้าย ไม่กลับ)
 - **E2E และเอกสาร (Task 6):**
   - `e2e/assets/register-components.spec.ts` (ทั้งสี่ชุด): ติดตั้งจากปุ่มหัวหน้า ถอดจาก ⋯ ผ่านช่องถอด (POST …/remove ตอบ 200 พร้อมเหตุผลและรูป) แถวที่ถอดแล้ว และผู้สมัครที่ "เคยติดตั้งกับเครื่องนี้"
   - `e2e/assets/scan-search.spec.ts` (ทั้งสี่ชุด): Serial ที่ไม่ซ้ำต่อรอบ การ์ดเดียว "ตรงกับ Serial" ข้อมูลและลิงก์การกระทำ เปิดแล้วกลับ "เปิดล่าสุด" "ล้างรายการ" และ Enter ที่รหัสเต็ม
@@ -2267,7 +2268,7 @@ Current AD mapping rules:
 | Asset Purchase Document Link API | `POST /api/assets/{assetId}/purchase-documents` (JSON: link; multipart: create and link, since 2026-11-02) |
 | Asset Purchase Document Unlink API | `DELETE /api/assets/{assetId}/purchase-documents/{documentId}` (2026-11-02) |
 | Asset Component Install API | `POST /api/assets/{assetId}/components` |
-| Asset Component Remove API | `DELETE /api/assets/{assetId}/components/{componentId}` |
+| Asset Component Remove API | `POST /api/assets/{assetId}/components/{componentId}/remove` (the `DELETE` was removed on 2026-11-02, group 4 plan 4, P4-R1) |
 | Disposal Requests | `http://localhost:3000/th/disposal` |
 | Disposal Request Detail | `http://localhost:3000/th/disposal/{requestId}` |
 | Disposal Approval Print | `http://localhost:3000/th/disposal/{requestId}/print` |

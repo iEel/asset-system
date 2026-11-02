@@ -201,3 +201,9 @@ test("the four component messages the one-table rewrite left unread are gone (fi
     for (const key of ["currentComponents", "noCurrentComponents", "viewEvidence", "componentSummaryHelp"]) assert.equal(words[key], undefined, `${locale} asset.${key}`)
   }
 })
+
+test("the changelog's URL table names the component removal as POST …/remove, not the removed DELETE (final review)", () => {
+  const changelog = readText("docs/99_CHANGELOG.md")
+  assert.match(changelog, /\| Asset Component Remove API \| `POST \/api\/assets\/\{assetId\}\/components\/\{componentId\}\/remove` /)
+  assert.doesNotMatch(changelog, /\| Asset Component Remove API \| `DELETE /)
+})

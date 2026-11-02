@@ -215,3 +215,14 @@ test("a failed search shows an inline error with retry, never no results, and dr
   assert.match(page, /searchFailed: tGlobalSearch\("failed"\)/)
   assert.match(page, /retry: tCommon\("tryAgain"\)/)
 })
+
+test("the docs say which scan-card links come back to the scan: not บันทึกซ่อม or พิมพ์ป้าย (final review)", () => {
+  const workflows = readFileSync("docs/06_WORKFLOWS.md", "utf8")
+  const uat = readFileSync("docs/07_UAT_CHECKLIST.md", "utf8")
+  const spec = readFileSync("e2e/assets/scan-search.spec.ts", "utf8")
+  assert.doesNotMatch(workflows, /Every link comes back to `\/<locale>\/asset-management\/scan`/)
+  assert.match(workflows, /บันทึกซ่อม \(`\/<locale>\/maintenance\/new\?assetId=…`\) and พิมพ์ป้าย \(`\/<locale>\/assets\/<id>\/label`\) open their own pages without it/)
+  assert.match(workflows, /"แสดง 8 รายการแรก"/)
+  assert.doesNotMatch(uat, /บันทึกซ่อม, พิมพ์ป้าย, each coming back to the scan/)
+  assert.doesNotMatch(spec, /Each comes back to the scan\./)
+})

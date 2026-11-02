@@ -68,7 +68,8 @@ test("part of a Serial typed finds one card that matched the Serial, with its fa
   await expect(card).toContainText(fillTemplate(SCAN_WORDS.componentsValue, { count: 1, names: component.name }))
 
   // The actions it can take now (P4-R7): รับคืน of this handover, บันทึกซ่อม, พิมพ์ป้าย; ส่งมอบ and โอนย้าย cannot run
-  // while the handover is open, so the card leaves them out. Each comes back to the scan.
+  // while the handover is open, so the card leaves them out. รับคืน comes back to the scan (its returnTo is checked below);
+  // บันทึกซ่อม and พิมพ์ป้าย open their own pages without a returnTo.
   const actions = card.getByRole("group", { name: SCAN_WORDS.nextActions })
   await expect(actions.getByRole("link")).toHaveText([SCAN_WORDS.checkin, SCAN_WORDS.recordRepair, SCAN_WORDS.printLabel])
   const href = async (name: string) => new URL((await actions.getByRole("link", { name, exact: true }).getAttribute("href")) ?? "", "http://scan.test")
