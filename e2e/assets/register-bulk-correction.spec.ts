@@ -5,6 +5,8 @@
 // reason. The บุคคล asset takes the holder's department (the line in the dialog says so), the ส่วนกลาง asset keeps its
 // own; the history reads แก้ไขข้อมูลผู้ถือครอง (and แก้ไขข้อมูลแผนก for the บุคคล one only) with the reason.
 // Desktop only: the selection bar with "อื่น ๆ" is the desktop's (§6.5); the phone's floating bar is the old one, kept.
+// The bar's พิมพ์ป้าย is followed to the labels page, which lists the two with the from-register line (group 4 plan 6,
+// P6-R1), before the correction.
 // The department the assets start in is an existing one read by the seed admin (readSecondDepartment, as the
 // department tests of group 3 read it); the holder is the run's receiver. No master data is changed.
 import { asUser, expect, test } from "../support/fixtures.ts"
@@ -13,6 +15,7 @@ import { readRunData, readRunState } from "../support/state.ts"
 import { fillTemplate } from "../shell/shell-words.ts"
 import { txAssetTag } from "../transactions/tx-plan.ts"
 import { createTxAsset, expectFieldError, readAsset, readAssetMasters, readSecondDepartment, record, visit, visitAssetPage } from "../transactions/tx-support.ts"
+import { LABEL_WORDS } from "./labels-words.ts"
 import { REGISTER_WORDS } from "./register-words.ts"
 
 asUser("itStaff")
@@ -50,7 +53,22 @@ test("a บุคคล and a ส่วนกลาง asset given one holder in
   for (const asset of [personal, shared]) await table.getByRole("checkbox", { name: asset.assetTag, exact: true }).check()
   const bar = page.locator(BAR)
   await expect(bar).toContainText(fillTemplate(REGISTER_WORDS.selectedOnPage, { count: 2 }))
-  await expect(bar.getByRole("button", { name: fillTemplate(REGISTER_WORDS.printLabelsCount, { count: 2 }), exact: true })).toBeVisible()
+  // พิมพ์ป้าย opens the labels page in this tab with the two listed and the from-register line (group 4 plan 6, P6-R1).
+  // The labels page is left once its queue has answered (a cancelled request would count as a failed one); the register
+  // is then opened again with the two ticked again.
+  const labelsQueue = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/label-prints" && response.request().method() === "GET")
+  await bar.getByRole("button", { name: fillTemplate(REGISTER_WORDS.printLabelsCount, { count: 2 }), exact: true }).click()
+  await page.waitForURL((url) => url.pathname === "/th/asset-management/labels" && url.searchParams.get("from") === "register")
+  expect(new URL(page.url()).searchParams.get("assetIds")?.split(",").sort()).toEqual([personal.id, shared.id].sort())
+  expect((await labelsQueue).status(), "the labels page's queue").toBe(200)
+  await expect(page.locator("[data-label-selected-row]")).toHaveCount(2)
+  for (const asset of [personal, shared]) await expect(page.locator(`[data-label-selected-row="${asset.id}"]`)).toBeVisible()
+  await expect(page.getByText(fillTemplate(LABEL_WORDS.fromRegister, { count: 2 }), { exact: true })).toBeVisible()
+  await record(measure, "the labels page from the register's พิมพ์ป้าย", testInfo)
+  await visit(measure, `/th/assets?search=${encodeURIComponent(search)}`, "register, back from the labels page", testInfo)
+  await expect(main).toContainText(fillTemplate(REGISTER_WORDS.range, { from: 1, to: 2, total: 2 }))
+  for (const asset of [personal, shared]) await table.getByRole("checkbox", { name: asset.assetTag, exact: true }).check()
+  await expect(bar).toContainText(fillTemplate(REGISTER_WORDS.selectedOnPage, { count: 2 }))
   await bar.getByRole("button", { name: REGISTER_WORDS.moreActions, exact: true }).click()
   await page.getByRole("menu").getByRole("menuitem", { name: REGISTER_WORDS.bulkUpdate, exact: true }).click()
   const dialog = page.getByRole("dialog", { name: REGISTER_WORDS.bulkCorrectionTitle })

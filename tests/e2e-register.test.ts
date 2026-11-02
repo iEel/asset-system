@@ -434,3 +434,112 @@ test("the import spec imports a file of its own as IT staff on the dev database,
   assert.ok(importExportPage.includes("{batch.fileName}</h3>"))
   for (const route of ["import-preview", "import-confirm"]) assert.ok(read(`src/app/api/assets/${route}/route.ts`).includes('requirePermission(user, "asset", "create")'), route)
 })
+
+// Group 4 plan 6 Task 7 (spec §11, §17; P6-R1, P6-R3, P6-R9, P6-R10; call 19): the labels spec reads the app's own
+// words, adds three run assets of its own from the run room's queue, checks the add-all line by its relation (never a
+// pinned count: the run room grows, critic §5.1), prints them on the desktop through the popup's URL opened in the
+// measured page with window.print stubbed, and finds them under เคยพิมพ์แล้ว; the phone checks its inline actions only.
+// The viewer sees the page with the print actions enabled and prints nothing. The register's bulk correction spec follows
+// its พิมพ์ป้าย to the labels page and reads the from-register line.
+test("the labels spec adds three run assets from the run room's queue, prints them on the desktop and finds them printed; the viewer prints nothing (group 4 plan 6 task 7)", async () => {
+  const { LABEL_WORDS } = await import("../e2e/assets/labels-words.ts")
+  const th = JSON.parse(read("messages/th.json"))
+  const shapes = new Set(values(th).map(shape))
+  for (const [name, text] of Object.entries(LABEL_WORDS)) assert.ok(shapes.has(shape(text)), `${name}: "${text}" is a value of messages/th.json`)
+  const labels = th.assetTools.labelsPage
+  assert.deepEqual(
+    [LABEL_WORDS.title, LABEL_WORDS.queueModeLabel, LABEL_WORDS.filtersLabel, LABEL_WORDS.filterLocation, LABEL_WORDS.filterSort, LABEL_WORDS.sortNewest, LABEL_WORDS.locationSearch],
+    [labels.title, labels.queueModeLabel, labels.filtersLabel, labels.filter.location, labels.filter.sort, labels.sort.newest, labels.locationSearchPlaceholder],
+  )
+  assert.deepEqual(
+    [LABEL_WORDS.addAllSummary, LABEL_WORDS.addAll, LABEL_WORDS.addSome, LABEL_WORDS.addFirst100, LABEL_WORDS.addRemaining, LABEL_WORDS.rowListed, LABEL_WORDS.badgePrinted, LABEL_WORDS.queueEmpty],
+    [labels.addAllSummary, labels.addAll, labels.addSome, labels.addFirst100, labels.addRemaining, labels.rowListed, labels.badgePrinted, labels.queueEmpty],
+  )
+  assert.deepEqual(
+    [LABEL_WORDS.listTitle, LABEL_WORDS.listCount, LABEL_WORDS.listEmpty, LABEL_WORDS.fromRegister, LABEL_WORDS.note, LABEL_WORDS.previewName, LABEL_WORDS.barSummary, LABEL_WORDS.testPrint, LABEL_WORDS.print],
+    [labels.listTitle, labels.listCount, labels.listEmpty, labels.fromRegister, labels.note, labels.previewName, labels.barSummary, labels.testPrint, labels.print],
+  )
+  assert.deepEqual(
+    [LABEL_WORDS.printRouteTitle, LABEL_WORDS.printRouteButton, LABEL_WORDS.printRecorded],
+    [th.asset.printLabelsTitle, th.asset.printLabel, th.asset.labelPrintRecorded],
+  )
+
+  const spec = read("e2e/assets/labels.spec.ts")
+  assert.ok(spec.includes(`from "../support/fixtures.ts"`) && !spec.includes(`from "@playwright/test"`), "the suite's fixtures")
+  const lines = spec.split("\n").map((line) => line.trim())
+  assert.ok(lines.includes(`asUser("itStaff")`) && lines.includes(`asUser("viewer")`), "IT staff print; the viewer looks")
+  // All four projects: the phone takes its own branch, never a skip.
+  assert.ok(!spec.includes("test.skip("), "all four projects")
+  assert.ok(spec.includes('if (e2eDevice === "desktop") {'), "the print path is the desktop's")
+  // Three run-marked assets of its own in the run room; no master data, no sign-in, nothing deleted, no settings save.
+  for (const key of ["LB1", "LB2", "LB3"]) assert.ok(spec.includes(`await createTxAsset(page, masters, testInfo.project.name, "${key}", `), key)
+  assert.doesNotMatch(spec, /\/api\/(?:locations|departments|employees|admin|companies|branches|categories)|createRoom\(|signInOnce\(|request\.delete|DELETE/)
+  // The run room through the room chip's search; the queue's own answers awaited; nothing left in flight on leaving.
+  for (const hook of [
+    "const { location: runRoom } = runRecords(runId)",
+    'url.searchParams.get("locationId") === readRunData().locationId',
+    'await popover.getByRole("combobox", { name: LABEL_WORDS.locationSearch, exact: true }).fill(runRoom.code)',
+    'await popover.getByRole("option", { name: `${runRoom.code} - ${runRoom.name}` }).click()',
+    "fillTemplate(CHIP, { label: LABEL_WORDS.filterLocation, value: runRoom.name })",
+    'await page.getByRole("menuitemradio", { name: LABEL_WORDS.sortNewest, exact: true }).click()',
+    "await queueRequests.idle()",
+  ]) assert.ok(spec.includes(hook), hook)
+  // The add-all line by its relation (P6-R3, critic §5.1): a is read from the page, never pinned.
+  for (const hook of [
+    'expect(line.c, "c = min(a, 100) − b").toBe(Math.min(line.a, 100) - line.b)',
+    "expect(before.b).toBe(0)",
+    "expect(after.b).toBe(3)",
+  ]) assert.ok(spec.includes(hook), hook)
+  assert.doesNotMatch(spec, /addAllSummary, \{ matched: \d/, "a is never pinned")
+  // The three added by their rows, the numbered list in that order, the preview's tag.
+  for (const hook of [
+    'page.locator(`[data-label-queue-row="${asset.id}"]`)',
+    "fillTemplate(LABEL_WORDS.rowListed, { name: asset.name })",
+    'page.getByRole("list", { name: LABEL_WORDS.listTitle, exact: true })',
+    '.locator("[data-label-selected-row]")',
+    "toHaveText(`${index + 1}${asset.name}${asset.assetTag}`)",
+    'templatePattern(LABEL_WORDS.previewName, { size: "[^]+?", tag: escapeRegExp(lb1.assetTag) })',
+  ]) assert.ok(spec.includes(hook), hook)
+  // The desktop: the bar's print opens the popup; its URL carries the ids in the query and tape and note in the hash
+  // (P6-R9); the popup is closed and its URL opened in the measured page, where window.print is stubbed, the print
+  // records 3 and the page says so; the queue's เคยพิมพ์แล้ว lists the three.
+  for (const hook of [
+    "const BAR = '[data-slot=\"desktop-selection-bar\"]'",
+    'const popupOpened = page.context().waitForEvent("page")',
+    "await popup.close()",
+    'expect(printUrl.searchParams.getAll("id")).toEqual(assets.map((asset) => asset.id))',
+    'expect(hash.get("note")).toBe(note)',
+    "window.print = () => {",
+    'response.request().method() === "POST" && new URL(response.url()).pathname === LABEL_PRINTS_PATH',
+    "expect(await (await recorded).json()).toMatchObject({ assetCount: 3 })",
+    "await expect.poll(() => page.evaluate(() => (window as Window & { __e2ePrints?: number }).__e2ePrints)).toBe(1)",
+    "page.locator('button:has([data-label-mode=\"printed\"])').filter({ visible: true })",
+  ]) assert.ok(spec.includes(hook), hook)
+  // Axe (the measure fixture) on the labels page with the list filled and on the print route, in each project's theme.
+  for (const label of ["labels, three listed with the preview", "the print route, recorded", "labels, the three under เคยพิมพ์แล้ว"]) assert.ok(spec.includes(`"${label}", testInfo)`), label)
+  // The viewer: the print actions enabled once a row is listed, and no print recorded.
+  assert.ok(spec.includes('expect(posted, "the viewer records no print").toBe(0)'))
+
+  // The hooks the spec stands on are the app's.
+  const queue = read("src/components/assets/asset-label-queue.tsx")
+  for (const hook of ['"data-label-queue-row": row.id', "label: <span data-label-mode={mode}>", 'role="group" aria-label={t("filtersLabel")}', "aria-describedby={`${metaId} ${stateId}`}"]) assert.ok(queue.includes(hook), hook)
+  const list = read("src/components/assets/asset-label-print-list.tsx")
+  for (const hook of ["data-label-selected-row={asset.id}", '<ol aria-label={t("listTitle")}', 'label={t("previewName", { size: tapeText, tag: sheetAsset.assetTag })}', '{t("print", { count })}']) assert.ok(list.includes(hook), hook)
+  assert.ok(read("src/components/assets/asset-label-sheet.tsx").includes('role={label ? "group" : undefined}'))
+  assert.ok(read("src/components/ui/filter-menu-chip.tsx").includes('<PopoverContent align="start" aria-label={label}'))
+  assert.ok(read("src/components/ui/desktop-selection-bar.tsx").includes('data-slot="desktop-selection-bar"'))
+  assert.ok(read("src/components/assets/asset-label-batch-tool.tsx").includes('window.open(buildLabelPrintUrl({ locale, ids, tapeSize, note: printNote }), "_blank", "noopener,noreferrer")'))
+  const print = read("src/components/assets/asset-label-print.tsx")
+  for (const hook of ['id="asset-label-print-reason"', 'fetch("/api/assets/label-prints", {', "window.print()"]) assert.ok(print.includes(hook), hook)
+  assert.ok(read("src/app/api/assets/label-prints/route.ts").includes("assetCount: orderedAssets.length,"))
+
+  // The register's พิมพ์ป้าย opens the labels page in the same tab with the from-register line (P6-R1).
+  const correction = read("e2e/assets/register-bulk-correction.spec.ts")
+  for (const hook of [
+    'import { LABEL_WORDS } from "./labels-words.ts"',
+    'await bar.getByRole("button", { name: fillTemplate(REGISTER_WORDS.printLabelsCount, { count: 2 }), exact: true }).click()',
+    'url.pathname === "/th/asset-management/labels" && url.searchParams.get("from") === "register"',
+    "fillTemplate(LABEL_WORDS.fromRegister, { count: 2 })",
+    'await expect(page.locator("[data-label-selected-row]")).toHaveCount(2)',
+  ]) assert.ok(correction.includes(hook), hook)
+})
