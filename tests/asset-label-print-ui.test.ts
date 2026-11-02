@@ -302,7 +302,9 @@ test("both print routes read the settings through the one loader (recon X11)", (
     assert.match(source, /import \{ loadAssetLabelPrintSettings \} from "@\/lib\/asset-label-print-settings"/, path)
     assert.match(source, /loadAssetLabelPrintSettings\(\)/, path)
     assert.match(source, /labelTemplates=\{labelSettings\.templates\}/, path)
-    assert.match(source, /buildAssetQrValue\(\{ assetId: asset\.id, publicBaseUrl: labelSettings\.qrBaseUrl \}\)/, path)
+    // One mapper for the label's data, shared with the labels page's preview (Task 5 review).
+    assert.match(source, /toAssetLabelData\(\{ \.\.\.asset, location: asset\.currentLocation \}, labelSettings\.qrBaseUrl\)/, path)
+    assert.doesNotMatch(source, /buildAssetQrValue|serialNumber: asset\.serialNumber/, path)
     assert.doesNotMatch(source, /systemSetting|process\.env|assetLabelSettingKeys|parseAssetLabelTemplates/, path)
   }
 })
@@ -563,12 +565,14 @@ test("test print sends the label shown in the preview, with พิมพ์ท�
 })
 
 test("the print order, the preview's label data and the refreshed rows (P6-R11, P6-R13)", async () => {
-  const { sortLabelPrintList, labelSheetAsset, labelTapeText, refreshLabelRows, labelPrintOrders } = await import(PRINT_LIST_RULES)
+  const { sortLabelPrintList, labelTapeText, refreshLabelRows, labelPrintOrders } = await import(PRINT_LIST_RULES)
+  const { toAssetLabelData } = await import("../src/lib/asset-label-data.ts")
   const { queueRefreshPageSize } = await import("../src/lib/asset-label-queue-rules.ts")
   const row = (id: string, assetTag: string, location: string | null, category: string) => ({
     id,
     assetTag,
     name: `name ${id}`,
+    serialNumber: id === "2" ? null : `SN-${id}`,
     ownershipType: "personal",
     holder: null,
     location: location ? { code: location, name: `room ${location}` } : null,
@@ -584,20 +588,22 @@ test("the print order, the preview's label data and the refreshed rows (P6-R11, 
   assert.deepEqual(ids(sortLabelPrintList(rows, "assetTag")), ["2", "1", "3"], "numeric order")
   assert.deepEqual(ids(sortLabelPrintList(rows, "location")), ["2", "3", "1"])
   assert.deepEqual(ids(sortLabelPrintList(rows, "category")), ["1", "3", "2"])
-  // The preview draws what the print route draws: codes for company and branch, "code - name" for category and room.
-  assert.deepEqual(labelSheetAsset(rows[0], "https://assets.example.test"), {
+  // The preview draws what the print route draws, through the same mapper: the serial, codes for company and branch,
+  // "code - name" for category and room.
+  assert.deepEqual(toAssetLabelData(rows[0], "https://assets.example.test"), {
     id: "1",
     assetTag: "A-10",
     name: "name 1",
-    serialNumber: null,
+    serialNumber: "SN-1",
     category: "C1 - cat C1",
     company: "GRL",
     branch: "HQ",
     location: "R2 - room R2",
     qrValue: "https://assets.example.test/q/a/1",
   })
-  assert.equal(labelSheetAsset(rows[1], "").location, "")
-  assert.equal(labelSheetAsset(rows[1], "").qrValue, "/q/a/2")
+  assert.equal(toAssetLabelData(rows[1], "").location, "")
+  assert.equal(toAssetLabelData(rows[1], "").qrValue, "/q/a/2")
+  assert.equal(toAssetLabelData(rows[1], "").serialNumber, null)
   assert.equal(labelTapeText("18", "กำหนดเอง"), "18 mm")
   assert.equal(labelTapeText("custom", "กำหนดเอง"), "กำหนดเอง")
   // The refetch replaces each listed row with today's, in the list's order; a row the lookup did not return stays.
@@ -631,7 +637,7 @@ test("the settings card: tape as Segmented, a note of at most 500, the preview l
   assert.match(list, /aria-label=\{t\("previewPrevious"\)\}\n\s+aria-disabled=\{index === 0 \|\| undefined\}/)
   assert.match(list, /aria-label=\{t\("previewNext"\)\}\n\s+aria-disabled=\{index >= rows\.length - 1 \|\| undefined\}/)
   assert.match(list, /<AssetLabelPreview\n\s+asset=\{sheetAsset\}\n\s+template=\{settings\.templates\.tapes\[tapeSize\]\}\n\s+scanHint=\{tAsset\("scanToOpenDetail"\)\}\n\s+compactAssetNameEnabled=\{settings\.templates\.compactAssetNameEnabled\}\n\s+label=\{t\("previewName", \{ size: tapeText, tag: sheetAsset\.assetTag \}\)\}/)
-  assert.match(list, /const sheetAsset = shown \? labelSheetAsset\(shown, settings\.qrBaseUrl\) : null/)
+  assert.match(list, /const sheetAsset = shown \? toAssetLabelData\(shown, settings\.qrBaseUrl\) : null/)
   assert.match(list, /<Notice tone="neutral">\{t\("brotherHint", \{ size: getAssetLabelTapePrinterSize\(tapeSize\) \}\)\}<\/Notice>/)
   assert.match(list, /\{t\("qrTarget"\)\} <span className="break-all font-mono text-foreground">\{sheetAsset\.qrValue\}<\/span>/)
   assert.match(list, /\{isLikelyLocalAssetQrValue\(sheetAsset\.qrValue\) \? <Notice tone="warning">\{tAsset\("labelQrLocalWarning"\)\}<\/Notice> : null\}/)
@@ -670,4 +676,45 @@ test("after a print in the other tab, the page asks again for the queue and the 
   assert.match(queue, /export async function fetchLabelRows\(/)
   assert.match(queue, /const page = await fetchQueuePage\(buildLabelQueueSearch\(queueFilters, \{ pageSize: queueRefreshPageSize\(shownRows\), skip: 0, locale \}\)\)\n\s+if \(currentSearch\.current !== search\) return\n\s+setQueue\(page\)/)
   assert.equal(JSON.parse(readFileSync("messages/th.json", "utf8")).assetTools.labelsPage.listRefreshFailed, "โหลดสถานะล่าสุดของรายการพิมพ์ไม่สำเร็จ")
+})
+
+// Task 5 review: the page's preview shows the lines the label prints. The print routes (from the Prisma asset) and the
+// preview (from the queue row) feed AssetLabelItem through one mapper, so the same asset gives the same fields.
+test("the page preview and the print route feed the label the same fields, serial included (Task 5 review)", async () => {
+  const { toAssetLabelData } = await import("../src/lib/asset-label-data.ts")
+  const prismaAsset = {
+    id: "asset-1",
+    assetTag: "GRL-COM-26-0017",
+    name: "Notebook Lenovo ThinkPad E14 Gen 5",
+    serialNumber: "PF4ABC12",
+    isActive: true,
+    category: { code: "COM", name: "คอมพิวเตอร์" },
+    company: { code: "GRL", nameTh: "จีแอลอาร์" },
+    branch: { code: "HQ", name: "สำนักงานใหญ่" },
+    currentLocation: { code: "IT-2", name: "ห้อง IT ชั้น 2" },
+  }
+  const queueRow = {
+    id: "asset-1",
+    assetTag: "GRL-COM-26-0017",
+    name: "Notebook Lenovo ThinkPad E14 Gen 5",
+    serialNumber: "PF4ABC12",
+    ownershipType: "personal",
+    holder: { code: "E001", name: "สมชาย ใจดี" },
+    location: { code: "IT-2", name: "ห้อง IT ชั้น 2" },
+    company: { code: "GRL", name: "จีแอลอาร์" },
+    branch: { code: "HQ", name: "สำนักงานใหญ่" },
+    category: { code: "COM", name: "คอมพิวเตอร์" },
+    lastPrint: null,
+  }
+  const base = "https://assets.example.test"
+  const printed = toAssetLabelData({ ...prismaAsset, location: prismaAsset.currentLocation }, base)
+  assert.deepEqual(toAssetLabelData(queueRow, base), printed)
+  assert.equal(printed.serialNumber, "PF4ABC12")
+  // The queue row and the lookup select the serial (P6-R11).
+  assert.match(readLf("src/lib/asset-label-queue.ts"), /name: true,\n\s+serialNumber: true,\n/)
+  // No second mapper: the page's rules no longer build label data, and every caller imports the shared one.
+  assert.doesNotMatch(readLf("src/lib/asset-label-print-list-rules.ts"), /labelSheetAsset|buildAssetQrValue/)
+  for (const path of [BATCH_PAGE, SINGLE_PAGE, PRINT_LIST_PART]) {
+    assert.match(readLf(path), /import \{ toAssetLabelData \} from "@\/lib\/asset-label-data"/, path)
+  }
 })

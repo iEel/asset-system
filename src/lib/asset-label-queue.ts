@@ -40,6 +40,8 @@ export type LabelQueueRow = {
   id: string
   assetTag: string
   name: string
+  // The label prints it (the 18 mm template's third line), so the page's preview shows it too.
+  serialNumber: string | null
   ownershipType: AssetOwnershipType
   holder: CodeName | null
   location: CodeName | null
@@ -111,6 +113,7 @@ const labelQueueRowSelect = {
   id: true,
   assetTag: true,
   name: true,
+  serialNumber: true,
   ownershipType: true,
   custodian: { select: { code: true, fullNameTh: true, fullNameEn: true } },
   currentLocation: { select: { code: true, name: true } },
@@ -124,6 +127,7 @@ type LabelQueueAsset = {
   id: string
   assetTag: string
   name: string
+  serialNumber: string | null
   ownershipType: string
   custodian: { code: string; fullNameTh: string; fullNameEn: string | null } | null
   currentLocation: CodeName | null
@@ -142,6 +146,7 @@ function toLabelQueueRow(asset: LabelQueueAsset, locale: LabelQueueLocale): Labe
     id: asset.id,
     assetTag: asset.assetTag,
     name: asset.name,
+    serialNumber: asset.serialNumber,
     ownershipType: normalizeAssetOwnershipType(asset.ownershipType),
     holder: asset.custodian
       ? { code: asset.custodian.code, name: (english ? asset.custodian.fullNameEn : null) || asset.custodian.fullNameTh }

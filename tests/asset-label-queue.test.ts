@@ -21,6 +21,7 @@ type FakeAsset = {
   id: string
   assetTag: string
   name: string
+  serialNumber: string | null
   ownershipType: string
   isActive: boolean
   createdAt: Date
@@ -42,6 +43,7 @@ function fakeAsset(id: string, overrides: Partial<FakeAsset> = {}): FakeAsset {
     id,
     assetTag: `TAG-${id}`,
     name: `โน้ตบุ๊ก ${id}`,
+    serialNumber: `SN-${id}`,
     ownershipType: "personal",
     isActive: true,
     createdAt: new Date("2026-10-01T00:00:00.000Z"),
@@ -223,12 +225,13 @@ describe("listLabelPrintQueue", () => {
       ownershipType: "shared",
       labelPrints: [printed("p1", "GRL-COM-26-0007", "2026-10-05T03:00:00.000Z"), printed("p2", "OLD-1", "2026-10-01T03:00:00.000Z")],
     })
-    const { db } = fakeDb([asset, fakeAsset("y", { custodian: null, ownershipType: "odd" })])
+    const { db } = fakeDb([asset, fakeAsset("y", { custodian: null, ownershipType: "odd", serialNumber: null })])
     const th = await listLabelPrintQueue(db, viewer, params())
     assert.deepEqual(th.rows[0], {
       id: "x",
       assetTag: "GRL-COM-26-0007",
       name: "โน้ตบุ๊ก x",
+      serialNumber: "SN-x",
       ownershipType: "shared",
       holder: { code: "E001", name: "สมชาย ใจดี" },
       location: { code: "IT-2", name: "ห้อง IT ชั้น 2" },
@@ -238,6 +241,7 @@ describe("listLabelPrintQueue", () => {
       lastPrint: { printedAt: "2026-10-05T03:00:00.000Z", assetTag: "GRL-COM-26-0007" },
     })
     assert.equal(th.rows[1].holder, null)
+    assert.equal(th.rows[1].serialNumber, null, "no serial is null, never a dash")
     assert.equal(th.rows[1].lastPrint, null)
     assert.equal(th.rows[1].ownershipType, "personal")
     const en = await listLabelPrintQueue(db, viewer, params({ locale: "en" }))
@@ -326,6 +330,9 @@ describe("lookupLabelPrintRows", () => {
     ])
     const answer = await lookupLabelPrintRows(db, ["b", "missing", "c", "a"], "th")
     assert.deepEqual(answer.rows.map((row) => [row.id, row.lastPrint?.assetTag ?? null]), [["b", "OLD-b"], ["a", null]])
+    // The lookup's rows carry the serial too: the page's preview prints from them (Task 5 review).
+    assert.deepEqual(answer.rows.map((row) => row.serialNumber), ["SN-b", "SN-a"])
+    assert.equal((calls[0].args.select as Record<string, unknown>).serialNumber, true)
     assert.equal(calls.length, 1)
     assert.deepEqual(calls[0].args.where, { id: { in: ["b", "missing", "c", "a"] }, isActive: true })
   })

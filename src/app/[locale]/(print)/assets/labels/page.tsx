@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { normalizeLabelPrintAssetIds } from "@/lib/asset-label-print-tracking"
 import { loadAssetLabelPrintSettings } from "@/lib/asset-label-print-settings"
-import { buildAssetQrValue } from "@/lib/asset-qr"
+import { toAssetLabelData } from "@/lib/asset-label-data"
 import { AssetLabelPrint } from "@/components/assets/asset-label-print"
 
 type AssetLabelsPageProps = {
@@ -43,19 +43,7 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
 
   return (
     <AssetLabelPrint
-      assets={orderedAssets.map((asset) => {
-        return {
-          id: asset.id,
-          assetTag: asset.assetTag,
-          name: asset.name,
-          serialNumber: asset.serialNumber,
-          category: `${asset.category.code} - ${asset.category.name}`,
-          company: asset.company.code,
-          branch: asset.branch.code,
-          location: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
-          qrValue: buildAssetQrValue({ assetId: asset.id, publicBaseUrl: labelSettings.qrBaseUrl }),
-        }
-      })}
+      assets={orderedAssets.map((asset) => toAssetLabelData({ ...asset, location: asset.currentLocation }, labelSettings.qrBaseUrl))}
       backHref={`/${locale}/asset-management/labels`}
       labelTemplates={labelSettings.templates}
       translations={{

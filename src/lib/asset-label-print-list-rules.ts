@@ -1,12 +1,11 @@
 import { buildAssetLabelPrintHash, LABEL_PRINT_NOTE_MAX } from "./asset-label-print-hash.ts"
 import { normalizeLabelPrintAssetIds } from "./asset-label-print-tracking.ts"
 import { assetLabelPresets, type AssetLabelTapeSize } from "./asset-label-template.ts"
-import { buildAssetQrValue } from "./asset-qr.ts"
 import type { LabelQueueRow } from "./asset-label-queue.ts"
 
 // The labels page's print list (group 4 plan 6 Task 5, spec §11, board AR-Labels): its order, the print URL (P6-R9), the
-// test print (P6-R8), the preview's label data and the rows refreshed after a print in the other tab (P6-R13). Pure, so
-// node --test runs them.
+// test print (P6-R8) and the rows refreshed after a print in the other tab (P6-R13). The preview's label data comes from
+// the mapper the print routes use (asset-label-data.ts). Pure, so node --test runs them.
 
 export const labelPrintOrders = ["selected", "assetTag", "location", "category"] as const
 export type LabelPrintOrder = (typeof labelPrintOrders)[number]
@@ -52,22 +51,6 @@ export function labelTestPrint<T extends { id: string }>(rows: readonly T[], ind
 /** The tape as the page shows it: "18 mm", or the custom tape's word. */
 export function labelTapeText(size: AssetLabelTapeSize, customText: string) {
   return size === "custom" ? customText : assetLabelPresets[size].label
-}
-
-/** The previewed label's data, filled as the print route fills it: codes for company and branch, "code - name" else. */
-export function labelSheetAsset(row: LabelQueueRow, qrBaseUrl: string) {
-  return {
-    id: row.id,
-    assetTag: row.assetTag,
-    name: row.name,
-    // The queue row carries no serial (Task 1), so a template line that shows it stays empty in the preview.
-    serialNumber: null,
-    category: codeName(row.category),
-    company: row.company.code,
-    branch: row.branch.code,
-    location: codeName(row.location),
-    qrValue: buildAssetQrValue({ assetId: row.id, publicBaseUrl: qrBaseUrl }),
-  }
 }
 
 /** P6-R13: each listed row becomes today's from the lookup, in the list's order; a row it did not return stays. */

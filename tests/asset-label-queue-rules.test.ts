@@ -32,6 +32,7 @@ function row(overrides: Partial<LabelQueueRow> = {}): LabelQueueRow {
     id: "a1",
     assetTag: "GRL-COM-26-0017",
     name: "Notebook Lenovo ThinkPad E14 Gen 5",
+    serialNumber: "PF4ABC12",
     ownershipType: "personal",
     holder: { code: "E001", name: "สมชาย ใจดี" },
     location: { code: "ACC-3", name: "ห้องบัญชี ชั้น 3" },

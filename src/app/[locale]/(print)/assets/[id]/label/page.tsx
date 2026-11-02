@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { loadAssetLabelPrintSettings } from "@/lib/asset-label-print-settings"
-import { buildAssetQrValue } from "@/lib/asset-qr"
+import { toAssetLabelData } from "@/lib/asset-label-data"
 import { AssetLabelPrint } from "@/components/assets/asset-label-print"
 
 type AssetLabelPageProps = {
@@ -33,23 +33,10 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
   if (!asset) notFound()
 
   const detailPath = `/${locale}/assets/${asset.id}`
-  const qrValue = buildAssetQrValue({ assetId: asset.id, publicBaseUrl: labelSettings.qrBaseUrl })
 
   return (
     <AssetLabelPrint
-      assets={[
-        {
-          id: asset.id,
-          assetTag: asset.assetTag,
-          name: asset.name,
-          serialNumber: asset.serialNumber,
-          category: `${asset.category.code} - ${asset.category.name}`,
-          company: asset.company.code,
-          branch: asset.branch.code,
-          location: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
-          qrValue,
-        },
-      ]}
+      assets={[toAssetLabelData({ ...asset, location: asset.currentLocation }, labelSettings.qrBaseUrl)]}
       backHref={detailPath}
       labelTemplates={labelSettings.templates}
       translations={{

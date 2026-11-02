@@ -13,11 +13,11 @@ import { Notice } from "@/components/ui/notice"
 import { Segmented } from "@/components/ui/segmented"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { formatCount } from "@/lib/display-format"
+import { toAssetLabelData } from "@/lib/asset-label-data"
 import { LABEL_PRINT_NOTE_MAX } from "@/lib/asset-label-print-hash"
 import {
   labelPreviewIndex,
   labelPrintOrders,
-  labelSheetAsset,
   labelTapeText,
   type LabelPrintOrder,
 } from "@/lib/asset-label-print-list-rules"
@@ -177,8 +177,9 @@ export function AssetLabelPrintSettings({
   const tAsset = useTranslations("asset")
   const index = labelPreviewIndex(previewIndex, rows.length)
   const shown = rows[index]
-  // The QR as it will print, built from the base the server resolved (recon X11).
-  const sheetAsset = shown ? labelSheetAsset(shown, settings.qrBaseUrl) : null
+  // The label's data from the print routes' own mapper, so the preview shows the lines that print, with the QR built on
+  // the base the server resolved (recon X11).
+  const sheetAsset = shown ? toAssetLabelData(shown, settings.qrBaseUrl) : null
   const tapeText = labelTapeText(tapeSize, t("tapeCustom"))
 
   return (
