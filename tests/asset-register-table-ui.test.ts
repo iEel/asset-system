@@ -306,6 +306,14 @@ test("the desktop selection bar: the count on this page, ล้าง, อื่
   // The phone bar keeps its buttons, the bulk update among them.
   const phone = source.slice(source.indexOf("data-asset-bulk-bar"), source.indexOf("data-asset-selection-bar"))
   for (const handler of ["printSelectedLabels", "() => openBulkUpdate()", "exportSelected", "clearSelection"]) assert.ok(phone.includes(`onClick={${handler}}`), handler)
+  // Group 4 plan 6 (P6-R1): พิมพ์ป้าย opens the labels page in the same tab with the ticked ids in order and from=register
+  // (the page dedupes and caps at 100); no new tab to the print route any more.
+  const print = source.slice(source.indexOf("function printSelectedLabels()"), source.indexOf("function clearSelection()"))
+  assert.match(print, /if \(selectedAssets\.length === 0\) return/)
+  assert.match(print, /const params = new URLSearchParams\(\{\n\s+assetIds: selectedAssets\.map\(\(asset\) => asset\.id\)\.join\(","\),\n\s+from: "register",\n\s+\}\)/)
+  assert.match(print, /router\.push\(`\/\$\{locale\}\/asset-management\/labels\?\$\{params\.toString\(\)\}`\)/)
+  assert.doesNotMatch(source, /window\.open/)
+  assert.doesNotMatch(source, /\/assets\/labels\?/)
 
   // Final review C8: the raw count, grouped by {count, number}; the en label reads "Print 1 label".
   assert.equal(messages("th").selectedOnPage, "{count, number} รายการที่เลือกในหน้านี้")

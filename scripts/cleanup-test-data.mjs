@@ -190,6 +190,7 @@ export async function collectCleanupSummary(prisma, options) {
     directAuditFindings,
     directAuditScanHistory,
     licenseAssignmentsToClear,
+    assetLabelPrints,
   ] = await Promise.all([
     prisma.assetCheckout.findMany({ where: { assetId: { in: assetIds } }, select: { id: true, documentNo: true } }),
     prisma.maintenanceTicket.findMany({ where: { assetId: { in: assetIds } }, select: { id: true, repairNo: true } }),
@@ -210,7 +211,9 @@ export async function collectCleanupSummary(prisma, options) {
       },
       select: { id: true, assetTag: true, licenseAssignedAssetId: true },
     }),
+    prisma.assetLabelPrint.findMany({ where: { assetId: { in: assetIds } }, select: { id: true, batchId: true } }),
   ])
+  const assetLabelPrintBatchesToDelete = await findEmptiedLabelPrintBatches(prisma, assetLabelPrints)
 
   const checkoutIds = checkouts.map((checkout) => checkout.id)
   const checkins = await prisma.assetCheckin.findMany({
@@ -276,6 +279,8 @@ export async function collectCleanupSummary(prisma, options) {
     assets,
     assetIds,
     related: {
+      assetLabelPrints,
+      assetLabelPrintBatchesToDelete,
       attachments,
       systemLogs,
       auditScanHistory,
@@ -305,6 +310,13 @@ export async function applyCleanup(prisma, summary) {
       const auditRoundIds = related.auditRoundsToDelete.map((round) => round.id)
       const counts = {}
 
+      // asset_label_prints point at the asset and the batch with NoAction (group 4 plan 6, P6-R14): the prints go
+      // first, then every touched batch that has no item left, so a batch shared with a kept asset stays.
+      counts.assetLabelPrints = await deleteManyByIds(tx, "assetLabelPrint", related.assetLabelPrints)
+      const touchedBatchIds = uniqueNonEmpty(related.assetLabelPrints.map((print) => print.batchId))
+      counts.assetLabelPrintBatches = touchedBatchIds.length
+        ? await deleteManyByWhere(tx, "assetLabelPrintBatch", { id: { in: touchedBatchIds }, items: { none: {} } })
+        : 0
       counts.attachments = await deleteManyByIds(tx, "attachment", related.attachments)
       counts.systemLogs = await deleteManyByIds(tx, "systemLog", related.systemLogs)
       counts.auditScanHistory = await deleteManyByWhere(tx, "auditScanHistory", orWhere([
@@ -351,6 +363,8 @@ export function formatCleanupSummary(summary, options) {
 
   lines.push("Related rows:")
   for (const [label, rows] of [
+    ["label prints", related.assetLabelPrints],
+    ["label print batches left empty", related.assetLabelPrintBatchesToDelete],
     ["attachments", related.attachments],
     ["audit scan history", related.auditScanHistory],
     ["audit findings", related.auditFindings],
@@ -383,6 +397,8 @@ function emptySummary(assetWhere) {
     assets: [],
     assetIds: [],
     related: {
+      assetLabelPrints: [],
+      assetLabelPrintBatchesToDelete: [],
       attachments: [],
       systemLogs: [],
       auditScanHistory: [],
@@ -404,6 +420,8 @@ function emptySummary(assetWhere) {
 
 function emptyAppliedCounts() {
   return {
+    assetLabelPrints: 0,
+    assetLabelPrintBatches: 0,
     attachments: 0,
     systemLogs: 0,
     auditScanHistory: 0,
@@ -437,6 +455,22 @@ async function findFullySelectedAuditRounds(prisma, auditItems) {
   })
 
   return rounds.filter((round) => selectedCountsByRound.get(round.id) === round._count.items)
+}
+
+// The batches whose every item is among the selected assets' prints: the ones the cleanup leaves empty.
+async function findEmptiedLabelPrintBatches(prisma, labelPrints) {
+  if (labelPrints.length === 0) return []
+
+  const selectedCountsByBatch = new Map()
+  for (const print of labelPrints) {
+    selectedCountsByBatch.set(print.batchId, (selectedCountsByBatch.get(print.batchId) ?? 0) + 1)
+  }
+  const batches = await prisma.assetLabelPrintBatch.findMany({
+    where: { id: { in: [...selectedCountsByBatch.keys()] } },
+    select: { id: true, _count: { select: { items: true } } },
+  })
+
+  return batches.filter((batch) => selectedCountsByBatch.get(batch.id) === batch._count.items)
 }
 
 async function deleteManyByIds(tx, delegateName, records) {

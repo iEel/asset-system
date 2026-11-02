@@ -428,9 +428,13 @@ export function AssetRegisterTable({
   function printSelectedLabels() {
     if (selectedAssets.length === 0) return
 
-    const params = new URLSearchParams()
-    selectedAssets.forEach((asset) => params.append("id", asset.id))
-    window.open(`/${locale}/assets/labels?${params.toString()}`, "_blank", "noopener,noreferrer")
+    // The labels page in the same tab (group 4 plan 6, P6-R1): it keeps this order, drops duplicates and takes at most
+    // 100 ids; the register's page sizes never select more. from=register shows the line saying where they came from.
+    const params = new URLSearchParams({
+      assetIds: selectedAssets.map((asset) => asset.id).join(","),
+      from: "register",
+    })
+    router.push(`/${locale}/asset-management/labels?${params.toString()}`)
   }
 
   function clearSelection() {
