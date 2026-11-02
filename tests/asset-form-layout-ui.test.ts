@@ -35,8 +35,8 @@ test("the required card: its title, the counter and a bar with no pace mark", ()
   assert.match(card, /const counterText = counter \? t\("requiredFilled", \{ filled: counter\.filled, total: counter\.total \}\) : null/)
   assert.match(card, /<PaceBar value=\{counter\.total > 0 \? counter\.filled \/ counter\.total : 0\} pace=\{null\} label=\{counterText \?\? ""\} behind=\{false\} \/>/)
   const form = read(`${C}asset-form.tsx`)
-  // Task 7: on edit the card is ข้อมูลหลัก with no counter.
-  assert.match(form, /<AssetFormRequiredCard title=\{isEdit \? t\("mainCardTitle"\) : t\("requiredCardTitle"\)\} counter=\{isEdit \? null : requiredProgress\}>/)
+  // Task 7: on edit the card has no counter; its title is the create one (the user's decision, 2026-11-02).
+  assert.match(form, /<AssetFormRequiredCard title=\{t\("requiredCardTitle"\)\} counter=\{isEdit \? null : requiredProgress\}>/)
   assert.match(form, /const requiredProgress = countRequiredFilled\(values, ownershipType\)/)
   // The three groups of the card, in order. Task 6b: the ownership group is its own file (asset-form-ownership.tsx).
   const order = ['<CardGroup title={t("basicInfo")}>', "<AssetFormOwnership", '<CardGroup title={t("locationStatus")}>'].map((tag) => form.indexOf(tag))
@@ -65,7 +65,9 @@ test("the optional sections fold: each a FormDisclosure with a summary and a cou
   assert.match(form, /tone: sectionsWithErrors\.has\(section\) \? "error" : sectionsWithChanges\.has\(section\) \? "changed" : "default"/)
   const th = messages("th").asset
   assert.equal(th.sectionFilled, "กรอกแล้ว {filled, number} จาก {total, number} ช่อง")
-  assert.equal(th.otherAdvanced, "ข้อมูลอื่น ๆ และขั้นสูง")
+  // The last section holds only the remark since the raw JSON editor left (2026-11-02): it reads หมายเหตุ.
+  assert.equal(th.remark, "หมายเหตุ")
+  assert.equal(th.otherAdvanced, undefined)
   assert.equal(th.customFieldsStructuredTitle, "รายละเอียดเฉพาะทรัพย์สิน")
 })
 
@@ -73,7 +75,7 @@ test("เอกสารจัดซื้อ is its own section, open at first;
   const form = read(`${C}asset-form.tsx`)
   assert.match(form, /const \[openSections, setOpenSections\] = useState<Set<AssetFormSection>>\(\(\) => new Set<AssetFormSection>\(\["documents"\]\)\)/)
   assert.match(form, /if \(window\.location\.hash === "#purchase"\) openSectionNow\("purchase"\)/)
-  assert.match(form, /reveal: \(key\) => \{\n\s+if \(key === "customFieldsJson"\) setShowRawJson\(true\)\n\s+openSection\(sectionOfField\(key\)\)/)
+  assert.match(form, /reveal: \(key\) => openSection\(sectionOfField\(key\)\),/)
   const documents = read(`${C}asset-form-documents.tsx`)
   assert.match(documents, /<FoldedSection title=\{t\("purchaseDocuments"\)\} disclosure=\{disclosure\}>/)
   const purchase = read(`${C}asset-form-purchase.tsx`)
@@ -112,5 +114,25 @@ test("the isActive box and the photo add button are gone; a chosen photo joins t
   for (const locale of ["th", "en"] as const) {
     assert.equal(messages(locale).asset.addAssetPhoto, undefined, locale)
     assert.equal(messages(locale).asset.addAssetPhotoWithLabel, undefined, locale)
+  }
+})
+
+test("no raw JSON control is left in the form; the last section is หมายเหตุ with the remark only (the user's decision, 2026-11-02)", () => {
+  const other = read(`${C}asset-form-other.tsx`)
+  assert.match(other, /<FoldedSection title=\{t\("remark"\)\} disclosure=\{disclosure\}>/)
+  assert.match(other, /<Field label=\{t\("remark"\)\} id="asset-remark">/)
+  for (const file of ["asset-form.tsx", "asset-form-other.tsx", "asset-form-custom-fields.tsx"]) {
+    const source = read(`${C}${file}`)
+    assert.doesNotMatch(source, /asset-custom-fields-json|showRawJson|RawJson|showJson|hideJson|customFieldsJsonHelp|otherAdvanced|Code2/, file)
+  }
+  const form = read(`${C}asset-form.tsx`)
+  assert.match(form, /<AssetFormOther\n\s+values=\{values\}\n\s+setField=\{setField\}\n\s+changeOf=\{changeOf\}\n\s+disclosure=\{disclosureFor\("other"\)\}\n\s+\/>/)
+  // The change list's row for a stored JSON the rows replaced reads as the custom-fields section.
+  assert.match(form, /customFieldsJson: "customFieldsStructuredTitle",/)
+  for (const locale of ["th", "en"] as const) {
+    const asset = messages(locale).asset
+    for (const key of ["showJson", "hideJson", "customFieldsJson", "customFieldsJsonHelp", "customFieldsJsonInvalid", "otherAdvanced", "mainCardTitle"]) {
+      assert.equal(asset[key], undefined, `${locale} asset.${key}`)
+    }
   }
 })

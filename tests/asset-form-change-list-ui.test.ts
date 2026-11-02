@@ -97,9 +97,9 @@ test("the footer's แก้ไข n ช่อง opens the list: a Popover on t
   assert.match(form, /\{showChanges \? <AssetFormChangeList changes=\{changeRows\} reason=\{correctionReason\.trim\(\)\} onGoToField=\{goToField\} \/> : null\}/)
   assert.match(form, /<span id="asset-save-reason">\{t\("duplicateCheckPending"\)\}<\/span>/)
   assert.match(form, /const showChanges = isEdit && changes\.length > 0/)
-  // ไปที่ช่อง never leaves focus nowhere (final review): a แผนก locked to the holder goes to the holder, the raw JSON
-  // shows first, and a row with no control left gives focus back to the list's trigger.
-  assert.match(form, /function goToField\(field: AssetDiffField\) \{\n\s+const target: AssetDiffField = field === "departmentId" && departmentLock\.locked \? "custodianId" : field\n\s+if \(target === "customFieldsJson"\) setShowRawJson\(true\)\n\s+openSection\(sectionOfChange\(target\)\)\n\s+requestAnimationFrame\(\(\) => \{\n\s+void waitForElement\(changeFieldId\(target, selectedCustomFieldDefinitions\)\)\.then\(\(element\) => \{\n\s+if \(element && focusField\(element\)\) return\n\s+document\.getElementById\(CHANGE_LIST_TRIGGER_ID\)\?\.focus\(\)/)
+  // ไปที่ช่อง never leaves focus nowhere (final review): a แผนก locked to the holder goes to the holder, and a
+  // row with no control left (an extra custom field, the stored JSON) gives focus back to the list's trigger.
+  assert.match(form, /function goToField\(field: AssetDiffField\) \{\n\s+const target: AssetDiffField = field === "departmentId" && departmentLock\.locked \? "custodianId" : field\n\s+openSection\(sectionOfChange\(target\)\)\n\s+requestAnimationFrame\(\(\) => \{\n\s+void waitForElement\(changeFieldId\(target, selectedCustomFieldDefinitions\)\)\.then\(\(element\) => \{\n\s+if \(element && focusField\(element\)\) return\n\s+document\.getElementById\(CHANGE_LIST_TRIGGER_ID\)\?\.focus\(\)/)
   assert.match(source, /export const CHANGE_LIST_TRIGGER_ID = "asset-change-list-trigger"/)
   assert.match(source, /<Button id=\{CHANGE_LIST_TRIGGER_ID\} variant="outline" size="sm">/)
   // คืนค่าเดิม moves focus to the field it restored; the company or the branch brings the asset's place back with it, so

@@ -93,7 +93,6 @@ test("asset form: validate() restates every rule the toasts said, the save gates
       purchaseDocumentAmount: "asset-purchase-document-amount",
       purchaseDocumentFile: "asset-purchase-document-file",
       assetPhotoFile: "asset-photo-file",
-      customFieldsJson: "asset-custom-fields-json",
     },
   })
   const rules = functionBody(rulesSource)
@@ -117,7 +116,6 @@ test("asset form: validate() restates every rule the toasts said, the save gates
     'check("warrantyEndDate", warrantyChanged ? notBefore(values.warrantyEndDate, values.warrantyStartDate) : null)',
     'check("purchaseDocumentNo", purchaseDocument.file && required(purchaseDocument.documentNo) ? "purchaseDocumentNoRequired" : maxLength(purchaseDocument.documentNo, 100))',
     'if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))',
-    'check("customFieldsJson", isValidCustomFieldsJson(values.customFieldsJson) ? null : "customFieldsJsonInvalid")',
     // Group 4 plan 2 Task 8: the edit page's reason, asked while its field shows (P2-R4).
     'check("correctionReason", correction?.required && required(correction.reason) ? "correctionReasonRequired" : maxLength(correction?.reason, 500))',
   ]) assert.ok(rules.includes(rule), rule)
@@ -131,7 +129,7 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.match(purchaseSource, /value=\{values\.warrantyEndDate \?\? ""\}\n\s+min=\{values\.warrantyStartDate \|\| undefined\}/)
   assert.match(functionBody(rulesSource, "seatsExceeded"), /return Number\(values\.licenseUsedSeats\) > Number\(values\.licenseTotalSeats\) \? "licenseSeatsExceeded" : null/)
   // The asset rules keep the message their toast used (spec §7.1); the server's own codes read the catalog.
-  assert.match(rulesSource, /export const ASSET_MESSAGE_CODES = \[\n\s+"componentParentRequired",\n\s+"componentRoleRequired",\n\s+"licenseResponsibilityRequired",\n\s+"purchaseDocumentNoRequired",\n\s+"fileRequired",\n\s+"customFieldsJsonInvalid",\n\s+"correctionReasonRequired",\n\] as const/)
+  assert.match(rulesSource, /export const ASSET_MESSAGE_CODES = \[\n\s+"componentParentRequired",\n\s+"componentRoleRequired",\n\s+"licenseResponsibilityRequired",\n\s+"purchaseDocumentNoRequired",\n\s+"fileRequired",\n\s+"correctionReasonRequired",\n\] as const/)
   assert.match(source, /return code && isAssetMessageCode\(code\) \? t\(code\) : fieldErrors\.message\(key\)/)
   // No validation toast is left; the catch keeps its toast for the server's protected-status refusal.
   assert.doesNotMatch(source, /toast\.error\(t\("(?:duplicateWarning|customFieldsJsonInvalid|customFieldRequired|componentRoleRequired|componentParentRequired|licenseResponsibilityRequired|licenseSeatUsageInvalid|purchaseDocumentNoRequired|fileRequired)"/)
@@ -158,10 +156,10 @@ test("asset form: validate() restates every rule the toasts said, the save gates
   assert.match(source, /liveError=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : null\}\n\s+error=\{duplicateState\.serialNumberExists \? t\("duplicateSerialNumber"\) : errorText\("serialNumber"\)\}/)
   // The server lets the total seats stay empty, so the star goes (spec §11 call 8).
   assert.ok(source.includes('<Field label={t("licenseTotalSeats")} id="asset-license-total-seats" error={errorText("licenseTotalSeats")}>'))
-  // The server's refusal lands on the same fields; the raw JSON opens first; the template fields are ids by place.
+  // The server's refusal lands on the same fields; the template fields are ids by place.
   assert.match(source, /if \(fieldErrors\.applyServer\(result\) && focusFirstError\(\)\) return\n\s+throw new Error\(result\?\.error \?\? tCommon\("error"\)\)/)
   // Task 6a: reveal also opens the folded section that holds the field.
-  assert.match(source, /reveal: \(key\) => \{\n\s+if \(key === "customFieldsJson"\) setShowRawJson\(true\)\n\s+openSection\(sectionOfField\(key\)\)/)
+  assert.match(source, /reveal: \(key\) => openSection\(sectionOfField\(key\)\),/)
   assert.match(customFieldsSource, /id=\{`asset-custom-field-\$\{index\}`\}/)
   // The document add button checks its own fields under the same hook; the save's errors stay. A chosen photo joins the
   // queue at once (group 4 plan 2 Task 6a, spec §8), so the photo has no add button and no "fileRequired" of its own.

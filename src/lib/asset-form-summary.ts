@@ -76,7 +76,7 @@ export function summarizeAssetFormSection(section: AssetFormFoldedSection, input
     return { filled, total: definitions.length, parts }
   }
 
-  // other: the remark (the raw JSON mirrors the custom fields, so it is not counted twice).
+  // other (หมายเหตุ): the remark, its only field since the raw JSON editor left the form (2026-11-02).
   if (hasValue(values.remark)) parts.push({ key: "remarkSet" })
   return { filled: hasValue(values.remark) ? 1 : 0, total: 1, parts }
 }

@@ -113,7 +113,8 @@ test("every field the save writes is compared, in the form's order; custom field
     "customFields.gpu",
     "remark",
   ])
-  // The same keys re-serialised are no change; JSON that does not parse is one row of its own.
+  // The same keys re-serialised are no change; JSON that does not parse is one row of its own (the rows' JSON written over
+  // a stored one they could not read, so the list stays truthful to the save).
   assert.deepEqual(diffAssetFormValues(stored, { ...stored, customFieldsJson: JSON.stringify({ ram: "16GB", cpu: "i5" }, null, 2) }, { departmentAutomatic: false }), [])
   assert.deepEqual(diffAssetFormValues(stored, { ...stored, customFieldsJson: "{bad" }, { departmentAutomatic: false }), [
     { field: "customFieldsJson", from: '{"ram":"16GB","cpu":"i5"}', to: "{bad", automatic: false },
@@ -127,6 +128,8 @@ test("each change knows its section and the id ไปที่ช่อง focus
   assert.equal(sectionOfChange("licenseAssignedAssetId"), "license")
   assert.equal(sectionOfChange("purchaseDate"), "purchase")
   assert.equal(sectionOfChange("customFields.ram"), "customFields")
+  // The stored JSON has no field since the raw JSON editor left (2026-11-02): its row opens the custom-fields section.
+  assert.equal(sectionOfChange("customFieldsJson"), "customFields")
   assert.equal(changeFieldId("currentLocationId", []), "asset-current-location")
   assert.equal(changeFieldId("brandId", []), "asset-brand")
   assert.equal(changeFieldId("remark", []), "asset-remark")

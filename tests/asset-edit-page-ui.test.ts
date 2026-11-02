@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 // Group 4 plan 2 Task 7 (spec §7.1-§7.3, P2-R3, P2-R6): the edit page. The header names the asset and shows its code,
-// status, holder and room with a link to the asset page; the first card is ข้อมูลหลัก with no counter; the tag is text
-// behind "เปลี่ยนรหัส", whose dialog only sets the form's tag; an open handover makes holder, room and แผนก read-only
+// status, holder and room with a link to the asset page; the first card is ข้อมูลที่ต้องกรอก (as on create, the user's
+// decision 2026-11-02) with no counter; the tag is text behind "เปลี่ยนรหัส", whose dialog only sets the form's tag; an open handover makes holder, room and แผนก read-only
 // with a notice that links the handover document (not โอนย้าย). The working tree is CRLF on Windows: every read strips \r.
 const C = "src/components/assets/"
 const PAGE = "src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx"
@@ -15,7 +15,10 @@ test("the words of the edit page, verbatim", () => {
   const th = messages("th").asset
   assert.equal(th.editTitleNamed, "แก้ไข {name}")
   assert.equal(th.viewAssetPage, "ดูหน้าทรัพย์สิน")
-  assert.equal(th.mainCardTitle, "ข้อมูลหลัก")
+  // The user's decision (2026-11-02): the edit card reads ข้อมูลที่ต้องกรอก like create; ข้อมูลหลัก stays the master-data menu.
+  assert.equal(th.requiredCardTitle, "ข้อมูลที่ต้องกรอก")
+  assert.equal(th.mainCardTitle, undefined)
+  assert.equal(messages("en").asset.mainCardTitle, undefined)
   assert.equal(th.changeTag, "เปลี่ยนรหัส")
   assert.equal(th.changeTagWarning, "ป้ายที่พิมพ์ไว้จะยังแสดงรหัสเดิม และค้นด้วยรหัสเดิมจะไม่พบ ป้าย QR ยังเปิดทรัพย์สินนี้ได้")
   assert.equal(th.openHandoverLock, "ใบส่งมอบ {documentNo} ยังเปิดอยู่ ถ้าผู้ถือครองหรือที่ตั้งผิด ให้ยกเลิกใบส่งมอบแล้วส่งมอบใหม่ หรือรับคืน")
@@ -25,7 +28,7 @@ test("the words of the edit page, verbatim", () => {
   assert.equal(th.saveCorrection, "บันทึกการแก้ไข")
   assert.equal(messages("th").common.save, "บันทึก", "create keeps บันทึก")
   const en = messages("en").asset
-  for (const key of ["editTitleNamed", "viewAssetPage", "mainCardTitle", "changeTag", "changeTagTitle", "changeTagNew", "changeTagConfirm", "changeTagWarning", "openHandoverLock", "openHandoverLink", "correctionHint", "saveCorrection", "editHolderLine", "editHolderOnly"]) {
+  for (const key of ["editTitleNamed", "viewAssetPage", "requiredCardTitle", "changeTag", "changeTagTitle", "changeTagNew", "changeTagConfirm", "changeTagWarning", "openHandoverLock", "openHandoverLink", "correctionHint", "saveCorrection", "editHolderLine", "editHolderOnly"]) {
     assert.ok(th[key], `th asset.${key}`)
     assert.ok(en[key], `en asset.${key}`)
   }
@@ -73,9 +76,10 @@ test("the edit page reads the header's facts, the open handover and the stored l
   assert.match(rules, /export type AssetOriginalLabelField = AssetField \| "brandId" \| "modelId" \| "supplierId"/)
 })
 
-test("the first card is ข้อมูลหลัก on edit with no counter; the primary reads บันทึกการแก้ไข on edit and บันทึก on create", () => {
+test("the first card is ข้อมูลที่ต้องกรอก on edit too, with no counter; the primary reads บันทึกการแก้ไข on edit and บันทึก on create", () => {
   const form = read(`${C}asset-form.tsx`)
-  assert.match(form, /<AssetFormRequiredCard title=\{isEdit \? t\("mainCardTitle"\) : t\("requiredCardTitle"\)\} counter=\{isEdit \? null : requiredProgress\}>/)
+  assert.match(form, /<AssetFormRequiredCard title=\{t\("requiredCardTitle"\)\} counter=\{isEdit \? null : requiredProgress\}>/)
+  assert.doesNotMatch(form, /mainCardTitle/)
   assert.match(form, /\{isEdit \? t\("saveCorrection"\) : tCommon\("save"\)\}/)
 })
 

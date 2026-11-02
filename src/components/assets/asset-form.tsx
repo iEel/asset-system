@@ -134,7 +134,7 @@ const CHANGE_LABELS: Partial<Record<AssetDiffField, string>> = {
   poNumber: "poNumber",
   invoiceNumber: "invoiceNumber",
   remark: "remark",
-  customFieldsJson: "customFieldsJson",
+  customFieldsJson: "customFieldsStructuredTitle",
 }
 const DATE_CHANGE_FIELDS = new Set<AssetDiffField>(["purchaseDate", "warrantyStartDate", "warrantyEndDate"])
 // Create, and the edit before anything changed: no reason, no list.
@@ -212,7 +212,6 @@ export function AssetForm({
   const [photoLabel, setPhotoLabel] = useState("")
   const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
-  const [showRawJson, setShowRawJson] = useState(false)
   // The edit page's reason for a room, holder or แผนก correction (P2-R4).
   const [correctionReason, setCorrectionReason] = useState("")
   // The room, holder and แผนก the server last asked a reason for (a PUT refused under correctionReason): the reason stays
@@ -379,11 +378,8 @@ export function AssetForm({
   const focusFirstError = () =>
     fieldErrors.focusFirst(fieldOrder(selectedCustomFieldDefinitions), {
       idFor: (key) => fieldId(key, selectedCustomFieldDefinitions),
-      // The raw JSON shows only after its toggle, and a folded section opens before its field takes focus.
-      reveal: (key) => {
-        if (key === "customFieldsJson") setShowRawJson(true)
-        openSection(sectionOfField(key))
-      },
+      // A folded section opens before its field takes focus.
+      reveal: (key) => openSection(sectionOfField(key)),
     })
   // A rule with a message of its own reads it from the asset messages; any other code reads the hook's message.
   const errorText = (key: AssetField) => {
@@ -878,15 +874,6 @@ export function AssetForm({
     return customFieldRows.find((row) => row.key === fieldName)?.value ?? ""
   }
 
-  function handleRawJsonChange(value: string) {
-    setField("customFieldsJson", value)
-
-    const parsedRows = parseCustomFieldRows(value)
-    if (parsedRows.length > 0 || !value.trim()) {
-      setCustomFieldRows(parsedRows)
-    }
-  }
-
   // The folded sections (spec §8, P2-R11): each one's summary line, its "กรอกแล้ว n จาก m ช่อง" count and its frame. A
   // section that holds an error has the error frame; the first error's section opens through focusFirstError's reveal.
   const sectionsWithErrors = new Set(
@@ -1000,11 +987,10 @@ export function AssetForm({
   }
 
   // ไปที่ช่อง: the field's section opens, then the field takes focus once the list has closed. A แผนก locked to the holder
-  // has no control of its own (the holder brings it), so focus goes to the holder; the raw JSON shows first. A row with
-  // no control left (an extra custom field) gives focus back to the change list (final review).
+  // has no control of its own (the holder brings it), so focus goes to the holder. A row with no control
+  // left (an extra custom field, the stored custom-field JSON) gives focus back to the change list (final review).
   function goToField(field: AssetDiffField) {
     const target: AssetDiffField = field === "departmentId" && departmentLock.locked ? "custodianId" : field
-    if (target === "customFieldsJson") setShowRawJson(true)
     openSection(sectionOfChange(target))
     requestAnimationFrame(() => {
       void waitForElement(changeFieldId(target, selectedCustomFieldDefinitions)).then((element) => {
@@ -1042,8 +1028,9 @@ export function AssetForm({
       ) : null}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        {/* Edit (Task 7): ข้อมูลหลัก, with no counter; every field there already holds the stored value. */}
-        <AssetFormRequiredCard title={isEdit ? t("mainCardTitle") : t("requiredCardTitle")} counter={isEdit ? null : requiredProgress}>
+        {/* Create and edit both read ข้อมูลที่ต้องกรอก (the user's decision, 2026-11-02); edit has no counter, every field
+            there already holds the stored value (Task 7). */}
+        <AssetFormRequiredCard title={t("requiredCardTitle")} counter={isEdit ? null : requiredProgress}>
           {openHandover ? (
             <Notice
               tone="warning"
@@ -1437,10 +1424,6 @@ export function AssetForm({
         <AssetFormOther
           values={values}
           setField={setField}
-          errorText={errorText}
-          showRawJson={showRawJson}
-          toggleRawJson={() => setShowRawJson((current) => !current)}
-          onRawJsonChange={handleRawJsonChange}
           changeOf={changeOf}
           disclosure={disclosureFor("other")}
         />

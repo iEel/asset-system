@@ -152,7 +152,7 @@ export const emptyAssetFormValues: AssetFormValues = {
 
 // The fields in visual order, keyed like the server's fieldErrors (the asset body's keys; the install, purchase
 // document and photo keys are this form's own), with the id focus moves to (v-track M-R1). The template's custom
-// fields sit between the photo and the raw JSON: fieldOrder() puts them there and fieldId() names them. correctionReason
+// fields follow the photo: fieldOrder() puts them there and fieldId() names them. correctionReason
 // is the edit page's reason for a room, holder or แผนก correction (group 4 plan 2 Task 8, P2-R4), under those rows.
 export const FIELD_IDS = {
   assetTag: "asset-tag",
@@ -186,7 +186,6 @@ export const FIELD_IDS = {
   purchaseDocumentAmount: "asset-purchase-document-amount",
   purchaseDocumentFile: "asset-purchase-document-file",
   assetPhotoFile: "asset-photo-file",
-  customFieldsJson: "asset-custom-fields-json",
 } as const
 export type AssetFixedField = keyof typeof FIELD_IDS
 export type AssetField = AssetFixedField | `customFields.${string}`
@@ -199,7 +198,6 @@ export const ASSET_MESSAGE_CODES = [
   "licenseResponsibilityRequired",
   "purchaseDocumentNoRequired",
   "fileRequired",
-  "customFieldsJsonInvalid",
   "correctionReasonRequired",
 ] as const
 export type AssetMessageCode = (typeof ASSET_MESSAGE_CODES)[number]
@@ -212,10 +210,10 @@ export function customFieldKey(fieldName: string): AssetField {
   return `customFields.${fieldName}`
 }
 
-// Visual order: the fixed fields, the template's custom fields, then the raw JSON.
+// Visual order: the fixed fields, then the template's custom fields. The raw JSON left the form (the user's decision,
+// 2026-11-02): the custom fields write it, and a stored JSON the rows cannot read is saved back untouched, not refused.
 export function fieldOrder(definitions: CustomFieldDefinition[]): AssetField[] {
-  const fixed = (Object.keys(FIELD_IDS) as AssetFixedField[]).filter((key) => key !== "customFieldsJson")
-  return [...fixed, ...definitions.map((definition) => customFieldKey(definition.fieldName)), "customFieldsJson"]
+  return [...(Object.keys(FIELD_IDS) as AssetFixedField[]), ...definitions.map((definition) => customFieldKey(definition.fieldName))]
 }
 
 // A custom field's id is its place in the template: a field name may hold a space, which an id list cannot.
@@ -278,7 +276,6 @@ const FIELD_SECTIONS: Record<AssetFixedField, AssetFormSection> = {
   purchaseDocumentAmount: "documents",
   purchaseDocumentFile: "documents",
   assetPhotoFile: "photos",
-  customFieldsJson: "other",
 }
 
 export function sectionOfField(field: AssetField): AssetFormSection {
@@ -414,7 +411,6 @@ export function validate({ values, original, duplicates, install, customFields, 
   for (const definition of customFields.definitions) {
     if (definition.isRequired) check(customFieldKey(definition.fieldName), required(customFields.valueOf(definition.fieldName)))
   }
-  check("customFieldsJson", isValidCustomFieldsJson(values.customFieldsJson) ? null : "customFieldsJsonInvalid")
   return errors
 }
 
@@ -497,17 +493,4 @@ export function serializeCustomFieldRows(rows: CustomFieldRow[]) {
   }, {})
 
   return Object.keys(data).length > 0 ? JSON.stringify(data, null, 2) : ""
-}
-
-export function isValidCustomFieldsJson(json?: string | null) {
-  if (!json?.trim()) {
-    return true
-  }
-
-  try {
-    const parsed = JSON.parse(json) as unknown
-    return Boolean(parsed) && typeof parsed === "object" && !Array.isArray(parsed)
-  } catch {
-    return false
-  }
 }

@@ -2,9 +2,11 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import {
-  changeOwnershipType, countRequiredFilled, emptyAssetFormValues, FIELD_IDS, getAssetFormDepartmentLock, getRequiredAssetFields, isCustodyFrozen, sectionOfField, validate,
+  changeOwnershipType, countRequiredFilled, emptyAssetFormValues, FIELD_IDS, fieldOrder, getAssetFormDepartmentLock, getRequiredAssetFields, isCustodyFrozen,
+  parseCustomFieldRows, sectionOfField, serializeCustomFieldRows, validate,
   type AssetField, type AssetFormValues,
 } from "../src/lib/asset-form-rules.ts"
+import { diffAssetFormValues } from "../src/lib/asset-form-diff.ts"
 import { assetOwnershipTypes } from "../src/lib/asset-ownership.ts"
 
 // The asset form's pure rules (group 4 plan 2 Task 5, spec §8): the required list behind the counter and validate(),
@@ -69,12 +71,12 @@ test("each field has its section: the folded ones open on an error (Task 6a reve
     fixedAssetCode: "purchase", poNumber: "purchase", invoiceNumber: "purchase",
     purchaseDocumentNo: "documents", purchaseDocumentAmount: "documents", purchaseDocumentFile: "documents",
     assetPhotoFile: "photos",
-    customFieldsJson: "other",
   }
   assert.deepEqual(Object.keys(expected).sort(), Object.keys(FIELD_IDS).sort(), "every FIELD_IDS key has a section")
   for (const [field, section] of Object.entries(expected)) assert.equal(sectionOfField(field as AssetField), section, field)
   assert.equal(sectionOfField("warrantyEndDate"), "purchase")
-  assert.equal(sectionOfField("customFieldsJson"), "other")
+  // The raw JSON left the form (2026-11-02): it has no field, so it has no section of its own.
+  assert.equal("customFieldsJson" in FIELD_IDS, false)
   assert.equal(sectionOfField("assetPhotoFile"), "photos")
   assert.equal(sectionOfField("customFields.cpu"), "customFields")
 })
@@ -143,4 +145,34 @@ test("the home location has its id, in visual order before the current location"
   assert.equal(FIELD_IDS.homeLocationId, "asset-home-location")
   assert.equal(keys.indexOf("homeLocationId"), keys.indexOf("currentLocationId") - 1)
   assert.ok(keys.indexOf("homeLocationId") > keys.indexOf("custodianId"))
+})
+
+// The user's decision (2026-11-02): the raw JSON editor left the form. The custom-field rows still write customFieldsJson,
+// so a stored JSON they cannot read must reach the save untouched while nobody edits the rows, and never block it.
+test("a stored custom-field JSON the rows cannot read: no rows, no error, no change, saved back as it is", () => {
+  for (const unreadable of ["{bad", "[1,2]", "null", '"text"']) {
+    assert.deepEqual(parseCustomFieldRows(unreadable), [], unreadable)
+    const stored: AssetFormValues = {
+      ...emptyAssetFormValues, name: "PC", categoryId: "c", companyId: "co", branchId: "b", currentLocationId: "l", statusId: "s", conditionId: "k", customFieldsJson: unreadable,
+    }
+    // validate() never names the JSON: it has no field to fix it.
+    const errors = validate({ values: stored, original: stored, ...noExtras })
+    assert.equal("customFieldsJson" in errors, false, unreadable)
+    // Untouched, the form's values keep the stored text (the rows write it only when edited), so the diff is empty.
+    assert.deepEqual(diffAssetFormValues(stored, { ...stored }, { departmentAutomatic: false }), [], unreadable)
+  }
+  // An empty row list serialises to "", which only an edit of the rows sends; readable JSON round-trips.
+  assert.equal(serializeCustomFieldRows([]), "")
+  assert.equal(serializeCustomFieldRows(parseCustomFieldRows('{"cpu":"i5"}')), JSON.stringify({ cpu: "i5" }, null, 2))
+  // validate() has no JSON rule at all, and the field order has no JSON key.
+  assert.doesNotMatch(read("src/lib/asset-form-rules.ts"), /customFieldsJsonInvalid|isValidCustomFieldsJson/)
+  assert.equal(fieldOrder([]).includes("customFieldsJson" as AssetField), false)
+  // The form writes customFieldsJson in one place only: the rows' change handler; the values start from the stored asset.
+  const form = read("src/components/assets/asset-form.tsx")
+  assert.equal(form.match(/setField\("customFieldsJson"/g)?.length, 1)
+  assert.match(form, /function handleCustomFieldRowsChange\(nextRows: CustomFieldRow\[\]\) \{\n\s+setCustomFieldRows\(nextRows\)\n\s+setField\("customFieldsJson", serializeCustomFieldRows\(nextRows\)\)/)
+  assert.match(form, /useState<AssetFormValues>\(\(\) => withDepartmentLock\(asset \?\? emptyAssetFormValues, employees, asset, editContext\)\)/)
+  // The edit page hands the stored text to the form, and the PUT body sends the values as they are.
+  assert.match(read("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx"), /customFieldsJson: asset\.customFieldsJson,/)
+  assert.match(form, /const body: Partial<AssetFormValues> & \{ correctionReason\?: string \} = \{ \.\.\.values \}/)
 })

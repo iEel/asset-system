@@ -38,9 +38,9 @@ const VALUE_FIELDS = [
 ] as const satisfies readonly (keyof AssetFormValues)[]
 
 type AssetValueField = (typeof VALUE_FIELDS)[number]
-// Brand, model, supplier, the License's asset and the remark have no FIELD_IDS row (no error of their own), so a change
-// names a wider set than AssetField.
-export type AssetDiffField = AssetValueField | AssetField | "remark"
+// Brand, model, supplier, the License's asset, the remark and the custom fields' stored JSON have no FIELD_IDS row (no
+// error of their own), so a change names a wider set than AssetField.
+export type AssetDiffField = AssetValueField | AssetField | "remark" | "customFieldsJson"
 export type AssetFormChange = { field: AssetDiffField; from: string; to: string; automatic: boolean }
 
 const SEAT_FIELDS = new Set<string>(["licenseTotalSeats", "licenseUsedSeats"])
@@ -66,6 +66,8 @@ function customFieldValues(json: string | null | undefined): Map<string, string>
   }
 }
 
+// A stored JSON the rows cannot read stays as it is until the person edits the rows (the raw JSON editor left the form,
+// 2026-11-02); then the save writes the rows' JSON over it, and the list shows that one row, old text to new.
 function customFieldChanges(original: AssetFormValues, values: AssetFormValues): AssetFormChange[] {
   const before = customFieldValues(original.customFieldsJson)
   const after = customFieldValues(values.customFieldsJson)
@@ -115,6 +117,7 @@ const CHANGE_SECTIONS: Partial<Record<AssetDiffField, AssetFormSection>> = {
   licenseAssignedAssetId: "license",
   supplierId: "purchase",
   remark: "other",
+  customFieldsJson: "customFields",
 }
 
 // The ids ไปที่ช่อง focuses for the fields with no FIELD_IDS row.
@@ -131,7 +134,7 @@ export function sectionOfChange(field: AssetDiffField): AssetFormSection {
   return CHANGE_SECTIONS[field] ?? sectionOfField(field as AssetField)
 }
 
-/** The id ไปที่ช่อง focuses; an extra custom-field row has none (the section opens). */
+/** The id ไปที่ช่อง focuses; an extra custom-field row and the stored JSON have none (the section opens). */
 export function changeFieldId(field: AssetDiffField, definitions: CustomFieldDefinition[]): string {
   return CHANGE_FIELD_IDS[field] ?? fieldId(field as AssetField, definitions)
 }
