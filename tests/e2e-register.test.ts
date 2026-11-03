@@ -122,13 +122,17 @@ test("the edit page's spec reads the app's own words and keeps to the correction
   // Opened from the asset page (returnTo), so the save goes back there and the spec waits for that page (final review);
   // without returnTo the edit goes to the register and the wait would never match.
   assert.ok(spec.includes("const editFromAssetPage = (assetId: string) => `/th/assets/${assetId}/edit?returnTo=${encodeURIComponent(`/th/assets/${assetId}`)}`"))
-  assert.equal(spec.split("visitEdit(measure, editFromAssetPage(asset.id), ").length - 1, 2, "both saving tests open the edit page from the asset page")
+  assert.equal(spec.split("visitAssetEdit(measure, editFromAssetPage(asset.id), ").length - 1, 2, "both saving tests open the edit page from the asset page")
   // E2E-1103C: every edit page is recorded once its duplicate check has answered, so axe never reads the save button's
-  // colour fade half way.
-  assert.equal(spec.split("await visitEdit(measure, ").length - 1, 3, "the three edit pages")
-  assert.doesNotMatch(spec, /await visit\(measure, /)
-  assert.ok(spec.includes('const checked = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/duplicates")'))
-  assert.ok(spec.includes('await checked\n  await expect(page.locator("#asset-save-reason")).toHaveCount(0)\n  return record(measure, label, testInfo)'))
+  // colour fade half way. The wait lives in tx-support.ts's visitAssetEdit (E2E-1103G/H), shared with the other specs.
+  assert.equal(spec.split("await visitAssetEdit(measure, ").length - 1, 3, "the three edit pages")
+  assert.match(spec, /^\s+visitAssetEdit,$/m)
+  assert.doesNotMatch(spec, /await visit\(measure, |visitEdit\(/)
+  const support = read("e2e/transactions/tx-support.ts")
+  const visitAssetEdit = support.slice(support.indexOf("export async function visitAssetEdit(measure: Measure, path: string, label: string, testInfo: TestInfo) {"))
+  assert.ok(visitAssetEdit.length < support.length, "tx-support.ts exports visitAssetEdit")
+  assert.ok(visitAssetEdit.includes('const checked = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/duplicates")\n  await page.goto(path, { waitUntil: "load" })'))
+  assert.ok(visitAssetEdit.includes('await checked\n  await expect(page.locator("#asset-save-reason")).toHaveCount(0)\n  return record(measure, label, testInfo)'))
   assert.equal(spec.split("await page.waitForURL((url) => url.pathname === `/th/assets/${asset.id}`)").length - 1, 2)
   assert.ok(spec.includes('await pickSearchable(page, "asset-custodian", holder.code, `${holder.code} - ${holder.fullNameTh}`)'))
   assert.ok(spec.includes("await expect(department).toContainText(fillTemplate(REGISTER_WORDS.departmentFollowsHolder, { department: runDepartment.name }))"))

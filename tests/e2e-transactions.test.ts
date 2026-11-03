@@ -605,7 +605,9 @@ test("ส่งมอบ refuses a broken asset with a ส่งซ่อม lin
   assert.ok(spec.includes('await expect(repairLink).toHaveAttribute("href", `/th/maintenance/new?assetId=${asset.id}`)'))
   assert.ok(spec.includes('await expect(page.locator("[data-checkout-repair-link]")).toHaveCount(0)'))
   // The condition changes on the asset edit form (PUT), as IT staff at the desk; the repair is recorded on its forms.
-  assert.ok(spec.includes('await visit(measure, `/th/assets/${assetId}/edit`'))
+  // It is opened through visitAssetEdit, which records the page once its duplicate check has answered (E2E-1103G/H).
+  assert.ok(spec.includes('await visitAssetEdit(measure, `/th/assets/${assetId}/edit`'))
+  assert.match(spec, /^\s+visitAssetEdit,$/m)
   assert.ok(spec.includes('response.request().method() === "PUT"'))
   // Group 4 plan 2 Task 7: the edit page's primary reads บันทึกการแก้ไข (create keeps บันทึก).
   assert.ok(spec.includes('await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).filter({ visible: true }).click()'))
