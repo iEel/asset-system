@@ -74,3 +74,13 @@ test("the repair tab's words, in Thai and English (group 1 spec §7.7)", () => {
   assert.equal(repairTab("th").pmSetup, "ตั้งรอบ PM")
   assert.equal(repairTab("en").pmSetup, "Set up PM")
 })
+
+test("an active PM plan shows the shared due badge with its day count; paused and ended plans show none (group 5 spec §12.1)", () => {
+  const source = read(TAB)
+  assert.match(source, /const badge = isActivePlan \? getPmDueBadge\(plan\.nextDueDate, now\) : null/)
+  assert.match(source, /\{badge \? <StatusBadge label=\{tMaintenance\(`pmDue\.\$\{badge\.key\}`, \{ days: badge\.days \}\)\} tone=\{badge\.tone\} \/> : null\}/)
+  assert.doesNotMatch(source, /getMaintenancePlanDueState|pmDueState\./)
+  const pmDue = (locale: string) => (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { maintenancePage: { pmDue: Record<string, string> } }).maintenancePage.pmDue
+  assert.deepEqual(pmDue("th"), { overdue: "เกินกำหนด {days} วัน", today: "ใกล้ถึงกำหนด · วันนี้", soon: "ใกล้ถึงกำหนด · อีก {days} วัน", later: "รอบถัดไป · อีก {days} วัน" })
+  assert.deepEqual(pmDue("en"), { overdue: "{days} days overdue", today: "Due soon · today", soon: "Due soon · in {days} days", later: "Next round · in {days} days" })
+})

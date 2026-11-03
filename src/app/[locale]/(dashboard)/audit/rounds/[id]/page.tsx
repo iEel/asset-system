@@ -113,7 +113,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const auditRoundExportPdfHref = buildAuditRoundExportHref(locale, round.id, "export-pdf", filters)
   const auditRoundVarianceHref = buildAuditRoundExportHref(locale, round.id, "variance-export", filters)
   const allResultHref = pageHref(roundWideFilters)
-  // "เหลือ / เลยกำหนด N วัน" on an open round only, display only (spec §8, §15; plan 1 R26).
+  // "เหลือ / เกินกำหนด N วัน" on an open round only, display only (spec §8, §15; plan 1 R26).
   const due = buildAuditRoundDueLine(round.status, round.endDate, startOfBangkokDay(new Date()))
   // An unknown or stale company, branch or category drops only its own filter, so the list never sits under a chip it cannot name.
   const staleCategory = Boolean(filters.categoryId && filters.categoryId !== "other" && !filterCategory)

@@ -209,7 +209,7 @@ export function buildAuditRoundProgress({ total, checked }: Pick<AuditRoundListI
 
 export type AuditRoundDueLine = { kind: "left" | "overdue"; days: number } | null
 
-// The end day itself still counts, so the last day reads เหลือ 1 วัน and the next day เลยกำหนด 1 วัน; display only,
+// The end day itself still counts, so the last day reads เหลือ 1 วัน and the next day เกินกำหนด 1 วัน; display only,
 // never a scan block (spec §6, R26).
 export function buildAuditRoundDueLine(status: string, endDate: Date, today: Date): AuditRoundDueLine {
   if (!isAuditRoundOperationalStatus(status)) return null

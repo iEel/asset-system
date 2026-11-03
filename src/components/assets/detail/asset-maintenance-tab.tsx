@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import type { AssetPrimaryAction } from "@/lib/asset-actions"
 import { formatRepairPeriod, repairDays, summarizeAssetRepairs, type AssetPmPlanRow, type AssetRepairRow } from "@/lib/asset-repair-rules"
 import { formatCount, formatMoney } from "@/lib/display-format"
-import { getMaintenancePlanDueState } from "@/lib/preventive-maintenance"
+import { getPmDueBadge } from "@/lib/preventive-maintenance"
 import { getRepairRecordStatusTone, isOpenRepairStatus, toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { formatDate } from "@/lib/utils"
 
@@ -204,8 +204,8 @@ export async function AssetMaintenanceTab({
           <ContentPanelRows>
             {plans.map((plan) => {
               const isActivePlan = plan.planState === "active"
-              const dueState = getMaintenancePlanDueState(plan.nextDueDate, now)
-              const dueTone = dueState === "overdue" ? "danger" : dueState === "due_soon" ? "warning" : "primary"
+              // The shared due badge on Bangkok days (group 5 spec §12.1, G5P1-R3); a paused or ended plan has none.
+              const badge = isActivePlan ? getPmDueBadge(plan.nextDueDate, now) : null
               return (
                 <li key={plan.id} className="grid min-w-0 gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(200px,260px)_auto] md:items-center">
                   <div className="min-w-0">
@@ -221,7 +221,7 @@ export async function AssetMaintenanceTab({
                     </div>
                   </div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2 md:justify-end">
-                    {isActivePlan ? <StatusBadge label={tMaintenance(`pmDueState.${dueState}`)} tone={dueTone} /> : null}
+                    {badge ? <StatusBadge label={tMaintenance(`pmDue.${badge.key}`, { days: badge.days })} tone={badge.tone} /> : null}
                     <Chip>{tMaintenance(`pmFrequencies.${plan.frequency}`)}</Chip>
                     <StatusBadge label={tMaintenance(`pmPlanStates.${plan.planState}`)} tone={isActivePlan ? "success" : plan.planState === "paused" ? "warning" : "muted"} />
                   </div>

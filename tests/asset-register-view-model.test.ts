@@ -150,7 +150,7 @@ const chipLabels = {
   supplier: "ผู้ขาย",
   rowsPerPage: "จำนวนต่อหน้า",
   ownershipTypes: { shared: "ใช้ร่วมกัน" },
-  dataQuality: { serial: "ไม่มี Serial", department: "แผนกไม่ครบ", licenseExpiry: "License ใกล้หมดอายุ", returnDue: "ใกล้/เลยกำหนดคืน" },
+  dataQuality: { serial: "ไม่มี Serial", department: "แผนกไม่ครบ", licenseExpiry: "License ใกล้หมดอายุ", returnDue: "ใกล้/เกินกำหนดคืน" },
   crossScope: { all: "ต่างบริษัท/ต่างสาขา" },
   activity: { idle_180d: "ไม่มีความเคลื่อนไหวใน 180 วันล่าสุด" },
   custodianState: { assigned: "มีผู้ถือครอง" },
@@ -192,7 +192,7 @@ test("the waiting-work values and the custodian state get chips; branch and cate
     ["company", "บริษัท: SNI - สยาม", false],
     ["branch", "สาขา: b-1", true],
     ["category", "หมวดหมู่: cat-1", true],
-    ["dataQuality", "ใกล้/เลยกำหนดคืน", false],
+    ["dataQuality", "ใกล้/เกินกำหนดคืน", false],
     ["custodianState", "มีผู้ถือครอง", false],
   ])
   const withoutCustodianState = paramsOf(chips.find((chip) => chip.key === "custodianState")!.href)

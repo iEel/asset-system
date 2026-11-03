@@ -19,7 +19,8 @@ test("builds localized digest message from notification items", () => {
   ])
 
   assert.match(message, /วันนี้มีงานที่ควรติดตาม 5 รายการ/)
-  assert.match(message, /PM ถึงกำหนด: 2/)
+  assert.match(message, /PM ครบกำหนดใน 7 วัน: 2/)
+  assert.match(buildDailyDigestMessage("en", [{ key: "duePm", count: 2, href: "/en/maintenance#pm-due", tone: "warning" }]), /PM due within 7 days: 2/)
   assert.match(message, /รายการยืมใช้ชั่วคราวใกล้ครบกำหนดคืน: 3/)
 })
 

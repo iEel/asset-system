@@ -1,5 +1,5 @@
 // The preventive maintenance (PM) plan (spec §6.3 4), as IT staff on the computer (and the same walk on the phone):
-// create a monthly plan, find it in the "PM ถึงกำหนด" box, record it done, and see the next due date advance with the
+// create a monthly plan, find it in the "PM ครบกำหนดใน 7 วัน" box, record it done, and see the next due date advance with the
 // month-end clamp (31 Jan + 1 month = 28 Feb), then pause, resume and end it. The asset's status does not change. The
 // create starts with one wrong entry that shows under its field (§6.7).
 import { asUser, expect, test } from "../support/fixtures.ts"
@@ -41,12 +41,12 @@ test("a monthly PM plan is created, recorded done on 31 Jan with its next due da
   expect(plan.planState).toBe("active")
   await page.waitForURL(/\/th\/maintenance\/pm(?:\?|$)/)
 
-  // Due on 31 Jan, so it is overdue and shows in the repair page's "PM ถึงกำหนด" box.
+  // Due on 31 Jan, so it is overdue and shows in the repair page's "PM ครบกำหนดใน 7 วัน" box.
   await measure.visit("/th/maintenance", "repair list with PM due")
   const dueBox = page.locator("#pm-due")
   const dueRow = dueBox.locator("li").filter({ hasText: title })
   await expect(dueRow).toContainText(plan.planNo)
-  await expect(dueRow).toContainText("เลยกำหนด")
+  await expect(dueRow).toContainText("เกินกำหนด")
 
   // Recorded done from the box: the form names the plan, the asset is fixed, and the date is the day the PM was done.
   await dueRow.getByRole("link", { name: "บันทึกว่าทำแล้ว" }).click()

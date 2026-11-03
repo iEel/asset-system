@@ -43,6 +43,8 @@ const rules: Rule[] = [
   { term: "แจ้งซ่อม (ชื่อปุ่มหรือการกระทำ)", pattern: /^\s*แจ้งซ่อม/, use: "บันทึกซ่อม" },
   // Group 4 plan 6 (P6-R6): an asset whose tag changed after its last print is ต้องพิมพ์ใหม่, never "พิมพ์ซ้ำ".
   { term: "พิมพ์ซ้ำ", pattern: /พิมพ์ซ้ำ/, use: "ต้องพิมพ์ใหม่" },
+  // Group 5 plan 1 (decision 5): every due date that has passed reads เกินกำหนด, never เลยกำหนด.
+  { term: "เลยกำหนด", pattern: /เลยกำหนด/, use: "เกินกำหนด" },
 ]
 
 // Removed before matching: product names and allowed compounds.
