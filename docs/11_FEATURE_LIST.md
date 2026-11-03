@@ -213,7 +213,7 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 
 | Feature | Details |
 |---|---|
-| Repair record form | `RepairRecordForm` at `/maintenance/new` and from Asset Detail "บันทึกซ่อม": asset, date (Thai-time default), problem/work done, finished or not, outcome (`usable`/`beyond_repair`); collapsed vendor, cost, invoice no., files, remark; recorder from the signed-in employee |
+| Repair record form | `RepairRecordForm` at `/maintenance/new` and from Asset Detail "บันทึกซ่อม" (group 5 plan 2, board MT-New): the operation frame with 3 numbered sections, the asset card with its eligibility line, date (Bangkok today, not after it), problem/work done, finished or not and the outcome with no pre-chosen answer (the PM path pre-chooses finished), the status line now → after and the early refusal on a held asset with รับคืน, vendor, cost, invoice no., files and remark always open, the summary "สรุปก่อนบันทึก" and the sticky footer "บันทึกซ่อม"; recorder from the signed-in employee |
 | Record statuses | `in_progress` / `closed` / `cancelled`; legacy `open`/`reported`/`accepted`/`waiting_*`/`completed` rows read as `in_progress` (`openRepairRecordWhere`) |
 | Asset status effect | Policy in `src/lib/repair-record-policy.ts`; conditional `statusId` claim in the transaction, `AssetMovement` and System Log for every change; one unfinished record per asset; written-off and on-loan guards with stable Thai/English error codes |
 | Record detail | "ซ่อมเสร็จ" dialog (return date, outcome, optional cost/vendor/invoice/files), "ยกเลิกบันทึก" with confirmation, "แก้ไขรายละเอียด" (details only, optimistic concurrency), legacy fields shown read-only when present, print page |
