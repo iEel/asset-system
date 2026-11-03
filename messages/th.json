@@ -3352,11 +3352,12 @@
       "MAINTENANCE_CONFLICT": "ข้อมูลทรัพย์สินเพิ่งถูกเปลี่ยน กรุณาโหลดใหม่แล้วลองอีกครั้ง",
       "MAINTENANCE_PLAN_INVALID_TRANSITION": "เปลี่ยนสถานะแผน PM นี้ไม่ได้",
       "MAINTENANCE_ASSET_WRITTEN_OFF": "ทรัพย์สินนี้ออกจากทะเบียนแล้ว บันทึกซ่อมไม่ได้",
-      "MAINTENANCE_ASSET_ON_LOAN": "ทรัพย์สินนี้ถูกยืมอยู่ กรุณาบันทึกคืนก่อน",
+      "MAINTENANCE_ASSET_ON_LOAN": "ทรัพย์สินนี้มีใบส่งมอบที่ยังไม่รับคืน ต้องรับคืนก่อน",
       "MAINTENANCE_OPEN_RECORD_EXISTS": "ทรัพย์สินนี้มีงานซ่อมที่ยังไม่เสร็จ กด \"ซ่อมเสร็จ\" ที่บันทึกนั้นแทน",
       "MAINTENANCE_REPORTER_REQUIRED": "กรุณาเลือกผู้บันทึก",
       "ASSET_CONDITION_NOT_SELECTABLE": "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้",
-      "ASSET_STATE_MASTER_NOT_FOUND": "ไม่พบสภาพทรัพย์สินที่ยังใช้งานอยู่"
+      "ASSET_STATE_MASTER_NOT_FOUND": "ไม่พบสภาพทรัพย์สินที่ยังใช้งานอยู่",
+      "MAINTENANCE_DATE_IN_FUTURE": "วันที่ต้องไม่หลังวันนี้"
     },
     "statuses": {
       "open": "เปิดงาน",
@@ -5061,7 +5062,7 @@
     "locationCycle": "โครงสร้างที่ตั้งวนกลับเป็นวงไม่ได้",
     "locationNotFound": "ไม่พบที่ตั้งนี้",
     "maintenanceAssetIneligible": "ทรัพย์สินนี้ส่งซ่อมไม่ได้ในสถานะปัจจุบัน",
-    "maintenanceAssetOnLoan": "ทรัพย์สินนี้ถูกยืมอยู่ รับคืนก่อนส่งซ่อม",
+    "maintenanceAssetOnLoan": "ทรัพย์สินนี้มีใบส่งมอบที่ยังไม่รับคืน ต้องรับคืนก่อน",
     "maintenanceAssetWrittenOff": "ทรัพย์สินนี้ตัดจำหน่ายแล้ว ส่งซ่อมไม่ได้",
     "maintenanceConflict": "ทรัพย์สินหรือรายการนี้เพิ่งเปลี่ยน โหลดหน้าใหม่แล้วลองอีกครั้ง",
     "maintenanceRecordFinished": "รายการนี้เสร็จสิ้นหรือถูกยกเลิกแล้ว",
@@ -5225,7 +5226,9 @@
     "correctionReasonRequired": "ระบุเหตุผลที่แก้",
     "purchaseDocumentLinkNotFound": "เอกสารจัดซื้อนี้ไม่ได้ผูกกับทรัพย์สินนี้",
     "purchaseDocumentSupplierInactive": "ผู้ขายนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกผู้ขายรายอื่น",
-    "batchOneDocumentFile": "ชุดนี้แนบไฟล์เอกสารจัดซื้อได้ 1 ไฟล์"
+    "batchOneDocumentFile": "ชุดนี้แนบไฟล์เอกสารจัดซื้อได้ 1 ไฟล์",
+    "repairDateInFuture": "วันที่ต้องไม่หลังวันนี้",
+    "repairOutcomeRequired": "เลือกผลการซ่อม"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",

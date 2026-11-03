@@ -6,6 +6,7 @@ import {
   cancelRepairRecord,
   completeRepairRecord,
   createRepairRecord,
+  updateRepairRecordDetails,
 } from "../src/lib/repair-record-service.ts"
 
 type Call = { call: string; args: Record<string, unknown> }
@@ -421,4 +422,112 @@ test("recording a repair already done as ใช้งานได้ with เส
     (error) => error instanceof MaintenanceApiError && error.code === "ASSET_CONDITION_NOT_SELECTABLE" && error.fieldErrors?.conditionId === "invalidConditionAfterRepair",
   )
   assert.equal(calls.some(({ call }) => call === "maintenanceTicket.create"), false)
+})
+
+// Group 5 plan 1, Task 3: the date rule, ยังซ่อมไม่เสร็จ on อยู่ระหว่างซ่อม and the plan moving only on a done visit.
+// 00:30 on 3 Nov in Bangkok while a UTC server still reads 2 Nov (Review Focus 1).
+const bangkokNow = new Date("2026-11-02T17:30:00Z")
+const activePlan = { id: "plan-1", assetId: "asset-1", frequency: "monthly", intervalDays: 30, planState: "active", nextDueDate: new Date("2026-10-01T00:00:00Z") }
+const futureDateRefusal = (field: string) => (error: unknown) => error instanceof MaintenanceApiError
+  && error.code === "MAINTENANCE_DATE_IN_FUTURE"
+  && error.status === 400
+  && JSON.stringify(error.fieldErrors) === JSON.stringify({ [field]: "repairDateInFuture" })
+
+test("a record dated Bangkok today is accepted at 00:30 Bangkok time; one dated tomorrow is refused before any write (G5P1-R6)", async () => {
+  const today = fakeDb()
+  await createRepairRecord(today.db as never, { ...baseInput, reportedDate: new Date("2026-11-03") }, user, bangkokNow)
+  assert.ok(find(today.calls, "maintenanceTicket.create"))
+
+  const tomorrow = fakeDb()
+  await assert.rejects(
+    createRepairRecord(tomorrow.db as never, { ...baseInput, reportedDate: new Date("2026-11-04") }, user, bangkokNow),
+    futureDateRefusal("reportedDate"),
+  )
+  assert.deepEqual(tomorrow.calls, [])
+})
+
+test("a completion or an edit dated after Bangkok today is refused under its date (G5P1-R6)", async () => {
+  const completion = fakeDb({ ticket: openTicket("Good") })
+  await assert.rejects(
+    completeRepairRecord(completion.db as never, "ticket-1", { ...completeInput("usable", "condition:Good"), returnDate: new Date("2026-11-04") }, user, bangkokNow),
+    futureDateRefusal("returnDate"),
+  )
+  assert.deepEqual(writes(completion.calls), [])
+
+  const edit = fakeDb({ ticket: openTicket("Good") })
+  await assert.rejects(
+    updateRepairRecordDetails(edit.db as never, "ticket-1", {
+      action: "update", expectedUpdatedAt: new Date("2026-10-07T03:00:00Z"), reportedDate: new Date("2026-11-04"),
+      problem: "เปลี่ยนแบตเตอรี่", vendorId: null, repairCost: null, invoiceNo: null, remark: null,
+    }, user, bangkokNow),
+    futureDateRefusal("reportedDate"),
+  )
+  assert.deepEqual(writes(edit.calls), [])
+})
+
+test("ยังซ่อมไม่เสร็จ on อยู่ระหว่างซ่อม changes no status and still writes its movement with from = to (G5P1-R10)", async () => {
+  const { db, calls } = fakeDb({ statusName: "Under Maintenance" })
+
+  await createRepairRecord(db as never, { ...baseInput, done: false, conditionId: null }, user)
+
+  assert.deepEqual(statusWrites(calls), [])
+  assert.equal((find(calls, "maintenanceTicket.create")!.args.data as Record<string, unknown>).repairStatus, "in_progress")
+  const created = movements(calls, "maintenance_create")
+  assert.equal(created.length, 1)
+  const data = created[0].args.data as Record<string, unknown>
+  assert.equal(data.fromValue, "status:Under Maintenance")
+  assert.equal(data.toValue, "status:Under Maintenance")
+})
+
+test("a PM visit saved not done leaves its plan and stores no result (spec §5)", async () => {
+  const { db, calls } = fakeDb({ plan: activePlan })
+
+  await createRepairRecord(db as never, { ...baseInput, done: false, conditionId: null, maintenancePlanId: "plan-1" }, user)
+
+  assert.ok(find(calls, "maintenancePlan.findFirst"), "the plan is still checked")
+  assert.equal(find(calls, "maintenancePlan.update"), undefined)
+  assert.equal((find(calls, "maintenanceTicket.create")!.args.data as Record<string, unknown>).outcome, null)
+})
+
+test("a PM visit on a paused plan is refused even when not done, before any record is written (G5P1-R8)", async () => {
+  const { db, calls } = fakeDb({ plan: null })
+
+  await assert.rejects(
+    createRepairRecord(db as never, { ...baseInput, done: false, conditionId: null, maintenancePlanId: "plan-1" }, user),
+    (error) => error instanceof MaintenanceApiError && error.code === "MAINTENANCE_PLAN_INVALID_TRANSITION" && error.status === 409,
+  )
+  const order = calls.map(({ call }) => call)
+  assert.ok(order.indexOf("asset.updateMany") < order.indexOf("maintenancePlan.findFirst"), "checked after the claim")
+  assert.equal(order.includes("maintenanceTicket.create"), false)
+  assert.equal(order.includes("assetMovement.create"), false)
+})
+
+const pmTicket = () => ({ ...openTicket("Good"), maintenancePlanId: "plan-1" })
+
+test("ซ่อมเสร็จ on a PM visit moves its active plan from the completion date (G5P1-R9)", async () => {
+  const { db, calls } = fakeDb({ ticket: pmTicket(), plan: activePlan })
+
+  await completeRepairRecord(db as never, "ticket-1", { ...completeInput("usable", "condition:Good"), returnDate: new Date("2026-10-08T00:00:00Z") }, user)
+
+  const lookup = find(calls, "maintenancePlan.findFirst")!.args as { where: Record<string, unknown> }
+  assert.deepEqual(lookup.where, { id: "plan-1", assetId: "asset-1", planState: "active", isActive: true })
+  const update = find(calls, "maintenancePlan.update")!.args as { data: { nextDueDate: Date } }
+  assert.equal(update.data.nextDueDate.toISOString().slice(0, 10), "2026-11-08")
+})
+
+test("ซ่อมเสร็จ on a PM visit whose plan was paused or ended closes the record and leaves the plan (Review Focus 2)", async () => {
+  const { db, calls } = fakeDb({ ticket: pmTicket(), plan: null })
+
+  await completeRepairRecord(db as never, "ticket-1", completeInput("usable", "condition:Good"), user)
+
+  assert.equal((find(calls, "maintenanceTicket.updateMany")!.args.data as Record<string, unknown>).repairStatus, "closed")
+  assert.equal(find(calls, "maintenancePlan.update"), undefined)
+})
+
+test("ซ่อมเสร็จ on a record without a plan reads no plan", async () => {
+  const { db, calls } = fakeDb({ ticket: openTicket("Good") })
+
+  await completeRepairRecord(db as never, "ticket-1", completeInput("usable", "condition:Good"), user)
+
+  assert.equal(find(calls, "maintenancePlan.findFirst"), undefined)
 })

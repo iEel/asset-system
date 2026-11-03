@@ -1,4 +1,5 @@
 import { getMaintenanceOperationalTarget, normalizeAssetStateName } from "./asset-lifecycle-policy.ts"
+import { getBangkokDateKey } from "./preventive-maintenance.ts"
 
 export const repairRecordStatuses = ["in_progress", "closed", "cancelled"] as const
 export type RepairRecordStatus = (typeof repairRecordStatuses)[number]
@@ -42,7 +43,8 @@ export type RepairAssetEffect =
 
 const writtenOffStatuses = new Set(["disposed", "retired"])
 const repairStatuses = new Set(["pending repair", "under maintenance"])
-const unfinishedRepairSources = new Set(["ready", "in use", "pending repair"])
+// ยังซ่อมไม่เสร็จ on อยู่ระหว่างซ่อม keeps the status (group 5 spec §5, G5P1-R10).
+const unfinishedRepairSources = new Set(["ready", "in use", "pending repair", "under maintenance"])
 
 // A permanent assignment keeps an active checkout while the asset is In Use, and check-in expects
 // In Use again, so an open checkout always restores In Use.
@@ -52,7 +54,7 @@ export function getRepairRestoreStatusName(asset: RepairAssetContext): "In Use" 
 
 export function getRepairRecordCreateEffect(
   asset: RepairAssetContext,
-  input: { done: boolean; outcome: RepairOutcome },
+  input: { done: boolean; outcome: RepairOutcome | null },
 ): RepairAssetEffect {
   const status = normalizeAssetStateName(asset.statusName)
   if (writtenOffStatuses.has(status)) return { error: "MAINTENANCE_ASSET_WRITTEN_OFF" }
@@ -70,6 +72,11 @@ export function getRepairRecordCreateEffect(
   }
 
   return { error: null, nextStatusName: repairStatuses.has(status) ? getRepairRestoreStatusName(asset) : null }
+}
+
+// A repair date (the record date, the completion date) may be today in Bangkok but not after it (G5P1-R6).
+export function isRepairDateAfterToday(date: Date, now: Date) {
+  return getBangkokDateKey(date) > getBangkokDateKey(now)
 }
 
 export function getRepairRecordCompleteEffect(asset: RepairAssetContext, outcome: RepairOutcome): RepairAssetEffect {

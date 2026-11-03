@@ -113,6 +113,7 @@ test("recording a repair passes the signed-in employee to the service and writes
     reportedDate: "2026-10-07",
     problem: "เปลี่ยนแบตเตอรี่",
     done: true,
+    outcome: "usable",
     conditionId: "condition-good",
   }))
 

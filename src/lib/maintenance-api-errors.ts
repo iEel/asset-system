@@ -9,6 +9,8 @@ export const maintenanceErrorCodes = [
   "MAINTENANCE_ASSET_ON_LOAN",
   "MAINTENANCE_OPEN_RECORD_EXISTS",
   "MAINTENANCE_REPORTER_REQUIRED",
+  // A record or completion date after Bangkok today (group 5 spec §5, G5P1-R6).
+  "MAINTENANCE_DATE_IN_FUTURE",
   // The condition a repair ends in (group 3 spec §19.4): the codes the asset routes already answer for a condition.
   "ASSET_STATE_MASTER_NOT_FOUND",
   "ASSET_CONDITION_NOT_SELECTABLE",

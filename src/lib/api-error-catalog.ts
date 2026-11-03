@@ -222,6 +222,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "MAINTENANCE_ASSET_ON_LOAN": "maintenanceAssetOnLoan",
   "MAINTENANCE_ASSET_WRITTEN_OFF": "maintenanceAssetWrittenOff",
   "MAINTENANCE_CONFLICT": "maintenanceConflict",
+  "MAINTENANCE_DATE_IN_FUTURE": "repairDateInFuture",
   "MAINTENANCE_INVALID_TRANSITION": "maintenanceRecordFinished",
   "MAINTENANCE_OPEN_RECORD_EXISTS": "maintenanceOpenRecordExists",
   "MAINTENANCE_PLAN_INVALID_TRANSITION": "maintenancePlanInactive",
@@ -256,6 +257,9 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Recipient, buyer, or destination is required": "recipientRequired",
   "Reference document number is required": "referenceDocumentRequired",
   "Rejection reason is required": "rejectionReasonRequired",
+  // The repair record's field codes: a date after Bangkok today (G5P1-R6) and a done record without its result (G5P1-R7).
+  "repairDateInFuture": "repairDateInFuture",
+  "repairOutcomeRequired": "repairOutcomeRequired",
   "Repair record not found": "repairRecordNotFound",
   "Reporter not found or inactive": "reporterNotFound",
   "Requester and assigned approver must be different": "disposalSameRequesterApprover",

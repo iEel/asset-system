@@ -9,6 +9,7 @@ import {
   getRepairRecordCompleteEffect,
   getRepairRecordCreateEffect,
   isOpenRepairStatus,
+  isRepairDateAfterToday,
   openRepairRecordWhere,
   type RepairAssetContext,
   type RepairAssetEffect,
@@ -49,7 +50,13 @@ type AssetRow = {
   status: { name: string }
 }
 
-export async function createRepairRecord(db: RepairServiceDb, input: RepairRecordCreateInput, user: RepairServiceUser) {
+export async function createRepairRecord(
+  db: RepairServiceDb,
+  input: RepairRecordCreateInput,
+  user: RepairServiceUser,
+  now = new Date(),
+) {
+  refuseDateAfterToday(input.reportedDate, "reportedDate", now)
   const reportedById = input.reportedById ?? user.employeeId ?? null
   if (!reportedById) {
     throw new MaintenanceApiError("MAINTENANCE_REPORTER_REQUIRED", "Select who is recording this repair", 400, { reportedById: "required" })
@@ -64,10 +71,17 @@ export async function createRepairRecord(db: RepairServiceDb, input: RepairRecor
     await claimAsset(tx, asset, null, user)
     const effect = getRepairRecordCreateEffect(await loadAssetContext(tx, asset), input)
     throwIfRepairError(effect)
+    // Checked after the claim and before any record is written, done or not (G5P1-R8).
+    const plan = input.maintenancePlanId ? await findActivePlan(tx, input.maintenancePlanId, asset.id) : null
+    if (input.maintenancePlanId && !plan) {
+      throw new MaintenanceApiError("MAINTENANCE_PLAN_INVALID_TRANSITION", "The PM plan is not active for this asset", 409)
+    }
 
     await requireActiveEmployee(tx, reportedById)
     if (input.vendorId) await requireActiveSupplier(tx, input.vendorId)
-    const nextConditionId = input.done ? await resolveRepairConditionId(tx, input.outcome, input.conditionId) : null
+    // A not-done record stores no result, whatever was sent (G5P1-R7).
+    const outcome = input.done ? requireOutcome(input.outcome) : null
+    const nextConditionId = outcome ? await resolveRepairConditionId(tx, outcome, input.conditionId) : null
 
     const nextStatusId = await applyAssetStatus(tx, asset, effect.nextStatusName, user)
     const ticket = await tx.maintenanceTicket.create({
@@ -81,7 +95,7 @@ export async function createRepairRecord(db: RepairServiceDb, input: RepairRecor
         repairType: input.vendorId ? "vendor" : "internal",
         vendorId: input.vendorId,
         repairStatus: input.done ? "closed" : "in_progress",
-        outcome: input.done ? input.outcome : null,
+        outcome,
         repairCost: input.repairCost,
         invoiceNo: input.invoiceNo,
         resolution: input.remark,
@@ -106,12 +120,20 @@ export async function createRepairRecord(db: RepairServiceDb, input: RepairRecor
     })
 
     const conditionId = await applyAssetCondition(tx, asset, ticket.id, nextConditionId, input.remark, user)
-    if (input.maintenancePlanId) await advancePlan(tx, input.maintenancePlanId, asset.id, input.reportedDate, user)
+    // The plan moves only when its visit is done (group 5 spec §5).
+    if (plan && input.done) await movePlanDueDate(tx, plan, input.reportedDate, user)
     return { ticket, previousConditionId: asset.conditionId, conditionId }
   }))
 }
 
-export async function completeRepairRecord(db: RepairServiceDb, id: string, input: RepairRecordCompleteInput, user: RepairServiceUser) {
+export async function completeRepairRecord(
+  db: RepairServiceDb,
+  id: string,
+  input: RepairRecordCompleteInput,
+  user: RepairServiceUser,
+  now = new Date(),
+) {
+  refuseDateAfterToday(input.returnDate, "returnDate", now)
   return db.$transaction(async (tx) => {
     const previous = await getOpenTicket(tx, id)
     const effect = getRepairRecordCompleteEffect(await loadAssetContext(tx, previous.asset, { ignoreRecordId: id }), input.outcome)
@@ -132,6 +154,10 @@ export async function completeRepairRecord(db: RepairServiceDb, id: string, inpu
     const nextStatusId = await applyAssetStatus(tx, previous.asset, effect.nextStatusName, user)
     await recordMovement(tx, previous, "maintenance_close", nextStatusId, input.remark, user)
     const conditionId = await applyAssetCondition(tx, previous.asset, previous.id, nextConditionId, input.remark, user)
+    // A PM visit saved not done moves its plan when it is finished, from the completion date, but only while the plan is
+    // still active for this asset; a paused or ended plan is left alone, with no error (G5P1-R9).
+    const plan = previous.maintenancePlanId ? await findActivePlan(tx, previous.maintenancePlanId, previous.assetId) : null
+    if (plan) await movePlanDueDate(tx, plan, input.returnDate, user)
     return { ticket: await reloadTicket(tx, id), previous, previousConditionId: previous.asset.conditionId, conditionId }
   })
 }
@@ -148,7 +174,14 @@ export async function cancelRepairRecord(db: RepairServiceDb, id: string, input:
   })
 }
 
-export async function updateRepairRecordDetails(db: RepairServiceDb, id: string, input: RepairRecordUpdateInput, user: RepairServiceUser) {
+export async function updateRepairRecordDetails(
+  db: RepairServiceDb,
+  id: string,
+  input: RepairRecordUpdateInput,
+  user: RepairServiceUser,
+  now = new Date(),
+) {
+  refuseDateAfterToday(input.reportedDate, "reportedDate", now)
   return db.$transaction(async (tx) => {
     const previous = await getTicket(tx, id)
     if (input.vendorId) await requireActiveSupplier(tx, input.vendorId)
@@ -171,6 +204,7 @@ type TicketRow = {
   repairStatus: string
   updatedAt: Date
   assetId: string
+  maintenancePlanId?: string | null
   asset: AssetRow
   reportedDate?: Date
   problem?: string
@@ -188,6 +222,7 @@ async function getTicket(tx: Prisma.TransactionClient, id: string): Promise<Tick
       repairStatus: true,
       updatedAt: true,
       assetId: true,
+      maintenancePlanId: true,
       reportedDate: true,
       problem: true,
       vendorId: true,
@@ -333,12 +368,18 @@ async function recordMovement(
   })
 }
 
-async function advancePlan(tx: Prisma.TransactionClient, planId: string, assetId: string, recordedDate: Date, user: RepairServiceUser) {
-  const plan = await tx.maintenancePlan.findFirst({
+type ActivePlan = { id: string; frequency: string; intervalDays: number | null }
+
+// The plan when it is active, not removed and of this asset; otherwise null. The create refuses a null plan, the
+// completion skips it.
+async function findActivePlan(tx: Prisma.TransactionClient, planId: string, assetId: string): Promise<ActivePlan | null> {
+  return tx.maintenancePlan.findFirst({
     where: { id: planId, assetId, planState: "active", isActive: true },
     select: { id: true, frequency: true, intervalDays: true },
   })
-  if (!plan) throw new MaintenanceApiError("MAINTENANCE_PLAN_INVALID_TRANSITION", "The PM plan is not active for this asset", 409)
+}
+
+async function movePlanDueDate(tx: Prisma.TransactionClient, plan: ActivePlan, recordedDate: Date, user: RepairServiceUser) {
   await tx.maintenancePlan.update({
     where: { id: plan.id },
     data: {
@@ -364,6 +405,19 @@ export async function generateRepairNo(tx: Prisma.TransactionClient, now: Date) 
   const count = await tx.maintenanceTicket.count({ where: { createdAt: { gte: start, lt: end } } })
   const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
   return `MT-${datePart}-${String(count + 1).padStart(4, "0")}`
+}
+
+// The record date, the completion date and the edited record date may not be after Bangkok today (G5P1-R6).
+function refuseDateAfterToday(date: Date, field: "reportedDate" | "returnDate", now: Date) {
+  if (isRepairDateAfterToday(date, now)) {
+    throw new MaintenanceApiError("MAINTENANCE_DATE_IN_FUTURE", "The date cannot be after today", 400, { [field]: "repairDateInFuture" })
+  }
+}
+
+// The create schema already refuses a done record without its result (G5P1-R7); this narrows the type for a direct call.
+function requireOutcome(outcome: RepairOutcome | null): RepairOutcome {
+  if (!outcome) throw new FieldRefusalError("repairOutcomeRequired", { outcome: "repairOutcomeRequired" })
+  return outcome
 }
 
 function throwIfRepairError(effect: RepairAssetEffect): asserts effect is { error: null; nextStatusName: string | null } {

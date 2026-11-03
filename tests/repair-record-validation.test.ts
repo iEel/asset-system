@@ -5,7 +5,7 @@ import { issuesToFieldErrors } from "../src/lib/field-errors.ts"
 import { repairRecordActionSchema, repairRecordCreateSchema } from "../src/lib/validations/maintenance.ts"
 
 test("a repair can be recorded with only asset, date and what was done", () => {
-  const input = repairRecordCreateSchema.parse({ assetId: "asset-1", reportedDate: "2026-10-07", problem: "เปลี่ยนแบตเตอรี่", done: true, conditionId: "good" })
+  const input = repairRecordCreateSchema.parse({ assetId: "asset-1", reportedDate: "2026-10-07", problem: "เปลี่ยนแบตเตอรี่", done: true, outcome: "usable", conditionId: "good" })
 
   assert.equal(input.outcome, "usable")
   assert.equal(input.conditionId, "good")
@@ -53,8 +53,16 @@ test("a repair closed as usable needs the condition after repair; beyond repair 
 
 test("recording a finished usable repair needs the condition after repair; an unfinished one needs none", () => {
   assert.deepEqual(fieldErrorsOf(repairRecordCreateSchema.safeParse({ ...createBody, done: true, outcome: "usable" })), { conditionId: "conditionAfterRepairRequired" })
-  assert.deepEqual(fieldErrorsOf(repairRecordCreateSchema.safeParse({ ...createBody, done: true })), { conditionId: "conditionAfterRepairRequired" }, "usable is the default outcome")
   assert.equal(repairRecordCreateSchema.parse({ ...createBody, done: true, outcome: "beyond_repair" }).conditionId, null)
   assert.equal(repairRecordCreateSchema.parse({ ...createBody, done: false }).conditionId, null)
   assert.equal(repairRecordCreateSchema.parse({ ...createBody, done: true, outcome: "usable", conditionId: "fair" }).conditionId, "fair")
+})
+
+test("a done record names its result; a not-done one may send one, which the service drops (G5P1-R7)", () => {
+  const missing = repairRecordCreateSchema.safeParse({ ...createBody, done: true, conditionId: "good" })
+  assert.equal(missing.success, false)
+  assert.deepEqual(fieldErrorsOf(missing), { outcome: "repairOutcomeRequired" })
+  assert.deepEqual(fieldErrorsOf(repairRecordCreateSchema.safeParse({ ...createBody, done: true, outcome: null })), { outcome: "repairOutcomeRequired" })
+  assert.equal(repairRecordCreateSchema.parse({ ...createBody, done: false }).outcome, null)
+  assert.equal(repairRecordCreateSchema.parse({ ...createBody, done: false, outcome: "usable" }).outcome, "usable")
 })

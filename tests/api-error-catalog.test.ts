@@ -237,3 +237,22 @@ test("every answer of the bulk move reads through the catalog, and its two old t
     assert.equal(typeof apiErrors.checkoutLocationInactive, "string", locale)
   }
 })
+
+test("the repair record's new refusals read their words: on loan, a date after today and a missing result (group 5 spec §5, G5P1-R6, G5P1-R7)", () => {
+  const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+  assert.equal(getApiErrorKey("MAINTENANCE_DATE_IN_FUTURE"), "repairDateInFuture")
+  assert.equal(getApiErrorKey("repairDateInFuture"), "repairDateInFuture")
+  assert.equal(getApiErrorKey("repairOutcomeRequired"), "repairOutcomeRequired")
+  assert.equal(getApiErrorKey("MAINTENANCE_ASSET_ON_LOAN"), "maintenanceAssetOnLoan")
+  const onLoan = ["ทรัพย์สินนี้มีใบส่งมอบที่ยังไม่รับคืน ต้องรับคืนก่อน", "This asset has a handover that is not returned yet. Record the return first."]
+  const future = ["วันที่ต้องไม่หลังวันนี้", "The date cannot be after today"]
+  const outcome = ["เลือกผลการซ่อม", "Choose the repair result"]
+  for (const [index, locale] of (["th", "en"] as const).entries()) {
+    const m = messages(locale)
+    assert.equal(m.apiErrors.maintenanceAssetOnLoan, onLoan[index], locale)
+    assert.equal(m.maintenancePage.errors.MAINTENANCE_ASSET_ON_LOAN, onLoan[index], locale)
+    assert.equal(m.apiErrors.repairDateInFuture, future[index], locale)
+    assert.equal(m.maintenancePage.errors.MAINTENANCE_DATE_IN_FUTURE, future[index], locale)
+    assert.equal(m.apiErrors.repairOutcomeRequired, outcome[index], locale)
+  }
+})

@@ -57,6 +57,7 @@ const optionalAmount = z.preprocess(
 // A repair that ends ใช้งานได้ names the asset's condition after it, ดี or พอใช้ (group 3 spec §19.4); the service checks
 // which condition it is. ซ่อมไม่ได้ always ends in ซาก, so it names none.
 const conditionAfterRepairRequired = "conditionAfterRepairRequired"
+const repairOutcomeRequired = "repairOutcomeRequired"
 
 export const repairRecordCreateSchema = z.object({
   assetId: z.string().trim().min(1),
@@ -65,7 +66,8 @@ export const repairRecordCreateSchema = z.object({
   reportedDate: z.coerce.date(),
   // JSON boolean only: z.coerce.boolean() would turn the string "false" into true.
   done: z.boolean(),
-  outcome: z.enum(repairOutcomes).default("usable"),
+  // No default answer (group 5 spec §5): a done record names its result; a not-done one stores none (G5P1-R7).
+  outcome: z.enum(repairOutcomes).nullable().optional().transform((value) => value ?? null),
   conditionId: optionalId,
   reportedById: optionalId,
   vendorId: optionalId,
@@ -73,6 +75,9 @@ export const repairRecordCreateSchema = z.object({
   invoiceNo: optionalNote(100),
   remark: optionalNote(4000),
 }).superRefine((input, context) => {
+  if (input.done && !input.outcome) {
+    context.addIssue({ code: "custom", path: ["outcome"], message: repairOutcomeRequired })
+  }
   if (input.done && input.outcome === "usable" && !input.conditionId) {
     context.addIssue({ code: "custom", path: ["conditionId"], message: conditionAfterRepairRequired })
   }

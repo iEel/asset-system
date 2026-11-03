@@ -8,6 +8,7 @@ import {
   getRepairRecordCreateEffect,
   getRepairRecordStatusTone,
   isOpenRepairStatus,
+  isRepairDateAfterToday,
   toRepairRecordStatus,
   type RepairAssetContext,
 } from "../src/lib/repair-record-policy.ts"
@@ -48,6 +49,19 @@ test("an unfinished repair moves an operational asset to Under Maintenance", () 
   for (const statusName of ["Ready", "In Use", "Pending Repair"]) {
     assert.deepEqual(getRepairRecordCreateEffect(asset({ statusName }), notDone), { error: null, nextStatusName: "Under Maintenance" }, statusName)
   }
+})
+
+test("ยังซ่อมไม่เสร็จ on อยู่ระหว่างซ่อม keeps the status; อยู่ระหว่างตรวจสอบ still cannot start one (group 5 spec §5)", () => {
+  assert.deepEqual(getRepairRecordCreateEffect(asset({ statusName: "Under Maintenance" }), notDone), { error: null, nextStatusName: "Under Maintenance" })
+  assert.equal(getRepairRecordCreateEffect(asset({ statusName: "Under Inspection" }), notDone).error, "MAINTENANCE_ASSET_INELIGIBLE")
+  assert.deepEqual(getRepairRecordCreateEffect(asset({ statusName: "Under Maintenance" }), { done: false, outcome: null }), { error: null, nextStatusName: "Under Maintenance" })
+})
+
+test("a repair date is after today only on a later Bangkok day (Review Focus 1)", () => {
+  const now = new Date("2026-11-02T17:30:00Z")
+  assert.equal(isRepairDateAfterToday(new Date("2026-11-03"), now), false)
+  assert.equal(isRepairDateAfterToday(new Date("2026-11-02"), now), false)
+  assert.equal(isRepairDateAfterToday(new Date("2026-11-04"), now), true)
 })
 
 test("a loaned asset must be returned before it is sent for repair", () => {
