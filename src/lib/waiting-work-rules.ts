@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client"
 
 import { buildExactAssetRegisterHref } from "./asset-register-view-memory.ts"
 import { auditRoundOperationalWhere } from "./audit-round-status.ts"
-import { buildDuePmPlanWhere, getBangkokDateKey } from "./preventive-maintenance.ts"
+import { bangkokDayDiff, buildDuePmPlanWhere } from "./preventive-maintenance.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // One order for every surface: approvals, the two repair kinds, then the bell's order.
@@ -42,15 +42,8 @@ export const DEFAULT_WAITING_WORK_RULES: WaitingWorkRules = {
 
 const dayMs = 86_400_000
 
-// The start of the Bangkok day that holds `now`, whatever the server's time zone.
-export function startOfBangkokDay(now: Date): Date {
-  return new Date(`${getBangkokDateKey(now)}T00:00:00.000+07:00`)
-}
-
-// Whole Bangkok days from `from` to `to`; negative when `to` is the earlier day.
-export function bangkokDayDiff(from: Date, to: Date): number {
-  return (Date.parse(getBangkokDateKey(to)) - Date.parse(getBangkokDateKey(from))) / dayMs
-}
+// The Bangkok day helpers live with the PM due rule now; importers of this file keep them.
+export { startOfBangkokDay, bangkokDayDiff } from "./preventive-maintenance.ts"
 
 // Bangkok has no daylight saving, so a day is always 24 hours.
 function addDays(date: Date, days: number) {

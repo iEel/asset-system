@@ -44,32 +44,77 @@ function addMonthsClamped(from: Date, months: number) {
 }
 
 export const pmReminderWindowDays = 7
+export const pmDueSoonWindowDays = 14
 
 const bangkokOffsetMs = 7 * 60 * 60 * 1000
+const dayMs = 86_400_000
 
 export function getBangkokDateKey(date: Date) {
   return new Date(date.getTime() + bangkokOffsetMs).toISOString().slice(0, 10)
 }
 
-export function buildDuePmPlanWhere(now: Date): Prisma.MaintenancePlanWhereInput {
-  const windowEnd = new Date(`${getBangkokDateKey(now)}T23:59:59.999+07:00`)
-  windowEnd.setUTCDate(windowEnd.getUTCDate() + pmReminderWindowDays)
-  return {
-    isActive: true,
-    planState: "active",
-    nextDueDate: { lte: windowEnd },
-    asset: { isActive: true, status: { name: { notIn: ["Disposed", "Retired"] } } },
+// The start of the Bangkok day that holds `now`, whatever the server's time zone.
+export function startOfBangkokDay(now: Date): Date {
+  return new Date(`${getBangkokDateKey(now)}T00:00:00.000+07:00`)
+}
+
+// 23:59:59.999 Bangkok of the day `offsetDays` after the Bangkok day that holds `now`. Bangkok has no daylight
+// saving, so a day is always 24 hours.
+export function endOfBangkokDay(now: Date, offsetDays = 0): Date {
+  return new Date(new Date(`${getBangkokDateKey(now)}T23:59:59.999+07:00`).getTime() + offsetDays * dayMs)
+}
+
+// Whole Bangkok days from `from` to `to`; negative when `to` is the earlier day.
+export function bangkokDayDiff(from: Date, to: Date): number {
+  return (Date.parse(getBangkokDateKey(to)) - Date.parse(getBangkokDateKey(from))) / dayMs
+}
+
+// The plans every PM due count reads: active plans of assets still in use (group 5 spec §5, one scope).
+export const pmDueScopeWhere: Prisma.MaintenancePlanWhereInput = {
+  isActive: true,
+  planState: "active",
+  asset: { isActive: true, status: { name: { notIn: ["Disposed", "Retired"] } } },
+}
+
+export type PmDueBucket = "overdue" | "week" | "soon" | "later"
+
+// One bucket's plans: the stored nextDueDate instant against Bangkok day edges (G5P1-R2). week and soon overlap:
+// week is the first seven days of soon.
+export function buildPmDueBucketWhere(bucket: PmDueBucket, now: Date): Prisma.MaintenancePlanWhereInput {
+  const today = startOfBangkokDay(now)
+  const soonEnd = endOfBangkokDay(now, pmDueSoonWindowDays)
+  if (bucket === "overdue") return { ...pmDueScopeWhere, nextDueDate: { lt: today } }
+  if (bucket === "week") {
+    return { ...pmDueScopeWhere, nextDueDate: { gte: today, lte: endOfBangkokDay(now, pmReminderWindowDays) } }
   }
+  if (bucket === "soon") return { ...pmDueScopeWhere, nextDueDate: { gte: today, lte: soonEnd } }
+  return { ...pmDueScopeWhere, nextDueDate: { gt: soonEnd } }
+}
+
+// The reminder (bell, work center, list box): the scope, due within seven Bangkok days, overdue included.
+export function buildDuePmPlanWhere(now: Date): Prisma.MaintenancePlanWhereInput {
+  return { ...pmDueScopeWhere, nextDueDate: { lte: endOfBangkokDay(now, pmReminderWindowDays) } }
 }
 
 export function getMaintenancePlanDueState(nextDueDate: Date | string, now = new Date()): MaintenancePlanDueState {
-  const due = startOfDay(nextDueDate)
-  const today = startOfDay(now)
-  if (due.getTime() < today.getTime()) return "overdue"
+  const days = bangkokDayDiff(now, new Date(nextDueDate))
+  if (days < 0) return "overdue"
+  return days <= pmDueSoonWindowDays ? "due_soon" : "upcoming"
+}
 
-  const dueSoonCutoff = new Date(today)
-  dueSoonCutoff.setDate(dueSoonCutoff.getDate() + 14)
-  return due.getTime() <= dueSoonCutoff.getTime() ? "due_soon" : "upcoming"
+export type PmDueBadge = {
+  key: "overdue" | "today" | "soon" | "later"
+  days: number
+  tone: "danger" | "warning" | "primary"
+}
+
+// The due badge of one plan, in Bangkok days. `days` is never negative: the days late, 0 for today, else the days left.
+export function getPmDueBadge(nextDueDate: Date | string, now: Date): PmDueBadge {
+  const days = bangkokDayDiff(now, new Date(nextDueDate))
+  if (days < 0) return { key: "overdue", days: -days, tone: "danger" }
+  if (days === 0) return { key: "today", days: 0, tone: "warning" }
+  if (days <= pmDueSoonWindowDays) return { key: "soon", days, tone: "warning" }
+  return { key: "later", days, tone: "primary" }
 }
 
 export function summarizeMaintenancePlans(plans: MaintenancePlanSummaryInput[], now = new Date()) {
@@ -127,10 +172,4 @@ export function planStatePageSlices(
     skip = 0
   }
   return slices
-}
-
-function startOfDay(value: Date | string) {
-  const date = new Date(value)
-  date.setHours(0, 0, 0, 0)
-  return date
 }
