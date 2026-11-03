@@ -3459,7 +3459,8 @@
       "close": "ซ่อมเสร็จ",
       "cancel": "ยกเลิกบันทึก",
       "pmCreate": "สร้างจากแผน PM (ขั้นตอนเดิม)",
-      "fallback": "รายการอื่น"
+      "fallback": "รายการอื่น",
+      "conditionChange": "เปลี่ยนสภาพ"
     },
     "fromValue": "จาก",
     "toValue": "เป็น",

@@ -8,6 +8,7 @@ const labels = {
   close: "Closed",
   cancel: "Cancelled",
   pmCreate: "PM work order created",
+  conditionChange: "Condition changed",
   fallback: "Other maintenance activity",
 }
 
@@ -17,6 +18,7 @@ test("maintenance movement types have localized labels", () => {
   assert.equal(getMaintenanceMovementLabel("maintenance_close", labels), labels.close)
   assert.equal(getMaintenanceMovementLabel("maintenance_cancel", labels), labels.cancel)
   assert.equal(getMaintenanceMovementLabel("maintenance_pm_create", labels), labels.pmCreate)
+  assert.equal(getMaintenanceMovementLabel("condition_change", labels), labels.conditionChange)
   assert.equal(getMaintenanceMovementLabel("unknown", labels), labels.fallback)
 })
 

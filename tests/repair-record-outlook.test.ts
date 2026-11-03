@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  getRepairCompleteOutlook,
   getRepairCreateOutlook,
   getRepairEligibility,
   toRepairAssetContext,
@@ -86,4 +87,47 @@ test("eligibility: an open record, a written-off asset, else ok", () => {
   assert.equal(getRepairEligibility(facts({ statusName: " retired " })), "writtenOff")
   assert.equal(getRepairEligibility(facts()), "ok")
   assert.equal(getRepairEligibility(inUsePersonal(held)), "ok")
+})
+
+// ซ่อมเสร็จ on the record page (group 5 plan 3, G5P3-R1): the record's own open record does not count.
+test("complete outlook: usable on a held In Use personal asset goes back to the holder of the handover", () => {
+  const asset = inUsePersonal(held)
+  asset.openRecord = { id: "r-1", repairNo: "MT-1" }
+  assert.deepEqual(getRepairCompleteOutlook(asset, "usable"), {
+    outcome: "usable",
+    outlook: { kind: "status", nextStatusName: "In Use", note: { key: "backTo", holder: "สมชาย", documentNo: "HO-1" } },
+  })
+})
+
+test("complete outlook: beyond repair on a held asset is refused and names the handover (Review Focus 2)", () => {
+  const row = getRepairCompleteOutlook(inUsePersonal(held), "beyond_repair")
+  assert.equal(row.outcome, "beyond_repair")
+  assert.equal(row.outlook.kind, "refused")
+  assert.equal(row.outlook.kind === "refused" ? row.outlook.held?.documentNo : undefined, "HO-1")
+  assert.deepEqual(row.outlook, { kind: "refused", held: { checkoutId: "co-1", documentNo: "HO-1", holderName: "สมชาย" } })
+})
+
+test("complete outlook: usable on an Under Maintenance shared asset with no holder reads Ready, no holder (Review Focus 1)", () => {
+  const asset = facts({ statusName: "Under Maintenance", openRecord: { id: "r-1", repairNo: "MT-1" } })
+  assert.deepEqual(getRepairCompleteOutlook(asset, "usable"), {
+    outcome: "usable",
+    outlook: { kind: "status", nextStatusName: "Ready", note: { key: "noHolder" } },
+  })
+})
+
+test("complete outlook: a personal asset with a custodian and no handover", () => {
+  const asset = facts({ statusName: "Under Maintenance", ownershipType: "personal", custodianId: "emp-1", holderName: "สมหญิง" })
+  assert.deepEqual(getRepairCompleteOutlook(asset, "beyond_repair"), {
+    outcome: "beyond_repair",
+    outlook: { kind: "status", nextStatusName: "Pending Disposal", note: { key: "thenDisposal", holderStays: "สมหญิง" } },
+  })
+  assert.deepEqual(getRepairCompleteOutlook(asset, "usable"), {
+    outcome: "usable",
+    outlook: { kind: "status", nextStatusName: "In Use", note: { key: "holderStays", holder: "สมหญิง" } },
+  })
+  assert.deepEqual(getRepairCompleteOutlook(facts({ statusName: "Under Maintenance" }), "beyond_repair").outlook, {
+    kind: "status",
+    nextStatusName: "Pending Disposal",
+    note: { key: "thenDisposal", holderStays: null },
+  })
 })

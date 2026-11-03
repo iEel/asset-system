@@ -3459,7 +3459,8 @@
       "close": "Repair finished",
       "cancel": "Record cancelled",
       "pmCreate": "Created from PM plan (previous workflow)",
-      "fallback": "Other activity"
+      "fallback": "Other activity",
+      "conditionChange": "Condition changed"
     },
     "fromValue": "From",
     "toValue": "To",

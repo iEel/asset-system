@@ -228,6 +228,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                           close: t("movement.close"),
                           cancel: t("movement.cancel"),
                           pmCreate: t("movement.pmCreate"),
+                          conditionChange: t("movement.conditionChange"),
                           fallback: t("movement.fallback"),
                         })}</div>
                         <div className="text-meta text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
