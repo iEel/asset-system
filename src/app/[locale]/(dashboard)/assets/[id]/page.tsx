@@ -672,7 +672,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             plans={maintenanceData.plans}
             purchasePrice={asset.purchasePrice == null ? null : Number(asset.purchasePrice)}
             now={now}
-            recordRepair={getAssetRecordRepairAction(actionInput)}
+            recordRepair={getAssetRecordRepairAction({ ...actionInput, repairReturnTo: `/${locale}/assets/${asset.id}?view=maintenance` })}
             canViewRepairs={canViewMaintenance}
             canCreatePlan={canSetUpPm(asset.status.name, canCreateMaintenance)}
           />

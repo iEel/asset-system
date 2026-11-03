@@ -129,6 +129,24 @@ test("recording a repair passes the signed-in employee to the service and writes
   // The condition the repair set, and the one before (group 3 spec §19.4).
   assert.equal(audit.newValue.conditionId, "condition-good")
   assert.equal(audit.newValue.previousConditionId, "condition-damaged")
+  assert.equal(audit.newValue.outcome, "usable", "a done record logs its result")
+})
+
+// Final review (G5P1-R7): a not-done record stores no result, so its System Log names none even when the client sent one.
+test("recording a repair that is not done logs no outcome", async () => {
+  reset()
+  const response = await createRoute.POST(jsonRequest("http://localhost/api/maintenance-tickets", "POST", {
+    assetId: "asset-1",
+    reportedDate: "2026-10-07",
+    problem: "เปลี่ยนแบตเตอรี่",
+    done: false,
+    outcome: "usable",
+    conditionId: null,
+  }))
+
+  assert.equal(response.status, 201, await response.clone().text())
+  const audit = state.calls.find(({ fn }) => fn === "logAudit")!.args[0] as { newValue: Record<string, unknown> }
+  assert.equal(audit.newValue.outcome, null)
 })
 
 test("repair rule errors reach the client as stable codes", async () => {

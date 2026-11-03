@@ -77,7 +77,8 @@ export function normalizeMaintenanceReturnTo(locale: string, value: ReturnToPara
     if (url.pathname === operationalReturnPaths["maintenance-pm"](locale)) return `${url.pathname}${url.search}`
     const assets = `/${locale}/assets/`
     const assetId = url.pathname.startsWith(assets) ? url.pathname.slice(assets.length) : ""
-    if (assetId.length > 0 && !assetId.includes("/")) return `${url.pathname}${url.search}`
+    // `new` is the asset create route, not an asset page.
+    if (assetId.length > 0 && assetId !== "new" && !assetId.includes("/")) return `${url.pathname}${url.search}`
     return fallback
   } catch {
     return fallback

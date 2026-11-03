@@ -253,6 +253,9 @@ test("บันทึกซ่อม carries repairReturnTo when the asset page 
   assert.equal(actions({ statusName: "Pending Repair", repairReturnTo: "/th/assets/a-1" }).primary?.href, "/th/maintenance/new?assetId=a-1&returnTo=%2Fth%2Fassets%2Fa-1")
   const page = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
   assert.match(page, /repairReturnTo: `\/\$\{locale\}\/assets\/\$\{asset\.id\}`,/)
+  // The ซ่อม / PM tab's button comes back to the tab (spec decision 8, §12.1, §16); the header's keeps the bare page.
+  assert.match(page, /recordRepair=\{getAssetRecordRepairAction\(\{ \.\.\.actionInput, repairReturnTo: `\/\$\{locale\}\/assets\/\$\{asset\.id\}\?view=maintenance` \}\)\}/)
+  assert.doesNotMatch(page, /recordRepair=\{getAssetRecordRepairAction\(actionInput\)\}/)
   for (const file of ["src/app/[locale]/(dashboard)/assets/page.tsx", "src/lib/asset-scan-search.ts"]) {
     assert.doesNotMatch(readFileSync(file, "utf8"), /repairReturnTo/, file)
   }

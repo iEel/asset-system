@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
       action: "create",
       module: "maintenance",
       recordId: ticket.id,
-      // conditionId is the asset's condition after the record (group 3 spec §19.4), not only the one chosen.
-      newValue: { ...input, repairNo: ticket.repairNo, repairStatus: ticket.repairStatus, conditionId, previousConditionId },
+      // conditionId is the asset's condition after the record (group 3 spec §19.4), not only the one chosen. The outcome
+      // is the stored one: a not-done record keeps none, whatever the client sent (G5P1-R7).
+      newValue: { ...input, outcome: input.done ? input.outcome : null, repairNo: ticket.repairNo, repairStatus: ticket.repairStatus, conditionId, previousConditionId },
     })
 
     return NextResponse.json(ticket, { status: 201 })

@@ -142,7 +142,7 @@ test("the PM edit page reads returnTo and the plan form goes there after a save 
   assert.match(edit, /const returnTo = normalizeMaintenanceReturnTo\(locale, rawSearchParams\.returnTo, "maintenance-pm"\)/)
   assert.match(edit, /\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}/)
   assert.match(edit, /returnHref=\{returnTo\}/)
-  assert.match(form, /returnHref = `\/\$\{locale\}\/maintenance\/pm`,/, "the create page passes nothing and keeps going to the PM list")
+  assert.match(form, /returnHref = `\/\$\{locale\}\/maintenance\/pm`,/, "without a returnHref the form goes to the PM list")
   assert.match(form, /router\.push\(returnHref\)/)
 })
 
@@ -170,7 +170,7 @@ test("normalizeMaintenanceReturnTo accepts the two lists and one asset page, and
   assert.equal(normalizeMaintenanceReturnTo("th", "/th/maintenance/pm?due=overdue", "maintenance"), "/th/maintenance/pm?due=overdue")
   assert.equal(normalizeMaintenanceReturnTo("th", "/th/assets/a-1?view=maintenance", "maintenance"), "/th/assets/a-1?view=maintenance")
   assert.equal(normalizeMaintenanceReturnTo("th", ["/th/assets/a-1", "/th/admin"], "maintenance"), "/th/assets/a-1")
-  for (const crafted of ["//evil.example/x", "https://evil.example/th/maintenance", "/th/assets/a-1/edit", "/th/assets/", "/th/assets", "/en/assets/a-1", "/th/maintenance/../admin", "/th/maintenance/new", "/th/admin", ""]) {
+  for (const crafted of ["//evil.example/x", "https://evil.example/th/maintenance", "/th/assets/a-1/edit", "/th/assets/", "/th/assets", "/en/assets/a-1", "/th/maintenance/../admin", "/th/maintenance/new", "/th/assets/new", "/th/assets/new?view=maintenance", "/th/admin", ""]) {
     assert.equal(normalizeMaintenanceReturnTo("th", crafted, "maintenance"), "/th/maintenance", crafted)
   }
   assert.equal(normalizeMaintenanceReturnTo("th", undefined, "maintenance"), "/th/maintenance")

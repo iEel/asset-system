@@ -60,7 +60,7 @@ test("the page loads the repair tab's data only on that tab", () => {
   const page = read("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
   assert.match(page, /assetDetailView === "maintenance"\s*\?\s*await withPerformanceTiming\(\s*"asset-detail\.maintenance-tab",\s*\(\) =>\s*getAssetMaintenanceTabData\(asset\.id\)/)
   assert.match(page, /<AssetMaintenanceTab\b/)
-  assert.match(page, /recordRepair=\{getAssetRecordRepairAction\(actionInput\)\}/, "the rule's own answer, not the header's pin")
+  assert.match(page, /recordRepair=\{getAssetRecordRepairAction\(\{ \.\.\.actionInput, repairReturnTo: `\/\$\{locale\}\/assets\/\$\{asset\.id\}\?view=maintenance` \}\)\}/, "the rule's own answer, not the header's pin, and it comes back to the tab")
   assert.match(page, /canCreatePlan=\{canSetUpPm\(asset\.status\.name, canCreateMaintenance\)\}/)
   assert.match(page, /canViewRepairs=\{canViewMaintenance\}/)
   assert.doesNotMatch(page, /<section id="maintenance"|maintenanceReplacementWarning|totalMaintenanceCost/)
