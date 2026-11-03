@@ -246,20 +246,13 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   const choices = await readAssetChoices(page, measure)
   const asset = await createAsset(page.request, testInfo, choices, { slug: "FE-PM", name: "ฟอร์มแผน PM" })
   await measure.visit("/th/maintenance/pm/new", "PM plan form")
-  // The asset select (src/components/maintenance/maintenance-option-select.tsx) asks /api/maintenance-options 250 ms
-  // after its search or its value changes. Choosing the asset changes its value while the search still holds the tag,
-  // so it asks again, with the same q, after the choice; on the phone that answer was still on its way when the second
-  // save navigated away (net::ERR_ABORTED, E2E-1026E). The wait is set once the search's own answer has shown the
-  // option, so it is the answer to the choice's request; the second save waits for it (e2e fix 2E).
-  const assetSearch = (response: { url(): string }) => {
-    const url = new URL(response.url())
-    return url.pathname === "/api/maintenance-options" && url.searchParams.get("type") === "asset" && url.searchParams.get("q") === asset.assetTag
-  }
+  // The asset select (src/components/maintenance/maintenance-option-select.tsx) no longer reads after a choice: the
+  // choice clears its search and the chosen option is known (group 5 plan 2, spec call 7). So the second save has no
+  // read in flight to abort, and the E2E-1026E race (net::ERR_ABORTED on the phone, e2e fix 2E) is gone at its cause.
   await page.locator("#maintenance-plan-asset").click()
   await page.getByRole("dialog").getByRole("combobox").fill(asset.assetTag)
   const option = page.getByRole("option", { name: asset.assetTag }).first()
   await expect(option).toBeVisible()
-  const afterChoice = page.waitForResponse(assetSearch)
   await option.click()
   await expect(page.locator("#maintenance-plan-asset")).toContainText(asset.assetTag)
   await save(page)
@@ -270,7 +263,6 @@ test("PM plan: an empty title shows its error, and the corrected plan saves", as
   await expectNoFieldError(page, "maintenance-plan-title")
   let planId = ""
   await measure.timed("PM plan save", async () => {
-    expect((await afterChoice).status(), "the asset select's answer to the choice").toBe(200)
     const created = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/maintenance-plans")
     await save(page)
     const response = await created

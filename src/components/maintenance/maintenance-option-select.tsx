@@ -102,7 +102,13 @@ export function MaintenanceOptionSelect({
         hint={hint}
         error={error}
         onSearchChange={setQuery}
-        onChange={(next) => onChange(next, options.find((option) => option.id === next) ?? (initialOption?.id === next ? initialOption : undefined))}
+        onChange={(next) => {
+          // A choice ends the search: with the query empty and the chosen option known, the effect reads nothing after
+          // it, no re-search with the old q and no read by id (group 5 plan 2, spec call 7). The chosen option stays
+          // in options, so it still shows; the picker reopens with an empty search.
+          setQuery("")
+          onChange(next, options.find((option) => option.id === next) ?? (initialOption?.id === next ? initialOption : undefined))
+        }}
       />
       <span className="sr-only" aria-live="polite">
         {loading ? loadingLabel ?? tCommon("loading") : tCommon("searchSelectResultCount", { count: displayOptions.length })}

@@ -390,7 +390,7 @@ test("the open asset search is measured once its opening animation has ended (e2
   assert.match(spec, /await recordSettled\(page, measure, "repair form with the asset search open"\)/)
 })
 
-test("the PM form test waits for the asset select's answer to the choice and ends its plan (group 1 dashboard e2e fix 2E: E2E-1026E's aborted maintenance-options request on the phone, and the plans each run left active)", () => {
+test("the PM form test ends its plan, and since group 5 plan 2 waits for no read after the asset choice (group 1 dashboard e2e fix 2E: E2E-1026E's aborted maintenance-options request on the phone, and the plans each run left active)", () => {
   // The select asks again 250 ms after its value changes, with the search it still holds (q wins over id).
   const select = read("src/components/maintenance/maintenance-option-select.tsx")
   assert.match(select, /\}, 250\)/)
@@ -399,10 +399,14 @@ test("the PM form test waits for the asset select's answer to the choice and end
   assert.match(select, /\}, \[initialOption, knownValue, query, type, value\]\)/)
   const spec = read("e2e/cross-cutting/field-errors.spec.ts")
   const pm = spec.slice(spec.indexOf(`test("PM plan: `), spec.indexOf(`test("disposal request: `))
-  // The wait is set after the search's answer shows the option and before the choice, and the second save awaits it.
-  assert.match(pm, /await expect\(option\)\.toBeVisible\(\)\n\s*const afterChoice = page\.waitForResponse\(assetSearch\)\n\s*await option\.click\(\)/)
-  assert.match(pm, /url\.pathname === "\/api\/maintenance-options" && url\.searchParams\.get\("type"\) === "asset" && url\.searchParams\.get\("q"\) === asset\.assetTag/)
-  assert.match(pm, /await measure\.timed\("PM plan save", async \(\) => \{\n\s*expect\(\(await afterChoice\)\.status\(\), "the asset select's answer to the choice"\)\.toBe\(200\)/)
+  // Group 5 plan 2 (spec call 7): a choice clears the select's search, so nothing is read after it and the second save
+  // has no read in flight to abort; the test no longer waits for an answer to the choice.
+  assert.ok(select.includes('setQuery("")'))
+  assert.match(pm, /await expect\(option\)\.toBeVisible\(\)\n\s*await option\.click\(\)/)
+  assert.ok(!pm.includes("afterChoice"))
+  assert.ok(!pm.includes("/api/maintenance-options\" &&"), "no waitForResponse on maintenance-options in the PM test")
+  assert.ok(!pm.includes("assetSearch"))
+  assert.match(pm, /await measure\.timed\("PM plan save", async \(\) => \{\n\s*const created = page\.waitForResponse/)
   // networkidle once the page has settled resolves at once (the state was reached on load), so it no longer guards the save.
   assert.ok(!pm.includes("After the refused save the asset select fetches its options again"))
   // The plan is ended as the list's own action ends it: a PATCH of its state, not a DELETE.
