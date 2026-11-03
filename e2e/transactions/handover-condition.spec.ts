@@ -90,6 +90,8 @@ test("the repair loop: a broken asset is refused with ส่งซ่อม; its
   await page.waitForURL((url) => url.pathname === "/th/maintenance/new" && url.searchParams.get("assetId") === asset.id)
   await expect(page.locator("#repair-record-asset-value")).toContainText(asset.assetTag)
   await page.locator("#repair-record-problem").fill(`${asset.assetTag} จอแตก เปลี่ยนจอแล้ว`)
+  // No answer is pre-checked (group 5 plan 2): ซ่อมเสร็จแล้ว, then ใช้งานได้.
+  await page.getByRole("radio", { name: "ซ่อมเสร็จแล้ว", exact: true }).check()
   await page.getByRole("radio", { name: "ใช้งานได้", exact: true }).check()
   const condition = page.locator("#repair-create-condition")
   await expect(condition).toContainText("สภาพหลังซ่อม")
@@ -161,7 +163,7 @@ test("closing an open repair as ซ่อมไม่ได้ says the conditio
   await visit(measure, `/th/maintenance/new?assetId=${asset.id}`, "repair form, an open repair", testInfo)
   await expect(page.locator("#repair-record-asset-value")).toContainText(asset.assetTag)
   await page.locator("#repair-record-problem").fill(`${asset.assetTag} เมนบอร์ดเสีย`)
-  await page.getByRole("radio", { name: "ยังซ่อมไม่เสร็จ (ส่งซ่อม / รออะไหล่)" }).check()
+  await page.getByRole("radio", { name: "ยังซ่อมไม่เสร็จ", exact: true }).check()
   const repair = await saveRepairForm(page, measure, "save the open repair")
 
   await page.getByRole("button", { name: "ซ่อมเสร็จ", exact: true }).click()

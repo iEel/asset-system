@@ -87,8 +87,8 @@ export async function createAsset(
 }
 
 // A permanent handover to an employee (no due date): the asset is In Use with an active handover, as a staff member's
-// own notebook is when it goes for repair.
-export async function handOverPermanently(request: APIRequestContext, masters: AssetMasters, assetId: string, employeeId: string) {
+// own notebook is when it goes for repair. Returns the handover (its id and its HO- number).
+export async function handOverPermanently(request: APIRequestContext, masters: AssetMasters, assetId: string, employeeId: string): Promise<{ id: string; documentNo: string }> {
   const response = await request.post(`/api/assets/${assetId}/checkout`, {
     data: {
       handoverMode: "permanent_assignment",
@@ -101,6 +101,23 @@ export async function handOverPermanently(request: APIRequestContext, masters: A
     },
   })
   if (response.status() !== 201) throw new Error(`the handover of ${assetId} answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
+  return (await response.json()) as { id: string; documentNo: string }
+}
+
+// A run-marked monthly PM plan of an asset, due on nextDueDate (yyyy-mm-dd), as the PM form saves one. Its test ends it
+// with endPlan, so the run leaves no active plan behind.
+export async function createPlan(request: APIRequestContext, plan: { assetId: string; title: string; nextDueDate: string }): Promise<{ id: string; planNo: string }> {
+  const response = await request.post("/api/maintenance-plans", {
+    data: { assetId: plan.assetId, title: plan.title, frequency: "monthly", intervalDays: null, nextDueDate: plan.nextDueDate, vendorId: null, notes: `${readRunState().runId} แผน PM E2E` },
+  })
+  if (response.status() !== 201) throw new Error(`POST /api/maintenance-plans ${plan.title} answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
+  return (await response.json()) as { id: string; planNo: string }
+}
+
+// Ends a PM plan (its list's "จบแผน").
+export async function endPlan(request: APIRequestContext, planId: string) {
+  const response = await request.patch(`/api/maintenance-plans/${planId}`, { data: { action: "end" } })
+  if (response.status() !== 200) throw new Error(`ending the PM plan ${planId} answered ${response.status()}: ${(await response.text()).slice(0, 300)}`)
 }
 
 export async function readAsset(request: APIRequestContext, assetId: string): Promise<AssetRow> {
@@ -127,11 +144,24 @@ export function headerBadge(page: Page): Locator {
   return page.locator('[data-slot="page-header-meta"] [data-slot="status-badge"]')
 }
 
+// The repair form's answers, checked by their names (a ChoiceCard is named by its label only): ซ่อมเสร็จแล้ว or
+// ยังซ่อมไม่เสร็จ, then the result and สภาพหลังซ่อม when asked. Nothing is pre-checked except ซ่อมเสร็จแล้ว on ?planId=.
+export async function answerRepair(page: Page, answer: { done: boolean; outcome?: "ใช้งานได้" | "ซ่อมไม่ได้ เสนอจำหน่าย"; condition?: "ดี" | "พอใช้" }) {
+  await page.locator("#repair-record-done").getByRole("radio", { name: answer.done ? "ซ่อมเสร็จแล้ว" : "ยังซ่อมไม่เสร็จ", exact: true }).check()
+  if (answer.outcome) await page.locator("#repair-record-outcome").getByRole("radio", { name: answer.outcome, exact: true }).check()
+  if (answer.condition) await page.locator("#repair-create-condition").getByRole("radio", { name: answer.condition, exact: true }).check()
+}
+
+// The repair form's submit: the sticky footer's บันทึกซ่อม (G5P2-R10; the page title reads the same words).
+export function repairSaveButton(page: Page): Locator {
+  return page.locator("[data-slot=sticky-form-footer]").getByRole("button", { name: "บันทึกซ่อม", exact: true })
+}
+
 // The repair form's save: waits for the POST, checks it, and lands on the new record's page.
 export async function saveRepairForm(page: Page, measure: Measure, label: string) {
   const created = page.waitForResponse((response) => response.url().endsWith("/api/maintenance-tickets") && response.request().method() === "POST")
   await measure.timed(label, async () => {
-    await page.getByRole("button", { name: "บันทึก", exact: true }).click()
+    await repairSaveButton(page).click()
     await created
   })
   const response = await created

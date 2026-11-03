@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 // The E2E suite's repair and PM area (spec docs/superpowers/specs/2026-10-19-e2e-workflow-suite-design.md §6.3, §6.7;
@@ -24,7 +24,8 @@ test("repair records: an unfinished record sends an asset in use to Under Mainte
   // Every asset carries the run id and the project (spec §5, §11 "Run order"); the arranging writes are the asset and
   // its handover, through the app; nothing touches the settings, LDAP or the import.
   assert.ok(data.includes("const tag = `${readRunState().runId}-${testInfo.project.name}-${suffix}`"))
-  assert.deepEqual(writes(data), ["post /api/assets", "post /api/assets/${assetId}/checkout"])
+  // Group 5 plan 2 Task 4: and a run-marked PM plan, ended by its own test.
+  assert.deepEqual(writes(data), ["post /api/assets", "post /api/assets/${assetId}/checkout", "post /api/maintenance-plans", "patch /api/maintenance-plans/${planId}"])
   assert.deepEqual(writes(spec), [])
   for (const banned of ["/api/admin/settings", "ldap", "import-confirm", "import-preview"]) assert.ok(!`${spec}${data}`.toLowerCase().includes(banned), banned)
   // Spec §6.7: an empty required field, then a date pair reversed, each shown under its field.
@@ -142,4 +143,73 @@ test("the PM plan: created with a wrong entry first, recorded done on 31 Jan wit
   }
   assert.ok(!spec.includes("row()"), "no look at the plan assumes the page on screen")
   assert.match(spec, /row = await visitPlanRow\(page, measure, title, "PM plans, plan ended"\)\n\s*await expect\(row\.locator\('\[data-slot="status-badge"\]'\)\.last\(\)\)\.toHaveText\("จบแผน"\)/)
+})
+
+test("บันทึกซ่อม answers its questions, refuses a held asset at once, and a PM visit not done leaves its plan (group 5 plan 2 Task 4)", () => {
+  const spec = read("e2e/repair/repair-record.spec.ts")
+  const pm = read("e2e/repair/pm-plan.spec.ts")
+  const data = read("e2e/repair/repair-data.ts")
+  const repair = th.repairRecord
+  // G5P2-R10: the save is the sticky footer's บันทึกซ่อม.
+  assert.equal(repair.save, "บันทึกซ่อม")
+  const saveHelper = data.slice(data.indexOf("export async function saveRepairForm("), data.indexOf("export async function completeRecord("))
+  assert.ok(data.includes(`page.locator("[data-slot=sticky-form-footer]").getByRole("button", { name: "${repair.save}", exact: true })`))
+  assert.ok(saveHelper.includes("await repairSaveButton(page).click()"))
+  // The radios by their names: a ChoiceCard is named by its label only, its description is read after it.
+  assert.equal(repair.doneYes, "ซ่อมเสร็จแล้ว")
+  assert.equal(repair.doneNo, "ยังซ่อมไม่เสร็จ")
+  assert.ok(data.includes(`export async function answerRepair(page: Page, answer: { done: boolean; outcome?: "${repair.outcome.usable}" | "${repair.outcome.beyond_repair}"; condition?: "ดี" | "พอใช้" })`))
+  const e2eFiles = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? e2eFiles(`${dir}/${entry.name}`) : entry.name.endsWith(".ts") ? [`${dir}/${entry.name}`] : []))
+  for (const file of e2eFiles("e2e")) {
+    assert.ok(!read(file).includes("ยังซ่อมไม่เสร็จ (ส่งซ่อม / รออะไหล่)"), file)
+    assert.ok(!read(file).includes(`ทรัพย์สินจะเปลี่ยนเป็น "อยู่ระหว่างซ่อม" จนกว่าจะกดซ่อมเสร็จ`), file)
+  }
+  // ER1: the eligibility line after the pick, and the status line instead of the old sentence.
+  assert.ok(spec.includes(`await expect(page.locator('[data-repair-eligibility="ok"]')).toHaveText("${repair.createForm.eligibleOk}")`))
+  assert.ok(spec.includes(`await expect(page.locator("[data-repair-status-line]")).toContainText("อยู่ระหว่างซ่อม")`))
+  // ER3 (Review Focus 1): ?assetId= of the asset under repair names its open record and links to it, before any save.
+  assert.equal(repair.createForm.eligibleOpenRecord, "มีบันทึกซ่อมที่ยังไม่เสร็จ {repairNo}")
+  assert.ok(spec.includes("await expect(openRecord).toContainText(`มีบันทึกซ่อมที่ยังไม่เสร็จ ${record.repairNo}`)"))
+  assert.ok(spec.includes(`openRecord.getByRole("link", { name: "${repair.openExistingRecord}", exact: true })`))
+  // The held asset (Review Focus 3): refused at once with its HO- and รับคืน back to the asset, gone when the answer
+  // no longer hits it.
+  const heldStart = spec.indexOf(`test("a held asset is refused at once`)
+  const held = spec.slice(heldStart, spec.indexOf("\n})", heldStart))
+  assert.ok(heldStart >= 0 && titles(spec).some((title) => title.startsWith("a held asset is refused at once")), "the held asset test")
+  assert.ok(held.includes("const handover = await handOverPermanently(page.request, masters, asset.id, receiver.id)"))
+  assert.ok(held.includes(`await answerRepair(page, { done: true, outcome: "${repair.outcome.beyond_repair}" })`))
+  assert.ok(held.includes(`await expect(heldNotice).toContainText("อยู่กับ")`) && held.includes("await expect(heldNotice).toContainText(handover.documentNo)"))
+  assert.ok(held.includes(`heldNotice.getByRole("link", { name: "${repair.createForm.heldReturn}", exact: true })`))
+  assert.ok(held.includes(`"/th/asset-management/checkin?checkoutId="`) && held.includes("`returnTo=%2Fth%2Fassets%2F${asset.id}`"))
+  assert.ok(held.includes("await answerRepair(page, { done: false })") && held.includes(`await expect(page.locator("[data-repair-held]")).toHaveCount(0)`))
+  assert.ok(held.includes("toHaveText(/ใช้งานอยู่\\s*→\\s*อยู่ระหว่างซ่อม/)"))
+  assert.ok(!held.includes("saveRepairForm"), "the held asset is never saved")
+  // A PM visit not done (G5P2-R6): ซ่อมเสร็จแล้ว pre-checked, no result, saved not done, the plan's date unchanged, and
+  // the plan ended whatever happens.
+  const visitStart = spec.indexOf(`test("a PM visit saved not done leaves its plan's date`)
+  const visit = spec.slice(visitStart, spec.indexOf("\n})", visitStart))
+  assert.ok(visitStart >= 0 && titles(spec).some((title) => title.startsWith("a PM visit saved not done leaves its plan's date")), "the PM visit test")
+  assert.ok(visit.includes("const plan = await createPlan(page.request, { assetId: asset.id, title, nextDueDate })"))
+  assert.ok(visit.includes(`await expect(page.getByRole("radio", { name: "${repair.doneYes}", exact: true })).toBeChecked()`))
+  assert.ok(visit.includes(`await expect(page.locator("#repair-record-outcome").getByRole("radio", { checked: true })).toHaveCount(0)`))
+  assert.ok(visit.includes("await answerRepair(page, { done: false })"))
+  assert.ok(visit.includes(`await expect(page.locator("#maintenance-plan-next-due-date")).toHaveValue(nextDueDate)`))
+  assert.match(visit, /\} finally \{\n\s+await endPlan\(page\.request, plan\.id\)\n\s+\}/)
+  assert.ok(data.includes(`data: { action: "end" }`))
+  // ER4: the PM path's card has no เปลี่ยน; the result and the condition are answered before the save.
+  assert.ok(!pm.includes(`await expect(page.locator("#repair-record-asset")).toBeDisabled()`))
+  assert.ok(pm.includes(`await expect(page.locator("#repair-record-asset").getByRole("button", { name: "${repair.createForm.change}", exact: true })).toHaveCount(0)`))
+  assert.ok(pm.includes(`await expect(page.locator("#repair-record-outcome").getByRole("radio", { checked: true })).toHaveCount(0)`))
+  assert.ok(pm.includes(`await answerRepair(page, { done: true, outcome: "${repair.outcome.usable}", condition: "ดี" })`))
+  // The handover loop answers both questions explicitly; the open repair is not done.
+  const handover = read("e2e/transactions/handover-condition.spec.ts")
+  assert.ok(handover.includes(`await page.getByRole("radio", { name: "${repair.doneYes}", exact: true }).check()`))
+  assert.ok(handover.includes(`await page.getByRole("radio", { name: "${repair.doneNo}", exact: true }).check()`))
+  assert.ok(read("e2e/dashboard/dashboard-words.ts").includes(`repairNotDone: "${repair.doneNo}"`))
+  // The form-errors walk presses บันทึกซ่อม too.
+  const fieldErrors = read("e2e/cross-cutting/field-errors.spec.ts")
+  const repairStart = fieldErrors.indexOf('test("repair record: ')
+  const repairTest = fieldErrors.slice(repairStart, fieldErrors.indexOf("\n})", repairStart))
+  assert.equal(repairTest.split("await repairSaveButton(page).click()").length - 1, 2)
+  assert.ok(!repairTest.includes("await save(page)"))
 })

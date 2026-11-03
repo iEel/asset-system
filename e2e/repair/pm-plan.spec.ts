@@ -3,7 +3,7 @@
 // month-end clamp (31 Jan + 1 month = 28 Feb), then pause, resume and end it. The asset's status does not change. The
 // create starts with one wrong entry that shows under its field (§6.7).
 import { asUser, expect, test } from "../support/fixtures.ts"
-import { PM_LIST, areaTag, chooseAsset, createAsset, headerBadge, planAction, readAsset, readAssetMasters, saveRepairForm, valueBeside, visitPlanRow } from "./repair-data.ts"
+import { PM_LIST, answerRepair, areaTag, chooseAsset, createAsset, headerBadge, planAction, readAsset, readAssetMasters, saveRepairForm, valueBeside, visitPlanRow } from "./repair-data.ts"
 
 asUser("itStaff")
 
@@ -52,11 +52,15 @@ test("a monthly PM plan is created, recorded done on 31 Jan with its next due da
   await dueRow.getByRole("link", { name: "บันทึกว่าทำแล้ว" }).click()
   await page.waitForURL(new RegExp(`/th/maintenance/new\\?planId=${plan.id}`))
   await expect(page.getByText(`${plan.planNo} - ${title}`)).toBeVisible()
-  await expect(page.locator("#repair-record-asset")).toBeDisabled()
+  // The plan's asset is its card, with no เปลี่ยน (G5P2-R8).
   await expect(page.locator("#repair-record-asset-value")).toContainText(tag)
+  await expect(page.locator("#repair-record-asset").getByRole("button", { name: "เปลี่ยน", exact: true })).toHaveCount(0)
   await expect(page.locator("#repair-record-problem")).toHaveValue(title)
-  await expect(page.getByRole("radio", { name: "ซ่อมเสร็จแล้ว" })).toBeChecked()
+  // ซ่อมเสร็จแล้ว is pre-checked on the PM path, the result is not (G5P2-R6): it is answered before the save.
+  await expect(page.getByRole("radio", { name: "ซ่อมเสร็จแล้ว", exact: true })).toBeChecked()
+  await expect(page.locator("#repair-record-outcome").getByRole("radio", { checked: true })).toHaveCount(0)
   await measure.recordPage("PM done form")
+  await answerRepair(page, { done: true, outcome: "ใช้งานได้", condition: "ดี" })
   await page.locator("#repair-record-date").fill("2026-01-31")
   const record = await saveRepairForm(page, measure, "save the PM done")
   await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")

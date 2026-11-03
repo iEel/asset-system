@@ -13,6 +13,8 @@ import { TX_WORDS } from "../transactions/tx-words.ts"
 import { choose, expectFieldError, expectNoFieldError } from "./support/ui.ts"
 // The round form's steps (group 2 spec §7): its conditions as chips, its own submit, the live count and the sample.
 import { addCondition, cancelAsItHead, createButton, showSample, waitForFirstCount, willCreate } from "../audit/round-steps.ts"
+// The repair form's own submit, the sticky footer's บันทึกซ่อม (group 5 plan 2, G5P2-R10).
+import { repairSaveButton } from "../repair/repair-data.ts"
 
 asUser("itStaff")
 
@@ -227,13 +229,13 @@ test("repair record: an empty problem shows its error, and the corrected record 
   await measure.visit(`/th/maintenance/new?assetId=${asset.id}`, "repair record form")
   await expect(page.locator("#repair-record-asset")).toContainText(asset.assetTag)
   await page.getByRole("radio", { name: /^ยังซ่อมไม่เสร็จ/ }).check()
-  await save(page)
+  await repairSaveButton(page).click()
   await expectFieldError(page, "repair-record-problem", REQUIRED)
 
   await page.locator("#repair-record-problem").fill(`${projectMarker(testInfo)} เปิดเครื่องไม่ติด`)
   await expectNoFieldError(page, "repair-record-problem")
   await measure.timed("repair record save", async () => {
-    await save(page)
+    await repairSaveButton(page).click()
     await expect(page).toHaveURL(/\/th\/maintenance\/[0-9a-f-]{36}(?:[?#]|$)/)
   })
   await measure.recordPage("after the repair record save")
