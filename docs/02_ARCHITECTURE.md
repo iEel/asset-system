@@ -49,7 +49,7 @@ The route inventory and expected RBAC snippets are tracked in `src/lib/rbac-rout
 Background work is driven by scripts and scheduler endpoints rather than embedded long-running web requests:
 
 - `npm run scheduler:heartbeat` checks the web-configured LDAP sync schedule.
-- There is no PM background job since 2026-10-07: PM plans are reminders shown as "PM ถึงกำหนด" (due within 7 days) on the Maintenance page, Work Center, and notification digest, and staff record the work with "บันทึกว่าทำแล้ว". The old `pm:generate-due` scripts, `/api/maintenance-plans/generate-due`, and `MAINTENANCE_PM_GENERATION_TOKEN` are removed; delete any server systemd timer that still calls them.
+- There is no PM background job since 2026-10-07: PM plans are reminders shown as "PM ครบกำหนดใน 7 วัน" (overdue or due within 7 Bangkok days) on the Maintenance page, Work Center, and notification digest, and staff record the work with "บันทึกว่าทำแล้ว". The old `pm:generate-due` scripts, `/api/maintenance-plans/generate-due`, and `MAINTENANCE_PM_GENERATION_TOKEN` are removed; delete any server systemd timer that still calls them.
 - `npm run ldap:sync` and `npm run ldap:sync:scheduled` run LDAP sync.
 - `npm run notifications:digest` generates daily notification digests.
 
