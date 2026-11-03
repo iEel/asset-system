@@ -244,6 +244,20 @@ test("บันทึกซ่อม beside the primary follows the one repair r
   assert.equal(getAssetRecordRepairAction({ ...base, can: { ...base.can, maintenanceCreate: false } }), null)
 })
 
+// Group 5 plan 1 Task 5 (G5P1-R15): only the asset page passes repairReturnTo, so its บันทึกซ่อม comes back there; the
+// register list and the scan page leave it unset and keep the bare link.
+test("บันทึกซ่อม carries repairReturnTo when the asset page sets it, on the pinned button and as rule 5's primary", () => {
+  const withReturn = { ...base, repairReturnTo: "/th/assets/a-1" }
+  assert.equal(getAssetRecordRepairAction(withReturn)?.href, "/th/maintenance/new?assetId=a-1&returnTo=%2Fth%2Fassets%2Fa-1")
+  assert.equal(getAssetRecordRepairAction(base)?.href, "/th/maintenance/new?assetId=a-1")
+  assert.equal(actions({ statusName: "Pending Repair", repairReturnTo: "/th/assets/a-1" }).primary?.href, "/th/maintenance/new?assetId=a-1&returnTo=%2Fth%2Fassets%2Fa-1")
+  const page = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
+  assert.match(page, /repairReturnTo: `\/\$\{locale\}\/assets\/\$\{asset\.id\}`,/)
+  for (const file of ["src/app/[locale]/(dashboard)/assets/page.tsx", "src/lib/asset-scan-search.ts"]) {
+    assert.doesNotMatch(readFileSync(file, "utf8"), /repairReturnTo/, file)
+  }
+})
+
 test("the register reads the open records of its rows with these helpers", () => {
   assert.deepEqual(openDisposalRequestWhere, { isActive: true, requestStatus: { in: ["pending", "approved"] } })
   assert.deepEqual([...firstIdByAssetId([{ id: "r-2", assetId: "a" }, { id: "r-1", assetId: "a" }, { id: "r-3", assetId: "b" }])], [["a", "r-2"], ["b", "r-3"]])

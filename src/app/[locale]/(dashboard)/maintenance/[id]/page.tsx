@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { FileText, History, Printer, Trash2 } from "lucide-react"
 import { getRepairConditionOptions, repairConditionDefault } from "@/lib/asset-lifecycle-policy"
+import { summarizeAssetRepairs } from "@/lib/asset-repair-rules"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -23,7 +24,7 @@ import { Nil } from "@/components/ui/nil"
 import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { appendOperationalReturnTo, maintenanceListCrumbHref, normalizeMaintenanceReturnTo } from "@/lib/operational-return-navigation"
 import { getPanelClasses } from "@/lib/design-system"
 
 type RepairRecordPageProps = {
@@ -65,7 +66,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   })
   if (!ticket) notFound()
 
-  const [attachments, movements, assetRepairSummary, conditions] = await Promise.all([
+  const [attachments, movements, assetRecords, conditions] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "maintenance", referenceId: ticket.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
@@ -74,10 +75,10 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
       where: { referenceType: "maintenance", referenceId: ticket.id },
       orderBy: { performedAt: "desc" },
     }),
-    prisma.maintenanceTicket.aggregate({
-      where: { assetId: ticket.asset.id, isActive: true, repairStatus: { not: "cancelled" } },
-      _count: { _all: true },
-      _sum: { repairCost: true },
+    // The asset's active records, for the replacement rule the asset tab reads (G5P1-R16).
+    prisma.maintenanceTicket.findMany({
+      where: { assetId: ticket.asset.id, isActive: true },
+      select: { id: true, repairStatus: true, maintenancePlanId: true, reportedDate: true, returnDate: true, repairCost: true },
     }),
     prisma.assetCondition.findMany({
       where: { isActive: true },
@@ -105,14 +106,21 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
     { label: t("legacyFields.inspectedBy"), value: ticket.inspectedBy ? `${ticket.inspectedBy.code} - ${ticket.inspectedBy.fullNameTh}` : null },
   ].filter((field) => Boolean(field.value))
   const hasLegacyDetails = legacyFields.length > 0
-  const totalRepairCount = assetRepairSummary._count._all
-  const totalRepairCost = Number(assetRepairSummary._sum.repairCost ?? 0)
   const purchasePrice = Number(ticket.asset.purchasePrice ?? 0)
-  const repairCostRatio = purchasePrice > 0 ? totalRepairCost / purchasePrice : 0
-  const shouldReviewDisposal = totalRepairCount >= 3 || repairCostRatio >= 0.5
-  const returnToHref = normalizeOperationalReturnTo(locale, "maintenance", rawSearchParams.returnTo)
+  // One replacement rule with the asset tab (G5P1-R16, spec §8.3): the count and the cost leave out PM visits and
+  // cancelled records.
+  const assetRepairSummary = summarizeAssetRepairs(
+    assetRecords.map((record) => ({ ...record, repairCost: record.repairCost == null ? null : Number(record.repairCost) })),
+    purchasePrice,
+    new Date(),
+  )
+  const repairCostRatio = purchasePrice > 0 ? assetRepairSummary.totalCost / purchasePrice : 0
+  const shouldReviewDisposal = assetRepairSummary.replacementWarning
+  // The repair list, the PM list or the asset page the user came from (group 5 spec §5 "Way back").
+  const returnToHref = normalizeMaintenanceReturnTo(locale, rawSearchParams.returnTo, "maintenance")
+  const listCrumbHref = maintenanceListCrumbHref(returnToHref, `/${locale}/maintenance`)
   const printHref = appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, returnToHref)
-  const disposalReason = `${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReviewCount", { count: totalRepairCount })}, ${t("disposalReviewCost", { cost: formatMoney(totalRepairCost, { unit: tCommon("baht") }) })}`
+  const disposalReason = `${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReviewCount", { count: assetRepairSummary.repairCount })}, ${t("disposalReviewCost", { cost: formatMoney(assetRepairSummary.totalCost, { unit: tCommon("baht") }) })}`
   const disposalRequestHref = appendOperationalReturnTo(
     `/${locale}/disposal/new?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`,
     returnToHref,
@@ -121,7 +129,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   return (
     <div className={`space-y-6 ${actionBarPagePadding.single}`}>
       <PageHeader
-        breadcrumbs={[{ label: t("title"), href: returnToHref }, { label: ticket.repairNo, code: true }]}
+        breadcrumbs={[{ label: t("title"), href: listCrumbHref }, { label: ticket.repairNo, code: true }]}
         title={ticket.asset.name}
         meta={
           <>
@@ -272,8 +280,8 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                   </Link>
                 }
               >
-                <p>{t("disposalReviewCount", { count: totalRepairCount })}</p>
-                <p>{t("disposalReviewCost", { cost: formatMoney(totalRepairCost, { unit: tCommon("baht") }) })}</p>
+                <p>{t("disposalReviewCount", { count: assetRepairSummary.repairCount })}</p>
+                <p>{t("disposalReviewCost", { cost: formatMoney(assetRepairSummary.totalCost, { unit: tCommon("baht") }) })}</p>
                 {purchasePrice > 0 ? <p>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</p> : null}
               </Notice>
             </ContentPanel>

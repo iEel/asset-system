@@ -5,7 +5,7 @@ import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { toLocalDateInputValue } from "@/lib/local-date"
-import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { maintenanceListCrumbHref, normalizeMaintenanceReturnTo } from "@/lib/operational-return-navigation"
 
 type Props = {
   params: Promise<{ locale: string; id: string }>
@@ -18,8 +18,9 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
   await requirePagePermission(locale, "maintenance", "edit")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  // The PM list page and page size the user came from (spec 2B B4, §5.9.2 row 6); any other target is the PM list.
-  const returnTo = normalizeOperationalReturnTo(locale, "maintenance-pm", rawSearchParams.returnTo)
+  // The PM list page and page size the user came from (spec 2B B4, §5.9.2 row 6), the repair list or the asset tab
+  // (group 5 spec §5 "Way back"); any other target is the PM list.
+  const returnTo = normalizeMaintenanceReturnTo(locale, rawSearchParams.returnTo, "maintenance-pm")
   const plan = await prisma.maintenancePlan.findFirst({
     where: { id, planState: { not: "ended" } },
     include: { asset: { select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } } } },
@@ -29,7 +30,7 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumbs={[{ label: t("pmTitle"), href: returnTo }, { label: plan.planNo, code: true }]}
+        breadcrumbs={[{ label: t("pmTitle"), href: maintenanceListCrumbHref(returnTo, `/${locale}/maintenance/pm`) }, { label: plan.planNo, code: true }]}
         title={plan.title}
         meta={<span className="tag">{plan.planNo}</span>}
         back={<PageBackLink href={returnTo} label={tCommon("back")} />}

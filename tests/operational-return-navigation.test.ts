@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-import { normalizeDisposalBatchReturnTo } from "../src/lib/operational-return-navigation.ts"
+import { maintenanceListCrumbHref, normalizeDisposalBatchReturnTo, normalizeMaintenanceReturnTo } from "../src/lib/operational-return-navigation.ts"
 
 test("operational return navigation helper only accepts internal workflow targets", () => {
   const source = readFileSync("src/lib/operational-return-navigation.ts", "utf8")
@@ -26,8 +26,9 @@ test("maintenance list and detail preserve filtered list context", () => {
   assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/new\?planId=\$\{plan\.id\}`, returnHref\)/)
 
   assert.match(detailSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
-  assert.match(detailSource, /normalizeOperationalReturnTo\(locale, "maintenance", rawSearchParams\.returnTo\)/)
-  assert.match(detailSource, /\{ label: t\("title"\), href: returnToHref \}/)
+  assert.match(detailSource, /const returnToHref = normalizeMaintenanceReturnTo\(locale, rawSearchParams\.returnTo, "maintenance"\)/)
+  assert.match(detailSource, /const listCrumbHref = maintenanceListCrumbHref\(returnToHref, `\/\$\{locale\}\/maintenance`\)/)
+  assert.match(detailSource, /\{ label: t\("title"\), href: listCrumbHref \}/)
   assert.match(detailSource, /href=\{returnToHref\}/)
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}\/print`, returnToHref\)/)
   assert.match(detailSource, /appendOperationalReturnTo\(\s*`\/\$\{locale\}\/disposal\/new\?assetId=\$\{ticket\.asset\.id\}&reason=/)
@@ -138,7 +139,8 @@ test("the PM edit page reads returnTo and the plan form goes there after a save 
   const edit = readFileSync("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx", "utf8")
   const form = readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8")
   assert.match(edit, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
-  assert.match(edit, /const returnTo = normalizeOperationalReturnTo\(locale, "maintenance-pm", rawSearchParams\.returnTo\)/)
+  assert.match(edit, /const returnTo = normalizeMaintenanceReturnTo\(locale, rawSearchParams\.returnTo, "maintenance-pm"\)/)
+  assert.match(edit, /\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}/)
   assert.match(edit, /returnHref=\{returnTo\}/)
   assert.match(form, /returnHref = `\/\$\{locale\}\/maintenance\/pm`,/, "the create page passes nothing and keeps going to the PM list")
   assert.match(form, /router\.push\(returnHref\)/)
@@ -159,4 +161,42 @@ test("my-assets returnTo keeps the list page and page size and falls back to My 
   assert.equal(list.match(/buildMyAssetDetailHref\(locale, asset\.id, returnHref\)/g)?.length, 2, "the phone card and the table row")
   assert.match(detail, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
   assert.match(detail, /const returnToHref = normalizeOperationalReturnTo\(locale, "my-assets", rawSearchParams\.returnTo\)/)
+})
+
+// Group 5 plan 1 Task 5 (spec §5 "Way back", G5P1-R14, R15, Review Focus 5): the repair and PM forms and the record page
+// accept the repair list, the PM list and one asset page as returnTo; anything else is the page's own list.
+test("normalizeMaintenanceReturnTo accepts the two lists and one asset page, and nothing else", () => {
+  assert.equal(normalizeMaintenanceReturnTo("th", "/th/maintenance?status=in_progress#stuck", "maintenance"), "/th/maintenance?status=in_progress#stuck")
+  assert.equal(normalizeMaintenanceReturnTo("th", "/th/maintenance/pm?due=overdue", "maintenance"), "/th/maintenance/pm?due=overdue")
+  assert.equal(normalizeMaintenanceReturnTo("th", "/th/assets/a-1?view=maintenance", "maintenance"), "/th/assets/a-1?view=maintenance")
+  assert.equal(normalizeMaintenanceReturnTo("th", ["/th/assets/a-1", "/th/admin"], "maintenance"), "/th/assets/a-1")
+  for (const crafted of ["//evil.example/x", "https://evil.example/th/maintenance", "/th/assets/a-1/edit", "/th/assets/", "/th/assets", "/en/assets/a-1", "/th/maintenance/../admin", "/th/maintenance/new", "/th/admin", ""]) {
+    assert.equal(normalizeMaintenanceReturnTo("th", crafted, "maintenance"), "/th/maintenance", crafted)
+  }
+  assert.equal(normalizeMaintenanceReturnTo("th", undefined, "maintenance"), "/th/maintenance")
+  assert.equal(normalizeMaintenanceReturnTo("th", undefined, "maintenance-pm"), "/th/maintenance/pm")
+  assert.equal(normalizeMaintenanceReturnTo("th", "/th/assets/a-1/edit", "maintenance-pm"), "/th/maintenance/pm")
+  assert.equal(normalizeMaintenanceReturnTo("th", "/th/maintenance?page=2", "maintenance-pm"), "/th/maintenance?page=2")
+})
+
+test("maintenanceListCrumbHref keeps the list's query only when returnTo is that list (G5P1-R14)", () => {
+  assert.equal(maintenanceListCrumbHref("/th/maintenance?page=2", "/th/maintenance"), "/th/maintenance?page=2")
+  assert.equal(maintenanceListCrumbHref("/th/maintenance", "/th/maintenance"), "/th/maintenance")
+  assert.equal(maintenanceListCrumbHref("/th/assets/a-1", "/th/maintenance"), "/th/maintenance")
+  assert.equal(maintenanceListCrumbHref("/th/maintenance/pm?due=week", "/th/maintenance"), "/th/maintenance")
+  assert.equal(maintenanceListCrumbHref("/th/maintenance?page=2", "/th/maintenance/pm"), "/th/maintenance/pm")
+  assert.equal(maintenanceListCrumbHref("/th/maintenance/pm?page=3", "/th/maintenance/pm"), "/th/maintenance/pm?page=3")
+})
+
+test("the repair create page and the PM create page read the wider returnTo; the crumb names their own list", () => {
+  const repairNew = readFileSync("src/app/[locale]/(dashboard)/maintenance/new/page.tsx", "utf8")
+  const pmNew = readFileSync("src/app/[locale]/(dashboard)/maintenance/pm/new/page.tsx", "utf8")
+  assert.match(repairNew, /const returnTo = normalizeMaintenanceReturnTo\(locale, query\.returnTo, "maintenance"\)/)
+  assert.match(repairNew, /\{ label: t\("title"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance`\) \}/)
+  assert.match(repairNew, /returnTo=\{returnTo\}/)
+  assert.match(pmNew, /searchParams: Promise<\{ assetId\?: string; returnTo\?: string \| string\[\] \}>/)
+  assert.match(pmNew, /const returnTo = normalizeMaintenanceReturnTo\(locale, query\.returnTo, "maintenance-pm"\)/)
+  assert.match(pmNew, /\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}/)
+  assert.match(pmNew, /<MaintenancePlanForm locale=\{locale\} returnHref=\{returnTo\} initialAsset=\{initialAsset\} \/>/)
+  assert.doesNotMatch(pmNew, /const returnTo = `/)
 })

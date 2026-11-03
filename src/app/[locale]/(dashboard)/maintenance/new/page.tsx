@@ -3,7 +3,7 @@ import { RepairRecordForm } from "@/components/maintenance/repair-record-form"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { getRepairConditionOptions, repairConditionDefault } from "@/lib/asset-lifecycle-policy"
 import { prisma } from "@/lib/db"
-import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { maintenanceListCrumbHref, normalizeMaintenanceReturnTo } from "@/lib/operational-return-navigation"
 import { requirePagePermission } from "@/lib/page-auth"
 
 type Props = {
@@ -17,7 +17,8 @@ export default async function NewRepairRecordPage({ params, searchParams }: Prop
   const user = await requirePagePermission(locale, "maintenance", "create")
   const t = await getTranslations("repairRecord")
   const tCommon = await getTranslations("common")
-  const returnTo = normalizeOperationalReturnTo(locale, "maintenance", query.returnTo)
+  // The repair list, the PM list or the asset page the user came from (group 5 spec §5 "Way back").
+  const returnTo = normalizeMaintenanceReturnTo(locale, query.returnTo, "maintenance")
   const plan = query.planId
     ? await prisma.maintenancePlan.findFirst({
         where: { id: query.planId, isActive: true, planState: "active" },
@@ -50,7 +51,7 @@ export default async function NewRepairRecordPage({ params, searchParams }: Prop
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumbs={[{ label: t("title"), href: returnTo }, { label: t("createTitle") }]}
+        breadcrumbs={[{ label: t("title"), href: maintenanceListCrumbHref(returnTo, `/${locale}/maintenance`) }, { label: t("createTitle") }]}
         title={t("createTitle")}
         meta={plan ? t("pmCreateSubtitle") : t("createSubtitle")}
         back={<PageBackLink href={returnTo} label={tCommon("back")} />}

@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import type { AssetPrimaryAction } from "@/lib/asset-actions"
 import { formatRepairPeriod, repairDays, summarizeAssetRepairs, type AssetPmPlanRow, type AssetRepairRow } from "@/lib/asset-repair-rules"
 import { formatCount, formatMoney } from "@/lib/display-format"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { getPmDueBadge } from "@/lib/preventive-maintenance"
 import { getRepairRecordStatusTone, isOpenRepairStatus, toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { formatDate } from "@/lib/utils"
@@ -192,7 +193,7 @@ export async function AssetMaintenanceTab({
       <ContentPanel divided flush title={t("repairTab.pmTitle")}
         actions={
           canCreatePlan ? (
-            <Link href={`/${locale}/maintenance/pm/new?assetId=${encodeURIComponent(assetId)}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            <Link href={appendOperationalReturnTo(`/${locale}/maintenance/pm/new?assetId=${encodeURIComponent(assetId)}`, `/${locale}/assets/${assetId}?view=maintenance`)} className={buttonVariants({ variant: "outline", size: "sm" })}>
               {t("repairTab.pmSetup")}
             </Link>
           ) : undefined

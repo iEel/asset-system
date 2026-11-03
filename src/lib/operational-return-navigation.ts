@@ -60,6 +60,40 @@ export function normalizeAuditFindingsReturnTo(locale: string, value: ReturnToPa
   }
 }
 
+// The repair and PM forms' and the repair record's way back (group 5 spec §5 "Way back", G5P1-R14, R15): the repair
+// list (with its query and hash), the PM list (with its query) or one asset page (with its query, e.g. ?view=maintenance).
+// Anything else, another site, another locale or a deeper asset path, is the page's own list. `new URL` resolves `..`
+// first, so `/th/maintenance/../admin` is `/th/admin` and falls back.
+export function normalizeMaintenanceReturnTo(locale: string, value: ReturnToParam, list: "maintenance" | "maintenance-pm"): string {
+  const fallback = operationalReturnPaths[list](locale)
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return fallback
+
+  try {
+    const url = new URL(raw, "http://asset.local")
+    if (url.origin !== "http://asset.local") return fallback
+    const repairList = operationalReturnPaths.maintenance(locale)
+    if (url.pathname === repairList) return `${url.pathname}${url.search}${url.hash}`
+    if (url.pathname === operationalReturnPaths["maintenance-pm"](locale)) return `${url.pathname}${url.search}`
+    const assets = `/${locale}/assets/`
+    const assetId = url.pathname.startsWith(assets) ? url.pathname.slice(assets.length) : ""
+    if (assetId.length > 0 && !assetId.includes("/")) return `${url.pathname}${url.search}`
+    return fallback
+  } catch {
+    return fallback
+  }
+}
+
+// The first breadcrumb names the page's own list (G5P1-R14): it keeps returnTo's query only when returnTo is that list,
+// and is the bare list otherwise (an asset page, or the other list).
+export function maintenanceListCrumbHref(returnTo: string, listPath: string): string {
+  try {
+    return new URL(returnTo, "http://asset.local").pathname === listPath ? returnTo : listPath
+  } catch {
+    return listPath
+  }
+}
+
 export function appendOperationalReturnTo(href: string, returnTo: string) {
   const separator = href.includes("?") ? "&" : "?"
   return `${href}${separator}returnTo=${encodeURIComponent(returnTo)}`

@@ -374,6 +374,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     outstanding: frame.outstanding,
     conditionName: asset.condition.name,
     returnTo: currentAssetDetailHref,
+    // The repair form comes back to this page (group 5 G5P1-R15).
+    repairReturnTo: `/${locale}/assets/${asset.id}`,
     can: { assetEdit: canEditAsset, maintenanceCreate: canCreateMaintenance, maintenanceView: canViewMaintenance, disposalView: canViewDisposal },
   }
   const assetActions = getAssetActions(actionInput)

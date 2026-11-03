@@ -76,10 +76,10 @@ test("the two disposal create pages: PageHeader with the back link they had, on 
 test("the three maintenance create and edit pages: crumbs in PageHeader and กลับ instead of ยกเลิก (2B-1 task 22, B2)", () => {
   const D = "src/app/[locale]/(dashboard)/"
   const pages = {
-    "maintenance/new/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("title"\), href: returnTo \}, \{ label: t\("createTitle"\) \}\]\}\n\s+title=\{t\("createTitle"\)\}\n\s+meta=\{plan \? t\("pmCreateSubtitle"\) : t\("createSubtitle"\)\}\n/,
-    "maintenance/pm/new/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: returnTo \}, \{ label: t\("pmCreateTitle"\) \}\]\}\n\s+title=\{t\("pmCreateTitle"\)\}\n\s+meta=\{t\("pmSubtitle"\)\}\n/,
+    "maintenance/new/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("title"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance`\) \}, \{ label: t\("createTitle"\) \}\]\}\n\s+title=\{t\("createTitle"\)\}\n\s+meta=\{plan \? t\("pmCreateSubtitle"\) : t\("createSubtitle"\)\}\n/,
+    "maintenance/pm/new/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}, \{ label: t\("pmCreateTitle"\) \}\]\}\n\s+title=\{t\("pmCreateTitle"\)\}\n\s+meta=\{t\("pmSubtitle"\)\}\n/,
     // The trail ends on the plan code, so the title is the plan's own name and the code is the first fact (spec §4.3.3 rule 6).
-    "maintenance/pm/[id]/edit/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: returnTo \}, \{ label: plan\.planNo, code: true \}\]\}\n\s+title=\{plan\.title\}\n\s+meta=\{<span className="tag">\{plan\.planNo\}<\/span>\}\n/,
+    "maintenance/pm/[id]/edit/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: maintenanceListCrumbHref\(returnTo, `\/\$\{locale\}\/maintenance\/pm`\) \}, \{ label: plan\.planNo, code: true \}\]\}\n\s+title=\{plan\.title\}\n\s+meta=\{<span className="tag">\{plan\.planNo\}<\/span>\}\n/,
   }
   for (const [file, header] of Object.entries(pages)) {
     const source = read(D + file)

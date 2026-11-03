@@ -41,7 +41,8 @@ test("the repair tab: links and write controls follow their permission (spec §7
   assert.match(source, /const tAll = await getTranslations\(\)/)
   assert.doesNotMatch(source, /reasonKey|recordRepair\?\.enabled/)
   assert.match(source, /canCreatePlan \?/)
-  assert.match(source, /href=\{`\/\$\{locale\}\/maintenance\/pm\/new\?assetId=\$\{encodeURIComponent\(assetId\)\}`\}/)
+  // The PM form comes back to this tab (group 5 G5P1-R15).
+  assert.match(source, /href=\{appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/pm\/new\?assetId=\$\{encodeURIComponent\(assetId\)\}`, `\/\$\{locale\}\/assets\/\$\{assetId\}\?view=maintenance`\)\}/)
   assert.equal(source.match(/\/maintenance\/new\b/g), null, "the record-repair href is the action rule's, never written here")
 })
 

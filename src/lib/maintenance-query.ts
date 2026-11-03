@@ -96,8 +96,9 @@ function normalizeOption<T extends readonly string[]>(value: string | undefined,
 
 function normalizeDate(value: string | undefined) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return ""
-  const date = new Date(`${value}T00:00:00.000`)
-  return Number.isNaN(date.getTime()) || toDateKey(date) !== value ? "" : value
+  // Checked in UTC, so the server's zone cannot shift the day; an impossible day such as 2026-02-30 is dropped.
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? "" : value
 }
 
 function normalizePositiveInteger(value: string | undefined, fallback: number) {
@@ -113,19 +114,11 @@ function normalizePageSize(value: string | undefined): (typeof maintenancePageSi
     : 25
 }
 
-function toDateKey(date: Date) {
-  const year = String(date.getFullYear()).padStart(4, "0")
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
-
+// The list's dates are Bangkok days (UTC+7, no daylight saving) on any server zone.
 function startOfDay(value: string) {
-  return new Date(`${value}T00:00:00.000`)
+  return new Date(`${value}T00:00:00.000+07:00`)
 }
 
 function nextDay(value: string) {
-  const date = startOfDay(value)
-  date.setDate(date.getDate() + 1)
-  return date
+  return new Date(startOfDay(value).getTime() + 24 * 60 * 60 * 1000)
 }

@@ -81,11 +81,25 @@ test("the three repair dialogs keep their buttons in a fixed footer and keep foc
 // the O11 bottom padding to actionBarPagePadding. This file reads the page raw (CRLF): no line breaks in these regexes.
 test("the repair page header is PageHeader with the asset name, and its PageBackLink is the one back control (spec 2B §4.4.5, §4.6.4)", () => {
   const source = readFileSync(detailPath, "utf8")
-  assert.match(source, /breadcrumbs=\{\[\{ label: t\("title"\), href: returnToHref \}, \{ label: ticket\.repairNo, code: true \}\]\}\s*title=\{ticket\.asset\.name\}/)
+  assert.match(source, /breadcrumbs=\{\[\{ label: t\("title"\), href: listCrumbHref \}, \{ label: ticket\.repairNo, code: true \}\]\}\s*title=\{ticket\.asset\.name\}/)
   assert.match(source, /<span className="tag">\{ticket\.repairNo\}<\/span>\s*<StatusBadge label=\{t\(`status\.\$\{recordStatus\}`\)\} tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\} \/>\s*<span className="tag">\{ticket\.asset\.assetTag\}<\/span>/)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
   assert.doesNotMatch(source, /label: tCommon\("back"\)|ArrowLeft/, "the bar has no back item of its own (2C plan 5)")
   assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
   assert.equal(source.match(/<KeyValueList\b/g)?.length, 4)
   assert.doesNotMatch(source, /\bWrench\b|<h1\b|<Breadcrumbs\b|formatCurrency|function Info\b|"-"/)
+})
+
+// Group 5 plan 1 Task 5 (G5P1-R16, spec §8.3): the disposal-review panel counts repairs as the asset tab does, through
+// summarizeAssetRepairs over the asset's active records, so PM visits and cancelled records stay out.
+test("the record page's disposal-review panel reads summarizeAssetRepairs, not an aggregate", () => {
+  const source = readFileSync(detailPath, "utf8")
+  assert.match(source, /prisma\.maintenanceTicket\.findMany\(\{\s*where: \{ assetId: ticket\.asset\.id, isActive: true \},\s*select: \{ id: true, repairStatus: true, maintenancePlanId: true, reportedDate: true, returnDate: true, repairCost: true \},\s*\}\)/)
+  assert.match(source, /summarizeAssetRepairs\(/)
+  assert.match(source, /repairCost: record\.repairCost == null \? null : Number\(record\.repairCost\)/)
+  assert.match(source, /const shouldReviewDisposal = assetRepairSummary\.replacementWarning/)
+  assert.doesNotMatch(source, /_count|_sum|maintenanceTicket\.aggregate/)
+  assert.match(source, /t\("disposalReviewCount", \{ count: assetRepairSummary\.repairCount \}\)/)
+  assert.match(source, /formatMoney\(assetRepairSummary\.totalCost, \{ unit: tCommon\("baht"\) \}\)/)
+  assert.match(source, /\{purchasePrice > 0 \? <p>\{t\("disposalReviewRatio", \{ percent: Math\.round\(repairCostRatio \* 100\) \}\)\}<\/p> : null\}/)
 })

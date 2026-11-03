@@ -10,6 +10,7 @@ import {
 import { buildAssetRegisterTransactionHref } from "./asset-operation-policy.ts"
 import type { AssetOwnershipType } from "./asset-ownership.ts"
 import { appendReturnTo } from "./asset-return-navigation.ts"
+import { appendOperationalReturnTo } from "./operational-return-navigation.ts"
 import { getRepairRecordCreateEffect } from "./repair-record-policy.ts"
 
 // The one action rule of the register's rows and the asset page (group 1 spec §7.1): which step is next, which other
@@ -64,6 +65,8 @@ export type AssetActionInput = {
   /** The outstanding link holding this asset as a component (group 3 spec §8.5), from a dedicated query. */
   outstanding: AssetOperationOutstandingFact | null
   returnTo: string
+  /** Where the repair form goes back to (G5P1-R15): only the asset page sets it; the register and the scan page do not. */
+  repairReturnTo?: string
   can: { assetEdit: boolean; maintenanceCreate: boolean; maintenanceView: boolean; disposalView: boolean }
 }
 
@@ -170,7 +173,8 @@ function buildTableAction(input: AssetActionInput, key: AssetActionKey, labelKey
 
 /**
  * "บันทึกซ่อม": the repair rule accepts some record now (unfinished or finished) and the person has maintenance:create.
- * No returnTo: the repair form goes back only to the repair list.
+ * It carries `repairReturnTo` when the caller sets it (the asset page, G5P1-R15), so the repair form comes back there;
+ * without it the form goes back to the repair list.
  */
 export function getAssetRecordRepairAction(input: AssetActionInput): AssetPrimaryAction | null {
   if (!input.can.maintenanceCreate) return null
@@ -183,7 +187,8 @@ export function getAssetRecordRepairAction(input: AssetActionInput): AssetPrimar
   }
   const accepted = [false, true].some((done) => getRepairRecordCreateEffect(asset, { done, outcome: "usable" }).error === null)
   if (!accepted) return null
-  return available("recordRepair", "asset.quickMaintenance", `/${input.locale}/maintenance/new?assetId=${encodeURIComponent(input.assetId)}`)
+  const href = `/${input.locale}/maintenance/new?assetId=${encodeURIComponent(input.assetId)}`
+  return available("recordRepair", "asset.quickMaintenance", input.repairReturnTo ? appendOperationalReturnTo(href, input.repairReturnTo) : href)
 }
 
 export function getAssetActions(input: AssetActionInput): AssetActionSet {
