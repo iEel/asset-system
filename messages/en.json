@@ -3345,7 +3345,7 @@
     "cancelReason": "Cancellation Reason",
     "cancelHelp": "Available only before repair work starts. The asset status will be restored from its current custody and the cancellation will be audited.",
     "returnDate": "Return Date",
-    "closedEvidenceAppendOnlyHelp": "This ticket is closed. Existing evidence is locked, but authorized users may add a clearly audited addendum.",
+    "closedEvidenceAppendOnlyHelp": "Only people who may edit repair records can delete files. If a file was attached by mistake, tell one of them.",
     "errors": {
       "MAINTENANCE_ASSET_INELIGIBLE": "This asset status cannot be sent for repair",
       "MAINTENANCE_INVALID_TRANSITION": "This record is already finished or cancelled",
@@ -3378,7 +3378,14 @@
       "today": "Due soon · today",
       "soon": "Due soon · in {days} days",
       "later": "Next round · in {days} days"
-    }
+    },
+    "attachmentCount": "{count, plural, one {# file} other {# files}}",
+    "noAttachments": "No attachments yet",
+    "attachmentTypeDefaultOpen": "Set to {type} because the repair is not finished yet",
+    "attachmentTypeDefaultClosed": "Set to {type} because the repair is finished",
+    "dropAttachmentTitle": "Take a photo or attach a receipt",
+    "takeBeforePhoto": "Take a before-repair photo",
+    "takeAfterPhoto": "Take an after-repair photo"
   },
   "repairRecord": {
     "title": "Maintenance",

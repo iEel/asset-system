@@ -3,14 +3,20 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Download, Eye, FileText, Image as ImageIcon, Trash2 } from "lucide-react"
+import { FileText, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 import { formatCount } from "@/lib/display-format"
-import { cn } from "@/lib/utils"
-import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, maintenanceAttachmentTypes, type MaintenanceAttachmentType } from "@/lib/maintenance-attachments"
+import { isThumbnailable, thumbnailUrl } from "@/lib/attachment-thumbnail"
+import {
+  getMaintenanceAttachmentDisplayName,
+  getMaintenanceAttachmentType,
+  isMaintenancePhotoType,
+  maintenanceAttachmentTypes,
+  type MaintenanceAttachmentType,
+} from "@/lib/maintenance-attachments"
+import { defaultAttachmentType } from "@/lib/repair-record-detail-rules"
 import { Button } from "@/components/ui/button"
-import { buttonVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { EmptyNote } from "@/components/ui/empty-note"
 import { Field } from "@/components/ui/field"
@@ -31,11 +37,13 @@ type Attachment = {
 
 export function MaintenanceAttachments({
   ticketId,
+  repairStatus,
   attachments,
   canEdit,
   canDelete,
 }: {
   ticketId: string
+  repairStatus: string
   attachments: Attachment[]
   canEdit: boolean
   canDelete: boolean
@@ -49,7 +57,18 @@ export function MaintenanceAttachments({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Attachment | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [attachmentType, setAttachmentType] = useState<MaintenanceAttachmentType>("after_repair")
+  // Group 5 spec §8.5: before the repair while the record is open, after it once closed or cancelled.
+  const defaultType = defaultAttachmentType(repairStatus)
+  const [attachmentType, setAttachmentType] = useState<MaintenanceAttachmentType>(defaultType)
+  // The hint says why the type was set, only while it is still the one set; a cancelled record gets no reason.
+  const defaultTypeHint =
+    attachmentType !== defaultType
+      ? undefined
+      : defaultType === "before_repair"
+        ? t("attachmentTypeDefaultOpen", { type: t(`attachmentTypes.${defaultType}`) })
+        : repairStatus === "closed"
+          ? t("attachmentTypeDefaultClosed", { type: t(`attachmentTypes.${defaultType}`) })
+          : undefined
   const groupedAttachments = maintenanceAttachmentTypes
     .map((type) => ({
       type,
@@ -94,6 +113,7 @@ export function MaintenanceAttachments({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(tCommon("deletedSuccess"))
+      setPreview(null)
       router.refresh()
     } catch (error) {
       apiError.toast(error)
@@ -103,117 +123,92 @@ export function MaintenanceAttachments({
   }
 
   return (
-    <ContentPanel title={t("attachments")}>
-      {canEdit ? (
-      <div className="mb-4">
-        {!canDelete ? <Notice tone="warning" className="mb-3">{t("closedEvidenceAppendOnlyHelp")}</Notice> : null}
-        <Field label={t("attachmentType")} className="mb-3">
-          <NativeSelect
-            value={attachmentType}
-            onChange={(event) => setAttachmentType(event.target.value as MaintenanceAttachmentType)}
-          >
-            {maintenanceAttachmentTypes.map((type) => (
-              <option key={type} value={type}>
-                {t(`attachmentTypes.${type}`)}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-        <FileDropzone
-          file={selectedFile}
-          onFileChange={handleUpload}
-          disabled={uploading}
-          title={t("dropFileTitle")}
-          hint={uploading ? t("uploading") : t("dropFileSelected")}
-          browseLabel={t("dropFileHint")}
-        />
-      </div>
-      ) : null}
-
+    <ContentPanel
+      title={t("attachments")}
+      actions={<span className="text-meta num text-muted-foreground">{t("attachmentCount", { count: attachments.length })}</span>}
+    >
       {attachments.length === 0 ? (
-        <EmptyNote>{tCommon("noData")}</EmptyNote>
+        <EmptyNote>{t("noAttachments")}</EmptyNote>
       ) : (
         <div className="space-y-4">
           {groupedAttachments.map((group) => (
-            <div key={group.type} className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-foreground">{t(`attachmentTypes.${group.type}`)}</h3>
+            <div key={group.type} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-meta font-medium text-muted-foreground">{t(`attachmentTypes.${group.type}`)}</h3>
                 <span className="text-meta num text-muted-foreground">{formatCount(group.attachments.length)}</span>
               </div>
-              {group.attachments.map((attachment) => (
-                <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
-              {/* The thumbnail stays a raw button: the image or the PDF preview is the control (plan 2D-4, for the EXEMPT list of 2D-5). */}
-              {isPreviewable(attachment) ? (
-                <button
-                  type="button"
-                  onClick={() => setPreview(attachment)}
-                  className="mb-3 flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md bg-surface text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {isImage(attachment) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/attachments/${attachment.id}?inline=1`}
-                      alt={attachment.originalName}
-                      className="h-full w-full object-cover bg-image-stage"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-sm">
-                      <FileText className="h-10 w-10" />
-                      {t("pdfPreview")}
-                    </div>
-                  )}
-                </button>
-              ) : (
-                <div className="mb-3 flex aspect-[4/3] w-full items-center justify-center rounded-md bg-surface text-muted-foreground">
-                  <FileText className="h-10 w-10" />
-                </div>
-              )}
-              <div className="flex items-start gap-2">
-                {isImage(attachment) ? (
-                  <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                ) : (
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                )}
-                <div className="min-w-0">
-                  <div className="break-words text-sm font-medium text-foreground">{getMaintenanceAttachmentDisplayName(attachment.originalName)}</div>
-                  <div className="mt-1 text-meta text-muted-foreground">
-                    {attachment.fileType} · {formatFileSize(attachment.fileSize)}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                {isPreviewable(attachment) ? (
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setPreview(attachment)}>
-                    <Eye aria-hidden="true" />
-                    {t("preview")}
-                  </Button>
-                ) : null}
-                <a
-                  href={`/api/attachments/${attachment.id}`}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}
-                >
-                  <Download aria-hidden="true" />
-                  {t("download")}
-                </a>
-                {canDelete ? (
-                <Button
-                  variant="danger"
-                  size="icon-sm"
-                  onClick={() => void handleDelete(attachment.id)}
-                  busy={deletingId === attachment.id}
-                  aria-label={tCommon("delete")}
-                  title={tCommon("delete")}
-                >
-                  <Trash2 aria-hidden="true" />
-                </Button>
-                ) : null}
-              </div>
-            </div>
-              ))}
+              <ul className="flex flex-wrap gap-2">
+                {group.attachments.map((attachment) => {
+                  const name = getMaintenanceAttachmentDisplayName(attachment.originalName)
+                  return (
+                    <li key={attachment.id}>
+                      {/* The tile stays a raw button: the image, the PDF or the named file is the control (plan 2D-4, for the EXEMPT list of 2D-5). */}
+                      <button
+                        type="button"
+                        onClick={() => setPreview(attachment)}
+                        aria-label={t("preview") + " " + name}
+                        title={name}
+                        className="flex size-18 flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-border bg-muted text-muted-foreground transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                      >
+                        {isThumbnailable(attachment.fileType) ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- already resized by the thumbnail route
+                          <img
+                            src={thumbnailUrl(attachment.id)}
+                            alt=""
+                            width={72}
+                            height={72}
+                            loading="lazy"
+                            decoding="async"
+                            className="size-full object-cover bg-image-stage"
+                          />
+                        ) : (
+                          <>
+                            <FileText className="size-5 shrink-0" aria-hidden="true" />
+                            <span className="line-clamp-2 w-full break-all px-1 text-center text-meta leading-tight">{name}</span>
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
             </div>
           ))}
         </div>
       )}
+
+      {canEdit ? (
+        <div className="mt-4 border-t border-border pt-4">
+          {!canDelete ? <Notice tone="warning" className="mb-3">{t("closedEvidenceAppendOnlyHelp")}</Notice> : null}
+          <Field label={t("attachmentType")} hint={defaultTypeHint} className="mb-3">
+            <NativeSelect
+              value={attachmentType}
+              onChange={(event) => setAttachmentType(event.target.value as MaintenanceAttachmentType)}
+            >
+              {maintenanceAttachmentTypes.map((type) => (
+                <option key={type} value={type}>
+                  {t(`attachmentTypes.${type}`)}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          {/* The camera only for a photo type, so a PDF can still be chosen for the others. A desktop browser ignores
+              capture, so this type rule alone gives "the camera on the phone" (group 5 spec §8.5). */}
+          <FileDropzone
+            file={selectedFile}
+            onFileChange={handleUpload}
+            disabled={uploading}
+            capture={isMaintenancePhotoType(attachmentType) ? "environment" : undefined}
+            title={t("dropAttachmentTitle")}
+            hint={uploading ? t("uploading") : t("dropFileSelected")}
+            browseLabel={
+              isMaintenancePhotoType(attachmentType)
+                ? t(attachmentType === "before_repair" ? "takeBeforePhoto" : "takeAfterPhoto")
+                : t("dropFileHint")
+            }
+          />
+        </div>
+      ) : null}
 
       <AttachmentPreviewDialog
         open={preview !== null}
@@ -223,10 +218,24 @@ export function MaintenanceAttachments({
         title={preview ? getMaintenanceAttachmentDisplayName(preview.originalName) : ""}
         subtitle={preview ? `${preview.fileType} · ${formatFileSize(preview.fileSize)}` : undefined}
         kind={preview && isImage(preview) ? "image" : "pdf"}
-        src={preview ? `/api/attachments/${preview.id}?inline=1` : ""}
+        // A file that is neither an image nor a PDF shows only its name, size, download and delete.
+        src={preview && isPreviewable(preview) ? `/api/attachments/${preview.id}?inline=1` : ""}
         alt={preview?.originalName}
         downloadHref={preview ? `/api/attachments/${preview.id}` : undefined}
         downloadLabel={t("download")}
+        actions={
+          canDelete && preview ? (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => void handleDelete(preview.id)}
+              busy={deletingId === preview.id}
+            >
+              <Trash2 aria-hidden="true" />
+              {tCommon("delete")}
+            </Button>
+          ) : null
+        }
       />
     </ContentPanel>
   )

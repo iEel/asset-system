@@ -3345,7 +3345,7 @@
     "cancelReason": "เหตุผลที่ยกเลิก",
     "cancelHelp": "ใช้ได้เฉพาะใบงานที่ยังไม่เริ่มซ่อม ระบบจะคืนสถานะทรัพย์สินตามผู้ถือครองปัจจุบันและบันทึกประวัติการยกเลิก",
     "returnDate": "วันที่ส่งคืน",
-    "closedEvidenceAppendOnlyHelp": "ใบงานนี้ปิดแล้ว หลักฐานเดิมจะถูกล็อกไม่ให้ลบ แต่ผู้มีสิทธิ์ยังเพิ่มเอกสารชี้แจงภายหลังได้และระบบจะบันทึกในประวัติการแก้ไข",
+    "closedEvidenceAppendOnlyHelp": "ลบไฟล์ได้เฉพาะผู้มีสิทธิ์แก้ไขบันทึกซ่อม ถ้าแนบผิดให้แจ้งผู้มีสิทธิ์",
     "errors": {
       "MAINTENANCE_ASSET_INELIGIBLE": "สถานะทรัพย์สินนี้ส่งซ่อมไม่ได้",
       "MAINTENANCE_INVALID_TRANSITION": "บันทึกนี้เสร็จหรือถูกยกเลิกไปแล้ว",
@@ -3378,7 +3378,14 @@
       "today": "ใกล้ถึงกำหนด · วันนี้",
       "soon": "ใกล้ถึงกำหนด · อีก {days} วัน",
       "later": "รอบถัดไป · อีก {days} วัน"
-    }
+    },
+    "attachmentCount": "{count, number} ไฟล์",
+    "noAttachments": "ยังไม่มีไฟล์แนบ",
+    "attachmentTypeDefaultOpen": "ตั้งเป็น{type}ไว้ให้ เพราะบันทึกยังไม่ซ่อมเสร็จ",
+    "attachmentTypeDefaultClosed": "ตั้งเป็น{type}ไว้ให้ เพราะซ่อมเสร็จแล้ว",
+    "dropAttachmentTitle": "ถ่ายรูปหรือแนบใบเสร็จ",
+    "takeBeforePhoto": "ถ่ายรูปก่อนซ่อม",
+    "takeAfterPhoto": "ถ่ายรูปหลังซ่อม"
   },
   "repairRecord": {
     "title": "ซ่อมบำรุง",

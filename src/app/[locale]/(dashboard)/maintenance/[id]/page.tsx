@@ -351,7 +351,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           </div>
 
           <div id="attachments" className="min-w-0 scroll-mt-6">
-            <MaintenanceAttachments ticketId={ticket.id} attachments={attachments} canEdit={canAttach} canDelete={canEdit} />
+            <MaintenanceAttachments ticketId={ticket.id} repairStatus={ticket.repairStatus} attachments={attachments} canEdit={canAttach} canDelete={canEdit} />
           </div>
         </div>
 

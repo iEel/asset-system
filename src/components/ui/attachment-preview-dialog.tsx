@@ -16,6 +16,7 @@ export function AttachmentPreviewDialog({
   alt,
   downloadHref,
   downloadLabel,
+  actions,
   closeLabel,
 }: {
   open: boolean
@@ -27,6 +28,8 @@ export function AttachmentPreviewDialog({
   alt?: string
   downloadHref?: string
   downloadLabel?: string
+  // More commands in the footer before the download, e.g. the repair record's delete (group 5 spec §8.5).
+  actions?: React.ReactNode
   closeLabel?: string
 }) {
   const tCommon = useTranslations("common")
@@ -51,12 +54,15 @@ export function AttachmentPreviewDialog({
             )
           ) : null}
         </div>
-        {downloadHref && downloadLabel ? (
-          <div className="flex shrink-0 justify-end border-t border-border px-4 py-3">
-            <a href={downloadHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              <Download aria-hidden="true" />
-              {downloadLabel}
-            </a>
+        {(downloadHref && downloadLabel) || actions ? (
+          <div className="flex shrink-0 justify-end gap-2 border-t border-border px-4 py-3">
+            {actions}
+            {downloadHref && downloadLabel ? (
+              <a href={downloadHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                <Download aria-hidden="true" />
+                {downloadLabel}
+              </a>
+            ) : null}
           </div>
         ) : null}
       </DialogContent>
