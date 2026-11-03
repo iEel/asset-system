@@ -198,7 +198,8 @@ test("บันทึกซ่อม answers its questions, refuses a held asset
   assert.ok(data.includes(`data: { action: "end" }`))
   // ER4: the PM path's card has no เปลี่ยน; the result and the condition are answered before the save.
   assert.ok(!pm.includes(`await expect(page.locator("#repair-record-asset")).toBeDisabled()`))
-  assert.ok(pm.includes(`await expect(page.locator("#repair-record-asset").getByRole("button", { name: "${repair.createForm.change}", exact: true })).toHaveCount(0)`))
+  // The card must be there first, or the count of 0 passes with no card at all (final review 7).
+  assert.ok(pm.includes(`await expect(page.locator("[data-repair-asset-card]")).toBeVisible()\n  await expect(page.locator("#repair-record-asset").getByRole("button", { name: "${repair.createForm.change}", exact: true })).toHaveCount(0)`))
   assert.ok(pm.includes(`await expect(page.locator("#repair-record-outcome").getByRole("radio", { checked: true })).toHaveCount(0)`))
   assert.ok(pm.includes(`await answerRepair(page, { done: true, outcome: "${repair.outcome.usable}", condition: "ดี" })`))
   // The handover loop answers both questions explicitly; the open repair is not done.

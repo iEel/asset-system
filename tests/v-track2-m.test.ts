@@ -206,7 +206,7 @@ test("repair record: errors under the field, the asset and reporter selects chec
     messages: ["assetId", "reportedDate", "problem", "done", "outcome", "conditionId", "reportedById", "vendorId", "invoiceNo", "remark"],
     resultToast: uploadToast,
   })
-  assert.ok(form.includes("const validate = () => validateRepairForm(values, { needsReporter, todayKey })"))
+  assert.ok(form.includes("const validate = () => validateRepairForm(values, { needsReporter, todayKey: latestTodayKey() })"))
   const rules = rulesFile.slice(rulesFile.indexOf("export function validateRepairForm("), rulesFile.indexOf("\n}\n", rulesFile.indexOf("export function validateRepairForm(")))
   for (const rule of [
     'check("assetId", required(values.assetId))',
@@ -235,7 +235,7 @@ test("repair record: errors under the field, the asset and reporter selects chec
   assert.ok(form.includes("fieldErrors.focusFirst(repairFieldOrder(values, needsReporter), { idFor: (key) => repairFieldIds[key] })"))
   assert.doesNotMatch(form, /DETAIL_FIELDS|setShowDetails/)
   // The open record keeps its Notice with the link; a refusal with a field lands under it; the rest keeps the toast.
-  assert.match(source, /if \(payload\?\.code === "MAINTENANCE_OPEN_RECORD_EXISTS"\) setOpenRecordAssetId\(values\.assetId\)\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, tMaintenance, tCommon\("error"\)\)\)/)
+  assert.match(source, /if \(payload\?\.code === "MAINTENANCE_OPEN_RECORD_EXISTS"\) \{\n\s+setOpenRecordAssetId\(values\.assetId\)\n\s+setFacts\(null\)\n\s+\}\n[^\n]*\n\s+if \(fieldErrors\.applyServer\(payload\) && focusFirstError\(\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, tMaintenance, tCommon\("error"\)\)\)/)
   assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n\s+fieldErrors\.clear\(field\)/)
   // The upload result is not a field error: it stays a toast after the record is saved (MT-R5).
   assert.equal(source.split(uploadToast).length - 1, 1)

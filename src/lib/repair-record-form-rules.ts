@@ -9,6 +9,7 @@
 //   createForm.noChange         "ไม่เปลี่ยน"
 //   createForm.noHolder         "ไม่มีผู้ถือครอง"
 //   createForm.noOpenRecord     "ไม่มีที่ค้าง"
+//   createForm.recordHasOpen    "มีที่ค้าง {repairNo}"  (final review 1)
 //   createForm.recordOpen       "ยังซ่อมไม่เสร็จ"
 //   createForm.recordClosed     "ซ่อมเสร็จแล้ว"
 //   createForm.planNext         "ครั้งถัดไป {date}"  ({date} is an ISO day the component formats)
@@ -203,7 +204,10 @@ export function buildRepairCreateSummary(input: {
   const rows: RepairSummaryRow[] = []
   let ifDone: { usable: RepairCreateOutlook; beyondRepair: RepairCreateOutlook } | null = null
   if (facts) {
+    // One outlook for every row: a refused save writes nothing, so its record, condition and plan rows stay (§7.5).
     const outlook = getRepairCreateOutlook(facts, { done: values.done, outcome: values.outcome })
+    const refused = outlook.kind === "refused"
+    const unchanged = (row: RepairSummaryRow): RepairSummaryRow => (refused ? { ...row, next: row.now, changed: false } : row)
     rows.push(statusRow(facts, outlook))
     rows.push({
       key: "holder",
@@ -211,9 +215,12 @@ export function buildRepairCreateSummary(input: {
       next: text("createForm.noChange"),
       changed: false,
     })
-    rows.push({ key: "record", now: text("createForm.noOpenRecord"), next: recordNext(values.done), changed: values.done !== null })
-    if (values.done === true) rows.push(conditionRow(facts, values, input.conditionLabels, input.salvageLabel))
-    if (input.plan) rows.push(planRow(input.plan, values))
+    const recordNow = facts.openRecord
+      ? text("createForm.recordHasOpen", { repairNo: facts.openRecord.repairNo })
+      : text("createForm.noOpenRecord")
+    rows.push(unchanged({ key: "record", now: recordNow, next: recordNext(values.done), changed: values.done !== null }))
+    if (values.done === true) rows.push(unchanged(conditionRow(facts, values, input.conditionLabels, input.salvageLabel)))
+    if (input.plan) rows.push(unchanged(planRow(input.plan, values)))
     // G5P2-R3: while unanswered, not done, or done without a result, both results show.
     if (values.done !== true || values.outcome === null) {
       ifDone = {

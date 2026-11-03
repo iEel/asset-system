@@ -183,6 +183,41 @@ test("buildRepairCreateSummary: a refused answer keeps the status unchanged", ()
   assert.deepEqual(result.ifDone?.beyondRepair, { kind: "refused", error: "MAINTENANCE_ASSET_ON_LOAN", held: { checkoutId: "co-1", documentNo: "HO-1", holderName: "สมชาย" } })
 })
 
+test("buildRepairCreateSummary: an open record is named in the record row, and the refused save changes no row (final review 1)", () => {
+  const open = facts({ openRecord: { id: "r-1", repairNo: "RP-1" } })
+  const result = summary({ facts: open, values: { done: true, outcome: "usable", conditionId: "c-fair" } })
+  const record = row(result, "record")
+  assert.deepEqual(record?.now, { kind: "text", messageKey: "createForm.recordHasOpen", values: { repairNo: "RP-1" } })
+  assert.deepEqual(record?.next, record?.now)
+  assert.equal(record?.changed, false)
+  const condition = row(result, "condition")
+  assert.deepEqual(condition?.next, condition?.now)
+  assert.equal(condition?.changed, false)
+})
+
+test("buildRepairCreateSummary: a held asset answered done and beyond repair keeps its condition and record rows (final review 1)", () => {
+  const held = facts({ statusName: "Checked Out", statusLabel: "ถูกยืม", activeCheckout: { id: "co-1", documentNo: "HO-1", holderName: "สมชาย" } })
+  const result = summary({ facts: held, values: { done: true, outcome: "beyond_repair" } })
+  const condition = row(result, "condition")
+  assert.deepEqual(condition?.now, { kind: "plain", text: "ดี" })
+  assert.deepEqual(condition?.next, condition?.now)
+  assert.equal(condition?.changed, false)
+  const record = row(result, "record")
+  assert.deepEqual(record?.now, { kind: "text", messageKey: "createForm.noOpenRecord" })
+  assert.deepEqual(record?.next, record?.now)
+  assert.equal(record?.changed, false)
+})
+
+test("buildRepairCreateSummary: a refused answer on the PM path leaves the plan row (final review 1)", () => {
+  const plan = { nextDueDate: "2026-01-31", frequency: "monthly" as const, intervalDays: null }
+  const held = facts({ statusName: "Checked Out", statusLabel: "ถูกยืม", activeCheckout: { id: "co-1", documentNo: "HO-1", holderName: "สมชาย" } })
+  const result = summary({ facts: held, plan, values: { done: true, outcome: "beyond_repair", reportedDate: "2026-01-31" } })
+  const planRow = row(result, "plan")
+  assert.deepEqual(planRow?.now, { kind: "text", messageKey: "createForm.planNext", values: { date: "2026-01-31" } })
+  assert.deepEqual(planRow?.next, planRow?.now)
+  assert.equal(planRow?.changed, false)
+})
+
 test("buildRepairCreateSummary: done and usable shows the chosen condition and no if-done block", () => {
   const result = summary({ values: { done: true, outcome: "usable", conditionId: "c-fair" } })
   assert.equal(result.ifDone, null)

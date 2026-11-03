@@ -54,6 +54,7 @@ test("a monthly PM plan is created, recorded done on 31 Jan with its next due da
   await expect(page.getByText(`${plan.planNo} - ${title}`)).toBeVisible()
   // The plan's asset is its card, with no เปลี่ยน (G5P2-R8).
   await expect(page.locator("#repair-record-asset-value")).toContainText(tag)
+  await expect(page.locator("[data-repair-asset-card]")).toBeVisible()
   await expect(page.locator("#repair-record-asset").getByRole("button", { name: "เปลี่ยน", exact: true })).toHaveCount(0)
   await expect(page.locator("#repair-record-problem")).toHaveValue(title)
   // ซ่อมเสร็จแล้ว is pre-checked on the PM path, the result is not (G5P2-R6): it is answered before the save.

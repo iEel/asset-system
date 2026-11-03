@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils"
 // save reads. "เปลี่ยน" shows only when the caller passes onChange (hidden on the PM path, G5P2-R8). An open record links
 // to the record itself with this page's returnTo (G5P2-R9). fieldId keeps the form's stable hooks: the card is the asset
 // field (#<fieldId>) and its name and tag line is the shown value (#<fieldId>-value), as the picker's were. State colour
-// stays in the badge (maintenance-contrast): the line's icons are muted.
+// stays in the badge (maintenance-contrast): the line's icons are muted. The card takes focus (tabIndex -1) when it
+// replaces the picker after a pick, so focus does not fall to the page (final review 2).
 export function RepairAssetCard({ facts, locale, returnTo, onChange, fieldId }: {
   facts: RepairAssetFacts
   locale: string
@@ -35,7 +36,7 @@ export function RepairAssetCard({ facts, locale, returnTo, onChange, fieldId }: 
   const WarningIcon = toneIcons.warning
 
   return (
-    <div id={fieldId} data-repair-asset-card className="flex min-w-0 items-start gap-3 rounded-md border border-border bg-background p-3">
+    <div id={fieldId} tabIndex={-1} data-repair-asset-card className="flex min-w-0 items-start gap-3 rounded-md border border-border bg-background p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <AssetThumbnail photo={facts.photo} assetTag={facts.assetTag} assetName={facts.name} size={44} />
       <div className="grid min-w-0 flex-1 gap-1">
         <p id={fieldId ? `${fieldId}-value` : undefined} className="grid min-w-0 gap-1">

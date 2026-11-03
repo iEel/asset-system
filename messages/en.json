@@ -3549,7 +3549,9 @@
       "footnote": "Recorded by {name}, from the signed-in account · the MT-… number is issued after saving",
       "footnotePicked": "Recorded by the person chosen in section 2",
       "footer": "Record repair {name}",
-      "unanswered": "Not yet answered whether the repair is finished"
+      "unanswered": "Not yet answered whether the repair is finished",
+      "recordHasOpen": "Open: {repairNo}",
+      "factsFailed": "The asset's details could not be loaded"
     }
   },
   "disposalPage": {

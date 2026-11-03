@@ -34,7 +34,7 @@ test("the repair form sends one record built by the form rules, with no answer c
   assert.ok(source.includes("outcome: null,"))
   assert.doesNotMatch(source, /toISOString\(\)\.slice\(0, 10\)/)
   assert.doesNotMatch(source, /assignedToId|dueDate|laborCost|partsCost|warrantyClaim/)
-  assert.ok(source.includes("const validate = () => validateRepairForm(values, { needsReporter, todayKey })"))
+  assert.ok(source.includes("const validate = () => validateRepairForm(values, { needsReporter, todayKey: latestTodayKey() })"))
   assert.ok(source.includes("fieldErrors.setErrors(validate())"))
 })
 
@@ -111,7 +111,7 @@ test("the form is the operation frame: breadcrumbs, three numbered sections, the
 
 test("the date is not after Bangkok today, and the done question asks with two described cards", () => {
   const source = read(FORM)
-  assert.match(source, /<Field label=\{t\("date"\)\} id="repair-record-date" required error=\{fieldErrors\.message\("reportedDate"\)\}>\n\s+<Input type="date" required max=\{todayKey\} /)
+  assert.match(source, /<Field label=\{t\("date"\)\} id="repair-record-date" required error=\{fieldErrors\.message\("reportedDate"\)\}>\n\s+<Input type="date" required max=\{latestTodayKey\(\)\} /)
   assert.ok(source.includes("reportedDate: todayKey,"))
   assert.ok(source.includes('description={t("doneYesHelp")}'))
   assert.ok(source.includes('description={t("doneNoHelp")}'))
@@ -125,7 +125,8 @@ test("the facts fetch after a pick is aborted on change and ignores an answer fo
   assert.match(source, /const controller = new AbortController\(\)/)
   assert.ok(source.includes("`/api/maintenance-options?type=asset&id=${encodeURIComponent(assetId)}`"))
   assert.ok(source.includes("{ signal: controller.signal }"))
-  assert.ok(source.includes("if (controller.signal.aborted || option?.facts?.id !== assetId) return"))
+  assert.ok(source.includes("if (controller.signal.aborted) return"))
+  assert.ok(source.includes("if (option?.facts?.id !== assetId) return setFactsFailedFor(assetId)"))
   assert.ok(source.includes("return () => controller.abort()"))
   assert.ok(source.includes("const currentFacts = facts?.id === values.assetId ? facts : null"))
 })
@@ -235,4 +236,55 @@ test("an asset picked on the record form pre-chooses ดี or พอใช้ f
   const select = read("src/components/maintenance/maintenance-option-select.tsx")
   assert.ok(select.includes("onChange: (value: string, option?: MaintenanceOption) => void"))
   assert.ok(select.includes("conditionId?: string"))
+})
+
+test("focus follows the picked asset to its card, never on a page load (final review 2)", () => {
+  const source = read(FORM)
+  const card = read(CARD)
+  assert.ok(card.includes("<div id={fieldId} tabIndex={-1} data-repair-asset-card"), "the card takes focus")
+  assert.ok(source.includes("const focusCardAfterPick = useRef(false)"))
+  // Only the picker's onChange arms it: a load with ?assetId= or ?planId= renders the card with the flag off.
+  assert.equal(source.match(/focusCardAfterPick\.current = value !== ""/g)?.length, 1)
+  assert.match(source, /onChange=\{\(value, option\) => \{\n\s+focusCardAfterPick\.current = value !== ""/)
+  assert.match(source, /if \(!currentFacts \|\| !focusCardAfterPick\.current\) return\n\s+focusCardAfterPick\.current = false\n\s+window\.requestAnimationFrame\(\(\) => document\.getElementById\(repairFieldIds\.assetId\)\?\.focus\(\)\)/)
+})
+
+test("the status line is announced from an always-mounted polite region (final review 3)", () => {
+  const source = read(FORM)
+  assert.ok(source.includes('<div role="status" aria-live="polite" data-repair-status-region className="mt-5 empty:mt-0">\n            {statusLine()}\n          </div>'))
+  assert.equal(source.match(/\{statusLine\(\)\}/g)?.length, 1)
+})
+
+test("the open-record alert belongs to its asset, and the refusal reloads the facts (final review 4)", () => {
+  const source = read(FORM)
+  assert.ok(source.includes("{openRecordAssetId && openRecordAssetId === values.assetId ? ("))
+  assert.match(source, /function clearAsset\(\) \{\n\s+setOpenRecordAssetId\(null\)/)
+  assert.ok(source.includes('if (payload?.code === "MAINTENANCE_OPEN_RECORD_EXISTS") {\n          setOpenRecordAssetId(values.assetId)\n          setFacts(null)\n        }'))
+  const pick = source.slice(source.indexOf("onChange={(value, option) => {"), source.indexOf("onChange={(value, option) => {") + 400)
+  assert.ok(pick.includes("setOpenRecordAssetId(null)"), "a new pick clears it")
+})
+
+test("a failed facts read warns and can be retried (final review 5)", () => {
+  const source = read(FORM)
+  assert.ok(source.includes("const [factsFailedFor, setFactsFailedFor] = useState<string | null>(null)"))
+  assert.ok(source.includes("const [factsAttempt, setFactsAttempt] = useState(0)"))
+  assert.ok(source.includes("}, [facts?.id, values.assetId, factsAttempt])"))
+  assert.ok(source.includes("setFactsFailedFor(assetId)"))
+  assert.match(source, /<Notice\n\s+tone="warning"\n\s+role="status"\n\s+data-repair-facts-failed\n/)
+  assert.ok(source.includes('{t("createForm.factsFailed")}'))
+  assert.ok(source.includes('{tCommon("tryAgain")}'))
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.repairRecord.createForm.factsFailed, "โหลดข้อมูลทรัพย์สินไม่สำเร็จ")
+  assert.equal(en.repairRecord.createForm.factsFailed, "The asset's details could not be loaded")
+  assert.equal(th.repairRecord.createForm.recordHasOpen, "มีที่ค้าง {repairNo}")
+  assert.equal(en.repairRecord.createForm.recordHasOpen, "Open: {repairNo}")
+})
+
+test("today is the later of the server's day and the browser's Bangkok day, for the check and the max (final review 6)", () => {
+  const source = read(FORM)
+  assert.ok(source.includes('import { getBangkokDateKey, type MaintenancePlanFrequency } from "@/lib/preventive-maintenance"'))
+  assert.ok(source.includes("const latestTodayKey = () => {\n    const now = getBangkokDateKey(new Date())\n    return now > todayKey ? now : todayKey\n  }"))
+  assert.ok(source.includes("const validate = () => validateRepairForm(values, { needsReporter, todayKey: latestTodayKey() })"))
+  assert.ok(source.includes("max={latestTodayKey()}"))
 })

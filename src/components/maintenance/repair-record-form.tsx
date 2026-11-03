@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -13,6 +13,7 @@ import { RepairCreateSummary, withNode, NODE } from "@/components/maintenance/re
 import { RepairHeldNotice } from "@/components/maintenance/repair-held-notice"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import type { BreadcrumbItem } from "@/components/ui/breadcrumbs"
+import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { ChoiceCard } from "@/components/ui/choice-card"
 import { Field } from "@/components/ui/field"
@@ -30,7 +31,7 @@ import { getAssetStateTone } from "@/lib/design-system"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import type { MaintenanceOption } from "@/lib/maintenance-options"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
-import type { MaintenancePlanFrequency } from "@/lib/preventive-maintenance"
+import { getBangkokDateKey, type MaintenancePlanFrequency } from "@/lib/preventive-maintenance"
 import { getRepairCreateOutlook, type RepairAssetFacts } from "@/lib/repair-record-outlook"
 import {
   buildRepairCreatePayload,
@@ -110,6 +111,12 @@ export function RepairRecordForm({
   const [openRecordAssetId, setOpenRecordAssetId] = useState<string | null>(null)
   const [files, setFiles] = useState<File[]>([])
   const [facts, setFacts] = useState<RepairAssetFacts | null>(initialFacts)
+  // The by-id read's failure, for the asset it failed for, and a counter ลองอีกครั้ง bumps to run it again (final review 5).
+  const [factsFailedFor, setFactsFailedFor] = useState<string | null>(null)
+  const [factsAttempt, setFactsAttempt] = useState(0)
+  // Set only by the picker's onChange: the card that replaces it takes focus. A page load with ?assetId= or ?planId=
+  // renders the card with this off, so focus stays where the page puts it (final review 2).
+  const focusCardAfterPick = useRef(false)
   const [values, setValues] = useState<RepairFormValues>({
     assetId: initialAsset?.id ?? "",
     reportedDate: todayKey,
@@ -128,8 +135,14 @@ export function RepairRecordForm({
   const outlook = currentFacts ? getRepairCreateOutlook(currentFacts, { done: values.done, outcome: values.outcome }) : null
   const fieldErrors = useFieldErrors<keyof typeof repairFieldIds>()
   const validationMessage = useValidationMessage()
+  // Today is the later of the server's day and the browser's Bangkok day, so a form left open past Bangkok midnight
+  // still takes the new day (final review 6). The check and the date's max both read it.
+  const latestTodayKey = () => {
+    const now = getBangkokDateKey(new Date())
+    return now > todayKey ? now : todayKey
+  }
   // The form checks itself with the rules file's checks (V2), and focus goes to the first wrong field on screen.
-  const validate = () => validateRepairForm(values, { needsReporter, todayKey })
+  const validate = () => validateRepairForm(values, { needsReporter, todayKey: latestTodayKey() })
   const focusFirstError = () => fieldErrors.focusFirst(repairFieldOrder(values, needsReporter), { idFor: (key) => repairFieldIds[key] })
 
   // After a pick, the by-id read brings the asset's facts once. A change aborts the read in flight, and an answer for
@@ -141,13 +154,28 @@ export function RepairRecordForm({
     fetch(`/api/maintenance-options?type=asset&id=${encodeURIComponent(assetId)}`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() as Promise<{ data?: MaintenanceOption[] }> : null))
       .then((payload) => {
+        if (controller.signal.aborted) return
         const option = payload?.data?.find((candidate) => candidate.id === assetId)
-        if (controller.signal.aborted || option?.facts?.id !== assetId) return
+        if (option?.facts?.id !== assetId) return setFactsFailedFor(assetId)
         setFacts(option.facts)
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (!controller.signal.aborted) setFactsFailedFor(assetId)
+      })
     return () => controller.abort()
-  }, [facts?.id, values.assetId])
+  }, [facts?.id, values.assetId, factsAttempt])
+
+  // After a pick, once the picked asset's card is on screen, focus moves into it (the picker's trigger is gone).
+  useEffect(() => {
+    if (!currentFacts || !focusCardAfterPick.current) return
+    focusCardAfterPick.current = false
+    window.requestAnimationFrame(() => document.getElementById(repairFieldIds.assetId)?.focus())
+  }, [currentFacts])
+
+  function retryFacts() {
+    setFactsFailedFor(null)
+    setFactsAttempt((attempt) => attempt + 1)
+  }
 
   function setField<K extends keyof RepairFormValues>(field: K, value: RepairFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -156,6 +184,7 @@ export function RepairRecordForm({
 
   // "เปลี่ยน" (G5P2-R8): the asset and its condition default go, and the picker comes back with focus.
   function clearAsset() {
+    setOpenRecordAssetId(null)
     setValues((current) => ({ ...current, assetId: "", conditionId: "" }))
     window.requestAnimationFrame(() => document.getElementById(repairFieldIds.assetId)?.focus())
   }
@@ -184,7 +213,11 @@ export function RepairRecordForm({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
-        if (payload?.code === "MAINTENANCE_OPEN_RECORD_EXISTS") setOpenRecordAssetId(values.assetId)
+        // The cached facts go, so the by-id read runs again and the card's eligibility line names the open record.
+        if (payload?.code === "MAINTENANCE_OPEN_RECORD_EXISTS") {
+          setOpenRecordAssetId(values.assetId)
+          setFacts(null)
+        }
         // A refusal that names a field of this form shows under it; any other keeps the toast (spec §4.1).
         if (fieldErrors.applyServer(payload) && focusFirstError()) return
         throw new Error(getMaintenanceErrorMessage(payload?.code, tMaintenance, tCommon("error")))
@@ -301,13 +334,29 @@ export function RepairRecordForm({
                 formatReason={(code) => getMaintenanceErrorMessage(code, tMaintenance, code)}
                 error={fieldErrors.message("assetId")}
                 onChange={(value, option) => {
+                  focusCardAfterPick.current = value !== ""
+                  setOpenRecordAssetId(null)
                   setField("assetId", value)
                   // The picked asset's own condition when it is ดี or พอใช้, else none (group 3 spec §19.4, final review M1).
                   setField("conditionId", repairConditionDefault(option?.conditionId ?? null, conditionOptions))
                 }}
               />
             )}
-            {openRecordAssetId ? (
+            {values.assetId && !currentFacts && factsFailedFor === values.assetId ? (
+              <Notice
+                tone="warning"
+                role="status"
+                data-repair-facts-failed
+                action={(
+                  <Button type="button" variant="outline" size="md" onClick={retryFacts}>
+                    {tCommon("tryAgain")}
+                  </Button>
+                )}
+              >
+                {t("createForm.factsFailed")}
+              </Notice>
+            ) : null}
+            {openRecordAssetId && openRecordAssetId === values.assetId ? (
               <Notice tone="danger" role="alert">
                 {tMaintenance("errors.MAINTENANCE_OPEN_RECORD_EXISTS")}{" "}
                 <Link
@@ -324,7 +373,7 @@ export function RepairRecordForm({
           <div className="grid gap-5">
             <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr]">
               <Field label={t("date")} id="repair-record-date" required error={fieldErrors.message("reportedDate")}>
-                <Input type="date" required max={todayKey} value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} />
+                <Input type="date" required max={latestTodayKey()} value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} />
               </Field>
               <Field label={t("problem")} id="repair-record-problem" required error={fieldErrors.message("problem")}>
                 <Textarea
@@ -379,6 +428,10 @@ export function RepairRecordForm({
                 onChange={(value) => setField("conditionId", value)}
               />
             ) : null}
+          </div>
+          {/* Always mounted, so the status line, the held notice and the ineligible notice are announced when a radio
+              brings them (final review 3); empty, it takes no room. */}
+          <div role="status" aria-live="polite" data-repair-status-region className="mt-5 empty:mt-0">
             {statusLine()}
           </div>
         </FormSection>
