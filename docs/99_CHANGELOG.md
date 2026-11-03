@@ -6,6 +6,11 @@
 
 ## 2026-11-03
 
+### E2E: axe อ่านสีปุ่มหน้าแก้ไขทรัพย์สินระหว่างเปลี่ยนสี
+
+- หน้าแก้ไขทรัพย์สินตรวจรหัสและ Serial ซ้ำ 450 ms หลังเปิดหน้า ปุ่ม "บันทึกการแก้ไข" รอผลแล้วค่อยเปลี่ยนสีกลับใน 150 ms axe อ่านสีกลางทางจึงรายงานสีตัดกันไม่พอ (E2E-1103G, E2E-1103H) ตอนปุ่มอยู่นิ่งผ่านทั้งสองธีม (8.07:1 สว่าง, 6.93:1 มืด) จึงไม่ได้ซ่อนปัญหาจริง
+- `visitAssetEdit` ใน `e2e/transactions/tx-support.ts` รอผลตรวจซ้ำก่อนวัด ใช้ใน register-edit-correction, register-purchase-documents และ handover-condition · pin ใน `tests/e2e-register.test.ts`, `tests/e2e-transactions.test.ts` · commits `5d0f0b0a`, `24bd05f0` · E2E `E2E-1103J` ผ่าน 54 · บน master `E2E-1103K` ผ่าน 30 ไม่ผ่าน 0 ข้าม 12 (ชุดมือถือข้ามตามที่ตั้งใจ)
+
 ### กลุ่มหน้า 5 แผน 2: หน้าบันทึกซ่อม (MT-New)
 
 Branch `feat/group5-new-repair` (จาก `master` `3de1fa6f`) · spec `docs/superpowers/specs/2026-11-03-page-group-5-maintenance-design.md` (§7, §5, §6, §13, §16, §17 แถว 2 · การตัดสินใจ 1, 2, 10.5, 10.8, 11) · plan `docs/superpowers/plans/2026-11-03-group5-new-repair.md` (ข้อตัดสิน G5P2-R1..R10) · commits `5c9b1589..b9a33a6a`
