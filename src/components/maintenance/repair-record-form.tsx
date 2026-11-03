@@ -371,7 +371,7 @@ export function RepairRecordForm({
         </FormSection>
         <FormSection number={2} title={t("createForm.sectionProgress")}>
           <div className="grid gap-5">
-            <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr]">
+            <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr] lg:grid-cols-1 xl:grid-cols-[minmax(0,220px)_1fr]">
               <Field label={t("date")} id="repair-record-date" required error={fieldErrors.message("reportedDate")}>
                 <Input type="date" required max={latestTodayKey()} value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} />
               </Field>
@@ -437,7 +437,7 @@ export function RepairRecordForm({
         </FormSection>
         <FormSection number={3} title={<>{t("createForm.sectionDetails")} <span className="font-normal text-muted-foreground">{t("createForm.optional")}</span></>}>
           <div className="grid gap-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               <MaintenanceOptionSelect
                 id="repair-record-vendor"
                 type="supplier"

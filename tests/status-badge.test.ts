@@ -86,5 +86,7 @@ test("StatusBadge takes no database color and no size, and gives the variants on
   assert.doesNotMatch(source, /color\?:|getStatusDotColor|style=/)
   assert.doesNotMatch(source, /\bsize\b/, "StatusBadge has one size, so it takes no size prop")
   assert.match(source, /className=\{statusMarkerVariants\(\{ tone: resolvedTone \}\)\}/)
-  assert.match(source, /className=\{cn\(statusBadgeVariants\(\{ tone: resolvedTone \}\), className\)\}/)
+  // The opt-in wrap (บันทึกซ่อม's summary, group 5 plan 2 look step) is the only other class; the default still truncates.
+  assert.match(source, /className=\{cn\(statusBadgeVariants\(\{ tone: resolvedTone \}\), wrap && "h-auto min-h-5\.5 whitespace-normal", className\)\}/)
+  assert.ok(source.includes("wrap = false,"))
 })

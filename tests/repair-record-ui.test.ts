@@ -288,3 +288,22 @@ test("today is the later of the server's day and the browser's Bangkok day, for 
   assert.ok(source.includes("const validate = () => validateRepairForm(values, { needsReporter, todayKey: latestTodayKey() })"))
   assert.ok(source.includes("max={latestTodayKey()}"))
 })
+
+test("the two-column rows wait for room: one column beside the summary at lg, two again at xl (look step)", () => {
+  const source = read(FORM)
+  // The frame puts the 20rem summary beside the main column from lg (lg:grid-cols-[minmax(0,1fr)_20rem]), so at 1024
+  // the main column is ~330 px: the rows are one column there and come back at xl.
+  assert.ok(source.includes('<div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr] lg:grid-cols-1 xl:grid-cols-[minmax(0,220px)_1fr]">'))
+  assert.ok(source.includes('<div className="grid gap-4 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">'))
+  assert.ok(source.includes('<div className="grid gap-4 md:grid-cols-2">'), "two fields keep ~150 px each at 1024")
+  assert.ok(read("src/components/asset-operations/operation-form-frame.tsx").includes("lg:grid-cols-[minmax(0,1fr)_20rem]"))
+})
+
+test("the summary's status badges wrap instead of cutting the Thai name (look step)", () => {
+  const summary = read(SUMMARY)
+  assert.match(summary, /<StatusBadge wrap label=\{statusLabels\[name\]/)
+  const badge = read("src/components/ui/status-badge.tsx")
+  assert.ok(badge.includes("wrap?: boolean"))
+  assert.ok(badge.includes('wrap && "h-auto min-h-5.5 whitespace-normal"'))
+  assert.ok(badge.includes('<span className={wrap ? "min-w-0 break-words" : "min-w-0 truncate"}>{label}</span>'), "the default still truncates")
+})

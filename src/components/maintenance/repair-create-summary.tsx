@@ -46,8 +46,9 @@ export function RepairCreateSummary({ facts, values, plan, statusLabels, conditi
     salvageLabel,
     plan: plan ? { nextDueDate: plan.nextDueDate, frequency: plan.frequency, intervalDays: plan.intervalDays } : null,
   })
+  // The summary's columns are narrow (~90 px at 1440): the badge wraps so the whole Thai name shows (look step).
   const badge = (name: string) => (
-    <StatusBadge label={statusLabels[name] ?? (name === facts?.statusName ? facts.statusLabel : name)} tone={getAssetStateTone(name)} />
+    <StatusBadge wrap label={statusLabels[name] ?? (name === facts?.statusName ? facts.statusLabel : name)} tone={getAssetStateTone(name)} />
   )
   const show = (value: RepairSummaryValue): ReactNode => {
     if (value.kind === "status") return badge(value.name)

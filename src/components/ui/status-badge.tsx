@@ -11,19 +11,22 @@ export function StatusBadge({
   status,
   tone,
   className,
+  wrap = false,
 }: {
   label: string
   status?: string | null
   tone?: StatusTone | string
   className?: string
+  /** Opt-in: the label wraps onto more lines instead of truncating, for narrow columns (the บันทึกซ่อม summary). */
+  wrap?: boolean
 }) {
   const resolvedTone: StatusTone =
     tone && knownTones.has(tone as StatusTone) ? (tone as StatusTone) : getStatusTone(status)
 
   return (
-    <span data-slot="status-badge" data-tone={resolvedTone} className={cn(statusBadgeVariants({ tone: resolvedTone }), className)}>
+    <span data-slot="status-badge" data-tone={resolvedTone} className={cn(statusBadgeVariants({ tone: resolvedTone }), wrap && "h-auto min-h-5.5 whitespace-normal", className)}>
       <span aria-hidden="true" className={statusMarkerVariants({ tone: resolvedTone })} />
-      <span className="min-w-0 truncate">{label}</span>
+      <span className={wrap ? "min-w-0 break-words" : "min-w-0 truncate"}>{label}</span>
     </span>
   )
 }
