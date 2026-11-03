@@ -167,6 +167,11 @@ test("the record's asset panel: photo, name to the asset, tag, the status as a b
   assert.match(source, /t\("detail\.assetRepairHistory", \{ count: recordCount \}\)/)
   for (const key of ["currentStatus", "custodian", "location"]) assert.match(source, new RegExp(`t\\("${key}"\\)`), key)
   for (const field of ["holderName", "departmentName", "roomName", "branchName"]) assert.match(source, new RegExp(`facts\\.${field}`), field)
+  // Look step: with no holder the row says ไม่มีผู้ถือครอง, the department under it, so a shared asset's department never
+  // reads as its holder; with neither, still ไม่มีผู้ถือครอง (not Nil). ที่ตั้ง keeps the stacked rule.
+  assert.match(source, /value: stackedLines\(facts\.holderName \|\| t\("createForm\.noHolder"\), facts\.departmentName\)/)
+  assert.match(source, /value: stackedLines\(facts\.roomName, facts\.branchName\)/)
+  assert.equal(JSON.parse(readFileSync("messages/th.json", "utf8")).repairRecord.createForm.noHolder, "ไม่มีผู้ถือครอง")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   assert.equal(th.repairRecord.detail.assetRepairHistory, "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count, number} รายการ")
   assert.equal(th.repairRecord.currentStatus, "สถานะปัจจุบัน")

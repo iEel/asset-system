@@ -11,8 +11,8 @@ import type { RepairAssetFacts } from "@/lib/repair-record-outlook"
 import { cn } from "@/lib/utils"
 
 // The record page's asset card (group 5 plan 3, G5P3-R10, spec §8.3). Server-safe (no "use client"): the register photo
-// or its empty frame, the name linking to the asset, the tag; สถานะปัจจุบัน as a badge; ผู้ถือครอง with the department
-// under it; ที่ตั้ง with the branch under it; and the asset's repair list, whose count is the asset's active records, the
+// or its empty frame, the name linking to the asset, the tag; สถานะปัจจุบัน as a badge; ผู้ถือครอง (or ไม่มีผู้ถือครอง) with
+// the department under it; ที่ตั้ง with the branch under it; and the asset's repair list, whose count is the asset's active records, the
 // count the list it opens shows. It differs from plan 2's picked card (RepairAssetCard), so it is a part of its own.
 // returnTo is the record page's way back; the repair list it opens carries it along.
 export function RepairRecordAssetPanel({ facts, locale, recordCount, returnTo }: {
@@ -42,7 +42,9 @@ export function RepairRecordAssetPanel({ facts, locale, recordCount, returnTo }:
               label: t("currentStatus"),
               value: <StatusBadge label={facts.statusLabel} tone={getAssetStateTone(facts.statusName)} />,
             },
-            { key: "custodian", label: t("custodian"), value: stackedLines(facts.holderName, facts.departmentName) },
+            // No holder reads ไม่มีผู้ถือครอง, the department under it, so a shared asset's department never reads as its
+            // holder (look step).
+            { key: "custodian", label: t("custodian"), value: stackedLines(facts.holderName || t("createForm.noHolder"), facts.departmentName) },
             { key: "location", label: t("location"), value: stackedLines(facts.roomName, facts.branchName) },
           ]}
         />
