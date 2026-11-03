@@ -56,6 +56,7 @@ const keyExceptions: Record<string, string> = {
   "systemSettingsPage.publicQrBaseUrlDescription": "\"asset\" is the example host name in https://asset.company.com, not a word for readers",
   "systemSettingsPage.publicQrBaseUrlPlaceholder": "the value is the example URL https://asset.company.com shown in an empty input, not a word for readers",
   "maintenancePage.statuses.reported": "the record status แจ้งซ่อม (reported) is a state of the repair record, not the repair action (P4-R6)",
+  "repairRecord.detail.reportedOn": "the record header's meta \"แจ้งซ่อม {date}\" names the day the repair was reported, not the action (group 5 spec §8.1, §13 repairRecord (detail), verbatim)",
 }
 
 // Bare ICU arguments like {label} are code names, not text a reader sees. Plural/select blocks

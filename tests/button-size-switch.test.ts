@@ -23,8 +23,8 @@ test("buttons in a row of 40px fields stay 40px: lg for text, icon-lg for icons 
 })
 
 test("the repair record's header buttons are md, like every PageHeader button (spec 2D D6)", () => {
-  const source = read(`${C}maintenance/repair-record-actions.tsx`)
-  assert.match(source, /<Button size="md" onClick=\{\(\) => setDialog\("complete"\)\}>/)
-  assert.match(source, /<Button variant="danger" size="md" onClick=\{\(\) => setDialog\("cancel"\)\}>/)
-  assert.match(source, /<Button variant="outline" size="md" onClick=\{\(\) => setDialog\("edit"\)\}>/)
+  // Group 5 plan 3 Task 3: ซ่อมเสร็จ and the อื่น ๆ trigger live in the header's client part; edit and cancel are menu items.
+  const source = read(`${C}maintenance/repair-record-header-actions.tsx`)
+  assert.match(source, /<Button size="md" onClick=\{\(event\) => openComplete\(event\.currentTarget\)\}/)
+  assert.match(source, /<Button ref=\{menuTriggerRef\} variant="outline" size="md">/)
 })

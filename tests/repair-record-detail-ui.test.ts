@@ -13,7 +13,6 @@ test("an unfinished record offers one finish action and a confirmed cancel", () 
   assert.match(source, /AccessibleDialog/)
   assert.match(source, /expectedUpdatedAt/)
   assert.match(source, /toLocalDateInputValue\(\)/)
-  assert.match(source, /isOpen \?/)
 })
 
 test("finishing a repair starts from the existing remark instead of replacing it", () => {
@@ -31,7 +30,7 @@ test("editing changes details only, never status or result", () => {
 
 test("the detail page drops the old workflow controls", () => {
   const source = readFileSync(detailPath, "utf8")
-  assert.match(source, /RepairRecordActions/)
+  assert.match(source, /<RepairRecordActionsProvider\b/)
   assert.doesNotMatch(source, /MaintenanceTicket(Close|Status|Planning|Cancel)Button/)
   assert.doesNotMatch(source, /closeChecklist|isMaintenanceOverdue/)
   assert.match(source, /getRepairRecordStatusTone/)
@@ -70,8 +69,8 @@ test("the three repair dialogs keep their buttons in a fixed footer and keep foc
   assert.equal(source.match(/description=\{<span className="tag">\{repairNo\}<\/span>\}/g)?.length, 3)
   assert.equal(source.match(/<AccessibleDialogCancel>\{tCommon\("back"\)\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" busy=\{saving\}>/g)?.length, 2)
   assert.match(source, /<AccessibleDialogCancel>\{t\("keep"\)\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" variant="destructive" busy=\{saving\}>/)
-  assert.match(source, /<Button variant="danger" size="md" onClick=\{\(\) => setDialog\("cancel"\)\}>/)
-  assert.match(source, /<Button variant="outline" size="md" onClick=\{\(\) => setDialog\("edit"\)\}>/)
+  // Group 5 plan 3 Task 3 (G5P3-R2): the provider owns the three dialogs and renders no button of its own.
+  assert.doesNotMatch(source, /<Button variant="(?:danger|outline)" size="md" onClick=/)
   assert.doesNotMatch(source, /function (?:Field|DialogButtons)\(|secondaryButton|const (?:inputClass|textareaClass)\b|<button|<input|<textarea|Loader2/)
 })
 
@@ -82,12 +81,14 @@ test("the three repair dialogs keep their buttons in a fixed footer and keep foc
 test("the repair page header is PageHeader with the asset name, and its PageBackLink is the one back control (spec 2B §4.4.5, §4.6.4)", () => {
   const source = readFileSync(detailPath, "utf8")
   assert.match(source, /breadcrumbs=\{\[\{ label: t\("title"\), href: listCrumbHref \}, \{ label: ticket\.repairNo, code: true \}\]\}\s*title=\{ticket\.asset\.name\}/)
-  assert.match(source, /<span className="tag">\{ticket\.repairNo\}<\/span>\s*<StatusBadge label=\{t\(`status\.\$\{recordStatus\}`\)\} tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\} \/>\s*<span className="tag">\{ticket\.asset\.assetTag\}<\/span>/)
+  assert.match(source, /<span className="tag">\{ticket\.repairNo\}<\/span>\s*<StatusBadge label=\{t\(`status\.\$\{recordStatus\}`\)\} tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\} \/>\s*<span>\s*\{t\("asset"\)\} <span className="tag">\{ticket\.asset\.assetTag\}<\/span>\s*<\/span>/)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
   assert.doesNotMatch(source, /label: tCommon\("back"\)|ArrowLeft/, "the bar has no back item of its own (2C plan 5)")
-  assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
-  // The asset panel moved to RepairRecordAssetPanel (group 5 plan 3 Task 2): details, legacy and history remain.
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 3)
+  // The bar's room follows its primary, ซ่อมเสร็จ (G5P3-R8; 2C plan 5, O11).
+  assert.match(source, /<div className=\{`space-y-6 \$\{canComplete \? actionBarPagePadding\.withPrimary : actionBarPagePadding\.single\}`\}>/, "room for the ActionBar")
+  // The asset panel moved to RepairRecordAssetPanel (Task 2), the details and the history to RepairRecordDetails and
+  // RepairRecordHistory (Task 3): the legacy list remains.
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 1)
   assert.doesNotMatch(source, /\bWrench\b|<h1\b|<Breadcrumbs\b|formatCurrency|function Info\b|"-"/)
 })
 
@@ -124,9 +125,10 @@ test("the record page reads its facts once and hands them to the record's rules 
   assert.match(source, /<RepairRecordAssetPanel facts=\{facts\} locale=\{locale\} recordCount=\{assetRecords\.length\} returnTo=\{returnToHref\} \/>/)
 })
 
-test("the disposal-review panel keeps one rule and hides its button when the next step offers the request (G5P3-R7)", () => {
+test("the disposal-review panel keeps one rule and hides its button whenever the card shows the disposal step (G5P3-R7)", () => {
   const source = readFileSync(detailPath, "utf8")
-  assert.match(source, /nextStep\.kind === "closedBeyond" && nextStep\.disposal\.kind === "canRequest"/)
+  assert.match(source, /const nextStepOffersDisposal = nextStep\.kind === "closedBeyond"\r?\n/)
+  assert.doesNotMatch(source, /disposal\.kind === "canRequest"/)
   assert.match(source, /action=\{\s*nextStepOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\}/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   assert.equal(th.repairRecord.openDisposalRequest, "ยื่นคำขอตัดจำหน่าย")
@@ -151,4 +153,190 @@ test("the record's asset panel: photo, name to the asset, tag, the status as a b
   assert.equal(th.repairRecord.currentStatus, "สถานะปัจจุบัน")
   assert.equal(th.repairRecord.custodian, "ผู้ถือครอง")
   assert.equal(th.repairRecord.location, "ที่ตั้ง")
+})
+
+// Group 5 plan 3 Task 3 (G5P3-R2, R8, R9, spec §8.1-§8.6): one dialog owner, the header's อื่น ๆ menu, the next-step card,
+// the history oldest first and the phone bar. Every read strips \r (the working tree is CRLF).
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const headerActionsPath = "src/components/maintenance/repair-record-header-actions.tsx"
+const cardPath = "src/components/maintenance/repair-next-step-card.tsx"
+const phoneBarPath = "src/components/maintenance/repair-record-phone-bar.tsx"
+const historyPath = "src/components/maintenance/repair-record-history.tsx"
+
+test("one client provider owns the three dialogs; openers pass themselves so focus returns there (G5P3-R2, Review Focus 5)", () => {
+  const source = read(actionsPath)
+  assert.match(source, /^"use client"/)
+  assert.match(source, /export function RepairRecordActionsProvider\(\{\n?\s*recordId,\s*repairNo,\s*expectedUpdatedAt,\s*isOpen,\s*details,\s*conditionOptions,\s*initialConditionId,\s*held,\s*assetId,\s*locale,\s*canReturn,\s*todayKey,\s*children,?\s*\}/)
+  assert.match(source, /export function useRepairRecordActions\(\)/)
+  for (const name of ["openComplete", "openCancel", "openEdit"]) assert.match(source, new RegExp(`${name}: \\(opener\\?: HTMLElement \\| null\\) =>`), name)
+  assert.equal(source.match(/returnFocusRef=\{returnFocusRef\}/g)?.length, 3, "each dialog returns focus to its opener")
+  assert.doesNotMatch(source, /DropdownMenu/)
+})
+
+test("the complete dialog: no result chosen, a required error, the refusal under ซ่อมไม่ได้ when held, and a date not after today (G5P3-R9)", () => {
+  const source = read(actionsPath)
+  assert.doesNotMatch(source, /outcome: "usable" as Outcome/)
+  assert.match(source, /outcome: "" as Outcome \| "",/)
+  assert.ok(source.includes('if (values.outcome !== undefined) check("outcome", values.outcome ? null : "repairOutcomeRequired")'))
+  assert.ok(source.includes('(todayKey && values.returnDate > todayKey ? "repairDateInFuture" : null)'))
+  assert.match(source, /\{complete\.outcome === "beyond_repair" && held \? \(\n\s+<RepairHeldNotice held=\{held\} assetId=\{assetId\} locale=\{locale\} canReturn=\{canReturn\} \/>/)
+  assert.match(source, /<Input type="date" required min=\{details\.reportedDate\} max=\{latestTodayKey\(\)\} /)
+  assert.match(source, /const now = getBangkokDateKey\(new Date\(\)\)\n\s+return now > todayKey \? now : todayKey/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  assert.equal(th.apiErrors.repairOutcomeRequired, "เลือกผลการซ่อม")
+  assert.equal(th.repairRecord.editHelp, "เปลี่ยนสถานะหรือผลการซ่อมที่นี่ไม่ได้ ถ้าผลผิด ให้แก้สถานะที่หน้าทรัพย์สิน (แก้สถานะ) แล้วระบุในหมายเหตุ")
+})
+
+test("the header: ซ่อมเสร็จ, พิมพ์ and อื่น ๆ with edit and cancel in a DropdownMenu; no danger button and no dialog inside the menu (spec §8.1)", () => {
+  assert.ok(existsSync(headerActionsPath))
+  const source = read(headerActionsPath)
+  assert.match(source, /^"use client"/)
+  assert.match(source, /<DropdownMenu modal=\{false\}>/)
+  assert.match(source, /<DropdownMenuSeparator \/>/)
+  assert.match(source, /variant="destructive"/)
+  assert.match(source, /t\("detail\.more"\)/)
+  assert.doesNotMatch(source, /variant="danger"|AccessibleDialog/)
+  const menu = source.slice(source.indexOf("<DropdownMenuContent"), source.indexOf("</DropdownMenuContent>"))
+  assert.doesNotMatch(menu, /AccessibleDialog/)
+  assert.match(menu, /openEdit\(menuTriggerRef\.current\)/)
+  assert.match(menu, /\{isOpen \? \(/, "ยกเลิกบันทึก on open records only")
+  assert.match(source, /\{canEdit \? \(\n\s+<DropdownMenu/, "the menu is hidden when empty")
+  assert.match(source, /<Button size="md" onClick=\{\(event\) => openComplete\(event\.currentTarget\)\}/)
+  const page = read(detailPath)
+  assert.match(page, /<RepairRecordHeaderActions printHref=\{printHref\} canEdit=\{canEdit\} isOpen=\{isOpen\} \/>/)
+  assert.doesNotMatch(page, /variant: "danger"|variant="danger"/)
+})
+
+test("the header meta reads the day count while open, else the close or cancel date (spec §8.1)", () => {
+  const page = read(detailPath)
+  assert.match(page, /t\("detail\.reportedOn", \{ date: formatAssetDetailDate\(ticket\.reportedDate, locale\) \}\)/)
+  assert.match(page, /t\(`detail\.\$\{duration\.key\}`, \{ days: duration\.days \}\)/)
+  assert.match(page, /t\("detail\.closedOn", \{/)
+  assert.match(page, /t\("detail\.cancelledOn", \{/)
+  assert.doesNotMatch(page, /data-repair-duration/)
+})
+
+test("the next-step card: every state, the outcome rows with the refusal, the buttons by permission and the phone form (spec §8.2, §8.6)", () => {
+  assert.ok(existsSync(cardPath))
+  const source = read(cardPath)
+  assert.doesNotMatch(source, /^"use client"/, "server-safe; the ซ่อมเสร็จ button is a client part")
+  assert.match(source, /data-repair-next-step=\{nextStep\.kind\}/)
+  assert.match(source, /data-repair-outcome-row=\{row\.outcome\}/)
+  assert.match(source, /<ContentPanel\b/)
+  assert.match(source, /<RepairHeldNotice held=\{row\.outlook\.held\} assetId=\{assetId\} locale=\{locale\} canReturn=\{canReturn\} \/>/)
+  assert.match(source, /<RepairCompleteButton\b/)
+  assert.match(source, /href="#attachments"/)
+  assert.match(source, /\{canEdit \?/)
+  assert.match(source, /\{canAttach \?/)
+  assert.match(source, /t\("detail\.completeByEditor"\)/)
+  assert.match(source, /!canEdit && canCreate/)
+  assert.match(source, /hidden md:flex/, "no buttons inside on the phone")
+  for (const key of ["nextOpenVendor", "nextOpenInternal", "nextOpenHelp", "phoneStatusNow", "ifUsable", "ifBeyond", "closedWithOutcome", "closedDone", "nextDisposal", "disposalOpen", "disposalByCreator", "assetDisposed", "cancelledTitle"]) {
+    assert.match(source, new RegExp(`"detail\\.${key}"`), key)
+  }
+  for (const note of ["backTo", "backToNoDocument", "holderStays", "noHolder", "thenDisposal"]) assert.match(source, new RegExp(`detail\\.note\\.${note}`), note)
+  assert.match(source, /`\/\$\{locale\}\/disposal\/\$\{disposal\.id\}`/)
+  assert.match(source, /\{canCreateDisposal \?/)
+  assert.doesNotMatch(source, /border-dashed|border-primary|bg-primary-soft|text-(?:success|warning|danger)\b/)
+  const page = read(detailPath)
+  assert.match(page, /<RepairNextStepCard\b/)
+})
+
+test("details: the name first with the code under it, รอกดซ่อมเสร็จ while open, ยังไม่ระบุ for an empty cost or invoice (spec §8.3)", () => {
+  const details = read("src/components/maintenance/repair-record-details.tsx")
+  assert.doesNotMatch(details, /^"use client"/)
+  assert.match(details, /value: isOpen \? t\("detail\.awaitingComplete"\) :/)
+  assert.equal(details.match(/nilLabel: t\("detail\.notGiven"\)/g)?.length, 2)
+  assert.match(details, /<span className="block">\{ticket\.vendor\.name\}<\/span>\n\s+<span className="tag block w-fit">\{ticket\.vendor\.code\}<\/span>/)
+  assert.match(details, /<span className="block">\{ticket\.reportedBy\.fullNameTh\}<\/span>\n\s+<span className="tag block w-fit">\{ticket\.reportedBy\.code\}<\/span>/)
+  assert.match(details, /\.\.\.\(isOpen \? \[\] : \[\{ key: "returnDate"/, "วันที่ซ่อมเสร็จ once closed")
+  assert.match(read(detailPath), /<RepairRecordDetails\n\s+ticket=\{\{ \.\.\.ticket, repairCost: ticket\.repairCost == null \? null : Number\(ticket\.repairCost\) \}\}/)
+})
+
+test("the history: oldest first, each item marked, actors, badges, the hollow future step and short dates on the phone (spec §8.3)", () => {
+  assert.ok(existsSync(historyPath))
+  const source = read(historyPath)
+  assert.match(source, /data-repair-history-event=\{event\.kind\}/)
+  assert.match(source, /\{history\.map\(\(event/)
+  assert.doesNotMatch(source + read(detailPath), /\.reverse\(\)|toReversed|orderBy: \{ performedAt: "desc" \}/)
+  assert.match(source, /statusMarkerVariants\(\{ tone: "info" \}\)/, "the future step is a hollow ring, not a dashed dot")
+  assert.match(source, /t\("detail\.notYet"\)/)
+  assert.match(source, /t\("detail\.attachedFiles", \{/)
+  assert.match(source, /t\("detail\.historyHelp"\)/)
+  assert.match(source, /<StatusBadge\b/)
+  assert.match(source, /event\.actor/)
+  assert.match(source, /md:hidden/)
+  assert.doesNotMatch(source, /border-dashed/)
+  assert.match(read(detailPath), /<RepairRecordHistory\b/)
+})
+
+test("the phone bar: ซ่อมเสร็จ as primaryAction and เพิ่มเติม as more, by permission (G5P3-R8)", () => {
+  assert.ok(existsSync(phoneBarPath))
+  const source = read(phoneBarPath)
+  assert.match(source, /^"use client"/)
+  assert.match(source, /<ActionBar\s+label=\{tCommon\("actions"\)\}\s+actions=\{actions\}\s+primaryAction=\{primary\}\s+more=\{/)
+  assert.match(source, /label: t\("detail\.phoneMore"\)/)
+  assert.match(source, /openerRef: moreTriggerRef/)
+  assert.match(source, /openComplete\(event\.currentTarget\)/)
+  assert.match(source, /openEdit\(moreTriggerRef\.current\)/)
+  assert.match(source, /openCancel\(moreTriggerRef\.current\)/)
+  assert.match(source, /destructive: true/)
+  assert.match(read(detailPath), /<RepairRecordPhoneBar\b/)
+})
+
+test("the detail words of spec §13 (repairRecord (detail))", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  const d = th.repairRecord.detail
+  const expected: Record<string, string> = {
+    reportedOn: "แจ้งซ่อม {date}",
+    closedOn: "ซ่อมเสร็จ {date}",
+    cancelledOn: "ยกเลิก {date}",
+    sentDays: "ส่งซ่อมมา {days} วัน",
+    repairDays: "ซ่อมมา {days} วัน",
+    sentToday: "ส่งซ่อมวันนี้",
+    repairToday: "ซ่อมวันนี้",
+    more: "อื่น ๆ",
+    phoneMore: "เพิ่มเติม",
+    nextOpenVendor: 'ขั้นถัดไป: เมื่อรับเครื่องคืนจาก {vendor} แล้ว กด "ซ่อมเสร็จ"',
+    nextOpenInternal: 'ขั้นถัดไป: เมื่อซ่อมเสร็จแล้ว กด "ซ่อมเสร็จ"',
+    nextOpenHelp: "ตอนกดจะถามวันที่ซ่อมเสร็จกับผลการซ่อม ระบบไม่เลือกผลไว้ให้ สถานะทรัพย์สินจะเปลี่ยนตามผลที่เลือก",
+    headOutcome: "ถ้าผลการซ่อมเป็น",
+    headNow: "สถานะทรัพย์สินตอนนี้",
+    headAfter: "หลังกดซ่อมเสร็จ",
+    attachBefore: "แนบรูปก่อนซ่อม",
+    completeByEditor: "ผู้มีสิทธิ์แก้ไขบันทึกซ่อมเป็นผู้กดซ่อมเสร็จ",
+    phoneStatusNow: "สถานะทรัพย์สินตอนนี้ {status} หลังกดซ่อมเสร็จจะเป็นไปตามผลที่เลือก",
+    ifUsable: "ถ้าใช้งานได้",
+    ifBeyond: "ถ้าซ่อมไม่ได้ เสนอจำหน่าย",
+    closedWithOutcome: "ซ่อมเสร็จแล้ว {date} · {outcome}",
+    closedDone: "ซ่อมเสร็จแล้ว {date}",
+    nextDisposal: "ขั้นถัดไป: ยื่นคำขอตัดจำหน่าย",
+    disposalOpen: "มีคำขอตัดจำหน่าย {disposalNo} แล้ว",
+    disposalByCreator: "ผู้มีสิทธิ์ยื่นคำขอตัดจำหน่ายเป็นผู้ยื่นต่อ",
+    assetDisposed: "ทรัพย์สินนี้ตัดจำหน่ายแล้ว",
+    cancelledTitle: "ยกเลิกบันทึกนี้แล้ว {date}",
+    reportedDate: "วันที่แจ้งซ่อม",
+    awaitingComplete: "รอกดซ่อมเสร็จ",
+    notGiven: "ยังไม่ระบุ",
+    historyHelp: "ลำดับเหตุการณ์ของบันทึกนี้",
+    attachedFiles: "แนบ{type} {count} ไฟล์",
+    notYet: "ยังไม่ถึง",
+    assetRepairHistory: "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count} รายการ",
+    "note.backTo": "กลับไปที่ {holder} ตามใบส่งมอบ {documentNo}",
+    "note.backToNoDocument": "กลับไปที่ {holder}",
+    "note.holderStays": "ผู้ถือครอง {holder} คงเดิม",
+    "note.noHolder": "ไม่มีผู้ถือครอง",
+    "note.thenDisposal": "แล้วยื่นคำขอตัดจำหน่ายต่อ",
+  }
+  for (const [key, value] of Object.entries(expected)) {
+    const [head, tail] = key.split(".")
+    assert.equal(tail ? d[head]?.[tail] : d[key], value, key)
+    const enValue = tail ? en.repairRecord.detail[head]?.[tail] : en.repairRecord.detail[key]
+    assert.equal(typeof enValue, "string", `en ${key}`)
+  }
+  // The attachment words: "แนบ" + the type gives "แนบรูปก่อนซ่อม 12 ไฟล์" (Review Focus 3).
+  assert.equal(th.maintenancePage.attachmentTypes.before_repair, "รูปก่อนซ่อม")
+  assert.equal(th.maintenancePage.attachmentTypes.invoice, "ใบแจ้งหนี้")
+  assert.equal(th.repairRecord.movement.conditionChange, "เปลี่ยนสภาพ")
 })

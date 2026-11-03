@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, Pencil, XCircle } from "lucide-react"
+import { CheckCircle2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter, accessibleDialogFormClasses } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
@@ -16,9 +16,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { AssetConditionChoice } from "@/components/asset-operations/condition-choice"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
+import { RepairHeldNotice } from "@/components/maintenance/repair-held-notice"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { getBangkokDateKey } from "@/lib/preventive-maintenance"
+import type { RepairHeld } from "@/lib/repair-record-outlook"
 import { decimals, maxLength, notBefore, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
 import { useFieldErrors, useValidationMessage } from "@/components/ui/use-field-errors"
@@ -59,13 +62,15 @@ type RepairActionField = CompleteField | CancelField | EditField
 
 // noValidate turns the browser's check off, so this restates the controls' required, min, step and maxLength for the
 // three dialogs; each passes only its own fields, and a field it does not pass is not checked. The return date is not
-// before the reported date: a client rule, the server has none (spec §7.4, §11 call 6) (v-track M-R2).
-function validate(values: Partial<Record<RepairActionField, string>>, reportedDate: string) {
+// before the reported date: a client rule, the server has none (spec §7.4, §11 call 6) (v-track M-R2). It is not after
+// Bangkok today either, and the result has no default, so it is required (group 5 G5P3-R9).
+function validate(values: Partial<Record<RepairActionField, string>>, reportedDate: string, todayKey = "") {
   const errors: Partial<Record<RepairActionField, string>> = {}
   const check = (key: RepairActionField, code: string | null) => {
     if (code) errors[key] = code
   }
-  if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate))
+  if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate) ?? (todayKey && values.returnDate > todayKey ? "repairDateInFuture" : null))
+  if (values.outcome !== undefined) check("outcome", values.outcome ? null : "repairOutcomeRequired")
   // A repair that ends ใช้งานได้ names the condition after it (group 3 spec §19.4).
   if (values.outcome === "usable") check("conditionId", values.conditionId ? null : "conditionAfterRepairRequired")
   if (values.reportedDate !== undefined) check("reportedDate", required(values.reportedDate))
@@ -77,7 +82,26 @@ function validate(values: Partial<Record<RepairActionField, string>>, reportedDa
   return errors
 }
 
-export function RepairRecordActions({
+// What the header, the อื่น ๆ menu, the next-step card and the phone bar call (group 5 G5P3-R2). Each passes the element
+// that opened the dialog, and the dialog gives focus back to it when it closes (Review Focus 5).
+export type RepairRecordActionsValue = {
+  openComplete: (opener?: HTMLElement | null) => void
+  openCancel: (opener?: HTMLElement | null) => void
+  openEdit: (opener?: HTMLElement | null) => void
+}
+
+const RepairRecordActionsContext = createContext<RepairRecordActionsValue | null>(null)
+
+export function useRepairRecordActions(): RepairRecordActionsValue {
+  const value = useContext(RepairRecordActionsContext)
+  if (!value) throw new Error("useRepairRecordActions needs RepairRecordActionsProvider")
+  return value
+}
+
+// The one owner of the record's three dialogs (ซ่อมเสร็จ, ยกเลิกบันทึก, แก้ไขรายละเอียด; group 5 spec §8.1, §8.4). It
+// renders them once, outside every menu (DESIGN.md:651), and no button of its own: the openers are the small client
+// parts that call useRepairRecordActions().
+export function RepairRecordActionsProvider({
   recordId,
   repairNo,
   expectedUpdatedAt,
@@ -85,6 +109,12 @@ export function RepairRecordActions({
   details,
   conditionOptions,
   initialConditionId,
+  held,
+  assetId,
+  locale,
+  canReturn,
+  todayKey,
+  children,
 }: {
   recordId: string
   repairNo: string
@@ -94,6 +124,15 @@ export function RepairRecordActions({
   // ดี and พอใช้ (getRepairConditionOptions), and the asset's own when offered (repairConditionDefault), else "".
   conditionOptions: Option[]
   initialConditionId: string
+  // The open handover that refuses ซ่อมไม่ได้ (MAINTENANCE_ASSET_ON_LOAN), shown under the result (spec §5 early refusal).
+  held: RepairHeld | null
+  assetId: string
+  locale: string
+  // asset:edit, the check-in page's permission: the refusal's รับคืน link.
+  canReturn: boolean
+  /** Bangkok today on the server (getBangkokDateKey): with the browser's own, the completion date's max. */
+  todayKey: string
+  children: ReactNode
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -101,11 +140,14 @@ export function RepairRecordActions({
   const tMaintenance = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [dialog, setDialog] = useState<Dialog>(null)
+  // The control that opened the dialog: the dialog gives focus back to it when it closes.
+  const returnFocusRef = useRef<HTMLElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [complete, setComplete] = useState({
     returnDate: toLocalDateInputValue(),
-    outcome: "usable" as Outcome,
+    // No result is chosen for the user (decision 2, G5P3-R9).
+    outcome: "" as Outcome | "",
     conditionId: initialConditionId,
     vendorId: details.vendor?.id ?? "",
     repairCost: details.repairCost,
@@ -128,6 +170,27 @@ export function RepairRecordActions({
   const focusFirstCompleteError = () => completeErrors.focusFirst(COMPLETE_FIELD_ORDER, { idFor: (key) => COMPLETE_FIELD_IDS[key] })
   const focusFirstCancelError = () => cancelErrors.focusFirst(CANCEL_FIELD_ORDER, { idFor: (key) => CANCEL_FIELD_IDS[key] })
   const focusFirstEditError = () => editErrors.focusFirst(EDIT_FIELD_ORDER, { idFor: (key) => EDIT_FIELD_IDS[key] })
+  // Today is the later of the server's Bangkok day and the browser's, so a dialog left open past Bangkok midnight still
+  // takes the new day (as the record form, group 5 plan 2). The check and the date's max both read it.
+  const latestTodayKey = () => {
+    const now = getBangkokDateKey(new Date())
+    return now > todayKey ? now : todayKey
+  }
+  // One stable value: the openers remember who opened the dialog, so it gives focus back there.
+  const actions = useMemo<RepairRecordActionsValue>(() => ({
+    openComplete: (opener?: HTMLElement | null) => {
+      returnFocusRef.current = opener ?? null
+      setDialog("complete")
+    },
+    openCancel: (opener?: HTMLElement | null) => {
+      returnFocusRef.current = opener ?? null
+      setDialog("cancel")
+    },
+    openEdit: (opener?: HTMLElement | null) => {
+      returnFocusRef.current = opener ?? null
+      setDialog("edit")
+    },
+  }), [])
 
   function close() {
     if (saving) return
@@ -188,7 +251,7 @@ export function RepairRecordActions({
 
   function handleComplete(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    completeErrors.setErrors(validate(complete, details.reportedDate))
+    completeErrors.setErrors(validate(complete, details.reportedDate, latestTodayKey()))
     if (focusFirstCompleteError()) return
     void send({
       action: "complete",
@@ -225,22 +288,11 @@ export function RepairRecordActions({
   }
 
   return (
-    <>
-      {isOpen ? (
-        <>
-          <Button size="md" onClick={() => setDialog("complete")}>
-            <CheckCircle2 />{t("complete")}
-          </Button>
-          <Button variant="danger" size="md" onClick={() => setDialog("cancel")}>
-            <XCircle />{t("cancel")}
-          </Button>
-        </>
-      ) : null}
-      <Button variant="outline" size="md" onClick={() => setDialog("edit")}>
-        <Pencil />{t("edit")}
-      </Button>
+    <RepairRecordActionsContext.Provider value={actions}>
+      {children}
 
-      <AccessibleDialog open={dialog === "complete"} title={t("completeTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} onClose={close}>
+      {/* Complete and cancel apply to an open record only; edit to any (Appendix A "Record"). */}
+      <AccessibleDialog open={isOpen && dialog === "complete"} title={t("completeTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} returnFocusRef={returnFocusRef} onClose={close}>
         <form onSubmit={handleComplete} noValidate className={accessibleDialogFormClasses}>
           <AccessibleDialogBody className="space-y-4">
             <p className="text-sm text-muted-foreground">{t("completeHelp")}</p>
@@ -250,7 +302,7 @@ export function RepairRecordActions({
               required
               error={completeErrors.errors.returnDate === "endBeforeStart" ? t("returnDateBeforeReported") : completeErrors.message("returnDate")}
             >
-              <Input type="date" required min={details.reportedDate} value={complete.returnDate} onChange={(event) => setCompleteField("returnDate", event.target.value)} />
+              <Input type="date" required min={details.reportedDate} max={latestTodayKey()} value={complete.returnDate} onChange={(event) => setCompleteField("returnDate", event.target.value)} />
             </Field>
             {/* ซ่อมไม่ได้: the ซาก line is the group's hint, read with it by aria-describedby (final review M9). */}
             <FieldGroup legend={t("outcomeQuestion")} id="repair-complete-outcome" required hint={complete.outcome === "beyond_repair" ? t("conditionBecomesSalvage") : undefined} error={completeErrors.message("outcome")}>
@@ -260,6 +312,11 @@ export function RepairRecordActions({
                 ))}
               </div>
             </FieldGroup>
+            {/* ซ่อมไม่ได้ on a held asset: the server refuses it (MAINTENANCE_ASSET_ON_LOAN), so the dialog says why and how
+                to return it as soon as it is chosen; the save stays enabled (spec §5 early refusal, G5P3-R9). */}
+            {complete.outcome === "beyond_repair" && held ? (
+              <RepairHeldNotice held={held} assetId={assetId} locale={locale} canReturn={canReturn} />
+            ) : null}
             {complete.outcome === "usable" ? (
               <AssetConditionChoice
                 id="repair-complete-condition"
@@ -330,7 +387,7 @@ export function RepairRecordActions({
         </form>
       </AccessibleDialog>
 
-      <AccessibleDialog open={dialog === "cancel"} title={t("cancelTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} onClose={close}>
+      <AccessibleDialog open={isOpen && dialog === "cancel"} title={t("cancelTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} returnFocusRef={returnFocusRef} onClose={close}>
         <form onSubmit={handleCancel} noValidate className={accessibleDialogFormClasses}>
           <AccessibleDialogBody className="space-y-4">
             <p className="text-sm text-muted-foreground">{t("cancelHelp")}</p>
@@ -355,7 +412,7 @@ export function RepairRecordActions({
         </form>
       </AccessibleDialog>
 
-      <AccessibleDialog open={dialog === "edit"} title={t("editTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} onClose={close}>
+      <AccessibleDialog open={dialog === "edit"} title={t("editTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} returnFocusRef={returnFocusRef} onClose={close}>
         <form onSubmit={handleEdit} noValidate className={accessibleDialogFormClasses}>
           <AccessibleDialogBody className="space-y-4">
             <p className="text-sm text-muted-foreground">{t("editHelp")}</p>
@@ -402,6 +459,6 @@ export function RepairRecordActions({
           </AccessibleDialogFooter>
         </form>
       </AccessibleDialog>
-    </>
+    </RepairRecordActionsContext.Provider>
   )
 }

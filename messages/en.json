@@ -3438,7 +3438,7 @@
     "cancelled": "Record cancelled",
     "edit": "Edit details",
     "editTitle": "Edit repair details",
-    "editHelp": "Status and result can't be changed here. If the result was wrong, fix the asset status with Status Correction and note it in the remark",
+    "editHelp": "The status and the result cannot change here. If the result is wrong, correct the status on the asset page (Correct status) and say so in the remark.",
     "updated": "Details updated",
     "legacyTitle": "From the previous workflow",
     "legacyFields": {
@@ -3555,7 +3555,47 @@
       "factsFailed": "The asset's details could not be loaded"
     },
     "detail": {
-      "assetRepairHistory": "All repairs of this asset · {count}"
+      "assetRepairHistory": "All repairs of this asset · {count}",
+      "reportedOn": "Reported {date}",
+      "closedOn": "Repaired {date}",
+      "cancelledOn": "Cancelled {date}",
+      "sentDays": "Sent out {days} days",
+      "repairDays": "In repair {days} days",
+      "sentToday": "Sent out today",
+      "repairToday": "In repair since today",
+      "more": "More",
+      "phoneMore": "More",
+      "nextOpenVendor": "Next: when {vendor} returns the device, press \"Repair done\"",
+      "nextOpenInternal": "Next: when the repair is done, press \"Repair done\"",
+      "nextOpenHelp": "It asks for the completion date and the result. Nothing is chosen for you; the asset's status follows the result you choose.",
+      "headOutcome": "If the result is",
+      "headNow": "Asset status now",
+      "headAfter": "After Repair done",
+      "note": {
+        "backTo": "Back to {holder} on handover {documentNo}",
+        "backToNoDocument": "Back to {holder}",
+        "holderStays": "Holder {holder} stays",
+        "noHolder": "No holder",
+        "thenDisposal": "then request disposal"
+      },
+      "attachBefore": "Attach before-repair photos",
+      "completeByEditor": "A person who may edit repair records presses Repair done.",
+      "phoneStatusNow": "Asset status now {status}; after Repair done it follows the result chosen",
+      "ifUsable": "If usable",
+      "ifBeyond": "If beyond repair, propose disposal",
+      "closedWithOutcome": "Repaired {date} · {outcome}",
+      "closedDone": "Repaired {date}",
+      "nextDisposal": "Next: request disposal",
+      "disposalOpen": "Disposal request {disposalNo} is open",
+      "disposalByCreator": "A person who may request disposal makes the request.",
+      "assetDisposed": "This asset is disposed.",
+      "cancelledTitle": "This record was cancelled {date}",
+      "reportedDate": "Reported on",
+      "awaitingComplete": "Waiting for Repair done",
+      "notGiven": "Not given",
+      "historyHelp": "Events of this record",
+      "attachedFiles": "Attached {type} · {count} files",
+      "notYet": "not yet"
     }
   },
   "disposalPage": {

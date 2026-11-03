@@ -1,17 +1,24 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { FileText, History, Printer, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { getRepairConditionOptions, repairConditionDefault } from "@/lib/asset-lifecycle-policy"
 import { summarizeAssetRepairs } from "@/lib/asset-repair-rules"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatMoney } from "@/lib/display-format"
-import { cn, formatDate, formatDateTime } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { formatAssetDetailDate } from "@/lib/asset-detail-frame-rules"
+import { getBangkokDateKey } from "@/lib/preventive-maintenance"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
-import { RepairRecordActions } from "@/components/maintenance/repair-record-actions"
+import { RepairRecordActionsProvider } from "@/components/maintenance/repair-record-actions"
+import { RepairRecordHeaderActions } from "@/components/maintenance/repair-record-header-actions"
+import { RepairNextStepCard } from "@/components/maintenance/repair-next-step-card"
+import { RepairRecordDetails } from "@/components/maintenance/repair-record-details"
+import { RepairRecordHistory } from "@/components/maintenance/repair-record-history"
+import { RepairRecordPhoneBar } from "@/components/maintenance/repair-record-phone-bar"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { assetHistoryActorLabel } from "@/lib/asset-history-rules"
 import { openDisposalRequestWhere } from "@/lib/asset-actions"
@@ -27,18 +34,14 @@ import {
 } from "@/lib/repair-record-detail-rules"
 import { RepairRecordAssetPanel } from "@/components/maintenance/repair-record-asset-panel"
 import { canAttachToRepairRecord, getRepairRecordStatusTone, isOpenRepairStatus, toRepairRecordStatus } from "@/lib/repair-record-policy"
-import { statusMarkerVariants } from "@/components/ui/badge-variants"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { EmptyNote } from "@/components/ui/empty-note"
 import { KeyValueList } from "@/components/ui/key-value-list"
-import { ActionBar, actionBarPagePadding } from "@/components/ui/action-bar"
-import { Nil } from "@/components/ui/nil"
+import { actionBarPagePadding } from "@/components/ui/action-bar"
 import { Notice } from "@/components/ui/notice"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, maintenanceListCrumbHref, normalizeMaintenanceReturnTo } from "@/lib/operational-return-navigation"
-import { getPanelClasses } from "@/lib/design-system"
 
 type RepairRecordPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -52,6 +55,8 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   const canEdit = hasPermission(user, "maintenance", "edit")
   const canCreate = hasPermission(user, "maintenance", "create")
   const canCreateDisposal = hasPermission(user, "disposal", "create")
+  // รับคืน in the early refusal opens the check-in page, which needs asset:edit (group 5 spec §5).
+  const canReturn = hasPermission(user, "asset", "edit")
   const t = await getTranslations("repairRecord")
   const tCommon = await getTranslations("common")
 
@@ -84,8 +89,9 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   if (!ticket) notFound()
 
   // One read of each (group 5 plan 3 Task 2): the attachments, the movements oldest first, the asset's active records,
-  // the asset facts and, after ซ่อมไม่ได้, the asset's open disposal request (G5P3-R7, newest).
-  const [attachments, movements, assetRecords, conditions, loadedFacts, openDisposal] = await Promise.all([
+  // the asset facts, the status names (Task 3: the card's predicted status and the history's badges) and, after
+  // ซ่อมไม่ได้, the asset's open disposal request (G5P3-R7, newest).
+  const [attachments, movements, assetRecords, conditions, statuses, loadedFacts, openDisposal] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "maintenance", referenceId: ticket.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
@@ -104,6 +110,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
       select: { id: true, name: true, nameTh: true, isActive: true },
       orderBy: { sortOrder: "asc" },
     }),
+    prisma.assetStatus.findMany({ where: { isActive: true }, select: { name: true, nameTh: true } }),
     loadRepairAssetFacts(prisma as unknown as RepairAssetFactsDb, ticket.asset.id),
     ticket.outcome === "beyond_repair"
       ? prisma.disposalRequest.findFirst({
@@ -133,6 +140,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
     openRecord: null,
     activeCheckout: null,
   }
+  const statusLabels = Object.fromEntries(statuses.map((status) => [status.name, status.nameTh]))
   // G5P3-R3: the people who recorded the movements and uploaded the files, in one read; an unknown id names no one.
   const actorIds = [...new Set([...movements.map((movement) => movement.performedBy), ...attachments.map((attachment) => attachment.uploadedBy)])]
   const actors = actorIds.length > 0
@@ -184,13 +192,25 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
     actorById,
   })
   const duration = repairDurationLine(record, new Date())
-  const movementEvents = history.flatMap((event) => (event.kind === "movement" ? [event] : []))
   const recordStatus = toRepairRecordStatus(ticket.repairStatus)
   const isOpen = isOpenRepairStatus(ticket.repairStatus)
+  // ซ่อมเสร็จ (header, card, phone bar) needs maintenance:edit on an open record (spec §6).
+  const canComplete = canEdit && isOpen
   const canAttach = canAttachToRepairRecord({ userId: user.id, canEdit, canCreate }, ticket)
+  // The open handover that refuses ซ่อมไม่ได้, from the card's own row, so the dialog and the card say the same thing.
+  const beyondRow = nextStep.kind === "open" ? nextStep.rows.find((row) => row.outcome === "beyond_repair") : undefined
+  const held = beyondRow?.outlook.kind === "refused" ? beyondRow.outlook.held : null
   const outcomeLabel = ticket.outcome === "usable" || ticket.outcome === "beyond_repair"
     ? t(`outcome.${ticket.outcome}`)
     : recordStatus === "closed" ? t("outcome.unknown") : null
+  // The header's meta line (spec §8.1): the reported day, then the day count while open, else the close or cancel day.
+  const stateLine = duration
+    ? t(`detail.${duration.key}`, { days: duration.days })
+    : recordStatus === "closed" && ticket.returnDate
+      ? t("detail.closedOn", { date: formatAssetDetailDate(ticket.returnDate, locale) })
+      : recordStatus === "cancelled" && cancelMovement
+        ? t("detail.cancelledOn", { date: formatAssetDetailDate(cancelMovement.performedAt, locale) })
+        : null
   const legacyFields = [
     { label: t("legacyFields.assignedTo"), value: ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : null },
     { label: t("legacyFields.dueDate"), value: ticket.dueDate ? formatDate(ticket.dueDate) : null },
@@ -212,12 +232,14 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   )
   const repairCostRatio = purchasePrice > 0 ? assetRepairSummary.totalCost / purchasePrice : 0
   const shouldReviewDisposal = assetRepairSummary.replacementWarning
-  // G5P3-R7: when the next step offers the request, the disposal-review panel does not offer it again.
-  const nextStepOffersDisposal = nextStep.kind === "closedBeyond" && nextStep.disposal.kind === "canRequest"
+  // G5P3-R7: after ซ่อมไม่ได้ the card shows the disposal step (the request, the open request or the disposed asset), so
+  // the disposal-review panel never offers the request again.
+  const nextStepOffersDisposal = nextStep.kind === "closedBeyond"
   // The repair list, the PM list or the asset page the user came from (group 5 spec §5 "Way back").
   const returnToHref = normalizeMaintenanceReturnTo(locale, rawSearchParams.returnTo, "maintenance")
   const listCrumbHref = maintenanceListCrumbHref(returnToHref, `/${locale}/maintenance`)
   const printHref = appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, returnToHref)
+  const assetHref = `/${locale}/assets/${ticket.asset.id}`
   const disposalReason = `${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReviewCount", { count: assetRepairSummary.repairCount })}, ${t("disposalReviewCost", { cost: formatMoney(assetRepairSummary.totalCost, { unit: tCommon("baht") }) })}`
   const disposalRequestHref = appendOperationalReturnTo(
     `/${locale}/disposal/new?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`,
@@ -225,154 +247,124 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   )
 
   return (
-    <div className={`space-y-6 ${actionBarPagePadding.single}`}>
-      <PageHeader
-        breadcrumbs={[{ label: t("title"), href: listCrumbHref }, { label: ticket.repairNo, code: true }]}
-        title={ticket.asset.name}
-        meta={
-          <>
-            <span className="tag">{ticket.repairNo}</span>
-            <StatusBadge label={t(`status.${recordStatus}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
-            <span className="tag">{ticket.asset.assetTag}</span>
-          </>
-        }
-        back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
-        actions={
-          <>
-            <Link href={printHref} className={buttonVariants({ variant: "outline", size: "md" })}>
-              <Printer aria-hidden="true" />
-              {t("print")}
-            </Link>
-            {canEdit ? (
-              <RepairRecordActions
-                recordId={ticket.id}
-                repairNo={ticket.repairNo}
-                expectedUpdatedAt={ticket.updatedAt.toISOString()}
-                isOpen={isOpen}
-                details={{
-                  reportedDate: toLocalDateInputValue(ticket.reportedDate),
-                  problem: ticket.problem,
-                  vendor: ticket.vendor ? { id: ticket.vendor.id, label: `${ticket.vendor.code} - ${ticket.vendor.name}` } : null,
-                  repairCost: ticket.repairCost?.toString() ?? "",
-                  invoiceNo: ticket.invoiceNo ?? "",
-                  remark: ticket.resolution ?? "",
-                }}
-                conditionOptions={conditionOptions}
-                initialConditionId={repairConditionDefault(ticket.asset.conditionId, conditionOptions)}
-              />
-            ) : null}
-          </>
-        }
-      />
-      <ActionBar
-        label={tCommon("actions")}
-        actions={[
-          { href: `/${locale}/assets/${ticket.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
-          { href: printHref, label: t("print"), icon: <Printer className="h-4 w-4" /> },
-          { href: "#history", label: t("history"), icon: <History className="h-4 w-4" /> },
-        ]}
-      />
+    <RepairRecordActionsProvider
+      recordId={ticket.id}
+      repairNo={ticket.repairNo}
+      expectedUpdatedAt={ticket.updatedAt.toISOString()}
+      isOpen={isOpen}
+      details={{
+        reportedDate: toLocalDateInputValue(ticket.reportedDate),
+        problem: ticket.problem,
+        vendor: ticket.vendor ? { id: ticket.vendor.id, label: `${ticket.vendor.code} - ${ticket.vendor.name}` } : null,
+        repairCost: ticket.repairCost?.toString() ?? "",
+        invoiceNo: ticket.invoiceNo ?? "",
+        remark: ticket.resolution ?? "",
+      }}
+      conditionOptions={conditionOptions}
+      initialConditionId={repairConditionDefault(ticket.asset.conditionId, conditionOptions)}
+      held={held}
+      assetId={ticket.asset.id}
+      locale={locale}
+      canReturn={canReturn}
+      todayKey={getBangkokDateKey(new Date())}
+    >
+      <div className={`space-y-6 ${canComplete ? actionBarPagePadding.withPrimary : actionBarPagePadding.single}`}>
+        <PageHeader
+          breadcrumbs={[{ label: t("title"), href: listCrumbHref }, { label: ticket.repairNo, code: true }]}
+          title={ticket.asset.name}
+          meta={
+            <>
+              <span className="tag">{ticket.repairNo}</span>
+              <StatusBadge label={t(`status.${recordStatus}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
+              <span>
+                {t("asset")} <span className="tag">{ticket.asset.assetTag}</span>
+              </span>
+              <span>
+                {t("detail.reportedOn", { date: formatAssetDetailDate(ticket.reportedDate, locale) })}
+                {stateLine ? ` · ${stateLine}` : null}
+              </span>
+            </>
+          }
+          back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
+          actions={<RepairRecordHeaderActions printHref={printHref} canEdit={canEdit} isOpen={isOpen} />}
+        />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="space-y-6">
-          <ContentPanel title={t("detailTitle")}>
-            <KeyValueList
-              items={[
-                { key: "date", label: t("date"), value: formatDate(ticket.reportedDate) },
-                {
-                  key: "outcome",
-                  label: t("outcomeQuestion"),
-                  value: outcomeLabel == null ? null : (
-                    <StatusBadge label={outcomeLabel} tone={ticket.outcome === "usable" ? "success" : ticket.outcome === "beyond_repair" ? "warning" : "muted"} />
-                  ),
-                },
-                { key: "returnDate", label: t("returnDate"), value: ticket.returnDate ? formatDate(ticket.returnDate) : null },
-                { key: "vendor", label: t("vendor"), value: ticket.vendor ? <><span className="tag">{ticket.vendor.code}</span> - {ticket.vendor.name}</> : t("internal") },
-                { key: "cost", label: t("cost"), value: ticket.repairCost == null ? null : <span className="num">{formatMoney(Number(ticket.repairCost))}</span> },
-                { key: "invoiceNo", label: t("invoiceNo"), value: ticket.invoiceNo },
-                { key: "reporter", label: t("reporter"), value: <><span className="tag">{ticket.reportedBy.code}</span> - {ticket.reportedBy.fullNameTh}</> },
-                ...(ticket.maintenancePlan
-                  ? [{ key: "plan", label: t("planLabel"), value: <><span className="tag">{ticket.maintenancePlan.planNo}</span> - {ticket.maintenancePlan.title}</> }]
-                  : []),
-              ]}
+        <RepairNextStepCard
+          nextStep={nextStep}
+          locale={locale}
+          assetId={ticket.asset.id}
+          assetHref={assetHref}
+          currentStatus={{ name: facts.statusName, label: facts.statusLabel }}
+          statusLabels={statusLabels}
+          canEdit={canEdit}
+          canCreate={canCreate}
+          canAttach={canAttach}
+          canReturn={canReturn}
+          canCreateDisposal={canCreateDisposal}
+          disposalRequestHref={disposalRequestHref}
+        />
+
+        {/* Two columns from xl: details beside the asset, then the history beside the attachments. Stacked, the order is
+            the phone's (spec §8.6): details, asset, history, attachments. */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+          <div className="min-w-0 space-y-6">
+            <RepairRecordDetails
+              ticket={{ ...ticket, repairCost: ticket.repairCost == null ? null : Number(ticket.repairCost) }}
+              locale={locale}
+              isOpen={isOpen}
+              outcomeLabel={outcomeLabel}
             />
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <TextBlock label={t("problem")} value={ticket.problem} />
-              <TextBlock label={t("remarkTitle")} value={ticket.resolution} />
-            </div>
-          </ContentPanel>
 
-          {hasLegacyDetails ? (
-            <ContentPanel title={t("legacyTitle")}>
-              <KeyValueList items={legacyFields} />
-            </ContentPanel>
-          ) : null}
+            {hasLegacyDetails ? (
+              <ContentPanel title={t("legacyTitle")}>
+                <KeyValueList items={legacyFields} />
+              </ContentPanel>
+            ) : null}
+          </div>
 
-          {/* The ActionBar's #history link scrolls here, and ContentPanel takes no id: the panel classes (2D-2 R4). */}
-          <section id="history" className={cn(getPanelClasses(), "scroll-mt-6 p-4 sm:p-5")}>
-            <h2 className="mb-4 text-base font-semibold text-foreground">{t("history")}</h2>
-            {/* Until Task 3 rebuilds the header and the history (group 5 plan 3): the movement events, oldest first, with
-                their actor; the day count rides on the list as a data attribute. */}
-            {movementEvents.length === 0 ? (
-              <EmptyNote>{t("historyEmpty")}</EmptyNote>
-            ) : (
-              <ol className="space-y-4" data-repair-duration={duration ? `${duration.key}:${duration.days}` : undefined}>
-                {movementEvents.map((event) => (
-                  <li key={event.id} className="relative border-l border-border pl-4">
-                    <span aria-hidden="true" className={cn(statusMarkerVariants({ tone: "primary" }), "absolute top-2 -left-1")} />
-                    <div className="rounded-md bg-background p-4">
-                      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <div className="font-medium text-foreground">{t(`movement.${event.labelKey}`)}</div>
-                        <div className="text-meta text-muted-foreground">
-                          {formatDateTime(event.at)}
-                          {event.actor ? ` · ${event.actor}` : null}
-                        </div>
-                      </div>
-                      <KeyValueList
-                        className="mt-2"
-                        items={[
-                          { key: "from", label: t("fromValue"), value: event.from?.value },
-                          { key: "to", label: t("toValue"), value: event.to?.value },
-                        ]}
-                      />
-                      {event.reason ? <p className="mt-2 text-sm text-muted-foreground">{event.reason}</p> : null}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-        </div>
+          <div className="min-w-0 space-y-6">
+            <RepairRecordAssetPanel facts={facts} locale={locale} recordCount={assetRecords.length} returnTo={returnToHref} />
 
-        <aside className="space-y-6">
-          <RepairRecordAssetPanel facts={facts} locale={locale} recordCount={assetRecords.length} returnTo={returnToHref} />
+            {shouldReviewDisposal && canCreateDisposal ? (
+              <ContentPanel title={t("disposalReviewTitle")}>
+                <Notice
+                  tone="warning"
+                  action={
+                    nextStepOffersDisposal ? null : (
+                      <Link href={disposalRequestHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                        <Trash2 aria-hidden="true" />
+                        {t("openDisposalRequest")}
+                      </Link>
+                    )
+                  }
+                >
+                  <p>{t("disposalReviewCount", { count: assetRepairSummary.repairCount })}</p>
+                  <p>{t("disposalReviewCost", { cost: formatMoney(assetRepairSummary.totalCost, { unit: tCommon("baht") }) })}</p>
+                  {purchasePrice > 0 ? <p>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</p> : null}
+                </Notice>
+              </ContentPanel>
+            ) : null}
+          </div>
 
-          {shouldReviewDisposal && canCreateDisposal ? (
-            <ContentPanel title={t("disposalReviewTitle")}>
-              <Notice
-                tone="warning"
-                action={
-                  nextStepOffersDisposal ? null : (
-                    <Link href={disposalRequestHref} className={buttonVariants({ variant: "outline", size: "md" })}>
-                      <Trash2 aria-hidden="true" />
-                      {t("openDisposalRequest")}
-                    </Link>
-                  )
-                }
-              >
-                <p>{t("disposalReviewCount", { count: assetRepairSummary.repairCount })}</p>
-                <p>{t("disposalReviewCost", { cost: formatMoney(assetRepairSummary.totalCost, { unit: tCommon("baht") }) })}</p>
-                {purchasePrice > 0 ? <p>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</p> : null}
-              </Notice>
-            </ContentPanel>
-          ) : null}
+          <div className="min-w-0">
+            <RepairRecordHistory history={history} locale={locale} statusLabels={statusLabels} />
+          </div>
 
-          <div id="attachments" className="scroll-mt-6">
+          <div id="attachments" className="min-w-0 scroll-mt-6">
             <MaintenanceAttachments ticketId={ticket.id} attachments={attachments} canEdit={canAttach} canDelete={canEdit} />
           </div>
-        </aside>
+        </div>
+
+        <RepairRecordPhoneBar
+          repairNo={ticket.repairNo}
+          assetName={ticket.asset.name}
+          assetHref={assetHref}
+          printHref={printHref}
+          canEdit={canEdit}
+          isOpen={isOpen}
+        />
       </div>
-    </div>
+    </RepairRecordActionsProvider>
   )
 }
 
@@ -383,15 +375,4 @@ function toHistoryValue(movementType: string, label: string | null | undefined):
   if (movementType === "condition_change") return { kind: "condition", value: label }
   if (movementType.startsWith("maintenance_")) return { kind: "status", value: label }
   return { kind: "text", value: label }
-}
-
-function TextBlock({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <div className="mb-2 text-sm font-medium text-foreground">{label}</div>
-      <div className="min-h-20 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
-        {value ? <p className="whitespace-pre-wrap">{value}</p> : <Nil />}
-      </div>
-    </div>
-  )
 }

@@ -274,10 +274,12 @@ test("repair record actions: complete, cancel and edit show errors under the fie
     assert.match(source, new RegExp(`function close\\(\\) \\{[\\s\\S]*?\\n\\s+${hook}\\.setErrors\\(\\{\\}\\)\\n[\\s\\S]*?\\n {2}\\}\\n`))
   }
   assert.match(source, /if \(!response\.ok\) \{\n\s+if \(showRefusal\(payload\)\) return\n\s+throw new Error\(getMaintenanceErrorMessage\(payload\?\.code, tMaintenance, tCommon\("error"\)\)\)/)
-  assert.match(source, /^function validate\(values: Partial<Record<RepairActionField, string>>, reportedDate: string\) \{$/m)
+  // Group 5 plan 3 G5P3-R9: the result starts empty with its required error, and the date is not after Bangkok today.
+  assert.match(source, /^function validate\(values: Partial<Record<RepairActionField, string>>, reportedDate: string, todayKey = ""\) \{$/m)
   const rules = validateBody(source)
   for (const rule of [
-    'if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate))',
+    'if (values.returnDate !== undefined) check("returnDate", required(values.returnDate) ?? notBefore(values.returnDate, reportedDate) ?? (todayKey && values.returnDate > todayKey ? "repairDateInFuture" : null))',
+    'if (values.outcome !== undefined) check("outcome", values.outcome ? null : "repairOutcomeRequired")',
     'if (values.outcome === "usable") check("conditionId", values.conditionId ? null : "conditionAfterRepairRequired")',
     'if (values.reportedDate !== undefined) check("reportedDate", required(values.reportedDate))',
     'if (values.problem !== undefined) check("problem", required(values.problem) ?? maxLength(values.problem, 4000))',
@@ -286,11 +288,11 @@ test("repair record actions: complete, cancel and edit show errors under the fie
     'check("remark", maxLength(values.remark, 4000))',
     'check("reason", maxLength(values.reason, 1000))',
   ]) assert.ok(rules.includes(rule), rule)
-  assert.match(source, /completeErrors\.setErrors\(validate\(complete, details\.reportedDate\)\)/)
+  assert.match(source, /completeErrors\.setErrors\(validate\(complete, details\.reportedDate, latestTodayKey\(\)\)\)/)
   assert.match(source, /cancelErrors\.setErrors\(validate\(\{ reason \}, details\.reportedDate\)\)/)
   assert.match(source, /editErrors\.setErrors\(validate\(edit, details\.reportedDate\)\)/)
   // The return date (spec §7.4): the picker starts at the reported date, and the error names the reported date.
-  assert.match(source, /<Input type="date" required min=\{details\.reportedDate\} value=\{complete\.returnDate\} /)
+  assert.match(source, /<Input type="date" required min=\{details\.reportedDate\} max=\{latestTodayKey\(\)\} value=\{complete\.returnDate\} /)
   assert.ok(source.includes('error={completeErrors.errors.returnDate === "endBeforeStart" ? t("returnDateBeforeReported") : completeErrors.message("returnDate")}'))
   for (const hook of ["completeErrors", "editErrors"]) {
     assert.ok(source.includes(`error={${hook}.errors.repairCost ? validationMessage(${hook}.errors.repairCost, { min: 0 }) : undefined}`), `${hook}: the cost says its floor`)

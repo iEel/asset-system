@@ -80,13 +80,20 @@ test("review focus 1: a stuck asset with a long Thai name stays one cut line bes
 test("repair record page: ContentPanels, the history section on the panel classes with status markers and EmptyNote, the outcome as a StatusBadge, a warning Notice with its action, and outline links (spec 2D D7, D9, M21, M22, M25, M29)", () => {
   const source = read(`${D}maintenance/[id]/page.tsx`)
   // The asset panel is RepairRecordAssetPanel since group 5 plan 3 Task 2; its name links to the asset.
-  for (const title of ["detailTitle", "legacyTitle", "disposalReviewTitle"]) {
+  // The details panel is RepairRecordDetails since group 5 plan 3 Task 3, with the outcome as a StatusBadge.
+  const details = read("src/components/maintenance/repair-record-details.tsx")
+  assert.match(details, /<ContentPanel title=\{t\("detailTitle"\)\}>/)
+  assert.match(details, /<StatusBadge label=\{outcomeLabel\} tone=\{ticket\.outcome === "usable" \? "success" : ticket\.outcome === "beyond_repair" \? "warning" : "muted"\} \/>/)
+  for (const title of ["legacyTitle", "disposalReviewTitle"]) {
     assert.match(source, new RegExp(`<ContentPanel title=\\{t\\("${title}"\\)\\}>`), title)
   }
-  assert.match(source, /<section id="history" className=\{cn\(getPanelClasses\(\), "scroll-mt-6 p-4 sm:p-5"\)\}>\n\s+<h2 className="mb-4 text-base font-semibold text-foreground">\{t\("history"\)\}<\/h2>/)
-  assert.match(source, /<EmptyNote>\{t\("historyEmpty"\)\}<\/EmptyNote>/)
-  assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone: "primary" \}\), "absolute top-2 -left-1"\)\} \/>/)
-  assert.match(source, /<StatusBadge label=\{outcomeLabel\} tone=\{ticket\.outcome === "usable" \? "success" : ticket\.outcome === "beyond_repair" \? "warning" : "muted"\} \/>/)
+  // The history moved to RepairRecordHistory (group 5 plan 3 Task 3); it keeps the panel classes, the markers and EmptyNote.
+  const history = read("src/components/maintenance/repair-record-history.tsx")
+  assert.match(history, /<section id="history" className=\{cn\(getPanelClasses\(\), "scroll-mt-6 p-4 sm:p-5"\)\}>/)
+  assert.match(history, /<h2 className="text-base font-semibold text-foreground">\{t\("history"\)\}<\/h2>/)
+  assert.match(history, /<EmptyNote>\{t\("historyEmpty"\)\}<\/EmptyNote>/)
+  assert.match(history, /statusMarkerVariants\(\{ tone: "primary" \}\), "absolute top-1\.5 -left-\[3px\]"/)
+  assert.match(source, /<RepairRecordHistory\b/)
   assert.match(source, /<Notice\s+tone="warning"\s+action=\{\s*nextStepOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   assert.match(read("src/components/maintenance/repair-record-asset-panel.tsx"), /<ContentPanel title=\{t\("assetSection"\)\}>/)
   assert.doesNotMatch(source, /ActionEmptyState|AlertTriangle|rounded-lg|rounded-full|bg-warning-soft|border-warning-border|text-(?:warning|success|primary)\b|hover:bg-accent|\btext-lg\b|\btext-xs\b|<section className=/)

@@ -96,13 +96,14 @@ test("the four detail pages use ActionBar with its page padding, and the two old
   const page = (route: string) => readFileSync(`src/app/[locale]/(dashboard)/${route}/page.tsx`, "utf8").replace(/\r\n/g, "\n")
   const pages: Record<string, [string, RegExp]> = {
     "assets/[id]": [page("assets/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/],
-    "maintenance/[id]": [page("maintenance/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/],
+    // Group 5 plan 3 G5P3-R8: the repair page's bar lives in its client part, with ซ่อมเสร็จ as primaryAction.
+    "maintenance/[id]": [page("maintenance/[id]"), /<div className=\{`space-y-6 \$\{canComplete \? actionBarPagePadding\.withPrimary : actionBarPagePadding\.single\}`\}>/],
     "disposal/[id]": [page("disposal/[id]"), /<div className=\{`space-y-6 \$\{actionBarPagePadding\.withPrimary\}`\}>/],
     "audit/rounds/[id]": [page("audit/rounds/[id]"), /<div className=\{!isRoundReadOnly \? actionBarPagePadding\.single : undefined\}>/], // the bar's room only where the bar renders (final review M7)
   }
   for (const [route, [source, root]] of Object.entries(pages)) {
     assert.match(source, root, route)
-    if (route === "assets/[id]") continue
+    if (route === "assets/[id]" || route === "maintenance/[id]") continue
     assert.match(source, route === "audit/rounds/[id]" ? /^import \{ ActionBar, actionBarPagePadding, type ActionBarLink \} from "@\/components\/ui\/action-bar"$/m : /^import \{ ActionBar, actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m, route)
     assert.match(source, /<ActionBar\s+label=\{tCommon\("actions"\)\}/, route)
     assert.doesNotMatch(source, /MobileActionBar|\bpb-(?:24|36)\b/, route)
@@ -117,5 +118,11 @@ test("the four detail pages use ActionBar with its page padding, and the two old
   assert.match(disposal, /<ActionBar\n\s+label=\{tCommon\("actions"\)\}\n\s+primaryAction=\{nextActionControl\}\n/)
   assert.match(disposal, /label: t\("openAsset"\), icon: <FileText className="h-4 w-4" \/>, primary: !nextActionControl \}/)
   assert.doesNotMatch(pages["maintenance/[id]"][0], /label: tCommon\("back"\)|ArrowLeft/, "the repair header's PageBackLink is its one back control")
+  const repair = pages["maintenance/[id]"][0]
+  assert.match(repair, /^import \{ actionBarPagePadding \} from "@\/components\/ui\/action-bar"$/m)
+  const repairBar = readFileSync("src/components/maintenance/repair-record-phone-bar.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(repairBar, /^import \{ ActionBar, type ActionBarLink \} from "@\/components\/ui\/action-bar"$/m)
+  assert.match(repairBar, /<ActionBar\s+label=\{tCommon\("actions"\)\}/)
+  assert.doesNotMatch(repair + repairBar, /MobileActionBar|\bpb-(?:24|36)\b|label: tCommon\("back"\)|ArrowLeft/)
   assert.match(pages["audit/rounds/[id]"][0], /\{ href: returnToHref, label: tCommon\("back"\), icon: <ArrowLeft className="h-4 w-4" \/> \}/, "the audit round header has no back link, so its bar keeps one")
 })
