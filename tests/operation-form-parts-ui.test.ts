@@ -99,11 +99,12 @@ test("DESIGN.md and docs/14 describe the three parts after SignaturePad and Form
   const block = design.slice(start, end)
   for (const phrase of [
     "`OperationSummaryCard`", "`AssetConditionChoice`", "`src/components/asset-operations/operation-form-frame.tsx`", "ตอนนี้", "หลังบันทึก",
-    "`<form onSubmit={handleSubmit} noValidate id={formId}>` wraps it", "`FormSection`s", "`form={formId}`", "`</OperationFormFrame>`", "`STICKY_FOOTER_ROUTES`", "no breadcrumb",
+    "`<form onSubmit={handleSubmit} noValidate id={formId}>` wraps it", "`FormSection`s", "`form={formId}`", "`</OperationFormFrame>`", "`STICKY_FOOTER_ROUTES`", "its optional `breadcrumbs` and `back` (only บันทึกซ่อม passes them)",
     "`summaryOnPhone={false}`", "`actions`",
   ]) assert.ok(block.includes(phrase), phrase)
   const index = read("docs/14_UI_UX_DESIGN_SYSTEM.md")
-  const row = index.split("\n").find((line) => line.startsWith("| The frame of ส่งมอบ, รับคืน and โอนย้าย | `OperationFormFrame`"))
+  const row = index.split("\n").find((line) => line.startsWith("| The frame of ส่งมอบ, รับคืน, โอนย้าย and บันทึกซ่อม (optional breadcrumbs and back;"))
   assert.ok(row && index.indexOf(row) > index.indexOf("\n| A numbered form section |"), "a row after FormSection")
+  assert.ok(row?.includes("| `OperationFormFrame` with `OperationSummaryCard` in `summary`"), "the frame's part")
   assert.ok(row?.includes("the page's `<form onSubmit={handleSubmit} noValidate id={formId}>` wraps the frame"), "the form wraps the frame")
 })

@@ -56,7 +56,7 @@ test("docs/14 names Pagination's button mode and gives OperationReviewDialog its
   const at = (start: string) => lines.findIndex((text) => text.startsWith(start))
   assert.ok(lines[at("| Page links under a table | `Pagination`")].endsWith("counts above the list cover every page" + DOCS14_PAGER_TAIL))
   const review = at("| The last check before a transaction saves | `OperationReviewDialog`")
-  assert.equal(review, at("| The frame of ส่งมอบ, รับคืน and โอนย้าย | `OperationFormFrame`") + 1, "right after the frame's row")
+  assert.equal(review, at("| The frame of ส่งมอบ, รับคืน, โอนย้าย and บันทึกซ่อม (optional breadcrumbs and back;") + 1, "right after the frame's row")
   assert.equal(lines[review + 1].startsWith("| The record a form is about | `FormContextBanner`"), true, "before FormContextBanner")
   assert.equal(lines[review], DOCS14_REVIEW_ROW)
 })
