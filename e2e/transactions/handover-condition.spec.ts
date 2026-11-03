@@ -21,6 +21,7 @@ import {
   record,
   saveHandoverForm,
   visit,
+  visitAssetEdit,
   visitAssetPage,
 } from "./tx-support.ts"
 
@@ -43,7 +44,7 @@ async function readCondition(page: Page, assetId: string): Promise<AssetConditio
 
 // The asset edit form, as IT staff: choose the condition by its Thai name and save (PUT /api/assets/<id>).
 async function setConditionOnEditForm(page: Page, measure: Measure, assetId: string, label: string, testInfo: TestInfo) {
-  await visit(measure, `/th/assets/${assetId}/edit`, `asset edit, condition ${label}`, testInfo)
+  await visitAssetEdit(measure, `/th/assets/${assetId}/edit`, `asset edit, condition ${label}`, testInfo)
   const select = page.locator("#asset-condition")
   await expect(select.locator("option", { hasText: new RegExp(`^${label}$`) })).toHaveCount(1)
   await select.selectOption({ label })

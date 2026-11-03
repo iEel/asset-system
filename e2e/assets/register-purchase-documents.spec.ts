@@ -24,6 +24,7 @@ import {
   readAssetMasters,
   record,
   visit,
+  visitAssetEdit,
 } from "../transactions/tx-support.ts"
 import {
   createPurchaseDocumentByApi,
@@ -153,7 +154,7 @@ test.describe("purchase documents on the asset form", () => {
     // B's edit page: เอกสารจัดซื้อ starts folded (§9.1), its summary names both documents and ผูกไว้ 2 ใบ; opened, both
     // chips show with their × (never clicked here: the unlink is sent at บันทึกการแก้ไข, P3-R5, and the suite sends no
     // such request).
-    await visit(measure, `/th/assets/${assetB.id}/edit`, "asset edit, เอกสารจัดซื้อ folded", testInfo)
+    await visitAssetEdit(measure, `/th/assets/${assetB.id}/edit`, "asset edit, เอกสารจัดซื้อ folded", testInfo)
     const edit = documentsSection(page)
     await expect(edit.section).not.toHaveAttribute("open", "")
     await expect(edit.summary).toContainText(`${REGISTER_WORDS.typePurchaseOrder} ${d1.documentNo}`)

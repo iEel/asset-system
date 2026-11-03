@@ -576,3 +576,17 @@ export async function visit(measure: Measure, path: string, label: string, testI
 export async function visitAssetPage(measure: Measure, assetId: string, label: string, testInfo: TestInfo, view?: "history" | "components" | "files" | "maintenance") {
   return visit(measure, `/th/assets/${assetId}${view ? `?view=${view}` : ""}`, label, testInfo)
 }
+// The asset edit page (/th/assets/<id>/edit, with any query). It checks its tag and Serial 450 ms after it opens (the
+// duplicate check of asset-form.tsx): บันทึกการแก้ไข waits (aria-disabled, #asset-save-reason) and fades back to its
+// primary colours (transition-colors, 150 ms) when the answer comes. The load-time settle runs before that timer, so axe
+// read the fade half way: color-contrast on .border-primary in E2E-1103C (phone-dark), E2E-1103G (desktop-light) and
+// E2E-1103H (phone-dark), while the button's colours pass at rest in both themes (8.1:1 light, 6.9:1 dark). So the page
+// is recorded once the check has answered and its wait is gone; record() then waits out the fade.
+export async function visitAssetEdit(measure: Measure, path: string, label: string, testInfo: TestInfo) {
+  const page = measure.page
+  const checked = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/assets/duplicates")
+  await page.goto(path, { waitUntil: "load" })
+  await checked
+  await expect(page.locator("#asset-save-reason")).toHaveCount(0)
+  return record(measure, label, testInfo)
+}
