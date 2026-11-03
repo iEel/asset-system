@@ -1,3 +1,5 @@
+import { loadRepairAssetFacts, type RepairAssetFactsDb } from "./repair-asset-facts.ts"
+import type { RepairAssetFacts } from "./repair-record-outlook.ts"
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 // pmAsset: the PM form's assets, which disables only written-off ones, so an asset under repair can get a plan (G5P1-R13).
@@ -10,12 +12,15 @@ export type MaintenanceOption = {
   reason?: string
   /** An asset's own condition, so the record form can pre-choose ดี or พอใช้ for a finished repair (final review M1). */
   conditionId?: string
+  /** The repair's asset facts, only on the repair form's by-id read (`type: "asset"` with `id`, G5P2-R1). */
+  facts?: RepairAssetFacts
 }
 
 const writtenOffStatusNames = new Set(["disposed", "retired"])
 
 type FindMany = (args: { where: object; select: object; orderBy: object; take: number }) => Promise<unknown[]>
-export type MaintenanceOptionDb = {
+// The by-id asset read also loads the repair's asset facts with the same db (G5P2-R1).
+export type MaintenanceOptionDb = RepairAssetFactsDb & {
   asset: { findMany: FindMany }
   employee: { findMany: FindMany }
   supplier: { findMany: FindMany }
@@ -72,6 +77,14 @@ export async function searchMaintenanceOptions(
       }) as Array<{ assetId: string }>
     : []
   const openRecordAssetIds = new Set(openRecords.map((record) => record.assetId))
+  // Only the repair form's by-id read carries the facts; a search never reads them.
+  const factsById = new Map<string, RepairAssetFacts>()
+  if (id && input.type === "asset") {
+    for (const asset of assets) {
+      const facts = await loadRepairAssetFacts(db, asset.id)
+      if (facts) factsById.set(asset.id, facts)
+    }
+  }
 
   // Only block what can never succeed: written-off assets and assets that already have an
   // unfinished record. Loan and status rules depend on "done / not done" and are explained by the API.
@@ -90,6 +103,7 @@ export async function searchMaintenanceOptions(
       label: `${asset.assetTag} - ${asset.name} (${asset.status.nameTh})`,
       conditionId: asset.conditionId,
       ...(reason ? { disabled: true, reason } : {}),
+      ...(factsById.has(asset.id) ? { facts: factsById.get(asset.id) } : {}),
     }
   })
 }

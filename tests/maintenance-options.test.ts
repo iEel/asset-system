@@ -52,6 +52,7 @@ function fakeDb(config: { assetStatus?: string; openRecordAssetIds?: string[] } 
         state.lastTake = take
         return [{ id: "asset-1", assetTag: "UPS-1", name: "UPS", conditionId: "condition-good", status: { name: config.assetStatus ?? "Ready", nameTh: "พร้อมใช้งาน" } }]
       },
+      findFirst: async () => null,
     },
     employee: {
       findMany: async ({ take }: { take: number }) => {
@@ -67,9 +68,48 @@ function fakeDb(config: { assetStatus?: string; openRecordAssetIds?: string[] } 
         return [{ id: "supplier-1", code: "S001", name: "Supplier" }]
       },
     },
-    maintenanceTicket: { findMany: async () => (config.openRecordAssetIds ?? []).map((assetId) => ({ assetId })) },
+    maintenanceTicket: {
+      findMany: async () => (config.openRecordAssetIds ?? []).map((assetId) => ({ assetId })),
+      findFirst: async () => null,
+    },
+    assetCheckout: { findFirst: async () => null },
+    department: { findFirst: async () => null },
+    location: { findFirst: async () => null },
+    attachment: { findMany: async () => [] },
   }
 }
+
+test("the asset by-id read attaches the repair's asset facts; a search does not read them (G5P2-R1)", async () => {
+  const factsReads: string[] = []
+  const db = fakeDb()
+  const withFacts = {
+    ...db,
+    asset: {
+      ...db.asset,
+      findFirst: async ({ where }: { where: { id?: string } }) => {
+        factsReads.push(where.id ?? "")
+        return {
+          id: "asset-1", assetTag: "UPS-1", name: "UPS", ownershipType: "shared", custodianId: null, conditionId: "condition-good", modelId: null,
+          status: { name: "Ready", nameTh: "พร้อมใช้งาน" }, condition: { nameTh: "ดี" }, custodian: null, department: null,
+          currentLocation: { name: "ห้อง 101", branch: { name: "สำนักงานใหญ่" } },
+        }
+      },
+    },
+  }
+  const byId = await searchMaintenanceOptions(withFacts, { type: "asset", id: "a-1" })
+  assert.equal(byId.length, 1)
+  assert.deepEqual(factsReads, ["asset-1"], "the facts of the asset found")
+  assert.equal(byId[0]?.facts?.statusName, "Ready")
+  assert.equal(byId[0]?.facts?.openRecord, null)
+
+  const searched = await searchMaintenanceOptions(withFacts, { type: "asset", q: "ab" })
+  assert.equal(searched.length, 1)
+  assert.equal("facts" in (searched[0] ?? {}), false)
+  assert.deepEqual(factsReads, ["asset-1"], "a search reads no facts")
+
+  const pm = await searchMaintenanceOptions(withFacts, { type: "pmAsset", id: "a-1" })
+  assert.equal("facts" in (pm[0] ?? {}), false, "only the repair form's asset read carries facts")
+})
 
 test("PM asset options disable only written-off assets: an asset under repair can get a plan (G5P1-R13, decision 10.4)", async () => {
   const open = await searchMaintenanceOptions(fakeDb({ openRecordAssetIds: ["asset-1"] }), { type: "pmAsset", q: "UP" })

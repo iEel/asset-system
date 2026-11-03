@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     if (!maintenanceOptionTypes.includes(type as MaintenanceOptionType)) {
       return NextResponse.json({ error: "Invalid maintenance option type" }, { status: 400 })
     }
+    // The same client serves the by-id asset read's facts (loadRepairAssetFacts, G5P2-R1).
     const data = await searchMaintenanceOptions(prisma as unknown as MaintenanceOptionDb, {
       type: type as MaintenanceOptionType,
       q: request.nextUrl.searchParams.get("q") ?? "",
