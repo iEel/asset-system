@@ -256,3 +256,18 @@ test("the repair record's new refusals read their words: on loan, a date after t
     assert.equal(m.apiErrors.repairOutcomeRequired, outcome[index], locale)
   }
 })
+
+test("the PM plan's new refusals read their words: a written-off asset and a stale edit (G5P1-R11, G5P1-R12)", () => {
+  const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+  assert.equal(getApiErrorKey("MAINTENANCE_PLAN_ASSET_WRITTEN_OFF"), "maintenancePlanAssetWrittenOff")
+  assert.equal(getApiErrorKey("MAINTENANCE_PLAN_CONFLICT"), "maintenancePlanConflict")
+  const writtenOff = ["ทรัพย์สินนี้ตัดจำหน่ายหรือปลดระวางแล้ว ตั้งแผน PM ไม่ได้", "This asset is disposed or retired; a PM plan cannot be set up"]
+  const conflict = ["แผนนี้ถูกแก้ไขหรือบันทึกว่าทำแล้วระหว่างที่เปิดหน้านี้ โหลดหน้าใหม่แล้วแก้อีกครั้ง", "This plan was edited or recorded as done while this page was open. Reload the page and edit again."]
+  for (const [index, locale] of (["th", "en"] as const).entries()) {
+    const m = messages(locale)
+    assert.equal(m.apiErrors.maintenancePlanAssetWrittenOff, writtenOff[index], locale)
+    assert.equal(m.maintenancePage.errors.MAINTENANCE_PLAN_ASSET_WRITTEN_OFF, writtenOff[index], locale)
+    assert.equal(m.apiErrors.maintenancePlanConflict, conflict[index], locale)
+    assert.equal(m.maintenancePage.errors.MAINTENANCE_PLAN_CONFLICT, conflict[index], locale)
+  }
+})

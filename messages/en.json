@@ -3357,7 +3357,9 @@
       "MAINTENANCE_REPORTER_REQUIRED": "Select who is recording this repair",
       "ASSET_CONDITION_NOT_SELECTABLE": "Choose Good or Fair after a repair.",
       "ASSET_STATE_MASTER_NOT_FOUND": "No active asset condition was found",
-      "MAINTENANCE_DATE_IN_FUTURE": "The date cannot be after today"
+      "MAINTENANCE_DATE_IN_FUTURE": "The date cannot be after today",
+      "MAINTENANCE_PLAN_ASSET_WRITTEN_OFF": "This asset is disposed or retired; a PM plan cannot be set up",
+      "MAINTENANCE_PLAN_CONFLICT": "This plan was edited or recorded as done while this page was open. Reload the page and edit again."
     },
     "statuses": {
       "open": "Open",
@@ -5228,7 +5230,9 @@
     "purchaseDocumentSupplierInactive": "This supplier does not exist or is inactive. Choose another.",
     "batchOneDocumentFile": "A batch takes one purchase document file.",
     "repairDateInFuture": "The date cannot be after today",
-    "repairOutcomeRequired": "Choose the repair result"
+    "repairOutcomeRequired": "Choose the repair result",
+    "maintenancePlanAssetWrittenOff": "This asset is disposed or retired; a PM plan cannot be set up",
+    "maintenancePlanConflict": "This plan was edited or recorded as done while this page was open. Reload the page and edit again."
   },
   "session": {
     "idleWarning": "Signing you out in {time} min for inactivity · anything you have typed is not saved yet",

@@ -33,3 +33,12 @@ test("a date after Bangkok today has its own code, answered under its field (G5P
     body: { code: "MAINTENANCE_DATE_IN_FUTURE", error: "The date cannot be after today", fieldErrors: { returnDate: "repairDateInFuture" } },
   })
 })
+
+test("a PM plan has its own codes: a written-off asset and a stale edit (G5P1-R11, R12)", () => {
+  for (const code of ["MAINTENANCE_PLAN_ASSET_WRITTEN_OFF", "MAINTENANCE_PLAN_CONFLICT"]) assert.equal(isMaintenanceErrorCode(code), true, code)
+  const error = new MaintenanceApiError("MAINTENANCE_PLAN_CONFLICT", "The PM plan changed just now; reload and edit again", 409)
+  assert.deepEqual(getMaintenanceErrorPayload(error), {
+    status: 409,
+    body: { code: "MAINTENANCE_PLAN_CONFLICT", error: "The PM plan changed just now; reload and edit again" },
+  })
+})

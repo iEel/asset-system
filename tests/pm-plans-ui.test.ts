@@ -46,3 +46,13 @@ test("an edited PM plan says it was saved, not created (critique 2026-10-20 D1)"
   assert.doesNotMatch(form, /toast\.success\(t\("pmCreateSuccess"\)\)/)
   for (const l of ["th", "en"]) assert.equal(typeof JSON.parse(readFileSync(`messages/${l}.json`, "utf8")).maintenancePage.pmUpdateSuccess, "string")
 })
+
+test("the PM form offers PM asset options with their reasons and sends the plan's updatedAt with an edit (G5P1-R12, R13)", () => {
+  const form = readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8")
+  const edit = readFileSync("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx", "utf8")
+  assert.match(form, /type="pmAsset"/)
+  assert.match(form, /formatReason=\{\(code\) => getMaintenanceErrorMessage\(code, t, code\)\}/)
+  assert.match(form, /expectedUpdatedAt\?: string/)
+  assert.match(form, /\{ action: "update", expectedUpdatedAt \}/)
+  assert.match(edit, /expectedUpdatedAt=\{plan\.updatedAt\.toISOString\(\)\}/)
+})

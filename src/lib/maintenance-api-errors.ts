@@ -11,6 +11,9 @@ export const maintenanceErrorCodes = [
   "MAINTENANCE_REPORTER_REQUIRED",
   // A record or completion date after Bangkok today (group 5 spec §5, G5P1-R6).
   "MAINTENANCE_DATE_IN_FUTURE",
+  // A PM plan for a Disposed or Retired asset, and a PM edit from a page opened before the plan changed (G5P1-R11, R12).
+  "MAINTENANCE_PLAN_ASSET_WRITTEN_OFF",
+  "MAINTENANCE_PLAN_CONFLICT",
   // The condition a repair ends in (group 3 spec §19.4): the codes the asset routes already answer for a condition.
   "ASSET_STATE_MASTER_NOT_FOUND",
   "ASSET_CONDITION_NOT_SELECTABLE",

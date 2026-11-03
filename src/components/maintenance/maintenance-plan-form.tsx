@@ -57,6 +57,7 @@ export function MaintenancePlanForm({
   planId,
   initialValues,
   returnHref = `/${locale}/maintenance/pm`,
+  expectedUpdatedAt,
 }: {
   locale: string
   initialAsset?: Option
@@ -71,6 +72,8 @@ export function MaintenancePlanForm({
   }>
   // Where a save goes: the edit page passes the PM list page it was opened from (its returnTo, spec 2B B4).
   returnHref?: string
+  // The plan's updatedAt as the edit page read it: a save after the plan changed is refused (G5P1-R12).
+  expectedUpdatedAt?: string
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -108,7 +111,7 @@ export function MaintenancePlanForm({
         method: planId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(planId ? { action: "update" } : { assetId: values.assetId }),
+          ...(planId ? { action: "update", expectedUpdatedAt } : { assetId: values.assetId }),
           title: values.title,
           frequency: values.frequency,
           intervalDays: values.frequency === "custom" ? values.intervalDays : null,
@@ -137,7 +140,7 @@ export function MaintenancePlanForm({
       <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MaintenanceOptionSelect
           id="maintenance-plan-asset"
-          type="asset"
+          type="pmAsset"
           label={t("asset")}
           value={values.assetId}
           required
@@ -148,6 +151,7 @@ export function MaintenancePlanForm({
           emptyLabel={tCommon("searchSelectNoResults")}
           loadingLabel={tCommon("loading")}
           error={fieldErrors.message("assetId")}
+          formatReason={(code) => getMaintenanceErrorMessage(code, t, code)}
           onChange={(value) => setField("assetId", value)}
         />
         <Field label={t("pmPlanTitle")} id="maintenance-plan-title" required error={fieldErrors.message("title")}>

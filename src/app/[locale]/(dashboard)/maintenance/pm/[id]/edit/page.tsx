@@ -38,6 +38,7 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
         locale={locale}
         planId={plan.id}
         returnHref={returnTo}
+        expectedUpdatedAt={plan.updatedAt.toISOString()}
         initialAsset={{ id: plan.asset.id, label: `${plan.asset.assetTag} - ${plan.asset.name} (${plan.asset.status.nameTh})` }}
         initialValues={{
           title: plan.title,

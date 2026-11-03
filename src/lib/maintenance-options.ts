@@ -1,6 +1,7 @@
 import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
-export const maintenanceOptionTypes = ["asset", "employee", "supplier"] as const
+// pmAsset: the PM form's assets, which disables only written-off ones, so an asset under repair can get a plan (G5P1-R13).
+export const maintenanceOptionTypes = ["asset", "pmAsset", "employee", "supplier"] as const
 export type MaintenanceOptionType = (typeof maintenanceOptionTypes)[number]
 export type MaintenanceOption = {
   id: string
@@ -64,7 +65,7 @@ export async function searchMaintenanceOptions(
     orderBy: { assetTag: "asc" },
     take: 50,
   }) as Array<{ id: string; assetTag: string; name: string; conditionId: string; status: { name: string; nameTh: string } }>
-  const openRecords = assets.length
+  const openRecords = assets.length && input.type === "asset"
     ? await db.maintenanceTicket.findMany({
         where: { ...openRepairRecordWhere, assetId: { in: assets.map((asset) => asset.id) } },
         select: { assetId: true },
@@ -74,12 +75,16 @@ export async function searchMaintenanceOptions(
 
   // Only block what can never succeed: written-off assets and assets that already have an
   // unfinished record. Loan and status rules depend on "done / not done" and are explained by the API.
+  // A PM plan may be set up for an asset under repair, so pmAsset blocks only written-off assets (decision 10.4).
   return assets.map((asset) => {
-    const reason = writtenOffStatusNames.has(asset.status.name.trim().toLowerCase())
-      ? "MAINTENANCE_ASSET_WRITTEN_OFF"
-      : openRecordAssetIds.has(asset.id)
-        ? "MAINTENANCE_OPEN_RECORD_EXISTS"
-        : null
+    const writtenOff = writtenOffStatusNames.has(asset.status.name.trim().toLowerCase())
+    const reason = input.type === "pmAsset"
+      ? writtenOff ? "MAINTENANCE_PLAN_ASSET_WRITTEN_OFF" : null
+      : writtenOff
+        ? "MAINTENANCE_ASSET_WRITTEN_OFF"
+        : openRecordAssetIds.has(asset.id)
+          ? "MAINTENANCE_OPEN_RECORD_EXISTS"
+          : null
     return {
       id: asset.id,
       label: `${asset.assetTag} - ${asset.name} (${asset.status.nameTh})`,

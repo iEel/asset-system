@@ -28,6 +28,8 @@ const maintenancePlanUpdateSchema = z.object({
   nextDueDate: z.coerce.date(),
   vendorId: optionalText,
   notes: optionalText,
+  // The plan as the edit page read it: a save after the plan changed is refused (G5P1-R12).
+  expectedUpdatedAt: z.coerce.date(),
 })
 
 export const maintenancePlanActionSchema = z.discriminatedUnion("action", [

@@ -70,3 +70,16 @@ function fakeDb(config: { assetStatus?: string; openRecordAssetIds?: string[] } 
     maintenanceTicket: { findMany: async () => (config.openRecordAssetIds ?? []).map((assetId) => ({ assetId })) },
   }
 }
+
+test("PM asset options disable only written-off assets: an asset under repair can get a plan (G5P1-R13, decision 10.4)", async () => {
+  const open = await searchMaintenanceOptions(fakeDb({ openRecordAssetIds: ["asset-1"] }), { type: "pmAsset", q: "UP" })
+  assert.equal(open[0]?.disabled, undefined)
+  assert.equal(open[0]?.reason, undefined)
+  for (const status of ["Disposed", "Retired"]) {
+    const [option] = await searchMaintenanceOptions(fakeDb({ assetStatus: status }), { type: "pmAsset", q: "UP" })
+    assert.equal(option?.disabled, true, status)
+    assert.equal(option?.reason, "MAINTENANCE_PLAN_ASSET_WRITTEN_OFF", status)
+  }
+  const [repair] = await searchMaintenanceOptions(fakeDb({ openRecordAssetIds: ["asset-1"] }), { type: "asset", q: "UP" })
+  assert.equal(repair?.reason, "MAINTENANCE_OPEN_RECORD_EXISTS", "the repair form's asset options are unchanged")
+})

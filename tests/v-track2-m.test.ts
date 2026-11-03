@@ -83,7 +83,7 @@ test("maintenance refusals about a field name it: the reporter and the vendor of
   const update = { action: "update" as const, expectedUpdatedAt: new Date("2026-10-18T00:00:00Z"), reportedDate: new Date("2026-10-18T00:00:00Z"), problem: "จอไม่ติด", vendorId: "vendor-9", repairCost: null, invoiceNo: null, remark: null }
   await assert.rejects(updateRepairRecordDetails(fakeMaintenanceDb(noVendor) as never, "ticket-1", update, user), refusal({ vendorId: "vendorNotFound" }, "Vendor not found or inactive"))
   // The PM plan's edit refuses an inactive vendor as its create does (plan 1 S10 answered the create only).
-  const plan = { action: "update" as const, title: "PM", frequency: "monthly" as const, intervalDays: undefined, nextDueDate: new Date("2026-11-01T00:00:00Z"), vendorId: "vendor-9", notes: undefined }
+  const plan = { action: "update" as const, title: "PM", frequency: "monthly" as const, intervalDays: undefined, nextDueDate: new Date("2026-11-01T00:00:00Z"), vendorId: "vendor-9", notes: undefined, expectedUpdatedAt: new Date("2026-11-01T00:00:00Z") }
   await assert.rejects(mutateMaintenancePlan(fakeMaintenanceDb(noVendor) as never, "plan-1", plan, "user-1"), refusal({ vendorId: "pmVendorNotFound" }, "PM vendor not found or inactive"))
 
   // The routes answer a FieldRefusalError through errorResponse (S-R6) and a MaintenanceApiError through its payload.
@@ -174,7 +174,7 @@ test("PM plan: errors under the field, the asset select checked, whole days from
   // The days say their range (plan 1 M-R4: a field with limits says its numbers).
   assert.ok(source.includes("error={fieldErrors.errors.intervalDays ? validationMessage(fieldErrors.errors.intervalDays, { min: 1, max: 3650 }) : undefined}"))
   // The asset select was an asterisk nothing checked (spec §5): it has an id for focus and shows its error.
-  assert.match(source, /<MaintenanceOptionSelect\n\s+id="maintenance-plan-asset"\n\s+type="asset"\n[\s\S]*?\n\s+required\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("assetId"\)\}\n/)
+  assert.match(source, /<MaintenanceOptionSelect\n\s+id="maintenance-plan-asset"\n\s+type="pmAsset"\n[\s\S]*?\n\s+required\n[\s\S]*?\n\s+error=\{fieldErrors\.message\("assetId"\)\}\n/)
   // A field's error clears when it changes; a frequency change also clears the days, which only a custom frequency shows.
   assert.match(source, /setValues\(\(current\) => \(\{ \.\.\.current, \[field\]: value \}\)\)\n[^\n]*\n\s+if \(field === "frequency"\) fieldErrors\.clear\("frequency", "intervalDays"\)\n\s+else fieldErrors\.clear\(field\)/)
   // A refusal with a field (the vendor, a zod 400) lands under it; any other keeps the domain message.

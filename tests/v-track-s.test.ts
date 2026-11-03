@@ -452,7 +452,7 @@ test("asset, operation, maintenance and import refusals about a field name it; t
   })
 
   const plans = await load<{ POST: Handler }>("src/app/api/maintenance-plans/route.ts")
-  stubDb({ asset: { findFirst: () => ({ id: "asset-1" }) }, supplier: { findFirst: () => null } })
+  stubDb({ asset: { findFirst: () => ({ id: "asset-1", status: { name: "Ready" } }) }, supplier: { findFirst: () => null } })
   await expectBody(await plans.POST(jsonRequest("POST", { assetId: "asset-1", title: "PM", frequency: "monthly", intervalDays: "", nextDueDate: "2026-11-01", vendorId: "vendor-x", notes: "" }), params), 400, {
     error: "PM vendor not found or inactive", fieldErrors: { vendorId: "pmVendorNotFound" },
   })

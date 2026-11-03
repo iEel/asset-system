@@ -3357,7 +3357,9 @@
       "MAINTENANCE_REPORTER_REQUIRED": "กรุณาเลือกผู้บันทึก",
       "ASSET_CONDITION_NOT_SELECTABLE": "สภาพนี้ใช้หลังซ่อมไม่ได้ เลือก ดี หรือ พอใช้",
       "ASSET_STATE_MASTER_NOT_FOUND": "ไม่พบสภาพทรัพย์สินที่ยังใช้งานอยู่",
-      "MAINTENANCE_DATE_IN_FUTURE": "วันที่ต้องไม่หลังวันนี้"
+      "MAINTENANCE_DATE_IN_FUTURE": "วันที่ต้องไม่หลังวันนี้",
+      "MAINTENANCE_PLAN_ASSET_WRITTEN_OFF": "ทรัพย์สินนี้ตัดจำหน่ายหรือปลดระวางแล้ว ตั้งแผน PM ไม่ได้",
+      "MAINTENANCE_PLAN_CONFLICT": "แผนนี้ถูกแก้ไขหรือบันทึกว่าทำแล้วระหว่างที่เปิดหน้านี้ โหลดหน้าใหม่แล้วแก้อีกครั้ง"
     },
     "statuses": {
       "open": "เปิดงาน",
@@ -5228,7 +5230,9 @@
     "purchaseDocumentSupplierInactive": "ผู้ขายนี้ไม่มีในระบบหรือถูกปิดใช้งานแล้ว เลือกผู้ขายรายอื่น",
     "batchOneDocumentFile": "ชุดนี้แนบไฟล์เอกสารจัดซื้อได้ 1 ไฟล์",
     "repairDateInFuture": "วันที่ต้องไม่หลังวันนี้",
-    "repairOutcomeRequired": "เลือกผลการซ่อม"
+    "repairOutcomeRequired": "เลือกผลการซ่อม",
+    "maintenancePlanAssetWrittenOff": "ทรัพย์สินนี้ตัดจำหน่ายหรือปลดระวางแล้ว ตั้งแผน PM ไม่ได้",
+    "maintenancePlanConflict": "แผนนี้ถูกแก้ไขหรือบันทึกว่าทำแล้วระหว่างที่เปิดหน้านี้ โหลดหน้าใหม่แล้วแก้อีกครั้ง"
   },
   "session": {
     "idleWarning": "จะออกจากระบบใน {time} นาทีเพราะไม่มีการใช้งาน · งานที่กรอกค้างไว้ยังไม่ถูกบันทึก",
