@@ -17,6 +17,9 @@ export type RepairDetailRecord = {
   maintenancePlanId: string | null
 }
 
+/** The next-step card's heading: focus lands there after ซ่อมเสร็จ or ยกเลิกบันทึก, whose opener the refresh removes. */
+export const REPAIR_NEXT_STEP_TITLE_ID = "repair-next-step-title"
+
 export type RepairDurationKey = "sentDays" | "repairDays" | "sentToday" | "repairToday"
 
 /** The day count while the record is open: "sent" with a vendor, "repair" without, "Today" on day 0. */
@@ -29,7 +32,13 @@ export function repairDurationLine(record: RepairDetailRecord, now: Date): { key
   return { key: sent ? "sentDays" : "repairDays", days }
 }
 
-export type RepairDisposalStep = { kind: "assetDisposed" } | { kind: "openRequest"; id: string; disposalNo: string } | { kind: "canRequest" }
+// After ซ่อมไม่ได้ (spec §5, decision 9): a Disposed or Retired asset is written off; an open request is shown; a
+// รอตัดจำหน่าย asset without one can be requested; any other status (corrected after the close) has no disposal step.
+export type RepairDisposalStep =
+  | { kind: "writtenOff" }
+  | { kind: "openRequest"; id: string; disposalNo: string }
+  | { kind: "canRequest" }
+  | { kind: "none" }
 
 export type RepairNextStep =
   | { kind: "open"; vendorName: string | null; rows: RepairCompleteRow[] }
@@ -58,14 +67,24 @@ export function buildRepairNextStep(input: {
   }
   if (record.outcome === "usable") return { kind: "closedUsable", returnDate: record.returnDate, statusName: facts.statusName }
   if (record.outcome === "beyond_repair") {
-    const disposal: RepairDisposalStep = normalizeAssetStateName(facts.statusName) === "disposed"
-      ? { kind: "assetDisposed" }
+    const status = normalizeAssetStateName(facts.statusName)
+    const disposal: RepairDisposalStep = writtenOffStatusNames.has(status)
+      ? { kind: "writtenOff" }
       : openDisposal
         ? { kind: "openRequest", id: openDisposal.id, disposalNo: openDisposal.disposalNo }
-        : { kind: "canRequest" }
+        : status === "pending disposal"
+          ? { kind: "canRequest" }
+          : { kind: "none" }
     return { kind: "closedBeyond", returnDate: record.returnDate, disposal }
   }
   return { kind: "closedNoOutcome", returnDate: record.returnDate }
+}
+
+const writtenOffStatusNames: ReadonlySet<string> = new Set(["disposed", "retired"])
+
+/** The card shows ยื่นคำขอตัดจำหน่าย or the open request: the disposal-review panel then hides its own button (G5P3-R7). */
+export function nextStepOffersDisposal(step: RepairNextStep): boolean {
+  return step.kind === "closedBeyond" && (step.disposal.kind === "canRequest" || step.disposal.kind === "openRequest")
 }
 
 export type RepairHistoryLabelKey = "create" | "statusUpdate" | "close" | "cancel" | "pmCreate" | "conditionChange" | "fallback"
@@ -93,6 +112,8 @@ export type RepairHistoryMovement = {
   fromLabel: RepairHistoryValue | null
   toLabel: RepairHistoryValue | null
   reason: string | null
+  // The record the movement belongs to: a condition change repeats its close's remark under the same reference.
+  referenceId?: string | null
 }
 
 export type RepairHistoryAttachment = { id: string; uploadedAt: Date; uploadedBy: string; type: string }
@@ -117,9 +138,19 @@ export function buildRepairHistory(input: {
   actorById: Map<string, string>
 }): RepairHistoryEvent[] {
   const { record, movements, attachments, actorById } = input
+  // A movement keeps the problem cut to 500 characters (toMovementReason), so both forms count as the problem.
   const problem = record.problem.trim()
-  const events: Array<Exclude<RepairHistoryEvent, { kind: "future" }>> = movements.map((movement) => {
+  const problemReason = record.problem.slice(0, 500).trim()
+  const ordered = [...movements].sort((a, b) => a.performedAt.getTime() - b.performedAt.getTime())
+  const events: Array<Exclude<RepairHistoryEvent, { kind: "future" }>> = ordered.map((movement, index) => {
     const reason = movement.reason?.trim() ?? ""
+    const previous = index > 0 ? ordered[index - 1] : null
+    // The close and its condition change share the remark: the condition change does not repeat it (final review 7).
+    const repeatsPrevious =
+      movement.movementType === "condition_change" &&
+      previous !== null &&
+      (previous.referenceId ?? null) === (movement.referenceId ?? null) &&
+      (previous.reason?.trim() ?? "") === reason
     return {
       kind: "movement",
       id: movement.id,
@@ -129,7 +160,7 @@ export function buildRepairHistory(input: {
       to: movement.toLabel,
       actor: actorById.get(movement.performedBy) ?? null,
       // G5P3-R6: the reason shows only when it differs from the record's problem.
-      reason: reason && reason !== problem ? reason : null,
+      reason: reason && reason !== problem && reason !== problemReason && !repeatsPrevious ? reason : null,
     }
   })
 

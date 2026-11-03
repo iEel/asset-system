@@ -9,17 +9,19 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { formatAssetDetailDate } from "@/lib/asset-detail-frame-rules"
 import { getAssetStateTone } from "@/lib/design-system"
-import type { RepairNextStep } from "@/lib/repair-record-detail-rules"
+import { REPAIR_NEXT_STEP_TITLE_ID, type RepairNextStep } from "@/lib/repair-record-detail-rules"
 import type { RepairCompleteNote, RepairCompleteRow } from "@/lib/repair-record-outlook"
 import { cn } from "@/lib/utils"
 
 // The record's next-step card (group 5 spec §8.2, §8.6): a plain ContentPanel as the audit round's next step, with the
 // state on data-repair-next-step. Open: the title by the vendor, what ซ่อมเสร็จ will do per result (one row per
 // RepairCompleteRow; a refused row is the early refusal with รับคืน), and from md the buttons ซ่อมเสร็จ (edit),
-// แนบรูปก่อนซ่อม (when the person may upload) and เปิดหน้าทรัพย์สิน. A create-only person reads who presses ซ่อมเสร็จ; a viewer
-// sees the rows and เปิดหน้าทรัพย์สิน only. The phone reads the compact form: the current status in one line, then one
-// block per result, with no buttons (the bar holds them). Closed and cancelled records say what the close left; after
-// ซ่อมไม่ได้, the disposal step (G5P3-R7). Server-safe: ซ่อมเสร็จ is a client part that opens the provider's dialog.
+// แนบรูปก่อนซ่อม (when the person may upload) and เปิดหน้าทรัพย์สิน, a row under the table below xl and a column beside it
+// from xl. A create-only person reads who presses ซ่อมเสร็จ; a viewer sees the rows and เปิดหน้าทรัพย์สิน only. The phone
+// reads the compact form: the current status in one line, then one block per result, with no buttons (the bar holds
+// them). Closed and cancelled records say what the close left; after ซ่อมไม่ได้, the disposal step only while the asset
+// is รอตัดจำหน่าย or has an open request (G5P3-R7, spec §5). Its heading is the focus target after ซ่อมเสร็จ or
+// ยกเลิกบันทึก (REPAIR_NEXT_STEP_TITLE_ID). Server-safe: ซ่อมเสร็จ is a client part that opens the provider's dialog.
 export function RepairNextStepCard({
   nextStep,
   locale,
@@ -32,6 +34,7 @@ export function RepairNextStepCard({
   canAttach,
   canReturn,
   canCreateDisposal,
+  canViewDisposal,
   disposalRequestHref,
 }: {
   nextStep: RepairNextStep
@@ -46,6 +49,8 @@ export function RepairNextStepCard({
   canAttach: boolean
   canReturn: boolean
   canCreateDisposal: boolean
+  // disposal:view, the disposal page's permission: without it the open request is its number, not a link.
+  canViewDisposal: boolean
   disposalRequestHref: string
 }) {
   const t = useTranslations("repairRecord")
@@ -69,7 +74,8 @@ export function RepairNextStepCard({
 
   let title: string
   let body: ReactNode
-  let buttons: ReactNode = <div className="hidden md:flex md:flex-col md:gap-2">{openAssetLink}</div>
+  // From md the buttons are a row under the body; only from xl a column beside it (final review 4).
+  let buttons: ReactNode = <div className="hidden md:flex md:flex-wrap md:gap-2 xl:flex-col">{openAssetLink}</div>
 
   if (nextStep.kind === "open") {
     title = nextStep.vendorName ? t("detail.nextOpenVendor", { vendor: nextStep.vendorName }) : t("detail.nextOpenInternal")
@@ -82,8 +88,10 @@ export function RepairNextStepCard({
           {currentBadge}
           {phoneAfter}
         </p>
-        <div role="table" aria-label={title} className="grid gap-2 md:gap-0 md:rounded-md md:border md:border-border">
-          <div role="row" className="hidden md:grid md:grid-cols-[minmax(0,11rem)_minmax(0,10rem)_minmax(0,1fr)] md:gap-4 md:border-b md:border-border md:px-3 md:py-2 md:text-meta md:text-muted-foreground">
+        {/* One set of tracks for the head and the rows (subgrid): auto below xl, so หลังกดซ่อมเสร็จ keeps its room with
+            the buttons in a row under the table, fixed from xl beside the buttons' column (final review 4). */}
+        <div role="table" aria-label={title} className="grid gap-2 md:grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)] xl:grid-cols-[minmax(0,11rem)_minmax(0,10rem)_minmax(0,1fr)] md:gap-0 md:rounded-md md:border md:border-border">
+          <div role="row" className="hidden md:col-span-3 md:grid-cols-subgrid md:grid md:gap-4 md:border-b md:border-border md:px-3 md:py-2 md:text-meta md:text-muted-foreground">
             <span role="columnheader">{t("detail.headOutcome")}</span>
             <span role="columnheader">{t("detail.headNow")}</span>
             <span role="columnheader">{t("detail.headAfter")}</span>
@@ -93,7 +101,7 @@ export function RepairNextStepCard({
               key={row.outcome}
               role="row"
               data-repair-outcome-row={row.outcome}
-              className="grid gap-1.5 rounded-md border border-border p-3 text-sm md:grid-cols-[minmax(0,11rem)_minmax(0,10rem)_minmax(0,1fr)] md:gap-4 md:rounded-none md:border-0 md:border-b md:border-border-soft md:px-3 md:py-2.5 md:last:border-b-0"
+              className="grid gap-1.5 rounded-md border border-border p-3 text-sm md:col-span-3 md:grid-cols-subgrid md:gap-4 md:rounded-none md:border-0 md:border-b md:border-border-soft md:px-3 md:py-2.5 md:last:border-b-0"
             >
               <span role="cell" className="font-medium text-foreground md:font-normal">
                 <span className="md:hidden">{t(row.outcome === "usable" ? "detail.ifUsable" : "detail.ifBeyond")}</span>
@@ -114,7 +122,7 @@ export function RepairNextStepCard({
       </div>
     )
     buttons = (
-      <div className="hidden md:flex md:w-52 md:flex-col md:gap-2 [&>*]:w-full">
+      <div className="hidden md:flex md:flex-wrap md:gap-2 xl:w-52 xl:flex-col xl:[&>*]:w-full">
         {canEdit ? <RepairCompleteButton /> : null}
         {canAttach ? (
           <a href="#attachments" className={buttonVariants({ variant: "outline", size: "md" })}>
@@ -147,17 +155,25 @@ export function RepairNextStepCard({
           )}
         </div>
       )
+    } else if (disposal.kind === "none") {
+      title = closedLine
+      body = statusNow
     } else {
+      // An open request (a link with disposal:view, else its number), or a Disposed or Retired asset (G5P3-R7).
       title = closedLine
       body = (
         <div className="space-y-2">
           {disposal.kind === "openRequest" ? (
-            <Link href={`/${locale}/disposal/${disposal.id}`} className={cn(linkVariants({ size: "inherit" }), "text-sm")}>
-              {t("detail.disposalOpen", { disposalNo: disposal.disposalNo })}
-            </Link>
-          ) : (
-            <p className="text-sm text-foreground">{t("detail.assetDisposed")}</p>
-          )}
+            canViewDisposal ? (
+              <Link href={`/${locale}/disposal/${disposal.id}`} className={cn(linkVariants({ size: "inherit" }), "text-sm")}>
+                {t("detail.disposalOpen", { disposalNo: disposal.disposalNo })}
+              </Link>
+            ) : (
+              <p className="text-sm text-foreground">{t("detail.disposalOpen", { disposalNo: disposal.disposalNo })}</p>
+            )
+          ) : disposal.kind === "writtenOff" ? (
+            <p className="text-sm text-foreground">{t("detail.writtenOff")}</p>
+          ) : null}
           {statusNow}
         </div>
       )
@@ -170,11 +186,10 @@ export function RepairNextStepCard({
     body = (
       <div className="space-y-2">
         {nextStep.reason ? (
-          <p className="text-sm text-muted-foreground">
-            <span className="text-foreground">{t("cancelReason")}</span>
-            {" · "}
-            <span className="whitespace-pre-wrap">{nextStep.reason}</span>
-          </p>
+          <div>
+            <p className="text-sm text-muted-foreground">{t("detail.cancelReason")}</p>
+            <p className="whitespace-pre-wrap text-sm text-foreground">{nextStep.reason}</p>
+          </div>
         ) : null}
         {statusNow}
       </div>
@@ -183,8 +198,8 @@ export function RepairNextStepCard({
 
   return (
     <div data-repair-next-step={nextStep.kind}>
-      <ContentPanel title={title}>
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+      <ContentPanel title={title} titleId={REPAIR_NEXT_STEP_TITLE_ID}>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
           <div className="min-w-0">{body}</div>
           {buttons}
         </div>

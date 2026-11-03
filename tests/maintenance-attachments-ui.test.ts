@@ -21,6 +21,18 @@ test("maintenance detail lets recorders attach and editors delete, and passes th
   assert.match(source, /canEdit=\{canAttach\}/)
   assert.match(source, /canDelete=\{canEdit\}/)
   assert.match(source, /<MaintenanceAttachments[^>]*repairStatus=\{ticket\.repairStatus\}/)
+  // Final review 3: the state is the key, so after ซ่อมเสร็จ the refresh remounts the panel with the new default type.
+  assert.match(source, /<MaintenanceAttachments key=\{ticket\.repairStatus\} /)
+})
+
+test("after a delete in the preview, focus goes to the panel's heading, not to <body> (final review 10)", () => {
+  const source = read(COMPONENT)
+  assert.match(source, /<ContentPanel\n\s+title=\{t\("attachments"\)\}\n\s+titleId=\{ATTACHMENTS_TITLE_ID\}/)
+  assert.match(source, /focusHeadingOnClose\.current = true\n\s+setPreview\(null\)/)
+  assert.match(source, /onCloseAutoFocus=\{\(event\) => \{\n\s+if \(!focusHeadingOnClose\.current\) return\n\s+focusHeadingOnClose\.current = false\n\s+event\.preventDefault\(\)\n\s+document\.getElementById\(ATTACHMENTS_TITLE_ID\)\?\.focus\(\)/)
+  const dialog = read("src/components/ui/attachment-preview-dialog.tsx")
+  assert.match(dialog, /onCloseAutoFocus\?: \(event: Event\) => void/)
+  assert.match(dialog, /<DialogContent\n\s+onCloseAutoFocus=\{onCloseAutoFocus\}/)
 })
 
 test("the attachment type select uses Field and NativeSelect (2C batch 1a), and delete asks through useConfirm (K12, batch 5)", () => {
@@ -50,8 +62,10 @@ test("the camera opens only for a photo type, and the drop zone reads ถ่า�
   assert.match(source, /capture=\{isMaintenancePhotoType\(attachmentType\) \? "environment" : undefined\}/)
   assert.match(source, /title=\{t\("dropAttachmentTitle"\)\}/)
   assert.equal(source.match(/capture=/g)?.length, 1)
-  // The sub-line names the photo to take; the other types keep "or click to choose a file".
-  assert.match(source, /browseLabel=\{\n?\s*isMaintenancePhotoType\(attachmentType\)\n?\s*\? t\(attachmentType === "before_repair" \? "takeBeforePhoto" : "takeAfterPhoto"\)\n?\s*: t\("dropFileHint"\)/)
+  // The sub-line names the photo to take below md only, where the camera opens; from md, and for the other types, it
+  // keeps "or click to choose a file" (final review 12, as the asset photo frame).
+  assert.match(source, /browseLabel=\{\n\s+isMaintenancePhotoType\(attachmentType\) \? \(\n\s+<>\n\s+<span className="md:hidden">\{t\(attachmentType === "before_repair" \? "takeBeforePhoto" : "takeAfterPhoto"\)\}<\/span>\n\s+<span className="hidden md:inline">\{t\("dropFileHint"\)\}<\/span>\n\s+<\/>\n\s+\) : \(\n\s+t\("dropFileHint"\)\n\s+\)\n\s+\}/)
+  assert.match(read("src/components/ui/file-dropzone.tsx"), /browseLabel: React\.ReactNode/)
 })
 
 test("the thumbnails are small, open AttachmentPreviewDialog, and keep download and delete in the preview", () => {

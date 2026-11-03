@@ -4,6 +4,9 @@ import { getPanelClasses } from "@/lib/design-system"
 
 type ContentPanelProps = {
   title?: string
+  // The heading's id. It also makes the heading a focus target (tabIndex -1), so a client part can move focus there
+  // when the control that had it goes away (the repair record, group 5 plan 3 final review 10).
+  titleId?: string
   description?: string
   actions?: React.ReactNode
   children: React.ReactNode
@@ -16,7 +19,7 @@ type ContentPanelProps = {
   | { divided: true; flush?: boolean }
 )
 
-export function ContentPanel({ title, description, actions, children, className, divided = false, flush = false }: ContentPanelProps) {
+export function ContentPanel({ title, titleId, description, actions, children, className, divided = false, flush = false }: ContentPanelProps) {
   if (divided) {
     return (
       <section className={cn(getPanelClasses(), className)}>
@@ -24,7 +27,7 @@ export function ContentPanel({ title, description, actions, children, className,
           <div data-slot="content-panel-head" className="flex min-h-14 min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5 md:px-5">
             {title || description ? (
               <div className="min-w-0">
-                {title ? <h2 className="text-base font-semibold text-foreground text-balance">{title}</h2> : null}
+                {title ? <h2 id={titleId} tabIndex={titleId ? -1 : undefined} className="text-base font-semibold text-foreground text-balance outline-none">{title}</h2> : null}
                 {description ? <p className="text-meta text-muted-foreground text-pretty">{description}</p> : null}
               </div>
             ) : null}
@@ -41,7 +44,7 @@ export function ContentPanel({ title, description, actions, children, className,
       {title || description || actions ? (
         <div className="mb-4 flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
-            {title ? <h2 className="break-words text-base font-semibold text-foreground">{title}</h2> : null}
+            {title ? <h2 id={titleId} tabIndex={titleId ? -1 : undefined} className="break-words text-base font-semibold text-foreground outline-none">{title}</h2> : null}
             {description ? <p className="mt-1 break-words text-sm text-muted-foreground">{description}</p> : null}
           </div>
           {actions ? <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">{actions}</div> : null}

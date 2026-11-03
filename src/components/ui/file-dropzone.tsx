@@ -38,7 +38,8 @@ export function FileDropzone({
   hint?: string
   // Always shown under the status line, before and after a file is chosen.
   description?: React.ReactNode
-  browseLabel: string
+  // Text, or spans that differ by width (the repair record: the camera's words on the phone only).
+  browseLabel: React.ReactNode
   optimizeImages?: boolean
   // A tile that already names what it takes: less padding and no image hint line.
   compact?: boolean

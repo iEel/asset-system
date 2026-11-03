@@ -93,7 +93,7 @@ test("repair record page: ContentPanels, the history section on the panel classe
   assert.match(history, /<EmptyNote>\{t\("historyEmpty"\)\}<\/EmptyNote>/)
   assert.match(history, /statusMarkerVariants\(\{ tone: "primary" \}\), "absolute top-1\.5 -left-\[3px\]"/)
   assert.match(source, /<RepairRecordHistory\b/)
-  assert.match(source, /<Notice\s+tone="warning"\s+action=\{\s*nextStepOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(source, /<Notice\s+tone="warning"\s+action=\{\s*cardOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   assert.match(read("src/components/maintenance/repair-record-asset-panel.tsx"), /<ContentPanel title=\{t\("assetSection"\)\}>/)
   assert.doesNotMatch(source, /ActionEmptyState|AlertTriangle|rounded-lg|rounded-full|bg-warning-soft|border-warning-border|text-(?:warning|success|primary)\b|hover:bg-accent|\btext-lg\b|\btext-xs\b|<section className=/)
 })

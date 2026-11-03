@@ -17,9 +17,28 @@ test("an unfinished record offers one finish action and a confirmed cancel", () 
 
 test("finishing a repair starts from the existing remark instead of replacing it", () => {
   const source = readFileSync(actionsPath, "utf8")
-  const completeState = source.match(/useState\(\{\s*returnDate: toLocalDateInputValue\(\),[^}]*\}\)/)
+  const completeState = source.match(/function completeFrom\([^)]*\)[^{]*\{\s*return \{\s*returnDate: toLocalDateInputValue\(\),[^}]*\}/)
   assert.ok(completeState, "complete dialog state not found")
   assert.match(completeState[0], /remark: details\.remark/)
+  assert.match(completeState[0], /conditionId: initialConditionId/)
+})
+
+// Final review 1 (Critical): router.refresh() keeps the client state, so each dialog takes the record's current values
+// every time it opens, never the values of the first page load.
+test("each dialog reads the record's current values when it opens, not the page load's (final review 1)", () => {
+  const source = readFileSync(actionsPath, "utf8").replace(/\r\n/g, "\n")
+  const opener = (name: string) => {
+    const start = source.indexOf(`${name}: (opener?: HTMLElement | null) => {`)
+    assert.ok(start > 0, name)
+    return source.slice(start, source.indexOf("},", start))
+  }
+  assert.match(opener("openComplete"), /setComplete\(completeFrom\(details, initialConditionId\)\)/)
+  assert.match(opener("openEdit"), /setEdit\(editFrom\(details\)\)/)
+  assert.match(opener("openCancel"), /setReason\(""\)/)
+  assert.match(source, /\}\), \[details, initialConditionId\]\)/, "the openers read the latest details")
+  assert.match(source, /useState\(\(\) => completeFrom\(details, initialConditionId\)\)/)
+  assert.match(source, /useState\(\(\) => editFrom\(details\)\)/)
+  assert.match(source, /function editFrom\(details: RecordDetails\) \{\n\s+return \{\n\s+reportedDate: details\.reportedDate,\n\s+problem: details\.problem,/)
 })
 
 test("editing changes details only, never status or result", () => {
@@ -125,11 +144,11 @@ test("the record page reads its facts once and hands them to the record's rules 
   assert.match(source, /<RepairRecordAssetPanel facts=\{facts\} locale=\{locale\} recordCount=\{assetRecords\.length\} returnTo=\{returnToHref\} \/>/)
 })
 
-test("the disposal-review panel keeps one rule and hides its button whenever the card shows the disposal step (G5P3-R7)", () => {
+test("the disposal-review panel keeps one rule and hides its button only when the card shows the request or the open request (G5P3-R7, final review 2)", () => {
   const source = readFileSync(detailPath, "utf8")
-  assert.match(source, /const nextStepOffersDisposal = nextStep\.kind === "closedBeyond"\r?\n/)
+  assert.match(source, /const cardOffersDisposal = nextStepOffersDisposal\(nextStep\)\r?\n/)
   assert.doesNotMatch(source, /disposal\.kind === "canRequest"/)
-  assert.match(source, /action=\{\s*nextStepOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\}/)
+  assert.match(source, /action=\{\s*cardOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\}/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   assert.equal(th.repairRecord.openDisposalRequest, "ยื่นคำขอตัดจำหน่าย")
 })
@@ -149,7 +168,7 @@ test("the record's asset panel: photo, name to the asset, tag, the status as a b
   for (const key of ["currentStatus", "custodian", "location"]) assert.match(source, new RegExp(`t\\("${key}"\\)`), key)
   for (const field of ["holderName", "departmentName", "roomName", "branchName"]) assert.match(source, new RegExp(`facts\\.${field}`), field)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  assert.equal(th.repairRecord.detail.assetRepairHistory, "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count} รายการ")
+  assert.equal(th.repairRecord.detail.assetRepairHistory, "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count, number} รายการ")
   assert.equal(th.repairRecord.currentStatus, "สถานะปัจจุบัน")
   assert.equal(th.repairRecord.custodian, "ผู้ถือครอง")
   assert.equal(th.repairRecord.location, "ที่ตั้ง")
@@ -179,7 +198,11 @@ test("the complete dialog: no result chosen, a required error, the refusal under
   assert.match(source, /outcome: "" as Outcome \| "",/)
   assert.ok(source.includes('if (values.outcome !== undefined) check("outcome", values.outcome ? null : "repairOutcomeRequired")'))
   assert.ok(source.includes('(todayKey && values.returnDate > todayKey ? "repairDateInFuture" : null)'))
-  assert.match(source, /\{complete\.outcome === "beyond_repair" && held \? \(\n\s+<RepairHeldNotice held=\{held\} assetId=\{assetId\} locale=\{locale\} canReturn=\{canReturn\} \/>/)
+  // Final review 9: the refusal sits in an always-mounted live region inside the result group, so choosing ซ่อมไม่ได้
+  // announces it, and it is read with the group.
+  assert.match(source, /<div role="status" aria-live="polite" data-repair-held-region className="mt-2 empty:mt-0">\n\s+\{complete\.outcome === "beyond_repair" && held \? \(\n\s+<RepairHeldNotice held=\{held\} assetId=\{assetId\} locale=\{locale\} canReturn=\{canReturn\} \/>/)
+  const group = source.slice(source.indexOf('<FieldGroup legend={t("outcomeQuestion")}'), source.indexOf("</FieldGroup>"))
+  assert.match(group, /data-repair-held-region/, "the region is inside the result group")
   assert.match(source, /<Input type="date" required min=\{details\.reportedDate\} max=\{latestTodayKey\(\)\} /)
   assert.match(source, /const now = getBangkokDateKey\(new Date\(\)\)\n\s+return now > todayKey \? now : todayKey/)
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
@@ -231,15 +254,71 @@ test("the next-step card: every state, the outcome rows with the refusal, the bu
   assert.match(source, /t\("detail\.completeByEditor"\)/)
   assert.match(source, /!canEdit && canCreate/)
   assert.match(source, /hidden md:flex/, "no buttons inside on the phone")
-  for (const key of ["nextOpenVendor", "nextOpenInternal", "nextOpenHelp", "phoneStatusNow", "ifUsable", "ifBeyond", "closedWithOutcome", "closedDone", "nextDisposal", "disposalOpen", "disposalByCreator", "assetDisposed", "cancelledTitle"]) {
+  for (const key of ["nextOpenVendor", "nextOpenInternal", "nextOpenHelp", "phoneStatusNow", "ifUsable", "ifBeyond", "closedWithOutcome", "closedDone", "nextDisposal", "disposalOpen", "disposalByCreator", "writtenOff", "cancelledTitle", "cancelReason"]) {
     assert.match(source, new RegExp(`"detail\\.${key}"`), key)
   }
+  assert.doesNotMatch(source, /assetDisposed|t\("cancelReason"\)/)
   for (const note of ["backTo", "backToNoDocument", "holderStays", "noHolder", "thenDisposal"]) assert.match(source, new RegExp(`detail\\.note\\.${note}`), note)
   assert.match(source, /`\/\$\{locale\}\/disposal\/\$\{disposal\.id\}`/)
   assert.match(source, /\{canCreateDisposal \?/)
   assert.doesNotMatch(source, /border-dashed|border-primary|bg-primary-soft|text-(?:success|warning|danger)\b/)
   const page = read(detailPath)
   assert.match(page, /<RepairNextStepCard\b/)
+})
+
+test("the card after ซ่อมไม่ได้: the request only for รอตัดจำหน่าย, no step on another status, the open request a link only with disposal:view (final review 2, 8)", () => {
+  const source = read(cardPath)
+  assert.match(source, /disposal\.kind === "canRequest"/)
+  assert.match(source, /disposal\.kind === "openRequest"/)
+  assert.match(source, /disposal\.kind === "writtenOff"/)
+  // "none": the close line as the title and the status now, nothing else.
+  assert.match(source, /\} else if \(disposal\.kind === "none"\) \{\n\s+title = closedLine\n\s+body = statusNow\n/)
+  assert.match(source, /canViewDisposal: boolean/)
+  assert.match(source, /canViewDisposal \? \(\n\s+<Link href=\{`\/\$\{locale\}\/disposal\/\$\{disposal\.id\}`\}/)
+  const page = read(detailPath)
+  assert.match(page, /const canViewDisposal = hasPermission\(user, "disposal", "view"\)/)
+  assert.match(page, /canViewDisposal=\{canViewDisposal\}/)
+})
+
+test("the cancelled card: the reason on its own line, labelled เหตุผล, not the dialog's field label (final review 5)", () => {
+  const source = read(cardPath)
+  assert.match(source, /<p className="text-sm text-muted-foreground">\{t\("detail\.cancelReason"\)\}<\/p>\n\s+<p className="whitespace-pre-wrap text-sm text-foreground">\{nextStep\.reason\}<\/p>/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.repairRecord.detail.cancelReason, "เหตุผล")
+  assert.equal(en.repairRecord.detail.cancelReason, "Reason")
+})
+
+test("the card's table and buttons sit side by side only from xl; below it the buttons are a row under the table (final review 4)", () => {
+  const source = read(cardPath)
+  assert.match(source, /<div className="grid gap-4 xl:grid-cols-\[minmax\(0,1fr\)_auto\] xl:items-start">/)
+  assert.doesNotMatch(source, /md:grid-cols-\[minmax\(0,1fr\)_auto\]|md:w-52|md:flex-col/)
+  assert.match(source, /hidden md:flex md:flex-wrap md:gap-2 xl:w-52 xl:flex-col xl:\[&>\*\]:w-full/)
+  // One set of tracks for the head and the rows (subgrid): auto below xl so หลังกดซ่อมเสร็จ keeps its room, fixed from xl.
+  assert.match(source, /md:grid-cols-\[auto_minmax\(0,auto\)_minmax\(0,1fr\)\] xl:grid-cols-\[minmax\(0,11rem\)_minmax\(0,10rem\)_minmax\(0,1fr\)\]/)
+  assert.equal(source.match(/md:col-span-3 md:grid-cols-subgrid/g)?.length, 2, "the head and each row use the table's tracks")
+})
+
+test("after ซ่อมเสร็จ or ยกเลิกบันทึก, focus moves to the next-step card's heading; edit keeps it on its opener (final review 10)", () => {
+  const card = read(cardPath)
+  assert.match(card, /<ContentPanel title=\{title\} titleId=\{REPAIR_NEXT_STEP_TITLE_ID\}>/)
+  assert.match(read("src/lib/repair-record-detail-rules.ts"), /export const REPAIR_NEXT_STEP_TITLE_ID = "repair-next-step-title"/)
+  const panel = read("src/components/ui/content-panel.tsx")
+  assert.match(panel, /titleId\?: string/)
+  assert.match(panel, /<h2 id=\{titleId\} tabIndex=\{titleId \? -1 : undefined\}/)
+  const source = read(actionsPath)
+  assert.match(source, /if \(successKey !== "updated"\) returnFocusRef\.current = document\.getElementById\(REPAIR_NEXT_STEP_TITLE_ID\)\n\s+setDialog\(null\)/)
+})
+
+test("the history shows old-workflow status updates as text, through the record's status words (final review 6)", () => {
+  const page = read(detailPath)
+  assert.match(page, /const assetStatusMovementTypes = new Set\(\["maintenance_create", "maintenance_pm_create", "maintenance_close", "maintenance_cancel"\]\)/)
+  assert.match(page, /if \(assetStatusMovementTypes\.has\(movementType\)\) return \{ kind: "status", value: label \}/)
+  assert.match(page, /if \(movementType === "maintenance_status_update"\) return \{ kind: "text", value: repairCodeLabel\(label\) \}/)
+  assert.match(page, /t\.has\(`status\.\$\{code\}`\)/)
+  assert.match(page, /tMaintenance\.has\(`statuses\.\$\{code\}`\)/)
+  assert.doesNotMatch(page, /movementType\.startsWith\("maintenance_"\)/)
+  assert.match(page, /referenceId: movement\.referenceId,/)
 })
 
 test("details: the name first with the code under it, รอกดซ่อมเสร็จ while open, ยังไม่ระบุ for an empty cost or invoice (spec §8.3)", () => {
@@ -292,8 +371,9 @@ test("the detail words of spec §13 (repairRecord (detail))", () => {
     reportedOn: "แจ้งซ่อม {date}",
     closedOn: "ซ่อมเสร็จ {date}",
     cancelledOn: "ยกเลิก {date}",
-    sentDays: "ส่งซ่อมมา {days} วัน",
-    repairDays: "ซ่อมมา {days} วัน",
+    // {days, number} and {count, number}: the en values are plurals (tests/i18n-plural-count.test.ts, final review 11).
+    sentDays: "ส่งซ่อมมา {days, number} วัน",
+    repairDays: "ซ่อมมา {days, number} วัน",
     sentToday: "ส่งซ่อมวันนี้",
     repairToday: "ซ่อมวันนี้",
     more: "อื่น ๆ",
@@ -314,15 +394,16 @@ test("the detail words of spec §13 (repairRecord (detail))", () => {
     nextDisposal: "ขั้นถัดไป: ยื่นคำขอตัดจำหน่าย",
     disposalOpen: "มีคำขอตัดจำหน่าย {disposalNo} แล้ว",
     disposalByCreator: "ผู้มีสิทธิ์ยื่นคำขอตัดจำหน่ายเป็นผู้ยื่นต่อ",
-    assetDisposed: "ทรัพย์สินนี้ตัดจำหน่ายแล้ว",
+    writtenOff: "ทรัพย์สินนี้ตัดจำหน่ายหรือปลดระวางแล้ว",
+    cancelReason: "เหตุผล",
     cancelledTitle: "ยกเลิกบันทึกนี้แล้ว {date}",
     reportedDate: "วันที่แจ้งซ่อม",
     awaitingComplete: "รอกดซ่อมเสร็จ",
     notGiven: "ยังไม่ระบุ",
     historyHelp: "ลำดับเหตุการณ์ของบันทึกนี้",
-    attachedFiles: "แนบ{type} {count} ไฟล์",
+    attachedFiles: "แนบ{type} {count, number} ไฟล์",
     notYet: "ยังไม่ถึง",
-    assetRepairHistory: "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count} รายการ",
+    assetRepairHistory: "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count, number} รายการ",
     "note.backTo": "กลับไปที่ {holder} ตามใบส่งมอบ {documentNo}",
     "note.backToNoDocument": "กลับไปที่ {holder}",
     "note.holderStays": "ผู้ถือครอง {holder} คงเดิม",
@@ -335,7 +416,17 @@ test("the detail words of spec §13 (repairRecord (detail))", () => {
     const enValue = tail ? en.repairRecord.detail[head]?.[tail] : en.repairRecord.detail[key]
     assert.equal(typeof enValue, "string", `en ${key}`)
   }
+  assert.equal(d.assetDisposed, undefined)
+  // English names the button by its label, "Repair finished", never "Repair done" (final review 11).
+  assert.equal(en.repairRecord.complete, "Repair finished")
+  const enDetail = JSON.stringify(en.repairRecord.detail)
+  assert.doesNotMatch(enDetail, /Repair done/)
+  assert.match(en.repairRecord.detail.headAfter, /Repair finished/)
+  for (const [key, arg, unit] of [["sentDays", "days", "day"], ["repairDays", "days", "day"], ["attachedFiles", "count", "file"], ["assetRepairHistory", "count", "record"]]) {
+    assert.ok(en.repairRecord.detail[key].includes(`{${arg}, plural, one {# ${unit}} other {# ${unit}s}}`), `en ${key}`)
+  }
   // The attachment words: "แนบ" + the type gives "แนบรูปก่อนซ่อม 12 ไฟล์" (Review Focus 3).
+  assert.equal(th.maintenancePage.attachmentTypes.other, "อื่น ๆ")
   assert.equal(th.maintenancePage.attachmentTypes.before_repair, "รูปก่อนซ่อม")
   assert.equal(th.maintenancePage.attachmentTypes.invoice, "ใบแจ้งหนี้")
   assert.equal(th.repairRecord.movement.conditionChange, "เปลี่ยนสภาพ")

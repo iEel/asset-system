@@ -3328,7 +3328,7 @@
       "quotation": "ใบเสนอราคา",
       "invoice": "ใบแจ้งหนี้",
       "warranty": "เอกสารประกัน",
-      "other": "อื่นๆ"
+      "other": "อื่น ๆ"
     },
     "dropFileTitle": "ลากไฟล์มาวางที่นี่",
     "dropFileHint": "หรือคลิกเพื่อเลือกไฟล์",
@@ -3562,12 +3562,12 @@
       "factsFailed": "โหลดข้อมูลทรัพย์สินไม่สำเร็จ"
     },
     "detail": {
-      "assetRepairHistory": "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count} รายการ",
+      "assetRepairHistory": "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count, number} รายการ",
       "reportedOn": "แจ้งซ่อม {date}",
       "closedOn": "ซ่อมเสร็จ {date}",
       "cancelledOn": "ยกเลิก {date}",
-      "sentDays": "ส่งซ่อมมา {days} วัน",
-      "repairDays": "ซ่อมมา {days} วัน",
+      "sentDays": "ส่งซ่อมมา {days, number} วัน",
+      "repairDays": "ซ่อมมา {days, number} วัน",
       "sentToday": "ส่งซ่อมวันนี้",
       "repairToday": "ซ่อมวันนี้",
       "more": "อื่น ๆ",
@@ -3595,14 +3595,15 @@
       "nextDisposal": "ขั้นถัดไป: ยื่นคำขอตัดจำหน่าย",
       "disposalOpen": "มีคำขอตัดจำหน่าย {disposalNo} แล้ว",
       "disposalByCreator": "ผู้มีสิทธิ์ยื่นคำขอตัดจำหน่ายเป็นผู้ยื่นต่อ",
-      "assetDisposed": "ทรัพย์สินนี้ตัดจำหน่ายแล้ว",
       "cancelledTitle": "ยกเลิกบันทึกนี้แล้ว {date}",
       "reportedDate": "วันที่แจ้งซ่อม",
       "awaitingComplete": "รอกดซ่อมเสร็จ",
       "notGiven": "ยังไม่ระบุ",
       "historyHelp": "ลำดับเหตุการณ์ของบันทึกนี้",
-      "attachedFiles": "แนบ{type} {count} ไฟล์",
-      "notYet": "ยังไม่ถึง"
+      "attachedFiles": "แนบ{type} {count, number} ไฟล์",
+      "notYet": "ยังไม่ถึง",
+      "cancelReason": "เหตุผล",
+      "writtenOff": "ทรัพย์สินนี้ตัดจำหน่ายหรือปลดระวางแล้ว"
     }
   },
   "disposalPage": {

@@ -5,6 +5,7 @@ import {
   buildRepairHistory,
   buildRepairNextStep,
   defaultAttachmentType,
+  nextStepOffersDisposal,
   repairDurationLine,
   type RepairDetailRecord,
 } from "../src/lib/repair-record-detail-rules.ts"
@@ -71,21 +72,31 @@ test("next step: closed usable names the asset's status", () => {
   assert.deepEqual(step, { kind: "closedUsable", returnDate, statusName: "Ready" })
 })
 
-test("next step: closed beyond repair reads disposed, then an open request, then can request (G5P3-R7)", () => {
+test("next step: closed beyond repair reads written off, then an open request, then can request only while รอตัดจำหน่าย (G5P3-R7, spec §5)", () => {
   const closed = record({ repairStatus: "closed", outcome: "beyond_repair", returnDate })
   const request = { id: "d-1", disposalNo: "DS-2026-0001" }
-  assert.deepEqual(
-    buildRepairNextStep({ record: closed, facts: facts({ statusName: " disposed " }), openDisposal: request, cancel: null }),
-    { kind: "closedBeyond", returnDate, disposal: { kind: "assetDisposed" } },
-  )
-  assert.deepEqual(
-    buildRepairNextStep({ record: closed, facts: facts({ statusName: "Pending Disposal" }), openDisposal: request, cancel: null }),
-    { kind: "closedBeyond", returnDate, disposal: { kind: "openRequest", id: "d-1", disposalNo: "DS-2026-0001" } },
-  )
-  assert.deepEqual(
-    buildRepairNextStep({ record: closed, facts: facts({ statusName: "Pending Disposal" }), openDisposal: null, cancel: null }),
-    { kind: "closedBeyond", returnDate, disposal: { kind: "canRequest" } },
-  )
+  const step = (statusName: string, openDisposal: { id: string; disposalNo: string } | null = null) =>
+    buildRepairNextStep({ record: closed, facts: facts({ statusName }), openDisposal, cancel: null })
+  assert.deepEqual(step(" disposed ", request), { kind: "closedBeyond", returnDate, disposal: { kind: "writtenOff" } })
+  assert.deepEqual(step("Retired"), { kind: "closedBeyond", returnDate, disposal: { kind: "writtenOff" } })
+  assert.deepEqual(step("Pending Disposal", request), { kind: "closedBeyond", returnDate, disposal: { kind: "openRequest", id: "d-1", disposalNo: "DS-2026-0001" } })
+  assert.deepEqual(step("Pending Disposal"), { kind: "closedBeyond", returnDate, disposal: { kind: "canRequest" } })
+  // The status was corrected after the close (แก้สถานะ): no disposal step (final review 2).
+  assert.deepEqual(step("Ready"), { kind: "closedBeyond", returnDate, disposal: { kind: "none" } })
+  assert.deepEqual(step("In Use"), { kind: "closedBeyond", returnDate, disposal: { kind: "none" } })
+  // An open request still shows on another status: the request is what the person follows.
+  assert.deepEqual(step("In Use", request), { kind: "closedBeyond", returnDate, disposal: { kind: "openRequest", id: "d-1", disposalNo: "DS-2026-0001" } })
+})
+
+test("the disposal-review panel hides its button only when the card shows the request or the open request", () => {
+  const closed = record({ repairStatus: "closed", outcome: "beyond_repair", returnDate })
+  const offers = (statusName: string, openDisposal: { id: string; disposalNo: string } | null = null) =>
+    nextStepOffersDisposal(buildRepairNextStep({ record: closed, facts: facts({ statusName }), openDisposal, cancel: null }))
+  assert.equal(offers("Pending Disposal"), true)
+  assert.equal(offers("Pending Disposal", { id: "d-1", disposalNo: "DS-1" }), true)
+  assert.equal(offers("Ready"), false)
+  assert.equal(offers("Disposed"), false)
+  assert.equal(nextStepOffersDisposal(buildRepairNextStep({ record: record(), facts: facts(), openDisposal: null, cancel: null })), false)
 })
 
 test("next step: closed without an outcome, and cancelled with its reason (G5P3-R5)", () => {
@@ -242,4 +253,45 @@ test("history: each maintenance movement type has its label key", () => {
     actorById,
   })
   assert.deepEqual(events.map((event) => (event.kind === "movement" ? event.labelKey : event.kind)), types.map(([, key]) => key))
+})
+
+test("history: a reason that is the problem cut to 500 characters is not repeated (final review 7)", () => {
+  const problem = "ก".repeat(620)
+  const events = buildRepairHistory({
+    record: record({ problem }),
+    movements: [{
+      id: "m-1",
+      movementType: "maintenance_create",
+      performedAt: new Date("2026-11-01T02:00:00Z"),
+      performedBy: "u1",
+      fromLabel: null,
+      toLabel: null,
+      reason: problem.slice(0, 500),
+    }],
+    attachments: [],
+    actorById,
+  })
+  assert.equal(events[0].kind === "movement" ? events[0].reason : "missing", null)
+})
+
+test("history: the close's remark shows once, not again on its condition change (final review 7)", () => {
+  const at = (seconds: number) => new Date(Date.parse("2026-11-02T03:00:00Z") + seconds * 1000)
+  const movement = (id: string, movementType: string, seconds: number, reason: string | null, referenceId = "r-1") => ({
+    id, movementType, performedAt: at(seconds), performedBy: "u1", fromLabel: null, toLabel: null, reason, referenceId,
+  })
+  const events = buildRepairHistory({
+    record: record({ repairStatus: "closed", returnDate }),
+    movements: [
+      movement("m-1", "maintenance_close", 0, "เปลี่ยนจอแล้ว"),
+      movement("m-2", "condition_change", 0, "เปลี่ยนจอแล้ว"),
+      movement("m-3", "condition_change", 5, "เปลี่ยนจอแล้ว", "r-2"),
+      movement("m-4", "condition_change", 9, "สภาพเปลี่ยนเอง"),
+    ],
+    attachments: [],
+    actorById,
+  })
+  assert.deepEqual(
+    events.map((event) => (event.kind === "movement" ? [event.id, event.reason] : event.kind)),
+    [["m-1", "เปลี่ยนจอแล้ว"], ["m-2", null], ["m-3", "เปลี่ยนจอแล้ว"], ["m-4", "สภาพเปลี่ยนเอง"]],
+  )
 })

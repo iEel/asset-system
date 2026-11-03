@@ -28,6 +28,7 @@ import type { RepairAssetFacts } from "@/lib/repair-record-outlook"
 import {
   buildRepairHistory,
   buildRepairNextStep,
+  nextStepOffersDisposal,
   repairDurationLine,
   type RepairDetailRecord,
   type RepairHistoryValue,
@@ -55,10 +56,16 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   const canEdit = hasPermission(user, "maintenance", "edit")
   const canCreate = hasPermission(user, "maintenance", "create")
   const canCreateDisposal = hasPermission(user, "disposal", "create")
+  // The card's open disposal request links to the disposal page only for those who may view it (final review 8).
+  const canViewDisposal = hasPermission(user, "disposal", "view")
   // รับคืน in the early refusal opens the check-in page, which needs asset:edit (group 5 spec §5).
   const canReturn = hasPermission(user, "asset", "edit")
   const t = await getTranslations("repairRecord")
   const tCommon = await getTranslations("common")
+  const tMaintenance = await getTranslations("maintenancePage")
+  // An old-workflow repair code (in_progress, waiting_parts, …) in the words of the record or the old list, else as is.
+  const repairCodeLabel = (code: string) =>
+    t.has(`status.${code}`) ? t(`status.${code}`) : tMaintenance.has(`statuses.${code}`) ? tMaintenance(`statuses.${code}`) : code
 
   const ticket = await prisma.maintenanceTicket.findFirst({
     where: { id, isActive: true },
@@ -179,9 +186,10 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
       movementType: movement.movementType,
       performedAt: movement.performedAt,
       performedBy: movement.performedBy,
-      fromLabel: toHistoryValue(movement.movementType, movementLabels.get(movement.id)?.from),
-      toLabel: toHistoryValue(movement.movementType, movementLabels.get(movement.id)?.to),
+      fromLabel: toHistoryValue(movement.movementType, movementLabels.get(movement.id)?.from, repairCodeLabel),
+      toLabel: toHistoryValue(movement.movementType, movementLabels.get(movement.id)?.to, repairCodeLabel),
       reason: movement.reason,
+      referenceId: movement.referenceId,
     })),
     attachments: attachments.map((attachment) => ({
       id: attachment.id,
@@ -232,9 +240,9 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   )
   const repairCostRatio = purchasePrice > 0 ? assetRepairSummary.totalCost / purchasePrice : 0
   const shouldReviewDisposal = assetRepairSummary.replacementWarning
-  // G5P3-R7: after ซ่อมไม่ได้ the card shows the disposal step (the request, the open request or the disposed asset), so
-  // the disposal-review panel never offers the request again.
-  const nextStepOffersDisposal = nextStep.kind === "closedBeyond"
+  // G5P3-R7: when the card shows ยื่นคำขอตัดจำหน่าย or the open request, the disposal-review panel does not offer the
+  // request again; after ซ่อมไม่ได้ on another status the panel keeps its button (final review 2).
+  const cardOffersDisposal = nextStepOffersDisposal(nextStep)
   // The repair list, the PM list or the asset page the user came from (group 5 spec §5 "Way back").
   const returnToHref = normalizeMaintenanceReturnTo(locale, rawSearchParams.returnTo, "maintenance")
   const listCrumbHref = maintenanceListCrumbHref(returnToHref, `/${locale}/maintenance`)
@@ -301,6 +309,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           canAttach={canAttach}
           canReturn={canReturn}
           canCreateDisposal={canCreateDisposal}
+          canViewDisposal={canViewDisposal}
           disposalRequestHref={disposalRequestHref}
         />
 
@@ -330,7 +339,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                 <Notice
                   tone="warning"
                   action={
-                    nextStepOffersDisposal ? null : (
+                    cardOffersDisposal ? null : (
                       <Link href={disposalRequestHref} className={buttonVariants({ variant: "outline", size: "md" })}>
                         <Trash2 aria-hidden="true" />
                         {t("openDisposalRequest")}
@@ -351,7 +360,8 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           </div>
 
           <div id="attachments" className="min-w-0 scroll-mt-6">
-            <MaintenanceAttachments ticketId={ticket.id} repairStatus={ticket.repairStatus} attachments={attachments} canEdit={canAttach} canDelete={canEdit} />
+            {/* The state is the key: after ซ่อมเสร็จ the refresh remounts the panel with its new default type and hint. */}
+            <MaintenanceAttachments key={ticket.repairStatus} ticketId={ticket.id} repairStatus={ticket.repairStatus} attachments={attachments} canEdit={canAttach} canDelete={canEdit} />
           </div>
         </div>
 
@@ -368,11 +378,15 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
   )
 }
 
+// The movements whose values are asset statuses (their ids, named by getMovementDisplayLabels).
+const assetStatusMovementTypes = new Set(["maintenance_create", "maintenance_pm_create", "maintenance_close", "maintenance_cancel"])
+
 // A movement's from or to value for the history (spec §8.3): an asset status on the repair movements, a condition on
-// condition_change, else plain text.
-function toHistoryValue(movementType: string, label: string | null | undefined): RepairHistoryValue | null {
+// condition_change, the old workflow's repair code as text in its words (final review 6), else plain text.
+function toHistoryValue(movementType: string, label: string | null | undefined, repairCodeLabel: (code: string) => string): RepairHistoryValue | null {
   if (!label) return null
   if (movementType === "condition_change") return { kind: "condition", value: label }
-  if (movementType.startsWith("maintenance_")) return { kind: "status", value: label }
+  if (assetStatusMovementTypes.has(movementType)) return { kind: "status", value: label }
+  if (movementType === "maintenance_status_update") return { kind: "text", value: repairCodeLabel(label) }
   return { kind: "text", value: label }
 }

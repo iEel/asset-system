@@ -21,6 +21,7 @@ import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { getBangkokDateKey } from "@/lib/preventive-maintenance"
+import { REPAIR_NEXT_STEP_TITLE_ID } from "@/lib/repair-record-detail-rules"
 import type { RepairHeld } from "@/lib/repair-record-outlook"
 import { decimals, maxLength, notBefore, range, required } from "@/lib/validation-rules"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -59,6 +60,34 @@ const EDIT_FIELD_IDS = {
 type EditField = keyof typeof EDIT_FIELD_IDS
 const EDIT_FIELD_ORDER = Object.keys(EDIT_FIELD_IDS) as EditField[]
 type RepairActionField = CompleteField | CancelField | EditField
+type RecordDetails = { reportedDate: string; problem: string; vendor: Option | null; repairCost: string; invoiceNo: string; remark: string }
+
+// Each dialog starts from the record as the page last read it: the openers call these every time, because
+// router.refresh() keeps the client state and the values of the first load would otherwise be written back over newer
+// ones (final review 1).
+function completeFrom(details: RecordDetails, initialConditionId: string) {
+  return {
+    returnDate: toLocalDateInputValue(),
+    // No result is chosen for the user (decision 2, G5P3-R9).
+    outcome: "" as Outcome | "",
+    conditionId: initialConditionId,
+    vendorId: details.vendor?.id ?? "",
+    repairCost: details.repairCost,
+    invoiceNo: details.invoiceNo,
+    remark: details.remark,
+  }
+}
+
+function editFrom(details: RecordDetails) {
+  return {
+    reportedDate: details.reportedDate,
+    problem: details.problem,
+    vendorId: details.vendor?.id ?? "",
+    repairCost: details.repairCost,
+    invoiceNo: details.invoiceNo,
+    remark: details.remark,
+  }
+}
 
 // noValidate turns the browser's check off, so this restates the controls' required, min, step and maxLength for the
 // three dialogs; each passes only its own fields, and a field it does not pass is not checked. The return date is not
@@ -120,7 +149,7 @@ export function RepairRecordActionsProvider({
   repairNo: string
   expectedUpdatedAt: string
   isOpen: boolean
-  details: { reportedDate: string; problem: string; vendor: Option | null; repairCost: string; invoiceNo: string; remark: string }
+  details: RecordDetails
   // ดี and พอใช้ (getRepairConditionOptions), and the asset's own when offered (repairConditionDefault), else "".
   conditionOptions: Option[]
   initialConditionId: string
@@ -144,25 +173,9 @@ export function RepairRecordActionsProvider({
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [files, setFiles] = useState<File[]>([])
-  const [complete, setComplete] = useState({
-    returnDate: toLocalDateInputValue(),
-    // No result is chosen for the user (decision 2, G5P3-R9).
-    outcome: "" as Outcome | "",
-    conditionId: initialConditionId,
-    vendorId: details.vendor?.id ?? "",
-    repairCost: details.repairCost,
-    invoiceNo: details.invoiceNo,
-    remark: details.remark,
-  })
+  const [complete, setComplete] = useState(() => completeFrom(details, initialConditionId))
   const [reason, setReason] = useState("")
-  const [edit, setEdit] = useState({
-    reportedDate: details.reportedDate,
-    problem: details.problem,
-    vendorId: details.vendor?.id ?? "",
-    repairCost: details.repairCost,
-    invoiceNo: details.invoiceNo,
-    remark: details.remark,
-  })
+  const [edit, setEdit] = useState(() => editFrom(details))
   const completeErrors = useFieldErrors<CompleteField>()
   const cancelErrors = useFieldErrors<CancelField>()
   const editErrors = useFieldErrors<EditField>()
@@ -176,21 +189,25 @@ export function RepairRecordActionsProvider({
     const now = getBangkokDateKey(new Date())
     return now > todayKey ? now : todayKey
   }
-  // One stable value: the openers remember who opened the dialog, so it gives focus back there.
+  // The openers remember who opened the dialog, so it gives focus back there, and seed the dialog from the record's
+  // current values (final review 1). The value changes only when a refresh brings new details.
   const actions = useMemo<RepairRecordActionsValue>(() => ({
     openComplete: (opener?: HTMLElement | null) => {
       returnFocusRef.current = opener ?? null
+      setComplete(completeFrom(details, initialConditionId))
       setDialog("complete")
     },
     openCancel: (opener?: HTMLElement | null) => {
       returnFocusRef.current = opener ?? null
+      setReason("")
       setDialog("cancel")
     },
     openEdit: (opener?: HTMLElement | null) => {
       returnFocusRef.current = opener ?? null
+      setEdit(editFrom(details))
       setDialog("edit")
     },
-  }), [])
+  }), [details, initialConditionId])
 
   function close() {
     if (saving) return
@@ -239,6 +256,9 @@ export function RepairRecordActionsProvider({
       const failed = files.length > 0 ? await uploadRepairFiles(recordId, files, "after_repair") : 0
       if (failed > 0) toast.warning(t("uploadFailed", { count: failed }))
       else toast.success(t(successKey))
+      // ซ่อมเสร็จ and ยกเลิกบันทึก remove their opener in the refresh: focus goes to the next-step card's heading instead
+      // of <body>. Edit keeps its opener (final review 10).
+      if (successKey !== "updated") returnFocusRef.current = document.getElementById(REPAIR_NEXT_STEP_TITLE_ID)
       setDialog(null)
       setFiles([])
       router.refresh()
@@ -311,12 +331,15 @@ export function RepairRecordActionsProvider({
                   <ChoiceCard key={outcome} type="radio" name="outcome" checked={complete.outcome === outcome} label={t(`outcome.${outcome}`)} onChange={() => setCompleteField("outcome", outcome)} />
                 ))}
               </div>
+              {/* ซ่อมไม่ได้ on a held asset: the server refuses it (MAINTENANCE_ASSET_ON_LOAN), so the dialog says why and
+                  how to return it as soon as it is chosen; the save stays enabled (spec §5 early refusal, G5P3-R9). The
+                  region is always mounted inside the result group, so the radio's choice announces it (final review 9). */}
+              <div role="status" aria-live="polite" data-repair-held-region className="mt-2 empty:mt-0">
+                {complete.outcome === "beyond_repair" && held ? (
+                  <RepairHeldNotice held={held} assetId={assetId} locale={locale} canReturn={canReturn} />
+                ) : null}
+              </div>
             </FieldGroup>
-            {/* ซ่อมไม่ได้ on a held asset: the server refuses it (MAINTENANCE_ASSET_ON_LOAN), so the dialog says why and how
-                to return it as soon as it is chosen; the save stays enabled (spec §5 early refusal, G5P3-R9). */}
-            {complete.outcome === "beyond_repair" && held ? (
-              <RepairHeldNotice held={held} assetId={assetId} locale={locale} canReturn={canReturn} />
-            ) : null}
             {complete.outcome === "usable" ? (
               <AssetConditionChoice
                 id="repair-complete-condition"

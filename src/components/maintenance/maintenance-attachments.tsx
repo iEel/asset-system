@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { FileText, Trash2 } from "lucide-react"
@@ -27,6 +27,9 @@ import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { useApiError } from "@/components/ui/use-api-error"
+
+// The panel's heading: focus lands there after a delete, whose tile the refresh removes (final review 10).
+const ATTACHMENTS_TITLE_ID = "maintenance-attachments-title"
 
 type Attachment = {
   id: string
@@ -57,6 +60,8 @@ export function MaintenanceAttachments({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Attachment | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  // Set by a delete: the preview then gives focus to the heading, not to the tile that is gone.
+  const focusHeadingOnClose = useRef(false)
   // Group 5 spec §8.5: before the repair while the record is open, after it once closed or cancelled.
   const defaultType = defaultAttachmentType(repairStatus)
   const [attachmentType, setAttachmentType] = useState<MaintenanceAttachmentType>(defaultType)
@@ -113,6 +118,7 @@ export function MaintenanceAttachments({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(tCommon("deletedSuccess"))
+      focusHeadingOnClose.current = true
       setPreview(null)
       router.refresh()
     } catch (error) {
@@ -125,6 +131,7 @@ export function MaintenanceAttachments({
   return (
     <ContentPanel
       title={t("attachments")}
+      titleId={ATTACHMENTS_TITLE_ID}
       actions={<span className="text-meta num text-muted-foreground">{t("attachmentCount", { count: attachments.length })}</span>}
     >
       {attachments.length === 0 ? (
@@ -193,7 +200,8 @@ export function MaintenanceAttachments({
             </NativeSelect>
           </Field>
           {/* The camera only for a photo type, so a PDF can still be chosen for the others. A desktop browser ignores
-              capture, so this type rule alone gives "the camera on the phone" (group 5 spec §8.5). */}
+              capture, so this type rule alone gives "the camera on the phone" (group 5 spec §8.5); the words name the
+              camera below md only, where it opens, as the asset photo frame does (final review 12). */}
           <FileDropzone
             file={selectedFile}
             onFileChange={handleUpload}
@@ -202,15 +210,26 @@ export function MaintenanceAttachments({
             title={t("dropAttachmentTitle")}
             hint={uploading ? t("uploading") : t("dropFileSelected")}
             browseLabel={
-              isMaintenancePhotoType(attachmentType)
-                ? t(attachmentType === "before_repair" ? "takeBeforePhoto" : "takeAfterPhoto")
-                : t("dropFileHint")
+              isMaintenancePhotoType(attachmentType) ? (
+                <>
+                  <span className="md:hidden">{t(attachmentType === "before_repair" ? "takeBeforePhoto" : "takeAfterPhoto")}</span>
+                  <span className="hidden md:inline">{t("dropFileHint")}</span>
+                </>
+              ) : (
+                t("dropFileHint")
+              )
             }
           />
         </div>
       ) : null}
 
       <AttachmentPreviewDialog
+        onCloseAutoFocus={(event) => {
+          if (!focusHeadingOnClose.current) return
+          focusHeadingOnClose.current = false
+          event.preventDefault()
+          document.getElementById(ATTACHMENTS_TITLE_ID)?.focus()
+        }}
         open={preview !== null}
         onOpenChange={(open) => {
           if (!open) setPreview(null)

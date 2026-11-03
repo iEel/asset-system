@@ -18,6 +18,7 @@ export function AttachmentPreviewDialog({
   downloadLabel,
   actions,
   closeLabel,
+  onCloseAutoFocus,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -31,12 +32,16 @@ export function AttachmentPreviewDialog({
   // More commands in the footer before the download, e.g. the repair record's delete (group 5 spec §8.5).
   actions?: React.ReactNode
   closeLabel?: string
+  // Where focus goes on close when the tile that opened the preview is gone (a deleted file): call preventDefault and
+  // focus the target.
+  onCloseAutoFocus?: (event: Event) => void
 }) {
   const tCommon = useTranslations("common")
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        onCloseAutoFocus={onCloseAutoFocus}
         closeLabel={closeLabel ?? tCommon("close")}
         {...(subtitle ? {} : { "aria-describedby": undefined })}
         className="flex h-[92dvh] w-[calc(100%-1.5rem)] max-w-none flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-5xl"
