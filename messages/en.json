@@ -3553,6 +3553,9 @@
       "unanswered": "Not yet answered whether the repair is finished",
       "recordHasOpen": "Open: {repairNo}",
       "factsFailed": "The asset's details could not be loaded"
+    },
+    "detail": {
+      "assetRepairHistory": "All repairs of this asset · {count}"
     }
   },
   "disposalPage": {

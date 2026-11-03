@@ -86,7 +86,8 @@ test("the repair page header is PageHeader with the asset name, and its PageBack
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
   assert.doesNotMatch(source, /label: tCommon\("back"\)|ArrowLeft/, "the bar has no back item of its own (2C plan 5)")
   assert.match(source, /<div className=\{`space-y-6 \$\{actionBarPagePadding\.single\}`\}>/, "room for the ActionBar (2C plan 5, O11)")
-  assert.equal(source.match(/<KeyValueList\b/g)?.length, 4)
+  // The asset panel moved to RepairRecordAssetPanel (group 5 plan 3 Task 2): details, legacy and history remain.
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 3)
   assert.doesNotMatch(source, /\bWrench\b|<h1\b|<Breadcrumbs\b|formatCurrency|function Info\b|"-"/)
 })
 
@@ -102,4 +103,52 @@ test("the record page's disposal-review panel reads summarizeAssetRepairs, not a
   assert.match(source, /t\("disposalReviewCount", \{ count: assetRepairSummary\.repairCount \}\)/)
   assert.match(source, /formatMoney\(assetRepairSummary\.totalCost, \{ unit: tCommon\("baht"\) \}\)/)
   assert.match(source, /\{purchasePrice > 0 \? <p>\{t\("disposalReviewRatio", \{ percent: Math\.round\(repairCostRatio \* 100\) \}\)\}<\/p> : null\}/)
+})
+
+// Group 5 plan 3 Task 2 (G5P3-R3, R5, R7, R10, spec §8.3): the page reads the asset facts, the movements oldest first,
+// the attachments, the actors in one user read, the open disposal request and the cancel movement once, and hands them
+// to the record's rules.
+test("the record page reads its facts once and hands them to the record's rules (group 5 plan 3)", () => {
+  const source = readFileSync(detailPath, "utf8")
+  assert.match(source, /loadRepairAssetFacts\(prisma as unknown as RepairAssetFactsDb, ticket\.asset\.id\)/)
+  assert.match(source, /buildRepairNextStep\(/)
+  assert.match(source, /buildRepairHistory\(/)
+  assert.match(source, /repairDurationLine\(/)
+  assert.match(source, /prisma\.assetMovement\.findMany\(\{\s*where: \{ referenceType: "maintenance", referenceId: ticket\.id \},\s*orderBy: \{ performedAt: "asc" \},/)
+  assert.equal(source.match(/prisma\.user\.findMany\(/g)?.length, 1, "one read names every actor")
+  assert.match(source, /select: \{ id: true, username: true, displayName: true, email: true, employee: \{ select: \{ code: true, fullNameTh: true \} \} \}/)
+  assert.match(source, /assetHistoryActorLabel\(/)
+  assert.match(source, /prisma\.disposalRequest\.findFirst\(\{\s*where: \{ \.\.\.openDisposalRequestWhere, assetId: ticket\.asset\.id \}/)
+  assert.match(source, /movementType === "maintenance_cancel"/)
+  assert.match(source, /getMaintenanceAttachmentType\(/)
+  assert.match(source, /<RepairRecordAssetPanel facts=\{facts\} locale=\{locale\} recordCount=\{assetRecords\.length\} returnTo=\{returnToHref\} \/>/)
+})
+
+test("the disposal-review panel keeps one rule and hides its button when the next step offers the request (G5P3-R7)", () => {
+  const source = readFileSync(detailPath, "utf8")
+  assert.match(source, /nextStep\.kind === "closedBeyond" && nextStep\.disposal\.kind === "canRequest"/)
+  assert.match(source, /action=\{\s*nextStepOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\}/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  assert.equal(th.repairRecord.openDisposalRequest, "ยื่นคำขอตัดจำหน่าย")
+})
+
+const panelPath = "src/components/maintenance/repair-record-asset-panel.tsx"
+
+test("the record's asset panel: photo, name to the asset, tag, the status as a badge, holder, place and the asset's repair list (G5P3-R10)", () => {
+  assert.ok(existsSync(panelPath))
+  const source = readFileSync(panelPath, "utf8")
+  assert.doesNotMatch(source, /^"use client"/, "server-safe")
+  assert.match(source, /export function RepairRecordAssetPanel\(\{ facts, locale, recordCount, returnTo \}/)
+  assert.match(source, /<AssetThumbnail photo=\{facts\.photo\} assetTag=\{facts\.assetTag\} assetName=\{facts\.name\} size=\{44\}/)
+  assert.match(source, /href=\{`\/\$\{locale\}\/assets\/\$\{facts\.id\}`\}/)
+  assert.match(source, /<StatusBadge label=\{facts\.statusLabel\} tone=\{getAssetStateTone\(facts\.statusName\)\} \/>/)
+  assert.match(source, /\/maintenance\?assetId=\$\{facts\.id\}/)
+  assert.match(source, /t\("detail\.assetRepairHistory", \{ count: recordCount \}\)/)
+  for (const key of ["currentStatus", "custodian", "location"]) assert.match(source, new RegExp(`t\\("${key}"\\)`), key)
+  for (const field of ["holderName", "departmentName", "roomName", "branchName"]) assert.match(source, new RegExp(`facts\\.${field}`), field)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  assert.equal(th.repairRecord.detail.assetRepairHistory, "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count} รายการ")
+  assert.equal(th.repairRecord.currentStatus, "สถานะปัจจุบัน")
+  assert.equal(th.repairRecord.custodian, "ผู้ถือครอง")
+  assert.equal(th.repairRecord.location, "ที่ตั้ง")
 })

@@ -79,15 +79,16 @@ test("review focus 1: a stuck asset with a long Thai name stays one cut line bes
 
 test("repair record page: ContentPanels, the history section on the panel classes with status markers and EmptyNote, the outcome as a StatusBadge, a warning Notice with its action, and outline links (spec 2D D7, D9, M21, M22, M25, M29)", () => {
   const source = read(`${D}maintenance/[id]/page.tsx`)
-  for (const title of ["detailTitle", "legacyTitle", "assetSection", "disposalReviewTitle"]) {
+  // The asset panel is RepairRecordAssetPanel since group 5 plan 3 Task 2; its name links to the asset.
+  for (const title of ["detailTitle", "legacyTitle", "disposalReviewTitle"]) {
     assert.match(source, new RegExp(`<ContentPanel title=\\{t\\("${title}"\\)\\}>`), title)
   }
   assert.match(source, /<section id="history" className=\{cn\(getPanelClasses\(\), "scroll-mt-6 p-4 sm:p-5"\)\}>\n\s+<h2 className="mb-4 text-base font-semibold text-foreground">\{t\("history"\)\}<\/h2>/)
   assert.match(source, /<EmptyNote>\{t\("historyEmpty"\)\}<\/EmptyNote>/)
   assert.match(source, /<span aria-hidden="true" className=\{cn\(statusMarkerVariants\(\{ tone: "primary" \}\), "absolute top-2 -left-1"\)\} \/>/)
   assert.match(source, /<StatusBadge label=\{outcomeLabel\} tone=\{ticket\.outcome === "usable" \? "success" : ticket\.outcome === "beyond_repair" \? "warning" : "muted"\} \/>/)
-  assert.match(source, /<Notice\s+tone="warning"\s+action=\{\s*<Link href=\{disposalRequestHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
-  assert.match(source, /<Link href=\{`\/\$\{locale\}\/assets\/\$\{ticket\.asset\.id\}`\} className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full"\)\}>/)
+  assert.match(source, /<Notice\s+tone="warning"\s+action=\{\s*nextStepOffersDisposal \? null : \(\s*<Link href=\{disposalRequestHref\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.match(read("src/components/maintenance/repair-record-asset-panel.tsx"), /<ContentPanel title=\{t\("assetSection"\)\}>/)
   assert.doesNotMatch(source, /ActionEmptyState|AlertTriangle|rounded-lg|rounded-full|bg-warning-soft|border-warning-border|text-(?:warning|success|primary)\b|hover:bg-accent|\btext-lg\b|\btext-xs\b|<section className=/)
 })
 

@@ -3478,7 +3478,7 @@
     "disposalReviewCount": "ซ่อมแล้ว {count} ครั้ง",
     "disposalReviewCost": "ค่าซ่อมรวม {cost}",
     "disposalReviewRatio": "คิดเป็น {percent}% ของราคาซื้อ",
-    "openDisposalRequest": "ขอจำหน่าย",
+    "openDisposalRequest": "ยื่นคำขอตัดจำหน่าย",
     "pmRecordDone": "บันทึกว่าทำแล้ว",
     "subtitle": "ประวัติการซ่อมของทรัพย์สินทุกชิ้น",
     "listTitle": "บันทึกการซ่อม",
@@ -3553,6 +3553,9 @@
       "unanswered": "ยังไม่ได้เลือกว่าซ่อมเสร็จหรือยัง",
       "recordHasOpen": "มีที่ค้าง {repairNo}",
       "factsFailed": "โหลดข้อมูลทรัพย์สินไม่สำเร็จ"
+    },
+    "detail": {
+      "assetRepairHistory": "ประวัติซ่อมทั้งหมดของทรัพย์สินนี้ · {count} รายการ"
     }
   },
   "disposalPage": {
