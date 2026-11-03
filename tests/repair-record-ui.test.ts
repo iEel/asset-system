@@ -95,7 +95,11 @@ test("the form is the operation frame: breadcrumbs, three numbered sections, the
   const summary = read(SUMMARY)
   assert.match(summary, /<OperationSummaryCard\n/)
   assert.ok(summary.includes("buildRepairCreateSummary({"))
-  assert.ok(summary.includes('<span data-repair-if-done className="mb-3 grid gap-1 text-sm text-foreground">'), "ถ้าตอบว่าซ่อมเสร็จแล้ว (G5P2-R3)")
+  // "ถ้าตอบว่าซ่อมเสร็จแล้ว" (G5P2-R3) goes through the card's afterRows slot, between the rows and the checklist
+  // (spec §7.5); the footnote is the plain footnote text.
+  assert.match(summary, /afterRows=\{summary\.ifDone \? \(\n\s+<div data-repair-if-done className="grid gap-1 text-sm text-foreground">/)
+  assert.ok(summary.includes("footnote={footnote}"))
+  assert.doesNotMatch(summary, /footnote=\{\(/)
   assert.ok(summary.includes('t("createForm.ifDoneTitle")'))
   assert.ok(source.includes('submitLabel: t("save"),'))
   assert.ok(source.includes("formId: REPAIR_FORM_ID,"))

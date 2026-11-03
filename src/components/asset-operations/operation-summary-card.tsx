@@ -20,6 +20,8 @@ export type OperationSummaryCardProps = {
   assetLabel?: ReactNode
   /** One line under the asset line, above the rows: what the save changes, such as โอนย้าย's "เปลี่ยน N อย่าง: …" (group 3 spec §9.3, plan 3 P3-R12). */
   lead?: ReactNode
+  /** A block right after the rows, before the checklist: บันทึกซ่อม's "ถ้าตอบว่าซ่อมเสร็จแล้ว" (group 5 spec §7.5). The group 3 forms pass nothing. */
+  afterRows?: ReactNode
 }
 
 // One class string for the heads row and every row of the list, so the three columns line up.
@@ -27,7 +29,7 @@ const SUMMARY_ROW_CLASSES = "grid grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minma
 
 // "สรุปก่อนบันทึก" of ส่งมอบ, รับคืน and โอนย้าย (group 3 spec §5): one row per field the save writes, ตอนนี้ then หลังบันทึก,
 // the new value semibold only when it changes; an optional lead line under the asset line, above the rows; then the checklist, the warnings and a footnote. Sticky in its column from lg.
-export function OperationSummaryCard({ title, nowLabel, nextLabel, rows, checklist = [], warnings = [], footnote, photo, assetLabel, lead }: OperationSummaryCardProps) {
+export function OperationSummaryCard({ title, nowLabel, nextLabel, rows, checklist = [], warnings = [], footnote, photo, assetLabel, lead, afterRows }: OperationSummaryCardProps) {
   const t = useTranslations("assetOperation")
 
   return (
@@ -65,6 +67,7 @@ export function OperationSummaryCard({ title, nowLabel, nextLabel, rows, checkli
           </dl>
         </div>
       ) : null}
+      {afterRows ? <div data-summary-after-rows>{afterRows}</div> : null}
       {checklist.length > 0 ? (
         <ul className="grid gap-2 text-sm">
           {checklist.map((item) => (

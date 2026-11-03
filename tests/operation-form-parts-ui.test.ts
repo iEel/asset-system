@@ -9,7 +9,12 @@ const RAW = /\bdark:|#[0-9a-fA-F]{3,8}\b|\brgba?\(|\b(?:bg|text|border|ring)-[a-
 
 test("OperationSummaryCard: ตอนนี้ then หลังบันทึก per row, the new value semibold only when it changes, the checklist, warnings, sticky from lg", () => {
   const source = read(`${DIR}operation-summary-card.tsx`)
-  assert.match(source, /^export function OperationSummaryCard\(\{ title, nowLabel, nextLabel, rows, checklist = \[\], warnings = \[\], footnote, photo, assetLabel, lead \}: OperationSummaryCardProps\) \{$/m)
+  assert.match(source, /^export function OperationSummaryCard\(\{ title, nowLabel, nextLabel, rows, checklist = \[\], warnings = \[\], footnote, photo, assetLabel, lead, afterRows \}: OperationSummaryCardProps\) \{$/m)
+  // An optional block right after the rows and before the checklist (บันทึกซ่อม's "ถ้าตอบว่าซ่อมเสร็จแล้ว", group 5 spec §7.5).
+  assert.ok(source.includes("  afterRows?: ReactNode\n"), "the afterRows prop")
+  assert.ok(source.includes("{afterRows ? <div data-summary-after-rows>{afterRows}</div> : null}"), "the slot, only when given")
+  assert.ok(source.indexOf("{rows.length > 0 ? (") < source.indexOf("data-summary-after-rows") && source.indexOf("data-summary-after-rows") < source.indexOf("{checklist.length > 0 ? ("), "rows, the slot, then the checklist")
+  for (const form of ["checkout-form.tsx", "checkin-form.tsx", "transfer-form.tsx"]) assert.doesNotMatch(read(`${DIR}${form}`), /afterRows=/, form)
   // The asset line (group 3 spec §19.5): the register photo and the asset's label, under the title, only when given.
   assert.ok(source.includes('{photo || assetLabel ? (\n        <div data-summary-asset className="flex min-w-0 items-center gap-3 text-sm">'), "the asset line")
   for (const part of [

@@ -105,6 +105,10 @@ test("repairFieldOrder: the outcome only when done, the condition only when done
   assert.ok(!repairFieldOrder(values({ done: true }), false).includes("conditionId"))
   assert.ok(repairFieldOrder(values({ done: true, outcome: "usable" }), false).includes("conditionId"))
   assert.ok(repairFieldOrder(values(), true).includes("reportedById"))
+  // Focus order is the screen order (spec §7.3): the reporter sits after the problem, before the done question.
+  assert.deepEqual(repairFieldOrder(values({ done: true, outcome: "usable" }), true), [
+    "assetId", "reportedDate", "problem", "reportedById", "done", "outcome", "conditionId", "vendorId", "repairCost", "invoiceNo", "remark",
+  ])
   assert.equal(repairFieldIds.conditionId, "repair-create-condition")
   assert.equal(repairFieldIds.done, "repair-record-done")
 })

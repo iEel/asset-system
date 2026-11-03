@@ -82,7 +82,6 @@ export function RepairCreateSummary({ facts, values, plan, statusLabels, conditi
     return <>{label} → {refusal}</>
   }
 
-  // The footnote is one paragraph: the "if done" block sits in it as block spans, so the card keeps its parts.
   return (
     <OperationSummaryCard
       title={tOperation("summaryTitle")}
@@ -92,18 +91,15 @@ export function RepairCreateSummary({ facts, values, plan, statusLabels, conditi
       assetLabel={facts ? <>{facts.name} <span className="tag">{facts.assetTag}</span></> : undefined}
       rows={summary.rows.map((row) => ({ key: row.key, label: rowLabels[row.key], now: show(row.now), next: show(row.next), changed: row.changed }))}
       checklist={summary.checklist.map((item) => ({ key: item.key, label: checkLabels[item.key], done: item.done }))}
-      footnote={(
-        <>
-          {summary.ifDone ? (
-            <span data-repair-if-done className="mb-3 grid gap-1 text-sm text-foreground">
-              <span className="font-medium">{t("createForm.ifDoneTitle")}</span>
-              <span className="block">{ifDoneLine(t("outcome.usable"), summary.ifDone.usable)}</span>
-              <span className="block">{ifDoneLine(t("outcome.beyond_repair"), summary.ifDone.beyondRepair)}</span>
-            </span>
-          ) : null}
-          <span className="block">{footnote}</span>
-        </>
-      )}
+      // "ถ้าตอบว่าซ่อมเสร็จแล้ว" sits between the rows and the checklist (spec §7.5).
+      afterRows={summary.ifDone ? (
+        <div data-repair-if-done className="grid gap-1 text-sm text-foreground">
+          <p className="font-medium">{t("createForm.ifDoneTitle")}</p>
+          <p>{ifDoneLine(t("outcome.usable"), summary.ifDone.usable)}</p>
+          <p>{ifDoneLine(t("outcome.beyond_repair"), summary.ifDone.beyondRepair)}</p>
+        </div>
+      ) : undefined}
+      footnote={footnote}
     />
   )
 }
