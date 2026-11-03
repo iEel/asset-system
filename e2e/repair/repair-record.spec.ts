@@ -278,7 +278,7 @@ test("the repair print opens with the record's number, state and outcome (ER3, f
   await answerRepair(page, { done: true, outcome: "ใช้งานได้", condition: "ดี" })
   const record = await saveRepairForm(page, measure, "save a finished repair")
   await expect(headerBadge(page)).toHaveText("ซ่อมเสร็จแล้ว")
-  await page.getByRole("main").getByRole("link", { name: "พิมพ์" }).first().click()
+  await page.getByRole("link", { name: "พิมพ์", exact: true }).filter({ visible: true }).first().click()
   await page.waitForURL(new RegExp(`/th/maintenance/${record.id}/print`))
   await expect(page.getByRole("heading", { level: 1, name: "บันทึกการซ่อม" })).toBeVisible()
   await expect(page.getByText(record.repairNo).first()).toBeVisible()

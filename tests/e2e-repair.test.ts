@@ -74,6 +74,10 @@ test("repair records: a second open record is refused, a mistaken one is cancell
   for (const text of [th.repairRecord.cancel, th.repairRecord.cancelTitle, th.repairRecord.confirmCancel, th.repairRecord.status.cancelled, th.repairRecord.movement.cancel, th.repairRecord.printTitle]) {
     assert.ok(spec.includes(text), text)
   }
+  // พิมพ์ by its exact name and visible: a substring match on the phone found the asset panel's link to an asset named
+  // "… เครื่องพิมพ์…" (E2E-1104A); the header holds พิมพ์ on the desktop, the phone bar on the phone.
+  assert.ok(spec.includes(`await page.getByRole("link", { name: "พิมพ์", exact: true }).filter({ visible: true }).first().click()`))
+  assert.ok(!spec.includes(`getByRole("link", { name: "พิมพ์" })`))
   // The findings of this task: each its own test, marked expected to fail with its id.
   // AR1 is fixed (FX1) and AR3 is decided (DX4 (ก)): their tests run as plain tests.
   assert.ok(!spec.includes(`test.fail(true, "AR1: `), "AR1 is fixed")
